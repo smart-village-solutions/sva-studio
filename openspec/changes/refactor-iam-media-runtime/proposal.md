@@ -10,10 +10,10 @@ Die HTTP-Laufzeit des Medienmanagements bündelt Handler, Validierung, Storage-Z
 - zentralisiert nur tatsächlich wiederholte Request-, Schema-, Autorisierungs- und Fehlerlogik
 - **BREAKING** ersetzt die Medienlistenparameter `page`/`pageSize` und die exakte Gesamtzahl durch einen opaken Storage-Key-Cursor
 - verwendet für Bucket-Dateien eine effiziente Präfixsuche und eine stabile Storage-Key-Reihenfolge
-- nutzt den bestehenden Upload-Status `uploaded` als atomaren synchronen Verarbeitungs-Claim
+- nutzt den bestehenden Upload-Status `uploaded` als atomaren synchronen Verarbeitungs-Claim mit zeitlich begrenzter, lazy erneuerbarer Lease
 - verschiebt S3- und Bildverarbeitung aus der DB-Transaktion und finalisiert Asset, Varianten, Session und tatsächliche Speichernutzung atomar
 - dokumentiert den extern garantierten Vertrag eines isolierten Buckets je Tenant und entfernt darauf basierende fremdmandantenbezogene Storage-Key-Heuristiken
-- führt keine neue Dependency, Job-Plattform, Inventartabelle, Lease-Engine oder generisches Handler-Framework ein
+- führt keine neue Dependency, Job-Plattform, Inventartabelle oder generisches Handler-Framework ein
 
 ## Impact
 

@@ -867,6 +867,8 @@ LIMIT 1;
   values: [instanceId, assetId],
 });
 
+const UPLOAD_SESSION_STALE_CLAIM_SECONDS = 10 * 60;
+
 const claimUploadSessionStatement = (instanceId: string, sessionId: string): SqlStatement => ({
   text: `
 UPDATE iam.media_upload_sessions
@@ -874,7 +876,13 @@ SET status = 'uploaded',
     updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid
-  AND status = 'pending'
+  AND (
+    status = 'pending'
+    OR (
+      status = 'uploaded'
+      AND updated_at < NOW() - ($3 * INTERVAL '1 second')
+    )
+  )
   AND (expires_at IS NULL OR expires_at > NOW())
 RETURNING
   id,
@@ -888,7 +896,7 @@ RETURNING
   created_at,
   updated_at;
 `,
-  values: [instanceId, sessionId],
+  values: [instanceId, sessionId, UPLOAD_SESSION_STALE_CLAIM_SECONDS],
 });
 
 const upsertStorageUsageStatement = (input: MediaStorageUsageRecord): SqlStatement => ({

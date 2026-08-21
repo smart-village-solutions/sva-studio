@@ -218,16 +218,14 @@ const completeUploadWithStorage = async (input: {
   if (completedAsset) {
     return createCompletedUploadResponse({ ...input, asset: completedAsset });
   }
-  if (initialState.uploadSession.status !== 'pending') {
-    const processing = initialState.uploadSession.status === 'uploaded';
+  const claimableStatus = ['pending', 'uploaded'].includes(initialState.uploadSession.status);
+  if (!claimableStatus) {
     return createApiError(
       409,
       'conflict',
-      processing
-        ? 'Die Upload-Session wird bereits verarbeitet.'
-        : 'Die Upload-Session kann nicht mehr verarbeitet werden.',
+      'Die Upload-Session kann nicht mehr verarbeitet werden.',
       getRequestId(),
-      { reason: processing ? 'upload_processing_in_progress' : 'upload_session_not_processable' }
+      { reason: 'upload_session_not_processable' }
     );
   }
 

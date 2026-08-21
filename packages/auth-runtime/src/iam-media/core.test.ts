@@ -1881,6 +1881,80 @@ describe('media http handlers', () => {
     expect(response.status).toBe(200);
   });
 
+  it('retries a stale uploaded claim after processing throws instead of leaving it stuck', async () => {
+    const service = createService();
+    service.getUploadSessionById = vi.fn(async () => ({
+      id: 'upload-1',
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      status: 'uploaded',
+    }));
+    const storagePort = {
+      readObject: vi.fn(async () => {
+        throw new MediaStorageUnavailableError('storage unavailable');
+      }),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+    const request = () =>
+      new Request(
+        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        { method: 'POST' }
+      );
+
+    expect((await handlers.completeUpload(request(), createContext())).status).toBe(503);
+    expect((await handlers.completeUpload(request(), createContext())).status).toBe(503);
+    expect(service.claimUploadSession).toHaveBeenCalledTimes(2);
+    expect(storagePort.readObject).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a fresh uploaded claim exclusive when it cannot be reclaimed', async () => {
+    const service = createService();
+    service.getUploadSessionById = vi.fn(async () => ({
+      id: 'upload-1',
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      status: 'uploaded',
+    }));
+    service.claimUploadSession = vi.fn(async () => null);
+    const storagePort = { readObject: vi.fn() };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.completeUpload(
+      new Request(
+        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        { method: 'POST' }
+      ),
+      createContext()
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { details: { reason: 'upload_processing_in_progress' } },
+    });
+    expect(service.claimUploadSession).toHaveBeenCalledTimes(1);
+    expect(storagePort.readObject).not.toHaveBeenCalled();
+  });
+
   it('returns the completed result when another request wins the upload claim', async () => {
     const service = createService();
     service.getUploadSessionById = vi

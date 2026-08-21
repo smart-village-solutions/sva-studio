@@ -40,7 +40,7 @@ Beim Abschluss werden synchron ausgeführt:
 - Statuspflege für Upload und Verarbeitung
 - Prüfung der tatsächlichen Gesamtgröße gegen das Speicherkontingent
 
-Ein atomarer Session-Claim verhindert, dass parallele Abschlussaufrufe dieselbe Datei doppelt verarbeiten. Bereits vollständig verarbeitete Wiederholungen liefern idempotent Erfolg. Storage- und Bildoperationen halten keine Datenbanktransaktion offen; erst der vollständige Datenbankabschluss läuft gemeinsam in einer kurzen Transaktion.
+Ein atomarer Session-Claim verhindert, dass parallele Abschlussaufrufe dieselbe Datei doppelt verarbeiten. Frische Claims bleiben exklusiv; nach zehn Minuten darf ein erneuter Abschlussaufruf einen unveränderten `uploaded`-Claim atomar übernehmen. Damit können Prozess- oder Storage-Abbrüche ohne zusätzlichen Recovery-Worker erneut versucht werden. Bereits vollständig verarbeitete Wiederholungen liefern idempotent Erfolg. Storage- und Bildoperationen halten keine Datenbanktransaktion offen; erst der vollständige Datenbankabschluss läuft gemeinsam in einer kurzen Transaktion.
 
 Fehlschläge bleiben fail-closed. Redigierte Fehlerdetails werden am Asset gespeichert; technische Storage-Details werden nicht in Fachmodulen offengelegt.
 

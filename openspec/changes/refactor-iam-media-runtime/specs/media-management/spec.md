@@ -42,6 +42,13 @@ Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verar
 - **THEN** antwortet das System idempotent mit dem erfolgreichen Ergebnis
 - **AND** erzeugt keine weiteren Varianten oder Nutzungsbuchungen
 
+#### Scenario: Unterbrochener Verarbeitungs-Claim wird erneut übernommen
+
+- **GIVEN** eine Upload-Session befindet sich seit mindestens zehn Minuten unverändert im Status `uploaded`
+- **WHEN** ein autorisierter Client den Abschluss erneut aufruft
+- **THEN** übernimmt das System den abgelaufenen Claim atomar und versucht die Verarbeitung erneut
+- **AND** ein jüngerer `uploaded`-Claim bleibt exklusiv und liefert weiterhin einen In-Verarbeitung-Konflikt
+
 ### Requirement: Kurze und atomare Upload-Finalisierung
 
 Das System SHALL externe Storage- und Bildverarbeitung außerhalb einer Datenbanktransaktion ausführen und den abschließenden Datenbankzustand anhand der tatsächlichen Objektgrößen atomar persistieren.

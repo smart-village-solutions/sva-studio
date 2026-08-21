@@ -45,7 +45,7 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 1. Host-UI unter `/admin/media` initialisiert einen Upload.
 2. `@sva/auth-runtime` prüft Instanzkontext und IAM-Rechte und legt Asset plus Upload-Session an. Eine vorläufige Größenangabe ist keine harte Quotenentscheidung.
 3. Der interne Storage-Port erzeugt eine signierte Upload-Möglichkeit gegen den S3-/MinIO-kompatiblen Objektspeicher.
-4. Beim Abschluss beansprucht ein atomares `pending -> uploaded` genau einen synchronen Verarbeiter. Wiederholungen eines bereits validierten Uploads bleiben idempotent; parallele laufende Abschlüsse erhalten einen Konflikt.
+4. Beim Abschluss beansprucht ein atomares `pending -> uploaded` genau einen synchronen Verarbeiter. Frische Claims bleiben exklusiv; ein seit zehn Minuten unveränderter `uploaded`-Claim kann durch einen späteren Abschlussaufruf lazy und atomar übernommen werden. Wiederholungen eines bereits validierten Uploads bleiben idempotent.
 5. S3-Lesen, Inhaltsvalidierung, Metadatenextraktion, Sharp-Verarbeitung und S3-Schreiben laufen ohne offene Datenbanktransaktion.
 6. Eine kurze Finalisierungstransaktion prüft die tatsächlichen Bytes atomar gegen die Quote und persistiert Varianten, Asset-, Session- und Usage-Zustand gemeinsam. Bei Quotenüberschreitung entfernt der Host Original und erzeugte Varianten kompensierend.
 7. Fachmodule speichern weder Storage-Artefakte noch kurzlebige Preview-/presigned URLs. Bei Mainserver-Inhalten bleibt die persistierbare Delivery-URL Teil des fachlichen Snapshots; zusätzlich hält der Host die Asset-Beziehung als geordnete `gallery_item`-Referenz.

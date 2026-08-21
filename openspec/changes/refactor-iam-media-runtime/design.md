@@ -13,14 +13,14 @@
 - Gemeinsame Request-Helfer bleiben konkret auf IAM-Medien zugeschnitten.
 - Der Cursor ist versioniert, Base64url-kodiert und bindet letzten Storage-Key sowie normalisierte Filter. DB und S3 lesen jeweils strikt nach diesem Key; registrierte Assets gewinnen bei der Deduplizierung.
 - Die Sortierung wechselt bewusst von einer globalen Zeit- zu einer aufsteigenden Storage-Key-Reihenfolge. Unregistrierte Bucket-Suche verwendet ein S3-Präfix; registrierte Assets behalten die Metadatensuche.
-- Der erlaubte Statusübergang `pending -> uploaded` dient als atomarer Claim. Parallele Abschlüsse erhalten einen Konflikt; bereits validierte Abschlüsse bleiben idempotent.
+- Der erlaubte Statusübergang `pending -> uploaded` dient als atomarer Claim. Frische Claims bleiben exklusiv; ein seit zehn Minuten unveränderter `uploaded`-Claim darf durch einen späteren Abschlussaufruf atomar übernommen werden. Bereits validierte Abschlüsse bleiben idempotent.
 - S3-Lesen, Inhaltsprüfung, Sharp-Verarbeitung und S3-Schreiben laufen ohne offene DB-Transaktion. Eine kurze Finalisierungstransaktion prüft die tatsächliche Quote und persistiert alle DB-Änderungen gemeinsam.
 - Für die Quotenprüfung wird keine Reservierung angelegt. Bei Ablehnung werden Original und erzeugte Varianten kompensierend entfernt.
 
 ## Risks / Trade-offs
 
 - Die Medienliste liefert keine exakte Gesamtzahl mehr und sortiert nicht mehr global nach Aktualität. Dafür ist ihre Laufzeit nicht länger an die Gesamtgröße des Buckets gekoppelt.
-- Ein Prozessabbruch nach dem Claim kann eine Session im Status `uploaded` belassen. Automatische Lease-Übernahme bleibt bewusst außerhalb dieses Changes; vorhandene Expiry-/Cleanup-Verträge bleiben zuständig.
+- Die Übernahme eines abgelaufenen Claims erfolgt lazy durch einen erneuten Abschlussaufruf. Damit bleibt kein zusätzlicher Recovery-Worker zu betreiben; bis zum Ablauf der zehnminütigen Lease erhält ein paralleler Request weiterhin einen Konflikt.
 - Kompensierendes S3-Cleanup ist nicht transaktional. Fehler werden deshalb sichtbar protokolliert und nicht als erfolgreicher Abschluss ausgegeben.
 
 ## Migration Plan

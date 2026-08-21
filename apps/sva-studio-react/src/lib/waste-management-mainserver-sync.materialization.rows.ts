@@ -54,9 +54,13 @@ export const buildStudioRowsFromMaterialization = (
     const streetName = location.streetId
       ? streetById.get(location.streetId)?.name?.trim()
       : undefined;
-    const houseNumber = location.houseNumberId
-      ? houseNumberById.get(location.houseNumberId)?.number
+    const houseNumberRecord = location.houseNumberId
+      ? houseNumberById.get(location.houseNumberId)
       : undefined;
+    const houseNumber =
+      houseNumberRecord && houseNumberRecord.streetId === location.streetId
+        ? houseNumberRecord.number
+        : undefined;
     const street = streetName ? buildWasteStreetKey(streetName, houseNumber) : undefined;
     if (!city || !street) return [];
 

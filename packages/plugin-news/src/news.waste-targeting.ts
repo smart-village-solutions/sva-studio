@@ -1,4 +1,5 @@
 import {
+  buildWasteStreetKey,
   requestMainserverJson,
   type WasteCityRecord,
   type WasteHouseNumberRecord,
@@ -56,9 +57,7 @@ export const resolveNewsWasteTargetOptions = (
     const streetName = compact(street?.name);
     if (!cityName || !postalCode || !streetName) continue;
 
-    const streetWithHouseNumber = [streetName, compact(houseNumber?.number)]
-      .filter(Boolean)
-      .join(' ');
+    const streetWithHouseNumber = buildWasteStreetKey(streetName, houseNumber?.number);
     const key = { street: streetWithHouseNumber, zip: postalCode, city: cityName };
     const id = wasteLocationKeyId(key);
     if (unique.has(id)) continue;

@@ -88,6 +88,63 @@ describe('News Waste targeting', () => {
     ]);
   });
 
+  it('omits the all-house-numbers placeholder from address keys', () => {
+    expect(
+      resolveNewsWasteTargetOptions({
+        ...overview,
+        streets: [
+          ...overview.streets,
+          {
+            id: 's-all',
+            name: 'Alle Straßen',
+            cityId: 'c1',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        houseNumbers: [
+          ...overview.houseNumbers,
+          {
+            id: 'h-all-street',
+            number: 'Alle Hausnummern',
+            streetId: 's1',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          {
+            id: 'h-all-city',
+            number: 'Alle Hausnummern',
+            streetId: 's-all',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        collectionLocations: [
+          {
+            id: 'l-all-street',
+            cityId: 'c1',
+            regionId: 'r1',
+            streetId: 's1',
+            houseNumberId: 'h-all-street',
+            active: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          {
+            id: 'l-all-city',
+            cityId: 'c1',
+            regionId: 'r1',
+            streetId: 's-all',
+            houseNumberId: 'h-all-city',
+            active: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      }).map((option) => option.key.street)
+    ).toEqual(['Alle Straßen', 'Hauptstraße']);
+  });
+
   it('preserves keys that no longer resolve to current master data', () => {
     const options = resolveNewsWasteTargetOptions(overview);
     const currentKey = options[0]?.key;

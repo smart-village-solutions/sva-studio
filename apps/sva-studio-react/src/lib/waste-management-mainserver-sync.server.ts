@@ -2,6 +2,7 @@ import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
+  WasteHouseNumberRecord,
   WasteLocationTourLinkRecord,
   WasteStreetRecord,
   WasteTourRecord,
@@ -50,6 +51,7 @@ type WasteMaterializationSyncState = Omit<
 > & {
   readonly cities: readonly WasteCityRecord[];
   readonly fractions: readonly WasteFractionRecord[];
+  readonly houseNumbers: readonly WasteHouseNumberRecord[];
   readonly locations: readonly WasteCollectionLocationRecord[];
   readonly locationTourPickupDates: NonNullable<
     WasteMaterializationContext['locationTourPickupDates']
@@ -115,6 +117,7 @@ const buildStudioRowsFromSyncState = (
     tours: studioState.tours,
     fractions: studioState.fractions,
     locations: studioState.locations,
+    houseNumbers: studioState.houseNumbers,
     cities: studioState.cities,
     streets: studioState.streets,
   }).map(toWasteSyncRow);
@@ -266,6 +269,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
       fractions: await repository.listWasteFractions(),
       links: await repository.listWasteLocationTourLinks(),
       locations: await repository.listWasteCollectionLocations(),
+      houseNumbers: await repository.listWasteHouseNumbers(),
       locationTourPickupDates: await repository.listWasteLocationTourPickupDates(),
       tourAssignments: await repository.listWasteTourAssignments(),
       cities: await repository.listWasteCities(),

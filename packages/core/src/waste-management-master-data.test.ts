@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { wasteManagementMasterDataContract } from './waste-management-master-data.js';
+import {
+  buildWasteStreetKey,
+  wasteManagementMasterDataContract,
+} from './waste-management-master-data.js';
 
 describe('waste-management-master-data', () => {
+  it('builds matching street keys for concrete and catch-all house numbers', () => {
+    expect(buildWasteStreetKey('Fehmarnsund', '5')).toBe('Fehmarnsund 5');
+    expect(buildWasteStreetKey('Fehmarnsund', 'Alle Hausnummern')).toBe('Fehmarnsund');
+    expect(buildWasteStreetKey('Alle Straßen', 'Alle Hausnummern')).toBe('Alle Straßen');
+  });
+
   it('defines stable explicit date-shift reasons', () => {
     expect(wasteManagementMasterDataContract.dateShiftReasonTypes).toEqual([
       'holiday',

@@ -36,7 +36,15 @@ type WasteSyncClientState = {
     id: string;
     cityId: string;
     streetId?: string;
+    houseNumberId?: string;
     active: true | false;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+  readonly houseNumbers?: readonly {
+    id: string;
+    number: string;
+    streetId: string;
     createdAt: string;
     updatedAt: string;
   }[];
@@ -52,6 +60,7 @@ type WasteSyncClientState = {
   readonly cities: readonly {
     id: string;
     name: string;
+    postalCode?: string;
     createdAt: string;
     updatedAt: string;
   }[];
@@ -113,6 +122,7 @@ const listSvaMainserverWasteSyncSnapshotMock = vi.hoisted(() =>
         pickupDate: string;
         wasteType: string;
         street: string;
+        zip?: string;
         city?: string;
       }>;
     }> => ({ pickupTimes: [] })
@@ -145,6 +155,7 @@ vi.mock('./waste-management-operations.shared.js', () => ({
 }));
 
 import {
+  buildWasteSyncKey,
   runWasteManagementMainserverSync,
   runWasteManagementMainserverSyncForInstance,
 } from './waste-management-mainserver-sync.server.js';
@@ -410,33 +421,39 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(deleteSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
   });
 
-  it('matches studio and mainserver rows even when only mainserver provides a ZIP code', async () => {
+  it('replaces a mainserver row when Studio adds a ZIP code', async () => {
+    const studioItem = {
+      pickupDate: '2026-01-10',
+      wasteType: 'Restmüll',
+      street: 'Hauptstraße',
+      zip: '16928',
+      city: 'Musterhausen',
+    };
+    const mainserverItem = {
+      id: 'pickup-1',
+      pickupDate: '2026-01-10',
+      wasteType: 'Restmüll',
+      street: 'Hauptstraße',
+      city: 'Musterhausen',
+    };
     const result = await runWasteManagementMainserverSync({
       studioRows: [
         {
-          key: '2026-01-10::restmüll::hauptstraße::musterhausen',
-          pickupDate: '2026-01-10',
-          wasteType: 'Restmüll',
-          street: 'Hauptstraße',
-          city: 'Musterhausen',
+          ...studioItem,
+          key: buildWasteSyncKey(studioItem),
         },
       ],
       mainserverRows: [
         {
-          id: 'pickup-1',
-          key: '2026-01-10::restmüll::hauptstraße::musterhausen',
-          pickupDate: '2026-01-10',
-          wasteType: 'Restmüll',
-          street: 'Hauptstraße',
-          zip: '16928',
-          city: 'Musterhausen',
+          ...mainserverItem,
+          key: buildWasteSyncKey(mainserverItem),
         },
       ],
-      dryRun: false,
+      dryRun: true,
     });
 
-    expect(result.createCount).toBe(0);
-    expect(result.deleteCount).toBe(0);
+    expect(result.createCount).toBe(1);
+    expect(result.deleteCount).toBe(1);
   });
 
   it('includes imported location pickup dates in the mainserver sync materialization', async () => {
@@ -584,7 +601,17 @@ describe('waste-management-mainserver-sync.server', () => {
           id: 'location-1',
           cityId: 'city-1',
           streetId: 'street-1',
+          houseNumberId: 'house-1',
           active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      houseNumbers: [
+        {
+          id: 'house-1',
+          number: '5',
+          streetId: 'street-1',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -594,6 +621,7 @@ describe('waste-management-mainserver-sync.server', () => {
         {
           id: 'city-1',
           name: 'Musterhausen',
+          postalCode: '12345',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -644,13 +672,15 @@ describe('waste-management-mainserver-sync.server', () => {
           expect.objectContaining({
             pickupDate: '2026-01-05',
             wasteType: 'Restmüll',
-            street: 'Hauptstraße',
+            street: 'Hauptstraße 5',
+            zip: '12345',
             city: 'Musterhausen',
           }),
           expect.objectContaining({
             pickupDate: '2026-01-13',
             wasteType: 'Restmüll',
-            street: 'Hauptstraße',
+            street: 'Hauptstraße 5',
+            zip: '12345',
             city: 'Musterhausen',
           }),
         ]),

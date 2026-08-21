@@ -9,6 +9,7 @@ import type {
   WasteTourRecord,
 } from './waste-management-master-data.js';
 import type { WasteManagementCsvDelimiter } from './waste-management-operations-contract.js';
+import { WASTE_ALL_HOUSE_NUMBERS } from './waste-management/master-data-addresses.js';
 
 const ADDRESS_HEADERS = ['Region', 'Ort', 'Straße', 'Hausnummern'] as const;
 const SUPPORTED_DELIMITERS = [
@@ -20,7 +21,7 @@ const SUPPORTED_DELIMITERS = [
 
 export const wasteLocationTourPickupDateImportDefaults = {
   allStreetsName: 'Alle Straßen',
-  allHouseNumbersName: 'Alle Hausnummern',
+  allHouseNumbersName: WASTE_ALL_HOUSE_NUMBERS,
   defaultFractionColor: '#808080',
   addressHeaders: ADDRESS_HEADERS,
   supportedDelimiters: SUPPORTED_DELIMITERS,

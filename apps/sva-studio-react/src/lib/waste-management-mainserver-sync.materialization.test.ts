@@ -312,7 +312,17 @@ describe('waste-management-mainserver-sync.materialization', () => {
           id: 'location-1',
           cityId: 'city-1',
           streetId: 'street-1',
+          houseNumberId: 'house-1',
           active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      houseNumbers: [
+        {
+          id: 'house-1',
+          number: '5',
+          streetId: 'street-1',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -321,6 +331,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'city-1',
           name: 'Musterhausen',
+          postalCode: '12345',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -341,7 +352,8 @@ describe('waste-management-mainserver-sync.materialization', () => {
       expect.objectContaining({
         pickupDate: '2026-01-05',
         wasteType: 'Restmüll',
-        street: 'Hauptstraße',
+        street: 'Hauptstraße 5',
+        zip: '12345',
         city: 'Musterhausen',
       })
     );

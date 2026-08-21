@@ -12,6 +12,7 @@ export const buildWasteSyncKey = (item: {
   pickupDate: string;
   wasteType: string;
   street: string;
+  zip?: string;
   city?: string;
   note?: string;
 }): string =>
@@ -19,6 +20,7 @@ export const buildWasteSyncKey = (item: {
     item.pickupDate,
     normalizeKeyPart(item.wasteType),
     normalizeKeyPart(item.street),
+    ...(normalizeKeyPart(item.zip) ? [normalizeKeyPart(item.zip)] : []),
     normalizeKeyPart(item.city),
     ...(normalizeKeyPart(item.note) ? [normalizeKeyPart(item.note)] : []),
   ].join('::');

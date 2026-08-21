@@ -332,10 +332,12 @@ export type {
   WasteTourValidityRecord,
 } from './waste-management-master-data.js';
 export {
+  buildWasteStreetKey,
   isValidWasteIsoDateOnly,
   isWasteTourValidityApplicable,
   resolveEffectiveWasteTourDateShiftsForYear,
   resolveWasteTourValidityDates,
+  WASTE_ALL_HOUSE_NUMBERS,
 } from './waste-management-master-data.js';
 export type { EffectiveWasteTourDateShift } from './waste-management-master-data.js';
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';

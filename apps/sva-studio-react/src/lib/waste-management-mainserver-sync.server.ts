@@ -2,6 +2,7 @@ import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
+  WasteHouseNumberRecord,
   WasteLocationTourLinkRecord,
   WasteStreetRecord,
   WasteTourRecord,
@@ -30,6 +31,7 @@ import {
   type WasteSyncProgressReporter,
 } from './waste-management-mainserver-sync.progress.js';
 import {
+  buildWasteSyncCompatibilityKey,
   chunkWasteSyncItems,
   toWasteSyncRow,
   type WasteSyncRow,
@@ -50,6 +52,7 @@ type WasteMaterializationSyncState = Omit<
 > & {
   readonly cities: readonly WasteCityRecord[];
   readonly fractions: readonly WasteFractionRecord[];
+  readonly houseNumbers: readonly WasteHouseNumberRecord[];
   readonly locations: readonly WasteCollectionLocationRecord[];
   readonly locationTourPickupDates: NonNullable<
     WasteMaterializationContext['locationTourPickupDates']
@@ -115,6 +118,7 @@ const buildStudioRowsFromSyncState = (
     tours: studioState.tours,
     fractions: studioState.fractions,
     locations: studioState.locations,
+    houseNumbers: studioState.houseNumbers,
     cities: studioState.cities,
     streets: studioState.streets,
   }).map(toWasteSyncRow);
@@ -132,12 +136,29 @@ export const runWasteManagementMainserverSync = async (input: {
 }): Promise<WasteManagementMainserverSyncResult> => {
   const studioByKey = new Map(input.studioRows.map((row) => [row.key, row] as const));
   const mainserverByKey = new Map(input.mainserverRows.map((row) => [row.key, row] as const));
+  const mainserverCompatibilityKeys = new Set(
+    input.mainserverRows.map(buildWasteSyncCompatibilityKey)
+  );
+  const studioCompatibilityKeysWithoutZip = new Set(
+    input.studioRows
+      .filter((row) => !row.zip?.trim())
+      .map(buildWasteSyncCompatibilityKey)
+  );
 
   const createItems = input.studioRows
-    .filter((row) => !mainserverByKey.has(row.key))
+    .filter(
+      (row) =>
+        !mainserverByKey.has(row.key) &&
+        (Boolean(row.zip?.trim()) ||
+          !mainserverCompatibilityKeys.has(buildWasteSyncCompatibilityKey(row)))
+    )
     .map(({ key: _key, ...row }) => row);
   const deleteItems = input.mainserverRows
-    .filter((row) => !studioByKey.has(row.key))
+    .filter(
+      (row) =>
+        !studioByKey.has(row.key) &&
+        !studioCompatibilityKeysWithoutZip.has(buildWasteSyncCompatibilityKey(row))
+    )
     .map(({ key: _key, ...row }) => row);
   const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
   const deleteByValueCount = deleteItems.length - deleteByIdCount;
@@ -266,6 +287,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
       fractions: await repository.listWasteFractions(),
       links: await repository.listWasteLocationTourLinks(),
       locations: await repository.listWasteCollectionLocations(),
+      houseNumbers: await repository.listWasteHouseNumbers(),
       locationTourPickupDates: await repository.listWasteLocationTourPickupDates(),
       tourAssignments: await repository.listWasteTourAssignments(),
       cities: await repository.listWasteCities(),

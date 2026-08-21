@@ -1,4 +1,5 @@
 import {
+  buildWasteStreetKey,
   requestMainserverJson,
   type WasteCityRecord,
   type WasteHouseNumberRecord,
@@ -48,17 +49,17 @@ export const resolveNewsWasteTargetOptions = (
     if (!location.active || !location.streetId) continue;
     const city = cities.get(location.cityId);
     const street = streets.get(location.streetId);
-    const houseNumber = location.houseNumberId
+    const referencedHouseNumber = location.houseNumberId
       ? houseNumbers.get(location.houseNumberId)
       : undefined;
+    const houseNumber =
+      referencedHouseNumber?.streetId === location.streetId ? referencedHouseNumber : undefined;
     const cityName = compact(city?.name);
     const postalCode = compact(city?.postalCode);
     const streetName = compact(street?.name);
     if (!cityName || !postalCode || !streetName) continue;
 
-    const streetWithHouseNumber = [streetName, compact(houseNumber?.number)]
-      .filter(Boolean)
-      .join(' ');
+    const streetWithHouseNumber = buildWasteStreetKey(streetName, houseNumber?.number);
     const key = { street: streetWithHouseNumber, zip: postalCode, city: cityName };
     const id = wasteLocationKeyId(key);
     if (unique.has(id)) continue;
@@ -72,7 +73,7 @@ export const resolveNewsWasteTargetOptions = (
       postalCode,
       streetId: location.streetId,
       street: streetName,
-      houseNumberId: location.houseNumberId,
+      houseNumberId: houseNumber?.id,
       houseNumber: compact(houseNumber?.number),
       label: `${streetWithHouseNumber}, ${postalCode} ${cityName}`,
     });

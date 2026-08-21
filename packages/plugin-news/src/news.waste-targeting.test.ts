@@ -88,6 +88,80 @@ describe('News Waste targeting', () => {
     ]);
   });
 
+  it('omits a house number that no longer belongs to the location street', () => {
+    expect(
+      resolveNewsWasteTargetOptions({
+        ...overview,
+        houseNumbers: [{ ...overview.houseNumbers[0], streetId: 's2' }],
+        collectionLocations: [overview.collectionLocations[0]],
+      })
+    ).toEqual([
+      expect.objectContaining({
+        key: { street: 'Hauptstraße', zip: '12345', city: 'Musterstadt' },
+        label: 'Hauptstraße, 12345 Musterstadt',
+        houseNumberId: undefined,
+        houseNumber: '',
+      }),
+    ]);
+  });
+
+  it('omits the all-house-numbers placeholder from address keys', () => {
+    expect(
+      resolveNewsWasteTargetOptions({
+        ...overview,
+        streets: [
+          ...overview.streets,
+          {
+            id: 's-all',
+            name: 'Alle Straßen',
+            cityId: 'c1',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        houseNumbers: [
+          ...overview.houseNumbers,
+          {
+            id: 'h-all-street',
+            number: 'Alle Hausnummern',
+            streetId: 's1',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          {
+            id: 'h-all-city',
+            number: 'Alle Hausnummern',
+            streetId: 's-all',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        collectionLocations: [
+          {
+            id: 'l-all-street',
+            cityId: 'c1',
+            regionId: 'r1',
+            streetId: 's1',
+            houseNumberId: 'h-all-street',
+            active: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          {
+            id: 'l-all-city',
+            cityId: 'c1',
+            regionId: 'r1',
+            streetId: 's-all',
+            houseNumberId: 'h-all-city',
+            active: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      }).map((option) => option.key.street)
+    ).toEqual(['Alle Straßen', 'Hauptstraße']);
+  });
+
   it('preserves keys that no longer resolve to current master data', () => {
     const options = resolveNewsWasteTargetOptions(overview);
     const currentKey = options[0]?.key;

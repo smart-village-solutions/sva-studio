@@ -2,9 +2,11 @@ import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
+  WasteHouseNumberRecord,
   WasteStreetRecord,
   WasteTourRecord,
 } from '@sva/core';
+import { buildWasteStreetKey } from '@sva/core';
 
 import type { MaterializedLocationTourPickupDateRecord } from './waste-management-mainserver-sync.materialization.js';
 import { buildWasteSyncKey } from './waste-management-mainserver-sync.rows.js';
@@ -24,6 +26,7 @@ type StudioRowMaterializationInput = Readonly<{
   tours: readonly WasteTourRecord[];
   fractions: readonly WasteFractionRecord[];
   locations: readonly WasteCollectionLocationRecord[];
+  houseNumbers?: readonly WasteHouseNumberRecord[];
   cities: readonly WasteCityRecord[];
   streets: readonly WasteStreetRecord[];
 }>;
@@ -36,14 +39,29 @@ export const buildStudioRowsFromMaterialization = (
   const locationById = new Map(input.locations.map((location) => [location.id, location] as const));
   const cityById = new Map(input.cities.map((city) => [city.id, city] as const));
   const streetById = new Map(input.streets.map((street) => [street.id, street] as const));
+  const houseNumberById = new Map(
+    (input.houseNumbers ?? []).map((houseNumber) => [houseNumber.id, houseNumber] as const)
+  );
 
   return input.pickupDates.flatMap((pickupDate) => {
     const tour = tourById.get(pickupDate.tourId);
     const location = locationById.get(pickupDate.locationId);
     if (!tour || !location?.active) return [];
 
-    const city = cityById.get(location.cityId)?.name?.trim();
-    const street = location.streetId ? streetById.get(location.streetId)?.name?.trim() : undefined;
+    const cityRecord = cityById.get(location.cityId);
+    const city = cityRecord?.name?.trim();
+    const zip = cityRecord?.postalCode?.trim();
+    const streetName = location.streetId
+      ? streetById.get(location.streetId)?.name?.trim()
+      : undefined;
+    const houseNumberRecord = location.houseNumberId
+      ? houseNumberById.get(location.houseNumberId)
+      : undefined;
+    const houseNumber =
+      houseNumberRecord && houseNumberRecord.streetId === location.streetId
+        ? houseNumberRecord.number
+        : undefined;
+    const street = streetName ? buildWasteStreetKey(streetName, houseNumber) : undefined;
     if (!city || !street) return [];
 
     return tour.wasteFractionIds.flatMap((fractionId) => {
@@ -54,12 +72,14 @@ export const buildStudioRowsFromMaterialization = (
         pickupDate: pickupDate.pickupDate,
         wasteType,
         street,
+        ...(zip ? { zip } : {}),
         city,
         note: pickupDate.note ?? undefined,
         key: buildWasteSyncKey({
           pickupDate: pickupDate.pickupDate,
           wasteType,
           street,
+          zip,
           city,
           note: pickupDate.note ?? undefined,
         }),

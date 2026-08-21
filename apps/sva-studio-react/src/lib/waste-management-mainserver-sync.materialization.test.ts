@@ -287,6 +287,15 @@ describe('waste-management-mainserver-sync.materialization', () => {
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
+        {
+          id: 'materialized-2',
+          locationId: 'location-2',
+          tourId: 'tour-1',
+          pickupDate: '2026-01-06',
+          note: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
       ],
       tours: [buildTour()],
       fractions: [
@@ -312,7 +321,33 @@ describe('waste-management-mainserver-sync.materialization', () => {
           id: 'location-1',
           cityId: 'city-1',
           streetId: 'street-1',
+          houseNumberId: 'house-1',
           active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'location-2',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-2',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      houseNumbers: [
+        {
+          id: 'house-1',
+          number: '5',
+          streetId: 'street-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'house-2',
+          number: '7',
+          streetId: 'street-2',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -321,6 +356,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'city-1',
           name: 'Musterhausen',
+          postalCode: '12345',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -336,13 +372,20 @@ describe('waste-management-mainserver-sync.materialization', () => {
       ],
     });
 
-    expect(rows).toHaveLength(1);
+    expect(rows).toHaveLength(2);
     expect(rows[0]).toEqual(
       expect.objectContaining({
         pickupDate: '2026-01-05',
         wasteType: 'Restmüll',
-        street: 'Hauptstraße',
+        street: 'Hauptstraße 5',
+        zip: '12345',
         city: 'Musterhausen',
+      })
+    );
+    expect(rows[1]).toEqual(
+      expect.objectContaining({
+        pickupDate: '2026-01-06',
+        street: 'Hauptstraße',
       })
     );
   });
@@ -1065,7 +1108,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         pickupDate: '2026-01-05',
         wasteType: 'Restmüll',
         note: 'Schnee-Ersatztermin',
-        key: '2026-01-05::restmüll::hauptstraße::musterhausen::schnee-ersatztermin',
+        key: '2026-01-05::restmüll::hauptstraße::::musterhausen::schnee-ersatztermin',
       }),
     ]);
   });

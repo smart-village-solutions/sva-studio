@@ -677,6 +677,32 @@ describe('news.detail-form', () => {
     );
   });
 
+  it.each(['draft', 'scheduled'] as const)(
+    'omits Push delivery from the final mapper for %s news',
+    (publicationMode) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      values.publicationMode = publicationMode;
+      values.scheduledPublicationAt =
+        publicationMode === 'scheduled' ? '2026-06-01T12:00:00.000Z' : '';
+      values.pushNotificationEnabled = true;
+
+      expect(mapNewsDetailFormValuesToMutation(values, 'create')).not.toHaveProperty(
+        'pushNotification'
+      );
+    }
+  );
+
+  it('includes Push delivery from the final mapper for immediate publication', () => {
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+    values.publicationMode = 'immediate';
+    values.pushNotificationEnabled = true;
+
+    expect(mapNewsDetailFormValuesToMutation(values, 'create')).toHaveProperty(
+      'pushNotification',
+      true
+    );
+  });
+
   it('validates the compatibility-only schema branches for legacy fields and invalid urls', async () => {
     await expect(
       newsDetailFormSchema.parseAsync({

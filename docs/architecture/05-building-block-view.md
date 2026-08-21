@@ -231,6 +231,8 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth-runtime` für Runtime-Handler und `packages/iam-governance` für legal-/audit-nahe Fachanteile
   - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/admin/content`
   - `apps/sva-studio-react/src/lib/iam-content-list-api.server.ts` als host-geführte Read-Model-Fassade für `GET /api/v1/iam/contents`, die ausschließlich aus der persistierten Projektion `iam.content_list_projection` liest und Mainserver-Typen bei Bedarf serverseitig in diese Projektion refresht
+  - die interne Listenprojektion ist entlang ihrer Ownership in `iam-content-list-projection-model.server.ts`, `-repository.server.ts`, `-source.server.ts`, `-sync.server.ts` und `-mutation.server.ts` getrennt; `iam-content-list-projection.server.ts` bleibt die kompatible HTTP- und Autorisierungsfassade
+  - Modellentscheidungen bleiben I/O-frei, das Repository besitzt SQL- und Schema-Kompatibilität, die Source besitzt Mainserver-Page-/Detailzugriffe und Binding-Enrichment, Sync besitzt Generationen und Laufregistrierung, Mutation nutzt dieselbe Sync-Queue für gezielte Nachsynchronisation
   - die Mainserver-Projektionspersistenz ist account- und scope-isoliert: Snapshot, Deduplizierung und Sync-State werden über `instanceId`, `actorAccountId`, aktiven Organisationskontext und `contentType` getrennt geführt, damit keine Listenstände oder Fehlerzustände account-übergreifend wiederverwendet werden
   - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
   - `packages/plugin-surveys` für plugin-spezifische Survey-Ansichten mit zusätzlichem Moderations-, Ergebnis- und Historienzuschnitt auf Basis desselben hostgeführten Content-/Mainserver-Backbones

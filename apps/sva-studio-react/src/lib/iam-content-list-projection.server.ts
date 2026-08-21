@@ -31,7 +31,6 @@ import {
 } from './iam-content-list-projection-sync.server.js';
 
 export { listProjectedContents } from './iam-content-list-projection-list.server.js';
-export { compareProjectionRows } from './iam-content-list-projection-model.server.js';
 export type { ProjectionRow } from './iam-content-list-projection-model.server.js';
 export { resetContentProjectionRuntimeStateForTests } from './iam-content-list-projection-sync.server.js';
 

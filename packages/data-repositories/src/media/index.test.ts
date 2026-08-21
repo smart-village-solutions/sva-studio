@@ -487,6 +487,29 @@ describe('media repository', () => {
     });
   });
 
+  it('refreshes upload retries only while the session remains pending', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ id: 'upload-1' }], []]);
+    const repository = createMediaRepository(executor);
+    const input = {
+      instanceId: 'tenant-a',
+      sessionId: 'upload-1',
+      storageKey: 'tenant-a/uploads/upload-1-retry.bin',
+      expiresAt: '2026-04-29T12:00:00.000Z',
+    };
+
+    await expect(repository.refreshPendingUploadSession(input)).resolves.toBe(true);
+    await expect(repository.refreshPendingUploadSession(input)).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("AND status = 'pending'");
+    expect(statements[0]?.text).toContain('RETURNING id');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'upload-1',
+      'tenant-a/uploads/upload-1-retry.bin',
+      '2026-04-29T12:00:00.000Z',
+    ]);
+  });
+
   it('normalizes nullable variant, upload session, and reference fields', async () => {
     const { executor } = createQueuedExecutor([
       [

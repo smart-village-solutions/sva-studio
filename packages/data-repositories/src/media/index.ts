@@ -166,6 +166,12 @@ export type MediaRepository = {
     assetId: string
   ): Promise<readonly MediaVariantRecord[]>;
   upsertUploadSession(input: MediaUploadSessionRecord): Promise<void>;
+  refreshPendingUploadSession(input: {
+    readonly instanceId: string;
+    readonly sessionId: string;
+    readonly storageKey: string;
+    readonly expiresAt?: string;
+  }): Promise<boolean>;
   getUploadSessionById(
     instanceId: string,
     sessionId: string
@@ -856,6 +862,25 @@ WHERE instance_id = $1
 LIMIT 1;
 `,
   values: [instanceId, sessionId],
+});
+
+const refreshPendingUploadSessionStatement = (input: {
+  readonly instanceId: string;
+  readonly sessionId: string;
+  readonly storageKey: string;
+  readonly expiresAt?: string;
+}): SqlStatement => ({
+  text: `
+UPDATE iam.media_upload_sessions
+SET storage_key = $3,
+    expires_at = $4::timestamptz,
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND id = $2::uuid
+  AND status = 'pending'
+RETURNING id;
+`,
+  values: [input.instanceId, input.sessionId, input.storageKey, input.expiresAt ?? null],
 });
 
 const getUploadSessionByAssetIdStatement = (instanceId: string, assetId: string): SqlStatement => ({
@@ -1717,6 +1742,12 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
   async upsertUploadSession(input) {
     await executor.execute(upsertUploadSessionStatement(input));
   },
+  async refreshPendingUploadSession(input) {
+    const result = await executor.execute<{ readonly id: string }>(
+      refreshPendingUploadSessionStatement(input)
+    );
+    return result.rows.length > 0;
+  },
   async getUploadSessionById(instanceId, sessionId) {
     const result = await executor.execute<MediaUploadSessionRow>(
       getUploadSessionByIdStatement(instanceId, sessionId)
@@ -1827,6 +1858,7 @@ export const mediaStatements = {
   upsertVariant: upsertVariantStatement,
   listVariantsByAssetId: listVariantsByAssetIdStatement,
   upsertUploadSession: upsertUploadSessionStatement,
+  refreshPendingUploadSession: refreshPendingUploadSessionStatement,
   getUploadSessionById: getUploadSessionByIdStatement,
   getUploadSessionByAssetId: getUploadSessionByAssetIdStatement,
   claimUploadSession: claimUploadSessionStatement,

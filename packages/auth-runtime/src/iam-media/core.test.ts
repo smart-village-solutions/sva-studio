@@ -98,6 +98,7 @@ const createService = () => ({
   })),
   upsertAsset: vi.fn(async () => undefined),
   upsertUploadSession: vi.fn(async () => undefined),
+  refreshPendingUploadSession: vi.fn(async () => true),
   upsertVariant: vi.fn(async () => undefined),
   upsertStorageUsage: vi.fn(async () => undefined),
   applyStorageUsageDelta: vi.fn(async () => undefined),
@@ -1144,7 +1145,82 @@ describe('media http handlers', () => {
     });
     expect(service.upsertAsset).not.toHaveBeenCalled();
     expect(service.wouldExceedStorageQuota).not.toHaveBeenCalled();
-    expect(service.upsertUploadSession).toHaveBeenCalledOnce();
+    expect(service.refreshPendingUploadSession).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      sessionId: 'upload-1',
+      storageKey: 'tenant-a/originals/asset-1',
+      expiresAt: '2026-04-29T20:00:00.000Z',
+    });
+  });
+
+  it('preserves an active upload claim when draft initialization is retried', async () => {
+    const service = createService();
+    service.getContentSaveOperation = vi.fn(async () => ({
+      id: '00000000-0000-4000-8000-000000000001',
+      instanceId: 'tenant-a',
+      actorSubject: 'kc-user-1',
+      targetType: 'news',
+      status: 'uploading',
+      expiresAt: '2026-04-30T19:00:00.000Z',
+    }));
+    service.getProvisionalAssetByDraft = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 200,
+      visibility: 'public',
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+      lifecycleStatus: 'provisional',
+      metadata: {},
+      technical: {},
+    }));
+    service.getUploadSessionByAssetId = vi.fn(async () => ({
+      id: 'upload-1',
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      storageKey: 'tenant-a/originals/asset-1',
+      mimeType: 'image/jpeg',
+      byteSize: 200,
+      status: 'uploaded',
+      claimToken: '00000000-0000-4000-8000-000000000099',
+    }));
+    const storagePort = { prepareUpload: vi.fn(), resolveDelivery: vi.fn() };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: vi.fn(),
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.initializeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 200,
+          visibility: 'public',
+          uploadContext: 'content-save',
+          contentSaveOperationId: '00000000-0000-4000-8000-000000000001',
+          draftId: '00000000-0000-4000-8000-000000000002',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { details: { reason: 'content_save_upload_session_not_pending' } },
+    });
+    expect(storagePort.prepareUpload).not.toHaveBeenCalled();
+    expect(service.refreshPendingUploadSession).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).not.toHaveBeenCalled();
   });
 
   it('requires reference management before opening a content save operation', async () => {

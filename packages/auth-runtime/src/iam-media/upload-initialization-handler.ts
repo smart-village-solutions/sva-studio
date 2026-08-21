@@ -103,6 +103,15 @@ const retryExistingUpload = async (
   assetId: string,
   uploadSession: MediaUploadSessionRecord
 ): Promise<Response> => {
+  if (uploadSession.status !== 'pending') {
+    return createApiError(
+      409,
+      'conflict',
+      'Die Upload-Session wird bereits verarbeitet oder ist abgeschlossen.',
+      getRequestId(),
+      { reason: 'content_save_upload_session_not_pending' }
+    );
+  }
   const storagePort = await resolveMediaStoragePort(input.deps, input.instanceId);
   const upload = await storagePort.prepareUpload({
     instanceId: input.instanceId,
@@ -112,14 +121,23 @@ const retryExistingUpload = async (
     mimeType: input.data.mimeType,
     byteSize: input.data.byteSize,
   });
-  await input.deps.withMediaService(input.instanceId, (service) =>
-    service.upsertUploadSession({
-      ...uploadSession,
+  const refreshed = await input.deps.withMediaService(input.instanceId, (service) =>
+    service.refreshPendingUploadSession({
+      instanceId: input.instanceId,
+      sessionId: uploadSession.id,
       storageKey: upload.storageKey,
-      status: 'pending',
       expiresAt: upload.expiresAt,
     })
   );
+  if (!refreshed) {
+    return createApiError(
+      409,
+      'conflict',
+      'Die Upload-Session wird bereits verarbeitet oder ist abgeschlossen.',
+      getRequestId(),
+      { reason: 'content_save_upload_session_not_pending' }
+    );
+  }
   return jsonResponse(
     200,
     asApiItem(

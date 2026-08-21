@@ -13,6 +13,7 @@ export const createMediaService = (repository: MediaRepository) => ({
   upsertVariant: repository.upsertVariant,
   listVariantsByAssetId: repository.listVariantsByAssetId,
   upsertUploadSession: repository.upsertUploadSession,
+  refreshPendingUploadSession: repository.refreshPendingUploadSession,
   getUploadSessionById: repository.getUploadSessionById,
   getUploadSessionByAssetId: repository.getUploadSessionByAssetId,
   claimUploadSession: repository.claimUploadSession,

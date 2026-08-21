@@ -94,7 +94,7 @@ describe('job execution context', () => {
     dispose();
   });
 
-  it('bounds cancellation poll failure diagnostics and reports one recovery without changing polling', async () => {
+  it('bounds diagnostics per cancellation poll failure period and reports each recovery', async () => {
     vi.useFakeTimers();
     const warn = vi.fn();
     const debug = vi.fn();
@@ -102,6 +102,9 @@ describe('job execution context', () => {
       .fn<() => Promise<boolean>>()
       .mockRejectedValueOnce(new TypeError('database unavailable'))
       .mockRejectedValueOnce(new TypeError('database still unavailable'))
+      .mockResolvedValueOnce(false)
+      .mockRejectedValueOnce(new TypeError('database unavailable again'))
+      .mockRejectedValueOnce(new TypeError('database still unavailable again'))
       .mockResolvedValue(false);
     const { context, dispose } = createJobExecutionContext({
       job: {
@@ -116,19 +119,33 @@ describe('job execution context', () => {
       isCancellationRequested,
     });
 
-    await vi.advanceTimersByTimeAsync(3_000);
+    await vi.advanceTimersByTimeAsync(6_000);
 
     expect(context.abortSignal.aborted).toBe(false);
-    expect(isCancellationRequested).toHaveBeenCalledTimes(3);
-    expect(warn).toHaveBeenCalledTimes(1);
+    expect(isCancellationRequested).toHaveBeenCalledTimes(6);
+    expect(warn).toHaveBeenCalledTimes(2);
     expect(warn).toHaveBeenCalledWith(
       'plugin_operation_cancellation_poll_failed',
-      expect.objectContaining({ error_code: 'cancellation_poll_failed', job_id: 'job-1' })
+      expect.objectContaining({
+        error_code: 'cancellation_poll_failed',
+        context: {
+          job_id: 'job-1',
+          execution_id: 'job-1',
+          instance_id: 'tenant-a',
+        },
+      })
     );
-    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug).toHaveBeenCalledTimes(2);
     expect(debug).toHaveBeenCalledWith(
       'plugin_operation_cancellation_poll_recovered',
-      expect.objectContaining({ result: 'recovered', job_id: 'job-1' })
+      expect.objectContaining({
+        result: 'recovered',
+        context: {
+          job_id: 'job-1',
+          execution_id: 'job-1',
+          instance_id: 'tenant-a',
+        },
+      })
     );
     dispose();
   });

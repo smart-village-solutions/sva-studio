@@ -978,6 +978,8 @@ Fehlerpfad:
 3. Nach der Hot-Phase kann die API antworten. Weitere Pages werden typübergreifend im Round-Robin-Verfahren geladen; der Sync-State wechselt auf `reconciliation`.
 4. Erst die erfolgreiche letzte Page erlaubt Löschabgleich, finale Gesamtzahl und `complete_fresh`. Ein später Fehler erhält alle vorhandenen Zeilen und setzt `partial_failed` oder `complete_failed`.
 5. Ein gezieltes Mutation-Upsert oder -Delete setzt vor der lokalen Änderung eine neue Generation. Ältere Page-Upserts, Finalisierungen und Löschabgleiche werden dadurch wirkungslos.
+6. Full-Refresh und gezielte Mutation teilen sich pro Projektions-Scope dieselbe In-Process-Queue. Die Persistenz prüft zusätzlich die führende `refresh_run_id`; Mutationserfolg wird bei einem späteren Projektionsfehler nicht zurückgerollt.
+7. Das List-Modul verbindet Actor-Auflösung und Autorisierung mit Snapshot-Vorbereitung, Blocking-Entscheidung, scope-isoliertem Read und Response-Aufbau. Authorization, Read, Mainserver-Source, Repository und Sync-State bleiben getrennte interne Laufzeitschritte; die öffentliche Fassade delegiert nur die drei kompatiblen Einstiegspunkte.
 
 ### Ergänzung 2026-06: POI-Ort- und Medienfluss
 

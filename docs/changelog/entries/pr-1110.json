@@ -1,0 +1,4 @@
+{
+  "prNumber": 1110,
+  "body": "Die Studio-Integration kennt den aktuellen GraphQL-Vertrag des SVA Mainservers.\n\n- Neue Event-Metadaten und die Tour-Erstellung sind im geprüften Schema abgebildet.\n- Nicht mehr angebotene Legacy-Felder und Eingaben werden nicht länger als verfügbar behandelt.\n- Der blockierende Schema-Diff prüft den Snapshot weiterhin gegen Staging."
+}

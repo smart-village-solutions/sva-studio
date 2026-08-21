@@ -34,6 +34,7 @@ const finalization: MediaUploadFinalization = {
 
 const createService = () => ({
   lockUploadSessionClaim: vi.fn(async () => true),
+  lockOpenContentSaveOperationForUpload: vi.fn(async () => true),
   tryApplyStorageUsageWithinQuota: vi.fn(async () => true),
   upsertVariant: vi.fn(async () => undefined),
   upsertAsset: vi.fn(async () => undefined),
@@ -74,6 +75,32 @@ describe('finalizeProcessedUpload', () => {
     expect(service.upsertUploadSession).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'failed' })
     );
+  });
+
+  it('rejects publication after a provisional content-save operation starts abandonment', async () => {
+    const service = createService();
+    service.lockOpenContentSaveOperationForUpload.mockResolvedValue(false);
+
+    await expect(
+      finalizeProcessedUpload(
+        { withMediaService: async (_instanceId, work) => work(service as never) } as never,
+        {
+          ...finalization,
+          asset: {
+            ...finalization.asset,
+            lifecycleStatus: 'provisional',
+            provisionalOperationId: '00000000-0000-4000-8000-000000000001',
+          },
+        }
+      )
+    ).resolves.toBe('claim_superseded');
+
+    expect(service.lockOpenContentSaveOperationForUpload).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      operationId: '00000000-0000-4000-8000-000000000001',
+    });
+    expect(service.tryApplyStorageUsageWithinQuota).not.toHaveBeenCalled();
+    expect(service.upsertAsset).not.toHaveBeenCalled();
   });
 });
 

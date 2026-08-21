@@ -552,18 +552,8 @@ describe('media upload processing service', () => {
       storageKey: 'tenant-a/variants/asset-1/claim-1/thumbnail.webp',
     });
     expect(service.deleteVariantsByAssetId).not.toHaveBeenCalled();
-    expect(service.upsertAsset).toHaveBeenCalledWith(
-      expect.objectContaining({
-        uploadStatus: 'failed',
-        processingStatus: 'failed',
-        technical: expect.objectContaining({
-          lastError: { code: 'upload_processing_failed' },
-        }),
-      })
-    );
-    expect(service.upsertUploadSession).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'failed' })
-    );
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).not.toHaveBeenCalled();
   });
 
   it('does not persist or clean up an invalid upload after its claim was superseded', async () => {
@@ -611,7 +601,7 @@ describe('media upload processing service', () => {
     expect(service.upsertUploadSession).not.toHaveBeenCalled();
   });
 
-  it('cleans up only its claim-scoped partial variants after being superseded', async () => {
+  it('cleans up claim-scoped partial variants without making a transient failure terminal', async () => {
     const originalBuffer = await sharp({
       create: {
         width: 800,
@@ -655,15 +645,9 @@ describe('media upload processing service', () => {
         uploadSessionId: 'upload-1',
         claimToken: 'claim-1',
       })
-    ).resolves.toEqual({
-      ok: false,
-      errorCode: 'upload_processing_superseded',
-      status: 409,
-    });
+    ).rejects.toThrow('s3_write_failed');
 
-    expect(failUpload).toHaveBeenCalledWith(
-      expect.objectContaining({ claimToken: 'claim-1', errorCode: 'upload_processing_failed' })
-    );
+    expect(failUpload).not.toHaveBeenCalled();
     expect(storagePort.deleteObject).toHaveBeenCalledOnce();
     expect(storagePort.deleteObject).toHaveBeenCalledWith({
       instanceId: 'tenant-a',

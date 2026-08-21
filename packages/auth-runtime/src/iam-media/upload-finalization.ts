@@ -55,6 +55,14 @@ export const finalizeProcessedUpload = (
     });
     if (!ownsClaim) return 'claim_superseded';
 
+    if (finalization.asset.provisionalOperationId) {
+      const operationOpen = await service.lockOpenContentSaveOperationForUpload({
+        instanceId: finalization.instanceId,
+        operationId: finalization.asset.provisionalOperationId,
+      });
+      if (!operationOpen) return 'claim_superseded';
+    }
+
     const quotaClaimed = await service.tryApplyStorageUsageWithinQuota({
       instanceId: finalization.instanceId,
       totalBytes: finalization.totalBytes,

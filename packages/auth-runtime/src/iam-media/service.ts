@@ -31,6 +31,7 @@ export const createMediaService = (repository: MediaRepository) => ({
   getUsageImpact: repository.getUsageImpact,
   createContentSaveOperation: repository.createContentSaveOperation,
   getContentSaveOperation: repository.getContentSaveOperation,
+  lockOpenContentSaveOperationForUpload: repository.lockOpenContentSaveOperationForUpload,
   replaceContentSaveOperationReferences: repository.replaceContentSaveOperationReferences,
   markContentSaveOperationContentSaved: repository.markContentSaveOperationContentSaved,
   markContentSaveOperationSavingContent: repository.markContentSaveOperationSavingContent,

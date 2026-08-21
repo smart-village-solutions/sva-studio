@@ -39,6 +39,7 @@ const createService = () => ({
   getAssetByStorageKey: vi.fn(async () => null),
   getProvisionalAssetByDraft: vi.fn(async () => null),
   getContentSaveOperation: vi.fn(async () => null),
+  lockOpenContentSaveOperationForUpload: vi.fn(async () => true),
   createContentSaveOperation: vi.fn(async (input) => input),
   replaceContentSaveOperationReferences: vi.fn(async () => true),
   markContentSaveOperationContentSaved: vi.fn(async () => true),

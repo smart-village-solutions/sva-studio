@@ -729,6 +729,22 @@ describe('media repository', () => {
     expect(statements[0]?.values).toEqual(['tenant-a', 'asset-1']);
   });
 
+  it('locks only open content-save operations before publishing upload variants', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ open: true }], [{ open: false }]]);
+    const repository = createMediaRepository(executor);
+    const input = {
+      instanceId: 'tenant-a',
+      operationId: '00000000-0000-4000-8000-000000000001',
+    };
+
+    await expect(repository.lockOpenContentSaveOperationForUpload(input)).resolves.toBe(true);
+    await expect(repository.lockOpenContentSaveOperationForUpload(input)).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("status IN ('preparing', 'uploading')");
+    expect(statements[0]?.text).toContain('FOR UPDATE');
+    expect(statements[0]?.values).toEqual([input.operationId, input.instanceId]);
+  });
+
   it('makes content-save creation and draft upload lookup idempotent', () => {
     const createStatement = mediaStatements.createContentSaveOperation({
       id: '00000000-0000-4000-8000-000000000001',

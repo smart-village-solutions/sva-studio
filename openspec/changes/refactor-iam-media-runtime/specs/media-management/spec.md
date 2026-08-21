@@ -50,6 +50,18 @@ Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verar
 - **AND** seine Finalisierung wird abgewiesen
 - **AND** er entfernt ausschließlich seine eigenen unveröffentlichten Varianten
 
+#### Scenario: Abandonment gewinnt gegen die Upload-Finalisierung
+
+- **WHEN** eine Content-Speicheroperation vor der Finalisierung eines provisorischen Uploads nach `abandon_pending` wechselt
+- **THEN** veröffentlicht die Finalisierung keine Variantenreferenzen
+- **AND** die claim-isolierten Varianten werden kompensierend entfernt
+
+#### Scenario: Variantenspeicher ist vorübergehend nicht verfügbar
+
+- **WHEN** das Schreiben einer claim-isolierten Variante vor der Finalisierung fehlschlägt
+- **THEN** entfernt der Verarbeiter seine bereits geschriebenen claim-isolierten Varianten
+- **AND** die Upload-Session bleibt nach Ablauf des Claims für einen erneuten Abschluss reclaimbar
+
 #### Scenario: Validierter Abschluss wird wiederholt
 
 - **WHEN** ein Client den Abschluss einer bereits validierten und bereiten Session wiederholt

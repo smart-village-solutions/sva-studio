@@ -223,6 +223,10 @@ export type MediaRepository = {
     readonly operationId: string;
     readonly actorSubject: string;
   }): Promise<MediaContentSaveOperationRecord | null>;
+  lockOpenContentSaveOperationForUpload(input: {
+    readonly instanceId: string;
+    readonly operationId: string;
+  }): Promise<boolean>;
   replaceContentSaveOperationReferences(input: {
     readonly instanceId: string;
     readonly operationId: string;
@@ -1214,6 +1218,23 @@ LIMIT 1;
   values: [input.operationId, input.instanceId, input.actorSubject],
 });
 
+const lockOpenContentSaveOperationForUploadStatement = (input: {
+  readonly instanceId: string;
+  readonly operationId: string;
+}): SqlStatement => ({
+  text: `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.media_content_save_operations
+  WHERE id = $1::uuid
+    AND instance_id = $2
+    AND status IN ('preparing', 'uploading')
+  FOR UPDATE
+) AS open;
+`,
+  values: [input.operationId, input.instanceId],
+});
+
 const replaceContentSaveOperationReferencesStatement = (input: {
   readonly instanceId: string;
   readonly operationId: string;
@@ -1626,6 +1647,14 @@ const createContentSaveRepositoryMethods = (executor: SqlExecutor) => ({
     );
     return result.rows[0] ? mapContentSaveOperationRow(result.rows[0]) : null;
   },
+  async lockOpenContentSaveOperationForUpload(
+    input: Parameters<MediaRepository['lockOpenContentSaveOperationForUpload']>[0]
+  ) {
+    const result = await executor.execute<{ readonly open: boolean }>(
+      lockOpenContentSaveOperationForUploadStatement(input)
+    );
+    return result.rows[0]?.open === true;
+  },
   async replaceContentSaveOperationReferences(
     input: Parameters<MediaRepository['replaceContentSaveOperationReferences']>[0]
   ) {
@@ -1875,6 +1904,7 @@ export const mediaStatements = {
   listReferencesByTarget: listReferencesByTargetStatement,
   createContentSaveOperation: createContentSaveOperationStatement,
   getContentSaveOperation: getContentSaveOperationStatement,
+  lockOpenContentSaveOperationForUpload: lockOpenContentSaveOperationForUploadStatement,
   replaceContentSaveOperationReferences: replaceContentSaveOperationReferencesStatement,
   markContentSaveOperationContentSaved: markContentSaveOperationContentSavedStatement,
   markContentSaveOperationSavingContent: markContentSaveOperationSavingContentStatement,

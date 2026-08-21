@@ -453,17 +453,6 @@ export const createMediaUploadProcessingService = (deps: {
       };
     } catch (error) {
       if (persistenceStarted) {
-        const failureResult = await deps.failUpload({
-          instanceId: input.instanceId,
-          claimToken: input.claimToken,
-          asset,
-          uploadSession,
-          errorCode: 'upload_processing_failed',
-        });
-        if (failureResult === 'claim_superseded') {
-          await cleanupPersistedVariants();
-          return asErrorResult(409, 'upload_processing_superseded');
-        }
         await cleanupPersistedVariants();
       }
       if (error instanceof MediaStorageUnavailableError || persistenceStarted) {

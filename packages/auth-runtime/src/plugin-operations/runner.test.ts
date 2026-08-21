@@ -2,6 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const repositoryState = vi.hoisted(() => ({
   withStudioJobRepository: vi.fn(),
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
+  createSdkLogger: () => repositoryState.logger,
 }));
 
 vi.mock('./repository.js', () => ({
@@ -54,35 +65,44 @@ describe('plugin operation runner task list', () => {
       })
     );
 
-    const handler = vi.fn(async ({ job, progressReporter, requestId, actorAccountId, abortSignal, throwIfCancellationRequested }) => {
-      expect(job).toEqual(baseJob);
-      expect(job.instanceId).toBe('tenant-a');
-      expect(requestId).toBe('req-1');
-      expect(actorAccountId).toBe('user-1');
-      expect(progressReporter).toBeDefined();
-      expect(abortSignal.aborted).toBe(false);
-      await expect(throwIfCancellationRequested()).resolves.toBeUndefined();
-      await progressReporter.reportProgress({
-        progress: {
-          completedSteps: 1,
-          totalSteps: 1,
-          currentPhase: 'mapping',
-          currentStepKey: 'persist-content',
-        },
-      });
+    const handler = vi.fn(
+      async ({
+        job,
+        progressReporter,
+        requestId,
+        actorAccountId,
+        abortSignal,
+        throwIfCancellationRequested,
+      }) => {
+        expect(job).toEqual(baseJob);
+        expect(job.instanceId).toBe('tenant-a');
+        expect(requestId).toBe('req-1');
+        expect(actorAccountId).toBe('user-1');
+        expect(progressReporter).toBeDefined();
+        expect(abortSignal.aborted).toBe(false);
+        await expect(throwIfCancellationRequested()).resolves.toBeUndefined();
+        await progressReporter.reportProgress({
+          progress: {
+            completedSteps: 1,
+            totalSteps: 1,
+            currentPhase: 'mapping',
+            currentStepKey: 'persist-content',
+          },
+        });
 
-      return {
-        progress: { completedSteps: 1, totalSteps: 1, currentPhase: 'completed' },
-        resultPayload: {
-          summary: {
-            acceptedItems: 3,
+        return {
+          progress: { completedSteps: 1, totalSteps: 1, currentPhase: 'completed' },
+          resultPayload: {
+            summary: {
+              acceptedItems: 3,
+            },
+            plugin: {
+              acceptedRows: 3,
+            },
           },
-          plugin: {
-            acceptedRows: 3,
-          },
-        },
-      };
-    });
+        };
+      }
+    );
     registerPluginOperationExecutionHandlers({
       'news.import-articles': handler,
     });
@@ -91,12 +111,9 @@ describe('plugin operation runner task list', () => {
       () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
     );
 
-    await taskList[studioJobTaskIdentifier]?.(
-      { instanceId: 'tenant-a', jobId: 'job-1' },
-      {
-        job: { attempts: 1, max_attempts: 5 },
-      } as never
-    );
+    await taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+      job: { attempts: 1, max_attempts: 5 },
+    } as never);
 
     expect(handler).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -174,12 +191,9 @@ describe('plugin operation runner task list', () => {
 
     const taskList = createPluginOperationTaskList(() => new Map());
 
-    await taskList[studioJobTaskIdentifier]?.(
-      { instanceId: 'tenant-a', jobId: 'job-1' },
-      {
-        job: { attempts: 1, max_attempts: 5 },
-      } as never
-    );
+    await taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+      job: { attempts: 1, max_attempts: 5 },
+    } as never);
 
     expect(updateJobState).toHaveBeenNthCalledWith(
       2,
@@ -214,12 +228,9 @@ describe('plugin operation runner task list', () => {
     );
 
     await expect(
-      taskList[studioJobTaskIdentifier]?.(
-        { instanceId: 'tenant-a', jobId: 'job-1' },
-        {
-          job: { attempts: 1, max_attempts: 5 },
-        } as never
-      )
+      taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+        job: { attempts: 1, max_attempts: 5 },
+      } as never)
     ).rejects.toThrow('boom');
 
     expect(updateJobState).toHaveBeenNthCalledWith(
@@ -255,12 +266,9 @@ describe('plugin operation runner task list', () => {
     );
 
     await expect(
-      taskList[studioJobTaskIdentifier]?.(
-        { instanceId: 'tenant-a', jobId: 'job-1' },
-        {
-          job: { attempts: 5, max_attempts: 5 },
-        } as never
-      )
+      taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+        job: { attempts: 5, max_attempts: 5 },
+      } as never)
     ).resolves.toBeUndefined();
 
     expect(updateJobState).toHaveBeenNthCalledWith(
@@ -272,6 +280,43 @@ describe('plugin operation runner task list', () => {
           code: 'plugin_operation_execution_failed',
           category: 'permanent',
         }),
+      })
+    );
+  });
+
+  it('logs a secondary failure when persisting the final job failure fails and preserves the rejection', async () => {
+    const persistenceError = new TypeError('database write failed');
+    const updateJobState = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(persistenceError);
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        appendJobEvent: vi.fn(async () => null),
+      })
+    );
+    const handler = vi.fn(async () => {
+      throw new Error('primary execution failure');
+    });
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
+
+    await expect(
+      taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+        job: { attempts: 5, max_attempts: 5 },
+      } as never)
+    ).rejects.toBe(persistenceError);
+
+    expect(repositoryState.logger.error).toHaveBeenCalledWith(
+      'plugin_operation_failure_state_persist_failed',
+      expect.objectContaining({
+        error_code: 'failure_state_persist_failed',
+        error_type: 'TypeError',
+        job_id: 'job-1',
+        result: 'secondary_failure',
       })
     );
   });
@@ -301,12 +346,9 @@ describe('plugin operation runner task list', () => {
     );
 
     await expect(
-      taskList[studioJobTaskIdentifier]?.(
-        { instanceId: 'tenant-a', jobId: 'job-1' },
-        {
-          job: { attempts: 1, max_attempts: 5 },
-        } as never
-      )
+      taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+        job: { attempts: 1, max_attempts: 5 },
+      } as never)
     ).resolves.toBeUndefined();
 
     expect(updateJobState).toHaveBeenNthCalledWith(
@@ -350,12 +392,9 @@ describe('plugin operation runner task list', () => {
       () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
     );
 
-    await taskList[studioJobTaskIdentifier]?.(
-      { instanceId: 'tenant-a', jobId: 'job-1' },
-      {
-        job: { attempts: 2, max_attempts: 5 },
-      } as never
-    );
+    await taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+      job: { attempts: 2, max_attempts: 5 },
+    } as never);
 
     expect(updateJobState).toHaveBeenNthCalledWith(
       2,
@@ -393,17 +432,15 @@ describe('plugin operation runner task list', () => {
       })
     );
 
-    const handler = vi.fn(
-      async ({ abortSignal }) => {
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, 1_500);
-        });
+    const handler = vi.fn(async ({ abortSignal }) => {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 1_500);
+      });
 
-        if (abortSignal.aborted) {
-          throw new Error('aborted');
-        }
+      if (abortSignal.aborted) {
+        throw new Error('aborted');
       }
-    );
+    });
 
     const taskList = createPluginOperationTaskList(
       () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])

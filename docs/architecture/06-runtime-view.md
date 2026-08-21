@@ -535,28 +535,29 @@ Fehlerpfad:
 
 ### Szenario 3: Logging/Observability bei Server-Requests
 
-1. Server-Code loggt via `createSdkLogger(...)` aus `@sva/server-runtime`
-2. Context (workspace/request) wird über AsyncLocalStorage injiziert
-3. In Development schreibt der Console-Transport die redaktierten Logs sofort lokal aus
-4. Sobald OTEL bereit ist, werden bestehende Logger um den Direct-OTEL-Transport erweitert
-5. OTEL Processor redacted und filtert Labels
-6. Export via OTLP an Collector -> Loki/Prometheus
+1. Der Server-Entry validiert eine eingehende Request-ID oder erzeugt eine lokale diagnostische Request-ID, bevor ein Sonder-, Auth-, Mainserver- oder regulärer Dispatcher läuft.
+2. Eine Trace-ID wird nur aus einem gültigen eingehenden oder aktiven Trace-Kontext übernommen; ohne echten Trace-Kontext bleibt sie leer.
+3. Der Request- und Workspace-Kontext wird über `AsyncLocalStorage` injiziert. Verschachtelte Grenzen bewahren die bereits erzeugte Korrelation.
+4. Server-Code loggt über `createSdkLogger(...)` aus `@sva/server-runtime`; Redaction und sichere Feldverträge gelten unabhängig vom aktiven Transport.
+5. In Development kann `SVA_SERVER_LOG_LEVEL=debug` den zentralen Schwellwert explizit öffnen. Production bleibt bei mindestens `info`.
+6. Der aktive Transport exportiert die strukturierten Logs. Request-, Trace-, Job- und Execution-IDs bleiben Body-Felder und werden nicht zu frei skalierenden Labels.
+7. Unabhängige Worker- und Bootstrap-Arbeit wird explizit vom HTTP-Kontext gelöst und verwendet ihre Job- oder Execution-Korrelation.
 
 Fehlerpfad:
 
 - Development ohne OTEL-Readiness: Console-Logs bleiben aktiv, die App bleibt lauffähig
 - Production ohne OTEL-Readiness: der Start gilt als Fehlerzustand und wird fail-closed behandelt
 
-### Szenario 3a: Auth-Route wirft Fehler außerhalb des Request-Kontexts
+### Szenario 3a: Auth-Route beendet eine Fehlerkette
 
-1. Eine Auth- oder IAM-Route wirft in `packages/routing/src/auth.routes.server.ts` einen unerwarteten Fehler.
-2. Die äußere JSON-Error-Boundary liest `X-Request-Id` und `traceparent` best effort aus den Request-Headern.
-3. Der SDK-Logger schreibt einen strukturierten Fehler mit `request_id`, `trace_id`, `route`, `method`, `error_type` und `error_message`.
-4. Die Response wird über `toJsonErrorResponse()` als JSON mit flachem Fehlervertrag und Header `X-Request-Id` zurückgegeben.
+1. Innere Auth-Konfigurations-, OIDC- und Provider-Schichten klassifizieren den Fehler und propagieren ihn ohne eigenes kanonisches Endereignis.
+2. Die äußere Auth-Routengrenze schreibt genau ein strukturiertes Ergebnis mit Request-ID, optionaler echter Trace-ID, sicherem Pfad, stabilem Fehlercode, Status und Retry-Klasse.
+3. Vollständige URLs, Query-Strings und freie Provider-Fehlerbeschreibungen werden nicht protokolliert.
+4. Die Response wird über `toJsonErrorResponse()` mit stabilem Fehlervertrag und `X-Request-Id` zurückgegeben.
 
 Fehlerpfad:
 
-- Sind Header ungültig oder fehlen sie, bleiben `request_id` und `trace_id` leer; die Response bleibt trotzdem JSON.
+- Fehlt eine gültige eingehende Request-ID, wird eine lokale ID erzeugt. Eine Trace-ID darf weiterhin fehlen.
 - Schlägt der Logger selbst fehl, schreibt die Routing-Schicht einen sanitisierten Minimal-Eintrag auf `stderr`.
 
 ### Szenario 3b: Prod-naher Studio-Deploy mit Drift-Gates

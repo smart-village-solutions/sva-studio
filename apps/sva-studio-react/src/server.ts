@@ -271,57 +271,56 @@ const dispatchKnownServerEntryRoutes = async (
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
-  startPluginOperationWorkerInBackground();
-  const serverEntryDebugEnabled = process.env.SVA_SERVER_ENTRY_DEBUG === 'true';
-  const logServerEntryDebug = async (message: string, meta: Record<string, unknown>) => {
-    if (!serverEntryDebugEnabled) {
-      return;
+  const sdk = await getSdk();
+  sdk.runWithoutWorkspaceContext(startPluginOperationWorkerInBackground);
+  return sdk.withRequestContext({ request, fallbackWorkspaceId: 'platform' }, async () => {
+    const serverEntryDebugEnabled = process.env.SVA_SERVER_ENTRY_DEBUG === 'true';
+    const logServerEntryDebug = async (message: string, meta: Record<string, unknown>) => {
+      if (!serverEntryDebugEnabled) {
+        return;
+      }
+
+      (await getLogger('server-entry-transport')).info(message, {
+        operation: 'server_entry_transport',
+        method: request.method,
+        path: new URL(request.url).pathname,
+        ...meta,
+      });
+    };
+
+    await logServerEntryDebug('Server entry request received', {});
+    const routedResponse = await dispatchKnownServerEntryRoutes(request, logServerEntryDebug);
+
+    if (routedResponse) {
+      return routedResponse;
     }
 
-    (await getLogger('server-entry-transport')).info(message, {
-      operation: 'server_entry_transport',
-      method: request.method,
-      path: new URL(request.url).pathname,
-      ...meta,
-    });
-  };
+    if (studioJobWorkerEnabled) {
+      await ensurePluginOperationHandlersRegistered();
+    }
 
-  await logServerEntryDebug('Server entry request received', {});
-  const routedResponse = await dispatchKnownServerEntryRoutes(request, logServerEntryDebug);
+    const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();
+    const authResponse = await dispatchAuthRouteRequest(request);
 
-  if (routedResponse) {
-    return routedResponse;
-  }
+    if (authResponse) {
+      await logServerEntryDebug('Server entry auth route dispatched', {
+        status: authResponse.status,
+      });
+      return authResponse;
+    }
 
-  if (studioJobWorkerEnabled) {
-    await ensurePluginOperationHandlersRegistered();
-  }
+    if (!diagnosticsEnabled) {
+      await logServerEntryDebug('Server entry delegated to start handler', {
+        diagnostics_enabled: false,
+      });
+      const response = await startFetch(request, requestOptions);
+      await logServerEntryDebug('Server entry response completed', {
+        status: response.status,
+        diagnostics_enabled: false,
+      });
+      return response;
+    }
 
-  const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();
-  const authResponse = await dispatchAuthRouteRequest(request);
-
-  if (authResponse) {
-    await logServerEntryDebug('Server entry auth route dispatched', {
-      status: authResponse.status,
-    });
-    return authResponse;
-  }
-
-  if (!diagnosticsEnabled) {
-    await logServerEntryDebug('Server entry delegated to start handler', {
-      diagnostics_enabled: false,
-    });
-    const response = await startFetch(request, requestOptions);
-    await logServerEntryDebug('Server entry response completed', {
-      status: response.status,
-      diagnostics_enabled: false,
-    });
-    return response;
-  }
-
-  const sdk = await getSdk();
-
-  return sdk.withRequestContext({ request, fallbackWorkspaceId: 'platform' }, async () => {
     const workspaceContext = sdk.getWorkspaceContext();
     const diagnostics = createServerFunctionRequestDiagnostics({
       request,

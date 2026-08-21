@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { SvaMainserverError } from './errors.js';
+import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 
 describe('toMainserverErrorResponse', () => {
+  it.each([
+    {
+      error: new SvaMainserverError({ code: 'forbidden', message: 'denied', statusCode: 403 }),
+      unexpected: false,
+    },
+    {
+      error: new SvaMainserverError({ code: 'network_error', message: 'down', statusCode: 503 }),
+      unexpected: true,
+    },
+    { error: new Error('boom'), unexpected: true },
+  ])(
+    'classifies route failures for the canonical warn and error boundary',
+    ({ error, unexpected }) => {
+      expect(isUnexpectedMainserverError(error)).toBe(unexpected);
+    }
+  );
   it('preserves the existing default 500 contract for mainserver errors without explicit status', async () => {
     const response = toMainserverErrorResponse(
       new SvaMainserverError({
@@ -70,7 +86,10 @@ describe('toMainserverErrorResponse', () => {
   });
 
   it('returns a route-specific internal error response for non-mainserver errors', async () => {
-    const response = toMainserverErrorResponse(new Error('boom'), 'Mainserver-News-Anfrage ist fehlgeschlagen.');
+    const response = toMainserverErrorResponse(
+      new Error('boom'),
+      'Mainserver-News-Anfrage ist fehlgeschlagen.'
+    );
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({

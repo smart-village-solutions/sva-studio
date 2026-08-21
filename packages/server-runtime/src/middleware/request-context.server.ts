@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { runWithWorkspaceContext } from '../observability/context.server.js';
+import { getWorkspaceContext, runWithWorkspaceContext } from '../observability/context.server.js';
 import type { WorkspaceContext } from '../observability/context.server.js';
 
 const HEADER_ID_MAX_LENGTH = 128;
@@ -152,7 +152,7 @@ export interface RequestContextOptions {
 
 /**
  * Führt eine Funktion mit Request-Context aus (workspace_id, request_id)
- * 
+ *
  * @example
  * ```typescript
  * // In TanStack Start Server Function:
@@ -170,13 +170,15 @@ export const withRequestContext = async <T>(
   fn: () => T | Promise<T>
 ): Promise<T> => {
   const context: WorkspaceContext = {};
+  const parentContext = getWorkspaceContext();
   const headers = options.request ? getHeadersFromRequest(options.request) : {};
   const requestIdFromHeader = extractRequestIdFromHeaders(headers);
   const traceIdFromHeader = extractTraceIdFromHeaders(headers);
 
   // Request-ID übernehmen oder generieren.
-  context.requestId = options.requestId ?? requestIdFromHeader ?? randomUUID();
-  context.traceId = options.traceId ?? traceIdFromHeader;
+  context.requestId =
+    options.requestId ?? requestIdFromHeader ?? parentContext.requestId ?? randomUUID();
+  context.traceId = options.traceId ?? traceIdFromHeader ?? parentContext.traceId;
 
   // Workspace-ID aus verschiedenen Quellen
   if (options.workspaceId) {
@@ -186,9 +188,9 @@ export const withRequestContext = async <T>(
       headers,
       options.workspaceIdHeaders ?? ['x-workspace-id', 'x-sva-workspace-id']
     );
-    context.workspaceId = workspaceId ?? options.fallbackWorkspaceId;
+    context.workspaceId = workspaceId ?? parentContext.workspaceId ?? options.fallbackWorkspaceId;
   } else {
-    context.workspaceId = options.fallbackWorkspaceId;
+    context.workspaceId = parentContext.workspaceId ?? options.fallbackWorkspaceId;
   }
 
   // In AsyncLocalStorage ausführen

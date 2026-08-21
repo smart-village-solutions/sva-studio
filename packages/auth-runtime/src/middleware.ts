@@ -1,6 +1,6 @@
 import { parse as parseCookie } from 'cookie-es';
 import { resolveSessionActiveOrganizationId } from '@sva/core';
-import { createSdkLogger } from '@sva/server-runtime';
+import { createSdkLogger, toSafeLogPath } from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
 import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
@@ -90,7 +90,7 @@ const createAuthenticatedContext = async (
   if (!sessionId) {
     const requestId = buildLogContext(undefined, { includeTraceId: true }).request_id;
     logger.debug('Auth middleware rejected request without session cookie', {
-      endpoint: request.url,
+      endpoint: toSafeLogPath(request.url),
       auth_state: 'unauthenticated',
       operation: 'auth_middleware',
       reason_code: 'missing_session_cookie',
@@ -115,7 +115,7 @@ const createAuthenticatedContext = async (
         ? 'Auth middleware rejected request because the session requires reauthentication'
         : 'Auth middleware rejected request with invalid session';
     logger.warn(invalidSessionMessage, {
-      endpoint: request.url,
+      endpoint: toSafeLogPath(request.url),
       auth_state: 'invalid_session',
       session_exists: true,
       user_exists: false,
@@ -140,7 +140,7 @@ const createAuthenticatedContext = async (
   if (!sessionResolution.user) {
     const logContext = buildLogContext(undefined, { includeTraceId: true });
     logger.warn('Auth middleware rejected request with unresolved session user', {
-      endpoint: request.url,
+      endpoint: toSafeLogPath(request.url),
       auth_state: 'invalid_session',
       operation: 'auth_middleware',
       reason_code: 'invalid_session',
@@ -246,7 +246,7 @@ export const withAuthenticatedUser = async (
     if (isAuthorizeTimingDebugEnabled()) {
       logger.info('Auth middleware timing diagnostics', {
         operation: 'auth_middleware_timing',
-        endpoint: new URL(request.url).pathname,
+        endpoint: toSafeLogPath(request.url),
         tenant_host_validation_ms: Number(resolution.tenantHostValidationMs.toFixed(2)),
         stored_session_resolution_ms: Number(resolution.storedSessionResolutionMs.toFixed(2)),
         runtime_session_hydration_ms: Number(resolution.runtimeSessionHydrationMs.toFixed(2)),

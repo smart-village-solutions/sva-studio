@@ -11,4 +11,5 @@ export {
   redactLogString,
   serializeAndRedactLogValue,
   stringifyNonPlainValue,
+  toSafeLogPath,
 } from './logging/redaction.js';

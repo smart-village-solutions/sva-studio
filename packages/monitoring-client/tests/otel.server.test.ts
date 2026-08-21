@@ -123,7 +123,17 @@ describe('otel.server helpers', () => {
       environment: 'test',
       level: 'info',
       user_id: 'u-1',
-      context: { token: 'abc' } as unknown as AttributeValue,
+      request_id: 'req-1',
+      trace_id: 'a'.repeat(32),
+      job_id: 'job-1',
+      execution_id: 'execution-1',
+      context: {
+        token: 'abc',
+        request_id: 'req-1',
+        trace_id: 'a'.repeat(32),
+        job_id: 'job-1',
+        execution_id: 'execution-1',
+      } as unknown as AttributeValue,
     };
 
     const record = createMutableRecord('failed for alice@example.org', attributes);
@@ -133,7 +143,13 @@ describe('otel.server helpers', () => {
     expect(record.setAttribute).toHaveBeenCalledWith('workspace_id', 'ws-1');
     expect(record.body).toContain('a***@example.org');
     expect(record.body).toContain('[REDACTED]');
+    expect(record.body).toContain('req-1');
+    expect(record.body).toContain('execution-1');
     expect((record.attributes as Record<string, AttributeValue>).user_id).toBeUndefined();
+    expect((record.attributes as Record<string, AttributeValue>).request_id).toBeUndefined();
+    expect((record.attributes as Record<string, AttributeValue>).trace_id).toBeUndefined();
+    expect((record.attributes as Record<string, AttributeValue>).job_id).toBeUndefined();
+    expect((record.attributes as Record<string, AttributeValue>).execution_id).toBeUndefined();
     expect(inner.emitted).toHaveLength(1);
   });
 
@@ -215,7 +231,9 @@ describe('otel.server helpers', () => {
 
   it('startOtelSdk starts sdk and handles available global logger provider', async () => {
     const startSpy = vi.spyOn(NodeSDK.prototype, 'start').mockResolvedValue(undefined as never);
-    const shutdownSpy = vi.spyOn(NodeSDK.prototype, 'shutdown').mockResolvedValue(undefined as never);
+    const shutdownSpy = vi
+      .spyOn(NodeSDK.prototype, 'shutdown')
+      .mockResolvedValue(undefined as never);
     const getLoggerProviderSpy = vi.spyOn(logs, 'getLoggerProvider');
 
     const sdk = await startOtelSdk({
@@ -233,7 +251,9 @@ describe('otel.server helpers', () => {
 
   it('startOtelSdk keeps working when no global logger provider exists', async () => {
     const startSpy = vi.spyOn(NodeSDK.prototype, 'start').mockResolvedValue(undefined as never);
-    const shutdownSpy = vi.spyOn(NodeSDK.prototype, 'shutdown').mockResolvedValue(undefined as never);
+    const shutdownSpy = vi
+      .spyOn(NodeSDK.prototype, 'shutdown')
+      .mockResolvedValue(undefined as never);
     vi.spyOn(logs, 'getLoggerProvider').mockReturnValue(undefined as never);
 
     const sdk = await startOtelSdk({

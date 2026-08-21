@@ -22,8 +22,15 @@ const state = vi.hoisted(() => ({
   getSvaMainserverPoiDetail: vi.fn(),
   deleteSvaMainserverPoi: vi.fn(),
   loggerInfo: vi.fn(),
+  loggerDebug: vi.fn(),
   loggerWarn: vi.fn(),
-  createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
+  loggerError: vi.fn(),
+  createSdkLogger: vi.fn(() => ({
+    debug: state.loggerDebug,
+    info: state.loggerInfo,
+    warn: state.loggerWarn,
+    error: state.loggerError,
+  })),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-1', traceId: 'trace-1' })),
 }));
 
@@ -1262,8 +1269,7 @@ describe('mainserver content route contracts', () => {
         error_code: 'forbidden',
       })
     );
-    expect(state.loggerWarn).toHaveBeenNthCalledWith(
-      2,
+    expect(state.loggerError).toHaveBeenCalledWith(
       'Mainserver content route failed',
       expect.objectContaining({
         operation: 'mainserver_content_request',

@@ -7,7 +7,10 @@ export interface LoggingRuntimeConfig {
   readonly otelRequested: boolean;
   readonly otelRequired: boolean;
   readonly mode: 'console_to_loki' | 'otel_to_loki' | 'degraded';
+  readonly levelOverride: ServerLogLevel | null;
 }
+
+export type ServerLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface OtelInitializationResult {
   readonly status: 'pending' | 'ready' | 'disabled' | 'failed';
@@ -50,6 +53,20 @@ const resolveLoggingMode = (input: {
   return 'degraded';
 };
 
+const resolveLogLevelOverride = (
+  value: string | undefined,
+  environment: LoggingRuntimeConfig['environment']
+): ServerLogLevel | null => {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === 'debug') {
+    return environment === 'development' ? 'debug' : 'info';
+  }
+  if (normalized === 'info' || normalized === 'warn' || normalized === 'error') {
+    return normalized;
+  }
+  return null;
+};
+
 export const getLoggingRuntimeConfig = (): LoggingRuntimeConfig => {
   const environment = resolveEnvironment(process.env.NODE_ENV);
   const otelRequested = !isDisabledFlag(process.env.ENABLE_OTEL);
@@ -66,6 +83,7 @@ export const getLoggingRuntimeConfig = (): LoggingRuntimeConfig => {
       consoleEnabled,
       otelRequested,
     }),
+    levelOverride: resolveLogLevelOverride(process.env.SVA_SERVER_LOG_LEVEL, environment),
   };
 };
 

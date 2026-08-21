@@ -11,6 +11,7 @@ describe('logger/index.server logging mode metadata', () => {
     process.env.NODE_ENV = 'development';
     delete process.env.ENABLE_OTEL;
     delete process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS;
+    delete process.env.SVA_SERVER_LOG_LEVEL;
     resetLoggingRuntimeForTests();
   });
 
@@ -21,7 +22,9 @@ describe('logger/index.server logging mode metadata', () => {
       enableOtel: false,
     });
 
-    expect((logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta).toMatchObject({
+    expect(
+      (logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta
+    ).toMatchObject({
       component: 'logging-mode-test',
       logging_mode: 'degraded',
     });
@@ -35,7 +38,9 @@ describe('logger/index.server logging mode metadata', () => {
       enableOtel: false,
     });
 
-    expect((logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta).toMatchObject({
+    expect(
+      (logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta
+    ).toMatchObject({
       component: 'logging-mode-test',
       environment: 'test',
       logging_mode: 'console_to_loki',
@@ -63,7 +68,9 @@ describe('logger/index.server logging mode metadata', () => {
       enableOtel: true,
     });
 
-    expect((logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta).toMatchObject({
+    expect(
+      (logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta
+    ).toMatchObject({
       component: 'logging-mode-test',
       environment: 'production',
       logging_mode: 'otel_to_loki',
@@ -80,10 +87,30 @@ describe('logger/index.server logging mode metadata', () => {
       enableOtel: false,
     });
 
-    expect((logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta).toMatchObject({
+    expect(
+      (logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta
+    ).toMatchObject({
       component: 'logging-mode-test',
       environment: 'staging',
       logging_mode: 'console_to_loki',
+    });
+  });
+
+  it('uses the central development level override instead of a callsite threshold', () => {
+    process.env.SVA_SERVER_LOG_LEVEL = 'debug';
+
+    const logger = createSdkLogger({
+      component: 'logging-level-test',
+      level: 'info',
+      enableConsole: true,
+      enableOtel: false,
+    });
+
+    expect(logger.level).toBe('debug');
+    expect(
+      (logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta
+    ).toMatchObject({
+      log_level: 'debug',
     });
   });
 });

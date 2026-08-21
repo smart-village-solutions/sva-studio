@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const loggerInfoMock = vi.hoisted(() => vi.fn());
 const loggerErrorMock = vi.hoisted(() => vi.fn());
-const buildLogContextMock = vi.hoisted(() => vi.fn(() => ({ request_id: 'req-ctx', trace_id: 'trace-ctx' })));
+const buildLogContextMock = vi.hoisted(() =>
+  vi.fn(() => ({ request_id: 'req-ctx', trace_id: 'trace-ctx' }))
+);
 const emitWasteAuditEventMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteVisibleStatusMock = vi.hoisted(() => vi.fn(async () => undefined));
 
@@ -11,6 +13,7 @@ vi.mock('@sva/server-runtime', () => ({
     error: loggerErrorMock,
     info: loggerInfoMock,
   }),
+  toSafeLogPath: (value: string) => new URL(value).pathname,
 }));
 
 vi.mock('../../log-context.js', () => ({
@@ -58,7 +61,7 @@ describe('waste tour delete support', () => {
       expect.objectContaining({
         operation: 'delete_waste_tour',
         request_method: 'DELETE',
-        request_url: request.url,
+        request_path: '/api/v1/waste-management/tours/tour-1',
         tour_id: 'tour-1',
       })
     );

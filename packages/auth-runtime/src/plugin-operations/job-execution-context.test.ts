@@ -93,4 +93,43 @@ describe('job execution context', () => {
     expect(context.abortSignal.aborted).toBe(true);
     dispose();
   });
+
+  it('bounds cancellation poll failure diagnostics and reports one recovery without changing polling', async () => {
+    vi.useFakeTimers();
+    const warn = vi.fn();
+    const debug = vi.fn();
+    const isCancellationRequested = vi
+      .fn<() => Promise<boolean>>()
+      .mockRejectedValueOnce(new TypeError('database unavailable'))
+      .mockRejectedValueOnce(new TypeError('database still unavailable'))
+      .mockResolvedValue(false);
+    const { context, dispose } = createJobExecutionContext({
+      job: {
+        id: 'job-1',
+        pluginId: 'news',
+        instanceId: 'tenant-a',
+        requestId: 'req-1',
+        actorAccountId: 'user-1',
+      },
+      logger: { debug, warn, info: vi.fn(), error: vi.fn() },
+      progressReporter: { reportProgress: async () => undefined },
+      isCancellationRequested,
+    });
+
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    expect(context.abortSignal.aborted).toBe(false);
+    expect(isCancellationRequested).toHaveBeenCalledTimes(3);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      'plugin_operation_cancellation_poll_failed',
+      expect.objectContaining({ error_code: 'cancellation_poll_failed', job_id: 'job-1' })
+    );
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug).toHaveBeenCalledWith(
+      'plugin_operation_cancellation_poll_recovered',
+      expect.objectContaining({ result: 'recovered', job_id: 'job-1' })
+    );
+    dispose();
+  });
 });

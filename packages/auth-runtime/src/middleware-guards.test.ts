@@ -18,6 +18,7 @@ const dbMocks = vi.hoisted(() => ({
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => logger,
+  toSafeLogPath: (value: string) => new URL(value).pathname,
   getWorkspaceContext: () => ({
     requestId: 'req-auth-runtime',
     traceId: 'trace-auth-runtime',
@@ -51,14 +52,11 @@ describe('middleware-guards', () => {
     vi.stubEnv('IAM_DEBUG_PROFILE_ERRORS', 'true');
     const { logProfileDiagnosticsIfEnabled } = await import('./middleware-guards.js');
 
-    logProfileDiagnosticsIfEnabled(
-      new Request('http://localhost/auth/me'),
-      {
-        id: 'user-1',
-        roles: ['editor'],
-        instanceId: 'de-musterhausen',
-      } as never
-    );
+    logProfileDiagnosticsIfEnabled(new Request('http://localhost/auth/me'), {
+      id: 'user-1',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    } as never);
 
     expect(logger.info).toHaveBeenCalledWith(
       'Auth middleware resolved session user for self-service diagnostics',
@@ -71,25 +69,20 @@ describe('middleware-guards', () => {
   });
 
   it('skips diagnostics logging when the feature flag is disabled or the route is unrelated', async () => {
-    const { logComplianceDiagnosticsIfEnabled, logProfileDiagnosticsIfEnabled } = await import('./middleware-guards.js');
+    const { logComplianceDiagnosticsIfEnabled, logProfileDiagnosticsIfEnabled } =
+      await import('./middleware-guards.js');
 
-    logProfileDiagnosticsIfEnabled(
-      new Request('http://localhost/admin'),
-      {
-        id: 'user-1',
-        roles: ['editor'],
-        instanceId: 'de-musterhausen',
-      } as never
-    );
+    logProfileDiagnosticsIfEnabled(new Request('http://localhost/admin'), {
+      id: 'user-1',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    } as never);
     vi.stubEnv('IAM_DEBUG_PROFILE_ERRORS', 'true');
-    logComplianceDiagnosticsIfEnabled(
-      new Request('http://localhost/admin'),
-      {
-        id: 'user-2',
-        roles: ['editor'],
-        instanceId: 'de-musterhausen',
-      } as never
-    );
+    logComplianceDiagnosticsIfEnabled(new Request('http://localhost/admin'), {
+      id: 'user-2',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    } as never);
 
     expect(logger.info).not.toHaveBeenCalled();
   });
@@ -98,14 +91,11 @@ describe('middleware-guards', () => {
     vi.stubEnv('IAM_DEBUG_PROFILE_ERRORS', 'true');
     const { logComplianceDiagnosticsIfEnabled } = await import('./middleware-guards.js');
 
-    logComplianceDiagnosticsIfEnabled(
-      new Request('http://localhost/api/v1/iam/users/me/profile'),
-      {
-        id: 'user-3',
-        roles: ['editor'],
-        instanceId: 'de-musterhausen',
-      } as never
-    );
+    logComplianceDiagnosticsIfEnabled(new Request('http://localhost/api/v1/iam/users/me/profile'), {
+      id: 'user-3',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    } as never);
 
     expect(logger.info).toHaveBeenCalledWith(
       'Auth middleware enforcing legal text compliance for self-service request',

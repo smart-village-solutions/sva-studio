@@ -5,6 +5,7 @@ import {
   createWorkspaceContextMiddleware,
   extractWorkspaceId,
   getWorkspaceContext,
+  runWithoutWorkspaceContext,
   runWithWorkspaceContext,
   setWorkspaceContext,
 } from './context.server.js';
@@ -35,6 +36,18 @@ describe('workspace observability context', () => {
     setWorkspaceContext({ workspaceId: 'ignored' });
 
     expect(getWorkspaceContext()).toEqual({});
+  });
+
+  it('detaches independent async work and restores the surrounding context', async () => {
+    await runWithWorkspaceContext({ workspaceId: 'tenant-a', requestId: 'req-1' }, async () => {
+      const detachedContext = await runWithoutWorkspaceContext(async () => {
+        await Promise.resolve();
+        return getWorkspaceContext();
+      });
+
+      expect(detachedContext).toEqual({});
+      expect(getWorkspaceContext()).toEqual({ workspaceId: 'tenant-a', requestId: 'req-1' });
+    });
   });
 
   it('extracts workspace ids from configured header variants', () => {

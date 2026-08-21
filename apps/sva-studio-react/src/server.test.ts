@@ -1,5 +1,5 @@
 // fallow-ignore-file code-duplication
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createStartHandlerMock = vi.fn();
 const createSdkLoggerMock = vi.fn();
@@ -16,6 +16,7 @@ const dispatchStudioChangelogRequestMock = vi.fn();
 const ensurePluginOperationWorkerStartedMock = vi.fn();
 const ensurePrivilegedStudioJobWorkerStartedMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
+const runWithoutWorkspaceContextMock = vi.fn();
 const withRequestContextMock = vi.fn();
 const createServerFunctionRequestDiagnosticsMock = vi.fn();
 const readServerFunctionResponseBodyForDiagnosticsMock = vi.fn();
@@ -34,6 +35,7 @@ vi.mock('@tanstack/react-start/server-entry', () => ({
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: createSdkLoggerMock,
   getWorkspaceContext: getWorkspaceContextMock,
+  runWithoutWorkspaceContext: runWithoutWorkspaceContextMock,
   withRequestContext: withRequestContextMock,
 }));
 
@@ -95,6 +97,12 @@ vi.mock('./lib/plugin-operation-runtime.server', () => ({
 }));
 
 describe('server transport', () => {
+  beforeEach(() => {
+    getWorkspaceContextMock.mockReturnValue({ requestId: 'req-default' });
+    runWithoutWorkspaceContextMock.mockImplementation((callback) => callback());
+    withRequestContextMock.mockImplementation(async (_input, callback) => callback());
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
@@ -115,6 +123,7 @@ describe('server transport', () => {
     ensurePrivilegedStudioJobWorkerStartedMock.mockReset();
     ensurePrivilegedStudioJobWorkerStartedMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReset();
+    runWithoutWorkspaceContextMock.mockReset();
     withRequestContextMock.mockReset();
     createServerFunctionRequestDiagnosticsMock.mockReset();
     readServerFunctionResponseBodyForDiagnosticsMock.mockReset();
@@ -536,7 +545,7 @@ describe('server transport', () => {
     await expect(response.json()).resolves.toEqual({ ok: false });
   });
 
-  it('delegates directly in production without request diagnostics', async () => {
+  it('delegates in production within request context without server-function diagnostics', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_SERVER_ENTRY_DEBUG', 'true');
 
@@ -554,7 +563,11 @@ describe('server transport', () => {
     const response = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
 
     expect(startFetch).toHaveBeenCalledTimes(1);
-    expect(withRequestContextMock).not.toHaveBeenCalled();
+    expect(withRequestContextMock).toHaveBeenCalledOnce();
+    expect(withRequestContextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ fallbackWorkspaceId: 'platform' }),
+      expect.any(Function)
+    );
     expect(createServerFunctionRequestDiagnosticsMock).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenNthCalledWith(
       1,
@@ -572,6 +585,56 @@ describe('server transport', () => {
       expect.objectContaining({ diagnostics_enabled: false, status: 204 })
     );
     await expect(response.text()).resolves.toBe('prod');
+  });
+
+  it('establishes request context before mainserver and auth dispatch', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    let activeRequestContext = false;
+    const observedContextStates: boolean[] = [];
+
+    runWithoutWorkspaceContextMock.mockImplementation((callback) => callback());
+    withRequestContextMock.mockImplementation(async (_input, callback) => {
+      activeRequestContext = true;
+      try {
+        return await callback();
+      } finally {
+        activeRequestContext = false;
+      }
+    });
+    dispatchMainserverNewsRequestMock.mockImplementation(async () => {
+      observedContextStates.push(activeRequestContext);
+      return null;
+    });
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
+    dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
+    dispatchMapGeocodingRequestMock.mockResolvedValue(null);
+    dispatchStudioChangelogRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockImplementation(async () => {
+      observedContextStates.push(activeRequestContext);
+      return new Response('auth');
+    });
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    await mod.default.fetch(new Request('http://localhost:3000/auth/login'));
+
+    expect(observedContextStates).toEqual([true, true]);
+  });
+
+  it('starts independent worker bootstrap through the detached context boundary', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    dispatchMainserverNewsRequestMock.mockResolvedValue(new Response('news'));
+    createStartHandlerMock.mockReturnValue(vi.fn());
+
+    const mod = await import('./server');
+    await mod.default.fetch(new Request('http://localhost:3000/api/mainserver/news'));
+
+    expect(runWithoutWorkspaceContextMock).toHaveBeenCalledOnce();
+    expect(runWithoutWorkspaceContextMock).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('logs debug completion for non-server-function requests in development', async () => {

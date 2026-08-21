@@ -21,8 +21,15 @@ const state = vi.hoisted(() => ({
   changeSvaMainserverNewsVisibility: vi.fn(),
   deleteSvaMainserverNews: vi.fn(),
   loggerInfo: vi.fn(),
+  loggerDebug: vi.fn(),
   loggerWarn: vi.fn(),
-  createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
+  loggerError: vi.fn(),
+  createSdkLogger: vi.fn(() => ({
+    debug: state.loggerDebug,
+    info: state.loggerInfo,
+    warn: state.loggerWarn,
+    error: state.loggerError,
+  })),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-news', traceId: 'trace-news' })),
 }));
 
@@ -502,28 +509,31 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     ['missing visibility', { visible: undefined }],
     ['draft', { visible: false }],
     ['scheduled', { visible: true, publishedAt: '2099-04-14T09:30:00.000Z' }],
-  ])('rejects Push delivery for %s news before calling the Mainserver', async (_state, overrides) => {
-    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.validateCsrf.mockReturnValue(null);
-    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
-      ok: true,
-      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
-      permissions: [],
-    });
+  ])(
+    'rejects Push delivery for %s news before calling the Mainserver',
+    async (_state, overrides) => {
+      state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+      state.validateCsrf.mockReturnValue(null);
+      state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+      state.authorizeContentPrimitiveForUser.mockResolvedValue({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      });
 
-    const response = await dispatchSvaMainserverNewsRequest(
-      createRequest('https://studio.test/api/v1/mainserver/news', {
-        method: 'POST',
-        headers: { 'Idempotency-Key': `idem-push-${_state}` },
-        body: JSON.stringify({ ...newsInput, ...overrides, pushNotification: true }),
-      })
-    );
+      const response = await dispatchSvaMainserverNewsRequest(
+        createRequest('https://studio.test/api/v1/mainserver/news', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': `idem-push-${_state}` },
+          body: JSON.stringify({ ...newsInput, ...overrides, pushNotification: true }),
+        })
+      );
 
-    expect(response?.status).toBe(400);
-    await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
-    expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
-  });
+      expect(response?.status).toBe(400);
+      await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
+      expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
+    }
+  );
 
   it('rejects waste targets on create without waste-management read permission', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
@@ -897,7 +907,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       error: 'graphql_error',
       message: 'GraphQL fehlgeschlagen.',
     });
-    expect(state.loggerWarn).toHaveBeenCalledWith(
+    expect(state.loggerError).toHaveBeenCalledWith(
       'Mainserver News route failed',
       expect.objectContaining({
         operation: 'mainserver_news_update',
@@ -1713,7 +1723,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       error: 'internal_error',
       message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
     });
-    expect(state.loggerWarn).toHaveBeenCalledWith(
+    expect(state.loggerError).toHaveBeenCalledWith(
       'Mainserver News route failed',
       expect.objectContaining({
         operation: 'mainserver_news_create',

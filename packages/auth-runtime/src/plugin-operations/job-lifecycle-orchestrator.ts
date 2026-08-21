@@ -1,8 +1,5 @@
 import type { StudioJobRecord } from '@sva/core';
-import type {
-  StudioJobExecutionHandler,
-  StudioJobExecutionHandlerContext,
-} from './types.js';
+import type { StudioJobExecutionHandler, StudioJobExecutionHandlerContext } from './types.js';
 
 import { isPluginOperationCancellationError } from './job-cancellation.js';
 import { createExecutionErrorPayload, createMissingHandlerPayload } from './job-error-mapper.js';
@@ -14,27 +11,35 @@ import type { PluginOperationLogger } from './types.js';
 
 type RepositoryPort = {
   readonly getJobById: (instanceId: string, jobId: string) => Promise<StudioJobRecord | null>;
-  readonly updateJobState: (input: Parameters<typeof createJobStateWriter>[0]['updateJobState'] extends (
-    input: infer TInput
-  ) => Promise<unknown>
-    ? TInput
-    : never) => Promise<unknown>;
-  readonly updateJobProgress: (input: Parameters<typeof createJobProgressReporter>[0]['updateJobProgress'] extends (
-    input: infer TInput
-  ) => Promise<unknown>
-    ? TInput
-    : never) => Promise<unknown>;
-  readonly appendJobEvent: (input: Parameters<typeof createJobEventWriter>[0]['appendJobEvent'] extends (
-    input: infer TInput
-  ) => Promise<unknown>
-    ? TInput
-    : never) => Promise<unknown>;
+  readonly updateJobState: (
+    input: Parameters<typeof createJobStateWriter>[0]['updateJobState'] extends (
+      input: infer TInput
+    ) => Promise<unknown>
+      ? TInput
+      : never
+  ) => Promise<unknown>;
+  readonly updateJobProgress: (
+    input: Parameters<typeof createJobProgressReporter>[0]['updateJobProgress'] extends (
+      input: infer TInput
+    ) => Promise<unknown>
+      ? TInput
+      : never
+  ) => Promise<unknown>;
+  readonly appendJobEvent: (
+    input: Parameters<typeof createJobEventWriter>[0]['appendJobEvent'] extends (
+      input: infer TInput
+    ) => Promise<unknown>
+      ? TInput
+      : never
+  ) => Promise<unknown>;
 };
 
 type OrchestratorDeps = {
   readonly logger: PluginOperationLogger;
   readonly loadRepository: (instanceId: string) => Promise<RepositoryPort>;
-  readonly resolveHandler: (job: Pick<StudioJobRecord, 'source' | 'jobTypeId'>) => StudioJobExecutionHandler | undefined;
+  readonly resolveHandler: (
+    job: Pick<StudioJobRecord, 'source' | 'jobTypeId'>
+  ) => StudioJobExecutionHandler | undefined;
   readonly createWorkerId?: (job: { readonly instanceId: string; readonly id: string }) => string;
   readonly now?: () => string;
 };
@@ -105,6 +110,50 @@ const createOrchestratorStateWriter = (
     appendCancelledEvent: eventWriter.appendCancelledEvent,
     now: deps.now,
   });
+
+const persistExecutionFailure = async (input: {
+  readonly deps: Pick<OrchestratorDeps, 'logger'>;
+  readonly stateWriter: ReturnType<typeof createOrchestratorStateWriter>;
+  readonly job: StudioJobRecord;
+  readonly error: unknown;
+  readonly attempts: number;
+  readonly maxAttempts: number;
+  readonly startedAt: string;
+  readonly workerId: string;
+  readonly progress: StudioJobRecord['progress'];
+}): Promise<boolean> => {
+  const errorPayload = createExecutionErrorPayload(
+    input.job,
+    input.error,
+    input.attempts >= input.maxAttempts
+  );
+  const finalFailure = errorPayload.category === 'permanent';
+  try {
+    await input.stateWriter.markRetriedOrFailed({
+      job: input.job,
+      attempts: input.attempts,
+      startedAt: input.startedAt,
+      workerId: input.workerId,
+      progress: input.progress,
+      errorPayload,
+      finalFailure,
+    });
+  } catch (persistenceError) {
+    input.deps.logger.error('plugin_operation_failure_state_persist_failed', {
+      operation: 'plugin_operation_failure_state_persist',
+      error_code: 'failure_state_persist_failed',
+      error_type:
+        persistenceError instanceof Error ? persistenceError.name : typeof persistenceError,
+      result: 'secondary_failure',
+      job_id: input.job.id,
+      execution_id: input.job.id,
+      instance_id: input.job.instanceId,
+      final_failure: finalFailure,
+    });
+    throw persistenceError;
+  }
+  return finalFailure;
+};
 
 export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
   run: async ({ instanceId, jobId, attempts, maxAttempts }: RunInput): Promise<void> => {
@@ -180,16 +229,16 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         return;
       }
 
-      const errorPayload = createExecutionErrorPayload(job, error, attempts >= maxAttempts);
-      const finalFailure = errorPayload.category === 'permanent';
-      await stateWriter.markRetriedOrFailed({
+      const finalFailure = await persistExecutionFailure({
+        deps,
+        stateWriter,
         job,
+        error,
         attempts,
+        maxAttempts,
         startedAt,
         workerId,
         progress: getLatestProgress(),
-        errorPayload,
-        finalFailure,
       });
       if (!finalFailure) {
         throw error;

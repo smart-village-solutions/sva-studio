@@ -245,7 +245,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 ### Observability-Qualität
 
 - Strukturierte Logs mit Pflichtfeldern (`component`, `environment`, `workspace_id`)
-- IAM-Authorize- und Cache-Logs enthalten zusätzlich `request_id` und `trace_id`
+- Alle HTTP-Ereignisse innerhalb der Servergrenze enthalten eine gültige `request_id`; eine `trace_id` erscheint nur bei echtem validiertem Trace-Kontext.
+- Parallele Requests bleiben kontextisoliert, unabhängige Hintergrundarbeit bleibt vom HTTP-Kontext gelöst.
+- Erwartbare 4xx-Ergebnisse werden höchstens als `warn`, unerwartete interne und 5xx-Ergebnisse als `error` protokolliert. Pro Operation, stabilem Fehlercode und Endergebnis existiert genau ein kanonisches Fehlerereignis.
+- Routinemäßige Reads, Cache-Treffer, Pagination, Konfigurationszugriffe und Health-Erfolge erscheinen nicht pro Zugriff auf `info`; fachlich relevante Mutationen und Jobabschlüsse bleiben auf `info` erhalten.
+- Alias-, verschachtelte URL- und Verbundfeld-Canaries müssen vollständig redigiert werden, während Request-, Trace-, Job-, Execution- und technische Instanz-IDs im Body erhalten bleiben.
 - IAM-Cache-Metriken `sva_iam_cache_lookup_total`, `sva_iam_cache_invalidation_duration_ms` und `sva_iam_cache_stale_entry_rate` sind in Dashboards und Alerting sichtbar
 - Auth-/IAM-Error-Boundaries setzen best effort `X-Request-Id` und liefern einen stabilen JSON-Fehlervertrag
 - Label-Whitelist und PII-Redaction entlang der OTEL-Pipeline

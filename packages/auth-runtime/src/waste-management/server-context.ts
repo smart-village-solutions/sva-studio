@@ -1,4 +1,9 @@
-import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
+import {
+  createSdkLogger,
+  toJsonErrorResponse,
+  toSafeLogPath,
+  withRequestContext,
+} from '@sva/server-runtime';
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
@@ -15,8 +20,10 @@ import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../midd
 
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
 
-const withWasteManagementRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
-  withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
+const withWasteManagementRequestContext = <T>(
+  request: Request,
+  work: () => Promise<T>
+): Promise<T> => withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
 
 export const withAuthenticatedWasteManagementHandler = (
   request: Request,
@@ -29,7 +36,7 @@ export const withAuthenticatedWasteManagementHandler = (
       const logContext = buildLogContext('default', { includeTraceId: true });
       logger.error('Waste management request failed unexpectedly', {
         operation: 'waste_management_request',
-        endpoint: request.url,
+        endpoint: toSafeLogPath(request.url),
         error_type: error instanceof Error ? error.constructor.name : typeof error,
         reason_code: 'instance_scope_unhandled_failure',
         ...logContext,

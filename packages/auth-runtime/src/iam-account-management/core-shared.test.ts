@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
+  toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: state.toJsonErrorResponse,
   withRequestContext: state.withRequestContext,
 }));
@@ -28,8 +29,12 @@ describe('withAuthenticatedIamHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.withRequestContext.mockImplementation(async (_input, work) => await work());
-    state.withAuthenticatedUser.mockImplementation(async (_request, work) =>
-      await work({ sessionId: 'session-1', user: { id: 'user-1', instanceId: 'tenant-a', roles: ['system_admin'] } })
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request, work) =>
+        await work({
+          sessionId: 'session-1',
+          user: { id: 'user-1', instanceId: 'tenant-a', roles: ['system_admin'] },
+        })
     );
     state.buildLogContext.mockReturnValue({
       request_id: 'req-iam',
@@ -37,10 +42,13 @@ describe('withAuthenticatedIamHandler', () => {
     });
     state.toJsonErrorResponse.mockImplementation(
       (status: number, code: string, message: string, details?: unknown) =>
-        new Response(JSON.stringify({ error: { code, message }, ...(details ? { details } : {}) }), {
-          status,
-          headers: { 'content-type': 'application/json' },
-        })
+        new Response(
+          JSON.stringify({ error: { code, message }, ...(details ? { details } : {}) }),
+          {
+            status,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
     );
   });
 
@@ -60,7 +68,10 @@ describe('withAuthenticatedIamHandler', () => {
       expect.any(Function)
     );
     expect(state.withAuthenticatedUser).toHaveBeenCalledWith(request, expect.any(Function));
-    expect(handler).toHaveBeenCalledWith(request, expect.objectContaining({ sessionId: 'session-1' }));
+    expect(handler).toHaveBeenCalledWith(
+      request,
+      expect.objectContaining({ sessionId: 'session-1' })
+    );
   });
 
   it('logs unexpected errors and returns a stable internal_error response', async () => {
@@ -83,7 +94,7 @@ describe('withAuthenticatedIamHandler', () => {
     expect(state.logger.error).toHaveBeenCalledWith(
       'IAM request failed unexpectedly',
       expect.objectContaining({
-        endpoint: 'https://example.test/api/v1/iam/users',
+        endpoint: '/api/v1/iam/users',
         error_type: 'Error',
         error_message: 'boom',
         request_id: 'req-iam',

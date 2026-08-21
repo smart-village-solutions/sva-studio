@@ -3,29 +3,20 @@ import { loadInstanceByHostname } from '@sva/data-repositories/server';
 import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
 
 import type { ResolvedTenantClientSecret } from './config-tenant-secret.js';
-import { TenantAuthResolutionError, type TenantAuthResolutionFailureReason } from './runtime-errors.js';
+import { TenantAuthResolutionError } from './runtime-errors.js';
 import type { AuthConfig } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth-config', level: 'info' });
 
 type RegistryEntry = Awaited<ReturnType<typeof loadInstanceByHostname>>;
 
-const formatResolutionError = (error: unknown): string | undefined => {
-  if (error === undefined || error === null) {
-    return undefined;
-  }
-
-  return error instanceof Error ? error.message : String(error);
-};
-
-export const logGlobalAuthResolution = (request: Request, host: string, requestOrigin: string): void => {
+export const logGlobalAuthResolution = (request: Request, host: string): void => {
   const instanceConfig = getInstanceConfig();
-  logger.warn('tenant_auth_resolution_summary', {
+  logger.debug('tenant_auth_resolution_summary', {
     operation: 'tenant_auth_resolution',
     scope_kind: 'platform',
     auth_scope_kind: 'platform',
     host,
-    request_origin: requestOrigin,
     forwarded_host_header: request.headers.get('x-forwarded-host') ?? undefined,
     request_host_header: request.headers.get('host') ?? undefined,
     forwarded_header_present: request.headers.get('forwarded') ? 'true' : 'false',
@@ -43,35 +34,10 @@ export const logGlobalAuthResolution = (request: Request, host: string, requestO
   });
 };
 
-export const logTenantAuthResolutionFailure = (
-  request: Request,
-  input: {
-    host: string;
-    requestOrigin: string;
-    reason: TenantAuthResolutionFailureReason;
-    error?: unknown;
-  }
-): void => {
-  const instanceConfig = getInstanceConfig();
-  logger.error('tenant_auth_resolution_failed', {
-    operation: 'tenant_auth_resolution',
-    host: input.host,
-    request_origin: input.requestOrigin,
-    forwarded_host_header: request.headers.get('x-forwarded-host') ?? undefined,
-    request_host_header: request.headers.get('host') ?? undefined,
-    forwarded_header_present: request.headers.get('forwarded') ? 'true' : 'false',
-    canonical_auth_host: instanceConfig?.canonicalAuthHost,
-    parent_domain: instanceConfig?.parentDomain,
-    reason: input.reason,
-    error: formatResolutionError(input.error),
-  });
-};
-
-export const logInstanceConfigMissing = (host: string, requestOrigin: string): void => {
-  logger.info('tenant_auth_resolution_summary', {
+export const logInstanceConfigMissing = (host: string): void => {
+  logger.debug('tenant_auth_resolution_summary', {
     operation: 'tenant_auth_resolution',
     host,
-    request_origin: requestOrigin,
     scope_kind: 'platform',
     auth_scope_kind: 'platform',
     workspace_id: 'platform',
@@ -86,16 +52,8 @@ export const logInstanceConfigMissing = (host: string, requestOrigin: string): v
   });
 };
 
-export const loadRegistryEntryForHost = async (host: string, requestOrigin: string): Promise<RegistryEntry> =>
+export const loadRegistryEntryForHost = async (host: string): Promise<RegistryEntry> =>
   loadInstanceByHostname(host).catch((error) => {
-    logger.error('Tenant hostname lookup failed during auth resolution', {
-      operation: 'tenant_auth_resolution',
-      host,
-      request_origin: requestOrigin,
-      reason_code: 'tenant_lookup_failed',
-      dependency: 'database',
-      error_type: error instanceof Error ? error.name : typeof error,
-    });
     throw new TenantAuthResolutionError({
       host,
       reason: 'tenant_lookup_failed',
@@ -105,21 +63,14 @@ export const loadRegistryEntryForHost = async (host: string, requestOrigin: stri
 
 export const assertActiveRegistryEntry = (
   host: string,
-  requestOrigin: string,
   registryEntry: NonNullable<RegistryEntry>
 ): void => {
   if (!isTrafficEnabledInstanceStatus(registryEntry.status)) {
-    logger.warn('Tenant hostname resolved to non-active registry entry', {
-      operation: 'tenant_auth_resolution',
-      host,
-      request_origin: requestOrigin,
-      instance_id: registryEntry.instanceId,
-      tenant_status: registryEntry.status,
-    });
     throw new TenantAuthResolutionError({
       host,
       reason: 'tenant_inactive',
-      publicMessage: 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.',
+      publicMessage:
+        'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.',
     });
   }
 };
@@ -127,18 +78,16 @@ export const assertActiveRegistryEntry = (
 export const logTenantAuthResolution = (
   request: Request,
   host: string,
-  requestOrigin: string,
   authConfig: AuthConfig,
   registryEntry: NonNullable<RegistryEntry>,
   tenantSecret: ResolvedTenantClientSecret
 ): void => {
   const instanceConfig = getInstanceConfig();
-  logger.info('tenant_auth_resolution_summary', {
+  logger.debug('tenant_auth_resolution_summary', {
     operation: 'tenant_auth_resolution',
     scope_kind: 'instance',
     auth_scope_kind: 'instance',
     host,
-    request_origin: requestOrigin,
     forwarded_host_header: request.headers.get('x-forwarded-host') ?? undefined,
     request_host_header: request.headers.get('host') ?? undefined,
     forwarded_header_present: request.headers.get('forwarded') ? 'true' : 'false',
@@ -148,8 +97,8 @@ export const logTenantAuthResolution = (
     instance_id: registryEntry.instanceId,
     auth_realm: registryEntry.authRealm,
     client_id: registryEntry.authClientId,
-    issuer: authConfig.issuer,
-    redirect_uri: authConfig.redirectUri,
+    issuer_path: new URL(authConfig.issuer).pathname,
+    redirect_path: new URL(authConfig.redirectUri).pathname,
     result: 'tenant',
     resolution_result: 'instance',
     secret_source: tenantSecret.source,

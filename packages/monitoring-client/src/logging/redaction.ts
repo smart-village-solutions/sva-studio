@@ -1,39 +1,64 @@
 import { maskEmailAddresses } from '@sva/core';
 
-const SENSITIVE_LOG_KEYS = new Set([
-  'password',
-  'token',
-  'authorization',
-  'api_key',
-  'secret',
-  'client_secret',
-  'email',
-  'cookie',
-  'set-cookie',
-  'session',
-  'session_id',
-  'user_id',
-  'csrf',
-  'refresh_token',
-  'access_token',
-  'id_token',
-  'id_token_hint',
-  'x-api-key',
-  'x-csrf-token',
-  'actor_user_id',
-  'session_user_id',
-  'actor_account_id',
-  'keycloak_subject',
-  'db_keycloak_subject',
-]);
+const normalizeLogKey = (key: string): string => key.toLowerCase().replace(/[-_.]/g, '');
+
+const SENSITIVE_LOG_KEYS = new Set(
+  [
+    'password',
+    'token',
+    'authorization',
+    'api_key',
+    'secret',
+    'client_secret',
+    'email',
+    'cookie',
+    'set-cookie',
+    'session',
+    'session_id',
+    'user_id',
+    'csrf',
+    'refresh_token',
+    'access_token',
+    'id_token',
+    'id_token_hint',
+    'x-api-key',
+    'x-csrf-token',
+    'actor_user_id',
+    'session_user_id',
+    'actor_account_id',
+    'keycloak_subject',
+    'db_keycloak_subject',
+    'account',
+    'account_id',
+    'actor',
+    'actor_id',
+    'subject',
+    'subject_id',
+    'credential',
+    'credential_id',
+    'user',
+    'projection_scope_key',
+  ].map(normalizeLogKey)
+);
+
+const isSensitiveLogKey = (key: string): boolean => SENSITIVE_LOG_KEYS.has(normalizeLogKey(key));
 
 const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
 const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
   [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
-  [/([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi, '$1[REDACTED]'],
-  [/((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi, '$1[REDACTED]'],
-  [/((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi, '$1[REDACTED]'],
+  [
+    /([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi,
+    '$1[REDACTED]',
+  ],
+  [
+    /((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
+    '$1[REDACTED]',
+  ],
+  [
+    /((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
+    '$1[REDACTED]',
+  ],
 ];
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
@@ -72,7 +97,7 @@ const serializeError = (value: Error): Record<string, unknown> => {
   }
 
   for (const [key, entry] of Object.entries(value)) {
-    if (SENSITIVE_LOG_KEYS.has(key.toLowerCase())) {
+    if (isSensitiveLogKey(key)) {
       serialized[key] = '[REDACTED]';
       continue;
     }
@@ -90,6 +115,18 @@ export const redactLogString = (value: string): string => {
     next = next.replace(pattern, replacement);
   }
   return next;
+};
+
+export const toSafeLogPath = (value: string): string => {
+  if (!value.startsWith('/') && !URL.canParse(value)) {
+    return '[invalid-path]';
+  }
+
+  try {
+    return new URL(value, 'https://logging.invalid').pathname;
+  } catch {
+    return '[invalid-path]';
+  }
 };
 
 export const serializeAndRedactLogValue = (value: unknown): unknown => {
@@ -130,7 +167,7 @@ export const serializeAndRedactLogValue = (value: unknown): unknown => {
 
 export const redactLogMeta = (value: Record<string, unknown>): Record<string, unknown> => {
   return Object.entries(value).reduce<Record<string, unknown>>((acc, [key, entry]) => {
-    if (SENSITIVE_LOG_KEYS.has(key.toLowerCase())) {
+    if (isSensitiveLogKey(key)) {
       acc[key] = '[REDACTED]';
       return acc;
     }

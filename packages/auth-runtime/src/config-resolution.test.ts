@@ -18,7 +18,6 @@ const state = vi.hoisted(() => ({
   logGlobalAuthResolution: vi.fn(),
   logInstanceConfigMissing: vi.fn(),
   logTenantAuthResolution: vi.fn(),
-  logTenantAuthResolutionFailure: vi.fn(),
   buildRequestOriginFromHeaders: vi.fn(),
   resolveEffectiveRequestHost: vi.fn(),
   getAuthClientSecret: vi.fn(),
@@ -51,7 +50,6 @@ vi.mock('./config-request.js', () => ({
   logGlobalAuthResolution: state.logGlobalAuthResolution,
   logInstanceConfigMissing: state.logInstanceConfigMissing,
   logTenantAuthResolution: state.logTenantAuthResolution,
-  logTenantAuthResolutionFailure: state.logTenantAuthResolutionFailure,
 }));
 
 vi.mock('./config-tenant-secret.js', () => ({
@@ -148,7 +146,9 @@ describe('auth config resolution', () => {
   it('falls back to the platform config when no instance config is available', async () => {
     state.getInstanceConfig.mockReturnValue(null);
 
-    await expect(resolveAuthConfigForRequest(new Request('https://studio.example/auth/login'))).resolves.toMatchObject({
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://studio.example/auth/login'))
+    ).resolves.toMatchObject({
       kind: 'platform',
       clientId: 'studio',
     });
@@ -163,10 +163,14 @@ describe('auth config resolution', () => {
     state.isCanonicalAuthHost.mockReturnValueOnce(true).mockReturnValueOnce(false);
     state.classifyHost.mockReturnValueOnce({ kind: 'root' });
 
-    await expect(resolveAuthConfigForRequest(new Request('https://auth.example/auth/login'))).resolves.toMatchObject({
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://auth.example/auth/login'))
+    ).resolves.toMatchObject({
       kind: 'platform',
     });
-    await expect(resolveAuthConfigForRequest(new Request('https://example/auth/login'))).resolves.toMatchObject({
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://example/auth/login'))
+    ).resolves.toMatchObject({
       kind: 'platform',
     });
     expect(state.logGlobalAuthResolution).toHaveBeenCalledTimes(2);
@@ -178,16 +182,22 @@ describe('auth config resolution', () => {
       parentDomain: 'example',
     });
     state.isCanonicalAuthHost.mockReturnValue(false);
-    state.classifyHost.mockReturnValueOnce({ kind: 'unknown' }).mockReturnValueOnce({ kind: 'tenant' });
+    state.classifyHost
+      .mockReturnValueOnce({ kind: 'unknown' })
+      .mockReturnValueOnce({ kind: 'tenant' });
     state.loadRegistryEntryForHost.mockResolvedValueOnce(null);
 
-    await expect(resolveAuthConfigForRequest(new Request('https://broken.example/auth/login'))).rejects.toMatchObject({
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://broken.example/auth/login'))
+    ).rejects.toMatchObject({
       reason: 'tenant_host_invalid',
     });
-    await expect(resolveAuthConfigForRequest(new Request('https://tenant.example/auth/login'))).rejects.toMatchObject({
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://tenant.example/auth/login'))
+    ).rejects.toMatchObject({
       reason: 'tenant_not_found',
     });
-    expect(state.logTenantAuthResolutionFailure).toHaveBeenCalledTimes(2);
+    expect(state.logTenantAuthResolution).not.toHaveBeenCalled();
   });
 
   it('resolves tenant auth config and applies the public base port for local dev origins', async () => {
@@ -207,7 +217,9 @@ describe('auth config resolution', () => {
     state.buildRequestOriginFromHeaders.mockReturnValue('https://tenant.example.test');
     state.resolveEffectiveRequestHost.mockReturnValue('tenant.example.test');
 
-    await expect(resolveAuthConfigForRequest(new Request('https://tenant.example.test/auth/login'))).resolves.toMatchObject({
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://tenant.example.test/auth/login'))
+    ).resolves.toMatchObject({
       kind: 'instance',
       instanceId: 'tenant-a',
       clientSecret: 'tenant-secret',
@@ -241,16 +253,12 @@ describe('auth config resolution', () => {
       reason: 'tenant_auth_client_secret_missing',
     });
 
-    await expect(resolveAuthConfigForRequest(new Request('https://tenant.example.test/auth/login'))).rejects.toMatchObject({
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://tenant.example.test/auth/login'))
+    ).rejects.toMatchObject({
       reason: 'tenant_secret_unavailable',
     });
-    expect(state.logTenantAuthResolutionFailure).toHaveBeenCalledWith(
-      expect.any(Request),
-      expect.objectContaining({
-        host: 'tenant.example',
-        reason: 'tenant_secret_unavailable',
-      })
-    );
+    expect(state.logTenantAuthResolution).not.toHaveBeenCalled();
   });
 
   it('rejects instance auth config resolution when the tenant-scoped auth secret is unavailable', async () => {

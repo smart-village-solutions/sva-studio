@@ -29,7 +29,9 @@ const state = vi.hoisted(() => ({
   listGenericItems: vi.fn(),
   updateGenericItem: vi.fn(),
   loggerInfo: vi.fn(),
+  loggerDebug: vi.fn(),
   loggerWarn: vi.fn(),
+  loggerError: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
@@ -66,7 +68,12 @@ vi.mock('@sva/server-runtime', async () => {
   const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
   return {
     ...actual,
-    createSdkLogger: () => ({ info: state.loggerInfo, warn: state.loggerWarn }),
+    createSdkLogger: () => ({
+      debug: state.loggerDebug,
+      info: state.loggerInfo,
+      warn: state.loggerWarn,
+      error: state.loggerError,
+    }),
     getWorkspaceContext: () => ({ requestId: 'request-1', traceId: 'trace-1' }),
   };
 });

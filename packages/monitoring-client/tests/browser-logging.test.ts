@@ -6,6 +6,7 @@ import {
   redactLogString,
   serializeAndRedactLogValue,
   stringifyNonPlainValue,
+  toSafeLogPath,
 } from '../src/logging.js';
 
 describe('browser logger', () => {
@@ -86,6 +87,48 @@ describe('browser logger', () => {
     });
   });
 
+  it('redacts semantic identity aliases while preserving correlation and technical ids', () => {
+    const canary = 'identity-canary-123';
+
+    expect(
+      redactLogMeta({
+        actorId: canary,
+        actor_id: canary,
+        'actor-id': canary,
+        accountID: canary,
+        subject_id: canary,
+        credentialId: canary,
+        nested: {
+          userId: canary,
+          'session-id': canary,
+        },
+        projection_scope_key: `tenant::${canary}::organization::news.article`,
+        request_id: 'req-safe',
+        trace_id: 'a'.repeat(32),
+        job_id: 'job-safe',
+        execution_id: 'execution-safe',
+        instance_id: 'instance-safe',
+      })
+    ).toEqual({
+      actorId: '[REDACTED]',
+      actor_id: '[REDACTED]',
+      'actor-id': '[REDACTED]',
+      accountID: '[REDACTED]',
+      subject_id: '[REDACTED]',
+      credentialId: '[REDACTED]',
+      nested: {
+        userId: '[REDACTED]',
+        'session-id': '[REDACTED]',
+      },
+      projection_scope_key: '[REDACTED]',
+      request_id: 'req-safe',
+      trace_id: 'a'.repeat(32),
+      job_id: 'job-safe',
+      execution_id: 'execution-safe',
+      instance_id: 'instance-safe',
+    });
+  });
+
   it('stringifies non-plain objects and preserves primitive-like values', () => {
     expect(stringifyNonPlainValue(new URL('https://alice@example.org/path?token=abc'))).toContain(
       'a***@example.org'
@@ -93,5 +136,13 @@ describe('browser logger', () => {
     expect(serializeAndRedactLogValue(42)).toBe(42);
     expect(serializeAndRedactLogValue(true)).toBe(true);
     expect(serializeAndRedactLogValue(undefined)).toBeNull();
+  });
+
+  it('reduces absolute and relative request urls to query-free paths', () => {
+    expect(toSafeLogPath('https://tenant.example/auth/callback?code=secret#fragment')).toBe(
+      '/auth/callback'
+    );
+    expect(toSafeLogPath('/api/v1/items?page=2')).toBe('/api/v1/items');
+    expect(toSafeLogPath('not a valid url')).toBe('[invalid-path]');
   });
 });

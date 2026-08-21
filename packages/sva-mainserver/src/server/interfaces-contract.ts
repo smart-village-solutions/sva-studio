@@ -505,7 +505,7 @@ const loadOverviewConfig = async (input: {
 > => {
   try {
     const config = await loadSvaMainserverSettings(input.instanceId);
-    input.logger.info('Interfaces settings loaded', {
+    input.logger.debug('Interfaces settings loaded', {
       operation: 'load_interfaces_overview',
       workspace_id: input.instanceId,
       has_config: config !== null,
@@ -540,7 +540,7 @@ const evaluateOverviewStatus = async (input: {
       keycloakSubject: input.userId,
       activeOrganizationId: input.activeOrganizationId,
     });
-    input.logger.info('Interfaces connection status evaluated', {
+    input.logger.debug('Interfaces connection status evaluated', {
       operation: 'load_interfaces_overview',
       workspace_id: input.instanceId,
       connection_status: status.status,

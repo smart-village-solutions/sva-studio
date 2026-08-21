@@ -73,19 +73,23 @@ export const loadSvaMainserverInstanceConfig = async (
       graphqlBaseUrl: await validateUpstreamUrl(
         instanceId,
         'graphql_base_url',
-        typeof record.publicConfig.graphqlBaseUrl === 'string' ? record.publicConfig.graphqlBaseUrl : ''
+        typeof record.publicConfig.graphqlBaseUrl === 'string'
+          ? record.publicConfig.graphqlBaseUrl
+          : ''
       ),
       oauthTokenUrl: await validateUpstreamUrl(
         instanceId,
         'oauth_token_url',
-        typeof record.publicConfig.oauthTokenUrl === 'string' ? record.publicConfig.oauthTokenUrl : ''
+        typeof record.publicConfig.oauthTokenUrl === 'string'
+          ? record.publicConfig.oauthTokenUrl
+          : ''
       ),
       enabled: record.enabled,
       lastVerifiedAt: record.lastCheckedAt,
       lastVerifiedStatus: mapVisibleStatusToVerificationStatus(record.visibleStatus),
     } satisfies SvaMainserverInstanceConfig;
 
-    logger.info('SVA Mainserver instance config loaded', {
+    logger.debug('SVA Mainserver instance config loaded', {
       ...buildLogContext(instanceId, {
         operation: 'load_instance_config',
       }),

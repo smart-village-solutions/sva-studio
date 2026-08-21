@@ -17,8 +17,15 @@ const state = vi.hoisted(() => ({
   getSvaMainserverGenericItem: vi.fn(),
   deleteSvaMainserverGenericItem: vi.fn(),
   loggerInfo: vi.fn(),
+  loggerDebug: vi.fn(),
   loggerWarn: vi.fn(),
-  createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
+  loggerError: vi.fn(),
+  createSdkLogger: vi.fn(() => ({
+    debug: state.loggerDebug,
+    info: state.loggerInfo,
+    warn: state.loggerWarn,
+    error: state.loggerError,
+  })),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-1', traceId: 'trace-1' })),
 }));
 
@@ -342,7 +349,7 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
         resource: { contentType: 'cockpit-cards.cockpit-card' },
       })
     );
-    expect(state.loggerInfo).toHaveBeenCalledWith(
+    expect(state.loggerDebug).toHaveBeenCalledWith(
       'Kachel list upstream pagination completed',
       expect.objectContaining({ matching_item_count: 1 })
     );

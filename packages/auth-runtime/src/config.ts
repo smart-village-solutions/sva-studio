@@ -8,7 +8,6 @@ import {
   logGlobalAuthResolution,
   logInstanceConfigMissing,
   logTenantAuthResolution,
-  logTenantAuthResolutionFailure,
 } from './config-request.js';
 import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
@@ -52,7 +51,8 @@ export const resolveBaseAuthConfig = (overrides: { clientSecret?: string } = {})
     scopes: process.env.SVA_AUTH_SCOPES ?? 'openid',
     sessionCookieName: process.env.SVA_AUTH_SESSION_COOKIE ?? 'sva_auth_session',
     loginStateCookieName: process.env.SVA_AUTH_LOGIN_STATE_COOKIE ?? 'sva_auth_state',
-    silentSsoSuppressCookieName: process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE ?? 'sva_auth_silent_sso',
+    silentSsoSuppressCookieName:
+      process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE ?? 'sva_auth_silent_sso',
     sessionTtlMs: readNumber('SVA_AUTH_SESSION_TTL_MS', 60 * 60 * 1000),
     sessionRedisTtlBufferMs: readNumber('SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS', 5 * 60 * 1000),
     freshReauthWindowMs: readPositiveNumber('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', 10 * 60 * 1000),
@@ -110,7 +110,10 @@ const applyLocalDevPortToOrigin = (origin: string, host: string): string => {
 
     if (
       normalizedOriginHost !== normalizedHost ||
-      !(normalizedHost === normalizedPublicBaseHost || normalizedHost.endsWith(`.${normalizedPublicBaseHost}`))
+      !(
+        normalizedHost === normalizedPublicBaseHost ||
+        normalizedHost.endsWith(`.${normalizedPublicBaseHost}`)
+      )
     ) {
       return origin;
     }
@@ -123,9 +126,13 @@ const applyLocalDevPortToOrigin = (origin: string, host: string): string => {
 };
 
 const buildRequestOrigin = (request: Request): string =>
-  applyLocalDevPortToOrigin(buildRequestOriginFromHeaders(request), resolveEffectiveRequestHost(request));
+  applyLocalDevPortToOrigin(
+    buildRequestOriginFromHeaders(request),
+    resolveEffectiveRequestHost(request)
+  );
 const resolveRequestHost = (request: Request): string => resolveEffectiveRequestHost(request);
-const buildHostOrigin = (hostname: string, protocol = 'https'): string => `${protocol}://${normalizeHost(hostname)}`;
+const buildHostOrigin = (hostname: string, protocol = 'https'): string =>
+  `${protocol}://${normalizeHost(hostname)}`;
 
 type BaseAuthConfig = ReturnType<typeof resolveBaseAuthConfig>;
 type PlatformAuthConfig = Extract<AuthConfig, { kind: 'platform' }>;
@@ -133,8 +140,14 @@ type InstanceAuthConfig = Extract<AuthConfig, { kind: 'instance' }>;
 type PlatformAuthOverrides = Omit<PlatformAuthConfig, keyof BaseAuthConfig>;
 type InstanceAuthOverrides = Omit<InstanceAuthConfig, keyof BaseAuthConfig>;
 
-function mergeAuthConfig(base: BaseAuthConfig, overrides: PlatformAuthOverrides): PlatformAuthConfig;
-function mergeAuthConfig(base: BaseAuthConfig, overrides: InstanceAuthOverrides): InstanceAuthConfig;
+function mergeAuthConfig(
+  base: BaseAuthConfig,
+  overrides: PlatformAuthOverrides
+): PlatformAuthConfig;
+function mergeAuthConfig(
+  base: BaseAuthConfig,
+  overrides: InstanceAuthOverrides
+): InstanceAuthConfig;
 function mergeAuthConfig(
   base: BaseAuthConfig,
   overrides: PlatformAuthOverrides | InstanceAuthOverrides
@@ -189,7 +202,9 @@ export const resolveAuthConfigForInstance = async (
   }
 
   const origin = options.origin ?? buildHostOrigin(instance.primaryHostname, options.protocol);
-  const tenantSecret = await resolveTenantAuthClientSecret(instance.instanceId, { allowGlobalFallback: false });
+  const tenantSecret = await resolveTenantAuthClientSecret(instance.instanceId, {
+    allowGlobalFallback: false,
+  });
   assertTenantAuthSecretAvailable(instance.instanceId, tenantSecret);
   return mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
     kind: 'instance',
@@ -208,27 +223,22 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
 
   const instanceConfig = getInstanceConfig();
   if (!instanceConfig) {
-    logInstanceConfigMissing(host, requestOrigin);
+    logInstanceConfigMissing(host);
     return getAuthConfig();
   }
 
   if (isCanonicalAuthHost(host)) {
-    logGlobalAuthResolution(request, host, requestOrigin);
+    logGlobalAuthResolution(request, host);
     return getAuthConfig();
   }
 
   const hostClassification = classifyHost(host, instanceConfig.parentDomain);
   if (hostClassification.kind === 'root') {
-    logGlobalAuthResolution(request, host, requestOrigin);
+    logGlobalAuthResolution(request, host);
     return getAuthConfig();
   }
 
   if (hostClassification.kind !== 'tenant') {
-    logTenantAuthResolutionFailure(request, {
-      host,
-      requestOrigin,
-      reason: 'tenant_host_invalid',
-    });
     throw new TenantAuthResolutionError({
       host,
       reason: 'tenant_host_invalid',
@@ -237,30 +247,21 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
     });
   }
 
-  const registryEntry = await loadRegistryEntryForHost(host, requestOrigin);
+  const registryEntry = await loadRegistryEntryForHost(host);
   if (!registryEntry) {
-    logTenantAuthResolutionFailure(request, {
-      host,
-      requestOrigin,
-      reason: 'tenant_not_found',
-    });
     throw new TenantAuthResolutionError({
       host,
       reason: 'tenant_not_found',
     });
   }
 
-  assertActiveRegistryEntry(host, requestOrigin, registryEntry);
-  const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId, { allowGlobalFallback: false });
+  assertActiveRegistryEntry(host, registryEntry);
+  const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId, {
+    allowGlobalFallback: false,
+  });
   try {
     assertTenantAuthSecretAvailable(registryEntry.instanceId, tenantSecret);
   } catch (error) {
-    logTenantAuthResolutionFailure(request, {
-      host,
-      requestOrigin,
-      reason: 'tenant_secret_unavailable',
-      error,
-    });
     throw new TenantAuthResolutionError({
       host,
       reason: 'tenant_secret_unavailable',
@@ -276,6 +277,6 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
     redirectUri: `${requestOrigin}/auth/callback`,
     postLogoutRedirectUri: `${requestOrigin}/`,
   });
-  logTenantAuthResolution(request, host, requestOrigin, authConfig, registryEntry, tenantSecret);
+  logTenantAuthResolution(request, host, authConfig, registryEntry, tenantSecret);
   return authConfig;
 };

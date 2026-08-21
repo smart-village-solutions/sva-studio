@@ -7,7 +7,9 @@ const state = vi.hoisted(() => ({
   getSingleInstanceAuditRunInternal: vi.fn(async () => new Response('detail', { status: 200 })),
   authenticateRegistryServiceToken: vi.fn(),
   markAuthenticatedRegistryServiceRequest: vi.fn(),
-  prepareInstanceConfirmationInternal: vi.fn(async () => new Response('confirmation', { status: 200 })),
+  prepareInstanceConfirmationInternal: vi.fn(
+    async () => new Response('confirmation', { status: 200 })
+  ),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -15,6 +17,7 @@ vi.mock('@sva/server-runtime', () => ({
     error: vi.fn(),
     info: vi.fn(),
   }),
+  toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: vi.fn(
     (status: number, code: string, message?: string, options?: { requestId?: string }) =>
       new Response(JSON.stringify({ code, message, requestId: options?.requestId }), { status })
@@ -48,7 +51,9 @@ vi.mock('./core.js', () => ({
   activateInstanceInternal: vi.fn(async () => new Response('activate', { status: 200 })),
   archiveInstanceInternal: vi.fn(async () => new Response('archive', { status: 200 })),
   assignInstanceModuleInternal: vi.fn(async () => new Response('assign', { status: 200 })),
-  bootstrapInstanceAdminStructureInternal: vi.fn(async () => new Response('bootstrap', { status: 200 })),
+  bootstrapInstanceAdminStructureInternal: vi.fn(
+    async () => new Response('bootstrap', { status: 200 })
+  ),
   createInstanceInternal: vi.fn(async () => new Response('create', { status: 200 })),
   getInstanceInternal: vi.fn(async () => new Response('get', { status: 200 })),
   listInstancesInternal: vi.fn(async () => new Response('list', { status: 200 })),
@@ -59,24 +64,35 @@ vi.mock('./core.js', () => ({
 }));
 
 vi.mock('./core-keycloak.js', () => ({
-  executeInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('execute', { status: 200 })),
+  executeInstanceKeycloakProvisioningInternal: vi.fn(
+    async () => new Response('execute', { status: 200 })
+  ),
   getInstanceAuditRunInternal: state.getInstanceAuditRunInternal,
-  getInstanceKeycloakPreflightInternal: vi.fn(async () => new Response('preflight', { status: 200 })),
-  getInstanceKeycloakProvisioningRunInternal: vi.fn(async () => new Response('run', { status: 200 })),
+  getInstanceKeycloakPreflightInternal: vi.fn(
+    async () => new Response('preflight', { status: 200 })
+  ),
+  getInstanceKeycloakProvisioningRunInternal: vi.fn(
+    async () => new Response('run', { status: 200 })
+  ),
   getInstanceKeycloakStatusInternal: vi.fn(async () => new Response('status', { status: 200 })),
   getSingleInstanceAuditRunInternal: state.getSingleInstanceAuditRunInternal,
-  planInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('plan', { status: 200 })),
+  planInstanceKeycloakProvisioningInternal: vi.fn(
+    async () => new Response('plan', { status: 200 })
+  ),
   probeTenantIamAccessInternal: vi.fn(async () => new Response('probe', { status: 200 })),
   reconcileInstanceKeycloakInternal: vi.fn(async () => new Response('reconcile', { status: 200 })),
-  reconcileInstanceIamRolesInternal: vi.fn(async () => new Response('roles-reconcile', { status: 200 })),
+  reconcileInstanceIamRolesInternal: vi.fn(
+    async () => new Response('roles-reconcile', { status: 200 })
+  ),
   rotateInstanceSecretInternal: vi.fn(async () => new Response('rotate', { status: 200 })),
 }));
 
 describe('iam-instance-registry/server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    state.withAuthenticatedUser.mockImplementation(async (request: Request, work: (ctx: unknown) => Promise<Response>) =>
-      work({ user: { id: 'admin-1' }, request } as never)
+    state.withAuthenticatedUser.mockImplementation(
+      async (request: Request, work: (ctx: unknown) => Promise<Response>) =>
+        work({ user: { id: 'admin-1' }, request } as never)
     );
     state.authenticateRegistryServiceToken.mockResolvedValue({
       kind: 'authenticated',
@@ -98,7 +114,10 @@ describe('iam-instance-registry/server', () => {
     const response = await instanceRegistryHandlers.createInstance(request);
 
     expect(response.status).toBe(200);
-    expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith('signed-token', 'instance.create');
+    expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith(
+      'signed-token',
+      'instance.create'
+    );
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
     expect(state.markAuthenticatedRegistryServiceRequest).toHaveBeenCalledWith(request);
   });
@@ -120,7 +139,8 @@ describe('iam-instance-registry/server', () => {
     const collectionRequest = new Request('https://studio.example.org/api/v1/iam/instances/audit');
     const detailRequest = new Request('https://studio.example.org/api/v1/iam/instances/demo/audit');
 
-    const collectionResponse = await instanceRegistryHandlers.getInstanceAuditRun(collectionRequest);
+    const collectionResponse =
+      await instanceRegistryHandlers.getInstanceAuditRun(collectionRequest);
     const detailResponse = await instanceRegistryHandlers.getSingleInstanceAuditRun(detailRequest);
 
     expect(collectionResponse.status).toBe(200);
@@ -140,9 +160,11 @@ describe('iam-instance-registry/server', () => {
   it('exposes every registry operation through the session-authenticated wrapper', async () => {
     const { instanceRegistryHandlers } = await import('./server.js');
     const handlers = Object.values(instanceRegistryHandlers);
-    const responses = await Promise.all(handlers.map((handler) =>
-      handler(new Request('https://studio.example.org/api/v1/iam/instances/demo'))
-    ));
+    const responses = await Promise.all(
+      handlers.map((handler) =>
+        handler(new Request('https://studio.example.org/api/v1/iam/instances/demo'))
+      )
+    );
 
     expect(responses).toHaveLength(23);
     expect(responses.every((response) => response.status === 200)).toBe(true);

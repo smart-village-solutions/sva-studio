@@ -8,6 +8,7 @@ describe('logging runtime config', () => {
     process.env = { ...originalEnv };
     delete process.env.ENABLE_OTEL;
     delete process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS;
+    delete process.env.SVA_SERVER_LOG_LEVEL;
     const runtime = await import('../src/logger/logging-runtime.server');
     runtime.resetLoggingRuntimeForTests();
   });
@@ -28,6 +29,7 @@ describe('logging runtime config', () => {
       otelRequested: true,
       otelRequired: false,
       mode: 'otel_to_loki',
+      levelOverride: null,
     });
   });
 
@@ -43,6 +45,7 @@ describe('logging runtime config', () => {
       otelRequested: false,
       otelRequired: false,
       mode: 'console_to_loki',
+      levelOverride: null,
     });
   });
 
@@ -59,6 +62,7 @@ describe('logging runtime config', () => {
       otelRequested: false,
       otelRequired: false,
       mode: 'console_to_loki',
+      levelOverride: null,
     });
   });
 
@@ -75,6 +79,7 @@ describe('logging runtime config', () => {
       otelRequested: false,
       otelRequired: false,
       mode: 'degraded',
+      levelOverride: null,
     });
   });
 
@@ -90,7 +95,26 @@ describe('logging runtime config', () => {
       otelRequested: true,
       otelRequired: true,
       mode: 'otel_to_loki',
+      levelOverride: null,
     });
+  });
+
+  it('enables an explicit debug threshold in development', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.SVA_SERVER_LOG_LEVEL = 'debug';
+
+    const { getLoggingRuntimeConfig } = await import('../src/logger/logging-runtime.server');
+
+    expect(getLoggingRuntimeConfig().levelOverride).toBe('debug');
+  });
+
+  it('clamps a requested production debug threshold to info', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.SVA_SERVER_LOG_LEVEL = 'debug';
+
+    const { getLoggingRuntimeConfig } = await import('../src/logger/logging-runtime.server');
+
+    expect(getLoggingRuntimeConfig().levelOverride).toBe('info');
   });
 
   it('starts in pending state before OTEL bootstrap finishes', async () => {

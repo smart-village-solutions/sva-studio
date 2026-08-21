@@ -6,7 +6,7 @@ import {
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { errorJson, json } from './content-route-core.js';
-import { SvaMainserverError } from './errors.js';
+import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { listSvaMainserverCategories } from './service.js';
 
@@ -72,7 +72,7 @@ const dispatchAuthenticated = async (
     }
 
     const data = await listSvaMainserverCategories(actor);
-    logger.info('Mainserver categories route succeeded', {
+    logger.debug('Mainserver categories route succeeded', {
       operation: 'mainserver_categories_list',
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,
@@ -84,7 +84,8 @@ const dispatchAuthenticated = async (
     });
     return json({ data });
   } catch (error) {
-    logger.warn('Mainserver categories route failed', {
+    const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
+    logFailure('Mainserver categories route failed', {
       operation: 'mainserver_categories_request',
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,

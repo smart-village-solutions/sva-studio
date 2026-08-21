@@ -27,7 +27,7 @@ import {
 } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
 import { parseAddress, parseCategories, parseWebUrl } from './content-route-parsers.js';
-import { SvaMainserverError } from './errors.js';
+import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
@@ -700,7 +700,8 @@ const createNewsItemMutationHandler = <TInput>(input: {
     parse: ({ request }) => input.parse(request),
     execute: async ({ actor, input: parsed }) => input.execute(actor, parsed),
     mapError: (error, state) => {
-      logger.warn('Mainserver News route failed', {
+      const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
+      logFailure('Mainserver News route failed', {
         operation,
         request_id: state.requestId,
         trace_id: getWorkspaceContext().traceId,
@@ -954,7 +955,8 @@ const handleCollectionCreate = async (
       }
     },
     mapError: (error) => {
-      logger.warn('Mainserver News route failed', {
+      const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
+      logFailure('Mainserver News route failed', {
         operation: 'mainserver_news_create',
         request_id: requestId,
         trace_id: getWorkspaceContext().traceId,
@@ -1343,7 +1345,8 @@ const dispatchAuthenticated = async (
 ) => {
   const workspaceContext = getWorkspaceContext();
   const logSuccess = (operation: string, newsId?: string) => {
-    logger.info('Mainserver News route succeeded', {
+    const logSuccessEvent = request.method === 'GET' ? logger.debug : logger.info;
+    logSuccessEvent('Mainserver News route succeeded', {
       operation,
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,
@@ -1395,7 +1398,8 @@ const dispatchAuthenticated = async (
       'Methode wird für Mainserver-News nicht unterstützt.'
     );
   } catch (error) {
-    logger.warn('Mainserver News route failed', {
+    const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
+    logFailure('Mainserver News route failed', {
       operation: 'mainserver_news_request',
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,

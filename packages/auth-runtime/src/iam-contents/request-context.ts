@@ -5,7 +5,12 @@ import {
 } from '@sva/core';
 import { createPermissionDenialDetailsForAction } from '@sva/core';
 import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
-import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
+import {
+  getWorkspaceContext,
+  toJsonErrorResponse,
+  toSafeLogPath,
+  withRequestContext,
+} from '@sva/server-runtime';
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
@@ -227,7 +232,7 @@ export const withAuthenticatedContentHandler = (
       const requestContext = getWorkspaceContext();
       accountLogger.error('IAM content request failed unexpectedly', {
         operation: 'iam_content_request',
-        endpoint: request.url,
+        endpoint: toSafeLogPath(request.url),
         request_id: requestContext.requestId,
         trace_id: requestContext.traceId,
         error_type: error instanceof Error ? error.constructor.name : typeof error,

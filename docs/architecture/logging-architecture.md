@@ -120,17 +120,25 @@ Container stdout/stderr
 - `component`: Herkunft des Logs (z. B. `auth`, `bootstrap`).
 - `environment`: `development|test|production`.
 - `workspace_id`: Mandantenkontext, wenn vorhanden.
+- `request_id`: für jedes Ereignis innerhalb einer HTTP-Request-Grenze; bei fehlendem gültigem Eingangswert lokal erzeugt und ausschließlich diagnostisch verwendet.
+- `trace_id`: optional und nur aus einem gültigen eingehenden oder aktiven Trace-Kontext.
 
 ### Kontexteinbettung
 
-Der Logger injiziert Kontextdaten in `context`:
+Der Logger injiziert Kontextdaten in `context` beziehungsweise den strukturierten Log-Body:
 
 - `request_id`
 - `user_id`
 - `session_id`
+- `trace_id`
+- bei Hintergrundarbeit `job_id` oder `execution_id`
 
 Diese werden als Kontext-Payload gefuehrt, nicht als frei skalierende Labels.
 Pseudonyme technische IDs bleiben dennoch personenbeziehbar und duerfen nur bei begruendeter Betriebsnotwendigkeit erscheinen.
+
+Die HTTP-Kontextgrenze beginnt im Server-Entry vor allen fachlichen Dispatchern. Verschachtelte Request-Grenzen erhalten die bereits erzeugte Korrelation. Unabhängige Worker- und Bootstrap-Arbeit wird mit `runWithoutWorkspaceContext(...)` explizit gelöst.
+
+Sensible Schlüssel werden vor der Redaction hinsichtlich Groß-/Kleinschreibung sowie `-`, `_` und `.` normalisiert. Account-, Actor-, Subject-, User-, Session- und Credential-Aliase sowie identitätshaltige Verbundwerte werden redigiert. Für Routen ist ausschließlich ein query-freier Pfad zulässig; Provider-Freitext und vollständige URLs sind ausgeschlossen.
 
 ### Severity Mapping
 
@@ -222,6 +230,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 - OTEL wird standardmäßig initialisiert, aber nur bei erfolgreichem SDK-Start als aktiver Transport zugeschaltet.
 - OTEL kann fuer lokale Entwicklungslaeufe explizit via `ENABLE_OTEL=false|0` deaktiviert werden.
 - Lokale Console-Diagnose folgt denselben Redaction-Regeln wie OTEL; Development ist kein Privacy-Sonderfall.
+- Der effektive Server-Schwellwert ist standardmäßig `info`. `SVA_SERVER_LOG_LEVEL=debug` aktiviert den expliziten Diagnosemodus; `warn` und `error` können den Schwellwert ebenfalls weiter einschränken.
 
 ### Production
 
@@ -229,6 +238,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 - OTEL ist verpflichtend aktiv.
 - Strukturiertes Logging und Export ueber Collector verpflichtend.
 - Graceful Shutdown mit `forceFlush` + `sdk.shutdown()`.
+- `debug` wird durch `SVA_SERVER_LOG_LEVEL` nicht für Production geöffnet; der Mindestschwellwert bleibt `info`.
 
 ## Konfiguration
 
@@ -238,6 +248,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 - `ENABLE_OTEL`
 - `OTEL_SERVICE_NAME`
 - `OTEL_EXPORTER_OTLP_ENDPOINT`
+- `SVA_SERVER_LOG_LEVEL` (`debug|info|warn|error`; `debug` nur in Development wirksam)
 
 ### Lokale Standardports
 
@@ -257,6 +268,8 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 4. Keine PII in Labels schreiben.
 5. Keine tokenhaltigen URLs loggen; stattdessen sichere Summary-Felder verwenden.
 6. Bei neuen Services `component` stabil benennen (dash-case oder snake_case, konsistent).
+7. Je Fehlerkette genau eine kanonische Routengrenze wählen; innere Schichten klassifizieren und propagieren.
+8. Retry-, Recovery- und Sekundärereignisse mit eigenem stabilen Event-Code und begrenzter Wiederholung versehen.
 
 ### Don't
 

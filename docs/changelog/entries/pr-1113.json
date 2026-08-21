@@ -1,0 +1,4 @@
+{
+  "prNumber": 1113,
+  "body": "Push-Benachrichtigungen werden nur noch beim sofortigen Veröffentlichen einer Nachricht versendet.\n\n- Entwürfe lösen beim Speichern keine Push-Benachrichtigung mehr aus.\n- Für einen zukünftigen Zeitpunkt geplante Nachrichten versenden nicht mehr vorzeitig eine Push-Benachrichtigung.\n- Die Push-Auswahl ist nur verfügbar, wenn die Nachricht sofort veröffentlicht wird."
+}

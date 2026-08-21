@@ -24,4 +24,4 @@
 - [x] 4.2 Fokussierte Unit-, Type-, Lint-, Server-Runtime- und Coverage-Gates ausführen
 - [x] 4.3 Fallow New-only und Inspect ohne neue Complexity-, Dead-Code- oder Duplikationsbefunde bestätigen
 - [ ] 4.4 Sonar-Befunde für den exakten finalen Stand verifizieren
-- [ ] 4.5 `openspec validate refactor-iam-content-list-projection --strict` und `pnpm test:pr` ausführen
+- [x] 4.5 `openspec validate refactor-iam-content-list-projection --strict` und `pnpm test:pr` ausführen

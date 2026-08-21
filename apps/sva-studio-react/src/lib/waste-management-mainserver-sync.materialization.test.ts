@@ -1077,7 +1077,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         pickupDate: '2026-01-05',
         wasteType: 'Restmüll',
         note: 'Schnee-Ersatztermin',
-        key: '2026-01-05::restmüll::hauptstraße::musterhausen::schnee-ersatztermin',
+        key: '2026-01-05::restmüll::hauptstraße::::musterhausen::schnee-ersatztermin',
       }),
     ]);
   });

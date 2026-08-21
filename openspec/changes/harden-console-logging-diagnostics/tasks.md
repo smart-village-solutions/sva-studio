@@ -43,7 +43,7 @@
 ## 6. Dokumentation und Validierung
 
 - [x] 6.1 `docs/architecture/06-runtime-view.md`, `08-cross-cutting-concepts.md`, `10-quality-requirements.md` und `docs/architecture/logging-architecture.md` auf verpflichtende Request-ID, optionale echte Trace-ID, Background-Detachment, zentralen Debug-Schwellwert und transportneutralen Diagnosevertrag aktualisieren, ohne den OTEL-Zielvertrag umzudefinieren
-- [ ] 6.2 Einen deutschen Changelog-Eintrag unter `docs/changelog/entries/` ergänzen und OTEL sowie Browser-Tracking ausdrücklich als separate Folgearbeit kennzeichnen
+- [x] 6.2 Einen deutschen Changelog-Eintrag unter `docs/changelog/entries/` ergänzen und OTEL sowie Browser-Tracking ausdrücklich als separate Folgearbeit kennzeichnen
 - [x] 6.3 Vor breiten lokalen Runs den affected Unit-Scope mit `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` messen
 - [x] 6.4 Nach jedem Änderungsblock die kleinsten relevanten Nx-Unit-/Type-Gates und `pnpm check:server-runtime` ausführen; auf bekannt rotem Teststand nicht weiterimplementieren
 - [x] 6.5 Abschließend `pnpm check:file-placement`, `openspec validate harden-console-logging-diagnostics --strict` und `git diff --check` ausführen

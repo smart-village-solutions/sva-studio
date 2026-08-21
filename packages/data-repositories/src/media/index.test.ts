@@ -199,6 +199,7 @@ describe('media repository', () => {
         offset: 20,
       })
     ).resolves.toHaveLength(1);
+    expect(statements[1]?.text).toContain('OR lower(storage_key) LIKE $2');
     expect(statements[1]?.values).toEqual(['tenant-a', '%rathaus%', 'public', 10, 20]);
   });
 
@@ -247,6 +248,22 @@ describe('media repository', () => {
 
     expect(statements[0]?.text).toContain('ORDER BY updated_at DESC NULLS LAST');
     expect(statements[0]?.text).toContain('created_at DESC');
+  });
+
+  it('uses storage-key keyset pagination for cursor listings', async () => {
+    const { executor, statements } = createQueuedExecutor([[assetRow]]);
+    const repository = createMediaRepository(executor);
+
+    await repository.listAssets({
+      instanceId: 'tenant-a',
+      afterStorageKey: 'tenant-a/originals/asset-0.jpg',
+      order: 'storageKeyAsc',
+      limit: 26,
+    });
+
+    expect(statements[0]?.text).toContain('storage_key > $2');
+    expect(statements[0]?.text).toContain('ORDER BY storage_key ASC');
+    expect(statements[0]?.values).toEqual(['tenant-a', 'tenant-a/originals/asset-0.jpg', 26, 0]);
   });
 
   it('counts matching assets without pagination clauses', async () => {
@@ -569,6 +586,45 @@ describe('media repository', () => {
       maxBytes: 8192,
       wouldExceed: true,
     });
+  });
+
+  it('claims pending upload sessions atomically and applies actual usage within quota', async () => {
+    const claimedSessionRow = { ...uploadSessionRow, status: 'uploaded' };
+    const { executor, statements } = createQueuedExecutor([
+      [claimedSessionRow],
+      [],
+      [{ claimed: true }],
+      [{ claimed: false }],
+    ]);
+    const repository = createMediaRepository(executor);
+
+    await expect(repository.claimUploadSession('tenant-a', 'upload-1')).resolves.toEqual(
+      expect.objectContaining({ id: 'upload-1', status: 'uploaded' })
+    );
+    await expect(repository.claimUploadSession('tenant-a', 'upload-1')).resolves.toBeNull();
+    await expect(
+      repository.tryApplyStorageUsageWithinQuota({
+        instanceId: 'tenant-a',
+        totalBytes: 2048,
+        assetCount: 1,
+      })
+    ).resolves.toBe(true);
+    await expect(
+      repository.tryApplyStorageUsageWithinQuota({
+        instanceId: 'tenant-a',
+        totalBytes: 4096,
+        assetCount: 1,
+      })
+    ).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("AND status = 'pending'");
+    expect(statements[0]?.text).toContain('expires_at > NOW()');
+    expect(statements[0]?.values).toEqual(['tenant-a', 'upload-1']);
+    expect(statements[2]?.text).toContain('ON CONFLICT (instance_id) DO UPDATE');
+    expect(statements[2]?.text).toContain(
+      'iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes <='
+    );
+    expect(statements[2]?.values).toEqual(['tenant-a', 2048, 1]);
   });
 
   it('handles missing quotas, missing usage rows, and empty reference replacements', async () => {

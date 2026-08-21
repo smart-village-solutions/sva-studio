@@ -29,6 +29,34 @@ const createUploadSession = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const createFinalizeUpload = (service: {
+  upsertVariant: ReturnType<typeof vi.fn>;
+  upsertAsset: ReturnType<typeof vi.fn>;
+  upsertUploadSession: ReturnType<typeof vi.fn>;
+  applyStorageUsageDelta: ReturnType<typeof vi.fn>;
+}) =>
+  vi.fn(
+    async (input: {
+      instanceId: string;
+      asset: Record<string, unknown>;
+      uploadSession: Record<string, unknown>;
+      variants: readonly Record<string, unknown>[];
+      totalBytes: number;
+    }) => {
+      for (const variant of input.variants) {
+        await service.upsertVariant(input.instanceId, variant);
+      }
+      await service.upsertAsset(input.asset);
+      await service.upsertUploadSession(input.uploadSession);
+      await service.applyStorageUsageDelta({
+        instanceId: input.instanceId,
+        totalBytesDelta: input.totalBytes,
+        assetCountDelta: 1,
+      });
+      return true;
+    }
+  );
+
 describe('media upload processing service', () => {
   it('validates an uploaded image, extracts metadata and persists eager variants', async () => {
     const originalBuffer = await sharp({
@@ -43,7 +71,9 @@ describe('media upload processing service', () => {
       .toBuffer();
 
     const service = {
-      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getUploadSessionById: vi.fn(async () =>
+        createUploadSession({ byteSize: originalBuffer.byteLength })
+      ),
       getAssetById: vi.fn(async () =>
         createAsset({
           byteSize: originalBuffer.byteLength,
@@ -79,6 +109,7 @@ describe('media upload processing service', () => {
     const processor = createMediaUploadProcessingService({
       service: service as never,
       storagePort: storagePort as never,
+      finalizeUpload: createFinalizeUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -126,6 +157,77 @@ describe('media upload processing service', () => {
     });
   });
 
+  it('removes generated objects and fails the upload when the actual bytes exceed quota', async () => {
+    const originalBuffer = await sharp({
+      create: {
+        width: 800,
+        height: 600,
+        channels: 3,
+        background: { r: 10, g: 20, b: 30 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const service = {
+      getUploadSessionById: vi.fn(async () =>
+        createUploadSession({ status: 'uploaded', byteSize: originalBuffer.byteLength })
+      ),
+      getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+    };
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: originalBuffer,
+        byteSize: originalBuffer.byteLength,
+        contentType: 'image/png',
+      })),
+      writeObject: vi.fn(async ({ body }: { body: Uint8Array }) => ({
+        byteSize: body.byteLength,
+      })),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const finalizeUpload = vi.fn(async () => false);
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      finalizeUpload,
+      createId: vi
+        .fn()
+        .mockReturnValueOnce('variant-1')
+        .mockReturnValueOnce('variant-2')
+        .mockReturnValueOnce('variant-3'),
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: 'storage_quota_exceeded',
+      status: 409,
+    });
+
+    expect(finalizeUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        totalBytes: expect.any(Number),
+        variants: expect.arrayContaining([
+          expect.objectContaining({ storageKey: 'tenant-a/variants/asset-1/thumbnail.webp' }),
+        ]),
+      })
+    );
+    expect(storagePort.deleteObject).toHaveBeenCalledTimes(4);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ uploadStatus: 'failed', processingStatus: 'failed' })
+    );
+    expect(service.upsertUploadSession).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed' })
+    );
+  });
+
   it('applies crop metadata to eager variants and avoids enlarging smaller sources', async () => {
     const originalBuffer = await sharp({
       create: {
@@ -140,7 +242,9 @@ describe('media upload processing service', () => {
 
     const writtenVariants: Array<{ storageKey: string; body: Uint8Array }> = [];
     const service = {
-      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getUploadSessionById: vi.fn(async () =>
+        createUploadSession({ byteSize: originalBuffer.byteLength })
+      ),
       getAssetById: vi.fn(async () =>
         createAsset({
           byteSize: originalBuffer.byteLength,
@@ -180,6 +284,7 @@ describe('media upload processing service', () => {
     const processor = createMediaUploadProcessingService({
       service: service as never,
       storagePort: storagePort as never,
+      finalizeUpload: createFinalizeUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -195,8 +300,12 @@ describe('media upload processing service', () => {
     expect(result.ok).toBe(true);
     expect(writtenVariants).toHaveLength(3);
 
-    const thumbnailVariant = writtenVariants.find((entry) => entry.storageKey.endsWith('/thumbnail.webp'));
-    const teaserVariant = writtenVariants.find((entry) => entry.storageKey.endsWith('/teaser.webp'));
+    const thumbnailVariant = writtenVariants.find((entry) =>
+      entry.storageKey.endsWith('/thumbnail.webp')
+    );
+    const teaserVariant = writtenVariants.find((entry) =>
+      entry.storageKey.endsWith('/teaser.webp')
+    );
     const heroVariant = writtenVariants.find((entry) => entry.storageKey.endsWith('/hero.webp'));
 
     expect(thumbnailVariant).toBeTruthy();
@@ -242,6 +351,7 @@ describe('media upload processing service', () => {
     const processor = createMediaUploadProcessingService({
       service: service as never,
       storagePort: storagePort as never,
+      finalizeUpload: createFinalizeUpload(service),
       createId: () => 'variant-1',
     });
 
@@ -293,7 +403,9 @@ describe('media upload processing service', () => {
       .toBuffer();
 
     const service = {
-      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getUploadSessionById: vi.fn(async () =>
+        createUploadSession({ byteSize: originalBuffer.byteLength })
+      ),
       getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
       upsertAsset: vi.fn(async () => undefined),
       upsertUploadSession: vi.fn(async () => undefined),
@@ -321,7 +433,12 @@ describe('media upload processing service', () => {
     const processor = createMediaUploadProcessingService({
       service: service as never,
       storagePort: storagePort as never,
-      createId: vi.fn().mockReturnValueOnce('variant-1').mockReturnValueOnce('variant-2').mockReturnValueOnce('variant-3'),
+      finalizeUpload: createFinalizeUpload(service),
+      createId: vi
+        .fn()
+        .mockReturnValueOnce('variant-1')
+        .mockReturnValueOnce('variant-2')
+        .mockReturnValueOnce('variant-3'),
     });
 
     await expect(
@@ -335,7 +452,7 @@ describe('media upload processing service', () => {
       instanceId: 'tenant-a',
       storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
     });
-    expect(service.deleteVariantsByAssetId).toHaveBeenCalledWith('tenant-a', 'asset-1');
+    expect(service.deleteVariantsByAssetId).not.toHaveBeenCalled();
     expect(service.upsertAsset).not.toHaveBeenCalledWith(
       expect.objectContaining({
         uploadStatus: 'failed',
@@ -376,6 +493,7 @@ describe('media upload processing service', () => {
     const processor = createMediaUploadProcessingService({
       service: service as never,
       storagePort: storagePort as never,
+      finalizeUpload: createFinalizeUpload(service),
       createId: () => 'variant-1',
     });
 
@@ -423,7 +541,9 @@ describe('media upload processing service', () => {
 
     const writtenVariants: Array<{ storageKey: string; body: Uint8Array }> = [];
     const service = {
-      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getUploadSessionById: vi.fn(async () =>
+        createUploadSession({ byteSize: originalBuffer.byteLength })
+      ),
       getAssetById: vi.fn(async () =>
         createAsset({
           byteSize: originalBuffer.byteLength,
@@ -462,6 +582,7 @@ describe('media upload processing service', () => {
     const processor = createMediaUploadProcessingService({
       service: service as never,
       storagePort: storagePort as never,
+      finalizeUpload: createFinalizeUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -475,7 +596,9 @@ describe('media upload processing service', () => {
     });
 
     expect(result.ok).toBe(true);
-    const thumbnailVariant = writtenVariants.find((entry) => entry.storageKey.endsWith('/thumbnail.webp'));
+    const thumbnailVariant = writtenVariants.find((entry) =>
+      entry.storageKey.endsWith('/thumbnail.webp')
+    );
     expect(thumbnailVariant).toBeTruthy();
     const { data, info } = await sharp(thumbnailVariant?.body)
       .removeAlpha()

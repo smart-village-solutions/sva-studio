@@ -43,13 +43,16 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 ### Medien-Upload und Referenzierung
 
 1. Host-UI unter `/admin/media` initialisiert einen Upload.
-2. `@sva/auth-runtime` prüft Instanzkontext, IAM-Rechte und Speicherkontingent.
+2. `@sva/auth-runtime` prüft Instanzkontext und IAM-Rechte und legt Asset plus Upload-Session an. Eine vorläufige Größenangabe ist keine harte Quotenentscheidung.
 3. Der interne Storage-Port erzeugt eine signierte Upload-Möglichkeit gegen den S3-/MinIO-kompatiblen Objektspeicher.
-4. Nach Upload-Abschluss validiert der Host den Inhalt, extrahiert Metadaten und erzeugt häufige Varianten synchron.
-5. Asset-, Varianten-, Session- und Usage-Daten werden über `@sva/data-repositories` persistiert.
-6. Fachmodule speichern weder Storage-Artefakte noch kurzlebige Preview-/presigned URLs. Bei Mainserver-Inhalten bleibt die persistierbare Delivery-URL Teil des fachlichen Snapshots; zusätzlich hält der Host die Asset-Beziehung als geordnete `gallery_item`-Referenz.
-7. Der Editor speichert zuerst den Fachinhalt und erhält dadurch die stabile Ziel-ID. Erst danach ersetzt er die Referenzliste idempotent.
-8. Scheitert nur der Referenzschritt, bleibt der Fachinhalt gespeichert. Die UI weist den Teilfehler aus und wiederholt ausschließlich das Referenz-Replacement.
+4. Beim Abschluss beansprucht ein atomares `pending -> uploaded` genau einen synchronen Verarbeiter. Wiederholungen eines bereits validierten Uploads bleiben idempotent; parallele laufende Abschlüsse erhalten einen Konflikt.
+5. S3-Lesen, Inhaltsvalidierung, Metadatenextraktion, Sharp-Verarbeitung und S3-Schreiben laufen ohne offene Datenbanktransaktion.
+6. Eine kurze Finalisierungstransaktion prüft die tatsächlichen Bytes atomar gegen die Quote und persistiert Varianten, Asset-, Session- und Usage-Zustand gemeinsam. Bei Quotenüberschreitung entfernt der Host Original und erzeugte Varianten kompensierend.
+7. Fachmodule speichern weder Storage-Artefakte noch kurzlebige Preview-/presigned URLs. Bei Mainserver-Inhalten bleibt die persistierbare Delivery-URL Teil des fachlichen Snapshots; zusätzlich hält der Host die Asset-Beziehung als geordnete `gallery_item`-Referenz.
+8. Der Editor speichert zuerst den Fachinhalt und erhält dadurch die stabile Ziel-ID. Erst danach ersetzt er die Referenzliste idempotent.
+9. Scheitert nur der Referenzschritt, bleibt der Fachinhalt gespeichert. Die UI weist den Teilfehler aus und wiederholt ausschließlich das Referenz-Replacement.
+
+Die Medienbibliothek liest registrierte Datenbank-Assets und Objekte aus genau einem extern pro Tenant isolierten Bucket. Beide Quellen werden aufsteigend nach Storage-Key ab einem filtergebundenen, versionierten Cursor gelesen. Registrierte Assets gewinnen bei gleichen Storage-Keys; eine exakte Gesamtzahl wird bewusst nicht ermittelt.
 
 Für Uploads aus Content-Editoren gilt ergänzend:
 

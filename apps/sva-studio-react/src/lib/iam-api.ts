@@ -433,9 +433,19 @@ export type IamMediaDelivery = Readonly<{
 export type MediaListQuery = {
   readonly search?: string;
   readonly visibility?: MediaVisibility | 'all';
-  readonly page?: number;
-  readonly pageSize?: number;
+  readonly cursor?: string;
+  readonly limit?: number;
 };
+
+export type MediaCursorListResponse<T> = Readonly<{
+  data: readonly T[];
+  pagination: Readonly<{
+    limit: number;
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }>;
+  requestId?: string;
+}>;
 
 export const isRegisteredMediaAsset = (asset: IamMediaAsset): asset is IamRegisteredMediaAsset =>
   'id' in asset;
@@ -799,7 +809,7 @@ export const deleteContent = async (contentId: string): Promise<ApiItemResponse<
 
 export const listMedia = async (
   query: MediaListQuery = {}
-): Promise<ApiListResponse<IamMediaAsset>> => {
+): Promise<MediaCursorListResponse<IamMediaAsset>> => {
   const params = new URLSearchParams();
 
   if (query.search) {
@@ -808,15 +818,15 @@ export const listMedia = async (
   if (query.visibility && query.visibility !== 'all') {
     params.set('visibility', query.visibility);
   }
-  if (typeof query.page === 'number') {
-    params.set('page', String(query.page));
+  if (query.cursor) {
+    params.set('cursor', query.cursor);
   }
-  if (typeof query.pageSize === 'number') {
-    params.set('pageSize', String(query.pageSize));
+  if (typeof query.limit === 'number') {
+    params.set('limit', String(query.limit));
   }
 
   const suffix = params.toString();
-  return requestJson<ApiListResponse<IamMediaAsset>>(
+  return requestJson<MediaCursorListResponse<IamMediaAsset>>(
     `/api/v1/iam/media${suffix ? `?${suffix}` : ''}`
   );
 };

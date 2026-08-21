@@ -60,6 +60,15 @@ const createService = () => ({
     status: 'pending',
   })),
   getUploadSessionByAssetId: vi.fn(async () => null),
+  claimUploadSession: vi.fn(async (_instanceId: string, uploadSessionId: string) => ({
+    id: uploadSessionId,
+    instanceId: 'tenant-a',
+    assetId: 'asset-1',
+    storageKey: 'tenant-a/originals/asset-1.jpg',
+    mimeType: 'image/jpeg',
+    byteSize: 1234,
+    status: 'uploaded',
+  })),
   getStorageUsage: vi.fn(async () => null),
   listVariantsByAssetId: vi.fn(async () => [
     {
@@ -89,6 +98,7 @@ const createService = () => ({
   upsertVariant: vi.fn(async () => undefined),
   upsertStorageUsage: vi.fn(async () => undefined),
   applyStorageUsageDelta: vi.fn(async () => undefined),
+  tryApplyStorageUsageWithinQuota: vi.fn(async () => true),
   deleteVariantsByAssetId: vi.fn(async () => undefined),
   deleteAsset: vi.fn(async () => undefined),
   replaceReferences: vi.fn(async () => undefined),
@@ -138,7 +148,7 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=1&pageSize=1'),
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&limit=1'),
       createContext()
     );
 
@@ -161,7 +171,7 @@ describe('media http handlers', () => {
           previewUrl: 'https://cdn.example.test/tenant-a/originals/asset-1.jpg',
         },
       ],
-      pagination: { page: 1, pageSize: 1, total: 1 },
+      pagination: { limit: 1, nextCursor: null, hasNextPage: false },
     });
     expect(storagePort.resolveDelivery).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
@@ -215,7 +225,7 @@ describe('media http handlers', () => {
 
     const response = await handlers.listMedia(
       new Request(
-        'http://localhost/api/v1/iam/media?instanceId=tenant-a&page=1&pageSize=1&visibility=public'
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&limit=1&visibility=public'
       ),
       createContext()
     );
@@ -227,7 +237,7 @@ describe('media http handlers', () => {
           previewUrl: 'https://signed.example.test/asset-1.jpg?expires=900',
         }),
       ],
-      pagination: { page: 1, pageSize: 1, total: 1 },
+      pagination: { limit: 1, nextCursor: null, hasNextPage: false },
     });
   });
 
@@ -289,51 +299,40 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=2&pageSize=2'),
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&limit=2'),
       createContext()
     );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      data: [
-        {
-          source: 'bucket',
-          registrationStatus: 'unregistered',
-          storageKey: 'tenant-a/uploads/2026/06/photo-old.jpg',
-          fileName: 'photo-old.jpg',
-          folderPath: 'uploads/2026/06',
-          relativePath: 'uploads/2026/06/photo-old.jpg',
-          byteSize: 7,
-          updatedAt: '2026-06-11T07:00:00.000Z',
-          lastModified: '2026-06-11T07:00:00.000Z',
-          previewUrl: null,
-        },
-      ],
-      pagination: { page: 2, pageSize: 2, total: 3 },
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: 'asset-1' }),
+        expect.objectContaining({ storageKey: 'tenant-a/uploads/2026/06/photo-new.jpg' }),
+      ]),
+      pagination: {
+        limit: 2,
+        nextCursor: expect.any(String),
+        hasNextPage: true,
+      },
     });
     expect(service.listAssets).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      search: undefined,
       visibility: undefined,
-      limit: 1,
+      afterStorageKey: undefined,
+      order: 'storageKeyAsc',
+      limit: 3,
       offset: 0,
     });
-    expect(service.countAssets).toHaveBeenCalledWith({
+    expect(storagePort.listObjects).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
-      visibility: undefined,
-    });
-    expect(storagePort.listObjects).toHaveBeenNthCalledWith(1, {
-      instanceId: 'tenant-a',
-      limit: 4,
-      cursor: undefined,
-    });
-    expect(storagePort.listObjects).toHaveBeenNthCalledWith(2, {
-      instanceId: 'tenant-a',
-      limit: 4,
-      cursor: 'cursor-1',
+      limit: 6,
+      prefix: undefined,
+      startAfter: undefined,
     });
   });
 
-  it('keeps later combined pages correct and returns the exact total after traversing the full bucket', async () => {
+  it('limits the first cursor page without traversing the full bucket', async () => {
     const service = createService();
     const registeredAssets = Array.from({ length: 9 }, (_, index) => {
       const assetNumber = index + 1;
@@ -415,60 +414,37 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=5&pageSize=2'),
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&limit=2'),
       createContext()
     );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: [
-        {
-          id: 'asset-8',
-          instanceId: 'tenant-a',
-          storageKey: 'tenant-a/originals/asset-8.jpg',
-          mediaType: 'image',
-          mimeType: 'image/jpeg',
-          byteSize: 108,
-          visibility: 'public',
-          uploadStatus: 'processed',
-          processingStatus: 'ready',
-          metadata: {},
-          technical: {},
-          updatedAt: '2026-06-11T11:00:00.000Z',
-        },
-        {
-          id: 'asset-9',
-          instanceId: 'tenant-a',
-          storageKey: 'tenant-a/originals/asset-9.jpg',
-          mediaType: 'image',
-          mimeType: 'image/jpeg',
-          byteSize: 109,
-          visibility: 'public',
-          uploadStatus: 'processed',
-          processingStatus: 'ready',
-          metadata: {},
-          technical: {},
-          updatedAt: '2026-06-11T10:00:00.000Z',
-        },
+        expect.objectContaining({ id: 'asset-1' }),
+        expect.objectContaining({ id: 'asset-2' }),
       ],
-      pagination: { page: 5, pageSize: 2, total: 12 },
+      pagination: {
+        limit: 2,
+        nextCursor: expect.any(String),
+        hasNextPage: true,
+      },
     });
     expect(service.listAssets).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       search: undefined,
       visibility: undefined,
-      limit: 9,
+      afterStorageKey: undefined,
+      order: 'storageKeyAsc',
+      limit: 3,
       offset: 0,
     });
-    expect(storagePort.listObjects).toHaveBeenNthCalledWith(1, {
+    expect(storagePort.listObjects).toHaveBeenCalledTimes(1);
+    expect(storagePort.listObjects).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
-      limit: 4,
-      cursor: undefined,
-    });
-    expect(storagePort.listObjects).toHaveBeenNthCalledWith(2, {
-      instanceId: 'tenant-a',
-      limit: 4,
-      cursor: 'cursor-1',
+      limit: 6,
+      prefix: undefined,
+      startAfter: undefined,
     });
   });
 
@@ -480,11 +456,6 @@ describe('media http handlers', () => {
     const storagePort = {
       listObjects: vi.fn(async () => ({
         items: [
-          {
-            storageKey: 'tenant-a/uploads/2026/06/photo.jpg',
-            byteSize: 12,
-            lastModified: '2026-06-11T09:00:00.000Z',
-          },
           {
             storageKey: 'tenant-a/invoices/2026/report.pdf',
             byteSize: 18,
@@ -510,9 +481,7 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request(
-        'http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices&page=1&pageSize=10'
-      ),
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices&limit=10'),
       createContext()
     );
 
@@ -532,11 +501,13 @@ describe('media http handlers', () => {
           previewUrl: null,
         },
       ],
-      pagination: { page: 1, pageSize: 10, total: 1 },
+      pagination: { limit: 10, nextCursor: null, hasNextPage: false },
     });
-    expect(service.countAssets).toHaveBeenCalledWith({
+    expect(storagePort.listObjects).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
-      visibility: undefined,
+      limit: 22,
+      prefix: 'invoices',
+      startAfter: undefined,
     });
   });
 
@@ -572,7 +543,9 @@ describe('media http handlers', () => {
         updatedAt: '2026-06-11T07:00:00.000Z',
       },
     ] as const;
-    service.listAssets = vi.fn(async ({ search }) => (search ? [] : [...registeredAssets]));
+    service.listAssets = vi.fn(async ({ search }) =>
+      search ? [registeredAssets[0]] : [...registeredAssets]
+    );
     service.countAssets = vi.fn(async () => 2);
 
     const storagePort = {
@@ -598,7 +571,7 @@ describe('media http handlers', () => {
 
     const response = await handlers.listMedia(
       new Request(
-        'http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices/2026&page=1&pageSize=10'
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices/2026&limit=10'
       ),
       createContext()
     );
@@ -621,16 +594,15 @@ describe('media http handlers', () => {
           updatedAt: '2026-06-11T08:00:00.000Z',
         },
       ],
-      pagination: { page: 1, pageSize: 10, total: 1 },
-    });
-    expect(service.countAssets).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      visibility: undefined,
+      pagination: { limit: 10, nextCursor: null, hasNextPage: false },
     });
     expect(service.listAssets).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      search: 'invoices/2026',
       visibility: undefined,
-      limit: 2,
+      afterStorageKey: undefined,
+      order: 'storageKeyAsc',
+      limit: 11,
       offset: 0,
     });
   });
@@ -684,7 +656,7 @@ describe('media http handlers', () => {
 
     const response = await handlers.listMedia(
       new Request(
-        'http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&page=1&pageSize=10'
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&limit=10'
       ),
       createContext()
     );
@@ -707,12 +679,16 @@ describe('media http handlers', () => {
           updatedAt: '2026-06-11T08:00:00.000Z',
         },
       ],
-      pagination: { page: 1, pageSize: 10, total: 1 },
+      pagination: { limit: 10, nextCursor: null, hasNextPage: false },
     });
-    expect(service.countAssets).toHaveBeenCalledWith({
+    expect(service.listAssets).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       search: undefined,
       visibility: 'public',
+      afterStorageKey: undefined,
+      order: 'storageKeyAsc',
+      limit: 11,
+      offset: 0,
     });
     expect(storagePort.listObjects).not.toHaveBeenCalled();
   });
@@ -751,7 +727,7 @@ describe('media http handlers', () => {
 
     const response = await handlers.listMedia(
       new Request(
-        'http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&page=1&pageSize=10'
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&limit=10'
       ),
       createContext()
     );
@@ -774,7 +750,7 @@ describe('media http handlers', () => {
           updatedAt: '2026-06-11T08:00:00.000Z',
         },
       ],
-      pagination: { page: 1, pageSize: 10, total: 1 },
+      pagination: { limit: 10, nextCursor: null, hasNextPage: false },
     });
   });
 
@@ -812,6 +788,33 @@ describe('media http handlers', () => {
       },
     });
     expect(service.countAssets).not.toHaveBeenCalled();
+    expect(storagePort.listObjects).not.toHaveBeenCalled();
+  });
+
+  it('rejects offset pagination and malformed cursors before querying either source', async () => {
+    const service = createService();
+    const storagePort = { listObjects: vi.fn() };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const offsetResponse = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=2&pageSize=25'),
+      createContext()
+    );
+    const cursorResponse = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&cursor=not-a-cursor'),
+      createContext()
+    );
+
+    expect(offsetResponse.status).toBe(400);
+    expect(cursorResponse.status).toBe(400);
+    expect(service.listAssets).not.toHaveBeenCalled();
     expect(storagePort.listObjects).not.toHaveBeenCalled();
   });
 
@@ -858,7 +861,7 @@ describe('media http handlers', () => {
 
     await expect(
       handlers.listMedia(
-        new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=1&pageSize=10'),
+        new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&limit=10'),
         createContext()
       )
     ).resolves.toMatchObject({
@@ -901,7 +904,7 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 800);
+    expect(service.wouldExceedStorageQuota).not.toHaveBeenCalled();
     expect(storagePort.prepareUpload).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       assetId: 'asset-1',
@@ -1370,12 +1373,16 @@ describe('media http handlers', () => {
     expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
   });
 
-  it('rejects registration of cross-instance managed storage keys', async () => {
+  it('accepts tenant-like prefixes inside the externally isolated tenant bucket', async () => {
     const service = createService();
 
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      storagePort: {
+        prepareUpload: vi.fn(),
+        resolveDelivery: vi.fn(),
+        statObject: vi.fn(async () => ({ byteSize: 42 })),
+      } as never,
       authorizeAction: allowAuthorization,
       createId: () => 'asset-registered',
       now: () => '2026-04-29T19:00:00.000Z',
@@ -1397,8 +1404,10 @@ describe('media http handlers', () => {
       createContext()
     );
 
-    expect(response.status).toBe(403);
-    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(response.status).toBe(201);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: 'tenant-b/originals/photo.jpg' })
+    );
   });
 
   it('rejects registration of generated variant objects', async () => {
@@ -1432,7 +1441,7 @@ describe('media http handlers', () => {
     expect(service.upsertAsset).not.toHaveBeenCalled();
   });
 
-  it('returns a conflict when the upload would exceed the storage quota', async () => {
+  it('defers the hard storage quota decision until upload completion', async () => {
     const service = createService();
     service.wouldExceedStorageQuota = vi.fn(async () => ({
       instanceId: 'tenant-a',
@@ -1444,7 +1453,15 @@ describe('media http handlers', () => {
 
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      storagePort: {
+        prepareUpload: vi.fn(async () => ({
+          uploadUrl: 'https://uploads.example.test/put',
+          method: 'PUT' as const,
+          storageKey: 'tenant-a/originals/id-1.jpg',
+          expiresAt: '2026-04-29T20:00:00.000Z',
+        })),
+        resolveDelivery: vi.fn(),
+      } as never,
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
@@ -1464,7 +1481,8 @@ describe('media http handlers', () => {
       createContext()
     );
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(201);
+    expect(service.wouldExceedStorageQuota).not.toHaveBeenCalled();
   });
 
   it('rejects upload initialization when the requested instance mismatches the session scope', async () => {
@@ -1861,6 +1879,54 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it('returns the completed result when another request wins the upload claim', async () => {
+    const service = createService();
+    service.getUploadSessionById = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: 'upload-1',
+        instanceId: 'tenant-a',
+        assetId: 'asset-1',
+        storageKey: 'tenant-a/originals/asset-1.jpg',
+        mimeType: 'image/jpeg',
+        byteSize: 1234,
+        status: 'pending',
+      })
+      .mockResolvedValueOnce({
+        id: 'upload-1',
+        instanceId: 'tenant-a',
+        assetId: 'asset-1',
+        storageKey: 'tenant-a/originals/asset-1.jpg',
+        mimeType: 'image/jpeg',
+        byteSize: 1234,
+        status: 'validated',
+      });
+    service.claimUploadSession = vi.fn(async () => null);
+    const storagePort = { readObject: vi.fn() };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.completeUpload(
+      new Request(
+        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        { method: 'POST' }
+      ),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { assetId: 'asset-1', uploadSessionId: 'upload-1', status: 'processed' },
+    });
+    expect(storagePort.readObject).not.toHaveBeenCalled();
   });
 
   it('passes the resolved request instance into media reference authorization when no session instance is active', async () => {

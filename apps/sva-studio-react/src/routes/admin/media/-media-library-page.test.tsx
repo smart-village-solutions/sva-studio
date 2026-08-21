@@ -183,9 +183,9 @@ describe('MediaLibraryPage', () => {
       isUsageLoading: false,
       isLoading: false,
       error: null,
-      page: 1,
-      pageSize: 36,
-      total: 7,
+      limit: 36,
+      nextCursor: null,
+      hasNextPage: false,
       refetch: vi.fn(),
     });
     useSingleFileMediaUploadMock.mockReturnValue({
@@ -469,9 +469,9 @@ describe('MediaLibraryPage', () => {
       isUsageLoading: false,
       isLoading: false,
       error: null,
-      page: 1,
-      pageSize: 36,
-      total: 0,
+      limit: 36,
+      nextCursor: null,
+      hasNextPage: false,
       refetch: vi.fn(),
     });
 
@@ -492,9 +492,9 @@ describe('MediaLibraryPage', () => {
       isUsageLoading: false,
       isLoading: false,
       error: { code: 'database_unavailable' },
-      page: 1,
-      pageSize: 36,
-      total: 0,
+      limit: 36,
+      nextCursor: null,
+      hasNextPage: false,
       refetch: vi.fn(),
     });
 
@@ -536,9 +536,9 @@ describe('MediaLibraryPage', () => {
       isUsageLoading: false,
       isLoading: false,
       error: null,
-      page: 1,
-      pageSize: 36,
-      total: 1,
+      limit: 36,
+      nextCursor: null,
+      hasNextPage: false,
       refetch: vi.fn(),
     });
 
@@ -577,9 +577,9 @@ describe('MediaLibraryPage', () => {
       isUsageLoading: true,
       isLoading: false,
       error: null,
-      page: 1,
-      pageSize: 36,
-      total: 1,
+      limit: 36,
+      nextCursor: null,
+      hasNextPage: false,
       refetch: vi.fn(),
     });
 
@@ -635,9 +635,9 @@ describe('MediaLibraryPage', () => {
       isUsageLoading: true,
       isLoading: false,
       error: null,
-      page: 1,
-      pageSize: 36,
-      total: 2,
+      limit: 36,
+      nextCursor: null,
+      hasNextPage: false,
       refetch: vi.fn(),
     });
 
@@ -676,21 +676,21 @@ describe('MediaLibraryPage', () => {
       isUsageLoading: false,
       isLoading: false,
       error: null,
-      page: 1,
-      pageSize: 36,
-      total: 60,
+      limit: 36,
+      nextCursor: 'cursor-next',
+      hasNextPage: true,
       refetch: vi.fn(),
     });
 
     render(<MediaLibraryPage />);
 
-    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 36 });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ cursor: undefined, limit: 36 });
 
     fireEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }));
-    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 36 });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ cursor: 'cursor-next', limit: 36 });
 
     fireEvent.change(screen.getByLabelText('Einträge pro Seite'), { target: { value: '72' } });
-    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 72 });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ cursor: undefined, limit: 72 });
   });
 
   it('hides all create entry points without media.create', () => {

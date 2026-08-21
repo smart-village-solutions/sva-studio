@@ -38,11 +38,11 @@ export const MediaLibraryPage = () => {
   });
   const canCreateMedia = createDecision.status === 'allowed';
   const navigate = useNavigate();
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(36);
-  const mediaApi = useMediaLibrary({ page, pageSize });
+  const [cursor, setCursor] = React.useState<string | undefined>();
+  const [cursorHistory, setCursorHistory] = React.useState<readonly (string | undefined)[]>([]);
+  const [limit, setLimit] = React.useState(36);
+  const mediaApi = useMediaLibrary({ cursor, limit });
   const singleFileUpload = useSingleFileMediaUpload();
-  const totalPages = Math.max(1, Math.ceil(mediaApi.total / Math.max(1, mediaApi.pageSize)));
 
   const handleFileSelected = React.useCallback(
     async (file: File) => {
@@ -58,12 +58,6 @@ export const MediaLibraryPage = () => {
     },
     [navigate, singleFileUpload]
   );
-
-  React.useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
 
   if (mediaApi.isLoading) {
     return (
@@ -107,14 +101,25 @@ export const MediaLibraryPage = () => {
         />
       ) : null}
       <MediaLibraryToolbar
-        page={mediaApi.page}
-        pageCount={totalPages}
-        pageSize={mediaApi.pageSize}
-        total={mediaApi.total}
-        onPageChange={setPage}
-        onPageSizeChange={(nextPageSize) => {
-          setPageSize(nextPageSize);
-          setPage(1);
+        page={cursorHistory.length + 1}
+        limit={mediaApi.limit}
+        itemCount={mediaApi.assets.length}
+        canGoBack={cursorHistory.length > 0}
+        canGoForward={mediaApi.hasNextPage && mediaApi.nextCursor !== null}
+        onPrevious={() => {
+          const previousCursor = cursorHistory.at(-1);
+          setCursorHistory((current) => current.slice(0, -1));
+          setCursor(previousCursor);
+        }}
+        onNext={() => {
+          if (!mediaApi.nextCursor) return;
+          setCursorHistory((current) => [...current, cursor]);
+          setCursor(mediaApi.nextCursor ?? undefined);
+        }}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setCursor(undefined);
+          setCursorHistory([]);
         }}
       />
       {mediaApi.assets.length > 0 ? (

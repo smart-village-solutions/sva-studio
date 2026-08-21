@@ -14,6 +14,7 @@ Der kanonische Einstieg liegt unter `/admin/media`.
 Dort stehen im MVP zur Verfügung:
 
 - Medienbibliothek mit Suche und Sichtbarkeitsfilter
+- cursorbasierte Navigation in stabiler Storage-Key-Reihenfolge; die Oberfläche zeigt bewusst keine teure Gesamtzahl an
 - direkter Single-File-Upload für neue Bilder aus der Bibliothek
 - Metadatenpflege für Titel, Alternativtext, Beschreibung, Copyright und Lizenz
 - Nutzungsanzeige (`Usage-Impact`) für aktive Referenzen
@@ -26,7 +27,7 @@ Der MVP verarbeitet zunächst Bilder.
 Ablauf:
 
 1. Datei in `/admin/media` auswählen.
-2. Studio initialisiert den Upload serverseitig und reserviert Asset-ID plus Upload-Session.
+2. Studio initialisiert den Upload serverseitig und legt Asset-ID plus Upload-Session an.
 3. Der Browser lädt die Datei direkt an die signierte Storage-URL.
 4. Studio schließt den Upload über den Host-Vertrag serverseitig ab.
 5. Nach Erfolg öffnet Studio direkt die Mediendetailansicht.
@@ -37,6 +38,9 @@ Beim Abschluss werden synchron ausgeführt:
 - Metadaten-Extraktion
 - Generierung häufiger Standardvarianten
 - Statuspflege für Upload und Verarbeitung
+- Prüfung der tatsächlichen Gesamtgröße gegen das Speicherkontingent
+
+Ein atomarer Session-Claim verhindert, dass parallele Abschlussaufrufe dieselbe Datei doppelt verarbeiten. Bereits vollständig verarbeitete Wiederholungen liefern idempotent Erfolg. Storage- und Bildoperationen halten keine Datenbanktransaktion offen; erst der vollständige Datenbankabschluss läuft gemeinsam in einer kurzen Transaktion.
 
 Fehlschläge bleiben fail-closed. Redigierte Fehlerdetails werden am Asset gespeichert; technische Storage-Details werden nicht in Fachmodulen offengelegt.
 
@@ -45,6 +49,7 @@ Fehlverhalten im Frontend:
 - Schlägt die Initialisierung fehl, bleibt der Nutzer in der Bibliothek und erhält eine fachlich redigierte Fehlermeldung.
 - Schlägt der direkte Storage-Upload fehl, wird kein Abschluss-Call ausgeführt; die Bibliothek bleibt offen und zeigt den Uploadfehler an.
 - Schlägt nur der Abschluss fehl, existiert bereits ein reserviertes Asset im Pending-Zustand und kann technisch nachverfolgt werden.
+- Überschreiten die tatsächlichen Bytes beim Abschluss das Kontingent, wird der Upload abgelehnt und die bereits erzeugten Storage-Objekte werden kompensierend entfernt.
 
 ## Medienrollen
 

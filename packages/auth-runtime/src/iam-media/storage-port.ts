@@ -26,11 +26,14 @@ export type ListMediaStorageObjectsInput = Readonly<{
   instanceId: string;
   limit: number;
   cursor?: string;
+  prefix?: string;
+  startAfter?: string;
 }>;
 
 export type MediaStorageObjectList = Readonly<{
   items: readonly MediaStorageObjectSummary[];
   nextCursor: string | null;
+  lastScannedStorageKey?: string;
 }>;
 
 export type PrepareMediaUploadInput = Readonly<{

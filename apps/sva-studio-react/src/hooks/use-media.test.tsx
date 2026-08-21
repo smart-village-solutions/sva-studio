@@ -273,9 +273,9 @@ describe('useMediaLibrary', () => {
         },
       ],
       pagination: {
-        page: 1,
-        pageSize: 25,
-        total: 1,
+        limit: 25,
+        nextCursor: null,
+        hasNextPage: false,
       },
     });
     getMediaUsageMock.mockResolvedValue({
@@ -322,9 +322,9 @@ describe('useMediaLibrary', () => {
         },
       ],
       pagination: {
-        page: 1,
-        pageSize: 25,
-        total: 1,
+        limit: 25,
+        nextCursor: null,
+        hasNextPage: false,
       },
     });
 
@@ -380,9 +380,9 @@ describe('useMediaLibrary', () => {
         technical: Record<string, unknown>;
       }[];
       pagination: {
-        page: number;
-        pageSize: number;
-        total: number;
+        limit: number;
+        nextCursor: string | null;
+        hasNextPage: boolean;
       };
     }>();
 
@@ -405,9 +405,9 @@ describe('useMediaLibrary', () => {
           },
         ],
         pagination: {
-          page: 1,
-          pageSize: 25,
-          total: 1,
+          limit: 25,
+          nextCursor: null,
+          hasNextPage: false,
         },
       });
     getMediaUsageMock.mockResolvedValue({
@@ -462,9 +462,9 @@ describe('useMediaLibrary', () => {
         },
       ],
       pagination: {
-        page: 1,
-        pageSize: 25,
-        total: 1,
+        limit: 25,
+        nextCursor: null,
+        hasNextPage: false,
       },
     });
     getMediaUsageMock.mockRejectedValue({
@@ -521,9 +521,9 @@ describe('useMediaLibrary', () => {
         },
       ],
       pagination: {
-        page: 1,
-        pageSize: 25,
-        total: 2,
+        limit: 25,
+        nextCursor: null,
+        hasNextPage: false,
       },
     });
     getMediaUsageMock
@@ -599,9 +599,9 @@ describe('useMediaLibrary', () => {
         },
       ],
       pagination: {
-        page: 1,
-        pageSize: 25,
-        total: 2,
+        limit: 25,
+        nextCursor: null,
+        hasNextPage: false,
       },
     });
     getMediaUsageMock
@@ -652,9 +652,9 @@ describe('useMediaLibrary', () => {
         },
       ],
       pagination: {
-        page: 1,
-        pageSize: 25,
-        total: 1,
+        limit: 25,
+        nextCursor: null,
+        hasNextPage: false,
       },
     });
     getMediaUsageMock.mockRejectedValue({

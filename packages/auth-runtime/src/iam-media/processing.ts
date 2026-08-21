@@ -1,6 +1,11 @@
 import sharp from 'sharp';
 import { fileTypeFromBuffer } from 'file-type';
-import { defaultMediaPresets, type MediaCrop, type MediaFocusPoint, type MediaPreset } from '@sva/media';
+import {
+  defaultMediaPresets,
+  type MediaCrop,
+  type MediaFocusPoint,
+  type MediaPreset,
+} from '@sva/media';
 import { MediaStorageUnavailableError } from './storage-port.js';
 import type { MediaService } from './service.js';
 
@@ -10,7 +15,8 @@ type MediaUploadProcessingFailureCode =
   | 'upload_session_not_found'
   | 'asset_not_found'
   | 'invalid_media_content'
-  | 'upload_size_exceeded';
+  | 'upload_size_exceeded'
+  | 'storage_quota_exceeded';
 
 type MediaUploadProcessingResult =
   | Readonly<{
@@ -24,7 +30,10 @@ type MediaUploadProcessingResult =
       errorCode: MediaUploadProcessingFailureCode;
     }>;
 
-const asErrorResult = (status: number, errorCode: MediaUploadProcessingFailureCode): Extract<MediaUploadProcessingResult, { ok: false }> => ({
+const asErrorResult = (
+  status: number,
+  errorCode: MediaUploadProcessingFailureCode
+): Extract<MediaUploadProcessingResult, { ok: false }> => ({
   ok: false,
   status,
   errorCode,
@@ -38,20 +47,22 @@ const buildVariantStorageKey = (input: {
 }): string => `${input.instanceId}/variants/${input.assetId}/${input.variantKey}.${input.format}`;
 
 const isMediaFocusPoint = (value: unknown): value is MediaFocusPoint =>
-  typeof value === 'object'
-  && value !== null
-  && typeof (value as { x?: unknown }).x === 'number'
-  && typeof (value as { y?: unknown }).y === 'number';
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { x?: unknown }).x === 'number' &&
+  typeof (value as { y?: unknown }).y === 'number';
 
 const isMediaCrop = (value: unknown): value is MediaCrop =>
-  typeof value === 'object'
-  && value !== null
-  && typeof (value as { x?: unknown }).x === 'number'
-  && typeof (value as { y?: unknown }).y === 'number'
-  && typeof (value as { width?: unknown }).width === 'number'
-  && typeof (value as { height?: unknown }).height === 'number';
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { x?: unknown }).x === 'number' &&
+  typeof (value as { y?: unknown }).y === 'number' &&
+  typeof (value as { width?: unknown }).width === 'number' &&
+  typeof (value as { height?: unknown }).height === 'number';
 
-const readMediaFocusPoint = (metadata: Record<string, unknown> | undefined): MediaFocusPoint | undefined => {
+const readMediaFocusPoint = (
+  metadata: Record<string, unknown> | undefined
+): MediaFocusPoint | undefined => {
   const focusPoint = metadata?.focusPoint;
   return isMediaFocusPoint(focusPoint) ? focusPoint : undefined;
 };
@@ -95,9 +106,15 @@ const createVariantBuffer = async (input: {
     }
 
     if (sourceAspectRatio > targetAspectRatio) {
-      const extractWidth = Math.max(1, Math.min(sourceWidth, Math.round(sourceHeight * targetAspectRatio)));
+      const extractWidth = Math.max(
+        1,
+        Math.min(sourceWidth, Math.round(sourceHeight * targetAspectRatio))
+      );
       const focusX = Math.max(0, Math.min(1, input.focusPoint.x));
-      const left = Math.max(0, Math.min(sourceWidth - extractWidth, Math.round(focusX * sourceWidth - extractWidth / 2)));
+      const left = Math.max(
+        0,
+        Math.min(sourceWidth - extractWidth, Math.round(focusX * sourceWidth - extractWidth / 2))
+      );
       image.extract({
         left,
         top: 0,
@@ -108,9 +125,18 @@ const createVariantBuffer = async (input: {
     }
 
     if (sourceAspectRatio < targetAspectRatio) {
-      const extractHeight = Math.max(1, Math.min(sourceHeight, Math.round(sourceWidth / targetAspectRatio)));
+      const extractHeight = Math.max(
+        1,
+        Math.min(sourceHeight, Math.round(sourceWidth / targetAspectRatio))
+      );
       const focusY = Math.max(0, Math.min(1, input.focusPoint.y));
-      const top = Math.max(0, Math.min(sourceHeight - extractHeight, Math.round(focusY * sourceHeight - extractHeight / 2)));
+      const top = Math.max(
+        0,
+        Math.min(
+          sourceHeight - extractHeight,
+          Math.round(focusY * sourceHeight - extractHeight / 2)
+        )
+      );
       image.extract({
         left: 0,
         top,
@@ -197,16 +223,23 @@ const markProcessingFailure = async (input: {
     status: 'failed',
   });
 
-  return asErrorResult(input.errorCode === 'upload_size_exceeded' ? 413 : 422, input.errorCode);
+  return asErrorResult(
+    input.errorCode === 'upload_size_exceeded'
+      ? 413
+      : input.errorCode === 'storage_quota_exceeded'
+        ? 409
+        : 422,
+    input.errorCode
+  );
 };
 
 export const createMediaUploadProcessingService = (deps: {
-  readonly service: MediaService;
+  readonly service: Pick<
+    MediaService,
+    'getUploadSessionById' | 'getAssetById' | 'upsertAsset' | 'upsertUploadSession'
+  >;
   readonly storagePort: {
-    readObject: (input: {
-      readonly instanceId: string;
-      readonly storageKey: string;
-    }) => Promise<{
+    readObject: (input: { readonly instanceId: string; readonly storageKey: string }) => Promise<{
       body: Uint8Array;
       byteSize: number;
       contentType?: string;
@@ -227,9 +260,22 @@ export const createMediaUploadProcessingService = (deps: {
     }) => Promise<void>;
   };
   readonly createId: () => string;
+  readonly finalizeUpload: (input: {
+    readonly instanceId: string;
+    readonly asset: Parameters<MediaService['upsertAsset']>[0];
+    readonly uploadSession: Parameters<MediaService['upsertUploadSession']>[0];
+    readonly variants: readonly Parameters<MediaService['upsertVariant']>[1][];
+    readonly totalBytes: number;
+  }) => Promise<boolean>;
 }) => ({
-  async completeUpload(input: { readonly instanceId: string; readonly uploadSessionId: string }): Promise<MediaUploadProcessingResult> {
-    const uploadSession = await deps.service.getUploadSessionById(input.instanceId, input.uploadSessionId);
+  async completeUpload(input: {
+    readonly instanceId: string;
+    readonly uploadSessionId: string;
+  }): Promise<MediaUploadProcessingResult> {
+    const uploadSession = await deps.service.getUploadSessionById(
+      input.instanceId,
+      input.uploadSessionId
+    );
     if (!uploadSession) {
       return asErrorResult(404, 'upload_session_not_found');
     }
@@ -239,7 +285,11 @@ export const createMediaUploadProcessingService = (deps: {
       return asErrorResult(404, 'asset_not_found');
     }
 
-    if (uploadSession.status === 'validated' && asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
+    if (
+      uploadSession.status === 'validated' &&
+      asset.uploadStatus === 'processed' &&
+      asset.processingStatus === 'ready'
+    ) {
       return {
         ok: true,
         asset,
@@ -260,7 +310,8 @@ export const createMediaUploadProcessingService = (deps: {
       }
 
       const detectedFileType = await fileTypeFromBuffer(object.body);
-      const detectedMimeType = detectedFileType?.mime ?? object.contentType ?? String(asset.mimeType);
+      const detectedMimeType =
+        detectedFileType?.mime ?? object.contentType ?? String(asset.mimeType);
       if (!ALLOWED_IMAGE_MIME_TYPES.has(detectedMimeType) || detectedMimeType !== asset.mimeType) {
         return markProcessingFailure({
           deps,
@@ -333,17 +384,6 @@ export const createMediaUploadProcessingService = (deps: {
         });
         persistedVariantStorageKeys.push(variant.storageKey);
         variantBytes += writeResult.byteSize;
-        await deps.service.upsertVariant(input.instanceId, {
-          id: variant.id,
-          assetId: variant.assetId,
-          variantKey: variant.variantKey,
-          presetKey: variant.presetKey,
-          format: variant.format,
-          width: variant.width,
-          height: variant.height,
-          storageKey: variant.storageKey,
-          generationStatus: variant.generationStatus,
-        });
       }
 
       const nextAsset = {
@@ -357,17 +397,28 @@ export const createMediaUploadProcessingService = (deps: {
         },
       };
 
-      await deps.service.upsertAsset(nextAsset);
-      await deps.service.upsertUploadSession({
-        ...uploadSession,
-        status: 'validated',
-      });
-
-      await deps.service.applyStorageUsageDelta({
+      const finalized = await deps.finalizeUpload({
         instanceId: input.instanceId,
-        totalBytesDelta: object.byteSize + variantBytes,
-        assetCountDelta: 1,
+        asset: nextAsset,
+        uploadSession: { ...uploadSession, status: 'validated' },
+        variants: variantsToPersist.map(
+          ({ body: _body, contentType: _contentType, ...variant }) => variant
+        ),
+        totalBytes: object.byteSize + variantBytes,
       });
+      if (!finalized) {
+        await Promise.allSettled(
+          persistedVariantStorageKeys.map((storageKey) =>
+            deps.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
+          )
+        );
+        return markProcessingFailure({
+          deps,
+          asset,
+          uploadSession,
+          errorCode: 'storage_quota_exceeded',
+        });
+      }
 
       return {
         ok: true,
@@ -384,7 +435,6 @@ export const createMediaUploadProcessingService = (deps: {
             })
           )
         );
-        await deps.service.deleteVariantsByAssetId(input.instanceId, String(asset.id));
       }
       if (error instanceof MediaStorageUnavailableError || persistenceStarted) {
         throw error;
@@ -393,7 +443,10 @@ export const createMediaUploadProcessingService = (deps: {
         deps,
         asset,
         uploadSession,
-        errorCode: error instanceof Error && error.message === 'upload_size_mismatch' ? 'upload_size_exceeded' : 'invalid_media_content',
+        errorCode:
+          error instanceof Error && error.message === 'upload_size_mismatch'
+            ? 'upload_size_exceeded'
+            : 'invalid_media_content',
       });
     }
   },

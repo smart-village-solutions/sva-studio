@@ -1,5 +1,47 @@
 import type { MediaHttpHandlerDeps } from './http-support.js';
-import type { MediaUploadFinalization, MediaUploadFinalizationResult } from './processing.js';
+import type {
+  MediaUploadFailure,
+  MediaUploadFailureResult,
+  MediaUploadFinalization,
+  MediaUploadFinalizationResult,
+} from './processing.js';
+
+type FailurePersistenceService = Pick<
+  Parameters<Parameters<MediaHttpHandlerDeps['withMediaService']>[1]>[0],
+  'upsertAsset' | 'upsertUploadSession'
+>;
+
+const persistUploadFailure = async (
+  service: FailurePersistenceService,
+  failure: Pick<MediaUploadFailure, 'asset' | 'uploadSession' | 'errorCode'>
+): Promise<void> => {
+  await service.upsertAsset({
+    ...failure.asset,
+    uploadStatus: 'failed',
+    processingStatus: 'failed',
+    technical: {
+      ...(failure.asset.technical ?? {}),
+      lastError: { code: failure.errorCode },
+    },
+  });
+  await service.upsertUploadSession({ ...failure.uploadSession, status: 'failed' });
+};
+
+export const failClaimedUpload = (
+  deps: MediaHttpHandlerDeps,
+  failure: MediaUploadFailure
+): Promise<MediaUploadFailureResult> =>
+  deps.withMediaService(failure.instanceId, async (service) => {
+    const ownsClaim = await service.lockUploadSessionClaim({
+      instanceId: failure.instanceId,
+      sessionId: failure.uploadSession.id,
+      claimToken: failure.claimToken,
+    });
+    if (!ownsClaim) return 'claim_superseded';
+
+    await persistUploadFailure(service, failure);
+    return 'failed';
+  });
 
 export const finalizeProcessedUpload = (
   deps: MediaHttpHandlerDeps,
@@ -19,16 +61,11 @@ export const finalizeProcessedUpload = (
       assetCount: 1,
     });
     if (!quotaClaimed) {
-      await service.upsertAsset({
-        ...finalization.asset,
-        uploadStatus: 'failed',
-        processingStatus: 'failed',
-        technical: {
-          ...(finalization.asset.technical ?? {}),
-          lastError: { code: 'storage_quota_exceeded' },
-        },
+      await persistUploadFailure(service, {
+        asset: finalization.asset,
+        uploadSession: finalization.uploadSession,
+        errorCode: 'storage_quota_exceeded',
       });
-      await service.upsertUploadSession({ ...finalization.uploadSession, status: 'failed' });
       return 'quota_exceeded';
     }
 

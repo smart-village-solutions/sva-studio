@@ -57,6 +57,30 @@ const createFinalizeUpload = (service: {
     }
   );
 
+const createFailUpload = (service: {
+  upsertAsset: ReturnType<typeof vi.fn>;
+  upsertUploadSession: ReturnType<typeof vi.fn>;
+}) =>
+  vi.fn(
+    async (input: {
+      asset: Record<string, unknown>;
+      uploadSession: Record<string, unknown>;
+      errorCode: string;
+    }) => {
+      await service.upsertAsset({
+        ...input.asset,
+        uploadStatus: 'failed',
+        processingStatus: 'failed',
+        technical: {
+          ...((input.asset.technical as Record<string, unknown> | undefined) ?? {}),
+          lastError: { code: input.errorCode },
+        },
+      });
+      await service.upsertUploadSession({ ...input.uploadSession, status: 'failed' });
+      return 'failed' as const;
+    }
+  );
+
 describe('media upload processing service', () => {
   it('validates an uploaded image, extracts metadata and persists eager variants', async () => {
     const originalBuffer = await sharp({
@@ -110,6 +134,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload: createFinalizeUpload(service),
+      failUpload: createFailUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -193,6 +218,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload,
+      failUpload: createFailUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -260,6 +286,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload: vi.fn(async () => 'claim_superseded' as const),
+      failUpload: createFailUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -341,6 +368,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload: createFinalizeUpload(service),
+      failUpload: createFailUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -409,6 +437,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload: createFinalizeUpload(service),
+      failUpload: createFailUpload(service),
       createId: () => 'variant-1',
     });
 
@@ -492,6 +521,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload: createFinalizeUpload(service),
+      failUpload: createFailUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')
@@ -512,12 +542,119 @@ describe('media upload processing service', () => {
       storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
     });
     expect(service.deleteVariantsByAssetId).not.toHaveBeenCalled();
-    expect(service.upsertAsset).not.toHaveBeenCalledWith(
+    expect(service.upsertAsset).toHaveBeenCalledWith(
       expect.objectContaining({
         uploadStatus: 'failed',
         processingStatus: 'failed',
+        technical: expect.objectContaining({
+          lastError: { code: 'upload_processing_failed' },
+        }),
       })
     );
+    expect(service.upsertUploadSession).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed' })
+    );
+  });
+
+  it('does not persist or clean up an invalid upload after its claim was superseded', async () => {
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ status: 'uploaded' })),
+      getAssetById: vi.fn(async () => createAsset()),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+    };
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: Buffer.from('not-an-image'),
+        byteSize: 12,
+        contentType: 'image/png',
+      })),
+      writeObject: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const failUpload = vi.fn(async () => 'claim_superseded' as const);
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      finalizeUpload: vi.fn(),
+      failUpload,
+      createId: () => 'variant-1',
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+        claimToken: 'claim-1',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: 'upload_processing_superseded',
+      status: 409,
+    });
+
+    expect(failUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ claimToken: 'claim-1', errorCode: 'invalid_media_content' })
+    );
+    expect(storagePort.deleteObject).not.toHaveBeenCalled();
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).not.toHaveBeenCalled();
+  });
+
+  it('does not clean up partial variants after an infrastructure failure superseded its claim', async () => {
+    const originalBuffer = await sharp({
+      create: {
+        width: 800,
+        height: 600,
+        channels: 3,
+        background: { r: 30, g: 40, b: 50 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const service = {
+      getUploadSessionById: vi.fn(async () =>
+        createUploadSession({ status: 'uploaded', byteSize: originalBuffer.byteLength })
+      ),
+      getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
+    };
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: originalBuffer,
+        byteSize: originalBuffer.byteLength,
+        contentType: 'image/png',
+      })),
+      writeObject: vi
+        .fn()
+        .mockResolvedValueOnce({ byteSize: 128 })
+        .mockRejectedValueOnce(new Error('s3_write_failed')),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const failUpload = vi.fn(async () => 'claim_superseded' as const);
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      finalizeUpload: vi.fn(),
+      failUpload,
+      createId: () => 'variant-1',
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+        claimToken: 'claim-1',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: 'upload_processing_superseded',
+      status: 409,
+    });
+
+    expect(failUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ claimToken: 'claim-1', errorCode: 'upload_processing_failed' })
+    );
+    expect(storagePort.deleteObject).not.toHaveBeenCalled();
   });
 
   it('treats repeated completion of an already validated session as idempotent success', async () => {
@@ -553,6 +690,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload: createFinalizeUpload(service),
+      failUpload: createFailUpload(service),
       createId: () => 'variant-1',
     });
 
@@ -643,6 +781,7 @@ describe('media upload processing service', () => {
       service: service as never,
       storagePort: storagePort as never,
       finalizeUpload: createFinalizeUpload(service),
+      failUpload: createFailUpload(service),
       createId: vi
         .fn()
         .mockReturnValueOnce('variant-1')

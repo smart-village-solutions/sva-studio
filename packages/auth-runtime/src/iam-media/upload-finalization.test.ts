@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { MediaUploadFinalization } from './processing.js';
-import { finalizeProcessedUpload } from './upload-finalization.js';
+import { failClaimedUpload, finalizeProcessedUpload } from './upload-finalization.js';
 
 const finalization: MediaUploadFinalization = {
   instanceId: 'tenant-a',
@@ -70,6 +70,59 @@ describe('finalizeProcessedUpload', () => {
 
     expect(service.upsertAsset).toHaveBeenCalledWith(
       expect.objectContaining({ uploadStatus: 'failed', processingStatus: 'failed' })
+    );
+    expect(service.upsertUploadSession).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed' })
+    );
+  });
+});
+
+describe('failClaimedUpload', () => {
+  it('rejects a superseded claim before persisting failure state', async () => {
+    const service = createService();
+    service.lockUploadSessionClaim.mockResolvedValue(false);
+
+    await expect(
+      failClaimedUpload(
+        { withMediaService: async (_instanceId, work) => work(service as never) } as never,
+        {
+          instanceId: finalization.instanceId,
+          claimToken: finalization.claimToken,
+          asset: finalization.asset,
+          uploadSession: finalization.uploadSession,
+          errorCode: 'invalid_media_content',
+        }
+      )
+    ).resolves.toBe('claim_superseded');
+
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).not.toHaveBeenCalled();
+  });
+
+  it('persists failure state while holding the current claim lock', async () => {
+    const service = createService();
+
+    await expect(
+      failClaimedUpload(
+        { withMediaService: async (_instanceId, work) => work(service as never) } as never,
+        {
+          instanceId: finalization.instanceId,
+          claimToken: finalization.claimToken,
+          asset: finalization.asset,
+          uploadSession: finalization.uploadSession,
+          errorCode: 'invalid_media_content',
+        }
+      )
+    ).resolves.toBe('failed');
+
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uploadStatus: 'failed',
+        processingStatus: 'failed',
+        technical: expect.objectContaining({
+          lastError: { code: 'invalid_media_content' },
+        }),
+      })
     );
     expect(service.upsertUploadSession).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'failed' })

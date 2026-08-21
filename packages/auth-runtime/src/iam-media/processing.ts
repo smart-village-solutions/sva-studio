@@ -21,6 +21,16 @@ type MediaUploadProcessingFailureCode =
 
 export type MediaUploadFinalizationResult = 'finalized' | 'quota_exceeded' | 'claim_superseded';
 
+export type MediaUploadFailureResult = 'failed' | 'claim_superseded';
+
+export type MediaUploadFailure = Readonly<{
+  instanceId: string;
+  claimToken: string;
+  asset: Parameters<MediaService['upsertAsset']>[0];
+  uploadSession: Parameters<MediaService['upsertUploadSession']>[0];
+  errorCode: string;
+}>;
+
 export type MediaUploadFinalization = Readonly<{
   instanceId: string;
   claimToken: string;
@@ -193,7 +203,6 @@ const createVariantBuffer = async (input: {
 
 const markProcessingFailure = async (input: {
   readonly deps: {
-    readonly service: Pick<MediaService, 'upsertAsset' | 'upsertUploadSession'>;
     readonly storagePort: Pick<
       {
         deleteObject: (input: {
@@ -203,7 +212,9 @@ const markProcessingFailure = async (input: {
       },
       'deleteObject'
     >;
+    readonly failUpload: (failure: MediaUploadFailure) => Promise<MediaUploadFailureResult>;
   };
+  readonly claimToken: string;
   readonly asset: Awaited<ReturnType<MediaService['getAssetById']>>;
   readonly uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
   readonly errorCode: MediaUploadProcessingFailureCode;
@@ -212,28 +223,23 @@ const markProcessingFailure = async (input: {
     return asErrorResult(404, 'asset_not_found');
   }
 
+  const failureResult = await input.deps.failUpload({
+    instanceId: String(input.uploadSession.instanceId),
+    claimToken: input.claimToken,
+    asset: input.asset,
+    uploadSession: input.uploadSession,
+    errorCode: input.errorCode,
+  });
+  if (failureResult === 'claim_superseded') {
+    return asErrorResult(409, 'upload_processing_superseded');
+  }
+
   await Promise.allSettled([
     input.deps.storagePort.deleteObject({
       instanceId: String(input.uploadSession.instanceId),
       storageKey: String(input.uploadSession.storageKey),
     }),
   ]);
-
-  await input.deps.service.upsertAsset({
-    ...input.asset,
-    uploadStatus: 'failed',
-    processingStatus: 'failed',
-    technical: {
-      ...(input.asset.technical ?? {}),
-      lastError: {
-        code: input.errorCode,
-      },
-    },
-  });
-  await input.deps.service.upsertUploadSession({
-    ...input.uploadSession,
-    status: 'failed',
-  });
 
   return asErrorResult(
     input.errorCode === 'upload_size_exceeded'
@@ -248,7 +254,7 @@ const markProcessingFailure = async (input: {
 export const createMediaUploadProcessingService = (deps: {
   readonly service: Pick<
     MediaService,
-    'getUploadSessionById' | 'getAssetById' | 'upsertAsset' | 'upsertUploadSession'
+    'getUploadSessionById' | 'getAssetById'
   >;
   readonly storagePort: {
     readObject: (input: { readonly instanceId: string; readonly storageKey: string }) => Promise<{
@@ -275,6 +281,7 @@ export const createMediaUploadProcessingService = (deps: {
   readonly finalizeUpload: (
     input: MediaUploadFinalization
   ) => Promise<MediaUploadFinalizationResult>;
+  readonly failUpload: (failure: MediaUploadFailure) => Promise<MediaUploadFailureResult>;
 }) => ({
   async completeUpload(input: {
     readonly instanceId: string;
@@ -324,6 +331,7 @@ export const createMediaUploadProcessingService = (deps: {
       if (!ALLOWED_IMAGE_MIME_TYPES.has(detectedMimeType) || detectedMimeType !== asset.mimeType) {
         return markProcessingFailure({
           deps,
+          claimToken: input.claimToken,
           asset,
           uploadSession,
           errorCode: 'invalid_media_content',
@@ -435,6 +443,16 @@ export const createMediaUploadProcessingService = (deps: {
       };
     } catch (error) {
       if (persistenceStarted) {
+        const failureResult = await deps.failUpload({
+          instanceId: input.instanceId,
+          claimToken: input.claimToken,
+          asset,
+          uploadSession,
+          errorCode: 'upload_processing_failed',
+        });
+        if (failureResult === 'claim_superseded') {
+          return asErrorResult(409, 'upload_processing_superseded');
+        }
         await Promise.allSettled(
           persistedVariantStorageKeys.map((storageKey) =>
             deps.storagePort.deleteObject({
@@ -449,6 +467,7 @@ export const createMediaUploadProcessingService = (deps: {
       }
       return markProcessingFailure({
         deps,
+        claimToken: input.claimToken,
         asset,
         uploadSession,
         errorCode:

@@ -16,7 +16,7 @@ import {
 } from './http-support.js';
 import { createMediaUploadProcessingService } from './processing.js';
 import { canAccessMediaAsset } from './asset-support.js';
-import { finalizeProcessedUpload } from './upload-finalization.js';
+import { failClaimedUpload, finalizeProcessedUpload } from './upload-finalization.js';
 
 type UploadState = Readonly<{
   uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
@@ -87,12 +87,6 @@ const createProcessingService = (deps: MediaHttpHandlerDeps) => ({
     ),
   getAssetById: (instanceId: string, assetId: string) =>
     deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId)),
-  upsertAsset: (asset: Parameters<MediaService['upsertAsset']>[0]) =>
-    deps.withMediaService(asset.instanceId, (service) => service.upsertAsset(asset)),
-  upsertUploadSession: (uploadSession: Parameters<MediaService['upsertUploadSession']>[0]) =>
-    deps.withMediaService(uploadSession.instanceId, (service) =>
-      service.upsertUploadSession(uploadSession)
-    ),
 });
 
 const processingFailureMessage = (errorCode: string): string => {
@@ -120,6 +114,7 @@ const processClaimedUpload = async (input: {
     storagePort,
     createId: input.deps.createId,
     finalizeUpload: (finalization) => finalizeProcessedUpload(input.deps, finalization),
+    failUpload: (failure) => failClaimedUpload(input.deps, failure),
   }).completeUpload({
     instanceId: input.instanceId,
     uploadSessionId: input.uploadSessionId,

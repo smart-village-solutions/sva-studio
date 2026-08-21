@@ -244,4 +244,22 @@ describe('news.editor-model', () => {
     expect(payload.mutation.publishedAt).toBe('2026-06-09T09:00:00.000Z');
     expect(payload.visible).toBe(true);
   });
+
+  it.each(['draft', 'scheduled'] as const)(
+    'does not request an immediate Push notification for %s news',
+    (publicationMode) => {
+      const plan = buildNewsSavePayload(
+        {
+          ...editorValuesFixture,
+          publicationMode,
+          scheduledPublicationAt: '2026-06-10T12:00:00.000Z',
+          pushNotificationEnabled: true,
+        },
+        editorValuesFixture.__legacySnapshot ?? null,
+        '2026-06-10T08:00:00.000Z'
+      );
+
+      expect(plan.mutation).not.toHaveProperty('pushNotification', true);
+    }
+  );
 });

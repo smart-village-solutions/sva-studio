@@ -392,10 +392,10 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-1' },
-        body: JSON.stringify({ ...newsInput, payload: { injected: true } }),
+        body: JSON.stringify({ ...newsInput, payload: { injected: true }, visible: true }),
       })
     );
-    await expect(ok?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+    await expect(ok?.json()).resolves.toEqual({ data: { id: 'news-1', visible: true } });
     expect(ok?.status).toBe(201);
     expect(state.reserveIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -441,7 +441,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-draft' },
-        body: JSON.stringify({ ...newsInput, visible: false }),
+        body: JSON.stringify({ ...newsInput, visible: false, pushNotification: false }),
       })
     );
     await expect(draft?.json()).resolves.toEqual({ data: { id: 'news-2', visible: false } });
@@ -486,7 +486,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-push-denied' },
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
 
@@ -495,6 +495,33 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       error: 'forbidden',
       details: { required_permissions: ['news.pushNotification'] },
     });
+    expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['missing visibility', { visible: undefined }],
+    ['draft', { visible: false }],
+    ['scheduled', { visible: true, publishedAt: '2099-04-14T09:30:00.000Z' }],
+  ])('rejects Push delivery for %s news before calling the Mainserver', async (_state, overrides) => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `idem-push-${_state}` },
+        body: JSON.stringify({ ...newsInput, ...overrides, pushNotification: true }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
     expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
   });
 
@@ -520,6 +547,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         headers: { 'Idempotency-Key': 'idem-waste-denied' },
         body: JSON.stringify({
           ...newsInput,
+          visible: true,
           payload: {
             wasteLocationKeys: [{ street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' }],
           },
@@ -1133,7 +1161,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     const pushOnUpdate = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
         method: 'PATCH',
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
     expect(pushOnUpdate?.status).toBe(200);
@@ -1174,7 +1202,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     const response = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
         method: 'PATCH',
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
 
@@ -1438,7 +1466,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     const missingIdempotency = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
     expect(missingIdempotency?.status).toBe(400);
@@ -1477,7 +1505,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-replay' },
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
     expect(replay?.status).toBe(201);
@@ -1487,7 +1515,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-conflict' },
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
     expect(conflict?.status).toBe(409);
@@ -1537,7 +1565,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-failed' },
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
 
@@ -1676,7 +1704,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-early-fail' },
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, visible: true }),
       })
     );
 

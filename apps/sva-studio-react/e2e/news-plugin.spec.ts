@@ -140,6 +140,11 @@ test.describe('news plugin', () => {
       name: /Push-Benachrichtigung senden|news\.fields\.pushNotification/,
     });
     await expect(pushCheckbox).toBeVisible();
+    await expect(pushCheckbox).toBeDisabled();
+    await page
+      .getByRole('radio', { name: /Sofort veröffentlichen|news\.publicationModes\.immediate/ })
+      .click();
+    await expect(pushCheckbox).toBeEnabled();
     await pushCheckbox.check();
     page.once('dialog', async (dialog) => {
       await dialog.accept();

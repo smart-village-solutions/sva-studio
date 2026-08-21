@@ -453,6 +453,17 @@ const parseNewsInput = async (
     return errorJson(400, 'invalid_request', 'Das Publikationsdatum ist ungültig.');
   }
 
+  if (
+    readBoolean(body.pushNotification) === true &&
+    (visible !== true || new Date(publishedAt).getTime() > Date.now())
+  ) {
+    return errorJson(
+      400,
+      'invalid_request',
+      'Push-Benachrichtigungen dürfen nur für sofort veröffentlichte Nachrichten gesendet werden.'
+    );
+  }
+
   const charactersToBeShown = readNumber(body.charactersToBeShown);
   if (
     body.charactersToBeShown !== undefined &&

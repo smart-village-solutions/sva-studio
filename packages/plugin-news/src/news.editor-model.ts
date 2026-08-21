@@ -196,7 +196,8 @@ const resolvePublicationDate = (
 
 const buildLegacyMutationFields = (
   snapshot: NewsLegacyCompatibilitySnapshot | null,
-  values: NewsDetailEditorialFormValues
+  values: NewsDetailEditorialFormValues,
+  allowImmediatePushNotification: boolean
 ) => {
   const charactersToBeShown = getMeaningfulCharactersToBeShown(snapshot?.charactersToBeShown);
   const address = getMeaningfulAddress(snapshot?.address);
@@ -214,7 +215,7 @@ const buildLegacyMutationFields = (
     ...(hasMeaningfulString(snapshot?.pointOfInterestId)
       ? { pointOfInterestId: snapshot.pointOfInterestId }
       : {}),
-    ...(snapshot?.pushNotificationsSentAt
+    ...(snapshot?.pushNotificationsSentAt || !allowImmediatePushNotification
       ? {}
       : { pushNotification: values.pushNotificationEnabled }),
   };
@@ -278,7 +279,11 @@ export const buildNewsSavePayload = (
     visible,
     editorialStatus: deriveNewsEditorialStatus({ visible, publishedAt }, nowIso),
     mutation: {
-      ...buildLegacyMutationFields(existingSnapshot, values),
+      ...buildLegacyMutationFields(
+        existingSnapshot,
+        values,
+        values.publicationMode === 'immediate'
+      ),
       title: values.title,
       categories: values.categories.map((name) => ({ name })),
       publishedAt: effectivePublicationTimestamp,

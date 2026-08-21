@@ -832,7 +832,8 @@ export const mapNewsDetailFormValuesToMutation = (
     ...(categories ?? {}),
     ...(sourceUrl ? { sourceUrl } : {}),
     contentBlocks,
-    ...(shouldIncludePushNotification(mode, snapshot)
+    ...(normalizedValues.publicationMode === 'immediate' &&
+    shouldIncludePushNotification(mode, snapshot)
       ? { pushNotification: normalizedValues.pushNotificationEnabled }
       : {}),
   };

@@ -10,6 +10,7 @@ import {
   StudioFormSummaryErrors,
   getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
+import { useEffect } from 'react';
 
 import { NewsDetailCard } from './news.detail-card.js';
 import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
@@ -73,6 +74,7 @@ function NewsPushNotificationCard({
   control,
   loadedItem,
   canSendPushNotification,
+  publicationMode,
   pt,
   wasteOverview,
   wasteTargetingAvailability,
@@ -81,6 +83,7 @@ function NewsPushNotificationCard({
   control: NewsDetailSettingsFormControl;
   loadedItem: NewsContentItem | null;
   canSendPushNotification: boolean;
+  publicationMode: NewsDetailFormValues['publicationMode'];
   pt: NewsDetailSettingsTabProps['pt'];
   wasteOverview: WasteManagementMasterDataOverview | null;
   wasteTargetingAvailability: WasteTargetingAvailability;
@@ -112,6 +115,7 @@ function NewsPushNotificationCard({
                 aria-labelledby="news-push-notification-label"
                 aria-describedby="news-push-notification-hint"
                 checked={field.value}
+                disabled={publicationMode !== 'immediate'}
                 onChange={(event) => field.onChange(event.target.checked)}
               />
             )}
@@ -258,9 +262,16 @@ export function NewsDetailSettingsTab({
 }: NewsDetailSettingsTabProps) {
   const {
     control,
+    setValue,
     formState: { errors },
   } = useFormContext<NewsDetailFormValues>();
   const publicationMode = useWatch({ control, name: 'publicationMode' }) ?? 'draft';
+
+  useEffect(() => {
+    if (publicationMode !== 'immediate') {
+      setValue('pushNotificationEnabled', false, { shouldDirty: true });
+    }
+  }, [publicationMode, setValue]);
 
   const scheduledPublicationError = scheduledPublicationField.isInvalid
     ? createManualFieldError(pt('validation.scheduledPublicationAt'))
@@ -279,6 +290,7 @@ export function NewsDetailSettingsTab({
           control={control}
           loadedItem={loadedItem}
           canSendPushNotification={canSendPushNotification}
+          publicationMode={publicationMode}
           pt={pt}
           wasteOverview={wasteOverview}
           wasteTargetingAvailability={wasteTargetingAvailability}

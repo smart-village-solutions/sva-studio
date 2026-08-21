@@ -1,0 +1,4 @@
+{
+  "prNumber": 1115,
+  "body": "Abholorte werden für Abfall-Benachrichtigungen zuverlässiger mit dem Mainserver synchronisiert.\n\n- Postleitzahlen werden bei der Synchronisierung von Abholorten übernommen.\n- Konkrete Hausnummern bleiben Bestandteil der Zieladresse.\n- Der allgemeine Platzhalter für alle Hausnummern wird nicht mehr in den Straßenschlüssel geschrieben."
+}

@@ -88,6 +88,23 @@ describe('News Waste targeting', () => {
     ]);
   });
 
+  it('omits a house number that no longer belongs to the location street', () => {
+    expect(
+      resolveNewsWasteTargetOptions({
+        ...overview,
+        houseNumbers: [{ ...overview.houseNumbers[0], streetId: 's2' }],
+        collectionLocations: [overview.collectionLocations[0]],
+      })
+    ).toEqual([
+      expect.objectContaining({
+        key: { street: 'Hauptstraße', zip: '12345', city: 'Musterstadt' },
+        label: 'Hauptstraße, 12345 Musterstadt',
+        houseNumberId: undefined,
+        houseNumber: '',
+      }),
+    ]);
+  });
+
   it('omits the all-house-numbers placeholder from address keys', () => {
     expect(
       resolveNewsWasteTargetOptions({

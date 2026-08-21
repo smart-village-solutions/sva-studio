@@ -31,24 +31,35 @@ describe('iam-api media helpers', () => {
     browserLoggerMock.warn.mockReset();
   });
 
-  it('builds canonical media list queries including explicit pagination and omits the all-visibility filter', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
+  it('builds canonical media list queries including cursor pagination and omits the all-visibility filter', async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: [],
+            pagination: { limit: 25, nextCursor: null, hasNextPage: false },
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await listMedia({ search: 'hero', visibility: 'public', page: 2, pageSize: 50 });
+    await listMedia({ search: 'hero', visibility: 'public', cursor: 'cursor-2', limit: 50 });
     await listMedia({ visibility: 'all' });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/iam/media?search=hero&visibility=public&page=2&pageSize=50',
+      '/api/v1/iam/media?search=hero&visibility=public&cursor=cursor-2&limit=50',
       expect.objectContaining({ credentials: 'include' })
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/iam/media', expect.objectContaining({ credentials: 'include' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/media',
+      expect.objectContaining({ credentials: 'include' })
+    );
   });
 
   it('posts upload initialization payloads with JSON and idempotency headers', async () => {
@@ -130,11 +141,12 @@ describe('iam-api media helpers', () => {
   });
 
   it('uses the canonical delivery, update, and delete endpoints for asset detail actions', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: { id: 'asset-1' } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'asset-1' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
 

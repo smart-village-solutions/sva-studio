@@ -40,9 +40,9 @@ type UseMediaLibraryResult = {
   readonly isUsageLoading: boolean;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
-  readonly page: number;
-  readonly pageSize: number;
-  readonly total: number;
+  readonly limit: number;
+  readonly nextCursor: string | null;
+  readonly hasNextPage: boolean;
   readonly refetch: () => Promise<void>;
 };
 
@@ -119,9 +119,9 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
   const [isUsageLoading, setIsUsageLoading] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
-  const [page, setPage] = React.useState(query.page ?? 1);
-  const [pageSize, setPageSize] = React.useState(query.pageSize ?? 25);
-  const [total, setTotal] = React.useState(0);
+  const [limit, setLimit] = React.useState(query.limit ?? 25);
+  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = React.useState(false);
   const latestRequestRef = React.useRef(0);
 
   const refetch = React.useCallback(async () => {
@@ -158,9 +158,9 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       setAssets(response.data);
       setUsageByAssetId(initialUsageByAssetId);
       setUsageStatusByAssetId(initialUsageStatusByAssetId);
-      setPage(response.pagination.page);
-      setPageSize(response.pagination.pageSize);
-      setTotal(response.pagination.total);
+      setLimit(response.pagination.limit);
+      setNextCursor(response.pagination.nextCursor);
+      setHasNextPage(response.pagination.hasNextPage);
       setIsLoading(false);
       setIsUsageLoading(registeredAssets.length > 0);
       logBrowserOperationSuccess(mediaLogger, 'media_library_refetch_succeeded', {
@@ -239,14 +239,15 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       setUsageByAssetId({});
       setUsageStatusByAssetId({});
       setIsUsageLoading(false);
-      setTotal(0);
+      setNextCursor(null);
+      setHasNextPage(false);
       setError(resolvedError);
       setIsLoading(false);
       logBrowserOperationFailure(mediaLogger, 'media_library_refetch_failed', resolvedError, {
         operation: 'list_media',
       });
     }
-  }, [refreshSession, query.page, query.pageSize, query.search, query.visibility]);
+  }, [refreshSession, query.cursor, query.limit, query.search, query.visibility]);
 
   React.useEffect(() => {
     void refetch();
@@ -259,9 +260,9 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
     isUsageLoading,
     isLoading,
     error,
-    page,
-    pageSize,
-    total,
+    limit,
+    nextCursor,
+    hasNextPage,
     refetch,
   };
 };
@@ -493,9 +494,9 @@ const shouldAutoResolveMediaDelivery = (
 ): asset is IamRegisteredMediaAsset =>
   Boolean(
     asset &&
-      !delivery &&
-      autoResolvedDeliveryAssetId !== asset.id &&
-      asset.mimeType.startsWith('image/')
+    !delivery &&
+    autoResolvedDeliveryAssetId !== asset.id &&
+    asset.mimeType.startsWith('image/')
   );
 
 export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => {

@@ -1549,6 +1549,7 @@ CREATE TABLE iam.media_upload_sessions (
     expires_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    claim_token uuid,
     CONSTRAINT media_upload_sessions_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'uploaded'::text, 'validated'::text, 'failed'::text, 'expired'::text])))
 );
 
@@ -3030,6 +3031,13 @@ CREATE INDEX idx_legal_text_acceptances_subject ON iam.legal_text_acceptances US
 --
 
 CREATE INDEX idx_legal_text_acceptances_workspace_action ON iam.legal_text_acceptances USING btree (workspace_id, action_type) WHERE (workspace_id IS NOT NULL);
+
+
+--
+-- Name: idx_media_assets_active_storage_key_binary; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_media_assets_active_storage_key_binary ON iam.media_assets USING btree (instance_id, storage_key COLLATE "C") WHERE (lifecycle_status = 'active'::text);
 
 
 --

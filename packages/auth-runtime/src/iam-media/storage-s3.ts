@@ -31,9 +31,16 @@ import type {
   ResolveMediaDeliveryInput,
 } from './storage-port.js';
 import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
-import { createMediaStorageInstancePrefix, isListableMediaStorageKey } from './storage-key-paths.js';
+import {
+  createMediaStorageInstancePrefix,
+  isListableMediaStorageKey,
+} from './storage-key-paths.js';
 
-type SignedUrlResolver = (client: S3Client, command: PutObjectCommand | GetObjectCommand, expiresIn: number) => Promise<string>;
+type SignedUrlResolver = (
+  client: S3Client,
+  command: PutObjectCommand | GetObjectCommand,
+  expiresIn: number
+) => Promise<string>;
 
 type MediaStorageConfig = Readonly<{
   endpoint: string;
@@ -52,6 +59,18 @@ const mimeTypeExtensions: Readonly<Record<string, string>> = {
 };
 
 const SOLIDUS_CODE_POINT = 47;
+
+const createStorageObjectList = (input: {
+  items: readonly MediaStorageObjectSummary[];
+  nextCursor: string | null;
+  lastScannedStorageKey?: string;
+}): MediaStorageObjectList => ({
+  items: input.items,
+  nextCursor: input.nextCursor,
+  ...(input.nextCursor !== null && input.lastScannedStorageKey
+    ? { lastScannedStorageKey: input.lastScannedStorageKey }
+    : {}),
+});
 
 const resolveObjectExtension = (mimeType: string): string => mimeTypeExtensions[mimeType] ?? 'bin';
 
@@ -83,7 +102,10 @@ const resolveStoragePrefix = (instanceId: string, bucket: string): string =>
 const createStorageKey = (input: PrepareMediaUploadInput, bucket: string): string =>
   `${resolveStoragePrefix(input.instanceId, bucket)}originals/${input.assetId}.${resolveObjectExtension(input.mimeType)}`;
 
-const createPublicDeliveryUrl = (publicBaseUrl: string | undefined, storageKey: string): string | null => {
+const createPublicDeliveryUrl = (
+  publicBaseUrl: string | undefined,
+  storageKey: string
+): string | null => {
   if (!publicBaseUrl) {
     return null;
   }
@@ -119,7 +141,9 @@ const toMediaStorageObjectSummary = (entry: {
     storageKey: entry.Key,
     byteSize: typeof entry.Size === 'number' ? entry.Size : 0,
     lastModified: entry.LastModified?.toISOString() ?? null,
-    previewUrl: entry.publicBaseUrl ? `${entry.publicBaseUrl}/${encodeStorageKeyForUrl(entry.Key)}` : null,
+    previewUrl: entry.publicBaseUrl
+      ? `${entry.publicBaseUrl}/${encodeStorageKeyForUrl(entry.Key)}`
+      : null,
   };
 };
 
@@ -167,18 +191,31 @@ const resolveMediaStorageConfigFromInterface = async (
     revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
   });
 
-  const endpoint = typeof resolved.publicConfig.endpoint === 'string' ? resolved.publicConfig.endpoint.trim() : '';
-  const bucket = typeof resolved.publicConfig.bucket === 'string' ? resolved.publicConfig.bucket.trim() : '';
+  const endpoint =
+    typeof resolved.publicConfig.endpoint === 'string' ? resolved.publicConfig.endpoint.trim() : '';
+  const bucket =
+    typeof resolved.publicConfig.bucket === 'string' ? resolved.publicConfig.bucket.trim() : '';
   const accessKeyId =
-    typeof resolved.publicConfig.accessKeyId === 'string' ? resolved.publicConfig.accessKeyId.trim() : '';
+    typeof resolved.publicConfig.accessKeyId === 'string'
+      ? resolved.publicConfig.accessKeyId.trim()
+      : '';
   const secretAccessKey =
-    typeof resolved.secretConfig.secretAccessKey === 'string' ? resolved.secretConfig.secretAccessKey.trim() : '';
+    typeof resolved.secretConfig.secretAccessKey === 'string'
+      ? resolved.secretConfig.secretAccessKey.trim()
+      : '';
   const region =
-    typeof resolved.publicConfig.region === 'string' && resolved.publicConfig.region.trim().length > 0
+    typeof resolved.publicConfig.region === 'string' &&
+    resolved.publicConfig.region.trim().length > 0
       ? resolved.publicConfig.region.trim()
       : 'eu-central-1';
 
-  if (!resolved.enabled || endpoint.length === 0 || bucket.length === 0 || accessKeyId.length === 0 || secretAccessKey.length === 0) {
+  if (
+    !resolved.enabled ||
+    endpoint.length === 0 ||
+    bucket.length === 0 ||
+    accessKeyId.length === 0 ||
+    secretAccessKey.length === 0
+  ) {
     return null;
   }
 
@@ -228,22 +265,32 @@ export const createS3MediaStoragePort = (
   }
 ): MediaStoragePort => {
   const client = options?.client ?? new S3Client(createS3ClientConfig(config));
-  const signedUrl = options?.getSignedUrl ?? ((targetClient, command, expiresIn) => getSignedUrl(targetClient, command, { expiresIn }));
+  const signedUrl =
+    options?.getSignedUrl ??
+    ((targetClient, command, expiresIn) => getSignedUrl(targetClient, command, { expiresIn }));
 
-  const toExpiresAt = (): string => new Date(Date.now() + config.signedUrlTtlSeconds * 1000).toISOString();
+  const toExpiresAt = (): string =>
+    new Date(Date.now() + config.signedUrlTtlSeconds * 1000).toISOString();
 
   const listObjects = async (input: {
     instanceId: string;
     limit: number;
     cursor?: string;
+    prefix?: string;
+    startAfter?: string;
   }): Promise<MediaStorageObjectList> => {
-    const prefix = resolveStoragePrefix(input.instanceId, config.bucket);
+    const instancePrefix = resolveStoragePrefix(input.instanceId, config.bucket);
+    const requestedPrefix = input.prefix?.replace(/^\/+/, '') ?? '';
+    const prefix = requestedPrefix.startsWith(instancePrefix)
+      ? requestedPrefix
+      : `${instancePrefix}${requestedPrefix}`;
     const response = await client.send(
       new ListObjectsV2Command({
         Bucket: config.bucket,
         Prefix: prefix || undefined,
         MaxKeys: input.limit,
         ContinuationToken: input.cursor,
+        ...(!input.cursor && input.startAfter ? { StartAfter: input.startAfter } : {}),
       })
     );
 
@@ -256,11 +303,14 @@ export const createS3MediaStoragePort = (
         })
       )
       .filter((entry): entry is MediaStorageObjectSummary => entry !== null);
+    const contents = response.Contents ?? [];
+    const lastScannedStorageKey = contents[contents.length - 1]?.Key;
 
-    return {
+    return createStorageObjectList({
       items,
       nextCursor: response.NextContinuationToken ?? null,
-    };
+      lastScannedStorageKey,
+    });
   };
 
   const prepareUpload = async (input: PrepareMediaUploadInput): Promise<MediaUploadPreparation> => {
@@ -293,7 +343,9 @@ export const createS3MediaStoragePort = (
     };
   };
 
-  const resolveDelivery = async (input: ResolveMediaDeliveryInput): Promise<MediaDeliveryResolution> => {
+  const resolveDelivery = async (
+    input: ResolveMediaDeliveryInput
+  ): Promise<MediaDeliveryResolution> => {
     if (input.visibility === 'public') {
       const publicUrl = createPublicDeliveryUrl(config.publicBaseUrl, input.storageKey);
       if (publicUrl) {
@@ -351,7 +403,9 @@ export const createS3MediaStoragePort = (
         Key: input.storageKey,
       })
     );
-    const body = response.Body ? new Uint8Array(await response.Body.transformToByteArray()) : new Uint8Array();
+    const body = response.Body
+      ? new Uint8Array(await response.Body.transformToByteArray())
+      : new Uint8Array();
     return {
       body,
       byteSize: body.byteLength,

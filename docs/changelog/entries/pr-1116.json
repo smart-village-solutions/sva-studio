@@ -1,0 +1,4 @@
+{
+  "prNumber": 1116,
+  "body": "Die Medienverwaltung wurde technisch überarbeitet, damit große Medienbestände stabiler geladen und Uploads zuverlässiger abgeschlossen werden. Die Navigation durch die Medienbibliothek ist jetzt cursorbasiert, während die bestehende Tenant-Isolation über den jeweils zugeordneten Bucket erhalten bleibt."
+}

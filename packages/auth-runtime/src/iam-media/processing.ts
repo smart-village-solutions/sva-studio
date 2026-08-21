@@ -1,7 +1,12 @@
 import sharp from 'sharp';
 import { fileTypeFromBuffer } from 'file-type';
-import { defaultMediaPresets, type MediaCrop, type MediaFocusPoint, type MediaPreset } from '@sva/media';
-import { MediaStorageUnavailableError } from './storage-port.js';
+import {
+  defaultMediaPresets,
+  type MediaCrop,
+  type MediaFocusPoint,
+  type MediaPreset,
+} from '@sva/media';
+import { MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import type { MediaService } from './service.js';
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -10,7 +15,30 @@ type MediaUploadProcessingFailureCode =
   | 'upload_session_not_found'
   | 'asset_not_found'
   | 'invalid_media_content'
-  | 'upload_size_exceeded';
+  | 'upload_size_exceeded'
+  | 'storage_quota_exceeded'
+  | 'upload_processing_superseded';
+
+export type MediaUploadFinalizationResult = 'finalized' | 'quota_exceeded' | 'claim_superseded';
+
+export type MediaUploadFailureResult = 'failed' | 'claim_superseded';
+
+export type MediaUploadFailure = Readonly<{
+  instanceId: string;
+  claimToken: string;
+  asset: Parameters<MediaService['upsertAsset']>[0];
+  uploadSession: Parameters<MediaService['upsertUploadSession']>[0];
+  errorCode: string;
+}>;
+
+export type MediaUploadFinalization = Readonly<{
+  instanceId: string;
+  claimToken: string;
+  asset: Parameters<MediaService['upsertAsset']>[0];
+  uploadSession: Parameters<MediaService['upsertUploadSession']>[0];
+  variants: readonly Parameters<MediaService['upsertVariant']>[1][];
+  totalBytes: number;
+}>;
 
 type MediaUploadProcessingResult =
   | Readonly<{
@@ -24,7 +52,10 @@ type MediaUploadProcessingResult =
       errorCode: MediaUploadProcessingFailureCode;
     }>;
 
-const asErrorResult = (status: number, errorCode: MediaUploadProcessingFailureCode): Extract<MediaUploadProcessingResult, { ok: false }> => ({
+const asErrorResult = (
+  status: number,
+  errorCode: MediaUploadProcessingFailureCode
+): Extract<MediaUploadProcessingResult, { ok: false }> => ({
   ok: false,
   status,
   errorCode,
@@ -33,25 +64,54 @@ const asErrorResult = (status: number, errorCode: MediaUploadProcessingFailureCo
 const buildVariantStorageKey = (input: {
   readonly instanceId: string;
   readonly assetId: string;
+  readonly claimToken: string;
   readonly variantKey: string;
   readonly format: string;
-}): string => `${input.instanceId}/variants/${input.assetId}/${input.variantKey}.${input.format}`;
+}): string =>
+  `${input.instanceId}/variants/${input.assetId}/${input.claimToken}/${input.variantKey}.${input.format}`;
+
+const cleanupReplacedClaimVariants = async (input: {
+  readonly storagePort: Pick<MediaStoragePort, 'listObjects' | 'deleteObject'>;
+  readonly instanceId: string;
+  readonly assetId: string;
+  readonly claimToken: string;
+}): Promise<void> => {
+  const prefix = `${input.instanceId}/variants/${input.assetId}/${input.claimToken}/`;
+  let cursor: string | undefined;
+
+  do {
+    const page = await input.storagePort.listObjects({
+      instanceId: input.instanceId,
+      limit: 1000,
+      prefix,
+      ...(cursor ? { cursor } : {}),
+    });
+    await Promise.all(
+      page.items.map(({ storageKey }) =>
+        input.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
+      )
+    );
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+};
 
 const isMediaFocusPoint = (value: unknown): value is MediaFocusPoint =>
-  typeof value === 'object'
-  && value !== null
-  && typeof (value as { x?: unknown }).x === 'number'
-  && typeof (value as { y?: unknown }).y === 'number';
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { x?: unknown }).x === 'number' &&
+  typeof (value as { y?: unknown }).y === 'number';
 
 const isMediaCrop = (value: unknown): value is MediaCrop =>
-  typeof value === 'object'
-  && value !== null
-  && typeof (value as { x?: unknown }).x === 'number'
-  && typeof (value as { y?: unknown }).y === 'number'
-  && typeof (value as { width?: unknown }).width === 'number'
-  && typeof (value as { height?: unknown }).height === 'number';
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { x?: unknown }).x === 'number' &&
+  typeof (value as { y?: unknown }).y === 'number' &&
+  typeof (value as { width?: unknown }).width === 'number' &&
+  typeof (value as { height?: unknown }).height === 'number';
 
-const readMediaFocusPoint = (metadata: Record<string, unknown> | undefined): MediaFocusPoint | undefined => {
+const readMediaFocusPoint = (
+  metadata: Record<string, unknown> | undefined
+): MediaFocusPoint | undefined => {
   const focusPoint = metadata?.focusPoint;
   return isMediaFocusPoint(focusPoint) ? focusPoint : undefined;
 };
@@ -95,9 +155,15 @@ const createVariantBuffer = async (input: {
     }
 
     if (sourceAspectRatio > targetAspectRatio) {
-      const extractWidth = Math.max(1, Math.min(sourceWidth, Math.round(sourceHeight * targetAspectRatio)));
+      const extractWidth = Math.max(
+        1,
+        Math.min(sourceWidth, Math.round(sourceHeight * targetAspectRatio))
+      );
       const focusX = Math.max(0, Math.min(1, input.focusPoint.x));
-      const left = Math.max(0, Math.min(sourceWidth - extractWidth, Math.round(focusX * sourceWidth - extractWidth / 2)));
+      const left = Math.max(
+        0,
+        Math.min(sourceWidth - extractWidth, Math.round(focusX * sourceWidth - extractWidth / 2))
+      );
       image.extract({
         left,
         top: 0,
@@ -108,9 +174,18 @@ const createVariantBuffer = async (input: {
     }
 
     if (sourceAspectRatio < targetAspectRatio) {
-      const extractHeight = Math.max(1, Math.min(sourceHeight, Math.round(sourceWidth / targetAspectRatio)));
+      const extractHeight = Math.max(
+        1,
+        Math.min(sourceHeight, Math.round(sourceWidth / targetAspectRatio))
+      );
       const focusY = Math.max(0, Math.min(1, input.focusPoint.y));
-      const top = Math.max(0, Math.min(sourceHeight - extractHeight, Math.round(focusY * sourceHeight - extractHeight / 2)));
+      const top = Math.max(
+        0,
+        Math.min(
+          sourceHeight - extractHeight,
+          Math.round(focusY * sourceHeight - extractHeight / 2)
+        )
+      );
       image.extract({
         left: 0,
         top,
@@ -155,7 +230,6 @@ const createVariantBuffer = async (input: {
 
 const markProcessingFailure = async (input: {
   readonly deps: {
-    readonly service: Pick<MediaService, 'upsertAsset' | 'upsertUploadSession'>;
     readonly storagePort: Pick<
       {
         deleteObject: (input: {
@@ -165,13 +239,26 @@ const markProcessingFailure = async (input: {
       },
       'deleteObject'
     >;
+    readonly failUpload: (failure: MediaUploadFailure) => Promise<MediaUploadFailureResult>;
   };
+  readonly claimToken: string;
   readonly asset: Awaited<ReturnType<MediaService['getAssetById']>>;
   readonly uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
   readonly errorCode: MediaUploadProcessingFailureCode;
 }): Promise<Extract<MediaUploadProcessingResult, { ok: false }>> => {
   if (!input.asset || !input.uploadSession) {
     return asErrorResult(404, 'asset_not_found');
+  }
+
+  const failureResult = await input.deps.failUpload({
+    instanceId: String(input.uploadSession.instanceId),
+    claimToken: input.claimToken,
+    asset: input.asset,
+    uploadSession: input.uploadSession,
+    errorCode: input.errorCode,
+  });
+  if (failureResult === 'claim_superseded') {
+    return asErrorResult(409, 'upload_processing_superseded');
   }
 
   await Promise.allSettled([
@@ -181,55 +268,38 @@ const markProcessingFailure = async (input: {
     }),
   ]);
 
-  await input.deps.service.upsertAsset({
-    ...input.asset,
-    uploadStatus: 'failed',
-    processingStatus: 'failed',
-    technical: {
-      ...(input.asset.technical ?? {}),
-      lastError: {
-        code: input.errorCode,
-      },
-    },
-  });
-  await input.deps.service.upsertUploadSession({
-    ...input.uploadSession,
-    status: 'failed',
-  });
-
-  return asErrorResult(input.errorCode === 'upload_size_exceeded' ? 413 : 422, input.errorCode);
+  return asErrorResult(
+    input.errorCode === 'upload_size_exceeded'
+      ? 413
+      : input.errorCode === 'storage_quota_exceeded'
+        ? 409
+        : 422,
+    input.errorCode
+  );
 };
 
 export const createMediaUploadProcessingService = (deps: {
-  readonly service: MediaService;
-  readonly storagePort: {
-    readObject: (input: {
-      readonly instanceId: string;
-      readonly storageKey: string;
-    }) => Promise<{
-      body: Uint8Array;
-      byteSize: number;
-      contentType?: string;
-      etag?: string;
-    }>;
-    writeObject: (input: {
-      readonly instanceId: string;
-      readonly storageKey: string;
-      readonly body: Uint8Array;
-      readonly contentType: string;
-    }) => Promise<{
-      byteSize: number;
-      etag?: string;
-    }>;
-    deleteObject: (input: {
-      readonly instanceId: string;
-      readonly storageKey: string;
-    }) => Promise<void>;
-  };
+  readonly service: Pick<MediaService, 'getUploadSessionById' | 'getAssetById'>;
+  readonly storagePort: Pick<
+    MediaStoragePort,
+    'listObjects' | 'readObject' | 'writeObject' | 'deleteObject'
+  >;
   readonly createId: () => string;
+  readonly finalizeUpload: (
+    input: MediaUploadFinalization
+  ) => Promise<MediaUploadFinalizationResult>;
+  readonly failUpload: (failure: MediaUploadFailure) => Promise<MediaUploadFailureResult>;
 }) => ({
-  async completeUpload(input: { readonly instanceId: string; readonly uploadSessionId: string }): Promise<MediaUploadProcessingResult> {
-    const uploadSession = await deps.service.getUploadSessionById(input.instanceId, input.uploadSessionId);
+  async completeUpload(input: {
+    readonly instanceId: string;
+    readonly uploadSessionId: string;
+    readonly claimToken: string;
+    readonly replacedClaimToken?: string;
+  }): Promise<MediaUploadProcessingResult> {
+    const uploadSession = await deps.service.getUploadSessionById(
+      input.instanceId,
+      input.uploadSessionId
+    );
     if (!uploadSession) {
       return asErrorResult(404, 'upload_session_not_found');
     }
@@ -239,7 +309,20 @@ export const createMediaUploadProcessingService = (deps: {
       return asErrorResult(404, 'asset_not_found');
     }
 
-    if (uploadSession.status === 'validated' && asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
+    if (input.replacedClaimToken) {
+      await cleanupReplacedClaimVariants({
+        storagePort: deps.storagePort,
+        instanceId: input.instanceId,
+        assetId: String(asset.id),
+        claimToken: input.replacedClaimToken,
+      });
+    }
+
+    if (
+      uploadSession.status === 'validated' &&
+      asset.uploadStatus === 'processed' &&
+      asset.processingStatus === 'ready'
+    ) {
       return {
         ok: true,
         asset,
@@ -249,6 +332,12 @@ export const createMediaUploadProcessingService = (deps: {
 
     let persistenceStarted = false;
     const persistedVariantStorageKeys: string[] = [];
+    const cleanupPersistedVariants = () =>
+      Promise.allSettled(
+        persistedVariantStorageKeys.map((storageKey) =>
+          deps.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
+        )
+      );
 
     try {
       const object = await deps.storagePort.readObject({
@@ -260,10 +349,12 @@ export const createMediaUploadProcessingService = (deps: {
       }
 
       const detectedFileType = await fileTypeFromBuffer(object.body);
-      const detectedMimeType = detectedFileType?.mime ?? object.contentType ?? String(asset.mimeType);
+      const detectedMimeType =
+        detectedFileType?.mime ?? object.contentType ?? String(asset.mimeType);
       if (!ALLOWED_IMAGE_MIME_TYPES.has(detectedMimeType) || detectedMimeType !== asset.mimeType) {
         return markProcessingFailure({
           deps,
+          claimToken: input.claimToken,
           asset,
           uploadSession,
           errorCode: 'invalid_media_content',
@@ -303,6 +394,7 @@ export const createMediaUploadProcessingService = (deps: {
         const storageKey = buildVariantStorageKey({
           instanceId: input.instanceId,
           assetId: String(asset.id),
+          claimToken: input.claimToken,
           variantKey: preset.key,
           format: preset.format,
         });
@@ -333,17 +425,6 @@ export const createMediaUploadProcessingService = (deps: {
         });
         persistedVariantStorageKeys.push(variant.storageKey);
         variantBytes += writeResult.byteSize;
-        await deps.service.upsertVariant(input.instanceId, {
-          id: variant.id,
-          assetId: variant.assetId,
-          variantKey: variant.variantKey,
-          presetKey: variant.presetKey,
-          format: variant.format,
-          width: variant.width,
-          height: variant.height,
-          storageKey: variant.storageKey,
-          generationStatus: variant.generationStatus,
-        });
       }
 
       const nextAsset = {
@@ -357,17 +438,28 @@ export const createMediaUploadProcessingService = (deps: {
         },
       };
 
-      await deps.service.upsertAsset(nextAsset);
-      await deps.service.upsertUploadSession({
-        ...uploadSession,
-        status: 'validated',
-      });
-
-      await deps.service.applyStorageUsageDelta({
+      const finalized = await deps.finalizeUpload({
         instanceId: input.instanceId,
-        totalBytesDelta: object.byteSize + variantBytes,
-        assetCountDelta: 1,
+        claimToken: input.claimToken,
+        asset: nextAsset,
+        uploadSession: { ...uploadSession, status: 'validated' },
+        variants: variantsToPersist.map(
+          ({ body: _body, contentType: _contentType, ...variant }) => variant
+        ),
+        totalBytes: object.byteSize + variantBytes,
       });
+      if (finalized === 'claim_superseded') {
+        await cleanupPersistedVariants();
+        return asErrorResult(409, 'upload_processing_superseded');
+      }
+      if (finalized === 'quota_exceeded') {
+        await Promise.allSettled(
+          [...persistedVariantStorageKeys, String(uploadSession.storageKey)].map((storageKey) =>
+            deps.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
+          )
+        );
+        return asErrorResult(409, 'storage_quota_exceeded');
+      }
 
       return {
         ok: true,
@@ -376,24 +468,20 @@ export const createMediaUploadProcessingService = (deps: {
       };
     } catch (error) {
       if (persistenceStarted) {
-        await Promise.allSettled(
-          persistedVariantStorageKeys.map((storageKey) =>
-            deps.storagePort.deleteObject({
-              instanceId: input.instanceId,
-              storageKey,
-            })
-          )
-        );
-        await deps.service.deleteVariantsByAssetId(input.instanceId, String(asset.id));
+        await cleanupPersistedVariants();
       }
       if (error instanceof MediaStorageUnavailableError || persistenceStarted) {
         throw error;
       }
       return markProcessingFailure({
         deps,
+        claimToken: input.claimToken,
         asset,
         uploadSession,
-        errorCode: error instanceof Error && error.message === 'upload_size_mismatch' ? 'upload_size_exceeded' : 'invalid_media_content',
+        errorCode:
+          error instanceof Error && error.message === 'upload_size_mismatch'
+            ? 'upload_size_exceeded'
+            : 'invalid_media_content',
       });
     }
   },

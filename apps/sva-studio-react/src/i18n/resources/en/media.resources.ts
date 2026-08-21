@@ -253,8 +253,8 @@ export const mediaENResources = {
     },
     toolbar: {
       title: 'Library focus',
-      summary: '{{count}} assets in the current view',
-      page: 'Page {{page}} of {{total}} · {{pageSize}} per section',
+      summary: '{{count}} assets in the current section',
+      page: 'Section {{page}} · up to {{limit}} entries',
       pageSizeLabel: 'Entries per page',
       paginationAriaLabel: 'Media library pagination',
       previous: 'Previous page',

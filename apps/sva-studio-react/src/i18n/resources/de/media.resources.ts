@@ -256,8 +256,8 @@ export const mediaDEResources = {
     },
     toolbar: {
       title: 'Bibliotheksfokus',
-      summary: '{{count}} Assets in der aktuellen Ansicht',
-      page: 'Seite {{page}} von {{total}} · {{pageSize}} pro Abschnitt',
+      summary: '{{count}} Assets im aktuellen Abschnitt',
+      page: 'Abschnitt {{page}} · bis zu {{limit}} Einträge',
       pageSizeLabel: 'Einträge pro Seite',
       paginationAriaLabel: 'Seitennavigation der Medienbibliothek',
       previous: 'Vorherige Seite',

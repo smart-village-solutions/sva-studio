@@ -51,6 +51,7 @@ const uploadSessionRow = {
   mime_type: 'image/jpeg',
   byte_size: 2048,
   status: 'validated',
+  claim_token: null,
   expires_at: '2026-04-29T11:00:00.000Z',
   created_at: '2026-04-29T10:01:00.000Z',
   updated_at: '2026-04-29T10:02:00.000Z',
@@ -199,6 +200,7 @@ describe('media repository', () => {
         offset: 20,
       })
     ).resolves.toHaveLength(1);
+    expect(statements[1]?.text).toContain('OR lower(storage_key) LIKE $2');
     expect(statements[1]?.values).toEqual(['tenant-a', '%rathaus%', 'public', 10, 20]);
   });
 
@@ -247,6 +249,22 @@ describe('media repository', () => {
 
     expect(statements[0]?.text).toContain('ORDER BY updated_at DESC NULLS LAST');
     expect(statements[0]?.text).toContain('created_at DESC');
+  });
+
+  it('uses storage-key keyset pagination for cursor listings', async () => {
+    const { executor, statements } = createQueuedExecutor([[assetRow]]);
+    const repository = createMediaRepository(executor);
+
+    await repository.listAssets({
+      instanceId: 'tenant-a',
+      afterStorageKey: 'tenant-a/originals/asset-0.jpg',
+      order: 'storageKeyAsc',
+      limit: 26,
+    });
+
+    expect(statements[0]?.text).toContain('storage_key COLLATE "C" > $2');
+    expect(statements[0]?.text).toContain('ORDER BY storage_key COLLATE "C" ASC');
+    expect(statements[0]?.values).toEqual(['tenant-a', 'tenant-a/originals/asset-0.jpg', 26, 0]);
   });
 
   it('counts matching assets without pagination clauses', async () => {
@@ -469,6 +487,29 @@ describe('media repository', () => {
     });
   });
 
+  it('refreshes upload retries only while the session remains pending', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ id: 'upload-1' }], []]);
+    const repository = createMediaRepository(executor);
+    const input = {
+      instanceId: 'tenant-a',
+      sessionId: 'upload-1',
+      storageKey: 'tenant-a/uploads/upload-1-retry.bin',
+      expiresAt: '2026-04-29T12:00:00.000Z',
+    };
+
+    await expect(repository.refreshPendingUploadSession(input)).resolves.toBe(true);
+    await expect(repository.refreshPendingUploadSession(input)).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("AND status = 'pending'");
+    expect(statements[0]?.text).toContain('RETURNING id');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'upload-1',
+      'tenant-a/uploads/upload-1-retry.bin',
+      '2026-04-29T12:00:00.000Z',
+    ]);
+  });
+
   it('normalizes nullable variant, upload session, and reference fields', async () => {
     const { executor } = createQueuedExecutor([
       [
@@ -571,6 +612,93 @@ describe('media repository', () => {
     });
   });
 
+  it('claims pending upload sessions atomically and applies actual usage within quota', async () => {
+    const claimedSessionRow = {
+      ...uploadSessionRow,
+      status: 'uploaded',
+      claim_token: '00000000-0000-4000-8000-000000000099',
+      replaced_claim_token: '00000000-0000-4000-8000-000000000098',
+    };
+    const { executor, statements } = createQueuedExecutor([
+      [claimedSessionRow],
+      [],
+      [{ claimed: true }],
+      [{ claimed: false }],
+    ]);
+    const repository = createMediaRepository(executor);
+
+    await expect(repository.claimUploadSession('tenant-a', 'upload-1')).resolves.toEqual(
+      expect.objectContaining({
+        id: 'upload-1',
+        status: 'uploaded',
+        claimToken: '00000000-0000-4000-8000-000000000099',
+        replacedClaimToken: '00000000-0000-4000-8000-000000000098',
+      })
+    );
+    await expect(repository.claimUploadSession('tenant-a', 'upload-1')).resolves.toBeNull();
+    await expect(
+      repository.tryApplyStorageUsageWithinQuota({
+        instanceId: 'tenant-a',
+        totalBytes: 2048,
+        assetCount: 1,
+      })
+    ).resolves.toBe(true);
+    await expect(
+      repository.tryApplyStorageUsageWithinQuota({
+        instanceId: 'tenant-a',
+        totalBytes: 4096,
+        assetCount: 1,
+      })
+    ).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("status = 'pending'");
+    expect(statements[0]?.text).toContain("status = 'uploaded'");
+    expect(statements[0]?.text).toContain('claim_token = gen_random_uuid()');
+    expect(statements[0]?.text).toContain('claim_token AS replaced_claim_token');
+    expect(statements[0]?.text).toContain('claimable.replaced_claim_token');
+    expect(statements[0]?.text).toContain('FOR UPDATE');
+    expect(statements[0]?.text).toContain("updated_at < NOW() - ($3 * INTERVAL '1 second')");
+    expect(statements[0]?.text).toContain(
+      "status = 'pending'\n        AND (expires_at IS NULL OR expires_at > NOW())"
+    );
+    expect(statements[0]?.text).not.toContain(
+      ')\n  AND (expires_at IS NULL OR expires_at > NOW())\nRETURNING'
+    );
+    expect(statements[0]?.values).toEqual(['tenant-a', 'upload-1', 600]);
+    expect(statements[2]?.text).toContain('ON CONFLICT (instance_id) DO UPDATE');
+    expect(statements[2]?.text).toContain(
+      'iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes <='
+    );
+    expect(statements[2]?.values).toEqual(['tenant-a', 2048, 1]);
+  });
+
+  it('locks finalization only for the current upload claim token', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ claimed: true }],
+      [{ claimed: false }],
+    ]);
+    const repository = createMediaRepository(executor);
+
+    await expect(
+      repository.lockUploadSessionClaim({
+        instanceId: 'tenant-a',
+        sessionId: 'upload-1',
+        claimToken: '00000000-0000-4000-8000-000000000099',
+      })
+    ).resolves.toBe(true);
+    await expect(
+      repository.lockUploadSessionClaim({
+        instanceId: 'tenant-a',
+        sessionId: 'upload-1',
+        claimToken: '00000000-0000-4000-8000-000000000098',
+      })
+    ).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("status = 'uploaded'");
+    expect(statements[0]?.text).toContain('claim_token = $3::uuid');
+    expect(statements[0]?.text).toContain('FOR UPDATE');
+  });
+
   it('handles missing quotas, missing usage rows, and empty reference replacements', async () => {
     const { executor, statements } = createQueuedExecutor([[], [], [], []]);
     const repository = createMediaRepository(executor);
@@ -604,6 +732,22 @@ describe('media repository', () => {
 
     expect(statements[0]?.text.includes('DELETE FROM iam.media_assets')).toBe(true);
     expect(statements[0]?.values).toEqual(['tenant-a', 'asset-1']);
+  });
+
+  it('locks only open content-save operations before publishing upload variants', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ open: true }], [{ open: false }]]);
+    const repository = createMediaRepository(executor);
+    const input = {
+      instanceId: 'tenant-a',
+      operationId: '00000000-0000-4000-8000-000000000001',
+    };
+
+    await expect(repository.lockOpenContentSaveOperationForUpload(input)).resolves.toBe(true);
+    await expect(repository.lockOpenContentSaveOperationForUpload(input)).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("status IN ('preparing', 'uploading')");
+    expect(statements[0]?.text).toContain('FOR UPDATE');
+    expect(statements[0]?.values).toEqual([input.operationId, input.instanceId]);
   });
 
   it('makes content-save creation and draft upload lookup idempotent', () => {

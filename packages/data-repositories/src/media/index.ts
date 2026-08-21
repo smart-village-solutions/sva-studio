@@ -86,6 +86,8 @@ export type MediaUploadSessionRecord = {
   readonly mimeType: string;
   readonly byteSize: number;
   readonly status: string;
+  readonly claimToken?: string;
+  readonly replacedClaimToken?: string;
   readonly expiresAt?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;
@@ -103,6 +105,12 @@ export type MediaStorageUsageDelta = {
   readonly totalBytesDelta: number;
   readonly assetCountDelta: number;
 };
+
+export type MediaStorageUsageClaim = Readonly<{
+  instanceId: string;
+  totalBytes: number;
+  assetCount: number;
+}>;
 
 export type MediaStorageQuotaRecord = {
   readonly instanceId: string;
@@ -128,6 +136,8 @@ export type MediaAssetListFilter = {
   readonly instanceId: string;
   readonly search?: string;
   readonly visibility?: string;
+  readonly afterStorageKey?: string;
+  readonly order?: 'updatedAtDesc' | 'storageKeyAsc';
   readonly limit?: number;
   readonly offset?: number;
 };
@@ -157,6 +167,12 @@ export type MediaRepository = {
     assetId: string
   ): Promise<readonly MediaVariantRecord[]>;
   upsertUploadSession(input: MediaUploadSessionRecord): Promise<void>;
+  refreshPendingUploadSession(input: {
+    readonly instanceId: string;
+    readonly sessionId: string;
+    readonly storageKey: string;
+    readonly expiresAt?: string;
+  }): Promise<boolean>;
   getUploadSessionById(
     instanceId: string,
     sessionId: string
@@ -165,8 +181,18 @@ export type MediaRepository = {
     instanceId: string,
     assetId: string
   ): Promise<MediaUploadSessionRecord | null>;
+  claimUploadSession(
+    instanceId: string,
+    sessionId: string
+  ): Promise<MediaUploadSessionRecord | null>;
+  lockUploadSessionClaim(input: {
+    readonly instanceId: string;
+    readonly sessionId: string;
+    readonly claimToken: string;
+  }): Promise<boolean>;
   upsertStorageUsage(input: MediaStorageUsageRecord): Promise<void>;
   applyStorageUsageDelta(input: MediaStorageUsageDelta): Promise<void>;
+  tryApplyStorageUsageWithinQuota(input: MediaStorageUsageClaim): Promise<boolean>;
   getStorageUsage(instanceId: string): Promise<MediaStorageUsageRecord | null>;
   upsertStorageQuota(input: MediaStorageQuotaRecord): Promise<void>;
   getStorageQuota(instanceId: string): Promise<MediaStorageQuotaRecord | null>;
@@ -198,6 +224,10 @@ export type MediaRepository = {
     readonly operationId: string;
     readonly actorSubject: string;
   }): Promise<MediaContentSaveOperationRecord | null>;
+  lockOpenContentSaveOperationForUpload(input: {
+    readonly instanceId: string;
+    readonly operationId: string;
+  }): Promise<boolean>;
   replaceContentSaveOperationReferences(input: {
     readonly instanceId: string;
     readonly operationId: string;
@@ -317,6 +347,8 @@ type MediaUploadSessionRow = {
   readonly mime_type: string;
   readonly byte_size: number;
   readonly status: string;
+  readonly claim_token: string | null;
+  readonly replaced_claim_token?: string | null;
   readonly expires_at: string | null;
   readonly created_at: string | null;
   readonly updated_at: string | null;
@@ -403,6 +435,8 @@ const mapUploadSessionRow = (row: MediaUploadSessionRow): MediaUploadSessionReco
   mimeType: row.mime_type,
   byteSize: row.byte_size,
   status: row.status,
+  claimToken: row.claim_token ?? undefined,
+  replacedClaimToken: row.replaced_claim_token ?? undefined,
   expiresAt: row.expires_at ?? undefined,
   createdAt: row.created_at ?? undefined,
   updatedAt: row.updated_at ?? undefined,
@@ -640,12 +674,18 @@ const buildAssetFilterClauses = (filter: Omit<MediaAssetListFilter, 'limit' | 'o
       lower(coalesce(metadata->>'title', '')) LIKE $${values.length}
       OR lower(coalesce(metadata->>'altText', '')) LIKE $${values.length}
       OR lower(mime_type) LIKE $${values.length}
+      OR lower(storage_key) LIKE $${values.length}
     )`);
   }
 
   if (filter.visibility?.trim()) {
     values.push(filter.visibility.trim());
     clauses.push(`visibility = $${values.length}`);
+  }
+
+  if (filter.afterStorageKey !== undefined) {
+    values.push(filter.afterStorageKey);
+    clauses.push(`storage_key COLLATE "C" > $${values.length}`);
   }
 
   return { clauses, values };
@@ -682,8 +722,11 @@ SELECT
   updated_at
 FROM iam.media_assets
 WHERE ${clauses.join('\n  AND ')}
-ORDER BY updated_at DESC NULLS LAST,
-         created_at DESC NULLS LAST
+ORDER BY ${
+      filter.order === 'storageKeyAsc'
+        ? 'storage_key COLLATE "C" ASC'
+        : 'updated_at DESC NULLS LAST, created_at DESC NULLS LAST'
+    }
 LIMIT ${limitPlaceholder}
 OFFSET ${offsetPlaceholder};
 `,
@@ -787,6 +830,10 @@ SET asset_id = EXCLUDED.asset_id,
     mime_type = EXCLUDED.mime_type,
     byte_size = EXCLUDED.byte_size,
     status = EXCLUDED.status,
+    claim_token = CASE
+      WHEN EXCLUDED.status = 'uploaded' THEN iam.media_upload_sessions.claim_token
+      ELSE NULL
+    END,
     expires_at = EXCLUDED.expires_at,
     updated_at = NOW();
 `,
@@ -812,6 +859,7 @@ SELECT
   mime_type,
   byte_size,
   status,
+  claim_token,
   expires_at,
   created_at,
   updated_at
@@ -821,6 +869,25 @@ WHERE instance_id = $1
 LIMIT 1;
 `,
   values: [instanceId, sessionId],
+});
+
+const refreshPendingUploadSessionStatement = (input: {
+  readonly instanceId: string;
+  readonly sessionId: string;
+  readonly storageKey: string;
+  readonly expiresAt?: string;
+}): SqlStatement => ({
+  text: `
+UPDATE iam.media_upload_sessions
+SET storage_key = $3,
+    expires_at = $4::timestamptz,
+    updated_at = NOW()
+WHERE instance_id = $1
+  AND id = $2::uuid
+  AND status = 'pending'
+RETURNING id;
+`,
+  values: [input.instanceId, input.sessionId, input.storageKey, input.expiresAt ?? null],
 });
 
 const getUploadSessionByAssetIdStatement = (instanceId: string, assetId: string): SqlStatement => ({
@@ -833,6 +900,7 @@ SELECT
   mime_type,
   byte_size,
   status,
+  claim_token,
   expires_at,
   created_at,
   updated_at
@@ -843,6 +911,69 @@ ORDER BY created_at DESC
 LIMIT 1;
 `,
   values: [instanceId, assetId],
+});
+
+const UPLOAD_SESSION_STALE_CLAIM_SECONDS = 10 * 60;
+
+const claimUploadSessionStatement = (instanceId: string, sessionId: string): SqlStatement => ({
+  text: `
+WITH claimable AS (
+  SELECT id, claim_token AS replaced_claim_token
+  FROM iam.media_upload_sessions
+  WHERE instance_id = $1
+    AND id = $2::uuid
+    AND (
+      (
+        status = 'pending'
+        AND (expires_at IS NULL OR expires_at > NOW())
+      )
+      OR (
+        status = 'uploaded'
+        AND updated_at < NOW() - ($3 * INTERVAL '1 second')
+      )
+    )
+  FOR UPDATE
+)
+UPDATE iam.media_upload_sessions AS sessions
+SET status = 'uploaded',
+    claim_token = gen_random_uuid(),
+    updated_at = NOW()
+FROM claimable
+WHERE sessions.id = claimable.id
+RETURNING
+  sessions.id,
+  sessions.instance_id,
+  sessions.asset_id,
+  sessions.storage_key,
+  sessions.mime_type,
+  sessions.byte_size,
+  sessions.status,
+  sessions.claim_token,
+  claimable.replaced_claim_token,
+  sessions.expires_at,
+  sessions.created_at,
+  sessions.updated_at;
+`,
+  values: [instanceId, sessionId, UPLOAD_SESSION_STALE_CLAIM_SECONDS],
+});
+
+const lockUploadSessionClaimStatement = (input: {
+  readonly instanceId: string;
+  readonly sessionId: string;
+  readonly claimToken: string;
+}): SqlStatement => ({
+  text: `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.media_upload_sessions
+  WHERE instance_id = $1
+    AND id = $2::uuid
+    AND status = 'uploaded'
+    AND claim_token = $3::uuid
+  FOR UPDATE
+) AS claimed;
+`,
+  values: [input.instanceId, input.sessionId, input.claimToken],
 });
 
 const upsertStorageUsageStatement = (input: MediaStorageUsageRecord): SqlStatement => ({
@@ -875,6 +1006,34 @@ SET total_bytes = GREATEST(iam.media_storage_usage.total_bytes + EXCLUDED.total_
     updated_at = NOW();
 `,
   values: [input.instanceId, input.totalBytesDelta, input.assetCountDelta],
+});
+
+const tryApplyStorageUsageWithinQuotaStatement = (input: MediaStorageUsageClaim): SqlStatement => ({
+  text: `
+WITH quota AS (
+  SELECT max_bytes
+  FROM iam.media_storage_quotas
+  WHERE instance_id = $1
+), usage_claim AS (
+  INSERT INTO iam.media_storage_usage (
+    instance_id,
+    total_bytes,
+    asset_count
+  )
+  SELECT $1, $2, $3
+  WHERE NOT EXISTS (SELECT 1 FROM quota)
+     OR $2 <= (SELECT max_bytes FROM quota)
+  ON CONFLICT (instance_id) DO UPDATE
+  SET total_bytes = iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes,
+      asset_count = iam.media_storage_usage.asset_count + EXCLUDED.asset_count,
+      updated_at = NOW()
+  WHERE NOT EXISTS (SELECT 1 FROM quota)
+     OR iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes <= (SELECT max_bytes FROM quota)
+  RETURNING instance_id
+)
+SELECT EXISTS(SELECT 1 FROM usage_claim) AS claimed;
+`,
+  values: [input.instanceId, input.totalBytes, input.assetCount],
 });
 
 const getStorageUsageStatement = (instanceId: string): SqlStatement => ({
@@ -1068,6 +1227,23 @@ WHERE id = $1::uuid
 LIMIT 1;
 `,
   values: [input.operationId, input.instanceId, input.actorSubject],
+});
+
+const lockOpenContentSaveOperationForUploadStatement = (input: {
+  readonly instanceId: string;
+  readonly operationId: string;
+}): SqlStatement => ({
+  text: `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.media_content_save_operations
+  WHERE id = $1::uuid
+    AND instance_id = $2
+    AND status IN ('preparing', 'uploading')
+  FOR UPDATE
+) AS open;
+`,
+  values: [input.operationId, input.instanceId],
 });
 
 const replaceContentSaveOperationReferencesStatement = (input: {
@@ -1482,6 +1658,14 @@ const createContentSaveRepositoryMethods = (executor: SqlExecutor) => ({
     );
     return result.rows[0] ? mapContentSaveOperationRow(result.rows[0]) : null;
   },
+  async lockOpenContentSaveOperationForUpload(
+    input: Parameters<MediaRepository['lockOpenContentSaveOperationForUpload']>[0]
+  ) {
+    const result = await executor.execute<{ readonly open: boolean }>(
+      lockOpenContentSaveOperationForUploadStatement(input)
+    );
+    return result.rows[0]?.open === true;
+  },
   async replaceContentSaveOperationReferences(
     input: Parameters<MediaRepository['replaceContentSaveOperationReferences']>[0]
   ) {
@@ -1598,6 +1782,12 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
   async upsertUploadSession(input) {
     await executor.execute(upsertUploadSessionStatement(input));
   },
+  async refreshPendingUploadSession(input) {
+    const result = await executor.execute<{ readonly id: string }>(
+      refreshPendingUploadSessionStatement(input)
+    );
+    return result.rows.length > 0;
+  },
   async getUploadSessionById(instanceId, sessionId) {
     const result = await executor.execute<MediaUploadSessionRow>(
       getUploadSessionByIdStatement(instanceId, sessionId)
@@ -1610,11 +1800,29 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
     );
     return result.rows[0] ? mapUploadSessionRow(result.rows[0]) : null;
   },
+  async claimUploadSession(instanceId, sessionId) {
+    const result = await executor.execute<MediaUploadSessionRow>(
+      claimUploadSessionStatement(instanceId, sessionId)
+    );
+    return result.rows[0] ? mapUploadSessionRow(result.rows[0]) : null;
+  },
+  async lockUploadSessionClaim(input) {
+    const result = await executor.execute<{ readonly claimed: boolean }>(
+      lockUploadSessionClaimStatement(input)
+    );
+    return result.rows[0]?.claimed === true;
+  },
   async upsertStorageUsage(input) {
     await executor.execute(upsertStorageUsageStatement(input));
   },
   async applyStorageUsageDelta(input) {
     await executor.execute(applyStorageUsageDeltaStatement(input));
+  },
+  async tryApplyStorageUsageWithinQuota(input) {
+    const result = await executor.execute<{ readonly claimed: boolean }>(
+      tryApplyStorageUsageWithinQuotaStatement(input)
+    );
+    return result.rows[0]?.claimed === true;
   },
   async getStorageUsage(instanceId) {
     const result = await executor.execute<MediaStorageUsageRow>(
@@ -1690,10 +1898,14 @@ export const mediaStatements = {
   upsertVariant: upsertVariantStatement,
   listVariantsByAssetId: listVariantsByAssetIdStatement,
   upsertUploadSession: upsertUploadSessionStatement,
+  refreshPendingUploadSession: refreshPendingUploadSessionStatement,
   getUploadSessionById: getUploadSessionByIdStatement,
   getUploadSessionByAssetId: getUploadSessionByAssetIdStatement,
+  claimUploadSession: claimUploadSessionStatement,
+  lockUploadSessionClaim: lockUploadSessionClaimStatement,
   upsertStorageUsage: upsertStorageUsageStatement,
   applyStorageUsageDelta: applyStorageUsageDeltaStatement,
+  tryApplyStorageUsageWithinQuota: tryApplyStorageUsageWithinQuotaStatement,
   getStorageUsage: getStorageUsageStatement,
   upsertStorageQuota: upsertStorageQuotaStatement,
   getStorageQuota: getStorageQuotaStatement,
@@ -1703,6 +1915,7 @@ export const mediaStatements = {
   listReferencesByTarget: listReferencesByTargetStatement,
   createContentSaveOperation: createContentSaveOperationStatement,
   getContentSaveOperation: getContentSaveOperationStatement,
+  lockOpenContentSaveOperationForUpload: lockOpenContentSaveOperationForUploadStatement,
   replaceContentSaveOperationReferences: replaceContentSaveOperationReferencesStatement,
   markContentSaveOperationContentSaved: markContentSaveOperationContentSavedStatement,
   markContentSaveOperationSavingContent: markContentSaveOperationSavingContentStatement,

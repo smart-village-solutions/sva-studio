@@ -1,16 +1,18 @@
 import fs from 'node:fs';
-import { GetObjectCommand, ListObjectsV2Command, type S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  ListObjectsV2Command,
+  type S3Client,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  listExternalInterfaceRecordsMock,
-  resolveExternalInterfaceMock,
-  revealFieldMock,
-} = vi.hoisted(() => ({
-  listExternalInterfaceRecordsMock: vi.fn(),
-  resolveExternalInterfaceMock: vi.fn(),
-  revealFieldMock: vi.fn(),
-}));
+const { listExternalInterfaceRecordsMock, resolveExternalInterfaceMock, revealFieldMock } =
+  vi.hoisted(() => ({
+    listExternalInterfaceRecordsMock: vi.fn(),
+    resolveExternalInterfaceMock: vi.fn(),
+    revealFieldMock: vi.fn(),
+  }));
 
 vi.mock('@sva/data-repositories/server', () => ({
   listExternalInterfaceRecords: (...args: Parameters<typeof listExternalInterfaceRecordsMock>) =>
@@ -159,18 +161,8 @@ describe('media storage s3 adapter', () => {
     expect(upload.storageKey).toBe('tenant-a/originals/asset-1.jpg');
     expect(delivery.deliveryUrl).toBe('https://downloads.example.test/get');
 
-    expect(signed).toHaveBeenNthCalledWith(
-      1,
-      expect.anything(),
-      expect.any(PutObjectCommand),
-      900
-    );
-    expect(signed).toHaveBeenNthCalledWith(
-      2,
-      expect.anything(),
-      expect.any(GetObjectCommand),
-      900
-    );
+    expect(signed).toHaveBeenNthCalledWith(1, expect.anything(), expect.any(PutObjectCommand), 900);
+    expect(signed).toHaveBeenNthCalledWith(2, expect.anything(), expect.any(GetObjectCommand), 900);
   });
 
   it('uses the configured public base url for public delivery when available', async () => {
@@ -236,11 +228,7 @@ describe('media storage s3 adapter', () => {
       })
     );
 
-    expect(signed).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.any(GetObjectCommand),
-      900
-    );
+    expect(signed).toHaveBeenCalledWith(expect.anything(), expect.any(GetObjectCommand), 900);
   });
 
   it('lists objects from the configured instance prefix and filters pseudo-folder keys', async () => {
@@ -296,11 +284,10 @@ describe('media storage s3 adapter', () => {
         },
       ],
       nextCursor: 'cursor-next',
+      lastScannedStorageKey: 'tenant-a/uploads/2026/06/photo.jpg',
     });
 
-    expect(send).toHaveBeenCalledWith(
-      expect.any(ListObjectsV2Command)
-    );
+    expect(send).toHaveBeenCalledWith(expect.any(ListObjectsV2Command));
     expect(send.mock.calls[0]?.[0].input).toEqual({
       Bucket: 'media-bucket',
       Prefix: 'tenant-a/',
@@ -353,6 +340,66 @@ describe('media storage s3 adapter', () => {
         },
       ],
       nextCursor: null,
+    });
+  });
+
+  it('exposes the last scanned key when an s3 page contains only filtered folder markers', async () => {
+    const send = vi.fn().mockResolvedValue({
+      Contents: [{ Key: 'tenant-a/uploads/2026/' }],
+      NextContinuationToken: 'cursor-next',
+    });
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://minio.example.test',
+        region: 'eu-central-1',
+        bucket: 'media-bucket',
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+        signedUrlTtlSeconds: 900,
+      },
+      {
+        client: { send } as unknown as S3Client,
+        getSignedUrl: vi.fn(),
+      }
+    );
+
+    await expect(port.listObjects({ instanceId: 'tenant-a', limit: 25 })).resolves.toEqual({
+      items: [],
+      nextCursor: 'cursor-next',
+      lastScannedStorageKey: 'tenant-a/uploads/2026/',
+    });
+  });
+
+  it('uses a scoped prefix and start-after key for keyset listings', async () => {
+    const send = vi.fn().mockResolvedValue({ Contents: [] });
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://minio.example.test',
+        region: 'eu-central-1',
+        bucket: 'media-bucket',
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+        signedUrlTtlSeconds: 900,
+      },
+      {
+        client: { send } as unknown as S3Client,
+        getSignedUrl: vi.fn(),
+      }
+    );
+
+    await port.listObjects({
+      instanceId: 'tenant-a',
+      limit: 26,
+      prefix: 'uploads/summer',
+      startAfter: 'tenant-a/uploads/summer-01.jpg',
+    });
+
+    expect(send.mock.calls[0]?.[0].input).toEqual({
+      Bucket: 'media-bucket',
+      Prefix: 'tenant-a/uploads/summer',
+      MaxKeys: 26,
+      ContinuationToken: undefined,
+      StartAfter: 'tenant-a/uploads/summer-01.jpg',
     });
   });
 
@@ -495,8 +542,8 @@ describe('media storage s3 adapter', () => {
   it('avoids the slash-trimming regex patterns flagged by Sonar in the public base url builder', () => {
     const source = fs.readFileSync(new URL('./storage-s3.ts', import.meta.url), 'utf8');
 
-    expect(source).not.toContain('replace(/\\/+$/, \'\')');
-    expect(source).not.toContain('replace(/^\\/+|\\/+$/g, \'\')');
+    expect(source).not.toContain("replace(/\\/+$/, '')");
+    expect(source).not.toContain("replace(/^\\/+|\\/+$/g, '')");
     expect(source).not.toContain('.charCodeAt(');
   });
 });

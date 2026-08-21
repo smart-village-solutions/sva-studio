@@ -42,6 +42,8 @@ gleichzeitig beeinflussen.
 ### Medienmanagement
 
 - Medienzugriffe bleiben mandantengetrennt und hostgeführt.
+- Jeder Tenant besitzt genau einen extern isolierten Medien-Bucket. Die Runtime validiert deshalb keine vermeintlichen Fremdtenant-Präfixe innerhalb dieses bereits isolierten Buckets; generierte Varianten bleiben von manueller Registrierung ausgeschlossen.
+- Upload-Varianten liegen unter claim-isolierten Präfixen. Übernimmt ein neuer Verarbeitungs-Claim eine abgelaufene Session, bereinigt er das vollständige Präfix des ersetzten Claims vor dem Retry; damit benötigt dieser Recovery-Pfad weder Bucket-übergreifende Suche noch einen zusätzlichen Worker.
 - Plugins erhalten ausschließlich rollenbasierte Referenzverträge, keine MinIO-/S3-Artefakte.
 - Asset-Metadaten und Inhaltsmetadaten besitzen getrennte Ownership: Eine Übernahme erzeugt einen Snapshot; spätere Asset-Änderungen überschreiben redaktionell abweichende Felder nur nach expliziter feldweiser Auswahl.
 - `previewUrl` ist ausschließlich transient. Fachmodelle dürfen nur eine nachweislich persistierbare HTTPS-Delivery-URL speichern; URLs mit Ablauf- oder Signaturparametern werden fail-closed abgewiesen.
@@ -50,6 +52,7 @@ gleichzeitig beeinflussen.
 - Content-Save-Operationen sind an Instanz und Actor gebunden. Sie benötigen `media.create` und `media.reference.manage`, nicht jedoch `media.delete`; der Bibliotheksupload bleibt ein eigener unmittelbarer Flow.
 - Ein eindeutiger Fachfehler erlaubt kontrolliertes Abandon. Ein unklarer Netzwerk-/Upstream-Ausgang darf keine möglicherweise bereits referenzierte Datei löschen; Commit-Retry wiederholt ausschließlich Hostschritte nach dem Fach-Write.
 - Upload, Metadatenänderung, Bildbearbeitung, Delivery und Löschblockierung werden auditierbar verarbeitet.
+- Listen verwenden einen an Such- und Sichtbarkeitsfilter gebundenen Cursor statt Offset und Gesamtzahl. Upload-Abschlüsse trennen externe Storage-/Bildverarbeitung von kurzen, atomaren Datenbanktransaktionen; der Statusübergang `pending -> uploaded` verhindert doppelte Verarbeitung.
 - Löschungen bleiben fail-closed bei aktiven Referenzen oder unvollständigem Upload-/Processing-Zustand.
 - i18n für Medienrollen und Fehlerzustände folgt denselben Dot-Notation-Regeln wie übrige Host- und Plugin-Oberflächen.
 

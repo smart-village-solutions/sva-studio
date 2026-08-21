@@ -188,7 +188,7 @@ export const withRequestContext = async <T>(
       headers,
       options.workspaceIdHeaders ?? ['x-workspace-id', 'x-sva-workspace-id']
     );
-    context.workspaceId = workspaceId ?? parentContext.workspaceId ?? options.fallbackWorkspaceId;
+    context.workspaceId = workspaceId ?? options.fallbackWorkspaceId ?? parentContext.workspaceId;
   } else {
     context.workspaceId = parentContext.workspaceId ?? options.fallbackWorkspaceId;
   }

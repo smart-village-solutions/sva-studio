@@ -158,7 +158,7 @@ describe('request-context middleware helpers', () => {
     expect(secondContext.requestId).toBe('req-second');
   });
 
-  it('preserves generated correlation across nested request boundaries', async () => {
+  it('preserves generated request correlation while replacing an outer workspace fallback', async () => {
     const request = new Request('http://localhost/auth/me');
 
     await withRequestContext({ request, fallbackWorkspaceId: 'platform' }, async () => {
@@ -168,7 +168,8 @@ describe('request-context middleware helpers', () => {
         const nestedContext = getWorkspaceContext();
         expect(nestedContext.requestId).toBe(outerContext.requestId);
         expect(nestedContext.traceId).toBe(outerContext.traceId);
-        expect(nestedContext.workspaceId).toBe(outerContext.workspaceId);
+        expect(outerContext.workspaceId).toBe('platform');
+        expect(nestedContext.workspaceId).toBe('default');
       });
     });
   });

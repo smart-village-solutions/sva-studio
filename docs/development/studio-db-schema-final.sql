@@ -1549,6 +1549,7 @@ CREATE TABLE iam.media_upload_sessions (
     expires_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    claim_token uuid,
     CONSTRAINT media_upload_sessions_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'uploaded'::text, 'validated'::text, 'failed'::text, 'expired'::text])))
 );
 

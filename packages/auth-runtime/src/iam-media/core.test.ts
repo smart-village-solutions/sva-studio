@@ -69,7 +69,9 @@ const createService = () => ({
     mimeType: 'image/jpeg',
     byteSize: 1234,
     status: 'uploaded',
+    claimToken: '00000000-0000-4000-8000-000000000099',
   })),
+  lockUploadSessionClaim: vi.fn(async () => true),
   getStorageUsage: vi.fn(async () => null),
   listVariantsByAssetId: vi.fn(async () => [
     {
@@ -1974,6 +1976,11 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(service.lockUploadSessionClaim).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      sessionId: 'upload-1',
+      claimToken: '00000000-0000-4000-8000-000000000099',
+    });
   });
 
   it('retries a stale uploaded claim after processing throws instead of leaving it stuck', async () => {

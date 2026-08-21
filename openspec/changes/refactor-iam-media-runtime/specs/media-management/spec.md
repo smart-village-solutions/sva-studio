@@ -33,7 +33,7 @@ Das System SHALL registrierte Medienassets und nicht registrierte Objekte des te
 
 ### Requirement: Synchroner Upload besitzt einen atomaren Verarbeitungs-Claim
 
-Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verarbeitung zulassen und wiederholte oder konkurrierende Abschlüsse deterministisch behandeln.
+Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verarbeitung zulassen und wiederholte oder konkurrierende Abschlüsse deterministisch behandeln. Jeder Claim SHALL ein eindeutiges Fencing-Token erhalten; die Finalisierung SHALL die Session sperren und dieses Token vor Quotenbuchung und Persistenz prüfen.
 
 #### Scenario: Zwei Requests schließen dieselbe Session ab
 
@@ -55,6 +55,7 @@ Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verar
 - **WHEN** ein autorisierter Client den Abschluss erneut aufruft
 - **THEN** übernimmt das System den abgelaufenen Claim atomar und versucht die Verarbeitung erneut
 - **AND** ein jüngerer `uploaded`-Claim bleibt exklusiv und liefert weiterhin einen In-Verarbeitung-Konflikt
+- **AND** ein vom neuen Token abgelöster Verarbeiter darf weder Quotenbuchung und Datenbankfinalisierung noch Storage-Cleanup ausführen
 
 ### Requirement: Kurze und atomare Upload-Finalisierung
 

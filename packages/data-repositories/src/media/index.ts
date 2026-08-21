@@ -86,6 +86,7 @@ export type MediaUploadSessionRecord = {
   readonly mimeType: string;
   readonly byteSize: number;
   readonly status: string;
+  readonly claimToken?: string;
   readonly expiresAt?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;
@@ -177,6 +178,11 @@ export type MediaRepository = {
     instanceId: string,
     sessionId: string
   ): Promise<MediaUploadSessionRecord | null>;
+  lockUploadSessionClaim(input: {
+    readonly instanceId: string;
+    readonly sessionId: string;
+    readonly claimToken: string;
+  }): Promise<boolean>;
   upsertStorageUsage(input: MediaStorageUsageRecord): Promise<void>;
   applyStorageUsageDelta(input: MediaStorageUsageDelta): Promise<void>;
   tryApplyStorageUsageWithinQuota(input: MediaStorageUsageClaim): Promise<boolean>;
@@ -330,6 +336,7 @@ type MediaUploadSessionRow = {
   readonly mime_type: string;
   readonly byte_size: number;
   readonly status: string;
+  readonly claim_token: string | null;
   readonly expires_at: string | null;
   readonly created_at: string | null;
   readonly updated_at: string | null;
@@ -416,6 +423,7 @@ const mapUploadSessionRow = (row: MediaUploadSessionRow): MediaUploadSessionReco
   mimeType: row.mime_type,
   byteSize: row.byte_size,
   status: row.status,
+  claimToken: row.claim_token ?? undefined,
   expiresAt: row.expires_at ?? undefined,
   createdAt: row.created_at ?? undefined,
   updatedAt: row.updated_at ?? undefined,
@@ -809,6 +817,10 @@ SET asset_id = EXCLUDED.asset_id,
     mime_type = EXCLUDED.mime_type,
     byte_size = EXCLUDED.byte_size,
     status = EXCLUDED.status,
+    claim_token = CASE
+      WHEN EXCLUDED.status = 'uploaded' THEN iam.media_upload_sessions.claim_token
+      ELSE NULL
+    END,
     expires_at = EXCLUDED.expires_at,
     updated_at = NOW();
 `,
@@ -834,6 +846,7 @@ SELECT
   mime_type,
   byte_size,
   status,
+  claim_token,
   expires_at,
   created_at,
   updated_at
@@ -855,6 +868,7 @@ SELECT
   mime_type,
   byte_size,
   status,
+  claim_token,
   expires_at,
   created_at,
   updated_at
@@ -873,6 +887,7 @@ const claimUploadSessionStatement = (instanceId: string, sessionId: string): Sql
   text: `
 UPDATE iam.media_upload_sessions
 SET status = 'uploaded',
+    claim_token = gen_random_uuid(),
     updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid
@@ -894,11 +909,31 @@ RETURNING
   mime_type,
   byte_size,
   status,
+  claim_token,
   expires_at,
   created_at,
   updated_at;
 `,
   values: [instanceId, sessionId, UPLOAD_SESSION_STALE_CLAIM_SECONDS],
+});
+
+const lockUploadSessionClaimStatement = (input: {
+  readonly instanceId: string;
+  readonly sessionId: string;
+  readonly claimToken: string;
+}): SqlStatement => ({
+  text: `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.media_upload_sessions
+  WHERE instance_id = $1
+    AND id = $2::uuid
+    AND status = 'uploaded'
+    AND claim_token = $3::uuid
+  FOR UPDATE
+) AS claimed;
+`,
+  values: [input.instanceId, input.sessionId, input.claimToken],
 });
 
 const upsertStorageUsageStatement = (input: MediaStorageUsageRecord): SqlStatement => ({
@@ -1700,6 +1735,12 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
     );
     return result.rows[0] ? mapUploadSessionRow(result.rows[0]) : null;
   },
+  async lockUploadSessionClaim(input) {
+    const result = await executor.execute<{ readonly claimed: boolean }>(
+      lockUploadSessionClaimStatement(input)
+    );
+    return result.rows[0]?.claimed === true;
+  },
   async upsertStorageUsage(input) {
     await executor.execute(upsertStorageUsageStatement(input));
   },
@@ -1789,6 +1830,7 @@ export const mediaStatements = {
   getUploadSessionById: getUploadSessionByIdStatement,
   getUploadSessionByAssetId: getUploadSessionByAssetIdStatement,
   claimUploadSession: claimUploadSessionStatement,
+  lockUploadSessionClaim: lockUploadSessionClaimStatement,
   upsertStorageUsage: upsertStorageUsageStatement,
   applyStorageUsageDelta: applyStorageUsageDeltaStatement,
   tryApplyStorageUsageWithinQuota: tryApplyStorageUsageWithinQuotaStatement,

@@ -51,6 +51,7 @@ const uploadSessionRow = {
   mime_type: 'image/jpeg',
   byte_size: 2048,
   status: 'validated',
+  claim_token: null,
   expires_at: '2026-04-29T11:00:00.000Z',
   created_at: '2026-04-29T10:01:00.000Z',
   updated_at: '2026-04-29T10:02:00.000Z',
@@ -589,7 +590,11 @@ describe('media repository', () => {
   });
 
   it('claims pending upload sessions atomically and applies actual usage within quota', async () => {
-    const claimedSessionRow = { ...uploadSessionRow, status: 'uploaded' };
+    const claimedSessionRow = {
+      ...uploadSessionRow,
+      status: 'uploaded',
+      claim_token: '00000000-0000-4000-8000-000000000099',
+    };
     const { executor, statements } = createQueuedExecutor([
       [claimedSessionRow],
       [],
@@ -599,7 +604,11 @@ describe('media repository', () => {
     const repository = createMediaRepository(executor);
 
     await expect(repository.claimUploadSession('tenant-a', 'upload-1')).resolves.toEqual(
-      expect.objectContaining({ id: 'upload-1', status: 'uploaded' })
+      expect.objectContaining({
+        id: 'upload-1',
+        status: 'uploaded',
+        claimToken: '00000000-0000-4000-8000-000000000099',
+      })
     );
     await expect(repository.claimUploadSession('tenant-a', 'upload-1')).resolves.toBeNull();
     await expect(
@@ -619,6 +628,7 @@ describe('media repository', () => {
 
     expect(statements[0]?.text).toContain("status = 'pending'");
     expect(statements[0]?.text).toContain("status = 'uploaded'");
+    expect(statements[0]?.text).toContain('claim_token = gen_random_uuid()');
     expect(statements[0]?.text).toContain("updated_at < NOW() - ($3 * INTERVAL '1 second')");
     expect(statements[0]?.text).toContain(
       "status = 'pending'\n      AND (expires_at IS NULL OR expires_at > NOW())"
@@ -632,6 +642,33 @@ describe('media repository', () => {
       'iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes <='
     );
     expect(statements[2]?.values).toEqual(['tenant-a', 2048, 1]);
+  });
+
+  it('locks finalization only for the current upload claim token', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ claimed: true }],
+      [{ claimed: false }],
+    ]);
+    const repository = createMediaRepository(executor);
+
+    await expect(
+      repository.lockUploadSessionClaim({
+        instanceId: 'tenant-a',
+        sessionId: 'upload-1',
+        claimToken: '00000000-0000-4000-8000-000000000099',
+      })
+    ).resolves.toBe(true);
+    await expect(
+      repository.lockUploadSessionClaim({
+        instanceId: 'tenant-a',
+        sessionId: 'upload-1',
+        claimToken: '00000000-0000-4000-8000-000000000098',
+      })
+    ).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain("status = 'uploaded'");
+    expect(statements[0]?.text).toContain('claim_token = $3::uuid');
+    expect(statements[0]?.text).toContain('FOR UPDATE');
   });
 
   it('handles missing quotas, missing usage rows, and empty reference replacements', async () => {

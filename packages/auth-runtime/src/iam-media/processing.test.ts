@@ -53,7 +53,7 @@ const createFinalizeUpload = (service: {
         totalBytesDelta: input.totalBytes,
         assetCountDelta: 1,
       });
-      return true;
+      return 'finalized' as const;
     }
   );
 
@@ -120,6 +120,7 @@ describe('media upload processing service', () => {
     const result = await processor.completeUpload({
       instanceId: 'tenant-a',
       uploadSessionId: 'upload-1',
+      claimToken: 'claim-1',
     });
 
     expect(result.ok).toBe(true);
@@ -187,7 +188,7 @@ describe('media upload processing service', () => {
       })),
       deleteObject: vi.fn(async () => undefined),
     };
-    const finalizeUpload = vi.fn(async () => false);
+    const finalizeUpload = vi.fn(async () => 'quota_exceeded' as const);
     const processor = createMediaUploadProcessingService({
       service: service as never,
       storagePort: storagePort as never,
@@ -203,6 +204,7 @@ describe('media upload processing service', () => {
       processor.completeUpload({
         instanceId: 'tenant-a',
         uploadSessionId: 'upload-1',
+        claimToken: 'claim-1',
       })
     ).resolves.toEqual({
       ok: false,
@@ -220,12 +222,66 @@ describe('media upload processing service', () => {
       })
     );
     expect(storagePort.deleteObject).toHaveBeenCalledTimes(4);
-    expect(service.upsertAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ uploadStatus: 'failed', processingStatus: 'failed' })
-    );
-    expect(service.upsertUploadSession).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'failed' })
-    );
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).not.toHaveBeenCalled();
+  });
+
+  it('does not delete shared storage objects when a newer claim supersedes finalization', async () => {
+    const originalBuffer = await sharp({
+      create: {
+        width: 800,
+        height: 600,
+        channels: 3,
+        background: { r: 10, g: 20, b: 30 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const service = {
+      getUploadSessionById: vi.fn(async () =>
+        createUploadSession({ status: 'uploaded', byteSize: originalBuffer.byteLength })
+      ),
+      getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+    };
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: originalBuffer,
+        byteSize: originalBuffer.byteLength,
+        contentType: 'image/png',
+      })),
+      writeObject: vi.fn(async ({ body }: { body: Uint8Array }) => ({
+        byteSize: body.byteLength,
+      })),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      finalizeUpload: vi.fn(async () => 'claim_superseded' as const),
+      createId: vi
+        .fn()
+        .mockReturnValueOnce('variant-1')
+        .mockReturnValueOnce('variant-2')
+        .mockReturnValueOnce('variant-3'),
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+        claimToken: 'claim-1',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: 'upload_processing_superseded',
+      status: 409,
+    });
+
+    expect(storagePort.deleteObject).not.toHaveBeenCalled();
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).not.toHaveBeenCalled();
   });
 
   it('applies crop metadata to eager variants and avoids enlarging smaller sources', async () => {
@@ -295,6 +351,7 @@ describe('media upload processing service', () => {
     const result = await processor.completeUpload({
       instanceId: 'tenant-a',
       uploadSessionId: 'upload-1',
+      claimToken: 'claim-1',
     });
 
     expect(result.ok).toBe(true);
@@ -358,6 +415,7 @@ describe('media upload processing service', () => {
     const result = await processor.completeUpload({
       instanceId: 'tenant-a',
       uploadSessionId: 'upload-1',
+      claimToken: 'claim-1',
     });
 
     expect(result).toEqual({
@@ -445,6 +503,7 @@ describe('media upload processing service', () => {
       processor.completeUpload({
         instanceId: 'tenant-a',
         uploadSessionId: 'upload-1',
+        claimToken: 'claim-1',
       })
     ).rejects.toThrow('s3_write_failed');
 
@@ -501,6 +560,7 @@ describe('media upload processing service', () => {
       processor.completeUpload({
         instanceId: 'tenant-a',
         uploadSessionId: 'upload-1',
+        claimToken: 'claim-1',
       })
     ).resolves.toEqual({
       ok: true,
@@ -593,6 +653,7 @@ describe('media upload processing service', () => {
     const result = await processor.completeUpload({
       instanceId: 'tenant-a',
       uploadSessionId: 'upload-1',
+      claimToken: 'claim-1',
     });
 
     expect(result.ok).toBe(true);

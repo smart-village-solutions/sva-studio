@@ -16,6 +16,7 @@ import {
 } from './http-support.js';
 import { createMediaUploadProcessingService } from './processing.js';
 import { canAccessMediaAsset } from './asset-support.js';
+import { finalizeProcessedUpload } from './upload-finalization.js';
 
 type UploadState = Readonly<{
   uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
@@ -94,30 +95,11 @@ const createProcessingService = (deps: MediaHttpHandlerDeps) => ({
     ),
 });
 
-const finalizeProcessedUpload = (
-  deps: MediaHttpHandlerDeps,
-  finalization: Parameters<
-    NonNullable<Parameters<typeof createMediaUploadProcessingService>[0]['finalizeUpload']>
-  >[0]
-): Promise<boolean> =>
-  deps.withMediaService(finalization.instanceId, async (service) => {
-    const quotaClaimed = await service.tryApplyStorageUsageWithinQuota({
-      instanceId: finalization.instanceId,
-      totalBytes: finalization.totalBytes,
-      assetCount: 1,
-    });
-    if (!quotaClaimed) return false;
-    for (const variant of finalization.variants) {
-      await service.upsertVariant(finalization.instanceId, variant);
-    }
-    await service.upsertAsset(finalization.asset);
-    await service.upsertUploadSession(finalization.uploadSession);
-    return true;
-  });
-
 const processingFailureMessage = (errorCode: string): string => {
   const messages: Readonly<Record<string, string>> = {
     storage_quota_exceeded: 'Speicherkontingent der Instanz wurde überschritten.',
+    upload_processing_superseded:
+      'Die Upload-Verarbeitung wurde durch einen neuen Versuch ersetzt.',
     upload_size_exceeded: 'Das hochgeladene Medium überschreitet die erlaubte Größe.',
     invalid_media_content: 'Das hochgeladene Medium konnte nicht validiert werden.',
     upload_session_not_found: 'Upload-Session wurde nicht gefunden.',
@@ -130,6 +112,7 @@ const processClaimedUpload = async (input: {
   ctx: AuthenticatedRequestContext;
   instanceId: string;
   uploadSessionId: string;
+  claimToken: string;
 }): Promise<Response> => {
   const storagePort = await resolveMediaStoragePort(input.deps, input.instanceId);
   const result = await createMediaUploadProcessingService({
@@ -140,6 +123,7 @@ const processClaimedUpload = async (input: {
   }).completeUpload({
     instanceId: input.instanceId,
     uploadSessionId: input.uploadSessionId,
+    claimToken: input.claimToken,
   });
 
   if (!result.ok) {
@@ -154,9 +138,11 @@ const processClaimedUpload = async (input: {
       resourceId: input.uploadSessionId,
     });
     const isNotFound = ['upload_session_not_found', 'asset_not_found'].includes(result.errorCode);
-    const isConflict = ['upload_size_exceeded', 'storage_quota_exceeded'].includes(
-      result.errorCode
-    );
+    const isConflict = [
+      'upload_size_exceeded',
+      'storage_quota_exceeded',
+      'upload_processing_superseded',
+    ].includes(result.errorCode);
     return createApiError(
       result.status,
       isNotFound ? 'not_found' : isConflict ? 'conflict' : 'invalid_request',
@@ -233,7 +219,8 @@ const completeUploadWithStorage = async (input: {
     service.claimUploadSession(input.instanceId, input.uploadSessionId)
   );
   if (claimedSession) {
-    return processClaimedUpload(input);
+    if (!claimedSession.claimToken) throw new Error('media_upload_claim_token_missing');
+    return processClaimedUpload({ ...input, claimToken: claimedSession.claimToken });
   }
 
   const completedAfterClaim = getCompletedUploadAsset(
@@ -257,45 +244,45 @@ export const completeUpload = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-    const instanceId = resolveScopedInstanceId(request, ctx.user.instanceId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
-    const uploadSessionId = readUploadSessionId(request);
-    if (uploadSessionId instanceof Response) {
-      return uploadSessionId;
-    }
+  const instanceId = resolveScopedInstanceId(request, ctx.user.instanceId);
+  if (instanceId instanceof Response) {
+    return instanceId;
+  }
+  const uploadSessionId = readUploadSessionId(request);
+  if (uploadSessionId instanceof Response) {
+    return uploadSessionId;
+  }
 
-    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
-    if (!authorization.ok) {
-      await emitMediaAuditEvent({
+  const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
+  if (!authorization.ok) {
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.uploadComplete',
+      result: 'denied',
+      reasonCode: authorization.error,
+      resourceType: 'media_upload_session',
+      resourceId: uploadSessionId,
+    });
+    return mapAuthorizationFailure(authorization);
+  }
+
+  return withMediaStorageGuard(
+    () =>
+      completeUploadWithStorage({
         deps,
         ctx,
         instanceId,
-        actionId: 'media.uploadComplete',
-        result: 'denied',
-        reasonCode: authorization.error,
-        resourceType: 'media_upload_session',
-        resourceId: uploadSessionId,
-      });
-      return mapAuthorizationFailure(authorization);
+        uploadSessionId,
+      }),
+    {
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.uploadComplete',
+      resourceType: 'media_upload_session',
+      resourceId: uploadSessionId,
     }
-
-    return withMediaStorageGuard(
-      () =>
-        completeUploadWithStorage({
-          deps,
-          ctx,
-          instanceId,
-          uploadSessionId,
-        }),
-      {
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'media.uploadComplete',
-        resourceType: 'media_upload_session',
-        resourceId: uploadSessionId,
-      }
-    );
+  );
 };

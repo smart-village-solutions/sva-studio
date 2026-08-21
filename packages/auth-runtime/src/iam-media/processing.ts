@@ -16,7 +16,19 @@ type MediaUploadProcessingFailureCode =
   | 'asset_not_found'
   | 'invalid_media_content'
   | 'upload_size_exceeded'
-  | 'storage_quota_exceeded';
+  | 'storage_quota_exceeded'
+  | 'upload_processing_superseded';
+
+export type MediaUploadFinalizationResult = 'finalized' | 'quota_exceeded' | 'claim_superseded';
+
+export type MediaUploadFinalization = Readonly<{
+  instanceId: string;
+  claimToken: string;
+  asset: Parameters<MediaService['upsertAsset']>[0];
+  uploadSession: Parameters<MediaService['upsertUploadSession']>[0];
+  variants: readonly Parameters<MediaService['upsertVariant']>[1][];
+  totalBytes: number;
+}>;
 
 type MediaUploadProcessingResult =
   | Readonly<{
@@ -260,17 +272,14 @@ export const createMediaUploadProcessingService = (deps: {
     }) => Promise<void>;
   };
   readonly createId: () => string;
-  readonly finalizeUpload: (input: {
-    readonly instanceId: string;
-    readonly asset: Parameters<MediaService['upsertAsset']>[0];
-    readonly uploadSession: Parameters<MediaService['upsertUploadSession']>[0];
-    readonly variants: readonly Parameters<MediaService['upsertVariant']>[1][];
-    readonly totalBytes: number;
-  }) => Promise<boolean>;
+  readonly finalizeUpload: (
+    input: MediaUploadFinalization
+  ) => Promise<MediaUploadFinalizationResult>;
 }) => ({
   async completeUpload(input: {
     readonly instanceId: string;
     readonly uploadSessionId: string;
+    readonly claimToken: string;
   }): Promise<MediaUploadProcessingResult> {
     const uploadSession = await deps.service.getUploadSessionById(
       input.instanceId,
@@ -399,6 +408,7 @@ export const createMediaUploadProcessingService = (deps: {
 
       const finalized = await deps.finalizeUpload({
         instanceId: input.instanceId,
+        claimToken: input.claimToken,
         asset: nextAsset,
         uploadSession: { ...uploadSession, status: 'validated' },
         variants: variantsToPersist.map(
@@ -406,18 +416,16 @@ export const createMediaUploadProcessingService = (deps: {
         ),
         totalBytes: object.byteSize + variantBytes,
       });
-      if (!finalized) {
+      if (finalized === 'claim_superseded') {
+        return asErrorResult(409, 'upload_processing_superseded');
+      }
+      if (finalized === 'quota_exceeded') {
         await Promise.allSettled(
-          persistedVariantStorageKeys.map((storageKey) =>
+          [...persistedVariantStorageKeys, String(uploadSession.storageKey)].map((storageKey) =>
             deps.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
           )
         );
-        return markProcessingFailure({
-          deps,
-          asset,
-          uploadSession,
-          errorCode: 'storage_quota_exceeded',
-        });
+        return asErrorResult(409, 'storage_quota_exceeded');
       }
 
       return {

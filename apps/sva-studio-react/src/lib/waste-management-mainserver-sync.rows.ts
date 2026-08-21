@@ -8,21 +8,32 @@ export type WasteSyncRow = SvaMainserverWasteSyncItem &
 const normalizeKeyPart = (value: string | undefined): string =>
   (value ?? '').trim().toLocaleLowerCase('de-DE');
 
-export const buildWasteSyncKey = (item: {
+type WasteSyncKeyInput = {
   pickupDate: string;
   wasteType: string;
   street: string;
   zip?: string;
   city?: string;
   note?: string;
-}): string =>
+};
+
+export const buildWasteSyncKey = (item: WasteSyncKeyInput): string =>
   [
     item.pickupDate,
     normalizeKeyPart(item.wasteType),
     normalizeKeyPart(item.street),
-    ...(normalizeKeyPart(item.zip) ? [normalizeKeyPart(item.zip)] : []),
+    normalizeKeyPart(item.zip),
     normalizeKeyPart(item.city),
-    ...(normalizeKeyPart(item.note) ? [normalizeKeyPart(item.note)] : []),
+    normalizeKeyPart(item.note),
+  ].join('::');
+
+export const buildWasteSyncCompatibilityKey = (item: WasteSyncKeyInput): string =>
+  [
+    item.pickupDate,
+    normalizeKeyPart(item.wasteType),
+    normalizeKeyPart(item.street),
+    normalizeKeyPart(item.city),
+    normalizeKeyPart(item.note),
   ].join('::');
 
 export const toWasteSyncRow = (item: SvaMainserverWasteSyncItem): WasteSyncRow => ({

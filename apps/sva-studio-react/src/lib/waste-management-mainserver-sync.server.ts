@@ -31,6 +31,7 @@ import {
   type WasteSyncProgressReporter,
 } from './waste-management-mainserver-sync.progress.js';
 import {
+  buildWasteSyncCompatibilityKey,
   chunkWasteSyncItems,
   toWasteSyncRow,
   type WasteSyncRow,
@@ -135,12 +136,29 @@ export const runWasteManagementMainserverSync = async (input: {
 }): Promise<WasteManagementMainserverSyncResult> => {
   const studioByKey = new Map(input.studioRows.map((row) => [row.key, row] as const));
   const mainserverByKey = new Map(input.mainserverRows.map((row) => [row.key, row] as const));
+  const mainserverCompatibilityKeys = new Set(
+    input.mainserverRows.map(buildWasteSyncCompatibilityKey)
+  );
+  const studioCompatibilityKeysWithoutZip = new Set(
+    input.studioRows
+      .filter((row) => !row.zip?.trim())
+      .map(buildWasteSyncCompatibilityKey)
+  );
 
   const createItems = input.studioRows
-    .filter((row) => !mainserverByKey.has(row.key))
+    .filter(
+      (row) =>
+        !mainserverByKey.has(row.key) &&
+        (Boolean(row.zip?.trim()) ||
+          !mainserverCompatibilityKeys.has(buildWasteSyncCompatibilityKey(row)))
+    )
     .map(({ key: _key, ...row }) => row);
   const deleteItems = input.mainserverRows
-    .filter((row) => !studioByKey.has(row.key))
+    .filter(
+      (row) =>
+        !studioByKey.has(row.key) &&
+        !studioCompatibilityKeysWithoutZip.has(buildWasteSyncCompatibilityKey(row))
+    )
     .map(({ key: _key, ...row }) => row);
   const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
   const deleteByValueCount = deleteItems.length - deleteByIdCount;

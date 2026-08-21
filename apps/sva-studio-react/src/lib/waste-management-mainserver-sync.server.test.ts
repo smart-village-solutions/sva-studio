@@ -456,6 +456,49 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(result.deleteCount).toBe(1);
   });
 
+  it('preserves an existing mainserver ZIP when Studio has no postal code', async () => {
+    const studioItem = {
+      pickupDate: '2026-01-10',
+      wasteType: 'Restmüll',
+      street: 'Hauptstraße',
+      city: 'Musterhausen',
+    };
+    const mainserverItem = {
+      id: 'pickup-1',
+      ...studioItem,
+      zip: '16928',
+    };
+
+    const result = await runWasteManagementMainserverSync({
+      studioRows: [{ ...studioItem, key: buildWasteSyncKey(studioItem) }],
+      mainserverRows: [{ ...mainserverItem, key: buildWasteSyncKey(mainserverItem) }],
+      dryRun: true,
+    });
+
+    expect(result.createCount).toBe(0);
+    expect(result.deleteCount).toBe(0);
+  });
+
+  it('keeps ZIP city and note positions distinct in sync keys', () => {
+    expect(
+      buildWasteSyncKey({
+        pickupDate: '2026-01-10',
+        wasteType: 'Restmüll',
+        street: 'Hauptstraße',
+        city: '12345',
+        note: 'Berlin',
+      })
+    ).not.toBe(
+      buildWasteSyncKey({
+        pickupDate: '2026-01-10',
+        wasteType: 'Restmüll',
+        street: 'Hauptstraße',
+        zip: '12345',
+        city: 'Berlin',
+      })
+    );
+  });
+
   it('includes imported location pickup dates in the mainserver sync materialization', async () => {
     withWasteClientMock.mockResolvedValueOnce({
       tours: [

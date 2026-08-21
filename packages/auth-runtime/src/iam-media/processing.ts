@@ -64,9 +64,11 @@ const asErrorResult = (
 const buildVariantStorageKey = (input: {
   readonly instanceId: string;
   readonly assetId: string;
+  readonly claimToken: string;
   readonly variantKey: string;
   readonly format: string;
-}): string => `${input.instanceId}/variants/${input.assetId}/${input.variantKey}.${input.format}`;
+}): string =>
+  `${input.instanceId}/variants/${input.assetId}/${input.claimToken}/${input.variantKey}.${input.format}`;
 
 const isMediaFocusPoint = (value: unknown): value is MediaFocusPoint =>
   typeof value === 'object' &&
@@ -315,6 +317,12 @@ export const createMediaUploadProcessingService = (deps: {
 
     let persistenceStarted = false;
     const persistedVariantStorageKeys: string[] = [];
+    const cleanupPersistedVariants = () =>
+      Promise.allSettled(
+        persistedVariantStorageKeys.map((storageKey) =>
+          deps.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
+        )
+      );
 
     try {
       const object = await deps.storagePort.readObject({
@@ -371,6 +379,7 @@ export const createMediaUploadProcessingService = (deps: {
         const storageKey = buildVariantStorageKey({
           instanceId: input.instanceId,
           assetId: String(asset.id),
+          claimToken: input.claimToken,
           variantKey: preset.key,
           format: preset.format,
         });
@@ -425,6 +434,7 @@ export const createMediaUploadProcessingService = (deps: {
         totalBytes: object.byteSize + variantBytes,
       });
       if (finalized === 'claim_superseded') {
+        await cleanupPersistedVariants();
         return asErrorResult(409, 'upload_processing_superseded');
       }
       if (finalized === 'quota_exceeded') {
@@ -451,16 +461,10 @@ export const createMediaUploadProcessingService = (deps: {
           errorCode: 'upload_processing_failed',
         });
         if (failureResult === 'claim_superseded') {
+          await cleanupPersistedVariants();
           return asErrorResult(409, 'upload_processing_superseded');
         }
-        await Promise.allSettled(
-          persistedVariantStorageKeys.map((storageKey) =>
-            deps.storagePort.deleteObject({
-              instanceId: input.instanceId,
-              storageKey,
-            })
-          )
-        );
+        await cleanupPersistedVariants();
       }
       if (error instanceof MediaStorageUnavailableError || persistenceStarted) {
         throw error;

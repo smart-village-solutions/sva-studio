@@ -243,7 +243,9 @@ describe('media upload processing service', () => {
         instanceId: 'tenant-a',
         totalBytes: expect.any(Number),
         variants: expect.arrayContaining([
-          expect.objectContaining({ storageKey: 'tenant-a/variants/asset-1/thumbnail.webp' }),
+          expect.objectContaining({
+            storageKey: 'tenant-a/variants/asset-1/claim-1/thumbnail.webp',
+          }),
         ]),
       })
     );
@@ -252,7 +254,7 @@ describe('media upload processing service', () => {
     expect(service.upsertUploadSession).not.toHaveBeenCalled();
   });
 
-  it('does not delete shared storage objects when a newer claim supersedes finalization', async () => {
+  it('deletes only claim-scoped variants when a newer claim supersedes finalization', async () => {
     const originalBuffer = await sharp({
       create: {
         width: 800,
@@ -306,7 +308,15 @@ describe('media upload processing service', () => {
       status: 409,
     });
 
-    expect(storagePort.deleteObject).not.toHaveBeenCalled();
+    expect(storagePort.deleteObject).toHaveBeenCalledTimes(3);
+    expect(storagePort.deleteObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/variants/asset-1/claim-1/thumbnail.webp',
+    });
+    expect(storagePort.deleteObject).not.toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.png',
+    });
     expect(service.upsertAsset).not.toHaveBeenCalled();
     expect(service.upsertUploadSession).not.toHaveBeenCalled();
   });
@@ -539,7 +549,7 @@ describe('media upload processing service', () => {
 
     expect(storagePort.deleteObject).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
-      storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+      storageKey: 'tenant-a/variants/asset-1/claim-1/thumbnail.webp',
     });
     expect(service.deleteVariantsByAssetId).not.toHaveBeenCalled();
     expect(service.upsertAsset).toHaveBeenCalledWith(
@@ -601,7 +611,7 @@ describe('media upload processing service', () => {
     expect(service.upsertUploadSession).not.toHaveBeenCalled();
   });
 
-  it('does not clean up partial variants after an infrastructure failure superseded its claim', async () => {
+  it('cleans up only its claim-scoped partial variants after being superseded', async () => {
     const originalBuffer = await sharp({
       create: {
         width: 800,
@@ -654,7 +664,11 @@ describe('media upload processing service', () => {
     expect(failUpload).toHaveBeenCalledWith(
       expect.objectContaining({ claimToken: 'claim-1', errorCode: 'upload_processing_failed' })
     );
-    expect(storagePort.deleteObject).not.toHaveBeenCalled();
+    expect(storagePort.deleteObject).toHaveBeenCalledOnce();
+    expect(storagePort.deleteObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/variants/asset-1/claim-1/thumbnail.webp',
+    });
   });
 
   it('treats repeated completion of an already validated session as idempotent success', async () => {

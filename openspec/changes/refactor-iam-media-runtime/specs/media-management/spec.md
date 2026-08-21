@@ -33,7 +33,7 @@ Das System SHALL registrierte Medienassets und nicht registrierte Objekte des te
 
 ### Requirement: Synchroner Upload besitzt einen atomaren Verarbeitungs-Claim
 
-Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verarbeitung zulassen und wiederholte oder konkurrierende Abschlüsse deterministisch behandeln. Jeder Claim SHALL ein eindeutiges Fencing-Token erhalten; die Finalisierung SHALL die Session sperren und dieses Token vor Quotenbuchung und Persistenz prüfen.
+Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verarbeitung zulassen und wiederholte oder konkurrierende Abschlüsse deterministisch behandeln. Jeder Claim SHALL ein eindeutiges Fencing-Token erhalten und Varianten unter claim-isolierten Storage-Keys erzeugen; die Finalisierung SHALL die Session sperren und dieses Token vor Quotenbuchung und Veröffentlichung der Variantenreferenzen prüfen.
 
 #### Scenario: Zwei Requests schließen dieselbe Session ab
 
@@ -41,6 +41,14 @@ Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verar
 - **THEN** darf genau ein Request die Session atomar nach `uploaded` überführen und verarbeiten
 - **AND** der andere Request erhält einen eindeutigen In-Verarbeitung-Konflikt
 - **AND** Speichernutzung und Asset-Anzahl werden nicht doppelt verbucht
+
+#### Scenario: Ein abgelöster Verarbeiter beendet die Variantenerzeugung verspätet
+
+- **WHEN** ein neuer Claim eine lange laufende Verarbeitung übernimmt
+- **AND** der vorherige Verarbeiter anschließend weitere Varianten schreibt
+- **THEN** überschreibt er keine Storage-Objekte des neuen Claims
+- **AND** seine Finalisierung wird abgewiesen
+- **AND** er entfernt ausschließlich seine eigenen unveröffentlichten Varianten
 
 #### Scenario: Validierter Abschluss wird wiederholt
 

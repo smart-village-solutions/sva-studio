@@ -233,6 +233,20 @@ Zuordnung:
 - Auth-Runtime bleibt HTTP- und Transaktionsadapter, enthält aber keine zweite SQL-Ownership für Legal Holds oder DSR-Events.
 - OpenSpec-Change: `refactor-dsr-persistence-primitives`.
 
+### Fortschreibung 2026-08: Interne Content-List-Projektion ohne neue ADR
+
+- Für `refactor-iam-content-list-projection` wird keine neue ADR angelegt.
+- Maßgeblich bleiben:
+  - ADR-017 für die modulare Zerlegung mit schmaler kompatibler Fassade,
+  - ADR-021 für die serverseitige Mainserver-Integrationsgrenze,
+  - ADR-036 für den kanonischen Projektions-, Sync- und Reconcile-Vertrag.
+- Der Change führt kein neues IAM-, Persistenz- oder Integrationsmuster ein. Er ordnet die bestehende app-interne Implementierung den Verantwortungen Modell, Repository, Source, Read, Authorization, List, Sync und Mutation zu.
+- HTTP-, Autorisierungs-, Scope-, Snapshot-, Retry-, Audit- und Datenbankverträge bleiben unverändert; insbesondere entstehen weder eine neue Package-Grenze noch eine zusätzliche Service- oder Repository-Ownership.
+
+Zuordnung:
+
+- Abschnitt 05/06/08/09/10/11: OpenSpec-Change `refactor-iam-content-list-projection`
+
 ### Fortschreibung 2026-05: Mainserver-Listen-Pagination ohne neue ADR
 
 - Für `add-mainserver-plugin-list-pagination` wurde ebenfalls keine neue ADR angelegt.

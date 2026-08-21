@@ -192,11 +192,8 @@ export type {
 export * from './media-content-save-client.js';
 export { resolveContentMediaCapabilities, type ContentMediaCapabilities } from './content-media-permissions.js';
 export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
-export {
-  buildWasteStreetKey,
-  resolveEffectiveWasteTourDateShiftsForYear,
-  type EffectiveWasteTourDateShift,
-} from '@sva/core';
+export { buildWasteStreetKey, resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
+export type { EffectiveWasteTourDateShift } from '@sva/core';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,

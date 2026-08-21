@@ -9,7 +9,7 @@ import type {
   WasteTourRecord,
 } from './waste-management-master-data.js';
 import type { WasteManagementCsvDelimiter } from './waste-management-operations-contract.js';
-import { WASTE_ALL_HOUSE_NUMBERS } from './waste-management/master-data-addresses.js';
+import { WASTE_ALL_HOUSE_NUMBERS } from './waste-management/master-data-address-key.js';
 
 const ADDRESS_HEADERS = ['Region', 'Ort', 'Straße', 'Hausnummern'] as const;
 const SUPPORTED_DELIMITERS = [

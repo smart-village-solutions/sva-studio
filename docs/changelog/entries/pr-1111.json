@@ -1,0 +1,4 @@
+{
+  "prNumber": 1111,
+  "body": "Die bereits eingeführten Sicherheitsgrenzen des zentralen Backup-Agenten sind nun Teil der kanonischen Deployment-Spezifikation.\n\n- Backup- und Restore-Aufträge bleiben an getrennten fail-closed Grenzen validiert.\n- Signaturbildung, Zielbindung und unterstützte Vertragsversionen bleiben unverändert.\n- Der vollständig umgesetzte OpenSpec-Change ist archiviert."
+}

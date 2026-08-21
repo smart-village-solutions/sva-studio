@@ -67,7 +67,7 @@ const createStorageObjectList = (input: {
 }): MediaStorageObjectList => ({
   items: input.items,
   nextCursor: input.nextCursor,
-  ...(input.items.length === 0 && input.lastScannedStorageKey
+  ...(input.nextCursor !== null && input.lastScannedStorageKey
     ? { lastScannedStorageKey: input.lastScannedStorageKey }
     : {}),
 });

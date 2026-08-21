@@ -261,8 +261,8 @@ describe('media repository', () => {
       limit: 26,
     });
 
-    expect(statements[0]?.text).toContain('storage_key > $2');
-    expect(statements[0]?.text).toContain('ORDER BY storage_key ASC');
+    expect(statements[0]?.text).toContain('storage_key COLLATE "C" > $2');
+    expect(statements[0]?.text).toContain('ORDER BY storage_key COLLATE "C" ASC');
     expect(statements[0]?.values).toEqual(['tenant-a', 'tenant-a/originals/asset-0.jpg', 26, 0]);
   });
 

@@ -29,13 +29,31 @@ describe('mergeMediaListingPage', () => {
       limit: 10,
       registeredAssets: [asset('asset-b', 'tenant-a/originals/b.jpg')],
       bucketObjects: [bucketObject('tenant-a/originals/a.jpg')],
+      registeredHasMore: false,
+      bucketHasMore: false,
     });
 
     expect(result.items.map((item) => item.storageKey)).toEqual([
       'tenant-a/originals/a.jpg',
       'tenant-a/originals/b.jpg',
     ]);
-    expect(result.hasMoreItems).toBe(false);
+    expect(result.hasNextPage).toBe(false);
+  });
+
+  it('uses the binary storage-key order used by S3', () => {
+    const result = mergeMediaListingPage({
+      instanceId: 'tenant-a',
+      limit: 10,
+      registeredAssets: [asset('asset-a', 'tenant-a/originals/a.jpg')],
+      bucketObjects: [bucketObject('tenant-a/originals/B.jpg')],
+      registeredHasMore: false,
+      bucketHasMore: false,
+    });
+
+    expect(result.items.map((item) => item.storageKey)).toEqual([
+      'tenant-a/originals/B.jpg',
+      'tenant-a/originals/a.jpg',
+    ]);
   });
 
   it('uses registered metadata for duplicate storage keys', () => {
@@ -44,6 +62,8 @@ describe('mergeMediaListingPage', () => {
       limit: 10,
       registeredAssets: [asset('asset-a', 'tenant-a/originals/a.jpg')],
       bucketObjects: [bucketObject('tenant-a/originals/a.jpg', 999)],
+      registeredHasMore: false,
+      bucketHasMore: false,
     });
 
     expect(result.items).toEqual([expect.objectContaining({ id: 'asset-a', byteSize: 10 })]);
@@ -59,10 +79,12 @@ describe('mergeMediaListingPage', () => {
         bucketObject('tenant-a/originals/a.jpg'),
         bucketObject('tenant-a/originals/b.jpg'),
       ],
+      registeredHasMore: false,
+      bucketHasMore: false,
     });
 
     expect(result.items.map((item) => item.storageKey)).toEqual(['tenant-a/originals/a.jpg']);
-    expect(result.hasMoreItems).toBe(true);
+    expect(result.hasNextPage).toBe(true);
   });
 
   it('derives presentation paths for unregistered bucket objects', () => {
@@ -71,6 +93,8 @@ describe('mergeMediaListingPage', () => {
       limit: 10,
       registeredAssets: [],
       bucketObjects: [bucketObject('tenant-a/invoices/2026/report.pdf')],
+      registeredHasMore: false,
+      bucketHasMore: false,
     });
 
     expect(result.items).toEqual([

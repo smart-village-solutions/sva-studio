@@ -664,7 +664,7 @@ const buildAssetFilterClauses = (filter: Omit<MediaAssetListFilter, 'limit' | 'o
 
   if (filter.afterStorageKey !== undefined) {
     values.push(filter.afterStorageKey);
-    clauses.push(`storage_key > $${values.length}`);
+    clauses.push(`storage_key COLLATE "C" > $${values.length}`);
   }
 
   return { clauses, values };
@@ -703,7 +703,7 @@ FROM iam.media_assets
 WHERE ${clauses.join('\n  AND ')}
 ORDER BY ${
       filter.order === 'storageKeyAsc'
-        ? 'storage_key ASC'
+        ? 'storage_key COLLATE "C" ASC'
         : 'updated_at DESC NULLS LAST, created_at DESC NULLS LAST'
     }
 LIMIT ${limitPlaceholder}

@@ -284,6 +284,7 @@ describe('media storage s3 adapter', () => {
         },
       ],
       nextCursor: 'cursor-next',
+      lastScannedStorageKey: 'tenant-a/uploads/2026/06/photo.jpg',
     });
 
     expect(send).toHaveBeenCalledWith(expect.any(ListObjectsV2Command));

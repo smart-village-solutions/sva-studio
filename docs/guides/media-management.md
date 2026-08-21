@@ -14,7 +14,7 @@ Der kanonische Einstieg liegt unter `/admin/media`.
 Dort stehen im MVP zur Verfügung:
 
 - Medienbibliothek mit Suche und Sichtbarkeitsfilter
-- cursorbasierte Navigation in stabiler Storage-Key-Reihenfolge; die Oberfläche zeigt bewusst keine teure Gesamtzahl an
+- cursorbasierte Navigation in binärer S3-Storage-Key-Reihenfolge; bei der Zusammenführung von Datenbank und Bucket wird der Cursor nur bis zum von beiden Quellen vollständig gelesenen Bereich vorgeschoben, die Oberfläche zeigt bewusst keine teure Gesamtzahl an
 - direkter Single-File-Upload für neue Bilder aus der Bibliothek
 - Metadatenpflege für Titel, Alternativtext, Beschreibung, Copyright und Lizenz
 - Nutzungsanzeige (`Usage-Impact`) für aktive Referenzen

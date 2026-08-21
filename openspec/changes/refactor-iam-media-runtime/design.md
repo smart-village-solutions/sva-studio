@@ -11,7 +11,7 @@
 
 - `core.ts` bleibt öffentliche Fassade; Handler werden nach Bibliothek/Assets, Uploads, Content-Speicheroperationen und Referenzen gruppiert.
 - Gemeinsame Request-Helfer bleiben konkret auf IAM-Medien zugeschnitten.
-- Der Cursor ist versioniert, Base64url-kodiert und bindet letzten Storage-Key sowie normalisierte Filter. DB und S3 lesen jeweils strikt nach diesem Key; registrierte Assets gewinnen bei der Deduplizierung.
+- Der Cursor ist versioniert, Base64url-kodiert und bindet letzten Storage-Key sowie normalisierte Filter. DB und S3 verwenden dieselbe binäre S3-Reihenfolge und lesen jeweils strikt nach diesem Key. Bei begrenzten Quellseiten wird nur bis zum kleineren sicher gelesenen Scan-Stand ausgegeben und der Cursor nach vollständiger Ausgabe dieses Bereichs bis dorthin vorgeschoben; registrierte Assets gewinnen bei der Deduplizierung.
 - Die Sortierung wechselt bewusst von einer globalen Zeit- zu einer aufsteigenden Storage-Key-Reihenfolge. Unregistrierte Bucket-Suche verwendet ein S3-Präfix; registrierte Assets behalten die Metadatensuche.
 - Der erlaubte Statusübergang `pending -> uploaded` dient als atomarer Claim. Frische Claims bleiben exklusiv; ein seit zehn Minuten unveränderter `uploaded`-Claim darf durch einen späteren Abschlussaufruf atomar übernommen werden. Bereits validierte Abschlüsse bleiben idempotent.
 - S3-Lesen, Inhaltsprüfung, Sharp-Verarbeitung und S3-Schreiben laufen ohne offene DB-Transaktion. Eine kurze Finalisierungstransaktion prüft die tatsächliche Quote und persistiert alle DB-Änderungen gemeinsam.

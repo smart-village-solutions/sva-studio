@@ -52,7 +52,7 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 8. Der Editor speichert zuerst den Fachinhalt und erhält dadurch die stabile Ziel-ID. Erst danach ersetzt er die Referenzliste idempotent.
 9. Scheitert nur der Referenzschritt, bleibt der Fachinhalt gespeichert. Die UI weist den Teilfehler aus und wiederholt ausschließlich das Referenz-Replacement.
 
-Die Medienbibliothek liest registrierte Datenbank-Assets und Objekte aus genau einem extern pro Tenant isolierten Bucket. Beide Quellen werden aufsteigend nach Storage-Key ab einem filtergebundenen, versionierten Cursor gelesen. Registrierte Assets gewinnen bei gleichen Storage-Keys; eine exakte Gesamtzahl wird bewusst nicht ermittelt.
+Die Medienbibliothek liest registrierte Datenbank-Assets und Objekte aus genau einem extern pro Tenant isolierten Bucket. Beide Quellen werden in derselben binären S3-Storage-Key-Reihenfolge ab einem filtergebundenen, versionierten Cursor gelesen. Der Cursor wird nur bis zum kleineren, von beiden begrenzten Quellen sicher gelesenen Scan-Stand vorgeschoben; ausgefilterte Varianten können ihn daher fortschreiben, aber keine noch ungelesenen Objekte überspringen. Registrierte Assets gewinnen bei gleichen Storage-Keys; eine exakte Gesamtzahl wird bewusst nicht ermittelt.
 
 Für Uploads aus Content-Editoren gilt ergänzend:
 

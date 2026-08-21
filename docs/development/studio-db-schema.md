@@ -261,6 +261,7 @@ Kernidee:
 - Speicherverbrauch und Limits werden relational pro Instanz geführt.
 - Content-Editoren halten neu gewählte Dateien zunächst ausschließlich als lokale Browser-Entwürfe. Erst beim fachlichen Speichern werden sie einer benutzergebundenen `media_content_save_operation` zugeordnet und als `provisional` hochgeladen.
 - Provisorische Assets sind nicht Teil der Medienbibliothek. Nach erfolgreichem Content-Write ersetzt ein atomarer Commit die Zielreferenzen und aktiviert die zugehörigen Assets; bei einem eindeutig fehlgeschlagenen Write werden die provisorischen Objekte über denselben Operationskontext entfernt.
+- Aktive Assets werden für die gemeinsame Cursor-Paginierung mit dem Bucket über einen binär (`COLLATE "C"`) sortierten Storage-Key-Index gelesen.
 - `provisional_operation_id`, `provisional_owner_subject`, `provisional_draft_id` und `provisional_expires_at` begrenzen Zugriff, Idempotenz und spätere Reconciliation. Unklare Write-Ausgänge werden nicht durch voreiliges Löschen verschleiert.
 
 ### 8. Technische Hilfs- und Betriebsdaten

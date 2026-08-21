@@ -3033,6 +3033,13 @@ CREATE INDEX idx_legal_text_acceptances_workspace_action ON iam.legal_text_accep
 
 
 --
+-- Name: idx_media_assets_active_storage_key_binary; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_media_assets_active_storage_key_binary ON iam.media_assets USING btree (instance_id, storage_key COLLATE "C") WHERE (lifecycle_status = 'active'::text);
+
+
+--
 -- Name: idx_media_assets_instance_storage_key; Type: INDEX; Schema: iam; Owner: -
 --
 

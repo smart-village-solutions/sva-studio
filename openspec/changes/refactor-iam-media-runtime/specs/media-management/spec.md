@@ -2,7 +2,7 @@
 
 ### Requirement: Cursorbasierte Medienbibliothek
 
-Das System SHALL registrierte Medienassets und nicht registrierte Objekte des tenantgebundenen Buckets über einen gemeinsamen, versionierten Cursor in stabiler Storage-Key-Reihenfolge auflisten, ohne für jede Seite den gesamten Bucket oder eine exakte Gesamtzahl zu laden.
+Das System SHALL registrierte Medienassets und nicht registrierte Objekte des tenantgebundenen Buckets über einen gemeinsamen, versionierten Cursor in stabiler binärer S3-Storage-Key-Reihenfolge auflisten, ohne für jede Seite den gesamten Bucket oder eine exakte Gesamtzahl zu laden. Der Cursor SHALL nur Schlüssel überspringen, deren Bereich in beiden Quellen vollständig gelesen wurde.
 
 #### Scenario: Benutzer navigiert vorwärts und zurück
 
@@ -17,6 +17,12 @@ Das System SHALL registrierte Medienassets und nicht registrierte Objekte des te
 - **THEN** erscheint genau ein Eintrag in der Medienbibliothek
 - **AND** die registrierten Asset-Metadaten sind führend
 - **AND** die Reihenfolge ist über wiederholte Cursor-Aufrufe stabil
+
+#### Scenario: Ausgefilterte Objekte am Ende einer begrenzten Bucket-Seite
+
+- **WHEN** eine begrenzte Bucket-Seite überwiegend interne Varianten enthält und ein Datenbank-Asset hinter dem letzten gescannten Bucket-Key liegt
+- **THEN** gibt das System das Datenbank-Asset erst aus, nachdem der Bucket bis zu dessen Storage-Key gelesen wurde
+- **AND** setzt den Cursor auf einen von beiden Quellen vollständig gelesenen Storage-Key, sodass kein Bucket-Objekt übersprungen wird
 
 #### Scenario: Bucket-Suche bleibt begrenzt
 

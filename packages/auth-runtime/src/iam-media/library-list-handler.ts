@@ -219,11 +219,15 @@ const listMediaWithStorage = async (input: {
   try {
     const { registeredAssets, bucketObjects, bucketHasMore, lastScannedBucketKey } =
       await loadMediaListingSources(input);
+    const registeredHasMore = registeredAssets.length > input.query.limit;
     const merged = mergeMediaListingPage({
       instanceId: input.instanceId,
       limit: input.query.limit,
       registeredAssets,
       bucketObjects,
+      registeredHasMore,
+      bucketHasMore,
+      lastScannedBucketKey,
     });
     const items = await enrichMediaListing(input.deps, input.instanceId, merged.items);
     await emitMediaAuditEvent({
@@ -235,16 +239,12 @@ const listMediaWithStorage = async (input: {
       resourceType: 'media_library',
     });
 
-    const hasNextPage =
-      merged.hasMoreItems || registeredAssets.length > input.query.limit || bucketHasMore;
-    const cursorStorageKey =
-      items[items.length - 1]?.storageKey ??
-      (items.length === 0
-        ? (bucketObjects[bucketObjects.length - 1]?.storageKey ?? lastScannedBucketKey)
-        : undefined);
     const nextCursor =
-      hasNextPage && cursorStorageKey
-        ? encodeMediaListingCursor({ afterStorageKey: cursorStorageKey }, input.query.filters)
+      merged.hasNextPage && merged.nextCursorStorageKey
+        ? encodeMediaListingCursor(
+            { afterStorageKey: merged.nextCursorStorageKey },
+            input.query.filters
+          )
         : null;
     const requestId = getRequestId();
     return jsonResponse(200, {

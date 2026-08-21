@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMediaHttpHandlers } from './core.js';
+import { decodeMediaListingCursor } from './listing-cursor.js';
 import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
 
 const allowAuthorization = vi.fn(async () => ({ ok: true }) as const);
@@ -330,6 +331,67 @@ describe('media http handlers', () => {
       prefix: undefined,
       startAfter: undefined,
     });
+  });
+
+  it('does not advance beyond the scanned bucket frontier when variants fill the S3 page', async () => {
+    const service = createService();
+    service.listAssets = vi.fn(async () => [
+      {
+        id: 'asset-z',
+        instanceId: 'tenant-a',
+        storageKey: 'tenant-a/z.jpg',
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {},
+        technical: {},
+      },
+    ]);
+    const storagePort = {
+      listObjects: vi.fn(async () => ({
+        items: [
+          {
+            storageKey: 'tenant-a/variants/asset-a/thumbnail.webp',
+            byteSize: 12,
+            lastModified: '2026-06-11T09:00:00.000Z',
+          },
+        ],
+        nextCursor: 's3-next',
+        lastScannedStorageKey: 'tenant-a/variants/asset-a/thumbnail.webp',
+      })),
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+      readObject: vi.fn(),
+      writeObject: vi.fn(),
+      deleteObject: vi.fn(),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&limit=1'),
+      createContext()
+    );
+    const body = (await response.json()) as {
+      data: Array<{ storageKey: string }>;
+      pagination: { nextCursor: string | null; hasNextPage: boolean };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual([]);
+    expect(body.pagination.hasNextPage).toBe(true);
+    expect(decodeMediaListingCursor(body.pagination.nextCursor ?? '', {})?.afterStorageKey).toBe(
+      'tenant-a/variants/asset-a/thumbnail.webp'
+    );
   });
 
   it('limits the first cursor page without traversing the full bucket', async () => {

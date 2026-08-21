@@ -620,7 +620,12 @@ describe('media repository', () => {
     expect(statements[0]?.text).toContain("status = 'pending'");
     expect(statements[0]?.text).toContain("status = 'uploaded'");
     expect(statements[0]?.text).toContain("updated_at < NOW() - ($3 * INTERVAL '1 second')");
-    expect(statements[0]?.text).toContain('expires_at > NOW()');
+    expect(statements[0]?.text).toContain(
+      "status = 'pending'\n      AND (expires_at IS NULL OR expires_at > NOW())"
+    );
+    expect(statements[0]?.text).not.toContain(
+      ')\n  AND (expires_at IS NULL OR expires_at > NOW())\nRETURNING'
+    );
     expect(statements[0]?.values).toEqual(['tenant-a', 'upload-1', 600]);
     expect(statements[2]?.text).toContain('ON CONFLICT (instance_id) DO UPDATE');
     expect(statements[2]?.text).toContain(

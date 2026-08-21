@@ -2,7 +2,7 @@
 
 ### Requirement: Cursorbasierte Medienbibliothek
 
-Das System SHALL registrierte Medienassets und nicht registrierte Objekte des tenantgebundenen Buckets über einen gemeinsamen, versionierten Cursor in stabiler binärer S3-Storage-Key-Reihenfolge auflisten, ohne für jede Seite den gesamten Bucket oder eine exakte Gesamtzahl zu laden. Der Cursor SHALL nur Schlüssel überspringen, deren Bereich in beiden Quellen vollständig gelesen wurde.
+Das System SHALL registrierte Medienassets und nicht registrierte Objekte des tenantgebundenen Buckets über einen gemeinsamen, versionierten Cursor in stabiler binärer S3-Storage-Key-Reihenfolge auflisten, ohne für jede Seite den gesamten Bucket oder eine exakte Gesamtzahl zu laden. Der Cursor SHALL nur Schlüssel überspringen, deren Bereich in beiden Quellen vollständig gelesen wurde. Das Listenlimit SHALL ganzzahlig zwischen 1 und 144 liegen, passend zu den angebotenen Seitengrößen der Oberfläche.
 
 #### Scenario: Benutzer navigiert vorwärts und zurück
 
@@ -51,6 +51,7 @@ Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verar
 #### Scenario: Unterbrochener Verarbeitungs-Claim wird erneut übernommen
 
 - **GIVEN** eine Upload-Session befindet sich seit mindestens zehn Minuten unverändert im Status `uploaded`
+- **AND** die ursprüngliche Upload-Session darf inzwischen abgelaufen sein
 - **WHEN** ein autorisierter Client den Abschluss erneut aufruft
 - **THEN** übernimmt das System den abgelaufenen Claim atomar und versucht die Verarbeitung erneut
 - **AND** ein jüngerer `uploaded`-Claim bleibt exklusiv und liefert weiterhin einen In-Verarbeitung-Konflikt

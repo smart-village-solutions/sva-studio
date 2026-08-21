@@ -877,13 +877,15 @@ SET status = 'uploaded',
 WHERE instance_id = $1
   AND id = $2::uuid
   AND (
-    status = 'pending'
+    (
+      status = 'pending'
+      AND (expires_at IS NULL OR expires_at > NOW())
+    )
     OR (
       status = 'uploaded'
       AND updated_at < NOW() - ($3 * INTERVAL '1 second')
     )
   )
-  AND (expires_at IS NULL OR expires_at > NOW())
 RETURNING
   id,
   instance_id,

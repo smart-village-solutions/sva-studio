@@ -333,6 +333,39 @@ describe('media http handlers', () => {
     });
   });
 
+  it('accepts the 144-item page size exposed by the media toolbar', async () => {
+    const service = createService();
+    service.listAssets = vi.fn(async () => []);
+    const storagePort = {
+      listObjects: vi.fn(async () => ({ items: [], nextCursor: null })),
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+      readObject: vi.fn(),
+      writeObject: vi.fn(),
+      deleteObject: vi.fn(),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&limit=144'),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: [],
+      pagination: { limit: 144, nextCursor: null, hasNextPage: false },
+    });
+    expect(service.listAssets).toHaveBeenCalledWith(expect.objectContaining({ limit: 145 }));
+  });
+
   it('does not advance beyond the scanned bucket frontier when variants fill the S3 page', async () => {
     const service = createService();
     service.listAssets = vi.fn(async () => [

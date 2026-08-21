@@ -83,6 +83,8 @@ type MediaListRequest = Readonly<{
   filters: MediaListingFilters;
 }>;
 
+const MAX_MEDIA_LIST_LIMIT = 144;
+
 const readOptionalListParam = (params: URLSearchParams, key: string): string | undefined => {
   const value = params.get(key)?.trim();
   return value ? value : undefined;
@@ -98,11 +100,11 @@ const parseListVisibility = (params: URLSearchParams): MediaVisibility | Respons
 const parseListLimit = (params: URLSearchParams): number | Response => {
   const rawLimit = params.get('limit');
   const limit = rawLimit === null ? 25 : Number(rawLimit);
-  if (Number.isInteger(limit) && limit >= 1 && limit <= 100) return limit;
+  if (Number.isInteger(limit) && limit >= 1 && limit <= MAX_MEDIA_LIST_LIMIT) return limit;
   return createApiError(
     400,
     'invalid_request',
-    'limit muss eine ganze Zahl zwischen 1 und 100 sein.',
+    `limit muss eine ganze Zahl zwischen 1 und ${MAX_MEDIA_LIST_LIMIT} sein.`,
     getRequestId()
   );
 };

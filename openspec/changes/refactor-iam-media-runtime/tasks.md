@@ -21,6 +21,7 @@
 - [x] 4.2 Externe Verarbeitung aus der DB-Transaktion lösen
 - [x] 4.3 Quote und vollständigen DB-Abschluss atomar finalisieren und Cleanup absichern
 - [x] 4.4 Abgelaufene `uploaded`-Claims lazy und atomar erneut übernehmbar machen
+- [x] 4.5 Variantenpräfix eines ersetzten Claims bei der Übernahme vollständig bereinigen
 
 ## 5. Qualität und Dokumentation
 

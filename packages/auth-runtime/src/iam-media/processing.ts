@@ -6,7 +6,7 @@ import {
   type MediaFocusPoint,
   type MediaPreset,
 } from '@sva/media';
-import { MediaStorageUnavailableError } from './storage-port.js';
+import { MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import type { MediaService } from './service.js';
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -69,6 +69,31 @@ const buildVariantStorageKey = (input: {
   readonly format: string;
 }): string =>
   `${input.instanceId}/variants/${input.assetId}/${input.claimToken}/${input.variantKey}.${input.format}`;
+
+const cleanupReplacedClaimVariants = async (input: {
+  readonly storagePort: Pick<MediaStoragePort, 'listObjects' | 'deleteObject'>;
+  readonly instanceId: string;
+  readonly assetId: string;
+  readonly claimToken: string;
+}): Promise<void> => {
+  const prefix = `${input.instanceId}/variants/${input.assetId}/${input.claimToken}/`;
+  let cursor: string | undefined;
+
+  do {
+    const page = await input.storagePort.listObjects({
+      instanceId: input.instanceId,
+      limit: 1000,
+      prefix,
+      ...(cursor ? { cursor } : {}),
+    });
+    await Promise.all(
+      page.items.map(({ storageKey }) =>
+        input.storagePort.deleteObject({ instanceId: input.instanceId, storageKey })
+      )
+    );
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+};
 
 const isMediaFocusPoint = (value: unknown): value is MediaFocusPoint =>
   typeof value === 'object' &&
@@ -254,31 +279,11 @@ const markProcessingFailure = async (input: {
 };
 
 export const createMediaUploadProcessingService = (deps: {
-  readonly service: Pick<
-    MediaService,
-    'getUploadSessionById' | 'getAssetById'
+  readonly service: Pick<MediaService, 'getUploadSessionById' | 'getAssetById'>;
+  readonly storagePort: Pick<
+    MediaStoragePort,
+    'listObjects' | 'readObject' | 'writeObject' | 'deleteObject'
   >;
-  readonly storagePort: {
-    readObject: (input: { readonly instanceId: string; readonly storageKey: string }) => Promise<{
-      body: Uint8Array;
-      byteSize: number;
-      contentType?: string;
-      etag?: string;
-    }>;
-    writeObject: (input: {
-      readonly instanceId: string;
-      readonly storageKey: string;
-      readonly body: Uint8Array;
-      readonly contentType: string;
-    }) => Promise<{
-      byteSize: number;
-      etag?: string;
-    }>;
-    deleteObject: (input: {
-      readonly instanceId: string;
-      readonly storageKey: string;
-    }) => Promise<void>;
-  };
   readonly createId: () => string;
   readonly finalizeUpload: (
     input: MediaUploadFinalization
@@ -289,6 +294,7 @@ export const createMediaUploadProcessingService = (deps: {
     readonly instanceId: string;
     readonly uploadSessionId: string;
     readonly claimToken: string;
+    readonly replacedClaimToken?: string;
   }): Promise<MediaUploadProcessingResult> {
     const uploadSession = await deps.service.getUploadSessionById(
       input.instanceId,
@@ -301,6 +307,15 @@ export const createMediaUploadProcessingService = (deps: {
     const asset = await deps.service.getAssetById(input.instanceId, String(uploadSession.assetId));
     if (!asset) {
       return asErrorResult(404, 'asset_not_found');
+    }
+
+    if (input.replacedClaimToken) {
+      await cleanupReplacedClaimVariants({
+        storagePort: deps.storagePort,
+        instanceId: input.instanceId,
+        assetId: String(asset.id),
+        claimToken: input.replacedClaimToken,
+      });
     }
 
     if (

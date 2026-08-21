@@ -617,6 +617,7 @@ describe('media repository', () => {
       ...uploadSessionRow,
       status: 'uploaded',
       claim_token: '00000000-0000-4000-8000-000000000099',
+      replaced_claim_token: '00000000-0000-4000-8000-000000000098',
     };
     const { executor, statements } = createQueuedExecutor([
       [claimedSessionRow],
@@ -631,6 +632,7 @@ describe('media repository', () => {
         id: 'upload-1',
         status: 'uploaded',
         claimToken: '00000000-0000-4000-8000-000000000099',
+        replacedClaimToken: '00000000-0000-4000-8000-000000000098',
       })
     );
     await expect(repository.claimUploadSession('tenant-a', 'upload-1')).resolves.toBeNull();
@@ -652,9 +654,12 @@ describe('media repository', () => {
     expect(statements[0]?.text).toContain("status = 'pending'");
     expect(statements[0]?.text).toContain("status = 'uploaded'");
     expect(statements[0]?.text).toContain('claim_token = gen_random_uuid()');
+    expect(statements[0]?.text).toContain('claim_token AS replaced_claim_token');
+    expect(statements[0]?.text).toContain('claimable.replaced_claim_token');
+    expect(statements[0]?.text).toContain('FOR UPDATE');
     expect(statements[0]?.text).toContain("updated_at < NOW() - ($3 * INTERVAL '1 second')");
     expect(statements[0]?.text).toContain(
-      "status = 'pending'\n      AND (expires_at IS NULL OR expires_at > NOW())"
+      "status = 'pending'\n        AND (expires_at IS NULL OR expires_at > NOW())"
     );
     expect(statements[0]?.text).not.toContain(
       ')\n  AND (expires_at IS NULL OR expires_at > NOW())\nRETURNING'

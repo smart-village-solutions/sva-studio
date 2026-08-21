@@ -87,6 +87,7 @@ export type MediaUploadSessionRecord = {
   readonly byteSize: number;
   readonly status: string;
   readonly claimToken?: string;
+  readonly replacedClaimToken?: string;
   readonly expiresAt?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;
@@ -347,6 +348,7 @@ type MediaUploadSessionRow = {
   readonly byte_size: number;
   readonly status: string;
   readonly claim_token: string | null;
+  readonly replaced_claim_token?: string | null;
   readonly expires_at: string | null;
   readonly created_at: string | null;
   readonly updated_at: string | null;
@@ -434,6 +436,7 @@ const mapUploadSessionRow = (row: MediaUploadSessionRow): MediaUploadSessionReco
   byteSize: row.byte_size,
   status: row.status,
   claimToken: row.claim_token ?? undefined,
+  replacedClaimToken: row.replaced_claim_token ?? undefined,
   expiresAt: row.expires_at ?? undefined,
   createdAt: row.created_at ?? undefined,
   updatedAt: row.updated_at ?? undefined,
@@ -914,34 +917,42 @@ const UPLOAD_SESSION_STALE_CLAIM_SECONDS = 10 * 60;
 
 const claimUploadSessionStatement = (instanceId: string, sessionId: string): SqlStatement => ({
   text: `
-UPDATE iam.media_upload_sessions
+WITH claimable AS (
+  SELECT id, claim_token AS replaced_claim_token
+  FROM iam.media_upload_sessions
+  WHERE instance_id = $1
+    AND id = $2::uuid
+    AND (
+      (
+        status = 'pending'
+        AND (expires_at IS NULL OR expires_at > NOW())
+      )
+      OR (
+        status = 'uploaded'
+        AND updated_at < NOW() - ($3 * INTERVAL '1 second')
+      )
+    )
+  FOR UPDATE
+)
+UPDATE iam.media_upload_sessions AS sessions
 SET status = 'uploaded',
     claim_token = gen_random_uuid(),
     updated_at = NOW()
-WHERE instance_id = $1
-  AND id = $2::uuid
-  AND (
-    (
-      status = 'pending'
-      AND (expires_at IS NULL OR expires_at > NOW())
-    )
-    OR (
-      status = 'uploaded'
-      AND updated_at < NOW() - ($3 * INTERVAL '1 second')
-    )
-  )
+FROM claimable
+WHERE sessions.id = claimable.id
 RETURNING
-  id,
-  instance_id,
-  asset_id,
-  storage_key,
-  mime_type,
-  byte_size,
-  status,
-  claim_token,
-  expires_at,
-  created_at,
-  updated_at;
+  sessions.id,
+  sessions.instance_id,
+  sessions.asset_id,
+  sessions.storage_key,
+  sessions.mime_type,
+  sessions.byte_size,
+  sessions.status,
+  sessions.claim_token,
+  claimable.replaced_claim_token,
+  sessions.expires_at,
+  sessions.created_at,
+  sessions.updated_at;
 `,
   values: [instanceId, sessionId, UPLOAD_SESSION_STALE_CLAIM_SECONDS],
 });

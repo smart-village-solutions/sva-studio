@@ -74,6 +74,7 @@ Das System SHALL genau einen synchronen Abschluss einer Upload-Session zur Verar
 - **AND** die ursprüngliche Upload-Session darf inzwischen abgelaufen sein
 - **WHEN** ein autorisierter Client den Abschluss erneut aufruft
 - **THEN** übernimmt das System den abgelaufenen Claim atomar und versucht die Verarbeitung erneut
+- **AND** entfernt es vor der erneuten Verarbeitung alle Objekte unter dem Variantenpräfix des ersetzten Claims
 - **AND** ein jüngerer `uploaded`-Claim bleibt exklusiv und liefert weiterhin einen In-Verarbeitung-Konflikt
 - **AND** ein vom neuen Token abgelöster Verarbeiter darf weder Quotenbuchung und Datenbankfinalisierung noch Storage-Cleanup ausführen
 

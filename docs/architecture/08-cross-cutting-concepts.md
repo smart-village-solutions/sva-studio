@@ -43,6 +43,7 @@ gleichzeitig beeinflussen.
 
 - Medienzugriffe bleiben mandantengetrennt und hostgeführt.
 - Jeder Tenant besitzt genau einen extern isolierten Medien-Bucket. Die Runtime validiert deshalb keine vermeintlichen Fremdtenant-Präfixe innerhalb dieses bereits isolierten Buckets; generierte Varianten bleiben von manueller Registrierung ausgeschlossen.
+- Upload-Varianten liegen unter claim-isolierten Präfixen. Übernimmt ein neuer Verarbeitungs-Claim eine abgelaufene Session, bereinigt er das vollständige Präfix des ersetzten Claims vor dem Retry; damit benötigt dieser Recovery-Pfad weder Bucket-übergreifende Suche noch einen zusätzlichen Worker.
 - Plugins erhalten ausschließlich rollenbasierte Referenzverträge, keine MinIO-/S3-Artefakte.
 - Asset-Metadaten und Inhaltsmetadaten besitzen getrennte Ownership: Eine Übernahme erzeugt einen Snapshot; spätere Asset-Änderungen überschreiben redaktionell abweichende Felder nur nach expliziter feldweiser Auswahl.
 - `previewUrl` ist ausschließlich transient. Fachmodelle dürfen nur eine nachweislich persistierbare HTTPS-Delivery-URL speichern; URLs mit Ablauf- oder Signaturparametern werden fail-closed abgewiesen.

@@ -107,6 +107,7 @@ const processClaimedUpload = async (input: {
   instanceId: string;
   uploadSessionId: string;
   claimToken: string;
+  replacedClaimToken?: string;
 }): Promise<Response> => {
   const storagePort = await resolveMediaStoragePort(input.deps, input.instanceId);
   const result = await createMediaUploadProcessingService({
@@ -119,6 +120,7 @@ const processClaimedUpload = async (input: {
     instanceId: input.instanceId,
     uploadSessionId: input.uploadSessionId,
     claimToken: input.claimToken,
+    ...(input.replacedClaimToken ? { replacedClaimToken: input.replacedClaimToken } : {}),
   });
 
   if (!result.ok) {
@@ -215,7 +217,13 @@ const completeUploadWithStorage = async (input: {
   );
   if (claimedSession) {
     if (!claimedSession.claimToken) throw new Error('media_upload_claim_token_missing');
-    return processClaimedUpload({ ...input, claimToken: claimedSession.claimToken });
+    return processClaimedUpload({
+      ...input,
+      claimToken: claimedSession.claimToken,
+      ...(claimedSession.replacedClaimToken
+        ? { replacedClaimToken: claimedSession.replacedClaimToken }
+        : {}),
+    });
   }
 
   const completedAfterClaim = getCompletedUploadAsset(

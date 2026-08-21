@@ -82,6 +82,57 @@ const createFailUpload = (service: {
   );
 
 describe('media upload processing service', () => {
+  it('removes every variant page from the replaced claim before continuing', async () => {
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ status: 'validated' })),
+      getAssetById: vi.fn(async () =>
+        createAsset({ uploadStatus: 'processed', processingStatus: 'ready' })
+      ),
+    };
+    const storagePort = {
+      listObjects: vi
+        .fn()
+        .mockResolvedValueOnce({
+          items: [{ storageKey: 'tenant-a/variants/asset-1/claim-old/thumbnail.webp' }],
+          nextCursor: 'next-page',
+        })
+        .mockResolvedValueOnce({
+          items: [{ storageKey: 'tenant-a/variants/asset-1/claim-old/teaser.webp' }],
+          nextCursor: null,
+        }),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      finalizeUpload: vi.fn(),
+      failUpload: vi.fn(),
+      createId: vi.fn(),
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+        claimToken: 'claim-new',
+        replacedClaimToken: 'claim-old',
+      })
+    ).resolves.toEqual(expect.objectContaining({ ok: true, uploadSessionId: 'upload-1' }));
+
+    expect(storagePort.listObjects).toHaveBeenNthCalledWith(1, {
+      instanceId: 'tenant-a',
+      limit: 1000,
+      prefix: 'tenant-a/variants/asset-1/claim-old/',
+    });
+    expect(storagePort.listObjects).toHaveBeenNthCalledWith(2, {
+      instanceId: 'tenant-a',
+      limit: 1000,
+      prefix: 'tenant-a/variants/asset-1/claim-old/',
+      cursor: 'next-page',
+    });
+    expect(storagePort.deleteObject).toHaveBeenCalledTimes(2);
+  });
+
   it('validates an uploaded image, extracts metadata and persists eager variants', async () => {
     const originalBuffer = await sharp({
       create: {

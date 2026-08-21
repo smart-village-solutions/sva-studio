@@ -16,7 +16,7 @@
 - [x] 3.1 Full-Refresh, Scheduler und gemeinsame Laufregistrierung in ein Sync-Modul verschieben
 - [x] 3.2 Targeted Mutation und GenericItem-Geschwisterbehandlung in ein Mutation-Modul verschieben
 - [x] 3.3 Listen-, Batch-, Snapshot-, Binding- und Mutationsentscheidungen unter die Quality-Grenzen bringen
-- [x] 3.4 Bestehende Datei auf die kompatible öffentliche Serverfassade reduzieren
+- [x] 3.4 Bestehende Datei auf eine kompatible öffentliche Serverfassade unter dem 400-Zeilen-Limit reduzieren
 
 ## 4. Dokumentation und Verifikation
 

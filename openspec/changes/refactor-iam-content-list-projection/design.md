@@ -22,8 +22,11 @@ diese Schlüssel noch Fehler-, Retry- oder Seiteneffektreihenfolgen verändern.
 
 ## Decisions
 
-- `iam-content-list-projection.server.ts` bleibt die Serverfassade mit den drei
-  bestehenden produktiven Exporten.
+- `iam-content-list-projection.server.ts` bleibt mit höchstens 400 Zeilen die
+  Serverfassade mit den drei bestehenden produktiven Exporten.
+- Authorization besitzt Request-Aufbau, Typprüfung, Actor-Auflösung und
+  Item-Access. Read besitzt Projektionstypen, Visibility-SQL und Paging; List
+  orchestriert daraus Snapshot-Vorbereitung, Blocking-Entscheidung und Response.
 - Ein internes Modell hält Row-, Target- und Sync-State-Typen sowie reine
   Mapping-, Sortier-, Deduplizierungs- und Zustandsableitungen.
 - Ein Repository besitzt Schema-Kompatibilität, parametrisierte SQL-Zugriffe,
@@ -34,8 +37,8 @@ diese Schlüssel noch Fehler-, Retry- oder Seiteneffektreihenfolgen verändern.
   In-Memory-Deduplizierung. Ein Mutation-Modul verwendet dieselbe Queue und
   denselben Scope-Vertrag für gezielte Nachführungen.
 - Interne Runtime-Imports verwenden explizite `.js`-Endungen; die
-  Abhängigkeitsrichtung bleibt Modell -> Repository/Source -> Sync/Mutation ->
-  Fassade und damit zyklusfrei.
+  Abhängigkeitsrichtung bleibt Modell -> Repository/Source -> Read/Authorization
+  -> Sync/Mutation/List -> Fassade und damit zyklusfrei.
 
 ## Preserved runtime sequence
 

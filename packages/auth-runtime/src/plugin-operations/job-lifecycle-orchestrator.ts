@@ -145,10 +145,12 @@ const persistExecutionFailure = async (input: {
       error_type:
         persistenceError instanceof Error ? persistenceError.name : typeof persistenceError,
       result: 'secondary_failure',
-      job_id: input.job.id,
-      execution_id: input.job.id,
-      instance_id: input.job.instanceId,
       final_failure: finalFailure,
+      context: {
+        job_id: input.job.id,
+        execution_id: input.job.id,
+        instance_id: input.job.instanceId,
+      },
     });
     throw persistenceError;
   }

@@ -315,8 +315,12 @@ describe('plugin operation runner task list', () => {
       expect.objectContaining({
         error_code: 'failure_state_persist_failed',
         error_type: 'TypeError',
-        job_id: 'job-1',
         result: 'secondary_failure',
+        context: {
+          job_id: 'job-1',
+          execution_id: 'job-1',
+          instance_id: 'tenant-a',
+        },
       })
     );
   });

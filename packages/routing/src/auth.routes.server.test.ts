@@ -9,6 +9,7 @@ const routingLogger = vi.hoisted(() => ({
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => routingLogger,
+  getWorkspaceContext: () => ({}),
   getHeadersFromRequest: (request: Request) => {
     const headers: Record<string, string> = {};
     request.headers.forEach((value, key) => {
@@ -1258,7 +1259,7 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(200);
     expect(authServerMocks.healthLiveHandler).toHaveBeenCalledTimes(1);
-    expect(routingLogger.info).toHaveBeenCalledWith(
+    expect(routingLogger.debug).toHaveBeenCalledWith(
       'Routing handler dispatched',
       expect.objectContaining({
         event: 'routing.handler.dispatched',
@@ -1267,7 +1268,7 @@ describe('auth.routes.server', () => {
         workspace_id: 'default',
       })
     );
-    expect(routingLogger.info).toHaveBeenCalledWith(
+    expect(routingLogger.debug).toHaveBeenCalledWith(
       'Routing handler completed',
       expect.objectContaining({
         event: 'routing.handler.completed',
@@ -1280,7 +1281,7 @@ describe('auth.routes.server', () => {
   });
 
   it('does not let dispatched diagnostics failures break successful auth handlers', async () => {
-    routingLogger.info.mockImplementationOnce(() => {
+    routingLogger.debug.mockImplementationOnce(() => {
       throw new Error('logger down');
     });
 
@@ -1378,7 +1379,7 @@ describe('auth.routes.server', () => {
       message: 'Ein unerwarteter Fehler ist aufgetreten.',
       requestId: 'req-123',
     });
-    expect(routingLogger.info).toHaveBeenCalledWith(
+    expect(routingLogger.debug).toHaveBeenCalledWith(
       'Routing handler dispatched',
       expect.objectContaining({
         event: 'routing.handler.dispatched',
@@ -1401,7 +1402,7 @@ describe('auth.routes.server', () => {
         error_message: 'boom',
       })
     );
-    expect(routingLogger.info).toHaveBeenCalledWith(
+    expect(routingLogger.debug).toHaveBeenCalledWith(
       'Routing handler completed',
       expect.objectContaining({
         event: 'routing.handler.completed',
@@ -1598,7 +1599,7 @@ describe('auth.routes.server', () => {
     });
 
     expect(response?.status).toBe(200);
-    expect(routingLogger.info).toHaveBeenCalledWith(
+    expect(routingLogger.debug).toHaveBeenCalledWith(
       'Routing handler dispatched',
       expect.objectContaining({
         event: 'routing.handler.dispatched',

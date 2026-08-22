@@ -1,0 +1,4 @@
+{
+  "prNumber": 1119,
+  "body": "Die Laufzeitdiagnostik des Studios lässt sich zuverlässiger auswerten.\n\n- Strukturierte Server-Logs enthalten die vorhandene Anfrage- und Trace-Kennung nun auch in den kanonischen Feldern.\n- Häufige Routing- und Projektionsereignisse belasten das Info-Level nicht mehr.\n- Das IAM-Profil kann optionale Sitzungsdaten ohne den zuvor beobachteten PostgreSQL-Typfehler übernehmen."
+}

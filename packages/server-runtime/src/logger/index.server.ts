@@ -17,11 +17,19 @@ export const redactObject = (value: Record<string, unknown>): Record<string, unk
   return redactLogMeta(value);
 };
 
-const enrichWithContext = winston.format((info) => {
+export const enrichLogInfoWithContext = (
+  info: Logform.TransformableInfo
+): Logform.TransformableInfo => {
   const context = getWorkspaceContext();
 
   if (context.workspaceId && !info.workspace_id) {
     info.workspace_id = context.workspaceId;
+  }
+  if (context.requestId && !info.request_id) {
+    info.request_id = context.requestId;
+  }
+  if (context.traceId && !info.trace_id) {
+    info.trace_id = context.traceId;
   }
   const existingContext =
     typeof info.context === 'object' && info.context
@@ -47,7 +55,9 @@ const enrichWithContext = winston.format((info) => {
   }
 
   return info;
-});
+};
+
+const enrichWithContext = winston.format(enrichLogInfoWithContext);
 
 const redactSensitive = winston.format((info) => {
   const sanitized = redactObject(info as Record<string, unknown>);

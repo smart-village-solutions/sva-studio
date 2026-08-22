@@ -343,7 +343,7 @@ describe('content projection mutation recovery and audit', () => {
       entityId: 'poi-log-1',
     });
 
-    expect(state.loggerInfo).toHaveBeenCalledWith(
+    expect(state.loggerDebug).toHaveBeenCalledWith(
       'mainserver_projection_page_loaded',
       expect.objectContaining({
         content_type: 'events.event-record',

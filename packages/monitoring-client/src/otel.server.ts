@@ -59,6 +59,8 @@ const forbiddenLabelKeys = new Set([
   'ip',
 ]);
 
+const correlationBodyKeys = ['request_id', 'trace_id', 'job_id', 'execution_id'] as const;
+
 export const maskEmailAddresses = (value: string): string => {
   return maskEmailAddressesShared(value);
 };
@@ -101,10 +103,21 @@ export class RedactingLogProcessor implements LogRecordProcessor {
 
     const contextPayload = mutableAttributes.context;
     if (typeof logRecord.body === 'string') {
-      logRecord.body = redactString(logRecord.body);
-    }
-    if (contextPayload && typeof logRecord.body === 'string') {
-      logRecord.body = `${logRecord.body} ${JSON.stringify({ context: redactValue(contextPayload) })}`;
+      const structuredBody: Record<string, unknown> = {
+        message: redactString(logRecord.body),
+      };
+
+      for (const key of correlationBodyKeys) {
+        const value = mutableAttributes[key];
+        if (value !== undefined) {
+          structuredBody[key] = redactValue(value);
+        }
+      }
+      if (contextPayload !== undefined) {
+        structuredBody.context = redactValue(contextPayload);
+      }
+
+      logRecord.body = JSON.stringify(structuredBody);
     }
 
     for (const key of Object.keys(mutableAttributes)) {

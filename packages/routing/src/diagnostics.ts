@@ -29,13 +29,13 @@ export type RoutingDiagnosticEvent =
       readonly unsupported_guard?: string;
     })
   | (RoutingDiagnosticBase & {
-      readonly level: 'info';
+      readonly level: 'debug';
       readonly event: 'routing.handler.dispatched';
       readonly method: string;
       readonly handler_name?: string;
     })
   | (RoutingDiagnosticBase & {
-      readonly level: 'info';
+      readonly level: 'debug';
       readonly event: 'routing.handler.completed';
       readonly method: string;
       readonly status_code: number;
@@ -71,6 +71,7 @@ export interface RoutingDiagnosticsHook {
 }
 
 export interface RoutingDiagnosticsLogger {
+  debug: (message: string, meta: Record<string, unknown>) => void;
   info: (message: string, meta: Record<string, unknown>) => void;
   warn: (message: string, meta: Record<string, unknown>) => void;
   error: (message: string, meta: Record<string, unknown>) => void;
@@ -143,6 +144,9 @@ export const createRoutingDiagnosticsLogger = (logger: RoutingDiagnosticsLogger)
     const meta = getRoutingDiagnosticMeta(event);
 
     switch (event.level) {
+      case 'debug':
+        logger.debug(message, meta);
+        return;
       case 'info':
         logger.info(message, meta);
         return;

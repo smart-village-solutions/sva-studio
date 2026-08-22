@@ -213,7 +213,9 @@ In `RedactingLogProcessor`:
   - `environment`
   - `level`
 - Verbotene/high-cardinality/PII Label werden verworfen.
-- Kontextdaten werden in den Body serialisiert.
+- Die redigierte Nachricht und Kontextdaten werden als JSON in den Body serialisiert.
+- `request_id`, `trace_id`, `job_id` und `execution_id` bleiben dabei als durchsuchbare
+  Body-Felder erhalten, werden aber nicht als OTEL- oder Loki-Label exportiert.
 
 ### Stufe C: Promtail Fallback Filter
 

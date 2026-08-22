@@ -27,7 +27,7 @@ const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
 const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
 export const contentProjectionLogger = createSdkLogger({
   component: 'iam-content-list-projection',
-  level: 'info',
+  level: 'debug',
 });
 
 export const runningProjectionSyncs = new Map<string, Promise<Response | null>>();
@@ -114,7 +114,7 @@ export const refreshMainserverProjectionBatch = (
         const rows = pages.flat().slice(0, MAX_SYNC_ITEMS_PER_TYPE);
         accumulatedRows.set(targetKey, rows);
         const latestPage = pages.at(-1) ?? [];
-        contentProjectionLogger.info('mainserver_projection_page_loaded', {
+        contentProjectionLogger.debug('mainserver_projection_page_loaded', {
           ...buildProjectionLogContext(target, trigger),
           loaded_row_count: latestPage.length,
           page: pages.length,

@@ -10,6 +10,7 @@ export { fixture, mapInsertedProjectionRow } from './iam-content-list-projection
 const state = vi.hoisted(() => ({
   authorizeContentPrimitiveForUser: vi.fn(),
   loggerError: vi.fn(),
+  loggerDebug: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
   resolveActorAccountId: vi.fn(),
@@ -67,6 +68,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
+    debug: state.loggerDebug,
     error: state.loggerError,
     info: state.loggerInfo,
     warn: state.loggerWarn,
@@ -160,6 +162,7 @@ export const registerProjectionFixture = (): void => {
     state.getWorkspaceContext.mockReset();
     state.loggerError.mockReset();
     state.loggerInfo.mockReset();
+    state.loggerDebug.mockReset();
     state.loggerWarn.mockReset();
     state.getWorkspaceContext.mockReturnValue({ requestId: 'req-1' });
 

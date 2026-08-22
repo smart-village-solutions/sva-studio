@@ -173,6 +173,7 @@ describe('emitRoutingDiagnostic', () => {
 describe('createRoutingDiagnosticsLogger', () => {
   it('maps routing events to the matching logger level with normalized metadata', () => {
     const logger = {
+      debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
@@ -180,7 +181,7 @@ describe('createRoutingDiagnosticsLogger', () => {
     const diagnostics = createRoutingDiagnosticsLogger(logger);
 
     diagnostics({
-      level: 'info',
+      level: 'debug',
       event: 'routing.handler.completed',
       route: '/auth/me',
       method: 'GET',
@@ -191,7 +192,7 @@ describe('createRoutingDiagnosticsLogger', () => {
       workspace_id: 'workspace-1',
     });
 
-    expect(logger.info).toHaveBeenCalledWith(
+    expect(logger.debug).toHaveBeenCalledWith(
       'Routing handler completed',
       expect.objectContaining({
         event: 'routing.handler.completed',
@@ -208,6 +209,7 @@ describe('createRoutingDiagnosticsLogger', () => {
 
   it('maps warn and error events with the shared routing fields', () => {
     const logger = {
+      debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
@@ -255,6 +257,7 @@ describe('createRoutingDiagnosticsLogger', () => {
 
   it('maps guard, dispatch, method-not-allowed, and fallback events with optional metadata', () => {
     const logger = {
+      debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
@@ -270,7 +273,7 @@ describe('createRoutingDiagnosticsLogger', () => {
       required_roles: ['system_admin'],
     });
     diagnostics({
-      level: 'info',
+      level: 'debug',
       event: 'routing.handler.dispatched',
       route: '/auth/me',
       method: 'GET',
@@ -304,7 +307,7 @@ describe('createRoutingDiagnosticsLogger', () => {
         required_roles: ['system_admin'],
       })
     );
-    expect(logger.info).toHaveBeenCalledWith(
+    expect(logger.debug).toHaveBeenCalledWith(
       'Routing handler dispatched',
       expect.objectContaining({
         event: 'routing.handler.dispatched',
@@ -338,6 +341,7 @@ describe('createRoutingDiagnosticsLogger', () => {
 
   it('includes required permission metadata for permission-based access denials', () => {
     const logger = {
+      debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),

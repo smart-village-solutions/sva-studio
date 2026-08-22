@@ -56,15 +56,18 @@ describe('profile-commands', () => {
       }
     );
 
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.accounts'), [
-      'account-1',
-      'de-musterhausen',
-      'enc:jane.doe',
-      'enc:jane@example.com',
-      'enc:Jane',
-      'enc:Doe',
-      'enc:Jane Doe',
-    ]);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHEN username_ciphertext IS NULL AND $3::text IS NOT NULL'),
+      [
+        'account-1',
+        'de-musterhausen',
+        'enc:jane.doe',
+        'enc:jane@example.com',
+        'enc:Jane',
+        'enc:Doe',
+        'enc:Jane Doe',
+      ]
+    );
     expect(deps.resolveUserDetail).toHaveBeenCalledWith(
       client,
       expect.objectContaining({

@@ -103,7 +103,7 @@ const createAuthHandlerExecutionContext = (
 const emitAuthHandlerDispatched = (context: AuthHandlerExecutionContext): void => {
   emitServerRoutingDiagnostic(
     {
-      level: 'info',
+      level: 'debug',
       event: 'routing.handler.dispatched',
       method: context.method,
       route: context.route,
@@ -116,7 +116,7 @@ const emitAuthHandlerDispatched = (context: AuthHandlerExecutionContext): void =
 const emitAuthHandlerCompleted = (context: AuthHandlerExecutionContext, response: Response): void => {
   emitServerRoutingDiagnostic(
     {
-      level: 'info',
+      level: 'debug',
       event: 'routing.handler.completed',
       method: context.method,
       route: context.route,

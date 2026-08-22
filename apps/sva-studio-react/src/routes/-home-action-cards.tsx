@@ -99,6 +99,7 @@ export const HomeActionCards = ({
         return (
           <Card
             key={card.id}
+            data-studio-workbench-module={card.id}
             className="h-full border-border/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
           >
             <Link

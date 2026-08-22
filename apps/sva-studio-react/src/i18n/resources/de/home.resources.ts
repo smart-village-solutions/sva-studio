@@ -3,6 +3,10 @@ export const homeDEResources = {
     prompt: 'Lokaler Dev-Auth-Modus ist aktiv. Keycloak wird für diese Sitzung umgangen.',
   },
   hero: {
+    anonymousEyebrow: 'Willkommen',
+    anonymousSubtitle: 'Die gemeinsame Werkstatt für Inhalte, Module und Organisationen.',
+    anonymousBody:
+      'Melden Sie sich an, um die passenden Bausteine zu öffnen, Inhalte zu gestalten und in Ihrem Arbeitskontext direkt weiterzuarbeiten.',
     eyebrow: 'Studio Workspace',
     openSourcePrefix: 'Open Source Software made with',
     openSourceLoveLabel: 'love',

@@ -3,6 +3,10 @@ export const homeENResources = {
     prompt: 'Local dev auth is active. Keycloak is bypassed for this session.',
   },
   hero: {
+    anonymousEyebrow: 'Welcome',
+    anonymousSubtitle: 'The shared workshop for content, modules, and organizations.',
+    anonymousBody:
+      'Sign in to open the right building blocks, shape content, and continue directly in your working context.',
     eyebrow: 'Studio workspace',
     openSourcePrefix: 'Open Source Software made with',
     openSourceLoveLabel: 'love',

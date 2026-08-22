@@ -1281,7 +1281,7 @@ describe('auth.routes.server', () => {
   });
 
   it('does not let dispatched diagnostics failures break successful auth handlers', async () => {
-    routingLogger.info.mockImplementationOnce(() => {
+    routingLogger.debug.mockImplementationOnce(() => {
       throw new Error('logger down');
     });
 

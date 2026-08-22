@@ -22,6 +22,8 @@ const readReducedMotion = (): boolean =>
 const useReducedMotion = (): boolean =>
   React.useSyncExternalStore(subscribeToReducedMotion, readReducedMotion, () => true);
 
+const ignoreOptionalAnimationFailure = (): undefined => undefined;
+
 export type StudioAnimatedLoadingStateProps = Readonly<{
   children: React.ReactNode;
   className?: string;
@@ -44,9 +46,11 @@ export function StudioAnimatedLoadingState({
     let active = true;
     let dispose: (() => void) | undefined;
     const timer = window.setTimeout(() => {
-      void import('./studio-motion.anime.js').then(({ startContentAssemblyAnimation }) => {
-        if (active) dispose = startContentAssemblyAnimation(root);
-      });
+      void import('./studio-motion.anime.js')
+        .then(({ startContentAssemblyAnimation }) => {
+          if (active) dispose = startContentAssemblyAnimation(root);
+        })
+        .catch(ignoreOptionalAnimationFailure);
     }, safeEntryDelayMs);
 
     return () => {
@@ -98,9 +102,11 @@ export function StudioWorkbenchScene({
 
     let mounted = true;
     let dispose: (() => void) | undefined;
-    void import('./studio-motion.anime.js').then(({ startWorkbenchAnimation }) => {
-      if (mounted) dispose = startWorkbenchAnimation(root, { mode, scene });
-    });
+    void import('./studio-motion.anime.js')
+      .then(({ startWorkbenchAnimation }) => {
+        if (mounted) dispose = startWorkbenchAnimation(root, { mode, scene });
+      })
+      .catch(ignoreOptionalAnimationFailure);
 
     return () => {
       mounted = false;

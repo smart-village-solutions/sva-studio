@@ -109,6 +109,33 @@ describe('Studio motion components', () => {
     );
   });
 
+  it('keeps static fallbacks usable when optional motion initialization fails', async () => {
+    animeState.startContentAssemblyAnimation.mockImplementationOnce(() => {
+      throw new Error('Motion chunk unavailable');
+    });
+    animeState.startWorkbenchAnimation.mockImplementationOnce(() => {
+      throw new Error('Motion chunk unavailable');
+    });
+
+    render(
+      <>
+        <StudioAnimatedLoadingState entryDelayMs={0}>
+          Inhalt wird geladen …
+        </StudioAnimatedLoadingState>
+        <StudioWorkbenchScene mode="full" scene="anonymous">
+          <button type="button">Anmelden</button>
+        </StudioWorkbenchScene>
+      </>
+    );
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    expect(screen.getByRole('status').textContent).toContain('Inhalt wird geladen …');
+    expect(screen.getByRole('button', { name: 'Anmelden' })).toBeTruthy();
+  });
+
   it('keeps workbench content immediately interactive while the full scene animates', async () => {
     const onClick = vi.fn();
     render(

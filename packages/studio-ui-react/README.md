@@ -75,6 +75,7 @@ packages/studio-ui-react/
     ├── studio-data-table.tsx
     ├── studio-primitives.tsx
     ├── studio-motion.tsx
+    ├── studio-motion-artwork.tsx
     ├── studio-motion.anime.ts
     ├── studio-surfaces.tsx
     ├── utils.ts
@@ -85,7 +86,7 @@ Wichtige interne Schwerpunkte:
 
 - `src/index.ts` definiert die vollständige öffentliche API
 - `src/studio-primitives.tsx` enthält grundlegende Studio-Seiten-, Feld- und Statusbausteine
-- `src/studio-motion.tsx` enthält die React- und Accessibility-Verträge; `src/studio-motion.anime.ts` kapselt die bedingt geladene Anime.js-Runtime und ihr Cleanup
+- `src/studio-motion.tsx` enthält die React- und Accessibility-Verträge, `src/studio-motion-artwork.tsx` die dekorativen SVG-Bausteine; `src/studio-motion.anime.ts` kapselt die bedingt geladene Anime.js-Runtime und ihr Cleanup
 - `src/studio-surfaces.tsx` bündelt größere Oberflächenstrukturen wie Header, Sections, Tabs und Aktionsleisten
 - `src/studio-data-table.tsx` implementiert die generische Studio-Tabelle mit Sortierung, Selektion und Bulk Actions
 - `src/content-media-usage-block.tsx` und `src/studio-media-picker-overlay.tsx` bilden den gemeinsamen Content-Medienfluss ab

@@ -267,6 +267,14 @@ describe('workspace package scripts', () => {
     expect(typesScript).not.toContain('--projects=');
   });
 
+  it('runs full coverage serially to keep UI test timing stable on shared runners', () => {
+    const packageJson = loadRootPackageJson();
+
+    expect(packageJson.scripts?.['test:coverage']).toBe(
+      'env -u NO_COLOR nx run-many -t test:coverage --parallel=1'
+    );
+  });
+
   it('runs the server runtime guard through the shared Nx target', () => {
     const packageJson = loadRootPackageJson();
     const runtimeScript = packageJson.scripts?.['check:server-runtime'];

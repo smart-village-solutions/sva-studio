@@ -27,7 +27,7 @@ const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
 const MAX_SYNC_ITEMS_PER_TYPE = 5_000;
 export const contentProjectionLogger = createSdkLogger({
   component: 'iam-content-list-projection',
-  level: 'debug',
+  level: 'info',
 });
 
 export const runningProjectionSyncs = new Map<string, Promise<Response | null>>();

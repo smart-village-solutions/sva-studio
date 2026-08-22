@@ -15,7 +15,7 @@ export type RoutingRequestDiagnosticsContext = {
   readonly workspace_id?: string;
 };
 
-const routingServerLogger = createSdkLogger({ component: 'routing', level: 'debug' });
+const routingServerLogger = createSdkLogger({ component: 'routing', level: 'info' });
 registerServerFallbackLogger(routingServerLogger);
 
 export const defaultServerRoutingDiagnostics = createRoutingDiagnosticsLogger(routingServerLogger);

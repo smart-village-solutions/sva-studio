@@ -141,10 +141,20 @@ describe('otel.server helpers', () => {
     processor.onEmit(record, ROOT_CONTEXT);
 
     expect(record.setAttribute).toHaveBeenCalledWith('workspace_id', 'ws-1');
-    expect(record.body).toContain('a***@example.org');
-    expect(record.body).toContain('[REDACTED]');
-    expect(record.body).toContain('req-1');
-    expect(record.body).toContain('execution-1');
+    expect(JSON.parse(String(record.body))).toEqual({
+      message: 'failed for a***@example.org',
+      request_id: 'req-1',
+      trace_id: 'a'.repeat(32),
+      job_id: 'job-1',
+      execution_id: 'execution-1',
+      context: {
+        token: '[REDACTED]',
+        request_id: 'req-1',
+        trace_id: 'a'.repeat(32),
+        job_id: 'job-1',
+        execution_id: 'execution-1',
+      },
+    });
     expect((record.attributes as Record<string, AttributeValue>).user_id).toBeUndefined();
     expect((record.attributes as Record<string, AttributeValue>).request_id).toBeUndefined();
     expect((record.attributes as Record<string, AttributeValue>).trace_id).toBeUndefined();

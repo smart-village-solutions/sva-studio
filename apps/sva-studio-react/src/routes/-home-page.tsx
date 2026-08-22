@@ -2,6 +2,7 @@ import React from 'react';
 import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
+import { useContentAccess } from '../hooks/use-content-access';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
 import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
 import {
@@ -12,8 +13,9 @@ import { resolvePermissionTitle } from '../lib/permission-labels';
 import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioAnimatedLoadingState, StudioWorkbenchScene } from '@sva/studio-ui-react';
 import { HomeActionCards } from './-home-action-cards';
+import { resolveHomeMotionMode, type HomeMotionContext, type HomeMotionMode } from './-home-motion';
 import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
 type HomeRouteState = {
@@ -169,17 +171,31 @@ const HomeAuthErrorBanner = ({
 
 const AuthenticatedHomeOverview = ({
   changelogState,
+  motionActive,
+  motionMode,
+  permissionActions,
   user,
 }: {
   readonly changelogState: StudioChangelogState;
+  readonly motionActive: boolean;
+  readonly motionMode: HomeMotionMode;
+  readonly permissionActions: readonly string[];
   readonly user: ReturnType<typeof useAuth>['user'];
 }) => {
   return (
-    <section className="mx-auto w-full max-w-6xl px-6 py-12">
-      <HomeActionCards user={user} />
+    <StudioWorkbenchScene
+      active={motionActive}
+      className="mx-auto w-full max-w-6xl px-6 py-12"
+      mode={motionMode}
+      scene="authenticated"
+      showArtwork={false}
+    >
+      <HomeActionCards permissionActions={permissionActions} user={user} />
 
-      <StudioChangelogSection changelogState={changelogState} />
-    </section>
+      <div data-studio-workbench-surface>
+        <StudioChangelogSection changelogState={changelogState} />
+      </div>
+    </StudioWorkbenchScene>
   );
 };
 
@@ -193,6 +209,7 @@ export const HomePage = () => {
     isDevAuthAvailable,
     loginWithDevAuth,
   } = useAuth();
+  const contentAccess = useContentAccess();
   const initialRouteState = React.useMemo(
     () => (typeof window === 'undefined' ? null : resolveHomeRouteState()),
     []
@@ -233,10 +250,33 @@ export const HomePage = () => {
     !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
   const heroLoginHref = createLoginHref(authReturnTo ?? undefined);
   const isAnonymousHome = !isAuthenticated;
+  const motionContext: HomeMotionContext = isAuthenticated ? 'authenticated' : 'anonymous';
+  const [homeMotion, setHomeMotion] = React.useState<{
+    readonly context: HomeMotionContext;
+    readonly mode: HomeMotionMode;
+    readonly ready: boolean;
+  }>({ context: motionContext, mode: 'compact', ready: false });
   const [changelogState, setChangelogState] = React.useState<StudioChangelogState>({
     status: 'loading',
     entries: [],
   });
+
+  React.useEffect(() => {
+    if (isLoading || (isAuthenticated && contentAccess.isLoading)) return;
+
+    let storage: Storage | undefined;
+    try {
+      storage = window.sessionStorage;
+    } catch {
+      storage = undefined;
+    }
+
+    setHomeMotion({
+      context: motionContext,
+      mode: resolveHomeMotionMode(motionContext, storage),
+      ready: true,
+    });
+  }, [contentAccess.isLoading, isAuthenticated, isLoading, motionContext]);
 
   React.useEffect(() => {
     if (!isAuthenticated) {
@@ -259,7 +299,12 @@ export const HomePage = () => {
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
       <section className="bg-[radial-gradient(circle_at_top,_rgba(0,90,158,0.18),_transparent_34%),linear-gradient(to_bottom,_rgba(241,246,252,0.98),_rgba(255,255,255,0.99)_44%,_rgb(var(--background))_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(74,132,188,0.22),_transparent_30%),linear-gradient(to_bottom,_rgba(10,16,24,1),_rgba(13,20,30,0.98)_38%,_rgb(var(--background))_100%)]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-16 pt-16 sm:pb-20 sm:pt-20">
+        <StudioWorkbenchScene
+          active={homeMotion.ready && homeMotion.context === motionContext}
+          className="mx-auto max-w-6xl px-6 pb-16 pt-16 sm:pb-20 sm:pt-20"
+          mode={homeMotion.mode}
+          scene={motionContext}
+        >
           <div
             className={
               isAuthenticated
@@ -268,7 +313,7 @@ export const HomePage = () => {
             }
           >
             <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
-              {isAuthenticated ? t('home.hero.eyebrow') : 'Willkommen'}
+              {isAuthenticated ? t('home.hero.eyebrow') : t('home.hero.anonymousEyebrow')}
             </p>
             <div className={isAuthenticated ? 'space-y-4' : 'max-w-3xl space-y-5'}>
               <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
@@ -284,11 +329,10 @@ export const HomePage = () => {
               ) : (
                 <>
                   <p className="text-lg text-foreground sm:text-xl dark:text-foreground/95">
-                    Die gemeinsame Oberfläche für Inhalte, Module und Organisationen.
+                    {t('home.hero.anonymousSubtitle')}
                   </p>
                   <p className="mx-auto max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                    Melden Sie sich an, um Inhalte zu verwalten, Fachmodule zu öffnen und in Ihrem
-                    Arbeitskontext direkt weiterzuarbeiten.
+                    {t('home.hero.anonymousBody')}
                   </p>
                 </>
               )}
@@ -310,15 +354,21 @@ export const HomePage = () => {
               />
             ) : null}
           </div>
-        </div>
+        </StudioWorkbenchScene>
       </section>
 
       {isLoading ? (
         <section className="mx-auto max-w-6xl px-6 py-12">
-          <p className="text-sm text-muted-foreground">{t('home.session.loading')}</p>
+          <StudioAnimatedLoadingState>{t('home.session.loading')}</StudioAnimatedLoadingState>
         </section>
       ) : isAuthenticated ? (
-        <AuthenticatedHomeOverview changelogState={changelogState} user={user} />
+        <AuthenticatedHomeOverview
+          changelogState={changelogState}
+          motionActive={homeMotion.ready && homeMotion.context === 'authenticated'}
+          motionMode={homeMotion.mode}
+          permissionActions={contentAccess.permissionActions}
+          user={user}
+        />
       ) : null}
 
       <footer className="mt-auto flex justify-center px-6 py-8">

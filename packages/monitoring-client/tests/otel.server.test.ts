@@ -188,6 +188,17 @@ describe('otel.server helpers', () => {
     expect(inner.emitted).toHaveLength(1);
   });
 
+  it('RedactingLogProcessor keeps string bodies structured without optional correlation data', () => {
+    const inner = new InMemoryLogProcessor();
+    const processor = new RedactingLogProcessor(inner);
+    const record = createMutableRecord('plain message', {});
+
+    processor.onEmit(record, ROOT_CONTEXT);
+
+    expect(JSON.parse(String(record.body))).toEqual({ message: 'plain message' });
+    expect(inner.emitted).toEqual([record]);
+  });
+
   it('createOtelSdk supports explicit endpoint and logLevel in development mode', () => {
     const setLoggerSpy = vi.spyOn(diag, 'setLogger');
 

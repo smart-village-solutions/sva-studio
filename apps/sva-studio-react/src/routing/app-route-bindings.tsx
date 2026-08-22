@@ -18,7 +18,10 @@ import { NewsDetailPage, NewsEditPage } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '@sva/plugin-projects';
 import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
-import type { MainserverPrincipalControlModel } from '@sva/studio-ui-react';
+import {
+  StudioAnimatedLoadingState,
+  type MainserverPrincipalControlModel,
+} from '@sva/studio-ui-react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -170,24 +173,28 @@ const MainserverPrincipalBoundary = ({
   return <>{children(resolution.control)}</>;
 };
 
+type MainserverResourcePrincipalResolution =
+  | Readonly<{ kind: 'loading' }>
+  | Readonly<{ kind: 'error' }>
+  | Readonly<{ kind: 'ready'; control: MainserverPrincipalControlModel }>;
+
 const useMainserverResourcePrincipalControl = (
   contentType: string
-): MainserverPrincipalResolution => {
+): MainserverResourcePrincipalResolution => {
   const params = useParams({ strict: false });
   const contentId = readStringParam(params.contentId, readStringParam(params.id));
-  const [resolution, setResolution] = React.useState<MainserverPrincipalResolution>({
-    kind: 'unavailable',
-    reason: 'context_loading',
+  const [resolution, setResolution] = React.useState<MainserverResourcePrincipalResolution>({
+    kind: 'loading',
   });
 
   React.useEffect(() => {
     if (!contentId) {
-      setResolution({ kind: 'unavailable', reason: 'context_unavailable' });
+      setResolution({ kind: 'error' });
       return;
     }
 
     let active = true;
-    setResolution({ kind: 'unavailable', reason: 'context_loading' });
+    setResolution({ kind: 'loading' });
 
     void getContent(contentId, { contentType })
       .then(({ data }) => {
@@ -197,7 +204,7 @@ const useMainserverResourcePrincipalControl = (
 
         const principal = data.credentialSource;
         if (principal !== 'organization' && principal !== 'user') {
-          setResolution({ kind: 'unavailable', reason: 'context_unavailable' });
+          setResolution({ kind: 'error' });
           return;
         }
 
@@ -218,7 +225,7 @@ const useMainserverResourcePrincipalControl = (
       })
       .catch(() => {
         if (active) {
-          setResolution({ kind: 'unavailable', reason: 'context_unavailable' });
+          setResolution({ kind: 'error' });
         }
       });
 
@@ -238,16 +245,17 @@ const MainserverResourcePrincipalBoundary = ({
   contentType: string;
 }>) => {
   const resolution = useMainserverResourcePrincipalControl(contentType);
-  if (resolution.kind === 'unavailable') {
+  if (resolution.kind === 'loading') {
+    return (
+      <StudioAnimatedLoadingState>
+        {t('content.principal.resourceLoading')}
+      </StudioAnimatedLoadingState>
+    );
+  }
+  if (resolution.kind === 'error') {
     return (
       <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-        <AlertDescription>
-          {t(
-            resolution.reason === 'context_loading'
-              ? 'content.principal.resourceLoading'
-              : 'content.principal.resourceUnavailable'
-          )}
-        </AlertDescription>
+        <AlertDescription>{t('content.principal.resourceUnavailable')}</AlertDescription>
       </Alert>
     );
   }

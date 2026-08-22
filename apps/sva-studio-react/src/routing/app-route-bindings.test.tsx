@@ -783,6 +783,38 @@ describe('appRouteBindings', () => {
     }
   });
 
+  it('renders a regular loading status before showing an edit route without waiting for animation', async () => {
+    routeState.params = { id: 'content-1' };
+    let resolveContent: ((value: unknown) => void) | undefined;
+    routeState.getContent.mockReturnValue(
+      new Promise((resolve) => {
+        resolveContent = resolve;
+      })
+    );
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    expect(screen.getByRole('status').textContent).toContain('Resource principal loading');
+    expect(screen.getByTestId('studio-content-assembly')).toBeTruthy();
+    expect(screen.queryByText('Resource principal unavailable')).toBeNull();
+    expect(screen.queryByTestId('news-edit-page')).toBeNull();
+
+    resolveContent?.({
+      data: {
+        credentialSource: 'user',
+        sourceDataProviderName: 'Personal DataProvider',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-edit-page').getAttribute('data-principal-value')).toBe(
+        'user'
+      );
+    });
+    expect(screen.queryByText('Resource principal loading')).toBeNull();
+  });
+
   it('keeps an editor fail-closed when the resource principal is missing', async () => {
     routeState.params = { id: 'content-1' };
     routeState.getContent.mockResolvedValue({
@@ -798,6 +830,20 @@ describe('appRouteBindings', () => {
     await waitFor(() => {
       expect(screen.getByText('Resource principal unavailable')).toBeTruthy();
     });
+    expect(screen.queryByTestId('news-edit-page')).toBeNull();
+  });
+
+  it('shows the persistent error state when loading the resource principal fails', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.getContent.mockRejectedValue(new Error('Mainserver unavailable'));
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Resource principal unavailable');
+    });
+    expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByTestId('news-edit-page')).toBeNull();
   });
 

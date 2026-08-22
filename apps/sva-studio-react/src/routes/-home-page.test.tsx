@@ -3,7 +3,10 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthMock = vi.hoisted(() => vi.fn());
-const contentAccessMock = vi.hoisted(() => ({ permissionActions: [] as string[] }));
+const contentAccessMock = vi.hoisted(() => ({
+  isLoading: false,
+  permissionActions: [] as string[],
+}));
 const sessionStorageState = new Map<string, string>();
 const sessionStorageMock = {
   getItem: vi.fn((key: string) => sessionStorageState.get(key) ?? null),
@@ -32,6 +35,7 @@ describe('HomePage', () => {
     sessionStorageMock.getItem.mockClear();
     sessionStorageMock.setItem.mockClear();
     contentAccessMock.permissionActions = [];
+    contentAccessMock.isLoading = false;
     Object.defineProperty(window, 'sessionStorage', {
       configurable: true,
       value: sessionStorageMock,
@@ -112,6 +116,45 @@ describe('HomePage', () => {
       expect(scenes[0]?.getAttribute('data-motion-requested-mode')).toBe('full');
     });
     expect(document.querySelector('[data-studio-workbench-surface]')).toBeTruthy();
+  });
+
+  it('starts authenticated motion only after permission-backed cards are ready', async () => {
+    contentAccessMock.isLoading = true;
+    contentAccessMock.permissionActions = [];
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      sessionRecoveryFailed: false,
+      isDevAuthAvailable: false,
+      loginWithDevAuth: vi.fn(),
+      user: { assignedModules: ['news'] },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ entries: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+    );
+
+    const view = render(<HomePage />);
+
+    expect(screen.queryByRole('link', { name: /Nachricht erstellen/ })).toBeNull();
+    expect(sessionStorageMock.setItem).not.toHaveBeenCalled();
+
+    contentAccessMock.isLoading = false;
+    contentAccessMock.permissionActions = ['news.create'];
+    view.rerender(<HomePage />);
+
+    expect(await screen.findByRole('link', { name: /Nachricht erstellen/ })).toBeTruthy();
+    await waitFor(() => {
+      expect(sessionStorageMock.setItem).toHaveBeenCalled();
+      const scenes = document.querySelectorAll('[data-motion-scene="authenticated"]');
+      expect(scenes[0]?.getAttribute('data-motion-requested-mode')).toBe('full');
+    });
   });
 
   it('renders the latest changelog entries on the authenticated home page', async () => {

@@ -2,6 +2,7 @@ import React from 'react';
 import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
+import { useContentAccess } from '../hooks/use-content-access';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
 import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
 import {
@@ -172,11 +173,13 @@ const AuthenticatedHomeOverview = ({
   changelogState,
   motionActive,
   motionMode,
+  permissionActions,
   user,
 }: {
   readonly changelogState: StudioChangelogState;
   readonly motionActive: boolean;
   readonly motionMode: HomeMotionMode;
+  readonly permissionActions: readonly string[];
   readonly user: ReturnType<typeof useAuth>['user'];
 }) => {
   return (
@@ -187,7 +190,7 @@ const AuthenticatedHomeOverview = ({
       scene="authenticated"
       showArtwork={false}
     >
-      <HomeActionCards user={user} />
+      <HomeActionCards permissionActions={permissionActions} user={user} />
 
       <div data-studio-workbench-surface>
         <StudioChangelogSection changelogState={changelogState} />
@@ -206,6 +209,7 @@ export const HomePage = () => {
     isDevAuthAvailable,
     loginWithDevAuth,
   } = useAuth();
+  const contentAccess = useContentAccess();
   const initialRouteState = React.useMemo(
     () => (typeof window === 'undefined' ? null : resolveHomeRouteState()),
     []
@@ -258,7 +262,7 @@ export const HomePage = () => {
   });
 
   React.useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || (isAuthenticated && contentAccess.isLoading)) return;
 
     let storage: Storage | undefined;
     try {
@@ -272,7 +276,7 @@ export const HomePage = () => {
       mode: resolveHomeMotionMode(motionContext, storage),
       ready: true,
     });
-  }, [isLoading, motionContext]);
+  }, [contentAccess.isLoading, isAuthenticated, isLoading, motionContext]);
 
   React.useEffect(() => {
     if (!isAuthenticated) {
@@ -362,6 +366,7 @@ export const HomePage = () => {
           changelogState={changelogState}
           motionActive={homeMotion.ready && homeMotion.context === 'authenticated'}
           motionMode={homeMotion.mode}
+          permissionActions={contentAccess.permissionActions}
           user={user}
         />
       ) : null}

@@ -20,7 +20,7 @@
     "test:a11y": "env -u NO_COLOR nx run sva-studio-react:test:a11y",
     "test:unit": "env -u NO_COLOR nx run-many -t test:unit --parallel=1",
     "test:unit:affected": "tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main} --head ${NX_HEAD:-HEAD}",
-    "test:coverage": "env -u NO_COLOR nx run-many -t test:coverage",
+    "test:coverage": "env -u NO_COLOR nx run-many -t test:coverage --parallel=1",
     "test:coverage:affected": "tsx scripts/ci/affected-coverage-gate.ts --base ${NX_BASE:-origin/main} --head ${NX_HEAD:-HEAD}",
     "test:coverage:pr": "pnpm test:coverage:affected && pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}",
     "check:studio-changelog": "tsx scripts/ci/check-studio-changelog.ts --mode repo",

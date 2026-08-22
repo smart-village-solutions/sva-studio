@@ -14,6 +14,10 @@ export const runWithWorkspaceContext = <T>(context: WorkspaceContext, fn: () => 
   return workspaceStorage.run(context, fn);
 };
 
+export const runWithoutWorkspaceContext = <T>(fn: () => T): T => {
+  return workspaceStorage.exit(fn);
+};
+
 export const getWorkspaceContext = (): WorkspaceContext => {
   return workspaceStorage.getStore() ?? {};
 };
@@ -68,9 +72,14 @@ export const extractWorkspaceId = (
   return undefined;
 };
 
-export const createWorkspaceContextMiddleware = (options: WorkspaceMiddlewareOptions = {}): WorkspaceMiddleware => {
+export const createWorkspaceContextMiddleware = (
+  options: WorkspaceMiddlewareOptions = {}
+): WorkspaceMiddleware => {
   const headerNames = options.headerNames ?? ['x-workspace-id', 'x-sva-workspace-id'];
-  const environment = options.environment ?? (process.env.NODE_ENV as WorkspaceMiddlewareOptions['environment']) ?? 'development';
+  const environment =
+    options.environment ??
+    (process.env.NODE_ENV as WorkspaceMiddlewareOptions['environment']) ??
+    'development';
 
   // Note: Cannot use SDK logger here due to circular dependency (context.ts is used BY logger)
   let warnEmitter: ((message: string, meta?: Record<string, unknown>) => void) | null = null;

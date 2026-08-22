@@ -21,7 +21,13 @@ export const createFetchWithRetry = (input: {
   readonly retryBaseDelayMs: number;
   readonly randomIntImpl: (min: number, max: number) => number;
 }) => {
-  return async ({ url, init, input: connection, operationName, hop }: UpstreamRequestInput): Promise<Response> => {
+  return async ({
+    url,
+    init,
+    input: connection,
+    operationName,
+    hop,
+  }: UpstreamRequestInput): Promise<Response> => {
     const executeRequest = async (): Promise<Response> =>
       input.fetchImpl(url, {
         ...init,
@@ -60,7 +66,9 @@ export const createFetchWithRetry = (input: {
           operation: operationName,
           hop,
           retry_delay_ms: delayMs,
-          error_message: error instanceof Error ? error.message : String(error),
+          error_code: 'transient_network_error',
+          error_type: error instanceof Error ? error.name : typeof error,
+          retry_class: 'transient',
         }),
       });
       await sleep(delayMs);
@@ -71,9 +79,15 @@ export const createFetchWithRetry = (input: {
 
 export const createGraphqlExecutor = (input: {
   readonly fetchWithRetry: ReturnType<typeof createFetchWithRetry>;
-  readonly loadAccessToken: (connection: SvaMainserverConnectionInput, config: SvaMainserverInstanceConfig) => Promise<string>;
+  readonly loadAccessToken: (
+    connection: SvaMainserverConnectionInput,
+    config: SvaMainserverInstanceConfig
+  ) => Promise<string>;
 }): GraphqlExecutor => {
-  return async <TResult>(operation: GraphqlOperationInput, config: SvaMainserverInstanceConfig): Promise<TResult> => {
+  return async <TResult>(
+    operation: GraphqlOperationInput,
+    config: SvaMainserverInstanceConfig
+  ): Promise<TResult> => {
     const accessToken = await input.loadAccessToken(operation, config);
 
     return withObservedHop(
@@ -106,13 +120,6 @@ export const createGraphqlExecutor = (input: {
             },
           });
         } catch (error) {
-          logger.warn('SVA Mainserver GraphQL request failed', {
-            ...buildLogContext(operation, {
-              operation: operation.operationName,
-              error_code: 'network_error',
-              error_message: error instanceof Error ? error.message : String(error),
-            }),
-          });
           throw toSvaMainserverError({
             code: 'network_error',
             message: resolveNetworkErrorMessage({
@@ -126,13 +133,6 @@ export const createGraphqlExecutor = (input: {
 
         if (!response.ok) {
           const errorCode = resolveGraphqlStatusErrorCode(response.status);
-          logger.warn('SVA Mainserver GraphQL request returned an error status', {
-            ...buildLogContext(operation, {
-              operation: operation.operationName,
-              error_code: errorCode,
-              http_status: response.status,
-            }),
-          });
           throw toSvaMainserverError({
             code: errorCode,
             message: `GraphQL-Aufruf fehlgeschlagen (${response.status}).`,
@@ -143,24 +143,22 @@ export const createGraphqlExecutor = (input: {
         try {
           const payload = await parseJsonBody(response);
           const result = parseGraphqlPayload<TResult>(payload);
-          logger.info('SVA Mainserver GraphQL operation succeeded', {
+          logger.debug('SVA Mainserver GraphQL operation succeeded', {
             ...buildLogContext(operation, {
               operation: operation.operationName,
             }),
           });
           return result;
         } catch (error) {
-          const normalizedError = error instanceof Error && 'code' in error ? error : toSvaMainserverError({
-            code: 'network_error',
-            message: error instanceof Error ? error.message : 'Unbekannter Mainserver-Fehler.',
-            statusCode: 503,
-          });
-          logger.warn('SVA Mainserver GraphQL response validation failed', {
-            ...buildLogContext(operation, {
-              operation: operation.operationName,
-              error_code: 'code' in normalizedError ? normalizedError.code : 'network_error',
-            }),
-          });
+          const normalizedError =
+            error instanceof Error && 'code' in error
+              ? error
+              : toSvaMainserverError({
+                  code: 'network_error',
+                  message:
+                    error instanceof Error ? error.message : 'Unbekannter Mainserver-Fehler.',
+                  statusCode: 503,
+                });
           throw normalizedError;
         }
       }

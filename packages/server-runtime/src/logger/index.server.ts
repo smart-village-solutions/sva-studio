@@ -181,11 +181,12 @@ const buildConsoleTransport = (
 export const createSdkLogger = ({
   component,
   environment = process.env.NODE_ENV ?? 'development',
-  level = 'info',
+  level,
   enableConsole,
   enableOtel,
 }: LoggerOptions): Logger => {
   const runtimeConfig = getLoggingRuntimeConfig();
+  const effectiveLevel = runtimeConfig.levelOverride ?? level ?? 'info';
   const consoleEnabled = enableConsole ?? runtimeConfig.consoleEnabled;
   const otelEnabled = enableOtel ?? runtimeConfig.otelRequested;
   const loggingMode = resolveEffectiveLoggingMode({
@@ -209,10 +210,11 @@ export const createSdkLogger = ({
   }
 
   const logger = winston.createLogger({
-    level,
+    level: effectiveLevel,
     defaultMeta: {
       component,
       environment,
+      log_level: effectiveLevel,
       logging_mode: loggingMode,
     },
     format: winston.format.combine(

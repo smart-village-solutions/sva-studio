@@ -679,7 +679,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         throw mutationRoot.error;
       }
 
-      logger.info('SVA Mainserver connection check succeeded', {
+      logger.debug('SVA Mainserver connection check succeeded', {
         ...buildLogContext(input, {
           operation: 'connection_check',
         }),

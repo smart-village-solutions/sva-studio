@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { loadInstanceByHostnameMock, logger, getInstanceConfigMock } = vi.hoisted(() => ({
   loadInstanceByHostnameMock: vi.fn(),
   logger: {
+    debug: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
@@ -25,7 +26,6 @@ const {
   logGlobalAuthResolution,
   logInstanceConfigMissing,
   logTenantAuthResolution,
-  logTenantAuthResolutionFailure,
 } = await import('./config-request.js');
 
 const request = new Request('https://tenant.example.test/auth', {
@@ -39,6 +39,7 @@ const request = new Request('https://tenant.example.test/auth', {
 describe('tenant auth request logging helpers', () => {
   beforeEach(() => {
     loadInstanceByHostnameMock.mockReset();
+    logger.debug.mockReset();
     logger.error.mockReset();
     logger.info.mockReset();
     logger.warn.mockReset();
@@ -49,12 +50,11 @@ describe('tenant auth request logging helpers', () => {
   });
 
   it('logs global, missing-config and tenant resolution summaries', () => {
-    logGlobalAuthResolution(request, 'tenant.example.test', 'https://tenant.example.test');
-    logInstanceConfigMissing('tenant.example.test', 'https://tenant.example.test');
+    logGlobalAuthResolution(request, 'tenant.example.test');
+    logInstanceConfigMissing('tenant.example.test');
     logTenantAuthResolution(
       request,
       'tenant.example.test',
-      'https://tenant.example.test',
       {
         issuer: 'https://issuer.example.test',
         clientId: 'client-1',
@@ -84,39 +84,36 @@ describe('tenant auth request logging helpers', () => {
       }
     );
 
-    expect(logger.warn).toHaveBeenCalledWith('tenant_auth_resolution_summary', expect.objectContaining({
-      result: 'platform',
-      forwarded_header_present: 'true',
-    }));
-    expect(logger.info).toHaveBeenCalledWith('tenant_auth_resolution_summary', expect.objectContaining({
-      reason: 'instance_config_missing',
-    }));
-    expect(logger.info).toHaveBeenCalledWith('tenant_auth_resolution_summary', expect.objectContaining({
-      result: 'tenant',
-      oidc_cache_key_scope: 'tenant_secret',
-    }));
+    expect(logger.debug).toHaveBeenCalledWith(
+      'tenant_auth_resolution_summary',
+      expect.objectContaining({
+        result: 'platform',
+        forwarded_header_present: 'true',
+      })
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      'tenant_auth_resolution_summary',
+      expect.objectContaining({
+        reason: 'instance_config_missing',
+      })
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      'tenant_auth_resolution_summary',
+      expect.objectContaining({
+        result: 'tenant',
+        oidc_cache_key_scope: 'tenant_secret',
+        issuer_path: '/',
+        redirect_path: '/callback',
+      })
+    );
   });
 
-  it('logs resolution failures and maps lookup failures to runtime errors', async () => {
-    logTenantAuthResolutionFailure(request, {
-      host: 'tenant.example.test',
-      requestOrigin: 'https://tenant.example.test',
-      reason: 'tenant_inactive',
-      error: 'inactive',
-    });
-    expect(logger.error).toHaveBeenCalledWith('tenant_auth_resolution_failed', expect.objectContaining({
-      reason: 'tenant_inactive',
-      error: 'inactive',
-    }));
-
+  it('propagates classified lookup failures without logging below the owning route boundary', async () => {
     loadInstanceByHostnameMock.mockRejectedValueOnce(new TypeError('db down'));
-    await expect(loadRegistryEntryForHost('tenant.example.test', 'https://tenant.example.test')).rejects.toMatchObject({
+    await expect(loadRegistryEntryForHost('tenant.example.test')).rejects.toMatchObject({
       reason: 'tenant_lookup_failed',
     });
-    expect(logger.error).toHaveBeenCalledWith(
-      'Tenant hostname lookup failed during auth resolution',
-      expect.objectContaining({ error_type: 'TypeError' })
-    );
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it('returns active registry entries and rejects inactive ones', async () => {
@@ -128,14 +125,10 @@ describe('tenant auth request logging helpers', () => {
     };
     loadInstanceByHostnameMock.mockResolvedValueOnce(activeEntry);
 
-    await expect(loadRegistryEntryForHost('tenant.example.test', 'https://tenant.example.test')).resolves.toBe(
-      activeEntry
-    );
+    await expect(loadRegistryEntryForHost('tenant.example.test')).resolves.toBe(activeEntry);
+    expect(() => assertActiveRegistryEntry('tenant.example.test', activeEntry)).not.toThrow();
     expect(() =>
-      assertActiveRegistryEntry('tenant.example.test', 'https://tenant.example.test', activeEntry)
-    ).not.toThrow();
-    expect(() =>
-      assertActiveRegistryEntry('tenant.example.test', 'https://tenant.example.test', {
+      assertActiveRegistryEntry('tenant.example.test', {
         ...activeEntry,
         status: 'provisioning',
       })

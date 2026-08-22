@@ -115,13 +115,6 @@ export const createAccessTokenProvider = (input: {
             },
           });
         } catch (error) {
-          logger.warn('SVA Mainserver token request failed', {
-            ...buildLogContext(connection, {
-              operation: 'load_access_token',
-              error_code: 'network_error',
-              error_message: error instanceof Error ? error.message : String(error),
-            }),
-          });
           throw toSvaMainserverError({
             code: 'network_error',
             message: resolveNetworkErrorMessage({
@@ -135,13 +128,6 @@ export const createAccessTokenProvider = (input: {
 
         if (!response.ok) {
           const errorCode = resolveTokenStatusErrorCode(response.status);
-          logger.warn('SVA Mainserver token request returned an error status', {
-            ...buildLogContext(connection, {
-              operation: 'load_access_token',
-              error_code: errorCode,
-              http_status: response.status,
-            }),
-          });
           throw toSvaMainserverError({
             code: errorCode,
             message: `Tokenabruf fehlgeschlagen (${response.status}).`,
@@ -151,12 +137,6 @@ export const createAccessTokenProvider = (input: {
 
         const payloadResult = tokenResponseSchema.safeParse(await parseJsonBody(response));
         if (!payloadResult.success) {
-          logger.warn('SVA Mainserver token response failed schema validation', {
-            ...buildLogContext(connection, {
-              operation: 'load_access_token',
-              error_code: 'invalid_response',
-            }),
-          });
           throw toSvaMainserverError({
             code: 'invalid_response',
             message: 'Ungültige Token-Antwort des SVA-Mainservers.',
@@ -174,7 +154,7 @@ export const createAccessTokenProvider = (input: {
           cacheWriteNowMs,
           input.tokenCacheMaxSize
         );
-        logger.info('SVA Mainserver access token loaded', {
+        logger.debug('SVA Mainserver access token loaded', {
           ...buildLogContext(connection, {
             operation: 'load_access_token',
             cache: 'store',

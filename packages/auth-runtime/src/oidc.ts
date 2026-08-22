@@ -1,16 +1,19 @@
 import { createHash } from 'node:crypto';
 import * as client from 'openid-client';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { getAuthConfig } from './config.js';
 import type { AuthConfig } from './types.js';
 
 const configPromises = new Map<string, Promise<client.Configuration>>();
-const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const MAX_OIDC_CONFIG_CACHE_ENTRIES = 32;
 
-const buildOidcConfigCacheKey = (authConfig: Pick<AuthConfig, 'issuer' | 'clientId' | 'clientSecret'>): string => {
-  const secretFingerprint = createHash('sha256').update(authConfig.clientSecret).digest('hex').slice(0, 16);
+const buildOidcConfigCacheKey = (
+  authConfig: Pick<AuthConfig, 'issuer' | 'clientId' | 'clientSecret'>
+): string => {
+  const secretFingerprint = createHash('sha256')
+    .update(authConfig.clientSecret)
+    .digest('hex')
+    .slice(0, 16);
   return `${authConfig.issuer}::${authConfig.clientId}::${secretFingerprint}`;
 };
 
@@ -40,22 +43,12 @@ export const getOidcConfig = async (
     return cached;
   }
 
-  const promise = client.discovery(new URL(authConfig.issuer), authConfig.clientId, authConfig.clientSecret).catch(
-    (error: unknown) => {
-      const context = getWorkspaceContext();
+  const promise = client
+    .discovery(new URL(authConfig.issuer), authConfig.clientId, authConfig.clientSecret)
+    .catch((error: unknown) => {
       configPromises.delete(cacheKey);
-      logger.error('OIDC discovery failed', {
-        operation: 'oidc_discovery',
-        issuer: authConfig.issuer,
-        error: error instanceof Error ? error.message : String(error),
-        error_type: error instanceof Error ? error.constructor.name : typeof error,
-        workspace_id: context.workspaceId ?? 'default',
-        request_id: context.requestId,
-        trace_id: context.traceId,
-      });
       throw error;
-    }
-  );
+    });
 
   evictOldestOidcConfig();
   configPromises.set(cacheKey, promise);

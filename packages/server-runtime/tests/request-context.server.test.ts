@@ -125,6 +125,55 @@ describe('request-context middleware helpers', () => {
     });
   });
 
+  it('generates only a request id when no correlation headers exist', async () => {
+    const request = new Request('http://localhost/auth/me');
+
+    await withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+      const context = getWorkspaceContext();
+      expect(context.requestId).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(context.traceId).toBeUndefined();
+    });
+  });
+
+  it('isolates overlapping request contexts', async () => {
+    const firstRequest = new Request('http://localhost/auth/me', {
+      headers: { 'x-request-id': 'req-first' },
+    });
+    const secondRequest = new Request('http://localhost/auth/me', {
+      headers: { 'x-request-id': 'req-second' },
+    });
+
+    const [firstContext, secondContext] = await Promise.all([
+      withRequestContext({ request: firstRequest }, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return getWorkspaceContext();
+      }),
+      withRequestContext({ request: secondRequest }, async () => {
+        await Promise.resolve();
+        return getWorkspaceContext();
+      }),
+    ]);
+
+    expect(firstContext.requestId).toBe('req-first');
+    expect(secondContext.requestId).toBe('req-second');
+  });
+
+  it('preserves generated request correlation while replacing an outer workspace fallback', async () => {
+    const request = new Request('http://localhost/auth/me');
+
+    await withRequestContext({ request, fallbackWorkspaceId: 'platform' }, async () => {
+      const outerContext = getWorkspaceContext();
+
+      await withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+        const nestedContext = getWorkspaceContext();
+        expect(nestedContext.requestId).toBe(outerContext.requestId);
+        expect(nestedContext.traceId).toBe(outerContext.traceId);
+        expect(outerContext.workspaceId).toBe('platform');
+        expect(nestedContext.workspaceId).toBe('default');
+      });
+    });
+  });
+
   it('prefers explicit overrides and fallback workspace id', async () => {
     const request = new Request('http://localhost/auth/me', {
       headers: {

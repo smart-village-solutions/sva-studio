@@ -4,7 +4,7 @@ import {
   DiagLogLevel,
   type AttributeValue,
   type Attributes,
-  type Context
+  type Context,
 } from '@opentelemetry/api';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
@@ -23,6 +23,7 @@ import { logs } from '@opentelemetry/api-logs';
 import { maskEmailAddresses as maskEmailAddressesShared } from '@sva/core';
 
 import { setGlobalLoggerProvider } from './logger-provider.server.js';
+import { redactLogString, serializeAndRedactLogValue } from './logging/redaction.js';
 
 export interface WorkspaceContext {
   workspaceId?: string;
@@ -46,63 +47,25 @@ const forbiddenLabelKeys = new Set([
   'keycloak_subject',
   'db_keycloak_subject',
   'request_id',
+  'trace_id',
+  'job_id',
+  'execution_id',
   'token',
   'id_token',
   'id_token_hint',
   'authorization',
   'api_key',
   'secret',
-  'ip'
+  'ip',
 ]);
-
-const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
-const stringSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
-  [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
-  [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
-  [
-    /([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi,
-    '$1[REDACTED]',
-  ],
-  [
-    /((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
-    '$1[REDACTED]',
-  ],
-  [
-    /((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
-    '$1[REDACTED]',
-  ],
-];
 
 export const maskEmailAddresses = (value: string): string => {
   return maskEmailAddressesShared(value);
 };
 
-export const redactString = (value: string): string => {
-  let next = maskEmailAddresses(value);
-  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
-  for (const [pattern, replacement] of stringSecretPatterns) {
-    next = next.replace(pattern, replacement);
-  }
-  return next;
-};
+export const redactString = (value: string): string => redactLogString(value);
 
-export const redactValue = (value: unknown): unknown => {
-  if (typeof value === 'string') {
-    return redactString(value);
-  }
-  if (Array.isArray(value)) {
-    return value.map((entry) => redactValue(entry));
-  }
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-        key,
-        forbiddenLabelKeys.has(key) ? '[REDACTED]' : redactValue(entry),
-      ])
-    );
-  }
-  return value;
-};
+export const redactValue = (value: unknown): unknown => serializeAndRedactLogValue(value);
 
 export const toAttributeValue = (value: unknown): AttributeValue => {
   if (value === null || value === undefined) {
@@ -188,15 +151,15 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
   const resource = resourceFromAttributes({
     [SemanticResourceAttributes.SERVICE_NAME]: config.serviceName,
     [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]:
-      config.environment ?? process.env.NODE_ENV ?? 'development'
+      config.environment ?? process.env.NODE_ENV ?? 'development',
   });
 
   const metricExporter = new OTLPMetricExporter({
-    url: `${otlpEndpoint}/v1/metrics`
+    url: `${otlpEndpoint}/v1/metrics`,
   });
 
   const logExporter = new OTLPLogExporter({
-    url: `${otlpEndpoint}/v1/logs`
+    url: `${otlpEndpoint}/v1/logs`,
   });
 
   // Optimiere BatchLogRecordProcessor für schnelle Log-Übertragung
@@ -212,7 +175,7 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
       maxQueueSize: 4096,
       maxExportBatchSize: batchSize,
       scheduledDelayMillis: scheduleDelayMs,
-      exportTimeoutMillis: expoTimeoutMs
+      exportTimeoutMillis: expoTimeoutMs,
     })
   );
 
@@ -223,16 +186,16 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
     traceExporter: undefined,
     spanProcessors: [], // Explicitly no span processors
     metricReader: new PeriodicExportingMetricReader({
-      exporter: metricExporter
+      exporter: metricExporter,
     }),
     logRecordProcessor: logProcessor,
     instrumentations: [
       getNodeAutoInstrumentations({
         '@opentelemetry/instrumentation-http': {
-          enabled: true
-        }
-      })
-    ]
+          enabled: true,
+        },
+      }),
+    ],
   });
 };
 

@@ -32,6 +32,7 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: state.createSdkLogger,
   getInstanceConfig: state.getInstanceConfig,
   getWorkspaceContext: state.getWorkspaceContext,
+  toSafeLogPath: (value: string) => new URL(value).pathname,
 }));
 
 vi.mock('./request-hosts.js', () => ({
@@ -68,7 +69,9 @@ describe('middleware-hosts', () => {
     const { resolveSessionUser } = await import('./middleware-hosts.js');
     const user = { id: 'user-1', instanceId: 'instance-1' } as const;
 
-    await expect(resolveSessionUser(new Request('https://tenant.example.test'), user as never)).resolves.toBe(user);
+    await expect(
+      resolveSessionUser(new Request('https://tenant.example.test'), user as never)
+    ).resolves.toBe(user);
     expect(state.resolveEffectiveRequestHost).not.toHaveBeenCalled();
   }, 15_000);
 
@@ -78,19 +81,22 @@ describe('middleware-hosts', () => {
     const { resolveSessionUser } = await import('./middleware-hosts.js');
     const user = { id: 'user-2' };
 
-    await expect(resolveSessionUser(new Request('https://root.example.test'), user as never)).resolves.toEqual(user);
+    await expect(
+      resolveSessionUser(new Request('https://root.example.test'), user as never)
+    ).resolves.toEqual(user);
     expect(state.logger.warn).not.toHaveBeenCalled();
   });
 
   it('throws a hydration error for tenant requests without an instance id', async () => {
     const { resolveSessionUser } = await import('./middleware-hosts.js');
 
-    await expect(resolveSessionUser(new Request('https://tenant.example.test/app'), { id: 'user-3' } as never)).rejects
-      .toMatchObject({
-        name: 'SessionUserHydrationError',
-        reason: 'missing_instance_id',
-        requestHost: 'tenant.example.test',
-      });
+    await expect(
+      resolveSessionUser(new Request('https://tenant.example.test/app'), { id: 'user-3' } as never)
+    ).rejects.toMatchObject({
+      name: 'SessionUserHydrationError',
+      reason: 'missing_instance_id',
+      requestHost: 'tenant.example.test',
+    });
 
     expect(state.logger.warn).toHaveBeenCalledWith(
       'Auth middleware rejected tenant request because the session user lacks instance context',
@@ -179,7 +185,9 @@ describe('middleware-hosts', () => {
     state.isTrafficEnabledInstanceStatus.mockReturnValueOnce(true);
 
     const { validateTenantHost } = await import('./middleware-hosts.js');
-    await expect(validateTenantHost(new Request('https://tenant.example.test/path'))).resolves.toBeNull();
+    await expect(
+      validateTenantHost(new Request('https://tenant.example.test/path'))
+    ).resolves.toBeNull();
   });
 
   it('caches active tenant host validation briefly by host', async () => {
@@ -190,8 +198,12 @@ describe('middleware-hosts', () => {
     state.isTrafficEnabledInstanceStatus.mockReturnValue(true);
 
     const { validateTenantHost } = await import('./middleware-hosts.js');
-    await expect(validateTenantHost(new Request('https://tenant.example.test/one'))).resolves.toBeNull();
-    await expect(validateTenantHost(new Request('https://tenant.example.test/two'))).resolves.toBeNull();
+    await expect(
+      validateTenantHost(new Request('https://tenant.example.test/one'))
+    ).resolves.toBeNull();
+    await expect(
+      validateTenantHost(new Request('https://tenant.example.test/two'))
+    ).resolves.toBeNull();
 
     expect(state.loadInstanceByHostname).toHaveBeenCalledTimes(1);
   });

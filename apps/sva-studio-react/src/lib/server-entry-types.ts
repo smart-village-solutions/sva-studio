@@ -15,6 +15,7 @@ export type RequestContextSdk = {
     readonly enableOtel: boolean;
   }): PluginWorkerBootstrapLogger;
   getWorkspaceContext(): WorkspaceContext;
+  runWithoutWorkspaceContext<T>(callback: () => T): T;
   withRequestContext<T>(
     input: { readonly request: Request; readonly fallbackWorkspaceId: string },
     callback: () => Promise<T>

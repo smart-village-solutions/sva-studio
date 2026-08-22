@@ -1,11 +1,7 @@
 export const serverRuntimeVersion = '0.0.1';
 
 export type ServerRuntimePackageRole =
-  | 'request-context'
-  | 'json-errors'
-  | 'logging'
-  | 'observability'
-  | 'external-data-sources';
+  'request-context' | 'json-errors' | 'logging' | 'observability' | 'external-data-sources';
 
 export const serverRuntimePackageRoles = [
   'request-context',
@@ -25,6 +21,7 @@ export type ServerRuntimeLogger = {
 
 export type { LoggerOptions } from './logger/index.server.js';
 export { redactObject } from './logger/index.server.js';
+export { toSafeLogPath } from './logging/redaction.js';
 import { createSdkLogger as createSdkLoggerInternal } from './logger/index.server.js';
 export type {
   LoggingRuntimeConfig,
@@ -94,6 +91,7 @@ export {
   extractWorkspaceId,
   getWorkspaceContext,
   MissingWorkspaceIdError,
+  runWithoutWorkspaceContext,
   runWithWorkspaceContext,
   setWorkspaceContext,
 } from './observability/context.server.js';

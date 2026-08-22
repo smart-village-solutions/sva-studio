@@ -42,7 +42,7 @@ import {
   parseTags,
   parseWebUrls,
 } from './content-route-parsers.js';
-import { SvaMainserverError } from './errors.js';
+import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
@@ -471,7 +471,8 @@ const logMutationWorkflowFailure = (input: {
   readonly requestId?: string;
   readonly error: unknown;
 }) => {
-  logger.warn('Mainserver content route failed', {
+  const logFailure = isUnexpectedMainserverError(input.error) ? logger.error : logger.warn;
+  logFailure('Mainserver content route failed', {
     operation: 'mainserver_content_request',
     request_id: input.requestId,
     trace_id: getWorkspaceContext().traceId,
@@ -737,7 +738,8 @@ const dispatchAuthenticated = async (
   const workspaceContext = getWorkspaceContext();
   const logSuccess = (operation: string, contentId?: string) => {
     try {
-      logger.info('Mainserver content route succeeded', {
+      const logSuccessEvent = request.method === 'GET' ? logger.debug : logger.info;
+      logSuccessEvent('Mainserver content route succeeded', {
         operation,
         request_id: workspaceContext.requestId,
         trace_id: workspaceContext.traceId,
@@ -788,7 +790,8 @@ const dispatchAuthenticated = async (
       'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.'
     );
   } catch (error) {
-    logger.warn('Mainserver content route failed', {
+    const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
+    logFailure('Mainserver content route failed', {
       operation: 'mainserver_content_request',
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,

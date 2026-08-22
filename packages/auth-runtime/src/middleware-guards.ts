@@ -1,4 +1,4 @@
-import { createSdkLogger } from '@sva/server-runtime';
+import { createSdkLogger, toSafeLogPath } from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
 import { buildLogContext } from './log-context.js';
@@ -25,7 +25,7 @@ export const logProfileDiagnosticsIfEnabled = (request: Request, user: SessionUs
   }
 
   logger.info('Auth middleware resolved session user for self-service diagnostics', {
-    endpoint: request.url,
+    endpoint: toSafeLogPath(request.url),
     operation: 'auth_middleware',
     auth_state: 'authenticated',
     user_id: user.id,
@@ -43,7 +43,7 @@ export const logComplianceDiagnosticsIfEnabled = (request: Request, user: Sessio
   }
 
   logger.info('Auth middleware enforcing legal text compliance for self-service request', {
-    endpoint: request.url,
+    endpoint: toSafeLogPath(request.url),
     operation: 'auth_middleware',
     user_id: user.id,
     session_instance_id: user.instanceId,
@@ -66,7 +66,7 @@ export const logUnexpectedMiddlewareError = (request: Request, error: unknown): 
   const logContext = buildLogContext(undefined, { includeTraceId: true });
   if (error instanceof SessionStoreUnavailableError) {
     logger.error('Auth middleware dependency failed', {
-      endpoint: request.url,
+      endpoint: toSafeLogPath(request.url),
       operation: 'auth_middleware',
       dependency: 'redis',
       dependency_operation: error.operation,
@@ -91,7 +91,7 @@ export const logUnexpectedMiddlewareError = (request: Request, error: unknown): 
     logger.warn(
       'Auth middleware rejected request because the session user is missing required tenant context',
       {
-        endpoint: request.url,
+        endpoint: toSafeLogPath(request.url),
         operation: 'auth_middleware',
         reason_code: 'missing_session_instance_id',
         request_host: error.requestHost,
@@ -112,7 +112,7 @@ export const logUnexpectedMiddlewareError = (request: Request, error: unknown): 
   }
 
   logger.error('Auth middleware failed unexpectedly', {
-    endpoint: request.url,
+    endpoint: toSafeLogPath(request.url),
     operation: 'auth_middleware',
     error_type: error instanceof Error ? error.constructor.name : typeof error,
     error_message: error instanceof Error ? error.message : String(error),
@@ -128,14 +128,20 @@ export const logProtectedHandlerError = (request: Request, error: unknown): Resp
   const logContext = buildLogContext(undefined, { includeTraceId: true });
 
   logger.error('Authenticated handler failed unexpectedly', {
-    endpoint: request.url,
+    endpoint: toSafeLogPath(request.url),
     operation: 'auth_middleware',
     error_type: error instanceof Error ? error.constructor.name : typeof error,
     error_message: error instanceof Error ? error.message : String(error),
     ...logContext,
   });
 
-  return createApiError(500, 'internal_error', 'Interner Verarbeitungsfehler.', logContext.request_id, {
-    reason_code: 'authenticated_handler_failed',
-  });
+  return createApiError(
+    500,
+    'internal_error',
+    'Interner Verarbeitungsfehler.',
+    logContext.request_id,
+    {
+      reason_code: 'authenticated_handler_failed',
+    }
+  );
 };

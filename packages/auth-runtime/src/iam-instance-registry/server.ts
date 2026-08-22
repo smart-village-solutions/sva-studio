@@ -1,9 +1,18 @@
-import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
+import {
+  createSdkLogger,
+  toJsonErrorResponse,
+  toSafeLogPath,
+  withRequestContext,
+} from '@sva/server-runtime';
 
 import { withAuthenticatedUser } from '../middleware.js';
 import { buildLogContext } from '../log-context.js';
 
-import { REGISTRY_ACTIONS, type RegistryActionId, type RegistryRequestContext } from './auth-context.js';
+import {
+  REGISTRY_ACTIONS,
+  type RegistryActionId,
+  type RegistryRequestContext,
+} from './auth-context.js';
 import { prepareInstanceConfirmationInternal } from './confirmation.js';
 import {
   authenticateRegistryServiceToken,
@@ -54,9 +63,14 @@ const withAuthenticatedRegistryHandler = (
       if (bearerToken !== undefined) {
         if (bearerToken === null) {
           const requestId = buildLogContext('platform', { includeTraceId: true }).request_id;
-          return toJsonErrorResponse(401, 'invalid_service_token', 'Service-Authentisierung fehlgeschlagen.', {
-            requestId,
-          });
+          return toJsonErrorResponse(
+            401,
+            'invalid_service_token',
+            'Service-Authentisierung fehlgeschlagen.',
+            {
+              requestId,
+            }
+          );
         }
         const resolution = await authenticateRegistryServiceToken(bearerToken, actionId);
         if (resolution.kind === 'response') return resolution.response;
@@ -78,7 +92,7 @@ const withAuthenticatedRegistryHandler = (
       const logContext = buildLogContext('platform', { includeTraceId: true });
       logger.error('Instance registry request failed unexpectedly', {
         operation: 'instance_registry_request',
-        endpoint: request.url,
+        endpoint: toSafeLogPath(request.url),
         error_type: error instanceof Error ? error.constructor.name : typeof error,
         reason_code: 'platform_scope_unhandled_failure',
         ...logContext,
@@ -91,7 +105,11 @@ const withAuthenticatedRegistryHandler = (
 
 export const instanceRegistryHandlers = {
   prepareInstanceConfirmation: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, REGISTRY_ACTIONS.confirmationPrepare, prepareInstanceConfirmationInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      REGISTRY_ACTIONS.confirmationPrepare,
+      prepareInstanceConfirmationInternal
+    ),
   listInstances: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.list', listInstancesInternal),
   getInstance: async (request: Request): Promise<Response> =>
@@ -103,35 +121,87 @@ export const instanceRegistryHandlers = {
   getInstanceAuditRun: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.audit.read', getInstanceAuditRunInternal),
   getInstanceKeycloakStatus: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.diagnose', getInstanceKeycloakStatusInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.diagnose',
+      getInstanceKeycloakStatusInternal
+    ),
   getSingleInstanceAuditRun: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.audit.read', getSingleInstanceAuditRunInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.audit.read',
+      getSingleInstanceAuditRunInternal
+    ),
   getInstanceKeycloakPreflight: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.diagnose', getInstanceKeycloakPreflightInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.diagnose',
+      getInstanceKeycloakPreflightInternal
+    ),
   planInstanceKeycloakProvisioning: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.provision.plan', planInstanceKeycloakProvisioningInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.provision.plan',
+      planInstanceKeycloakProvisioningInternal
+    ),
   executeInstanceKeycloakProvisioning: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.provision.execute', executeInstanceKeycloakProvisioningInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.provision.execute',
+      executeInstanceKeycloakProvisioningInternal
+    ),
   rotateInstanceSecret: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, REGISTRY_ACTIONS.secretRotate, rotateInstanceSecretInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      REGISTRY_ACTIONS.secretRotate,
+      rotateInstanceSecretInternal
+    ),
   getInstanceKeycloakProvisioningRun: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.provision.run.read', getInstanceKeycloakProvisioningRunInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.provision.run.read',
+      getInstanceKeycloakProvisioningRunInternal
+    ),
   probeTenantIamAccess: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.diagnose', probeTenantIamAccessInternal),
   reconcileInstanceIamRoles: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, REGISTRY_ACTIONS.iamRolesReconcile, reconcileInstanceIamRolesInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      REGISTRY_ACTIONS.iamRolesReconcile,
+      reconcileInstanceIamRolesInternal
+    ),
   reconcileInstanceKeycloak: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.reconcile', reconcileInstanceKeycloakInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.reconcile',
+      reconcileInstanceKeycloakInternal
+    ),
   activateInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.status.activate', activateInstanceInternal),
   assignInstanceModule: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.module.assign', assignInstanceModuleInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.module.assign',
+      assignInstanceModuleInternal
+    ),
   bootstrapInstanceAdminStructure: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.admin.bootstrap', bootstrapInstanceAdminStructureInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.admin.bootstrap',
+      bootstrapInstanceAdminStructureInternal
+    ),
   revokeInstanceModule: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.module.revoke', revokeInstanceModuleInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.module.revoke',
+      revokeInstanceModuleInternal
+    ),
   seedInstanceIamBaseline: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.iam.baseline.seed', seedInstanceIamBaselineInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.iam.baseline.seed',
+      seedInstanceIamBaselineInternal
+    ),
   suspendInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.status.suspend', suspendInstanceInternal),
   archiveInstance: async (request: Request): Promise<Response> =>

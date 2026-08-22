@@ -24,6 +24,7 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     error: vi.fn(),
   }),
+  toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: vi.fn(),
   withRequestContext: async (_input: unknown, work: () => Promise<unknown>) => work(),
 }));
@@ -48,7 +49,9 @@ describe('sharedWasteManagementDeps', () => {
     expect(sharedWasteManagementDeps.loadDefaultInterfaceRecord).toBe(
       dataRepositoryMocks.loadDefaultExternalInterfaceRecord
     );
-    expect(sharedWasteManagementDeps.listInterfaceRecords).toBe(dataRepositoryMocks.listExternalInterfaceRecords);
+    expect(sharedWasteManagementDeps.listInterfaceRecords).toBe(
+      dataRepositoryMocks.listExternalInterfaceRecords
+    );
     expect(sharedWasteManagementDeps.loadWasteTenantProvisioning).toBe(
       dataRepositoryMocks.loadWasteTenantProvisioningRecord
     );

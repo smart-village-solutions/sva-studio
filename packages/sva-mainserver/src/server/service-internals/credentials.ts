@@ -161,7 +161,7 @@ const loadAndCacheCredential = async (input: {
     nowMs,
     input.options.credentialCacheMaxSize
   );
-  logger.info('SVA Mainserver credentials loaded', {
+  logger.debug('SVA Mainserver credentials loaded', {
     ...buildLogContext(input.connection, { operation: 'load_credentials', cache: 'store' }),
   });
   return credentials;

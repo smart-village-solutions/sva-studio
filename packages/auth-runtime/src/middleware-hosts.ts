@@ -1,6 +1,11 @@
 import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data-repositories/server';
-import { createSdkLogger, getInstanceConfig, getWorkspaceContext } from '@sva/server-runtime';
+import {
+  createSdkLogger,
+  getInstanceConfig,
+  getWorkspaceContext,
+  toSafeLogPath,
+} from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
 import { buildLogContext } from './log-context.js';
@@ -15,7 +20,8 @@ const ACTIVE_TENANT_HOST_CACHE_TTL_MS = 5_000;
 
 const activeTenantHostCache = new Map<string, { readonly expiresAtMs: number }>();
 
-const toTenantHostCacheKey = (host: string): string => host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+const toTenantHostCacheKey = (host: string): string =>
+  host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
 
 const isActiveTenantHostCached = (host: string, nowMs = Date.now()): boolean => {
   const cacheKey = toTenantHostCacheKey(host);
@@ -58,7 +64,10 @@ const forbiddenTenantHost = (input: {
     }
   );
 
-export const resolveSessionUser = async (request: Request, user: SessionUser): Promise<SessionUser> => {
+export const resolveSessionUser = async (
+  request: Request,
+  user: SessionUser
+): Promise<SessionUser> => {
   if (user.instanceId) {
     return user;
   }
@@ -77,14 +86,17 @@ export const resolveSessionUser = async (request: Request, user: SessionUser): P
     return user;
   }
 
-  logger.warn('Auth middleware rejected tenant request because the session user lacks instance context', {
-    endpoint: request.url,
-    operation: 'auth_middleware',
-    auth_state: 'authenticated',
-    user_id: user.id,
-    tenant_host: host,
-    ...buildLogContext(undefined, { includeTraceId: true }),
-  });
+  logger.warn(
+    'Auth middleware rejected tenant request because the session user lacks instance context',
+    {
+      endpoint: toSafeLogPath(request.url),
+      operation: 'auth_middleware',
+      auth_state: 'authenticated',
+      user_id: user.id,
+      tenant_host: host,
+      ...buildLogContext(undefined, { includeTraceId: true }),
+    }
+  );
 
   throw new SessionUserHydrationError({
     reason: 'missing_instance_id',
@@ -114,7 +126,7 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
     registryEntry = await loadInstanceByHostname(host);
   } catch (error) {
     logger.error('Auth middleware failed to load tenant host from registry', {
-      endpoint: request.url,
+      endpoint: toSafeLogPath(request.url),
       operation: 'auth_middleware',
       tenant_host: host,
       reason_code: 'tenant_lookup_failed',
@@ -134,7 +146,7 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
   if (!registryEntry || !isTrafficEnabledInstanceStatus(registryEntry.status)) {
     const reasonCode = registryEntry ? 'tenant_inactive' : 'tenant_not_found';
     logger.warn('Auth middleware rejected request for invalid or inactive tenant host', {
-      endpoint: request.url,
+      endpoint: toSafeLogPath(request.url),
       operation: 'auth_middleware',
       tenant_host: host,
       registry_found: Boolean(registryEntry),

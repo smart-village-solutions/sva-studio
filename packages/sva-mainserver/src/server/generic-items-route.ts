@@ -15,7 +15,7 @@ import {
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
-import { SvaMainserverError } from './errors.js';
+import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { mergeFaqPayload, validateFaqWriteOrResponse } from './generic-items-route-faq.js';
 import {
   mergeCockpitCardPayload,
@@ -228,7 +228,7 @@ const handleListRequest = async (
     ? { data: specializedResult.data, pagination: specializedResult.pagination }
     : await listSvaMainserverGenericItems(input);
   if (faqResult) {
-    logger.info('FAQ list upstream pagination completed', {
+    logger.debug('FAQ list upstream pagination completed', {
       operation: 'mainserver_faq_list_upstream',
       upstream_page_count: faqResult.observability.upstreamPageCount,
       matching_item_count: faqResult.observability.matchingItemCount,
@@ -236,7 +236,7 @@ const handleListRequest = async (
     });
   }
   if (cockpitCardsResult)
-    logger.info('Kachel list upstream pagination completed', {
+    logger.debug('Kachel list upstream pagination completed', {
       operation: 'mainserver_cockpit_cards_list_upstream',
       upstream_page_count: cockpitCardsResult.observability.upstreamPageCount,
       matching_item_count: cockpitCardsResult.observability.matchingItemCount,
@@ -506,7 +506,8 @@ const dispatchAuthenticated = async (
   const workspaceContext = getWorkspaceContext();
   const routeContentType = contentTypeFor(route.contentKind);
   const logSuccess = (operation: string, contentId?: string) => {
-    logger.info('Mainserver generic items route succeeded', {
+    const logSuccessEvent = request.method === 'GET' ? logger.debug : logger.info;
+    logSuccessEvent('Mainserver generic items route succeeded', {
       operation,
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,
@@ -568,7 +569,8 @@ const dispatchAuthenticated = async (
       'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.'
     );
   } catch (error) {
-    logger.warn('Mainserver generic items route failed', {
+    const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
+    logFailure('Mainserver generic items route failed', {
       operation: 'mainserver_content_request',
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,

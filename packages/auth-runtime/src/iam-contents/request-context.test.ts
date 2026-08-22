@@ -53,6 +53,7 @@ vi.mock('@sva/server-runtime', () => ({
     debug: vi.fn(),
   }),
   getWorkspaceContext: () => ({ requestId: 'req-1', traceId: 'trace-1' }),
+  toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: toJsonErrorResponseMock,
   withRequestContext: async (_input: unknown, work: () => Promise<unknown>) => work(),
 }));

@@ -58,6 +58,7 @@ const dbMocks = vi.hoisted(() => ({
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => middlewareLogger,
+  toSafeLogPath: (value: string) => new URL(value).pathname,
   getWorkspaceContext: () => ({
     requestId: 'req-auth-runtime',
     traceId: 'trace-auth-runtime',
@@ -281,13 +282,11 @@ describe('auth-runtime withAuthenticatedUser', () => {
       })
     );
 
-    const response = await withAuthenticatedUser(
-      request,
-      ({ activeOrganizationId, user }) =>
-        Response.json({
-          activeOrganizationId,
-          roles: user.roles,
-        })
+    const response = await withAuthenticatedUser(request, ({ activeOrganizationId, user }) =>
+      Response.json({
+        activeOrganizationId,
+        roles: user.roles,
+      })
     );
 
     expect(response.status).toBe(200);

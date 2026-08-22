@@ -44,6 +44,15 @@ describe('logging runtime state', () => {
     });
   });
 
+  it('normalizes supported level overrides and ignores unknown values', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('SVA_SERVER_LOG_LEVEL', ' WARN ');
+    expect(getLoggingRuntimeConfig().levelOverride).toBe('warn');
+
+    vi.stubEnv('SVA_SERVER_LOG_LEVEL', 'trace');
+    expect(getLoggingRuntimeConfig().levelOverride).toBeNull();
+  });
+
   it('syncs pending otel-aware loggers when initialization completes', () => {
     const logger = {} as Parameters<typeof unregisterOtelAwareLogger>[0];
     const syncOtelTransport = vi.fn();

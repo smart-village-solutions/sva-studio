@@ -31,7 +31,9 @@ const mocks = vi.hoisted(() => {
 
   return {
     logger,
-    withRequestContext: vi.fn(async (_input: unknown, handler: () => Promise<Response>) => handler()),
+    withRequestContext: vi.fn(async (_input: unknown, handler: () => Promise<Response>) =>
+      handler()
+    ),
     withAuthenticatedUser: vi.fn(),
     resolveEffectivePermissions: vi.fn(),
     withRegistryRepository: vi.fn(),
@@ -63,6 +65,7 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => mocks.logger,
   getWorkspaceContext: () => ({ requestId: 'req-test', traceId: 'trace-test' }),
   initializeOtelSdk: vi.fn(async () => undefined),
+  toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: vi.fn(
     (status: number, errorCode: string, message: string, options?: { requestId?: string }) =>
       new Response(
@@ -154,7 +157,8 @@ vi.mock('./audit-events.js', () => ({
   emitAuthAuditEvent: vi.fn(),
 }));
 
-const createAuthMeRequest = () => new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } });
+const createAuthMeRequest = () =>
+  new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } });
 
 const readAuthMePermissionPayload = async (response: Response): Promise<AuthMePermissionPayload> =>
   (await response.json()) as AuthMePermissionPayload;
@@ -163,7 +167,11 @@ const mockAuthenticatedSessionUserOnce = (user: SessionUser) => {
   mocks.withAuthenticatedUser.mockImplementationOnce(
     async (
       _request: Request,
-      handler: (ctx: { user: SessionUser; sessionExpiresAt?: number; sessionId: string }) => Promise<Response>
+      handler: (ctx: {
+        user: SessionUser;
+        sessionExpiresAt?: number;
+        sessionId: string;
+      }) => Promise<Response>
     ) =>
       handler({
         user,
@@ -191,16 +199,24 @@ describe('meHandler', () => {
       roles: ['system_admin'],
     } satisfies SessionUser);
 
-    mocks.withAuthenticatedUser.mockImplementation(async (_request: Request, handler: (ctx: { user: SessionUser; sessionExpiresAt?: number; sessionId: string }) => Promise<Response>) =>
-      handler({
-        user: {
-          id: 'kc-user-1',
-          instanceId: 'de-test',
-          roles: ['editor'],
-        },
-        sessionExpiresAt: 1_800_000_000_000,
-        sessionId: 'session-1',
-      })
+    mocks.withAuthenticatedUser.mockImplementation(
+      async (
+        _request: Request,
+        handler: (ctx: {
+          user: SessionUser;
+          sessionExpiresAt?: number;
+          sessionId: string;
+        }) => Promise<Response>
+      ) =>
+        handler({
+          user: {
+            id: 'kc-user-1',
+            instanceId: 'de-test',
+            roles: ['editor'],
+          },
+          sessionExpiresAt: 1_800_000_000_000,
+          sessionId: 'session-1',
+        })
     );
 
     mocks.resolveEffectivePermissions.mockResolvedValue({
@@ -213,19 +229,27 @@ describe('meHandler', () => {
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
     });
-    mocks.withRegistryRepository.mockImplementation(async (handler: (repository: {
-      getInstanceById: (instanceId: string) => Promise<{ displayName: string }>;
-      listAssignedModules: (instanceId: string) => Promise<string[]>;
-    }) => Promise<unknown>) =>
-      handler({
-        getInstanceById: async () => ({ displayName: 'Tenant Test' }),
-        listAssignedModules: async () => ['news'],
-      })
+    mocks.withRegistryRepository.mockImplementation(
+      async (
+        handler: (repository: {
+          getInstanceById: (instanceId: string) => Promise<{ displayName: string }>;
+          listAssignedModules: (instanceId: string) => Promise<string[]>;
+        }) => Promise<unknown>
+      ) =>
+        handler({
+          getInstanceById: async () => ({ displayName: 'Tenant Test' }),
+          listAssignedModules: async () => ['news'],
+        })
     );
     mocks.withInstanceScopedDb.mockImplementation(
       async (
         _instanceId: string,
-        work: (client: { query: (sql: string, params: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }) => Promise<unknown>
+        work: (client: {
+          query: (
+            sql: string,
+            params: readonly unknown[]
+          ) => Promise<{ rows: Array<Record<string, unknown>> }>;
+        }) => Promise<unknown>
       ) =>
         work({
           query: async () => ({
@@ -246,10 +270,14 @@ describe('meHandler', () => {
   });
 
   it('uses keycloakSubject for permission resolution and omits stale userId contract', async () => {
-    await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
 
     expect(mocks.resolveEffectivePermissions).toHaveBeenCalledTimes(1);
-    const [resolverInput] = mocks.resolveEffectivePermissions.mock.calls[0] as [Record<string, unknown>];
+    const [resolverInput] = mocks.resolveEffectivePermissions.mock.calls[0] as [
+      Record<string, unknown>,
+    ];
     expect(resolverInput.instanceId).toBe('de-test');
     expect(resolverInput.keycloakSubject).toBe('kc-user-1');
     expect('userId' in resolverInput).toBe(false);
@@ -298,7 +326,9 @@ describe('meHandler', () => {
 
     mocks.withRegistryRepository.mockRejectedValueOnce(new Error('db unavailable'));
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
 
     expect(response.status).toBe(200);
     expect(mocks.logger.error).toHaveBeenCalledWith(
@@ -315,7 +345,9 @@ describe('meHandler', () => {
 
     mocks.withInstanceScopedDb.mockRejectedValueOnce(new Error('db unavailable'));
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
 
     expect(response.status).toBe(200);
     expect(mocks.logger.error).toHaveBeenCalledWith(
@@ -354,7 +386,9 @@ describe('meHandler', () => {
     expect(response.status).toBe(200);
     expect(mocks.resolveEffectivePermissions).not.toHaveBeenCalled();
 
-    const payload = (await response.json()) as { user: { permissionActions: string[]; permissionStatus: string } };
+    const payload = (await response.json()) as {
+      user: { permissionActions: string[]; permissionStatus: string };
+    };
     expect(payload.user.permissionActions).toEqual([]);
     expect(payload.user.permissionStatus).toBe('ok');
   });
@@ -369,7 +403,9 @@ describe('meHandler', () => {
       message: 'Service unavailable',
     });
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
 
     expect(response.status).toBe(200);
     expect(mocks.logger.warn).toHaveBeenCalledWith(
@@ -392,7 +428,10 @@ describe('meHandler', () => {
     expect(response.status).toBe(200);
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Auth me permission action lookup failed',
-      expect.objectContaining({ reason_code: 'permission_action_lookup_failed', error_type: 'Error' })
+      expect.objectContaining({
+        reason_code: 'permission_action_lookup_failed',
+        error_type: 'Error',
+      })
     );
 
     const payload = await readAuthMePermissionPayload(response);
@@ -430,7 +469,9 @@ describe('meHandler', () => {
       snapshotVersion: 'snap-1',
     });
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
     const payload = (await response.json()) as { user: { permissionActions: string[] } };
     expect(payload.user.permissionActions).toEqual(['valid.read']);
   });
@@ -448,7 +489,9 @@ describe('meHandler', () => {
       snapshotVersion: 'snap-1',
     });
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
     const payload = (await response.json()) as { user: { permissionActions: string[] } };
     expect(payload.user.permissionActions).toEqual(['events.read']);
   });
@@ -466,7 +509,9 @@ describe('meHandler', () => {
       snapshotVersion: 'snap-1',
     });
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
     const payload = (await response.json()) as { user: { permissionActions: string[] } };
     expect(payload.user.permissionActions).toEqual(['events.read', 'news.read']);
   });
@@ -485,7 +530,9 @@ describe('meHandler', () => {
       snapshotVersion: 'snap-1',
     });
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
     const payload = (await response.json()) as { user: { permissionActions: string[] } };
     expect(payload.user.permissionActions).toEqual(['events.read', 'news.read']);
   });
@@ -504,7 +551,9 @@ describe('meHandler', () => {
       snapshotVersion: 'snap-1',
     });
 
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const response = await meHandler(
+      new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } })
+    );
     const payload = (await response.json()) as { user: { permissionActions: string[] } };
     expect(payload.user.permissionActions).toEqual(['a.read', 'm.update', 'z.write']);
   });
@@ -535,7 +584,9 @@ describe('dev auth handlers', () => {
 
     mocks.isMockAuthEnabled.mockReturnValue(false);
 
-    const response = await devLoginHandler(new Request('http://localhost/auth/dev-login', { method: 'POST' }));
+    const response = await devLoginHandler(
+      new Request('http://localhost/auth/dev-login', { method: 'POST' })
+    );
 
     expect(response.status).toBe(404);
   });
@@ -569,7 +620,9 @@ describe('dev auth handlers', () => {
     vi.clearAllMocks();
     mocks.isMockAuthEnabled.mockReturnValue(true);
 
-    const response = await devLoginHandler(new Request('http://localhost/auth/dev-login?returnTo=%2F', { method: 'POST' }));
+    const response = await devLoginHandler(
+      new Request('http://localhost/auth/dev-login?returnTo=%2F', { method: 'POST' })
+    );
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
@@ -663,7 +716,9 @@ describe('loginHandler (full auth path)', () => {
     } as never);
 
     try {
-      const response = await loginHandler(new Request('https://studio.example.org/auth/login?returnTo=%2Fplugins%2Fnews'));
+      const response = await loginHandler(
+        new Request('https://studio.example.org/auth/login?returnTo=%2Fplugins%2Fnews')
+      );
 
       expect(response.status).toBe(302);
       expect(response.headers.get('x-sva-debug-auth-scope-kind')).toBe('instance');
@@ -749,7 +804,9 @@ describe('loginHandler (full auth path)', () => {
     const { loginHandler } = await import('./auth-route-handlers.js');
     const { createLoginUrl } = await import('./auth-server/login.js');
 
-    await loginHandler(new Request('http://localhost/auth/login?returnTo=%2Fadmin%2Finstances&reauth=1'));
+    await loginHandler(
+      new Request('http://localhost/auth/login?returnTo=%2Fadmin%2Finstances&reauth=1')
+    );
 
     expect(createLoginUrl).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -791,7 +848,10 @@ describe('loginHandler (full auth path)', () => {
     expect(response.status).toBe(503);
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Auth route failed during tenant auth resolution',
-      expect.objectContaining({ reason_code: 'scope_resolution_failed', tenant_host: 'studio.example.org' })
+      expect.objectContaining({
+        reason_code: 'scope_resolution_failed',
+        tenant_host: 'studio.example.org',
+      })
     );
   });
 
@@ -847,11 +907,15 @@ describe('accountActionHandler', () => {
 
   it('starts update-password through the canonical account-action route', async () => {
     const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
-    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const accountActionHandler = handlers.accountActionHandler as (
+      request: Request
+    ) => Promise<Response>;
     const { createLoginUrl } = await import('./auth-server/login.js');
 
     const response = await accountActionHandler(
-      new Request('https://studio.example.org/auth/account-action?action=update-password&returnTo=%2Faccount')
+      new Request(
+        'https://studio.example.org/auth/account-action?action=update-password&returnTo=%2Faccount'
+      )
     );
 
     expect(response.status).toBe(302);
@@ -867,11 +931,15 @@ describe('accountActionHandler', () => {
 
   it('starts update-email through the canonical account-action route', async () => {
     const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
-    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const accountActionHandler = handlers.accountActionHandler as (
+      request: Request
+    ) => Promise<Response>;
     const { createLoginUrl } = await import('./auth-server/login.js');
 
     const response = await accountActionHandler(
-      new Request('https://studio.example.org/auth/account-action?action=update-email&returnTo=%2Faccount')
+      new Request(
+        'https://studio.example.org/auth/account-action?action=update-email&returnTo=%2Faccount'
+      )
     );
 
     expect(response.status).toBe(302);
@@ -887,14 +955,18 @@ describe('accountActionHandler', () => {
 
   it('short-circuits update-email when UPDATE_EMAIL is unsupported on the target Keycloak', async () => {
     const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
-    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const accountActionHandler = handlers.accountActionHandler as (
+      request: Request
+    ) => Promise<Response>;
     const { createLoginUrl } = await import('./auth-server/login.js');
     const { isUpdateEmailActionSupported } = await import('./keycloak-account-action-support.js');
 
     vi.mocked(isUpdateEmailActionSupported).mockResolvedValueOnce(false);
 
     const response = await accountActionHandler(
-      new Request('https://studio.example.org/auth/account-action?action=update-email&returnTo=%2Faccount')
+      new Request(
+        'https://studio.example.org/auth/account-action?action=update-email&returnTo=%2Faccount'
+      )
     );
 
     expect(response.status).toBe(302);
@@ -906,10 +978,14 @@ describe('accountActionHandler', () => {
 
   it('rejects unknown account actions with invalid_request', async () => {
     const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
-    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const accountActionHandler = handlers.accountActionHandler as (
+      request: Request
+    ) => Promise<Response>;
 
     const response = await accountActionHandler(
-      new Request('https://studio.example.org/auth/account-action?action=destroy-account&returnTo=%2Faccount')
+      new Request(
+        'https://studio.example.org/auth/account-action?action=destroy-account&returnTo=%2Faccount'
+      )
     );
 
     expect(response.status).toBe(400);
@@ -922,11 +998,15 @@ describe('accountActionHandler', () => {
 
   it('sanitizes the return target before forwarding to Keycloak', async () => {
     const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
-    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const accountActionHandler = handlers.accountActionHandler as (
+      request: Request
+    ) => Promise<Response>;
     const { createLoginUrl } = await import('./auth-server/login.js');
 
     const response = await accountActionHandler(
-      new Request('https://studio.example.org/auth/account-action?action=update-password&returnTo=%2Fauth%2Flogout')
+      new Request(
+        'https://studio.example.org/auth/account-action?action=update-password&returnTo=%2Fauth%2Flogout'
+      )
     );
 
     expect(response.status).toBe(302);
@@ -1138,7 +1218,9 @@ describe('callbackHandler', () => {
 
     mocks.isMockAuthEnabled.mockReturnValue(true);
 
-    const response = await callbackHandler(new Request('http://localhost/auth/callback?code=abc&state=xyz'));
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=xyz')
+    );
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/?auth=mock-callback');
@@ -1204,7 +1286,9 @@ describe('callbackHandler', () => {
     vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
     mocks.readCookieFromRequest.mockReturnValue(null);
 
-    const response = await callbackHandler(new Request('http://localhost/auth/callback?state=missing-code'));
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?state=missing-code')
+    );
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/auth/login');
@@ -1328,7 +1412,9 @@ describe('callbackHandler', () => {
     } as never);
 
     const response = await callbackHandler(
-      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456&kc_action=UPDATE_PASSWORD')
+      new Request(
+        'http://localhost/auth/callback?code=abc&state=state-abc123def456&kc_action=UPDATE_PASSWORD'
+      )
     );
 
     expect(response.status).toBe(302);
@@ -1602,15 +1688,16 @@ describe('callbackHandler', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/?auth=error');
     expect(mocks.logger.warn).toHaveBeenCalledWith(
-      'Token validation failed in callback',
+      'tenant_auth_callback_result',
       expect.objectContaining({
         reason_code: 'token_validate_failed',
         oauth_error: 'invalid_grant',
-        oauth_error_description: 'grant invalid',
         oauth_code: 'OIDC_401',
         oauth_status: 401,
+        retry_class: 'non_retryable',
       })
     );
+    expect(mocks.logger.warn.mock.calls[0]?.[1]).not.toHaveProperty('oauth_error_description');
     expect(emitAuthAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'login',
@@ -1658,7 +1745,7 @@ describe('callbackHandler', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/?auth=error');
     expect(mocks.logger.error).toHaveBeenCalledWith(
-      'Tenant scope conflict in callback',
+      'tenant_auth_callback_result',
       expect.objectContaining({
         reason_code: 'tenant_scope_conflict',
         expected_instance_id: 'de-test',
@@ -1697,7 +1784,7 @@ describe('callbackHandler', () => {
     expect(response.headers.get('Content-Type')).toContain('text/html');
     await expect(response.text()).resolves.toContain("status: 'failure'");
     expect(mocks.logger.error).toHaveBeenCalledWith(
-      'Auth callback failed',
+      'tenant_auth_callback_result',
       expect.objectContaining({
         reason_code: 'callback_failed',
         error_type: 'string',

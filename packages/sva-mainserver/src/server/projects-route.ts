@@ -19,7 +19,7 @@ import {
   type RouteMatch,
 } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
-import { SvaMainserverError } from './errors.js';
+import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
@@ -177,7 +177,7 @@ const listProjects = async (
       return entry.project;
     }
   });
-  logger.info('Project list upstream pagination completed', {
+  logger.debug('Project list upstream pagination completed', {
     operation: 'mainserver_projects_list_upstream',
     upstream_page_count: upstream.observability.upstreamPageCount,
     upstream_item_count: upstream.observability.upstreamItemCount,
@@ -311,10 +311,7 @@ const updateProject = async (
           contentId,
           item: freshItem,
           additionalActions: toMainserverAdditionalActions(
-            resolveMainserverLifecycleAction(
-              mapProjectRead(freshItem).status,
-              project.status
-            )
+            resolveMainserverLifecycleAction(mapProjectRead(freshItem).status, project.status)
           ),
         });
         if (isResponse(providerAuthorization)) return providerAuthorization;
@@ -495,7 +492,8 @@ const dispatchAuthenticated = async (
       return await deleteProject(request, ctx, route.itemId);
     return errorJson(405, 'method_not_allowed', 'Methode wird für Projekte nicht unterstützt.');
   } catch (error) {
-    logger.warn('Projects route failed', {
+    const logFailure = isUnexpectedMainserverError(error) ? logger.error : logger.warn;
+    logFailure('Projects route failed', {
       operation: 'mainserver_projects_request',
       request_id: getWorkspaceContext().requestId,
       trace_id: getWorkspaceContext().traceId,

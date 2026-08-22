@@ -1,0 +1,4 @@
+{
+  "prNumber": 1117,
+  "body": "Fehler im Studio lassen sich im Betrieb zuverlässiger und datensparsamer nachvollziehen.\n\n- Server-Anfragen erhalten eine durchgängige Kennung, damit zusammengehörige Diagnosemeldungen leichter erkannt werden.\n- Wiederholte Fehlermeldungen und häufige Routineereignisse werden reduziert, während wichtige Änderungen und Jobabschlüsse sichtbar bleiben.\n- Sensible Identitäts- und URL-Daten werden konsequenter aus Diagnoseinformationen entfernt.\n- Die Umstellung des Log-Transports auf OTEL und ein produktives Browser-Fehlertracking bleiben separate Folgearbeiten."
+}

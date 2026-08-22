@@ -232,7 +232,8 @@ gleichzeitig beeinflussen.
 ### Logging und Observability
 
 - Einheitlicher Server-Logger über `@sva/server-runtime`
-- AsyncLocalStorage für `workspace_id`/request context
+- Eine äußerste `AsyncLocalStorage`-Grenze umfasst alle synchronen HTTP-Dispatcher. Jeder HTTP-Request besitzt eine validierte oder lokal erzeugte, rein diagnostische Request-ID; Trace-IDs stammen ausschließlich aus echtem Trace-Kontext.
+- Unabhängige Bootstrap- und Worker-Arbeit wird vom HTTP-Kontext gelöst und verwendet Job-/Execution-Korrelation statt erfundener Request-IDs.
 - OTEL Pipeline für Logs + Metrics
 - Development nutzt lokale Console-Logs als Diagnosepfad; produktionsnahe Telemetrie läuft über OTEL
 - `SVA_DEPLOYMENT_ENVIRONMENT` kennzeichnet Dev, Staging und Production unabhängig vom für alle gebauten Remote-Runtimes notwendigen `NODE_ENV=production`; OTEL verwendet diesen Wert als `deployment.environment`.
@@ -244,14 +245,18 @@ gleichzeitig beeinflussen.
 - Für Runtimes mit aktivierter Studio-Job-Worker-Lane ist `jobWorker` eine verpflichtende Readiness-Abhängigkeit. Start- und Laufzeitfehler werden über sichere Reason-Codes sowie Error-Logs sichtbar; explizit deaktivierte Lanes bleiben readiness-neutral.
 - Die Studio-Root-Shell rendert in allen Environments einen sichtbaren Runtime-Health-Indikator auf Basis des bestehenden IAM-Readiness-Endpunkts; die UI zeigt nur sichere Statuszustände und `reason_code`s, keine rohen Provider- oder Stack-Details
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
+- Aliasfeste Redaction normalisiert sensible Schlüssel; vollständige URLs, Query-Strings, Provider-Freitext und identitätshaltige Verbundfelder sind in operativen Metadaten unzulässig.
+- Request-, Trace-, Job- und Execution-IDs bleiben Log-Body-Felder und sind als frei skalierende Loki-/OTEL-Labels ausgeschlossen.
+- Der zentrale Server-Schwellwert ist standardmäßig `info`; nur Development kann mit `SVA_SERVER_LOG_LEVEL=debug` explizit Diagnoseereignisse zuschalten.
+- Fehlerketten besitzen genau eine kanonische Ownership-Grenze. Retry-, Recovery- und Sekundärfehler sind nur mit eigenem stabilen Event-Code separate Ereignisse.
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
 - Cold-Start-, Recompute- und Store-Fehler im Snapshot-Pfad werden als strukturierte Cache-Events (`cache_cold_start`, `cache_store_failed`) geloggt
 - Der GUI-gestuetzte Authorize-Performance-Lauf misst denselben Serverpfad wie produktive `POST /iam/authorize`-Requests; Browser-Timing oder lokale Renderdauer sind kein Teil des Nachweises
 - Das Monitoring exponiert fuer diesen Lauf nur sichere Zusammenfassungen (`samples`, `p50`, `p95`, `p99`, Bewertung, Cache-Status, Report-Pfade) und keine rohen Snapshot- oder SQL-Dumps
 - Das Szenario `recompute` invalidiert gezielt nur den Snapshot des aktuellen Session-Actors im aktuellen Instanzkontext; globale Cache-Leerungen sind fuer diesen Betriebsnachweis unzulaessig
-- Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
+- `request_id` ist im IAM-HTTP-Pfad verpflichtend; `trace_id` ist nur bei gültigem eingehenden oder aktivem Trace-Kontext vorhanden.
 - Scope-aware Logs enthalten zusätzlich `scope_kind`, `workspace_id` und im Tenant-Scope `instance_id`
-- Außerhalb des `AsyncLocalStorage`-Kontexts werden `request_id` und `trace_id` best effort aus validierten Headern (`X-Request-Id`, `traceparent`) extrahiert
+- Auth-, IAM- und Mainserver-HTTP-Pfade laufen innerhalb der äußersten Kontextgrenze; bewusst gelöste Hintergrundarbeit übernimmt keinen HTTP-Kontext.
 - Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen einen strukturierten Fehlervertrag mit `error.code`, `error.message`, optionalen `details`, `classification`, `status`, `recommendedAction` und allowlist-basierten `safeDetails`; `X-Request-Id` bleibt best effort und API-v1-Antworten dürfen zusätzlich `requestId` tragen
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
 - Für den Zielpfad der IAM-Diagnostik ist derselbe allowlist-basierte Feldsatz die Grundlage für einen classification-basierten öffentlichen Diagnosevertrag; tiefe Rohfehler bleiben weiterhin OTEL- und Serverlog-intern

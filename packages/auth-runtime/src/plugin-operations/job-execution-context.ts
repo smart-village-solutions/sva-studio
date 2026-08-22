@@ -33,17 +33,49 @@ export const createJobExecutionContext = (
   }
 
   let disposed = false;
+  let cancellationPollDegraded = false;
   const pollInterval = setInterval(() => {
     void deps
       .isCancellationRequested()
       .then((cancellationRequested) => {
+        if (cancellationPollDegraded && !disposed) {
+          cancellationPollDegraded = false;
+          deps.logger.debug('plugin_operation_cancellation_poll_recovered', {
+            operation: 'plugin_operation_cancellation_poll',
+            error_code: 'cancellation_poll_failed',
+            result: 'recovered',
+            context: {
+              job_id: deps.job.id,
+              execution_id: deps.job.id,
+              instance_id: deps.job.instanceId,
+            },
+          });
+        }
         if (disposed || cancellationRequested === false || abortController.signal.aborted) {
           return;
         }
 
         abortController.abort();
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (disposed || cancellationPollDegraded) {
+          return;
+        }
+
+        cancellationPollDegraded = true;
+        deps.logger.warn('plugin_operation_cancellation_poll_failed', {
+          operation: 'plugin_operation_cancellation_poll',
+          error_code: 'cancellation_poll_failed',
+          error_type: error instanceof Error ? error.name : typeof error,
+          retry_class: 'next_poll',
+          result: 'degraded',
+          context: {
+            job_id: deps.job.id,
+            execution_id: deps.job.id,
+            instance_id: deps.job.instanceId,
+          },
+        });
+      });
   }, deps.cancellationPollIntervalMs ?? 1_000);
   pollInterval.unref?.();
 

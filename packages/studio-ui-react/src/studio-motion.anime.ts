@@ -152,7 +152,6 @@ const addWorkbenchContentAnimations = (
     timeline,
     root.querySelectorAll('[data-studio-workbench-module]'),
     {
-      opacity: [0.74, 1],
       scale: [settings.moduleScale, 1],
       translateY: settings.moduleTranslateY[scene],
       duration: settings.moduleDuration,
@@ -164,7 +163,6 @@ const addWorkbenchContentAnimations = (
     timeline,
     root.querySelectorAll('[data-studio-workbench-surface]'),
     {
-      opacity: [0.78, 1],
       translateY: settings.surfaceTranslateY,
       duration: settings.surfaceDuration,
     },

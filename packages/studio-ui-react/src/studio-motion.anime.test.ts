@@ -90,9 +90,16 @@ describe('studio motion Anime.js bindings', () => {
     expect(blockParameters.translateY(null, 8)).toBe(16);
 
     const moduleParameters = animeState.timeline.add.mock.calls[3]?.[1] as {
+      opacity?: unknown;
       translateY: [number, number];
     };
+    expect(moduleParameters.opacity).toBeUndefined();
     expect(moduleParameters.translateY).toEqual([8, 0]);
+
+    const surfaceParameters = animeState.timeline.add.mock.calls[4]?.[1] as {
+      opacity?: unknown;
+    };
+    expect(surfaceParameters.opacity).toBeUndefined();
 
     cleanup();
     expect(animeState.scope.revert).toHaveBeenCalledTimes(1);

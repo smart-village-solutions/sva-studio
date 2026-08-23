@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Tour-Zuordnungen sind fachlich sortierbar
+### Requirement: Tour-Zuordnungen sind fachlich sortiert
 
 Das System SHALL Abholorte im Dialog zur Tour-Zuordnung tabellarisch mit getrennten Fachwerten darstellen und SHALL die vollständige gefilterte Ergebnismenge interaktiv sortieren können, ohne die Gruppierung ausgewählter und nicht ausgewählter Abholorte aufzuheben.
 

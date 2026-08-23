@@ -1992,3 +1992,255 @@ Ein Projection-, Listen- oder Cache-Treffer SHALL keine Mutation autorisieren. U
 - **WHEN** der Benutzer die passende fully-qualified Content-Action nicht besitzt
 - **THEN** lehnt Studio die Aktion vor dem Write ab
 - **AND** erzeugt Credential-Verfügbarkeit keine Studio-Permission
+
+### Requirement: Organisations-Schreibrecht umfasst die eng begrenzte technische Provisioning-Identität
+
+Das System SHALL `iam.org.write` als ausreichende Studio-Berechtigung für automatische und explizite Organisations-Provisionierung verwenden. Die Berechtigung SHALL die intern notwendige Erzeugung eines fest definierten technischen Accounts für genau diese Organisation umfassen, aber keine allgemeine Account-Create-Berechtigung verleihen.
+
+#### Scenario: Organisationsadministrator provisioniert ohne allgemeines Account-Schreibrecht
+
+- **GIVEN** ein Administrator besitzt `iam.org.write`, aber nicht `iam.user.write`
+- **WHEN** er eine Organisation erstellt oder deren explizite Mainserver-Provisionierung auslöst
+- **THEN** darf Studio den fest definierten technischen Organisationsaccount intern erzeugen oder wiederverwenden
+- **AND** benötigt die Organisationsaktion kein zusätzliches `iam.user.write`
+
+#### Scenario: Organisationsrequest kann keine freien Accountattribute zuweisen
+
+- **WHEN** ein Benutzer eine Organisation erstellt oder nachprovisioniert
+- **THEN** akzeptiert der Vertrag keine Rollen, Gruppen, Einladungseinstellungen oder frei wählbaren Accountattribute für die technische Identität
+- **AND** erhält der Benutzer durch `iam.org.write` keine Berechtigung zum Aufruf der normalen Account-Erstellung
+
+#### Scenario: Normale Accountbearbeitung bleibt getrennt geschützt
+
+- **GIVEN** ein technischer Organisationsaccount wurde intern erzeugt
+- **WHEN** ein Administrator ihn später über die normale Accountverwaltung bearbeiten möchte
+- **THEN** gelten unverändert die normalen Account-Permissions
+- **AND** erweitert die Organisationszuordnung diese Permissions nicht
+
+### Requirement: Governance-Falllisten werden vor der Pagination global sortiert
+
+Das System MUST paginierte Governance-Falllisten innerhalb des autorisierten Instanzumfangs zuerst filtern, danach deterministisch sortieren und erst anschließend paginieren. Die Liste MUST standardmäßig `createdAt desc` und die Seitengröße 25 verwenden, `createdAt` und `updatedAt` unterstützen und eine bedienbare Pagination mit Gesamtzahl sowie den Seitengrößen 25, 50 und 100 bereitstellen.
+
+#### Scenario: Administrator sortiert Governance-Fälle über mehrere Seiten
+
+- **GIVEN** die aktuellen Governance-Filter ergeben mehr Treffer als auf eine Seite passen
+- **WHEN** ein berechtigter Administrator nach einem unterstützten Zeitfeld sortiert
+- **THEN** sortiert das Read-Model die vollständige gefilterte Treffermenge
+- **AND** schneidet es erst danach die angeforderte Seite zu
+- **AND** stabilisiert es gleiche Sortierwerte mit der eindeutigen Fallidentität aufsteigend
+
+#### Scenario: Fehlendes Aktualisierungsdatum bleibt fehlend
+
+- **GIVEN** ein Governance-Fall besitzt kein `updatedAt`
+- **WHEN** die Liste nach `updatedAt` sortiert oder die Spalte anzeigt
+- **THEN** verwendet das System `resolvedAt` nicht als Ersatz
+- **AND** zeigt die Zelle „Nicht verfügbar“ lokalisiert an
+- **AND** steht der Fall unabhängig von der Richtung hinter Fällen mit vorhandenem `updatedAt`
+
+#### Scenario: Administrator navigiert durch Governance-Seiten
+
+- **GIVEN** die aktuellen Filter ergeben mehr Treffer als die gewählte Seitengröße
+- **WHEN** der Administrator Seite oder Seitengröße 25, 50 oder 100 ändert
+- **THEN** lädt die UI die entsprechende serverseitige Seite und zeigt die Gesamtzahl an
+- **AND** setzt ein Filter-, Sortier- oder Seitengrößenwechsel die Seite auf eins zurück
+
+#### Scenario: Ungültige Governance-Sortierung wird abgewiesen
+
+- **GIVEN** ein direkter Governance-Request enthält ein unbekanntes Sortierfeld oder eine unbekannte Richtung
+- **WHEN** der Handler den Request validiert
+- **THEN** antwortet er mit `400 invalid_request`
+
+### Requirement: Custom-Rollen erhalten serverseitig eine stabile technische Identität
+
+Das System MUST den technischen Schlüssel einer über die normale Studio-UI angelegten tenantlokalen Custom-Rolle serverseitig aus dem fachlichen Anzeigenamen erzeugen, innerhalb der Instanz eindeutig machen und nach der Anlage unveränderlich behandeln. Der Schlüssel darf nicht aus den Assignment-Scopes `own`, `organization` oder `all` abgeleitet werden. Explizite technische Schlüssel bleiben ausschließlich als validierter Kompatibilitätspfad für bestehende API-Clients zulässig und werden nicht in der Rollen-UI angeboten.
+
+#### Scenario: Anzeigename wird in einen technischen Schlüssel normalisiert
+
+- **WENN** eine Custom-Rolle mit dem Anzeigenamen `Redaktion Märkische Höhe` angelegt wird
+- **DANN** erzeugt der Server daraus den technischen Schlüssel `redaktion_maerkische_hoehe`
+- **UND** persistiert er Anzeigename und technischen Schlüssel als getrennte Felder
+- **UND** bleibt der Anzeigename die fachlich führende Bezeichnung
+
+#### Scenario: Normalisierung ergibt keinen alphanumerischen Bestandteil
+
+- **WENN** die Normalisierung des gültigen Anzeigenamens keinen verwendbaren alphanumerischen Bestandteil ergibt
+- **DANN** verwendet der Server `rolle` als technischen Basisschlüssel
+- **UND** wendet er anschließend dieselbe Kollisionsauflösung wie für andere Basisschlüssel an
+
+#### Scenario: Normalisierter Schlüssel unterschreitet die Mindestlänge
+
+- **WENN** der normalisierte Anzeigename weniger als drei Zeichen enthält
+- **DANN** erweitert der Server ihn deterministisch mit dem Präfix `rolle_`
+- **UND** erfüllt der resultierende Basisschlüssel die bestehende Schlüsselvalidierung
+
+#### Scenario: Technischer Schlüssel kollidiert innerhalb der Instanz
+
+- **WENN** der erzeugte Basisschlüssel in derselben Instanz bereits existiert
+- **DANN** verwendet der Server den kleinsten freien Suffix `_2`, `_3` oder fortlaufend höher
+- **UND** kürzt er den Basisschlüssel bei Bedarf so, dass der vollständige Schlüssel einschließlich Suffix die maximale Länge einhält
+- **UND** sichern Transaktion und Unique-Constraint parallele Anlagen gegen doppelte Schlüssel ab
+- **UND** erzeugt eine idempotent wiederholte Anfrage keine zusätzliche Rolle
+
+#### Scenario: Gleichnamige Rolle existiert in anderer Instanz
+
+- **WENN** derselbe technische Basisschlüssel nur in einer anderen Instanz existiert
+- **DANN** darf die neue Rolle den Basisschlüssel ohne Suffix verwenden
+- **UND** bleibt die technische Identität instanzgebunden
+
+#### Scenario: Anzeigename einer bestehenden Rolle wird geändert
+
+- **WENN** der Anzeigename einer bestehenden Custom-Rolle geändert wird
+- **DANN** bleibt ihr technischer Rollenschlüssel unverändert
+- **UND** ändern bestehende Zuweisungen, Auditbezüge und technische Referenzen ihre Identität nicht
+
+#### Scenario: Bestehender API-Client sendet einen expliziten technischen Schlüssel
+
+- **WENN** ein autorisierter Legacy-Client bei der Rollenanlage weiterhin einen expliziten technischen Schlüssel übermittelt
+- **DANN** prüft der Server ihn mit der bestehenden Format-, Längen- und Eindeutigkeitsvalidierung
+- **UND** erzeugt er keinen abweichenden Schlüssel aus dem Anzeigenamen
+- **UND** bleibt dieser Kompatibilitätspfad in der Studio-UI verborgen
+
+### Requirement: roleLevel bleibt intern verwaltet und aus normalen Rollenformularen entfernt
+
+Das System SHALL `roleLevel` bis zu einem separaten Rückbau als internes Kompatibilitäts- und Schutzfeld erhalten. Neue Autorisierungssemantik darf daraus nicht abgeleitet werden, und normale Rollen-Create- oder Update-UI darf den Wert weder verlangen noch verändern.
+
+#### Scenario: Custom-Rolle wird ohne roleLevel angelegt
+
+- **WENN** eine berechtigte Rollenanlage kein `roleLevel` übermittelt
+- **DANN** persistiert der Server für die neue Custom-Rolle `roleLevel = 0`
+- **UND** bleibt die Rollenanlage ohne technische Hierarchiekenntnis vollständig
+
+#### Scenario: Custom-Rolle wird ohne roleLevel aktualisiert
+
+- **WENN** ein Update einer bestehenden Custom-Rolle kein `roleLevel` enthält
+- **DANN** bleibt der gespeicherte Wert unverändert
+- **UND** setzt der Server ihn weder auf `0` zurück noch leitet er ihn aus Permissions oder Assignment-Scopes neu ab
+
+#### Scenario: Technisch verwaltete Sonderrolle wird abgeglichen
+
+- **WENN** Seed, Provisioning oder Reconcile eine geschützte technische Sonderrolle materialisiert
+- **DANN** darf dieser serverseitig verwaltete Pfad weiterhin den normativ vorgesehenen Kompatibilitätswert setzen
+- **UND** wird daraus kein frei bearbeitbares Feld der tenantlokalen Rollen-UI
+
+#### Scenario: Interne Hierarchieprüfung verweigert eine Mutation
+
+- **WENN** eine bestehende serverseitige Schutzprüfung eine Rollen- oder Zielkontenmutation wegen der internen Hierarchie ablehnt
+- **DANN** bleibt die Mutation fail-closed
+- **UND** beschreibt der öffentliche Fehler eine geschützte Verwaltungsgrenze ohne Offenlegung oder notwendige Kenntnis des numerischen `roleLevel`
+
+### Requirement: Veröffentlichungs- und Sichtbarkeitsrechte bleiben positive getrennte Grants
+
+Das System SHALL `content.publish` und `content.changeStatus` als getrennt auswählbare und serverseitig erzwungene Allow-Grants behandeln. Ein allgemeines Create- oder Update-Recht darf weder Veröffentlichung noch sonstige geschützte Sichtbarkeitswechsel implizit erlauben.
+
+#### Scenario: Rolle darf bearbeiten, aber nicht veröffentlichen
+
+- **WENN** eine Rolle ein passendes Create- oder Update-Recht, aber kein `content.publish` besitzt
+- **DANN** darf ein Benutzer mit dieser Rolle den unterstützten Entwurf bearbeiten
+- **UND** wird ein Übergang in den veröffentlichten beziehungsweise erstmals sichtbaren Zustand serverseitig abgelehnt
+
+#### Scenario: Rolle darf veröffentlichen
+
+- **WENN** eine Rolle zusätzlich `content.publish` im passenden Assignment-Scope besitzt
+- **DANN** darf der Veröffentlichungsübergang nur für Datensätze erfolgen, die diesen Scope erfüllen
+- **UND** bleibt `content.changeStatus` für andere separat geschützte Statuswechsel eigenständig auswertbar
+
+### Requirement: ABAC-Refactoring erhält fail-closed Entscheidungsparität
+
+Das System MUST die bestehende Reihenfolge und Semantik kontextueller ABAC-Entscheidungen bei einer internen Zerlegung der Authorize-Engine vollständig erhalten. Fehlender Pflichtkontext, Organisations- und Geo-Restriktionen, Geo-Freigaben, Zeitfenster, Acting-as und Force-Deny MUST weiterhin in der bestehenden Reihenfolge ausgewertet werden. Allow-/Deny-Ergebnis, Reason, Provenance, Scope-, Owner-, Organisations- und DataProvider-Semantik dürfen sich dadurch nicht ändern.
+
+#### Scenario: Kollidierende Regeln werden unverändert priorisiert
+
+- **GIVEN** ein passender Allow-Grant enthält gleichzeitig erfüllte und blockierende ABAC-Regeln
+- **WHEN** die zentrale Authorize-Engine den Grant auswertet
+- **THEN** liefert sie dieselbe erste blockierende Entscheidung wie vor der internen Zerlegung
+- **AND** Reason und Provenance bleiben unverändert
+
+#### Scenario: Fehlender Kontext bleibt fail-closed
+
+- **GIVEN** eine aktive ABAC-Regel benötigt einen nicht vorhandenen Kontextwert
+- **WHEN** die zentrale Authorize-Engine den Grant auswertet
+- **THEN** verweigert sie den Zugriff mit dem bestehenden Reason
+- **AND** führt keine interne Teilentscheidung zu einem permissiven Fallback
+
+#### Scenario: Öffentliche Authorize-API bleibt stabil
+
+- **WHEN** ein Aufrufer die IAM-Autorisierung auswertet
+- **THEN** bleibt `evaluateAuthorizeDecision` der öffentliche Einstiegspunkt
+- **AND** interne Regel-Evaluatoren werden nicht Teil der Package-API
+
+### Requirement: Plugin-Historien verwenden einheitlich content.readHistory
+
+Das System MUST jeden Lesezugriff auf die Historie eines Plugin-Inhalts mit `content.readHistory` im aktiven Instanz-, Content-Typ-, Inhalts- und Ownership-Scope autorisieren. Plugin-eigene Berechtigungen dürfen diese Prüfung ergänzen, aber nicht ersetzen oder abschwächen.
+
+#### Scenario: Berechtigter Benutzer liest Plugin-Historie
+
+- **WENN** ein Benutzer `content.readHistory` im aufgelösten Scope des Inhalts besitzt
+- **DANN** darf der Host die für diesen Inhalt sichtbaren Historieneinträge ausgeben
+- **UND** die Antwort enthält keine Einträge einer anderen Instanz oder eines nicht erlaubten Ownership-Scopes
+
+#### Scenario: Benutzer besitzt nur Content-Leserecht
+
+- **WENN** ein Benutzer den Inhalt lesen darf, aber `content.readHistory` im aufgelösten Scope nicht besitzt
+- **DANN** verweigert der Host den History-Read fail-closed
+- **UND** das Plugin zeigt keine zuvor geladenen oder anderweitig beschafften Historieneinträge
+
+#### Scenario: Fachhistorie verwendet zusätzliche Berechtigung
+
+- **WENN** eine fachliche Plugin-Historie wie Waste Management eine zusätzliche modulbezogene Berechtigung verlangt
+- **DANN** prüft der Host sowohl den fachlichen Vertrag als auch die verbindliche Instanz- und Datensatzisolation
+- **UND** keine pluginlokale Prüfung ersetzt die zentrale Autorisierungsentscheidung
+
+### Requirement: Berechtigungsablehnungen benennen die autoritativ geprüften Actions
+
+Das System MUST echte Berechtigungsablehnungen über einen gemeinsamen strukturierten Denial-Vertrag beschreiben. Der Vertrag MUST die autoritativ geprüften fully-qualified Action-IDs und deren Anforderungssemantik enthalten, darf bestehende öffentliche Fehlercodes nur additiv erweitern und darf keine Rollen, Gruppen, Grants, Policy-Ausdrücke oder nicht freigegebenen Diagnosedaten offenlegen.
+
+#### Scenario: Einzelne serverseitig geprüfte Permission fehlt
+
+- **WHEN** eine serverseitige Fachoperation die Action `iam.user.write` prüft
+- **AND** die zentrale Autorisierungsentscheidung wegen `permission_missing` verweigert
+- **THEN** enthält der strukturierte Fehlerdetailvertrag `required_permissions = ["iam.user.write"]`
+- **AND** kennzeichnet er die Anforderung als `allOf`
+- **AND** bleibt der bestehende öffentliche Fehlercode kompatibel
+
+#### Scenario: Client kennt eine vermutete andere Action
+
+- **WHEN** ein Client eine Fachoperation auslöst und lokal eine Permission vermutet
+- **AND** der Server eine andere primitive Action autoritativ prüft
+- **THEN** verwendet die sichtbare Berechtigungsablehnung ausschließlich die serverseitig gelieferte Action
+- **AND** ergänzt der Client keine Permission aus Button, Route oder Endpunktname
+
+#### Scenario: Mehrere Permissions sind gemeinsam erforderlich
+
+- **WHEN** eine autoritative Operation mehrere Permissions vollständig verlangt
+- **AND** mindestens eine davon fehlt
+- **THEN** enthält der Denial-Vertrag die tatsächlich fehlenden Permissions dedupliziert
+- **AND** kennzeichnet er die Anforderung als `allOf`
+
+#### Scenario: Eine von mehreren Permissions ist ausreichend
+
+- **WHEN** eine autoritative Operation alternativ eine von mehreren Permissions akzeptiert
+- **AND** keine Alternative im aktiven Kontext erlaubt ist
+- **THEN** enthält der Denial-Vertrag die zulässigen Permission-Alternativen dedupliziert
+- **AND** kennzeichnet er die Anforderung als `anyOf`
+
+#### Scenario: Permission ist wegen Scope oder Bedingung nicht wirksam
+
+- **WHEN** die geprüfte Action grundsätzlich vorhanden sein kann
+- **AND** die Autorisierung wegen Scope-, Hierarchie- oder ABAC-Bedingungen verweigert
+- **THEN** darf der Denial-Vertrag die geprüfte Action benennen
+- **AND** unterscheidet sein sicherer Grund diesen Zustand von `permission_missing`
+- **AND** behauptet die Oberfläche nicht, dass die Permission vollständig fehlt
+
+#### Scenario: Technische Permission-Auflösung ist nicht belastbar
+
+- **WHEN** ein Permission-Snapshot fehlt, degradiert ist oder wegen Redis-, Datenbank- oder Recompute-Fehlern nicht ausgewertet werden kann
+- **THEN** bleibt die Entscheidung fail-closed
+- **AND** liefert das System einen technischen Verfügbarkeitsfehler statt einer behaupteten fehlenden Permission
+- **AND** exponiert es keine aus einem alten oder teilweisen Zustand geratenen Action-IDs
+
+#### Scenario: Fachliches Forbidden stammt nicht aus einer Permission-Prüfung
+
+- **WHEN** ein Request wegen CSRF, Hostvalidierung, Principal-Auswahl oder einer anderen fachlichen Regel mit `403` abgewiesen wird
+- **AND** keine autoritative Permission-Entscheidung den gemeinsamen Denial-Vertrag liefert
+- **THEN** deutet der Client den Status nicht als fehlende Permission um
+- **AND** bleibt die fachliche Fehlerklassifikation erhalten

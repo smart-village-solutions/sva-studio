@@ -185,13 +185,20 @@ The plugin platform MUST enforce plugin architecture boundaries through a blocki
 
 ### Requirement: Featured Projects besitzen einen eigenständigen Plugin- und IAM-Vertrag
 
-Das System MUST `@sva/plugin-projects` als eigenständiges Plugin mit den Actions `projects.read`, `projects.create`, `projects.update` und `projects.delete` registrieren. Projekte dürfen nicht die Generic-Items-, FAQ- oder Cockpit-Cards-Actions wiederverwenden.
+Das System MUST `@sva/plugin-projects` als eigenständiges Plugin mit den Actions `projects.read`, `projects.create`, `projects.update` und `projects.delete` registrieren. Der fachliche Projekte-Pfad darf keine Generic-Items-, FAQ- oder Cockpit-Cards-Actions wiederverwenden. Unabhängig davon MUST der technische Generic-Items-Pfad denselben zugrunde liegenden Mainserver-Datensatz ausschließlich anhand von `generic-items.*` autorisieren dürfen.
 
-#### Scenario: Projekte-Berechtigungen werden getrennt ausgewertet
+#### Scenario: Fachliche Projekte-Berechtigungen werden getrennt ausgewertet
 
-- **WHEN** der Host eine Projekte-Operation autorisiert
+- **WHEN** der Host eine Operation über den fachlichen Projekte-Pfad autorisiert
 - **THEN** prüft er die passende Action im Namespace `projects`
-- **AND** gewährt eine Generic-Items-, FAQ- oder Cockpit-Cards-Berechtigung allein keinen Zugriff
+- **AND** gewährt eine Generic-Items-, FAQ- oder Cockpit-Cards-Berechtigung allein auf diesem Pfad keinen Zugriff
+
+#### Scenario: Generischer Zugriff auf ein Featured Project
+
+- **GIVEN** ein Mainserver-GenericItem besitzt `genericType` gleich `FeaturedProject`
+- **WHEN** der Host eine Operation über den generischen Generic-Items-Pfad autorisiert
+- **THEN** prüft er ausschließlich die passende Action im Namespace `generic-items`
+- **AND** verlangt keine zusätzliche Action im Namespace `projects`
 
 ### Requirement: Das Projekte-Plugin bleibt unabhängig vom Generic-Items-Plugin
 
@@ -202,4 +209,84 @@ Das System MUST das Projekte-Plugin als eigenständiges Workspace-Package betrei
 - **WHEN** das Generic-Items-Plugin später geändert wird
 - **THEN** verändert sich das Verhalten des Projekte-Plugins nicht automatisch
 - **AND** bleiben projektspezifische UI, Validierung und Verträge pluginlokal kontrolliert
+
+### Requirement: Cockpit Cards besitzen einen eigenständigen Plugin- und IAM-Vertrag
+
+Das System MUST `@sva/plugin-cockpit-cards` als eigenständiges Plugin mit den Actions `cockpit-cards.read`, `cockpit-cards.create`, `cockpit-cards.update` und `cockpit-cards.delete` registrieren. Cockpit Cards dürfen nicht die FAQ- oder Generic-Items-Actions wiederverwenden.
+
+#### Scenario: Cockpit-Cards-Berechtigungen werden getrennt ausgewertet
+
+- **WHEN** der Host eine Cockpit-Cards-Operation autorisiert
+- **THEN** prüft er die passende Action im Namespace `cockpit-cards`
+- **AND** gewährt eine FAQ- oder Generic-Items-Berechtigung allein keinen Zugriff
+
+### Requirement: Fachplugins deklarieren ihre GenericItem-Zuständigkeit eindeutig
+
+Das System MUST einem registrierten Plugin-Content-Type erlauben, genau einen übernommenen Mainserver-`genericType` als exakten Diskriminator zu deklarieren. Die Build-time-Registry MUST leere Diskriminatoren sowie mehrere Content-Types mit demselben Diskriminator ablehnen. Das Generic-Items-Plugin MUST ohne Wildcard-Deklaration als Fallback bestehen bleiben.
+
+#### Scenario: Fachplugin übernimmt einen GenericItem-Typ
+
+- **GIVEN** das Projekte-Plugin registriert `FeaturedProject` für `projects.project`
+- **WHEN** die Build-time-Registry aufgebaut wird
+- **THEN** enthält ihr unveränderlicher Snapshot diese eindeutige Zuständigkeit
+- **AND** kann der Host daraus die zentrale GenericItem-Klassifikation ableiten
+
+#### Scenario: Zwei Plugins beanspruchen denselben Diskriminator
+
+- **GIVEN** zwei registrierte Content-Types deklarieren denselben `genericType`
+- **WHEN** die Build-time-Registry validiert wird
+- **THEN** schlägt ihr Aufbau mit einem Ownership-Fehler fehl
+- **AND** wählt das System keinen Content-Type anhand der Registrierungsreihenfolge aus
+
+#### Scenario: Abweichende Großschreibung bleibt ein anderer Typ
+
+- **GIVEN** ein Fachplugin deklariert `FAQ`
+- **WHEN** ein GenericItem den Wert `faq` besitzt
+- **THEN** beansprucht das Fachplugin diesen Datensatz nicht
+- **AND** bleibt er dem generischen Fallback zugeordnet
+
+#### Scenario: Server baut die Zuordnung ohne Browser-Entrypoint auf
+
+- **GIVEN** ein aktiviertes Fachplugin deklariert seine GenericItem-Zuständigkeit in einem server-sicheren Ownership-Modul
+- **WHEN** der Host die Mainserver-Zuordnung materialisiert
+- **THEN** verwendet er ausschließlich diese kleine Deklaration
+- **AND** lädt weder den Browser-Plugin-Snapshot noch React-Flächen oder Browser-Logger
+
+### Requirement: Plugin-Contributions deklarieren ihre Historienpflicht
+
+Die Plugin-Plattform MUST für jede Contribution deklarativ und hostvalidiert bestimmen, ob sie redaktionell veränderbare Datensätze besitzt und deshalb die host-owned History-Capability benötigt. Historienpflichtige Contributions ohne gültiges Binding MUST vor der Snapshot-Veröffentlichung fail-closed abgelehnt werden.
+
+#### Scenario: Neues Content-Plugin deklariert veränderbare Datensätze
+
+- **WENN** ein neues Plugin einen redaktionell veränderbaren Content-Typ registriert
+- **DANN** verlangt der Host eine kompatible host-owned History-Capability
+- **UND** prüft das Binding vor Admin- und Route-Materialisierung
+
+#### Scenario: Historienpflichtiges Plugin besitzt kein Binding
+
+- **WENN** ein Plugin veränderbare redaktionelle Datensätze registriert, aber keine gültige History-Capability besitzt
+- **DANN** blockiert die Registry-Validierung die Contribution mit einem stabilen Diagnosecode
+- **UND** veröffentlicht keinen Editor mit einem Platzhalter-Historienbereich
+
+#### Scenario: Nicht historienpflichtige Contribution wird begründet klassifiziert
+
+- **WENN** eine Contribution keine eigenen redaktionell veränderbaren Datensätze besitzt
+- **DANN** darf sie mit einem hostvalidierten Grundcode als nicht historienpflichtig klassifiziert werden
+- **UND** diese Klassifikation umgeht keine tatsächlich vorhandene Content-Mutation
+
+### Requirement: Zukünftige Plugin-Templates verankern den History-Vertrag
+
+Das System SHALL Plugin-Authoring-Dokumentation, Templates und vorhandene Generatoren so gestalten, dass neue Content-Plugins den gemeinsamen History-Vertrag standardmäßig verwenden und die zulässigen Ausnahmen explizit machen.
+
+#### Scenario: Neues Content-Plugin wird erzeugt
+
+- **WENN** ein Entwickler ein neues Content-Plugin über einen vorhandenen Template- oder Generatorpfad anlegt
+- **DANN** enthält das Ergebnis die deklarative History-Capability, den gemeinsamen Read-Pfad und Contract-Tests
+- **UND** keine pluginlokale History-Persistenz
+
+#### Scenario: Plugin wird ohne Generator erstellt
+
+- **WENN** ein manuell erstelltes Plugin in den Katalog aufgenommen wird
+- **DANN** prüft dieselbe blockierende Registry- und CI-Validierung den History-Vertrag
+- **UND** der manuelle Pfad bietet keine schwächere Ausnahme
 

@@ -22,4 +22,4 @@
 - [x] 3.3 Nach jedem Block die kleinsten relevanten Nx-Unit- und Type-Gates sowie bei Serveränderungen früh `pnpm check:server-runtime` ausführen.
 - [x] 3.4 Relevante deutsche Fach- und arc42-Dokumentation aktualisieren und `pnpm check:file-placement` ausführen.
 - [x] 3.5 `openspec validate add-cockpit-cards-plugin --strict` ausführen.
-- [ ] 3.6 Vor PR-Freigabe nach Möglichkeit `pnpm test:pr` ausführen.
+- [x] 3.6 Vor PR-Freigabe nach Möglichkeit `pnpm test:pr` ausführen. Abschlussnachweis: PR #945 wurde am 9. August 2026 gemergt; die terminale Review-Auswertung weist keine offenen Threads, fehlgeschlagenen oder ausstehenden Checks aus.

@@ -71,3 +71,80 @@ Das System SHALL bei Refactors von Komplexitäts-Hotspots parallel gepflegte Imp
 - **AND** bleiben interne Helper nicht ohne Bedarf im Root-Entry erhalten
 - **AND** verschiebt der Refactor solche Hilfen auf interne Module oder engere Subpath-Entrypoints
 
+### Requirement: Account-Import-Hotspots werden ohne Vertragsänderung zerlegt
+
+Das System SHALL die Profilreparatur und Berichtsbildung des Account-Imports in kleine überprüfbare Entscheidungs- und Seiteneffektbausteine zerlegen. Die Senkung MUST durch Fallow-Metriken belegt werden und darf nicht durch Suppressionen, geänderte Schwellen oder eine zusätzliche parallele Importabstraktion entstehen.
+
+#### Scenario: Profilreparatur-Hotspots verschwinden aus dem Fallow-Bericht
+
+- **GIVEN** `repairIdentityUserProfileIfPossible` und die Import-Berichtsbildung überschreiten die dokumentierten CRAP- oder Komplexitätsgrenzen
+- **WHEN** die internen Entscheidungsgrenzen refaktoriert werden
+- **THEN** liegen die Ziel-Funktionen unter den kanonischen Fallow-Schwellen oder sind durch kleinere Bausteine ersetzt
+- **AND** der New-only-Audit führt keine neue Complexity, Dead Code oder Duplikation ein
+- **AND** Characterization-Tests belegen unveränderte Fallback-, Mandanten-, Fehler- und Report-Semantik
+
+### Requirement: Sicherheitskritische Entscheidungs-Hotspots werden fachlich zerlegt
+
+Das System SHALL einen sicherheitskritischen Komplexitäts-Hotspot entlang stabiler fachlicher Entscheidungsgrenzen in kleine reine Bausteine zerlegen. Die Senkung MUST durch maschinenlesbare Komplexitätsmetriken belegt werden und darf nicht durch Suppressionen, geänderte Grenzwerte oder einen parallelen Entscheidungspfad entstehen.
+
+#### Scenario: ABAC-Hotspot wird messbar reduziert
+
+- **GIVEN** `evaluateAbacRules` überschreitet die dokumentierten Komplexitätsgrenzen
+- **WHEN** die interne ABAC-Auswertung refaktoriert wird
+- **THEN** verschwindet der ursprüngliche Fallow-Hotspot oder liegt nachweislich unter den kanonischen Grenzwerten
+- **AND** das Complexity-Gate bleibt ohne neue Suppression grün
+- **AND** Characterization-Tests belegen die unveränderte Entscheidungssemantik
+
+### Requirement: Operative Acceptance-Runner halten fachliche Orchestrierung sichtbar
+
+Das System SHALL komplexe operative Acceptance-Runner in typisierte fachliche Prüfschritte zerlegen, ohne ihre sicherheitsrelevante Ausführungsreihenfolge hinter generischen Engines oder Factories zu verbergen.
+
+#### Scenario: Acceptance-Hotspot wird refaktoriert
+
+- **WHEN** ein Acceptance-Runner wegen Datei-, Funktions- oder zyklomatischer Komplexität zerlegt wird
+- **THEN** bleiben Pflichtprüfungen und deren Reihenfolge am öffentlichen CLI-Einstieg explizit nachvollziehbar
+- **AND** Exitcodes, Fehlercodes, Redaction, Cleanup und Berichtsausgabe werden vor der Extraktion charakterisiert
+
+#### Scenario: Complexity-Baseline wird reduziert
+
+- **WHEN** der Refactor einen getrackten Complexity-Befund nachweislich behebt
+- **THEN** wird ausschließlich der behobene Baseline-Eintrag gemäß kanonischem Policy-Vertrag entfernt
+- **AND** es wird keine neue Suppression oder gleichwertige Ausnahme eingeführt
+
+### Requirement: Komplexe React-Editorbereiche werden entlang testbarer Zuständigkeiten zerlegt
+
+Das System SHALL kritische React-Editor-Hotspots in reine Ableitungen, kontrollierte Zustandskoordination und präsentationale Abschnitte zerlegen, ohne UI-, Berechtigungs- oder Persistenzverträge zu verändern. Die Zerlegung MUST durch Characterization-Tests und maschinenlesbare Komplexitätsmetriken belegt werden.
+
+#### Scenario: POI-Betreiberbereich verliert den kritischen Hotspot
+
+- **GIVEN** `PoiDetailOperatorTab` überschreitet die dokumentierten Komplexitätsgrenzen
+- **WHEN** der Betreiberbereich intern refaktoriert wird
+- **THEN** bleibt `PoiDetailOperatorTab` der einzige Einbindungspunkt des Content-Tabs
+- **AND** Feld-IDs, Texte, Validierungszustände, Berechtigungsentscheidungen und Geocoding-Verträge bleiben unverändert
+- **AND** der ursprüngliche kritische Fallow-Befund verschwindet ohne Suppression oder Grenzwertänderung
+- **AND** keine neu extrahierte React-Komponente wird selbst zu einem kritischen Hotspot
+
+### Requirement: Kritische öffentliche Datenlader trennen I/O von Ableitung
+
+Das System SHALL bei kritischen öffentlichen Datenladern den parametrisierten
+Datenzugriff von I/O-freier Normalisierung und fachlicher Ergebnisableitung trennen,
+ohne dafür öffentliche Vertragsflächen zu vergrößern.
+
+#### Scenario: Öffentlicher Loader wird entflechtet
+
+- **WHEN** ein öffentlicher Datenlader als kritischer Komplexitäts-Hotspot refaktoriert wird
+- **THEN** bleiben SQL-, Schema- und Fehlergrenzen in der serverseitigen I/O-Schicht
+- **AND** deterministische Normalisierung und Zusammenführung sind unabhängig vom Datenbanktransport testbar
+- **AND** die bestehende öffentliche Repository-Fassade bleibt für ihre Konsumenten stabil
+
+### Requirement: Kritische öffentliche Konfigurationsgrenzen besitzen nachvollziehbare Entscheidungsbausteine
+
+Das System SHALL komplexe Normalisierungen an öffentlichen Konfigurationsgrenzen in kleine, typsichere und fachlich benannte Entscheidungsbausteine zerlegen, ohne bestehende Sicherheits- oder Vertragsregeln abzuschwächen.
+
+#### Scenario: Komplexität sinkt bei unverändertem Vertrag
+
+- **WHEN** die Waste-Reminder-Normalisierung refaktoriert wird
+- **THEN** sinkt ihre kanonisch gemessene Komplexität unter den kritischen Bereich
+- **AND** belegen Characterization-Tests die unveränderte Fail-closed-, Ausgabe- und Secret-Semantik
+- **AND** wird keine Suppression als Ersatz für die tatsächliche Senkung eingeführt
+

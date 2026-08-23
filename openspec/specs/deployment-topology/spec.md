@@ -3,9 +3,7 @@
 ## Purpose
 
 Definiert die verbindliche Swarm-Topologie sowie den GitHub-Actions-Promote-Vertrag für Dev, Staging und Production einschließlich immutable Digests, One-shot-Gates, Backups, Freigaben und Verifikation.
-
 ## Requirements
-
 ### Requirement: Swarm-kompatibler Portainer-Stack
 
 Das System SHALL einen Portainer-Stack bereitstellen, der für Docker Swarm mit externem Ingress-Netzwerk und Traefik-Routing geeignet ist.
@@ -964,3 +962,50 @@ Der zentrale Backup-Agent SHALL Backup- und Restore-Aufträge an getrennten, rei
 - **WHEN** das Backup-Agent-Image mit den extrahierten lokalen ESM-Modulen gebaut und gestartet wird
 - **THEN** löst Node.js jeden relativen `.mjs`-Import deterministisch aus `/app` auf
 - **AND** führt kein fehlendes Runtime-Modul zu einer nur im Container sichtbaren Abweichung
+
+### Requirement: Promote führt Waste-Tenant-Migrationen versioniert und transaktional aus
+
+Das System SHALL Waste-Schemaänderungen für bestehende Tenant-Datenbanken als geordnete, unveränderliche Migrationen ausführen, deren erfolgreicher Stand in der jeweiligen Waste-Datenbank protokolliert wird. Der reguläre Migrations-One-shot SHALL den Schema-Builder für Neuprovisionierungen nicht als wiederholbaren Reconcile-Vertrag verwenden.
+
+#### Scenario: Additive Migration wird genau einmal angewendet
+
+- **WHEN** ein geschützter Promote-Lauf eine registrierte Waste-Tenant-Datenbank mit einer ausstehenden Migration verarbeitet
+- **THEN** führt der One-shot ausschließlich die noch nicht protokollierten Migrationsschritte in definierter Reihenfolge aus
+- **AND** protokolliert er die Migrations-ID erst nach erfolgreicher Ausführung
+- **AND** lässt ein späterer Lauf bereits protokollierte Migrationen unverändert
+
+#### Scenario: Tenant-Migration schlägt atomar fehl
+
+- **WHEN** ein SQL-Schritt oder die abschließende Verifikation für eine Tenant-Datenbank fehlschlägt
+- **THEN** rollt der One-shot alle in dieser Tenant-Transaktion vorgenommenen Schema- und Ledger-Änderungen zurück
+- **AND** beendet er den Promote-Migrationsschritt fail-closed vor dem App-Deploy
+
+#### Scenario: Provisionierungs-Schema enthält historische destruktive Statements
+
+- **WHEN** der kanonische Schema-Builder für neue Waste-Tenants Backfills, Rechteänderungen oder destruktive Bereinigungen enthält
+- **THEN** gelangen diese Statements nicht implizit in den Migrationslauf bestehender Tenant-Datenbanken
+- **AND** benötigt jede destruktive Bestandsmigration einen eigenen geprüften Migrationsschritt mit Preflight und expliziter Freigabe
+
+### Requirement: Runner-Schema wird ausschließlich im kontrollierten Migrationsschritt gepflegt
+
+Das System SHALL das interne Graphile-Worker-Schema ausschließlich mit dem privilegierten Studio-Migrations-One-shot aktualisieren und anschließend minimale Runtime-Rechte herstellen.
+
+#### Scenario: Promote führt eine erforderliche Queue-Migration aus
+
+- **WHEN** ein Studio-Release den Plugin-Operations-Runner oder seinen Datenbankvertrag ändert
+- **THEN** klassifiziert der Rollout die Änderung als migrations- und bootstraprelevant
+- **AND** führt der Migrations-One-shot die an die Image-Version gebundene Graphile-Migration vor dem App-Deploy aus
+- **AND** entzieht der Migrations-One-shot neu angelegten Graphile-Objekten bereits vor dem Bootstrap allgemeine `PUBLIC`-Rechte
+- **AND** prüft der Bootstrap anschließend den dedizierten Worker-Principal und die minimalen App-/Worker-Grants
+
+#### Scenario: Produktiver App-Principal besitzt überbreite DDL-Rechte
+
+- **WHEN** Bootstrap oder Postconditions allgemeine `CREATE`-Rechte des App-Principals auf der Studio-Datenbank erkennen
+- **THEN** entzieht der kontrollierte Bootstrap diese überbreiten Rechte
+- **AND** bleibt das Einreihen von Jobs über gezielte Queue-Rechte möglich
+
+#### Scenario: Worker-Secret fehlt
+
+- **WHEN** Dev, Staging oder Production ohne das erforderliche Worker-Datenbank-Secret ausgerollt werden soll
+- **THEN** stoppt der geschützte Rollout vor dem App-Deploy
+- **AND** werden weder Secret-Wert noch abgeleitete Zugangsdaten in Evidenz oder Logs ausgegeben

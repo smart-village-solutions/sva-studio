@@ -966,17 +966,36 @@ IAM Account Management SHALL resolve each authenticated IAM-v1 request as either
 - **AND** it ignores platform-role information from the Root-Realm
 
 ### Requirement: Keycloak User Synchronization Scope
+
 The system SHALL run Keycloak user synchronization as a reconciliation flow that explains differences between Keycloak and Studio instead of hiding unmapped or partially failed objects. The synchronization scope focuses on identities, scope resolution, technical realm access markers, and explicitly managed Sonderrollen rather than treating arbitrary Keycloak role catalogs as the normative source of tenant authorization.
 
 #### Scenario: Sync reports legacy role drift without reintroducing it
+
 - **WHEN** ein User-Sync Keycloak-Rollen findet, die außerhalb des normativen Sonderrollenschnitts liegen
 - **THEN** enthält der Sync-Report diese Rollen als Legacy-, Interop- oder Driftbefund
 - **AND** das System projiziert sie nicht automatisch als kanonische tenantlokale Fachrollen
 
 #### Scenario: Partial failure remains actionable
+
 - **WHEN** ein Sync mit `partial_failure` endet
 - **THEN** enthält der Report objektbezogene Ursachen wie `missing_instance_attribute`, `forbidden_role_mapping`, `read_only_federated_field` oder `idp_forbidden`
 - **AND** Admins können daraus Reconcile- oder Runbook-Aktionen ableiten
+
+#### Scenario: Fehlende Profilfelder werden deterministisch repariert
+
+- **GIVEN** ein Keycloak-User gehört zum tenantlokalen Importpfad einer aufgelösten Instanz
+- **WHEN** E-Mail, Vorname oder Nachname im Quellprofil fehlt oder nur aus Leerzeichen besteht
+- **THEN** verwendet das System pro Feld zuerst einen vorhandenen Quellwert und danach den ausschließlich über dieselbe Instanz und dasselbe Subject geladenen lokalen Seed
+- **AND** verwendet es nur für eine weiterhin fehlende E-Mail zuletzt einen syntaktisch gültigen Username
+- **AND** mutiert es ausschließlich das exakte Keycloak-Subject über den bereits aufgelösten tenantlokalen Provider
+- **AND** führt ein weiterhin unvollständiges Profil ohne IAM-Persistenz in die manuelle Prüfung
+
+#### Scenario: Vollständiges Quellprofil bleibt vorrangig
+
+- **GIVEN** Quellprofil und lokaler Seed enthalten widersprüchliche vollständige Profilwerte
+- **WHEN** der tenantlokale Import den User verarbeitet
+- **THEN** bleiben die Quellwerte unverändert vorrangig
+- **AND** das System führt keine Profilreparatur-Mutation aus
 
 ### Requirement: Tenant-IAM-Betriebsstatus pro Instanz
 
@@ -1359,3 +1378,61 @@ Das System SHALL effektive Tenant-Permissions als Allow-Grants ohne fachliche De
 - **WHEN** für eine Autorisierungsanfrage kein passender Allow-Grant existiert
 - **THEN** wird die Anfrage verweigert
 - **AND** es ist kein expliziter Deny-Grant erforderlich
+
+### Requirement: Technische Account-Klassifikation ist administrativ und nebenwirkungsfrei
+
+Das System SHALL Tenant-Accounts mit dem booleschen, lokal persistierten Merkmal `isTechnicalAccount` klassifizieren können. Das Merkmal SHALL bei neuen und bestehenden Accounts über die bestehende autorisierte Account-Erstellung beziehungsweise Account-Bearbeitung änderbar sein. Seine Änderung SHALL keine automatische Änderung anderer Identitäts-, Zugangs- oder Berechtigungsmerkmale auslösen.
+
+#### Scenario: Administrator markiert einen bestehenden Account als technisch
+
+- **WHEN** ein zur Account-Bearbeitung berechtigter Administrator `isTechnicalAccount = true` speichert
+- **THEN** persistiert das System die technische Klassifikation
+- **AND** bleiben Keycloak-Status, Anmeldefähigkeit, Rollen, Gruppen, Memberships, Einladungszustand und Mainserver-Credentials unverändert
+- **AND** wird keine Organisations-Provisionierung allein durch das Flag ausgelöst
+
+#### Scenario: Administrator entfernt die technische Klassifikation
+
+- **WHEN** ein zur Account-Bearbeitung berechtigter Administrator `isTechnicalAccount = false` speichert
+- **THEN** persistiert das System die nicht technische Klassifikation
+- **AND** bleiben alle anderen Accountfelder und eine gegebenenfalls vorhandene Organisationszuordnung unverändert
+- **AND** wird kein früherer Lifecycle-Zustand automatisch wiederhergestellt
+
+#### Scenario: Bestandsaccount hat keine explizite technische Klassifikation
+
+- **WHEN** ein vor Einführung des Merkmals bestehender Studioaccount oder ein noch nicht lokal gemappter Keycloak-Benutzer gelesen wird
+- **THEN** behandelt das System ihn als `isTechnicalAccount = false`
+- **AND** überschreibt ein Keycloak-Import keine bereits lokal gespeicherte technische Klassifikation
+
+#### Scenario: Normale Accounterstellung behält ihr bestehendes Provisioning-Verhalten
+
+- **WHEN** ein Administrator über den normalen Accountpfad einen Account mit `isTechnicalAccount = true` erstellt
+- **THEN** löst das Flag kein Organisations-Provisioning aus
+- **AND** unterdrückt es nicht das unabhängig vom Flag bestehende persönliche Mainserver-Provisioning des normalen Accountpfads
+- **AND** bleiben beide Provisioning-Verträge fachlich getrennt
+
+### Requirement: IAM-Runtime-Diagnostik wertet konkurrierende Signale deterministisch aus
+
+Der IAM-Diagnosekern MUST gleichzeitig vorliegende sichere Signale in einer stabilen First-match-Reihenfolge auswerten und für identische Eingaben dieselbe bestehende Klassifikation, denselben Status und dieselbe empfohlene Aktion liefern.
+
+#### Scenario: Synchronisationsphasen behalten ihre Reihenfolge
+
+- **WHEN** ein Pre-Sync-Grund gemeinsam mit Sync-Metadaten vorliegt
+- **THEN** gewinnt die bestehende Pre-Sync-Klassifikation
+- **AND** gewinnt ein Sync-Signal weiterhin vor einem Post-Sync-Grund
+
+#### Scenario: Identitätsauflösung gewinnt vor Infrastrukturdiagnose
+
+- **WHEN** ein Session- oder Actor-Signal gemeinsam mit einem Keycloak- oder Datenbanksignal vorliegt
+- **THEN** gewinnt weiterhin die Session- beziehungsweise Actor-Klassifikation
+- **AND** bleiben Status und empfohlene Aktion mit dem bisherigen Vertrag kompatibel
+
+#### Scenario: Datenbanksignal gewinnt vor nachgelagertem Fallback
+
+- **WHEN** ein Datenbanksignal gemeinsam mit einem Mapping-Grund oder Registry-Fallback vorliegt
+- **THEN** gewinnt weiterhin die Datenbank- oder Schema-Klassifikation
+
+#### Scenario: Sichere Eingaben bleiben begrenzt und kompatibel
+
+- **WHEN** Diagnose-Details snake_case-, camelCase-, unbekannte, nicht-stringförmige oder sensitive Werte enthalten
+- **THEN** normalisiert der Diagnosekern weiterhin nur die bekannten Sync-Felder
+- **AND** gibt er ausschließlich die bestehende Safe-Details-Allowlist aus

@@ -20,5 +20,5 @@
 - [x] 3.2 Unit, Coverage, Types, Lint, Build und Accessibility ausführen
 - [x] 3.3 Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` ausführen
 - [x] 3.4 Fallow New-only für `sva-studio-react` mit echter Coverage ausführen
-- [ ] 3.5 Root-Review und unabhängiges IAM-/Semantikreview auf dem exakten Head abschließen
-- [ ] 3.6 Terminale CI, null offene Threads und Mergeability nachweisen
+- [x] 3.5 Root-Review und unabhängiges IAM-/Semantikreview auf dem exakten Head abschließen. Abschlussnachweis: PR #1011 wurde am 15. August 2026 nach Review gemergt.
+- [x] 3.6 Terminale CI, null offene Threads und Mergeability nachweisen. Die terminale Review-Auswertung weist keine offenen Threads, fehlgeschlagenen oder ausstehenden Checks aus.

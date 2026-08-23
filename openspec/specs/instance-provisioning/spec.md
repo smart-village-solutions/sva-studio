@@ -830,3 +830,93 @@ Das System MUST bei Tenant-Erstellung, explizitem IAM-Baseline-Reconcile und kon
 - **THEN** wird die Instanz als nicht erfolgreich reconciled ausgewiesen
 - **AND** wird der Fehler ohne freie SQL-Reparatur über den bestehenden Diagnose- und Rollout-Vertrag behandelt
 
+### Requirement: Interne Realm-Operationsprojektion bleibt bei Refactorings semantikgleich
+
+Das System SHALL bei internen Refactorings der Instanz-Detailprojektion die
+bestehende Realm-Schritt- und Primäraktionssemantik vollständig bewahren. Eine
+interne Zerlegung darf weder öffentliche Verträge noch die sichtbare
+Entscheidungsreihenfolge ändern.
+
+#### Scenario: New-Realm-Schritte bewahren Zustand und Evidenz
+
+- **WHEN** Registry-Vertrag, Preflight, Plan, Provisioning-Run und einzelne Keycloak-Artefakte in vollständigen, fehlenden, laufenden, blockierten, fehlgeschlagenen oder erfolgreichen Kombinationen vorliegen
+- **THEN** bleiben Reihenfolge, Status, Summary und Action jedes New-Realm-Schritts unverändert
+- **AND** bleiben `evidenceSource`, `checkedAt` und `requestId` derselben Registry-, Preflight-, Plan-, Run- oder Final-Validation-Evidenz zugeordnet
+
+#### Scenario: Existing-Realm-Schritte bewahren Drift- und Reconcile-Semantik
+
+- **WHEN** Live-Status fehlt oder vorliegt, Drift vorhanden oder abwesend ist und der letzte Run fehlt, fehlschlägt oder anderweitig abgeschlossen ist
+- **THEN** bleiben Registry-Vertrag, Preflight, Live-Status, Driftanalyse, Vertragsreparatur, Reconcile und Ergebnisvalidierung in derselben Reihenfolge und mit denselben Statuswerten erhalten
+- **AND** bleiben Reconcile-Action, Evidence Source, Timestamp und Request-ID unverändert zugeordnet
+
+#### Scenario: Primäraktion bewahrt die feste Prioritätsreihenfolge
+
+- **WHEN** mehrere mögliche New- oder Existing-Realm-Aktionen gleichzeitig aus Schrittzuständen, Signalen und Follow-up-Aktionen ableitbar sind
+- **THEN** wählt die Instanz-Detailprojektion dieselbe erste Aktion mit derselben Action-ID, demselben Label und demselben Reason wie vor dem Refactoring
+- **AND** bleiben Konfigurations-, Moduskonflikt-, Preflight-, Plan-, Execute-, Status-, Reconcile- und Follow-up-Prioritäten unverändert
+
+#### Scenario: Fehlende oder Legacy-Evidenz bleibt fail-closed
+
+- **WHEN** optionale Schritte, Preflight-, Plan-, Run- oder Keycloak-Evidenz `null`, `undefined`, unvollständig oder widersprüchlich vorliegt
+- **THEN** bleibt die bisherige offene, blockierte oder statusprüfende Fallback-Ausgabe erhalten
+- **AND** führt die interne Strukturierung keine optimistische Erfolgsannahme und keine neue Mutation ein
+
+### Requirement: Instanz-Registry-Mutationswerte behalten ihren Positions- und Secret-Vertrag
+
+Das System SHALL Create- und Update-Mutationen der Instanz-Registry in der bestehenden SQL-Parameterreihenfolge abbilden und dabei Secret-Erhalt, explizites Löschen und Ersetzen unterscheidbar halten. Eine interne Strukturierung der Wertelisten darf weder SQL-Text noch Schema, öffentlichen Repository-Vertrag, Hostname-Reihenfolge oder Fehleridentität verändern.
+
+#### Scenario: Create bildet alle Werte positionsstabil ab
+
+- **WHEN** eine Instanz mit minimalen, vollständigen oder partiell fehlenden optionalen Tenant-Admin-Daten angelegt wird
+- **THEN** erzeugt das Repository exakt die bestehenden 20 SQL-Werte in unveränderter Position und mit unverändertem Typ
+- **AND** führt es den primären Hostname-Upsert nur nach einer erfolgreich zurückgegebenen Instanzzeile aus
+
+#### Scenario: Update erhält, löscht oder ersetzt Secrets unverändert
+
+- **WHEN** ein Update für Auth-Client- oder Tenant-Admin-Client-Secret eine Kombination aus Keep-Flag `undefined`, `true` oder `false` und Runtime-Ciphertext `undefined`, `null` oder Wert erhält
+- **THEN** erzeugt das Repository exakt die bestehenden 21 SQL-Werte in unveränderter Position und mit unverändertem Typ
+- **AND** behält es die bisherige Bedeutung für Secret-Erhalt, Löschen und Ersetzen bei
+
+#### Scenario: Fehlende Mutationsergebnisse und Fehler bleiben identisch
+
+- **WHEN** Insert oder Update keine Zeile zurückgibt oder Insert, Update beziehungsweise Hostname-Upsert fehlschlägt
+- **THEN** bleibt der Hostname-Upsert bei fehlender Zeile aus
+- **AND** bleibt die ursprüngliche Fehlerobjekt-Identität samt bestehender Schrittannotation unverändert erhalten
+
+### Requirement: Operativer Keycloak-Instanz-Audit trennt Erhebung und Bewertung
+
+Das System SHALL den read-only Keycloak-Instanz-Audit als getrennte Erhebungs-
+und Bewertungsgrenzen ausführen. Die Erhebung SHALL den bestehenden Realm-,
+Client-, Secret-, Rollen-, Serviceaccount- und Bootstrap-Zustand in unveränderter
+`kcadm`-Reihenfolge erfassen. Die reine Bewertung SHALL daraus dieselben
+vierzehn Check-IDs, Titel, Zusammenfassungen, Details und Fail-/Warn-/Skip-
+Statuswerte wie der eingeführte Auditvertrag ableiten. Secret-Inhalte MUST aus
+Ergebnissen, Fehlern, Logs und Testevidenz ausgeschlossen bleiben.
+
+#### Scenario: Vollständiger Tenant-Zustand wird unverändert bewertet
+
+- **WHEN** Realm, Login-Client, Tenant-Admin-Client, Secrets, Rollen und aktiver
+  `system_admin`-Benutzer dem bestehenden Soll entsprechen
+- **THEN** liefert der Audit dieselben vierzehn Befunde mit denselben IDs,
+  Titeln, Zusammenfassungen, Details und Statuswerten wie zuvor
+- **AND** enthalten die Ergebnisse keine Secret-Inhalte
+
+#### Scenario: Fehlendes Realm beendet die Erhebung fail-closed
+
+- **WHEN** das konfigurierte Tenant-Realm nicht gelesen werden kann
+- **THEN** liefert der Audit ausschließlich den bestehenden Fehlerbefund
+  `keycloak.realm.exists`
+- **AND** führt er keine nachfolgenden Client-, Rollen- oder Secret-Leseaufrufe
+  aus
+- **AND** räumt er seine temporäre `kcadm`-Konfiguration auf
+
+#### Scenario: Teilzustände behalten Fail-, Warn- und Skip-Semantik
+
+- **WHEN** Login-URLs oder Secrets abweichen, Tenant-Admin-Flags oder Rollen
+  fehlen, kein aktiver `system_admin`-Benutzer existiert oder optionale
+  Mapper-/Bootstrap-Hinweise nicht bestätigt sind
+- **THEN** bleiben alle bisherigen Fail-, Warn- und Skip-Entscheidungen
+  unverändert
+- **AND** führt der Audit keine Keycloak-Mutation und keinen Plattform-Fallback
+  aus
+

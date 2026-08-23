@@ -114,12 +114,14 @@ Das System SHALL für einen vollständig aufgelösten Standort drei komplementä
 
 ### Requirement: Öffentliche App erlaubt Fraktionsfilter auf geladenen Kalenderdaten
 
-Das System SHALL Benutzerinnen und Benutzern erlauben, die sichtbaren Abfallarten nach dem Laden des Kalenders in einem eigenständigen Kontextblock der vollständigen Standortansicht zu filtern.
+Das System SHALL Benutzerinnen und Benutzern erlauben, die sichtbaren Abfallarten nach dem Laden des Kalenders in einem eigenständigen Kontextbereich der vollständigen Standortansicht zu filtern.
 
-#### Scenario: Fraktionsfilter erscheint rechts neben der Adresse
+#### Scenario: Standortaktion und Fraktionsfilter bilden einen flachen Kontextbereich
 
 - **WHEN** der Standort vollständig aufgelöst ist
-- **THEN** zeigt die App die Adresse links und die auswählbaren Abfallfraktionen als vertikale Liste rechts daneben
+- **THEN** zeigt die App die Änderungsaktion unmittelbar bei der dargestellten Adresse
+- **AND** zeigt die auswählbaren Abfallfraktionen darunter als kompakte, umbrechende Auswahl statt als verschachtelte Karten
+- **AND** stellt sie die Auswirkung der Fraktionsauswahl über ein Info-Popover unmittelbar an der Überschrift bereit
 - **AND** Änderungen an den Fraktionen wirken auf Kalenderdarstellungen und globale Aktionen aus demselben geladenen Kalenderzustand
 - **AND** die Standortauswahl muss nicht erneut durchlaufen werden
 
@@ -127,23 +129,24 @@ Das System SHALL Benutzerinnen und Benutzern erlauben, die sichtbaren Abfallarte
 
 Das System SHALL globale PDF-, iCal- und Erinnerungsaktionen aus demselben finalen Standortkontext und aus derselben aktiven Fraktionsauswahl ableiten wie die Kalenderansicht.
 
-#### Scenario: Aktionen erscheinen in einem gemeinsamen horizontalen Block
+#### Scenario: Werkzeuge erscheinen als eigenständige Disclosure-Aktionen
 
 - **WHEN** der Standort vollständig aufgelöst ist
-- **THEN** zeigt die App unter Adresse und Fraktionsliste einen horizontalen Block mit den Aktionen `Kalenderexport`, `PDF-Download` und `E-Mail-Abo`
-- **AND** genau ein zugehöriges Optionspanel ist gleichzeitig geöffnet
-- **AND** ein erneuter Klick auf die aktive Aktion schließt deren Panel wieder
+- **THEN** zeigt die App unter Adresse und Fraktionsauswahl die Aktionen `Kalender exportieren`, `PDF / Druckversion` und `E-Mail-Erinnerung` als kompakte Aktionsleiste
+- **AND** die Aktionen verwenden Button- und Disclosure-Semantik statt Tab-Semantik
+- **AND** genau ein zugehöriger Optionsbereich ist gleichzeitig geöffnet
+- **AND** ein erneuter Klick auf die aktive Aktion schließt deren Optionsbereich wieder
 
 #### Scenario: PDF-Aktion erzeugt das Dokument ad hoc in der öffentlichen Runtime
 
-- **WHEN** Benutzerinnen oder Benutzer das Panel `PDF-Download` öffnen
+- **WHEN** Benutzerinnen oder Benutzer den Optionsbereich `PDF / Druckversion` öffnen
 - **THEN** können sie dort das Jahr wählen und den Download für die aktuell aktiven Fraktionen auslösen
 - **AND** die öffentliche Runtime erzeugt das PDF serverseitig ad hoc
 - **AND** es wird kein persistentes PDF-Artefakt gespeichert
 
 #### Scenario: iCal-Feed nutzt verfügbare Standard-Reminder ohne zusätzliche Abfrage
 
-- **WHEN** Benutzerinnen oder Benutzer das Panel `Kalenderexport` öffnen
+- **WHEN** Benutzerinnen oder Benutzer den Optionsbereich `Kalender exportieren` öffnen
 - **THEN** können sie den Export für die aktuell aktiven Fraktionen direkt auslösen, ohne zuvor Reminder-Slots auswählen zu müssen
 - **AND** die App übernimmt verfügbare kalenderfähige Standard-Reminder automatisch
 - **AND** der serverseitig erzeugte iCal-Feed bleibt konsistent zu den in der App sichtbaren Kalenderdaten
@@ -151,7 +154,7 @@ Das System SHALL globale PDF-, iCal- und Erinnerungsaktionen aus demselben final
 #### Scenario: Gemischte Fraktionsauswahl ohne gemeinsame Reminder-Fähigkeit bleibt fail-closed
 
 - **WHEN** die aktuell aktiven Fraktionen nicht für alle gewählten Fraktionen gültige kalender- oder e-mailfähige Reminder-Slots besitzen
-- **THEN** zeigt die App eine klare Hinweisnachricht im jeweiligen Aktionspanel
+- **THEN** zeigt die App eine klare Hinweisnachricht im jeweiligen Optionsbereich
 - **AND** sie erzeugt keinen impliziten Reminder-Fallback
 - **AND** Nutzerinnen und Nutzer können die Fraktionsauswahl anpassen, um wieder gültige Reminder-Optionen zu erhalten
 
@@ -159,17 +162,39 @@ Das System SHALL globale PDF-, iCal- und Erinnerungsaktionen aus demselben final
 
 Das System SHALL die öffentliche Abfallkalender-App als reduzierte, iFrame-taugliche und barrierearme Oberfläche bereitstellen.
 
-#### Scenario: Öffentliche App bleibt ohne Studio-Designsystem verständlich bedienbar
+#### Scenario: Öffentliche App fügt sich als neutraler Inhaltsbereich ein
 
-- **WHEN** die öffentliche App eigenständig gestaltet wird
-- **THEN** bleibt die Oberfläche visuell schlicht, klar und übersichtlich
-- **AND** sie hängt nicht von der Studio-Plugin-Oberfläche als UI-Basis ab
+- **WHEN** die öffentliche App eigenständig oder in einem iFrame dargestellt wird
+- **THEN** bleibt ihr äußerer Hintergrund transparent und ohne eigenen Kartenrahmen
+- **AND** gliedert sie Inhaltsbereiche vorrangig mit Abstand und dezenten Trennlinien
+- **AND** beschränkt sie Radien, Rahmen, Flächen und Schatten auf funktional notwendige Bedienelemente
+- **AND** verwendet sie für allgemeine Bedienelemente ausschließlich neutrale Oberflächen und reserviert konfigurierte Farben für fachliche Abfallfraktionen
+- **AND** hängt sie nicht von der Studio-Plugin-Oberfläche als UI-Basis ab
 
 #### Scenario: Auswahlfluss und Kalender erfüllen Accessibility-Mindestanforderungen
 
 - **WHEN** Benutzerinnen oder Benutzer die öffentliche App mit Tastatur oder Screenreader bedienen
 - **THEN** sind Auswahlfluss, Fraktionsfilter, Kalendernavigation, globale Aktionen und Modal grundsätzlich zugänglich
 - **AND** die Capability zielt mindestens auf WCAG 2.1 AA
+
+#### Scenario: Standortauswahl ist ohne Maus effizient bedienbar
+
+- **WHEN** Benutzerinnen oder Benutzer eine Standortoption mit der Tastatur auswählen
+- **THEN** exponiert das Suchfeld seine Ergebnisliste als Combobox mit zugehöriger Listbox
+- **AND** lassen sich Optionen mit Pfeiltasten, Pos1, Ende und Eingabetaste ansteuern und übernehmen
+- **AND** bleiben die einzelnen Optionen außerhalb der regulären Tab-Reihenfolge
+- **AND** werden Trefferzahl, Ladezustände sowie Erfolgs- und Fehlermeldungen für assistive Technologien angekündigt
+
+#### Scenario: Kalenderansichten führen den Tastaturfokus mit
+
+- **WHEN** Benutzerinnen oder Benutzer in der Ansichtsleiste Pfeiltasten, Pos1 oder Ende verwenden
+- **THEN** wechseln Auswahl und Tastaturfokus gemeinsam auf die entsprechende Ansicht
+- **AND** bleibt immer genau ein Tab in der regulären Tab-Reihenfolge
+
+#### Scenario: Automatisierte Accessibility-Prüfung bleibt grün
+
+- **WHEN** die Browser-End-to-End-Tests Auswahlfluss, Kalender und Termindialog rendern
+- **THEN** meldet Axe für WCAG 2.0 A/AA, WCAG 2.1 AA und WCAG 2.2 AA keine automatisch erkennbaren Verstöße
 
 ### Requirement: Öffentliche App bietet einen E-Mail-Erinnerungseinstieg im finalen Standortkontext
 
@@ -360,3 +385,257 @@ Das System SHALL einen expliziten Einsatz statt eines sonst identischen berechne
 - **WHEN** ein expliziter Einsatz und ein berechneter Termin für dieselbe Tour, denselben Tag und den abgefragten Ort existieren
 - **THEN** zeigt der Kalender den expliziten Einsatz nur einmal
 - **AND** ein expliziter Hinweis hat Vorrang vor einem allgemeinen Tourhinweis
+
+### Requirement: Öffentliche App liefert einen lesenden Abholortkatalog
+
+Das System SHALL über `GET /api/public-waste/locations` alle aktiven öffentlichen Abholorte als deterministisch sortierte, ausschließlich aus bestehenden Waste-Daten projizierte Liste bereitstellen.
+
+#### Scenario: Verbraucher lädt alle öffentlichen Abholorte
+
+- **WHEN** ein Verbraucher den öffentlichen Abholortkatalog abruft
+- **THEN** enthält die Antwort pro eindeutigem Auswahlpfad einen Standortschlüssel sowie die vorhandenen technischen IDs und Originalbezeichnungen
+- **AND** identische Auswahlpfade werden deterministisch über den bestehenden Standortschlüssel dedupliziert
+- **AND** inaktive Abholorte werden nicht ausgegeben
+
+#### Scenario: Ortskatalog bleibt ein reiner Leseweg
+
+- **WHEN** der Abholortkatalog abgerufen wird
+- **THEN** liest das System ausschließlich bestehende Waste-Fachdaten
+- **AND** es führt weder Schreibzugriffe noch Backfills, Seeds oder Datenmigrationen aus
+
+### Requirement: Öffentlicher Ortskatalog mappt vorhandene Hierarchie ohne Ersatzwerte
+
+Das System SHALL eine vorhandene Region als `municipality` und einen vorhandenen Ort als `district` mit ihren unveränderten IDs und Originalnamen projizieren.
+
+#### Scenario: Region und Ort sind vorhanden
+
+- **WHEN** ein aktiver Abholort eine Region und einen Ort besitzt
+- **THEN** enthält `municipality` die vorhandene Regions-ID und den unveränderten Regionsnamen
+- **AND** enthält `district` die vorhandene Orts-ID und den unveränderten Ortsnamen
+- **AND** ist `mappingComplete` gleich `true`
+
+#### Scenario: Region fehlt
+
+- **WHEN** ein aktiver Abholort keine Region besitzt
+- **THEN** ist `municipality` gleich `null`
+- **AND** bleibt der vorhandene Ort unter `district` erhalten
+- **AND** ist `mappingComplete` gleich `false`
+- **AND** enthält `missingFields` den Wert `municipality`
+- **AND** verwendet das System weder den Ort noch einen Defaultwert als künstliche Gemeinde
+
+### Requirement: Öffentlicher Ortskatalog beschreibt vorhandene Auswahlbreite
+
+Das System SHALL konkrete und übergeordnete Abholorte mit der bestehenden öffentlichen Auswahlsemantik für Straße und Hausnummer beschreiben.
+
+#### Scenario: Abholort gilt für alle Straßen eines Orts
+
+- **WHEN** ein aktiver Abholort keine konkrete Straße besitzt
+- **THEN** enthält `streetOrCollectionDistrict` die bestehende Auswahl-ID `all`
+- **AND** enthält das Feld die bestehende Originalbezeichnung `Alle Straßen`
+
+#### Scenario: Abholort gilt für alle Hausnummern einer Straße
+
+- **WHEN** ein aktiver Abholort eine Straße, aber keine konkrete Hausnummer besitzt
+- **THEN** enthält `houseNumber` die bestehende Auswahl-ID `all`
+- **AND** enthält das Feld die bestehende Originalbezeichnung `Alle Hausnummern`
+
+### Requirement: Jeder Katalogeintrag ist mit dem bestehenden Kalenderendpunkt nutzbar
+
+Das System SHALL für jeden Katalogeintrag eine `calendarQuery` mit den bestehenden Parametern des öffentlichen Kalenderendpunkts bereitstellen.
+
+#### Scenario: Verbraucher lädt Termine für einen Katalogeintrag
+
+- **WHEN** ein Verbraucher `regionId`, `cityId`, `streetId` und gegebenenfalls `houseNumberId` aus `calendarQuery` an `GET /api/public-waste/calendar` übergibt
+- **THEN** verwendet der Kalenderendpunkt unverändert seine bestehende Terminberechnung
+- **AND** kann der Verbraucher die Kalenderantwort anhand des Katalogeintrags dem vollständigen Abholort zuordnen
+
+#### Scenario: Katalogeintrag besitzt keine Region
+
+- **WHEN** ein Katalogeintrag keine vorhandene Region besitzt
+- **THEN** lässt `calendarQuery` den optionalen Parameter `regionId` aus
+- **AND** bleiben die übrigen vorhandenen Auswahlparameter unverändert nutzbar
+
+### Requirement: Öffentlicher Ortskatalog wahrt die bestehende Datenminimierung
+
+Das System SHALL im Abholortkatalog nur aktive, bereits öffentlich auswählbare Adresswerte ausgeben.
+
+#### Scenario: Ortskatalog wird öffentlich abgerufen
+
+- **WHEN** die Public-Waste-Runtime den Ortskatalog beantwortet
+- **THEN** enthält die Antwort keine E-Mail-Abonnements, Consent-, Token-, Outbox-, Credential-, Audit- oder Jobdaten
+- **AND** verwendet der Endpunkt dieselbe eingeschränkte öffentliche Datenzugriffsgrenze wie die bestehenden Public-Waste-Read-Endpunkte
+
+### Requirement: PDF-Legende zeigt kontextbezogene Hinweise vertikal
+
+Das System SHALL die Legende des PDF-Abfallkalenders direkt unterhalb des Kalenderrasters als vertikale Liste mit höchstens acht einzeiligen Einträgen darstellen.
+
+#### Scenario: Sichtbare Fraktion besitzt eine Beschreibung
+
+- **WHEN** eine im PDF sichtbare Fraktion eine Beschreibung besitzt
+- **THEN** zeigt ihre Legendenzeile Farbbox, Kürzel und den Text `<Bezeichnung> - <Beschreibung>` ohne feste Beschreibungsspalte
+- **AND** die Beschreibung verwendet den verbleibenden Platz bis zum rechten Seitenrand
+
+#### Scenario: Sichtbare Tour oder einzelner Termin besitzt einen Hinweis
+
+- **WHEN** eine Tour mindestens einen sichtbaren PDF-Termin erzeugt oder ein sichtbarer Termin einen eigenen Hinweis besitzt
+- **THEN** zeigt die Legende den jeweiligen Tour- beziehungsweise Terminbezug und den Hinweis getrennt durch ` - ` ohne feste Beschreibungsspalte
+- **AND** Hinweise nicht sichtbarer Touren oder Termine werden ausgelassen
+
+#### Scenario: Legendentext überschreitet die verfügbare Breite
+
+- **WHEN** ein Legendentext nicht vollständig in seine einzelne Zeile passt
+- **THEN** kürzt das System ihn anhand seiner gerenderten Breite
+- **AND** der sichtbare Text endet mit `...`
+- **AND** es entsteht kein Zeilenumbruch
+
+### Requirement: PDF reserviert Raum für höchstens acht Legendenzeilen
+
+Das System SHALL durch einen kompakteren Kopfbereich und den Wegfall der redundanten Fußzeile Raum für acht Legendenzeilen schaffen, ohne das Kalenderraster zu verkleinern.
+
+#### Scenario: PDF enthält die maximale Legendenmenge
+
+- **WHEN** acht Legendenzeilen dargestellt werden
+- **THEN** überlappt keine Legendenzeile das Kalenderraster oder den Seitenrand
+- **AND** der Kopfbereich zeigt weiterhin Titel, Abholort und Branding lesbar
+- **AND** die redundante Fußzeile `Abfallkalender <Jahr> · <Abholort>` wird nicht dargestellt
+
+#### Scenario: PDF enthält Ausweichtermine
+
+- **WHEN** mindestens ein sichtbarer Termin als Ausweichtermin gekennzeichnet ist
+- **THEN** belegt `* = Ausweichtermin` die erste Zeile innerhalb der höchstens acht Legendenzeilen
+- **AND** der Asterisk wird rot und fett dargestellt
+
+### Requirement: PDF kennzeichnet Ausweichtermine eindeutig
+
+Das System SHALL jeden PDF-Abholungstermin, dessen wirksames Datum vom regulären Ursprungsdatum abweicht, sichtbar als Ausweichtermin kennzeichnen.
+
+#### Scenario: Manuell verschobener Termin erhält einen Asterisk
+
+- **WHEN** eine Tour- oder globale Datumsverschiebung einen regulären Abholungstermin auf ein anderes Datum verlegt
+- **THEN** zeigt das PDF unmittelbar rechts neben der farbigen Fraktionsbox einen roten, fetten Asterisk
+- **AND** der Asterisk liegt außerhalb der farbigen Box
+- **AND** nachfolgende Fraktionsboxen überlappen den Asterisk nicht
+- **AND** erklärt eine eigene Legendenzeile den Asterisk mit `* = Ausweichtermin`
+
+#### Scenario: Feiertagsregel erzeugt einen Ausweichtermin
+
+- **WHEN** eine Feiertagsregel das wirksame Datum eines regulären Abholungstermins verändert
+- **THEN** kennzeichnet das PDF den betroffenen Abholungseintrag ebenfalls mit einem roten, fetten Asterisk
+
+#### Scenario: Regulärer Termin bleibt unmarkiert
+
+- **WHEN** das wirksame Datum eines Abholungstermins seinem regulären Ursprungsdatum entspricht
+- **THEN** zeigt das PDF an diesem Abholungseintrag keinen Asterisk
+
+### Requirement: Öffentliche Kalenderaktionen bewahren einen konsistenten lokalen Zustand
+
+Das System SHALL Standortkopf, Fraktionsfilter, Kalenderansichten und globale Aktionen aus demselben vollständig aufgelösten Standortkontext ableiten. Die interne Trennung von Zustand und Darstellung SHALL dabei sichtbares Verhalten, URLs und Accessibility-Verknüpfungen unverändert lassen.
+
+#### Scenario: Standortwechsel setzt den Action-Kontext vollständig zurück
+
+- **WHEN** ein vollständig aufgelöster Standort durch einen anderen Standort ersetzt wird
+- **THEN** schließt die App das geöffnete Aktionspanel
+- **AND** setzt E-Mail-Adresse, Datenschutz-Einwilligung sowie Reminder-Erfolg und -Fehler zurück
+- **AND** leitet Fraktionen und PDF-Zustand aus dem neuen Standortkontext ab
+
+#### Scenario: Fraktionswechsel erhält Formulareingaben
+
+- **WHEN** Benutzerinnen oder Benutzer bei geöffnetem E-Mail-Panel die aktive Fraktionsauswahl ändern
+- **THEN** entfernt die App vorheriges Reminder-Erfolgs- oder Fehlerfeedback
+- **AND** erhält E-Mail-Adresse, Datenschutz-Einwilligung und geöffnetes Panel
+- **AND** berechnet Kalenderexport und E-Mail-Slots erneut aus den aktiven Fraktionen
+
+#### Scenario: Aktionspanels bleiben eindeutig und barrierearm verknüpft
+
+- **WHEN** ein globaler Action-Trigger geöffnet, gewechselt oder erneut aktiviert wird
+- **THEN** ist höchstens ein Panel gleichzeitig geöffnet
+- **AND** `aria-expanded`, `aria-controls` und `aria-labelledby` beschreiben denselben Zustand
+- **AND** Erfolgs- und Fehlermeldungen bleiben als passende Live-Regionen verfügbar
+
+#### Scenario: Laufende E-Mail-Anfrage wird nicht doppelt ausgelöst
+
+- **WHEN** eine gültige E-Mail-Erinnerungsanfrage bereits verarbeitet wird
+- **THEN** deaktiviert die App die erneute Übermittlung
+- **AND** erzeugt sie aus wiederholter Aktivierung keinen zweiten Request
+
+### Requirement: Öffentlicher Kalender-Lader bleibt standortgebunden und deterministisch
+
+Das System SHALL Kalenderdaten ausschließlich für den vollständig aufgelösten
+Standort laden und berechnete sowie explizite Termine deterministisch zu demselben
+öffentlichen Kalendervertrag zusammenführen.
+
+#### Scenario: Standortfilter gelten identisch für Touren und explizite Einsätze
+
+- **WHEN** die öffentliche Runtime Kalenderdaten für Region, Ort, Straße und optional Hausnummer lädt
+- **THEN** verwendet sie für wiederkehrende Touren und explizite Einsätze dieselben parametrisierten Standortgrenzen
+- **AND** allgemeine Regions-, Straßen- oder Hausnummerzuordnungen werden nur nach der bestehenden Hierarchiesemantik vererbt
+- **AND** Daten anderer Mandantenschemata oder nicht passender Standorte werden nicht als Fallback ausgegeben
+
+#### Scenario: Datumsfenster bleibt Date-only und inklusive
+
+- **WHEN** die öffentliche Runtime einen gültigen Referenztag erhält
+- **THEN** reicht das Kalenderfenster vom Jahresanfang des Vorjahres bis einschließlich desselben Tags ein Jahr später
+- **AND** ein Zeit- oder Zeitzonenanteil verändert den führenden Date-only-Tag nicht
+
+#### Scenario: Explizite und berechnete Termine werden stabil zusammengeführt
+
+- **WHEN** berechnete Tourtermine und explizite Einsätze geladen wurden
+- **THEN** verdrängt ein passender expliziter Einsatz nur den identischen berechneten Tour-, Tages- und Fraktionstermin
+- **AND** mehrere explizite Einsätze behalten ihre eigenen IDs
+- **AND** das Ergebnis ist zuerst nach Datum und danach nach deutschem Fraktionsnamen sortiert
+
+#### Scenario: Ungültige Eingaben und Datenbankfehler erzeugen keine Ersatzdaten
+
+- **WHEN** der Referenztag ungültig ist oder eine notwendige Datenbankabfrage fehlschlägt
+- **THEN** liefert der Loader keine teilweise erzeugten oder mandantenfremden Ersatztermine
+- **AND** ein Datenbankfehler bleibt für den bestehenden öffentlichen Fehlervertrag sichtbar
+
+### Requirement: Web- und Exportpfade verwenden dieselbe Kalenderdatenbasis
+
+Das System SHALL Kalenderansicht, PDF und iCal aus derselben standortgebundenen
+Repository-Ausgabe ableiten.
+
+#### Scenario: PDF filtert erst nach gemeinsamer Kalenderladung
+
+- **WHEN** ein PDF für ein Jahr und ausgewählte Fraktionen angefordert wird
+- **THEN** lädt die Runtime zunächst dieselben wirksamen Standorttermine wie die Webansicht
+- **AND** wendet Jahres- und Fraktionsfilter erst auf diese gemeinsame Ausgabe an
+
+### Requirement: Öffentliche Reminder-Actions prüfen Tokens vor jeder Mutation fail-closed
+
+Das System SHALL konfigurierte Reminder-Statusseiten ohne Tokenverarbeitung ausliefern und DOI- sowie Abmeldeaktionen in getrennter, deterministischer Reihenfolge verarbeiten. Tokenformat, Kryptografie, Secretquelle und Repository-Verträge SHALL dabei unverändert bleiben.
+
+#### Scenario: DOI-Aktion aktiviert nur nach vorhandenem Token
+
+- **WHEN** ein Benutzer den DOI-Pfad ohne Token oder mit einem ungültigen beziehungsweise abgelaufenen Token aufruft
+- **THEN** aktiviert das System kein Abo
+- **AND** liefert es den konfigurierten Redirect oder die bestehende sichere Fallback-Seite
+
+#### Scenario: Abmeldung mutiert erst nach vollständiger Signaturprüfung
+
+- **WHEN** ein Abmeldetoken keine lesbare Subscription-ID besitzt, kein Abo gefunden wird oder die Signatur nicht zum gespeicherten Token-Hash passt
+- **THEN** führt das System keine Abmeldemutation aus
+- **AND** liefert es den konfigurierten Invalid-Token-Redirect oder die bestehende sichere Fallback-Seite
+
+#### Scenario: Wiederholte Abmeldung bleibt idempotent
+
+- **WHEN** ein gültiger Abmeldelink für ein bereits abgemeldetes Abo erneut aufgerufen wird
+- **THEN** bleibt der Status `already_unsubscribed` erhalten
+- **AND** Redirect, Statusseite und sichtbare Texte entsprechen weiterhin dem bestehenden Vertrag
+
+#### Scenario: Konfigurierte Statusseite hat Vorrang vor Aktionsverarbeitung
+
+- **WHEN** ein Request einen konfigurierten Aktivierungs-, Abmelde- oder Invalid-Token-Statuspfad adressiert
+- **THEN** rendert das System die zugehörige Statusseite ohne Hash-, Lookup- oder Mutationsaufruf
+
+### Requirement: Öffentliche App zeigt verfügbare Standortoptionen unmittelbar
+
+Das System SHALL in jedem noch offenen Schritt der Standortauswahl alle verfügbaren Optionen bereits vor einer Texteingabe anzeigen und die sichtbare Liste bei einer Eingabe nach dem Suchtext filtern.
+
+#### Scenario: Auswahloptionen sind ohne Suchtext vollständig sichtbar
+
+- **WHEN** ein Standortauswahlschritt mehrere verfügbare Optionen enthält
+- **THEN** zeigt die App alle Optionen unmittelbar in einer scrollbar begrenzten Liste
+- **AND** verlangt sie keine vorherige Texteingabe
+- **AND** kennzeichnet sie sichtbar, wenn unterhalb des aktuellen Ausschnitts weitere Optionen vorhanden sind
+- **AND** filtert sie die Liste nach einer Eingabe auf passende Optionen

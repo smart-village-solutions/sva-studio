@@ -16,7 +16,7 @@ Das System SHALL Medienmanagement als zentrale hostseitige Capability und nicht 
 
 ### Requirement: Hostseitiger Admin-Einstieg für Medienmanagement
 
-Das System SHALL Medienmanagement mit einem kanonischen hostseitigen Einstieg unter `/admin/media` materialisieren und bei Bedarf spezialisierte Medien-Workflows unterhalb dieses Bereichs bereitstellen.
+Das System SHALL Medienmanagement mit einem kanonischen hostseitigen Einstieg unter `/admin/media` materialisieren und bei Bedarf spezialisierte Medien-Workflows unterhalb dieses Bereichs oder als hostseitig gesteuerte Overlay-Workflows bereitstellen.
 
 #### Scenario: Medienbibliothek wird über hosteigene Admin-Route geöffnet
 
@@ -31,6 +31,13 @@ Das System SHALL Medienmanagement mit einem kanonischen hostseitigen Einstieg un
 - **THEN** darf das System dafür hosteigene Unterrouten unter `/admin/media/...` bereitstellen
 - **AND** diese Unterrouten bleiben an denselben Host-, Guard- und Berechtigungsvertrag gebunden
 - **AND** sie umgehen nicht die zentrale Medien-Capability
+
+#### Scenario: Content-Editor startet bestehenden hostseitigen Medien-Overlay-Flow
+
+- **WHEN** ein ausreichend berechtigter Benutzer in einem Content-Editor Bibliotheksauswahl oder Upload startet
+- **THEN** verwendet das System den bestehenden hostseitig gesteuerten Medien-Overlay-Flow statt eines plugin-eigenen Upload- oder Bibliotheksdialogs
+- **AND** verwendet der Overlay-Flow denselben kanonischen Upload-Intake wie die Medienverwaltung
+- **AND** bleibt der Abschluss kontextabhängig an den aufrufenden Editor gebunden
 
 ### Requirement: Trennung von Originalmedium, Varianten und Nutzung
 
@@ -141,13 +148,27 @@ Das System SHALL übergroße Bilder beim Processing gemäß zentral konfiguriert
 
 ### Requirement: Redaktionelle und technische Metadaten
 
-Das System SHALL technische und redaktionelle Metadaten getrennt, aber gemeinsam verwaltbar halten.
+Das System SHALL technische und redaktionelle Metadaten getrennt, aber gemeinsam verwaltbar halten und globale Asset-Metadaten nicht mit contentbezogenen Verwendungsmetadaten gleichsetzen.
 
-#### Scenario: Redaktion pflegt Metadaten
+#### Scenario: Redaktion pflegt globale Asset-Metadaten
 
-- **WHEN** ein Redakteur ein Medium im Studio bearbeitet
-- **THEN** kann er mindestens Titel, Beschreibung, Alt-Text, Copyright und Lizenz pflegen
+- **WHEN** ein Redakteur mit `media.update` ein Medium in der Medienverwaltung oder im Review bearbeitet
+- **THEN** kann er mindestens Titel, Beschreibung, Alt-Text, Copyright und Lizenz am `MediaAsset` pflegen
 - **AND** technische Metadaten wie MIME-Type, Größe oder Abmessungen bleiben systemseitig nachvollziehbar
+- **AND** bestehende Content-Snapshots werden durch diese Änderung nicht automatisch überschrieben
+
+#### Scenario: Review ohne globale Änderungsberechtigung
+
+- **WHEN** ein Redakteur ein Asset mit `media.read` und `media.reference.manage`, aber ohne `media.update` überprüft
+- **THEN** zeigt der Review die globalen Asset-Metadaten schreibgeschützt
+- **AND** darf der Redakteur das Asset bei ansonsten erfülltem Zielvertrag übernehmen
+
+#### Scenario: Upload im Content-Kontext erzwingt Review vor Abschluss
+
+- **WHEN** ein Benutzer im Content-Kontext ein neues Medium hochlädt
+- **THEN** wechselt der hostseitige Medien-Overlay-Flow nach erfolgreichem Upload in einen Review-Schritt
+- **AND** sind globale Metadaten nur mit `media.update` editierbar
+- **AND** darf der Overlay-Flow das Medium erst nach einem expliziten Abschluss in den Content-Kontext zurückgeben
 
 ### Requirement: Upload-Status mit Fehlerdetails
 
@@ -249,4 +270,111 @@ Das System SHALL den genutzten Speicher pro Instanz gegen ein konfigurierbares K
 - **THEN** lehnt das System den Upload mit einem eindeutigen Fehler ab
 - **AND** es werden keine Teile der Datei persistent gespeichert
 - **AND** bestehende Assets der Instanz bleiben unberührt
+
+### Requirement: Content-Uploads verwenden einen provisorischen Asset-Lebenszyklus
+
+Das System SHALL neu hochgeladene Medien aus einem Content-Speichervorgang bis zum bestätigten Content- und Referenzabschluss als tenant- und actor-gebundene provisorische Assets führen. Provisorische Assets SHALL technisch verarbeitet und kontrolliert ausgeliefert werden können, dürfen aber vor Aktivierung nicht Teil der regulären Medienbibliothek sein.
+
+#### Scenario: Content-Save erzeugt ein provisorisches Asset
+
+- **WHEN** eine lokale Content-Bilddatei innerhalb eines Speichervorgangs hochgeladen und serverseitig validiert wird
+- **THEN** ordnet das System das Asset genau einer Content-Media-Save-Operation, Instanz und einem Actor zu
+- **AND** bleibt das Asset aus Mediathek, Suche, Picker-Ergebnissen, Pagination und regulären Gesamtzahlen ausgeschlossen
+- **AND** darf nur der gebundene Operationspfad Detail, Metadaten, Delivery, Aktivierung oder Abandon ausführen
+
+#### Scenario: Content und Referenzen werden bestätigt abgeschlossen
+
+- **WHEN** der Mainserver-Erfolg mit stabiler Ziel-ID bestätigt ist und der gewünschte Studio-Referenzsatz gespeichert werden kann
+- **THEN** ersetzt das System die Referenzen und aktiviert alle verwendeten provisorischen Assets in einer Studio-Datenbanktransaktion
+- **AND** entfernt es die provisorische Operationsbindung der aktivierten Assets
+- **AND** erscheinen die Assets danach genau einmal regulär in der Medienbibliothek
+
+#### Scenario: Content-Save wird sicher verworfen
+
+- **WHEN** eine Save-Operation vor bestätigtem Mainserver-Erfolg eindeutig fehlschlägt oder kontrolliert abgebrochen wird
+- **THEN** wechselt sie idempotent in den Abandon-/Cleanup-Pfad
+- **AND** entfernt dieser ausschließlich die von der Operation neu erzeugten provisorischen Assets, Varianten, Upload-Sessions und Storage-Objekte
+- **AND** korrigiert er die Storage-Usage ohne bestehende Bibliotheksassets oder Referenzen zu verändern
+
+#### Scenario: Bibliotheksupload wird bewusst gestartet
+
+- **WHEN** ein Benutzer eine Datei im eigenständigen Medienbereich `/admin/media` hochlädt
+- **THEN** verwendet das System weiterhin den unmittelbaren Bibliotheks-Asset-Lebenszyklus
+- **AND** behandelt es diesen Upload nicht als provisorischen Content-Entwurf
+- **AND** verändert ein Abbruch in einem späteren Content-Picker das bereits bewusst angelegte Bibliotheksasset nicht
+
+### Requirement: Content-Media-Save-Operationen sind idempotent und wiederherstellbar
+
+Das System SHALL den Übergang lokaler Content-Dateien zu aktiven Medienassets über einen persistenten, monotonen und idempotenten Operationsvertrag koordinieren.
+
+#### Scenario: Ein Upload- oder Commit-Request wird wiederholt
+
+- **WHEN** ein Client denselben Schritt mit derselben Operations- und Draft-ID nach Timeout oder verlorener Antwort wiederholt
+- **THEN** liefert oder erreicht das System denselben fachlichen Zustand
+- **AND** erzeugt es weder ein zweites Asset noch doppelte Referenzen oder eine doppelte Quota-Buchung
+
+#### Scenario: Referenzabschluss wird nach Mainserver-Erfolg wiederholt
+
+- **WHEN** eine Operation bereits `content_saved` mit Zieltyp und Ziel-ID erreicht hat, aber noch nicht committed ist
+- **THEN** kann das System Reference-Replace und Asset-Aktivierung ohne erneuten Mainserver-Write wiederholen
+- **AND** bleibt der vollständige gewünschte Referenzsatz dauerhaft an der Operation verfügbar
+
+#### Scenario: Veraltete Operation ist sicher bereinigbar
+
+- **WHEN** eine abgelaufene Operation nachweislich keinen bestätigten oder unklaren Mainserver-Erfolg besitzt
+- **THEN** darf ein lease-basierter Recovery-Lauf sie exklusiv zur Bereinigung übernehmen
+- **AND** verarbeitet er konkurrierende Instanzen ohne doppelte Mutation
+- **AND** hinterlässt ein partieller Cleanup-Fehler einen wiederholbaren nichtterminalen Zustand
+
+#### Scenario: Operation besitzt einen unklaren oder bestätigten Content-Ausgang
+
+- **WHEN** eine Operation `content_saved`, `outcome_unknown` oder `reconciliation_required` ist
+- **THEN** darf ein generischer Ablaufzeit-Cleanup ihre Assets nicht löschen
+- **AND** benötigt sie Commit oder evidenzbasierte Reconciliation
+- **AND** bleibt sie für Diagnose und Wiederaufnahme anhand sicherer IDs korrelierbar
+
+### Requirement: Provisorischer Cleanup ist keine Benutzerlöschung
+
+Das System SHALL das Verwerfen operationsgebundener provisorischer Assets als interne Kompensation der autorisierten Content-Save-Operation behandeln und von der Löschung aktiver Bibliotheksassets trennen.
+
+#### Scenario: Redakteur besitzt keine Medien-Löschberechtigung
+
+- **WHEN** ein Redakteur Content und neue Medien mit den erforderlichen Content-Rechten sowie `media.create` und `media.reference.manage` speichern darf, aber kein `media.delete` besitzt
+- **THEN** darf der Host eindeutig fehlgeschlagene provisorische Assets dieser Operation trotzdem bereinigen
+- **AND** darf der Redakteur dadurch keine aktiven oder fremden Assets löschen
+
+#### Scenario: Fremder Actor oder Tenant greift auf Operation zu
+
+- **WHEN** ein Benutzer eine provisorische Operation eines anderen Actors oder einer anderen Instanz laden, committen oder verwerfen möchte
+- **THEN** lehnt der Server den Zugriff fail-closed ab
+- **AND** offenbart die Antwort keine Storage-Details, signierten URLs oder fremden Dateimetadaten
+
+#### Scenario: Provisorischer Lebenszyklus wird auditiert
+
+- **WHEN** eine Content-Media-Save-Operation gestartet, hochgeladen, committed, verworfen oder reconciliation-pflichtig wird
+- **THEN** schreibt das System einen korrelierbaren Audit-/Observability-Eintrag mit Operation, sicherem Zustand und redigiertem Fehlercode
+- **AND** protokolliert es keine Binärdaten, lokalen Dateipfade, Blob-/Data-/Object-URLs, signierten Upload-URLs oder Mainserver-Payloads
+
+### Requirement: Asset-Verwendung bleibt vom Asset-Lebenszyklus getrennt
+
+Das System SHALL eine konkrete Content-Verwendung als Referenz auf ein eigenständiges `MediaAsset` behandeln und ihren Mainserver-kompatiblen Metadaten-Snapshot nicht als globalen Asset-Zustand interpretieren.
+
+#### Scenario: Content übernimmt Asset-Metadaten als Startwerte
+
+- **WHEN** ein Asset erstmals mit einem Content verknüpft wird
+- **THEN** darf der Content unterstützte globale Metadaten als lokale Startwerte übernehmen
+- **AND** bleiben spätere lokale Änderungen auf diese Verwendung begrenzt
+- **AND** verändert eine lokale Caption- oder Alt-Text-Änderung nicht das globale Asset
+
+#### Scenario: Content-Verwendung wird entfernt
+
+- **WHEN** eine Content-Verwendung entfernt wird
+- **THEN** wird ihre `MediaReference` beim nächsten erfolgreichen Referenz-Replace entfernt
+- **AND** bleibt das Asset selbst erhalten
+
+#### Scenario: Asset besitzt aktive Referenzen
+
+- **WHEN** ein Benutzer ein Asset mit aktiven Content-Referenzen löschen möchte
+- **THEN** greift die bestehende Nutzungstransparenz und Löschsicherung
+- **AND** werden Mainserver-Snapshots nicht als Ersatz für die Studio-Referenzsicherheit behandelt
 

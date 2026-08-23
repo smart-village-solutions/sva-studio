@@ -30,6 +30,8 @@ Das System SHALL Organisationen mit einem kontrollierten Organisationstyp und or
 - **THEN** wird die Policy in der Organisationsrepräsentation persistiert
 - **AND** nachgelagerte Module können diese Policy als organisationsbezogenen Kontext für Autorenschaft und Mainserver-Credential-Auflösung konsumieren
 
+## ADDED Requirements
+
 ### Requirement: Mehrfachzuordnung von Accounts
 
 Das System SHALL Administratoren in der Organisationsansicht eine zugängliche Mehrfachauswahl

@@ -129,19 +129,70 @@ Das Studio SHALL für Verwaltungs- und Listenansichten ein gemeinsames Seiten-Te
 - **AND** der Listeninhalt folgt einem gemeinsamen Layoutgerüst statt einer route-spezifischen Eigenstruktur
 
 ### Requirement: Standardisierte Datentabelle für Verwaltungslisten
-Das Studio SHALL eine wiederverwendbare Datentabelle für Verwaltungslisten bereitstellen, die Auswahl, Sortierung, Toolbar-Aktionen und mobile Darstellung konsistent abbildet.
+
+Das Studio SHALL eine wiederverwendbare Datentabelle für Verwaltungslisten bereitstellen, die Auswahl, Sortierung, Toolbar-Aktionen und mobile Darstellung konsistent abbildet. Die Tabelle MUST ihren Sortiermodus explizit als deaktiviert, clientseitig auf einem vollständigen Datenbestand oder extern kontrolliert deklarieren. Eine bereits paginierte Ergebnismenge darf sie nicht nochmals als vermeintlichen Gesamtbestand sortieren. Externe Sortierung MUST genau ein aktives Feld besitzen, fehlende Werte unabhängig von der Richtung zuletzt einordnen und Gleichstände abschließend mit der eindeutigen Zeilenidentität aufsteigend stabilisieren.
 
 #### Scenario: Tabelle mit Bulk-Aktionen und Sortierung
+
 - **WHEN** eine Studio-Verwaltungsseite tabellarische Daten anzeigt
 - **THEN** enthält die Tabelle optional eine Auswahlspalte als erste Spalte
 - **AND** sortierbare Spaltenköpfe zeigen ihren Sortierzustand zugänglich an
 - **AND** eine Aktionsspalte wird als letzte Spalte gerendert
 - **AND** eine Toolbar oberhalb der Tabelle kann Bulk-Aktionen, Filter und sekundäre Aktionen aufnehmen
 
+#### Scenario: Clientseitige Sortierung erhält den vollständigen gefilterten Datenbestand
+
+- **GIVEN** eine Tabelle verwendet clientseitige Sortierung
+- **WHEN** die Tabelle einen Sortierwechsel verarbeitet
+- **THEN** enthält ihre Datenquelle den vollständigen, durch Berechtigungen und aktuelle Filter definierten Datenbestand
+- **AND** erfolgt eine Pagination erst nach dieser Sortierung
+
+#### Scenario: Extern sortierte Tabelle erhält eine einzelne Seite
+
+- **GIVEN** eine Tabelle erhält nur eine bereits paginierte Ergebnisseite
+- **WHEN** ein Benutzer die Sortierung ändert
+- **THEN** delegiert die Tabelle die Sortierung an den kontrollierten externen Listenvertrag
+- **AND** verändert die Tabellenkomponente die Reihenfolge der empfangenen Seite nicht selbst
+- **AND** beginnt die externe Pagination wieder auf Seite eins
+
+#### Scenario: Externe Sortierung besitzt keinen unsichtbaren Defaultzustand
+
+- **GIVEN** eine paginierte Tabelle verwendet externe Sortierung
+- **WHEN** ein Benutzer den aktiven Sortierkopf wiederholt betätigt
+- **THEN** wechselt die Richtung ausschließlich zwischen aufsteigend und absteigend
+- **AND** bleibt jederzeit genau ein Sortierfeld sichtbar aktiv
+- **AND** entspricht der angezeigte Zustand den an die externe Quelle gesendeten Parametern
+
+#### Scenario: Fehlende und gleiche Sortierwerte bleiben deterministisch
+
+- **GIVEN** eine externe Liste enthält fehlende oder gleiche Werte im aktiven Sortierfeld
+- **WHEN** die vollständige gefilterte Menge aufsteigend oder absteigend sortiert wird
+- **THEN** stehen fehlende Werte in beiden Richtungen am Ende
+- **AND** ersetzt das System fehlende Werte nicht durch ein anderes Fachfeld
+- **AND** ordnet es Gleichstände abschließend nach eindeutiger Zeilenidentität aufsteigend
+
 #### Scenario: Mobile Darstellung einer Verwaltungs-Tabelle
+
 - **WHEN** eine Studio-Verwaltungsseite auf kleinem Viewport geöffnet wird
 - **THEN** wird die Tabelle als mobile Kartenansicht mit denselben Kerndaten und Aktionen nutzbar dargestellt
 - **AND** Auswahl- und Aktionsmuster bleiben funktionsgleich erreichbar
+- **AND** ein vorhandener Sortierzustand entspricht demselben globalen Datenvertrag wie in der Desktop-Darstellung
+- **AND** kann ein Benutzer ein unterstütztes Sortierfeld und dessen Richtung über zugängliche mobile Bedienelemente ändern
+- **AND** verwenden Desktop- und Mobilbedienung denselben kontrollierten Zustand
+
+#### Scenario: Nicht global unterstützte Sortierung wird nicht angeboten
+
+- **GIVEN** eine paginierte Datenquelle kann ein sichtbares Feld nicht auf dem vollständigen gefilterten Datenbestand sortieren
+- **WHEN** die Tabelle diese Ergebnisse darstellt
+- **THEN** bietet sie für dieses Feld keine Sortieraktion an
+- **AND** simuliert sie keine Sortierung ausschließlich auf der aktuell sichtbaren Seite
+
+#### Scenario: Jeder Tabellenaufrufer deklariert seine Sortierownership
+
+- **WHEN** eine App-Route oder ein Plugin die gemeinsame Datentabelle verwendet
+- **THEN** deklariert der Aufrufer explizit deaktivierte, clientseitige oder externe Sortierung
+- **AND** ist clientseitige Sortierung nur für den vollständigen gefilterten Datenbestand zulässig
+- **AND** sind widersprüchliche Kombinationen aus Modus, Spalten, State und Handler typsicher oder durch eine Laufzeitinvariante abgewiesen
 
 ### Requirement: Tabs für mehrere Tabellenbereiche
 Das Studio SHALL bei mehreren gleichrangigen Tabellenbereichen auf einer Seite ein gemeinsames Tabs-Muster verwenden.
@@ -228,4 +279,200 @@ Das Studio SHALL gemeinsame UI-Verträge bereitstellen, mit denen lange seitengr
 - **GIVEN** eine Detailseite übergibt keine Primäraktion
 - **WHEN** das gemeinsame Detailseiten-Template gerendert wird
 - **THEN** erzeugt das Template keine leere untere Aktionsfläche
+
+### Requirement: Die Sidebar gruppiert die Inhaltsnavigation nach lesbarem Datentyp
+
+Die Layout-Shell MUST den Bereich `Inhalte` als zugängliche Navigationsgruppe mit einem Einstieg für alle Inhalte und berechtigungsabhängigen Einstiegen für registrierte Inhaltstypen darstellen.
+
+#### Scenario: Benutzer öffnet die Inhaltsgruppe
+
+- **WENN** ein Benutzer mindestens einen Inhaltstyp lesen darf
+- **DANN** zeigt die Sidebar `Inhalte` als aufklappbare Gruppe
+- **UND** steht `Alle` als erster Unterpunkt zur Verfügung
+- **UND** folgen ausschließlich registrierte Inhaltstypen, deren Read-Action und Modulzuweisung im aktuellen Kontext erfüllt sind
+- **UND** verwenden alle Unterpunkte die kanonische gemeinsame Inhaltsroute `/admin/content`
+
+#### Scenario: Benutzer öffnet einen typbezogenen Unterpunkt
+
+- **WENN** ein Benutzer einen Inhaltstyp-Unterpunkt wie Nachrichten, Veranstaltungen oder POI auswählt
+- **DANN** setzt die Navigation den registrierten `contentType` als `type`-Search-Parameter der gemeinsamen Inhaltsroute
+- **UND** bleibt genau dieser Unterpunkt aktiv
+- **UND** bleibt die Inhaltsgruppe geöffnet
+
+#### Scenario: Alle Inhalte sind aktiv
+
+- **WENN** die Route `/admin/content` keinen gültigen expliziten Typfilter enthält
+- **DANN** ist ausschließlich der Unterpunkt `Alle` aktiv
+- **UND** ist kein typbezogener Unterpunkt fälschlich aktiv
+
+#### Scenario: Typbezogener Editor hält den Navigationskontext
+
+- **WENN** ein Benutzer eine registrierte Erstellungs- oder Detailroute eines Inhaltstyps öffnet
+- **DANN** bleibt die Inhaltsgruppe aktiv und geöffnet
+- **UND** ist der zugehörige Inhaltstyp-Unterpunkt aktiv
+
+#### Scenario: Inhaltsgruppe bleibt responsiv und zugänglich
+
+- **WENN** die Sidebar erweitert, eingeklappt oder als mobiler Drawer dargestellt wird
+- **DANN** bleiben alle sichtbaren Inhalts-Unterpunkte per Tastatur und Screenreader erreichbar
+- **UND** sind Öffnungs- und Auswahlzustand semantisch erkennbar
+- **UND** verursacht die Gruppe kein horizontales Layout-Breaking
+
+### Requirement: Studio-Buttons bilden eine zugängliche Aktionshierarchie ab
+
+Das Studio MUST für neutrale Aktionen die eindeutig benannten Buttonvarianten `primary`, `secondary` und `tertiary` bereitstellen. Primary MUST die wichtigste fachliche Aktion eines Bereichs kennzeichnen, Secondary MUST unterstützende sichtbare Aktionen abbilden und Tertiary MUST nachrangige oder kompakte Aktionen darstellen. Risikobehaftete Aktionen MUST über eine separate `destructive`-Variante erkennbar bleiben.
+
+#### Scenario: Seite zeigt abgestufte Aktionen
+
+- **WENN** eine Studioseite eine primäre, eine unterstützende und eine nachrangige Aktion gemeinsam rendert
+- **DANN** verwendet sie dafür Primary, Secondary und Tertiary
+- **UND** die Varianten bleiben ohne Kenntnis ihrer technischen Implementierungsnamen fachlich unterscheidbar
+- **UND** die Seite erzeugt keine konkurrierende lokale Button-Hierarchie
+
+#### Scenario: Buttonvariante wird ausgelassen
+
+- **WENN** ein Studio-Button keine explizite Variante erhält
+- **DANN** wird er als Primary gerendert
+- **UND** diese Voreinstellung ist im Variantentyp und in automatisierten Tests eindeutig abgesichert
+
+#### Scenario: Aktion ist destruktiv
+
+- **WENN** eine Aktion eine risikobehaftete Wirkung wie Löschen, Deaktivieren oder Entziehen besitzt
+- **DANN** verwendet sie die Destructive-Variante statt einer neutralen Hierarchiestufe
+- **UND** bestehende Bestätigungs-, Berechtigungs- und Fehlerverträge bleiben erhalten
+
+### Requirement: Buttonfarben sind theme-, modus- und zustandsübergreifend kontrastreich
+
+Das Studio MUST Buttonfarben über zentrale semantische Action-State-Tokens für Default- und Forest-Theme sowie Light- und Dark-Mode auflösen. Aktiver Buttontext MUST in Default-, Hover-, Active-, Focus- und Loading-Zustand mindestens 4,5:1 Kontrast gegen seine unmittelbare Fläche erreichen. Fokusindikatoren und relevante nicht-textliche Zustandsinformationen MUST mindestens 3:1 Kontrast gegen angrenzende Farben erreichen.
+
+#### Scenario: Theme oder Modus wechselt
+
+- **WENN** ein Benutzer zwischen Light- und Dark-Mode wechselt oder das Studio Default- beziehungsweise Forest-Theme aktiviert
+- **DANN** lösen Primary, Secondary, Tertiary und Destructive ihre Vordergrund-, Flächen- und Fokusfarben aus demselben semantischen Action-Tokenvertrag auf
+- **UND** jede aktive Textkombination erreicht mindestens 4,5:1 Kontrast
+- **UND** der Forest-Dark-Primary verwendet auf seiner hellen grünen Fläche einen ausreichend kontrastreichen Vordergrund
+
+#### Scenario: Buttonzustand ändert sich
+
+- **WENN** ein Button in Hover, Active, Focus oder Loading wechselt
+- **DANN** verwendet der Zustand eine explizit definierte Tokenkombination
+- **UND** der Zustand hängt nicht von einer transparenten Farbmischung mit dem unbekannten Untergrund ab
+- **UND** die normativen Kontrastschwellen bleiben erfüllt
+
+#### Scenario: Button liegt auf unterschiedlichen Studioflächen
+
+- **WENN** derselbe Button auf Page-, Card-, Dialog- oder Popover-Flächen gerendert wird
+- **DANN** bleiben Text, Zustand und Fokusindikator zugänglich erkennbar
+- **UND** automatisierte Browserprüfungen decken die relevanten Untergründe ab
+
+#### Scenario: Button ist deaktiviert
+
+- **WENN** eine Aktion nicht ausführbar ist und der Button deaktiviert wird
+- **DANN** verwendet er definierte Disabled-Farben statt ausschließlich die gesamte aktive Darstellung pauschal halbtransparent zu machen
+- **UND** der Zustand ist visuell und semantisch als nicht bedienbar erkennbar
+
+### Requirement: Studio-Buttons besitzen zugängliche Zielgrößen und Zustände
+
+Das Studio MUST für Standard-, kompakte und Icon-Buttons eine wirksame Interaktionsfläche von mindestens 44 x 44 Pixel bereitstellen. Reine Icon-Buttons MUST einen zugänglichen Namen besitzen und ihren ergänzenden Tooltip bei Pointer-Hover und Tastaturfokus anzeigen. Lade- und Fokuszustände MUST semantisch und visuell erkennbar sein.
+
+#### Scenario: Benutzer bedient einen Icon-Button
+
+- **WENN** ein Benutzer einen reinen Icon-Button mit Pointer, Touch oder Tastatur erreicht
+- **DANN** beträgt seine wirksame Interaktionsfläche mindestens 44 x 44 Pixel
+- **UND** der Button besitzt einen zugänglichen Namen
+- **UND** sein Tooltip erscheint bei Pointer-Hover und Tastaturfokus
+- **UND** der Tooltip ersetzt den zugänglichen Namen nicht
+
+#### Scenario: Button zeigt einen Ladezustand
+
+- **WENN** eine Buttonaktion läuft
+- **DANN** ist der Button gegen Doppelauslösung gesperrt
+- **UND** stellt er den Ladezustand über `aria-busy` bereit
+- **UND** bleibt sein sichtbarer Text- und Fokuskontrast innerhalb des aktiven Buttonvertrags
+
+#### Scenario: Benutzer navigiert per Tastatur
+
+- **WENN** ein Benutzer einen Button per Tastatur fokussiert und auslöst
+- **DANN** ist ein mindestens 2 Pixel starker Fokusindikator mit mindestens 3:1 Kontrast sichtbar
+- **UND** Hover-, Tooltip- oder Ladeverhalten verursacht keinen Fokusverlust
+
+#### Scenario: Benutzer reduziert Bewegung
+
+- **WENN** das Betriebssystem reduzierte Bewegung anfordert
+- **DANN** verzichtet der Button auf nicht notwendige Zustandsanimationen
+- **UND** alle Zustände bleiben ohne Bewegung erkennbar
+
+### Requirement: Studio-Tabellen unterscheiden Aktionen, Status und anklickbare Informationen konsistent
+
+Das Studio MUST für Tabellen drei gemeinsame Interaktionsmuster bereitstellen: Icon-Aktionen, Status-Badges und anklickbare Informationen. Die Muster MUST in `@sva/studio-ui-react` besessen werden und MUST ihre jeweilige Semantik, sichtbare Zustände und zugängliche Bedienung konsistent abbilden.
+
+#### Scenario: Tabelle zeigt eine Icon-Aktion
+
+- **WENN** eine Tabellenzeile eine Aktion wie Bearbeiten, Duplizieren, Löschen oder Öffnen eines Kalenders anbietet
+- **DANN** verwendet die Aktion ein Icon mit zugänglichem Namen
+- **UND** zeigt sie einen Tooltip bei Pointer-Hover und Tastaturfokus
+- **UND** erhält sie bei Hover einen semantischen Aktionshintergrund
+- **UND** behält sie die wirksame Mindestzielgröße des gemeinsamen Button-Vertrags
+- **UND** wird ihr Tooltip nicht von scrollenden oder abgeschnittenen Tabellencontainern verdeckt
+
+#### Scenario: Icon-Aktion erscheint in einer mobilen Tabellenkarte
+
+- **WENN** eine nicht selbsterklärende Icon-Aktion ohne verlässlichen Hover in der mobilen Kartenansicht erscheint
+- **DANN** erhält sie zusätzlich eine sichtbare Beschriftung
+- **UND** bleibt ihr zugänglicher Name mit der Desktop-Aktion identisch
+- **UND** wird eine fachlich komplexe Aktion nicht allein für visuelle Einheitlichkeit in ein mehrdeutiges Icon umgewandelt
+
+#### Scenario: Tabelle zeigt anklickbare und reine Informationen
+
+- **WENN** eine Zelle eine anklickbare Information neben nicht interaktiven Textzellen enthält
+- **DANN** ist die anklickbare Information bereits im Ruhezustand durch semantische Aktionsfarbe und mindestens mittlere Schriftstärke unterscheidbar
+- **UND** erhält sie bei Hover und Tastaturfokus eine Unterstreichung ohne Hintergrundwechsel
+- **UND** besitzt sie einen sichtbaren Fokuszustand
+- **UND** verwendet sie für Navigation einen Link und für Dialog- oder lokale Aktionen einen Button
+- **UND** bleibt reiner Text ohne interaktive Darstellung und ohne Fokusziel
+
+#### Scenario: Tabelle zeigt einen änderbaren Status
+
+- **WENN** eine Zelle einen fachlichen Status darstellt
+- **DANN** zeigt sie ein beschriftetes semantisches Status-Badge
+- **UND** vermittelt sie den Status nicht ausschließlich durch Farbe
+- **UND** öffnet ein änderbares Status-Badge über einen semantischen Button ein zugängliches Dialogmuster für Auswahl oder Bestätigung
+- **UND** besitzt das änderbare Badge eine sichtbare Bearbeitungsaffordance
+- **UND** schließt der Dialog nach einer Mutation nur bei Erfolg
+- **UND** bleibt er bei einem Fehler mit verständlicher Fehlermeldung und nächstem Schritt geöffnet
+- **UND** bleibt ein nicht änderbarer Status ohne irreführende Interaktivität sichtbar
+
+#### Scenario: Primäre Zeilenidentität und Aktionsspalte führen zum selben Ziel
+
+- **WENN** eine primäre anklickbare Information bereits das vorhandene Öffnen- oder Bearbeitungsziel einer Zeile anbietet
+- **DANN** rendert die Aktionsspalte kein redundantes Icon für dasselbe Ziel
+- **UND** bleiben eigenständige Aktionen mit abweichender Wirkung separat erreichbar
+
+#### Scenario: Tabelle zeigt Beziehungen oder Metadaten
+
+- **WENN** eine Zelle eine Beziehung oder Information wie Tour, Fraktion, Abholort oder Verschiebung darstellt
+- **DANN** verwendet sie das Informationsmuster statt eines Status-Badges
+- **UND** bleibt die fachliche Unterscheidung zwischen Zustand und Beziehung visuell eindeutig
+
+### Requirement: Studio-Tabellen richten Body-Zellen einheitlich oben aus
+
+Das Studio MUST alle Tabellen-Body-Zellen bei einheitlichem vertikalem Zell-Padding oben ausrichten. Controls MUST innerhalb ihrer eigenen Trefferfläche zentriert bleiben, ohne die Ausrichtung der umgebenden Zelle zu verändern.
+
+#### Scenario: Zeile enthält unterschiedlich hohe Inhalte
+
+- **WENN** eine Tabellenzeile einzeilige Werte, mehrzeilige Informationen, einen Status oder eine Aktionsgruppe enthält
+- **DANN** beginnen alle Body-Zellen an derselben oberen Leselinie
+- **UND** verwendet keine einzelne Body-Zelle aufgrund ihres Inhaltstyps eine abweichende vertikale Ausrichtung
+
+#### Scenario: Oben ausgerichtete Zelle enthält ein Control
+
+- **WENN** eine oben ausgerichtete Body-Zelle einen Button, ein Badge, eine Checkbox oder ein anderes Control enthält
+- **DANN** bleibt das Control innerhalb seiner eigenen Trefferfläche zentriert
+- **UND** bleibt die Trefferfläche als Ganzes an der oberen Zellkante ausgerichtet
+
+#### Scenario: Tabelle rendert einen Tabellenkopf
+
+- **WENN** eine Tabelle ihre Spaltenköpfe in einer festen Kopfhöhe rendert
+- **DANN** dürfen die Inhalte der Kopfzellen innerhalb dieser Höhe mittig ausgerichtet werden
+- **UND** ändert dies nicht den Top-Ausrichtungsstandard der Body-Zellen
 

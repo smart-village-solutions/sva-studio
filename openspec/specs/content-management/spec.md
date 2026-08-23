@@ -104,6 +104,46 @@ Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über def
 - **UND** diese Core-Felder bleiben unabhängig vom konkreten Inhaltstyp verfügbar
 - **UND** `ownerUserId` und `ownerOrganizationId` steuern IAM-Zugriff, nicht sichtbare Autorenanzeige
 
+#### Scenario: SDK erweitert einen speziellen Inhaltstyp
+
+- **WENN** für einen registrierten `contentType` eine SDK-Erweiterung vorhanden ist
+- **DANN** kann diese zusätzliche Validierung, UI-Bereiche, Tabelleninformationen oder Aktionen bereitstellen
+- **UND** der Core-Vertrag des Inhalts bleibt unverändert gültig
+
+#### Scenario: Plugin überschreibt den Core-Vertrag nicht
+
+- **WENN** ein Plugin oder SDK-Modul einen speziellen Inhaltstyp registriert
+- **DANN** darf es die Bedeutung oder Pflichtigkeit der Core-Felder nicht brechen
+- **UND** Statusmodell, Historie und Core-Metadaten bleiben systemweit konsistent
+
+#### Scenario: Inhalte binden Bibliotheksmedien referenzbasiert an
+
+- **WENN** ein Inhalt ein Asset aus der zentralen Medienbibliothek verwendet
+- **DANN** speichert Studio eine `MediaReference` mit Asset, fachlicher Rolle, Ziel und Reihenfolge
+- **UND** der Plugin-Vertrag erhält keine MinIO-Bucket-Namen, Object-Keys oder presigned URLs
+- **UND** ein externer Mainserver-Vertrag darf parallel einen kompatiblen URL-/Metadaten-Snapshot erhalten
+
+#### Scenario: Plugin nutzt hostseitigen Media-Picker
+
+- **WENN** ein Plugin ein Bibliotheksmedium für einen Inhalt oder ein Fachobjekt auswählen lässt
+- **DANN** verwendet es den hostseitigen Media-Picker oder dessen SDK-Vertrag
+- **UND** das Plugin deklariert erlaubte Medienrollen und Medientypen
+- **UND** es erhält keine direkte Storage-Schnittstelle
+
+#### Scenario: Mainserver benötigt weiterhin URL-basierte Medienfelder
+
+- **WENN** die externe Mainserver-GraphQL-API ein Bild über `imageUrl`, `sourceUrl`, `mediaContents` oder ein analoges URL-basiertes Feld erwartet
+- **DANN** persistiert der Plugin-Adapter einen kontrollierten Snapshot aus dauerhafter Auslieferungs-URL und unterstützten contentbezogenen Metadaten
+- **UND** speichert Studio für eine Bibliotheksverwendung parallel die zugehörige `MediaReference`
+- **UND** eine kurzlebige, presigned oder anderweitig nicht dauerhaft geeignete URL wird nicht als Content-Snapshot gespeichert
+
+#### Scenario: Manuelle URL bleibt als eigenständige Mainserver-Verwendung verfügbar
+
+- **WENN** ein Redakteur ein Bild ausschließlich über eine manuelle URL anlegt
+- **DANN** speichert der Plugin-Adapter diese URL im bestehenden Mainserver-Fachvertrag
+- **UND** erzeugt Studio dafür weder ein `MediaAsset` noch eine `MediaReference`
+- **UND** stellt die Oberfläche die manuelle Verwendung nicht als Bibliotheksverknüpfung dar
+
 ### Requirement: Lokaler Migrationspfad für das Inhaltsmodell ist verifiziert
 
 Das System MUST Schemaänderungen für die Inhaltsverwaltung so ausliefern, dass die zugehörigen Datenbankmigrationen lokal reproduzierbar ausgeführt und verifiziert werden können.
@@ -710,24 +750,22 @@ The News plugin SHALL NOT store Mainserver fields with dedicated GraphQL argumen
 
 ### Requirement: News ContentBlocks Are The Leading Content Model
 
-The News plugin SHALL treat `contentBlocks` as the leading News content model.
-
-Existing payload-only News SHALL remain readable by mapping legacy payload values into a virtual content block on load. Saves SHALL write `contentBlocks` and SHALL NOT write payload.
+The News plugin SHALL treat `contentBlocks` as the leading and exclusive News text model. It SHALL model introductions and bodies only as `contentBlocks[].intro` and `contentBlocks[].body`. It SHALL NOT expose `payload.teaser` or `payload.body` as part of the News contract and SHALL NOT derive a virtual content block from legacy payload values. Saves SHALL write `contentBlocks` and SHALL NOT write payload. The editor SHALL label and model the introduction as a content-block introduction.
 
 #### Scenario: Legacy payload-only News is loaded
 
-- **GIVEN** an existing Mainserver News item has no `contentBlocks` but contains legacy payload body data
+- **GIVEN** an existing Mainserver News item has no `contentBlocks` but contains legacy `payload.teaser` or `payload.body` data
 - **WHEN** the editor loads the item
-- **THEN** the editor shows a content block derived from the legacy payload
-- **AND** the next save writes the block through `contentBlocks`
-- **AND** the next save does not write payload
+- **THEN** the editor keeps the content-block list empty
+- **AND** the editor does not derive an introduction or body from the legacy payload
 
 #### Scenario: User edits multiple content blocks
 
-- **GIVEN** the user edits multiple content blocks with media URL references
+- **GIVEN** the user edits multiple content blocks with introductions, bodies, and media URL references
 - **WHEN** the item is saved
 - **THEN** the host sends the complete `contentBlocks` list as the new Mainserver state
 - **AND** individual block IDs are not required because `ContentBlockInput` does not expose IDs
+- **AND** the host does not send payload or a root-level teaser field
 
 ### Requirement: News Read-only Metadata Is Visible Or Documented
 
@@ -1467,3 +1505,806 @@ Das System SHALL bestehende freie GraphQL-`author`-Werte bei Updates serverseiti
 - **WHEN** das Studio einen neuen Mainserver-Inhalt erstellt
 - **THEN** setzt es keinen freien GraphQL-`author`-Wert
 - **AND** verwendet es den bestätigten DataProvider als ursprünglichen Inhaber und sichtbaren Autor
+
+### Requirement: Cockpit Cards sind eigenständige GenericItem-Fachinhalte
+
+Das System MUST Cockpit Cards als eigenständigen Content-Type `cockpit-cards.cockpit-card` bereitstellen und als GenericItem mit `genericType` gleich `COCKPIT_CARD` speichern. Die gemeinsame Inhaltsübersicht MUST Cockpit Cards ausschließlich als diesen Fachtyp darstellen.
+
+#### Scenario: Cockpit Card wird angelegt
+
+- **WHEN** ein Benutzer mit `cockpit-cards.create` eine Cockpit Card anlegt
+- **THEN** zeigt das System ausschließlich die fachlich erlaubten Felder
+- **AND** speichert den Datensatz mit `genericType` gleich `COCKPIT_CARD`
+- **AND** projiziert ihn als `cockpit-cards.cockpit-card`
+
+#### Scenario: Cockpit Card erscheint nicht doppelt
+
+- **GIVEN** ein GenericItem mit `genericType` gleich `COCKPIT_CARD`
+- **WHEN** die Inhaltsprojektion aktualisiert wird
+- **THEN** erscheint es als `cockpit-cards.cockpit-card`
+- **AND** nicht zusätzlich als `generic-items.generic-item`
+
+### Requirement: Cockpit Cards besitzen ein begrenztes Fachmodell
+
+Das System MUST Überschrift, optionalen Nur-Text, optionalen Sprachcode, genau eine bestehende Kategorie, null oder mehr Bilder, höchstens einen HTTPS-Link mit optionalem Linktext und Öffnungsverhalten, Sortiergewicht, Sichtbarkeit und Veröffentlichungszeitpunkt bearbeiten. Ausschließlich Überschrift und Kategorie MUST fachliche Pflichtfelder sein. Andere GenericItem-Bereiche und technische Herkunftsfelder MUST verborgen bleiben.
+
+#### Scenario: Cockpit Card mit optionalen Inhalten wird gespeichert
+
+- **WHEN** ein Benutzer Überschrift und Kategorie sowie optional Text, Sprache, gültige Bilder und einen HTTPS-Link speichert
+- **THEN** persistiert das System Überschrift in `title`, Kategorie in `categories`, vorhandenen Text als alleinigen Content-Block, Bilder in `mediaContents`, den Link in `webUrls[0].url`, den Linktext in `webUrls[0].description` und das Öffnungsverhalten in `payload.openInNewTab`
+- **AND** erhält es `externalId`, unbekannte bestehende Payload-Schlüssel und unterstützte Medienmetadaten
+
+#### Scenario: Öffnungsverhalten ohne Link wird normalisiert
+
+- **WHEN** ein Benutzer keinen Link speichert
+- **THEN** speichert das System keine `webUrls`
+- **AND** normalisiert `payload.openInNewTab` auf `false`
+
+#### Scenario: Ungültige Kardinalität wird abgewiesen
+
+- **WHEN** keine oder mehrere Kategorien oder mehrere Links übermittelt werden
+- **THEN** weist das System die Speicherung feldbezogen ab
+- **AND** verändert keinen bestehenden Datensatz
+
+#### Scenario: Optionale Inhalte bleiben leer
+
+- **WHEN** weder Text noch Sprache noch Bilder übermittelt werden
+- **THEN** speichert das System die Cockpit Card ohne Content-Block und ohne Medien
+- **AND** überlässt die sprachliche Standardabbildung dem konsumierenden Frontend
+
+#### Scenario: Fachfremde Inhalte werden abgewiesen
+
+- **WHEN** HTML-Text, Nicht-Bild-Medien, ein Nicht-HTTPS-Link, Kontakte oder Orte übermittelt werden
+- **THEN** weist das System die Speicherung ab
+- **AND** führt keine Mainserver-Mutation aus
+
+### Requirement: Text und Bilder teilen den Inhalts-Tab
+
+Das System MUST für gespeicherte Kacheln die Tabs `Basis`, `Inhalt`, `Einstellungen` und `Historie` anbieten. `Basis` MUST Überschrift, Sprachcode und Kategorie enthalten. `Inhalt` MUST Text und Bilder gemeinsam enthalten. `Einstellungen` MUST Link, Linktext, Öffnungsverhalten und Publikationsmetadaten enthalten.
+
+#### Scenario: Inhalt wird gemeinsam bearbeitet
+
+- **WHEN** ein Benutzer den Tab `Inhalt` öffnet
+- **THEN** kann er dort den Text bearbeiten
+- **AND** Bilder auswählen, hochladen, sortieren und entfernen
+- **AND** den Alternativtext in Vorschaukarten und als einziges Medienmetadatum im gemeinsamen Medienauswahldialog bearbeiten
+- **AND** gibt es keinen separaten Medien-Tab
+
+#### Scenario: Neue Cockpit Card besitzt noch keine Historie
+
+- **WHEN** ein Benutzer eine Cockpit Card anlegt
+- **THEN** zeigt das System `Basis`, `Inhalt` und `Einstellungen`
+- **AND** keinen Historie-Tab vor dem ersten Speichern
+
+### Requirement: Die gemeinsame Inhaltsübersicht bietet kanonische Typ-Schnellfilter
+
+Das System MUST häufig verwendete Inhaltstypen in der gemeinsamen Inhaltsübersicht direkt filterbar machen, ohne eine zweite Listenquelle oder typspezifische Paralleltabelle einzuführen.
+
+#### Scenario: Redaktion filtert schnell nach Nachrichten
+
+- **WENN** ein Benutzer Nachrichten lesen darf und den Schnellfilter `Nachrichten` auswählt
+- **DANN** navigiert die gemeinsame Inhaltsübersicht auf `/admin/content` mit dem registrierten Nachrichten-`contentType` als `type`-Search-Parameter
+- **UND** die führende serverseitige Listenquelle filtert den Gesamtbestand vor Pagination nach diesem Typ
+- **UND** die aktuelle Seite wird auf `1` zurückgesetzt
+- **UND** Statusfilter, Sortierung und Seitengröße bleiben erhalten
+
+#### Scenario: Redaktion filtert schnell nach Veranstaltungen
+
+- **WENN** ein Benutzer Veranstaltungen lesen darf und den Schnellfilter `Veranstaltungen` auswählt
+- **DANN** verwendet die gemeinsame Inhaltsübersicht denselben kanonischen `type`-Search-Parameter und dieselbe führende serverseitige Listenquelle
+- **UND** es wird keine separate Veranstaltungs-Liste geladen
+
+#### Scenario: Redaktion kehrt zu allen Inhalten zurück
+
+- **WENN** ein Benutzer den Schnellfilter `Alle` auswählt
+- **DANN** entfernt die Inhaltsübersicht den expliziten Typfilter aus der kanonischen URL
+- **UND** zeigt sie alle im aktuellen Kontext lesbaren Inhaltstypen
+
+#### Scenario: Weitere Inhaltstypen bleiben im Dropdown erreichbar
+
+- **WENN** ein Benutzer weitere lesbare Inhaltstypen wie POI, Umfragen, Generische Inhalte, FAQ, Kacheln oder Projekte besitzt
+- **DANN** bietet das Typ-Dropdown diese Typen an
+- **UND** enthält das Dropdown Nachrichten und Veranstaltungen nicht zusätzlich zu deren Schnellfiltern
+- **UND** ein Wechsel auf einen weiteren Typ setzt die Seite auf `1` zurück und erhält Statusfilter, Sortierung und Seitengröße
+
+#### Scenario: Nicht lesbarer Schnellfilter bleibt verborgen
+
+- **WENN** dem Benutzer die typbezogene Read-Action für Nachrichten oder Veranstaltungen fehlt
+- **DANN** zeigt die Inhaltsübersicht den entsprechenden Schnellfilter nicht an
+- **UND** ein gespeicherter oder manuell gesetzter Typfilter erweitert die serverseitigen Leserechte nicht
+
+### Requirement: News-Editor unterstützt Push-Ziele nach Abholort
+
+Der News-Editor MUST berechtigten Redakteuren erlauben, Ziel-Abholorte unabhängig von der öffentlichen Sichtbarkeit einer Nachricht zu verwalten.
+
+#### Scenario: Redaktion wählt gezielte Empfänger
+
+- **WHEN** die Redaktion aktive Abholorte im Zielgruppen-Overlay auswählt und die Auswahl übernimmt
+- **THEN** zeigt der Zielgruppenbereich den deduplizierten gezielten Modus und die ausgewählten Adressen
+- **AND** gehen vorherige Auswahlen durch Filtern oder Seitenwechsel nicht verloren
+
+#### Scenario: Redaktion schränkt eine vorgemerkte Auswahl ein
+
+- **GIVEN** die Redaktion hat mehrere Filtertreffer vorgemerkt
+- **WHEN** sie den Filter weiter einschränkt
+- **THEN** zeigt und zählt der Editor nur die Schnittmenge aus vorgemerkter Auswahl und aktuellen Treffern
+- **AND** erscheinen die zuvor vorgemerkten Treffer beim erneuten Erweitern des Filters wieder als ausgewählt
+- **AND** entfernt ein manuelles Abwählen den Treffer dauerhaft aus der vorgemerkten Auswahl
+
+#### Scenario: Redaktion übernimmt eine gefilterte Auswahl
+
+- **GIVEN** ein Filter blendet einen Teil der vorgemerkten gültigen Ziele aus
+- **WHEN** die Redaktion die Auswahl übernimmt
+- **THEN** ersetzt nur die wirksame Schnittmenge die bisherigen gültigen Zielschlüssel
+- **AND** bleiben vorhandene nicht auflösbare Zielschlüssel erhalten, bis die Redaktion sie ausdrücklich entfernt
+
+#### Scenario: Vorhandenes Ziel kann nicht aufgelöst werden
+
+- **WHEN** ein vorhandener Abholortschlüssel nicht mehr anhand der aktuellen Waste-Stammdaten aufgelöst werden kann
+- **THEN** erhält der Editor den Schlüssel und kennzeichnet ihn als veraltet, bis die Redaktion ihn ausdrücklich entfernt
+
+#### Scenario: Waste-Daten sind nicht verfügbar
+
+- **WHEN** der Redaktion der Zugriff auf Waste-Stammdaten fehlt
+- **THEN** wird der Zielgruppenbereich ausgeblendet
+- **AND** bleiben vorhandene Zielschlüssel beim Speichern anderer Nachrichtenfelder erhalten
+
+#### Scenario: Waste-Daten können nicht geladen werden
+
+- **WHEN** eine berechtigte Redaktion die Zielauswahl öffnet und die Waste-Stammdaten nicht geladen werden können
+- **THEN** bleibt der Zielgruppenbereich sichtbar und zeigt einen verständlichen Fehlerzustand
+- **AND** kann die Redaktion den Ladevorgang erneut auslösen
+- **AND** bleiben vorhandene Zielschlüssel unverändert
+
+#### Scenario: Push wurde bereits zugestellt
+
+- **WHEN** eine Nachricht einen bestätigten Zustellzeitpunkt besitzt
+- **THEN** zeigt der Zielgruppenbereich die gespeicherten Empfänger schreibgeschützt
+- **AND** kann die Redaktion Ziele weder hinzufügen noch entfernen
+
+#### Scenario: Filterergebnis ändert sich
+
+- **WHEN** Suche, Hierarchiefilter oder Seite im Zielauswahldialog geändert werden
+- **THEN** kündigt der Editor die aktualisierte Treffer- und Seiteninformation über eine Live-Region an
+
+### Requirement: Globaler Nachrichten-Push erfordert ausdrückliche Bestätigung
+
+Der News-Editor MUST eine ausdrückliche Bestätigung verlangen, wenn der aktuelle Speichervorgang eine Push-Benachrichtigung ohne Abholortziele auslöst.
+
+#### Scenario: Redaktion bestätigt globalen Push
+
+- **WHEN** Push aktiviert ist, kein Ziel ausgewählt wurde und die Redaktion einen Speichervorgang ausführt, der die Push-Zustellung auslöst
+- **THEN** fragt das Studio vor dem Senden der Mutation nach einer Bestätigung
+- **AND** weist die Bestätigung bei verfügbarer Zielgruppenauswahl darauf hin, dass keine Abholorte ausgewählt sind
+- **AND** suggeriert die Bestätigung keine auswählbare Zielliste, wenn der Redaktion der Waste-Zugriff fehlt
+- **AND** weist die Bestätigung bei einem Ladefehler auf nicht verfügbare Abholortdaten hin
+
+### Requirement: Generische Inhalte bilden alle Mainserver-GenericItems ab
+
+Das System MUST im Generic-Items-Modul alle Mainserver-Datensätze vom Typ `GenericItem` unabhängig von ihrem `genericType` anzeigen und über den generischen Editor bearbeitbar machen. Dies MUST bekannte Fachtypen wie `FeaturedProject`, `FAQ` und `COCKPIT_CARD` sowie unbekannte oder zukünftige Diskriminatoren einschließen.
+
+#### Scenario: Fachlich spezialisierter Datensatz wird generisch geöffnet
+
+- **GIVEN** ein Mainserver-GenericItem besitzt `genericType` gleich `FAQ`, `COCKPIT_CARD` oder `FeaturedProject`
+- **AND** der Benutzer besitzt die erforderliche `generic-items.read`-Berechtigung
+- **WHEN** er das Generic-Items-Modul öffnet
+- **THEN** erscheint der Datensatz in der generischen Liste
+- **AND** lässt sich über die generische Detailansicht öffnen
+
+#### Scenario: Unbekannter Diskriminator bleibt generisch nutzbar
+
+- **GIVEN** ein Mainserver-GenericItem besitzt einen dem Studio unbekannten `genericType`
+- **WHEN** ein berechtigter Benutzer es generisch liest oder bearbeitet
+- **THEN** filtert das System den Datensatz nicht aufgrund seines Diskriminators aus
+- **AND** erhält es nicht bearbeitete GenericItem-Felder und unbekannte Payload-Schlüssel
+
+#### Scenario: Generischer und fachlicher Zugriff bestehen gleichzeitig
+
+- **GIVEN** ein Benutzer besitzt sowohl generische als auch passende fachliche Leserechte
+- **WHEN** die gemeinsame Inhaltsübersicht die autorisierten Projektionen lädt
+- **THEN** darf derselbe Mainserver-Datensatz als generischer und als fachlicher Inhalt erscheinen
+- **AND** bleiben beide Repräsentationen anhand ihres Content-Types unterscheidbar
+
+### Requirement: News Content Is Optional
+
+Das System MUST Nachrichten ohne redaktionellen Inhalt speichern können. `contentBlocks` MUST fehlen, `null`, leer oder ohne sichtbaren Body-Text sein dürfen. Wenn Inhaltsblöcke übermittelt werden, MUST das System deren Struktur, Medien-URLs und Längengrenzen weiterhin validieren.
+
+#### Scenario: Nachricht ohne Inhaltsblöcke wird gespeichert
+
+- **WENN** ein berechtigter Benutzer eine ansonsten gültige Nachricht ohne `contentBlocks` speichert
+- **DANN** akzeptiert die serverseitige News-Route die Nachricht
+- **UND** sendet keinen synthetischen Inhalt an den Mainserver
+
+#### Scenario: Nachricht mit leerem Inhalt wird gespeichert
+
+- **WENN** ein berechtigter Benutzer eine ansonsten gültige Nachricht mit `contentBlocks: []` oder einem Inhaltsblock ohne sichtbaren Body-Text speichert
+- **DANN** akzeptiert die serverseitige News-Route die Nachricht
+- **UND** erhält die ausdrücklich übermittelte Inhaltsstruktur
+
+#### Scenario: Übermittelter Nachrichteninhalt bleibt geschützt
+
+- **WENN** eine Nachricht fehlerhaft strukturierte Inhaltsblöcke, unsichere Medien-URLs oder einen Body oberhalb der Längengrenze enthält
+- **DANN** lehnt die serverseitige News-Route die Nachricht vor dem GraphQL-Aufruf ab
+
+### Requirement: Lokale Content-Bilder bleiben bis zum Speichern ein Browser-Entwurf
+
+Das System MUST eine im Content-Editor lokal ausgewählte Bilddatei bis zum ausgelösten Content-Speichern ausschließlich als transienten Browser-Entwurf behandeln. Der Entwurf MUST Vorschau und contentbezogene Metadaten ermöglichen, darf aber weder ein `MediaAsset`, eine `MediaReference` noch einen persistierbaren Medienwert erzeugen.
+
+#### Scenario: Lokale Datei wird als Vorschau ausgewählt
+
+- **WENN** ein berechtigter Redakteur in einem unterstützten Content-Editor eine gültige lokale Bilddatei auswählt
+- **DANN** zeigt der gemeinsame Bildblock unmittelbar eine lokale Vorschau
+- **UND** hält er Datei, Vorschau und noch nicht gespeicherte Metadaten ausschließlich im Browser-Entwurf
+- **UND** ruft die Auswahl keinen Media-Upload-, Asset-Create- oder Reference-Endpunkt auf
+- **UND** kennzeichnet die Oberfläche das Bild barrierefrei als noch nicht gespeichert
+
+#### Scenario: Lokale Auswahl wird vor dem Speichern verworfen
+
+- **WENN** der Redakteur die lokale Bildverwendung entfernt, den Dialog abbricht oder die Seite ohne Speichern verlässt
+- **DANN** gibt das System die lokale Vorschau und Dateireferenz frei
+- **UND** entsteht weder ein Medienobjekt in der Mediathek noch eine Content-Verwendung oder `MediaReference`
+
+#### Scenario: Content-Validierung schlägt vor dem Upload fehl
+
+- **WENN** ein Content mit lokaler Bildverwendung die clientseitige Formularvalidierung nicht besteht
+- **DANN** startet das System keinen Upload und keine Content-Media-Save-Operation
+- **UND** bleibt der lokale Entwurf für die Korrektur erhalten
+
+#### Scenario: Bereits vorhandenes Bibliotheksasset wird ausgewählt
+
+- **WENN** der Redakteur statt einer lokalen Datei ein bestehendes Asset aus der Mediathek auswählt
+- **DANN** übernimmt der Editor weiterhin nur dessen Referenz und persistierbaren Content-Snapshot in den Formularentwurf
+- **UND** lädt er die Datei nicht erneut hoch
+- **UND** wird die Referenz erst mit dem Content-Speichern übernommen
+
+### Requirement: Content-Speicherung löst lokale Medien kontrolliert auf
+
+Das System MUST lokale Bildentwürfe erst innerhalb eines gemeinsamen Content-Speichervorgangs hochladen, in persistierbare Verwendungen auflösen und mit dem gespeicherten Content verknüpfen. Der Speichervorgang MUST bestätigte Mainserver- und Studio-Zustände unterscheiden und wiederholbar behandeln.
+
+#### Scenario: Content mit lokalen Bildern wird vollständig gespeichert
+
+- **WENN** ein gültiger Content-Entwurf mit einer oder mehreren lokalen Bilddateien gespeichert wird
+- **DANN** lädt das System die Dateien als provisorische Assets hoch
+- **UND** baut es den Mainserver-Payload erst aus den erfolgreich aufgelösten dauerhaften Asset-URLs
+- **UND** speichert es den Mainserver-Content
+- **UND** ersetzt es anschließend den vollständigen Studio-Referenzsatz und aktiviert die verwendeten neuen Assets
+- **UND** meldet es erst danach einen vollständigen Speichererfolg
+
+#### Scenario: Content-Speicherung schlägt eindeutig fehl
+
+- **WENN** Uploads erfolgreich waren, der Mainserver die Content-Speicherung aber eindeutig ablehnt
+- **DANN** bleibt kein neues Asset in Mediathek, Suche oder Picker sichtbar
+- **UND** verwirft das System die provisorischen Assets über den idempotenten Operations-Cleanup
+- **UND** bleibt der lokale Browser-Entwurf für einen erneuten Speicherversuch erhalten
+
+#### Scenario: Mainserver-Erfolg und Referenzabschluss laufen auseinander
+
+- **WENN** der Mainserver-Content bestätigt gespeichert wurde, aber Reference-Replace oder Asset-Aktivierung fehlschlägt
+- **DANN** löscht das System die provisorischen Assets nicht
+- **UND** hält es Ziel-ID, gewünschten Referenzsatz und Operationszustand für eine idempotente Wiederholung fest
+- **UND** zeigt die Oberfläche einen unterscheidbaren Teilfehler
+- **UND** wiederholt ein Retry den Mainserver-Write nicht
+
+#### Scenario: Ergebnis der Content-Speicherung ist technisch unklar
+
+- **WENN** das System nicht sicher feststellen kann, ob die Mainserver-Mutation erfolgreich war
+- **DANN** behauptet es weder vollständigen Erfolg noch sicheren Fehlschlag
+- **UND** löscht es die verborgenen provisorischen Assets nicht automatisch
+- **UND** markiert es die Operation als reconciliation-pflichtig
+- **UND** bietet es eine sichere Statusprüfung oder Wiederaufnahme an
+
+### Requirement: Alle bildfähigen Content-Editoren teilen denselben Medien-Speicherlebenszyklus
+
+Das System MUST News, Events, POI, Generic Items, Projects und Cockpit Cards über denselben lokalen Draft-, Upload-, Commit-, Abandon- und Recovery-Vertrag anbinden. Plugins dürfen keinen abweichenden eigenen Uploadzeitpunkt oder Cleanup-Lebenszyklus einführen.
+
+#### Scenario: Unterstützte Plugins verwenden den gemeinsamen Ablauf
+
+- **WENN** ein unterstützter Content-Typ lokale Bilder auswählt oder speichert
+- **DANN** verwendet sein Editor den gemeinsamen Overlay- und Save-Orchestrator
+- **UND** beschränkt sich der Plugin-Adapter auf fachliche Validierung, Mainserver-Mapping und Zusatzfelder
+- **UND** bleiben Reihenfolge, unbekannte Fachfelder und bestehende URL-/Metadaten-Snapshots beim Roundtrip erhalten
+
+#### Scenario: Content-Save zeigt phasengenaues Feedback
+
+- **WENN** ein Speichervorgang lokale Bilder verarbeitet
+- **DANN** unterscheidet die Oberfläche Upload, Content-Speicherung, Medienverknüpfung, Cleanup und unklaren Ausgang textuell
+- **UND** verhindert sie konkurrierendes Speichern, Entfernen oder Umsortieren während der laufenden Operation
+- **UND** bleiben Fokusführung und Statusmeldungen barrierefrei nachvollziehbar
+
+### Requirement: Inhaltslisten-Sortierung gilt für den vollständigen verfügbaren Trefferbestand
+
+Das System MUST die Sortierung der paginierten Inhaltsübersicht serverseitig auf den vollständigen, durch Berechtigungen und aktuelle Filter definierten verfügbaren Trefferbestand anwenden und erst danach die angeforderte Seite bilden. Es MUST dafür ausschließlich die sichtbaren Felder `title`, `createdAt`, `updatedAt` und `publishedAt` unterstützen und standardmäßig `updatedAt desc` verwenden.
+
+#### Scenario: Inhaltsübersicht erhält eine serverseitig sortierte Seite
+
+- **GIVEN** die aktuellen Inhaltsfilter ergeben mehr Treffer als auf eine Seite passen
+- **WHEN** ein Benutzer ein unterstütztes Sortierfeld auswählt
+- **THEN** wendet die führende serverseitige Listenquelle Filterung und Sortierung vor der Pagination an
+- **AND** liefert sie nur die angeforderte Ergebnisseite an den Browser
+- **AND** sortiert die gemeinsame Tabellenkomponente diese Seite nicht nochmals lokal
+
+#### Scenario: Zuletzt bearbeitete Inhalte stehen standardmäßig zuerst
+
+- **GIVEN** die Inhaltsübersicht wird ohne gültigen expliziten Sortierwert geöffnet
+- **WHEN** das System die erste Seite lädt
+- **THEN** sortiert die führende Listenquelle den vollständigen gefilterten Bestand nach `updatedAt desc`
+- **AND** zeigt der Tabellenkopf diesen Default aktiv an
+
+#### Scenario: Erstellung und Veröffentlichung werden vollständig serverseitig sortiert
+
+- **GIVEN** die aktuellen Inhaltsfilter ergeben mehr Treffer als auf eine Seite passen
+- **WHEN** ein Benutzer `createdAt` oder `publishedAt` auswählt
+- **THEN** führen sowohl der native Inhalts- als auch der Projektionspfad das gewählte Feld und die Richtung aus
+- **AND** stehen Inhalte ohne `publishedAt` unabhängig von der Richtung am Ende
+- **AND** stabilisiert `ID asc` gleiche Zeitwerte
+
+#### Scenario: Übersetzte Typ- und Statuswerte täuschen keine alphabetische Sortierung vor
+
+- **WHEN** die Inhaltsübersicht lokalisierte Inhaltstypen und Statuswerte anzeigt
+- **THEN** bieten die Spalten Inhaltstyp und Status keine Sortieraktion an
+- **AND** sortiert das System sie nicht nach ihren abweichenden technischen Werten
+
+#### Scenario: Ungültige Sortierparameter werden nicht still umgedeutet
+
+- **GIVEN** ein direkter API-Request enthält ein unbekanntes Sortierfeld oder eine unbekannte Richtung
+- **WHEN** der Inhaltsendpunkt den Request validiert
+- **THEN** antwortet er mit `400 invalid_request`
+- **AND** wechselt er nicht still auf `updatedAt desc`
+
+#### Scenario: Partieller Snapshot begrenzt den verfügbaren Trefferbestand
+
+- **GIVEN** die Inhaltsprojektion ist für mindestens einen angefragten Typ noch partiell
+- **WHEN** die Inhaltsübersicht gefiltert und sortiert wird
+- **THEN** gilt der vollständige Sortierumfang für alle aktuell autorisiert verfügbaren Projektionszeilen
+- **AND** bleibt die bestehende Kennzeichnung erhalten, dass Filterung, Sortierung und Gesamtzahl bis zur vollständigen Reconciliation vorläufig sind
+
+### Requirement: Lokale Content-Projektionen bleiben austauschbare Mainserver-Caches
+
+Das Content-Management MUST lokale Listenprojektionen Mainserver-basierter Inhalte als vollständig rekonstruierbare, account- und credential-scope-isolierte Caches behandeln. Ein fehlender Content-Core, eine fehlende External-Content-Reference oder eine fehlende Studio-History darf einen vom Mainserver gelieferten und durch IAM autorisierten Inhalt nicht dauerhaft aus der Fachliste oder Detailansicht entfernen.
+
+#### Scenario: Vollständige Reconciliation entdeckt externen Inhalt
+
+- **GIVEN** ein Inhalt wurde außerhalb des Studios im Mainserver angelegt
+- **WHEN** die vollständige typisierte Reconciliation den Inhalt liest
+- **THEN** materialisiert oder aktualisiert sie dessen lokale Listenprojektion
+- **AND** erfindet keinen lokalen fachlichen Lifecycle, Autor oder Owner
+
+### Requirement: History beschreibt ausschließlich beobachtete Studio-Mutationen
+
+Das Content-Management MUST Mainserver-Inhalte auch ohne lokale History anzeigen und bearbeiten können. Die History-API MUST ihre Abdeckung als `coverage = studio_mutations` ausweisen und darf externe Mainserver-Änderungen ohne bestätigten Event-Vertrag nicht als vollständig historisiert darstellen.
+
+#### Scenario: Extern erzeugter Inhalt besitzt keine Studio-History
+
+- **GIVEN** ein Mainserver-Inhalt wurde außerhalb des Studios erzeugt und nie im Studio mutiert
+- **WHEN** ein autorisierter Benutzer dessen Detailansicht öffnet
+- **THEN** ist der fachliche Inhalt vollständig verfügbar
+- **AND** die History ist leer oder nicht verfügbar mit `coverage = studio_mutations`
+- **AND** der fehlende lokale History-Core blockiert weder Detail noch Bearbeitung
+
+### Requirement: Verhaltensgleiche Event-Formularserialisierung
+
+Das Events-Plugin SHALL die Serialisierung des Detailformulars in fachlich getrennte, paketinterne und frameworkfreie Serializer gliedern, ohne Feldpräsenz, Normalisierung, Kompatibilitätswerte, Array-Reihenfolge oder den bestehenden `EventFormInput`-Vertrag zu verändern.
+
+#### Scenario: Leere und optionale Eventwerte bleiben kompatibel
+
+- **WHEN** ein Event-Detailformular leere, fehlende, `null`-, `false`-, `0`- oder nicht-endliche optionale Werte enthält
+- **THEN** bleiben bestehende Omit-, Kompaktierungs- und Erhaltungsregeln unverändert
+- **AND** der öffentliche Formular-Mapper liefert dasselbe exakte Output-Shape wie vor der Modularisierung
+
+#### Scenario: Datum und Zeit werden ohne semantische Korrektur serialisiert
+
+- **WHEN** das Formular ganztägige, lokale oder Offset-tragende Datums- und Zeitwerte enthält
+- **THEN** bleiben Wert, Feldpräsenz und Reihenfolge unverändert
+- **AND** die Serialisierung führt keine neue Zeitzonen- oder Validierungssemantik ein
+
+#### Scenario: Strukturierte Eventbereiche bewahren Datenintegrität
+
+- **WHEN** Adressen, Geo-Koordinaten, Kontakte, URLs, Medien, Preise oder Barrierefreiheitsinformationen serialisiert werden
+- **THEN** bleiben partielle und ungültige Grenzwerte nach den bestehenden Regeln erhalten oder ausgelassen
+- **AND** wiederholte Einträge behalten ihre bestehende Reihenfolge
+
+#### Scenario: Paketgrenzen bleiben unverändert
+
+- **WHEN** die Event-Serialisierung modularisiert wird
+- **THEN** bleiben die Serializer intern in `@sva/plugin-events`
+- **AND** es entsteht keine neue Shared-API und keine Änderung an POI- oder Mainserver-Verträgen
+
+### Requirement: Featured-Project-Texte teilen einen kontrollierten ersten Content-Block
+
+Das System MUST `Description` eines Featured Projects auf `contentBlocks[0].intro` und `FullText` auf `contentBlocks[0].body` abbilden. Bei Updates MUST es weitere Eigenschaften des ersten Blocks und alle weiteren Content-Blocks erhalten, soweit sie nicht vom Featured-Project-Vertrag kontrolliert werden. Es MUST keinen historischen Top-Level-Teaser als Description-Fallback verwenden.
+
+#### Scenario: Projektbeschreibung und Volltext werden gespeichert
+
+- **WHEN** ein Redakteur Description und FullText eines Featured Projects speichert
+- **THEN** schreibt das System beide Werte in `intro` und `body` desselben ersten Content-Blocks
+- **AND** sendet kein Top-Level-Teaser-Feld
+
+#### Scenario: Projekt besitzt weitere Content-Blocks
+
+- **GIVEN** ein Featured Project besitzt einen ersten Textblock und weitere fachfremde Content-Blocks
+- **WHEN** Description oder FullText geändert wird
+- **THEN** aktualisiert das System ausschließlich die kontrollierten Felder des ersten Blocks
+- **AND** erhält die weiteren Content-Blocks unverändert
+
+### Requirement: News-Kompatibilitätsfelder bleiben snapshotbasiert und verlustfrei
+
+Der News-Editor MUST historische Compatibility-Aliaswerte nur bei einem ausdrücklich gesetzten Touched-Marker und passendem Laufzeittyp in den bestehenden Legacy-Snapshot übernehmen. Vereinfachte redaktionelle Felder MUST bei der Mutation führend bleiben; Publication-, Push-, Address- und ContentBlocks-Sonderregeln MUST ihre bestehende Priorität behalten.
+
+#### Scenario: Unberührter oder typfalscher Alias wird ignoriert
+
+- **WHEN** ein Compatibility-Alias keinen Touched-Marker besitzt, ausdrücklich unberührt ist oder einen falschen Laufzeittyp trägt
+- **THEN** bleibt der vorhandene Snapshotwert unverändert
+- **AND** die Mutation übernimmt keinen typfalschen Aliaswert
+
+#### Scenario: Mehrere gültige Aliase werden gemeinsam übernommen
+
+- **WHEN** mehrere Compatibility-Aliase als berührt markiert sind und passende Laufzeittypen tragen
+- **THEN** aktualisiert der Editor alle zugehörigen Snapshotwerte
+- **AND** nicht berührte bestehende Snapshotwerte bleiben erhalten
+
+#### Scenario: Vereinfachte redaktionelle Felder widersprechen Legacy-Inhalten
+
+- **WHEN** vereinfachte Titel-, Intro-, Body- oder Medienwerte gleichzeitig widersprüchliche Compatibility-ContentBlocks begleiten
+- **THEN** schreibt die Create- oder Edit-Mutation die vereinfachten redaktionellen Werte
+- **AND** die Compatibility-Werte ändern keine öffentliche Form- oder API-Semantik
+
+### Requirement: POI-Formtransformationen erhalten den bestehenden Datenvertrag
+
+Das System SHALL bei der Characterization des POI-Formvertrags und dem verhaltensgleichen Refactoring der Serialisierung die bestehende Übersetzung zwischen Mainserver-Inhalten und Editorformular vollständig erhalten.
+
+#### Scenario: Bestehender POI wird in Formularwerte gemappt
+
+- **GIVEN** ein POI mit vollständigen, partiellen oder Legacy-Feldern
+- **WHEN** der Inhalt in POI-Formularwerte übersetzt wird
+- **THEN** bleiben Defaults, Kategorienpriorität, Aktivstatus, Listenreihenfolge und Wochentagsnormalisierung unverändert
+- **AND** bleiben nichtendliche Numerik, Payload-Runtime-Shapes und bestehendes Clone- beziehungsweise Referenzverhalten charakterisiert
+
+#### Scenario: Bearbeitete Formularwerte werden serialisiert
+
+- **GIVEN** POI-Formularwerte mit vollständigen, leeren, partiellen oder ungültigen Runtime-Feldern
+- **WHEN** daraus der Mainserver-Mutationsinput erzeugt wird
+- **THEN** bleiben Trimming, explizite Leerungen, Deduplikation, Filter, Fallbacks und Listenreihenfolge unverändert
+- **AND** werden falsche numerische Runtime-Werte weiterhin für die nachgelagerte Validierung erkennbar erhalten
+
+#### Scenario: Serialisierungsrefactoring verändert keine angrenzenden Verträge
+
+- **GIVEN** die POI-Formularserialisierung wird vereinfacht und das Inbound-Mapping bleibt produktiv unverändert
+- **WHEN** die Änderung abgeschlossen wird
+- **THEN** bleiben öffentliche POI-Typen, Mainserver-Vertrag, Validierung und Editor-UI unverändert
+- **AND** entsteht keine neue Cross-Plugin- oder Shared-Package-Ownership-Grenze
+
+### Requirement: Die gemeinsame Inhaltsübersicht verwendet eine eindeutige GenericItem-Repräsentation
+
+Das System MUST jedes Mainserver-GenericItem in der gemeinsamen Inhaltsübersicht genau einmal darstellen. Deklariert ein registriertes Fachplugin die Zuständigkeit für den exakten `genericType`, MUST dessen Fach-Content-Type die Darstellung übernehmen. Ohne registrierte Zuständigkeit MUST `generic-items.generic-item` die Darstellung übernehmen. Die Klassifikation MUST vor und unabhängig von der benutzerspezifischen Autorisierung erfolgen.
+
+#### Scenario: Registriertes Fachplugin übernimmt die Darstellung
+
+- **GIVEN** ein GenericItem besitzt `genericType` gleich `FeaturedProject`
+- **AND** `projects.project` ist dafür in der Build-time-Registry registriert
+- **WHEN** die gemeinsame Inhaltsübersicht projiziert wird
+- **THEN** erscheint der Datensatz ausschließlich als `projects.project`
+- **AND** erscheint er dort nicht zusätzlich als `generic-items.generic-item`
+
+#### Scenario: Unbekannter Typ fällt auf generische Darstellung zurück
+
+- **GIVEN** kein registriertes Fachplugin übernimmt den `genericType` eines GenericItems
+- **WHEN** die gemeinsame Inhaltsübersicht projiziert wird
+- **THEN** erscheint der Datensatz als `generic-items.generic-item`
+- **AND** bleibt über dessen generischen Detailpfad erreichbar
+
+#### Scenario: Fehlendes Fachrecht erzeugt keinen generischen Ersatz
+
+- **GIVEN** ein registriertes Fachplugin übernimmt den `genericType` eines GenericItems
+- **AND** die Person besitzt `generic-items.read`, aber nicht das erforderliche Fach-Leserecht
+- **WHEN** sie die gemeinsame Inhaltsübersicht öffnet
+- **THEN** erscheint der Datensatz dort weder fachlich noch generisch
+- **AND** verändert die Berechtigung nicht seinen kanonischen Content-Type
+
+#### Scenario: Technischer Vollzugriff bleibt separat erhalten
+
+- **GIVEN** eine Person besitzt `generic-items.read`
+- **WHEN** sie das eigenständige Modul „Generische Inhalte“ öffnet
+- **THEN** enthält dessen technische Liste weiterhin alle Mainserver-GenericItems unabhängig vom `genericType`
+- **AND** gilt die eindeutige Repräsentation ausschließlich für die gemeinsame Inhaltsübersicht
+
+### Requirement: Alle redaktionell veränderbaren Plugin-Inhalte besitzen eine funktionale Historie
+
+Das System MUST für jede aktive Plugin-Contribution mit redaktionell veränderbaren Datensätzen eine funktionale, hostseitig geladene Historienansicht bereitstellen. Ein sichtbarer Platzhalter oder eine dauerhaft leere Schein-Historie erfüllt diese Anforderung nicht.
+
+#### Scenario: Bestehendes Content-Plugin zeigt echte Historieneinträge
+
+- **WENN** ein berechtigter Benutzer die Historie eines bestehenden Plugin-Inhalts öffnet
+- **DANN** lädt der Host die für diesen Inhalt erfassten Änderungen
+- **UND** das Plugin zeigt mindestens Zeitpunkt, lokalisierte Aktion, Actor und Änderungsgegenstand an
+- **UND** Lade-, Leer-, Fehler- und Erfolgszustand sind unterscheidbar
+
+#### Scenario: Plugin besitzt keine redaktionell veränderbaren Datensätze
+
+- **WENN** eine Plugin-Contribution ausschließlich Infrastruktur, SDK-Funktionen, Auswahlwerte oder andere nicht redaktionell mutierbare Beiträge bereitstellt
+- **DANN** klassifiziert der Host sie explizit als nicht historienpflichtig
+- **UND** die UI zeigt dafür keinen funktionslosen Historien-Tab
+
+### Requirement: Mainserver-Inhalte zeigen ausschließlich Studio-seitige Änderungen
+
+Das System MUST für Mainserver-basierte Inhalte eine Studio-Mutationshistorie führen, die ausschließlich erfolgreich über das Studio ausgeführte Änderungen enthält. Das System MUST diese Historie als Studio-seitig und nicht als vollständige Mainserver-Historie kennzeichnen.
+
+#### Scenario: Studio ändert einen Mainserver-Inhalt erfolgreich
+
+- **WENN** eine autorisierte Änderung eines Mainserver-Inhalts über das Studio fachlich erfolgreich abgeschlossen wird
+- **DANN** erzeugt der Host einen korrelierbaren Historieneintrag für den Inhalt
+- **UND** der Eintrag enthält die Studio-Aktion, den autorisierten Actor, den Zeitpunkt und die bekannten Änderungsfelder
+
+#### Scenario: Mainserver-Mutation schlägt fehl
+
+- **WENN** eine über das Studio ausgelöste Mainserver-Mutation abgelehnt wird oder technisch fehlschlägt
+- **DANN** erscheint sie nicht als erfolgreiche Änderung in der sichtbaren Inhaltshistorie
+- **UND** der Versuch bleibt gemäß Audit-Vertrag nachvollziehbar
+
+#### Scenario: Inhalt wird außerhalb des Studios verändert
+
+- **WENN** ein Mainserver-Inhalt direkt im Mainserver oder über ein anderes System verändert wird
+- **DANN** erzeugt das Studio keinen synthetischen Historieneintrag
+- **UND** die Historienansicht behauptet keine vollständige Erfassung externer Änderungen
+
+#### Scenario: Featured Project erhält die nachgelagerte Historie
+
+- **WENN** ein Featured Project bereits die allgemeine External-Content-Referenz aus `add-featured-projects-plugin` besitzt
+- **UND** der History-Change das Projekte-Plugin anbindet
+- **DANN** verwendet der Host dieselbe lokale Content-ID und externe Referenz für die Historie
+- **UND** ergänzt das Plugin den gemeinsamen Historien-Tab ohne zweite Identitäts- oder Mutation-Persistenz
+
+### Requirement: Plugin-Historien verwenden ein gemeinsames Darstellungsmodell
+
+Das System SHALL Plugin-Historien mit einem gemeinsamen, lokalisierten und barrierefreien Darstellungsmodell ausgeben. Die Historienansicht MUST schreibgeschützt sein und MUST Herkunft sowie Abdeckungsgrenze erkennbar machen, wenn die führende Datenquelle außerhalb des Studios liegt.
+
+#### Scenario: Historie wird erfolgreich dargestellt
+
+- **WENN** Historieneinträge geladen wurden
+- **DANN** zeigt die UI Zeitpunkt in der konfigurierten Editor-Zeitzone, Aktion, Actor, Zusammenfassung und vorhandene geänderte Felder
+- **UND** verwendet sie semantische Listen- oder Tabellenstrukturen mit zugänglichen Beschriftungen
+- **UND** enthält das History-Panel keine Aktion zum Speichern des aktuellen Editorformulars
+
+#### Scenario: Historie kann nicht geladen werden
+
+- **WENN** der History-Read fehlschlägt oder nicht autorisiert ist
+- **DANN** zeigt die UI einen lokalisierten und für assistive Technologien wahrnehmbaren Fehlerzustand
+- **UND** stellt keine veralteten oder fremden Historieneinträge als aktuellen Erfolg dar
+
+### Requirement: Zentrale Inhaltstabelle verwendet die gemeinsamen Tabelleninteraktionen
+
+Die zentrale Inhaltstabelle MUST die gemeinsamen Studio-Muster für anklickbare Informationen, Status-Badges, Icon-Aktionen, mobile Aktionsbeschriftungen und oben ausgerichtete Body-Zellen verwenden. Die Migration MUST bestehende Berechtigungs-, Principal-, Projektions-, Sortier-, Paginierungs- und Mutationsverträge unverändert erhalten.
+
+#### Scenario: Benutzer darf einen Inhalt öffnen
+
+- **WENN** ein Inhalt gemäß der bestehenden Zeilenzugriffsauflösung lesbar ist
+- **DANN** erscheint sein Titel als primäre anklickbare Information
+- **UND** führt der Titel zum bereits aufgelösten `editPath`
+- **UND** beschreibt sein zugänglicher Name weiterhin, ob der Inhalt bearbeitbar oder nur lesbar geöffnet wird
+- **UND** rendert die Aktionsspalte kein redundantes Öffnen-/Bearbeiten-Icon für dasselbe Ziel
+
+#### Scenario: Benutzer darf einen Inhalt nicht öffnen
+
+- **WENN** ein Inhalt gemäß der bestehenden Zeilenzugriffsauflösung nicht lesbar ist
+- **DANN** erscheint sein Titel als reiner Text ohne Fokusziel und ohne irreführende Interaktivität
+- **UND** erzeugt die Tabelle keinen Link auf ein nicht erlaubtes Ziel
+
+#### Scenario: Benutzer betrachtet oder ändert den Content-Status
+
+- **WENN** die Inhaltstabelle einen Content-Status rendert
+- **DANN** verwendet sie das gemeinsame beschriftete Status-Badge
+- **UND** bleibt ein nicht änderbarer Status rein informativ
+- **UND** öffnet ein änderbarer Status weiterhin den bestehenden Statusdialog unter Beibehaltung von Berechtigungs- und Principal-Auflösung
+- **UND** bleibt der Dialog bei einem Mutationsfehler geöffnet und zeigt einen verständlichen nächsten Schritt
+
+#### Scenario: Benutzer löscht einen Inhalt
+
+- **WENN** die bestehende Berechtigungs- und Principal-Auflösung das Löschen erlaubt
+- **DANN** erscheint Löschen als gemeinsame destruktive Icon-Aktion
+- **UND** bleibt die bestehende Bestätigung vor der Mutation erhalten
+- **UND** erhält die Aktion in der mobilen Kartenansicht eine sichtbare Beschriftung
+
+#### Scenario: Inhaltstabelle verarbeitet Daten und Navigation
+
+- **WENN** die Inhaltstabelle auf die gemeinsamen Interaktionsmuster migriert wird
+- **DANN** bleiben Projection, Filterung, globale Sortierung, Pagination, Content-Typ-Auflösung und Mainserver-Mutationsverträge unverändert
+- **UND** bleiben alle Body-Zellen nach dem gemeinsamen Tabellenstandard oben ausgerichtet
+
+### Requirement: Bildfähige Inhaltseditoren verwenden einen gemeinsamen Bildblock
+
+Das System MUST News, Events, POI, Generic Items, Projects und Cockpit Cards über einen gemeinsamen hostseitigen Kernbildblock bearbeiten, während fachliche Pflichtigkeit, Zusatzfelder und Persistenzmapping beim jeweiligen Plugin verbleiben.
+
+#### Scenario: Editor zeigt gemeinsame Kerninteraktion
+
+- **WENN** ein Redakteur Bilder in einem unterstützten Inhaltseditor bearbeitet
+- **DANN** stellt der Bildblock Bildliste, Vorschau, unterstützte contentbezogene Metadaten, Validierungsanzeige, Entfernen und Umsortieren bereit
+- **UND** bietet er abhängig von den Berechtigungen `Aus Mediathek auswählen`, `Bild hochladen` und `Bild-URL manuell eingeben`
+- **UND** entscheidet das Plugin weiterhin über Pflichtfelder, Maximalanzahl, Duplikate und Zusatzfelder
+
+#### Scenario: Manuelle Bild-URL wird im gemeinsamen Block angelegt
+
+- **WENN** ein berechtigter Redakteur `Bild-URL manuell eingeben` auswählt
+- **DANN** fügt der Bildblock eine Verwendung mit stabiler UI-Identität, aber ohne `assetId` hinzu
+- **UND** setzt den Fokus auf deren URL-Feld
+- **UND** aktualisiert eine eingegebene URL die Vorschau, ohne das Bild in die Medienbibliothek zu importieren
+
+#### Scenario: Bildverwendung wird barrierefrei umsortiert
+
+- **WENN** ein Redakteur eine Bildverwendung nach oben oder unten verschiebt
+- **DANN** bleibt der Fokus nachvollziehbar bei derselben Verwendung
+- **UND** meldet die Oberfläche die neue Position und Gesamtzahl textuell
+- **UND** sind am Listenanfang und Listenende nicht mögliche Verschiebeaktionen deaktiviert
+
+#### Scenario: Plugin-Adapter erhält fachliche Daten
+
+- **WENN** der gemeinsame Bildblock ein Plugin-Formular liest, verändert oder neu ordnet
+- **DANN** bildet ein typsicherer Plugin-Adapter den neutralen Verwendungsvertrag auf das bestehende Fachmodell ab
+- **UND** bleiben nicht im gemeinsamen Kern bearbeitete und unbekannte fachliche Felder beim Roundtrip erhalten
+- **UND** normalisiert der Adapter fachliche Reihenfolgen wie Project-`position` deterministisch
+
+### Requirement: Asset-Metadaten und contentbezogene Medienmetadaten bleiben getrennt
+
+Das System MUST globale Metadaten eines `MediaAsset` von den Metadaten seiner konkreten Content-Verwendung trennen.
+
+#### Scenario: Asset wird erstmals in einen Content übernommen
+
+- **WENN** ein Redakteur ein Bibliotheks- oder Upload-Asset nach dem Review mit `Medium übernehmen` bestätigt
+- **DANN** kopiert der Plugin-Adapter die unterstützten aktuellen Asset-Metadaten als Startwerte in den Content-Snapshot
+- **UND** speichert die Verwendung die `assetId` für die parallele Studio-Referenz
+- **UND** bleiben Asset-Metadaten und Content-Snapshot danach unabhängig bearbeitbar
+
+#### Scenario: Asset-Metadaten ändern sich nach der Verknüpfung
+
+- **WENN** globale Metadaten eines bereits verwendeten Assets später geändert werden
+- **DANN** verändert das System bestehende Content-Snapshots nicht automatisch
+- **UND** erhalten neue Verknüpfungen die dann aktuellen Asset-Metadaten als Startwerte
+
+#### Scenario: Redakteur aktualisiert ausgewählte Felder aus der Mediathek
+
+- **WENN** ein Redakteur für eine Asset-basierte Verwendung `Metadaten aus Mediathek aktualisieren` öffnet
+- **DANN** zeigt das System je unterstütztem Feld Asset- und Content-Wert nebeneinander
+- **UND** kann der Redakteur die zu übernehmenden Felder einzeln auswählen
+- **UND** bleiben lokale Abweichungen standardmäßig abgewählt, sofern ihre Herkunft nicht sicher als unveränderter Startwert nachweisbar ist
+- **UND** wird eine ausgewählte persistierbare Asset-Auslieferungs-URL ebenfalls in den Content-Snapshot übernommen
+- **UND** verändert die Aktion das globale Asset nicht
+
+### Requirement: Mainserver-Snapshot und Studio-Medienreferenzen werden kontrolliert koordiniert
+
+Das System MUST die externe Mainserver-Persistenz und die Studio-Referenzpersistenz in einer festen, wiederholbaren Reihenfolge koordinieren.
+
+#### Scenario: Content und Referenzen werden erfolgreich gespeichert
+
+- **WENN** ein Content mit Asset-basierten Bildverwendungen gespeichert wird
+- **DANN** speichert das System zuerst den Mainserver-Content einschließlich URL-/Metadaten-Snapshots
+- **UND** ersetzt es nach Erhalt der stabilen Ziel-ID die Studio-`MediaReference`s für dieses Ziel idempotent
+- **UND** zeigt es den gesamten Speichervorgang erst nach beiden erfolgreichen Schritten als vollständig erfolgreich an
+
+#### Scenario: Referenzsynchronisation schlägt nach Mainserver-Erfolg fehl
+
+- **WENN** der Mainserver-Content erfolgreich gespeichert wurde, aber das Ersetzen der Studio-Referenzen fehlschlägt
+- **DANN** führt das System keinen vermeintlichen Cross-System-Rollback aus
+- **UND** zeigt es einen unterscheidbaren Teilfehler statt eines vollständigen Erfolgs an
+- **UND** bietet es eine idempotente Wiederholung der Referenzsynchronisation ohne erneutes Mainserver-Schreiben an
+
+#### Scenario: Geladener Content und Studio-Referenzen weichen ab
+
+- **WENN** Mainserver-Snapshots und Studio-Referenzen beim Laden nicht konsistent zusammengeführt werden können
+- **DANN** bleiben die Mainserver-Daten die sichtbaren Content-Werte
+- **UND** zeigt das System fehlende, zusätzliche oder nicht auflösbare Referenzen als Synchronisationszustand an
+- **UND** erfindet, ersetzt oder löscht es keine Referenzen stillschweigend
+
+#### Scenario: Bildverwendung wird entfernt
+
+- **WENN** eine Asset-basierte Bildverwendung aus dem Content entfernt und erfolgreich gespeichert wird
+- **DANN** fehlt ihre Referenz im anschließenden Replace-Vertrag
+- **UND** bleibt das `MediaAsset` selbst in der Medienbibliothek bestehen
+
+### Requirement: Medienaktionen im Content-Editor folgen abgestuften Berechtigungen
+
+Das System MUST Content- und Medienberechtigungen für jede Bildaktion getrennt prüfen und client- sowie serverseitig konsistent durchsetzen.
+
+#### Scenario: Redakteur verwendet eine manuelle URL
+
+- **WENN** ein Redakteur die fachliche Content-Create- oder Content-Update-Berechtigung besitzt
+- **DANN** darf er eine manuelle Bild-URL bearbeiten
+- **UND** benötigt er dafür keine Medienbibliotheksberechtigung
+
+#### Scenario: Redakteur wählt oder lädt ein Asset
+
+- **WENN** ein Redakteur ein Bibliotheksasset auswählen möchte
+- **DANN** benötigt er zusätzlich `media.read` und `media.reference.manage`
+- **UND** benötigt er für einen Upload zusätzlich `media.create`
+
+#### Scenario: Redakteur darf globale Metadaten nicht ändern
+
+- **WENN** ein Redakteur den Media-Review ohne `media.update` öffnet
+- **DANN** zeigt das System die Asset-Metadaten schreibgeschützt
+- **UND** bleibt `Medium übernehmen` bei ansonsten ausreichenden Berechtigungen verfügbar
+- **UND** darf er contentbezogene Overrides anschließend mit seiner fachlichen Content-Berechtigung bearbeiten
+
+#### Scenario: Berechtigung läuft während des Flows ab
+
+- **WENN** eine erforderliche Medienberechtigung vor Abschluss des Overlay- oder Referenzschritts nicht mehr wirksam ist
+- **DANN** lehnt der Server die Aktion fail-closed ab
+- **UND** bleibt das offene Content-Formular durch den fehlgeschlagenen Overlay-Abschluss unverändert
+- **UND** zeigt die Oberfläche einen unterscheidbaren Berechtigungsfehler
+
+#### Scenario: Geschütztes Asset besitzt keine geeignete dauerhafte Auslieferung
+
+- **WENN** ein Asset nur über eine kurzlebige oder für den Mainserver-Vertrag ungeeignete URL ausgeliefert werden kann
+- **DANN** darf der Content-Editor diese URL nicht persistieren
+- **UND** erklärt die Oberfläche, warum das Asset in diesem Zielkontext nicht übernommen werden kann
+
+### Requirement: Upload-Abbruch trennt Asset-Erzeugung und Content-Zuordnung
+
+Das System MUST einen abgeschlossenen Asset-Upload von seiner späteren Content-Zuordnung unterscheiden.
+
+#### Scenario: Overlay wird vor abgeschlossenem Upload abgebrochen
+
+- **WENN** ein Benutzer den Overlay-Flow vor erfolgreichem Upload-Abschluss abbricht
+- **DANN** entsteht keine Content-Verwendung und keine `MediaReference`
+
+#### Scenario: Overlay wird nach abgeschlossenem Upload abgebrochen
+
+- **WENN** der Upload bereits ein `MediaAsset` erzeugt hat, der Benutzer aber vor `Medium übernehmen` abbricht
+- **DANN** bleibt das eigenständige Asset in der Medienbibliothek bestehen
+- **UND** entsteht weder ein neuer Eintrag im Content-Formular noch eine `MediaReference`
+
+### Requirement: Mainserver-Editoren bleiben bei Teilabweichungen nutzbar
+
+Das System MUST einen erfolgreich gelieferten Mainserver-Datensatz anzeigen, sobald dessen stabile Mainserver-ID und die für die autorisierte typisierte Route erforderlichen harten Mindestfelder sicher erkannt wurden. Der Inhaltstyp MUST aus der typisierten Route stammen und darf nicht aus fehlenden Antwortfeldern erraten werden. Abweichungen in optionalen Feldern oder Fehler in zusätzlichen Studio-Diensten MUST auf die betroffene Feldgruppe oder Zusatzfunktion begrenzt bleiben und dürfen die Anzeige oder unabhängige Bearbeitung des übrigen Datensatzes nicht verhindern.
+
+#### Scenario: Optionales Mainserver-Feld besitzt eine unerwartete Form
+
+- **WENN** die Detailantwort eine sichere Mainserver-ID enthält und der Inhaltstyp durch die autorisierte typisierte Route feststeht
+- **UND** ein optionales Feld oder ein einzelner optionaler Listeneintrag nicht dem bestätigten Adaptervertrag entspricht
+- **DANN** zeigt der Editor alle sicher interpretierbaren Daten an
+- **UND** kennzeichnet ausschließlich die betroffene Feldgruppe als degradiert oder schreibgeschützt
+- **UND** unabhängige Feldgruppen bleiben bearbeitbar
+
+#### Scenario: Optionaler Zusatzdienst schlägt fehl
+
+- **WENN** der Mainserver-Detailrequest erfolgreich ist
+- **UND** Medienreferenzen, Kategorien, Historie, Karte oder ein vergleichbarer Zusatzdienst nicht geladen werden können
+- **DANN** bleibt der Mainserver-Datensatz sichtbar und bearbeitbar
+- **UND** der betroffene Abschnitt zeigt einen lokalisierten, wiederholbaren Fehlerzustand
+- **UND** die UI bezeichnet den Datensatz nicht als fehlend oder vollständig nicht ladbar
+
+#### Scenario: Hartes Mindestfeld kann nicht sicher bestimmt werden
+
+- **WENN** die Mainserver-Detailantwort keine sicher verwendbare Inhalts-ID oder keinen für die Fachroute erforderlichen Typdiskriminator besitzt
+- **DANN** blockiert das System die Detailbearbeitung mit einem deterministischen Vertragsfehler
+- **UND** es erzeugt keinen synthetischen Datensatz und führt keine Mutation aus
+
+### Requirement: Degradierte Mainserver-Felder werden verlustarm bearbeitet
+
+Das System MUST bei einer Aktualisierung ausschließlich die vom jeweiligen Editor kontrollierten und gültigen Feldgruppen ersetzen. Unbekannte Payload-Schlüssel und deklarierte Passthrough-Felder, die unmittelbar zuvor über den bestätigten GraphQL-Vertrag verlustfrei gelesen wurden und vom Mutation-Input akzeptiert werden, MUST erhalten bleiben. Nicht sicher interpretierbare Feldgruppen MUST unverändert und schreibgeschützt bleiben, wenn Auslassung nachweislich Erhaltung bedeutet oder die Gruppe vollständig aus dem aktuellen Read rekonstruiert werden kann.
+
+#### Scenario: Benutzer bearbeitet unabhängige Felder neben einer Abweichung
+
+- **GIVEN** ein geladener Datensatz besitzt eine nicht sicher interpretierbare optionale Feldgruppe
+- **AND** andere Editorfelder sind gültig und bearbeitbar
+- **WHEN** der Benutzer ausschließlich gültige Editorfelder aktualisiert
+- **THEN** ersetzt der Schreibpfad nur die kontrollierten geänderten Feldgruppen
+- **AND** erhält die abweichende Feldgruppe sowie deklarierte Payload- und Passthrough-Werte unverändert
+- **AND** sendet keine unbekannten oder nur gelesenen Felder an den Mutation-Input
+
+#### Scenario: Mutation kann eine abweichende Feldgruppe nicht sicher erhalten
+
+- **GIVEN** der Mainserver-Mutationsvertrag verlangt eine Feldgruppe, die Studio nicht sicher rekonstruieren oder durch Auslassung erhalten kann
+- **WHEN** der Benutzer speichern möchte
+- **THEN** blockiert das System die unsichere Mutation vor dem GraphQL-Aufruf
+- **AND** erklärt feldbezogen, welche Daten nicht sicher erhalten werden können
+- **AND** der geladene Datensatz bleibt weiterhin sichtbar und anderweitig nutzbar
+
+#### Scenario: Feld liegt außerhalb des GraphQL-Vertrags
+
+- **WHEN** ein Wert vom bestätigten GraphQL-Lesevertrag nicht abgefragt oder vom Mutation-Input nicht akzeptiert wird
+- **THEN** verspricht Studio weder Anzeige noch Erhaltung oder Bearbeitung dieses Werts
+- **AND** führt keinen untypisierten GraphQL-Bypass oder vollständigen Rohdateneditor ein
+
+#### Scenario: Parallele externe Änderung tritt zwischen Read und Write auf
+
+- **GIVEN** der Mainserver bietet keine Revision, keinen ETag und keine vergleichbare Mutationsvorbedingung
+- **WHEN** sich ein Providerfeld zwischen dem vorbereitenden Read und der Mutation extern ändert
+- **THEN** verspricht Studio keine konfliktfreie Zusammenführung
+- **AND** stellt es Read-Merge-Write nicht als Schutz vor Last-Writer-Wins-Verlusten dar

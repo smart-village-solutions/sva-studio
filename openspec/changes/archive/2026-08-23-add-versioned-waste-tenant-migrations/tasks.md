@@ -13,4 +13,4 @@
 
 - [x] 3.1 Betroffene Unit-, Type-, Runtime-, Lint- und Deployment-Gates ausführen.
 - [x] 3.2 New-only-Fallow-Audits für alle betroffenen Workspaces ausführen.
-- [ ] 3.3 PR-HEAD pushen und CI, Coverage sowie Review-Threads terminal verifizieren.
+- [x] 3.3 PR-HEAD pushen und CI, Coverage sowie Review-Threads terminal verifizieren. Abschlussnachweis: PR #984 wurde am 16. August 2026 gemergt; die terminale Review-Auswertung weist keine offenen Threads, fehlgeschlagenen oder ausstehenden Checks aus.

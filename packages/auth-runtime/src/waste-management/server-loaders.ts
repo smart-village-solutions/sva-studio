@@ -62,6 +62,7 @@ import {
   wasteHolidaySyncHorizonYears,
 } from './core/holiday-sync.js';
 import type { SaveWasteCustomRecurrencePresetsInput } from './core/custom-recurrence-deps.js';
+import { writeWasteAnnualMappedTours } from './core/annual-tour-transfer-write.js';
 import { previewWasteLocationTourPickupDateImport as buildWasteLocationTourPickupDateImportPreview } from './import-preview.js';
 
 const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -1542,21 +1543,6 @@ const mappedTourMatches = async (
   );
 };
 
-const writeMappedTour = async (
-  repository: WasteRepository,
-  mapped: WasteAnnualTourTransferMappedTour
-): Promise<void> => {
-  await repository.upsertWasteTour(mapped.targetTour);
-  for (const link of mapped.locationTourLinks) await repository.upsertWasteLocationTourLink(link);
-  for (const pickupDate of mapped.locationTourPickupDates) {
-    await repository.upsertWasteLocationTourPickupDate(pickupDate);
-  }
-  for (const assignment of mapped.tourAssignments) {
-    await repository.upsertWasteTourAssignment(assignment);
-  }
-  for (const shift of mapped.tourDateShifts) await repository.insertWasteTourDateShift(shift);
-};
-
 export const createWasteAnnualTourTransferInTransaction = async (input: {
   readonly client: WasteAnnualTourTransferClient;
   readonly instanceId: string;
@@ -1570,6 +1556,15 @@ export const createWasteAnnualTourTransferInTransaction = async (input: {
       input.instanceId,
       `waste-annual-tour-transfer:${input.create.sourceYear + 1}`,
     ]);
+    await client.query(`
+LOCK TABLE
+  waste_tours,
+  waste_location_tour_links,
+  waste_location_tour_pickup_dates,
+  waste_tour_assignments,
+  waste_tour_assignment_locations,
+  waste_tour_date_shifts
+IN SHARE ROW EXCLUSIVE MODE;`);
     const repository = createWasteMasterDataRepository(createSqlExecutor(client));
     const snapshot = await loadWasteAnnualTourTransferSource(repository);
     const preview = await buildWasteAnnualTourTransferPreview({
@@ -1580,6 +1575,7 @@ export const createWasteAnnualTourTransferInTransaction = async (input: {
       target: snapshot,
       selectedTourIds: input.create.selectedTourIds,
       replacementDates: input.create.replacementDates,
+      allowObsoleteReplacementDates: true,
     });
     if (preview.previewFingerprint !== input.create.previewFingerprint) {
       throw new Error(
@@ -1605,6 +1601,7 @@ export const createWasteAnnualTourTransferInTransaction = async (input: {
 
     const createdTourIds: string[] = [];
     const existingTourIds: string[] = [];
+    const mappedToursToCreate: WasteAnnualTourTransferMappedTour[] = [];
     for (const item of selectedPreviews) {
       const mapped = item.mappedTour as WasteAnnualTourTransferMappedTour;
       const existing = snapshot.tours.some((tour) => tour.id === mapped.targetTour.id);
@@ -1617,9 +1614,10 @@ export const createWasteAnnualTourTransferInTransaction = async (input: {
         existingTourIds.push(mapped.targetTour.id);
         continue;
       }
-      await writeMappedTour(repository, mapped);
+      mappedToursToCreate.push(mapped);
       createdTourIds.push(mapped.targetTour.id);
     }
+    await writeWasteAnnualMappedTours(client, repository, mappedToursToCreate);
     await client.query('COMMIT');
     return {
       sourceYear: input.create.sourceYear,

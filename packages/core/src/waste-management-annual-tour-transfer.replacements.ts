@@ -48,6 +48,7 @@ export const buildValidatedWasteAnnualReplacementMap = (input: {
   readonly source: WasteAnnualTourTransferSource;
   readonly relevantTours: readonly WasteTourRecord[];
   readonly replacementDates: readonly WasteAnnualTourTransferReplacementDate[];
+  readonly allowObsoleteReplacementDates?: boolean;
 }): ReadonlyMap<string, string> => {
   if (input.replacementDates.length === 0) return new Map();
   const allowedResources = new Map(
@@ -64,18 +65,19 @@ export const buildValidatedWasteAnnualReplacementMap = (input: {
       .map((resource) => [resource.sourceResourceId, resource.targetYear] as const)
   );
   const submittedResourceIds = new Set(input.replacementDates.map((item) => item.sourceResourceId));
-  if (
-    submittedResourceIds.size !== input.replacementDates.length ||
-    input.replacementDates.some((replacement) => {
-      const targetYear = allowedResources.get(replacement.sourceResourceId);
-      return (
-        targetYear === undefined || !isWasteAnnualDateInYear(replacement.targetDate, targetYear)
-      );
-    })
-  ) {
+  const invalidReplacement = input.replacementDates.some((replacement) => {
+    const targetYear = allowedResources.get(replacement.sourceResourceId);
+    return (
+      (targetYear === undefined && !input.allowObsoleteReplacementDates) ||
+      (targetYear !== undefined && !isWasteAnnualDateInYear(replacement.targetDate, targetYear))
+    );
+  });
+  if (submittedResourceIds.size !== input.replacementDates.length || invalidReplacement) {
     throw new WasteAnnualTourTransferError('replacement_date_invalid');
   }
   return new Map(
-    input.replacementDates.map((item) => [item.sourceResourceId, item.targetDate] as const)
+    input.replacementDates
+      .filter((item) => allowedResources.has(item.sourceResourceId))
+      .map((item) => [item.sourceResourceId, item.targetDate] as const)
   );
 };

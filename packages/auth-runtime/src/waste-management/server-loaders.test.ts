@@ -745,6 +745,9 @@ describe('waste-management server loaders', () => {
       'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
       ['tenant-a', 'waste-annual-tour-transfer:2027']
     );
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith(
+      expect.stringContaining('IN SHARE ROW EXCLUSIVE MODE')
+    );
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
 
     const persistedTargetTour = {
@@ -793,6 +796,64 @@ describe('waste-management server loaders', () => {
     });
 
     expect(repeated).toMatchObject({ createdCount: 0, existingCount: 1 });
+  });
+
+  it('writes large annual relationship sets in bounded JSON batches', async () => {
+    const sourceTour = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Bio Nord',
+      wasteFractionIds: ['bio'],
+      recurrence: 'weekly' as const,
+      firstDate: '2026-01-05',
+      endDate: '2026-12-31',
+      active: true,
+      locationCount: 101,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+    };
+    const links = Array.from({ length: 101 }, (_, index) => ({
+      id: `22222222-2222-4222-8222-${String(index).padStart(12, '0')}`,
+      tourId: sourceTour.id,
+      locationId: `33333333-3333-4333-8333-${String(index).padStart(12, '0')}`,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }));
+    repositoryMocks.listWasteTours
+      .mockResolvedValueOnce([sourceTour])
+      .mockResolvedValueOnce([sourceTour]);
+    repositoryMocks.listWasteLocationTourLinks
+      .mockResolvedValueOnce(links)
+      .mockResolvedValueOnce(links);
+    repositoryMocks.listWasteLocationTourPickupDates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourAssignments.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const preview = await wasteManagementOverviewLoaders.previewWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      selectedTourIds: [sourceTour.id],
+    });
+    await wasteManagementEntitySavers.createWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      create: {
+        sourceYear: 2026,
+        selectedTourIds: [sourceTour.id],
+        replacementDates: [],
+        acknowledgedConflictTourIds: [],
+        previewFingerprint: preview.previewFingerprint,
+      },
+    });
+
+    expect(repositoryMocks.upsertWasteLocationTourLink).not.toHaveBeenCalled();
+    const bulkCall = poolFactoryInstances
+      .at(-1)
+      ?.query.mock.calls.find(([text]) =>
+        String(text).includes('INSERT INTO waste_location_tour_links')
+      );
+    expect(bulkCall).toBeDefined();
+    expect(JSON.parse(String(bulkCall?.[1]?.[0]))).toHaveLength(101);
   });
 
   it('rolls back the complete annual tour set when a relationship write fails', async () => {

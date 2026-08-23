@@ -9,12 +9,9 @@ import {
   findWasteAnnualTourConflicts,
   sortWasteAnnualItems,
   wasteAnnualEffectiveDates,
-  wasteAnnualTourOverlapsYear,
 } from './waste-management-annual-tour-transfer.conflicts.js';
-import {
-  deriveWasteAnnualTourTransferTargetYear,
-  isWasteAnnualDateInYear,
-} from './waste-management-annual-tour-transfer.dates.js';
+import { createWasteAnnualTourConflictIndex } from './waste-management-annual-tour-transfer.conflict-index.js';
+import { deriveWasteAnnualTourTransferTargetYear } from './waste-management-annual-tour-transfer.dates.js';
 import { buildWasteAnnualTourTransferFingerprint } from './waste-management-annual-tour-transfer.identity.js';
 import {
   countWasteAnnualMappedRelationships,
@@ -23,63 +20,17 @@ import {
 import type * as AnnualTransferInternal from './waste-management-annual-tour-transfer.internal.js';
 import { mapWasteAnnualTour } from './waste-management-annual-tour-transfer.mapping.js';
 import {
+  isWasteAnnualTourAlreadyEffective,
+  isWasteAnnualTourRelevant,
+  wasteAnnualTourHasMissingCadenceAnchor,
+  wasteAnnualTourRelationshipCounts,
+} from './waste-management-annual-tour-transfer.relevance.js';
+import {
   buildValidatedWasteAnnualReplacementMap,
   wasteAnnualReplacementTargetYearsFor,
 } from './waste-management-annual-tour-transfer.replacements.js';
-import { wasteAnnualRelationshipsFor } from './waste-management-annual-tour-transfer.relationships.js';
 
 type InternalTourPreview = AnnualTransferInternal.WasteAnnualTourTransferInternalTourPreview;
-
-const isRelevantTour = (
-  tour: WasteTourRecord,
-  year: number,
-  source: WasteAnnualTourTransferSource
-) =>
-  tour.active &&
-  (wasteAnnualTourOverlapsYear(tour, year) ||
-    (tour.customDates ?? []).some((item) => isWasteAnnualDateInYear(item.date, year)) ||
-    wasteAnnualRelationshipsFor(source.locationTourPickupDates, tour.id).some((item) =>
-      isWasteAnnualDateInYear(item.pickupDate, year)
-    ) ||
-    wasteAnnualRelationshipsFor(source.tourAssignments, tour.id).some((item) =>
-      isWasteAnnualDateInYear(item.pickupDate, year)
-    ));
-
-const relationshipCounts = (
-  tour: WasteTourRecord,
-  sourceYear: number,
-  source: WasteAnnualTourTransferSource
-) => ({
-  wasteFractions: tour.wasteFractionIds.length,
-  customDates: (tour.customDates ?? []).filter((item) =>
-    isWasteAnnualDateInYear(item.date, sourceYear)
-  ).length,
-  locations: wasteAnnualRelationshipsFor(source.locationTourLinks, tour.id).length,
-  pickupDates: wasteAnnualRelationshipsFor(source.locationTourPickupDates, tour.id).filter((item) =>
-    isWasteAnnualDateInYear(item.pickupDate, sourceYear)
-  ).length,
-  assignments: wasteAnnualRelationshipsFor(source.tourAssignments, tour.id).filter((item) =>
-    isWasteAnnualDateInYear(item.pickupDate, sourceYear)
-  ).length,
-  shifts: wasteAnnualRelationshipsFor(source.tourDateShifts, tour.id).filter(
-    (item) => !item.hasYear || isWasteAnnualDateInYear(item.originalDate, sourceYear)
-  ).length,
-  excluded: 0,
-});
-
-const alreadyEffective = (
-  tour: WasteTourRecord,
-  targetYear: number,
-  source: WasteAnnualTourTransferSource
-) =>
-  wasteAnnualTourOverlapsYear(tour, targetYear) ||
-  (tour.customDates ?? []).some((item) => isWasteAnnualDateInYear(item.date, targetYear)) ||
-  wasteAnnualRelationshipsFor(source.locationTourPickupDates, tour.id).some((item) =>
-    isWasteAnnualDateInYear(item.pickupDate, targetYear)
-  ) ||
-  wasteAnnualRelationshipsFor(source.tourAssignments, tour.id).some((item) =>
-    isWasteAnnualDateInYear(item.pickupDate, targetYear)
-  );
 
 type PreviewTourInput = Readonly<{
   instanceId: string;
@@ -88,11 +39,12 @@ type PreviewTourInput = Readonly<{
   targetYear: number;
   source: WasteAnnualTourTransferSource;
   target: WasteAnnualTourTransferSource;
+  conflictIndex: ReturnType<typeof createWasteAnnualTourConflictIndex>;
   replacements: ReadonlyMap<string, string>;
 }>;
 
 const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview> => {
-  const counts = relationshipCounts(input.tour, input.sourceYear, input.source);
+  const counts = wasteAnnualTourRelationshipCounts(input.tour, input.sourceYear, input.source);
   const common = {
     sourceTourId: input.tour.id,
     name: input.tour.name,
@@ -102,7 +54,10 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
     customRecurrenceIntervalDays: input.tour.customRecurrenceIntervalDays,
     relationshipCounts: counts,
   } as const;
-  if (alreadyEffective(input.tour, input.targetYear, input.source)) {
+  if (
+    !wasteAnnualTourHasMissingCadenceAnchor(input.tour) &&
+    isWasteAnnualTourAlreadyEffective(input.tour, input.targetYear, input.source)
+  ) {
     return {
       ...common,
       classification: 'already-effective',
@@ -128,7 +83,11 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
       conflicts: [],
     };
   }
-  const conflicts = findWasteAnnualTourConflicts(input.tour.id, mappedResult.mapped, input.target);
+  const conflicts = findWasteAnnualTourConflicts(
+    input.tour.id,
+    mappedResult.mapped,
+    input.conflictIndex
+  );
   const identityConflict = conflicts.some(
     (conflict) => conflict.kind === 'target-identity-conflict'
   );
@@ -184,10 +143,11 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
   target: WasteAnnualTourTransferSource;
   selectedTourIds?: readonly string[];
   replacementDates?: readonly WasteAnnualTourTransferReplacementDate[];
+  allowObsoleteReplacementDates?: boolean;
 }): Promise<AnnualTransferInternal.WasteAnnualTourTransferInternalPreview> => {
   const targetYear = deriveWasteAnnualTourTransferTargetYear(input.sourceYear, input.currentYear);
   const relevantTours = input.source.tours.filter((tour) =>
-    isRelevantTour(tour, input.sourceYear, input.source)
+    isWasteAnnualTourRelevant(tour, input.sourceYear, input.source)
   );
   assertWasteAnnualTourTransferLimits({ tours: relevantTours.length, relationships: 0 });
   const replacementDates = input.replacementDates ?? [];
@@ -196,10 +156,12 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
     targetYear,
     relevantTours,
     replacementDates,
+    allowObsoleteReplacementDates: input.allowObsoleteReplacementDates,
   });
+  const conflictIndex = createWasteAnnualTourConflictIndex(input.target);
   const previews = await Promise.all(
     sortWasteAnnualItems(relevantTours, (tour) => tour.id).map((tour) =>
-      previewTour({ ...input, tour, targetYear, replacements })
+      previewTour({ ...input, tour, targetYear, conflictIndex, replacements })
     )
   );
   const selected = new Set(

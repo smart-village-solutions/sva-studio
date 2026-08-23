@@ -11,6 +11,7 @@ import {
   deriveWasteAnnualTourTransferTargetYear,
   mapWasteAnnualConcreteDate,
 } from './waste-management-annual-tour-transfer.dates.js';
+import { createWasteAnnualTourConflictIndex } from './waste-management-annual-tour-transfer.conflict-index.js';
 import {
   buildWasteAnnualTourTransferFingerprint,
   deriveWasteAnnualTourTransferId,
@@ -116,6 +117,26 @@ describe('waste annual tour transfer', () => {
     expect(first).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
+  it('indexes 1,000 tours and 100,000 relationships without repeated relationship scans', () => {
+    const tours = Array.from({ length: 1_000 }, (_, index) =>
+      tour({ id: `tour-${index}`, wasteFractionIds: [`fraction-${index}`] })
+    );
+    const locationTourLinks = tours.flatMap((item, tourIndex) =>
+      Array.from({ length: 100 }, (_, locationIndex) => ({
+        id: `link-${tourIndex}-${locationIndex}`,
+        tourId: item.id,
+        locationId: `location-${tourIndex}-${locationIndex}`,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }))
+    );
+
+    const index = createWasteAnnualTourConflictIndex(source(tours, { locationTourLinks }));
+
+    expect(index.byId.size).toBe(1_000);
+    expect(index.bySignature.size).toBe(1_000);
+  });
+
   it('invalidates the preview fingerprint when a copy-relevant source record changes', async () => {
     const initial = await buildWasteAnnualTourTransferPreview({
       instanceId: 'tenant-a',
@@ -133,6 +154,69 @@ describe('waste annual tour transfer', () => {
     });
 
     expect(updated.previewFingerprint).not.toBe(initial.previewFingerprint);
+  });
+
+  it('blocks an interval tour without a cadence anchor before classifying target-year overlap', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([tour({ firstDate: undefined, endDate: '2027-12-31' })]),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'invalid_planning_data',
+    });
+  });
+
+  it('ignores obsolete replacements only while rebuilding a confirmed stale preview', async () => {
+    const leapTour = tour({
+      recurrence: undefined,
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2024-02-29' }],
+    });
+    const blocked = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2024,
+      currentYear: 2025,
+      source: source([leapTour]),
+      target: source([]),
+    });
+    const sourceResourceId = blocked.tours[0]?.replacementResourceIds[0] as string;
+    const replacementDates = [{ sourceResourceId, targetDate: '2025-02-27' }];
+    const confirmed = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2024,
+      currentYear: 2025,
+      source: source([leapTour]),
+      target: source([]),
+      replacementDates,
+    });
+    const changedSource = source([{ ...leapTour, customDates: [] }]);
+
+    await expect(
+      buildWasteAnnualTourTransferPreview({
+        instanceId: 'tenant-a',
+        sourceYear: 2024,
+        currentYear: 2025,
+        source: changedSource,
+        target: source([]),
+        replacementDates,
+      })
+    ).rejects.toEqual(new WasteAnnualTourTransferError('replacement_date_invalid'));
+    const refreshed = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2024,
+      currentYear: 2025,
+      source: changedSource,
+      target: source([]),
+      replacementDates,
+      allowObsoleteReplacementDates: true,
+    });
+    expect(refreshed.previewFingerprint).not.toBe(confirmed.previewFingerprint);
   });
 
   it('keeps the internal copy plan out of the public preview DTO', async () => {

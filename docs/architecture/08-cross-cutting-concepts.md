@@ -838,5 +838,5 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 
 - Vorschau und Erstellung verlangen gemeinsam `waste-management.tours.manage` und `waste-management.scheduling.manage`; Mandant, CSRF und Eingaben werden serverseitig geprüft. Ein Zieljahr aus dem Client wird abgelehnt.
 - 1.000 Touren und 100.000 kopierrelevante Beziehungen sind zentrale inklusive Grenzwerte. Eine Überschreitung liefert in Vorschau und Erstellung `batch_limit_exceeded` ohne Teilverarbeitung.
-- Der Vorschau-Fingerprint schützt vor veralteter Bestätigung. `preview_stale` liefert eine aktualisierte Vorschau, stabile IDs ermöglichen Commit-/Response-Recovery und abweichend belegte IDs liefern `target_identity_conflict`.
+- Der Vorschau-Fingerprint schützt vor veralteter Bestätigung. Planungsrelevante Tabellen bleiben zwischen Revalidierung und Commit gegen konkurrierende Writes gesperrt. Inzwischen entfallene Ersatzressourcen werden bei der Revalidierung toleriert, damit `preview_stale` die aktualisierte Vorschau liefert. Stabile IDs ermöglichen Commit-/Response-Recovery und abweichend belegte IDs liefern `target_identity_conflict`.
 - Genau ein datensparsames Audit-Ereignis fasst Quell- und Zieljahr, Erstellungs-/Bestandsmengen und technische Ressourcen-IDs zusammen. Namen, Termine und Adressdaten werden nicht protokolliert.

@@ -1108,7 +1108,7 @@ Fehlerpfad:
 
 1. Der Assistent sendet nur Quelljahr, Auswahl und Ersatzdaten. Die Runtime leitet das direkte Folgejahr ab, prüft beide Manage-Actions sowie CSRF und liefert eine schreibfreie, vollständig klassifizierte Vorschau.
 2. Core bildet aus Quell- und Zielbestand, Auswahl, Ersatzdaten und stabil abgeleiteten Zielressourcen einen kanonischen Fingerprint. Mögliche parallele Planungen bleiben zunächst abgewählt.
-3. Die bestätigte Erstellung reserviert den zentralen Idempotenzschlüssel und öffnet eine Waste-Datenbanktransaktion. Ein mandanten- und zieljahrbezogener Advisory Lock serialisiert konkurrierende Übernahmen.
-4. Innerhalb der Sperre werden Quelle, Ziel, Grenzen, Fingerprint und Konflikte erneut geprüft. Bei Abweichung endet der Vorgang mit aktualisierter Vorschau; es wird nichts geschrieben.
-5. Touren und alle kopierrelevanten Beziehungen werden mit stabilen IDs gemeinsam und inaktiv angelegt. Jeder Fehler rollt die gesamte Transaktion zurück.
+3. Die bestätigte Erstellung reserviert den zentralen Idempotenzschlüssel und öffnet eine Waste-Datenbanktransaktion. Ein mandanten- und zieljahrbezogener Advisory Lock serialisiert konkurrierende Übernahmen; ein Tabellen-Lock im mandanteneigenen Waste-Schema hält normale Planungsänderungen bis zum Transaktionsende zurück.
+4. Innerhalb der Sperre werden Quelle, Ziel, Grenzen, Fingerprint und Konflikte erneut geprüft. Beziehungen und Konfliktsignaturen werden dafür einmal pro Snapshot indiziert. Bei Abweichung endet der Vorgang mit aktualisierter Vorschau; es wird nichts geschrieben.
+5. Touren und alle kopierrelevanten Beziehungen werden mit stabilen IDs gemeinsam und inaktiv angelegt. Große Beziehungsmengen werden in begrenzten JSON-Batches geschrieben. Jeder Fehler rollt die gesamte Transaktion zurück.
 6. Nach einem Commit-/Response-Abbruch rekonstruiert der Retry dieselben Ziel-IDs und liefert das gespeicherte beziehungsweise wiederhergestellte Ergebnis, ohne weitere Touren anzulegen.

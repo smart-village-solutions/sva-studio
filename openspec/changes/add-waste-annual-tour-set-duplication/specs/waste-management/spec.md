@@ -46,6 +46,12 @@ Das System SHALL alle aktiven Touren berücksichtigen, deren Gültigkeitszeitrau
 - **AND** nennt es den konkreten Grund und eine geeignete manuelle Folgeaktion
 - **AND** lässt es die Tour nicht bestätigen
 
+#### Scenario: Wiederkehrender Tour fehlt der Taktanker
+
+- **WHEN** eine Intervall- oder Jahrestour keinen Gültigkeitsbeginn als Taktanker besitzt, aber ihr Gültigkeitsende bis in das Folgejahr reicht
+- **THEN** klassifiziert das System die Tour als `blockiert` wegen unvollständiger Planungsdaten
+- **AND** klassifiziert es sie nicht als `gilt bereits im Folgejahr`
+
 ### Requirement: Waste-Management verwendet einen vollständigen Folgejahr-Übernahmevertrag
 
 Das System SHALL für jede bestätigte Tour genau einen Übernahmevertrag verwenden. Dieser SHALL die Tourstammdaten, Abholorte und alle im Quelljahr wirksamen Planungsbeziehungen vollständig in das Folgejahr übertragen und Daten außerhalb des Quelljahres ausschließen.
@@ -152,6 +158,12 @@ Das System SHALL vor der Erstellung serverseitig eine schreibfreie Vorschau mit 
 - **AND** liefert es eine aktualisierte Vorschau
 - **AND** verlangt es eine erneute ausdrückliche Bestätigung
 
+#### Scenario: Bestätigte Ersatzressource entfällt durch eine Quelländerung
+
+- **WHEN** eine bestätigte Ersatzressource bei der transaktionalen Revalidierung nicht mehr erforderlich ist
+- **THEN** lehnt das System die Erstellung mit `preview_stale` statt `replacement_date_invalid` ab
+- **AND** liefert es die aktualisierte Vorschau ohne die entfallene Ersatzressource
+
 #### Scenario: Batch überschreitet ein serverseitiges Limit
 
 - **WHEN** die Anzahl von 1.000 Touren oder insgesamt 100.000 zu kopierenden Beziehungen überschritten wird
@@ -195,8 +207,9 @@ Das System SHALL den ausdrücklich bestätigten Tourensatz einschließlich aller
 
 - **WHEN** ein berechtigter Benutzer einen gültigen und unveränderten Vorschaustand ausdrücklich bestätigt
 - **THEN** sperrt der Server den Jahreswechsel für Mandant und Folgejahr
+- **AND** sperrt er die planungsrelevanten Tabellen des mandanteneigenen Waste-Schemas gegen konkurrierende Änderungen
 - **AND** prüft er Quellbestand, Fingerprint und Konflikte innerhalb derselben Transaktion erneut
-- **AND** legt er alle bestätigten Touren und Beziehungen gemeinsam inaktiv an
+- **AND** legt er alle bestätigten Touren und Beziehungen gemeinsam inaktiv und große Beziehungsmengen in begrenzten Batches an
 - **AND** lässt er den Quellbestand unverändert
 - **AND** gibt er die IDs, eine verständliche Ergebnissumme und ein Ziel zur gefilterten Tourenliste zurück
 

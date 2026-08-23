@@ -2,8 +2,12 @@ import type { WasteTourRecord } from './waste-management/master-data-tours.js';
 import type {
   WasteAnnualTourTransferConflict,
   WasteAnnualTourTransferMappedTour,
-  WasteAnnualTourTransferSource,
 } from './waste-management-annual-tour-transfer.contract.js';
+import {
+  wasteAnnualPlanningSignature,
+  type IndexedWasteAnnualTargetTour,
+  type WasteAnnualTourConflictIndex,
+} from './waste-management-annual-tour-transfer.conflict-index.js';
 import {
   parseWasteAnnualIsoDate,
   replaceWasteAnnualYear,
@@ -12,7 +16,6 @@ import {
 } from './waste-management-annual-tour-transfer.dates.js';
 import { stableWasteAnnualSerialize } from './waste-management-annual-tour-transfer.identity.js';
 import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.mapping.js';
-import { wasteAnnualRelationshipsFor } from './waste-management-annual-tour-transfer.relationships.js';
 
 export const sortWasteAnnualItems = <T>(
   items: readonly T[],
@@ -35,9 +38,6 @@ export const wasteAnnualEffectiveDates = (
   ...mapped.locationTourPickupDates.map((item) => item.pickupDate),
   ...mapped.tourAssignments.map((item) => item.pickupDate),
 ];
-
-const sameSet = (left: readonly string[], right: readonly string[]): boolean =>
-  JSON.stringify([...new Set(left)].sort()) === JSON.stringify([...new Set(right)].sort());
 
 const yearlySchedulesIntersect = (
   left: WasteAnnualTourTransferMappedTour['targetTour'],
@@ -106,58 +106,41 @@ const comparableMappedTour = (mapped: WasteAnnualTourTransferMappedTour): unknow
   ),
 });
 
-const comparableExistingTour = (tour: WasteTourRecord, source: WasteAnnualTourTransferSource) =>
+const comparableExistingTour = (indexed: IndexedWasteAnnualTargetTour) =>
   comparableMappedTour({
-    sourceTourId: tour.id,
+    sourceTourId: indexed.tour.id,
     targetTour: {
-      id: tour.id,
-      name: tour.name,
-      description: tour.description,
-      wasteFractionIds: tour.wasteFractionIds,
-      recurrence: tour.recurrence,
-      customRecurrenceId: tour.customRecurrenceId,
-      customRecurrenceName: tour.customRecurrenceName,
-      customRecurrenceIntervalDays: tour.customRecurrenceIntervalDays,
-      firstDate: tour.firstDate,
-      endDate: tour.endDate,
-      customDates: tour.customDates,
-      active: tour.active,
-      locationCount: tour.locationCount,
+      id: indexed.tour.id,
+      name: indexed.tour.name,
+      description: indexed.tour.description,
+      wasteFractionIds: indexed.tour.wasteFractionIds,
+      recurrence: indexed.tour.recurrence,
+      customRecurrenceId: indexed.tour.customRecurrenceId,
+      customRecurrenceName: indexed.tour.customRecurrenceName,
+      customRecurrenceIntervalDays: indexed.tour.customRecurrenceIntervalDays,
+      firstDate: indexed.tour.firstDate,
+      endDate: indexed.tour.endDate,
+      customDates: indexed.tour.customDates,
+      active: indexed.tour.active,
+      locationCount: indexed.tour.locationCount,
     },
-    locationTourLinks: wasteAnnualRelationshipsFor(source.locationTourLinks, tour.id),
-    locationTourPickupDates: wasteAnnualRelationshipsFor(source.locationTourPickupDates, tour.id),
-    tourAssignments: wasteAnnualRelationshipsFor(source.tourAssignments, tour.id),
-    tourDateShifts: wasteAnnualRelationshipsFor(source.tourDateShifts, tour.id),
+    locationTourLinks: indexed.locationTourLinks,
+    locationTourPickupDates: indexed.locationTourPickupDates,
+    tourAssignments: indexed.tourAssignments,
+    tourDateShifts: indexed.tourDateShifts,
   });
 
 const parallelPlanningConflict = (
   sourceTourId: string,
   mapped: WasteAnnualTourTransferMappedTour,
-  tour: WasteTourRecord,
-  target: WasteAnnualTourTransferSource
+  indexed: IndexedWasteAnnualTargetTour
 ): WasteAnnualTourTransferConflict | null => {
-  const locations = wasteAnnualRelationshipsFor(target.locationTourLinks, tour.id).map(
-    (item) => item.locationId
-  );
-  const targetDates = [
-    ...(tour.firstDate ? [tour.firstDate] : []),
-    ...(tour.customDates ?? []).map((item) => item.date),
-    ...wasteAnnualRelationshipsFor(target.locationTourPickupDates, tour.id).map(
-      (item) => item.pickupDate
-    ),
-    ...wasteAnnualRelationshipsFor(target.tourAssignments, tour.id).map((item) => item.pickupDate),
-  ];
+  const { tour } = indexed;
   const mappedDates = wasteAnnualEffectiveDates(mapped);
   const interval = wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord);
   const matches =
-    sameSet(tour.wasteFractionIds, mapped.targetTour.wasteFractionIds) &&
-    sameSet(
-      locations,
-      mapped.locationTourLinks.map((item) => item.locationId)
-    ) &&
-    wasteAnnualIntervalForTour(tour) === interval &&
-    (targetDates.some((date) => mappedDates.includes(date)) ||
-      recurringSchedulesIntersect(mapped.targetTour, tour, interval));
+    indexed.effectiveDates.some((date) => mappedDates.includes(date)) ||
+    recurringSchedulesIntersect(mapped.targetTour, tour, interval);
   return matches
     ? {
         kind: 'possible-parallel-planning',
@@ -168,46 +151,41 @@ const parallelPlanningConflict = (
     : null;
 };
 
-const tourHasEffectiveDateInYear = (
-  tour: WasteTourRecord,
-  year: number,
-  target: WasteAnnualTourTransferSource
-): boolean =>
-  wasteAnnualTourOverlapsYear(tour, year) ||
-  (tour.customDates ?? []).some((item) => wasteAnnualYearOf(item.date) === year) ||
-  wasteAnnualRelationshipsFor(target.locationTourPickupDates, tour.id).some(
-    (item) => wasteAnnualYearOf(item.pickupDate) === year
-  ) ||
-  wasteAnnualRelationshipsFor(target.tourAssignments, tour.id).some(
-    (item) => wasteAnnualYearOf(item.pickupDate) === year
-  );
+const tourHasEffectiveDateInYear = (indexed: IndexedWasteAnnualTargetTour, year: number): boolean =>
+  wasteAnnualTourOverlapsYear(indexed.tour, year) ||
+  indexed.effectiveDates.some((date) => wasteAnnualYearOf(date) === year);
 
 export const findWasteAnnualTourConflicts = (
   sourceTourId: string,
   mapped: WasteAnnualTourTransferMappedTour,
-  target: WasteAnnualTourTransferSource
+  index: WasteAnnualTourConflictIndex
 ): readonly WasteAnnualTourTransferConflict[] => {
-  const stableTarget = target.tours.find((tour) => tour.id === mapped.targetTour.id);
+  const stableTarget = index.byId.get(mapped.targetTour.id);
   if (
     stableTarget &&
-    stableWasteAnnualSerialize(comparableExistingTour(stableTarget, target)) !==
+    stableWasteAnnualSerialize(comparableExistingTour(stableTarget)) !==
       stableWasteAnnualSerialize(comparableMappedTour(mapped))
   ) {
     return [
       {
         kind: 'target-identity-conflict',
         sourceTourId,
-        targetTourId: stableTarget.id,
+        targetTourId: stableTarget.tour.id,
         matchingFeatures: ['stable-target-id'],
       },
     ];
   }
   const targetYear = wasteAnnualYearOf(wasteAnnualEffectiveDates(mapped)[0] ?? '') ?? 0;
-  return target.tours
+  const signature = wasteAnnualPlanningSignature(
+    mapped.targetTour.wasteFractionIds,
+    mapped.locationTourLinks.map((item) => item.locationId),
+    wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord)
+  );
+  return (index.bySignature.get(signature) ?? [])
     .filter(
-      (tour) =>
-        tour.id !== mapped.targetTour.id && tourHasEffectiveDateInYear(tour, targetYear, target)
+      (indexed) =>
+        indexed.tour.id !== mapped.targetTour.id && tourHasEffectiveDateInYear(indexed, targetYear)
     )
-    .map((tour) => parallelPlanningConflict(sourceTourId, mapped, tour, target))
+    .map((indexed) => parallelPlanningConflict(sourceTourId, mapped, indexed))
     .filter((conflict): conflict is WasteAnnualTourTransferConflict => conflict !== null);
 };

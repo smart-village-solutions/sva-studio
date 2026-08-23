@@ -1,0 +1,4 @@
+{
+  "prNumber": 1124,
+  "body": "Die interne IAM-Inhaltsprojektion ist wartbarer umgesetzt. Typsichere Fallbacks, eindeutige optionale Felder und effiziente Mengenprüfungen erhalten das bestehende Projektions- und Berechtigungsverhalten."
+}

@@ -4,7 +4,6 @@ import {
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferReplacementDate,
   type WasteAnnualTourTransferSource,
-  type WasteAnnualTourTransferTourPreview,
 } from './waste-management-annual-tour-transfer.contract.js';
 import {
   findWasteAnnualTourConflicts,

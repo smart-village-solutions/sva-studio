@@ -2388,12 +2388,13 @@ Das System MUST FAQ als namespaceten Content-Type `faq.faq` und als eigenständi
 - **THEN** blendet er die direkte FAQ-Navigation in der Hauptnavigation aus
 - **AND** bleibt die FAQ über die gemeinsame Inhaltsübersicht als `faq.faq` erreichbar
 
-#### Scenario: FAQ wird nicht als offenes GenericItem doppelt angezeigt
+#### Scenario: FAQ wird in der gemeinsamen Inhaltsübersicht nicht doppelt angezeigt
 
 - **GIVEN** ein GenericItem mit `genericType` gleich `FAQ`
-- **WHEN** die Inhaltsprojektion oder die offene GenericItem-Liste aktualisiert wird
+- **WHEN** die gemeinsame Inhaltsübersicht ihre Inhaltsprojektion aktualisiert
 - **THEN** klassifiziert das System den Datensatz als `faq.faq`
 - **AND** zeigt ihn nicht zusätzlich als `generic-items.generic-item` an
+- **AND** bleibt die generische Darstellung im eigenständigen Generic-Items-Modul davon unberührt
 
 ### Requirement: FAQ-Fachmodell ist auf Frage, Antwort, Sprache und Publikationsmetadaten begrenzt
 

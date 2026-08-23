@@ -6,8 +6,15 @@ import {
   runCiCommand,
 } from './ci-command-runner.ts';
 
-const processError = (status?: number): Error & { status?: number } =>
-  Object.assign(new Error('redacted process failure'), status === undefined ? {} : { status });
+const processError = (
+  status?: number,
+  signal?: string
+): Error & { status?: number; signal?: string } =>
+  Object.assign(
+    new Error('redacted process failure'),
+    status === undefined ? {} : { status },
+    signal === undefined ? {} : { signal }
+  );
 
 describe('ci-command-runner', () => {
   it('does not retry deterministic command failures', () => {
@@ -26,6 +33,24 @@ describe('ci-command-runner', () => {
       .fn<() => void>()
       .mockImplementationOnce(() => {
         throw processError(75);
+      })
+      .mockImplementationOnce(() => undefined);
+
+    expect(runCiCommand('pnpm nx run example:test:unit', execute)).toMatchObject({
+      retryCount: 1,
+      attempts: [
+        { attempt: 1, classification: 'infrastructure' },
+        { attempt: 2, classification: null },
+      ],
+    });
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a process terminated by an infrastructure signal once', () => {
+    const execute = vi
+      .fn<() => void>()
+      .mockImplementationOnce(() => {
+        throw processError(undefined, 'SIGKILL');
       })
       .mockImplementationOnce(() => undefined);
 
@@ -58,5 +83,6 @@ describe('ci-command-runner', () => {
     expect(classifyCiCommandFailure(new Error('unknown'))).toBe('unknown');
     expect(classifyCiCommandFailure(processError(1))).toBe('deterministic');
     expect(classifyCiCommandFailure(processError(75))).toBe('infrastructure');
+    expect(classifyCiCommandFailure(processError(undefined, 'SIGTERM'))).toBe('infrastructure');
   });
 });

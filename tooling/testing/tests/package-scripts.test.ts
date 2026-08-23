@@ -413,6 +413,17 @@ describe('workspace package scripts', () => {
     expect(startRedisIndex).toBeLessThan(waitRedisIndex);
   });
 
+  it('requires the complete coverage job before accepting downloaded evidence', () => {
+    const workflow = loadRuntimeGatesWorkflow();
+    const aggregateStep = workflow.slice(workflow.indexOf('Aggregate required Coverage status'));
+    const resultCheckIndex = aggregateStep.indexOf('test "$COMPLETE_RESULT" = "success"');
+    const evidenceCheckIndex = aggregateStep.indexOf('node scripts/ci/ci-feedback-aggregate.ts');
+
+    expect(resultCheckIndex).toBeGreaterThan(-1);
+    expect(evidenceCheckIndex).toBeGreaterThan(-1);
+    expect(resultCheckIndex).toBeLessThan(evidenceCheckIndex);
+  });
+
   it('keeps PR build validation on the shared pr-scope helper', () => {
     const mainBuildWorkflow = loadMainBuildWorkflow();
 

@@ -29,7 +29,7 @@ const readProcessFailure = (error: unknown): ProcessFailure =>
 
 export const classifyCiCommandFailure = (error: unknown): CiFailureClassification => {
   const failure = readProcessFailure(error);
-  if (failure.status === TRANSIENT_EXIT_CODE) {
+  if (failure.signal || failure.status === TRANSIENT_EXIT_CODE) {
     return 'infrastructure';
   }
   if (typeof failure.status === 'number') {

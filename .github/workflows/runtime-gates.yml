@@ -229,6 +229,7 @@ jobs:
             echo 'Coverage ist ein expliziter No-op-Erfolg für diesen PR-Scope.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+          test "$COMPLETE_RESULT" = "success"
           node scripts/ci/ci-feedback-aggregate.ts \
             --gate coverage \
             --head "$HEAD_SHA" \

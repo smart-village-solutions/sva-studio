@@ -141,7 +141,15 @@ const createListRouteDefinition = (
           resource.resourceId === 'content' && typeof search.type === 'string'
             ? search.type.trim()
             : '';
-        return contentType === '' ? normalized : { ...normalized, type: contentType };
+        const languageCode =
+          contentType === 'faq.faq' && typeof search.languageCode === 'string'
+            ? search.languageCode.trim().toLowerCase()
+            : '';
+        return {
+          ...normalized,
+          ...(contentType === '' ? {} : { type: contentType }),
+          ...(languageCode === '' ? {} : { languageCode }),
+        };
       }
     : undefined,
 });

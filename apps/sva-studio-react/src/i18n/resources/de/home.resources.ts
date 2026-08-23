@@ -4,9 +4,9 @@ export const homeDEResources = {
   },
   hero: {
     anonymousEyebrow: 'Willkommen',
-    anonymousSubtitle: 'Die gemeinsame Werkstatt für Inhalte, Module und Organisationen.',
+    anonymousSubtitle: 'Die gemeinsame Oberfläche für Inhalte, Module und Organisationen.',
     anonymousBody:
-      'Melden Sie sich an, um die passenden Bausteine zu öffnen, Inhalte zu gestalten und in Ihrem Arbeitskontext direkt weiterzuarbeiten.',
+      'Melden Sie sich an, um Inhalte zu verwalten, Fachmodule zu öffnen und in Ihrem Arbeitskontext direkt weiterzuarbeiten.',
     eyebrow: 'Studio Workspace',
     openSourcePrefix: 'Open Source Software made with',
     openSourceLoveLabel: 'love',

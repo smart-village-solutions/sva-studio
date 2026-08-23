@@ -22,14 +22,10 @@ gleichzeitig beeinflussen.
 - Loading setzt `aria-busy` und verhindert Doppelauslösung. Disabled bleibt über dedizierte Tokens lesbar. Fokus wird nicht entfernt, und Zustandswechsel respektieren `prefers-reduced-motion`.
 - Unit-, Foundation-, Boundary- und Playwright-/Axe-Tests sichern Komponenten-API, Ownership, Kontrastmatrix, Zielgrößen und visuelle Darstellung dauerhaft ab.
 
-### Studio-Motion und Ladezustände
+### Lade- und Fehlerzustände
 
 - Erwartetes Laden und fachliche Fehler sind getrennte UI-Zustände. Ein laufender Request verwendet einen höflich angekündigten `role="status"`; erst ein tatsächlich fehlgeschlagener oder unvollständig aufgelöster Vertrag verwendet die dauerhafte Fehlerdarstellung.
-- `StudioAnimatedLoadingState` aus `@sva/studio-ui-react` zeigt die gemeinsame Content-Assembly-Metapher. Seine Eintrittsverzögerung ist auf 150 ms begrenzt, besitzt keine Mindestanzeigedauer und hält den erfolgreichen Inhaltswechsel niemals zurück.
-- `StudioWorkbenchScene` überträgt dieselbe Baukasten- und Werkstattmetapher auf größere Flächen. Sie animiert ausschließlich bereits gerenderte Elemente; Links, Buttons, Fokusführung, Pointer Events, Berechtigungsfilter und Datenladen bleiben unabhängig davon sofort aktiv.
-- Beide Komponenten respektieren `prefers-reduced-motion: reduce` mit einem statischen Motiv und starten dann keine Animations-Timeline. Dekorative SVGs sind für assistive Technologien verborgen; sichtbare Status- und Seitentexte bleiben semantisches HTML und vollständig internationalisiert.
-- Die ausführliche Startsequenz wird anonym und authentifiziert getrennt und PII-frei einmal je Browser-Sitzung markiert. Wiederholungen sowie nicht verfügbarer `sessionStorage` verwenden die kompakte Variante.
-- Anime.js 4.5 wird ausschließlich durch gemountete Motion-Komponenten dynamisch importiert. Komponentenlokale Scopes entfernen bei Unmount Animationen und Inline-Werte; ein verspäteter Import darf keine DOM-Manipulation mehr beginnen.
+- Inhalts-Detailseiten rendern den Editor unmittelbar nach erfolgreicher Ressourcenprincipal-Auflösung. Es gibt keine Mindestanzeigedauer, keinen Timer und keinen visuellen Übergang, der den fachlichen Zustandswechsel zurückhält.
 
 ### Formular- und Frontend-Test-Foundations
 

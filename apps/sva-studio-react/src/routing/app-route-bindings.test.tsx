@@ -783,7 +783,7 @@ describe('appRouteBindings', () => {
     }
   });
 
-  it('renders a regular loading status before showing an edit route without waiting for animation', async () => {
+  it('renders a regular loading status before showing an edit route', async () => {
     routeState.params = { id: 'content-1' };
     let resolveContent: ((value: unknown) => void) | undefined;
     routeState.getContent.mockReturnValue(
@@ -796,7 +796,6 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsDetail />);
 
     expect(screen.getByRole('status').textContent).toContain('Resource principal loading');
-    expect(screen.getByTestId('studio-content-assembly')).toBeTruthy();
     expect(screen.queryByText('Resource principal unavailable')).toBeNull();
     expect(screen.queryByTestId('news-edit-page')).toBeNull();
 

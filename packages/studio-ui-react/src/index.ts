@@ -137,12 +137,6 @@ export {
   type StudioTableValueActionProps,
 } from './studio-table-interactions.js';
 export {
-  StudioAnimatedLoadingState,
-  StudioWorkbenchScene,
-  type StudioAnimatedLoadingStateProps,
-  type StudioWorkbenchSceneProps,
-} from './studio-motion.js';
-export {
   StudioListPageTemplate,
   StudioDetailPageTemplate,
   StudioEmptyState,

@@ -19,7 +19,7 @@ import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '@sva/plugin-projects';
 import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
 import {
-  StudioAnimatedLoadingState,
+  StudioLoadingState,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
@@ -247,9 +247,7 @@ const MainserverResourcePrincipalBoundary = ({
   const resolution = useMainserverResourcePrincipalControl(contentType);
   if (resolution.kind === 'loading') {
     return (
-      <StudioAnimatedLoadingState>
-        {t('content.principal.resourceLoading')}
-      </StudioAnimatedLoadingState>
+      <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>
     );
   }
   if (resolution.kind === 'error') {

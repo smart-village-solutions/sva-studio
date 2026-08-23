@@ -1,4 +1,4 @@
 {
   "prNumber": 1120,
-  "body": "Ladezustände und Startseite greifen die Studio-Werkstatt visuell auf\n\n- Beim Öffnen einer Inhaltsdetailseite erscheint während des Ladens keine vorzeitige Fehlermeldung mehr, sondern ein passender animierter Ladezustand.\n- Sobald der Inhalt verfügbar ist, wird er ohne künstliche Wartezeit angezeigt. Echte Ladefehler bleiben weiterhin deutlich sichtbar.\n- Die Startseite setzt sich vor und nach dem Login aus Studio-Bausteinen zusammen; wiederholte Aufrufe verwenden eine kürzere Bewegung.\n- Bei reduzierter Bewegung bleiben die Motive statisch, während Links, Schaltflächen und Inhalte jederzeit bedienbar sind."
+  "body": "Detailseiten unterscheiden Laden und echte Fehler\n\n- Beim Öffnen einer Inhaltsdetailseite erscheint während der Principal-Auflösung keine vorzeitige Fehlermeldung mehr, sondern ein neutraler Ladehinweis.\n- Sobald der Inhalt verfügbar ist, wird er ohne künstliche Wartezeit angezeigt.\n- Erst eine tatsächlich fehlgeschlagene oder uneindeutige Principal-Auflösung wird dauerhaft als Fehler dargestellt; der Editor bleibt dabei gesperrt."
 }

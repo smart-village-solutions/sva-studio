@@ -1,0 +1,4 @@
+{
+  "prNumber": 1121,
+  "body": "Detailseiten unterscheiden Laden und echte Fehler\n\n- Beim Öffnen einer Inhaltsdetailseite erscheint während der Principal-Auflösung keine vorzeitige Fehlermeldung mehr, sondern ein neutraler Ladehinweis.\n- Sobald der Inhalt verfügbar ist, wird er ohne künstliche Wartezeit angezeigt.\n- Die Studio-Animationen auf Lade- und Startseiten wurden entfernt.\n- Erst eine tatsächlich fehlgeschlagene oder uneindeutige Principal-Auflösung wird dauerhaft als Fehler dargestellt; der Editor bleibt dabei gesperrt."
+}

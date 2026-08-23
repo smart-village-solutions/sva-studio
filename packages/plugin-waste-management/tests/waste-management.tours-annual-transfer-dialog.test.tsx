@@ -35,6 +35,7 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 import { WasteToursAnnualTransferDialog } from '../src/waste-management.tours-annual-transfer-dialog.js';
+import { showWasteAnnualTransferResult } from '../src/waste-management.tours-annual-transfer.js';
 
 const preview = {
   sourceYear: 2026,
@@ -94,6 +95,32 @@ describe('WasteToursAnnualTransferDialog', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it('clears stale list filters when showing the transfer result', () => {
+    const onFiltersChange = vi.fn();
+
+    showWasteAnnualTransferResult(onFiltersChange, {
+      sourceYear: 2026,
+      targetYear: 2027,
+      createdTourIds: ['target-1'],
+      existingTourIds: [],
+      createdCount: 1,
+      existingCount: 0,
+      classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
+      listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+    });
+
+    expect(onFiltersChange).toHaveBeenCalledWith(
+      '',
+      'inactive',
+      'next',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
   });
 
   it('shows the fixed following year and creates the confirmed selection as inactive', async () => {

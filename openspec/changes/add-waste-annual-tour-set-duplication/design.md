@@ -34,7 +34,7 @@ Freie Zieljahre wurden verworfen, weil sie zusätzliche Rückwärts-, Mehrjahres
 
 ### Zustandsloser Assistent mit einer Schreibgrenze
 
-Der Assistent hält seine Auswahl nur im Client. Eine read-only Serveroperation erzeugt die Vorschau. Beim Bestätigen validiert der Server den Vorschaustand erneut und legt den gesamten ausgewählten Satz in einer Datenbanktransaktion inaktiv an. Wird der Assistent danach beendet, bleiben die erzeugten Touren über die normale Tourenliste, den relativen Jahresfilter und den Statusfilter auffindbar und bearbeitbar.
+Der Assistent hält seine Auswahl nur im Client. Eine read-only Serveroperation erzeugt die Vorschau. Beim Bestätigen validiert der Server den Vorschaustand erneut und legt den gesamten ausgewählten Satz in einer Datenbanktransaktion inaktiv an. Die Ergebnisaktion öffnet die normale Tourenliste mit dem relativen Zieljahres- und Inaktiv-Filter und entfernt zuvor gesetzte Such-, Fraktions- und Datumsfilter, damit der neue Bestand nicht versehentlich verborgen bleibt.
 
 Eine Aktivierung gehört bewusst nicht zum Jahreswechsel-Assistenten. Die Benutzer sollen den erzeugten Bestand zunächst prüfen und mit den bestehenden Tourenaktionen freigeben. Eine allgemeine Bulk-Aktivierung kann bei nachgewiesenem Bedarf separat spezifiziert werden.
 
@@ -58,7 +58,7 @@ Der Assistent bietet keinen Modusschalter. Für jede bestätigte Tour übernimmt
 - jahresunabhängige tourbezogene Verschiebungsregeln,
 - jahresspezifische tourbezogene Verschiebungen des Quelljahres.
 
-Jahresunabhängige Regeln werden unverändert mit der neuen Tour verknüpft. Jahresbezogene Termine und Verschiebungen werden nach der Folgejahrregel abgebildet. Daten außerhalb des Quelljahres werden nicht in den neuen Satz übernommen und in der Vorschau als ausgeschlossen zusammengefasst.
+Jahresunabhängige Regeln werden unverändert mit der neuen Tour verknüpft. Jahresbezogene Termine und Verschiebungen werden nach der Folgejahrregel abgebildet; überschreitet eine Verschiebung die Jahresgrenze, bleibt der relative Jahresversatz zwischen Ursprungs- und Zieldatum erhalten. Daten außerhalb des Quelljahres werden nicht in den neuen Satz übernommen und in der Vorschau als ausgeschlossen zusammengefasst.
 
 ### Deterministische Folgejahrregeln
 
@@ -66,9 +66,9 @@ Für wöchentliche, zweiwöchentliche, vierwöchentliche und durch ein Abstandsp
 
 Beginnt eine Tour bereits vor dem Quelljahr, ist der 1. Januar des Quelljahres die Untergrenze dieses Ausschnitts; der ursprüngliche Tourbeginn bleibt ausschließlich der Taktanker. Nicht darstellbare Grenzen wie ein 29. Februar erhalten getrennte Ersatzressourcen für Gültigkeitsbeginn und Gültigkeitsende, damit keine Eingabe versehentlich die andere Grenze verändert.
 
-Kalendergebundene jährliche Touren behalten Monat und Tag. Konkrete Einzeltermine werden zunächst auf denselben Monat und Tag des Folgejahres übertragen und anschließend auf den nächstgelegenen gleichen Wochentag verschoben. Das Ergebnis muss im Folgejahr liegen; würde die nächstgelegene Wahl die Jahresgrenze überschreiten, wird der nächstgelegene gleiche Wochentag innerhalb des Folgejahres verwendet.
+Kalendergebundene jährliche Touren behalten Monat und Tag ihres ursprünglichen Jahrestags auch dann, wenn ihre Gültigkeit bereits vor dem Quelljahr begonnen hat. Konkrete Einzeltermine werden zunächst auf denselben Monat und Tag des Folgejahres übertragen und anschließend auf den nächstgelegenen gleichen Wochentag verschoben. Das Ergebnis muss im Folgejahr liegen; würde die nächstgelegene Wahl die Jahresgrenze überschreiten, wird der nächstgelegene gleiche Wochentag innerhalb des Folgejahres verwendet.
 
-Kann ein Quellmonat/-tag wie der 29. Februar im Folgejahr nicht dargestellt werden, verlangt die Vorschau ein konkretes Ersatzdatum im Folgejahr. Dasselbe gilt, wenn mehrere unterschiedliche Quelltermine oder Verschiebungen auf dieselbe fachliche Zielbeziehung abgebildet würden. Ersatzdaten werden pro Quellressource erfasst, serverseitig validiert und in den Vorschau-Fingerprint aufgenommen. Ohne eindeutige Auflösung bleibt die Tour blockiert.
+Kann ein Quellmonat/-tag wie der 29. Februar im Folgejahr nicht dargestellt werden, verlangt die Vorschau ein konkretes Ersatzdatum im Folgejahr. Dasselbe gilt, wenn mehrere unterschiedliche Quelltermine oder Verschiebungen auf dieselbe fachliche Zielbeziehung abgebildet würden. Ersatzdaten werden nur für die von dieser Vorschau tatsächlich als nicht abbildbar oder kollidierend gemeldeten Quellressourcen akzeptiert, serverseitig validiert und in den Vorschau-Fingerprint aufgenommen. Unbekannte, doppelte oder unnötige Ersetzungen werden abgelehnt. Ohne eindeutige Auflösung bleibt die Tour blockiert.
 
 ### Vorschau-Fingerprint und Konflikte
 

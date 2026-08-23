@@ -1,7 +1,6 @@
 import type { WasteTourRecord } from './waste-management/master-data-tours.js';
 import {
   assertWasteAnnualTourTransferLimits,
-  WasteAnnualTourTransferError,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferReplacementDate,
   type WasteAnnualTourTransferSource,
@@ -19,6 +18,7 @@ import {
 } from './waste-management-annual-tour-transfer.dates.js';
 import { buildWasteAnnualTourTransferFingerprint } from './waste-management-annual-tour-transfer.identity.js';
 import { mapWasteAnnualTour } from './waste-management-annual-tour-transfer.mapping.js';
+import { buildValidatedWasteAnnualReplacementMap } from './waste-management-annual-tour-transfer.replacements.js';
 import { wasteAnnualRelationshipsFor } from './waste-management-annual-tour-transfer.relationships.js';
 
 type WasteAnnualTourTransferInternalTourPreview = WasteAnnualTourTransferTourPreview &
@@ -182,18 +182,17 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
   replacementDates?: readonly WasteAnnualTourTransferReplacementDate[];
 }): Promise<WasteAnnualTourTransferInternalPreview> => {
   const targetYear = deriveWasteAnnualTourTransferTargetYear(input.sourceYear, input.currentYear);
-  for (const replacement of input.replacementDates ?? []) {
-    if (!isWasteAnnualDateInYear(replacement.targetDate, targetYear)) {
-      throw new WasteAnnualTourTransferError('replacement_date_invalid');
-    }
-  }
   const relevantTours = input.source.tours.filter((tour) =>
     isRelevantTour(tour, input.sourceYear, input.source)
   );
   assertWasteAnnualTourTransferLimits({ tours: relevantTours.length, relationships: 0 });
-  const replacements = new Map(
-    (input.replacementDates ?? []).map((item) => [item.sourceResourceId, item.targetDate] as const)
-  );
+  const replacementDates = input.replacementDates ?? [];
+  const replacements = buildValidatedWasteAnnualReplacementMap({
+    ...input,
+    targetYear,
+    relevantTours,
+    replacementDates,
+  });
   const previews = await Promise.all(
     sortWasteAnnualItems(relevantTours, (tour) => tour.id).map((tour) =>
       previewTour({ ...input, tour, targetYear, replacements })

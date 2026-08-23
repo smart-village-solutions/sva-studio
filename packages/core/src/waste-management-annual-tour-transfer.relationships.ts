@@ -3,6 +3,7 @@ import type { WasteAnnualTourTransferSource } from './waste-management-annual-to
 import {
   isWasteAnnualDateInYear,
   mapWasteAnnualConcreteDate,
+  wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
 
 export const wasteAnnualRelationshipsFor = <T extends { readonly tourId: string }>(
@@ -45,6 +46,9 @@ const mapAssignments = (input: AnnualRelationshipMappingInput) =>
       mappedDate: mapDate(source.pickupDate, source.id, input.targetYear, input.replacements),
     }));
 
+const targetYearForShiftDate = (value: string, input: AnnualRelationshipMappingInput): number =>
+  input.targetYear + ((wasteAnnualYearOf(value) ?? input.sourceYear) - input.sourceYear);
+
 const mapShifts = (input: AnnualRelationshipMappingInput) =>
   wasteAnnualRelationshipsFor(input.source.tourDateShifts, input.tour.id)
     .filter((item) => !item.hasYear || isWasteAnnualDateInYear(item.originalDate, input.sourceYear))
@@ -59,7 +63,12 @@ const mapShifts = (input: AnnualRelationshipMappingInput) =>
           )
         : source.originalDate,
       actualDate: source.hasYear
-        ? mapDate(source.actualDate, `${source.id}:actual`, input.targetYear, input.replacements)
+        ? mapDate(
+            source.actualDate,
+            `${source.id}:actual`,
+            targetYearForShiftDate(source.actualDate, input),
+            input.replacements
+          )
         : source.actualDate,
     }));
 

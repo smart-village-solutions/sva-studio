@@ -50,9 +50,11 @@ const resolveValidityBoundaries = (
   const sourceYearStart = wasteAnnualStartOfYear(input.sourceYear);
   const sourceYearEnd = wasteAnnualEndOfYear(input.sourceYear);
   const sourceStart =
-    input.tour.firstDate && input.tour.firstDate > sourceYearStart
+    input.tour.recurrence === 'yearly' && input.tour.firstDate
       ? input.tour.firstDate
-      : sourceYearStart;
+      : input.tour.firstDate && input.tour.firstDate > sourceYearStart
+        ? input.tour.firstDate
+        : sourceYearStart;
   const sourceEnd =
     input.tour.endDate && input.tour.endDate < sourceYearEnd ? input.tour.endDate : sourceYearEnd;
   const startResourceId = `${input.tour.id}:validity:start`;
@@ -125,6 +127,19 @@ type MapTourBlocker = Readonly<{
   blocker: 'invalid_planning_data' | 'replacement_date_required' | 'target_date_collision';
   replacementResourceIds: readonly string[];
 }>;
+
+export const findWasteAnnualTourReplacementResourceIds = (
+  input: Omit<MapTourInput, 'replacements'>
+) => {
+  const withoutReplacements = { ...input, replacements: new Map<string, string>() };
+  const validity = mapValidity(withoutReplacements);
+  const relationships = mapWasteAnnualRelationships(withoutReplacements);
+  return [
+    ...(!validity.ok ? validity.replacementResourceIds : []),
+    ...relationships.missing,
+    ...findWasteAnnualRelationshipCollisions(relationships),
+  ];
+};
 
 const deriveMappedRelationships = async (
   targetTourId: string,

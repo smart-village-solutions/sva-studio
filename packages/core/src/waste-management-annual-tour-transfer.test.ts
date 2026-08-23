@@ -264,6 +264,89 @@ describe('waste annual tour transfer', () => {
     });
   });
 
+  it('preserves the anniversary of a multi-year yearly tour', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([
+        tour({
+          recurrence: 'yearly',
+          firstDate: '2025-07-15',
+          endDate: '2026-12-31',
+        }),
+      ]),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]?.targetPeriod).toEqual({
+      firstDate: '2027-07-15',
+      endDate: '2027-12-31',
+    });
+  });
+
+  it('preserves the relative year offset of a cross-year date shift', async () => {
+    const sourceTour = tour();
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'shift-cross-year',
+            tourId: sourceTour.id,
+            originalDate: '2026-12-31',
+            actualDate: '2027-01-02',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]).toMatchObject({
+      originalDate: '2027-12-30',
+      actualDate: '2028-01-01',
+    });
+  });
+
+  it('rejects replacement overrides that are unknown or not required', async () => {
+    const onDemandTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-06-15' }],
+    });
+    const baseInput = {
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([onDemandTour]),
+      target: source([]),
+    } as const;
+
+    await expect(
+      buildWasteAnnualTourTransferPreview({
+        ...baseInput,
+        replacementDates: [
+          {
+            sourceResourceId: `${onDemandTour.id}:custom-date:0:2026-06-15`,
+            targetDate: '2027-06-16',
+          },
+        ],
+      })
+    ).rejects.toEqual(new WasteAnnualTourTransferError('replacement_date_invalid'));
+    await expect(
+      buildWasteAnnualTourTransferPreview({
+        ...baseInput,
+        replacementDates: [{ sourceResourceId: 'unknown', targetDate: '2027-06-16' }],
+      })
+    ).rejects.toEqual(new WasteAnnualTourTransferError('replacement_date_invalid'));
+  });
+
   it('detects possible parallel planning from content rather than the tour name', async () => {
     const sourceTour = tour();
     const targetTour = tour({

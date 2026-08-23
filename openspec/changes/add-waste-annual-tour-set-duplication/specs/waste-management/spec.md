@@ -62,6 +62,7 @@ Das System SHALL für jede bestätigte Tour genau einen Übernahmevertrag verwen
 - **WHEN** die bestätigte Tour jahresunabhängige oder im Quelljahr wirksame jahresspezifische Verschiebungen besitzt
 - **THEN** verknüpft das System jahresunabhängige Regeln unverändert mit der neuen Tour
 - **AND** bildet es jahresspezifische Verschiebungen des Quelljahres auf das Folgejahr ab
+- **AND** erhält es bei einer Verschiebung über die Jahresgrenze den relativen Jahresversatz zwischen Ursprungs- und Zieldatum
 - **AND** übernimmt es keine jahresspezifischen Verschiebungen außerhalb des Quelljahres
 
 ### Requirement: Waste-Management überträgt Folgejahrdaten deterministisch
@@ -82,6 +83,12 @@ Das System SHALL wiederkehrende Tagesabstandstouren ohne Taktunterbrechung in da
 - **AND** liegt das Ergebnis stets innerhalb des Folgejahres
 - **AND** zeigt die Vorschau Quell- und Zieldatum einschließlich Wochentag an
 
+#### Scenario: Jährliche Tour behält ihren ursprünglichen Jahrestag
+
+- **WHEN** eine jährliche Tour bereits vor dem Quelljahr begonnen hat
+- **THEN** verwendet das System im Folgejahr weiterhin Monat und Tag ihres ursprünglichen Beginns
+- **AND** setzt es den Jahrestag nicht auf den Beginn des wirksamen Quelljahrausschnitts
+
 #### Scenario: Kalenderdatum existiert im Folgejahr nicht
 
 - **WHEN** ein zu übertragender Monat und Tag wie der 29. Februar im Folgejahr nicht existiert
@@ -94,6 +101,12 @@ Das System SHALL wiederkehrende Tagesabstandstouren ohne Taktunterbrechung in da
 - **WHEN** unterschiedliche Quelltermine oder Verschiebungen auf dieselbe fachliche Zielbeziehung abgebildet würden
 - **THEN** führt das System sie nicht stillschweigend zusammen
 - **AND** verlangt es eine eindeutige Ersatzentscheidung oder die Abwahl der betroffenen Tour
+
+#### Scenario: Ersatzdatum darf nur einen gemeldeten Konflikt auflösen
+
+- **WHEN** ein Client ein Ersatzdatum für eine unbekannte, doppelte oder ohne Ersatz abbildbare Quellressource sendet
+- **THEN** lehnt der Server die Vorschau als `replacement_date_invalid` ab
+- **AND** verändert er die deterministische Folgejahrabbildung nicht
 
 ### Requirement: Waste-Management bindet die Bestätigung an eine unveränderte Vorschau
 

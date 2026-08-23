@@ -32,6 +32,7 @@ import {
   createStudioDataTableSortingLabels,
 } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { useContents } from '../../hooks/use-contents';
@@ -67,6 +68,7 @@ type ContentListRouteState = Readonly<{
   status: StatusFilter;
   page: number;
   pageSize: number;
+  languageCode?: string;
   sort?: ContentListSortState;
 }>;
 type SortStateLike = Readonly<{
@@ -210,6 +212,9 @@ const asRouteSearchState = (value: unknown): RouteSearchState | undefined =>
 const normalizeStatusFilter = (value: unknown): StatusFilter =>
   isStatusFilter(value) ? value : 'all';
 
+const normalizeLanguageFilter = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value.trim().toLowerCase() || undefined : undefined;
+
 const normalizePositiveInteger = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
     return value;
@@ -274,18 +279,23 @@ const resolveRouteSortState = (search: RouteSearchState): ContentListSortState |
 const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteState => {
   const normalizedFilters = asRouteSearchState(search.filters);
   const pageSizeDefault = contentPagination?.defaultPageSize ?? 25;
+  const type = normalizeTypeFilter(normalizedFilters?.type ?? search.type);
+  const languageCode =
+    type === 'faq.faq' ? normalizeLanguageFilter(search.languageCode) : undefined;
 
   return {
-    type: normalizeTypeFilter(normalizedFilters?.type ?? search.type),
+    type,
     status: normalizeStatusFilter(normalizedFilters?.status ?? search.status),
     page: normalizePositiveInteger(search.page, 1),
     pageSize: normalizePositiveInteger(search.pageSize, pageSizeDefault),
+    ...(languageCode ? { languageCode } : {}),
     sort: resolveRouteSortState(search) ?? resolveFallbackSortState(),
   };
 };
 
 const serializeRouteState = (state: ContentListRouteState): RouteSearchState => ({
   ...(state.type !== 'all' ? { type: state.type } : {}),
+  ...(state.type === 'faq.faq' && state.languageCode ? { languageCode: state.languageCode } : {}),
   ...(state.status !== 'all' ? { status: state.status } : {}),
   ...(state.sort ? { sortBy: state.sort.field, sortDirection: state.sort.direction } : {}),
   page: state.page,
@@ -577,6 +587,9 @@ export const ContentListPage = ({
       page: routeState.page,
       pageSize: routeState.pageSize,
       ...(routeState.type !== 'all' ? { type: routeState.type } : {}),
+      ...(routeState.type === 'faq.faq' && routeState.languageCode
+        ? { languageCode: routeState.languageCode }
+        : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
       visibleTypes,
       sortBy: resolveContentSortField(routeSortField),
@@ -587,6 +600,7 @@ export const ContentListPage = ({
       routeSortField,
       routeState.page,
       routeState.pageSize,
+      routeState.languageCode,
       routeState.status,
       routeState.type,
       visibleTypes,
@@ -898,6 +912,24 @@ export const ContentListPage = ({
                   navigateSearch({ type: normalizeTypeFilter(type), page: 1 })
                 }
               />
+              {routeState.type === 'faq.faq' ? (
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="content-faq-language-filter">
+                    {t('content.filters.languageCodeLabel')}
+                  </Label>
+                  <Input
+                    id="content-faq-language-filter"
+                    className="w-full sm:w-64"
+                    value={routeState.languageCode ?? ''}
+                    onChange={(event) =>
+                      navigateSearch({
+                        languageCode: normalizeLanguageFilter(event.currentTarget.value),
+                        page: 1,
+                      })
+                    }
+                  />
+                </div>
+              ) : null}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
                 <Select

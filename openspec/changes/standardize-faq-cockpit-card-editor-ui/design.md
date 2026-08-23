@@ -70,7 +70,7 @@ Listen- und Detailtemplates erhalten fachlich verständliche Beschreibungen. Die
 
 FAQ und Kacheln normalisieren `page` und `pageSize` über einen gemeinsamen oder gleichwertigen Listenhelfer und erhalten unbekannte Search-Params bei der Navigation.
 
-Der FAQ-Sprachfilter wird als optionaler URL-Search-Param modelliert. Er MUST auf die vollständige, bereits nach `genericType === "FAQ"` abgegrenzte Menge angewendet werden, bevor Sortierung, `totalCount` und Pagination berechnet werden. Eine browserseitige Filterung nur der geladenen Seite ist unzulässig. Falls der Mainserver keinen geeigneten Filter anbietet, bleibt der hostseitige FAQ-Adapter für Filterung und lokale Pagination verantwortlich.
+Der FAQ-Sprachfilter wird als optionaler URL-Search-Param der gemeinsamen Inhaltsübersicht mit `type=faq.faq` modelliert. Die Content-Projektion wendet ihn auf die vollständige, bereits als `faq.faq` klassifizierte Menge an, bevor Sortierung, `totalCount` und Pagination berechnet werden. Eine browserseitige Filterung nur der geladenen Seite ist unzulässig. Bei einem Wechsel auf einen anderen Inhaltstyp entfernt der Host den FAQ-spezifischen Parameter.
 
 Die Kachel-Liste verwendet die vom Host gelieferten Werte `page`, `pageSize` und `hasNextPage` und zeigt dieselbe Vor-/Zurück-Navigation wie andere Studio-Fachlisten.
 

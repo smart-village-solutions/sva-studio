@@ -3,17 +3,13 @@ import {
   type TestSyncState,
 } from './iam-content-list-projection.test-database-sync-state.js';
 import type { TestProjectionRow } from './iam-content-list-projection.test-database-types.js';
-
 type TestQueryResult = { rows: unknown[]; rowCount: number };
-
 const readNullableString = (value: unknown): string | null =>
   typeof value === 'string' ? value : null;
-
 const readPayloadJson = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
-
 export const mapInsertedProjectionRow = (row: Record<string, unknown>): TestProjectionRow => ({
   id: String(row.id),
   instance_id: String(row.instance_id),
@@ -158,6 +154,15 @@ const applyProjectionFilters = (
     rows = rows.filter((row) => contentTypes.includes(row.content_type));
   }
 
+  const languageCodeMatch = text.match(/payload_json ->> 'languageCode'\)\) = \$(\d+)/);
+  if (languageCodeMatch) {
+    const index = Number.parseInt(languageCodeMatch[1] ?? '0', 10) - 1;
+    const languageCode = readNullableString(values?.[index])?.trim().toLowerCase();
+    rows = rows.filter(
+      (row) =>
+        readNullableString(row.payload_json.languageCode)?.trim().toLowerCase() === languageCode
+    );
+  }
   const mainserverSourceGuardIndex = text.indexOf("projection.source_system <> 'mainserver'");
   const ownerOrgMatches = [
     ...text.matchAll(/projection\.owner_organization_id::text = ANY\(\$(\d+)::text\[\]\)/g),

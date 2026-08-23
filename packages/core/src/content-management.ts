@@ -164,6 +164,7 @@ export type IamContentListQuery = {
   readonly pageSize: number;
   readonly q?: string;
   readonly type?: string;
+  readonly languageCode?: string;
   readonly visibleTypes?: readonly string[];
   readonly status?: IamContentStatus;
   readonly sortBy: IamContentListSortField;

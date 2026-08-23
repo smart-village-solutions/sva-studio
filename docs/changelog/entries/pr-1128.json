@@ -1,4 +1,4 @@
 {
   "prNumber": 1128,
-  "body": "Der vollständige FAQ-Bearbeitungsablauf ist zusätzlich durch einen Browser-Test abgesichert.\n\n- Der Test öffnet FAQ über die gemeinsame Inhaltsübersicht und prüft Anlegen, Tabwechsel und Speichern.\n- Historie, Erhalt bestehender Zusatzdaten und bestätigtes Löschen werden im selben Ablauf geprüft.\n- Der noch offene Produktentscheid zum FAQ-Sprachfilter ist in OpenSpec sichtbar dokumentiert."
+  "body": "Die gemeinsame Inhaltsübersicht unterstützt für FAQ jetzt einen URL-gesteuerten Sprachfilter.\n\n- Unter `/admin/content?type=faq.faq` erscheint der Sprachcode-Filter und setzt Änderungen auf Seite 1 zurück.\n- Die Content-Projektion filtert vor Trefferzahl, Sortierung und Pagination; bei anderen Inhaltstypen wird der Parameter entfernt.\n- Der Browser-Test deckt Sprachfilter, Anlegen, Tabwechsel, Speichern, Historie und bestätigtes Löschen durchgängig ab."
 }

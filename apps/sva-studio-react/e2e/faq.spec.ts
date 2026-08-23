@@ -36,6 +36,7 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
   let updatedBody: Record<string, unknown> | undefined;
   let deleted = false;
   let sawFaqTypeFilter = false;
+  let sawFaqLanguageFilter = false;
 
   await page.route('**/auth/me', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(faqUser) })
@@ -60,37 +61,63 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
     if (path === '/api/v1/iam/contents') {
       const requestUrl = new URL(route.request().url());
       const isFaqList = requestUrl.searchParams.get('type') === 'faq.faq';
+      const languageCode = requestUrl.searchParams.get('languageCode');
       sawFaqTypeFilter ||= isFaqList;
+      sawFaqLanguageFilter ||= isFaqList && languageCode === 'de';
+      const faqRows = [
+        {
+          id: 'faq-existing',
+          contentType: 'faq.faq',
+          title: 'Wann ist geöffnet?',
+          status: 'published',
+          author: 'Editor One',
+          createdAt: '2026-08-23T10:00:00.000Z',
+          updatedAt: '2026-08-23T10:00:00.000Z',
+          publishedAt: '2026-08-23T10:00:00.000Z',
+          payload: { languageCode: 'de', sortWeight: 0 },
+          access: {
+            state: 'editable',
+            canRead: true,
+            canCreate: true,
+            canUpdate: true,
+            organizationIds: ['org-1'],
+            sourceKinds: ['direct_role'],
+          },
+        },
+        {
+          id: 'faq-english',
+          contentType: 'faq.faq',
+          title: 'When are you open?',
+          status: 'published',
+          author: 'Editor One',
+          createdAt: '2026-08-23T09:00:00.000Z',
+          updatedAt: '2026-08-23T09:00:00.000Z',
+          publishedAt: '2026-08-23T09:00:00.000Z',
+          payload: { languageCode: 'en', sortWeight: 0 },
+          access: {
+            state: 'editable',
+            canRead: true,
+            canCreate: true,
+            canUpdate: true,
+            organizationIds: ['org-1'],
+            sourceKinds: ['direct_role'],
+          },
+        },
+      ];
+      const filteredFaqRows = languageCode
+        ? faqRows.filter(
+            (item) => item.payload.languageCode.toLowerCase() === languageCode.toLowerCase()
+          )
+        : faqRows;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: isFaqList
-            ? [
-                {
-                  id: 'faq-existing',
-                  contentType: 'faq.faq',
-                  title: 'Wann ist geöffnet?',
-                  status: 'published',
-                  author: 'Editor One',
-                  createdAt: '2026-08-23T10:00:00.000Z',
-                  updatedAt: '2026-08-23T10:00:00.000Z',
-                  publishedAt: '2026-08-23T10:00:00.000Z',
-                  access: {
-                    state: 'editable',
-                    canRead: true,
-                    canCreate: true,
-                    canUpdate: true,
-                    organizationIds: ['org-1'],
-                    sourceKinds: ['direct_role'],
-                  },
-                },
-              ]
-            : [],
+          data: isFaqList ? filteredFaqRows : [],
           pagination: {
             page: 1,
             pageSize: 25,
-            total: isFaqList ? 1 : 0,
+            total: isFaqList ? filteredFaqRows.length : 0,
             hasNextPage: false,
           },
         }),
@@ -168,7 +195,18 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
   await expect(
     page.getByRole('link', { name: 'Wann ist geöffnet? bearbeiten' }).first()
   ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'When are you open? bearbeiten' }).first()
+  ).toBeVisible();
   expect(sawFaqTypeFilter).toBe(true);
+
+  await page.getByLabel('Sprachcode').fill('de');
+  await expect(page).toHaveURL(/languageCode=de/);
+  await expect(
+    page.getByRole('link', { name: 'Wann ist geöffnet? bearbeiten' }).first()
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: 'When are you open? bearbeiten' })).toHaveCount(0);
+  expect(sawFaqLanguageFilter).toBe(true);
 
   await navigateClientSide(page, '/admin/faq/new');
   await expect(page.getByRole('heading', { name: 'FAQ anlegen' })).toBeVisible();

@@ -59,6 +59,7 @@ import {
   listAdminDsrCases,
   listGovernanceCases,
   listGroups,
+  listContents,
   listInstances,
   listOrganizations,
   listPluginOperationJobs,
@@ -154,6 +155,29 @@ describe('iam-api organization helpers', () => {
       expect.objectContaining({
         credentials: 'include',
       })
+    );
+  });
+
+  it('sends the FAQ language filter with the shared content-list request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        createJsonResponse({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listContents({
+      page: 1,
+      pageSize: 25,
+      type: 'faq.faq',
+      languageCode: 'de',
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/contents?page=1&pageSize=25&sortBy=updatedAt&sortDirection=desc&type=faq.faq&languageCode=de',
+      expect.objectContaining({ credentials: 'include' })
     );
   });
 

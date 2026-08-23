@@ -1,8 +1,4 @@
-import type {
-  ApiErrorCode,
-  ApiErrorResponse,
-  IamContentListQuery,
-} from '@sva/core';
+import type { ApiErrorCode, ApiErrorResponse, IamContentListQuery } from '@sva/core';
 import { iamContentListSortDirections, iamContentListSortFields } from '@sva/core';
 
 export class InvalidContentListQueryError extends Error {
@@ -26,8 +22,7 @@ export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
 const MAIN_SERVER_CONTENT_TYPES = new Set<string>(DEFAULT_MAINSERVER_VISIBLE_TYPES);
 export const MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE = 100;
 export const EMPTY_VISIBLE_TYPE_SENTINEL = '__no_readable_content__';
-export type MainserverContentType =
-  | (typeof DEFAULT_MAINSERVER_VISIBLE_TYPES)[number];
+export type MainserverContentType = (typeof DEFAULT_MAINSERVER_VISIBLE_TYPES)[number];
 
 const API_ERROR_CODES = new Set<ApiErrorCode>([
   'unauthorized',
@@ -77,6 +72,10 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
   );
   const q = url.searchParams.get('q')?.trim() || undefined;
   const typeValue = url.searchParams.get('type')?.trim();
+  const languageCode =
+    typeValue === 'faq.faq'
+      ? url.searchParams.get('languageCode')?.trim().toLowerCase() || undefined
+      : undefined;
   const statusValue = url.searchParams.get('status')?.trim();
   const sortByValue = url.searchParams.get('sortBy')?.trim();
   const sortDirectionValue = url.searchParams.get('sortDirection')?.trim();
@@ -84,11 +83,14 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     .getAll('visibleType')
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
-  const visibleTypes = requestedVisibleTypes.filter((value) => value !== EMPTY_VISIBLE_TYPE_SENTINEL);
+  const visibleTypes = requestedVisibleTypes.filter(
+    (value) => value !== EMPTY_VISIBLE_TYPE_SENTINEL
+  );
   const hasEmptyVisibleTypeSentinel = requestedVisibleTypes.includes(EMPTY_VISIBLE_TYPE_SENTINEL);
 
   if (
-    (sortByValue !== undefined && !(iamContentListSortFields as readonly string[]).includes(sortByValue)) ||
+    (sortByValue !== undefined &&
+      !(iamContentListSortFields as readonly string[]).includes(sortByValue)) ||
     (sortDirectionValue !== undefined &&
       !(iamContentListSortDirections as readonly string[]).includes(sortDirectionValue))
   ) {
@@ -100,6 +102,7 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
     pageSize,
     ...(q ? { q } : {}),
     ...(typeValue && typeValue !== 'all' ? { type: typeValue } : {}),
+    ...(languageCode ? { languageCode } : {}),
     ...(statusValue === 'draft' ||
     statusValue === 'in_review' ||
     statusValue === 'approved' ||

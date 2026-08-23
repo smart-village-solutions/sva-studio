@@ -12,7 +12,7 @@ import { resolvePermissionTitle } from '../lib/permission-labels';
 import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioLoadingState } from '@sva/studio-ui-react';
 import { HomeActionCards } from './-home-action-cards';
 import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
@@ -314,7 +314,7 @@ export const HomePage = () => {
 
       {isLoading ? (
         <section className="mx-auto max-w-6xl px-6 py-12">
-          <p className="text-sm text-muted-foreground">{t('home.session.loading')}</p>
+          <StudioLoadingState>{t('home.session.loading')}</StudioLoadingState>
         </section>
       ) : isAuthenticated ? (
         <AuthenticatedHomeOverview changelogState={changelogState} user={user} />

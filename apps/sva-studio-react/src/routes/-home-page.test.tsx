@@ -37,6 +37,21 @@ describe('HomePage', () => {
     vi.unstubAllGlobals();
   });
 
+  it('announces session loading as a status', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: true,
+      error: null,
+      sessionRecoveryFailed: false,
+      isDevAuthAvailable: false,
+      loginWithDevAuth: vi.fn(),
+    });
+
+    render(<HomePage />);
+
+    expect(screen.getByRole('status').textContent).toContain('Sitzung wird geladen');
+  });
+
   it('renders the latest changelog entries on the authenticated home page', async () => {
     vi.stubGlobal(
       'fetch',

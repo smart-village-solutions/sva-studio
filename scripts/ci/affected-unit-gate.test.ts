@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildUnitProjectsCommand, resolveAppUnitExecutionPlan } from './affected-unit-gate.ts';
+import { buildUnitProjectCommand, resolveAppUnitExecutionPlan } from './affected-unit-gate.ts';
 import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
 
 describe('affected-unit-gate', () => {
@@ -131,9 +131,9 @@ describe('affected-unit-gate', () => {
     expect(buildAppUnitCommand('routes')).toBe('pnpm nx run sva-studio-react:test:unit:routes');
   });
 
-  it('builds fail-fast commands for an explicit project phase', () => {
-    expect(buildUnitProjectsCommand(['plugin-news', 'routing'])).toBe(
-      'env -u NO_COLOR pnpm nx run-many --target=test:unit --projects=plugin-news,routing --parallel=1 --nxBail --output-style=stream'
+  it('builds target-exact fail-fast commands so retries preserve completed targets', () => {
+    expect(buildUnitProjectCommand('plugin-news')).toBe(
+      'env -u NO_COLOR pnpm nx run plugin-news:test:unit --nxBail --output-style=stream'
     );
   });
 
@@ -143,7 +143,7 @@ describe('affected-unit-gate', () => {
         ['apps/sva-studio-react/src/routes/settings.tsx'],
         ['sva-studio-react'],
         {
-          mode: 'affected-fallback',
+          mode: 'full-fallback',
           reason: 'nx-project-graph-unavailable',
           directProjects: [],
           remainingProjects: ['sva-studio-react'],

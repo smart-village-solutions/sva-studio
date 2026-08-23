@@ -4,7 +4,7 @@ export interface ProjectRoot {
 }
 
 export interface ChangedProjectPlan {
-  mode: 'changed-first' | 'affected-fallback';
+  mode: 'changed-first' | 'affected-fallback' | 'full-fallback';
   reason: string;
   directProjects: string[];
   remainingProjects: string[];
@@ -60,9 +60,11 @@ const mapFileToProject = (
 export const planChangedProjects = (
   changedFiles: readonly string[],
   affectedProjectNames: readonly string[],
-  projectRoots: readonly ProjectRoot[]
+  projectRoots: readonly ProjectRoot[],
+  fullProjectNames: readonly string[] = affectedProjectNames
 ): ChangedProjectPlan => {
   const affectedProjects = [...new Set(affectedProjectNames)].sort();
+  const fullProjects = [...new Set(fullProjectNames)].sort();
   const affectedSet = new Set(affectedProjects);
   const sortedRoots = projectRoots
     .map((project) => ({ ...project, root: normalizePath(project.root).replace(/\/$/u, '') }))
@@ -85,14 +87,22 @@ export const planChangedProjects = (
     }
   }
 
+  if (unmappedFiles.length > 0) {
+    return {
+      mode: 'full-fallback',
+      reason: 'unmapped-code-file',
+      directProjects: [],
+      remainingProjects: fullProjects,
+      unmappedFiles: unmappedFiles.sort(),
+    };
+  }
+
   const direct = [...directProjects].sort();
   const remaining = affectedProjects.filter((project) => !directProjects.has(project));
   const mode = direct.length > 0 ? 'changed-first' : 'affected-fallback';
   const reason =
     mode === 'changed-first'
-      ? unmappedFiles.length > 0
-        ? 'mapped-projects-first-with-conservative-remainder'
-        : 'directly-changed-projects-first'
+      ? 'directly-changed-projects-first'
       : affectedProjects.length === 0
         ? 'no-affected-projects'
         : 'no-safe-direct-project-mapping';
@@ -109,10 +119,16 @@ export const planChangedProjects = (
 export const planChangedProjectsWithFallback = (
   changedFiles: readonly string[],
   affectedProjectNames: readonly string[],
-  loadProjectRoots: ProjectRootLoader
+  loadProjectRoots: ProjectRootLoader,
+  fullProjectNames: readonly string[] = affectedProjectNames
 ): ChangedProjectPlan => {
   try {
-    return planChangedProjects(changedFiles, affectedProjectNames, loadProjectRoots());
+    return planChangedProjects(
+      changedFiles,
+      affectedProjectNames,
+      loadProjectRoots(),
+      fullProjectNames
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(
@@ -120,10 +136,10 @@ export const planChangedProjectsWithFallback = (
     );
 
     return {
-      mode: 'affected-fallback',
+      mode: 'full-fallback',
       reason: 'nx-project-graph-unavailable',
       directProjects: [],
-      remainingProjects: [...new Set(affectedProjectNames)].sort(),
+      remainingProjects: [...new Set(fullProjectNames)].sort(),
       unmappedFiles: [...new Set(changedFiles.map(normalizePath))].sort(),
     };
   }

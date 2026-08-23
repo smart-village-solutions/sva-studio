@@ -43,3 +43,20 @@ Nach mindestens 20 repräsentativen neuen PR-Läufen werden dieselben Größen e
 - mindestens 30 Prozent eingesparte Laufzeit bei cachefähigen unveränderten Targets auf einem zweiten kleinen PR-Push
 
 Die neuen Artefakte unter `artifacts/ci-feedback/` binden Messung, Scope und Ergebnis an Base- und Head-SHA. Ein früher Logeintrag ohne terminal roten Gate-Status gilt nicht als erfülltes Fast-Feedback-Ziel.
+
+## Auswertung nach der Changed-first-Aktivierung
+
+Die Auswertung wurde am 23. August 2026 über die GitHub-API wiederholt. Berücksichtigt wurden je 20 nicht abgebrochene, grüne PR-Head-SHAs mit erfolgreichen Jobs `Unit` und `Coverage`. Abgebrochene Zwischen-Pushes wurden nicht als repräsentative Endstände gezählt.
+
+| Messgröße                                           |                Baseline vor Aktivierung |          Nach Aktivierung | Bewertung                                                               |
+| --------------------------------------------------- | --------------------------------------: | ------------------------: | ----------------------------------------------------------------------- |
+| Mediane terminale Zeit von `Unit` und `Coverage`    |                                 505,5 s |                     348 s | 157,5 s schneller; Ziel „höchstens +30 s“ erfüllt                       |
+| P90 der terminalen Zeit                             |                                   585 s |                     513 s | 72 s schneller                                                          |
+| Direkt zuordenbarer bestätigter Unit-Fehler         | historische späte Fehler bis über 6 min |                     172 s | Median und P90 im beobachteten roten Fall unter 3 beziehungsweise 5 min |
+| Vollständiges Main-E2E, getrennte 20-Run-Stichprobe |                      nicht vergleichbar | Median 422,5 s, P90 756 s | separat pro Main-Commit ausgewiesen                                     |
+
+Der direkt zuordenbare rote Nachweis ist [Quality-Gates-Run 32512004585](https://github.com/smart-village-solutions/sva-studio/actions/runs/32512004585): Das geänderte App-Projekt lag in `directProjects`; der deterministische Unit-Fehler war 172 Sekunden nach Jobstart terminal bestätigt.
+
+Zwei weitere rote Coverage-Läufe, [32596085495](https://github.com/smart-village-solutions/sva-studio/actions/runs/32596085495) und [32597900544](https://github.com/smart-village-solutions/sva-studio/actions/runs/32597900544), meldeten erst nach dem vollständigen Restlauf eine Baseline-Abweichung in `monitoring-client`. Das Projekt gehörte jeweils nicht zur direkt geänderten Phase. Diese Läufe werden deshalb nicht als direkt verursachtes Fast-Feedback gewertet, bleiben aber als Beleg erhalten, dass der disjunkte Rest und das finale globale Gate weiterhin Fehler finden.
+
+Die rote direkt zuordenbare Stichprobe umfasst in diesem Fenster nur einen Lauf. Die Zielwerte sind für die 20 repräsentativen PR-Endstände erfüllt, bleiben aber wegen dieser dünnen roten Stichprobe weiter beobachtungsbedürftig. Ein runnerübergreifender unterstützter Nx-Remote-Cache ist nicht aktiviert; der bedingte Nachweis von mindestens 30 Prozent Cache-Einsparung ist daher nicht anwendbar und wird nicht behauptet.

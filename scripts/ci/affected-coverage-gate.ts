@@ -1,18 +1,28 @@
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
-import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
+import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
-import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
+import {
+  planChangedProjectsWithFallback,
+  type ChangedProjectPlan,
+  type ProjectRoot,
+} from './changed-project-plan.ts';
+import {
+  validateCoverageShardEvidence,
+  writeCoverageShardEvidence,
+} from './coverage-shard-evidence.ts';
 import { loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
 export interface DurationEntry {
   label: string;
   durationMs: number;
+  projects?: string[];
+  retryCount?: number;
 }
 
 const APP_PROJECT = 'sva-studio-react';
@@ -27,16 +37,6 @@ const IGNORED_DIRECTORY_NAMES = new Set([
   '.generated',
 ]);
 const require = createRequire(import.meta.url);
-
-const runCommand = (command: string): number => {
-  console.log(`\n$ ${command}`);
-  const startedAt = performance.now();
-  execSync(command, {
-    env: process.env,
-    stdio: 'inherit',
-  });
-  return performance.now() - startedAt;
-};
 
 const getCoverageProjects = (base: string, head: string, full: boolean): string[] => {
   const nxPackageJson = require.resolve('nx/package.json');
@@ -60,8 +60,8 @@ const getCoverageProjects = (base: string, head: string, full: boolean): string[
 
 export const buildAppCoverageCommand = (): string => `pnpm nx run ${APP_PROJECT}:test:coverage`;
 
-export const buildCoverageProjectsCommand = (projects: readonly string[]): string =>
-  `env -u NO_COLOR pnpm nx run-many --target=test:coverage --projects=${projects.join(',')} --parallel=1 --nxBail --output-style=stream`;
+export const buildCoverageProjectCommand = (project: string): string =>
+  `env -u NO_COLOR pnpm nx run ${project}:test:coverage --nxBail --output-style=stream`;
 
 export const buildEarlyCoverageGateCommand = (projects: readonly string[]): string =>
   `COVERAGE_GATE_EVALUATE_REGRESSIONS=1 COVERAGE_GATE_PROJECT_FILTER=${projects.join(',')} pnpm coverage-gate`;
@@ -87,6 +87,110 @@ export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => 
   for (const workspaceRoot of COVERAGE_WORKSPACE_ROOTS) {
     removeProjectRootCoverageDirectory(path.join(rootDir, workspaceRoot));
   }
+  fs.rmSync(path.join(rootDir, 'artifacts', 'ci-feedback', 'coverage-shards'), {
+    recursive: true,
+    force: true,
+  });
+};
+
+interface ResolvedCoveragePlan {
+  changedFiles: string[];
+  affectedProjects: string[];
+  changedProjectPlan: ChangedProjectPlan;
+  projectRoots: ProjectRoot[];
+}
+
+const resolveCoveragePlan = (
+  options: BaseHeadCliOptions,
+  full: boolean,
+  fullProjects: string[]
+): ResolvedCoveragePlan => {
+  try {
+    const changedFiles = resolveChangedFiles(options.base, options.head);
+    const affectedProjects = getCoverageProjects(options.base, options.head, full);
+    const projectRoots = loadNxProjectRoots();
+    return {
+      changedFiles,
+      affectedProjects,
+      projectRoots,
+      changedProjectPlan: planChangedProjectsWithFallback(
+        changedFiles,
+        affectedProjects,
+        () => projectRoots,
+        fullProjects
+      ),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `Base-/Head-Scope ist ungültig; verwende vollständigen Coverage-Fallback: ${message}`
+    );
+    return {
+      changedFiles: [],
+      affectedProjects: fullProjects,
+      projectRoots: loadNxProjectRoots(),
+      changedProjectPlan: {
+        mode: 'full-fallback',
+        reason: 'invalid-base-or-head',
+        directProjects: [],
+        remainingProjects: fullProjects,
+        unmappedFiles: [],
+      },
+    };
+  }
+};
+
+const executeCoveragePlan = (
+  options: BaseHeadCliOptions,
+  resolvedPlan: ResolvedCoveragePlan,
+  recordDuration: (entry: DurationEntry) => void
+): void => {
+  const { changedProjectPlan, projectRoots } = resolvedPlan;
+  const runTarget = (phase: 'direct' | 'remaining', project: string, command: string): void => {
+    try {
+      const result = runCiCommand(command);
+      recordDuration({
+        label: `coverage:${phase}:${project}`,
+        durationMs: result.durationMs,
+        projects: [project],
+        retryCount: result.retryCount,
+      });
+      writeCoverageShardEvidence({ project, phase, headSha: options.head, projectRoots });
+    } catch (error) {
+      if (error instanceof CiCommandExecutionError) {
+        recordDuration({
+          label: `coverage:${phase}:${project}`,
+          durationMs: error.durationMs,
+          projects: [project],
+          retryCount: error.retryCount,
+        });
+      }
+      throw error;
+    }
+  };
+  const runPhase = (phase: 'direct' | 'remaining', projects: readonly string[]): void => {
+    for (const project of projects) {
+      runTarget(
+        phase,
+        project,
+        project === APP_PROJECT ? buildAppCoverageCommand() : buildCoverageProjectCommand(project)
+      );
+    }
+  };
+
+  runPhase('direct', changedProjectPlan.directProjects);
+  if (changedProjectPlan.directProjects.length > 0) {
+    const result = runCiCommand(buildEarlyCoverageGateCommand(changedProjectPlan.directProjects));
+    recordDuration({ label: 'coverage:direct-project-gate', durationMs: result.durationMs });
+  }
+  runPhase('remaining', changedProjectPlan.remainingProjects);
+  validateCoverageShardEvidence({
+    headSha: options.head,
+    expectedProjects: [
+      ...changedProjectPlan.directProjects,
+      ...changedProjectPlan.remainingProjects,
+    ],
+  });
 };
 
 export const runAffectedCoverageGate = (
@@ -96,26 +200,13 @@ export const runAffectedCoverageGate = (
 ): DurationEntry[] => {
   clearWorkspaceCoverageOutputs();
   const full = process.env.NX_RUN_FULL === '1';
-  const changedFiles = resolveChangedFiles(options.base, options.head);
-  const affectedProjects = getCoverageProjects(options.base, options.head, full);
-  const changedProjectPlan = planChangedProjectsWithFallback(
-    changedFiles,
-    affectedProjects,
-    loadNxProjectRoots
-  );
+  const fullProjects = getCoverageProjects(options.base, options.head, true);
+  const resolvedPlan = resolveCoveragePlan(options, full, fullProjects);
+  const { affectedProjects, changedFiles, changedProjectPlan } = resolvedPlan;
   reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
-  const directNonAppProjects = changedProjectPlan.directProjects.filter(
-    (project) => project !== APP_PROJECT
-  );
-  const remainingNonAppProjects = changedProjectPlan.remainingProjects.filter(
-    (project) => project !== APP_PROJECT
-  );
-  const directApp = changedProjectPlan.directProjects.includes(APP_PROJECT);
-  const remainingApp = changedProjectPlan.remainingProjects.includes(APP_PROJECT);
 
-  const recordDuration = (label: string, durationMs: number): void => {
-    const entry = { label, durationMs };
+  const recordDuration = (entry: DurationEntry): void => {
     durationEntries.push(entry);
     reportDuration?.(entry);
   };
@@ -140,39 +231,20 @@ export const runAffectedCoverageGate = (
     return durationEntries;
   }
 
-  if (directNonAppProjects.length > 0) {
-    recordDuration(
-      'coverage:direct-projects',
-      runCommand(buildCoverageProjectsCommand(directNonAppProjects))
-    );
-  }
-
-  if (directApp) {
-    recordDuration('coverage:app', runCommand(buildAppCoverageCommand()));
-  }
-
-  if (changedProjectPlan.directProjects.length > 0) {
-    recordDuration(
-      'coverage:direct-project-gate',
-      runCommand(buildEarlyCoverageGateCommand(changedProjectPlan.directProjects))
-    );
-  }
-
-  if (remainingNonAppProjects.length > 0) {
-    recordDuration(
-      'coverage:remaining-projects',
-      runCommand(buildCoverageProjectsCommand(remainingNonAppProjects))
-    );
-  }
-
-  if (remainingApp) {
-    recordDuration('coverage:remaining-app', runCommand(buildAppCoverageCommand()));
-  }
+  executeCoveragePlan(options, resolvedPlan, recordDuration);
 
   return durationEntries;
 };
 
 const formatDuration = (durationMs: number): string => `${(durationMs / 1000).toFixed(2)}s`;
+
+const parseOptionalDate = (value: string | undefined): Date | null => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
 export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
   const options = parseBaseHeadCliOptions(args);
@@ -193,6 +265,8 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
     writeCiFeedbackEvidence(
       buildCiFeedbackEvidence({
         gate: 'coverage',
+        role: 'complete',
+        shardId: 'coverage-complete',
         status: 'failed',
         baseSha: options.base,
         headSha: options.head,
@@ -201,6 +275,10 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
         phases: durationEntries,
         startedAt,
         finishedAt: new Date(),
+        workflowCreatedAt: parseOptionalDate(process.env.CI_WORKFLOW_CREATED_AT),
+        jobStartedAt: parseOptionalDate(process.env.CI_JOB_STARTED_AT),
+        failureClassification:
+          error instanceof CiCommandExecutionError ? error.classification : 'unknown',
       })
     );
     const message = error instanceof Error ? error.message : String(error);
@@ -218,7 +296,9 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
   writeCiFeedbackEvidence(
     buildCiFeedbackEvidence({
       gate: 'coverage',
-      status: 'passed',
+      role: 'complete',
+      shardId: 'coverage-complete',
+      status: durationEntries.length === 0 ? 'skipped' : 'passed',
       baseSha: options.base,
       headSha: options.head,
       scopeMode: full ? 'full' : 'affected',
@@ -226,6 +306,8 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
       phases: durationEntries,
       startedAt,
       finishedAt: new Date(),
+      workflowCreatedAt: parseOptionalDate(process.env.CI_WORKFLOW_CREATED_AT),
+      jobStartedAt: parseOptionalDate(process.env.CI_JOB_STARTED_AT),
     })
   );
 

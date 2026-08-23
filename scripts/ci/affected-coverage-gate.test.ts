@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   buildAppCoverageCommand,
-  buildCoverageProjectsCommand,
+  buildCoverageProjectCommand,
   buildEarlyCoverageGateCommand,
   clearWorkspaceCoverageOutputs,
 } from './affected-coverage-gate.ts';
@@ -28,8 +28,8 @@ describe('affected-coverage-gate', () => {
   });
 
   it('builds fail-fast changed-first coverage commands', () => {
-    expect(buildCoverageProjectsCommand(['plugin-news', 'routing'])).toBe(
-      'env -u NO_COLOR pnpm nx run-many --target=test:coverage --projects=plugin-news,routing --parallel=1 --nxBail --output-style=stream'
+    expect(buildCoverageProjectCommand('plugin-news')).toBe(
+      'env -u NO_COLOR pnpm nx run plugin-news:test:coverage --nxBail --output-style=stream'
     );
     expect(buildEarlyCoverageGateCommand(['plugin-news', 'routing'])).toBe(
       'COVERAGE_GATE_EVALUATE_REGRESSIONS=1 COVERAGE_GATE_PROJECT_FILTER=plugin-news,routing pnpm coverage-gate'

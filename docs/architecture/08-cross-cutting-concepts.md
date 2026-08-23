@@ -811,9 +811,10 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 
 - PR-Unit und PR-Coverage planen direkt geänderte Projekte vor dem disjunkten übrigen affected Scope. Nicht sicher zuordenbare Änderungen bleiben im konservativen Restlauf.
 - Deterministische Test- und Policy-Fehler sind nicht retryfähig. Nur klassifizierte temporäre Infrastrukturfehler dürfen targetgenau wiederholt werden.
-- Pull Requests verwenden eigene GitHub-Actions-Cache-Scopes pro Job. Geschützte `main`-, Release- und Deployment-Kontexte lesen niemals PR-erzeugte Nx-Caches.
+- Der Workspace verwendet keinen runnerübergreifenden Nx-Ergebnis-Cache. Geschützte `main`-, Release- und Deployment-Kontexte können daher keine PR-erzeugten Nx-Ergebnisse wiederherstellen; ein fehlender oder unbrauchbarer lokaler Eintrag führt zur Neuberechnung.
 - Integration und E2E bleiben ungecacht. Coverage bleibt ohne targetbezogenen Fresh-/Restore-Paritätsnachweis ebenfalls ungecacht.
-- PR-E2E beendet die Suite nach dem ersten auch im Retry bestätigten Fehler; Main und Nightly sammeln alle Fehler.
+- `Unit` und `Coverage` bleiben stabile finale Required Checks. Ihre Aggregatoren akzeptieren ausschließlich vollständige, disjunkte, versionierte und Head-SHA-gebundene Teilresultate.
+- Pull Requests führen kein vollständiges App-E2E aus. Automatische `main`-Läufe sammeln ohne deterministischen Retry alle Fehler; Nightly und manuelle Läufe bleiben reine Diagnose und können Staging nicht freigeben.
 
 ### Fail-closed Reihenfolge der ABAC-Regeln
 

@@ -53,12 +53,35 @@ describe('changed-project-plan', () => {
   });
 
   it('keeps unmapped code changes in the conservative affected remainder', () => {
-    expect(planChangedProjects(['nx.json'], ['routing', 'sva-studio-react'], PROJECTS)).toEqual({
-      mode: 'affected-fallback',
-      reason: 'no-safe-direct-project-mapping',
+    expect(
+      planChangedProjects(['nx.json'], ['routing', 'sva-studio-react'], PROJECTS, [
+        'plugin-news',
+        'routing',
+        'sva-studio-react',
+      ])
+    ).toEqual({
+      mode: 'full-fallback',
+      reason: 'unmapped-code-file',
       directProjects: [],
-      remainingProjects: ['routing', 'sva-studio-react'],
+      remainingProjects: ['plugin-news', 'routing', 'sva-studio-react'],
       unmappedFiles: ['nx.json'],
+    });
+  });
+
+  it('falls back to the complete target scope when one of several files is unmapped', () => {
+    expect(
+      planChangedProjects(
+        ['packages/plugin-news/src/index.ts', 'unknown.workspace.config.ts'],
+        ['plugin-news', 'routing'],
+        PROJECTS,
+        ['plugin-news', 'routing', 'sva-studio-react']
+      )
+    ).toEqual({
+      mode: 'full-fallback',
+      reason: 'unmapped-code-file',
+      directProjects: [],
+      remainingProjects: ['plugin-news', 'routing', 'sva-studio-react'],
+      unmappedFiles: ['unknown.workspace.config.ts'],
     });
   });
 
@@ -81,13 +104,14 @@ describe('changed-project-plan', () => {
         ['routing', 'plugin-news', 'routing'],
         () => {
           throw new Error('graph unavailable');
-        }
+        },
+        ['sva-studio-react', 'routing', 'plugin-news']
       )
     ).toEqual({
-      mode: 'affected-fallback',
+      mode: 'full-fallback',
       reason: 'nx-project-graph-unavailable',
       directProjects: [],
-      remainingProjects: ['plugin-news', 'routing'],
+      remainingProjects: ['plugin-news', 'routing', 'sva-studio-react'],
       unmappedFiles: ['packages/plugin-news/src/index.ts', 'packages/routing/src/index.ts'],
     });
     expect(warn).toHaveBeenCalledWith(

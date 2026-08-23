@@ -207,6 +207,42 @@ describe('workspace package scripts', () => {
     expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 
+  it('keeps stable fail-closed Unit and Coverage aggregators around internal jobs', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+
+    expect(qualityWorkflow).toContain('unit-fast-feedback:');
+    expect(qualityWorkflow).toContain('unit-complete:');
+    expect(qualityWorkflow).toContain('  unit:\n    name: Unit');
+    expect(qualityWorkflow).toContain('--expected unit-direct,unit-remaining');
+    expect(qualityWorkflow).toContain('if-no-files-found: error');
+    expect(runtimeWorkflow).toContain('coverage-complete:');
+    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage');
+    expect(runtimeWorkflow).toContain('--expected coverage-complete');
+    expect(runtimeWorkflow).toContain('validate-downloaded-coverage.ts');
+  });
+
+  it('runs direct Unit feedback independently from the complete PR scope', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const fastFeedbackStart = qualityWorkflow.indexOf('  unit-fast-feedback:');
+    const completeStart = qualityWorkflow.indexOf('  unit-complete:');
+    const fastFeedbackBlock = qualityWorkflow.slice(fastFeedbackStart, completeStart);
+
+    expect(fastFeedbackBlock).toContain('pnpm test:unit:affected --phase direct');
+    expect(fastFeedbackBlock).not.toContain('needs:');
+    expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase remaining');
+  });
+
+  it('retains complete diagnostics on main and nightly execution paths', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const e2eWorkflow = loadAppE2EWorkflow();
+
+    expect(qualityWorkflow).toContain('Run complete main unit diagnostics');
+    expect(qualityWorkflow).toContain('run: pnpm test:unit');
+    expect(e2eWorkflow).toContain('schedule:');
+    expect(e2eWorkflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
+  });
+
   it('exposes the Sonar LCOV preparation command', () => {
     const packageJson = loadRootPackageJson();
 
@@ -425,6 +461,18 @@ describe('workspace package scripts', () => {
     expect(setupAction).not.toContain('path: .nx/cache');
     expect(setupAction).not.toContain('nx-cache-scope');
     expect(setupAction).not.toContain('nxCloudId');
+  });
+
+  it('recomputes Nx targets instead of trusting a missing, rejected, or damaged remote restore', () => {
+    const setupAction = loadWorkspaceSetupAction();
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+
+    expect(setupAction).toContain('NX_NO_CLOUD=true');
+    expect(setupAction).not.toContain('path: .nx/cache');
+    expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase direct');
+    expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase remaining');
+    expect(runtimeWorkflow).toContain('run: pnpm test:coverage:affected');
   });
 
   it('typechecks all CI gate sources via tsconfig.scripts.json', () => {

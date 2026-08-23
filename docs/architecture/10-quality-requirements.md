@@ -391,11 +391,12 @@ Referenzen:
 
 ### Ergänzung 2026-08: Messbare PR-Rückmeldezeit
 
-- Direkt zuordenbare Unit-, Coverage- oder E2E-Fehler sollen nach Aktivierung in höchstens 3 Minuten im Median und höchstens 5 Minuten bei P90 als bestätigter roter Status vorliegen.
+- Direkt zuordenbare Unit- oder Coverage-Fehler sollen nach Aktivierung in höchstens 3 Minuten im Median und höchstens 5 Minuten bei P90 als bestätigter roter Status vorliegen. App-E2E-Kosten werden getrennt pro `main`-Commit ausgewiesen.
 - Changed-first darf den final geprüften Scope nicht reduzieren; direkt ausgeführte Targets und der übrige affected Scope müssen disjunkt und gemeinsam vollständig sein.
 - Die mediane terminale Zeit grüner Required Checks darf gegenüber der Ausgangsbaseline um höchstens 30 Sekunden steigen.
 - Ein zweiter kleiner PR-Push soll mindestens 30 Prozent der cachefähigen unveränderten Target-Laufzeit einsparen. Der Wert bezieht sich ausschließlich auf deterministische Targets und rechtfertigt keine Cache-Aktivierung für Coverage, Integration oder E2E ohne Paritätsnachweis.
 - Die Abnahme benötigt mindestens 20 repräsentative PR-Läufe; lokale Einzelmessungen sind noch kein Erfüllungsnachweis.
+- Die Auswertung vom 23. August 2026 umfasst 20 grüne PR-Head-SHAs. Die mediane terminale Zeit von `Unit` und `Coverage` sank gegenüber der 20-Run-Baseline von 505,5 auf 348 Sekunden. Der einzige direkt zuordenbare rote Unit-Lauf in diesem Fenster bestätigte den Fehler nach 172 Sekunden; zwei späte Coverage-Verstöße eines nur transitiv betroffenen Projekts sind transparent dokumentiert, zählen aber nicht als direkt verursachtes Fehlersignal.
 
 ### Ergänzung 2026-08: Qualitätsziele der IAM-ABAC-Auswertung
 

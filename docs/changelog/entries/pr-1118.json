@@ -1,0 +1,4 @@
+{
+  "prNumber": 1118,
+  "body": "Die vollständige Testabdeckung wird stabiler geprüft. Coverage-Tests laufen nacheinander, damit hohe parallele Last nicht mehr zu sporadischen Zeitüberschreitungen führt."
+}

@@ -13,6 +13,7 @@ import {
   findSelectedWasteManagementInterfaceRecord,
   buildWasteAnnualTourTransferFingerprint,
   buildWasteAnnualTourTransferPreview,
+  toWasteAnnualTourTransferPublicPreview,
   isWasteTourValidityApplicable,
   resolveWasteTourValidityDates,
   WasteCollectionLocationRecord,
@@ -1468,15 +1469,17 @@ const previewWasteAnnualTourTransfer = async (input: {
     'preview_waste_annual_tour_transfer',
     async (repository) => {
       const snapshot = await loadWasteAnnualTourTransferSource(repository);
-      return buildWasteAnnualTourTransferPreview({
-        instanceId: input.instanceId,
-        sourceYear: input.sourceYear,
-        currentYear: new Date().getUTCFullYear(),
-        source: snapshot,
-        target: snapshot,
-        selectedTourIds: input.selectedTourIds,
-        replacementDates: input.replacementDates,
-      });
+      return toWasteAnnualTourTransferPublicPreview(
+        await buildWasteAnnualTourTransferPreview({
+          instanceId: input.instanceId,
+          sourceYear: input.sourceYear,
+          currentYear: new Date().getUTCFullYear(),
+          source: snapshot,
+          target: snapshot,
+          selectedTourIds: input.selectedTourIds,
+          replacementDates: input.replacementDates,
+        })
+      );
     }
   );
 
@@ -1579,7 +1582,9 @@ export const createWasteAnnualTourTransferInTransaction = async (input: {
       replacementDates: input.create.replacementDates,
     });
     if (preview.previewFingerprint !== input.create.previewFingerprint) {
-      throw new Error(`preview_stale:${JSON.stringify(preview)}`);
+      throw new Error(
+        `preview_stale:${JSON.stringify(toWasteAnnualTourTransferPublicPreview(preview))}`
+      );
     }
     const acknowledgements = new Set(input.create.acknowledgedConflictTourIds);
     const selected = new Set(input.create.selectedTourIds);

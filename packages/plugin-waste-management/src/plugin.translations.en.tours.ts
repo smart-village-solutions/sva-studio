@@ -199,19 +199,54 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     selectTour: 'Transfer tour {{name}}',
     acknowledgeConflict: 'Reviewed and accepted possible parallel planning for {{name}}',
     replacementDate: 'Replacement date for {{name}}',
-    summary: '{{selected}} tours with {{relationships}} relationships will be created as inactive.',
+    summaryDetailed:
+      '{{transferable}} transferable, {{alreadyEffective}} already effective, {{blocked}} blocked. Selected: {{selected}} tours with {{relationships}} relationships; {{excluded}} out-of-year records are excluded.',
+    recurrence: 'Cadence: {{value}}',
+    tourCounts:
+      'Waste types: {{wasteFractions}}, concrete tour dates: {{customDates}}, pickup locations: {{locations}}, location dates: {{pickupDates}}, assignments: {{assignments}}, shifts: {{shifts}}, excluded: {{excluded}}',
+    period: 'Validity period: {{source}} → {{target}}',
     dateExample: '{{source}} → {{target}}',
     conflicts: 'Possible parallel planning',
+    conflictDetails: 'Matching features: {{features}}',
+    conflictFeatures: {
+      'waste-fractions': 'same waste types',
+      locations: 'same pickup locations',
+      cadence: 'same day interval',
+      date: 'shared date',
+      'stable-target-id': 'existing target for the same source tour',
+    },
     alreadyEffectiveReason:
       'This tour already applies in the following year and will not be duplicated.',
-    blockedReason: 'This tour needs a date decision before it can be transferred.',
+    blockedReasons: {
+      invalidPlanningData:
+        'The planning data is incomplete or invalid and must first be corrected on the source tour.',
+      replacementDateRequired:
+        'At least one calendar date needs an explicit replacement date in the following year.',
+      targetDateCollision:
+        'Multiple source dates would map to the same target date. Choose distinct replacement dates.',
+      targetIdentityConflict:
+        'An existing target for the same source tour differs and will not be overwritten.',
+      unknown: 'The tour cannot be transferred safely. Review the source tour planning data.',
+    },
+    replacementValidityStart: 'Replacement date for the validity start of {{name}}',
+    replacementValidityEnd: 'Replacement date for the validity end of {{name}}',
     noTours: 'No relevant tours were found for this source year.',
     previewError: 'The preview could not be created.',
     createError: 'The tour set could not be created.',
     stale: 'The schedule changed. Please review the updated preview again.',
-    result: '{{count}} tours were created as inactive for {{year}}.',
+    result:
+      '{{created}} tours were created as inactive for {{year}}; {{existing}} identical existing tours were reused.',
     showResult: 'Show inactive tours in the following year',
     steps: 'Step {{current}} of 3',
+    weekdays: {
+      sunday: 'Sunday',
+      monday: 'Monday',
+      tuesday: 'Tuesday',
+      wednesday: 'Wednesday',
+      thursday: 'Thursday',
+      friday: 'Friday',
+      saturday: 'Saturday',
+    },
   },
   shiftDetails: {
     open: 'Show {{count}} shifts for {{name}}',

@@ -378,7 +378,10 @@ export {
   buildWasteAnnualTourTransferFingerprint,
   deriveWasteAnnualTourTransferId,
 } from './waste-management-annual-tour-transfer.identity.js';
-export { buildWasteAnnualTourTransferPreview } from './waste-management-annual-tour-transfer.preview.js';
+export {
+  buildWasteAnnualTourTransferPreview,
+  toWasteAnnualTourTransferPublicPreview,
+} from './waste-management-annual-tour-transfer.preview.js';
 export type {
   WasteTypeStaticContentEntry,
   WasteTypesStaticContentArtifact,

@@ -6,6 +6,8 @@ import type {
 import {
   continueWasteAnnualTourCadence,
   replaceWasteAnnualYear,
+  wasteAnnualEndOfYear,
+  wasteAnnualStartOfYear,
 } from './waste-management-annual-tour-transfer.dates.js';
 import { deriveWasteAnnualTourTransferId } from './waste-management-annual-tour-transfer.identity.js';
 import {
@@ -22,31 +24,92 @@ export const wasteAnnualIntervalForTour = (tour: WasteTourRecord): number | null
   return null;
 };
 
-const mapValidity = (input: {
+type ValidityMappingResult =
+  | Readonly<{ ok: true; validity: Readonly<{ firstDate?: string; endDate?: string }> }>
+  | Readonly<{
+      ok: false;
+      blocker: 'invalid_planning_data' | 'replacement_date_required';
+      replacementResourceIds: readonly string[];
+    }>;
+
+type ValidityMappingInput = Readonly<{
   tour: WasteTourRecord;
+  sourceYear: number;
   targetYear: number;
   replacements: ReadonlyMap<string, string>;
-}) => {
-  const interval = wasteAnnualIntervalForTour(input.tour);
-  if (interval !== null) {
-    if (!input.tour.firstDate) return null;
-    return continueWasteAnnualTourCadence({
-      sourceFirstDate: input.tour.firstDate,
-      sourceEndDate: input.tour.endDate,
-      targetYear: input.targetYear,
-      intervalDays: interval,
-    });
+}>;
+
+type ValidityBoundaries = Readonly<{
+  targetStart: string;
+  targetEnd: string;
+}>;
+
+const resolveValidityBoundaries = (
+  input: ValidityMappingInput
+): ValidityBoundaries | ValidityMappingResult => {
+  const sourceYearStart = wasteAnnualStartOfYear(input.sourceYear);
+  const sourceYearEnd = wasteAnnualEndOfYear(input.sourceYear);
+  const sourceStart =
+    input.tour.firstDate && input.tour.firstDate > sourceYearStart
+      ? input.tour.firstDate
+      : sourceYearStart;
+  const sourceEnd =
+    input.tour.endDate && input.tour.endDate < sourceYearEnd ? input.tour.endDate : sourceYearEnd;
+  const startResourceId = `${input.tour.id}:validity:start`;
+  const endResourceId = `${input.tour.id}:validity:end`;
+  const targetStart =
+    input.replacements.get(startResourceId) ??
+    replaceWasteAnnualYear(sourceStart, input.targetYear);
+  const targetEnd =
+    input.replacements.get(endResourceId) ?? replaceWasteAnnualYear(sourceEnd, input.targetYear);
+  const missing = [
+    ...(targetStart ? [] : [startResourceId]),
+    ...(targetEnd ? [] : [endResourceId]),
+  ];
+  return targetStart && targetEnd
+    ? { targetStart, targetEnd }
+    : {
+        ok: false,
+        blocker: 'replacement_date_required',
+        replacementResourceIds: missing,
+      };
+};
+
+const mapIntervalValidity = (
+  input: ValidityMappingInput,
+  intervalDays: number,
+  boundaries: ValidityBoundaries
+): ValidityMappingResult => {
+  if (!input.tour.firstDate) {
+    return { ok: false, blocker: 'invalid_planning_data', replacementResourceIds: [] };
   }
-  if (input.tour.recurrence !== 'yearly') return {};
-  if (!input.tour.firstDate) return null;
-  const firstDate =
-    input.replacements.get(input.tour.id) ??
-    replaceWasteAnnualYear(input.tour.firstDate, input.targetYear) ??
-    undefined;
-  const endDate = input.tour.endDate
-    ? (replaceWasteAnnualYear(input.tour.endDate, input.targetYear) ?? undefined)
-    : undefined;
-  return firstDate && (!input.tour.endDate || endDate) ? { firstDate, endDate } : null;
+  const cadence = continueWasteAnnualTourCadence({
+    sourceFirstDate: input.tour.firstDate,
+    sourceEndDate: input.tour.endDate,
+    sourceYear: input.sourceYear,
+    targetYear: input.targetYear,
+    intervalDays,
+    targetSliceStart: boundaries.targetStart,
+    targetSliceEnd: boundaries.targetEnd,
+  });
+  return cadence
+    ? { ok: true, validity: cadence }
+    : { ok: false, blocker: 'invalid_planning_data', replacementResourceIds: [] };
+};
+
+const mapValidity = (input: ValidityMappingInput): ValidityMappingResult => {
+  const boundaries = resolveValidityBoundaries(input);
+  if ('ok' in boundaries) return boundaries;
+  const interval = wasteAnnualIntervalForTour(input.tour);
+  if (interval !== null) return mapIntervalValidity(input, interval, boundaries);
+  if (input.tour.recurrence !== 'yearly') return { ok: true, validity: {} };
+  if (!input.tour.firstDate) {
+    return { ok: false, blocker: 'invalid_planning_data', replacementResourceIds: [] };
+  }
+  return {
+    ok: true,
+    validity: { firstDate: boundaries.targetStart, endDate: boundaries.targetEnd },
+  };
 };
 
 type MapTourInput = Readonly<{
@@ -106,11 +169,10 @@ export const mapWasteAnnualTour = async (
   Readonly<{ mapped: WasteAnnualTourTransferMappedTour; excluded: number }> | MapTourBlocker
 > => {
   const validity = mapValidity(input);
-  if (!validity) {
+  if (!validity.ok) {
     return {
-      blocker:
-        input.tour.recurrence === 'yearly' ? 'replacement_date_required' : 'invalid_planning_data',
-      replacementResourceIds: input.tour.recurrence === 'yearly' ? [input.tour.id] : [],
+      blocker: validity.blocker,
+      replacementResourceIds: validity.replacementResourceIds,
     };
   }
   const relationships = mapWasteAnnualRelationships(input);
@@ -140,7 +202,7 @@ export const mapWasteAnnualTour = async (
       customRecurrenceId: input.tour.customRecurrenceId,
       customRecurrenceName: input.tour.customRecurrenceName,
       customRecurrenceIntervalDays: input.tour.customRecurrenceIntervalDays,
-      ...validity,
+      ...validity.validity,
       customDates: relationships.customDates.map((item) => ({
         date: item.mappedDate as string,
         description: item.description,

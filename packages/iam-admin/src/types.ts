@@ -91,5 +91,6 @@ export type IdempotencyReserveResult =
     }
   | {
       status: 'conflict';
+      reason: 'payload_mismatch' | 'in_progress';
       message: string;
     };

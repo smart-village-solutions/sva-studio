@@ -21,6 +21,13 @@ import { buildWasteAnnualTourTransferFingerprint } from './waste-management-annu
 import { mapWasteAnnualTour } from './waste-management-annual-tour-transfer.mapping.js';
 import { wasteAnnualRelationshipsFor } from './waste-management-annual-tour-transfer.relationships.js';
 
+type WasteAnnualTourTransferInternalTourPreview = WasteAnnualTourTransferTourPreview &
+  Readonly<{
+    mappedTour?: import('./waste-management-annual-tour-transfer.contract.js').WasteAnnualTourTransferMappedTour;
+  }>;
+type WasteAnnualTourTransferInternalPreview = Omit<WasteAnnualTourTransferPreview, 'tours'> &
+  Readonly<{ tours: readonly WasteAnnualTourTransferInternalTourPreview[] }>;
+
 const isRelevantTour = (
   tour: WasteTourRecord,
   year: number,
@@ -84,7 +91,7 @@ type PreviewTourInput = Readonly<{
 
 const previewTour = async (
   input: PreviewTourInput
-): Promise<WasteAnnualTourTransferTourPreview> => {
+): Promise<WasteAnnualTourTransferInternalTourPreview> => {
   const counts = relationshipCounts(input.tour, input.sourceYear, input.source);
   const common = {
     sourceTourId: input.tour.id,
@@ -132,7 +139,7 @@ const previewTour = async (
   };
 };
 
-const mappedRelationshipCount = (item: WasteAnnualTourTransferTourPreview): number => {
+const mappedRelationshipCount = (item: WasteAnnualTourTransferInternalTourPreview): number => {
   const mapped = item.mappedTour;
   return mapped
     ? mapped.targetTour.wasteFractionIds.length +
@@ -173,7 +180,7 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
   target: WasteAnnualTourTransferSource;
   selectedTourIds?: readonly string[];
   replacementDates?: readonly WasteAnnualTourTransferReplacementDate[];
-}): Promise<WasteAnnualTourTransferPreview> => {
+}): Promise<WasteAnnualTourTransferInternalPreview> => {
   const targetYear = deriveWasteAnnualTourTransferTargetYear(input.sourceYear, input.currentYear);
   for (const replacement of input.replacementDates ?? []) {
     if (!isWasteAnnualDateInYear(replacement.targetDate, targetYear)) {
@@ -240,3 +247,10 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
     },
   };
 };
+
+export const toWasteAnnualTourTransferPublicPreview = (
+  preview: WasteAnnualTourTransferInternalPreview
+): WasteAnnualTourTransferPreview => ({
+  ...preview,
+  tours: preview.tours.map(({ mappedTour: _mappedTour, ...tour }) => tour),
+});

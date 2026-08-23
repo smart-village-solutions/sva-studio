@@ -64,6 +64,8 @@ Jahresunabhängige Regeln werden unverändert mit der neuen Tour verknüpft. Jah
 
 Für wöchentliche, zweiwöchentliche, vierwöchentliche und durch ein Abstandspreset bestimmte Touren wird der vorhandene 7-/14-/28-Tage- beziehungsweise individuelle Tagesabstand ohne Unterbrechung fortgeführt. Der im Quelljahr wirksame Gültigkeitsausschnitt wird nach Monat und Tag auf das Folgejahr übertragen; der erste Termin ist das erste aus dem fortgeführten Takt resultierende Datum innerhalb dieses Zielausschnitts.
 
+Beginnt eine Tour bereits vor dem Quelljahr, ist der 1. Januar des Quelljahres die Untergrenze dieses Ausschnitts; der ursprüngliche Tourbeginn bleibt ausschließlich der Taktanker. Nicht darstellbare Grenzen wie ein 29. Februar erhalten getrennte Ersatzressourcen für Gültigkeitsbeginn und Gültigkeitsende, damit keine Eingabe versehentlich die andere Grenze verändert.
+
 Kalendergebundene jährliche Touren behalten Monat und Tag. Konkrete Einzeltermine werden zunächst auf denselben Monat und Tag des Folgejahres übertragen und anschließend auf den nächstgelegenen gleichen Wochentag verschoben. Das Ergebnis muss im Folgejahr liegen; würde die nächstgelegene Wahl die Jahresgrenze überschreiten, wird der nächstgelegene gleiche Wochentag innerhalb des Folgejahres verwendet.
 
 Kann ein Quellmonat/-tag wie der 29. Februar im Folgejahr nicht dargestellt werden, verlangt die Vorschau ein konkretes Ersatzdatum im Folgejahr. Dasselbe gilt, wenn mehrere unterschiedliche Quelltermine oder Verschiebungen auf dieselbe fachliche Zielbeziehung abgebildet würden. Ersatzdaten werden pro Quellressource erfasst, serverseitig validiert und in den Vorschau-Fingerprint aufgenommen. Ohne eindeutige Auflösung bleibt die Tour blockiert.
@@ -73,6 +75,8 @@ Kann ein Quellmonat/-tag wie der 29. Februar im Folgejahr nicht dargestellt werd
 Die Vorschau zeigt je Tour mindestens Tourname, Klassifikation, Quell- und Zielzeitraum, ersten Zieltermin, Turnus sowie die Anzahl der Abfallarten, Abholorte, konkreten Termine, Einsätze und Verschiebungen. Sie fasst die Gesamtmengen und ausgeschlossenen Daten zusammen.
 
 Der Server bildet einen kanonischen `previewFingerprint` aus Instanz, Quell- und Folgejahr, ausgewählten Quell-Tour-IDs, kopierrelevanten Tourfeldern, Beziehungen, Ersatzdaten und den jeweiligen fachlichen Änderungsständen. Die Erstellung akzeptiert nur einen Fingerprint, den dieselbe serverseitige Berechnung unmittelbar vor dem Schreiben erneut ergibt. Abweichungen liefern `preview_stale` mit einer aktualisierten Vorschau und erfordern eine neue Bestätigung.
+
+Der vollständige abgeleitete Kopierplan bleibt serverintern. Der öffentliche Vorschauvertrag enthält nur die für Prüfung und Bestätigung erforderlichen Klassifikationen, Mengen, Zeiträume, Beispieldaten, Konfliktmerkmale und Ersatzressourcen; Beziehungslisten, Notizen und interne Schreibobjekte werden nicht ausgeliefert.
 
 Ein gleicher Tourname ist allein kein Konflikt. Die Vorschau unterscheidet:
 
@@ -88,6 +92,8 @@ Der Server sperrt Erstellungsvorgänge mandanten- und folgejahrbezogen mit einem
 Ziel-Tour-IDs werden stabil aus Instanz, Quell-Tour-ID und Folgejahr abgeleitet. Beziehungs-IDs werden stabil aus Ziel-Tour-ID, Beziehungstyp und Quell-Beziehungs-ID abgeleitet. Sie hängen nicht vom Akteur oder HTTP-Idempotenzschlüssel ab. So konvergieren wiederholte Jahreswechselversuche fachlich auf dieselben Zielressourcen.
 
 Der Erstellungsrequest trägt zusätzlich einen mandantenbezogenen Idempotenzschlüssel. Der zentrale Idempotenzspeicher reserviert den Scope aus Akteur, Instanz, Endpunkt und Schlüssel mit einem kanonischen Payload-Fingerprint und speichert die abschließende Antwort. Nach einem Prozessabbruch zwischen Commit der Waste-Transaktion und Abschluss des zentralen Eintrags rekonstruiert der Server das Ergebnis anhand der stabilen Ziel-IDs. Vollständig identische Daten gelten als Replay, fehlende Daten erlauben einen erneuten atomaren Versuch und abweichende Daten führen zu `target_identity_conflict`.
+
+Ein zweiter Request mit demselben noch laufenden Idempotenzschlüssel wird als `idempotency_in_progress` abgelehnt und führt weder die Waste-Operation noch das Audit erneut aus. Nach einem abgebrochenen Request kann ein neuer Versuch mit einem neuen Schlüssel anhand der stabilen Ziel-IDs vollständig rekonstruieren, ob das Waste-Ergebnis bereits vorliegt.
 
 Es gelten feste serverseitige Grenzwerte von 1.000 Touren und insgesamt 100.000 zu kopierenden Beziehungen pro Jahresübernahme. Beide Werte sind im API-Vertrag zentral definiert und werden in Vorschau sowie Erstellung identisch mit `batch_limit_exceeded` durchgesetzt. Die Grenzen liegen bewusst deutlich über einem regulären Mandantenbestand, begrenzen aber Arbeitsspeicher, Fingerprint-Bildung und Transaktionsdauer gegen unkontrollierte Eingaben.
 

@@ -16,6 +16,7 @@ import {
   deriveWasteAnnualTourTransferId,
 } from './waste-management-annual-tour-transfer.identity.js';
 import { buildWasteAnnualTourTransferPreview } from './waste-management-annual-tour-transfer.preview.js';
+import { toWasteAnnualTourTransferPublicPreview } from './waste-management-annual-tour-transfer.preview.js';
 
 const tour = (overrides: Partial<WasteTourRecord> = {}): WasteTourRecord => ({
   id: '11111111-1111-4111-8111-111111111111',
@@ -74,6 +75,28 @@ describe('waste annual tour transfer', () => {
     }
   });
 
+  it('continues a cadence from the effective source-year slice instead of the original anniversary', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2025,
+      currentYear: 2025,
+      source: source([
+        tour({
+          recurrence: 'weekly',
+          firstDate: '2024-06-03',
+          endDate: '2025-05-31',
+        }),
+      ]),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'transferable',
+      firstTargetDate: '2026-01-05',
+      targetPeriod: { firstDate: '2026-01-05', endDate: '2026-05-31' },
+    });
+  });
+
   it('maps concrete dates to the nearest equal weekday and never crosses the target year', () => {
     expect(mapWasteAnnualConcreteDate('2026-06-15', 2027)).toBe('2027-06-14');
     expect(mapWasteAnnualConcreteDate('2026-01-01', 2027)).toBe('2027-01-07');
@@ -110,6 +133,21 @@ describe('waste annual tour transfer', () => {
     });
 
     expect(updated.previewFingerprint).not.toBe(initial.previewFingerprint);
+  });
+
+  it('keeps the internal copy plan out of the public preview DTO', async () => {
+    const internal = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([tour()]),
+      target: source([]),
+    });
+
+    expect(internal.tours[0]?.mappedTour).toBeDefined();
+    expect(toWasteAnnualTourTransferPublicPreview(internal).tours[0]).not.toHaveProperty(
+      'mappedTour'
+    );
   });
 
   it('accepts the approved batch limits exactly and rejects either value above them', () => {
@@ -186,6 +224,44 @@ describe('waste annual tour transfer', () => {
     expect(resolved.tours[0]?.mappedTour?.targetTour.customDates).toEqual([
       { date: '2025-02-27', description: 'Sondertermin' },
     ]);
+  });
+
+  it('applies a dedicated replacement to a leap-day validity end', async () => {
+    const annualTour = tour({
+      recurrence: 'yearly',
+      firstDate: '2024-01-10',
+      endDate: '2024-02-29',
+    });
+    const blocked = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2024,
+      currentYear: 2025,
+      source: source([annualTour]),
+      target: source([]),
+    });
+    expect(blocked.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'replacement_date_required',
+      replacementResourceIds: [`${annualTour.id}:validity:end`],
+    });
+
+    const resolved = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2024,
+      currentYear: 2025,
+      source: source([annualTour]),
+      target: source([]),
+      replacementDates: [
+        {
+          sourceResourceId: `${annualTour.id}:validity:end`,
+          targetDate: '2025-02-28',
+        },
+      ],
+    });
+    expect(resolved.tours[0]).toMatchObject({
+      classification: 'transferable',
+      targetPeriod: { firstDate: '2025-01-10', endDate: '2025-02-28' },
+    });
   });
 
   it('detects possible parallel planning from content rather than the tour name', async () => {

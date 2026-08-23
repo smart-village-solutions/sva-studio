@@ -32,8 +32,13 @@ export const reserveAnnualTourTransfer = async (input: {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  if (reservation.status === 'conflict' && !reservation.message.includes('bereits verarbeitet')) {
-    return createApiError(409, 'idempotency_key_reuse', reservation.message, input.requestId);
+  if (reservation.status === 'conflict') {
+    return createApiError(
+      409,
+      reservation.reason === 'in_progress' ? 'idempotency_in_progress' : 'idempotency_key_reuse',
+      reservation.message,
+      input.requestId
+    );
   }
   return null;
 };

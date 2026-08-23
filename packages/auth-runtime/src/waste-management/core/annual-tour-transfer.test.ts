@@ -163,6 +163,48 @@ describe('annual tour transfer handlers', () => {
     );
   });
 
+  it('does not execute or audit while the same idempotency key is still in progress', async () => {
+    idempotency.reserve.mockResolvedValue({
+      status: 'conflict',
+      reason: 'in_progress',
+      message: 'Idempotenter Request wird bereits verarbeitet.',
+    });
+    const create = vi.fn(async () => result);
+    const emitAuditEvent = vi.fn(async () => undefined);
+
+    const response =
+      await wasteManagementAnnualTourTransferHandlers.createWasteAnnualTourTransferInternal(
+        request(
+          '/api/v1/waste-management/tours/annual-transfer',
+          {
+            sourceYear: 2026,
+            selectedTourIds: ['source-1'],
+            replacementDates: [],
+            acknowledgedConflictTourIds: [],
+            previewFingerprint: `sha256:${'a'.repeat(64)}`,
+          },
+          { 'Idempotency-Key': 'idem-1' }
+        ),
+        actor,
+        {
+          resolvePermissions: permissions,
+          resolveActorInfo: vi.fn(async () => ({
+            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
+          })),
+          createWasteAnnualTourTransfer: create,
+          emitAuditEvent,
+        }
+      );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'idempotency_in_progress' },
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(idempotency.complete).not.toHaveBeenCalled();
+    expect(emitAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('returns the updated preview without writing when the confirmed fingerprint is stale', async () => {
     const create = vi.fn(async () => {
       throw new Error(`preview_stale:${JSON.stringify(preview)}`);

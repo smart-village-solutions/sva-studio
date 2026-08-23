@@ -110,6 +110,10 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect(screen.getByText('tours.annualTransfer.targetYear:2027')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
     await screen.findByText('Bio Nord');
+    expect(screen.getByText(/tours\.annualTransfer\.summaryDetailed/)).toBeTruthy();
+    expect(screen.getByText(/tours\.annualTransfer\.tourCounts/)).toBeTruthy();
+    expect(screen.getByText(/tours\.annualTransfer\.period/)).toBeTruthy();
+    expect(screen.getByText(/tours\.annualTransfer\.dateExample.*weekdays/)).toBeTruthy();
     expect(
       (
         screen.getByRole('checkbox', {
@@ -139,7 +143,7 @@ describe('WasteToursAnnualTransferDialog', () => {
     );
     expect(onCreated).toHaveBeenCalledTimes(1);
     expect((await screen.findByRole('status')).textContent).toContain(
-      'tours.annualTransfer.result:1|2027'
+      'tours.annualTransfer.result:1|0|2027'
     );
   });
 
@@ -175,10 +179,46 @@ describe('WasteToursAnnualTransferDialog', () => {
     });
     expect((tourSelection as HTMLInputElement).checked).toBe(false);
     fireEvent.click(tourSelection);
+    expect(screen.getByText(/tours\.annualTransfer\.conflictDetails/)).toBeTruthy();
     const acknowledgement = screen.getByText('tours.annualTransfer.acknowledgeConflict:Bio Nord');
     const reviewButton = screen.getByRole('button', { name: 'tours.annualTransfer.review' });
     expect((reviewButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(acknowledgement);
     expect((reviewButton as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('explains hard target conflicts instead of asking for an unrelated date decision', async () => {
+    api.preview.mockResolvedValueOnce({
+      ...preview,
+      tours: [
+        {
+          ...preview.tours[0],
+          classification: 'blocked',
+          reasonCode: 'target_identity_conflict',
+          conflicts: [
+            {
+              kind: 'target-identity-conflict',
+              sourceTourId: 'tour-1',
+              targetTourId: 'target-existing',
+              matchingFeatures: ['stable-target-id'],
+            },
+          ],
+        },
+      ],
+      summary: { ...preview.summary, transferable: 0, blocked: 1, selected: 0 },
+    });
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    expect(
+      await screen.findByText('tours.annualTransfer.blockedReasons.targetIdentityConflict')
+    ).toBeTruthy();
   });
 });

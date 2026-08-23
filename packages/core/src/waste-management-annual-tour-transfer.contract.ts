@@ -87,7 +87,6 @@ export type WasteAnnualTourTransferTourPreview = Readonly<{
   }>;
   replacementResourceIds: readonly string[];
   conflicts: readonly WasteAnnualTourTransferConflict[];
-  mappedTour?: WasteAnnualTourTransferMappedTour;
 }>;
 export type WasteAnnualTourTransferPreview = Readonly<{
   sourceYear: number;

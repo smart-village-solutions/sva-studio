@@ -78,27 +78,57 @@ export const mapWasteAnnualConcreteDate = (
   return candidates[0] ? formatWasteAnnualIsoDate(candidates[0]) : null;
 };
 
-export const continueWasteAnnualTourCadence = (input: {
+type WasteAnnualCadenceInput = Readonly<{
   sourceFirstDate: string;
   sourceEndDate?: string;
+  sourceYear?: number;
   targetYear: number;
   intervalDays: number;
-}): Readonly<{ firstDate: string; endDate?: string }> | null => {
+  targetSliceStart?: string;
+  targetSliceEnd?: string;
+}>;
+
+const resolveWasteAnnualSourceSlice = (
+  input: WasteAnnualCadenceInput
+): Readonly<{ start: string; end?: string }> => {
+  if (input.sourceYear === undefined) {
+    return { start: input.sourceFirstDate, end: input.sourceEndDate };
+  }
+  const yearStart = wasteAnnualStartOfYear(input.sourceYear);
+  const yearEnd = wasteAnnualEndOfYear(input.sourceYear);
+  return {
+    start: input.sourceFirstDate > yearStart ? input.sourceFirstDate : yearStart,
+    end: input.sourceEndDate && input.sourceEndDate < yearEnd ? input.sourceEndDate : yearEnd,
+  };
+};
+
+const resolveWasteAnnualTargetSliceEnd = (
+  input: WasteAnnualCadenceInput,
+  sourceSliceEnd: string | undefined
+): string | null => {
+  if (input.targetSliceEnd) return input.targetSliceEnd;
+  if (sourceSliceEnd) return replaceWasteAnnualYear(sourceSliceEnd, input.targetYear);
+  return wasteAnnualEndOfYear(input.targetYear);
+};
+
+export const continueWasteAnnualTourCadence = (
+  input: WasteAnnualCadenceInput
+): Readonly<{ firstDate: string; endDate?: string }> | null => {
   const sourceFirst = parseWasteAnnualIsoDate(input.sourceFirstDate);
   if (!sourceFirst || !Number.isInteger(input.intervalDays) || input.intervalDays <= 0) return null;
+  const sourceSlice = resolveWasteAnnualSourceSlice(input);
+  if (sourceSlice.end && sourceSlice.start > sourceSlice.end) return null;
   const boundary = parseWasteAnnualIsoDate(
-    replaceWasteAnnualYear(input.sourceFirstDate, input.targetYear) ?? ''
+    input.targetSliceStart ?? replaceWasteAnnualYear(sourceSlice.start, input.targetYear) ?? ''
   );
   if (!boundary) return null;
   const elapsedDays = Math.floor((boundary.getTime() - sourceFirst.getTime()) / 86_400_000);
   const remainder = ((elapsedDays % input.intervalDays) + input.intervalDays) % input.intervalDays;
   const firstTarget = addUtcDays(boundary, remainder === 0 ? 0 : input.intervalDays - remainder);
-  const mappedEnd = input.sourceEndDate
-    ? replaceWasteAnnualYear(input.sourceEndDate, input.targetYear)
-    : wasteAnnualEndOfYear(input.targetYear);
+  const mappedEnd = resolveWasteAnnualTargetSliceEnd(input, sourceSlice.end);
   if (!mappedEnd || formatWasteAnnualIsoDate(firstTarget) > mappedEnd) return null;
   return {
     firstDate: formatWasteAnnualIsoDate(firstTarget),
-    ...(input.sourceEndDate ? { endDate: mappedEnd } : {}),
+    ...(sourceSlice.end ? { endDate: mappedEnd } : {}),
   };
 };

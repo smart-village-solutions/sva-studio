@@ -5,7 +5,9 @@ const IDEMPOTENCY_CLEANUP_INTERVAL_MS = 60_000;
 
 let nextCleanupAt = 0;
 
-const cleanupExpiredIdempotencyKeys = async (client: Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0]) => {
+const cleanupExpiredIdempotencyKeys = async (
+  client: Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0]
+) => {
   const now = Date.now();
   if (now < nextCleanupAt) {
     return;
@@ -62,7 +64,13 @@ INSERT INTO iam.idempotency_keys (
 )
 VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
 `,
-        [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey, input.payloadHash]
+        [
+          input.instanceId,
+          input.actorAccountId,
+          input.endpoint,
+          input.idempotencyKey,
+          input.payloadHash,
+        ]
       );
       return { status: 'reserved' };
     }
@@ -70,6 +78,7 @@ VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
     if (row.payload_hash !== input.payloadHash) {
       return {
         status: 'conflict',
+        reason: 'payload_mismatch',
         message: 'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
       };
     }
@@ -77,6 +86,7 @@ VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
     if (row.status === 'IN_PROGRESS') {
       return {
         status: 'conflict',
+        reason: 'in_progress',
         message: 'Idempotenter Request wird bereits verarbeitet.',
       };
     }

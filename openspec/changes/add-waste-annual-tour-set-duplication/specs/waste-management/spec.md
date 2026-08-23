@@ -174,6 +174,13 @@ Das System SHALL den ausdrücklich bestätigten Tourensatz einschließlich aller
 - **AND** erzeugt es keine weiteren Touren oder Beziehungen
 - **AND** lehnt es denselben Schlüssel mit einer abweichenden Payload als Konflikt ab
 
+#### Scenario: Identischer Request wird während der Verarbeitung erneut gesendet
+
+- **WHEN** derselbe Idempotenzschlüssel mit derselben Payload noch verarbeitet wird
+- **THEN** antwortet das System mit `idempotency_in_progress`
+- **AND** startet es keine zweite Waste-Transaktion
+- **AND** erzeugt es kein zusätzliches Audit-Ereignis
+
 #### Scenario: Prozess endet nach dem Waste-Commit
 
 - **WHEN** die Waste-Transaktion erfolgreich committet und der Prozess vor Abschluss des zentralen Idempotenzeintrags endet

@@ -207,7 +207,7 @@ describe('workspace package scripts', () => {
     expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 
-  it('keeps stable fail-closed Unit and Coverage aggregators around internal jobs', () => {
+  it('keeps Unit fail-closed and Coverage aggregation in shadow mode', () => {
     const qualityWorkflow = loadQualityGatesWorkflow();
     const runtimeWorkflow = loadRuntimeGatesWorkflow();
 
@@ -216,8 +216,8 @@ describe('workspace package scripts', () => {
     expect(qualityWorkflow).toContain('  unit:\n    name: Unit');
     expect(qualityWorkflow).toContain('--expected unit-direct,unit-remaining');
     expect(qualityWorkflow).toContain('if-no-files-found: error');
-    expect(runtimeWorkflow).toContain('coverage-complete:');
-    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage');
+    expect(runtimeWorkflow).toContain('coverage-complete:\n    name: Coverage');
+    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage Shadow');
     expect(runtimeWorkflow).toContain('--expected coverage-complete');
     expect(runtimeWorkflow).toContain('validate-downloaded-coverage.ts');
   });
@@ -247,7 +247,9 @@ describe('workspace package scripts', () => {
     const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
     const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
     const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
-    const coverageAggregatorStart = runtimeWorkflow.indexOf('  coverage:\n    name: Coverage');
+    const coverageAggregatorStart = runtimeWorkflow.indexOf(
+      '  coverage:\n    name: Coverage Shadow'
+    );
     const complexityStart = runtimeWorkflow.indexOf('\n  complexity:', coverageAggregatorStart);
     const coverageAggregator = runtimeWorkflow.slice(coverageAggregatorStart, complexityStart);
 

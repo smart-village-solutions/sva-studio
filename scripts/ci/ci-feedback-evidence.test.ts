@@ -79,6 +79,26 @@ describe('ci-feedback-evidence', () => {
     });
 
     expect(evidence.timing.firstConfirmedFailureAt).toBeNull();
+    expect(evidence.timing.aggregationMs).toBeNull();
     expect(evidence.failure).toBeNull();
+  });
+
+  it('records an explicitly measured aggregation duration', () => {
+    const evidence = buildCiFeedbackEvidence({
+      gate: 'unit',
+      role: 'aggregate',
+      shardId: 'unit-aggregate',
+      status: 'passed',
+      baseSha: 'base-sha',
+      headSha: 'head-sha',
+      scopeMode: 'affected',
+      plan: null,
+      phases: [],
+      startedAt: new Date('2026-08-13T10:00:00.000Z'),
+      finishedAt: new Date('2026-08-13T10:00:00.250Z'),
+      aggregationMs: 250,
+    });
+
+    expect(evidence.timing.aggregationMs).toBe(250);
   });
 });

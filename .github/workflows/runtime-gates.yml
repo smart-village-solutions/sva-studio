@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   coverage-complete:
-    name: ${{ github.event_name == 'pull_request' && 'Coverage Complete' || 'Coverage' }}
+    name: Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -197,7 +197,7 @@ jobs:
           fi
 
   coverage:
-    name: Coverage
+    name: Coverage Shadow
     if: always() && github.event_name == 'pull_request'
     needs: coverage-complete
     runs-on: ubuntu-latest

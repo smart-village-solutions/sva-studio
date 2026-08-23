@@ -30,7 +30,7 @@ export interface CiFeedbackEvidence {
     queueMs: number | null;
     setupMs: number | null;
     executionMs: number;
-    aggregationMs: number;
+    aggregationMs: number | null;
   };
   failure: {
     classification: 'deterministic' | 'infrastructure' | 'unknown';
@@ -97,7 +97,7 @@ export const buildCiFeedbackEvidence = (
     queueMs: durationBetween(options.workflowCreatedAt, options.jobStartedAt),
     setupMs: durationBetween(options.jobStartedAt, options.startedAt),
     executionMs: Math.max(0, options.finishedAt.getTime() - options.startedAt.getTime()),
-    aggregationMs: Math.max(0, options.aggregationMs ?? 0),
+    aggregationMs: options.aggregationMs === undefined ? null : Math.max(0, options.aggregationMs),
   },
   failure:
     options.status === 'failed'

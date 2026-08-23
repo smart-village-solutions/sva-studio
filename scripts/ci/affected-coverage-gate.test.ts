@@ -9,6 +9,7 @@ import {
   buildCoverageProjectCommand,
   buildEarlyCoverageGateCommand,
   clearWorkspaceCoverageOutputs,
+  writeCoverageShardShadowEvidence,
 } from './affected-coverage-gate.ts';
 import { resolveCoveragePlan } from './coverage-plan.ts';
 import { loadWorkspaceProjectRoots } from './nx-project-graph.ts';
@@ -36,6 +37,30 @@ describe('affected-coverage-gate', () => {
     expect(buildEarlyCoverageGateCommand(['plugin-news', 'routing'])).toBe(
       'COVERAGE_GATE_EVALUATE_REGRESSIONS=1 COVERAGE_GATE_PROJECT_FILTER=plugin-news,routing pnpm coverage-gate'
     );
+  });
+
+  it('keeps shard evidence write failures observational in the required coverage runner', () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect(() =>
+      writeCoverageShardShadowEvidence(
+        {
+          rootDir: '/workspace',
+          project: 'plugin-news',
+          phase: 'direct',
+          headSha: 'head',
+          projectRoots: [{ name: 'plugin-news', root: 'packages/plugin-news' }],
+        },
+        () => {
+          throw new Error('missing shard report');
+        }
+      )
+    ).not.toThrow();
+    expect(warning).toHaveBeenCalledWith(
+      'Coverage-Shard-Shadow-Evidenz konnte nicht geschrieben werden: missing shard report'
+    );
+
+    warning.mockRestore();
   });
 
   it('clears stale workspace coverage outputs before affected runs', () => {

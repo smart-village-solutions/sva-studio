@@ -8,10 +8,7 @@ import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
 import { resolveCoveragePlan, type ResolvedCoveragePlan } from './coverage-plan.ts';
-import {
-  validateCoverageShardEvidence,
-  writeCoverageShardEvidence,
-} from './coverage-shard-evidence.ts';
+import { writeCoverageShardEvidence } from './coverage-shard-evidence.ts';
 import { loadNxProjectRoots, loadWorkspaceProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
@@ -63,6 +60,18 @@ export const buildCoverageProjectCommand = (project: string): string =>
 export const buildEarlyCoverageGateCommand = (projects: readonly string[]): string =>
   `COVERAGE_GATE_EVALUATE_REGRESSIONS=1 COVERAGE_GATE_PROJECT_FILTER=${projects.join(',')} pnpm coverage-gate`;
 
+export const writeCoverageShardShadowEvidence = (
+  options: Parameters<typeof writeCoverageShardEvidence>[0],
+  writeEvidence: typeof writeCoverageShardEvidence = writeCoverageShardEvidence
+): void => {
+  try {
+    writeEvidence(options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Coverage-Shard-Shadow-Evidenz konnte nicht geschrieben werden: ${message}`);
+  }
+};
+
 const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => {
   if (!fs.existsSync(workspaceRootPath)) {
     return;
@@ -105,7 +114,12 @@ const executeCoveragePlan = (
         projects: [project],
         retryCount: result.retryCount,
       });
-      writeCoverageShardEvidence({ project, phase, headSha: options.head, projectRoots });
+      writeCoverageShardShadowEvidence({
+        project,
+        phase,
+        headSha: options.head,
+        projectRoots,
+      });
     } catch (error) {
       if (error instanceof CiCommandExecutionError) {
         recordDuration({
@@ -134,13 +148,6 @@ const executeCoveragePlan = (
     recordDuration({ label: 'coverage:direct-project-gate', durationMs: result.durationMs });
   }
   runPhase('remaining', changedProjectPlan.remainingProjects);
-  validateCoverageShardEvidence({
-    headSha: options.head,
-    expectedProjects: [
-      ...changedProjectPlan.directProjects,
-      ...changedProjectPlan.remainingProjects,
-    ],
-  });
 };
 
 export const runAffectedCoverageGate = (

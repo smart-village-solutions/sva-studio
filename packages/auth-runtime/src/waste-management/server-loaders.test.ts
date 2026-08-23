@@ -746,6 +746,53 @@ describe('waste-management server loaders', () => {
       ['tenant-a', 'waste-annual-tour-transfer:2027']
     );
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
+
+    const persistedTargetTour = {
+      ...repositoryMocks.upsertWasteTour.mock.calls.at(-1)?.[0],
+      createdAt: '2027-01-01T00:00:00.000Z',
+      updatedAt: '2027-01-01T00:00:00.000Z',
+    };
+    const persistedTargetLink = {
+      ...repositoryMocks.upsertWasteLocationTourLink.mock.calls.at(-1)?.[0],
+      createdAt: '2027-01-01T00:00:00.000Z',
+      updatedAt: '2027-01-01T00:00:00.000Z',
+    };
+    const sourceLink = {
+      id: '22222222-2222-4222-8222-222222222222',
+      tourId: sourceTour.id,
+      locationId: '33333333-3333-4333-8333-333333333333',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    repositoryMocks.listWasteTours
+      .mockResolvedValueOnce([sourceTour, persistedTargetTour])
+      .mockResolvedValueOnce([sourceTour, persistedTargetTour]);
+    repositoryMocks.listWasteLocationTourLinks
+      .mockResolvedValueOnce([sourceLink, persistedTargetLink])
+      .mockResolvedValueOnce([sourceLink, persistedTargetLink]);
+    repositoryMocks.listWasteLocationTourPickupDates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourAssignments.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const repeatedPreview = await wasteManagementOverviewLoaders.previewWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      selectedTourIds: [sourceTour.id],
+    });
+    const repeated = await wasteManagementEntitySavers.createWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      create: {
+        sourceYear: 2026,
+        selectedTourIds: [sourceTour.id],
+        replacementDates: [],
+        acknowledgedConflictTourIds: [],
+        previewFingerprint: repeatedPreview.previewFingerprint,
+      },
+    });
+
+    expect(repeated).toMatchObject({ createdCount: 0, existingCount: 1 });
   });
 
   it('rolls back the complete annual tour set when a relationship write fails', async () => {

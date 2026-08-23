@@ -150,6 +150,160 @@ describe('waste annual tour transfer', () => {
     );
   });
 
+  it('maps and fingerprints every supported relationship kind', async () => {
+    const sourceTour = tour({
+      customDates: [
+        { date: '2026-03-02', description: 'Zusatztermin' },
+        { date: '2026-03-09', description: 'Zweiter Zusatztermin' },
+      ],
+    });
+    const transferSource = source([sourceTour], {
+      locationTourLinks: [
+        {
+          id: 'link-a',
+          tourId: sourceTour.id,
+          locationId: 'location-a',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'link-b',
+          tourId: sourceTour.id,
+          locationId: 'location-b',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [
+        {
+          id: 'pickup-a',
+          tourId: sourceTour.id,
+          locationId: 'location-a',
+          pickupDate: '2026-04-06',
+          note: 'Abholung',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'pickup-b',
+          tourId: sourceTour.id,
+          locationId: 'location-b',
+          pickupDate: '2026-04-13',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tourAssignments: [
+        {
+          id: 'assignment-a',
+          tourId: sourceTour.id,
+          pickupDate: '2026-05-04',
+          note: 'Zuordnung',
+          locationIds: ['location-a'],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'assignment-b',
+          tourId: sourceTour.id,
+          pickupDate: '2026-05-11',
+          locationIds: ['location-b'],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [
+        {
+          id: 'shift-a',
+          tourId: sourceTour.id,
+          originalDate: '2026-06-01',
+          actualDate: '2026-06-02',
+          hasYear: true,
+          reasonType: 'holiday',
+          reasonKey: 'holiday-a',
+          followUpMode: 'single',
+          description: 'Feiertag',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'shift-b',
+          tourId: sourceTour.id,
+          originalDate: '2026-07-06',
+          actualDate: '2026-07-07',
+          hasYear: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    const initial = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: transferSource,
+      target: source([]),
+    });
+    const mapped = initial.tours[0]?.mappedTour;
+
+    expect(mapped?.targetTour).toMatchObject({
+      customDates: [
+        { date: '2027-03-01', description: 'Zusatztermin' },
+        { date: '2027-03-08', description: 'Zweiter Zusatztermin' },
+      ],
+      locationCount: 2,
+    });
+    expect(mapped?.locationTourLinks).toHaveLength(2);
+    expect(mapped?.locationTourLinks[0]).toMatchObject({ locationId: 'location-a' });
+    expect(mapped?.locationTourPickupDates).toHaveLength(2);
+    expect(mapped?.locationTourPickupDates[0]).toMatchObject({
+      pickupDate: '2027-04-05',
+      note: 'Abholung',
+    });
+    expect(mapped?.tourAssignments).toHaveLength(2);
+    expect(mapped?.tourAssignments[0]).toMatchObject({
+      pickupDate: '2027-05-03',
+      note: 'Zuordnung',
+      locationIds: ['location-a'],
+    });
+    expect(mapped?.tourDateShifts).toHaveLength(2);
+    expect(mapped?.tourDateShifts[0]).toMatchObject({
+      originalDate: '2027-05-31',
+      actualDate: '2027-06-01',
+      reasonType: 'holiday',
+      reasonKey: 'holiday-a',
+      followUpMode: 'single',
+      description: 'Feiertag',
+    });
+
+    const stableTarget = source(
+      [
+        {
+          ...(mapped?.targetTour as WasteTourRecord),
+          createdAt: '2027-01-01T00:00:00.000Z',
+          updatedAt: '2027-01-01T00:00:00.000Z',
+        },
+      ],
+      {
+        locationTourLinks: mapped?.locationTourLinks ?? [],
+        locationTourPickupDates: mapped?.locationTourPickupDates ?? [],
+        tourAssignments: mapped?.tourAssignments ?? [],
+        tourDateShifts: mapped?.tourDateShifts ?? [],
+      }
+    );
+    const repeated = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: transferSource,
+      target: stableTarget,
+    });
+
+    expect(repeated.tours[0]).toMatchObject({ classification: 'transferable', conflicts: [] });
+    expect(repeated.previewFingerprint).toBe(initial.previewFingerprint);
+  });
+
   it('accepts the approved batch limits exactly and rejects either value above them', () => {
     expect(() =>
       assertWasteAnnualTourTransferLimits({ tours: 1_000, relationships: 100_000 })
@@ -224,6 +378,44 @@ describe('waste annual tour transfer', () => {
     expect(resolved.tours[0]?.mappedTour?.targetTour.customDates).toEqual([
       { date: '2025-02-27', description: 'Sondertermin' },
     ]);
+  });
+
+  it('reports leap-day pickup and assignment resources that require replacements', async () => {
+    const leapTour = tour({ firstDate: '2024-01-01', endDate: '2024-12-31' });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2024,
+      currentYear: 2025,
+      source: source([leapTour], {
+        locationTourPickupDates: [
+          {
+            id: 'pickup-leap',
+            tourId: leapTour.id,
+            locationId: 'location-a',
+            pickupDate: '2024-02-29',
+            createdAt: '2024-01-01T00:00:00.000Z',
+            updatedAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+        tourAssignments: [
+          {
+            id: 'assignment-leap',
+            tourId: leapTour.id,
+            pickupDate: '2024-02-29',
+            locationIds: ['location-a'],
+            createdAt: '2024-01-01T00:00:00.000Z',
+            updatedAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'replacement_date_required',
+      replacementResourceIds: ['pickup-leap', 'assignment-leap'],
+    });
   });
 
   it('applies a dedicated replacement to a leap-day validity end', async () => {

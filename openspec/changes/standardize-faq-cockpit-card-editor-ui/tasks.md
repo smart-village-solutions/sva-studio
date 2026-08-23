@@ -44,7 +44,9 @@
 - [x] 5.4 Kachel-Komponententests für Create/Edit, Tabwechsel mit mehreren Bildern, Fehlernavigation, Medienkarten, History und Pagination ergänzen.
 - [x] 5.5 GenericItems-Komponententests für den bestätigten Löschablauf ergänzen.
 - [x] 5.6 Host-Tests belegen lassen, dass der FAQ-Sprachfilter vor Sortierung, Gesamtzahl und Pagination angewendet wird.
-- [ ] 5.7 Mindestens einen E2E-Flow je Fachplugin für Bearbeiten, Tabwechsel, Speichern und bestätigtes Löschen ergänzen; FAQ zusätzlich mit Sprachfilter, Kacheln zusätzlich mit mehreren Bildern.
+- [x] 5.7 Mindestens einen E2E-Flow je Fachplugin für Bearbeiten, Tabwechsel, Speichern und bestätigtes Löschen ergänzen; FAQ zusätzlich mit Sprachfilter, Kacheln zusätzlich mit mehreren Bildern.
+  - Kachel-E2E inklusive mehrerer Bilder ist vorhanden und aktuell grün.
+  - FAQ-Sprachfilter, CRUD, Tabwechsel, Speichern und bestätigtes Löschen sind über den erreichbaren Einstieg `/admin/content?type=faq.faq` per E2E abgedeckt.
 - [x] 5.8 Betroffene Tests von News, Events und POIs ausführen, falls gemeinsame `studio-ui-react`-Primitives deren Build- oder Laufzeitpfade verändern; keine fachfremden Snapshot-Anpassungen ohne sichtbare Verhaltensänderung vornehmen.
 - [x] 5.9 Relevante arc42-Abschnitte `05`, `08`, `10` und `11` sowie die Studio-Form-Migrationsdokumentation aktualisieren.
 - [x] 5.10 Kleinste relevante Nx-Unit-, Type-, Lint- und bei Hoständerungen Server-Runtime-Gates nach jedem Block ausführen.

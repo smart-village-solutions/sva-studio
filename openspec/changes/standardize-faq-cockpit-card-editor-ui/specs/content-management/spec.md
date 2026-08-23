@@ -32,7 +32,7 @@ Das System MUST den FAQ-Sprachfilter als optionalen URL-Search-Parameter behande
 #### Scenario: Sprache wird aus der URL gefiltert
 
 - **GIVEN** FAQ mehrerer Sprachcodes liegen über mehrere Mainserver-Seiten verteilt vor
-- **WHEN** ein Benutzer die FAQ-Fachliste mit einem Sprachfilter öffnet
+- **WHEN** ein Benutzer die gemeinsame Inhaltsübersicht mit `type=faq.faq` und einem Sprachfilter öffnet
 - **THEN** filtert der Host die vollständige FAQ-Teilmenge nach dem normalisierten Sprachcode
 - **AND** sortiert und paginiert erst das gefilterte Ergebnis
 - **AND** zeigt die UI den aktiven Filter aus dem URL-State an
@@ -40,7 +40,7 @@ Das System MUST den FAQ-Sprachfilter als optionalen URL-Search-Parameter behande
 #### Scenario: Gefilterte Seite enthält keine Treffer
 
 - **WHEN** für den gewählten Sprachcode keine FAQ vorhanden ist
-- **THEN** zeigt die Fachliste einen regulären gefilterten Leerzustand
+- **THEN** zeigt die gemeinsame Inhaltsübersicht einen regulären gefilterten Leerzustand
 - **AND** behauptet sie nicht aufgrund einer nur lokal gefilterten Einzelseite, dass keine Treffer in der Gesamtmenge existieren
 
 #### Scenario: Filter wird geändert oder entfernt
@@ -63,7 +63,7 @@ Das System MUST in FAQ- und Kachel-Fachlisten den normalisierten Seitenzustand a
 
 #### Scenario: Benutzer navigiert in der FAQ-Fachliste
 
-- **WHEN** ein Benutzer bei aktivem oder inaktivem Sprachfilter die FAQ-Seite wechselt
+- **WHEN** ein Benutzer bei aktivem oder inaktivem Sprachfilter die FAQ-Seite der gemeinsamen Inhaltsübersicht wechselt
 - **THEN** bleiben Filter und andere unabhängige Search-Parameter erhalten
 - **AND** beziehen sich Seitenangabe und Navigationszustand auf die vollständige fachlich gefilterte FAQ-Menge
 

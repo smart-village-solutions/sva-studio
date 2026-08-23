@@ -137,6 +137,31 @@ describe('projection list operations', () => {
     expect(genericResult.pagination.hasNextPage).toBe(false);
   });
 
+  it('carries the FAQ language code through the slim projection contract', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      genericItems: [
+        {
+          id: 'faq-1',
+          title: 'Frage',
+          genericType: 'FAQ',
+          payload: { languageCode: ' DE ', sortWeight: 2 },
+        },
+      ],
+    });
+    const operations = createProjectionListOperations(execute);
+
+    const result = await operations.listProjectionWithConfig(
+      'faq.faq',
+      input,
+      config,
+      genericTypeOwnership
+    );
+
+    expect(result.data).toEqual([
+      expect.objectContaining({ id: 'faq-1', languageCode: 'DE' }),
+    ]);
+  });
+
   it('continues scanning when an upstream page contains only claimed GenericItems', async () => {
     const execute = vi.fn().mockImplementation(({ variables }) =>
       variables.skip === 0

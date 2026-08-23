@@ -130,6 +130,60 @@ describe('useContents', () => {
     });
   });
 
+  it('keeps the latest content response when an older filter request resolves later', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    let resolveFirst: ((value: unknown) => void) | undefined;
+    let resolveSecond: ((value: unknown) => void) | undefined;
+    listContentsMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+    const firstQuery: Parameters<typeof useContents>[0] = {
+      ...contentListQuery,
+      type: 'faq.faq',
+      languageCode: 'd',
+    };
+    const secondQuery: Parameters<typeof useContents>[0] = {
+      ...contentListQuery,
+      type: 'faq.faq',
+      languageCode: 'de',
+    };
+    const { result, rerender } = renderHook(
+      ({ query }: { query: Parameters<typeof useContents>[0] }) => useContents(query),
+      { initialProps: { query: firstQuery } }
+    );
+
+    await waitFor(() => expect(listContentsMock).toHaveBeenCalledTimes(1));
+    rerender({ query: secondQuery });
+    await waitFor(() => expect(listContentsMock).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolveSecond?.({
+        data: [{ id: 'current-faq', title: 'Aktuell' }],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+    });
+    await waitFor(() => expect(result.current.contents[0]?.id).toBe('current-faq'));
+
+    await act(async () => {
+      resolveFirst?.({
+        data: [{ id: 'stale-faq', title: 'Veraltet' }],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+    });
+
+    expect(result.current.contents[0]?.id).toBe('current-faq');
+  });
+
   it('preserves polling backoff when refetch returns equivalent sync metadata', async () => {
     vi.useFakeTimers();
     asIamErrorMock.mockImplementation((cause: unknown) => cause);

@@ -41,10 +41,26 @@ describe('iam content list api shared helpers', () => {
     });
   });
 
+  it('normalizes the FAQ language filter and ignores it for other content types', () => {
+    expect(
+      readContentListQuery(
+        new Request('https://studio.test/api/content?type=faq.faq&languageCode=%20DE-de%20')
+      )
+    ).toMatchObject({ type: 'faq.faq', languageCode: 'de-de' });
+
+    expect(
+      readContentListQuery(
+        new Request('https://studio.test/api/content?type=news.article&languageCode=de')
+      )
+    ).not.toHaveProperty('languageCode');
+  });
+
   it('accepts every supported sort field and handles error and content type values', async () => {
     expect(
       readContentListQuery(
-        new Request('https://studio.test/api/content?page=abc&pageSize=-5&type=plugin.custom&status=deleted&sortBy=createdAt')
+        new Request(
+          'https://studio.test/api/content?page=abc&pageSize=-5&type=plugin.custom&status=deleted&sortBy=createdAt'
+        )
       )
     ).toEqual({
       page: 1,

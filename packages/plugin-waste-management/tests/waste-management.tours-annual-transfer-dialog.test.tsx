@@ -50,6 +50,7 @@ const preview = {
       targetPeriod: { firstDate: '2027-01-04', endDate: '2027-12-31' },
       firstTargetDate: '2027-01-04',
       recurrence: 'weekly',
+      dateExamples: [{ sourceDate: '2026-01-05', targetDate: '2027-01-04' }],
       relationshipCounts: {
         wasteFractions: 1,
         locations: 2,
@@ -173,6 +174,35 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect((await screen.findByRole('status')).textContent).toContain(
       'tours.annualTransfer.result:1|0|2027'
     );
+  });
+
+  it('shows concrete date-only mappings and the custom recurrence label', async () => {
+    api.preview.mockResolvedValueOnce({
+      ...preview,
+      tours: [
+        {
+          ...preview.tours[0],
+          sourcePeriod: {},
+          recurrence: undefined,
+          customRecurrenceName: 'Alle neun Tage',
+          customRecurrenceIntervalDays: 9,
+          dateExamples: [{ sourceDate: '2026-06-15', targetDate: '2027-06-14' }],
+        },
+      ],
+    });
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+
+    expect(await screen.findByText(/tours\.customRecurrenceLabel:Alle neun Tage\|9/)).toBeTruthy();
+    expect(screen.getByText(/2026-06-15.*2027-06-14/)).toBeTruthy();
   });
 
   it('shows and enforces the resource-specific year for cross-year replacements', async () => {

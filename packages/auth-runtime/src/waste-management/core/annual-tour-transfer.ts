@@ -74,11 +74,18 @@ const toDomainErrorResponse = (error: unknown, requestId: string | undefined): R
     );
   }
   if (error.message.startsWith('target_identity_conflict:')) {
+    let updatedPreview: WasteAnnualTourTransferPreview | undefined;
+    try {
+      updatedPreview = JSON.parse(error.message.slice('target_identity_conflict:'.length));
+    } catch {
+      updatedPreview = undefined;
+    }
     return createApiError(
       409,
       'target_identity_conflict',
       'Ein vorhandenes Folgejahr-Ergebnis weicht von der bestätigten Planung ab.',
-      requestId
+      requestId,
+      updatedPreview ? { updatedPreview } : undefined
     );
   }
   if (error.message === 'unacknowledged_target_conflict') {

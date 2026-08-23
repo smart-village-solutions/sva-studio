@@ -206,9 +206,14 @@ describe('annual tour transfer handlers', () => {
   });
 
   it('returns the updated preview without writing when the confirmed fingerprint is stale', async () => {
+    const updatedPreview = {
+      ...preview,
+      summary: { ...preview.summary, transferable: 2, alreadyEffective: 1, blocked: 3 },
+    };
     const create = vi.fn(async () => {
-      throw new Error(`preview_stale:${JSON.stringify(preview)}`);
+      throw new Error(`preview_stale:${JSON.stringify(updatedPreview)}`);
     });
+    const emitAuditEvent = vi.fn(async () => undefined);
     const response =
       await wasteManagementAnnualTourTransferHandlers.createWasteAnnualTourTransferInternal(
         request(
@@ -229,12 +234,23 @@ describe('annual tour transfer handlers', () => {
             actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
           })),
           createWasteAnnualTourTransfer: create,
-          emitAuditEvent: vi.fn(async () => undefined),
+          emitAuditEvent,
         }
       );
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: 'preview_stale', details: { updatedPreview: preview } },
+      error: { code: 'preview_stale', details: { updatedPreview } },
     });
+    expect(emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginAction: expect.objectContaining({
+          batchSummary: expect.objectContaining({
+            transferableCount: 2,
+            alreadyEffectiveCount: 1,
+            blockedCount: 3,
+          }),
+        }),
+      })
+    );
   });
 });

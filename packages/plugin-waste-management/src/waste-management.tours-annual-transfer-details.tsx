@@ -52,6 +52,14 @@ const formatPeriod = (
     period.endDate ? ` – ${formatAnnualDate(period.endDate, translate)}` : ''
   }`;
 
+const recurrenceValue = (tour: WasteAnnualTourTransferTourPreview, translate: Translate): string =>
+  tour.customRecurrenceIntervalDays
+    ? translate('tours.customRecurrenceLabel', {
+        name: tour.customRecurrenceName ?? String(tour.customRecurrenceIntervalDays),
+        days: tour.customRecurrenceIntervalDays,
+      })
+    : translate(`tours.recurrence.${tour.recurrence ?? 'onDemand'}`);
+
 export const AnnualTourDetails = ({
   tour,
   translate,
@@ -74,7 +82,7 @@ export const AnnualTourDetails = ({
     ) : null}
     <p className="text-sm text-muted-foreground">
       {translate('tours.annualTransfer.recurrence', {
-        value: translate(`tours.recurrence.${tour.recurrence ?? 'onDemand'}`),
+        value: recurrenceValue(tour, translate),
       })}
     </p>
     <p className="text-sm text-muted-foreground">
@@ -102,14 +110,17 @@ export const AnnualTourDetails = ({
         })}
       </p>
     ) : null}
-    {tour.sourcePeriod?.firstDate && tour.firstTargetDate ? (
-      <p className="text-sm text-muted-foreground">
+    {tour.dateExamples.map((example) => (
+      <p
+        className="text-sm text-muted-foreground"
+        key={`${example.sourceDate}:${example.targetDate}`}
+      >
         {translate('tours.annualTransfer.dateExample', {
-          source: formatAnnualDate(tour.sourcePeriod.firstDate, translate),
-          target: formatAnnualDate(tour.firstTargetDate, translate),
+          source: formatAnnualDate(example.sourceDate, translate),
+          target: formatAnnualDate(example.targetDate, translate),
         })}
       </p>
-    ) : null}
+    ))}
     {tour.conflicts.length > 0 ? (
       <p className="text-sm text-muted-foreground">
         {translate('tours.annualTransfer.conflictDetails', {

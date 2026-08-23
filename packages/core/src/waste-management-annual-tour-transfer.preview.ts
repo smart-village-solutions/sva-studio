@@ -16,6 +16,10 @@ import {
   isWasteAnnualDateInYear,
 } from './waste-management-annual-tour-transfer.dates.js';
 import { buildWasteAnnualTourTransferFingerprint } from './waste-management-annual-tour-transfer.identity.js';
+import {
+  countWasteAnnualMappedRelationships,
+  wasteAnnualConcreteDateExamples,
+} from './waste-management-annual-tour-transfer.examples.js';
 import type * as AnnualTransferInternal from './waste-management-annual-tour-transfer.internal.js';
 import { mapWasteAnnualTour } from './waste-management-annual-tour-transfer.mapping.js';
 import {
@@ -94,6 +98,8 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
     name: input.tour.name,
     sourcePeriod: { firstDate: input.tour.firstDate, endDate: input.tour.endDate },
     recurrence: input.tour.recurrence,
+    customRecurrenceName: input.tour.customRecurrenceName,
+    customRecurrenceIntervalDays: input.tour.customRecurrenceIntervalDays,
     relationshipCounts: counts,
   } as const;
   if (alreadyEffective(input.tour, input.targetYear, input.source)) {
@@ -103,6 +109,7 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
       reasonCode: 'already_effective_in_target_year',
       replacementResourceIds: [],
       replacementTargetYears: {},
+      dateExamples: [],
       conflicts: [],
     };
   }
@@ -117,6 +124,7 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
         input,
         mappedResult.replacementResourceIds
       ),
+      dateExamples: [],
       conflicts: [],
     };
   }
@@ -136,21 +144,15 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
     relationshipCounts: { ...counts, excluded: mappedResult.excluded },
     replacementResourceIds: [],
     replacementTargetYears: {},
+    dateExamples: wasteAnnualConcreteDateExamples(
+      input.tour,
+      input.sourceYear,
+      input.source,
+      mappedResult.mapped
+    ),
     conflicts,
     mappedTour: mappedResult.mapped,
   };
-};
-
-const mappedRelationshipCount = (item: InternalTourPreview): number => {
-  const mapped = item.mappedTour;
-  return mapped
-    ? mapped.targetTour.wasteFractionIds.length +
-        (mapped.targetTour.customDates?.length ?? 0) +
-        mapped.locationTourLinks.length +
-        mapped.locationTourPickupDates.length +
-        mapped.tourAssignments.length +
-        mapped.tourDateShifts.length
-    : 0;
 };
 
 const sourceFingerprintState = (
@@ -210,7 +212,7 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
     (item) => item.classification === 'transferable' && selected.has(item.sourceTourId)
   );
   const relationships = selectedPreviews.reduce(
-    (total, item) => total + mappedRelationshipCount(item),
+    (total, item) => total + countWasteAnnualMappedRelationships(item),
     0
   );
   assertWasteAnnualTourTransferLimits({ tours: relevantTours.length, relationships });

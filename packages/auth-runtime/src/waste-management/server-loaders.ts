@@ -1610,7 +1610,9 @@ export const createWasteAnnualTourTransferInTransaction = async (input: {
       const existing = snapshot.tours.some((tour) => tour.id === mapped.targetTour.id);
       if (existing) {
         if (!(await mappedTourMatches(snapshot, mapped))) {
-          throw new Error(`target_identity_conflict:${mapped.targetTour.id}`);
+          throw new Error(
+            `target_identity_conflict:${JSON.stringify(toWasteAnnualTourTransferPublicPreview(preview))}`
+          );
         }
         existingTourIds.push(mapped.targetTour.id);
         continue;

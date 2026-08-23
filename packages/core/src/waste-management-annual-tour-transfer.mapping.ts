@@ -1,8 +1,5 @@
 import type { WasteTourRecord } from './waste-management/master-data-tours.js';
-import type {
-  WasteAnnualTourTransferMappedTour,
-  WasteAnnualTourTransferSource,
-} from './waste-management-annual-tour-transfer.contract.js';
+import type { WasteAnnualTourTransferMappedTour } from './waste-management-annual-tour-transfer.contract.js';
 import {
   continueWasteAnnualTourCadence,
   replaceWasteAnnualYear,
@@ -10,11 +7,19 @@ import {
   wasteAnnualStartOfYear,
 } from './waste-management-annual-tour-transfer.dates.js';
 import { deriveWasteAnnualTourTransferId } from './waste-management-annual-tour-transfer.identity.js';
+import type {
+  WasteAnnualTourMappingBlocker,
+  WasteAnnualTourMappingInput,
+} from './waste-management-annual-tour-transfer.internal.js';
 import {
   findWasteAnnualRelationshipCollisions,
   mapWasteAnnualRelationships,
   wasteAnnualRelationshipsFor,
 } from './waste-management-annual-tour-transfer.relationships.js';
+import {
+  filterReplaceableWasteAnnualCollisionResources,
+  hasImmutableWasteAnnualShiftCollision,
+} from './waste-management-annual-tour-transfer.collision-resources.js';
 
 export const wasteAnnualIntervalForTour = (tour: WasteTourRecord): number | null => {
   if (tour.customRecurrenceId) return tour.customRecurrenceIntervalDays ?? null;
@@ -117,30 +122,21 @@ const mapValidity = (input: ValidityMappingInput): ValidityMappingResult => {
   };
 };
 
-type MapTourInput = Readonly<{
-  instanceId: string;
-  tour: WasteTourRecord;
-  sourceYear: number;
-  targetYear: number;
-  source: WasteAnnualTourTransferSource;
-  replacements: ReadonlyMap<string, string>;
-}>;
-
-type MapTourBlocker = Readonly<{
-  blocker: 'invalid_planning_data' | 'replacement_date_required' | 'target_date_collision';
-  replacementResourceIds: readonly string[];
-}>;
-
 export const findWasteAnnualTourReplacementResourceIds = (
-  input: Omit<MapTourInput, 'replacements'>
+  input: Omit<WasteAnnualTourMappingInput, 'replacements'>
 ) => {
   const withoutReplacements = { ...input, replacements: new Map<string, string>() };
   const validity = mapValidity(withoutReplacements);
   const relationships = mapWasteAnnualRelationships(withoutReplacements);
+  const collisions = findWasteAnnualRelationshipCollisions(relationships);
   return [
     ...(!validity.ok ? validity.replacementResourceIds : []),
     ...relationships.missing,
-    ...findWasteAnnualRelationshipCollisions(relationships),
+    ...filterReplaceableWasteAnnualCollisionResources(
+      input.tour.id,
+      input.source.tourDateShifts,
+      collisions
+    ),
   ];
 };
 
@@ -182,9 +178,10 @@ const deriveMappedRelationships = async (
 });
 
 export const mapWasteAnnualTour = async (
-  input: MapTourInput
+  input: WasteAnnualTourMappingInput
 ): Promise<
-  Readonly<{ mapped: WasteAnnualTourTransferMappedTour; excluded: number }> | MapTourBlocker
+  | Readonly<{ mapped: WasteAnnualTourTransferMappedTour; excluded: number }>
+  | WasteAnnualTourMappingBlocker
 > => {
   const validity = mapValidity(input);
   if (!validity.ok) {
@@ -199,6 +196,11 @@ export const mapWasteAnnualTour = async (
   }
   const collisions = findWasteAnnualRelationshipCollisions(relationships);
   if (collisions.length > 0) {
+    if (
+      hasImmutableWasteAnnualShiftCollision(input.tour.id, input.source.tourDateShifts, collisions)
+    ) {
+      return { blocker: 'invalid_planning_data', replacementResourceIds: [] };
+    }
     return { blocker: 'target_date_collision', replacementResourceIds: collisions };
   }
   const targetTourId = await deriveWasteAnnualTourTransferId(

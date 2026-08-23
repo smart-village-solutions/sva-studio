@@ -1,6 +1,7 @@
 import {
   buildWasteAnnualTourTransferFingerprint,
   type WasteAnnualTourTransferCreateInput,
+  type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
 } from '@sva/core';
 
@@ -54,6 +55,12 @@ export const completeAnnualTourTransfer = async (input: {
   ctx: AuthenticatedRequestContext;
 }): Promise<Response> => {
   const responseBody = await input.response.clone().json();
+  const updatedPreview = (
+    responseBody as {
+      error?: { details?: { updatedPreview?: WasteAnnualTourTransferPreview } };
+    }
+  ).error?.details?.updatedPreview;
+  const classificationCounts = input.result?.classificationCounts ?? updatedPreview?.summary;
   await completeIdempotency({
     instanceId: input.instanceId,
     actorAccountId: input.actorAccountId,
@@ -76,9 +83,9 @@ export const completeAnnualTourTransfer = async (input: {
     batchSummary: {
       sourceYear: input.create.sourceYear,
       targetYear: input.create.sourceYear + 1,
-      transferableCount: input.result?.classificationCounts.transferable,
-      alreadyEffectiveCount: input.result?.classificationCounts.alreadyEffective,
-      blockedCount: input.result?.classificationCounts.blocked,
+      transferableCount: classificationCounts?.transferable,
+      alreadyEffectiveCount: classificationCounts?.alreadyEffective,
+      blockedCount: classificationCounts?.blocked,
       createdCount: input.result?.createdCount ?? 0,
       existingCount: input.result?.existingCount ?? 0,
       resourceIds: [

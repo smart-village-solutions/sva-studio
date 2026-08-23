@@ -120,6 +120,13 @@ Das System SHALL wiederkehrende Tagesabstandstouren ohne Taktunterbrechung in da
 - **THEN** lehnt der Server die Vorschau als `replacement_date_invalid` ab
 - **AND** verändert er die deterministische Folgejahrabbildung nicht
 
+#### Scenario: Doppelte jahresunabhängige Verschiebungen erfordern Datenbereinigung
+
+- **WHEN** zwei jahresunabhängige Verschiebungsregeln derselben Tour dieselbe fachliche Zielbeziehung erzeugen
+- **THEN** blockiert die Vorschau die Tour als ungültige Planungsdaten
+- **AND** bietet sie keine wirkungslose Ersatzdatumseingabe an
+- **AND** fordert sie zur Bereinigung der Quelldaten auf
+
 #### Scenario: Bestehende jährliche Tour besitzt denselben Jahrestag
 
 - **WHEN** eine andere im Zieljahr wirksame jährliche Tour dieselben Abfallarten, Abholorte und denselben Jahrestag besitzt
@@ -133,7 +140,8 @@ Das System SHALL vor der Erstellung serverseitig eine schreibfreie Vorschau mit 
 #### Scenario: Vorschau erklärt den vollständigen Jahreswechsel
 
 - **WHEN** eine gültige Quelljahrauswahl vorliegt
-- **THEN** zeigt das System je Tour Klassifikation, Quell- und Zielzeitraum, ersten Zieltermin, Turnus sowie die Anzahl der Abfallarten, Abholorte, Termine, Einsätze und Verschiebungen
+- **THEN** zeigt das System je Tour Klassifikation, Quell- und Zielzeitraum, ersten Zieltermin, den tatsächlichen festen oder benutzerdefinierten Turnus sowie die Anzahl der Abfallarten, Abholorte, Termine, Einsätze und Verschiebungen
+- **AND** zeigt es für konkrete Termine bis zu fünf nachvollziehbare Abbildungen im Format `Quelle → Folgejahr`, auch wenn die Tour keinen Gültigkeitsbeginn besitzt
 - **AND** fasst es übernommene, bereits weitergeltende, blockierte und ausgeschlossene Daten verständlich zusammen
 - **AND** verändert die Vorschau keine Waste-Daten
 
@@ -235,6 +243,11 @@ Das System SHALL Vorschau und Erstellung gemäß den Waste-Berechtigungen schüt
 - **THEN** erzeugt das System genau ein zusammenfassendes Audit-Ereignis mit Jahren, Klassifikations- und Ergebnismengen, Ergebnis und technischen Ressourcen-IDs
 - **AND** protokolliert es keine Notizen, Adressdaten oder fachlichen Freitexte
 - **AND** erzeugen Vorschau und reine Validierungsfehler vor einer bestätigten Mutation kein Audit-Ereignis
+
+#### Scenario: Fehlgeschlagene Bestätigung behält Klassifikationsmengen im Audit
+
+- **WHEN** eine bestätigte Erstellung wegen einer veralteten Vorschau oder eines neu erkannten stabilen Zielkonflikts fehlschlägt
+- **THEN** enthält das zusammenfassende Fehler-Audit die Klassifikationsmengen der aktualisierten serverseitigen Vorschau
 
 #### Scenario: Assistent ist verständlich und barrierefrei bedienbar
 

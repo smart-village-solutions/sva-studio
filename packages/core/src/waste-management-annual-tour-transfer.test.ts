@@ -301,7 +301,36 @@ describe('waste annual tour transfer', () => {
     });
 
     expect(repeated.tours[0]).toMatchObject({ classification: 'transferable', conflicts: [] });
+    expect(repeated.tours[0]?.dateExamples).toEqual([
+      { sourceDate: '2026-03-02', targetDate: '2027-03-01' },
+      { sourceDate: '2026-03-09', targetDate: '2027-03-08' },
+      { sourceDate: '2026-04-06', targetDate: '2027-04-05' },
+      { sourceDate: '2026-04-13', targetDate: '2027-04-12' },
+      { sourceDate: '2026-05-04', targetDate: '2027-05-03' },
+    ]);
     expect(repeated.previewFingerprint).toBe(initial.previewFingerprint);
+  });
+
+  it('preserves custom recurrence details in the preview', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([
+        tour({
+          recurrence: undefined,
+          customRecurrenceId: 'preset-9',
+          customRecurrenceName: 'Alle neun Tage',
+          customRecurrenceIntervalDays: 9,
+        }),
+      ]),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      customRecurrenceName: 'Alle neun Tage',
+      customRecurrenceIntervalDays: 9,
+    });
   });
 
   it('accepts the approved batch limits exactly and rejects either value above them', () => {
@@ -720,6 +749,36 @@ describe('waste annual tour transfer', () => {
       replacementDates: [{ sourceResourceId: firstResourceId as string, targetDate: '2027-06-15' }],
     });
     expect(resolved.tours[0]?.classification).toBe('transferable');
+  });
+
+  it('requires source cleanup for duplicate year-independent shift rules', async () => {
+    const sourceTour = tour();
+    const duplicateShift = {
+      tourId: sourceTour.id,
+      originalDate: '2024-12-24',
+      actualDate: '2024-12-27',
+      hasYear: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as const;
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          { ...duplicateShift, id: 'shift-static-a' },
+          { ...duplicateShift, id: 'shift-static-b' },
+        ],
+      }),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'invalid_planning_data',
+      replacementResourceIds: [],
+    });
   });
 
   it('blocks a stable target identity whose persisted content differs from the preview', async () => {

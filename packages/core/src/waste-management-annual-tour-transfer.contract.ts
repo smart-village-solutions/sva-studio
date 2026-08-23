@@ -76,6 +76,9 @@ export type WasteAnnualTourTransferTourPreview = Readonly<{
   targetPeriod?: Readonly<{ firstDate?: string; endDate?: string }>;
   firstTargetDate?: string;
   recurrence?: WasteTourRecord['recurrence'];
+  customRecurrenceName?: string;
+  customRecurrenceIntervalDays?: number;
+  dateExamples: readonly Readonly<{ sourceDate: string; targetDate: string }>[];
   relationshipCounts: Readonly<{
     wasteFractions: number;
     customDates: number;

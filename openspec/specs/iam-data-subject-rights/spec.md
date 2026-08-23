@@ -187,13 +187,34 @@ Das System SHALL für Session- und Login-State-Löschungen nachvollziehbare Erge
 
 ### Requirement: Tenantbezogener Inaktivitäts-Lebenszyklus ergänzt das Recht auf Löschung
 
-Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus erfolgreichen Login-Events der betroffenen `instanceId` ab und endet im Standardpfad in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung. Ein separater, privilegierter Admin-Hard-Delete für Tenant-Accounts darf als explizite Ausnahme zusätzlich existieren, ersetzt den Lifecycle-Standardpfad jedoch nicht.
+Das System SHALL für nicht technische Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus erfolgreichen Login-Events der betroffenen `instanceId` ab und endet im Standardpfad in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung. Accounts mit der aktuellen Klassifikation `isTechnicalAccount = true` SHALL von automatischen und manuell angestoßenen Läufen dieses konfigurierten Lifecycles ausgenommen werden. Ein separater, privilegierter Admin-Hard-Delete für Tenant-Accounts darf als explizite Ausnahme zusätzlich existieren, ersetzt den Lifecycle-Standardpfad jedoch nicht und wird durch die technische Klassifikation nicht verändert.
 
 #### Scenario: Lebenszyklus bleibt der tombstone-basierte Standardpfad
 
-- **WHEN** das System einen Tenant-Account über den automatischen oder manuellen Inaktivitäts-Lifecycle verarbeitet
+- **WHEN** das System einen nicht technischen Tenant-Account über den automatischen oder manuellen Inaktivitäts-Lifecycle verarbeitet
 - **THEN** beschreibt `deleted` weiterhin den finalen Tombstone-Soft-Delete ohne physische Löschung
 - **AND** bleibt dieser Lifecycle unabhängig von einem separaten privilegierten Admin-Hard-Delete
+
+#### Scenario: Technischer Account wird vom Inaktivitäts-Lifecycle übersprungen
+
+- **GIVEN** ein Tenant-Account hat `isTechnicalAccount = true`
+- **WHEN** ein automatischer oder manuell angestoßener Lauf die konfigurierten Deaktivierungs-, Pseudonymisierungs- oder Löschschwellen auswertet
+- **THEN** führt das System für diesen Account keinen Lifecycle-Übergang aus
+- **AND** verändert es weder Accountdaten noch eigene Inhalte aufgrund dieses Laufs
+
+#### Scenario: Nachträgliche Markierung stellt keinen Zustand wieder her
+
+- **GIVEN** ein Account hat bereits den Zustand `deactivated` oder `pseudonymized` erreicht
+- **WHEN** ein Administrator ihn als technisch markiert
+- **THEN** bleibt der erreichte Zustand unverändert
+- **AND** werden nur weitere regelbasierte Lifecycle-Übergänge übersprungen
+
+#### Scenario: Entfernte Markierung aktiviert die normale Regelbewertung erneut
+
+- **GIVEN** ein bisher technischer Account wird mit `isTechnicalAccount = false` gespeichert
+- **WHEN** der nächste Lifecycle-Lauf seine unveränderten Referenzzeiten und Tenantregeln auswertet
+- **THEN** nimmt der Account wieder an der normalen Lifecycle-Entscheidung teil
+- **AND** kann er unmittelbar für den nächsten zulässigen Übergang qualifizieren
 
 #### Scenario: Privilegierter Admin-Hard-Delete ist vom Lifecycle getrennt
 
@@ -201,6 +222,9 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 - **THEN** gilt dieser Vorgang nicht als normaler Lifecycle-Übergang des Inaktivitätsmodells
 - **AND** darf er den Account physisch entfernen, sobald referenzierende Daten regelkonform bereinigt wurden
 - **AND** bleiben die tenantbezogenen Löschregeln für die Behandlung eigener Inhalte weiterhin maßgeblich
+- **AND** erzeugt `isTechnicalAccount = true` keine zusätzliche Hard-Delete-Sperre
+- **AND** löst der Hard Delete eine vorhandene Organisations-Provisioning-Accountreferenz, ohne gültige organisationsbezogene Credentials oder DataProvider-Bindungen allein deshalb zu löschen
+- **AND** wird der Hard Delete während einer aktiven Provisioning-Lease mit einem sicheren Konflikt abgewiesen
 
 ### Requirement: Inhaltsbehandlung ist tenantweit steuerbar und pro Account überschreibbar
 
@@ -237,7 +261,8 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 #### Scenario: Unkonfigurierter Tenant verwendet geerbte Regeln bis zur expliziten Speicherung
 
 - **WHEN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
-- **THEN** gelten die Baseline-Defaults `90 / 180 / 365`, die geerbte Default-Inhaltsstrategie `beibehalten` und der geerbte Override-Default `false` als wirksamer Tenant-Zustand
+- **THEN** gelten die Baseline-Defaults `365 / 730 / 1.095`, die geerbte Default-Inhaltsstrategie `beibehalten` und der geerbte Override-Default `false` als wirksamer Tenant-Zustand
+- **AND** sind Deaktivierung, Pseudonymisierung und finaler Tombstone-Soft-Delete jeweils absolute Schwellwerte seit dem letzten erfolgreichen Login und keine inkrementellen Zusatzfristen
 - **AND** bleibt dieser geerbte Zustand wirksam, bis ein Tenant-Admin eine explizite Konfiguration speichert
 
 #### Scenario: Expliziter Self-Service-Override kann auf Tenant-Default zurückgesetzt werden
@@ -275,4 +300,37 @@ Auditnachweise SHALL dem bestehenden Pseudonymisierungs-, Retention- und Löschv
 - **THEN** bleibt die alte Bindung historisch erhalten
 - **AND** benötigt die neue Credential-Version eine neue automatische Identity-Evidenz
 - **AND** lehnt Studio Mutationen mit dieser Version bis dahin im automatischen Resolver fail-closed ab
+
+### Requirement: DSR-Falllisten werden vor der Pagination global sortiert
+
+Das System MUST paginierte DSR-Falllisten innerhalb des autorisierten Instanzumfangs zuerst filtern, danach deterministisch sortieren und erst anschließend paginieren. Die Liste MUST standardmäßig `createdAt desc` und die Seitengröße 25 verwenden, `createdAt` und `completedAt` unterstützen und eine bedienbare Pagination mit Gesamtzahl sowie den Seitengrößen 25, 50 und 100 bereitstellen.
+
+#### Scenario: Administrator sortiert DSR-Fälle über mehrere Seiten
+
+- **GIVEN** die aktuellen DSR-Filter ergeben mehr Treffer als auf eine Seite passen
+- **WHEN** ein berechtigter Administrator nach einem unterstützten Zeitfeld sortiert
+- **THEN** sortiert das Read-Model die vollständige gefilterte Treffermenge
+- **AND** schneidet es erst danach die angeforderte Seite zu
+- **AND** stabilisiert es gleiche Sortierwerte mit der eindeutigen Fallidentität aufsteigend
+
+#### Scenario: Fehlendes Abschlussdatum bleibt fehlend
+
+- **GIVEN** ein DSR-Fall besitzt kein `completedAt`
+- **WHEN** die Liste nach `completedAt` sortiert oder die Spalte anzeigt
+- **THEN** verwendet das System `createdAt` nicht als Ersatz
+- **AND** zeigt die Zelle „Nicht verfügbar“ lokalisiert an
+- **AND** steht der Fall unabhängig von der Richtung hinter Fällen mit vorhandenem `completedAt`
+
+#### Scenario: Administrator navigiert durch DSR-Seiten
+
+- **GIVEN** die aktuellen Filter ergeben mehr Treffer als die gewählte Seitengröße
+- **WHEN** der Administrator Seite oder Seitengröße 25, 50 oder 100 ändert
+- **THEN** lädt die UI die entsprechende serverseitige Seite und zeigt die Gesamtzahl an
+- **AND** setzt ein Filter-, Sortier- oder Seitengrößenwechsel die Seite auf eins zurück
+
+#### Scenario: Ungültige DSR-Sortierung wird abgewiesen
+
+- **GIVEN** ein direkter DSR-Request enthält ein unbekanntes Sortierfeld oder eine unbekannte Richtung
+- **WHEN** der Handler den Request validiert
+- **THEN** antwortet er mit `400 invalid_request`
 

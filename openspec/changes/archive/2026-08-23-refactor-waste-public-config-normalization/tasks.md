@@ -21,4 +21,4 @@
 - [x] 3.3 Complexity-Gate, Fallow und OpenSpec strict ausführen
 - [x] 3.4 Affected-Scope messen und kleinsten relevanten PR-Gate-Pfad ausführen
 - [x] 3.5 Gesamtdiff prüfen, committen, pushen und Draft-PR mit Changelog öffnen
-- [ ] 3.6 Root-Diffreview, Ready-Status, SHA-gebundene CI und Review-Threads betreuen
+- [x] 3.6 Root-Diffreview, Ready-Status, SHA-gebundene CI und Review-Threads betreuen. Abschlussnachweis: PR #995 wurde am 15. August 2026 gemergt; die terminale Review-Auswertung weist keine offenen Threads, fehlgeschlagenen oder ausstehenden Checks aus.

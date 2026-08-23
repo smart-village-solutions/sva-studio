@@ -129,16 +129,46 @@ The existing News actions SHALL cover full-model create, edit, update, and delet
 
 ### Requirement: Push Notification Is Explicitly Authorized If Exposed
 
-If the News editor exposes `pushNotification` as a user-selectable operation option, the system SHALL model its action semantics explicitly.
+Wenn der News-Editor `pushNotification` als auswählbare Operation anbietet, MUST das System den Versand über die vollständig qualifizierte Permission `news.pushNotification` explizit und zusätzlich zur zugrunde liegenden Create- oder Update-Aktion autorisieren. Weder `news.create`, `news.update` noch `content.publish` dürfen den Push-Versand implizit erlauben.
 
-The implementation SHALL either map push notification sending to an existing qualified News action with documented semantics or introduce a new fully-qualified action such as `news.pushNotification`.
+#### Scenario: Berechtigter Benutzer löst Push während News-Create aus
 
-#### Scenario: User triggers push notification during News save
+- **WENN** ein Benutzer mit `news.create` und `news.pushNotification` eine neue Nachricht mit aktivierter Push-Option speichert
+- **DANN** machen UI-Action-Metadaten und Host-Autorisierung die zusätzliche Operation `news.pushNotification` explizit
+- **UND** darf der Server den Push erst nach erfolgreicher Prüfung beider Permissions an den Mainserver weitergeben
 
-- **GIVEN** the News editor exposes a push notification option
-- **WHEN** the user submits the form with that option enabled
-- **THEN** the UI action metadata and host authorization path make the additional operation explicit
-- **AND** the option is not silently treated as a generic payload field
+#### Scenario: Berechtigter Benutzer löst Push während News-Update aus
+
+- **WENN** ein Benutzer mit `news.update` im passenden Datensatz-Scope und `news.pushNotification` eine bestehende Nachricht mit aktivierter Push-Option speichert
+- **DANN** prüft der Server sowohl die Update-Berechtigung für den konkreten Datensatz als auch das Push-Recht
+- **UND** startet er ohne beide erfolgreichen Entscheidungen keinen Mainserver-Aufruf
+
+#### Scenario: Basisrecht ohne Push-Recht reicht nicht aus
+
+- **WENN** ein Benutzer die passende `news.create`- oder `news.update`-Permission, aber kein `news.pushNotification` besitzt
+- **UND** ein Client dennoch `pushNotification = true` sendet
+- **DANN** lehnt der Server die gesamte Mutation vor dem Mainserver-Aufruf fail-closed ab
+- **UND** nennt der strukturierte Denial `news.pushNotification` als fehlende Permission
+
+#### Scenario: Publish-Recht ersetzt das Push-Recht nicht
+
+- **WENN** ein Benutzer `content.publish`, aber kein `news.pushNotification` besitzt
+- **UND** derselbe Speichervorgang eine Veröffentlichung und einen Push auslösen würde
+- **DANN** erlaubt das Publish-Recht ausschließlich den passenden Veröffentlichungsübergang
+- **UND** bleibt die Mutation wegen des fehlenden Push-Rechts abgelehnt
+
+#### Scenario: Push-Recht ersetzt notwendige Publish-Berechtigung nicht
+
+- **WENN** ein Benutzer `news.pushNotification`, aber kein für den angeforderten Übergang notwendiges `content.publish` besitzt
+- **UND** derselbe Speichervorgang die Nachricht erstmals veröffentlichen und einen Push senden würde
+- **DANN** bleibt der Veröffentlichungsübergang serverseitig verweigert
+- **UND** erlaubt das Push-Recht weder Veröffentlichung noch eine Umgehung der Lifecycle-Autorisierung
+
+#### Scenario: Bestehende Custom-Rollen erhalten keinen impliziten Push-Grant
+
+- **WENN** `news.pushNotification` im Tenant materialisiert oder abgeglichen wird
+- **DANN** bleiben bestehende Grants benutzerdefinierter Rollen unverändert
+- **UND** wird die Permission nur durch bewusste Rollenpflege oder den bestehenden verwalteten Vollzugriffsvertrag von `system_admin` wirksam
 
 ### Requirement: Autorisierbare Plugin-Beiträge deklarieren ihren Access-Bezug vollständig
 
@@ -199,4 +229,30 @@ Das System SHALL Plugin-Oberflächen mit hostaufgelösten, scope- und modulgebun
 - **DANN** gilt dies als Vertragsverletzung
 - **UND** muss die UI stattdessen die vollständig qualifizierte Action-Entscheidung verwenden
 - **UND** bleiben ausdrückliche Plattform-Sonderrollen auf ihren dokumentierten Plattform-Scope begrenzt
+
+### Requirement: Deterministische phasenweise Plugin-Registry-Validierung
+
+Das System MUST Plugin-Access-Anforderungen und Plugin-Actions vor Veröffentlichung eines Registry-Snapshots fail-closed, phasenweise und mit stabilen Fehlercodes sowie stabiler Fehlerpriorität validieren. Eine interne Modularisierung MUST die bestehende öffentliche Plugin-API und die beobachtbare Validierungssemantik erhalten.
+
+#### Scenario: Verknüpfte Access-Anforderungen sind mengengleich
+
+- **WHEN** Action und Route dieselben Tenant-Actions in unterschiedlicher Reihenfolge oder mit Duplikaten deklarieren
+- **THEN** behandelt der Registry-Validator die Action-Werte als dieselbe Menge
+- **AND** Action-Modus, Modul, Ressourcen-Kontext und alle Capability-Felder bleiben Teil des exakten Vergleichs
+
+#### Scenario: Capability-Feld weicht ab
+
+- **WHEN** sich verknüpfte Access-Anforderungen in `action`, `allowed`, `instanceId`, `organizationId`, `resourceType` oder `resourceId` unterscheiden
+- **THEN** wird der Registry-Snapshot mit dem bestehenden Access-Mismatch-Fehler abgewiesen
+
+#### Scenario: Mehrere Action-Fehler liegen gleichzeitig vor
+
+- **WHEN** ein Action-Beitrag gleichzeitig mehrere ungültige Eigenschaften besitzt
+- **THEN** meldet die Registry weiterhin den nach der bestehenden Prüfungsreihenfolge priorisierten Fehlercode
+- **AND** es wird keine teilweise Registry veröffentlicht
+
+#### Scenario: Öffentliche Registry-Fassade bleibt stabil
+
+- **WHEN** der Host `createPluginActionRegistry` oder `createPluginRegistry` verwendet
+- **THEN** bleiben Signaturen, Registry-Einträge, Legacy-Alias-Auflösung und Fehlercodes unverändert
 

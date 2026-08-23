@@ -1239,26 +1239,25 @@ Das System MUST `@sva/sva-mainserver` als Integrationsgrenze halten, die Auth-, 
 
 ### Requirement: Mainserver-Inhalte besitzen eine wiederverwendbare hostseitige Referenz
 
-Das System MUST einen lokalen Content-Core-Datensatz über eine allgemeine External-Content-Referenz eindeutig mit seiner Mainserver-Entität verbinden. Die Referenz MUST mindestens Instanz, Quellsystem, Quellentitätstyp, externe Entitäts-ID und Reconciliation-Status führen. Sie darf weder projektspezifisch modelliert sein noch eine zweite Idempotenz- oder History-Persistenz einführen.
+Das System MUST für Studio-initiierte Mutationen eine allgemeine External-Content-Referenz verwenden können, um Idempotenz, Studio-History und lokale Folgearbeit mit einer Mainserver-Entität zu korrelieren. Die Referenz MUST mindestens Instanz, Quellsystem, Quellentitätstyp, externe Entitäts-ID und Reconciliation-Status führen. Sie MUST optional bleiben und darf weder für Read-Pfade noch als fachliche Existenz-, Lifecycle-, Veröffentlichungs-, Autoren- oder Ownership-Quelle verwendet werden.
 
 #### Scenario: Projekt-Create wird erfolgreich gebunden
 
 - **WHEN** der Mainserver ein mit stabiler `externalId` angelegtes Projekt bestätigt
-- **THEN** bindet der Host genau einen lokalen Content-Core-Datensatz an genau diese Mainserver-ID
-- **AND** finalisiert er Idempotenz und Reconciliation-Status ohne doppelte Referenz
+- **THEN** kann der Host die Studio-Mutation idempotent an die Mainserver-ID binden
+- **AND** bleibt die Mainserver-ID auch ohne erfolgreiche lokale Bindung fachlich lesbar
 
 #### Scenario: Providerantwort geht nach erfolgreichem Create verloren
 
 - **WHEN** das Create-Ergebnis unbekannt bleibt, obwohl der Mainserver den Datensatz möglicherweise angelegt hat
-- **THEN** markiert der Host die Referenz als `reconciliation_required`
+- **THEN** markiert der Host vorhandene lokale Folgearbeit als `reconciliation_required`
 - **AND** sucht der Repair-Pfad über die stabile `externalId`, bevor er eine erneute Anlage zulässt
 
-#### Scenario: Spiegelwerte weichen vom lokalen Core ab
+#### Scenario: Mainserverwerte weichen vom lokalen Begleitzustand ab
 
-- **WHEN** `payload.status`, `visible`, `publishedAt` oder `author` von den host-owned Metadaten abweichen
-- **THEN** bleibt der lokale Core für Lifecycle, Veröffentlichung und Autorenschaft führend
-- **AND** meldet oder repariert der Host die Abweichung über den Reconciliation-Vertrag
-- **AND** überschreibt er fachliche Mainserver-Felder nicht als Nebenwirkung
+- **WHEN** Status, Veröffentlichung, Autor oder Ownership im Mainserver von lokalen Cache- oder History-Metadaten abweichen
+- **THEN** bleiben die Mainserverwerte fachlich führend
+- **AND** repariert oder verwirft Reconciliation den lokalen Begleitzustand ohne fachliche Mainserver-Felder zu überschreiben
 
 ### Requirement: Mainserver-Zugriffe grenzen Featured Projects als eigenen GenericItem-Typ ab
 
@@ -1321,4 +1320,396 @@ Das System SHALL gezielte Mutation-Refreshes nach `user` und `organization` im P
 - **GIVEN** ein `org_or_personal`-Kontext enthält eine durch eine Organisationsmutation aktualisierte Projektionszeile
 - **WHEN** ein impliziter Full-Refresh mit persönlichen Credentials läuft
 - **THEN** bleibt die organisatorische Projektionszeile erhalten
+
+### Requirement: Cockpit-Cards-Adapter grenzt GenericItem-Datensätze fachlich ab
+
+Das System MUST Cockpit Cards über den vorhandenen Mainserver-GenericItem-Transport lesen und schreiben. Der Host-Adapter MUST ausschließlich Datensätze mit `genericType` gleich `COCKPIT_CARD` als Cockpit Cards verarbeiten und diesen Wert bei Schreiboperationen erzwingen.
+
+#### Scenario: Liste wird vor lokaler Pagination vollständig gefiltert
+
+- **GIVEN** mehrere Upstream-Seiten mit Cockpit Cards und anderen GenericItems
+- **WHEN** ein Benutzer eine Cockpit-Cards-Seite abruft
+- **THEN** liest der Adapter alle Upstream-Seiten
+- **AND** filtert und sortiert die vollständige Cockpit-Cards-Menge vor der lokalen Pagination
+
+#### Scenario: Fremdtyp-ID kann nicht mutiert werden
+
+- **GIVEN** die ID eines GenericItems mit einem anderen `genericType`
+- **WHEN** ein berechtigter Benutzer Detail, Update oder Delete über Cockpit Cards aufruft
+- **THEN** liefert der Adapter dieselbe Nichtgefunden-Klassifikation wie bei einer unbekannten ID
+- **AND** führt keine Mutation aus
+
+#### Scenario: Schreibvertrag wird serverseitig erzwungen
+
+- **WHEN** eine Cockpit Card angelegt oder aktualisiert wird
+- **THEN** erzwingt der Host `genericType` gleich `COCKPIT_CARD`, genau eine Kategorie, ausschließlich gültige optionale HTTPS-Bilder und höchstens einen HTTPS-Link
+- **AND** normalisiert er das Öffnungsverhalten ohne Link auf `false`
+- **AND** erhält er bei Updates `externalId`, unbekannte Payload-Schlüssel und unterstützte Medienmetadaten
+- **AND** weist er fachfremde GenericItem-Felder ab
+
+### Requirement: Nachrichten-Mutationen erhalten und erweitern das Payload
+
+Der Mainserver-Nachrichtenadapter MUST vorhandene Payload-Eigenschaften erhalten und dabei `wasteLocationKeys` gezielt ersetzen oder entfernen.
+
+#### Scenario: Gezielte Nachricht wird gespeichert
+
+- **WHEN** eine Nachricht mit ausgewählten Abholorten gespeichert wird
+- **THEN** sendet Create oder Update ein dedupliziertes Array unter `payload.wasteLocationKeys`
+- **AND** bleiben nicht zugehörige Payload-Eigenschaften unverändert
+
+#### Scenario: Globale Nachricht wird gespeichert
+
+- **WHEN** eine Nachricht ohne Abholortziele gespeichert wird
+- **THEN** wird `wasteLocationKeys` im Payload weggelassen
+- **AND** bleiben nicht zugehörige Payload-Eigenschaften unverändert
+
+### Requirement: Organisationszugänge verwenden den bestehenden Benutzer-Provisioning-Endpunkt
+
+Das System SHALL einen organisationsbezogenen Mainserver-Zugang über denselben bestehenden Benutzer-Provisioning-Endpunkt wie persönliche Studioaccounts erzeugen. Es SHALL dafür einen realen, der Organisation instanzgebunden zugeordneten Keycloak-Subject und deterministisch aus Organisation und Tenant abgeleitete Benutzerdaten verwenden. Den Bootstrap-Bearer-Token SHALL es ausschließlich aus persönlichen Mainserver-Credentials des handelnden Administrators laden und dabei keinen Organisations-Credential-Fallback verwenden. Der SVA Mainserver SHALL für diesen Change nicht erweitert oder geändert werden.
+
+#### Scenario: Studio leitet die erforderlichen Benutzerdaten ab
+
+- **GIVEN** eine Organisation benötigt erstmals einen Mainserver-Zugang
+- **WHEN** Studio den Provisioning-Payload bildet
+- **THEN** verwendet es den realen Keycloak-Subject des zugeordneten Accounts
+- **AND** leitet es E-Mail und Username grundsätzlich als normalisierte Form `<org-name>.<tenant-name>@smart-village.app` ab
+- **AND** verwendet es Organisations- und Tenant-Anzeigenamen für die erforderlichen Namensfelder
+- **AND** ergänzt es bei einer Kollision einen stabilen Organisations-ID-Anteil
+
+#### Scenario: Wiederholung verwendet dieselbe technische Identität
+
+- **GIVEN** eine Organisation besitzt bereits einen zugeordneten Account
+- **WHEN** Provisionierung oder Reprovisionierung erneut ausgeführt wird
+- **THEN** verwendet Studio denselben Keycloak-Subject und die persistierte E-Mail
+- **AND** erzeugt es keinen zweiten Account aufgrund später geänderter Anzeigenamen
+
+#### Scenario: Aktive Organisation beeinflusst den Bootstrap-Principal nicht
+
+- **GIVEN** der handelnde Administrator hat eine aktive Organisation mit `org_only` oder fehlenden Organisations-Credentials
+- **WHEN** Studio einen Organisationszugang provisioniert
+- **THEN** lädt es den Provisioning-Token ausschließlich mit den persönlichen Credentials des Administrators
+- **AND** verwendet es weder die aktive noch die zu provisionierende Organisation als Credential-Quelle
+
+#### Scenario: Erfolgreiche Antwort versorgt Organisation und Principal-Binding
+
+- **WHEN** der Mainserver gültige Application-Credentials und eine `data_provider_id` zurückgibt
+- **THEN** speichert Studio Application-ID und Secret verschlüsselt im Organisations-Credential-Speicher
+- **AND** exponiert es das Secret nicht über Read-Models, Logs oder Audit
+- **AND** erzeugt oder bestätigt es die instanzgebundene DataProvider-Bindung für die Organisation über den bestehenden Binding-Vertrag
+- **AND** bleiben die durch den Mainserver geschriebenen Keycloak-Credential-Attribute am zugeordneten Account erhalten
+
+#### Scenario: Provisioning-Antwort begründet die garantierte Erstbindung
+
+- **GIVEN** der Mainserver-API-Vertrag garantiert dieselbe DataProvider-ID in Provisioning-Antwort und `/data_provider.json`
+- **WHEN** die Provisioning-Antwort eine gültige `data_provider_id` und vollständige Application-Credentials enthält
+- **THEN** darf Studio diese ID als `create_response`-Evidenz für die credential-versionierte Organisations-Erstbindung verwenden
+- **AND** verwendet es `/data_provider.json` für spätere Verifikation und Credential-Rotation
+
+#### Scenario: Spätere Identity-Verifikation widerspricht der Erstbindung
+
+- **GIVEN** eine Organisation besitzt eine aus der Provisioning-Antwort erzeugte Bindung
+- **WHEN** `/data_provider.json` entgegen dem garantierten Vertrag eine andere DataProvider-ID liefert
+- **THEN** überschreibt Studio die bestehende Bindung nicht
+- **AND** persistiert es einen Binding-Konflikt und `reconciliation_required`
+
+#### Scenario: Mainserver ist bei Organisationserstellung nicht verfügbar
+
+- **WHEN** der Provisioning-Aufruf nicht konfiguriert ist, timeoutet oder mit einem Fehler antwortet
+- **THEN** wird kein Mainserver-Zugang als erfolgreich behauptet
+- **AND** wird die bereits erfolgreiche lokale Organisationserstellung nicht zurückgerollt
+- **AND** bleibt der Vorgang ohne Credential-Geheimnisse diagnostizierbar und wiederholbar
+
+#### Scenario: Upstream-Erfolg benötigt lokale Reconciliation
+
+- **GIVEN** der Mainserver hat die Provisionierung bestätigt
+- **WHEN** die anschließende lokale Credential- oder Binding-Persistenz fehlschlägt
+- **THEN** bleibt der Upstream-Vorgang als erfolgreich beobachtet erhalten
+- **AND** kennzeichnet Studio die lokale Folgearbeit als `reconciliation_required`
+- **AND** meldet es nicht fälschlich einen Providerfehler
+
+#### Scenario: Lost Response verhindert Accountkompensation
+
+- **GIVEN** Studio hat den Mainserver-Provisioning-Request abgesendet
+- **WHEN** keine eindeutige Antwort eintrifft
+- **THEN** deaktiviert oder löscht Studio den zugeordneten technischen Account nicht automatisch
+- **AND** persistiert es die Operation als `reconciliation_required`
+
+### Requirement: Generische Projektionsadapter enthalten jeden GenericItem-Diskriminator
+
+Das System MUST in allen generischen Mainserver-Projektionsadaptern jeden Datensatz vom Typ `GenericItem` unabhängig vom Wert seines Feldes `genericType` als `generic-items.generic-item` abbilden. Schlanker und Legacy-Adapter MUST denselben Inklusionsvertrag erfüllen und dürfen keine Allow- oder Denylist bekannter Fachtypen führen.
+
+#### Scenario: Gemischte GenericItems werden schlank projiziert
+
+- **GIVEN** eine Mainserver-Seite enthält freie GenericItems, FAQs, Kacheln, Featured Projects und einen unbekannten Diskriminator
+- **WHEN** der schlanke Adapter die generische Projektion lädt
+- **THEN** projiziert er jeden Datensatz als `generic-items.generic-item`
+- **AND** behält die Upstream-Pagination unverändert bei
+
+#### Scenario: Legacy-Adapter liefert dieselbe Typmenge
+
+- **GIVEN** dieselbe gemischte Mainserver-Seite wird über den Legacy-Adapter geladen
+- **WHEN** die generische Projektion aktualisiert wird
+- **THEN** enthält sie dieselben GenericItem-IDs wie der schlanke Adapter
+- **AND** filtert weder bekannte noch unbekannte `genericType`-Werte aus
+
+#### Scenario: Fachprojektion bleibt zusätzlich typisiert
+
+- **GIVEN** ein GenericItem erfüllt den Vertrag eines registrierten Fachplugins
+- **WHEN** der Benutzer sowohl den generischen als auch den fachlichen Content-Type lesen darf
+- **THEN** darf die Inhaltsprojektion getrennte Zeilen für beide Content-Types persistieren
+- **AND** kollidieren ihre Projektionsschlüssel nicht
+
+### Requirement: Mainserver ist die fachliche Wahrheit für Mainserver-basierte Content Items
+
+Das System MUST Existenz, Identität, fachliche Felder, Lifecycle, Veröffentlichung, Autor und Ownership eines Mainserver-basierten Content Items ausschließlich aus dem bestätigten typisierten Mainserver-Vertrag ableiten. Lokale Content-Cores, External-Content-References, History- und Listenprojektionen MUST optional und vollständig rekonstruierbar bleiben und dürfen Sichtbarkeit, Detailzugriff oder reguläre Bearbeitung eines autorisierten Mainserver-Inhalts nicht voraussetzen.
+
+#### Scenario: Inhalt wurde außerhalb des Studios erzeugt
+
+- **GIVEN** ein autorisierter API-Client hat einen gültigen Mainserver-Inhalt angelegt
+- **AND** im Studio existieren weder Content-Core noch External-Content-Reference oder History
+- **WHEN** ein Benutzer mit der typspezifischen Read-Action die Fachliste oder den Detailpfad öffnet
+- **THEN** zeigt das Studio den Inhalt aus dem typisierten Mainserver-Vertrag an
+- **AND** erzeugt keine fachlichen Ersatzwerte aus lokalen Tabellen
+
+#### Scenario: Lokaler Cache fehlt oder ist veraltet
+
+- **GIVEN** ein Mainserver-Inhalt existiert und der lokale Projektionszustand fehlt oder ist veraltet
+- **WHEN** die typisierte Quelle oder vollständige Reconciliation den Datensatz liefert
+- **THEN** bleibt der Mainserver-Datensatz fachlich führend
+- **AND** kann die lokale Projektion ohne fachliche Datenmigration neu aufgebaut werden
+
+### Requirement: IAM autorisiert Mainserver-Content-Aktionen ohne lokale fachliche Ownership
+
+Das System MUST Studio-IAM-Actions weiterhin vor Listen-, Detail- und Mutationszugriffen prüfen. IAM MUST dabei die erlaubte Aktion und den effektiven Organisations- oder Benutzerkontext bestimmen, darf aber weder die fachliche Existenz noch Status, Autor, Veröffentlichung oder Ownership eines Mainserver-Inhalts aus einem lokalen Content-Core ableiten.
+
+#### Scenario: Read-Action ist vorhanden und lokaler Core fehlt
+
+- **GIVEN** ein Mainserver-Inhalt existiert ohne lokalen Content-Core
+- **AND** der Benutzer besitzt die typspezifische Read-Action im effektiven Credential-Kontext
+- **WHEN** der Benutzer den Inhalt liest
+- **THEN** erlaubt das Studio den typisierten Mainserver-Zugriff
+- **AND** verlangt keinen lokalen Owner-Scope als zusätzliche Existenzbedingung
+
+### Requirement: Lokale Folgefehler ändern bestätigte Mainserver-Mutationen nicht
+
+Das System MUST eine vom Mainserver bestätigte Content-Mutation als fachlich erfolgreich behandeln. Nachgelagerte Fehler beim Schreiben von Reference, History oder Projektion MUST beobachtbar und reconciliation-fähig sein, dürfen aber weder einen Provider-Rollback vortäuschen noch dem Client einen fachlichen Mutationsfehler melden.
+
+#### Scenario: Externes Projekt wird ohne lokalen Core aktualisiert
+
+- **GIVEN** ein gültiges `FeaturedProject` existiert ausschließlich im Mainserver
+- **AND** der Benutzer besitzt `projects.update`
+- **WHEN** der Mainserver das Update bestätigt
+- **THEN** antwortet der Projekte-Endpunkt erfolgreich mit dem Mainserver-Zustand
+- **AND** ein fehlender oder fehlschlagender lokaler Begleitzustand ändert diesen Erfolg nicht
+
+### Requirement: Root-GenericItems verwenden ausschließlich schreibbare GraphQL-Felder
+
+Der Mainserver-Adapter MUST den Root-GenericItem-Vertrag an den Argumenten der Top-Level-Mutation `createGenericItem` ausrichten. Er MUST `ContentBlockInput.intro` für Einleitungen verwenden und darf `teaser` weder selektieren noch deklarieren, als Variable senden oder in Root-GenericItem-Typen modellieren. Ein in Query- oder verschachtelten Input-Typen historisch vorhandenes Teaser-Feld MUST für den Root-Vertrag ignoriert werden.
+
+#### Scenario: Root-GenericItem wird angelegt oder aktualisiert
+
+- **WHEN** der Adapter eine `createGenericItem`-Mutation für ein Root-GenericItem erzeugt
+- **THEN** enthält das Dokument kein Argument und keine Variable `teaser`
+- **AND** liegen optionale Einleitungen ausschließlich in `contentBlocks[].intro`
+
+#### Scenario: Schema enthält ein historisches lesbares Teaser-Feld
+
+- **GIVEN** der hinterlegte GraphQL-Snapshot führt `GenericItem.teaser` als lesbares Feld
+- **WHEN** der Studio-Client sein GenericItem-Fragment erzeugt
+- **THEN** selektiert er dieses Feld nicht
+- **AND** bietet es nicht über den Studio-Vertrag an
+
+#### Scenario: Verschachtelter Input besitzt ein Teaser-Feld
+
+- **GIVEN** `GenericItemInput` enthält für verschachtelte GenericItems ein Feld `teaser`
+- **WHEN** der Adapter ein Root-GenericItem schreibt
+- **THEN** verwendet er dieses verschachtelte Feld nicht als Umgehung des Top-Level-Vertrags
+
+### Requirement: News verwenden den nativen ContentBlockInput-Vertrag
+
+Der Mainserver-Adapter MUST News-Einleitung und -Inhalt über `contentBlocks[].intro/body` lesen und schreiben. Er MUST historische Textfelder im News-Payload ignorieren und darf daraus keinen Fallback-Block synthetisieren.
+
+#### Scenario: News-Antwort enthält historischen Payload-Text
+
+- **GIVEN** der Mainserver liefert `payload.teaser` oder `payload.body`
+- **AND** liefert keine Content-Blocks
+- **WHEN** der Adapter die News abbildet
+- **THEN** enthält die abgebildete News keine daraus erzeugten Content-Blocks
+
+### Requirement: Project creation preserves its contract across internal module boundaries
+
+The system SHALL keep the existing Featured Project create contract stable while separating authorization, idempotency recovery, pure mapping, provider mutation, and local follow-up responsibilities into focused internal modules.
+
+#### Scenario: Invalid or unauthorized create stops before side effects
+
+- **GIVEN** a Project create request fails CSRF, IAM authorization, principal resolution, idempotency-key validation, or payload validation
+- **WHEN** the host handles `POST /api/v1/mainserver/projects`
+- **THEN** it returns the existing deterministic error response
+- **AND** it does not reserve the create or mutate the Mainserver
+
+#### Scenario: Successful create preserves the side-effect sequence
+
+- **GIVEN** a valid and authorized Project create request
+- **WHEN** the Mainserver accepts the new Featured Project
+- **THEN** the host records the DataProvider observation before changing visibility
+- **AND** it performs optional local content and reference follow-up only after the provider write
+- **AND** it finalizes the mutation journal before completing local idempotency
+
+#### Scenario: Local follow-up failure does not invent a provider rollback
+
+- **GIVEN** the Mainserver already confirmed Project creation
+- **WHEN** visibility or optional local follow-up fails
+- **THEN** the host does not issue a compensating provider delete
+- **AND** it preserves the existing success or failure response for that exact stage
+- **AND** a local-only follow-up failure does not add DataProvider-conflict metadata to the success response
+
+#### Scenario: Replay and recovery keep existing semantics
+
+- **GIVEN** a repeated idempotency key, a prepared external reference, or an unavailable local reservation store
+- **WHEN** the Project create route recovers or rejects the operation
+- **THEN** it uses the existing external ID and reference semantics
+- **AND** it returns the existing replay, conflict, or unavailable error code without duplicate provider creation
+
+### Requirement: Projektionsadapter verwenden die registrierte GenericItem-Zuständigkeit
+
+Das System MUST Slim-, Legacy- und mutationsbezogene Projektionspfade mit derselben aus dem Build-time-Registry-Snapshot abgeleiteten Zuordnung von `genericType` zu `contentType` betreiben. Die Adapter MUST für die gemeinsame Inhaltsübersicht genau den aufgelösten Content-Type persistieren und zuvor vorhandene Geschwisterrepräsentationen bei vollständiger oder zielgerichteter Reconciliation entfernen.
+
+#### Scenario: Vollständiger Refresh bereinigt doppelte Projektionen
+
+- **GIVEN** ein Mainserver-GenericItem besitzt eine generische und eine fachliche Projektionszeile
+- **AND** ein registriertes Fachplugin übernimmt seinen `genericType`
+- **WHEN** ein vollständiger Projektionsrefresh erfolgreich abgeschlossen wird
+- **THEN** bleibt ausschließlich die fachliche Projektionszeile bestehen
+- **AND** meldet der abgeschlossene Snapshot keine generische Geschwisterrepräsentation
+
+#### Scenario: Generic-Type wechselt zu einem registrierten Fachtyp
+
+- **GIVEN** ein bislang unbekannter `genericType` wurde generisch projiziert
+- **WHEN** eine erfolgreiche Mutation den Wert auf einen registrierten Fachtyp ändert
+- **THEN** persistiert der Mutation-Follow-up die fachliche Repräsentation
+- **AND** entfernt er die zuvor generische Repräsentation
+
+#### Scenario: Generic-Type verliert seine registrierte Zuständigkeit
+
+- **GIVEN** ein GenericItem wurde fachlich projiziert
+- **WHEN** sein `genericType` erfolgreich auf einen nicht registrierten Wert geändert wird
+- **THEN** persistiert der Mutation-Follow-up die generische Repräsentation
+- **AND** entfernt er die zuvor fachliche Repräsentation
+
+#### Scenario: Adapter erhalten die Zuordnung vom Host
+
+- **WHEN** der Host einen Projektionsadapter initialisiert
+- **THEN** übergibt er die aus der Plugin-Registry abgeleitete Zuständigkeitszuordnung über einen expliziten Vertrag
+- **AND** importiert der Mainserver-Adapter weder die React-Anwendung noch einzelne Fachplugins
+
+#### Scenario: Fremde Diskriminatoren füllen eine Upstream-Seite
+
+- **GIVEN** eine angeforderte GenericItem-Projektion findet auf der ersten Upstream-Seite keinen passenden Diskriminator
+- **AND** eine spätere Upstream-Seite enthält einen passenden Datensatz
+- **WHEN** der Adapter die fachliche Projektionsseite lädt
+- **THEN** scannt er bis zum passenden Datensatz oder bis zum Upstream-Ende weiter
+- **AND** beendet der Host den Snapshot nicht aufgrund der leeren gefilterten Zwischenmenge
+
+#### Scenario: Eine gefilterte Projektion lädt mehrere Folgeseiten
+
+- **GIVEN** ein progressiver Refresh lädt mehrere Seiten derselben GenericItem-Projektion
+- **WHEN** der Adapter eine gefilterte Seite mit einer weiteren Folgeseite zurückgibt
+- **THEN** liefert er den Upstream-Offset hinter dem letzten ausgegebenen Datensatz mit
+- **AND** setzt der nächste Seitenaufruf den Scan an diesem Offset fort, ohne vorherige Upstream-Seiten erneut zu laden
+
+#### Scenario: Registry-Ziel besitzt keine GenericItem-Projektion
+
+- **GIVEN** eine Ownership-Deklaration verweist auf einen Content-Type ohne Mainserver-GenericItem-Projektion
+- **WHEN** der Host die serverseitige Zuordnung validiert
+- **THEN** schlägt der Registry-Aufbau fail-fast fehl
+- **AND** wird der Content-Type nicht für GenericItem-Mutation-Follow-ups verwendet
+
+### Requirement: Mainserver-Detailadapter isolieren optionale Vertragsabweichungen
+
+Das System MUST Mainserver-Detailantworten feldgruppenweise auswerten. Eine sichere Mainserver-ID und typbezogen deklarierte harte Mindestfelder bleiben Voraussetzung; Fehler optionaler Skalare, Listenpositionen oder Unterobjekte MUST als strukturierte Abweichungen neben den weiterhin verwendbaren Daten zurückgegeben werden, statt pauschal den gesamten Datensatz als `invalid_response` abzulehnen.
+
+#### Scenario: Einzelner optionaler Listeneintrag ist ungültig
+
+- **WHEN** eine Mainserver-Detailantwort eine gültige Identität sowie gültige und ungültige Einträge derselben optionalen Liste enthält
+- **THEN** erhält der Adapter die sicher interpretierbaren Einträge
+- **AND** meldet den ungültigen Eintrag mit stabilem Feldpfad, Abweichungscode, Phase und Behandlung
+- **AND** gibt er den übrigen Datensatz erfolgreich zurück
+
+#### Scenario: Anzeige-Default ersetzt keinen Originalwert
+
+- **WHEN** der Adapter für ein abweichendes optionales Feld einen sicheren Anzeige-Default bereitstellt
+- **THEN** kennzeichnet er diesen Wert als Default oder ausgelassen
+- **AND** verwendet der Schreibpfad ihn nicht automatisch als Ersatz für den unmittelbar zuvor gelesenen Originalwert
+
+#### Scenario: Fachlicher Diskriminator schützt die typisierte Route
+
+- **WHEN** ein GenericItem-Detail nicht den für die aufgerufene Fachroute erforderlichen `genericType` besitzt
+- **THEN** behandelt der Adapter den Diskriminator nicht als optionale Abweichung
+- **AND** gibt die Route den bestehenden deterministischen Fehler zurück, ohne eine Mutation über das falsche Fachplugin zu ermöglichen
+
+### Requirement: Mainserver-Abweichungen sind strukturiert und datensparsam beobachtbar
+
+Das System MUST jede erkannte Mainserver-Vertragsabweichung serverseitig über den Server-Runtime-Logger mit stabilen, aggregierbaren Metadaten protokollieren. Logs MUST die nach bestehender Logging-Klassifizierung zulässigen und vorhandenen technischen Korrelationsfelder, Inhaltstyp, Operation, Phase, normalisierten Feldpfad, Abweichungscode und Behandlung enthalten und dürfen keine Rohwerte, Payloads, Freitexte, Kontaktdaten oder sonstige potenzielle PII enthalten. Konkrete Listenindizes und freie Payload-Schlüssel MUST aus aggregierbaren Feldpfaden entfernt werden.
+
+#### Scenario: Optionale Feldabweichung wird erkannt
+
+- **WHEN** ein Detailadapter eine optionale Feldabweichung isoliert
+- **THEN** emittiert der Server genau einen strukturierten Befund pro Request, Feldpfad und Abweichungsklasse
+- **AND** der Befund ist nach Inhaltstyp, Abweichungscode und Behandlung aggregierbar
+- **AND** enthält er nicht den abweichenden Rohwert
+
+#### Scenario: Listenabweichungen erzeugen begrenzte Kardinalität
+
+- **WHEN** mehrere Listeneinträge desselben optionalen Felds denselben Vertrag verletzen
+- **THEN** normalisiert der Server den Feldpfad ohne konkrete Listenindizes
+- **AND** emittiert er höchstens einen Befund pro Request, normalisiertem Feldpfad und Abweichungsklasse
+
+#### Scenario: Zusatzdienst degradiert den Editor
+
+- **WHEN** ein optionaler Zusatzdienst für einen Mainserver-Datensatz fehlschlägt
+- **THEN** protokolliert der Host die Phase `enrichment`, den betroffenen Dienst und die Behandlung `temporarily_unavailable`
+- **AND** korreliert der Befund über vorhandene Request- oder Trace-IDs, ohne sensible Antwortdaten zu loggen
+
+### Requirement: Mainserver-Updates erhalten bestätigte Passthrough-Feldgruppen
+
+Das System MUST für Mainserver-Updates mit Erhaltungsbedarf unmittelbar vor der Mutation im selben effektiven Credential- und Organisationskontext den aktuellen Datensatz lesen und ausschließlich typbezogen deklarierte Feldgruppen zusammenführen. Der Merge MUST auf Felder begrenzt bleiben, die der bestätigte GraphQL-Lese- und Mutationsvertrag verlustfrei unterstützt. Vor der Migration eines Inhaltstyps MUST eine getestete Feldmatrix harte Mindestfelder, kontrollierte Editorfelder, nur lesbare Felder, Passthrough-Felder und nicht erhaltbare Felder klassifizieren.
+
+#### Scenario: Update erhält unmittelbar zuvor gelesene Werte
+
+- **GIVEN** ein Plugin deklariert kontrollierte und Passthrough-Feldgruppen für seinen Inhaltstyp
+- **WHEN** der Host eine gültige Aktualisierung ausführt
+- **THEN** liest er den aktuellen Datensatz im selben Instanz-, Account- und Organisationskontext
+- **AND** ersetzt kontrollierte Felder aus der validierten Eingabe
+- **AND** erhält deklarierte Passthrough-Felder aus dem aktuellen Datensatz
+- **AND** sendet ausschließlich vom Mutation-Input unterstützte Variablen
+
+#### Scenario: Read- und Write-Vertrag sind nicht symmetrisch
+
+- **GIVEN** ein für die Erhaltung relevantes Feld kann nicht verlustfrei gelesen oder nicht im Mutation-Input übertragen werden
+- **WHEN** der Adapter die Aktualisierung ohne Datenverlust nicht bilden kann
+- **THEN** klassifiziert die Feldmatrix das Feld nicht als Passthrough
+- **AND** blockiert der Server die betroffene Mutation vor dem Provider-Aufruf
+
+#### Scenario: Parallele externe Änderung bleibt ein dokumentiertes Restrisiko
+
+- **WHEN** sich der Mainserver-Datensatz zwischen dem vorbereitenden Read und der Mutation extern ändert
+- **THEN** behauptet das System ohne Revision oder vergleichbare Vorbedingung keine konfliktfreie Zusammenführung
+- **AND** stellt Reconciliation nicht als Wiederherstellung bereits überschriebener Providerfelder dar
+
+### Requirement: Detailabweichungen werden rückwärtskompatibel transportiert
+
+Das System MUST Detailabweichungen additiv über den gemeinsamen Host-/SDK-Vertrag bereitstellen. Bestehende typisierte Detailaufrufe, die ausschließlich den Datensatz erwarten, MUST während der Migration unverändert funktionieren; ein Plugin MUST Abweichungsmetadaten explizit über den erweiterten Vertrag anfordern oder aus einer versionierten Response-Hülle lesen.
+
+#### Scenario: Bestehender Plugin-Client wird noch nicht migriert
+
+- **GIVEN** ein Plugin verwendet weiterhin den bestehenden `get(id)`-Vertrag
+- **WHEN** der Host den Abweichungsvertrag einführt
+- **THEN** erhält der bestehende Client weiterhin den typisierten Datensatz in der bisherigen Form
+- **AND** entstehen weder ein ungeplanter Response-Shape-Bruch noch ein erzwungener gleichzeitiger Big-Bang-Rollout aller Plugins
+
+#### Scenario: Migrierter Plugin-Client fordert Detailmetadaten an
+
+- **WHEN** ein migrierter Editor den erweiterten Detailvertrag verwendet
+- **THEN** erhält er Datensatz und sichere Abweichungsmetadaten getrennt
+- **AND** enthalten die Browser-Metadaten keine Rohwerte oder internen Fehlertexte
 

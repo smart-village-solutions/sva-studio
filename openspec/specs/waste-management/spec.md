@@ -808,11 +808,438 @@ Das System SHALL für alle einer Tour zugeordneten Abholorte ausschließlich den
 
 ### Requirement: Tour-Zuordnungen sind fachlich sortiert
 
-Das System SHALL im Dialog zur Tour-Zuordnung ausgewählte Abholorte vor nicht ausgewählten Abholorten anzeigen und beide Gruppen deterministisch nach Region, Ort und Straße sortieren.
+Das System SHALL Abholorte im Dialog zur Tour-Zuordnung tabellarisch mit getrennten Fachwerten darstellen und SHALL die vollständige gefilterte Ergebnismenge interaktiv sortieren können, ohne die Gruppierung ausgewählter und nicht ausgewählter Abholorte aufzuheben.
 
-#### Scenario: Dialog enthält ausgewählte und nicht ausgewählte Abholorte
+#### Scenario: Dialog zeigt getrennte Adressspalten
 
-- **WHEN** ein Benutzer den Dialog zur Tour-Zuordnung öffnet oder seine Auswahl ändert
-- **THEN** stehen alle aktuell ausgewählten Abholorte vor den nicht ausgewählten Abholorten
-- **AND** innerhalb beider Gruppen wird aufsteigend nach vorhandener Region, Ort und Straße sortiert
-- **AND** Bezeichnung und ID stellen bei gleichen Fachwerten eine stabile Reihenfolge sicher
+- **WHEN** ein Benutzer den Dialog zur Tour-Zuordnung öffnet
+- **THEN** zeigt das System Auswahl, Region, Ort, Straße und Hausnummer in getrennten Tabellenspalten
+- **AND** das System zeigt weder den Aktivstatus noch einen zusätzlichen Zuordnungsstatus des Abholorts
+- **AND** zusammengesetzte Werte wie `Amt Meyenburg / Brügge / Alle Straßen / Alle Hausnummern` werden den vier passenden Adressspalten zugeordnet
+- **AND** auf schmalen Ansichten bleiben dieselben Fachwerte beschriftet und lesbar
+
+#### Scenario: Benutzer sortiert die gefilterten Abholorte nach Ort und Straße
+
+- **WHEN** ein Benutzer die Sortierrichtung auswählt
+- **THEN** sortiert das System die vollständige aktuell gefilterte Ergebnismenge hierarchisch nach Ort, Straße und Hausnummer in der gewählten Richtung
+- **AND** die Filterung erfolgt vor der Sortierung
+- **AND** ausgewählte Abholorte stehen weiterhin vor nicht ausgewählten Abholorten
+- **AND** dieselbe Sortierhierarchie gilt innerhalb beider Gruppen
+- **AND** fehlende Werte stehen nach vorhandenen Werten
+- **AND** Bezeichnung und ID stellen bei gleichen Adresswerten eine stabile Reihenfolge sicher
+
+#### Scenario: Benutzer berücksichtigt die Region bei der Mehrfachsortierung
+
+- **WHEN** ein Benutzer Region als optionales Sortierkriterium aktiviert
+- **THEN** sortiert das System hierarchisch nach Region, Ort, Straße und Hausnummer
+- **AND** die gewählte Sortierrichtung gilt für alle Adresskriterien
+- **AND** deaktiviert der Benutzer das Kriterium wieder, beginnt die Sortierhierarchie erneut mit dem Ort
+
+#### Scenario: Benutzer ändert Auswahl bei aktiver Sortierung
+
+- **WHEN** ein Benutzer einen sichtbaren Abholort aus- oder abwählt
+- **THEN** aktualisiert das System die ausgewählte beziehungsweise nicht ausgewählte Gruppe unmittelbar
+- **AND** die optionale Regionssortierung und die Sortierrichtung bleiben erhalten
+- **AND** Auswahlen außerhalb des aktuellen Filters bleiben unverändert gespeichert
+
+### Requirement: Waste-Management prüft die lückenlose Fraktionszuordnung aktiver Abholorte
+
+Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich begrenzten Prüfzeitraum ermitteln, ob jeder aktive Abholort durch mindestens eine Standort–Tour-Zuordnung zu einer aktiven Tour dieser Fraktion lückenlos abgedeckt ist.
+
+#### Scenario: Mehrere Zuordnungen decken den Prüfzeitraum gemeinsam ab
+
+- **WHEN** sich die zentralen Gültigkeitszeiträume mehrerer einem aktiven Abholort zugeordneter Touren derselben Fraktion überlappen oder unmittelbar aneinander anschließen
+- **THEN** bewertet das System den Abholort als vollständig abgedeckt
+
+#### Scenario: Abholort besitzt keine passende Zuordnung
+
+- **WHEN** ein aktiver Abholort keiner Tour der gewählten Fraktion zugeordnet ist
+- **THEN** weist das System den Abholort als `Keine Zuordnung` aus
+
+#### Scenario: Abholort ist nur inaktiven Touren zugeordnet
+
+- **WHEN** ein aktiver Abholort für die gewählte Fraktion ausschließlich inaktiven Touren zugeordnet ist
+- **THEN** berücksichtigt das System diese Touren nicht als operative Abdeckung
+- **AND** weist den Abholort als `Keine Zuordnung` aus
+
+#### Scenario: Passende Zuordnungen lassen zeitliche Lücken
+
+- **WHEN** ein aktiver Abholort passenden Touren zugeordnet ist, deren zentrale Gültigkeitszeiträume den Prüfzeitraum nicht vollständig abdecken
+- **THEN** weist das System den Abholort als `Zeitraum unvollständig` aus
+- **AND** zeigt die nicht abgedeckten Zeiträume an
+
+#### Scenario: Unbegrenzte Tourgrenze deckt den Prüfzeitraum ab
+
+- **WHEN** Start- oder Enddatum einer passenden Tour leer ist
+- **THEN** behandelt das System die jeweilige Grenze für die Prüfung als unbegrenzt
+
+### Requirement: Prüfergebnisse bleiben direkt bearbeitbar
+
+Das System SHALL problematische Abholorte im Abholort-Bereich anzeigen und die bestehenden Aktionen zur Einzel- und Sammelzuweisung verfügbar halten.
+
+#### Scenario: Benutzer behebt gefundene Zuordnungslücken
+
+- **WHEN** die Prüfung fehlende oder unvollständige Zuordnungen findet
+- **THEN** kann der Benutzer die betroffenen Abholorte als exakte Auswahl übernehmen und einer Tour zuordnen
+- **AND** zuvor ausgewählte, nicht betroffene Abholorte werden nicht in die Sammelzuweisung übernommen
+- **AND** kann er einen einzelnen Abholort zur detaillierten Pflege seiner Tour-Zuordnungen öffnen
+
+### Requirement: Ungültige Prüfzeiträume werden zugänglich abgewiesen
+
+Das System SHALL eine Prüfung ohne Abfallfraktion oder mit einem Enddatum vor dem Startdatum verhindern und den Fehler am Prüfbereich zugänglich ausgeben.
+
+#### Scenario: Enddatum liegt vor dem Startdatum
+
+- **WHEN** ein Benutzer die Prüfung mit einem Enddatum vor dem Startdatum startet
+- **THEN** führt das System keine Prüfung aus
+- **AND** zeigt eine verständliche Fehlermeldung im Prüfbereich an
+
+### Requirement: Waste-Abholorte liefern Zielschlüssel für Nachrichten
+
+Das System MUST aus aktiven Abholorten und ihrer Adresshierarchie stabile Zielschlüssel für Nachrichten ableiten.
+
+#### Scenario: Konkrete Hausnummer wird abgebildet
+
+- **WHEN** ein Abholort auf eine Straße und eine Hausnummer verweist
+- **THEN** enthält der Zielschlüssel den zusammengesetzten Straßen- und Hausnummerntext sowie PLZ und Ort
+
+#### Scenario: Abholort besitzt keine Hausnummer
+
+- **WHEN** ein aktiver Abholort auf einen Ort mit PLZ und eine Straße, aber auf keine Hausnummer verweist
+- **THEN** enthält der Zielschlüssel die Straße ohne Hausnummer sowie PLZ und Ort
+- **AND** adressiert der Schlüssel die gesamte Straße
+
+#### Scenario: Doppelte Schlüssel sind vorhanden
+
+- **WHEN** mehrere Abholortdatensätze dieselbe Straße, PLZ und denselben Ort ergeben
+- **THEN** gibt die Nachrichtenzielauswahl diesen externen Schlüssel nur einmal aus
+
+### Requirement: Städte unterstützen feldselektive Updates
+
+Das System MUST bei Stadt-Updates ausschließlich explizit übermittelte Felder verändern.
+
+#### Scenario: Postleitzahl wird ergänzt
+
+- **WHEN** ein Client nur `postalCode` aktualisiert
+- **THEN** bleiben der aktuelle Name und die aktuelle Region der Stadt unverändert
+
+#### Scenario: Optionales Feld wird ausgelassen
+
+- **WHEN** ein älterer Client `postalCode` nicht übermittelt
+- **THEN** bleibt eine bestehende Postleitzahl unverändert
+
+#### Scenario: Postleitzahl wird ausdrücklich entfernt
+
+- **WHEN** ein Client `postalCode: null` übermittelt
+- **THEN** wird die Postleitzahl entfernt
+
+### Requirement: Reine Waste-Icon-Aktionen erklären ihre Funktion per Tooltip
+
+Das System SHALL für jeden interaktiven Waste-Management-Button, dessen sichtbarer Inhalt ausschließlich aus einem Icon besteht, einen lokalisierten Tooltip mit derselben Bedeutung wie die zugängliche Beschriftung anzeigen.
+
+#### Scenario: Benutzer zeigt mit der Maus auf eine Icon-Aktion
+
+- **WHEN** ein Benutzer mit der Maus auf einen reinen Icon-Aktionsbutton zeigt
+- **THEN** zeigt das System einen kurzen erklärenden Tooltip
+
+#### Scenario: Benutzer fokussiert eine Icon-Aktion mit der Tastatur
+
+- **WHEN** ein Benutzer einen reinen Icon-Aktionsbutton mit der Tastatur fokussiert
+- **THEN** zeigt das System denselben erklärenden Tooltip
+
+#### Scenario: Icon besitzt bereits sichtbaren Erklärungstext
+
+- **WHEN** ein Icon innerhalb eines Buttons bereits von einer sichtbaren Aktionsbeschriftung begleitet wird oder rein dekorativ ist
+- **THEN** fügt das System keinen redundanten Tooltip hinzu
+
+### Requirement: Waste-PDF-Branding verwendet den gemeinsamen Medienpicker
+
+Das System SHALL im Waste-Ausgabe-Tab für die optionale PDF-Branding-Grafik den gemeinsamen Studio-Medienpicker verwenden und ausschließlich eine dauerhafte öffentliche Medien-URL in der Waste-Konfiguration speichern.
+
+#### Scenario: Öffentliches Medium aus der Mediathek auswählen
+
+- **WHEN** ein zur Medienauswahl berechtigter Benutzer `Medium hinzufügen` aktiviert
+- **AND** ein öffentliches Bild aus der Mediathek auswählt
+- **THEN** zeigt der Ausgabe-Tab eine Vorschau des ausgewählten Bildes
+- **AND** speichert beim Speichern der PDF-Inhalte dessen dauerhafte öffentliche URL als Branding-Grafik
+
+#### Scenario: Neues öffentliches Medium hochladen
+
+- **WHEN** ein zusätzlich zu `media.read` und `media.reference.manage` mit `media.create` berechtigter Benutzer ein Bild hochlädt
+- **THEN** legt das System das Medium als öffentliches Bild an
+- **AND** übernimmt dessen dauerhafte öffentliche URL als Branding-Grafik
+
+#### Scenario: Upload-Berechtigung fehlt
+
+- **WHEN** ein Benutzer Medien auswählen, aber keine Medien erstellen darf
+- **THEN** bleibt die Auswahl aus der öffentlichen Mediathek verfügbar
+- **AND** bietet der Medienpicker keinen erreichbaren Upload-Pfad an
+
+#### Scenario: Manuelle URL verwenden
+
+- **WHEN** ein berechtigter Benutzer im Medienpicker eine manuelle URL eingibt
+- **THEN** akzeptiert das System nur eine persistierbare HTTPS-URL ohne Zugangsdaten oder flüchtige Signaturparameter
+- **AND** speichert diese URL ohne Medienreferenz als Branding-Grafik
+
+#### Scenario: Branding-Grafik entfernen
+
+- **WHEN** ein berechtigter Benutzer die aktuell dargestellte Branding-Grafik entfernt und die PDF-Inhalte speichert
+- **THEN** entfernt das System die Branding-URL aus der Waste-Konfiguration
+- **AND** das öffentliche Waste-PDF wird weiterhin ohne Branding-Grafik erzeugt
+
+### Requirement: Waste-Management ergänzt fehlende Stadt-Postleitzahlen kontrolliert
+
+Das System MUST berechtigten Administratoren erlauben, fehlende Postleitzahlen von Waste-Städten als kontrollierte Systemfunktion automatisch zu ergänzen.
+
+#### Scenario: Administrator startet die Anreicherung
+
+- **WHEN** ein Benutzer mit `waste-management.master-data.manage` die Aktion unter „Datentools → Erweiterte Systemfunktionen“ startet
+- **THEN** führt das System die Anreicherung als mandantenisolierten Hintergrundjob aus
+- **AND** zeigt das Studio den laufenden Prozess und sein aggregiertes Ergebnis nachvollziehbar an
+
+#### Scenario: Stadt besitzt einen plausiblen Treffer
+
+- **WHEN** eine Stadt noch keine Postleitzahl besitzt und die hostgeführte Ermittlung eine konsistente deutsche fünfstellige Postleitzahl mit passendem Ortsbezug liefert
+- **THEN** ergänzt das System ausschließlich die Postleitzahl dieser Stadt
+- **AND** bleiben Name, Region und alle übrigen Fachdaten unverändert
+
+#### Scenario: Treffer bleibt unsicher
+
+- **WHEN** die Ermittlung keinen Treffer, eine ungültige Postleitzahl, einen abweichenden Orts- oder Länderkontext oder widersprüchliche Postleitzahlen liefert
+- **THEN** verändert das System die Stadt nicht
+- **AND** zählt das Job-Ergebnis den offenen oder mehrdeutigen Fall nachvollziehbar
+
+#### Scenario: Vorhandene Postleitzahl wird geschützt
+
+- **WHEN** eine Stadt bereits vor dem Lauf oder durch eine parallele Pflege eine Postleitzahl besitzt
+- **THEN** überschreibt der Anreicherungsjob diesen Wert nicht
+- **AND** ein wiederholter Lauf bleibt idempotent
+
+#### Scenario: Geocoding ist nicht verfügbar
+
+- **WHEN** die tenantbezogene Geocoding-Konfiguration fehlt, deaktiviert ist oder der Provider kontrolliert fehlschlägt
+- **THEN** erfindet oder persistiert das System keine Postleitzahl
+- **AND** der Job endet mit einem nachvollziehbaren Fehler- oder Teilergebnis ohne Secrets oder vollständige Adressanfragen offenzulegen
+
+### Requirement: Waste-PLZ-Anreicherung respektiert Providergrenzen
+
+Das System MUST die automatische Waste-PLZ-Anreicherung innerhalb der konfigurierten Geocoding-Grenzen ausführen.
+
+#### Scenario: Viele Städte benötigen eine Ermittlung
+
+- **WHEN** der Job mehrere Städte über den externen Provider prüft
+- **THEN** verarbeitet er die Anfragen mit begrenzter Parallelität und entsprechend dem konfigurierten Minutenlimit
+- **AND** meldet er den Fortschritt über den zentralen Jobvertrag statt über eine Browser-Schleife
+
+#### Scenario: Das Anfragebudget ist ausgeschöpft
+
+- **WHEN** die Anreicherung das für den Provider konfigurierte Anfragebudget erreicht
+- **THEN** beendet sie weitere Provideranfragen kontrolliert und behält bereits bestätigte Aktualisierungen
+- **AND** weist das Ergebnis den Verbrauch und die noch nicht verarbeiteten Städte transparent aus
+
+### Requirement: Waste-Management ändert Gültigkeitszeiträume ausgewählter Touren atomar
+
+Das System SHALL berechtigten Benutzern erlauben, den tourweiten Gültigkeitsbeginn und das tourweite Gültigkeitsende mehrerer ausgewählter turnusbasierter Waste-Touren in einer atomaren Bulk-Aktion zu ändern.
+
+#### Scenario: Benutzer setzt eine Datumsgrenze für mehrere Touren
+
+- **GIVEN** mehrere ausgewählte Touren verwenden einen festen Turnus oder ein benutzerdefiniertes Abstandspreset
+- **WHEN** ein Benutzer mit `waste-management.tours.manage` für `Gültig bis` ein Datum setzt und `Gültig ab` unverändert lässt
+- **THEN** speichert das System das neue Gültigkeitsende für alle ausgewählten Touren atomar
+- **AND** jeder vorhandene Gültigkeitsbeginn bleibt unverändert
+- **AND** Einzeltermine, Datumsverschiebungen, Abholort-Zuordnungen und alle übrigen Tourfelder bleiben unverändert
+
+#### Scenario: Benutzer entfernt eine Datumsgrenze explizit
+
+- **GIVEN** die ausgewählten turnusbasierten Touren besitzen ein Gültigkeitsende
+- **WHEN** der Benutzer für `Gültig bis` ausdrücklich `entfernen` auswählt
+- **THEN** entfernt das System das Gültigkeitsende für alle ausgewählten Touren
+- **AND** ein leeres Eingabefeld ohne die Operation `entfernen` löscht keinen vorhandenen Wert
+
+#### Scenario: Gültigkeitsbeginn bleibt als Turnus-Startanker erhalten
+
+- **GIVEN** die ausgewählten Touren berechnen wiederkehrende Termine ab ihrem Gültigkeitsbeginn
+- **WHEN** der Benutzer den Gültigkeitszeitraum gesammelt bearbeitet
+- **THEN** bietet die Oberfläche für `Gültig ab` keine Operation `entfernen` an
+- **AND** der Server lehnt einen dennoch gesendeten Request zum Entfernen des Gültigkeitsbeginns vollständig ab
+- **AND** keine ausgewählte Tour verliert ihren Startanker
+
+#### Scenario: Ungültiger resultierender Zeitraum verhindert alle Änderungen
+
+- **GIVEN** die gewählten Patch-Operationen würden bei mindestens einer ausgewählten Tour zu einem Gültigkeitsende vor dem Gültigkeitsbeginn führen
+- **WHEN** der Benutzer die Bulk-Aktion bestätigt
+- **THEN** lehnt das System den gesamten Request mit einem Validierungsfehler ab
+- **AND** keine ausgewählte Tour wird geändert
+
+#### Scenario: Nicht anwendbare Tour verhindert stilles Überspringen
+
+- **GIVEN** die Auswahl enthält eine individuelle oder bedarfsabhängige Tour ohne turnusbasiertes Gültigkeitsfenster
+- **WHEN** die Bulk-Aktion vorbereitet oder an den Server gesendet wird
+- **THEN** weist die Oberfläche die nicht anwendbare Tour verständlich aus
+- **AND** der Server lehnt einen dennoch gesendeten gemischten Request vollständig ab
+- **AND** keine Tour wird stillschweigend übersprungen oder geändert
+
+#### Scenario: Bulk-Änderung wird nachvollziehbar auditiert
+
+- **WHEN** der Server eine Bulk-Änderung erfolgreich ausführt oder mit einem fachlichen beziehungsweise technischen Fehler beendet
+- **THEN** erzeugt das System ein Audit-Ereignis mit Ergebnis, Batch-Ressource, betroffener Anzahl, Akteur und Instanzkontext
+- **AND** das Audit-Ereignis enthält keine vollständigen Tour-Payloads
+
+### Requirement: Waste-Touren können nach relativem Gültigkeitsjahr gefiltert werden
+
+Das System SHALL in der Tourenübersicht einen reload-stabilen Filter für alle Touren, das letzte, das aktuelle oder das nächste Kalenderjahr bereitstellen und initial alle Touren anzeigen.
+
+#### Scenario: Tourenübersicht startet ohne Jahreseinschränkung
+
+- **WHEN** ein Benutzer die Tourenübersicht ohne gesetzten Jahresfilter öffnet
+- **THEN** zeigt das System unabhängig vom Gültigkeitsjahr alle Touren an, die den übrigen Filtern entsprechen
+- **AND** die Auswahl `Alle Touren` ist aktiv
+
+#### Scenario: Gültigkeitszeitraum überschneidet das ausgewählte Jahr
+
+- **GIVEN** ein Benutzer hat das letzte, aktuelle oder nächste Kalenderjahr ausgewählt
+- **WHEN** der Gültigkeitszeitraum einer Tour das ausgewählte Jahr mindestens an einem Kalendertag überschneidet
+- **THEN** zeigt das System die Tour an
+- **AND** ein fehlender Gültigkeitsbeginn oder ein fehlendes Gültigkeitsende wird als offene Grenze behandelt
+- **AND** der 1. Januar und der 31. Dezember gehören zum ausgewählten Zeitraum
+
+#### Scenario: Expliziter Termin liegt im ausgewählten Jahr
+
+- **GIVEN** ein Benutzer hat das letzte, aktuelle oder nächste Kalenderjahr ausgewählt
+- **WHEN** mindestens ein expliziter Termin einer Tour im ausgewählten Kalenderjahr liegt
+- **THEN** zeigt das System die Tour unabhängig von einer zusätzlichen Gültigkeitsüberschneidung an
+
+#### Scenario: Tour hat weder passende Gültigkeit noch passenden Termin
+
+- **GIVEN** ein Benutzer hat das letzte, aktuelle oder nächste Kalenderjahr ausgewählt
+- **WHEN** der Gültigkeitszeitraum einer Tour das ausgewählte Jahr nicht überschneidet
+- **AND** kein expliziter Termin der Tour im ausgewählten Jahr liegt
+- **THEN** blendet das System die Tour aus
+
+#### Scenario: Jahresfilter bleibt mit bestehenden Filtern kombinierbar
+
+- **WHEN** ein Benutzer den Jahresfilter gemeinsam mit Name, Status, Abfallart oder freien Datumsgrenzen setzt
+- **THEN** wendet das System alle gesetzten Kriterien gemeinsam an
+- **AND** speichert den relativen Jahresfilter als typisierten Search-Parameter
+- **AND** setzt die Listenseite bei einer Änderung des Jahresfilters auf Seite 1 zurück
+- **AND** normalisiert einen ungültigen Jahresfilterwert auf `Alle Touren`
+
+### Requirement: Waste-Fraktionen werden vor der Pagination global sortiert
+
+Das System MUST die Fraktionenliste zuerst nach dem aktuellen Statusfilter eingrenzen, danach den vollständigen gefilterten Bestand deterministisch sortieren und erst anschließend paginieren. Die Liste MUST standardmäßig nach Name aufsteigend sortieren, fehlende optionale Werte unabhängig von der Richtung zuletzt einordnen und Gleichstände mit `ID asc` stabilisieren.
+
+#### Scenario: Benutzer sortiert Fraktionen über mehrere Seiten
+
+- **GIVEN** der aktuelle Fraktionenfilter ergibt mehr Treffer als auf eine Seite passen
+- **WHEN** ein Benutzer Sortierfeld oder Sortierrichtung ändert
+- **THEN** sortiert die Fachlogik den vollständigen gefilterten Fraktionenbestand
+- **AND** schneidet sie erst danach die erste Ergebnisseite zu
+- **AND** verändert die gemeinsame Tabellenkomponente die Reihenfolge dieser Seite nicht nochmals lokal
+
+#### Scenario: Optionale Fraktionswerte bleiben am Ende
+
+- **GIVEN** mindestens eine Fraktion besitzt keinen Wert im gewählten optionalen Sortierfeld
+- **WHEN** ein Benutzer aufsteigend oder absteigend sortiert
+- **THEN** steht die Fraktion ohne Wert in beiden Richtungen nach Fraktionen mit vorhandenem Wert
+- **AND** verwendet die Fachlogik kein anderes Feld als Ersatz
+
+### Requirement: DOI-Versandnachrichten bewahren ihren deterministischen Kompositionsvertrag
+
+Das System SHALL DOI-Versandnachrichten aus der Waste-Konfiguration, dem normalisierten Versandauftrag und der zentralen Mail-Transport-Konfiguration deterministisch zusammensetzen, ohne den Token-, Outbox- oder Zustellvertrag in der Kompositionsschicht zu verändern.
+
+#### Scenario: DOI-Text verwendet die bestehende Abschnittsreihenfolge
+
+- **WHEN** eine DOI-Versandnachricht aus vollständigen Textbausteinen und Templatewerten erzeugt wird
+- **THEN** enthält ihr Nur-Text-Inhalt Preheader, Intro, Ort, Bestätigungszeile, Fallback, Ablaufhinweis, Service, Verantwortlichen, Datenschutz und Impressum in der bestehenden Reihenfolge
+- **AND** die enthaltenen Abschnitte bleiben durch genau eine Leerzeile getrennt
+- **AND** unbekannte Template-Platzhalter werden weiterhin durch den leeren String ersetzt
+
+#### Scenario: Optionale oder leere DOI-Abschnitte behalten ihre Legacy-Semantik
+
+- **WHEN** optionale DOI-Texte fehlen, leer sind oder nur Whitespace enthalten
+- **THEN** werden dieselben Abschnitte wie bisher ausgelassen
+- **AND** ein vorhandener Payload-Wert besitzt weiterhin Nullish-Priorität vor dem entsprechenden Konfigurationswert
+- **AND** ein leerer oder nur aus Whitespace bestehender Payload-Wert wird nicht stillschweigend durch den Konfigurationswert ersetzt
+
+#### Scenario: DOI-Envelope bewahrt die bestehende Adresspriorität
+
+- **WHEN** Payload, Waste-Konfiguration und Transport unterschiedliche Absender- oder Antwortadressen liefern
+- **THEN** bleiben Payload-`replyTo`, konfiguriertes `replyTo` und Transport-`replyTo` in dieser Prioritätsreihenfolge
+- **AND** konfigurierte Absenderwerte bleiben vor Transport-Fallbacks priorisiert
+- **AND** `to`, `cc`, `bcc` und vorhandene Anzeigenamen aus dem Payload bleiben unverändert erhalten
+
+#### Scenario: Nicht-DOI-Template bleibt im Reminder-Pfad
+
+- **WHEN** der Versandauftrag keinen DOI-Template-Key besitzt
+- **THEN** verwendet das System weiterhin die bestehende Reminder-Komposition
+- **AND** das DOI-Refactoring verändert weder Reminder-Text noch Reminder-Envelope
+
+### Requirement: Öffentliche Reminder-Konfiguration wird kanonisch und fail-closed normalisiert
+
+Das System SHALL die öffentliche E-Mail-Reminder-Konfiguration ausschließlich dann bereitstellen, wenn alle bestehenden Pflichtfelder und explizit gesetzten optionalen Felder ihren jeweiligen Typ-, URL-, Pfad-, Adress- und Grenzwertvertrag erfüllen.
+
+#### Scenario: Gültige Konfiguration wird kanonisch ausgegeben
+
+- **WHEN** eine vollständige oder zulässig minimale Reminder-Konfiguration gelesen oder geschrieben wird
+- **THEN** normalisiert das System Whitespace, URLs und optionale Felder nach dem bestehenden Vertrag
+- **AND** bleibt die öffentliche Ausgabe semantik- und serialisierungsgleich
+
+#### Scenario: Ungültige Konfiguration bleibt fail-closed
+
+- **WHEN** ein Pflichtfeld fehlt oder ein gesetztes Pflicht- oder Optionalfeld den bestehenden Vertrag verletzt
+- **THEN** stellt das System keine lesbare Reminder-Konfiguration bereit
+- **AND** führt keine neuen Defaults oder Fallbackwerte ein
+
+#### Scenario: Unbekannte Felder und Secrets bleiben außerhalb des normalisierten Objekts
+
+- **WHEN** die Eingabe unbekannte Felder oder Secret-Werte enthält
+- **THEN** übernimmt das System sie nicht in das normalisierte Reminder-Konfigurationsobjekt
+- **AND** bleibt das Signing-Secret ausschließlich über die bestehende, an eine gültige Konfiguration gebundene Secret-Grenze lesbar
+
+### Requirement: Waste-Tourenliste verwendet die gemeinsamen Tabelleninteraktionen
+
+Das Waste-Management MUST in der Tourenliste die gemeinsamen Studio-Muster für Icon-Aktionen, Status-Badges, anklickbare Informationen und einheitlich oben ausgerichtete Body-Zellen verwenden. Die Migration MUST bestehende Fachlogik, Berechtigungen, Navigation und Mutationen unverändert erhalten.
+
+#### Scenario: Benutzer betrachtet anklickbare Tourinformationen
+
+- **WENN** ein Benutzer die Tourenliste öffnet
+- **DANN** erscheinen Tourname, verknüpfte Fraktionen, Verschiebungen und Abholortanzahl im gemeinsamen Muster für anklickbare Informationen
+- **UND** werden Fraktionen nicht als Status-Badges dargestellt
+- **UND** öffnet der Tourname das bestehende Bearbeitungsziel
+- **UND** öffnen Verschiebungen weiterhin ihre Details beziehungsweise das bestehende Erstellungsziel
+
+#### Scenario: Tour besitzt keine Abholortzuordnung
+
+- **GIVEN** eine Tour besitzt `0` zugeordnete Abholorte
+- **WENN** der Benutzer die Abholortanzahl aktiviert
+- **DANN** öffnet die Liste weiterhin den bestehenden Erstellungsflow für Zuordnungen
+- **UND** ist die Zahl im selben Informationsmuster wie eine positive Anzahl dargestellt
+
+#### Scenario: Tour besitzt bestehende Abholortzuordnungen
+
+- **GIVEN** eine Tour besitzt mindestens eine Abholortzuordnung
+- **WENN** der Benutzer die Abholortanzahl aktiviert
+- **DANN** öffnet die Liste weiterhin den bestehenden Bearbeitungsflow für Zuordnungen
+- **UND** ändert die visuelle Vereinheitlichung keine Zuordnungsdaten
+
+#### Scenario: Benutzer ändert den Tourstatus
+
+- **WENN** ein berechtigter Benutzer das Status-Badge einer Tour aktiviert
+- **DANN** öffnet sich ein zugänglicher Dialog mit aktuellem und beabsichtigtem Status
+- **UND** wird die bestehende Statusmutation erst durch die vorgesehene Bestätigung ausgelöst
+- **UND** sind laufende und deaktivierte Zustände erkennbar
+- **UND** bleibt das Badge mit dem Statuswert beschriftet
+
+#### Scenario: Benutzer verwendet eine Tour-Zeilenaktion
+
+- **WENN** ein Benutzer Kalender, Duplizieren oder Löschen in der Aktionsspalte verwendet
+- **DANN** erscheint die jeweilige Aktion als gemeinsamer Icon-Aktionsbutton mit zugänglichem Tooltip
+- **UND** wird keine redundante Bearbeiten-Aktion angeboten, wenn der Tourname bereits dasselbe Ziel öffnet
+- **UND** bleiben Berechtigungen, Bestätigung und Zielverhalten der Aktion unverändert
+
+#### Scenario: Tourenzeile enthält ein- und mehrzeilige Inhalte
+
+- **WENN** die Tourenzeile gerendert wird
+- **DANN** sind alle Body-Zellen einschließlich Auswahl, Werte, Status und Aktionsgruppe einheitlich oben ausgerichtet
+- **UND** verwenden die Zellen dasselbe vertikale Padding
+- **UND** bleiben Controls innerhalb ihrer eigenen Trefferfläche zentriert

@@ -963,3 +963,56 @@ Das Monorepo SHALL für serverseitige Mutationen einen festen Ablauf aus Prepare
 - **WHEN** der Handler Request-Guards, Parsing, Fachausführung und Response-Mapping kombiniert
 - **THEN** delegiert er diese Schrittfolge an einen gemeinsamen Workflow-Kern
 - **AND** paketlokale Unterschiede bleiben auf kleine Adapter für Autorisierung, Input-Building, Execute und Fehlermapping begrenzt
+
+### Requirement: Anwendungen teilen keine Quellmodule über App-Grenzen
+
+Das System SHALL wiederverwendbare fachliche oder technische Logik, die von mehreren Anwendungen benötigt wird, über ein owning Workspace-Package bereitstellen. Eine Anwendung SHALL keine Quellmodule aus dem Verzeichnis einer anderen Anwendung importieren oder re-exportieren.
+
+#### Scenario: Gemeinsamer serverseitiger Fachvertrag liegt im owning Package
+
+- **GIVEN** Studio und Public-Waste-App benötigen denselben serverseitigen Waste-Abmeldetokenvertrag
+- **WHEN** beide Anwendungen Token erzeugen, lesen oder verifizieren
+- **THEN** konsumieren sie den kanonischen Vertrag aus `@sva/waste-management-contracts/unsubscribe-token`
+- **AND** keine Anwendung importiert dafür Quellcode aus der jeweils anderen Anwendung
+- **AND** Node-spezifische Kryptografie gelangt nicht in einen Browser-Export
+
+#### Scenario: Cross-App-Quellimport wird automatisch abgelehnt
+
+- **WHEN** ein statischer Import, dynamischer Import oder Re-Export aus `apps/<source-app>/**` auf ein Quellmodul unter `apps/<target-app>/**` mit einem anderen App-Namen zeigt
+- **THEN** lehnt ein verbindlicher Repository-Check die Änderung ab
+- **AND** der Befund nennt Quell- und Zielanwendung nachvollziehbar
+
+#### Scenario: Gemeinsames Package erzeugt gerichtete App-Abhängigkeiten
+
+- **WHEN** mehrere Anwendungen denselben Vertrag aus einem Workspace-Package konsumieren
+- **THEN** zeigt der Nx-Projektgraph gerichtete Kanten von den Anwendungen zum Package
+- **AND** er erzeugt keine direkte Abhängigkeitskante zwischen den Anwendungen
+
+#### Scenario: App-interne Module und Package-Imports bleiben zulässig
+
+- **WHEN** eine Anwendung ein Modul innerhalb ihres eigenen App-Verzeichnisses oder den öffentlichen Export eines zulässigen Workspace-Packages importiert
+- **THEN** akzeptiert der Cross-App-Boundary-Check diesen Import
+- **AND** bestehende strengere Package- und Schichtregeln bleiben davon unberührt
+
+### Requirement: Shared Studio UI besitzt die einzige Button-Basis
+
+Das Workspace-Package `@sva/studio-ui-react` MUST alleiniger Owner der Studio-Button-Basis, ihrer Varianten, Größen, Tooltips und Accessibility-Zustände sein. Host-App und Plugins MUST diese Shared-Komponente konsumieren und dürfen keine parallele Button-Basis mit eigener Varianten- oder Zustandslogik führen.
+
+#### Scenario: Host oder Plugin benötigt einen Button
+
+- **WENN** Host-Code oder ein Plugin einen Standardbutton, Icon-Button oder buttonförmigen Link rendert
+- **DANN** konsumiert der Code `Button` beziehungsweise `buttonVariants` aus `@sva/studio-ui-react`
+- **UND** implementiert er keine lokale Basisvariante mit eigener visueller Sprache
+
+#### Scenario: Bestehende lokale App-Komponente wird migriert
+
+- **WENN** der zugängliche Buttonvertrag eingeführt wird
+- **DANN** wird die parallele Button-Basis unter `apps/sva-studio-react` entfernt
+- **UND** lokale Dialoge und übrige Verbraucher werden auf `@sva/studio-ui-react` umgestellt
+- **UND** bleiben nach Abschluss keine Legacy-Aliase für `default`, `ghost` oder `outline` im öffentlichen Button-Variantentyp bestehen
+
+#### Scenario: Neue parallele Button-Basis wird eingeführt
+
+- **WENN** eine spätere Änderung in Host oder Plugins erneut eine lokale Button-Basis oder Legacy-Variantenlogik hinzufügt
+- **DANN** schlägt ein statischer Boundary- oder Architekturtest fehl
+- **UND** verweist der Fehler auf die kanonische Shared-Komponente

@@ -171,7 +171,7 @@ Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereits
 
 ### Requirement: Rollen-Verwaltungsseite
 
-Das System MUST eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen, die das Anzeigen und Bearbeiten von System- und Custom-Rollen ermöglicht.
+Das System MUST eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen, die das Anzeigen und Bearbeiten von System- und Custom-Rollen ermöglicht, technische Kompatibilitätsfelder aus dem normalen Bedienfluss heraushält und nur fachlich geänderte Teilflächen speicherbar macht.
 
 #### Scenario: Rollenansicht bleibt der zentrale Einstieg für Rechtepflege
 
@@ -190,16 +190,53 @@ Das System MUST eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen,
 #### Scenario: Rollenmetadaten und Editierbarkeit sind eindeutig sichtbar
 
 - **WENN** eine Rolle in der Rollenansicht dargestellt wird
-- **DANN** sind mindestens `externalRoleName`, `managedBy`, `roleLevel`, Sync-Zustand und Mitgliederzahl sichtbar
+- **DANN** sind mindestens Anzeigename, Beschreibung, `externalRoleName`, `managedBy`, Sync-Zustand und Mitgliederzahl sichtbar, soweit das jeweilige Rollenmodell diese Werte führt
+- **UND** das interne Kompatibilitätsfeld `roleLevel` wird in Rollenliste, Rollenanlage und normaler Rollenbearbeitung weder angezeigt noch bearbeitet
 - **UND** System-Rollen und extern verwaltete Rollen sind als read-only kenntlich
 - **UND** destruktive oder fachlich nicht zulässige Aktionen sind nicht nur deaktiviert, sondern auch verständlich begründet
+
+#### Scenario: Administrator legt eine Rolle ohne technische Doppeleingabe an
+
+- **WENN** ein Administrator einen gültigen Anzeigenamen und optional eine Beschreibung für eine Custom-Rolle eingibt
+- **DANN** verlangt die UI weder einen technischen Rollenschlüssel noch ein `roleLevel`
+- **UND** sendet sie den Anzeigenamen als fachlich führenden Namen an den serverseitigen Create-Vertrag
+- **UND** zeigt sie den erzeugten technischen Schlüssel nach erfolgreicher Anlage nur als nicht bearbeitbare Zusatzinformation unter „Technische Details“
 
 #### Scenario: Rollenrechte werden fachlich lesbarer dargestellt
 
 - **WENN** ein Administrator die Rechte einer Rolle öffnet
-- **DANN** priorisiert die UI fachliche Bezeichnungen, Gruppierungen oder Beschreibungen der Rechte
-- **UND** technische Werte wie `permissionKey` bleiben höchstens ergänzende Detailinformation
-- **UND** die Oberfläche zwingt Administratoren nicht zur ausschließlichen Interpretation roher technischer Schlüssel
+- **DANN** priorisiert die UI lokalisierte fachliche Bezeichnungen, Gruppierungen und Beschreibungen der Rechte
+- **UND** erklärt sie die Scopes `own`, `organization` und `all` in fachlich verständlichen Begriffen
+- **UND** technische Werte wie `permissionKey` bleiben höchstens ergänzende, einklappbare Detailinformation
+- **UND** die Oberfläche zwingt Administratoren nicht zur Interpretation roher technischer Schlüssel
+
+#### Scenario: Veröffentlichungs- und Sichtbarkeitsrechte bleiben unterscheidbar
+
+- **WENN** die Rechte `content.publish` und `content.changeStatus` in einer Rolle verfügbar sind
+- **DANN** zeigt die UI sie als getrennte positive Rechte „Veröffentlichen“ und „Sichtbarkeitsstatus ändern“
+- **UND** erklärt sie deren unterschiedliche fachliche Wirkung
+- **UND** leitet sie aus einer Auswahl keine weitergehende Permission ab
+
+#### Scenario: Unveränderte allgemeine Rollendaten sind nicht speicherbar
+
+- **WENN** der normalisierte Entwurf der allgemeinen Rollendaten dem zuletzt bestätigten Serverzustand entspricht
+- **DANN** ist die zugehörige Speicheraktion deaktiviert
+- **UND** wird sie erst nach einer fachlichen Änderung aktiviert
+- **UND** kehrt sie nach erfolgreichem Speichern und Aktualisieren der Vergleichsbasis in den deaktivierten Zustand zurück
+
+#### Scenario: Unveränderte Rollenrechte sind nicht speicherbar
+
+- **WENN** Permission-IDs und Assignment-Scopes fachlich dem zuletzt bestätigten Serverzustand entsprechen
+- **DANN** sind beide Positionen der wiederholten Speicheraktion deaktiviert
+- **UND** reine Reihenfolgeunterschiede gelten nicht als Änderung
+- **UND** bleiben beide Positionen an denselben Dirty-, Saving-, Saved-, Fehler- und Disabled-Zustand gebunden
+
+#### Scenario: Fehlgeschlagene Rollenspeicherung bleibt wiederholbar
+
+- **WENN** eine Speicherung geänderter Rollenmetadaten oder Rollenrechte fehlschlägt
+- **DANN** bleibt der Entwurf als geändert erhalten
+- **UND** kehrt die Speicheraktion aus dem Saving-Zustand in einen erneut ausführbaren Zustand zurück
+- **UND** wird der Fehler gemäß dem gemeinsamen Save-Feedback-Vertrag persistent und verständlich angezeigt
 
 #### Scenario: Rollenansicht verzahnt sich mit bestehender IAM-Prüfung
 
@@ -650,7 +687,7 @@ Das System MUST alle neu eingeführten sichtbaren UI-Texte in IAM- und Privacy-A
 
 ### Requirement: Vertiefte IAM-Metadaten in bestehenden Admin-Ansichten
 
-Das System MUST heute verdeckte IAM-Metadaten in den bestehenden Benutzer-, Rollen-, Organisations- und Kontextansichten sichtbar machen, soweit dies fachlich sinnvoll und sicher ist.
+Das System MUST heute verdeckte IAM-Metadaten in den bestehenden Benutzer-, Rollen-, Organisations- und Kontextansichten sichtbar machen, soweit dies fachlich sinnvoll und sicher ist. Interne Kompatibilitätsfelder ohne notwendige Bedienwirkung MUST dabei aus normalen Fachansichten herausgehalten werden.
 
 #### Scenario: Benutzerdetail zeigt Profil- und Rollenmetadaten
 
@@ -662,7 +699,8 @@ Das System MUST heute verdeckte IAM-Metadaten in den bestehenden Benutzer-, Roll
 #### Scenario: Rollenansicht zeigt externe Abbildung und Sync-Interna
 
 - **WENN** ein Administrator `/admin/roles` öffnet
-- **DANN** sind pro Rolle neben Name und Beschreibung auch `externalRoleName`, `managedBy`, `roleLevel` sowie relevante Sync-Informationen sichtbar
+- **DANN** sind pro Rolle neben Anzeigename und Beschreibung auch `externalRoleName`, `managedBy` sowie relevante Sync-Informationen sichtbar
+- **UND** wird das interne Kompatibilitätsfeld `roleLevel` nicht als fachlich zu pflegende Rollenmetadaten dargestellt
 - **UND** Fehlerzustände des Rollen-Syncs sind in der UI nachvollziehbar
 
 #### Scenario: Organisationsansicht zeigt Hierarchie- und Membership-Details
@@ -1422,8 +1460,8 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 
 - **WENN** ein berechtigter Tenant-Admin `/admin/iam?tab=deletion-rules` öffnet
 - **DANN** zeigt die UI die aktuellen Werte für `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays`, die tenantweite Default-Inhaltsstrategie und den Tenant-Schalter `Nutzer dürfen die Standardregel für eigene Inhalte überschreiben`
-- **UND** zeigt die UI die Baseline-Defaults/Fallbacks `90 / 180 / 365` getrennt von tenant-spezifischen Werten an
-- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `90 / 180 / 365`, die geerbte Default-Inhaltsstrategie `beibehalten` und den Override-Schalter standardmäßig deaktiviert als wirksamen Zustand
+- **UND** zeigt die UI die Baseline-Defaults/Fallbacks `365 / 730 / 1.095` getrennt von tenant-spezifischen Werten an
+- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `365 / 730 / 1.095`, die geerbte Default-Inhaltsstrategie `beibehalten` und den Override-Schalter standardmäßig deaktiviert als wirksamen Zustand
 - **UND** können die Werte in einer validierten Bearbeitungsmaske geändert werden
 - **UND** ist die auswählbare Strategiemenge auf `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln` begrenzt
 - **UND** wird klar angezeigt, dass sich die Regeln nur auf Tenant-Accounts der aktiven `instanceId` beziehen
@@ -1439,7 +1477,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 #### Scenario: Entfernen einer expliziten Tenant-Konfiguration kehrt zum geerbten Zustand zurück
 
 - **WENN** ein berechtigter Tenant-Admin eine bestehende explizite Tenant-Konfiguration entfernt
-- **DANN** zeigt die UI wieder die wirksamen Baseline-Defaults `90 / 180 / 365` und die geerbte Strategie `beibehalten`
+- **DANN** zeigt die UI wieder die wirksamen Baseline-Defaults `365 / 730 / 1.095` und die geerbte Strategie `beibehalten`
 - **UND** behandelt die UI dies als gültigen Zustandswechsel statt als leeren oder fehlerhaften Zustand
 
 #### Scenario: UI erklärt die fachlichen Lebenszykluszustände
@@ -1449,7 +1487,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **UND** erläutert, dass `deleted` einen finalen Tombstone-Soft-Delete und keine physische Löschung bedeutet
 - **UND** erläutert, dass `deactivated` nicht automatisch durch Login aufgehoben wird und eine separate Reaktivierung verlangt
 - **UND** macht kenntlich, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen können
-- **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus dem letzten `login`-Event der aktiven `instanceId` ableitet
+- **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus dem letzten erfolgreichen `login`-Event der aktiven `instanceId` ableitet
 
 #### Scenario: Root- oder plattformweite Administration erhält keinen Tenant-Regeltab
 
@@ -1473,7 +1511,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 #### Scenario: Unkonfigurierter Tenant erzeugt keinen leeren Admin-Zustand
 
 - **WENN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
-- **DANN** zeigt die UI die Baseline-Defaults `90 / 180 / 365`, die geerbte Strategie `beibehalten` und den Override-Default `deaktiviert` als wirksamen Zustand
+- **DANN** zeigt die UI die Baseline-Defaults `365 / 730 / 1.095`, die geerbte Strategie `beibehalten` und den Override-Default `deaktiviert` als wirksamen Zustand
 - **UND** verwendet sie keinen leeren oder mehrdeutigen Empty-State anstelle dieser wirksamen Standardwerte
 
 ### Requirement: Self-Service zeigt Löschregeln und Inhaltspräferenz transparent an
@@ -1484,10 +1522,10 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 
 - **WENN** ein authentifizierter Benutzer `/account/privacy` oder die zugehörige Datenschutzfläche seines Accounts öffnet
 - **DANN** sieht er die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete
-- **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `90 / 180 / 365` als wirksame Standardwerte
+- **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `365 / 730 / 1.095` als wirksame Standardwerte
 - **UND** sieht er bei nicht konfigurierten Tenants `beibehalten` als geerbte wirksame Default-Inhaltsstrategie
-- **UND** wird erklärt, dass die Fristen sich auf den letzten `login`-Zeitpunkt innerhalb der aktiven `instanceId` beziehen
-- **UND** wird erklärt, dass Accounts ohne Login-Event in V1 nicht automatisch in den Inaktivitäts-Lifecycle fallen
+- **UND** wird erklärt, dass jede der drei Fristen ein absoluter Schwellwert seit dem letzten erfolgreichen `login`-Event innerhalb der aktiven `instanceId` ist und nicht auf der vorherigen Lifecycle-Stufe aufbaut
+- **UND** wird erklärt, dass Accounts ohne erfolgreiches Login-Event in V1 nicht automatisch in den Inaktivitäts-Lifecycle fallen
 - **UND** sieht der Benutzer den aktuell wirksamen Strategiewert für eigene Inhalte im Scope `iam.contents`
 - **UND** werden die zulässigen Strategiewerte `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln` verständlich benannt
 - **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen oder die jeweils erreichte Account-Stufe auf Inhalte spiegeln
@@ -1666,4 +1704,148 @@ Das System MUST Host- und Plugin-Oberflächen gegen eine gemeinsame negative und
 - **WENN** ein Benutzer zwischen zwei Organisationen mit unterschiedlichen effektiven Permissions wechselt
 - **DANN** verifiziert ein Integrationstest, dass keine Aktion aus dem alten Scope sichtbar oder ausführbar bleibt
 - **UND** wird kein Permission-Flash als positive Freigabe gerendert
+
+### Requirement: Benutzerverwaltung kann technische Accounts bearbeiten und filtern
+
+Die Account-UI SHALL die technische Account-Klassifikation in Erstellung und Detailbearbeitung anbieten. Die Benutzerliste SHALL technische Accounts standardmäßig ausblenden und eine explizite Filteroption „Auch technische Accounts anzeigen“ anbieten. Filterung und Pagination SHALL auf demselben serverseitigen Sichtbarkeitsvertrag beruhen.
+
+#### Scenario: Accountliste startet ohne technische Accounts
+
+- **WHEN** ein berechtigter Administrator die Accountliste ohne expliziten technischen Filter öffnet
+- **THEN** sendet die UI `includeTechnicalAccounts = false` oder verlässt sich auf den gleichwertigen Serverstandard
+- **AND** enthält die Liste keine Accounts mit `isTechnicalAccount = true`
+- **AND** entsprechen Gesamtzahl und Seitenanzahl der sichtbaren Treffermenge
+
+#### Scenario: Administrator blendet technische Accounts ein
+
+- **WHEN** der Administrator „Auch technische Accounts anzeigen“ aktiviert
+- **THEN** lädt die UI die Liste mit `includeTechnicalAccounts = true` neu
+- **AND** setzt sie die aktuelle Seite auf 1 zurück
+- **AND** kennzeichnet technische Accounts mit einem lokalisierten Badge
+- **AND** bleiben Suche, Status- und Rollenfilter kombinierbar
+
+#### Scenario: Administrator bearbeitet die technische Eigenschaft
+
+- **WHEN** ein zur Account-Bearbeitung berechtigter Administrator die Account-Erstellung oder Account-Detailseite öffnet
+- **THEN** bietet die UI das boolesche Feld „Ist ein technischer Account“ an
+- **AND** erläutert sie, dass das Merkmal den Account von Kontolöschungsregeln ausnimmt
+- **AND** behauptet sie keine automatische Sperrung von Login, Rollen oder anderen Accountfunktionen
+
+#### Scenario: Technisches Flag verändert Accountaktionen nicht automatisch
+
+- **WHEN** ein technischer Account in der eingeblendeten Liste oder im Detail angezeigt wird
+- **THEN** richten sich vorhandene Aktionen weiterhin nach ihren bestehenden Permissions und Accountzuständen
+- **AND** sperrt oder aktiviert die UI keine Aktion allein aufgrund von `isTechnicalAccount`
+
+#### Scenario: Entfernen des Flags warnt vor erneuter Lifecycle-Teilnahme
+
+- **GIVEN** ein Account ist aktuell als technisch klassifiziert
+- **WHEN** ein Administrator das Flag im Accountdetail entfernt
+- **THEN** weist die UI verständlich darauf hin, dass der Account ab dem nächsten Lauf wieder den unveränderten Inaktivitätsregeln unterliegt
+- **AND** behauptet sie weder eine sofortige Reaktivierung noch eine automatische Änderung anderer Accountmerkmale
+
+### Requirement: Paginierte Benutzerlisten täuschen keine globale Sortierung vor
+
+Das System MUST Sortieraktionen in paginierten Tenant- und Plattform-Benutzerlisten nur anbieten, wenn die führende Benutzerquelle die vollständige gefilterte Ergebnismenge für das jeweilige Feld korrekt sortieren kann.
+
+#### Scenario: Keycloak unterstützt die dargestellten Sortierfelder nicht global
+
+- **GIVEN** eine Tenant- oder Plattform-Benutzerliste wird seitenweise aus Keycloak und lokalen Projektionen zusammengesetzt
+- **AND** die führende Quelle unterstützt keine globale Sortierung für eine dargestellte Spalte
+- **WHEN** ein Administrator die paginierte Benutzerliste öffnet
+- **THEN** zeigt die Spalte keine Sortieraktion
+- **AND** sortiert der Browser nicht ausschließlich die aktuell geladene Benutzerseite
+
+#### Scenario: Unpaginierte Benutzer-Teilansicht besitzt einen Vollbestand
+
+- **GIVEN** eine getrennte Benutzer-Teilansicht enthält nachweislich den vollständigen gefilterten Datenbestand
+- **WHEN** sie eine fachlich korrekte clientseitige Sortierung anbietet
+- **THEN** darf sie den expliziten Tabellenmodus `client` verwenden
+- **AND** wird diese Sortierung nicht allein wegen der deaktivierten paginierten Hauptlisten entfernt
+
+### Requirement: Interne Entflechtung bewahrt den Vertrag der Account-Profilseite
+
+Das System SHALL die Account-Profilseite so strukturieren, dass framework-unabhängige Formularregeln, asynchroner Seitenzustand und zugängliche Präsentation getrennt weiterentwickelt werden können, ohne den bestehenden Profil-, IAM- oder Credential-Self-Service-Vertrag zu verändern.
+
+#### Scenario: Seitenzustände bleiben vollständig
+
+- **WENN** die Account-Profilseite lädt, eine Anfrage fehlschlägt oder ein Nutzer nicht angemeldet ist
+- **DANN** bleiben die bestehenden Lade-, Fehler-, Diagnose-, Retry- und Anmeldepfade erhalten
+- **UND** die Zustände behalten ihre zugänglichen Status- und Fokusmerkmale
+
+#### Scenario: Editierbarkeit und Mutation bleiben unverändert
+
+- **WENN** ein Tenant-Nutzer Profildaten bearbeitet oder ein Plattformprofil die Seite read-only verwendet
+- **DANN** bleiben Formularfelder, Validierung, normalisierte Mutation und IAM-seitige Editierbarkeit unverändert
+- **UND** Erfolg, Fehler, Fokusführung und Fehlerzuordnung bleiben zugänglich wahrnehmbar
+
+#### Scenario: Credential-Rückkehrstatus bleibt orthogonal erhalten
+
+- **WENN** `/account` mit einem bekannten, fehlenden oder ungültigen `accountAction`-Parameter aufgerufen wird
+- **DANN** bleibt das Verhalten des bestehenden Changes `add-account-credential-self-service` unverändert
+- **UND** das interne Refactoring definiert oder überschreibt keinen Credential-Self-Service-Vertrag
+
+### Requirement: Studio benennt erforderliche Berechtigungen verständlich und technisch eindeutig
+
+Die Account- und Fach-UI MUST strukturierte Berechtigungsablehnungen über einen gemeinsamen lokalisierten Darstellungspfad ausgeben. Jede belastbar bekannte Permission MUST mit ihrem verständlichen lokalisierten Namen und ihrer technischen Action-ID erscheinen; fehlt ein Name, MUST die validierte Action-ID als sicherer Fallback sichtbar bleiben.
+
+#### Scenario: Einzelne Permission fehlt
+
+- **WHEN** die UI einen validierten Denial mit `permission_missing` und `iam.user.write` erhält
+- **THEN** zeigt sie sinngemäß „Fehlende Berechtigung: Benutzer bearbeiten (`iam.user.write`)“
+- **AND** verwendet sie den zentral registrierten deutschen oder englischen Berechtigungsnamen
+
+#### Scenario: Lokalisierter Name ist nicht verfügbar
+
+- **WHEN** eine validierte Action-ID keinen auflösbaren lokalisierten Namen besitzt
+- **THEN** zeigt die UI mindestens die technische Action-ID
+- **AND** fällt die gesamte Fehleranzeige nicht aus
+
+#### Scenario: Alle aufgeführten Permissions sind erforderlich
+
+- **WHEN** ein Denial mehrere Permissions mit `requirement_mode = allOf` enthält
+- **THEN** benennt die UI alle tatsächlich fehlenden Permissions als gemeinsam erforderlich
+- **AND** zeigt sie für jede Permission Name und Action-ID beziehungsweise den Action-ID-Fallback
+
+#### Scenario: Eine alternative Permission ist ausreichend
+
+- **WHEN** ein Denial mehrere Permissions mit `requirement_mode = anyOf` enthält
+- **THEN** kommuniziert die UI, dass eine der aufgeführten Berechtigungen erforderlich ist
+- **AND** behauptet sie nicht, dass sämtliche Alternativen gleichzeitig vergeben werden müssen
+
+#### Scenario: Permission ist im aktuellen Kontext nicht ausreichend
+
+- **WHEN** der Denial-Grund einen Scope-, Hierarchie- oder ABAC-Konflikt beschreibt
+- **THEN** benennt die UI die erforderliche Action
+- **AND** erklärt sie, dass die Berechtigung im aktuellen Kontext nicht ausreicht
+- **AND** bezeichnet sie die Action nicht fälschlich als vollständig fehlend
+
+#### Scenario: Permission-Zustand ist technisch nicht verfügbar
+
+- **WHEN** die Berechtigungsauflösung degradiert oder technisch fehlgeschlagen ist
+- **THEN** zeigt die UI einen lokalisierten Verfügbarkeits- oder Retry-Zustand
+- **AND** nennt sie keine spekulativ fehlende Permission
+
+#### Scenario: Berechtigungsfehler ist barrierefrei wahrnehmbar
+
+- **WHEN** eine Berechtigungsablehnung nach Navigation oder Fachaktion dargestellt wird
+- **THEN** verwendet die UI einen bestehenden persistenten und semantisch geeigneten Alert-Zustand
+- **AND** ist die vollständige Information ohne Farbe verständlich
+- **AND** kann die technische Action-ID als Text ausgewählt und kopiert werden
+
+### Requirement: Host und Plugins teilen denselben Permission-Anzeigekatalog
+
+Das Studio MUST lokalisierte Permission-Namen aus einem gemeinsamen Hostvertrag auflösen, der Core-/Host-Permissions und registrierte Plugin-Permissions umfasst. Plugins dürfen für Berechtigungsablehnungen keinen parallelen Formatter oder abweichenden technischen Fehlervertrag benötigen.
+
+#### Scenario: Registrierte Plugin-Permission wird verweigert
+
+- **WHEN** eine registrierte Plugin-Action wie `news.update` serverseitig verweigert wird
+- **THEN** löst der Host den Namen über die registrierte Plugin-Permission-Definition auf
+- **AND** zeigt die gemeinsame Fehlerdarstellung Name und `news.update`
+
+#### Scenario: Übersetzungsvollständigkeit wird geprüft
+
+- **WHEN** Host- oder Plugin-Permissions für die produktive Registry registriert werden
+- **THEN** prüft ein automatisierter Katalogtest die vorgesehenen deutschen und englischen Namen
+- **AND** bleibt die technische Action-ID der Laufzeit-Fallback für kompatible oder unbekannte Erweiterungen
 

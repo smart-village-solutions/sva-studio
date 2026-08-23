@@ -9,8 +9,8 @@ import {
   buildCoverageProjectCommand,
   buildEarlyCoverageGateCommand,
   clearWorkspaceCoverageOutputs,
-  resolveCoveragePlan,
 } from './affected-coverage-gate.ts';
+import { resolveCoveragePlan } from './coverage-plan.ts';
 import { loadWorkspaceProjectRoots } from './nx-project-graph.ts';
 
 const temporaryDirectories: string[] = [];

@@ -6,11 +6,8 @@ import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
-import {
-  planChangedProjectsWithFallback,
-  type ChangedProjectPlan,
-  type ProjectRoot,
-} from './changed-project-plan.ts';
+import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
+import { resolveCoveragePlan, type ResolvedCoveragePlan } from './coverage-plan.ts';
 import {
   validateCoverageShardEvidence,
   writeCoverageShardEvidence,
@@ -93,78 +90,6 @@ export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => 
   });
 };
 
-interface ResolvedCoveragePlan {
-  changedFiles: string[];
-  affectedProjects: string[];
-  changedProjectPlan: ChangedProjectPlan;
-  projectRoots: ProjectRoot[];
-}
-
-interface CoveragePlanDependencies {
-  resolveChangedFiles: typeof resolveChangedFiles;
-  getCoverageProjects: typeof getCoverageProjects;
-  loadNxProjectRoots: typeof loadNxProjectRoots;
-  loadWorkspaceProjectRoots: typeof loadWorkspaceProjectRoots;
-}
-
-const coveragePlanDependencies: CoveragePlanDependencies = {
-  resolveChangedFiles,
-  getCoverageProjects,
-  loadNxProjectRoots,
-  loadWorkspaceProjectRoots,
-};
-
-export const resolveCoveragePlan = (
-  options: BaseHeadCliOptions,
-  full: boolean,
-  fullProjects: string[],
-  dependencies: CoveragePlanDependencies = coveragePlanDependencies
-): ResolvedCoveragePlan => {
-  try {
-    const changedFiles = dependencies.resolveChangedFiles(options.base, options.head);
-    const affectedProjects = dependencies.getCoverageProjects(options.base, options.head, full);
-    const projectRoots = dependencies.loadNxProjectRoots();
-    return {
-      changedFiles,
-      affectedProjects,
-      projectRoots,
-      changedProjectPlan: planChangedProjectsWithFallback(
-        changedFiles,
-        affectedProjects,
-        () => projectRoots,
-        fullProjects
-      ),
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(
-      `Base-/Head-Scope ist ungültig; verwende vollständigen Coverage-Fallback: ${message}`
-    );
-    const projectRoots = dependencies.loadWorkspaceProjectRoots();
-    const knownProjects = new Set(projectRoots.map((project) => project.name));
-    const missingProjectRoots = fullProjects.filter((project) => !knownProjects.has(project));
-    if (missingProjectRoots.length > 0) {
-      throw new Error(
-        `Coverage-Fallback kann Projektroots nicht auflösen: ${missingProjectRoots.join(', ')}`,
-        { cause: error }
-      );
-    }
-
-    return {
-      changedFiles: [],
-      affectedProjects: fullProjects,
-      projectRoots,
-      changedProjectPlan: {
-        mode: 'full-fallback',
-        reason: 'invalid-base-head-or-project-graph',
-        directProjects: [],
-        remainingProjects: fullProjects,
-        unmappedFiles: [],
-      },
-    };
-  }
-};
-
 const executeCoveragePlan = (
   options: BaseHeadCliOptions,
   resolvedPlan: ResolvedCoveragePlan,
@@ -226,7 +151,12 @@ export const runAffectedCoverageGate = (
   clearWorkspaceCoverageOutputs();
   const full = process.env.NX_RUN_FULL === '1';
   const fullProjects = getCoverageProjects(options.base, options.head, true);
-  const resolvedPlan = resolveCoveragePlan(options, full, fullProjects);
+  const resolvedPlan = resolveCoveragePlan(options, full, fullProjects, {
+    resolveChangedFiles,
+    getCoverageProjects,
+    loadNxProjectRoots,
+    loadWorkspaceProjectRoots,
+  });
   const { affectedProjects, changedFiles, changedProjectPlan } = resolvedPlan;
   reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];

@@ -297,6 +297,35 @@ describe('waste annual tour transfer', () => {
     expect(preview.summary.selected).toBe(0);
   });
 
+  it('detects a date-only target tour as possible parallel planning', async () => {
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-06-15' }],
+    });
+    const targetTour = tour({
+      id: '77777777-7777-4777-8777-777777777777',
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2027-06-14' }],
+    });
+
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour]),
+      target: source([targetTour]),
+    });
+
+    expect(preview.tours[0]?.conflicts).toEqual([
+      expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
+    ]);
+    expect(preview.summary.selected).toBe(0);
+  });
+
   it('reports all colliding date resources and resolves the collision with an explicit replacement', async () => {
     const collidingTour = tour({
       recurrence: 'on-demand',

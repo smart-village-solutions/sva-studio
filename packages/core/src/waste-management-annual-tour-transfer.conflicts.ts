@@ -146,6 +146,20 @@ const parallelPlanningConflict = (
     : null;
 };
 
+const tourHasEffectiveDateInYear = (
+  tour: WasteTourRecord,
+  year: number,
+  target: WasteAnnualTourTransferSource
+): boolean =>
+  wasteAnnualTourOverlapsYear(tour, year) ||
+  (tour.customDates ?? []).some((item) => wasteAnnualYearOf(item.date) === year) ||
+  wasteAnnualRelationshipsFor(target.locationTourPickupDates, tour.id).some(
+    (item) => wasteAnnualYearOf(item.pickupDate) === year
+  ) ||
+  wasteAnnualRelationshipsFor(target.tourAssignments, tour.id).some(
+    (item) => wasteAnnualYearOf(item.pickupDate) === year
+  );
+
 export const findWasteAnnualTourConflicts = (
   sourceTourId: string,
   mapped: WasteAnnualTourTransferMappedTour,
@@ -169,7 +183,8 @@ export const findWasteAnnualTourConflicts = (
   const targetYear = wasteAnnualYearOf(wasteAnnualEffectiveDates(mapped)[0] ?? '') ?? 0;
   return target.tours
     .filter(
-      (tour) => tour.id !== mapped.targetTour.id && wasteAnnualTourOverlapsYear(tour, targetYear)
+      (tour) =>
+        tour.id !== mapped.targetTour.id && tourHasEffectiveDateInYear(tour, targetYear, target)
     )
     .map((tour) => parallelPlanningConflict(sourceTourId, mapped, tour, target))
     .filter((conflict): conflict is WasteAnnualTourTransferConflict => conflict !== null);

@@ -40,8 +40,7 @@ const emptyProjectionSyncStateRow: ProjectionSyncStateRow = {
   projected_count: 0,
 };
 
-const valueOrDefault = <T>(value: T | undefined, fallback: T): T =>
-  value === undefined ? fallback : value;
+const valueOrDefault = <T>(value: T | undefined, fallback: T): T => value ?? fallback;
 
 const normalizeProjectionSyncStateRow = (
   row: ProjectionSyncStateRow | null

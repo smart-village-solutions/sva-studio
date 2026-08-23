@@ -17,7 +17,7 @@ const readPayloadJson = (value: unknown): Record<string, unknown> =>
 export const mapInsertedProjectionRow = (row: Record<string, unknown>): TestProjectionRow => ({
   id: String(row.id),
   instance_id: String(row.instance_id),
-  projection_scope_key: String(row.projection_scope_key ?? ''),
+  projection_scope_key: readNullableString(row.projection_scope_key) ?? '',
   organization_id: readNullableString(row.organization_id),
   owner_subject_id: readNullableString(row.owner_subject_id),
   owner_user_id: readNullableString(row.owner_user_id),
@@ -147,15 +147,17 @@ const applyProjectionFilters = (
   text: string,
   values: readonly unknown[] | undefined
 ): TestProjectionRow[] => {
-  const scopedInstanceId = String(values?.[0] ?? '');
+  const scopedInstanceId = readNullableString(values?.[0]) ?? '';
   let rows = fixture.projectionRows.filter((row) => row.instance_id === scopedInstanceId);
 
   const contentTypeMatches = [...text.matchAll(/projection\.content_type = \$(\d+)/g)];
   if (contentTypeMatches.length > 0) {
-    const contentTypes = contentTypeMatches
-      .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
-      .filter((value): value is string => typeof value === 'string');
-    rows = rows.filter((row) => contentTypes.includes(row.content_type));
+    const contentTypes = new Set(
+      contentTypeMatches
+        .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
+        .filter((value): value is string => typeof value === 'string')
+    );
+    rows = rows.filter((row) => contentTypes.has(row.content_type));
   }
 
   const mainserverSourceGuardIndex = text.indexOf("projection.source_system <> 'mainserver'");
@@ -189,13 +191,12 @@ const applyProjectionFilters = (
     ...text.matchAll(/projection\.projection_scope_key = ANY\(\$(\d+)::text\[\]\)/g),
   ];
   if (projectionScopeMatches.length > 0) {
-    const allowedScopeKeys = projectionScopeMatches.flatMap((match) =>
-      readStringArrayQueryValue(values, match)
+    const allowedScopeKeys = new Set(
+      projectionScopeMatches.flatMap((match) => readStringArrayQueryValue(values, match))
     );
     rows = rows.filter(
       (row) =>
-        row.source_system !== 'mainserver' ||
-        allowedScopeKeys.includes(row.projection_scope_key ?? '')
+        row.source_system !== 'mainserver' || allowedScopeKeys.has(row.projection_scope_key ?? '')
     );
   }
 
@@ -241,7 +242,7 @@ const queryValue = (
     return fallback;
   }
   const value = values[index];
-  return value === undefined || value === null ? fallback : value;
+  return value ?? fallback;
 };
 
 const scopedCountQueryResult = (

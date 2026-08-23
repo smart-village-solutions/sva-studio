@@ -2,6 +2,7 @@ import { parsePermissionDenialDetails, type PermissionDenialDetails } from '@sva
 
 import { mergeRequestHeaders } from './http-client.js';
 import { combineAbortSignals } from './mainserver-abort-signal.js';
+import { attachMainserverErrorMetadata } from './mainserver-error-metadata.js';
 
 export type MainserverErrorFactory<TError extends Error> = (
   code: string,
@@ -241,27 +242,12 @@ const assertMainserverResponseOk = async <TError extends Error>(
     signal
   );
   const error = resolveMainserverErrorFactory(errorFactory)(code, message, permissionDenial);
-  if (!('httpStatus' in error)) {
-    Object.defineProperty(error, 'httpStatus', {
-      configurable: true,
-      enumerable: false,
-      value: response.status,
-    });
-  }
-  if (permissionDenial && !('permissionDenial' in error)) {
-    Object.defineProperty(error, 'permissionDenial', {
-      configurable: true,
-      enumerable: true,
-      value: permissionDenial,
-    });
-  }
-  if (details !== undefined && !('details' in error)) {
-    Object.defineProperty(error, 'details', {
-      configurable: true,
-      enumerable: true,
-      value: details,
-    });
-  }
+  attachMainserverErrorMetadata({
+    error,
+    httpStatus: response.status,
+    details,
+    permissionDenial,
+  });
   throw error;
 };
 

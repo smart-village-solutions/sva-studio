@@ -1,8 +1,11 @@
 # content-management Specification
 
 ## Purpose
+
 Definiert die fachliche Inhaltsverwaltung für SVA Studio mit tabellarischer Admin-Ansicht, erweiterbarem Core-Modell, kontrolliertem Statusmodell, JSON-Payload-Validierung und nachvollziehbarer Historie.
+
 ## Requirements
+
 ### Requirement: Inhaltsübersicht als tabellarische Admin-Ansicht
 
 Das System MUST eine Seite `Inhalte` bereitstellen, die vorhandene Inhalte in einer tabellarischen Admin-Ansicht darstellt.
@@ -272,48 +275,57 @@ Das System MUST für jeden Inhalt eine lesbare Historie bereitstellen.
 - **UND** jeder Eintrag enthält mindestens Zeitpunkt, Actor, Aktion und betroffenen Änderungsgegenstand
 
 ### Requirement: Content Contributions Register Before UI Materialization
+
 The system SHALL register and validate existing plugin-provided content type contributions in the content phase before later admin and routing phases publish host UI materialization outputs.
 
 This change SHALL NOT introduce a new content admin extension contract. Generic admin resources remain validated by the existing admin resource contract.
 
 #### Scenario: Content type validates before admin phase
+
 - **GIVEN** a plugin declares a content type and an admin resource
 - **WHEN** the host creates the registry snapshot
 - **THEN** content type validation completes before the admin phase runs
 
 #### Scenario: Invalid content contribution stops later phases
+
 - **GIVEN** a plugin declares an invalid content type contribution
 - **WHEN** the content phase validates plugin contributions
 - **THEN** validation fails before admin or route materialization
 
 #### Scenario: Generic admin resource remains content-independent
+
 - **GIVEN** a plugin declares a generic admin resource without a content-type dependency
 - **WHEN** the admin phase validates the contribution
 - **THEN** the host validates the admin resource contract without requiring a content type
 
 ### Requirement: Host-Validated Plugin Content Contributions
+
 The system SHALL accept plugin-provided content contributions only as declarative metadata and SHALL validate content type identifiers, fields, actions, and UI bindings before they become available in the Studio.
 
 Plugin-provided content UI components MAY render host-provided data and trigger host-supported actions. Plugins SHALL NOT define direct persistence paths, server handlers, request validation bypasses, or dynamic content-type registration after the validated build-time snapshot is published.
 
 #### Scenario: Valid content contribution is registered
+
 - **GIVEN** a plugin declares a namespaced content type with host-supported bindings
 - **WHEN** the host validates the plugin registry snapshot
 - **THEN** the content contribution becomes available through host-owned content routes and actions
 
 #### Scenario: Content contribution uses unsupported runtime behavior
+
 - **GIVEN** a plugin declares content behavior that requires direct persistence, routing, or authorization control
 - **WHEN** the host validates the contribution
 - **THEN** the host rejects the contribution with a deterministic diagnostics result
 - **AND** the diagnostics include one of `plugin_guardrail_persistence_bypass`, `plugin_guardrail_route_bypass`, `plugin_guardrail_authorization_bypass`, or `plugin_guardrail_unsupported_binding`
 
 #### Scenario: Content UI triggers host-owned action
+
 - **GIVEN** a plugin content UI renders a publish button bound to a declared host-supported action
 - **WHEN** a user triggers the action
 - **THEN** the host performs validation, authorization, persistence, and audit emission
 - **AND** the plugin does not bypass the host content action path
 
 #### Scenario: Plugin attempts dynamic content registration
+
 - **GIVEN** a plugin tries to register a content type after the build-time registry snapshot was published
 - **WHEN** the host receives the dynamic registration attempt
 - **THEN** the host rejects the registration
@@ -374,6 +386,7 @@ Das Content-Management SHALL seine CRUD-artigen Admin-Flaechen ueber denselben h
 - **AND** die Inhaltsverwaltung bleibt fuer den Host als eine kanonische Admin-Ressource adressierbar
 
 ### Requirement: Minimal Content Core Contract
+
 The system SHALL define a minimal host-owned content core contract for identity, content type, owner scope, lifecycle status, validation state, publication metadata, history references, revision references, and audit-relevant metadata.
 
 The host-owned core contract SHALL include at least `contentId`, `contentType`, `instanceId`, optional `organizationId`, optional `ownerUserId`, optional `ownerOrganizationId`, `status`, `validationState`, optional `publishedAt`, optional `publishFrom`, optional `publishUntil`, `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `author`, `historyRef`, optional `currentRevisionRef`, and optional `lastAuditEventRef`.
@@ -381,72 +394,85 @@ The host-owned core contract SHALL include at least `contentId`, `contentType`, 
 Plugins MAY contribute payload schemas, field definitions, UI bindings, display metadata, and additional validation rules for their namespaced `contentType`. Plugins SHALL NOT redefine required core fields, lifecycle status semantics, owner-scope semantics, history/revision references, or audit metadata.
 
 #### Scenario: Content item uses core fields
+
 - **GIVEN** a content item is created for any registered content type
 - **WHEN** the item is persisted
 - **THEN** the host stores the required core fields independently from plugin-specific payload fields
 - **AND** the persisted item can be loaded, authorized, listed, audited, and linked to history without interpreting the plugin payload
 
 #### Scenario: Plugin attempts to redefine core semantics
+
 - **GIVEN** a plugin declares a field or workflow that changes host-owned content status semantics
 - **WHEN** the content type is registered
 - **THEN** the host rejects the contribution with deterministic diagnostics
 - **AND** a semantic change to the host-owned core contract requires a documented host migration instead of a plugin-local override
 
 #### Scenario: Plugin contributes payload schema
+
 - **GIVEN** a plugin declares a namespaced `contentType` with a payload schema and display metadata
 - **WHEN** the host validates the content contribution
 - **THEN** the host attaches the payload schema and display metadata below the content core contract
 - **AND** the core fields remain typed, required, and owned by the host
 
 #### Scenario: Existing content type is migrated into the contract
+
 - **GIVEN** existing persisted content lacks one of the new host-owned core metadata fields
 - **WHEN** the content model migration is applied
 - **THEN** the migration populates or derives the missing core metadata deterministically
 - **AND** records that cannot be migrated are reported with content identifier, content type, scope, and reason
 
 ### Requirement: Host-Owned Content Lifecycle Invariants
+
 The system SHALL keep content lifecycle transitions, publication rules, validation state, history references, and revision references under host control for all content types.
 
 #### Scenario: Status transition is accepted
+
 - **GIVEN** a user requests a supported transition between host-defined content statuses
 - **WHEN** validation and authorization succeed
 - **THEN** the host applies the transition and updates validation, publication, history, revision, and audit metadata consistently
 
 #### Scenario: Plugin declares unsupported lifecycle transition
+
 - **GIVEN** a plugin declares a lifecycle transition outside the host-owned status model
 - **WHEN** the host validates the plugin registry snapshot
 - **THEN** the host rejects the contribution with a deterministic lifecycle diagnostics result
 
 #### Scenario: Published content requires publication metadata
+
 - **GIVEN** a content item is moved to a published state
 - **WHEN** the host validates the mutation
 - **THEN** required publication metadata is present and internally consistent
 - **AND** invalid publication windows or missing required metadata reject the mutation before persistence
 
 ### Requirement: Content Actions Declare Capabilities
+
 The system SHALL require mutating content actions to declare their domain capability so that UI availability, API authorization, diagnostics, and audit classification use the same mapping.
 
 Read-only navigation MAY continue to use existing read permissions directly. Any action that creates, updates, deletes, publishes, archives, restores, bulk-edits, or changes review state SHALL declare a supported capability.
 
 #### Scenario: Content action declares capability
+
 - **GIVEN** a content action declares a supported domain capability
 - **WHEN** the action is rendered or executed
 - **THEN** the host uses the mapped primitive action for availability and authorization
 - **AND** the action metadata exposes enough information for audit classification without allowing plugin-owned audit emission
 
 #### Scenario: Content action omits capability
+
 - **GIVEN** a mutating content action has no declared capability
 - **WHEN** the content type is registered
 - **THEN** the host rejects the action declaration with `capability_mapping_missing`
 - **AND** the action is not published in the registry snapshot
 
 #### Scenario: Content action declares unsupported capability
+
 - **GIVEN** a content action declares a capability that is not supported by the host mapping
 - **WHEN** the content phase validates plugin or core content contributions
 - **THEN** validation fails before admin UI materialization
 - **AND** the diagnostic includes the content type, action identifier, declared capability, and owning namespace when available
 
 #### Scenario: Bulk action applies one mapping consistently
+
 - **GIVEN** a user triggers a bulk content action for multiple content items
 - **WHEN** the host evaluates the action
 - **THEN** the same declared domain capability is resolved once per authorization context
@@ -801,68 +827,81 @@ The facade SHALL validate session, instance context, local content primitives, C
 - **AND** the UI receives a stable plugin-facing error response
 
 ### Requirement: Standard Content Plugins Use A Shared CRUD Registration Path
+
 The system SHALL treat CRUD-style content plugins as standard plugins that register their productive list, detail, and editor UI through the shared host-owned admin resource path.
 
 Standard plugins SHALL use canonical host routes, host-owned guard evaluation, host-owned save and mutation dispatch, and host-owned global page actions.
 
 #### Scenario: Standard content plugin registers admin resource
+
 - **GIVEN** a content plugin exposes a normal CRUD workflow
 - **WHEN** it is integrated productively into the Studio host
 - **THEN** it registers through the shared admin resource path instead of relying on plugin-local top-level CRUD routes
 - **AND** the host owns the canonical route tree for list, create, and detail
 
 #### Scenario: Standard plugin tries to keep plugin-local CRUD route as productive path
+
 - **GIVEN** a CRUD-style content plugin also declares free plugin routes for the same productive list, create, or detail workflow
 - **WHEN** the shared content plugin contract is validated
 - **THEN** the host rejects or flags that setup as an invalid bypass of the standard path
 - **AND** the plugin must move the productive CRUD path to the shared host-owned resource contract
 
 ### Requirement: Registered Content View Bindings
+
 The system SHALL allow standard content plugins to provide specialized content list, detail, and editor bindings only through an explicit content UI registration contract while preserving host-owned content core semantics.
 
 The registration contract SHALL identify the affected admin resource or `contentType`, the binding kind (`list`, `detail`, or `editor`), and the React binding component or host-approved binding reference used for materialization.
 
 #### Scenario: Package registers specialized editor binding
+
 - **GIVEN** a package registers a specialized editor binding for its namespaced content type
 - **WHEN** the host validates and publishes the content registry snapshot
 - **THEN** the binding is attached to that content type through the content UI registration contract
 - **AND** host-owned validation, permissions, persistence, and save behavior remain unchanged
 
 #### Scenario: Package registers unsupported binding kind
+
 - **GIVEN** a package attempts to register a binding outside the supported kinds `list`, `detail`, or `editor`
 - **WHEN** the contract is validated
 - **THEN** the registration is rejected with deterministic diagnostics
 
 #### Scenario: Package replaces host-owned content core behavior
+
 - **GIVEN** a package binding attempts to replace host-owned status, publication, history, or persistence behavior
 - **WHEN** the UI contribution is validated
 - **THEN** the host rejects the contribution as outside the specialization boundary
 
 ### Requirement: Existing Content Plugins Are The Reference Migration For The Standard Path
+
 The system SHALL use the existing content plugins `@sva/plugin-news`, `@sva/plugin-events`, and `@sva/plugin-poi` as the reference migration set for the specialized content binding contract.
 
 #### Scenario: Existing content plugins register specialized bindings
+
 - **GIVEN** `@sva/plugin-news`, `@sva/plugin-events`, and `@sva/plugin-poi` expose their existing list, detail, or editor pages
 - **WHEN** the migration to the new contract is completed
 - **THEN** those bindings are registered through the shared host-owned admin resource and content UI registration contract
 - **AND** the productive Mainserver-backed data path of each plugin remains unchanged
 
 #### Scenario: Reference migration preserves host-owned responsibilities
+
 - **GIVEN** one of the existing content plugins uses specialized bindings under the new contract
 - **WHEN** a user loads, edits, saves, or deletes an item in that plugin
 - **THEN** the host continues to own routing, guards, authorization, mutation dispatch, and global page actions
 - **AND** the plugin contributes only the specialized binding surface
 
 #### Scenario: Further content plugin reuses the same contract
+
 - **GIVEN** a future content plugin is added after the reference migration
 - **WHEN** it needs a specialized list, detail, or editor binding
 - **THEN** it uses the same content UI registration contract
 - **AND** it does not require a plugin-specific host extension path outside the shared mechanism
 
 ### Requirement: Exception Path Remains Available For Non-CRUD Plugin Flows
+
 The system SHALL continue to allow free `plugin.routes` for documented non-CRUD plugin flows that do not fit the shared admin resource model.
 
 #### Scenario: Plugin defines non-CRUD exception route
+
 - **GIVEN** a plugin needs a wizard, dashboard, or another domain-specific workflow that is not a normal list-create-detail CRUD path
 - **WHEN** it declares such a route through `plugin.routes`
 - **THEN** the route remains allowed as an explicit exception path
@@ -1090,61 +1129,74 @@ Das System SHALL in tab-basierten Inhaltseditoren die formularweite Speichern- b
 - **THEN** spiegeln beide Positionen denselben Disabled- und Ladezustand wider
 
 ### Requirement: The system SHALL update Mainserver-backed content list projections incrementally after successful single-record mutations
+
 Das System SHALL die fuehrende serverseitige Listenquelle fuer Mainserver-gestuetzte Inhaltstypen nach erfolgreichen Studio-initiierten Einzelmutationen gezielt fuer den betroffenen Datensatz aktualisieren und keinen typweiten Vollrefresh als Standardpfad verwenden.
 
 #### Scenario: Create aktualisiert nur den neuen Datensatz in der Inhaltsliste
+
 - **WENN** ein berechtigter Benutzer einen neuen News-, Event- oder POI-Datensatz erfolgreich ueber Studio im Mainserver anlegt
 - **DANN** aktualisiert das System die fuehrende Listenquelle gezielt fuer genau diesen Datensatz
 - **UND** der restliche Projektionsbestand desselben Inhaltstyps bleibt unveraendert
 - **UND** der neue Datensatz erscheint ohne erzwungenen Vollrefresh des gesamten Inhaltstyps in der Inhaltsliste
 
 #### Scenario: Update aktualisiert nur den geaenderten Datensatz in der Inhaltsliste
+
 - **WENN** ein berechtigter Benutzer einen bestehenden News-, Event- oder POI-Datensatz erfolgreich ueber Studio aendert
 - **DANN** aktualisiert das System die fuehrende Listenquelle gezielt fuer genau diesen Datensatz
 - **UND** die Listenansicht zeigt die geaenderten Metadaten, ohne alle Datensaetze dieses Typs neu aufzubauen
 
 #### Scenario: Delete entfernt nur den betroffenen Datensatz aus der Inhaltsliste
+
 - **WENN** ein berechtigter Benutzer einen bestehenden News-, Event- oder POI-Datensatz erfolgreich ueber Studio loescht
 - **DANN** entfernt das System gezielt genau diesen Datensatz aus der fuehrenden Listenquelle
 - **UND** der Loeschvorgang startet keinen typweiten Neuaufbau aller Datensaetze desselben Inhaltstyps
 
 ### Requirement: The system SHALL retain periodic full refresh only as reconciliation path for Mainserver-backed content lists
+
 Das System SHALL den periodischen Vollabgleich fuer Mainserver-gestuetzte Inhaltstypen als Reconciliation-Pfad fuer externe Aenderungen, Drift und Fehlerfaelle behalten, aber nicht als Standardreaktion auf jede erfolgreiche Einzelmutation verwenden.
 
 #### Scenario: Externe Mainserver-Aenderung wird weiter ueber Reconciliation sichtbar
+
 - **WENN** ein News-, Event- oder POI-Datensatz ausserhalb von Studio direkt im Mainserver geaendert, angelegt oder geloescht wird
 - **DANN** darf das System diese Aenderung weiterhin ueber den periodischen Vollabgleich in die fuehrende Listenquelle uebernehmen
 - **UND** der gezielte Mutationspfad muss dafuer nicht alle externen Aenderungen selbst abdecken
 
 #### Scenario: Gezielte Nachsynchronisation scheitert nach erfolgreicher Mutation
+
 - **WENN** eine Studio-Mutation im Mainserver erfolgreich war, aber die gezielte Projektionsaktualisierung den Datensatz nicht deterministisch nachladen oder entfernen kann
 - **DANN** bleibt die Mutation fachlich erfolgreich
 - **UND** das System protokolliert den Fehler deterministisch
 - **UND** der periodische Vollabgleich bleibt fuer die spaetere Reconciliation zustaendig
 
 ### Requirement: The system SHALL keep Mainserver-backed list snapshots account-isolated and stale-readable
+
 Das System SHALL die fuehrende Listenquelle fuer Mainserver-gestuetzte Inhaltstypen pro Account und effektivem Scope isoliert persistieren und bei Listenanfragen immer einen vorhandenen Snapshot ausliefern koennen, auch wenn dieser veraltet ist.
 
 #### Scenario: Zwei Accounts derselben Organisation teilen keinen Snapshot
+
 - **WENN** zwei Benutzer derselben Instanz und derselben Organisation unterschiedliche `actorAccountId`-Kontexte haben
 - **DANN** teilen sie keine Mainserver-Projektionszeilen oder Sync-Zustaende derselben Inhaltsliste
 - **UND** ein bereits geladener Snapshot des einen Accounts wird nicht als Fuehrungsquelle fuer den anderen Account wiederverwendet
 
 #### Scenario: Persistenz-Scope verwendet den account- und organisationsgebundenen Vertrag
+
 - **WENN** das System eine Mainserver-Projektion liest, schreibt, dedupliziert oder loescht
 - **DANN** verwendet es konsistent einen Scope-Vertrag aus `instanceId`, `actorAccountId`, `activeOrganizationId` und `contentType`
 - **UND** es verwendet fuer diese Operationen keinen `keycloakSubject`-Fallback als persistenten Scope-Ersatz
 
 #### Scenario: Tabelle zeigt veralteten Snapshot waehrend Hintergrund-Refresh
+
 - **WENN** fuer einen Account bereits eine persistierte Mainserver-Projektion existiert
 - **UND** im Hintergrund ein Refresh neuerer Daten laeuft oder fehlschlaegt
 - **DANN** liefert die Inhaltsliste weiterhin den vorhandenen Snapshot aus
 - **UND** die Tabelle bleibt nutzbar, statt auf die Vollstaendigkeit des Refreshs zu warten
 
 ### Requirement: The system SHALL refresh newest Mainserver list pages first after login or session activation
+
 Das System SHALL fuer sichtbare Mainserver-Inhaltstypen nach Login oder relevantem Session-Aufbau zuerst die jeweils neuesten Datensaetze in die persistierte Listenquelle laden und erst danach aeltere Daten nachziehen.
 
 #### Scenario: Erste Seiten aller sichtbaren Typen werden zuerst geladen
+
 - **WENN** ein berechtigter Benutzer eine Session mit sichtbaren Mainserver-Inhaltstypen aufbaut
 - **DANN** startet das System einen Hintergrund-Refresh fuer alle sichtbaren Mainserver-Typen
 - **UND** es laedt fuer jeden Typ zuerst die erste Seite mit den neuesten Datensaetzen
@@ -1152,11 +1204,13 @@ Das System SHALL fuer sichtbare Mainserver-Inhaltstypen nach Login oder relevant
 - **UND** es wartet nicht auf den Vollimport aller aelteren Seiten, bevor erste Ergebnisse in der Liste verfuegbar sind
 
 #### Scenario: Aeltere Seiten folgen erst nach dem ersten Seitenblock
+
 - **WENN** fuer alle sichtbaren Mainserver-Typen die erste Seite erfolgreich geschrieben oder zumindest versucht wurde
 - **DANN** darf das System aeltere Seiten derselben Typen progressiv nachladen
 - **UND** die Inhaltsliste bleibt waehrenddessen auf dem bereits verfuegbaren Snapshot lesbar
 
 #### Scenario: Hintergrund-Refresh laeuft auch ohne spaeteren Listenaufruf weiter
+
 - **WENN** der Login-nahe Refresh bereits gestartet wurde
 - **UND** der Benutzer die Inhaltsliste in dieser Session zunaechst nicht oeffnet
 - **DANN** darf der Refresh trotzdem weiterlaufen
@@ -2308,3 +2362,249 @@ Das System MUST bei einer Aktualisierung ausschließlich die vom jeweiligen Edit
 - **WHEN** sich ein Providerfeld zwischen dem vorbereitenden Read und der Mutation extern ändert
 - **THEN** verspricht Studio keine konfliktfreie Zusammenführung
 - **AND** stellt es Read-Merge-Write nicht als Schutz vor Last-Writer-Wins-Verlusten dar
+
+### Requirement: FAQ ist ein abgegrenzter GenericItem-Fachinhalt
+
+Das System MUST FAQ als namespaceten Content-Type `faq.faq` und als eigenständige redaktionelle Fachfläche bereitstellen. FAQ-Datensätze MUST im Mainserver als GenericItem mit `genericType` gleich `FAQ` gespeichert und in der gemeinsamen Inhaltsübersicht ausschließlich als `faq.faq` dargestellt werden. Das FAQ-Plugin MUST dem etablierten Standard-Content-Plugin-Muster folgen: Es registriert eine FAQ-Admin-Ressource mit spezialisierten `list`-, `detail`- und `editor`-Bindings sowie FAQ-CRUD-Pfaden; der Host blendet deren eigene Navigation zugunsten der gemeinsamen Inhaltsübersicht aus.
+
+#### Scenario: FAQ wird als Fachinhalt angelegt
+
+- **WHEN** ein Benutzer mit `faq.create` eine FAQ anlegt
+- **THEN** stellt das System ausschließlich die fachlich erlaubten FAQ-Felder bereit
+- **AND** persistiert den Datensatz als GenericItem mit `genericType` gleich `FAQ`
+- **AND** zeigt ihn in der Inhaltsübersicht als `faq.faq`
+
+#### Scenario: FAQ wird aus der Inhaltsübersicht im Facheditor geöffnet
+
+- **GIVEN** ein Benutzer darf `faq.read` ausführen
+- **WHEN** er eine FAQ in der Inhaltsübersicht auswählt oder dort eine FAQ anlegt
+- **THEN** navigiert der Host über den registrierten FAQ-Detail- oder Editor-Pfad zu dessen spezialisiertem Binding
+- **AND** bleibt die FAQ in der gemeinsamen Inhaltsübersicht auffindbar
+- **AND** bleiben Routing, Guards, Autorisierung, globale Aktionen und History hostgeführt
+
+#### Scenario: FAQ-Navigation wird zugunsten der Inhaltsübersicht ausgeblendet
+
+- **WHEN** der Host die FAQ-Admin-Ressource und ihre Navigation registriert
+- **THEN** blendet er die direkte FAQ-Navigation in der Hauptnavigation aus
+- **AND** bleibt die FAQ über die gemeinsame Inhaltsübersicht als `faq.faq` erreichbar
+
+#### Scenario: FAQ wird in der gemeinsamen Inhaltsübersicht nicht doppelt angezeigt
+
+- **GIVEN** ein GenericItem mit `genericType` gleich `FAQ`
+- **WHEN** die gemeinsame Inhaltsübersicht ihre Inhaltsprojektion aktualisiert
+- **THEN** klassifiziert das System den Datensatz als `faq.faq`
+- **AND** zeigt ihn nicht zusätzlich als `generic-items.generic-item` an
+- **AND** bleibt die generische Darstellung im eigenständigen Generic-Items-Modul davon unberührt
+
+### Requirement: FAQ-Fachmodell ist auf Frage, Antwort, Sprache und Publikationsmetadaten begrenzt
+
+Das System MUST für FAQ ausschließlich Frage, Nur-Text-Antwort, Sprachcode, Sortiergewichtung, Sichtbarkeit und Veröffentlichungszeitpunkt bearbeiten. Frage, Antwort und Sprachcode MUST Pflichtfelder sein. Der Sprachcode MUST ein normalisierter BCP-47-Tag sein. Andere GenericItem-Eingabefelder, insbesondere Medien, Kategorien, Kontakte, Orte und freie Payload-Bearbeitung, MUST in der FAQ-Oberfläche nicht verfügbar sein.
+
+#### Scenario: Gültige FAQ wird gespeichert
+
+- **WHEN** ein Benutzer eine nichtleere Frage, eine nichtleere Nur-Text-Antwort und einen gültigen Sprachcode mit gültigen Publikationsmetadaten speichert
+- **THEN** speichert das System die Frage in `title`, die Antwort als alleinigen Eintrag in `contentBlocks: [{ body: answer }]`, den Sprachcode in `payload.languageCode` und die Metadaten in ihren kanonischen GenericItem-Feldern
+
+#### Scenario: HTML in der Antwort wird abgewiesen
+
+- **WHEN** ein Benutzer eine Antwort mit HTML-Markup speichert
+- **THEN** weist das System die Speicherung mit einer feldbezogenen Validierungsmeldung ab
+- **AND** verändert keinen bestehenden Datensatz
+
+### Requirement: FAQ-Editor folgt dem Standard-Content-Workspace
+
+Das System MUST den FAQ-Editor mit dem etablierten Detail-Workspace der redaktionellen Content-Plugins darstellen. Für eine gespeicherte FAQ MUST der Workspace die Tabs `Basis`, `Inhalt`, `Einstellungen` und `Historie` in dieser Reihenfolge anbieten. Der Tab `Basis` MUST Frage und Sprachcode enthalten; der Tab `Inhalt` MUST ausschließlich die fachliche Nur-Text-Antwort enthalten; der Tab `Einstellungen` MUST Sichtbarkeit, Veröffentlichungszeitpunkt und Sortiergewicht enthalten. Der Tab `Historie` MUST die hostgeführte Inhaltshistorie lesbar darstellen. Medien, Kategorien, Orte, Kontakte und weitere nicht zum FAQ-Fachmodell gehörende Bereiche dürfen nicht ergänzt werden.
+
+#### Scenario: Antwort wird im Inhalts-Tab bearbeitet
+
+- **GIVEN** ein Benutzer öffnet eine bestehende FAQ zum Bearbeiten
+- **WHEN** er den Tab `Inhalt` auswählt
+- **THEN** kann er dort die Nur-Text-Antwort lesen und bearbeiten
+- **AND** ist das Antwortfeld nicht im Tab `Basis` oder `Einstellungen` sichtbar
+
+#### Scenario: Neue FAQ zeigt nur passende Fachbereiche
+
+- **WHEN** ein Benutzer eine FAQ anlegt
+- **THEN** zeigt das System die Tabs `Basis`, `Inhalt` und `Einstellungen`
+- **AND** zeigt es keinen Historie-Tab, bevor eine Inhalts-ID existiert
+- **AND** zeigt es keine Medien-, Kategorien-, Orts- oder Kontakt-Tabs
+
+#### Scenario: Historie einer gespeicherten FAQ wird angezeigt
+
+- **GIVEN** eine gespeicherte FAQ und ein Benutzer mit Leseberechtigung
+- **WHEN** er den Tab `Historie` öffnet
+- **THEN** lädt das System die hostgeführte Inhaltshistorie für die FAQ-ID
+- **AND** zeigt Zeitpunkt, Aktion, Actor und Zusammenfassung je vorhandenem Eintrag
+- **AND** zeigt es bei fehlenden Einträgen einen verständlichen Leerzustand
+
+#### Scenario: Sprachfassungen werden als eigene FAQ gespeichert
+
+- **GIVEN** eine gespeicherte FAQ mit Sprachcode `de`
+- **WHEN** ein Benutzer dieselbe Frage und Antwort mit Sprachcode `en` anlegt
+- **THEN** speichert das System einen weiteren eigenständigen FAQ-Datensatz
+- **AND** meldet keinen Duplikatkonflikt allein wegen gleicher Frage
+
+#### Scenario: Unvollständige FAQ wird abgewiesen
+
+- **WHEN** eine Frage oder Antwort leer ist
+- **THEN** weist das System die Speicherung mit einer feldbezogenen Validierungsmeldung ab
+- **AND** verändert keinen bestehenden Datensatz
+
+### Requirement: FAQ-Sortierung ist deterministisch steuerbar
+
+Das System MUST im FAQ-Payload die kontrollierten Schlüssel `languageCode` und `sortWeight` führen. Fehlende historische Sprachcodes MUST als `und`, fehlende Sortiergewichte MUST als `0` behandelt werden. Beim Update MUST das System unbekannte bestehende Payload-Schlüssel erhalten und ausschließlich die kontrollierten FAQ-Schlüssel überschreiben. Die FAQ-Fachliste MUST nach Sprachcode, aufsteigendem Sortiergewicht, Frage mit der Locale des Sprachcodes und schließlich ID sortieren.
+
+#### Scenario: Standardgewicht wird verwendet
+
+- **GIVEN** eine FAQ ohne gespeichertes Sortiergewicht
+- **WHEN** das System die FAQ liest oder in der Liste einsortiert
+- **THEN** verwendet es das Sortiergewicht `0`
+
+#### Scenario: Historischer Payload bleibt außerhalb des FAQ-Vertrags erhalten
+
+- **GIVEN** eine FAQ mit dem Payload `{ "legacy": true, "sortWeight": 1 }`
+- **WHEN** ein Benutzer die FAQ mit Sprachcode `de` und Sortiergewicht `2` speichert
+- **THEN** persistiert das System `{ "legacy": true, "languageCode": "de", "sortWeight": 2 }`
+
+#### Scenario: Negative und positive Gewichte steuern die Reihenfolge
+
+- **GIVEN** FAQ mit den Sortiergewichten `-1`, `0` und `1`
+- **WHEN** die Fachliste gerendert wird
+- **THEN** steht die FAQ mit `-1` vor der FAQ mit `0`
+- **AND** steht die FAQ mit `1` nach der FAQ mit `0`
+
+#### Scenario: Gleichrangige FAQ bleiben stabil sortiert
+
+- **GIVEN** zwei FAQ mit gleichem Sprachcode, gleichem Sortiergewicht und identischer Frage
+- **WHEN** die Fachliste gerendert wird
+- **THEN** ordnet das System sie aufsteigend nach ihrer ID
+
+### Requirement: FAQ- und Kachel-Editoren bleiben fachlich reduziert und verwenden gemeinsame Studio-Flächen
+
+Das System MUST FAQ und Kacheln weiterhin ausschließlich über ihre jeweiligen begrenzten Fachmodelle bearbeiten und MUST ihre Editorflächen zugleich auf den gemeinsamen Studio-Detail-Workspace vereinheitlichen. Die Layoutmigration darf keine fachlichen Felder, Persistenzpfade oder direkten Plugin-Abhängigkeiten ergänzen.
+
+#### Scenario: FAQ wird im standardisierten Editor bearbeitet
+
+- **WHEN** ein Benutzer eine FAQ erstellt oder bearbeitet
+- **THEN** zeigt der Editor die Bereiche `Basis`, `Inhalt`, `Einstellungen` und bei gespeicherten FAQ `Historie` über den gemeinsamen Studio-Detail-Workspace
+- **AND** bleiben ausschließlich Frage, Nur-Text-Antwort, Sprachcode, Sortiergewicht, Sichtbarkeit und Veröffentlichungszeitpunkt bearbeitbar
+- **AND** bleiben bestehende Mapper, Payload-Erhaltung und Mainserver-Verträge unverändert
+
+#### Scenario: Kachel wird im standardisierten Editor bearbeitet
+
+- **WHEN** ein Benutzer eine Kachel erstellt oder bearbeitet
+- **THEN** zeigt der Editor die Bereiche `Basis`, `Inhalt`, `Einstellungen` und bei gespeicherten Kacheln `Historie` über den gemeinsamen Studio-Detail-Workspace
+- **AND** gliedert der Inhaltsbereich Text, Bilder und Link in getrennte fachliche Detailkarten
+- **AND** bleiben Medienauswahl, Alternativtext, Feldpfade, Mapper, `externalId` und unbekannte technische Payload-Daten unverändert erhalten
+
+#### Scenario: Kachel-Bilder überstehen Bereichswechsel
+
+- **GIVEN** ein Benutzer hat mehrere Kachel-Bilder ausgewählt, sortiert oder mit Alternativtext versehen
+- **WHEN** er zwischen `Inhalt`, `Basis` und `Einstellungen` wechselt
+- **THEN** bleiben Bilder, Reihenfolge und Alternativtexte unverändert im Formular erhalten
+- **AND** der Editor erzeugt keine doppelten Medienreferenzen
+
+### Requirement: FAQ-Sprachfilter wirkt vor der fachlichen Pagination
+
+Das System MUST den FAQ-Sprachfilter als optionalen URL-Search-Parameter behandeln und auf die vollständige nach `genericType` gleich `FAQ` abgegrenzte Datenmenge anwenden, bevor Sortierung, Gesamtzahl und Pagination berechnet werden. Eine browserseitige Filterung ausschließlich der bereits geladenen Seite ist unzulässig.
+
+#### Scenario: Sprache wird aus der URL gefiltert
+
+- **GIVEN** FAQ mehrerer Sprachcodes liegen über mehrere Mainserver-Seiten verteilt vor
+- **WHEN** ein Benutzer die gemeinsame Inhaltsübersicht mit `type=faq.faq` und einem Sprachfilter öffnet
+- **THEN** filtert der Host die vollständige FAQ-Teilmenge nach dem normalisierten Sprachcode
+- **AND** sortiert und paginiert erst das gefilterte Ergebnis
+- **AND** zeigt die UI den aktiven Filter aus dem URL-State an
+
+#### Scenario: Gefilterte Seite enthält keine Treffer
+
+- **WHEN** für den gewählten Sprachcode keine FAQ vorhanden ist
+- **THEN** zeigt die gemeinsame Inhaltsübersicht einen regulären gefilterten Leerzustand
+- **AND** behauptet sie nicht aufgrund einer nur lokal gefilterten Einzelseite, dass keine Treffer in der Gesamtmenge existieren
+
+#### Scenario: Filter wird geändert oder entfernt
+
+- **WHEN** ein Benutzer den Sprachfilter ändert oder entfernt
+- **THEN** setzt die Liste die Seitennummer auf einen gültigen Ausgangswert zurück
+- **AND** schreibt den neuen Zustand in die URL
+- **AND** bleiben unabhängige Search-Parameter erhalten
+
+### Requirement: FAQ- und Kachel-Fachlisten bieten vollständige URL-gesteuerte Pagination
+
+Das System MUST in FAQ- und Kachel-Fachlisten den normalisierten Seitenzustand aus der URL lesen und sichtbare Vor-/Zurück-Navigation anhand der hostseitigen Pagination bereitstellen.
+
+#### Scenario: Benutzer wechselt die Kachel-Seite
+
+- **WHEN** ein Benutzer in der Kachel-Fachliste vor- oder zurücknavigiert
+- **THEN** aktualisiert das Studio `page` und `pageSize` in der URL
+- **AND** lädt ausschließlich die angeforderte, hostseitig berechnete Kachel-Seite
+- **AND** deaktiviert Navigation über die erste oder letzte bekannte Seite hinaus
+
+#### Scenario: Benutzer navigiert in der FAQ-Fachliste
+
+- **WHEN** ein Benutzer bei aktivem oder inaktivem Sprachfilter die FAQ-Seite der gemeinsamen Inhaltsübersicht wechselt
+- **THEN** bleiben Filter und andere unabhängige Search-Parameter erhalten
+- **AND** beziehen sich Seitenangabe und Navigationszustand auf die vollständige fachlich gefilterte FAQ-Menge
+
+#### Scenario: URL enthält ungültige Listenparameter
+
+- **WHEN** `page` oder `pageSize` fehlt oder einen nicht unterstützten Wert enthält
+- **THEN** normalisiert das Studio den Zustand auf definierte Standardwerte
+- **AND** lädt keine negative, nicht ganzzahlige oder anderweitig ungültige Seite
+
+### Requirement: FAQ- und Kachel-Fachlisten verwenden das vollständige Studio-Übersichtsmuster
+
+Das System MUST FAQ- und Kachel-Fachlisten mit dem gemeinsamen Studio-Übersichtstemplate, einer fachlichen Seitenbeschreibung, der gemeinsamen Datentabelle und konsistenten Lade-, Fehler- und Leerzuständen darstellen.
+
+#### Scenario: FAQ-Fachliste wird dargestellt
+
+- **WHEN** ein Benutzer die FAQ-Fachliste öffnet
+- **THEN** zeigt das Studio Titel, fachliche Beschreibung, Erstellen-Aktion, Sprachfilter und Datentabelle im gemeinsamen Übersichtslayout
+- **AND** verwendet der Sprachfilter bestehende Studio-/shadcn-Formularprimitives
+
+#### Scenario: Kachel-Fachliste wird dargestellt
+
+- **WHEN** ein Benutzer die Kachel-Fachliste öffnet
+- **THEN** zeigt das Studio Titel, fachliche Beschreibung, Erstellen-Aktion, Datentabelle und Pagination im gemeinsamen Übersichtslayout
+- **AND** bleiben Lade-, Fehler- und Leerzustände visuell und semantisch konsistent
+
+### Requirement: FAQ- und Kachel-Historien folgen einem gemeinsamen lesbaren Muster
+
+Das System MUST die hostgeführte Historie von FAQ und Kacheln mit derselben semantischen Tabellenstruktur sowie konsistenten Lade-, Fehler- und Leerzuständen darstellen.
+
+#### Scenario: Historie enthält Einträge
+
+- **WHEN** ein Benutzer den History-Bereich einer gespeicherten FAQ oder Kachel öffnet
+- **THEN** zeigt das Studio Zeitpunkt, lokalisierte Aktion, Actor und Änderungszusammenfassung in einer responsiv nutzbaren semantischen Tabelle
+- **AND** sortiert die Einträge deterministisch nach dem neuesten Zeitpunkt zuerst
+
+#### Scenario: Historie ist leer oder nicht verfügbar
+
+- **WHEN** keine History-Einträge vorhanden sind oder das Laden fehlschlägt
+- **THEN** zeigt das Studio den gemeinsamen Leer- beziehungsweise Fehlerzustand
+- **AND** bleiben die übrigen Editorbereiche und vorhandenen Formulardaten nutzbar
+
+### Requirement: Inhalts-Detailseiten unterscheiden Principal-Laden und Principal-Fehler
+
+Das System SHALL während der vorgelagerten Auflösung des Ressourcenprincipals einer bestehenden Inhalts-Detailseite einen regulären Ladezustand anzeigen. Erst eine fehlgeschlagene oder uneindeutige Auflösung SHALL als dauerhafter Fehler dargestellt werden. In beiden Zuständen SHALL die bestehende Fail-closed-Sperre für Schreibaktionen erhalten bleiben.
+
+#### Scenario: Ressourcenprincipal wird geladen
+
+- **WENN** eine Inhalts-Detailseite den Ressourcenprincipal des bestehenden Inhalts noch auflöst
+- **DANN** zeigt die Oberfläche einen neutralen, höflich angekündigten Ladezustand
+- **UND** zeigt sie keinen destruktiven Alert und keine Fehlermeldung
+- **UND** rendert sie den Editor noch nicht
+
+#### Scenario: Ressourcenprincipal wurde erfolgreich aufgelöst
+
+- **WENN** die Principal-Auflösung einen eindeutigen persönlichen oder organisatorischen Principal liefert
+- **DANN** beendet die Oberfläche den Ladezustand unmittelbar
+- **UND** rendert sie den Editor mit dem aufgelösten festen Principal
+- **UND** wartet sie nicht auf einen Timer oder einen visuellen Übergang
+
+#### Scenario: Ressourcenprincipal kann nicht aufgelöst werden
+
+- **WENN** die Principal-Auflösung fehlschlägt oder keinen eindeutigen zulässigen Principal liefert
+- **DANN** beendet die Oberfläche den Ladezustand
+- **UND** zeigt sie eine dauerhafte destruktive Fehlermeldung
+- **UND** rendert sie den Editor nicht und hält Schreibaktionen fail-closed gesperrt

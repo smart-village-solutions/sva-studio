@@ -1,0 +1,4 @@
+{
+  "prNumber": 1129,
+  "body": "Fünf vollständig umgesetzte Content-Changes formal abgeschlossen\n\n- FAQ-Sprachfilter, FAQ-Editor-Standardisierung, IAM-Inhaltsprojektion, IAM-Medienlaufzeit und der animierte Studio-Ladezustand wurden nach erfolgreichem Production-Rollout archiviert.\n- Die zugehörigen Anforderungen sind jetzt Bestandteil der kanonischen OpenSpec-Spezifikationen.\n- Abschlussnachweise für Main-Gates, SonarCloud, Codecov sowie Staging- und Production-Promote sind in den archivierten Tasklisten dokumentiert."
+}

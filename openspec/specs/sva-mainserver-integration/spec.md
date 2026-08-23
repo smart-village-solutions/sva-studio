@@ -1,8 +1,11 @@
 # sva-mainserver-integration Specification
 
 ## Purpose
+
 This specification defines the host-owned, typed SVA Mainserver integration contract for News, Events, and POI so fachplugins consume Mainserver data and mutations without bypassing package boundaries, per-user delegation, or deterministic validation and error handling.
+
 ## Requirements
+
 ### Requirement: Typed News GraphQL Adapters
 
 The system SHALL expose typed, server-only SVA Mainserver adapters for News list, detail, create, update, and archive-or-delete operations.
@@ -1142,9 +1145,11 @@ Das System MUST die vorhandenen gezielten Mutation-Projection-Loader für News, 
 - **AND** startet er nicht allein deshalb einen blockierenden Vollrefresh des Survey-Bestands
 
 ### Requirement: The system SHALL support targeted projection updates after successful Mainserver content mutations
+
 The system SHALL expose enough typed Mainserver integration surface to refresh a single News, Event, or POI projection row after a successful Studio-initiated mutation without forcing a type-wide list rebuild.
 
 #### Scenario: Create or update uses typed detail read for targeted projection refresh
+
 - **GIVEN** Studio has successfully executed a News, Event, or POI mutation against Mainserver
 - **WHEN** the host refreshes the content-list projection for the affected record
 - **THEN** it loads the affected record through the corresponding typed detail adapter
@@ -1152,15 +1157,18 @@ The system SHALL expose enough typed Mainserver integration surface to refresh a
 - **AND** it upserts only the affected projection row instead of rebuilding the whole content type
 
 #### Scenario: Delete uses record identity for targeted projection removal
+
 - **GIVEN** Studio has successfully executed a News, Event, or POI delete against Mainserver
 - **WHEN** the host refreshes the content-list projection for the affected record
 - **THEN** it removes the projection row by the known record identity and projection scope
 - **AND** it does not require a successful list-wide reload of the same content type
 
 ### Requirement: Mainserver mutation follow-up refresh failures remain deterministic and non-destructive
+
 The system SHALL classify targeted projection-refresh failures after successful Mainserver mutations deterministically and SHALL preserve the existing periodic reconciliation path instead of turning those follow-up failures into implicit mutation rollbacks.
 
 #### Scenario: Detail read after mutation returns unusable data
+
 - **GIVEN** a Mainserver mutation succeeded but the follow-up typed detail read returns missing or invalid data for the affected News, Event, or POI record
 - **WHEN** Studio handles the targeted projection refresh
 - **THEN** Studio first performs a short, bounded retry for the typed detail read
@@ -1169,6 +1177,7 @@ The system SHALL classify targeted projection-refresh failures after successful 
 - **AND** the periodic full reconciliation path remains responsible for eventual consistency
 
 #### Scenario: Mutation refresh is skipped deterministically when actor account resolution breaks
+
 - **GIVEN** Studio has successfully executed a Mainserver mutation
 - **AND** `actorAccountId` unexpectedly cannot be resolved for the follow-up projection refresh
 - **WHEN** Studio evaluates the targeted refresh path
@@ -1177,15 +1186,18 @@ The system SHALL classify targeted projection-refresh failures after successful 
 - **AND** it records the invariant violation deterministically for later investigation
 
 #### Scenario: Targeted projection refresh preserves credential and scope semantics
+
 - **GIVEN** Studio refreshes a single projection row after a successful Mainserver mutation
 - **WHEN** it resolves credentials and projection scope for the follow-up refresh
 - **THEN** it uses the same effective credential policy and scope semantics as the typed Mainserver mutation and projection mapping path
 - **AND** it does not introduce a separate bypass credential flow for targeted refreshes
 
 ### Requirement: Mainserver-backed list projection scope SHALL remain isolated per account and effective credential context
+
 The system SHALL derive the persistent projection scope, sync-state scope, and deduplication scope for Mainserver-backed content lists from the same account-aware context so no two requests with different Mainserver credentials can share a snapshot implicitly.
 
 #### Scenario: Organization context does not collapse two account scopes into one snapshot
+
 - **GIVEN** two users of the same instance act inside the same active organization
 - **AND** their `actorAccountId` differs
 - **WHEN** Studio loads or refreshes the Mainserver-backed list projection
@@ -1193,21 +1205,25 @@ The system SHALL derive the persistent projection scope, sync-state scope, and d
 - **AND** it does not reuse deduplicated rows or refresh progress across the two accounts
 
 #### Scenario: Projection scope contract stays consistent across persistence paths
+
 - **GIVEN** Studio reads, writes, deduplicates, or deletes Mainserver-backed projection rows
 - **WHEN** it derives the persistent scope for those operations
 - **THEN** it uses the same contract based on `instanceId`, `actorAccountId`, `activeOrganizationId`, and `contentType`
 - **AND** it does not persist a `keycloakSubject` fallback as an alternate scope key
 
 #### Scenario: Projection delete uses the same account-aware scope as projection upsert
+
 - **GIVEN** Studio removes a single Mainserver-backed projection row after a successful delete mutation
 - **WHEN** it identifies the row to delete
 - **THEN** it uses the same account-aware projection scope contract as list reads and targeted upserts
 - **AND** it does not remove rows belonging to a different account scope
 
 ### Requirement: Mainserver list refresh SHALL fetch newest pages first and continue older pages progressively
+
 The system SHALL support a paginated refresh strategy for News, Events, and POI list projections that loads the newest upstream pages first and persists them before older pages continue.
 
 #### Scenario: First page uses upstream pagination and newest-first sort
+
 - **GIVEN** Studio starts a background refresh for a Mainserver-backed content type
 - **WHEN** it requests the first page from the typed Mainserver list adapter
 - **THEN** it uses upstream pagination arguments equivalent to `page = 1` and `pageSize = 25`
@@ -1215,12 +1231,14 @@ The system SHALL support a paginated refresh strategy for News, Events, and POI 
 - **AND** it persists the returned page before requesting older pages
 
 #### Scenario: Older pages continue only after first pages of all visible types
+
 - **GIVEN** Studio refreshes multiple visible Mainserver-backed content types for the same account-aware scope
 - **WHEN** the refresh coordinator schedules follow-up pages
 - **THEN** it may continue with older pages only after the first page of each visible type was attempted for that scope
 - **AND** it preserves the same credential and projection-scope semantics for every subsequent page
 
 #### Scenario: Refresh continues after a single page failure
+
 - **GIVEN** Studio is running a progressive background refresh for multiple pages of a visible Mainserver-backed content type
 - **WHEN** one page request fails deterministically
 - **THEN** Studio records the page failure with enough context for observability
@@ -1713,3 +1731,68 @@ Das System MUST Detailabweichungen additiv über den gemeinsamen Host-/SDK-Vertr
 - **THEN** erhält er Datensatz und sichere Abweichungsmetadaten getrennt
 - **AND** enthalten die Browser-Metadaten keine Rohwerte oder internen Fehlertexte
 
+### Requirement: FAQ-Adapter grenzt GenericItem-Datensätze fachlich ab
+
+Das System MUST FAQ über den bestehenden Mainserver-GenericItem-Transport lesen und schreiben, ohne eine parallele Mainserver-Datenentität einzuführen. Der Host-Adapter MUST ausschließlich GenericItems mit `genericType` gleich `FAQ` als FAQ verarbeiten und beim Schreiben diesen Diskriminator erzwingen.
+
+#### Scenario: FAQ-Read enthält nur FAQ-Datensätze
+
+- **WHEN** die FAQ-Fachliste oder ein FAQ-Detail geladen wird
+- **THEN** liefert der Host-Adapter nur GenericItems mit `genericType` gleich `FAQ`
+- **AND** verarbeitet er einen abweichenden Typ nicht als FAQ
+
+#### Scenario: Vollständiges Paging wird vor der FAQ-Pagination gefiltert
+
+- **GIVEN** mehrere Mainserver-Seiten, die sowohl FAQ als auch andere GenericItems enthalten
+- **WHEN** ein Benutzer eine FAQ-Seite abruft
+- **THEN** liest der Adapter alle Upstream-Seiten, bevor er nach `genericType` gleich `FAQ` filtert und sortiert
+- **AND** berechnet er die Seite und Gesamtzahl ausschließlich aus der gefilterten FAQ-Menge
+
+#### Scenario: FAQ-Write erzwingt den Diskriminator
+
+- **WHEN** eine FAQ angelegt oder bearbeitet wird
+- **THEN** setzt der Host-Adapter `genericType` auf `FAQ`
+- **AND** erlaubt der Client nicht, diesen Wert zu verändern
+
+#### Scenario: Fremdtyp-ID kann nicht über FAQ verändert oder gelöscht werden
+
+- **GIVEN** die ID eines GenericItems mit einem `genericType` ungleich `FAQ`
+- **WHEN** ein berechtigter Benutzer dessen FAQ-Detail aufruft oder eine FAQ-Update- beziehungsweise Delete-Operation anfordert
+- **THEN** liefert der Adapter dieselbe Nichtgefunden-Klassifikation wie für eine unbekannte ID
+- **AND** ruft er keine mutierende Mainserver-Operation auf
+
+### Requirement: Content-list projection SHALL preserve its contract across internal module boundaries
+
+The system SHALL preserve the existing authorization, account isolation,
+snapshot, refresh, retry, error and mutation-follow-up semantics while the
+host-side content-list projection is separated into focused internal modules.
+
+#### Scenario: Read projection remains account- and permission-isolated
+
+- **GIVEN** two requests differ in actor account, active organization, effective permission or credential context
+- **WHEN** Studio resolves and reads their Mainserver-backed content projections
+- **THEN** it uses the existing distinct projection and sync-state scopes
+- **AND** it does not reuse rows, refresh progress or authorization decisions across those contexts
+
+#### Scenario: Snapshot and refresh behavior remains stable
+
+- **GIVEN** a projection snapshot is fresh, stale, partial, running, failed or missing
+- **WHEN** Studio handles a filtered or unfiltered content-list request
+- **THEN** it preserves the existing stale-readable and blocking behavior for that state
+- **AND** it preserves the existing hot-phase, reconciliation, generation and retry ordering
+
+#### Scenario: Mutation follow-up remains non-destructive
+
+- **GIVEN** a Mainserver create, update or delete has already succeeded
+- **WHEN** the targeted projection follow-up writes, removes, retries or fails
+- **THEN** it uses the same account-aware target key and source identity as the full projection path
+- **AND** it does not reinterpret the confirmed Mainserver mutation as failed
+- **AND** periodic reconciliation remains the recovery path
+
+#### Scenario: Internal failures remain fail-closed and observable
+
+- **GIVEN** permission resolution, actor resolution, schema compatibility, DataProvider binding or Mainserver loading fails
+- **WHEN** the projection runtime classifies the failure
+- **THEN** it returns or records the existing deterministic error identity
+- **AND** it adds no permissive Principal, credential or authorization fallback
+- **AND** logging remains limited to the existing technical context

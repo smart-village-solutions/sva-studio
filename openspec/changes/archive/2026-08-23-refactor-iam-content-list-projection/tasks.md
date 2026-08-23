@@ -23,5 +23,6 @@
 - [x] 4.1 Betroffene arc42-Baustein-, Runtime- und Querschnittssicht aktualisieren
 - [x] 4.2 Fokussierte Unit-, Type-, Lint-, Server-Runtime- und Coverage-Gates ausführen
 - [x] 4.3 Fallow New-only und Inspect ohne neue Complexity-, Dead-Code- oder Duplikationsbefunde bestätigen
-- [ ] 4.4 Sonar-Befunde für den exakten finalen Stand verifizieren
+- [x] 4.4 Sonar-Befunde für den exakten finalen Stand verifizieren
+  - Abschlussnachweis: SonarCloud analysierte im `main`-Lauf `32662266691` exakt Merge-Commit `d02da0fc14a39db638935a69ab6a388ef08d931f`. Der verbleibende S6478-Maintainability-Befund in der Inhaltsliste stammt unverändert vom 17. August 2026 und ist kein neuer Befund dieses Refactorings; das Quality Gate ist grün.
 - [x] 4.5 `openspec validate refactor-iam-content-list-projection --strict` und `pnpm test:pr` ausführen

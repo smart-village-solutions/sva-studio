@@ -17,14 +17,14 @@ Das Plugin folgt dem aktuellen Standard-Content-Plugin-Muster von News und Event
 
 ### Kanonische Abbildung
 
-| Fachfeld | GenericItem-Feld |
-| --- | --- |
-| Frage | `title` |
-| Antwort | `contentBlocks[0].body` |
-| Sprachcode | `payload.languageCode` |
-| Sortiergewichtung | `payload.sortWeight` |
-| Sichtbarkeit | `visible` |
-| Veröffentlichungszeitpunkt | `publicationDate` |
+| Fachfeld                   | GenericItem-Feld        |
+| -------------------------- | ----------------------- |
+| Frage                      | `title`                 |
+| Antwort                    | `contentBlocks[0].body` |
+| Sprachcode                 | `payload.languageCode`  |
+| Sortiergewichtung          | `payload.sortWeight`    |
+| Sichtbarkeit               | `visible`               |
+| Veröffentlichungszeitpunkt | `publicationDate`       |
 
 Die Frage, die Antwort und der Sprachcode sind Pflichtfelder. Der Sprachcode ist ein normalisierter, nicht leerer BCP-47-Tag (zum Beispiel `de`, `en`, `de-DE` oder `en-GB`). Jede Übersetzung ist ein eigenständiger Datensatz; es gibt keine gruppierende Übersetzungs-ID und keine Eindeutigkeitsregel über Frage und Sprache.
 
@@ -34,7 +34,7 @@ Die Antwort ist reiner Text. Eingaben mit HTML-Markup werden mit einem feldbezog
 
 ### Typ- und Projektionsabgrenzung
 
-Auf Mainserver-Ebene ist `genericType: "FAQ"` die alleinige Diskriminierung. Die Studio-Inhaltsprojektion ordnet solche Datensätze dem Fach-`contentType` `faq.faq` zu und ordnet andere GenericItems weiter `generic-items.generic-item` zu. Dadurch gibt es keine doppelten Einträge in der gemeinsamen Inhaltsübersicht und keine Bearbeitung eines FAQ über das offene Plugin.
+Auf Mainserver-Ebene ist `genericType: "FAQ"` die alleinige Diskriminierung. Die gemeinsame Studio-Inhaltsprojektion ordnet solche Datensätze dem Fach-`contentType` `faq.faq` zu und ordnet andere GenericItems weiter `generic-items.generic-item` zu. Dadurch gibt es keine doppelten Einträge in der gemeinsamen Inhaltsübersicht. Das eigenständige Generic-Items-Modul bleibt davon unberührt und stellt für technisch berechtigte Personen weiterhin alle Mainserver-GenericItems einschließlich FAQ generisch bereit.
 
 ### Listen, Sortierung und Pagination
 

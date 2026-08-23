@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '../src/projects.pages.js';
+
 const state = vi.hoisted(() => ({
   ProjectsApiError: class ProjectsApiError extends Error {
     public constructor(
@@ -186,7 +188,6 @@ describe('projects pages', () => {
   });
 
   it('renders the domain and history tabs and creates a normalized project', async () => {
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
@@ -218,7 +219,6 @@ describe('projects pages', () => {
   });
 
   it('marks invalid controls for the shared validation styling', async () => {
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(
       screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement
@@ -236,7 +236,6 @@ describe('projects pages', () => {
         'Für die aktive Organisation fehlen Mainserver-Credentials.'
       )
     );
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fillRequiredFields();
     fireEvent.click(
@@ -251,7 +250,6 @@ describe('projects pages', () => {
     state.get.mockResolvedValue(project);
     state.update.mockResolvedValue(project);
     state.delete.mockResolvedValue(undefined);
-    const { ProjectsEditPage } = await import('../src/projects.pages.js');
     render(<ProjectsEditPage />);
 
     await screen.findByDisplayValue('Brückenbau');
@@ -278,7 +276,6 @@ describe('projects pages', () => {
   it('renders loading, populated pagination, empty and error list states', async () => {
     let resolveList!: (value: unknown) => void;
     state.list.mockReturnValueOnce(new Promise((resolve) => (resolveList = resolve)));
-    const { ProjectsListPage } = await import('../src/projects.pages.js');
     const view = render(<ProjectsListPage />);
     expect(screen.getByText('messages.loading')).toBeTruthy();
 
@@ -316,7 +313,6 @@ describe('projects pages', () => {
         previewUrl: 'https://example.test/a.pdf',
       },
     ]);
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
 
@@ -377,7 +373,6 @@ describe('projects pages', () => {
         license: 'CC0',
       },
     });
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
@@ -403,7 +398,6 @@ describe('projects pages', () => {
   });
 
   it('accepts a supported image locally without uploading it', async () => {
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
@@ -433,7 +427,6 @@ describe('projects pages', () => {
       ],
       roles: [],
     };
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
 
@@ -448,7 +441,6 @@ describe('projects pages', () => {
     state.params = { id: 'project-1' };
     state.get.mockResolvedValue(project);
     state.listReferences.mockRejectedValueOnce(new Error('forbidden'));
-    const { ProjectsEditPage } = await import('../src/projects.pages.js');
     render(<ProjectsEditPage />);
     expect(await screen.findByDisplayValue('Brückenbau')).toBeTruthy();
     expect(screen.queryByText('messages.loadError')).toBeNull();
@@ -464,7 +456,6 @@ describe('projects pages', () => {
       unscopedPermissionActions: ['projects.read'],
       roles: [],
     };
-    const { ProjectsEditPage } = await import('../src/projects.pages.js');
     const { rerender } = render(
       <ProjectsEditPage principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }} />
     );
@@ -522,7 +513,6 @@ describe('projects pages', () => {
         retryReferenceSync: retry,
       })
     );
-    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fillRequiredFields();
     fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
@@ -562,7 +552,6 @@ describe('projects pages', () => {
         retryReferenceSync: retry,
       })
     );
-    const { ProjectsEditPage } = await import('../src/projects.pages.js');
     render(<ProjectsEditPage />);
     await screen.findByDisplayValue('Brückenbau');
 
@@ -590,7 +579,6 @@ describe('projects pages', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     state.params = { id: 'project-1' };
     state.get.mockRejectedValueOnce(new Error('offline'));
-    const { ProjectsEditPage, ProjectsCreatePage } = await import('../src/projects.pages.js');
     const failedLoad = render(<ProjectsEditPage />);
     await screen.findByText('messages.loadError');
     failedLoad.unmount();

@@ -47,6 +47,16 @@ const firstContentBlockTitle = (value: unknown): string | undefined => {
   return localizedTitle((firstBlock as RawItem).title);
 };
 
+const readFaqLanguageCode = (
+  source: RawItem,
+  contentType: SvaMainserverProjectionContentType
+): string | undefined => {
+  if (contentType !== 'faq.faq' || !source.payload || typeof source.payload !== 'object') {
+    return undefined;
+  }
+  return stringValue((source.payload as RawItem).languageCode);
+};
+
 const resolveTitle = (
   source: RawItem,
   contentType: SvaMainserverProjectionContentType,
@@ -70,6 +80,7 @@ const mapItem = (
   const title = resolveTitle(source, contentType, titleField) ?? id;
   const publication = stringValue(source.publishedAt) ?? stringValue(source.publicationDate);
   const provider = mapProvider(source.dataProvider);
+  const languageCode = readFaqLanguageCode(source, contentType);
   return {
     id,
     contentType,
@@ -81,6 +92,7 @@ const mapItem = (
     ...(typeof source.visible === 'boolean' ? { visible: source.visible } : {}),
     ...(typeof source.active === 'boolean' ? { active: source.active } : {}),
     ...(stringValue(source.status) ? { status: stringValue(source.status) } : {}),
+    ...(languageCode ? { languageCode } : {}),
     ...(provider ? { dataProvider: provider } : {}),
   };
 };

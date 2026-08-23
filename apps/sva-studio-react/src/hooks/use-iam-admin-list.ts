@@ -56,8 +56,11 @@ export const useIamAdminList = <TItem>(
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
   const hasLoadedItemsRef = React.useRef(false);
+  const latestRequestRef = React.useRef(0);
 
   const refetch = React.useCallback(async () => {
+    const requestId = latestRequestRef.current + 1;
+    latestRequestRef.current = requestId;
     if (!enabled) {
       setItems([]);
       setIsLoading(false);
@@ -71,6 +74,9 @@ export const useIamAdminList = <TItem>(
 
     try {
       const response = await listItems();
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
       setItems(response.data);
       hasLoadedItemsRef.current = true;
       onLoaded?.(response);
@@ -84,6 +90,9 @@ export const useIamAdminList = <TItem>(
       );
     } catch (cause) {
       const resolvedError = asIamError(cause);
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
       if (resolvedError.status === 401) {
         await refreshSession();
         adminListLogger.info('session_refreshed_after_401', {
@@ -98,7 +107,9 @@ export const useIamAdminList = <TItem>(
       setError(resolvedError);
       logBrowserOperationFailure(adminListLogger, 'list_refetch_failed', resolvedError);
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [enabled, refreshSession, listItems, onLoaded]);
 

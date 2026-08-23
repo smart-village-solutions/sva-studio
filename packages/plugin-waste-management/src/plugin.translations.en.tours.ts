@@ -198,7 +198,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     blocked: 'Needs review',
     selectTour: 'Transfer tour {{name}}',
     acknowledgeConflict: 'Reviewed and accepted possible parallel planning for {{name}}',
-    replacementDate: 'Replacement date for {{name}}',
+    replacementDate: 'Replacement date for {{name}} in target year {{year}}',
     summaryDetailed:
       '{{transferable}} transferable, {{alreadyEffective}} already effective, {{blocked}} blocked. Selected: {{selected}} tours with {{relationships}} relationships; {{excluded}} out-of-year records are excluded.',
     recurrence: 'Cadence: {{value}}',
@@ -228,8 +228,10 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
         'An existing target for the same source tour differs and will not be overwritten.',
       unknown: 'The tour cannot be transferred safely. Review the source tour planning data.',
     },
-    replacementValidityStart: 'Replacement date for the validity start of {{name}}',
-    replacementValidityEnd: 'Replacement date for the validity end of {{name}}',
+    replacementValidityStart:
+      'Replacement date for the validity start of {{name}} in target year {{year}}',
+    replacementValidityEnd:
+      'Replacement date for the validity end of {{name}} in target year {{year}}',
     noTours: 'No relevant tours were found for this source year.',
     previewError: 'The preview could not be created.',
     createError: 'The tour set could not be created.',

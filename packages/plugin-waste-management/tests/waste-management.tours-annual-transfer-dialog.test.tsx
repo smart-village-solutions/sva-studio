@@ -59,6 +59,7 @@ const preview = {
         excluded: 0,
       },
       replacementResourceIds: [],
+      replacementTargetYears: {},
       conflicts: [],
     },
   ],
@@ -172,6 +173,38 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect((await screen.findByRole('status')).textContent).toContain(
       'tours.annualTransfer.result:1|0|2027'
     );
+  });
+
+  it('shows and enforces the resource-specific year for cross-year replacements', async () => {
+    api.preview.mockResolvedValueOnce({
+      ...preview,
+      tours: [
+        {
+          ...preview.tours[0],
+          classification: 'blocked',
+          reasonCode: 'replacement_date_required',
+          replacementResourceIds: ['shift-leap-year:actual'],
+          replacementTargetYears: { 'shift-leap-year:actual': 2029 },
+        },
+      ],
+      summary: { ...preview.summary, transferable: 0, blocked: 1, selected: 0 },
+    });
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    const replacementInput = await screen.findByLabelText(
+      'tours.annualTransfer.replacementDate:Bio Nord 1|2029'
+    );
+
+    expect((replacementInput as HTMLInputElement).min).toBe('2029-01-01');
+    expect((replacementInput as HTMLInputElement).max).toBe('2029-12-31');
   });
 
   it('keeps conflicted tours unselected until the user selects and acknowledges them', async () => {

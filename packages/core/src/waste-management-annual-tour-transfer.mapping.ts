@@ -108,6 +108,9 @@ const mapValidity = (input: ValidityMappingInput): ValidityMappingResult => {
   if (!input.tour.firstDate) {
     return { ok: false, blocker: 'invalid_planning_data', replacementResourceIds: [] };
   }
+  if (boundaries.targetStart > boundaries.targetEnd) {
+    return { ok: false, blocker: 'invalid_planning_data', replacementResourceIds: [] };
+  }
   return {
     ok: true,
     validity: { firstDate: boundaries.targetStart, endDate: boundaries.targetEnd },

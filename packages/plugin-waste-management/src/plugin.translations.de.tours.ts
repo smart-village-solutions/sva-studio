@@ -200,7 +200,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     blocked: 'Prüfung erforderlich',
     selectTour: 'Tour {{name}} übernehmen',
     acknowledgeConflict: 'Mögliche parallele Planung für {{name}} geprüft und bestätigt',
-    replacementDate: 'Ersatzdatum für {{name}}',
+    replacementDate: 'Ersatzdatum für {{name}} im Zieljahr {{year}}',
     summaryDetailed:
       '{{transferable}} übernehmbar, {{alreadyEffective}} gelten bereits, {{blocked}} blockiert. Ausgewählt: {{selected}} Touren mit {{relationships}} Beziehungen; {{excluded}} Daten außerhalb des Quelljahres werden ausgeschlossen.',
     recurrence: 'Turnus: {{value}}',
@@ -230,8 +230,9 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       unknown:
         'Die Tour kann nicht sicher übernommen werden. Prüfen Sie die Planungsdaten der Quelltour.',
     },
-    replacementValidityStart: 'Ersatzdatum für den Gültigkeitsbeginn von {{name}}',
-    replacementValidityEnd: 'Ersatzdatum für das Gültigkeitsende von {{name}}',
+    replacementValidityStart:
+      'Ersatzdatum für den Gültigkeitsbeginn von {{name}} im Zieljahr {{year}}',
+    replacementValidityEnd: 'Ersatzdatum für das Gültigkeitsende von {{name}} im Zieljahr {{year}}',
     noTours: 'Für dieses Quelljahr wurden keine relevanten Touren gefunden.',
     previewError: 'Die Vorschau konnte nicht erstellt werden.',
     createError: 'Der Tourensatz konnte nicht angelegt werden.',

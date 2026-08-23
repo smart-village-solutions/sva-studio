@@ -22,32 +22,39 @@ const AnnualTourReplacementInputs = ({
   translate: Translate;
 }>) => (
   <>
-    {tour.replacementResourceIds.map((resourceId, index) => (
-      <label
-        key={resourceId}
-        className="grid gap-1 text-sm font-medium"
-        htmlFor={`replacement-${resourceId}`}
-      >
-        {translate(`tours.annualTransfer.${replacementLabelKey(resourceId)}`, {
-          name: `${tour.name} ${index + 1}`,
-        })}
-        <Input
-          id={`replacement-${resourceId}`}
-          type="date"
-          min={`${controller.preview?.targetYear}-01-01`}
-          max={`${controller.preview?.targetYear}-12-31`}
-          value={controller.replacementDates[resourceId] ?? ''}
-          disabled={controller.step === 'confirm' || controller.loading}
-          onChange={(event) => {
-            const replacementDate = event.currentTarget.value;
-            controller.setReplacementDates((current) => ({
-              ...current,
-              [resourceId]: replacementDate,
-            }));
-          }}
-        />
-      </label>
-    ))}
+    {tour.replacementResourceIds.map((resourceId, index) => {
+      const replacementTargetYear =
+        tour.replacementTargetYears[resourceId] ??
+        controller.preview?.targetYear ??
+        controller.sourceYear + 1;
+      return (
+        <label
+          key={resourceId}
+          className="grid gap-1 text-sm font-medium"
+          htmlFor={`replacement-${resourceId}`}
+        >
+          {translate(`tours.annualTransfer.${replacementLabelKey(resourceId)}`, {
+            name: `${tour.name} ${index + 1}`,
+            year: replacementTargetYear,
+          })}
+          <Input
+            id={`replacement-${resourceId}`}
+            type="date"
+            min={`${replacementTargetYear}-01-01`}
+            max={`${replacementTargetYear}-12-31`}
+            value={controller.replacementDates[resourceId] ?? ''}
+            disabled={controller.step === 'confirm' || controller.loading}
+            onChange={(event) => {
+              const replacementDate = event.currentTarget.value;
+              controller.setReplacementDates((current) => ({
+                ...current,
+                [resourceId]: replacementDate,
+              }));
+            }}
+          />
+        </label>
+      );
+    })}
   </>
 );
 

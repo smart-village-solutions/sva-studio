@@ -89,12 +89,24 @@ Das System SHALL wiederkehrende Tagesabstandstouren ohne Taktunterbrechung in da
 - **THEN** verwendet das System im Folgejahr weiterhin Monat und Tag ihres ursprünglichen Beginns
 - **AND** setzt es den Jahrestag nicht auf den Beginn des wirksamen Quelljahrausschnitts
 
+#### Scenario: Jährlicher Jahrestag liegt außerhalb des wirksamen Ausschnitts
+
+- **WHEN** der wirksame Quelljahrausschnitt einer jährlichen Tour vor ihrem ursprünglichen Jahrestag endet
+- **THEN** erzeugt das System keinen invertierten Zielzeitraum
+- **AND** blockiert es die Tour als ungültige Planungsdaten
+
 #### Scenario: Kalenderdatum existiert im Folgejahr nicht
 
 - **WHEN** ein zu übertragender Monat und Tag wie der 29. Februar im Folgejahr nicht existiert
 - **THEN** trifft das System keine stille Ersatzentscheidung
-- **AND** verlangt es ein konkretes Ersatzdatum im Folgejahr für die betroffene Quellressource
+- **AND** verlangt es ein konkretes Ersatzdatum im für die betroffene Quellressource ausgewiesenen Zieljahr
 - **AND** blockiert es die Tour bis zu einer gültigen Auswahl oder Abwahl
+
+#### Scenario: Jahresübergreifende Verschiebung benötigt ein Ersatzdatum
+
+- **WHEN** ein nicht darstellbares Verschiebungsdatum durch den erhaltenen relativen Jahresversatz nach dem direkten Folgejahr liegt
+- **THEN** weist die Vorschau dieses ressourcenspezifische Zieljahr an der Ersatzdatumseingabe aus
+- **AND** akzeptiert der Server ausschließlich ein Ersatzdatum in diesem Zieljahr
 
 #### Scenario: Mehrere Quellen kollidieren auf derselben Zielbeziehung
 
@@ -107,6 +119,12 @@ Das System SHALL wiederkehrende Tagesabstandstouren ohne Taktunterbrechung in da
 - **WHEN** ein Client ein Ersatzdatum für eine unbekannte, doppelte oder ohne Ersatz abbildbare Quellressource sendet
 - **THEN** lehnt der Server die Vorschau als `replacement_date_invalid` ab
 - **AND** verändert er die deterministische Folgejahrabbildung nicht
+
+#### Scenario: Bestehende jährliche Tour besitzt denselben Jahrestag
+
+- **WHEN** eine andere im Zieljahr wirksame jährliche Tour dieselben Abfallarten, Abholorte und denselben Jahrestag besitzt
+- **THEN** meldet die Vorschau eine mögliche parallele Planung
+- **AND** bleibt die Quelltour bis zur ausdrücklichen Kenntnisnahme abgewählt
 
 ### Requirement: Waste-Management bindet die Bestätigung an eine unveränderte Vorschau
 

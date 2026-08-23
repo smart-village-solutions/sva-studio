@@ -285,6 +285,27 @@ describe('waste annual tour transfer', () => {
     });
   });
 
+  it('blocks a yearly tour whose source-year slice ends before its anniversary', async () => {
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([
+        tour({
+          recurrence: 'yearly',
+          firstDate: '2025-07-15',
+          endDate: '2026-03-01',
+        }),
+      ]),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'invalid_planning_data',
+    });
+  });
+
   it('preserves the relative year offset of a cross-year date shift', async () => {
     const sourceTour = tour();
     const preview = await buildWasteAnnualTourTransferPreview({
@@ -311,6 +332,48 @@ describe('waste annual tour transfer', () => {
       originalDate: '2027-12-30',
       actualDate: '2028-01-01',
     });
+  });
+
+  it('accepts a required cross-year shift replacement in its shifted target year', async () => {
+    const sourceTour = tour({ firstDate: '2027-01-01', endDate: '2027-12-31' });
+    const transferSource = source([sourceTour], {
+      tourDateShifts: [
+        {
+          id: 'shift-leap-year',
+          tourId: sourceTour.id,
+          originalDate: '2027-12-31',
+          actualDate: '2028-02-29',
+          hasYear: true,
+          createdAt: '2027-01-01T00:00:00.000Z',
+          updatedAt: '2027-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+    const blocked = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2027,
+      currentYear: 2028,
+      source: transferSource,
+      target: source([]),
+    });
+
+    expect(blocked.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'replacement_date_required',
+      replacementResourceIds: ['shift-leap-year:actual'],
+      replacementTargetYears: { 'shift-leap-year:actual': 2029 },
+    });
+
+    const resolved = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2027,
+      currentYear: 2028,
+      source: transferSource,
+      target: source([]),
+      replacementDates: [{ sourceResourceId: 'shift-leap-year:actual', targetDate: '2029-02-28' }],
+    });
+
+    expect(resolved.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2029-02-28');
   });
 
   it('rejects replacement overrides that are unknown or not required', async () => {
@@ -393,6 +456,33 @@ describe('waste annual tour transfer', () => {
       firstDate: undefined,
       endDate: undefined,
       customDates: [{ date: '2027-06-14' }],
+    });
+
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour]),
+      target: source([targetTour]),
+    });
+
+    expect(preview.tours[0]?.conflicts).toEqual([
+      expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
+    ]);
+    expect(preview.summary.selected).toBe(0);
+  });
+
+  it('detects an earlier yearly target tour with the same target-year anniversary', async () => {
+    const sourceTour = tour({
+      recurrence: 'yearly',
+      firstDate: '2026-07-15',
+      endDate: '2026-12-31',
+    });
+    const targetTour = tour({
+      id: '88888888-8888-4888-8888-888888888888',
+      recurrence: 'yearly',
+      firstDate: '2025-07-15',
+      endDate: undefined,
     });
 
     const preview = await buildWasteAnnualTourTransferPreview({

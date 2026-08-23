@@ -6,6 +6,7 @@ import type {
 } from './waste-management-annual-tour-transfer.contract.js';
 import {
   parseWasteAnnualIsoDate,
+  replaceWasteAnnualYear,
   wasteAnnualEndOfYear,
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
@@ -38,11 +39,32 @@ export const wasteAnnualEffectiveDates = (
 const sameSet = (left: readonly string[], right: readonly string[]): boolean =>
   JSON.stringify([...new Set(left)].sort()) === JSON.stringify([...new Set(right)].sort());
 
+const yearlySchedulesIntersect = (
+  left: WasteAnnualTourTransferMappedTour['targetTour'],
+  right: WasteTourRecord
+): boolean => {
+  if (!left.firstDate || !right.firstDate) return false;
+  const targetYear = wasteAnnualYearOf(left.firstDate);
+  if (targetYear === null) return false;
+  const leftOccurrence = replaceWasteAnnualYear(left.firstDate, targetYear);
+  const rightOccurrence = replaceWasteAnnualYear(right.firstDate, targetYear);
+  if (!leftOccurrence || leftOccurrence !== rightOccurrence) return false;
+  const targetYearEnd = wasteAnnualEndOfYear(targetYear);
+  return (
+    leftOccurrence >= left.firstDate &&
+    leftOccurrence <= (left.endDate ?? targetYearEnd) &&
+    rightOccurrence >= right.firstDate &&
+    rightOccurrence <= (right.endDate ?? targetYearEnd)
+  );
+};
+
 const recurringSchedulesIntersect = (
   left: WasteAnnualTourTransferMappedTour['targetTour'],
   right: WasteTourRecord,
   intervalDays: number | null
 ): boolean => {
+  if (left.recurrence === 'yearly' && right.recurrence === 'yearly')
+    return yearlySchedulesIntersect(left, right);
   if (intervalDays === null || !left.firstDate || !right.firstDate) return false;
   const leftFirst = parseWasteAnnualIsoDate(left.firstDate);
   const rightFirst = parseWasteAnnualIsoDate(right.firstDate);

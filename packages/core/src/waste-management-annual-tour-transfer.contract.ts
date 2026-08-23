@@ -86,6 +86,7 @@ export type WasteAnnualTourTransferTourPreview = Readonly<{
     excluded: number;
   }>;
   replacementResourceIds: readonly string[];
+  replacementTargetYears: Readonly<Record<string, number>>;
   conflicts: readonly WasteAnnualTourTransferConflict[];
 }>;
 export type WasteAnnualTourTransferPreview = Readonly<{

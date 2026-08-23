@@ -305,6 +305,7 @@ const mockWasteFacade = async (
                 excluded: 0,
               },
               replacementResourceIds: [],
+              replacementTargetYears: {},
               conflicts: [],
             },
           ],

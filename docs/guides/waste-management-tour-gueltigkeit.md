@@ -17,6 +17,20 @@ Die Mehrfachbearbeitung gilt für feste Wiederholungen wie wöchentlich, zweiwö
 
 `Gültig ab` ist zugleich der Startanker für die Berechnung wiederkehrender Termine und kann deshalb nicht entfernt werden. Soll eine Tour vorübergehend keine Termine liefern, deaktivieren Sie stattdessen die Tour.
 
+## Tourensatz in das Folgejahr übernehmen
+
+Die Aktion `Tourensatz ins Folgejahr übernehmen` führt durch Quelljahr, Vorschau und Bestätigung. Als Quelle stehen ausschließlich das aktuelle und das vorherige Kalenderjahr zur Verfügung; das Ziel ist unveränderlich das direkte Folgejahr. Erforderlich sind die Berechtigungen für Touren- und Terminplanung.
+
+Die Vorschau zeigt jede relevante aktive Tour in einer von drei Gruppen:
+
+- `Wird übernommen`: Die Tour kann ausgewählt werden. Ein möglicher paralleler Planungsstand muss ausdrücklich bestätigt werden.
+- `Gilt bereits im Folgejahr`: Die Quelltour reicht fachlich bereits in das Zieljahr und wird nicht kopiert.
+- `Blockiert`: Ungültige Planungsdaten, eine abweichend belegte stabile Zielidentität oder ein nicht eindeutig abbildbares Datum verhindern die Übernahme. Für Schalttage und Datumskollisionen kann die Vorschau ein Ersatzdatum im Folgejahr verlangen.
+
+Wöchentliche, zweiwöchentliche, vierwöchentliche und benutzerdefinierte Tagesabstände setzen ihren bisherigen Rhythmus ohne Neustart fort. Konkrete Termine werden auf den nächstgelegenen gleichen Wochentag im Folgejahr abgebildet und überschreiten dessen Grenzen nicht. Tourfelder, Abfallarten, Abholorte, konkrete Termine, Einsätze und tourbezogene Verschiebungen werden gemeinsam übernommen.
+
+Nach der Bestätigung entstehen alle neuen Touren atomar und zunächst inaktiv. Prüfen Sie anschließend die gefilterte Tourenliste und aktivieren Sie ausschließlich fachlich freigegebene Touren. Die Quelle bleibt unverändert; vorhandene Zieltouren werden weder ersetzt noch gelöscht. Pro Vorgang sind höchstens 1.000 Touren und 100.000 kopierrelevante Beziehungen zulässig.
+
 ## Verschiebungen nachvollziehen
 
 Die Spalte `Verschiebungen` der Tourentabelle zählt tourspezifische und globale Verschiebungen sowie tatsächlich berechnete Feiertagsverschiebungen. Ist mindestens eine Verschiebung vorhanden, öffnet der Zähler eine Detailansicht mit ursprünglichem und neuem Datum, Quelle und vorhandenem Grund. Zähler und Detailansicht basieren auf derselben chronologisch sortierten Datenmenge.

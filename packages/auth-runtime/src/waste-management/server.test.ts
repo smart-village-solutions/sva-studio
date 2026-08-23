@@ -54,6 +54,10 @@ const coreHandlerMocks = vi.hoisted(() => ({
     async () => new Response('create-tour-date-shift')
   ),
   createWasteManagementTourInternal: vi.fn(async () => new Response('create-tour')),
+  previewWasteAnnualTourTransferInternal: vi.fn(
+    async () => new Response('preview-annual-transfer')
+  ),
+  createWasteAnnualTourTransferInternal: vi.fn(async () => new Response('create-annual-transfer')),
   createWasteManagementTourAssignmentInternal: vi.fn(
     async () => new Response('create-tour-assignment')
   ),
@@ -141,6 +145,7 @@ const loaderMocks = vi.hoisted(() => ({
   loadWasteTourDateShiftById: vi.fn(async () => null),
   listWasteTourDateShiftsByTourId: vi.fn(async () => []),
   previewWasteLocationTourPickupDateImport: vi.fn(async () => null),
+  previewWasteAnnualTourTransfer: vi.fn(async () => null),
 }));
 
 const saverMocks = vi.hoisted(() => ({
@@ -166,6 +171,7 @@ const saverMocks = vi.hoisted(() => ({
   saveWasteRegion: vi.fn(async () => null),
   saveWasteStreet: vi.fn(async () => null),
   saveWasteTour: vi.fn(async () => null),
+  createWasteAnnualTourTransfer: vi.fn(async () => null),
   updateWasteTourValidityBulk: vi.fn(async () => ({ updatedCount: 1 })),
   saveWasteTourAssignment: vi.fn(async () => null),
   deleteWasteTour: vi.fn(async () => null),
@@ -193,6 +199,7 @@ vi.mock('./server-loaders.js', () => ({
     loadToursOverview: loaderMocks.loadToursOverview,
     loadWasteHistoryOverview: loaderMocks.loadWasteHistoryOverview,
     previewWasteLocationTourPickupDateImport: loaderMocks.previewWasteLocationTourPickupDateImport,
+    previewWasteAnnualTourTransfer: loaderMocks.previewWasteAnnualTourTransfer,
   },
   wasteManagementEntityLoaders: {
     loadWasteCustomRecurrencePresets: loaderMocks.loadWasteCustomRecurrencePresets,
@@ -237,6 +244,7 @@ vi.mock('./server-loaders.js', () => ({
     saveWasteRegion: saverMocks.saveWasteRegion,
     saveWasteStreet: saverMocks.saveWasteStreet,
     saveWasteTour: saverMocks.saveWasteTour,
+    createWasteAnnualTourTransfer: saverMocks.createWasteAnnualTourTransfer,
     updateWasteTourValidityBulk: saverMocks.updateWasteTourValidityBulk,
     saveWasteTourAssignment: saverMocks.saveWasteTourAssignment,
     deleteWasteTour: saverMocks.deleteWasteTour,
@@ -289,6 +297,22 @@ describe('wasteManagementHandlers', () => {
         deps: {
           ...sharedWasteManagementDepsMock,
           loadSchedulingOverview: loaderMocks.loadSchedulingOverview,
+        },
+      },
+      {
+        handlerKey: 'previewAnnualTourTransfer',
+        internal: coreHandlerMocks.previewWasteAnnualTourTransferInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          previewWasteAnnualTourTransfer: loaderMocks.previewWasteAnnualTourTransfer,
+        },
+      },
+      {
+        handlerKey: 'createAnnualTourTransfer',
+        internal: coreHandlerMocks.createWasteAnnualTourTransferInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          createWasteAnnualTourTransfer: saverMocks.createWasteAnnualTourTransfer,
         },
       },
       {

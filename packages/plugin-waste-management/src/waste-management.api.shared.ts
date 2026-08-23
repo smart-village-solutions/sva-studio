@@ -16,7 +16,8 @@ export class WasteManagementApiError extends Error {
   }
 }
 
-const createWasteManagementApiError = (code: string, message: string) => new WasteManagementApiError(code, message);
+const createWasteManagementApiError = (code: string, message: string) =>
+  new WasteManagementApiError(code, message);
 
 const createIdempotencyKey = () => crypto.randomUUID();
 
@@ -79,10 +80,7 @@ const logWasteManagementRequest = (
     url: input.url,
     method: input.init?.method ?? 'GET',
     hasBody: input.init?.body !== undefined,
-    errorCode:
-      input.error instanceof WasteManagementApiError
-        ? input.error.code
-        : undefined,
+    errorCode: input.error instanceof WasteManagementApiError ? input.error.code : undefined,
     errorMessage:
       input.error instanceof Error
         ? input.error.message
@@ -188,6 +186,20 @@ export const requestWasteManagementMutationResponse = <T>(
       method,
       headers: createMainserverJsonRequestHeaders(),
       body: body === undefined ? undefined : JSON.stringify(body),
+    },
+  });
+
+export const requestWasteManagementIdempotentMutation = <T>(
+  url: string,
+  body: Readonly<Record<string, unknown>>,
+  idempotencyKey: string
+) =>
+  requestWasteManagementItem<T>({
+    url,
+    init: {
+      method: 'POST',
+      headers: createMainserverJsonRequestHeaders({ 'Idempotency-Key': idempotencyKey }),
+      body: JSON.stringify(body),
     },
   });
 

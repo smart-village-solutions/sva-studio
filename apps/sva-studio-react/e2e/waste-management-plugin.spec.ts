@@ -104,6 +104,7 @@ type WasteHarness = {
     createdFractions: Array<Record<string, unknown>>;
     createdTours: Array<Record<string, unknown>>;
     tourValidityUpdates: Array<Record<string, unknown>>;
+    annualTourTransfers: Array<Record<string, unknown>>;
     exportInputs: Array<Record<string, unknown>>;
     startedJobTypes: string[];
   };
@@ -188,6 +189,7 @@ const mockWasteFacade = async (
     createdFractions: [] as Array<Record<string, unknown>>,
     createdTours: [] as Array<Record<string, unknown>>,
     tourValidityUpdates: [] as Array<Record<string, unknown>>,
+    annualTourTransfers: [] as Array<Record<string, unknown>>,
     exportInputs: [] as Array<Record<string, unknown>>,
     startedJobTypes: [] as string[],
   };
@@ -270,6 +272,80 @@ const mockWasteFacade = async (
         body: createApiItem({
           tours: toursState,
           customRecurrencePresets: settingsState.customRecurrencePresets ?? [],
+        }),
+      });
+      return;
+    }
+
+    if (method === 'POST' && path === '/api/v1/waste-management/tours/annual-transfer/preview') {
+      const body = request.postDataJSON() as { sourceYear: number };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: createApiItem({
+          sourceYear: body.sourceYear,
+          targetYear: body.sourceYear + 1,
+          previewFingerprint: `sha256:${'a'.repeat(64)}`,
+          tours: [
+            {
+              sourceTourId: 'tour-weekly',
+              name: 'Restmüll Nord',
+              classification: 'transferable',
+              sourcePeriod: { firstDate: '2026-01-05', endDate: '2026-12-31' },
+              targetPeriod: { firstDate: '2027-01-04', endDate: '2027-12-31' },
+              firstTargetDate: '2027-01-04',
+              recurrence: 'weekly',
+              relationshipCounts: {
+                wasteFractions: 1,
+                customDates: 0,
+                locations: 0,
+                pickupDates: 0,
+                assignments: 0,
+                shifts: 0,
+                excluded: 0,
+              },
+              replacementResourceIds: [],
+              conflicts: [],
+            },
+          ],
+          summary: {
+            transferable: 1,
+            alreadyEffective: 0,
+            blocked: 0,
+            selected: 1,
+            relationships: 1,
+            excluded: 0,
+          },
+        }),
+      });
+      return;
+    }
+
+    if (method === 'POST' && path === '/api/v1/waste-management/tours/annual-transfer') {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      requests.annualTourTransfers.push(body);
+      toursState.unshift({
+        id: 'tour-weekly-2027',
+        name: 'Restmüll Nord',
+        wasteFractionIds: ['fraction-1'],
+        recurrence: 'weekly',
+        firstDate: '2027-01-04',
+        endDate: '2027-12-31',
+        active: false,
+        createdAt: '2026-08-23T12:00:00.000Z',
+        updatedAt: '2026-08-23T12:00:00.000Z',
+      });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem({
+          sourceYear: 2026,
+          targetYear: 2027,
+          createdTourIds: ['tour-weekly-2027'],
+          existingTourIds: [],
+          createdCount: 1,
+          existingCount: 0,
+          listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
         }),
       });
       return;
@@ -1137,5 +1213,58 @@ test.describe('waste management plugin', () => {
     await expect(page.getByRole('alert')).toContainText('Schadstoffmobil');
     await expect(page.getByRole('button', { name: 'Zeitraum ändern' })).toBeDisabled();
     expect(harness.requests.tourValidityUpdates).toHaveLength(1);
+  });
+
+  test('previews and confirms the fixed following-year tour set as inactive', async ({ page }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-annual-transfer',
+      permissionActions: [
+        'waste-management.read',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+      ],
+    });
+    const harness = await mockWasteFacade(page, {
+      instanceId: 'de-annual-transfer',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_annual_transfer',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [
+        {
+          id: 'tour-weekly',
+          name: 'Restmüll Nord',
+          wasteFractionIds: ['fraction-1'],
+          recurrence: 'weekly',
+          firstDate: '2026-01-05',
+          endDate: '2026-12-31',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await page.getByRole('button', { name: 'Tourensatz ins Folgejahr übernehmen' }).click();
+    await expect(page.getByText('Unveränderliches Folgejahr: 2027')).toBeVisible();
+    await page.getByRole('button', { name: 'Vorschau erstellen' }).click();
+    await expect(page.getByText('2026-01-05 → 2027-01-04')).toBeVisible();
+    await page.getByRole('button', { name: 'Auswahl prüfen' }).click();
+    await page.getByRole('button', { name: 'Inaktiv übernehmen' }).click();
+
+    await expect(page.getByText('1 Touren wurden inaktiv für 2027 angelegt.')).toBeVisible();
+    expect(harness.requests.annualTourTransfers).toEqual([
+      expect.objectContaining({
+        sourceYear: 2026,
+        selectedTourIds: ['tour-weekly'],
+        previewFingerprint: `sha256:${'a'.repeat(64)}`,
+      }),
+    ]);
   });
 });

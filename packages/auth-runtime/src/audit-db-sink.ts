@@ -239,6 +239,7 @@ const insertActivityLog = async (
           reason_code: input.pluginAction.reasonCode ?? null,
           resource_type: input.pluginAction.resourceType ?? null,
           resource_id: input.pluginAction.resourceId ?? null,
+          batch_summary: input.pluginAction.batchSummary,
           ...(input.pluginAction.mainserverMutation
             ? {
                 acting_principal_type: input.pluginAction.mainserverMutation.actingPrincipalType,
@@ -311,6 +312,7 @@ const insertPlatformActivityLog = async (
           reason_code: input.pluginAction.reasonCode ?? null,
           resource_type: input.pluginAction.resourceType ?? null,
           resource_id: input.pluginAction.resourceId ?? null,
+          batch_summary: input.pluginAction.batchSummary,
         }
       : {}),
   };

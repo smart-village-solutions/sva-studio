@@ -24,6 +24,16 @@ export type PluginActionAuditPayload = {
   reasonCode?: string;
   resourceType?: string;
   resourceId?: string;
+  batchSummary?: Readonly<{
+    sourceYear: number;
+    targetYear: number;
+    transferableCount?: number;
+    alreadyEffectiveCount?: number;
+    blockedCount?: number;
+    createdCount?: number;
+    existingCount?: number;
+    resourceIds: readonly string[];
+  }>;
   mainserverMutation?: Readonly<{
     actingPrincipalType: 'organization' | 'user';
     actingPrincipalId: string;

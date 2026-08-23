@@ -361,6 +361,10 @@ describe('pluginWasteManagement contract', () => {
         titleKey: 'wasteManagement.audit.tourValidityBulkUpdated',
       },
       {
+        eventType: 'waste-management.annual-tour-transfer.created',
+        titleKey: 'wasteManagement.audit.annualTourTransferCreated',
+      },
+      {
         eventType: 'waste-management.tour-date-shift.created',
         titleKey: 'wasteManagement.audit.tourDateShiftCreated',
       },

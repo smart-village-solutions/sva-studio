@@ -2,13 +2,14 @@ import { useEffect } from 'react';
 
 import { createWasteToursActions } from './waste-management.tours.actions.js';
 import { useWasteToursOverview } from './use-waste-tours-overview.js';
-import { resolveTourAssignmentLocationOptions, resolveTourLocationOptions } from './waste-management.tours.locations.js';
+import {
+  resolveTourAssignmentLocationOptions,
+  resolveTourLocationOptions,
+} from './waste-management.tours.locations.js';
 import { createWasteToursMutationHandlers } from './waste-management.tours-mutations.js';
 import { mapPickupDatesToTourDateLocationAssignments } from './waste-management.tours.shared.js';
 import { useWasteToursState } from './use-waste-tours-state.js';
-import {
-  filterTours,
-} from './waste-management.tours.shared.js';
+import { filterTours } from './waste-management.tours.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -34,7 +35,11 @@ export const useWasteToursViewModel = (pt: Translate, search: WasteManagementSea
       state.selectedTour.id
     );
 
-    if (assignments.length === 0 || state.tourForm.id !== state.selectedTour.id || state.tourForm.dateLocationAssignments.length > 0) {
+    if (
+      assignments.length === 0 ||
+      state.tourForm.id !== state.selectedTour.id ||
+      state.tourForm.dateLocationAssignments.length > 0
+    ) {
       return;
     }
 
@@ -56,8 +61,13 @@ export const useWasteToursViewModel = (pt: Translate, search: WasteManagementSea
     ...state,
     tours: filterTours(state.overview?.tours ?? [], effectiveSearch),
     locationOptions: resolveTourLocationOptions(pt, state.masterDataOverview),
-    assignmentLocationOptions: resolveTourAssignmentLocationOptions(pt, state.masterDataOverview, state.selectedTour?.id),
+    assignmentLocationOptions: resolveTourAssignmentLocationOptions(
+      pt,
+      state.masterDataOverview,
+      state.selectedTour?.id
+    ),
     ...actions,
     ...mutations,
+    reloadOverview: loadOverview,
   };
 };

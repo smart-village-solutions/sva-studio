@@ -70,6 +70,7 @@ export type {
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
 } from '@sva/core';
+export type * from './waste-annual-tour-transfer.js';
 export type { BuildTimeRegistry, BuildTimeRegistryInput } from './build-time-registry.js';
 export { createBuildTimeRegistry } from './build-time-registry.js';
 export type { PluginGuardrailViolationCode, PluginGuardrailViolationInput } from './guardrails.js';
@@ -303,7 +304,7 @@ export type {
   UiAccessScope,
   UiResourceCapability,
 } from '@sva/iam-core';
-export type { PluginTranslationResolver, PluginTranslationVariables } from './plugin-translations.js';
+export type * from './plugin-translations.js';
 export {
   registerPluginTranslationResolver,
   translatePluginKey,

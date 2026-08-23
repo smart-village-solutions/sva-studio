@@ -130,6 +130,8 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/tour-date-shifts'
   | '/api/v1/waste-management/tour-date-shifts/$shiftId'
   | '/api/v1/waste-management/tours'
+  | '/api/v1/waste-management/tours/annual-transfer'
+  | '/api/v1/waste-management/tours/annual-transfer/preview'
   | '/api/v1/waste-management/tours/bulk-validity'
   | '/api/v1/waste-management/tours/$tourId'
   | '/api/v1/waste-management/settings'
@@ -282,6 +284,8 @@ export const authRoutePaths = [
   '/api/v1/waste-management/tour-date-shifts',
   '/api/v1/waste-management/tour-date-shifts/$shiftId',
   '/api/v1/waste-management/tours',
+  '/api/v1/waste-management/tours/annual-transfer',
+  '/api/v1/waste-management/tours/annual-transfer/preview',
   '/api/v1/waste-management/tours/bulk-validity',
   '/api/v1/waste-management/tours/$tourId',
   '/api/v1/waste-management/settings',

@@ -1,5 +1,4 @@
 export const pluginSdkVersion = '0.0.1';
-
 export type PluginSdkPackageRole =
   'plugin-contracts' | 'plugin-platform' | 'admin-resources' | 'content-types' | 'plugin-i18n';
 
@@ -189,8 +188,9 @@ export type {
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
 } from './public-api.js';
+export type * from './waste-annual-tour-transfer.js';
 export * from './media-content-save-client.js';
-export { resolveContentMediaCapabilities, type ContentMediaCapabilities } from './content-media-permissions.js';
+export * from './content-media-permissions.js';
 export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
 export { buildWasteStreetKey, resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
 export type { EffectiveWasteTourDateShift } from '@sva/core';

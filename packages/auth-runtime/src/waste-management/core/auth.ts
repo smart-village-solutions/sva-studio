@@ -18,6 +18,9 @@ export const emitWasteAuditEvent = async (input: {
   readonly reasonCode?: string;
   readonly resourceType?: string;
   readonly resourceId?: string;
+  readonly batchSummary?: NonNullable<
+    Parameters<typeof emitAuthAuditEvent>[0]['pluginAction']
+  >['batchSummary'];
 }) => {
   const context = getWorkspaceContext();
   await (input.deps.emitAuditEvent ?? emitAuthAuditEvent)({
@@ -43,6 +46,7 @@ export const emitWasteAuditEvent = async (input: {
       reasonCode: input.reasonCode,
       resourceType: input.resourceType,
       resourceId: input.resourceId,
+      batchSummary: input.batchSummary,
     },
   });
 };

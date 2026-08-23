@@ -120,6 +120,7 @@ type WasteManagementToursCopy = Readonly<{
   statusDialog?: Readonly<Record<string, string>>;
   bulkDeleteDialog?: Readonly<Record<string, string>>;
   bulkValidityDialog?: Readonly<Record<string, unknown>>;
+  annualTransfer?: Readonly<Record<string, unknown>>;
   shiftDetails: WasteManagementToursShiftDetailsCopy;
   messages: Readonly<Record<string, string>>;
   assignments?: WasteManagementToursAssignmentsCopy;
@@ -214,6 +215,7 @@ export const createWasteManagementToursTranslations = <
           statusDialog: copy.statusDialog,
           bulkDeleteDialog: copy.bulkDeleteDialog,
           bulkValidityDialog: copy.bulkValidityDialog,
+          annualTransfer: copy.annualTransfer,
           shiftDetails: copy.shiftDetails,
           messages: copy.messages,
         } as const,

@@ -353,6 +353,32 @@ export type {
   WasteOutputFraction,
 } from './waste-management-output.types.js';
 export { buildWasteTypesStaticContent } from './waste-management-static-content.js';
+export {
+  assertWasteAnnualTourTransferLimits,
+  wasteAnnualTourTransferLimits,
+  WasteAnnualTourTransferError,
+} from './waste-management-annual-tour-transfer.contract.js';
+export type {
+  WasteAnnualTourTransferClassification,
+  WasteAnnualTourTransferConflict,
+  WasteAnnualTourTransferCreateInput,
+  WasteAnnualTourTransferMappedTour,
+  WasteAnnualTourTransferPreview,
+  WasteAnnualTourTransferReplacementDate,
+  WasteAnnualTourTransferResult,
+  WasteAnnualTourTransferSource,
+  WasteAnnualTourTransferTourPreview,
+} from './waste-management-annual-tour-transfer.contract.js';
+export {
+  continueWasteAnnualTourCadence,
+  deriveWasteAnnualTourTransferTargetYear,
+  mapWasteAnnualConcreteDate,
+} from './waste-management-annual-tour-transfer.dates.js';
+export {
+  buildWasteAnnualTourTransferFingerprint,
+  deriveWasteAnnualTourTransferId,
+} from './waste-management-annual-tour-transfer.identity.js';
+export { buildWasteAnnualTourTransferPreview } from './waste-management-annual-tour-transfer.preview.js';
 export type {
   WasteTypeStaticContentEntry,
   WasteTypesStaticContentArtifact,

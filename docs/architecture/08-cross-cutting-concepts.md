@@ -833,3 +833,10 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Operative E-Mail-Abodaten, personenbezogene Adressauswahlen, Consent, Token und Outbox sind positive Ausschlüsse. Fraktionsbezogene Reminder-Einstellungen enthalten keine Personen und bleiben Fachkonfiguration.
 - Fachliche IDs werden erhalten; technische Zeitstempel und Zielidentitäten entstehen im Ziel. Der Austausch löscht keine zusätzlichen Zielzeilen und ist kein Tenant-Klon.
 - JSON ist das kanonische Roundtrip-Format. Bestehende tabellarische Importe bleiben Legacy-Eingangsadapter, solange kein Verlustfreiheitsnachweis vorliegt.
+
+### Folgejahrübernahme: Querschnittsvertrag
+
+- Vorschau und Erstellung verlangen gemeinsam `waste-management.tours.manage` und `waste-management.scheduling.manage`; Mandant, CSRF und Eingaben werden serverseitig geprüft. Ein Zieljahr aus dem Client wird abgelehnt.
+- 1.000 Touren und 100.000 kopierrelevante Beziehungen sind zentrale inklusive Grenzwerte. Eine Überschreitung liefert in Vorschau und Erstellung `batch_limit_exceeded` ohne Teilverarbeitung.
+- Der Vorschau-Fingerprint schützt vor veralteter Bestätigung. `preview_stale` liefert eine aktualisierte Vorschau, stabile IDs ermöglichen Commit-/Response-Recovery und abweichend belegte IDs liefern `target_identity_conflict`.
+- Genau ein datensparsames Audit-Ereignis fasst Quell- und Zieljahr, Erstellungs-/Bestandsmengen und technische Ressourcen-IDs zusammen. Namen, Termine und Adressdaten werden nicht protokolliert.

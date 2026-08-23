@@ -1103,3 +1103,12 @@ Fehlerpfad:
 4. Der Downloadpfad prüft Job, Instanz, Actor, aktuelle Export-Action, Ablauf, Größe und SHA-256 vor der Antwort mit `private, no-store`.
 5. Der Import validiert Envelope, Version, Feldtypen, Defaults und Referenzen vor dem Schreiben. Ein ZIP wird vollständig geprüft und in einer gemeinsamen Waste-Datenbanktransaktion verarbeitet.
 6. Dry-Runs und Fehler rollen die Transaktion zurück. Nicht enthaltene Zielwerte oder Zielzeilen werden nicht implizit gelöscht.
+
+### Waste-Management: Tourensatz in das Folgejahr übernehmen
+
+1. Der Assistent sendet nur Quelljahr, Auswahl und Ersatzdaten. Die Runtime leitet das direkte Folgejahr ab, prüft beide Manage-Actions sowie CSRF und liefert eine schreibfreie, vollständig klassifizierte Vorschau.
+2. Core bildet aus Quell- und Zielbestand, Auswahl, Ersatzdaten und stabil abgeleiteten Zielressourcen einen kanonischen Fingerprint. Mögliche parallele Planungen bleiben zunächst abgewählt.
+3. Die bestätigte Erstellung reserviert den zentralen Idempotenzschlüssel und öffnet eine Waste-Datenbanktransaktion. Ein mandanten- und zieljahrbezogener Advisory Lock serialisiert konkurrierende Übernahmen.
+4. Innerhalb der Sperre werden Quelle, Ziel, Grenzen, Fingerprint und Konflikte erneut geprüft. Bei Abweichung endet der Vorgang mit aktualisierter Vorschau; es wird nichts geschrieben.
+5. Touren und alle kopierrelevanten Beziehungen werden mit stabilen IDs gemeinsam und inaktiv angelegt. Jeder Fehler rollt die gesamte Transaktion zurück.
+6. Nach einem Commit-/Response-Abbruch rekonstruiert der Retry dieselben Ziel-IDs und liefert das gespeicherte beziehungsweise wiederhergestellte Ergebnis, ohne weitere Touren anzulegen.

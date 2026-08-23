@@ -7,7 +7,7 @@ Das System SHALL während der vorgelagerten Auflösung des Ressourcenprincipals 
 #### Scenario: Ressourcenprincipal wird geladen
 
 - **WENN** eine Inhalts-Detailseite den Ressourcenprincipal des bestehenden Inhalts noch auflöst
-- **DANN** zeigt die Oberfläche den gemeinsamen animierten Studio-Ladezustand
+- **DANN** zeigt die Oberfläche einen neutralen, höflich angekündigten Ladezustand
 - **UND** zeigt sie keinen destruktiven Alert und keine Fehlermeldung
 - **UND** rendert sie den Editor noch nicht
 
@@ -15,8 +15,8 @@ Das System SHALL während der vorgelagerten Auflösung des Ressourcenprincipals 
 
 - **WENN** die Principal-Auflösung einen eindeutigen persönlichen oder organisatorischen Principal liefert
 - **DANN** beendet die Oberfläche den Ladezustand unmittelbar
-- **UND** rendert den Editor mit dem aufgelösten festen Principal
-- **UND** wartet sie nicht auf das Ende eines Animationszyklus
+- **UND** rendert sie den Editor mit dem aufgelösten festen Principal
+- **UND** wartet sie nicht auf einen Timer oder einen visuellen Übergang
 
 #### Scenario: Ressourcenprincipal kann nicht aufgelöst werden
 

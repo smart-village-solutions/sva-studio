@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { CalendarDays, ImageUp, Newspaper, Users, type LucideIcon } from 'lucide-react';
 
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { useContentAccess } from '../hooks/use-content-access';
 import { t } from '../i18n';
 import {
   hasPlatformInstanceAdminAccess,
@@ -81,12 +82,11 @@ const resolveDesktopGridClass = (cardCount: number) => {
 };
 
 export const HomeActionCards = ({
-  permissionActions,
   user,
 }: {
-  readonly permissionActions: readonly string[];
   readonly user: ReturnType<typeof useAuth>['user'];
 }) => {
+  const { permissionActions } = useContentAccess();
   const cards = resolveHomeActionCards(user, permissionActions);
   const mediumGridClass = cards.length >= 2 ? 'md:grid-cols-2' : 'md:grid-cols-1';
 
@@ -99,7 +99,6 @@ export const HomeActionCards = ({
         return (
           <Card
             key={card.id}
-            data-studio-workbench-module={card.id}
             className="h-full border-border/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
           >
             <Link

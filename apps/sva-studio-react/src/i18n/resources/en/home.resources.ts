@@ -4,9 +4,9 @@ export const homeENResources = {
   },
   hero: {
     anonymousEyebrow: 'Welcome',
-    anonymousSubtitle: 'The shared workshop for content, modules, and organizations.',
+    anonymousSubtitle: 'The shared interface for content, modules, and organizations.',
     anonymousBody:
-      'Sign in to open the right building blocks, shape content, and continue directly in your working context.',
+      'Sign in to manage content, open specialist modules, and continue directly in your working context.',
     eyebrow: 'Studio workspace',
     openSourcePrefix: 'Open Source Software made with',
     openSourceLoveLabel: 'love',

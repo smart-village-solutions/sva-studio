@@ -1,8 +1,11 @@
 # plugin-platform Specification
 
 ## Purpose
+
 TBD - created by archiving change refactor-plugin-platform-for-external-publishable-plugins. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Einheitlicher Plugin-Plattformvertrag
 
 Das System SHALL einen kanonischen Plugin-Plattformvertrag für interne und externe Plugins bereitstellen. Dieser Vertrag umfasst Authoring, Distribution, Installation, Snapshot-Materialisierung und Runtime-Execution.
@@ -290,3 +293,24 @@ Das System SHALL Plugin-Authoring-Dokumentation, Templates und vorhandene Genera
 - **DANN** prüft dieselbe blockierende Registry- und CI-Validierung den History-Vertrag
 - **UND** der manuelle Pfad bietet keine schwächere Ausnahme
 
+### Requirement: FAQ-Plugin verwendet getrennte autorisierbare Actions
+
+Das System MUST die FAQ-Operationen über die fully-qualified Actions `faq.read`, `faq.create`, `faq.update` und `faq.delete` autorisieren. Das FAQ-Plugin MUST seine FAQ-Admin-Ressource und UI-Bindings deklarativ über den bestehenden Standard-Content-Plugin-Vertrag registrieren.
+
+#### Scenario: FAQ-Operation wird autorisiert
+
+- **WHEN** ein Benutzer eine FAQ-Listen-, Create-, Update- oder Delete-Operation ausführt
+- **THEN** prüft der Host die zugehörige `faq.*`-Action im Instanz- und Organisationskontext
+- **AND** führt die Operation nur bei erfolgreicher Prüfung aus
+
+#### Scenario: Fehlende FAQ-Berechtigung blockiert die Operation
+
+- **WHEN** einem Benutzer die für eine FAQ-Operation benötigte `faq.*`-Action fehlt
+- **THEN** veröffentlicht der Host die geschützte Admin-Fläche nicht für diesen Benutzer oder weist die serverseitige Operation ab
+- **AND** der Mainserver wird nicht aufgerufen
+
+#### Scenario: FAQ folgt dem Standard-Content-Plugin-Vertrag
+
+- **WHEN** der Host den FAQ-Plugin-Beitrag registriert
+- **THEN** veröffentlicht er die FAQ-`list`-, `detail`- und `editor`-Bindings zusammen mit der FAQ-Admin-Ressource
+- **AND** blendet er deren direkte Navigation zugunsten der gemeinsamen Inhaltsübersicht aus

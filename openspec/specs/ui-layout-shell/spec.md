@@ -1,79 +1,100 @@
 # ui-layout-shell Specification
 
 ## Purpose
+
 Die UI-Layout-Shell beschreibt die gemeinsame Grundstruktur des Studios mit Sidebar, Kopfzeile, Contentbereich und den dazugehörigen Lade-, Theme- und Responsivitätsregeln.
+
 ## Requirements
+
 ### Requirement: Erweiterbare Layout-Shell
+
 Das System SHALL eine erweiterbare Layout-Shell bereitstellen, die die Bereiche Sidebar, Kopfzeile und Contentbereich klar trennt und dabei eine Tailwind-/shadcn-kompatible Grundstruktur für spätere UI-Erweiterungen bietet.
 
 #### Scenario: Standard-Layout wird gerendert
+
 - **WHEN** ein Benutzer eine reguläre Route der App öffnet
 - **THEN** wird eine Shell mit Sidebar, Kopfzeile und Contentbereich angezeigt
 - **AND** der Contentbereich enthält den jeweiligen Routeninhalt
 
 #### Scenario: Bereiche sind unabhängig erweiterbar
+
 - **WHEN** später neue Navigationselemente, Menüs oder Header-Aktionen ergänzt werden
 - **THEN** können Sidebar und Kopfzeile ohne Umbau des Contentbereichs erweitert werden
 - **AND** die Shell bleibt mit semantischen Tailwind-/shadcn-Primitives kompatibel
 
 ### Requirement: Skeleton UI für Shell-Bereiche
+
 Das System SHALL Skeleton-UI-Zustände für Sidebar, Kopfzeile und Contentbereich bereitstellen.
 
 #### Scenario: Shell lädt in Pending-Zustand
+
 - **WHEN** ein Ladezustand für die Shell aktiv ist
 - **THEN** werden Skeleton-Platzhalter für Sidebar, Kopfzeile und Contentbereich angezeigt
 
 #### Scenario: Inhalt ist verfügbar
+
 - **WHEN** der Ladezustand beendet ist
 - **THEN** werden die regulären Layout-Inhalte ohne Skeleton angezeigt
 
 ### Requirement: Barrierefreie Grundstruktur
+
 Die Layout-Shell SHALL eine barrierefreie Grundstruktur für Navigation und Hauptinhalt bereitstellen.
 
 #### Scenario: Tastaturnutzer überspringt Navigation
+
 - **WHEN** ein Tastaturnutzer die Seite betritt
 - **THEN** ist ein Skip-Link vorhanden, der direkt zum Contentbereich führt
 
 #### Scenario: Screenreader erkennt Hauptbereiche
+
 - **WHEN** ein Screenreader die Seite analysiert
 - **THEN** sind Kopfzeile, Sidebar-Navigation und Hauptinhalt über semantische Landmarks erkennbar
 
 ### Requirement: Responsives Verhalten der Shell
+
 Die Layout-Shell SHALL auf kleinen und großen Viewports nutzbar sein und auf mobilen Geräten eine reduzierte, nicht-blockierende Navigations- und Header-Variante bereitstellen.
 
 #### Scenario: Mobile Viewport mit Drawer-Navigation
+
 - **WHEN** die App auf einem mobilen Gerät angezeigt wird
 - **THEN** bleibt die Kopfzeile erreichbar
 - **AND** die Navigation kann als Drawer/`Sheet` geöffnet werden
 - **AND** Sidebar und Contentbereich bleiben nutzbar, ohne horizontales Layout-Breaking
 
 #### Scenario: Desktop Viewport
+
 - **WHEN** die App auf einem großen Viewport angezeigt wird
 - **THEN** werden Sidebar und Contentbereich nebeneinander dargestellt
 - **AND** die Shell verwendet eine stabile Desktop-Struktur ohne verpflichtende komplexe Flyout-Muster
 
 ### Requirement: Design-Token-basierte Shell-Farben
+
 Das System SHALL für die Layout-Shell semantische Farb- und Flächentokens verwenden, die auf der SVA-Studio-Farbpalette aus dem Vorgängerprojekt basieren.
 
 #### Scenario: Shell-Flächen nutzen semantische Tokens
+
 - **WHEN** Header, Sidebar oder Content-Surfaces gerendert werden
 - **THEN** verwenden sie semantische Farben wie `background`, `foreground`, `card`, `popover`, `sidebar`, `primary`, `muted`, `border`, `ring` und `destructive`
 - **AND** die zugrundeliegenden Werte sind zentral über CSS-Variablen definiert
 
 #### Scenario: Direkte Shell-Farben werden reduziert
+
 - **WHEN** Shell-nahe Komponenten migriert werden
 - **THEN** werden direkte Tailwind-Farbwerte wie `slate-*`, `emerald-*` oder `red-*` in diesen Komponenten durch semantische Klassen ersetzt
 - **AND** der visuelle Schwerpunkt liegt auf der Übernahme der SVA-Studio-Farben
 
 ### Requirement: Theme- und Modusfähige Token-Architektur
+
 Das System SHALL die Shell-Farben so modellieren, dass mehrere Themes sowie Light- und Dark-Mode unterstützt werden können.
 
 #### Scenario: Light und Dark Mode werden unterstützt
+
 - **WHEN** die Shell in Light oder Dark Mode gerendert wird
 - **THEN** werden Farben, Borders, Fokuszustände und Flächen über denselben semantischen Token-Satz aufgelöst
 - **AND** die Shell verwendet keine fest verdrahteten Einzelfarben, die einen Modus ausschließen
 
 #### Scenario: Theme wird über `instanceId` bestimmt
+
 - **WHEN** für eine App-Instanz eine `instanceId` bekannt ist
 - **THEN** kann die Shell daraus eine Theme-Variante ableiten oder auswählen
 - **AND** die Theme-Auflösung bleibt kompatibel mit Light- und Dark-Mode
@@ -81,48 +102,58 @@ Das System SHALL die Shell-Farben so modellieren, dass mehrere Themes sowie Ligh
 - **AND** falls der Wert aus Backend- oder Datenbankschichten als `instance_id` geliefert wird, ist das Mapping ins Frontend eindeutig dokumentiert
 
 ### Requirement: Niedrigrisiko-Interaktionen für die Shell
+
 Das System SHALL neue Shell-Interaktionen auf wartbare, zugängliche Standardmuster begrenzen und komplexe Spezialmuster nur als Folgeschritt zulassen.
 
 #### Scenario: Mobile Navigation und kleine Menüs werden eingeführt
+
 - **WHEN** neue Shell-Interaktionen benötigt werden
 - **THEN** werden bevorzugt standardisierte Primitives wie `Sheet` oder `DropdownMenu` verwendet
 - **AND** Tastatur- und Screenreader-Nutzung bleiben ohne Speziallogik nachvollziehbar
 
 #### Scenario: Komplexe Alt-Muster sind nicht Teil des Initial-Scope
+
 - **WHEN** die Shell an das Vorgängerprojekt angeglichen wird
 - **THEN** sind kollabierte Flyout-Submenüs, pixelgenaue Active-Indikatoren und umfangreiche Header-Sonderlogik nicht verpflichtender Bestandteil der ersten Umsetzung
 - **AND** diese Muster werden nur bei klarem Mehrwert in einem späteren Follow-up betrachtet
 
 ### Requirement: Sichtbarer Runtime-Health-Indikator in der Shell
+
 Die Layout-Shell SHALL auf allen Studioseiten am unteren Ende eine dauerhaft sichtbare Runtime-Health-Anzeige für zentrale Plattformabhängigkeiten bereitstellen.
 
 #### Scenario: Health-Indikator wird auf regulären Studioseiten angezeigt
+
 - **WHEN** ein Benutzer eine reguläre Studioseite öffnet
 - **THEN** zeigt die Shell am Ende der Seite eine kompakte Health-Anzeige
 - **AND** die Anzeige ist nicht auf Admin-Unterseiten beschränkt
 - **AND** die Anzeige ist in allen Environments sichtbar
 
 #### Scenario: Mehrere Dienstzustände werden verständlich dargestellt
+
 - **WHEN** der Runtime-Healthcheck Zustände für Datenbank, Redis, Keycloak oder weitere relevante Dienste liefert
 - **THEN** zeigt die Shell jeden Dienst mit Label und Statuszustand an
 - **AND** Zustände wie `ready`, `degraded`, `not_ready` und `unknown` sind visuell unterscheidbar
 
 #### Scenario: Health-Abfrage schlägt fehl
+
 - **WHEN** die Shell den Runtime-Health-Status nicht laden kann
 - **THEN** bleibt die restliche Shell nutzbar
 - **AND** die Health-Anzeige wechselt in einen sichtbaren Fehler- oder `unknown`-Zustand
 - **AND** der Benutzer erhält keinen leeren oder irreführend grünen Zustand
 
 #### Scenario: Anzeige bleibt zugänglich und mobil nutzbar
+
 - **WHEN** die Shell auf kleinen oder großen Viewports gerendert wird
 - **THEN** bleibt die Health-Anzeige lesbar und erreichbar
 - **AND** Screenreader können Dienstname und Status semantisch erfassen
 - **AND** die Anzeige verursacht kein horizontales Layout-Breaking
 
 ### Requirement: Standardisiertes Listen-Seiten-Template
+
 Das Studio SHALL für Verwaltungs- und Listenansichten ein gemeinsames Seiten-Template bereitstellen, das Breadcrumbs aus der Shell ergänzt und darunter Titel, Beschreibung, optionale Primäraktion sowie den Listeninhalt in konsistenter Struktur rendert.
 
 #### Scenario: Listen-Seite nutzt das Standard-Template
+
 - **WHEN** eine Verwaltungsseite des Studios gerendert wird
 - **THEN** zeigt die Seite unterhalb der bestehenden Breadcrumbs einen Titel und optionalen Beschreibungstext
 - **AND** eine optionale Primäraktion wie `Neu erstellen` steht auf Titelhöhe rechts
@@ -195,9 +226,11 @@ Das Studio SHALL eine wiederverwendbare Datentabelle für Verwaltungslisten bere
 - **AND** sind widersprüchliche Kombinationen aus Modus, Spalten, State und Handler typsicher oder durch eine Laufzeitinvariante abgewiesen
 
 ### Requirement: Tabs für mehrere Tabellenbereiche
+
 Das Studio SHALL bei mehreren gleichrangigen Tabellenbereichen auf einer Seite ein gemeinsames Tabs-Muster verwenden.
 
 #### Scenario: Seite mit mehreren Tabellenbereichen
+
 - **WHEN** eine Verwaltungsseite mehrere gleichrangige Tabellenbereiche enthält
 - **THEN** werden diese Bereiche über ein gemeinsames Tabs-Muster innerhalb des Seiten-Templates organisiert
 - **AND** jeder Tab rendert seinen eigenen Tabellen- oder Listeninhalt, ohne ein zweites konkurrierendes Seitenlayout einzuführen
@@ -476,3 +509,108 @@ Das Studio MUST alle Tabellen-Body-Zellen bei einheitlichem vertikalem Zell-Padd
 - **DANN** dürfen die Inhalte der Kopfzellen innerhalb dieser Höhe mittig ausgerichtet werden
 - **UND** ändert dies nicht den Top-Ausrichtungsstandard der Body-Zellen
 
+### Requirement: Gemeinsame Editor-Primitives übernehmen bewährtes Verhalten ohne Plugin-Duplikate
+
+Das Studio MUST gemeinsame Editor-Primitives aus nachgewiesenen Verhaltensmustern mehrerer produktiver Content-Plugins ableiten. Die Vereinheitlichung MUST allgemeine Layout- und Interaktionsverantwortung in `studio-ui-react` bündeln und pluginlokale Basisimplementierungen entfernen oder auf fachliche Zusammensetzung reduzieren.
+
+#### Scenario: Gemeinsames Primitive wird aus realen Nutzungsmustern abgeleitet
+
+- **GIVEN** News, Events, POIs, GenericItems, FAQ oder Kacheln besitzen ein vergleichbares Editor-Muster
+- **WHEN** das Studio dafür ein gemeinsames Primitive einführt oder erweitert
+- **THEN** ist dessen Verhalten gegen mindestens zwei reale Nutzungsmuster geprüft
+- **AND** bleiben fachliche Feldmodelle, Mapper und Validierungen in den jeweiligen Plugins
+
+#### Scenario: Referenzplugin besitzt eine lokale Basisimplementierung
+
+- **WHEN** ein Referenzplugin Tabs, Section-Cards, Pagination oder Löschbestätigung lokal nachbildet
+- **THEN** übernimmt die Vereinheitlichung das bewährte Verhalten, aber nicht automatisch die lokale Ownership-Struktur
+- **AND** führt sie keine weitere parallele Basisimplementierung in FAQ, Kacheln oder GenericItems ein
+
+#### Scenario: Abstraktion besitzt keine nachgewiesene Mehrfachnutzung
+
+- **WHEN** eine vorgeschlagene Factory, ein Wrapper oder eine Konfigurationsschicht nur einen einzigen Editor bedienen würde
+- **THEN** bleibt die fachliche Zusammensetzung lokal und direkt
+- **AND** führt das Studio keine spekulative gemeinsame Abstraktion ein
+
+### Requirement: Fachliche Content-Editoren verwenden den gemeinsamen Studio-Detail-Workspace
+
+Das Studio MUST FAQ, Kacheln und offene GenericItems über die gemeinsamen Detailseiten-, Tab-, Panel-, Formularstatus- und Dialog-Primitives darstellen. Die Fachplugins MUST ihre fachlichen Felder und Validierungen selbst besitzen, dürfen aber keine parallelen Basisimplementierungen für dieselben Studio-Interaktionen einführen.
+
+#### Scenario: Detail-Workspace wird auf Desktop dargestellt
+
+- **WHEN** ein Benutzer FAQ, Kacheln oder GenericItems erstellt oder bearbeitet
+- **THEN** verwendet der Editor das gemeinsame Detailseiten-Template und die gemeinsame Bereichsnavigation
+- **AND** erklärt eine fachliche Seitenbeschreibung Zweck und Umfang des Editors
+- **AND** Tab-Header, Panel-Flächen, Beschreibungen, Abstände und Aktionen folgen denselben semantischen Studio-Tokens
+- **AND** pluginlokale Komponenten beschränken sich auf die Zusammensetzung fachlicher Felder
+
+#### Scenario: Primäraktion erstellt einen neuen Fachinhalt
+
+- **WHEN** ein Benutzer einen neuen Fachinhalt erstellt
+- **THEN** benennt die Primäraktion das Erstellen eindeutig
+- **AND** bleibt die Aktion bis zum Mutationsstart verfügbar und ist während der laufenden Mutation gesperrt
+
+#### Scenario: Primäraktion aktualisiert einen bestehenden Fachinhalt
+
+- **WHEN** ein Benutzer einen bestehenden Fachinhalt bearbeitet
+- **THEN** benennt die Primäraktion das Aktualisieren eindeutig
+- **AND** bleibt die Aktion bis zum Mutationsstart verfügbar und ist während der laufenden Mutation gesperrt
+
+#### Scenario: Detail-Workspace wird mobil dargestellt
+
+- **WHEN** ein Benutzer denselben Editor auf einem kleinen Viewport öffnet
+- **THEN** bietet der gemeinsame Detail-Workspace eine sichtbare und beschriftete mobile Bereichsauswahl
+- **AND** alle fachlichen Bereiche bleiben ohne horizontales Layout-Breaking erreichbar
+
+#### Scenario: Formularzustand bleibt beim Bereichswechsel erhalten
+
+- **GIVEN** ein Benutzer hat Werte, wiederholbare Einträge oder Validierungsfehler in einem Formularbereich
+- **WHEN** er mehrfach zwischen Editorbereichen wechselt
+- **THEN** bleiben Werte, Reihenfolge, Dirty-State und Fehler erhalten
+- **AND** ein noch nicht besuchter History-Bereich darf weiterhin erst beim ersten Öffnen geladen werden
+
+### Requirement: Studio-Formulare zeigen Status und Fehler einheitlich und feldbezogen
+
+Das Studio MUST Speicherstatus, API-Fehler und Validierungsfehler in Content-Editoren über die gemeinsamen Form-Summary-Primitives darstellen. Feldbezogene Fehler MUST eine stabile Zuordnung zum betroffenen Feld und dessen Editorbereich besitzen.
+
+#### Scenario: Fehler befindet sich im aktiven Bereich
+
+- **WHEN** eine Formularvalidierung im sichtbaren Editorbereich fehlschlägt
+- **THEN** zeigt das Studio den Fehler in der gemeinsamen Zusammenfassung und bei Bedarf inline am Feld
+- **AND** ein Fehlerverweis fokussiert das eindeutig zugeordnete Feld
+
+#### Scenario: Fehler befindet sich in einem anderen Bereich
+
+- **WHEN** ein Fehlerverweis auf ein Feld in einem inaktiven Editorbereich zeigt
+- **THEN** aktiviert das Studio zuerst den zugehörigen Bereich
+- **AND** fokussiert anschließend das betroffene Feld
+- **AND** verwirft keine bereits erfassten Formulardaten
+
+#### Scenario: Mutation schlägt fehl
+
+- **WHEN** Speichern oder Löschen serverseitig fehlschlägt
+- **THEN** zeigt das Studio einen zugänglichen Fehlerstatus mit einer korrigierbaren nächsten Handlung
+- **AND** bestehende Formularwerte bleiben erhalten
+
+### Requirement: Destruktive Content-Aktionen verlangen eine gemeinsame Bestätigung
+
+Das Studio MUST für das Löschen von FAQ, Kacheln und GenericItems denselben zugänglichen Bestätigungsdialog verwenden. Ohne ausdrückliche Bestätigung darf keine Löschmutation ausgeführt werden.
+
+#### Scenario: Benutzer bricht das Löschen ab
+
+- **WHEN** ein Benutzer den Löschdialog abbricht
+- **THEN** führt das Studio keine Mutation und keine Navigation aus
+- **AND** gibt den Fokus an die auslösende Aktion zurück
+
+#### Scenario: Benutzer bestätigt das Löschen
+
+- **WHEN** ein Benutzer das Löschen ausdrücklich bestätigt
+- **THEN** sperrt das Studio weitere Lösch- und Bestätigungsaktionen bis zum Abschluss
+- **AND** führt genau eine Löschmutation aus
+- **AND** navigiert nach Erfolg zur kanonischen Inhaltsübersicht
+
+#### Scenario: Bestätigte Löschung schlägt fehl
+
+- **WHEN** die bestätigte Löschmutation fehlschlägt
+- **THEN** bleibt der Dialog mit einem sichtbaren Fehlerzustand bedienbar
+- **AND** der Benutzer kann abbrechen oder einen kontrollierten erneuten Versuch auslösen

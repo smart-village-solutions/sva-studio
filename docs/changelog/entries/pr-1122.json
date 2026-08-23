@@ -1,0 +1,4 @@
+{
+  "prNumber": 1122,
+  "body": "Die Testabdeckung für Projektseiten läuft stabiler\n\n- Die einmalige Initialisierung der Projektseiten wird nicht mehr der Laufzeit eines einzelnen Tests zugerechnet.\n- Die bestehende Timeout-Grenze bleibt unverändert und erkennt weiterhin tatsächlich hängende Tests."
+}

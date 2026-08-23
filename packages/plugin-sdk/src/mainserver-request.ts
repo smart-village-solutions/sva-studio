@@ -189,6 +189,7 @@ const parseMainserverErrorResponse = async (
 ): Promise<{
   readonly code: string;
   readonly message: string;
+  readonly details?: unknown;
   readonly permissionDenial?: PermissionDenialDetails;
 }> => {
   if (isHtmlLikeContentType(response)) {
@@ -211,10 +212,12 @@ const parseMainserverErrorResponse = async (
     const structuredError = readStructuredErrorDetails(body.error);
     const errorCode = readNonEmptyString(body.error) ?? structuredError.code ?? fallback.code;
     const message = readNonEmptyString(body.message) ?? structuredError.message ?? errorCode;
-    const permissionDenial = parsePermissionDenialDetails(body.details ?? structuredError.details);
+    const details = body.details ?? structuredError.details;
+    const permissionDenial = parsePermissionDenialDetails(details);
     return {
       code: errorCode,
       message,
+      ...(details !== undefined ? { details } : {}),
       ...(permissionDenial ? { permissionDenial } : {}),
     };
   } catch (error) {
@@ -233,7 +236,10 @@ const assertMainserverResponseOk = async <TError extends Error>(
   if (response.ok) {
     return;
   }
-  const { code, message, permissionDenial } = await parseMainserverErrorResponse(response, signal);
+  const { code, message, details, permissionDenial } = await parseMainserverErrorResponse(
+    response,
+    signal
+  );
   const error = resolveMainserverErrorFactory(errorFactory)(code, message, permissionDenial);
   if (!('httpStatus' in error)) {
     Object.defineProperty(error, 'httpStatus', {
@@ -247,6 +253,13 @@ const assertMainserverResponseOk = async <TError extends Error>(
       configurable: true,
       enumerable: true,
       value: permissionDenial,
+    });
+  }
+  if (details !== undefined && !('details' in error)) {
+    Object.defineProperty(error, 'details', {
+      configurable: true,
+      enumerable: true,
+      value: details,
     });
   }
   throw error;

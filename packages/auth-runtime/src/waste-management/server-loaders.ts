@@ -1559,6 +1559,7 @@ export const createWasteAnnualTourTransferInTransaction = async (input: {
     await client.query(`
 LOCK TABLE
   waste_tours,
+  waste_custom_recurrence_presets,
   waste_location_tour_links,
   waste_location_tour_pickup_dates,
   waste_tour_assignments,

@@ -8,6 +8,13 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('../src/waste-management.api.js', () => ({
+  WasteManagementApiError: class extends Error {
+    public readonly details?: unknown;
+
+    public constructor(public readonly code: string) {
+      super(code);
+    }
+  },
   previewWasteAnnualTourTransfer: api.preview,
   createWasteAnnualTourTransfer: api.create,
 }));
@@ -35,6 +42,7 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 import { WasteToursAnnualTransferDialog } from '../src/waste-management.tours-annual-transfer-dialog.js';
+import { WasteManagementApiError } from '../src/waste-management.api.js';
 import { showWasteAnnualTransferResult } from '../src/waste-management.tours-annual-transfer.js';
 
 const preview = {
@@ -275,6 +283,113 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect((reviewButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(acknowledgement);
     expect((reviewButton as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('requires a new acknowledgement when the refreshed conflict identity changes', async () => {
+    const conflictedPreview = {
+      ...preview,
+      tours: [
+        {
+          ...preview.tours[0],
+          conflicts: [
+            {
+              kind: 'possible-parallel-planning' as const,
+              sourceTourId: 'tour-1',
+              targetTourId: 'target-a',
+              matchingFeatures: ['date'],
+            },
+          ],
+        },
+      ],
+      summary: { ...preview.summary, selected: 0 },
+    };
+    api.preview.mockResolvedValueOnce(conflictedPreview).mockResolvedValueOnce({
+      ...conflictedPreview,
+      tours: [
+        {
+          ...conflictedPreview.tours[0],
+          conflicts: [
+            {
+              kind: 'possible-parallel-planning' as const,
+              sourceTourId: 'tour-1',
+              targetTourId: 'target-b',
+              matchingFeatures: ['date'],
+            },
+          ],
+        },
+      ],
+    });
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'tours.annualTransfer.selectTour:Bio Nord' })
+    );
+    const acknowledgementLabel = screen.getByText(
+      'tours.annualTransfer.acknowledgeConflict:Bio Nord'
+    );
+    fireEvent.click(acknowledgementLabel);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
+
+    await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2));
+    expect(
+      (acknowledgementLabel.closest('label')?.querySelector('input') as HTMLInputElement).checked
+    ).toBe(false);
+    expect(
+      (screen.getByRole('button', { name: 'tours.annualTransfer.confirm' }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+  });
+
+  it('uses the updated stale preview and drops obsolete replacement dates', async () => {
+    const previewWithReplacement = {
+      ...preview,
+      tours: [
+        {
+          ...preview.tours[0],
+          replacementResourceIds: ['obsolete-date'],
+          replacementTargetYears: { 'obsolete-date': 2027 },
+        },
+      ],
+    };
+    const updatedPreview = {
+      ...preview,
+      previewFingerprint: `sha256:${'b'.repeat(64)}`,
+    };
+    api.preview.mockResolvedValue(previewWithReplacement);
+    const staleError = new WasteManagementApiError('preview_stale');
+    Object.defineProperty(staleError, 'details', { value: { updatedPreview } });
+    api.create.mockRejectedValueOnce(staleError);
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    const replacementInput = await screen.findByLabelText(
+      'tours.annualTransfer.replacementDate:Bio Nord 1|2027'
+    );
+    fireEvent.change(replacementInput, { target: { value: '2027-02-01' } });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'tours.annualTransfer.confirm' }));
+
+    expect(await screen.findByText('tours.annualTransfer.stale')).toBeTruthy();
+    expect(api.preview).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByLabelText('tours.annualTransfer.replacementDate:Bio Nord 1|2027')
+    ).toBeNull();
+    expect(screen.getByRole('button', { name: 'tours.annualTransfer.review' })).toBeTruthy();
   });
 
   it('explains hard target conflicts instead of asking for an unrelated date decision', async () => {

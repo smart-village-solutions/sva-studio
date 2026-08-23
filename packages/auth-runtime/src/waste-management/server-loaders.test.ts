@@ -746,7 +746,7 @@ describe('waste-management server loaders', () => {
       ['tenant-a', 'waste-annual-tour-transfer:2027']
     );
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith(
-      expect.stringContaining('IN SHARE ROW EXCLUSIVE MODE')
+      expect.stringContaining('waste_custom_recurrence_presets')
     );
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
 

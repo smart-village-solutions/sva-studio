@@ -166,6 +166,26 @@ describe('mainserver-request', () => {
     });
   });
 
+  it('preserves structured API details on custom errors', async () => {
+    class CustomMainserverError extends Error {
+      public constructor(public readonly code: string) {
+        super(code);
+      }
+    }
+    const details = { updatedPreview: { previewFingerprint: 'sha256:updated', tours: [] } };
+
+    await expect(
+      requestMainserverJson({
+        url: '/stale-preview',
+        fetch: vi.fn(
+          async () =>
+            new Response(JSON.stringify({ error: 'preview_stale', details }), { status: 409 })
+        ) as typeof fetch,
+        errorFactory: (code) => new CustomMainserverError(code),
+      })
+    ).rejects.toMatchObject({ code: 'preview_stale', details });
+  });
+
   it('maps timeouts during fetch and response parsing into stable mainserver timeout errors', async () => {
     vi.useFakeTimers();
     try {

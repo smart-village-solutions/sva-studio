@@ -7,6 +7,8 @@ import type {
 import { createMainserverJsonRequestHeaders, requestMainserverJson } from '@sva/plugin-sdk';
 
 export class WasteManagementApiError extends Error {
+  declare readonly details?: unknown;
+
   public constructor(
     public readonly code: string,
     message = code

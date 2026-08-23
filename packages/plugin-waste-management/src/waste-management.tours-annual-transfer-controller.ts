@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type {
   WasteAnnualTourTransferPreview,
   WasteAnnualTourTransferResult,
+  WasteAnnualTourTransferTourPreview,
 } from '@sva/plugin-sdk';
 
 import {
+  WasteManagementApiError,
   createWasteAnnualTourTransfer,
   previewWasteAnnualTourTransfer,
 } from './waste-management.api.js';
@@ -57,6 +59,64 @@ const useAnnualTransferState = () => {
 
 type AnnualTransferState = ReturnType<typeof useAnnualTransferState>;
 
+const conflictIdentity = (tour: WasteAnnualTourTransferTourPreview | undefined): string =>
+  JSON.stringify(
+    (tour?.conflicts ?? [])
+      .map((conflict) => ({
+        kind: conflict.kind,
+        targetTourId: conflict.targetTourId,
+        matchingFeatures: [...conflict.matchingFeatures].sort(),
+      }))
+      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+  );
+
+const applyAnnualPreview = (input: {
+  state: AnnualTransferState;
+  next: WasteAnnualTourTransferPreview;
+  nextStep: 'preview' | 'confirm';
+}) => {
+  const { state, next, nextStep } = input;
+  const previous = state.preview;
+  const selectable = next.tours
+    .filter((tour) => tour.classification === 'transferable')
+    .map((tour) => tour.sourceTourId);
+  const selected = previous
+    ? state.selectedTourIds.filter((id) => selectable.includes(id))
+    : next.tours
+        .filter((tour) => tour.classification === 'transferable' && tour.conflicts.length === 0)
+        .map((tour) => tour.sourceTourId);
+  const retainedAcknowledgements = state.acknowledgedConflictTourIds.filter((sourceTourId) => {
+    if (!selected.includes(sourceTourId)) return false;
+    const previousTour = previous?.tours.find((tour) => tour.sourceTourId === sourceTourId);
+    const nextTour = next.tours.find((tour) => tour.sourceTourId === sourceTourId);
+    return conflictIdentity(previousTour) === conflictIdentity(nextTour);
+  });
+  state.setPreview(next);
+  state.setSelectedTourIds(selected);
+  state.setAcknowledgedConflictTourIds(retainedAcknowledgements);
+  state.setStep(nextStep);
+  requestAnimationFrame(() => state.summaryRef.current?.focus());
+};
+
+const updatedPreviewFromError = (error: unknown): WasteAnnualTourTransferPreview | null => {
+  if (!(error instanceof WasteManagementApiError)) return null;
+  const details = error.details;
+  if (typeof details !== 'object' || details === null || !('updatedPreview' in details))
+    return null;
+  const updatedPreview = details.updatedPreview;
+  if (
+    typeof updatedPreview !== 'object' ||
+    updatedPreview === null ||
+    !('tours' in updatedPreview) ||
+    !Array.isArray(updatedPreview.tours) ||
+    !('previewFingerprint' in updatedPreview) ||
+    typeof updatedPreview.previewFingerprint !== 'string'
+  ) {
+    return null;
+  }
+  return updatedPreview as WasteAnnualTourTransferPreview;
+};
+
 const resetAnnualTransfer = (state: AnnualTransferState) => {
   state.setStep('source');
   state.setSourceYear(wasteAnnualCurrentYear());
@@ -84,21 +144,7 @@ const loadAnnualPreview = async (input: {
       selectedTourIds: state.preview ? state.selectedTourIds : undefined,
       replacementDates: replacementInput,
     });
-    const selectable = next.tours
-      .filter((tour) => tour.classification === 'transferable')
-      .map((tour) => tour.sourceTourId);
-    const selected = state.preview
-      ? state.selectedTourIds.filter((id) => selectable.includes(id))
-      : next.tours
-          .filter((tour) => tour.classification === 'transferable' && tour.conflicts.length === 0)
-          .map((tour) => tour.sourceTourId);
-    state.setPreview(next);
-    state.setSelectedTourIds(selected);
-    state.setAcknowledgedConflictTourIds((current) =>
-      current.filter((id) => selected.includes(id))
-    );
-    state.setStep(load.nextStep ?? 'preview');
-    requestAnimationFrame(() => state.summaryRef.current?.focus());
+    applyAnnualPreview({ state, next, nextStep: load.nextStep ?? 'preview' });
   } catch {
     state.setError(options.translate('tours.annualTransfer.previewError'));
   } finally {
@@ -132,7 +178,20 @@ const createAnnualTransfer = async (input: {
     await options.onCreated();
   } catch (error) {
     if (resolveApiErrorCode(error) === 'preview_stale') {
-      await input.reload({ preserveError: true });
+      const updatedPreview = updatedPreviewFromError(error);
+      if (updatedPreview) {
+        const requiredReplacementIds = new Set(
+          updatedPreview.tours.flatMap((tour) => tour.replacementResourceIds)
+        );
+        state.setReplacementDates((current) =>
+          Object.fromEntries(
+            Object.entries(current).filter(([resourceId]) => requiredReplacementIds.has(resourceId))
+          )
+        );
+        applyAnnualPreview({ state, next: updatedPreview, nextStep: 'preview' });
+      } else {
+        await input.reload({ preserveError: true });
+      }
       state.setError(options.translate('tours.annualTransfer.stale'));
     } else state.setError(options.translate('tours.annualTransfer.createError'));
   } finally {

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { WasteAnnualTourTransferPreview, WasteAnnualTourTransferResult } from '@sva/core';
+import {
+  WasteAnnualTourTransferError,
+  type WasteAnnualTourTransferPreview,
+  type WasteAnnualTourTransferResult,
+} from '@sva/core';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 
 const idempotency = vi.hoisted(() => ({
@@ -111,6 +115,56 @@ describe('annual tour transfer handlers', () => {
       );
     expect(response.status).toBe(400);
     expect(load).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      error: new WasteAnnualTourTransferError('invalid_source_year'),
+      status: 400,
+      code: 'invalid_source_year',
+    },
+    {
+      error: new WasteAnnualTourTransferError('replacement_date_invalid'),
+      status: 400,
+      code: 'replacement_date_invalid',
+    },
+    {
+      error: new WasteAnnualTourTransferError('batch_limit_exceeded'),
+      status: 413,
+      code: 'batch_limit_exceeded',
+    },
+    {
+      error: new Error('unacknowledged_target_conflict'),
+      status: 409,
+      code: 'target_conflict_unacknowledged',
+    },
+    {
+      error: new Error('invalid_transfer_selection'),
+      status: 400,
+      code: 'invalid_request',
+    },
+    {
+      error: new Error(`target_identity_conflict:${JSON.stringify(preview)}`),
+      status: 409,
+      code: 'target_identity_conflict',
+    },
+    { error: new Error('preview_stale:not-json'), status: 409, code: 'preview_stale' },
+    { error: 'database offline', status: 503, code: 'database_unavailable' },
+  ])('maps preview failure $code to its stable API response', async ({ error, status, code }) => {
+    const response =
+      await wasteManagementAnnualTourTransferHandlers.previewWasteAnnualTourTransferInternal(
+        request('/api/v1/waste-management/tours/annual-transfer/preview', { sourceYear: 2026 }),
+        actor,
+        {
+          resolvePermissions: permissions,
+          previewWasteAnnualTourTransfer: vi.fn(async () => {
+            throw error;
+          }),
+        }
+      );
+
+    expect(response.status).toBe(status);
+    await expect(response.json()).resolves.toMatchObject({ error: { code } });
   });
 
   it('creates once with central idempotency and one data-minimizing audit event', async () => {

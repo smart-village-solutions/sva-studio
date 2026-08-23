@@ -142,6 +142,47 @@ describe('faq editor pages', () => {
     );
   }, 30_000);
 
+  it('keeps the faq tab order and supports the responsive tab selector', async () => {
+    state.getFaqMock.mockResolvedValue({
+      id: 'faq-1',
+      title: 'Bestehende Frage',
+      genericType: 'FAQ',
+      contentBlocks: [{ body: 'Vorhandene Antwort' }],
+      payload: { languageCode: 'de', sortWeight: 2 },
+      visible: true,
+      createdAt: '',
+      updatedAt: '',
+    });
+    const { FaqEditPage } = await import('../src/faq.pages.js');
+
+    render(<FaqEditPage />);
+
+    await screen.findByDisplayValue('Bestehende Frage');
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'tabs.basis.label',
+      'tabs.content.label',
+      'tabs.settings.label',
+      'tabs.history.label',
+    ]);
+    expect(
+      screen.getAllByRole('option').map((option) => option.getAttribute('label'))
+    ).toEqual([
+      'tabs.basis.label',
+      'tabs.content.label',
+      'tabs.settings.label',
+      'tabs.history.label',
+    ]);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'tabs.mobileLabel' }), {
+      target: { value: 'content' },
+    });
+
+    expect(screen.getByRole('tab', { name: 'tabs.content.label' }).getAttribute('data-state')).toBe(
+      'active'
+    );
+    expect(screen.getByLabelText('fields.answer')).toBeTruthy();
+  });
+
   it('loads an existing faq entry and updates it while preserving existing payload fields', async () => {
     state.getFaqMock.mockResolvedValue({
       id: 'faq-1',

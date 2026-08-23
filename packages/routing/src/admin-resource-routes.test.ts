@@ -513,17 +513,24 @@ describe('admin resource routes', () => {
       .map((route) => readRouteOptions(route))
       .find((route) => route.path === '/admin/content');
 
-    expect(
-      listRoute?.validateSearch?.({ type: '  news.article  ', page: '2', ignored: 'value' })
-    ).toEqual({
+    expect(listRoute?.validateSearch?.({
+      type: '  faq.faq  ',
+      languageCode: ' DE-de ',
+      page: '2',
+      ignored: 'value',
+    })).toEqual({
       filters: {},
       page: 2,
       pageSize: 25,
       search: undefined,
       sort: undefined,
-      type: 'news.article',
+      type: 'faq.faq',
+      languageCode: 'de-de',
     });
     expect(listRoute?.validateSearch?.({ type: [], page: '1' })).not.toHaveProperty('type');
+    expect(
+      listRoute?.validateSearch?.({ type: 'news.article', languageCode: 'de', page: '1' })
+    ).not.toHaveProperty('languageCode');
   });
 
   it('redirects legacy content aliases using href and location.href fallbacks', () => {

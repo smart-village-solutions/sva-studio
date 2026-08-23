@@ -11,6 +11,7 @@ export const contentDEResources = {
     quickAll: 'Alle',
     otherTypeLabel: 'Weitere Typen',
     otherTypePlaceholder: 'Typ auswählen',
+    languageCodeLabel: 'Sprachcode',
     statusLabel: 'Status',
     statusAll: 'Alle Status',
   },

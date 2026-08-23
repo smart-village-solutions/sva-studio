@@ -10,6 +10,7 @@ export const contentENResources = {
     quickAll: 'All',
     otherTypeLabel: 'More types',
     otherTypePlaceholder: 'Select type',
+    languageCodeLabel: 'Language code',
     statusLabel: 'Status',
     statusAll: 'All statuses',
   },
@@ -133,8 +134,7 @@ export const contentENResources = {
     contextLoading: 'The author context is loading. Write actions are temporarily blocked.',
     contextUnavailable:
       'The author context could not be determined unambiguously. Write actions remain blocked.',
-    resourceLoading:
-      'The resource principal is loading. Write actions are temporarily blocked.',
+    resourceLoading: 'The resource principal is loading. Write actions are temporarily blocked.',
     resourceUnavailable:
       'The resource principal could not be determined unambiguously. Write actions remain blocked.',
   },

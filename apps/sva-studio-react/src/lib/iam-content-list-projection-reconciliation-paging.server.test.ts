@@ -262,6 +262,37 @@ describe('content projection reconciliation paging', () => {
     ]);
   });
 
+  it('persists the FAQ language code from slim projection rows', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'faq.read', resourceType: 'faq' }],
+    });
+    state.listSvaMainserverProjection.mockResolvedValue({
+      data: [
+        {
+          id: 'faq-slim-1',
+          contentType: 'faq.faq',
+          title: 'Frage',
+          languageCode: 'de',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
+      skippedInvalidCount: 0,
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, { visibleTypes: ['faq.faq'], force: true });
+
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        source_entity_id: 'faq-slim-1',
+        payload_json: { languageCode: 'de' },
+      }),
+    ]);
+  });
+
   it('does not delete an existing projection when a slim upstream page skipped records', async () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     fixture.projectionRows = [

@@ -103,6 +103,12 @@ export const loadProjectionPage = async (
         params.push(query.status);
         conditions.push(`projection.status = $${params.length}`);
       }
+      if (query.type === 'faq.faq' && query.languageCode) {
+        params.push(query.languageCode.trim().toLowerCase());
+        conditions.push(
+          `LOWER(BTRIM(projection.payload_json ->> 'languageCode')) = $${params.length}`
+        );
+      }
       if (query.q && query.q.trim().length > 0) {
         params.push(`%${query.q.trim().toLowerCase()}%`);
         const searchParam = `$${params.length}`;

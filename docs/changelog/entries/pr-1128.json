@@ -1,0 +1,4 @@
+{
+  "prNumber": 1128,
+  "body": "Die gemeinsame Inhaltsübersicht unterstützt für FAQ jetzt einen URL-gesteuerten Sprachfilter.\n\n- Unter `/admin/content?type=faq.faq` erscheint der Sprachcode-Filter und setzt Änderungen auf Seite 1 zurück.\n- Die Content-Projektion filtert vor Trefferzahl, Sortierung und Pagination; bei anderen Inhaltstypen wird der Parameter entfernt.\n- Der Browser-Test deckt Sprachfilter, Anlegen, Tabwechsel, Speichern, Historie und bestätigtes Löschen durchgängig ab."
+}

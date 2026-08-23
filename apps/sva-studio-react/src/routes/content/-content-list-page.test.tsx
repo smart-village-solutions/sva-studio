@@ -1090,6 +1090,86 @@ describe('ContentListPage', () => {
     });
   });
 
+  it('bindet den FAQ-Sprachfilter an URL und Listenabfrage und entfernt ihn bei Typwechsel', () => {
+    searchState = {
+      type: 'faq.faq',
+      languageCode: ' DE ',
+      status: 'published',
+      page: 3,
+      pageSize: 25,
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect((screen.getByLabelText('Sprachcode') as HTMLInputElement).value).toBe('de');
+    expect(useContentsMock).toHaveBeenCalledWith(
+      {
+        page: 3,
+        pageSize: 25,
+        type: 'faq.faq',
+        languageCode: 'de',
+        status: 'published',
+        sortBy: 'updatedAt',
+        sortDirection: 'desc',
+        visibleTypes: DEFAULT_VISIBLE_TYPES,
+      },
+      { enabled: true }
+    );
+
+    fireEvent.change(screen.getByLabelText('Sprachcode'), { target: { value: ' EN-us ' } });
+    const languageUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as
+      ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    expect(languageUpdater?.(searchState)).toEqual({
+      type: 'faq.faq',
+      languageCode: 'en-us',
+      status: 'published',
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    fireEvent.change(screen.getByLabelText('Sprachcode'), { target: { value: ' ' } });
+    const clearLanguageUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as
+      ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    expect(clearLanguageUpdater?.(searchState)).toEqual({
+      type: 'faq.faq',
+      status: 'published',
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    fireEvent.change(screen.getByLabelText('Weitere Typen'), {
+      target: { value: 'poi.point-of-interest' },
+    });
+    const typeUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as
+      ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    expect(typeUpdater?.(searchState)).toEqual({
+      type: 'poi.point-of-interest',
+      status: 'published',
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+  });
+
+  it('zeigt den Sprachfilter ausschließlich für FAQ-Inhalte', () => {
+    searchState = { type: 'news.article', languageCode: 'de' };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(screen.queryByLabelText('Sprachcode')).toBeNull();
+    expect(useContentsMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ languageCode: expect.anything() }),
+      { enabled: true }
+    );
+  });
+
   it('blendet Schnellfilter ohne typbezogene Leseberechtigung aus', () => {
     useContentAccessMock.mockReturnValue({
       access: {

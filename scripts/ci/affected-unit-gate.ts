@@ -66,6 +66,9 @@ export const resolveAppUnitExecutionPlan = (
   return planAppUnitExecution(changedFiles, affectedProjects);
 };
 
+export const hasPlannedUnitProjects = (plan: ChangedProjectPlan): boolean =>
+  plan.directProjects.length > 0 || plan.remainingProjects.length > 0;
+
 export const runAffectedUnitGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
@@ -136,7 +139,7 @@ export const runAffectedUnitGate = (
     )
   );
 
-  if (affectedProjects.length === 0) {
+  if (!hasPlannedUnitProjects(changedProjectPlan)) {
     console.log('Keine betroffenen Unit-Projekte erkannt.');
     return durationEntries;
   }

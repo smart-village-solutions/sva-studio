@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildUnitProjectCommand, resolveAppUnitExecutionPlan } from './affected-unit-gate.ts';
+import {
+  buildUnitProjectCommand,
+  hasPlannedUnitProjects,
+  resolveAppUnitExecutionPlan,
+} from './affected-unit-gate.ts';
 import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
 
 describe('affected-unit-gate', () => {
@@ -155,5 +159,17 @@ describe('affected-unit-gate', () => {
       reason: 'nx-project-graph-unavailable',
       slices: [],
     });
+  });
+
+  it('does not skip a full fallback when Nx reports no affected projects', () => {
+    expect(
+      hasPlannedUnitProjects({
+        mode: 'full-fallback',
+        reason: 'unmapped-files',
+        directProjects: [],
+        remainingProjects: ['plugin-news', 'sva-studio-react'],
+        unmappedFiles: ['.github/dependabot.yml'],
+      })
+    ).toBe(true);
   });
 });

@@ -241,6 +241,29 @@ describe('workspace package scripts', () => {
     expect(evidenceRequiredBranch).toBeLessThan(evidenceAggregation);
   });
 
+  it('sets up the repository Node runtime before running TypeScript aggregators', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
+    const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
+    const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
+    const coverageAggregatorStart = runtimeWorkflow.indexOf('  coverage:\n    name: Coverage');
+    const complexityStart = runtimeWorkflow.indexOf('\n  complexity:', coverageAggregatorStart);
+    const coverageAggregator = runtimeWorkflow.slice(coverageAggregatorStart, complexityStart);
+
+    for (const aggregator of [unitAggregator, coverageAggregator]) {
+      const setupNodeIndex = aggregator.indexOf('uses: actions/setup-node@v6');
+      const nodeVersionIndex = aggregator.indexOf('node-version-file: .nvmrc');
+      const evidenceAggregationIndex = aggregator.indexOf(
+        'node scripts/ci/ci-feedback-aggregate.ts'
+      );
+
+      expect(setupNodeIndex).toBeGreaterThan(-1);
+      expect(nodeVersionIndex).toBeGreaterThan(setupNodeIndex);
+      expect(nodeVersionIndex).toBeLessThan(evidenceAggregationIndex);
+    }
+  });
+
   it('runs direct Unit feedback independently from the complete PR scope', () => {
     const qualityWorkflow = loadQualityGatesWorkflow();
     const fastFeedbackStart = qualityWorkflow.indexOf('  unit-fast-feedback:');

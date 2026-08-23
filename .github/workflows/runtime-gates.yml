@@ -210,6 +210,11 @@ jobs:
           filter: blob:none
           sparse-checkout: scripts/ci
 
+      - name: Setup aggregator Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
       - name: Download coverage evidence
         if: needs.coverage-complete.outputs.evidence_required == 'true'
         uses: actions/download-artifact@v8

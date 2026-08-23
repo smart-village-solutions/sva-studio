@@ -2,14 +2,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildAppCoverageCommand,
   buildCoverageProjectCommand,
   buildEarlyCoverageGateCommand,
   clearWorkspaceCoverageOutputs,
+  resolveCoveragePlan,
 } from './affected-coverage-gate.ts';
+import { loadWorkspaceProjectRoots } from './nx-project-graph.ts';
 
 const temporaryDirectories: string[] = [];
 
@@ -74,5 +76,49 @@ describe('affected-coverage-gate', () => {
     expect(fs.existsSync(generatedCoverageDirectory)).toBe(true);
     expect(fs.existsSync(nestedSourceCoverageDirectory)).toBe(true);
     expect(fs.existsSync(unrelatedDirectory)).toBe(true);
+  });
+
+  it('uses manifest roots for the full fallback without retrying a failed Nx graph', () => {
+    const loadNxProjectRoots = vi.fn(() => {
+      throw new Error('malformed Nx graph');
+    });
+    const loadWorkspaceProjectRoots = vi.fn(() => [
+      { name: 'plugin-news', root: 'packages/plugin-news' },
+    ]);
+
+    expect(
+      resolveCoveragePlan({ base: 'base', head: 'head' }, false, ['plugin-news'], {
+        resolveChangedFiles: () => ['packages/plugin-news/src/index.ts'],
+        getCoverageProjects: () => ['plugin-news'],
+        loadNxProjectRoots,
+        loadWorkspaceProjectRoots,
+      })
+    ).toMatchObject({
+      affectedProjects: ['plugin-news'],
+      projectRoots: [{ name: 'plugin-news', root: 'packages/plugin-news' }],
+      changedProjectPlan: {
+        mode: 'full-fallback',
+        reason: 'invalid-base-head-or-project-graph',
+        directProjects: [],
+        remainingProjects: ['plugin-news'],
+      },
+    });
+    expect(loadNxProjectRoots).toHaveBeenCalledTimes(1);
+    expect(loadWorkspaceProjectRoots).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads fallback project roots from workspace manifests without the Nx graph', () => {
+    const rootDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-project-roots-'));
+    temporaryDirectories.push(rootDirectory);
+    const projectDirectory = path.join(rootDirectory, 'packages/example');
+    fs.mkdirSync(projectDirectory, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectDirectory, 'project.json'),
+      JSON.stringify({ name: 'example' })
+    );
+
+    expect(loadWorkspaceProjectRoots(rootDirectory)).toEqual([
+      { name: 'example', root: 'packages/example' },
+    ]);
   });
 });

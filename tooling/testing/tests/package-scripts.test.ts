@@ -222,6 +222,25 @@ describe('workspace package scripts', () => {
     expect(runtimeWorkflow).toContain('validate-downloaded-coverage.ts');
   });
 
+  it('requires both internal Unit jobs to succeed before accepting evidence', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
+    const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
+    const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
+    const fastResultCheck = unitAggregator.indexOf('test "$FAST_RESULT" = "success"');
+    const completeResultCheck = unitAggregator.indexOf('test "$COMPLETE_RESULT" = "success"');
+    const evidenceRequiredBranch = unitAggregator.indexOf(
+      'if [ "$EVIDENCE_REQUIRED" != "true" ]; then'
+    );
+    const evidenceAggregation = unitAggregator.indexOf('node scripts/ci/ci-feedback-aggregate.ts');
+
+    expect(fastResultCheck).toBeGreaterThan(-1);
+    expect(completeResultCheck).toBeGreaterThan(-1);
+    expect(fastResultCheck).toBeLessThan(evidenceRequiredBranch);
+    expect(completeResultCheck).toBeLessThan(evidenceRequiredBranch);
+    expect(evidenceRequiredBranch).toBeLessThan(evidenceAggregation);
+  });
+
   it('runs direct Unit feedback independently from the complete PR scope', () => {
     const qualityWorkflow = loadQualityGatesWorkflow();
     const fastFeedbackStart = qualityWorkflow.indexOf('  unit-fast-feedback:');

@@ -262,9 +262,9 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          test "$FAST_RESULT" = "success"
+          test "$COMPLETE_RESULT" = "success"
           if [ "$EVIDENCE_REQUIRED" != "true" ]; then
-            test "$FAST_RESULT" = "success"
-            test "$COMPLETE_RESULT" = "success"
             echo 'Unit ist ein expliziter No-op-Erfolg für diesen PR-Scope.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi

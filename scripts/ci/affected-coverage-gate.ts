@@ -15,7 +15,7 @@ import {
   validateCoverageShardEvidence,
   writeCoverageShardEvidence,
 } from './coverage-shard-evidence.ts';
-import { loadNxProjectRoots } from './nx-project-graph.ts';
+import { loadNxProjectRoots, loadWorkspaceProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
 export interface DurationEntry {
@@ -100,15 +100,30 @@ interface ResolvedCoveragePlan {
   projectRoots: ProjectRoot[];
 }
 
-const resolveCoveragePlan = (
+interface CoveragePlanDependencies {
+  resolveChangedFiles: typeof resolveChangedFiles;
+  getCoverageProjects: typeof getCoverageProjects;
+  loadNxProjectRoots: typeof loadNxProjectRoots;
+  loadWorkspaceProjectRoots: typeof loadWorkspaceProjectRoots;
+}
+
+const coveragePlanDependencies: CoveragePlanDependencies = {
+  resolveChangedFiles,
+  getCoverageProjects,
+  loadNxProjectRoots,
+  loadWorkspaceProjectRoots,
+};
+
+export const resolveCoveragePlan = (
   options: BaseHeadCliOptions,
   full: boolean,
-  fullProjects: string[]
+  fullProjects: string[],
+  dependencies: CoveragePlanDependencies = coveragePlanDependencies
 ): ResolvedCoveragePlan => {
   try {
-    const changedFiles = resolveChangedFiles(options.base, options.head);
-    const affectedProjects = getCoverageProjects(options.base, options.head, full);
-    const projectRoots = loadNxProjectRoots();
+    const changedFiles = dependencies.resolveChangedFiles(options.base, options.head);
+    const affectedProjects = dependencies.getCoverageProjects(options.base, options.head, full);
+    const projectRoots = dependencies.loadNxProjectRoots();
     return {
       changedFiles,
       affectedProjects,
@@ -125,13 +140,23 @@ const resolveCoveragePlan = (
     console.warn(
       `Base-/Head-Scope ist ungültig; verwende vollständigen Coverage-Fallback: ${message}`
     );
+    const projectRoots = dependencies.loadWorkspaceProjectRoots();
+    const knownProjects = new Set(projectRoots.map((project) => project.name));
+    const missingProjectRoots = fullProjects.filter((project) => !knownProjects.has(project));
+    if (missingProjectRoots.length > 0) {
+      throw new Error(
+        `Coverage-Fallback kann Projektroots nicht auflösen: ${missingProjectRoots.join(', ')}`,
+        { cause: error }
+      );
+    }
+
     return {
       changedFiles: [],
       affectedProjects: fullProjects,
-      projectRoots: loadNxProjectRoots(),
+      projectRoots,
       changedProjectPlan: {
         mode: 'full-fallback',
-        reason: 'invalid-base-or-head',
+        reason: 'invalid-base-head-or-project-graph',
         directProjects: [],
         remainingProjects: fullProjects,
         unmappedFiles: [],

@@ -7,6 +7,7 @@ export interface CiCommandAttempt {
   attempt: number;
   durationMs: number;
   classification: CiFailureClassification | null;
+  signal: string | null;
 }
 
 export interface CiCommandResult {
@@ -29,7 +30,7 @@ const readProcessFailure = (error: unknown): ProcessFailure =>
 
 export const classifyCiCommandFailure = (error: unknown): CiFailureClassification => {
   const failure = readProcessFailure(error);
-  if (failure.signal || failure.status === TRANSIENT_EXIT_CODE) {
+  if (failure.status === TRANSIENT_EXIT_CODE) {
     return 'infrastructure';
   }
   if (typeof failure.status === 'number') {
@@ -74,18 +75,20 @@ export const runCiCommand = (
     try {
       execute(command);
       const durationMs = performance.now() - startedAt;
-      attempts.push({ attempt, durationMs, classification: null });
+      attempts.push({ attempt, durationMs, classification: null, signal: null });
       return {
         durationMs: attempts.reduce((sum, entry) => sum + entry.durationMs, 0),
         retryCount: attempt - 1,
         attempts,
       };
     } catch (error) {
+      const failure = readProcessFailure(error);
       const classification = classifyCiCommandFailure(error);
       attempts.push({
         attempt,
         durationMs: performance.now() - startedAt,
         classification,
+        signal: failure.signal ?? null,
       });
       if (classification !== 'infrastructure' || attempt === 2) {
         throw new CiCommandExecutionError(command, classification, attempts);

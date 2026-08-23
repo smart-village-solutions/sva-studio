@@ -45,6 +45,8 @@
 - [x] 5.5 GenericItems-Komponententests für den bestätigten Löschablauf ergänzen.
 - [x] 5.6 Host-Tests belegen lassen, dass der FAQ-Sprachfilter vor Sortierung, Gesamtzahl und Pagination angewendet wird.
 - [ ] 5.7 Mindestens einen E2E-Flow je Fachplugin für Bearbeiten, Tabwechsel, Speichern und bestätigtes Löschen ergänzen; FAQ zusätzlich mit Sprachfilter, Kacheln zusätzlich mit mehreren Bildern.
+  - Kachel-E2E inklusive mehrerer Bilder ist vorhanden und aktuell grün.
+  - FAQ-CRUD, Tabwechsel, Speichern und bestätigtes Löschen sind per E2E abgedeckt. Offen bleibt der Sprachfilter: Die `FaqListPage` enthält ihn, wird für Standard-Content-Ressourcen aber nicht als Route exponiert; der erreichbare Einstieg ist die gemeinsame Inhaltsübersicht unter `/admin/content?type=faq.faq`.
 - [x] 5.8 Betroffene Tests von News, Events und POIs ausführen, falls gemeinsame `studio-ui-react`-Primitives deren Build- oder Laufzeitpfade verändern; keine fachfremden Snapshot-Anpassungen ohne sichtbare Verhaltensänderung vornehmen.
 - [x] 5.9 Relevante arc42-Abschnitte `05`, `08`, `10` und `11` sowie die Studio-Form-Migrationsdokumentation aktualisieren.
 - [x] 5.10 Kleinste relevante Nx-Unit-, Type-, Lint- und bei Hoständerungen Server-Runtime-Gates nach jedem Block ausführen.

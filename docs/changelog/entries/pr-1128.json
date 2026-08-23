@@ -1,0 +1,4 @@
+{
+  "prNumber": 1128,
+  "body": "Der vollständige FAQ-Bearbeitungsablauf ist zusätzlich durch einen Browser-Test abgesichert.\n\n- Der Test öffnet FAQ über die gemeinsame Inhaltsübersicht und prüft Anlegen, Tabwechsel und Speichern.\n- Historie, Erhalt bestehender Zusatzdaten und bestätigtes Löschen werden im selben Ablauf geprüft.\n- Der noch offene Produktentscheid zum FAQ-Sprachfilter ist in OpenSpec sichtbar dokumentiert."
+}

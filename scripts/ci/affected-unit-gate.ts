@@ -1,9 +1,9 @@
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
+import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import {
   buildAppUnitCommand,
@@ -20,21 +20,14 @@ import { resolveChangedFiles } from './pr-scope.ts';
 export interface DurationEntry {
   label: string;
   durationMs: number;
+  projects?: string[];
+  retryCount?: number;
 }
+
+export type UnitGatePhase = 'all' | 'direct' | 'remaining';
 
 const APP_PROJECT = 'sva-studio-react';
 const require = createRequire(import.meta.url);
-const runCommand = (command: string): number => {
-  const startedAt = performance.now();
-
-  console.log(`\n$ ${command}`);
-  execSync(command, {
-    env: process.env,
-    stdio: 'inherit',
-  });
-  return performance.now() - startedAt;
-};
-
 const getUnitProjects = (base: string, head: string, full: boolean): string[] => {
   const nxPackageJson = require.resolve('nx/package.json');
   const nxEntrypoint = path.join(path.dirname(nxPackageJson), 'dist', 'bin', 'nx.js');
@@ -55,8 +48,8 @@ const getUnitProjects = (base: string, head: string, full: boolean): string[] =>
   return JSON.parse(output) as string[];
 };
 
-export const buildUnitProjectsCommand = (projects: readonly string[]): string =>
-  `env -u NO_COLOR pnpm nx run-many --target=test:unit --projects=${projects.join(',')} --parallel=1 --nxBail --output-style=stream`;
+export const buildUnitProjectCommand = (project: string): string =>
+  `env -u NO_COLOR pnpm nx run ${project}:test:unit --nxBail --output-style=stream`;
 
 export const resolveAppUnitExecutionPlan = (
   changedFiles: readonly string[],
@@ -73,19 +66,42 @@ export const resolveAppUnitExecutionPlan = (
   return planAppUnitExecution(changedFiles, affectedProjects);
 };
 
+export const hasPlannedUnitProjects = (plan: ChangedProjectPlan): boolean =>
+  plan.directProjects.length > 0 || plan.remainingProjects.length > 0;
+
 export const runAffectedUnitGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
-  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void
+  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void,
+  phase: UnitGatePhase = 'all'
 ): DurationEntry[] => {
-  const changedFiles = resolveChangedFiles(options.base, options.head);
   const full = process.env.NX_RUN_FULL === '1';
-  const affectedProjects = getUnitProjects(options.base, options.head, full);
-  const changedProjectPlan = planChangedProjectsWithFallback(
-    changedFiles,
-    affectedProjects,
-    loadNxProjectRoots
-  );
+  const fullProjects = getUnitProjects(options.base, options.head, true);
+  let changedFiles: string[];
+  let affectedProjects: string[];
+  let changedProjectPlan: ChangedProjectPlan;
+  try {
+    changedFiles = resolveChangedFiles(options.base, options.head);
+    affectedProjects = getUnitProjects(options.base, options.head, full);
+    changedProjectPlan = planChangedProjectsWithFallback(
+      changedFiles,
+      affectedProjects,
+      loadNxProjectRoots,
+      fullProjects
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Base-/Head-Scope ist ungültig; verwende vollständigen Unit-Fallback: ${message}`);
+    changedFiles = [];
+    affectedProjects = fullProjects;
+    changedProjectPlan = {
+      mode: 'full-fallback',
+      reason: 'invalid-base-or-head',
+      directProjects: [],
+      remainingProjects: fullProjects,
+      unmappedFiles: [],
+    };
+  }
   reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
   const appPlan = resolveAppUnitExecutionPlan(changedFiles, affectedProjects, changedProjectPlan);
@@ -96,8 +112,13 @@ export const runAffectedUnitGate = (
     (project) => project !== APP_PROJECT
   );
 
-  const recordDuration = (label: string, durationMs: number): void => {
-    const entry = { label, durationMs };
+  const recordDuration = (
+    label: string,
+    durationMs: number,
+    projects: string[],
+    retryCount: number
+  ): void => {
+    const entry = { label, durationMs, projects, retryCount };
     durationEntries.push(entry);
     reportDuration?.(entry);
   };
@@ -118,33 +139,46 @@ export const runAffectedUnitGate = (
     )
   );
 
-  if (affectedProjects.length === 0) {
+  if (!hasPlannedUnitProjects(changedProjectPlan)) {
     console.log('Keine betroffenen Unit-Projekte erkannt.');
     return durationEntries;
   }
 
-  if (directNonAppProjects.length > 0) {
-    recordDuration(
-      'unit:direct-projects',
-      runCommand(buildUnitProjectsCommand(directNonAppProjects))
-    );
+  const runTarget = (label: string, command: string, projects: string[]): void => {
+    try {
+      const result = runCiCommand(command);
+      recordDuration(label, result.durationMs, projects, result.retryCount);
+    } catch (error) {
+      if (error instanceof CiCommandExecutionError) {
+        recordDuration(label, error.durationMs, projects, error.retryCount);
+      }
+      throw error;
+    }
+  };
+
+  if (phase !== 'remaining') {
+    for (const project of directNonAppProjects) {
+      runTarget(`unit:direct:${project}`, buildUnitProjectCommand(project), [project]);
+    }
   }
 
-  if (affectedProjects.includes(APP_PROJECT)) {
+  if (phase !== 'remaining' && changedProjectPlan.directProjects.includes(APP_PROJECT)) {
     if (appPlan.mode === 'aggregate') {
-      recordDuration('unit:app', runCommand(buildAppUnitCommand()));
+      runTarget('unit:direct:app', buildAppUnitCommand(), [APP_PROJECT]);
     } else if (appPlan.mode === 'slices') {
       for (const slice of appPlan.slices) {
-        recordDuration(`unit:app:${slice}`, runCommand(buildAppUnitCommand(slice)));
+        runTarget(`unit:direct:app:${slice}`, buildAppUnitCommand(slice), [APP_PROJECT]);
       }
     }
   }
 
-  if (remainingNonAppProjects.length > 0) {
-    recordDuration(
-      'unit:remaining-projects',
-      runCommand(buildUnitProjectsCommand(remainingNonAppProjects))
-    );
+  if (phase !== 'direct') {
+    if (changedProjectPlan.remainingProjects.includes(APP_PROJECT)) {
+      runTarget('unit:remaining:app', buildAppUnitCommand(), [APP_PROJECT]);
+    }
+    for (const project of remainingNonAppProjects) {
+      runTarget(`unit:remaining:${project}`, buildUnitProjectCommand(project), [project]);
+    }
   }
 
   return durationEntries;
@@ -152,8 +186,22 @@ export const runAffectedUnitGate = (
 
 const formatDuration = (durationMs: number): string => `${(durationMs / 1000).toFixed(2)}s`;
 
+const parseOptionalDate = (value: string | undefined): Date | null => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 export const runAffectedUnitGateCli = (args: readonly string[]): number => {
   const options = parseBaseHeadCliOptions(args);
+  const phaseArgumentIndex = args.indexOf('--phase');
+  const phaseValue = phaseArgumentIndex >= 0 ? args[phaseArgumentIndex + 1] : 'all';
+  if (phaseValue !== 'all' && phaseValue !== 'direct' && phaseValue !== 'remaining') {
+    throw new Error(`Ungültige Unit-Phase: ${phaseValue ?? '<fehlend>'}`);
+  }
+  const phase: UnitGatePhase = phaseValue;
   const startedAt = new Date();
   const full = process.env.NX_RUN_FULL === '1';
   let plan: ReturnType<typeof planChangedProjectsWithFallback> | null = null;
@@ -165,12 +213,15 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
       (entry) => durationEntries.push(entry),
       (reportedPlan) => {
         plan = reportedPlan;
-      }
+      },
+      phase
     );
   } catch (error) {
     writeCiFeedbackEvidence(
       buildCiFeedbackEvidence({
         gate: 'unit',
+        role: phase === 'direct' ? 'fast-feedback' : 'complete',
+        shardId: `unit-${phase}`,
         status: 'failed',
         baseSha: options.base,
         headSha: options.head,
@@ -179,6 +230,10 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
         phases: durationEntries,
         startedAt,
         finishedAt: new Date(),
+        workflowCreatedAt: parseOptionalDate(process.env.CI_WORKFLOW_CREATED_AT),
+        jobStartedAt: parseOptionalDate(process.env.CI_JOB_STARTED_AT),
+        failureClassification:
+          error instanceof CiCommandExecutionError ? error.classification : 'unknown',
       })
     );
     const message = error instanceof Error ? error.message : String(error);
@@ -196,7 +251,9 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
   writeCiFeedbackEvidence(
     buildCiFeedbackEvidence({
       gate: 'unit',
-      status: 'passed',
+      role: phase === 'direct' ? 'fast-feedback' : 'complete',
+      shardId: `unit-${phase}`,
+      status: durationEntries.length === 0 ? 'skipped' : 'passed',
       baseSha: options.base,
       headSha: options.head,
       scopeMode: full ? 'full' : 'affected',
@@ -204,6 +261,8 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
       phases: durationEntries,
       startedAt,
       finishedAt: new Date(),
+      workflowCreatedAt: parseOptionalDate(process.env.CI_WORKFLOW_CREATED_AT),
+      jobStartedAt: parseOptionalDate(process.env.CI_JOB_STARTED_AT),
     })
   );
 

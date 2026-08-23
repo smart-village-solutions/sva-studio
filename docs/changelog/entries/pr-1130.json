@@ -1,0 +1,4 @@
+{
+  "prNumber": 1130,
+  "body": "Pull Requests liefern bei Fehlern schneller verwertbares Feedback, ohne die vollständigen Qualitätsprüfungen abzuschwächen.\n\n- Unit- und Coverage-Prüfungen priorisieren direkt betroffene Projekte und führen den restlichen Scope anschließend vollständig aus.\n- Stabile Unit- und Coverage-Statusprüfungen aggregieren SHA-gebundene Evidenz fail-closed.\n- Infrastrukturfehler werden einmal gezielt wiederholt und getrennt von deterministischen Fehlern ausgewiesen."
+}

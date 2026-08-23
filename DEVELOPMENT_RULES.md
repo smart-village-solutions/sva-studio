@@ -481,8 +481,10 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Lokale `affected`-Runs gegen `origin/main` müssen vorab im Scope geprüft werden, wenn der PR-Branch bereits viele Altänderungen enthält.
 - Bei großem affected-Scope sind für initiale oder scope-erweiternde Pushes gezielte Fixblock-Gates zulässig und dem breiten lokalen affected-Lauf vorzuziehen, sofern die Abweichung transparent dokumentiert wird.
 - PR-Unit- und PR-Coverage-Gates führen direkt geänderte Projekte vor transitiv betroffenen Projekten aus; der verbleibende affected Scope bleibt vollständig erhalten.
+- Die stabilen Required-Check-Kontexte `Unit` und `Coverage` werden ausschließlich von finalen Aggregatoren gesetzt. Interne Fast-Feedback-, Rest- und Coverage-Teiljobs sind keine alternativen Freigabesignale; fehlende, doppelte, veraltete, rote oder überlappende Evidenz ist fail-closed.
 - Deterministische Unit-, Snapshot-, Type- und Policy-Fehler werden in PR-Gates nicht automatisch wiederholt. Ein Retry ist nur für einen explizit klassifizierten temporären Infrastrukturfehler zulässig und darf bereits erfolgreiche Targets nicht pauschal erneut ausführen.
 - E2E- und Integrationstargets bleiben ungecacht. Coverage-Caching darf nur targetweise nach einem Contract-Test aktiviert werden, der Fresh Run und Cache Restore einschließlich Gate-Ergebnis als identisch nachweist.
+- Pull Requests starten keine vollständige App-E2E-Suite. Der vollständige Lauf erfolgt pro Push auf `main`; nur dessen erfolgreiche Head-SHA-gebundene Evidenz darf zusammen mit der getrennten OCI-Revisionsprüfung einen regulären Staging-Promote freigeben.
 
 ### ❌ FORBIDDEN
 - „Big-bang“-Validierung erst am Ende der Umsetzung.

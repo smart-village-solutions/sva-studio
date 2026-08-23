@@ -11,14 +11,14 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 
 ## Testportfolio
 
-| Ebene | Zweck | Primäre Kommandos |
-| --- | --- | --- |
-| Datei- und Strukturchecks | Repo-Regeln und Ablage absichern | `pnpm check:file-placement` |
-| Type-Checks | Typkonsistenz über App und Libraries | `pnpm test:types` |
-| Unit-Tests | schnelles Verhalten einzelner Module prüfen | `pnpm test:unit` |
-| Linting | Code- und Regelkonformität absichern | `pnpm test:eslint` |
-| E2E- und Smoke-Tests | reale Flows gegen laufende App prüfen | `pnpm test:e2e` |
-| Coverage- und Quality-Gates | Testabdeckung und Governance bewerten | `pnpm test:coverage`, `pnpm coverage-gate` |
+| Ebene                       | Zweck                                       | Primäre Kommandos                          |
+| --------------------------- | ------------------------------------------- | ------------------------------------------ |
+| Datei- und Strukturchecks   | Repo-Regeln und Ablage absichern            | `pnpm check:file-placement`                |
+| Type-Checks                 | Typkonsistenz über App und Libraries        | `pnpm test:types`                          |
+| Unit-Tests                  | schnelles Verhalten einzelner Module prüfen | `pnpm test:unit`                           |
+| Linting                     | Code- und Regelkonformität absichern        | `pnpm test:eslint`                         |
+| E2E- und Smoke-Tests        | reale Flows gegen laufende App prüfen       | `pnpm test:e2e`                            |
+| Coverage- und Quality-Gates | Testabdeckung und Governance bewerten       | `pnpm test:coverage`, `pnpm coverage-gate` |
 
 ## Grundregeln
 
@@ -94,11 +94,11 @@ Für neue oder grundlegend überarbeitete Studio-Flows gelten zusätzlich die ve
 - `pnpm check:file-placement`
 - `affected` oder `full` für `lint`, `test:unit`, `test:types`, `test:coverage` abhängig vom PR-Scope
 - bei isolierten App-only-Änderungen führt der Unit-Pfad nur die betroffenen `sva-studio-react`-Slices aus; gemischte oder unklare Änderungen fallen auf das aggregierte App-Target zurück
-- `pnpm patch-coverage-gate --base=origin/main` für New-Code-/Patch-Coverage
+- `pnpm sonar-new-code-gate --base=origin/main` für die lokale New-Code-Coverage
 - `pnpm coverage-gate` im PR-Modus
 - `pnpm complexity-gate`
 - `affected`, `full` oder No-op für `test:integration` abhängig von Laufzeit-/Routing-/Transportwirkung
-- relevanter App-Build und relevanter App-E2E-Smoke nach derselben Scope-Logik wie GitHub
+- relevanter App-Build; vollständiges App-E2E gehört bewusst nicht zum PR-Pfad
 
 Die PR-Selektion folgt einem einheitlichen `affected-first`-Modell:
 
@@ -106,7 +106,9 @@ Die PR-Selektion folgt einem einheitlichen `affected-first`-Modell:
 - Normale Paketänderungen laufen affected.
 - Echte globale Workspace-Dateien wie `pnpm-lock.yaml`, `nx.json`, `tsconfig.base.json`, `eslint.config.mjs`, `vitest.config.ts` und `vitest.workspace.ts` eskalieren `lint`, `unit`, `types` und `coverage` bewusst auf volle Läufe.
 - Workflow- und CI-Dateien wie `.github/workflows/**`, `.github/actions/**`, `scripts/ci/**`, Root-`package.json` oder `tsconfig.scripts.json` werden gezielt über `tooling-testing` abgesichert und erzwingen nicht automatisch volle Produkt-Läufe für `lint`, `unit`, `types` und `coverage`.
-- `integration` und `e2e` eskalieren nur bei tatsächlicher Laufzeit-, Routing-, Auth-, Transport-, Build- oder App-Flow-Wirkung.
+- `integration` eskaliert nur bei tatsächlicher Laufzeit-, Routing-, Auth- oder Transportwirkung. App-E2E läuft vollständig nach dem Merge auf `main`, nightly oder manuell zu Diagnosezwecken.
+
+Im GitHub-PR-Pfad startet `Unit Fast Feedback` parallel zum vollständigen Restpfad. Der stabile Required Check `Unit` wird erst durch den finalen Aggregator gesetzt, der beide Head-SHA-gebundenen, disjunkten Evidenzen fail-closed prüft. `Coverage` verwendet analog einen stabilen Aggregator über versionierte Projekt-Shards; fehlende, doppelte, veraltete oder überlappende Reports sind Gate-Fehler.
 
 Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Codecov und CodeQL. `pnpm test:pr` deckt jetzt aber neben der Repo-Coverage auch die lokale Patch-Coverage ab und reduziert damit die häufigsten Abweichungen zwischen lokalem Stand und GitHub-Checks deutlicher.
 
@@ -119,23 +121,23 @@ Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Co
 
 ## Strategie nach Risiko
 
-| Änderungstyp | Mindestnachweis |
-| --- | --- |
-| reine Doku oder nicht-funktionale Repo-Anpassung | `pnpm check:file-placement` |
-| Library- oder Kernlogik | Type-Checks und Unit-Tests |
-| Routing, UI oder Request-Flows | Type-Checks, Unit-Tests, relevante E2E-Smokes |
-| Deployment- oder Betriebsänderung | File-Placement, relevante Tests, Rendern der Compose-Konfiguration |
-| Architektur- oder Governance-Änderung | Doku-Update plus passende technische Nachweise |
+| Änderungstyp                                     | Mindestnachweis                                                    |
+| ------------------------------------------------ | ------------------------------------------------------------------ |
+| reine Doku oder nicht-funktionale Repo-Anpassung | `pnpm check:file-placement`                                        |
+| Library- oder Kernlogik                          | Type-Checks und Unit-Tests                                         |
+| Routing, UI oder Request-Flows                   | Type-Checks, Unit-Tests, relevante E2E-Smokes                      |
+| Deployment- oder Betriebsänderung                | File-Placement, relevante Tests, Rendern der Compose-Konfiguration |
+| Architektur- oder Governance-Änderung            | Doku-Update plus passende technische Nachweise                     |
 
 ## Risikoklassen nach Projektfamilie
 
 Die konkrete Testtiefe wird zusätzlich über die Risikoklasse des betroffenen Projekts oder Packages gesteuert. Der QS-Mindeststandard unter `./qs-mindeststandard-sva-studio.md` bleibt die maßgebliche Quelle; die folgende Tabelle ist bewusst nur ein Kurz-Auszug für die Testing-Perspektive.
 
-| Risikoklasse | Typische Projekte | Erwartete Testtiefe |
-| --- | --- | --- |
-| hoch | `sva-mainserver`, `auth-runtime`, `iam-admin`, `iam-core`, `iam-governance`, `instance-registry`, `data`, `routing` | Type-, Unit- und bei Flow- oder Vertragswirkung zusätzliche Integrations- oder E2E-Nachweise |
-| mittel | `data-client`, `monitoring-client`, `plugin-sdk`, `server-runtime`, `studio-module-iam` | Type- und Unit-Tests; Integrationstests bei Schnittstellen- oder Runtime-Wirkung |
-| normal | `studio-ui-react`, fachliche Plugin-Packages, Doku- und Governance-Pfade | gezielte Nachweise für den betroffenen Scope; bei UI mindestens Accessibility-Selbstprüfung |
+| Risikoklasse | Typische Projekte                                                                                                   | Erwartete Testtiefe                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| hoch         | `sva-mainserver`, `auth-runtime`, `iam-admin`, `iam-core`, `iam-governance`, `instance-registry`, `data`, `routing` | Type-, Unit- und bei Flow- oder Vertragswirkung zusätzliche Integrations- oder E2E-Nachweise |
+| mittel       | `data-client`, `monitoring-client`, `plugin-sdk`, `server-runtime`, `studio-module-iam`                             | Type- und Unit-Tests; Integrationstests bei Schnittstellen- oder Runtime-Wirkung             |
+| normal       | `studio-ui-react`, fachliche Plugin-Packages, Doku- und Governance-Pfade                                            | gezielte Nachweise für den betroffenen Scope; bei UI mindestens Accessibility-Selbstprüfung  |
 
 Wenn eine Änderung mehrere Projektfamilien berührt, gilt die höchste betroffene Risikoklasse.
 

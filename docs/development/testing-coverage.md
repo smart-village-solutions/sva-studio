@@ -155,7 +155,8 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 Workflow: `.github/workflows/runtime-gates.yml`
 
 - Pull Requests:
-  - Job `Coverage`: für reguläre PRs bewusster No-op; Coverage-/CI-kritische Änderungen führen direkt geänderte Projekte zuerst aus, prüfen deren Paket-Floors und Baseline-Deltas sofort und validieren danach den übrigen Scope einschließlich globaler und New-Code-Gates
+  - Required Check `Coverage`: für reguläre PRs bewusster No-op; Coverage-/CI-kritische Änderungen führen im internen Job `Coverage Complete` direkt geänderte Projekte zuerst aus, prüfen deren Paket-Floors und Baseline-Deltas sofort und validieren danach den übrigen Scope einschließlich globaler und New-Code-Gates
+  - Der finale Job `Coverage` akzeptiert ausschließlich versionierte, Head-SHA-gebundene und disjunkte Projektartefakte; fehlende, doppelte, veraltete, überlappende oder manipulierte Reports stoppen fail-closed
   - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
   - Job `PR Integration`: `affected`, `full` oder bewusster No-op für die allgemeinen echten Integrationsziele; Monitoring-spezifische Läufe bleiben bewusst im separaten Workflow `monitoring-stack`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
@@ -167,19 +168,20 @@ Workflow: `.github/workflows/runtime-gates.yml`
 
 ### PR-Workflow-Matrix
 
-| Workflow / Jobname in GitHub              | Zweck                                                                                                                                | Trigger-Modell             |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| `Runtime Gates / Coverage`                | No-op für normale PRs, Changed-first plus vollständiger finaler Scope für Coverage-/CI-kritische PRs, voller Lauf für `main`/nightly | alle PRs, `main`, nightly  |
-| `Runtime Gates / Complexity`              | Repository-weites Komplexitäts-Gate                                                                                                  | alle PRs, `main`, nightly  |
-| `Quality Gates / A11y`                    | selektiver Accessibility-Check nur für UI-relevante PRs, voller Lauf auf `main`                                                      | alle PRs, `main`           |
-| `Runtime Gates / PR Integration`          | scoped allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat                                                             | Pull Requests              |
-| `Runtime Gates / Integration`             | voller Lauf der allgemeinen echten Integrationsziele                                                                                 | `main`, nightly            |
-| `Main Build / App Build`                  | relevanter App-Build für PRs und `main`, inklusive selektivem `verify:runtime-artifact` nur für runtime-kritische Pull Requests      | alle PRs, `main`           |
-| `App E2E / App E2E`                       | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz                                                                            | alle PRs, nightly, manuell |
-| `monitoring-stack`                        | Monitoring-spezifische Docker-/Stack-Checks                                                                                          | pfadbasiert                |
-| `Schema Diff Gate`                        | Schema-Diff gegen Staging                                                                                                            | pfadbasiert                |
-| `Repository Hygiene / File Placement`     | Dateiplatzierungs-Regeln                                                                                                             | alle PRs und `main`        |
-| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op außerhalb relevanter Pfade                        | alle PRs und `main`        |
+| Workflow / Jobname in GitHub              | Zweck                                                                                                                                               | Trigger-Modell            |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `Runtime Gates / Coverage`                | Stabiler PR-Aggregator; No-op nur bei explizitem Scope, sonst fail-closed über den internen Job `Coverage Complete`; auf `main`/nightly voller Lauf | alle PRs, `main`, nightly |
+| `Quality Gates / Unit`                    | Stabiler PR-Aggregator über paralleles `Unit Fast Feedback` und den disjunkten internen Restjob `Unit Complete`; auf `main` volle Diagnostik        | alle PRs, `main`          |
+| `Runtime Gates / Complexity`              | Repository-weites Komplexitäts-Gate                                                                                                                 | alle PRs, `main`, nightly |
+| `Quality Gates / A11y`                    | selektiver Accessibility-Check nur für UI-relevante PRs, voller Lauf auf `main`                                                                     | alle PRs, `main`          |
+| `Runtime Gates / PR Integration`          | scoped allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat                                                                            | Pull Requests             |
+| `Runtime Gates / Integration`             | voller Lauf der allgemeinen echten Integrationsziele                                                                                                | `main`, nightly           |
+| `Main Build / App Build`                  | relevanter App-Build für PRs und `main`, inklusive selektivem `verify:runtime-artifact` nur für runtime-kritische Pull Requests                     | alle PRs, `main`          |
+| `App E2E / App E2E`                       | Vollständiger Browserlauf; nur automatischer erfolgreicher `main`-Push ist releasefähige, Head-SHA-gebundene Evidenz                                | `main`, nightly, manuell  |
+| `monitoring-stack`                        | Monitoring-spezifische Docker-/Stack-Checks                                                                                                         | pfadbasiert               |
+| `Schema Diff Gate`                        | Schema-Diff gegen Staging                                                                                                                           | pfadbasiert               |
+| `Repository Hygiene / File Placement`     | Dateiplatzierungs-Regeln                                                                                                                            | alle PRs und `main`       |
+| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op außerhalb relevanter Pfade                                       | alle PRs und `main`       |
 
 ### Recommended Branch-Protection-Checks
 
@@ -195,8 +197,8 @@ Empfehlung für `main`:
   - `Runtime Gates / PR Integration` für Pull Requests
   - `Runtime Gates / Integration` für `main`
   - `Repository Hygiene / File Placement`
-- zusätzlich required:
-  - `App E2E / App E2E`
+- zusätzlich operativ überwacht, aber nicht als PR-Required-Check:
+  - `App E2E / App E2E` auf `main`; sein erfolgreicher kanonischer Lauf wird stattdessen vor Staging blockierend ausgewertet
   - `monitoring-stack`
   - `Schema Diff Gate`
   - `Repository Hygiene / DB Schema Snapshot`

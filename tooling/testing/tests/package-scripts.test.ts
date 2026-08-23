@@ -207,6 +207,86 @@ describe('workspace package scripts', () => {
     expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 
+  it('keeps Unit fail-closed and Coverage aggregation in shadow mode', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+
+    expect(qualityWorkflow).toContain('unit-fast-feedback:');
+    expect(qualityWorkflow).toContain('unit-complete:');
+    expect(qualityWorkflow).toContain('  unit:\n    name: Unit');
+    expect(qualityWorkflow).toContain('--expected unit-direct,unit-remaining');
+    expect(qualityWorkflow).toContain('if-no-files-found: error');
+    expect(runtimeWorkflow).toContain('coverage-complete:\n    name: Coverage');
+    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage Shadow');
+    expect(runtimeWorkflow).toContain('--expected coverage-complete');
+    expect(runtimeWorkflow).toContain('validate-downloaded-coverage.ts');
+  });
+
+  it('requires both internal Unit jobs to succeed before accepting evidence', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
+    const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
+    const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
+    const fastResultCheck = unitAggregator.indexOf('test "$FAST_RESULT" = "success"');
+    const completeResultCheck = unitAggregator.indexOf('test "$COMPLETE_RESULT" = "success"');
+    const evidenceRequiredBranch = unitAggregator.indexOf(
+      'if [ "$EVIDENCE_REQUIRED" != "true" ]; then'
+    );
+    const evidenceAggregation = unitAggregator.indexOf('node scripts/ci/ci-feedback-aggregate.ts');
+
+    expect(fastResultCheck).toBeGreaterThan(-1);
+    expect(completeResultCheck).toBeGreaterThan(-1);
+    expect(fastResultCheck).toBeLessThan(evidenceRequiredBranch);
+    expect(completeResultCheck).toBeLessThan(evidenceRequiredBranch);
+    expect(evidenceRequiredBranch).toBeLessThan(evidenceAggregation);
+  });
+
+  it('sets up the repository Node runtime before running TypeScript aggregators', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
+    const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
+    const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
+    const coverageAggregatorStart = runtimeWorkflow.indexOf(
+      '  coverage:\n    name: Coverage Shadow'
+    );
+    const complexityStart = runtimeWorkflow.indexOf('\n  complexity:', coverageAggregatorStart);
+    const coverageAggregator = runtimeWorkflow.slice(coverageAggregatorStart, complexityStart);
+
+    for (const aggregator of [unitAggregator, coverageAggregator]) {
+      const setupNodeIndex = aggregator.indexOf('uses: actions/setup-node@v6');
+      const nodeVersionIndex = aggregator.indexOf('node-version-file: .nvmrc');
+      const evidenceAggregationIndex = aggregator.indexOf(
+        'node scripts/ci/ci-feedback-aggregate.ts'
+      );
+
+      expect(setupNodeIndex).toBeGreaterThan(-1);
+      expect(nodeVersionIndex).toBeGreaterThan(setupNodeIndex);
+      expect(nodeVersionIndex).toBeLessThan(evidenceAggregationIndex);
+    }
+  });
+
+  it('runs direct Unit feedback independently from the complete PR scope', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const fastFeedbackStart = qualityWorkflow.indexOf('  unit-fast-feedback:');
+    const completeStart = qualityWorkflow.indexOf('  unit-complete:');
+    const fastFeedbackBlock = qualityWorkflow.slice(fastFeedbackStart, completeStart);
+
+    expect(fastFeedbackBlock).toContain('pnpm test:unit:affected --phase direct');
+    expect(fastFeedbackBlock).not.toContain('needs:');
+    expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase remaining');
+  });
+
+  it('retains complete diagnostics on main and nightly execution paths', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const e2eWorkflow = loadAppE2EWorkflow();
+
+    expect(qualityWorkflow).toContain('Run complete main unit diagnostics');
+    expect(qualityWorkflow).toContain('run: pnpm test:unit');
+    expect(e2eWorkflow).toContain('schedule:');
+    expect(e2eWorkflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
+  });
+
   it('exposes the Sonar LCOV preparation command', () => {
     const packageJson = loadRootPackageJson();
 
@@ -377,6 +457,17 @@ describe('workspace package scripts', () => {
     expect(startRedisIndex).toBeLessThan(waitRedisIndex);
   });
 
+  it('requires the complete coverage job before accepting downloaded evidence', () => {
+    const workflow = loadRuntimeGatesWorkflow();
+    const aggregateStep = workflow.slice(workflow.indexOf('Aggregate required Coverage status'));
+    const resultCheckIndex = aggregateStep.indexOf('test "$COMPLETE_RESULT" = "success"');
+    const evidenceCheckIndex = aggregateStep.indexOf('node scripts/ci/ci-feedback-aggregate.ts');
+
+    expect(resultCheckIndex).toBeGreaterThan(-1);
+    expect(evidenceCheckIndex).toBeGreaterThan(-1);
+    expect(resultCheckIndex).toBeLessThan(evidenceCheckIndex);
+  });
+
   it('keeps PR build validation on the shared pr-scope helper', () => {
     const mainBuildWorkflow = loadMainBuildWorkflow();
 
@@ -425,6 +516,18 @@ describe('workspace package scripts', () => {
     expect(setupAction).not.toContain('path: .nx/cache');
     expect(setupAction).not.toContain('nx-cache-scope');
     expect(setupAction).not.toContain('nxCloudId');
+  });
+
+  it('recomputes Nx targets instead of trusting a missing, rejected, or damaged remote restore', () => {
+    const setupAction = loadWorkspaceSetupAction();
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+
+    expect(setupAction).toContain('NX_NO_CLOUD=true');
+    expect(setupAction).not.toContain('path: .nx/cache');
+    expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase direct');
+    expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase remaining');
+    expect(runtimeWorkflow).toContain('run: pnpm test:coverage:affected');
   });
 
   it('typechecks all CI gate sources via tsconfig.scripts.json', () => {

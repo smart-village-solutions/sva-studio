@@ -588,10 +588,11 @@ Referenzen:
 
 ### Fortschreibung 2026-08: PR-Fast-Feedback
 
-- Risiko: Changed-first ordnet eine Datei keinem direkten Projekt zu. Maßnahme: Die Datei bleibt im konservativen affected Restlauf; eine unklare Zuordnung darf niemals Projekte aus dem Scope entfernen.
-- Risiko: Ein persistierter Cache liefert wegen unvollständiger Inputs ein falsches Ergebnis. Maßnahme: nur deterministische Targets persistieren, Schlüssel an Toolchain, Lockfile, Nx-Konfiguration, Trust-Scope und Job binden sowie geschützte Kontexte von PR-Caches trennen.
+- Risiko: Changed-first ordnet eine Datei keinem direkten Projekt zu oder Base-/Head-SHA beziehungsweise Projektgraph sind ungültig. Maßnahme: vollständig auf alle Targets des Gate-Typs zurückfallen; eine unsichere Zuordnung darf niemals Projekte aus dem Scope entfernen.
+- Risiko: Ein persistierter Cache liefert wegen unvollständiger Inputs ein falsches Ergebnis. Maßnahme: runnerübergreifende Nx-Wiederverwendung bleibt deaktiviert; ein späterer unterstützter Remote-Cache benötigt einen eigenen Trust-, Determinismus- und Fresh-/Restore-Paritätsnachweis.
 - Risiko: PR-Fail-fast zeigt pro Push weniger Folgefehler. Maßnahme: Main und Nightly bleiben diagnostisch vollständig; der PR optimiert bewusst die erste Reparaturschleife.
-- Restrisiko: Die Zielwerte für Median und P90 sind erst nach mindestens 20 repräsentativen GitHub-Läufen belastbar. Bis dahin bleibt die Laufzeitwirkung eine zu verifizierende Rollout-Aufgabe.
+- Restrisiko: Ein Browserfehler erreicht nach dem Merge zunächst `main` und das automatisch aktualisierte Dev. Maßnahme: Der kanonische vollständige Main-E2E-Lauf ist für exakt dieses Head-SHA vor jeder Staging-Mutation blockierend; Nightly, manuell und Fremd-SHA sind keine Release-Evidenz.
+- Restrisiko: In der 20-Run-Auswertung trat nur ein direkt zuordenbarer roter Unit-/Coverage-Fall auf. Die Zielwerte sind erfüllt, aber die rote Stichprobe bleibt dünn; die versionierte Laufzeitevidenz wird deshalb fortgeführt und nicht als einmalige Messung entfernt.
 
 ### Fortschreibung 2026-08: IAM-ABAC-Entscheidungsbausteine
 

@@ -11,6 +11,7 @@ on:
       - main
 
 permissions:
+  actions: read
   contents: read
   pull-requests: read
 
@@ -24,7 +25,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-
           fetch-depth: 0
 
       - name: Detect relevant PR changes
@@ -76,17 +76,26 @@ jobs:
             echo 'Scope: voller Workspace-Lauf für main.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  unit:
-    name: Unit
+  unit-fast-feedback:
+    name: Unit Fast Feedback
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
+      - name: Record job start
+        run: echo "CI_JOB_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
           filter: tree:0
           fetch-depth: 0
+
+      - name: Record workflow timing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "CI_WORKFLOW_CREATED_AT=$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} --jq .created_at)" >> "$GITHUB_ENV"
 
       - name: Detect relevant PR changes
         id: changes
@@ -112,41 +121,164 @@ jobs:
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
         run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
-      - name: Run unit gate
-        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+      - name: Run direct unit fast feedback
+        if: steps.changes.outputs.relevant == 'true'
         env:
           NX_BASE: ${{ github.event.pull_request.base.sha }}
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
           NX_RUN_FULL: ${{ steps.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
-        run: |
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            pnpm test:unit
-          else
-            pnpm test:unit:affected
-          fi
+        run: pnpm test:unit:affected --phase direct
 
-      - name: Publish unit summary
+      - name: Publish fast-feedback summary
         if: always()
         run: |
-          echo 'Unit-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Unit Fast Feedback abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "Scope: direkte Projekte und stabile App-Slices im Modus \`${{ steps.scope.outputs.quality_gate_mode }}\`." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload direct unit feedback evidence
+        if: always() && steps.changes.outputs.relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-feedback-direct-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci-feedback/unit-unit-direct.json
+          if-no-files-found: error
+          retention-days: 7
+
+  unit-complete:
+    name: ${{ github.event_name == 'pull_request' && 'Unit Complete' || 'Unit' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      evidence_required: ${{ steps.changes.outputs.relevant == 'true' }}
+
+    steps:
+      - name: Record job start
+        run: echo "CI_JOB_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - name: Record workflow timing
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "CI_WORKFLOW_CREATED_AT=$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} --jq .created_at)" >> "$GITHUB_ENV"
+
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
+      - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Determine PR scope
+        id: scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+
+      - name: Run remaining PR unit scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_RUN_FULL: ${{ steps.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
+        run: pnpm test:unit:affected --phase remaining
+
+      - name: Run complete main unit diagnostics
+        if: github.event_name != 'pull_request'
+        run: pnpm test:unit
+
+      - name: Publish complete unit summary
+        if: always()
+        run: |
+          echo 'Vollständiger Unit-Scope abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
             echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Scope: \`${{ steps.scope.outputs.quality_gate_mode }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "Scope: disjunkter Rest im Modus \`${{ steps.scope.outputs.quality_gate_mode }}\`." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo 'Scope: voller Workspace-Lauf für main.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Scope: vollständige Diagnostik für main.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload unit feedback evidence
+      - name: Upload remaining unit feedback evidence
         if: always() && github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: unit-feedback-${{ github.run_id }}
-          path: artifacts/ci-feedback/unit.json
-          if-no-files-found: warn
+          name: unit-feedback-remaining-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci-feedback/unit-unit-remaining.json
+          if-no-files-found: error
           retention-days: 7
+
+  unit:
+    name: Unit
+    if: always() && github.event_name == 'pull_request'
+    needs:
+      - unit-fast-feedback
+      - unit-complete
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout contract validator
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: scripts/ci
+
+      - name: Setup aggregator Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download unit evidence
+        if: needs.unit-complete.outputs.evidence_required == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: unit-feedback-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/downloaded-unit-feedback
+          merge-multiple: true
+
+      - name: Aggregate required Unit status
+        env:
+          EVIDENCE_REQUIRED: ${{ needs.unit-complete.outputs.evidence_required }}
+          FAST_RESULT: ${{ needs.unit-fast-feedback.result }}
+          COMPLETE_RESULT: ${{ needs.unit-complete.result }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$FAST_RESULT" = "success"
+          test "$COMPLETE_RESULT" = "success"
+          if [ "$EVIDENCE_REQUIRED" != "true" ]; then
+            echo 'Unit ist ein expliziter No-op-Erfolg für diesen PR-Scope.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node scripts/ci/ci-feedback-aggregate.ts \
+            --gate unit \
+            --head "$HEAD_SHA" \
+            --expected unit-direct,unit-remaining \
+            --evidence-dir artifacts/downloaded-unit-feedback
+          echo 'Unit-Aggregation ist vollständig, disjunkt und Head-SHA-gebunden.' >> "$GITHUB_STEP_SUMMARY"
 
   types:
     name: Types

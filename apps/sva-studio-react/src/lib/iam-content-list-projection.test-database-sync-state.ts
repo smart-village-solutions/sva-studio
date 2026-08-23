@@ -232,7 +232,7 @@ const updateSyncState = (
     : contentType;
   const current = storedSyncState(fixture, contentType, syncScopeKey);
   const refreshRunId = String(queryValue(values, fixture.syncScopeKeyColumnAvailable ? 3 : 2));
-  if (!current || current.refresh_run_id !== refreshRunId) {
+  if (current?.refresh_run_id !== refreshRunId) {
     return { rows: [], rowCount: 0 };
   }
   setSyncState(

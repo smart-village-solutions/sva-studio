@@ -42,7 +42,7 @@ export type MainserverProjectionLoadedPage = Readonly<{
 }>;
 
 export type MainserverProjectionPageResult<TItem> = {
-  readonly credentialSource?: IamContentListItem['credentialSource'];
+  readonly credentialSource?: NonNullable<IamContentListItem['credentialSource']>;
   readonly data: readonly TItem[];
   readonly pagination: {
     readonly hasNextPage: boolean;

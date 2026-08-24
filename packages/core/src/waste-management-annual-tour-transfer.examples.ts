@@ -52,6 +52,10 @@ export const countWasteAnnualMappedRelationships = (
         mapped.locationTourLinks.length +
         mapped.locationTourPickupDates.length +
         mapped.tourAssignments.length +
+        mapped.tourAssignments.reduce(
+          (total, assignment) => total + assignment.locationIds.length,
+          0
+        ) +
         mapped.tourDateShifts.length
     : 0;
 };

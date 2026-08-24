@@ -40,11 +40,30 @@ export const wasteAnnualEffectiveDates = (
   ...mapped.tourAssignments.map((item) => item.pickupDate),
 ];
 
+const resolvedShifts = (
+  shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
+  year: number
+) => resolveEffectiveWasteTourDateShiftsForYear(shifts, year);
+
 const resolvedShiftActualDates = (
   shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
   year: number
-): readonly string[] =>
-  resolveEffectiveWasteTourDateShiftsForYear(shifts, year).map((shift) => shift.actualDate);
+): readonly string[] => resolvedShifts(shifts, year).map((shift) => shift.actualDate);
+
+const effectiveShiftedDates = (
+  baseDates: readonly string[],
+  shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
+  year: number
+): readonly string[] => {
+  const effectiveShifts = resolvedShifts(shifts, year);
+  const shiftedOrigins = new Set(effectiveShifts.map((shift) => shift.originalDate));
+  return [
+    ...new Set([
+      ...baseDates.filter((date) => !shiftedOrigins.has(date)),
+      ...effectiveShifts.map((shift) => shift.actualDate),
+    ]),
+  ];
+};
 
 const yearlySchedulesIntersect = (
   left: WasteAnnualTourTransferMappedTour['targetTour'],
@@ -166,14 +185,12 @@ const parallelPlanningConflict = (
   const baseMappedDates = wasteAnnualEffectiveDates(mapped);
   const targetYear = wasteAnnualYearOf(baseMappedDates[0] ?? mapped.targetTour.firstDate ?? '');
   if (targetYear === null) return null;
-  const mappedDates = [
-    ...baseMappedDates,
-    ...resolvedShiftActualDates(mapped.tourDateShifts, targetYear),
-  ];
-  const indexedDates = [
-    ...indexed.effectiveDates,
-    ...resolvedShiftActualDates(indexed.tourDateShifts, targetYear),
-  ];
+  const mappedDates = effectiveShiftedDates(baseMappedDates, mapped.tourDateShifts, targetYear);
+  const indexedDates = effectiveShiftedDates(
+    indexed.effectiveDates,
+    indexed.tourDateShifts,
+    targetYear
+  );
   const interval = wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord);
   const matches =
     indexedDates.some((date) => mappedDates.includes(date)) ||

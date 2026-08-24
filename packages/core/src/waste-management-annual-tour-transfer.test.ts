@@ -429,6 +429,30 @@ describe('waste annual tour transfer', () => {
     ).toThrow(new WasteAnnualTourTransferError('batch_limit_exceeded'));
   });
 
+  it('counts assignment-location rows toward the relationship limit', async () => {
+    const sourceTour = tour();
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourAssignments: [
+          {
+            id: 'assignment-with-locations',
+            tourId: sourceTour.id,
+            pickupDate: '2026-05-04',
+            locationIds: ['location-a', 'location-b', 'location-c'],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([]),
+    });
+
+    expect(preview.summary.relationships).toBe(5);
+  });
+
   it('classifies transferable, already-effective and blocked source tours without hiding any', async () => {
     const transferable = tour();
     const alreadyEffective = tour({
@@ -962,6 +986,48 @@ describe('waste annual tour transfer', () => {
       expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
     ]);
     expect(preview.summary.selected).toBe(0);
+  });
+
+  it('removes shifted origins from effective conflict dates', async () => {
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-06-15' }],
+    });
+    const targetTour = tour({
+      id: 'acacacac-acac-4aca-8cac-acacacacacac',
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2027-06-14' }],
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'shift-only-occurrence',
+            tourId: sourceTour.id,
+            originalDate: '2026-06-15',
+            actualDate: '2026-06-16',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([targetTour]),
+    });
+
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]).toMatchObject({
+      originalDate: '2027-06-14',
+      actualDate: '2027-06-15',
+    });
+    expect(preview.tours[0]?.conflicts).toEqual([]);
+    expect(preview.summary.selected).toBe(1);
   });
 
   it('ignores annual shifts on source tours whose validity ended before the target year', async () => {

@@ -83,6 +83,7 @@ export type IamGroupMembershipRow = IamGroupRow & {
 export type IdempotencyReserveResult =
   | {
       status: 'reserved';
+      leaseToken?: string;
     }
   | {
       status: 'replay';

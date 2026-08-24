@@ -1,7 +1,16 @@
+import { randomUUID } from 'node:crypto';
+
 import { type IdempotencyReserveResult, type IdempotencyStatus } from './types.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 
 const IDEMPOTENCY_CLEANUP_INTERVAL_MS = 60_000;
+type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+type IdempotencyScope = Readonly<{
+  instanceId: string;
+  actorAccountId: string;
+  endpoint: string;
+  idempotencyKey: string;
+}>;
 
 const hasExpiredIdempotencyLease = (
   updatedAt: Date | string,
@@ -15,9 +24,7 @@ const hasExpiredIdempotencyLease = (
 
 let nextCleanupAt = 0;
 
-const cleanupExpiredIdempotencyKeys = async (
-  client: Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0]
-) => {
+const cleanupExpiredIdempotencyKeys = async (client: InstanceScopedClient) => {
   const now = Date.now();
   if (now < nextCleanupAt) {
     return;
@@ -25,6 +32,52 @@ const cleanupExpiredIdempotencyKeys = async (
   nextCleanupAt = now + IDEMPOTENCY_CLEANUP_INTERVAL_MS;
   await client.query('DELETE FROM iam.idempotency_keys WHERE expires_at < NOW();');
 };
+
+const insertIdempotencyReservation = (
+  client: InstanceScopedClient,
+  input: IdempotencyScope & Readonly<{ payloadHash: string }>,
+  leaseToken: string | undefined
+) =>
+  client.query(
+    `
+INSERT INTO iam.idempotency_keys (
+  instance_id, actor_account_id, endpoint, idempotency_key, payload_hash, response_body, status,
+  expires_at
+)
+VALUES ($1, $2::uuid, $3, $4, $5, $6::jsonb, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
+`,
+    [
+      input.instanceId,
+      input.actorAccountId,
+      input.endpoint,
+      input.idempotencyKey,
+      input.payloadHash,
+      JSON.stringify(leaseToken ? { leaseToken } : null),
+    ]
+  );
+
+const reclaimIdempotencyReservation = (
+  client: InstanceScopedClient,
+  input: IdempotencyScope,
+  leaseToken: string
+) =>
+  client.query(
+    `
+UPDATE iam.idempotency_keys
+SET response_body = $5::jsonb, updated_at = NOW(), expires_at = NOW() + INTERVAL '24 hours'
+WHERE instance_id = $1
+  AND actor_account_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4;
+`,
+    [
+      input.instanceId,
+      input.actorAccountId,
+      input.endpoint,
+      input.idempotencyKey,
+      JSON.stringify({ leaseToken }),
+    ]
+  );
 
 export const reserveIdempotency = async (input: {
   instanceId: string;
@@ -35,6 +88,7 @@ export const reserveIdempotency = async (input: {
   inProgressLeaseMs?: number;
 }): Promise<IdempotencyReserveResult> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const leaseToken = input.inProgressLeaseMs === undefined ? undefined : randomUUID();
     await cleanupExpiredIdempotencyKeys(client);
 
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
@@ -63,28 +117,8 @@ LIMIT 1;
 
     const row = existing.rows[0];
     if (!row) {
-      await client.query(
-        `
-INSERT INTO iam.idempotency_keys (
-  instance_id,
-  actor_account_id,
-  endpoint,
-  idempotency_key,
-  payload_hash,
-  status,
-  expires_at
-)
-VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
-`,
-        [
-          input.instanceId,
-          input.actorAccountId,
-          input.endpoint,
-          input.idempotencyKey,
-          input.payloadHash,
-        ]
-      );
-      return { status: 'reserved' };
+      await insertIdempotencyReservation(client, input, leaseToken);
+      return { status: 'reserved', ...(leaseToken ? { leaseToken } : {}) };
     }
 
     if (row.payload_hash !== input.payloadHash) {
@@ -97,18 +131,9 @@ VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
 
     if (row.status === 'IN_PROGRESS') {
       if (hasExpiredIdempotencyLease(row.updated_at, input.inProgressLeaseMs)) {
-        await client.query(
-          `
-UPDATE iam.idempotency_keys
-SET updated_at = NOW(), expires_at = NOW() + INTERVAL '24 hours'
-WHERE instance_id = $1
-  AND actor_account_id = $2::uuid
-  AND endpoint = $3
-  AND idempotency_key = $4;
-`,
-          [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey]
-        );
-        return { status: 'reserved' };
+        if (!leaseToken) throw new Error('idempotency_lease_missing');
+        await reclaimIdempotencyReservation(client, input, leaseToken);
+        return { status: 'reserved', leaseToken };
       }
       return {
         status: 'conflict',
@@ -124,6 +149,37 @@ WHERE instance_id = $1
     };
   });
 
+export const renewIdempotencyLease = async (input: {
+  instanceId: string;
+  actorAccountId: string;
+  endpoint: string;
+  idempotencyKey: string;
+  leaseToken: string;
+}): Promise<boolean> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const renewed = await client.query(
+      `
+UPDATE iam.idempotency_keys
+SET updated_at = NOW(), expires_at = NOW() + INTERVAL '24 hours'
+WHERE instance_id = $1
+  AND actor_account_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4
+  AND status = 'IN_PROGRESS'
+  AND response_body->>'leaseToken' = $5
+RETURNING id;
+`,
+      [
+        input.instanceId,
+        input.actorAccountId,
+        input.endpoint,
+        input.idempotencyKey,
+        input.leaseToken,
+      ]
+    );
+    return (renewed.rowCount ?? 0) > 0;
+  });
+
 export const completeIdempotency = async (input: {
   instanceId: string;
   actorAccountId: string;
@@ -132,9 +188,10 @@ export const completeIdempotency = async (input: {
   status: IdempotencyStatus;
   responseStatus: number;
   responseBody: unknown;
-}) => {
-  await withInstanceScopedDb(input.instanceId, async (client) => {
-    await client.query(
+  leaseToken?: string;
+}): Promise<boolean> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const completed = await client.query(
       `
 UPDATE iam.idempotency_keys
 SET
@@ -146,7 +203,12 @@ SET
 WHERE actor_account_id = $1::uuid
   AND instance_id = $2
   AND endpoint = $3
-  AND idempotency_key = $4;
+  AND idempotency_key = $4
+  AND (
+    (response_body->>'leaseToken' IS NULL AND $8::text IS NULL)
+    OR response_body->>'leaseToken' = $8
+  )
+RETURNING id;
 `,
       [
         input.actorAccountId,
@@ -156,7 +218,8 @@ WHERE actor_account_id = $1::uuid
         input.status,
         input.responseStatus,
         JSON.stringify(input.responseBody),
+        input.leaseToken ?? null,
       ]
     );
+    return (completed.rowCount ?? 0) > 0;
   });
-};

@@ -1,6 +1,7 @@
 import {
   wasteAnnualTourTransferLimits,
   WasteAnnualTourTransferError,
+  type WasteAnnualTourTransferCreateInput,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
 } from '@sva/core';
@@ -15,10 +16,11 @@ import {
 } from '../../shared/request-helpers.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { authorizeWasteManagementAction } from './auth.js';
+import { completeAnnualTourTransfer } from './annual-tour-transfer-execution.js';
 import {
-  completeAnnualTourTransfer,
   reserveAnnualTourTransfer,
-} from './annual-tour-transfer-execution.js';
+  startAnnualTourTransferLeaseHeartbeat,
+} from './annual-tour-transfer-idempotency.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
@@ -113,6 +115,64 @@ const jsonItemResponse = (status: number, data: unknown, requestId?: string): Re
     headers: { 'Content-Type': 'application/json' },
   });
 
+const executeConfirmedAnnualTourTransfer = async (input: {
+  instanceId: string;
+  actorAccountId: string;
+  idempotencyKey: string;
+  create: WasteAnnualTourTransferCreateInput;
+  requestId?: string;
+  ctx: AuthenticatedRequestContext;
+  deps: WasteManagementHandlerDeps;
+}): Promise<Response> => {
+  const reservation = await reserveAnnualTourTransfer(input);
+  if ('response' in reservation) return reservation.response;
+  const stopLeaseHeartbeat = startAnnualTourTransferLeaseHeartbeat({
+    instanceId: input.instanceId,
+    actorAccountId: input.actorAccountId,
+    idempotencyKey: input.idempotencyKey,
+    leaseToken: reservation.leaseToken,
+  });
+  let result: WasteAnnualTourTransferResult | undefined;
+  let response: Response;
+  let leaseVerified = false;
+  try {
+    try {
+      result = await requireDeps(
+        input.deps.createWasteAnnualTourTransfer,
+        'createWasteAnnualTourTransfer'
+      )({ instanceId: input.instanceId, create: input.create });
+      response = jsonItemResponse(201, result, input.requestId);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('missing_dependency:')) throw error;
+      response =
+        toDomainErrorResponse(error, input.requestId) ??
+        createApiError(
+          503,
+          'database_unavailable',
+          'Der Tourensatz konnte nicht vollständig angelegt werden.',
+          input.requestId
+        );
+    }
+    leaseVerified = await stopLeaseHeartbeat();
+    if (!leaseVerified) {
+      return createApiError(
+        409,
+        'idempotency_in_progress',
+        'Der Request wurde durch einen Wiederholungsversuch übernommen.',
+        input.requestId
+      );
+    }
+    return completeAnnualTourTransfer({
+      ...input,
+      result,
+      response,
+      leaseToken: reservation.leaseToken,
+    });
+  } finally {
+    if (!leaseVerified) await stopLeaseHeartbeat();
+  }
+};
+
 export const wasteManagementAnnualTourTransferHandlers = {
   previewWasteAnnualTourTransferInternal: async (
     request: Request,
@@ -185,42 +245,12 @@ export const wasteManagementAnnualTourTransferHandlers = {
       return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', requestId);
     }
 
-    const reservationResponse = await reserveAnnualTourTransfer({
+    return executeConfirmedAnnualTourTransfer({
       instanceId,
       actorAccountId,
       idempotencyKey: idempotencyKey.key,
       create: parsed.data,
       requestId,
-    });
-    if (reservationResponse) return reservationResponse;
-
-    let result: WasteAnnualTourTransferResult | undefined;
-    let response: Response;
-    try {
-      result = await requireDeps(
-        deps.createWasteAnnualTourTransfer,
-        'createWasteAnnualTourTransfer'
-      )({ instanceId, create: parsed.data });
-      response = jsonItemResponse(201, result, requestId);
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('missing_dependency:')) throw error;
-      response =
-        toDomainErrorResponse(error, requestId) ??
-        createApiError(
-          503,
-          'database_unavailable',
-          'Der Tourensatz konnte nicht vollständig angelegt werden.',
-          requestId
-        );
-    }
-
-    return completeAnnualTourTransfer({
-      instanceId,
-      actorAccountId,
-      idempotencyKey: idempotencyKey.key,
-      create: parsed.data,
-      result,
-      response,
       deps,
       ctx,
     });

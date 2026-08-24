@@ -16,6 +16,7 @@ import {
 } from './waste-management-annual-tour-transfer.dates.js';
 import { stableWasteAnnualSerialize } from './waste-management-annual-tour-transfer.identity.js';
 import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.mapping.js';
+import { resolveEffectiveWasteTourDateShiftsForYear } from './waste-management/master-data-tour-date-shifts.js';
 
 export const sortWasteAnnualItems = <T>(
   items: readonly T[],
@@ -43,12 +44,7 @@ const resolvedShiftActualDates = (
   shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
   year: number
 ): readonly string[] =>
-  shifts.flatMap((shift) => {
-    const actualDate = shift.hasYear
-      ? shift.actualDate
-      : replaceWasteAnnualYear(shift.actualDate, year);
-    return actualDate ? [actualDate] : [];
-  });
+  resolveEffectiveWasteTourDateShiftsForYear(shifts, year).map((shift) => shift.actualDate);
 
 const yearlySchedulesIntersect = (
   left: WasteAnnualTourTransferMappedTour['targetTour'],

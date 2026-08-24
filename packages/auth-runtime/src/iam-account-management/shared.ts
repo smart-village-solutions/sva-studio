@@ -19,7 +19,11 @@ export {
   notifyPermissionInvalidation,
   setRoleSyncState,
 } from './shared-activity.js';
-export { completeIdempotency, reserveIdempotency } from './shared-idempotency.js';
+export {
+  completeIdempotency,
+  renewIdempotencyLease,
+  reserveIdempotency,
+} from './shared-idempotency.js';
 export {
   iamRoleSyncCounter,
   iamUserOperationsCounter,

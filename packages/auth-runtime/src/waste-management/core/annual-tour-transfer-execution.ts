@@ -1,50 +1,14 @@
-import {
-  buildWasteAnnualTourTransferFingerprint,
-  type WasteAnnualTourTransferCreateInput,
-  type WasteAnnualTourTransferPreview,
-  type WasteAnnualTourTransferResult,
+import type {
+  WasteAnnualTourTransferCreateInput,
+  WasteAnnualTourTransferPreview,
+  WasteAnnualTourTransferResult,
 } from '@sva/core';
 
-import { completeIdempotency, reserveIdempotency } from '../../iam-account-management/shared.js';
+import { completeIdempotency } from '../../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
-import { createApiError } from '../../shared/request-helpers.js';
 import { emitWasteAuditEvent } from './auth.js';
+import { annualTourTransferEndpoint } from './annual-tour-transfer-idempotency.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-
-export const annualTourTransferEndpoint = 'POST:/api/v1/waste-management/tours/annual-transfer';
-const annualTourTransferIdempotencyLeaseMs = 5 * 60 * 1_000;
-
-export const reserveAnnualTourTransfer = async (input: {
-  instanceId: string;
-  actorAccountId: string;
-  idempotencyKey: string;
-  create: WasteAnnualTourTransferCreateInput;
-  requestId?: string;
-}): Promise<Response | null> => {
-  const reservation = await reserveIdempotency({
-    instanceId: input.instanceId,
-    actorAccountId: input.actorAccountId,
-    endpoint: annualTourTransferEndpoint,
-    idempotencyKey: input.idempotencyKey,
-    payloadHash: await buildWasteAnnualTourTransferFingerprint(input.create),
-    inProgressLeaseMs: annualTourTransferIdempotencyLeaseMs,
-  });
-  if (reservation.status === 'replay') {
-    return new Response(JSON.stringify(reservation.responseBody), {
-      status: reservation.responseStatus,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-  if (reservation.status === 'conflict') {
-    return createApiError(
-      409,
-      reservation.reason === 'in_progress' ? 'idempotency_in_progress' : 'idempotency_key_reuse',
-      reservation.message,
-      input.requestId
-    );
-  }
-  return null;
-};
 
 export const completeAnnualTourTransfer = async (input: {
   instanceId: string;
@@ -53,6 +17,7 @@ export const completeAnnualTourTransfer = async (input: {
   create: WasteAnnualTourTransferCreateInput;
   result?: WasteAnnualTourTransferResult;
   response: Response;
+  leaseToken: string;
   deps: WasteManagementHandlerDeps;
   ctx: AuthenticatedRequestContext;
 }): Promise<Response> => {
@@ -95,6 +60,7 @@ export const completeAnnualTourTransfer = async (input: {
     status: input.response.ok ? 'COMPLETED' : 'FAILED',
     responseStatus: input.response.status,
     responseBody,
+    leaseToken: input.leaseToken,
   });
   return input.response;
 };

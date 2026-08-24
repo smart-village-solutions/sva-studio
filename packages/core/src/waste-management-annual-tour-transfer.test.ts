@@ -838,6 +838,44 @@ describe('waste annual tour transfer', () => {
     expect(preview.summary.selected).toBe(0);
   });
 
+  it('preserves the year offset of annual shifts during conflict detection', async () => {
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-01-03' }],
+    });
+    const targetTour = tour({
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2027-12-31' }],
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour]),
+      target: source([targetTour], {
+        tourDateShifts: [
+          {
+            id: 'annual-cross-year',
+            tourId: targetTour.id,
+            originalDate: '2024-12-31',
+            actualDate: '2025-01-02',
+            hasYear: false,
+            createdAt: '2027-01-01T00:00:00.000Z',
+            updatedAt: '2027-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    });
+
+    expect(preview.tours[0]?.firstTargetDate).toBe('2027-01-02');
+    expect(preview.tours[0]?.conflicts).toEqual([]);
+  });
+
   it('reports all colliding date resources and resolves the collision with an explicit replacement', async () => {
     const collidingTour = tour({
       recurrence: 'on-demand',

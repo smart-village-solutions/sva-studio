@@ -9,16 +9,19 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 
 const idempotency = vi.hoisted(() => ({
   reserve: vi.fn(),
+  renew: vi.fn(),
   complete: vi.fn(),
 }));
 
 vi.mock('../../iam-account-management/shared.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../iam-account-management/shared.js')>()),
   reserveIdempotency: idempotency.reserve,
+  renewIdempotencyLease: idempotency.renew,
   completeIdempotency: idempotency.complete,
 }));
 
 import { wasteManagementAnnualTourTransferHandlers } from './annual-tour-transfer.js';
+import { startAnnualTourTransferLeaseHeartbeat } from './annual-tour-transfer-idempotency.js';
 
 const actor: AuthenticatedRequestContext = {
   sessionId: 'session-1',
@@ -74,8 +77,30 @@ const request = (path: string, body: unknown, headers: Record<string, string> = 
 describe('annual tour transfer handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    idempotency.reserve.mockResolvedValue({ status: 'reserved' });
-    idempotency.complete.mockResolvedValue(undefined);
+    idempotency.reserve.mockResolvedValue({ status: 'reserved', leaseToken: 'lease-1' });
+    idempotency.renew.mockResolvedValue(true);
+    idempotency.complete.mockResolvedValue(true);
+  });
+
+  it('renews the fenced lease while a long-running transfer remains active', async () => {
+    vi.useFakeTimers();
+    try {
+      const stop = startAnnualTourTransferLeaseHeartbeat({
+        instanceId: 'tenant-a',
+        actorAccountId: 'account-1',
+        idempotencyKey: 'idem-1',
+        leaseToken: 'lease-1',
+      });
+
+      await vi.advanceTimersByTimeAsync(60 * 1_000);
+      expect(idempotency.renew).toHaveBeenCalledWith(
+        expect.objectContaining({ leaseToken: 'lease-1' })
+      );
+      await expect(stop()).resolves.toBe(true);
+      expect(idempotency.renew).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('builds a read-only preview after both permissions and CSRF were checked', async () => {
@@ -263,6 +288,41 @@ describe('annual tour transfer handlers', () => {
     expect(create).not.toHaveBeenCalled();
     expect(idempotency.complete).not.toHaveBeenCalled();
     expect(emitAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not audit or complete after losing the fenced lease', async () => {
+    idempotency.renew.mockResolvedValueOnce(false);
+    const create = vi.fn(async () => result);
+    const emitAuditEvent = vi.fn(async () => undefined);
+
+    const response =
+      await wasteManagementAnnualTourTransferHandlers.createWasteAnnualTourTransferInternal(
+        request(
+          '/api/v1/waste-management/tours/annual-transfer',
+          {
+            sourceYear: 2026,
+            selectedTourIds: ['source-1'],
+            replacementDates: [],
+            acknowledgedConflictTourIds: [],
+            previewFingerprint: `sha256:${'a'.repeat(64)}`,
+          },
+          { 'Idempotency-Key': 'idem-1' }
+        ),
+        actor,
+        {
+          resolvePermissions: permissions,
+          resolveActorInfo: vi.fn(async () => ({
+            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
+          })),
+          createWasteAnnualTourTransfer: create,
+          emitAuditEvent,
+        }
+      );
+
+    expect(response.status).toBe(409);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(emitAuditEvent).not.toHaveBeenCalled();
+    expect(idempotency.complete).not.toHaveBeenCalled();
   });
 
   it('returns the updated preview without writing when the confirmed fingerprint is stale', async () => {

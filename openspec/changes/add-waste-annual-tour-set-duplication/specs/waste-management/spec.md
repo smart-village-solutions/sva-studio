@@ -232,12 +232,14 @@ Das System SHALL den ausdrücklich bestätigten Tourensatz einschließlich aller
 - **THEN** antwortet das System mit `idempotency_in_progress`
 - **AND** startet es keine zweite Waste-Transaktion
 - **AND** erzeugt es kein zusätzliches Audit-Ereignis
+- **AND** erneuert der aktive Request seine Lease und darf nur mit seinem aktuellen Ownership-Token Audit und Antwort finalisieren
 
 #### Scenario: Prozess endet nach dem Waste-Commit
 
 - **WHEN** die Waste-Transaktion erfolgreich committet und der Prozess vor Abschluss des zentralen Idempotenzeintrags endet
 - **THEN** darf eine Wiederholung nach Ablauf der kurzen Verarbeitungs-Lease die verwaiste Reservierung übernehmen
 - **AND** rekonstruiert sie das Ergebnis anhand der stabilen Ziel- und Beziehungs-IDs
+- **AND** kann der abgelöste Owner mit seinem alten Ownership-Token weder Audit noch Antwort finalisieren
 - **AND** behandelt sie vollständig identische Daten als Replay
 - **AND** behandelt sie fehlende Daten als erneut atomar ausführbar und abweichende Daten als `target_identity_conflict`
 

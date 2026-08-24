@@ -180,7 +180,7 @@ RETURNING id;
     return (renewed.rowCount ?? 0) > 0;
   });
 
-export const completeIdempotency = async (input: {
+type CompleteIdempotencyInput = {
   instanceId: string;
   actorAccountId: string;
   endpoint: string;
@@ -188,9 +188,18 @@ export const completeIdempotency = async (input: {
   status: IdempotencyStatus;
   responseStatus: number;
   responseBody: unknown;
-  leaseToken?: string;
-}): Promise<boolean> =>
-  withInstanceScopedDb(input.instanceId, async (client) => {
+};
+
+export function completeIdempotency(
+  input: CompleteIdempotencyInput & { leaseToken: string }
+): Promise<boolean>;
+export function completeIdempotency(
+  input: CompleteIdempotencyInput & { leaseToken?: never }
+): Promise<void>;
+export async function completeIdempotency(
+  input: CompleteIdempotencyInput & { leaseToken?: string }
+): Promise<boolean | void> {
+  const completed = await withInstanceScopedDb(input.instanceId, async (client) => {
     const completed = await client.query(
       `
 UPDATE iam.idempotency_keys
@@ -223,3 +232,5 @@ RETURNING id;
     );
     return (completed.rowCount ?? 0) > 0;
   });
+  return input.leaseToken === undefined ? undefined : completed;
+}

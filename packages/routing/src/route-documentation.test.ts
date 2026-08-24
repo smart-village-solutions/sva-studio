@@ -15,6 +15,10 @@ describe('route documentation', () => {
     ).toEqual({ kind: 'page', id: 'admin.users.detail', pageType: 'detail' });
   });
 
+  it('returns null when no active match declares documentation', () => {
+    expect(resolveActiveRouteDocumentation([{ staticData: {} }, {}])).toBeNull();
+  });
+
   it('rejects duplicate ids and canonical paths', () => {
     const first = {
       id: 'content.list',

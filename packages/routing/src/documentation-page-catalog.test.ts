@@ -57,4 +57,41 @@ describe('documentation page catalog', () => {
     expect(catalog.pages.some((page) => page.path === '/help')).toBe(false);
     expect(catalog.pages).toEqual([...catalog.pages].sort((a, b) => a.id.localeCompare(b.id, 'en')));
   });
+
+  it('supports the host-only catalog defaults', () => {
+    const catalog = collectDocumentationPageCatalog({ bindings });
+
+    expect(catalog.pages).toContainEqual(
+      expect.objectContaining({ id: 'home.overview', owner: { kind: 'host' } })
+    );
+  });
+
+  it('rejects plugin routes without an explicit documentation decision', () => {
+    const undocumentedPlugin: PluginDefinition = {
+      ...plugin,
+      routes: [{ id: 'catalog.undocumented', path: '/plugins/catalog/undocumented', component }],
+    };
+
+    expect(() =>
+      collectDocumentationPageCatalog({ bindings, plugins: [undocumentedPlugin] })
+    ).toThrow('plugin_route_documentation_missing:catalog:catalog.undocumented');
+  });
+
+  it('omits explicitly excluded plugin routes', () => {
+    const excludedPlugin: PluginDefinition = {
+      ...plugin,
+      routes: [
+        {
+          id: 'catalog.technical',
+          path: '/plugins/catalog/technical',
+          documentation: { kind: 'excluded', reason: 'technical' },
+          component,
+        },
+      ],
+    };
+
+    expect(collectDocumentationPageCatalog({ bindings, plugins: [excludedPlugin] }).pages).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'catalog.technical' })])
+    );
+  });
 });

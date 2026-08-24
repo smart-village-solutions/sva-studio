@@ -23,6 +23,10 @@ type LoadOptions = Readonly<{ preserveError?: boolean; nextStep?: 'preview' | 'c
 
 const useAnnualTransferState = () => {
   const summaryRef = useRef<HTMLDivElement>(null);
+  const confirmationRequestRef = useRef<{
+    payloadIdentity: string;
+    idempotencyKey: string;
+  } | null>(null);
   const [step, setStep] = useState<AnnualTransferStep>('source');
   const [sourceYear, setSourceYear] = useState(wasteAnnualCurrentYear());
   const [preview, setPreview] = useState<WasteAnnualTourTransferPreview | null>(null);
@@ -36,6 +40,7 @@ const useAnnualTransferState = () => {
   const [result, setResult] = useState<WasteAnnualTourTransferResult | null>(null);
   return {
     summaryRef,
+    confirmationRequestRef,
     step,
     setStep,
     sourceYear,
@@ -118,6 +123,7 @@ const updatedPreviewFromError = (error: unknown): WasteAnnualTourTransferPreview
 };
 
 const resetAnnualTransfer = (state: AnnualTransferState) => {
+  state.confirmationRequestRef.current = null;
   state.setStep('source');
   state.setSourceYear(wasteAnnualCurrentYear());
   state.setPreview(null);
@@ -162,20 +168,32 @@ const createAnnualTransfer = async (input: {
   if (!state.preview) return;
   state.setLoading(true);
   state.setError(null);
+  const create = {
+    sourceYear: state.sourceYear,
+    selectedTourIds: state.selectedTourIds,
+    replacementDates: replacementInput,
+    acknowledgedConflictTourIds: state.acknowledgedConflictTourIds,
+    previewFingerprint: state.preview.previewFingerprint,
+  };
+  const payloadIdentity = JSON.stringify(create);
+  if (state.confirmationRequestRef.current?.payloadIdentity !== payloadIdentity) {
+    state.confirmationRequestRef.current = {
+      payloadIdentity,
+      idempotencyKey: crypto.randomUUID(),
+    };
+  }
   try {
     const created = await createWasteAnnualTourTransfer(
-      {
-        sourceYear: state.sourceYear,
-        selectedTourIds: state.selectedTourIds,
-        replacementDates: replacementInput,
-        acknowledgedConflictTourIds: state.acknowledgedConflictTourIds,
-        previewFingerprint: state.preview.previewFingerprint,
-      },
-      crypto.randomUUID()
+      create,
+      state.confirmationRequestRef.current.idempotencyKey
     );
     state.setResult(created);
     state.setStep('result');
-    await options.onCreated();
+    try {
+      await options.onCreated();
+    } catch {
+      // The transfer is already committed; a failed overview refresh must not report it as failed.
+    }
   } catch (error) {
     if (resolveApiErrorCode(error) === 'preview_stale') {
       const updatedPreview = updatedPreviewFromError(error);

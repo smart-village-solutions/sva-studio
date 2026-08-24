@@ -6,19 +6,71 @@ type AnnualTourTransferClient = Readonly<{
 }>;
 
 const serialRelationshipLimit = 100;
-const relationshipBatchSize = 1_000;
+const writeBatchSize = 1_000;
 
 const executeJsonBatches = async <T>(
   client: AnnualTourTransferClient,
   items: readonly T[],
   statement: string
 ): Promise<void> => {
-  for (let offset = 0; offset < items.length; offset += relationshipBatchSize) {
+  for (let offset = 0; offset < items.length; offset += writeBatchSize) {
     await client.query(statement, [
-      JSON.stringify(items.slice(offset, offset + relationshipBatchSize)),
+      JSON.stringify(items.slice(offset, offset + writeBatchSize)),
     ]);
   }
 };
+
+const writeTours = async (
+  client: AnnualTourTransferClient,
+  mappedTours: readonly WasteAnnualTourTransferMappedTour[]
+): Promise<void> =>
+  executeJsonBatches(
+    client,
+    mappedTours.map(({ targetTour }) => ({
+      id: targetTour.id,
+      name: targetTour.name,
+      description: targetTour.description ?? null,
+      waste_fraction_ids: targetTour.wasteFractionIds,
+      recurrence: targetTour.recurrence ?? null,
+      custom_recurrence_id: targetTour.customRecurrenceId ?? null,
+      first_date: targetTour.firstDate ?? null,
+      end_date: targetTour.endDate ?? null,
+      custom_dates: targetTour.customDates ?? null,
+      active: targetTour.active,
+    })),
+    `
+INSERT INTO waste_tours (
+  id, name, description, waste_fraction_ids, recurrence, custom_recurrence_id,
+  first_date, end_date, custom_dates, active
+)
+SELECT
+  item.id::uuid, item.name, item.description, item.waste_fraction_ids, item.recurrence,
+  item.custom_recurrence_id::uuid, item.first_date::date, item.end_date::date,
+  item.custom_dates, item.active
+FROM jsonb_to_recordset($1::jsonb) AS item(
+  id text,
+  name text,
+  description text,
+  waste_fraction_ids text[],
+  recurrence text,
+  custom_recurrence_id text,
+  first_date text,
+  end_date text,
+  custom_dates jsonb,
+  active boolean
+)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    waste_fraction_ids = EXCLUDED.waste_fraction_ids,
+    recurrence = EXCLUDED.recurrence,
+    custom_recurrence_id = EXCLUDED.custom_recurrence_id,
+    first_date = EXCLUDED.first_date,
+    end_date = EXCLUDED.end_date,
+    custom_dates = EXCLUDED.custom_dates,
+    active = EXCLUDED.active,
+    updated_at = NOW();`
+  );
 
 const writeLinks = async (
   client: AnnualTourTransferClient,
@@ -181,7 +233,7 @@ export const writeWasteAnnualMappedTours = async (
   repository: WasteMasterDataRepository,
   mappedTours: readonly WasteAnnualTourTransferMappedTour[]
 ): Promise<void> => {
-  for (const mapped of mappedTours) await repository.upsertWasteTour(mapped.targetTour);
+  await writeTours(client, mappedTours);
   const relationshipCount = mappedTours.reduce(
     (count, mapped) =>
       count +

@@ -184,6 +184,60 @@ describe('WasteToursAnnualTransferDialog', () => {
     );
   });
 
+  it('reuses the idempotency key when confirmation is retried unchanged', async () => {
+    api.create.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({
+      sourceYear: 2026,
+      targetYear: 2027,
+      createdTourIds: ['target-1'],
+      existingTourIds: [],
+      createdCount: 1,
+      existingCount: 0,
+      classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
+      listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+    });
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    await screen.findByText('Bio Nord');
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'tours.annualTransfer.confirm' }));
+    expect(await screen.findByText('tours.annualTransfer.createError')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.confirm' }));
+
+    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(2));
+    expect(api.create.mock.calls[1]?.[1]).toBe(api.create.mock.calls[0]?.[1]);
+  });
+
+  it('keeps the successful result when the overview refresh fails', async () => {
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => {
+          throw new Error('reload failed');
+        })}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    await screen.findByText('Bio Nord');
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'tours.annualTransfer.confirm' }));
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'tours.annualTransfer.result:1|0|2027'
+    );
+    expect(screen.queryByText('tours.annualTransfer.createError')).toBeNull();
+  });
+
   it('shows concrete date-only mappings and the custom recurrence label', async () => {
     api.preview.mockResolvedValueOnce({
       ...preview,

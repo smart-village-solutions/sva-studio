@@ -422,6 +422,31 @@ export const WasteMasterDataLocationsHeader = ({
   );
 };
 
+const resolveLocationRowProjection = (
+  location: WasteCollectionLocationRecord | WasteCollectionLocationListItem,
+  maps: WasteMasterDataLocationsTableMaps
+) => {
+  if ('cityName' in location && 'tours' in location) {
+    return {
+      regionName: location.regionName,
+      cityName: location.cityName,
+      streetName: location.streetName,
+      houseNumberName: location.houseNumber,
+      linkedTours: location.tours,
+    };
+  }
+
+  return {
+    regionName: location.regionId ? maps.regionsById.get(location.regionId)?.name : undefined,
+    cityName: maps.citiesById.get(location.cityId)?.name,
+    streetName: location.streetId ? maps.streetsById.get(location.streetId)?.name : undefined,
+    houseNumberName: location.houseNumberId
+      ? maps.houseNumbersById.get(location.houseNumberId)?.number
+      : undefined,
+    linkedTours: maps.locationToursByLocationId.get(location.id) ?? [],
+  };
+};
+
 export const WasteMasterDataLocationsRow = ({
   location,
   maps,
@@ -442,18 +467,8 @@ export const WasteMasterDataLocationsRow = ({
   readonly onOpenEditTour?: (tourId: string) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const region = location.regionId ? maps.regionsById.get(location.regionId) : undefined;
-  const city = maps.citiesById.get(location.cityId);
-  const street = location.streetId ? maps.streetsById.get(location.streetId) : undefined;
-  const houseNumber = location.houseNumberId
-    ? maps.houseNumbersById.get(location.houseNumberId)
-    : undefined;
-  const regionName = 'regionName' in location ? location.regionName : region?.name;
-  const cityName = 'cityName' in location ? location.cityName : city?.name;
-  const streetName = 'streetName' in location ? location.streetName : street?.name;
-  const houseNumberName = 'houseNumber' in location ? location.houseNumber : houseNumber?.number;
-  const linkedTours =
-    'tours' in location ? location.tours : (maps.locationToursByLocationId?.get(location.id) ?? []);
+  const { regionName, cityName, streetName, houseNumberName, linkedTours } =
+    resolveLocationRowProjection(location, maps);
   const editLabel = pt('masterData.collectionLocations.actions.edit');
   const copyLabel = pt('masterData.collectionLocations.actions.copy');
   const deleteLabel = pt('masterData.collectionLocations.actions.delete');

@@ -68,4 +68,12 @@ describe('wasteManagementImportCatalog', () => {
       })
     );
   });
+
+  it('derives canonical JSON field requirements from the shared data profile', () => {
+    expect(getWasteManagementImportCatalogEntry('waste-management.fraktionen')).toMatchObject({
+      optionalColumns: expect.arrayContaining([
+        { key: 'fraction.pdfShortLabel', required: false },
+      ]),
+    });
+  });
 });

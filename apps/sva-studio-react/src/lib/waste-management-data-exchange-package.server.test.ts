@@ -20,7 +20,13 @@ const profileBody = strToU8(
   serializeWasteManagementDataExchangeJson({
     profileId,
     exportedAt: '2026-08-16T09:00:00.000Z',
-    records: [{ entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00' }],
+    records: [{
+      entityType: 'fraction',
+      id: 'fraction-1',
+      name: 'Bio',
+      pdfShortLabel: 'BIO',
+      color: '#00aa00',
+    }],
   })
 );
 const checksum = (body: Uint8Array): string =>

@@ -75,5 +75,6 @@ SELECT format('CREATE DATABASE %I;', :'db_name');
 SQL
 
 export WASTE_DATE_SHIFT_TEST_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_HOST_PORT}/${TEST_DB_NAME}"
+export WASTE_DATA_EXCHANGE_TEST_DATABASE_URL="${WASTE_DATE_SHIFT_TEST_DATABASE_URL}"
 
 pnpm --dir apps/sva-studio-react exec vitest run --config vitest.integration.config.ts

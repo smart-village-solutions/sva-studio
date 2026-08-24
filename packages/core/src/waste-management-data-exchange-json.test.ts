@@ -41,6 +41,7 @@ describe('Waste data exchange JSON', () => {
           entityType: 'fraction',
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'RES',
           translations: undefined,
           color: '#112233',
           createdAt: 'sensitive-target-metadata',
@@ -58,7 +59,7 @@ describe('Waste data exchange JSON', () => {
           entityType: 'fraction',
           id: 'fraction-1',
           active: true,
-          pdfShortLabel: null,
+          pdfShortLabel: 'RES',
           translations: null,
           reminderConfig: {
             reminderCount: 'none',
@@ -76,7 +77,13 @@ describe('Waste data exchange JSON', () => {
       pluginId: 'waste-management',
       profileId: wasteManagementDataProfileIds.fractions,
       exportedAt,
-      records: [{ entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00' }],
+      records: [{
+        entityType: 'fraction',
+        id: 'fraction-1',
+        name: 'Bio',
+        pdfShortLabel: 'BIO',
+        color: '#00aa00',
+      }],
     };
 
     const createResult = parseWasteManagementDataExchangeJson(envelope);
@@ -104,6 +111,7 @@ describe('Waste data exchange JSON', () => {
           entityType: 'fraction',
           id: 'fraction-1',
           name: 'Bio',
+          pdfShortLabel: 'BIO',
           color: '#00aa00',
           createdAt: '2026-08-16T09:00:00.000Z',
           consentAcceptedAt: '2026-08-16T09:00:00.000Z',
@@ -117,6 +125,27 @@ describe('Waste data exchange JSON', () => {
         { code: 'excluded_field', path: 'records[0].createdAt' },
         { code: 'unknown_field', path: 'records[0].consentAcceptedAt' },
       ],
+    });
+  });
+
+  it.each([
+    ['omitted', {}],
+    ['null', { pdfShortLabel: null }],
+  ])('accepts an optional PDF short label when it is %s', (_label, optionalFields) => {
+    expect(parseWasteManagementDataExchangeJson({
+      formatVersion: '1.0.0',
+      pluginId: 'waste-management',
+      profileId: wasteManagementDataProfileIds.fractions,
+      exportedAt,
+      records: [{
+        entityType: 'fraction',
+        id: 'fraction-1',
+        name: 'Bio',
+        color: '#00aa00',
+        ...optionalFields,
+      }],
+    }, { applyDefaults: false })).toMatchObject({
+      ok: true,
     });
   });
 
@@ -195,7 +224,7 @@ describe('Waste data exchange JSON', () => {
     {
       profileId: wasteManagementDataProfileIds.fractions,
       record: {
-        entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00',
+        entityType: 'fraction', id: 'fraction-1', name: 'Bio', pdfShortLabel: 'BIO', color: '#00aa00',
         translations: [],
       },
       path: 'records[0].translations',
@@ -203,7 +232,7 @@ describe('Waste data exchange JSON', () => {
     {
       profileId: wasteManagementDataProfileIds.fractions,
       record: {
-        entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00',
+        entityType: 'fraction', id: 'fraction-1', name: 'Bio', pdfShortLabel: 'BIO', color: '#00aa00',
         reminderConfig: { reminderCount: 'once', channels: { push: true } },
       },
       path: 'records[0].reminderConfig',
@@ -260,6 +289,7 @@ describe('Waste data exchange JSON', () => {
           entityType: 'fraction',
           id: 'fraction-1',
           name: 'Bio',
+          pdfShortLabel: 'BIO',
           color: '#00aa00',
           translations: { de: 'Biotonne', en: 'Organic waste' },
           reminderConfig: {
@@ -287,7 +317,14 @@ describe('Waste data exchange JSON', () => {
       : wasteManagementDataProfileIds.fractions;
     const record = isCustomDates
       ? { entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: ['fraction-1'], [field]: value }
-      : { entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00', [field]: value };
+      : {
+          entityType: 'fraction',
+          id: 'fraction-1',
+          name: 'Bio',
+          pdfShortLabel: 'BIO',
+          color: '#00aa00',
+          [field]: value,
+        };
 
     expect(
       parseWasteManagementDataExchangeJson({
@@ -318,7 +355,7 @@ describe('Waste data exchange JSON', () => {
         profileId: wasteManagementDataProfileIds.fractions,
         exportedAt,
         records: [{
-          entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00', reminderConfig,
+          entityType: 'fraction', id: 'fraction-1', name: 'Bio', pdfShortLabel: 'BIO', color: '#00aa00', reminderConfig,
         }],
       }, { applyDefaults: false })
     ).toMatchObject({

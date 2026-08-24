@@ -41,6 +41,67 @@ type CanonicalImportResult = Readonly<{
 
 type PortableInterface = NonNullable<Awaited<ReturnType<typeof loadSelectedWasteInterfaceRecord>>>;
 
+type PreparedImportRecord = Readonly<{
+  source: WasteManagementDataExchangeRecord;
+  existing: object | null;
+  materialized: WasteManagementDataExchangeRecord;
+}>;
+
+const normalizeFractionShortLabel = (value: unknown): string =>
+  typeof value === 'string' ? value.trim().toLocaleUpperCase('de') : '';
+
+const usesDerivedFractionShortLabel = (entry: PreparedImportRecord): boolean => {
+  if (entry.source.entityType !== 'fraction') return false;
+  const sourceOwnsLabel = Object.prototype.hasOwnProperty.call(entry.source, 'pdfShortLabel');
+  const sourceLabel = normalizeFractionShortLabel(entry.source.pdfShortLabel);
+  const existingLabel = normalizeFractionShortLabel(
+    (entry.existing as Readonly<Record<string, unknown>> | null)?.pdfShortLabel
+  );
+  return sourceLabel.length === 0 && (sourceOwnsLabel || existingLabel.length === 0);
+};
+
+const allocateFractionShortLabels = async (
+  repository: WasteMasterDataRepository,
+  entries: readonly PreparedImportRecord[]
+): Promise<readonly PreparedImportRecord[]> => {
+  const fractionEntries = entries.filter((entry) => entry.source.entityType === 'fraction');
+  if (fractionEntries.length === 0) return entries;
+
+  const incomingIds = new Set(fractionEntries.map((entry) => String(entry.source.id ?? '')));
+  const usedLabels = new Set(
+    (await repository.listWasteFractions())
+      .filter((fraction) => fraction.active && !incomingIds.has(fraction.id))
+      .map((fraction) => normalizeFractionShortLabel(fraction.pdfShortLabel))
+      .filter((label) => label.length > 0)
+  );
+
+  for (const entry of fractionEntries.filter((candidate) =>
+    candidate.materialized.active !== false && !usesDerivedFractionShortLabel(candidate)
+  )) {
+    const label = normalizeFractionShortLabel(entry.materialized.pdfShortLabel);
+    if (label.length === 0 || usedLabels.has(label)) {
+      throw new Error(`duplicate_waste_fraction_short_label:${label}`);
+    }
+    usedLabels.add(label);
+  }
+
+  return entries.map((entry) => {
+    if (!usesDerivedFractionShortLabel(entry)) return entry;
+    const baseLabel = normalizeFractionShortLabel(entry.materialized.pdfShortLabel) || 'WST';
+    if (entry.materialized.active === false) {
+      return { ...entry, materialized: { ...entry.materialized, pdfShortLabel: baseLabel } };
+    }
+    let label = baseLabel;
+    let suffix = 2;
+    while (usedLabels.has(label)) {
+      label = `${baseLabel}-${suffix}`;
+      suffix += 1;
+    }
+    usedLabels.add(label);
+    return { ...entry, materialized: { ...entry.materialized, pdfShortLabel: label } };
+  });
+};
+
 const executeAtomicCanonicalImport = async <T>(input: Readonly<{
   deps: WasteOperationRuntimeDeps;
   instanceId: string;
@@ -105,6 +166,7 @@ const applyCanonicalRecords = async (
       (entityOrder.get(right.entityType) ?? Number.MAX_SAFE_INTEGER)
   );
 
+  const preparedRecords: PreparedImportRecord[] = [];
   for (const record of orderedRecords) {
     const repositoryRecord = await loadExistingWasteDataRecord(repository, record);
     const existing =
@@ -112,6 +174,13 @@ const applyCanonicalRecords = async (
         ? { ...(repositoryRecord ?? {}), ...portableExisting }
         : repositoryRecord;
     const materialized = materializeWasteDataRecord(profileId, record, existing, defaultedFields);
+    preparedRecords.push({ source: record, existing, materialized });
+  }
+
+  for (const { existing, materialized } of await allocateFractionShortLabels(
+    repository,
+    preparedRecords
+  )) {
     if (existing === null) created += 1;
     else if (comparableWasteDataRecord(existing) === comparableWasteDataRecord(materialized)) unchanged += 1;
     else updated += 1;

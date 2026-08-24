@@ -18,7 +18,7 @@
 - [x] 3.1 Den versionierten JSON-Envelope für jedes einzelne Profil implementieren und strikt validieren.
 - [x] 3.2 JSON-Parser und -Serializer aus demselben Profilvertrag ableiten und explizite `null`-/Missing-/Defaultsemantik umsetzen.
 - [x] 3.3 Bestehende CSV-/XLSX-Adapter gegen die vollständigen Profilfelder härten und Formate ohne verlustfreie Abbildung nicht anbieten.
-- [ ] 3.4 Importvorlagen und Exportdateien aus denselben kanonischen Felddefinitionen erzeugen.
+- [x] 3.4 Importvorlagen und Exportdateien aus denselben kanonischen Felddefinitionen erzeugen.
 - [x] 3.5 Formatübergreifende Roundtrip-Tests für jedes tatsächlich angebotene Profilformat ergänzen.
 
 ## 4. Waste-Exportpfad
@@ -37,7 +37,7 @@
 - [x] 5.4 Create-/Update-Semantik für ausgelassene defaultfähige Felder sowie explizites `null` regressionssicher implementieren.
 - [x] 5.5 Einzelprofile atomar und Mehrprofilpakete nach vollständigem Preflight paketweit atomar importieren.
 - [x] 5.6 Strukturierte Vorschau- und Ergebnisberichte mit neuen, geänderten, unveränderten, fehlerhaften und defaultierten Datensätzen ergänzen.
-- [ ] 5.7 Integrations- und Rollbacktests gegen eine leere sowie eine vorbefüllte isolierte Waste-Testdatenbank ergänzen.
+- [x] 5.7 Integrations- und Rollbacktests gegen eine leere sowie eine vorbefüllte isolierte Waste-Testdatenbank ergänzen.
 
 ## 6. Studio-UI und Bedienung
 
@@ -54,4 +54,4 @@
 - [x] 7.3 Waste-Data-Tools-Guide und relevante deutsche Fachdokumentation aktualisieren.
 - [x] 7.4 `docs/architecture/05-building-block-view.md`, `docs/architecture/06-runtime-view.md`, `docs/architecture/08-cross-cutting-concepts.md` und `docs/architecture/10-quality-requirements.md` fortschreiben.
 - [x] 7.5 Falls Datenbankschemaänderungen erforderlich werden, `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` im selben Change aktualisieren.
-- [ ] 7.6 Changelog-Eintrag ergänzen und Dateiablage-, Server-Runtime-, Unit-, Type-, Lint-, Coverage-, Complexity-, Integrations-, Build- und relevante E2E-Gates ausführen.
+- [x] 7.6 Changelog-Eintrag ergänzen und Dateiablage-, Server-Runtime-, Unit-, Type-, Lint-, Coverage-, Complexity-, Integrations-, Build- und relevante E2E-Gates ausführen.

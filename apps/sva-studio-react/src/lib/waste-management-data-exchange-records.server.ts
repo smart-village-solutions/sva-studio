@@ -22,6 +22,16 @@ import type { WasteMasterDataRepository } from '@sva/data-repositories';
 const hasOwnProperty = (value: object, key: PropertyKey): boolean =>
   Object.prototype.hasOwnProperty.call(value, key);
 
+const deriveWasteFractionShortLabel = (record: Readonly<Record<string, unknown>>): string => {
+  const name = typeof record.name === 'string'
+    ? record.name.replace(/[^\p{L}\p{N}]+/gu, '').slice(0, 3).toLocaleUpperCase('de')
+    : '';
+  if (name.length > 0) return name;
+  return typeof record.id === 'string'
+    ? record.id.replaceAll('-', '').slice(0, 3).toLocaleUpperCase('de')
+    : '';
+};
+
 export const loadExistingWasteDataRecord = async (
   repository: WasteMasterDataRepository,
   record: WasteManagementDataExchangeRecord
@@ -66,6 +76,12 @@ export const materializeWasteDataRecord = (
       result[field.key] = structuredClone(field.input.defaultValue);
       defaultedFields.push(`${record.entityType}.${String(record.id ?? 'singleton')}.${field.key}`);
     }
+  }
+  if (
+    record.entityType === 'fraction' &&
+    (typeof result.pdfShortLabel !== 'string' || result.pdfShortLabel.trim().length === 0)
+  ) {
+    result.pdfShortLabel = deriveWasteFractionShortLabel(result);
   }
   return result as WasteManagementDataExchangeRecord;
 };

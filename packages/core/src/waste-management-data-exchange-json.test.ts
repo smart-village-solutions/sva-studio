@@ -128,19 +128,24 @@ describe('Waste data exchange JSON', () => {
     });
   });
 
-  it('rejects a fraction without the database-mandatory PDF short label', () => {
+  it.each([
+    ['omitted', {}],
+    ['null', { pdfShortLabel: null }],
+  ])('accepts an optional PDF short label when it is %s', (_label, optionalFields) => {
     expect(parseWasteManagementDataExchangeJson({
       formatVersion: '1.0.0',
       pluginId: 'waste-management',
       profileId: wasteManagementDataProfileIds.fractions,
       exportedAt,
-      records: [{ entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00' }],
-    }, { applyDefaults: false })).toMatchObject({
-      ok: false,
-      issues: [{
-        code: 'missing_required_field',
-        path: 'records[0].pdfShortLabel',
+      records: [{
+        entityType: 'fraction',
+        id: 'fraction-1',
+        name: 'Bio',
+        color: '#00aa00',
+        ...optionalFields,
       }],
+    }, { applyDefaults: false })).toMatchObject({
+      ok: true,
     });
   });
 

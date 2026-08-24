@@ -71,8 +71,8 @@ describe('wasteManagementImportCatalog', () => {
 
   it('derives canonical JSON field requirements from the shared data profile', () => {
     expect(getWasteManagementImportCatalogEntry('waste-management.fraktionen')).toMatchObject({
-      requiredColumns: expect.arrayContaining([
-        { key: 'fraction.pdfShortLabel', required: true },
+      optionalColumns: expect.arrayContaining([
+        { key: 'fraction.pdfShortLabel', required: false },
       ]),
     });
   });

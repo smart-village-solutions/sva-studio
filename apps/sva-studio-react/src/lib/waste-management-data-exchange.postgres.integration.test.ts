@@ -106,7 +106,6 @@ describe('Waste data exchange against PostgreSQL', () => {
         entityType: 'fraction',
         id: emptyDatabaseFractionId,
         name: 'Bioabfall',
-        pdfShortLabel: 'BIO',
         color: '#228833',
       }],
     });
@@ -120,11 +119,11 @@ describe('Waste data exchange against PostgreSQL', () => {
     });
 
     expect(result.details).toMatchObject({ created: 1, updated: 0, unchanged: 0 });
-    const stored = await pool.query<{ name: string; active: boolean }>(
-      'SELECT name, active FROM waste_fractions WHERE id = $1::uuid;',
+    const stored = await pool.query<{ name: string; pdf_short_label: string; active: boolean }>(
+      'SELECT name, pdf_short_label, active FROM waste_fractions WHERE id = $1::uuid;',
       [emptyDatabaseFractionId]
     );
-    expect(stored.rows).toEqual([{ name: 'Bioabfall', active: true }]);
+    expect(stored.rows).toEqual([{ name: 'Bioabfall', pdf_short_label: 'BIO', active: true }]);
   });
 
   it('updates canonical data in a prefilled Waste database without replacing omitted values', async () => {

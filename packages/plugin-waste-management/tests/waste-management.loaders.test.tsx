@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
@@ -208,6 +208,40 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
     });
+  });
+
+  it('clears stale location rows and filtered ids before loading the next query', async () => {
+    apiMocks.getWasteCollectionLocationPage.mockImplementation(() => new Promise(() => undefined));
+    apiMocks.getWasteCollectionLocationIds.mockImplementation(() => new Promise(() => undefined));
+    const setCollectionLocationPage = vi.fn();
+    const setFilteredLocationIds = vi.fn();
+
+    renderHook(() =>
+      useWasteCollectionLocationList(
+        {
+          setCollectionLocationListError: vi.fn(),
+          setCollectionLocationPage,
+          setFilteredLocationIds,
+        } as never,
+        (key) => key,
+        {
+          masterDataTab: 'locations',
+          locationsView: 'list',
+          q: 'neue Suche',
+          status: 'all',
+          locationSortMode: 'address',
+          locationSortDirection: 'asc',
+          page: 2,
+          pageSize: 25,
+        } as never
+      )
+    );
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledOnce();
+    });
+    expect(setCollectionLocationPage).toHaveBeenCalledWith(null);
+    expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
   });
 
   it('keeps the tours loader on a single failed fetch cycle', async () => {

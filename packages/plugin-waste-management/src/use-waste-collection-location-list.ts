@@ -52,6 +52,8 @@ export const useWasteCollectionLocationList = (
       return;
     }
     const sequence = ++requestSequence.current;
+    setCollectionLocationPage(null);
+    setFilteredLocationIds([]);
     try {
       const filter = toFilter(search);
       const [page, filteredIds] = await Promise.all([

@@ -185,6 +185,23 @@ describe('Waste collection-location projection against PostgreSQL', () => {
       })
     ).resolves.toEqual([locationId(4)]);
 
+    await expect(
+      repository.listWasteCollectionLocationIds({
+        q: locationId(4),
+        status: 'all',
+        regionId: undefined,
+        cityId: undefined,
+        tourId: undefined,
+      })
+    ).resolves.toEqual([locationId(4)]);
+
+    await expect(
+      repository.listWasteCollectionLocationPage({
+        ...baseQuery,
+        q: '_',
+      })
+    ).resolves.toMatchObject({ items: [], total: 0, pageCount: 0 });
+
     const emptyPage = await repository.listWasteCollectionLocationPage({
       ...baseQuery,
       page: 99,

@@ -5,6 +5,8 @@ import type {
 
 import type { SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 
+const escapeLikePattern = (value: string): string => value.replace(/[!%_]/g, '!$&');
+
 const buildCollectionLocationFilter = (
   filter: WasteCollectionLocationSelectionFilter,
   values: SqlPrimitive[]
@@ -16,18 +18,19 @@ const buildCollectionLocationFilter = (
   };
 
   if (filter.q?.trim()) {
-    const parameter = addValue(filter.q.trim());
+    const parameter = addValue(escapeLikePattern(filter.q.trim()));
     conditions.push(`(
-      city.name ILIKE '%' || ${parameter} || '%'
-      OR region.name ILIKE '%' || ${parameter} || '%'
-      OR street.name ILIKE '%' || ${parameter} || '%'
-      OR house_number.number ILIKE '%' || ${parameter} || '%'
+      location.id::text ILIKE '%' || ${parameter} || '%' ESCAPE '!'
+      OR city.name ILIKE '%' || ${parameter} || '%' ESCAPE '!'
+      OR region.name ILIKE '%' || ${parameter} || '%' ESCAPE '!'
+      OR street.name ILIKE '%' || ${parameter} || '%' ESCAPE '!'
+      OR house_number.number ILIKE '%' || ${parameter} || '%' ESCAPE '!'
       OR EXISTS (
         SELECT 1
         FROM waste_location_tour_links AS search_link
         INNER JOIN waste_tours AS search_tour ON search_tour.id = search_link.tour_id
         WHERE search_link.location_id = location.id
-          AND search_tour.name ILIKE '%' || ${parameter} || '%'
+          AND search_tour.name ILIKE '%' || ${parameter} || '%' ESCAPE '!'
       )
     )`);
   }

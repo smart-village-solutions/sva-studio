@@ -969,6 +969,7 @@ describe('waste master data repository', () => {
     expect(pageStatement?.text).toContain('WITH filtered AS');
     expect(pageStatement?.text).toContain('COUNT(*)::text AS total_count');
     expect(pageStatement?.text).toContain('filter_link.location_id = location.id');
+    expect(pageStatement?.text).toContain("location.id::text ILIKE '%' || $1 || '%' ESCAPE '!'");
     expect(pageStatement?.text).toContain(
       'region_name COLLATE public.sva_de_numeric DESC NULLS LAST'
     );
@@ -988,6 +989,13 @@ describe('waste master data repository', () => {
     expect(ids.statements[0]?.values).toEqual([false, 'city-1']);
     expect(ids.statements[0]?.text).not.toContain('LIMIT');
     expect(ids.statements[0]?.text).not.toContain('COLLATE public.sva_de_numeric');
+
+    const literalSearchStatement = wasteMasterDataStatements.listWasteCollectionLocationPage({
+      ...query,
+      q: '50%_!off',
+    });
+    expect(literalSearchStatement.values[0]).toBe('50!%!_!!off');
+    expect(literalSearchStatement.text).toContain("ILIKE '%' || $1 || '%' ESCAPE '!'");
   });
 
   it('lists, reads and upserts tours with location counts and custom date payloads', async () => {

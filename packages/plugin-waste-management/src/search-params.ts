@@ -1,3 +1,8 @@
+import type {
+  WasteCollectionLocationSortDirection,
+  WasteCollectionLocationSortMode,
+} from '@sva/plugin-sdk';
+
 const wasteManagementTabs = [
   'fractions',
   'tours',
@@ -24,6 +29,8 @@ const wasteManagementFractionSortFields = [
   'status',
 ] as const;
 const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
+const wasteManagementLocationSortModes = ['address', 'addressWithRegion'] as const;
+const wasteManagementLocationSortDirections = ['asc', 'desc'] as const;
 const allowedPageSizes = new Set([10, 25, 50, 100]);
 
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
@@ -57,6 +64,8 @@ export type WasteManagementSearchParams = Readonly<{
   shiftContext: WasteManagementShiftContext;
   fractionsSortBy: WasteManagementFractionSortField;
   fractionsSortDirection: WasteManagementFractionSortDirection;
+  locationSortMode: WasteCollectionLocationSortMode;
+  locationSortDirection: WasteCollectionLocationSortDirection;
   regionId?: string;
   cityId?: string;
   wasteFractionId?: string;
@@ -173,6 +182,18 @@ const normalizeFractionsSortDirection = (value: unknown): WasteManagementFractio
     ? (value as WasteManagementFractionSortDirection)
     : 'asc';
 
+const normalizeLocationSortMode = (value: unknown): WasteCollectionLocationSortMode =>
+  typeof value === 'string' &&
+  wasteManagementLocationSortModes.includes(value as WasteCollectionLocationSortMode)
+    ? (value as WasteCollectionLocationSortMode)
+    : 'address';
+
+const normalizeLocationSortDirection = (value: unknown): WasteCollectionLocationSortDirection =>
+  typeof value === 'string' &&
+  wasteManagementLocationSortDirections.includes(value as WasteCollectionLocationSortDirection)
+    ? (value as WasteCollectionLocationSortDirection)
+    : 'asc';
+
 const normalizePositiveInteger = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
     return value;
@@ -230,6 +251,8 @@ export const normalizeWasteManagementSearchParams = (
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
     fractionsSortDirection: normalizeFractionsSortDirection(search.fractionsSortDirection),
+    locationSortMode: normalizeLocationSortMode(search.locationSortMode),
+    locationSortDirection: normalizeLocationSortDirection(search.locationSortDirection),
     regionId: compactOptionalString(search.regionId),
     cityId: compactOptionalString(search.cityId),
     wasteFractionId: compactOptionalString(search.wasteFractionId),

@@ -6,19 +6,12 @@ import {
   WasteMasterDataLocationsRow,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
-import type {
-  WasteMasterDataLocationsSortDirection,
-  WasteMasterDataLocationsSortField,
-} from './waste-management.master-data-locations-table.types.js';
 
 export const WasteMasterDataLocationsTableSection = ({
   collectionLocations,
   allFilteredLocationsSelected,
   selectedLocationIds,
   maps,
-  sortField,
-  sortDirection,
-  onSortChange,
   onToggleSelectAll,
   onToggleLocation,
   onCopyLocation,
@@ -30,9 +23,6 @@ export const WasteMasterDataLocationsTableSection = ({
   readonly allFilteredLocationsSelected: WasteMasterDataLocationsTableProps['allFilteredLocationsSelected'];
   readonly selectedLocationIds: readonly string[];
   readonly maps: Parameters<typeof WasteMasterDataLocationsRow>[0]['maps'];
-  readonly sortField: WasteMasterDataLocationsSortField;
-  readonly sortDirection: WasteMasterDataLocationsSortDirection;
-  readonly onSortChange: (field: WasteMasterDataLocationsSortField) => void;
   readonly onToggleSelectAll: WasteMasterDataLocationsTableProps['onToggleSelectAll'];
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
   readonly onCopyLocation: WasteMasterDataLocationsTableProps['onCopyLocation'];
@@ -41,7 +31,8 @@ export const WasteMasterDataLocationsTableSection = ({
   readonly onOpenEditTour: WasteMasterDataLocationsTableProps['onOpenEditTour'];
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const someFilteredLocationsSelected = selectedLocationIds.length > 0 && !allFilteredLocationsSelected;
+  const someFilteredLocationsSelected =
+    selectedLocationIds.length > 0 && !allFilteredLocationsSelected;
 
   if (!collectionLocations.length) {
     return <WasteMasterDataLocationsEmptyState />;
@@ -49,15 +40,15 @@ export const WasteMasterDataLocationsTableSection = ({
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full border-collapse" aria-label={pt('masterData.collectionLocations.title')}>
+      <table
+        className="min-w-full border-collapse"
+        aria-label={pt('masterData.collectionLocations.title')}
+      >
         <caption className="sr-only">{pt('masterData.locationsWorkspace.table.caption')}</caption>
         <WasteMasterDataLocationsHeader
           allFilteredLocationsSelected={allFilteredLocationsSelected}
           someFilteredLocationsSelected={someFilteredLocationsSelected}
           onToggleSelectAll={onToggleSelectAll}
-          sortField={sortField}
-          sortDirection={sortDirection}
-          onSortChange={onSortChange}
         />
         <tbody>
           {collectionLocations.map((location) => (

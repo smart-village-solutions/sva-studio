@@ -91,4 +91,25 @@ export const wasteTenantMigrations = Object.freeze([
       values: Object.freeze([]),
     }),
   }),
+  Object.freeze({
+    id: '20260824_01_add_german_numeric_collation',
+    statements: Object.freeze([
+      "CREATE COLLATION IF NOT EXISTS public.sva_de_numeric (provider = icu, locale = 'de-u-kn-true-ks-level2', deterministic = false);",
+    ]),
+    verification: Object.freeze({
+      sql: `
+        SELECT COALESCE((
+          SELECT
+            collation.collprovider = 'i'
+            AND NOT collation.collisdeterministic
+            AND collation.colliculocale IN ('de-u-kn-true-ks-level2', 'de-u-kn-ks-level2')
+          FROM pg_collation AS collation
+          INNER JOIN pg_namespace AS namespace ON namespace.oid = collation.collnamespace
+          WHERE namespace.nspname = $1
+            AND collation.collname = $2
+        ), FALSE) AS satisfied;
+      `,
+      values: Object.freeze(['public', 'sva_de_numeric']),
+    }),
+  }),
 ]);

@@ -1,13 +1,16 @@
 import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
 
-import { wasteMasterDataFormDefaults, wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
+import {
+  wasteMasterDataFormDefaults,
+  wasteMasterDataFormMappers,
+} from './waste-management.master-data.forms.js';
 import type { WasteMasterDataState } from './use-waste-master-data-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 export const createWasteMasterDataLocationActions = (
   state: WasteMasterDataState,
   search: WasteManagementSearchParams,
-  filteredCollectionLocations: readonly WasteCollectionLocationRecord[]
+  filteredLocationIds: readonly string[]
 ) => ({
   openCreateLocationDialog: () => {
     state.setLocationDialogMode('create');
@@ -28,26 +31,30 @@ export const createWasteMasterDataLocationActions = (
   openBulkAssignmentsDialog: () => {
     state.setBulkAssignmentsForm({
       ...wasteMasterDataFormDefaults.createBulkAssignments(),
-      tourId: state.availableTours.length === 1 ? state.availableTours[0]?.id ?? '' : '',
+      tourId: state.availableTours.length === 1 ? (state.availableTours[0]?.id ?? '') : '',
     });
     state.setMessage(null);
     state.setBulkAssignmentsDialogOpen(true);
   },
   toggleLocationSelection: (locationId: string, checked: boolean) =>
     state.setSelectedLocationIds((current) =>
-      checked ? (current.includes(locationId) ? current : [...current, locationId]) : current.filter((id) => id !== locationId)
+      checked
+        ? current.includes(locationId)
+          ? current
+          : [...current, locationId]
+        : current.filter((id) => id !== locationId)
     ),
   replaceLocationSelection: (locationIds: readonly string[]) =>
     state.setSelectedLocationIds(Array.from(new Set(locationIds))),
   toggleSelectAllFilteredLocations: (checked: boolean) =>
     state.setSelectedLocationIds((current) => {
       if (!checked) {
-        const filteredIds = new Set(filteredCollectionLocations.map((location) => location.id));
+        const filteredIds = new Set(filteredLocationIds);
         return current.filter((id) => !filteredIds.has(id));
       }
       const merged = new Set(current);
-      for (const location of filteredCollectionLocations) {
-        merged.add(location.id);
+      for (const locationId of filteredLocationIds) {
+        merged.add(locationId);
       }
       return Array.from(merged);
     }),

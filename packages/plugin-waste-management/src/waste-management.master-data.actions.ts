@@ -1,5 +1,3 @@
-import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
-
 import { createWasteMasterDataEntityActions } from './waste-management.master-data.entity-actions.js';
 import { createWasteMasterDataLocationActions } from './waste-management.master-data.location-actions.js';
 import type { WasteMasterDataState } from './use-waste-master-data-state.js';
@@ -13,5 +11,5 @@ export const createWasteMasterDataDialogActions = (
 export const createWasteMasterDataSelectionActions = (
   state: WasteMasterDataState,
   search: WasteManagementSearchParams,
-  filteredCollectionLocations: readonly WasteCollectionLocationRecord[]
-) => createWasteMasterDataLocationActions(state, search, filteredCollectionLocations);
+  filteredLocationIds: readonly string[]
+) => createWasteMasterDataLocationActions(state, search, filteredLocationIds);

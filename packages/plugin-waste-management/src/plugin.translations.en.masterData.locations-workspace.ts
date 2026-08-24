@@ -3,7 +3,8 @@ import { createWasteManagementLocationsWorkspaceTranslations } from './plugin.tr
 export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
   createWasteManagementLocationsWorkspaceTranslations({
     title: 'Collection locations & address hierarchy',
-    description: 'Work in a Newcms-like mode with collection locations, tour filters and the geographic hierarchy in one place.',
+    description:
+      'Work in a Newcms-like mode with collection locations, tour filters and the geographic hierarchy in one place.',
     emptyTitle: 'No collection locations found',
     emptyBody: 'Adjust the filters or create the first collection location.',
     emptyRegions: 'No regions created yet.',
@@ -29,9 +30,19 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       activeTour: 'Active tour',
       clearTour: 'Clear filter',
     },
+    sorting: {
+      label: 'Global address sorting',
+      criteria: 'City → street → house number',
+      criteriaWithRegion: 'Region → city → street → house number',
+      includeRegion: 'Include region',
+      ascending: 'Ascending',
+      descending: 'Descending',
+      directionLabel: 'Sort direction: {{direction}}',
+    },
     coverage: {
       title: 'Check fraction assignment coverage',
-      description: 'Check whether every active collection location is continuously assigned to a tour of the selected waste fraction during the chosen period.',
+      description:
+        'Check whether every active collection location is continuously assigned to a tour of the selected waste fraction during the chosen period.',
       fraction: 'Waste fraction',
       fractionUnset: 'Select a waste fraction',
       startDate: 'Start date',
@@ -39,8 +50,10 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       check: 'Check',
       required: 'Select a waste fraction, start date and end date.',
       invalidDateRange: 'The end date must not be before the start date.',
-      complete: 'All {{value}} active collection locations are fully assigned during the selected period.',
-      summary: '{{checked}} active collection locations checked: {{missing}} without an assignment, {{incomplete}} with date gaps.',
+      complete:
+        'All {{value}} active collection locations are fully assigned during the selected period.',
+      summary:
+        '{{checked}} active collection locations checked: {{missing}} without an assignment, {{incomplete}} with date gaps.',
       missing: 'No assignment',
       incomplete: 'Period incomplete',
       gap: 'Not covered: {{startDate}} to {{endDate}}',

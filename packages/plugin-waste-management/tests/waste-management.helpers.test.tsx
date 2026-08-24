@@ -638,7 +638,7 @@ describe('waste management helper modules', () => {
     const locationActions = createWasteMasterDataLocationActions(
       state as never,
       { regionId: 'region-7', cityId: 'city-7' },
-      [{ id: 'location-1' }, { id: 'location-2' }] as never
+      ['location-1', 'location-2']
     );
     locationActions.openCreateLocationDialog();
     locationActions.openEditLocationDialog({
@@ -666,6 +666,28 @@ describe('waste management helper modules', () => {
     );
     expect(state.setSelectedLocationIds).toHaveBeenCalledWith(['location-2', 'location-3']);
     expect(state.setSelectedLocationIds).toHaveBeenCalledTimes(5);
+
+    const selectionResults: string[][] = [];
+    const selectionState = {
+      ...state,
+      setSelectedLocationIds: vi.fn(
+        (next: readonly string[] | ((current: readonly string[]) => readonly string[])) => {
+          const resolved = typeof next === 'function' ? next(['location-outside']) : next;
+          selectionResults.push([...resolved]);
+        }
+      ),
+    };
+    const filteredSelectionActions = createWasteMasterDataLocationActions(
+      selectionState as never,
+      { regionId: 'region-7', cityId: 'city-7' },
+      ['location-1', 'location-2']
+    );
+    filteredSelectionActions.toggleSelectAllFilteredLocations(true);
+    filteredSelectionActions.toggleSelectAllFilteredLocations(false);
+    expect(selectionResults).toEqual([
+      ['location-outside', 'location-1', 'location-2'],
+      ['location-outside'],
+    ]);
   });
 
   it('covers waste tours dialog and selection actions', async () => {

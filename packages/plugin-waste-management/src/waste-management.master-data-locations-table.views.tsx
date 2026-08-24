@@ -1,7 +1,6 @@
 import type { WasteCollectionLocationRecord, WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  IconArrowsSort,
   IconBuildingCommunity,
   IconChevronDown,
   IconCopy,
@@ -19,8 +18,6 @@ import { Button, Checkbox, Select, StudioEmptyState, cn } from '@sva/studio-ui-r
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import type {
-  WasteMasterDataLocationsSortDirection,
-  WasteMasterDataLocationsSortField,
   WasteMasterDataLocationsTableMaps,
   WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.types.js';
@@ -173,6 +170,10 @@ export const WasteMasterDataLocationsTableToolbar = ({
   onOpenBulkAssignments,
   onTourFilterChange,
   onToggleSelectAll,
+  sortMode,
+  sortDirection,
+  onSortModeChange,
+  onSortDirectionChange,
   onRequestDeleteSelected,
   onToggleFiltersOpen,
 }: Pick<
@@ -189,6 +190,10 @@ export const WasteMasterDataLocationsTableToolbar = ({
   | 'onOpenBulkAssignments'
   | 'onTourFilterChange'
   | 'onToggleSelectAll'
+  | 'sortMode'
+  | 'sortDirection'
+  | 'onSortModeChange'
+  | 'onSortDirectionChange'
 > & {
   readonly onRequestDeleteSelected: () => void;
   readonly filtersOpen: boolean;
@@ -236,32 +241,86 @@ export const WasteMasterDataLocationsTableToolbar = ({
             <IconFilter aria-hidden="true" className="h-4 w-4" />
             {pt('masterData.locationsWorkspace.filters.filtersTitle')}
           </Button>
-        </div>
-        {filtersOpen ? (
-        <div id="waste-locations-filters" className="rounded-lg border border-border/60 bg-muted/[0.08] px-3 py-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <label className="flex min-w-56 flex-1 flex-col gap-2 text-sm">
-              <span className="text-muted-foreground">{pt('masterData.locationsWorkspace.filters.tour')}</span>
-              <Select
-                aria-label={pt('masterData.locationsWorkspace.filters.tour')}
-                className="h-10 rounded-lg"
-                value={selectedTourId ?? ''}
-                onChange={(event) => onTourFilterChange(event.target.value)}
-              >
-                <option value="">{pt('masterData.locationsWorkspace.filters.allTours')}</option>
-                {availableTours.map((tour) => (
-                  <option key={tour.id} value={tour.id}>
-                    {tour.name}
-                  </option>
-                ))}
-              </Select>
+          <div
+            role="group"
+            className="flex min-h-10 flex-wrap items-center gap-3 rounded-lg border border-border/70 px-3 py-2"
+            aria-label={pt('masterData.locationsWorkspace.sorting.label')}
+          >
+            <span className="text-sm text-muted-foreground">
+              {pt(
+                sortMode === 'addressWithRegion'
+                  ? 'masterData.locationsWorkspace.sorting.criteriaWithRegion'
+                  : 'masterData.locationsWorkspace.sorting.criteria'
+              )}
+            </span>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={sortMode === 'addressWithRegion'}
+                onChange={(event) =>
+                  onSortModeChange(event.currentTarget.checked ? 'addressWithRegion' : 'address')
+                }
+              />
+              <span>{pt('masterData.locationsWorkspace.sorting.includeRegion')}</span>
             </label>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Checkbox checked={allFilteredLocationsSelected} onChange={(event) => onToggleSelectAll(event.currentTarget.checked)} />
-              <span>{pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}</span>
-            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="tertiary"
+              aria-label={pt('masterData.locationsWorkspace.sorting.directionLabel', {
+                direction: pt(
+                  sortDirection === 'asc'
+                    ? 'masterData.locationsWorkspace.sorting.ascending'
+                    : 'masterData.locationsWorkspace.sorting.descending'
+                ),
+              })}
+              onClick={() => onSortDirectionChange(sortDirection === 'asc' ? 'desc' : 'asc')}
+            >
+              {sortDirection === 'asc' ? (
+                <IconSortAZ aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <IconSortZA aria-hidden="true" className="h-4 w-4" />
+              )}
+              {pt(
+                sortDirection === 'asc'
+                  ? 'masterData.locationsWorkspace.sorting.ascending'
+                  : 'masterData.locationsWorkspace.sorting.descending'
+              )}
+            </Button>
           </div>
         </div>
+        {filtersOpen ? (
+          <div
+            id="waste-locations-filters"
+            className="rounded-lg border border-border/60 bg-muted/[0.08] px-3 py-3"
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <label className="flex min-w-56 flex-1 flex-col gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  {pt('masterData.locationsWorkspace.filters.tour')}
+                </span>
+                <Select
+                  aria-label={pt('masterData.locationsWorkspace.filters.tour')}
+                  className="h-10 rounded-lg"
+                  value={selectedTourId ?? ''}
+                  onChange={(event) => onTourFilterChange(event.target.value)}
+                >
+                  <option value="">{pt('masterData.locationsWorkspace.filters.allTours')}</option>
+                  {availableTours.map((tour) => (
+                    <option key={tour.id} value={tour.id}>
+                      {tour.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={allFilteredLocationsSelected}
+                  onChange={(event) => onToggleSelectAll(event.currentTarget.checked)}
+                />
+                <span>{pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}</span>
+              </label>
+            </div>
+          </div>
         ) : null}
       </div>
       <div className="flex justify-end">
@@ -292,9 +351,17 @@ export const WasteMasterDataActiveTourBanner = ({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-muted/30 px-4 py-3">
-      <span className="text-sm text-muted-foreground">{pt('masterData.locationsWorkspace.filters.activeTour')}</span>
+      <span className="text-sm text-muted-foreground">
+        {pt('masterData.locationsWorkspace.filters.activeTour')}
+      </span>
       <span className="text-sm font-medium">{selectedTour.name}</span>
-      <Button type="button" size="sm" variant="tertiary" className="ml-auto" onClick={() => onTourFilterChange('')}>
+      <Button
+        type="button"
+        size="sm"
+        variant="tertiary"
+        className="ml-auto"
+        onClick={() => onTourFilterChange('')}
+      >
         {pt('masterData.locationsWorkspace.filters.clearTour')}
       </Button>
     </div>
@@ -305,40 +372,12 @@ export const WasteMasterDataLocationsHeader = ({
   allFilteredLocationsSelected,
   someFilteredLocationsSelected,
   onToggleSelectAll,
-  sortField,
-  sortDirection,
-  onSortChange,
 }: {
   readonly allFilteredLocationsSelected: boolean;
   readonly someFilteredLocationsSelected: boolean;
   readonly onToggleSelectAll: (checked: boolean) => void;
-  readonly sortField: WasteMasterDataLocationsSortField;
-  readonly sortDirection: WasteMasterDataLocationsSortDirection;
-  readonly onSortChange: (field: WasteMasterDataLocationsSortField) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const renderSortIcon = (active: boolean, direction: WasteMasterDataLocationsSortDirection) => {
-    if (!active) {
-      return <IconArrowsSort aria-hidden="true" className="h-4 w-4 text-muted-foreground" />;
-    }
-    if (direction === 'asc') {
-      return <IconSortAZ aria-hidden="true" className="h-4 w-4 text-foreground" />;
-    }
-    return <IconSortZA aria-hidden="true" className="h-4 w-4 text-foreground" />;
-  };
-
-  const renderSortableHeader = (field: WasteMasterDataLocationsSortField, label: string) => (
-    <Button
-      type="button"
-      variant="tertiary"
-      className="h-auto px-0 py-0 font-semibold text-foreground hover:bg-transparent hover:animate-none"
-      onClick={() => onSortChange(field)}
-    >
-      {label}
-      {renderSortIcon(sortField === field, sortDirection)}
-      <span className="sr-only">{sortField === field ? sortDirection : 'none'}</span>
-    </Button>
-  );
 
   return (
     <thead className="bg-muted/20 text-left text-[13px] text-foreground">
@@ -353,13 +392,27 @@ export const WasteMasterDataLocationsHeader = ({
             onChange={(event) => onToggleSelectAll(event.currentTarget.checked)}
           />
         </th>
-        <th scope="col" className="w-[150px] px-3 py-3">{renderSortableHeader('region', pt('masterData.locationsWorkspace.table.region'))}</th>
-        <th scope="col" className="w-[150px] px-3 py-3">{renderSortableHeader('city', pt('masterData.locationsWorkspace.table.city'))}</th>
-        <th scope="col" className="w-[220px] px-3 py-3">{renderSortableHeader('street', pt('masterData.locationsWorkspace.table.street'))}</th>
-        <th scope="col" className="w-[128px] px-3 py-3">{renderSortableHeader('houseNumbers', pt('masterData.locationsWorkspace.table.houseNumbers'))}</th>
-        <th scope="col" className="w-[220px] px-3 py-3">{renderSortableHeader('tours', pt('masterData.locationsWorkspace.table.tours'))}</th>
-        <th scope="col" className="w-[92px] px-3 py-3">{renderSortableHeader('status', pt('masterData.locationsWorkspace.table.status'))}</th>
-        <th scope="col" className="w-[144px] px-3 py-3 text-right">{pt('masterData.locationsWorkspace.table.actions')}</th>
+        <th scope="col" className="w-[150px] px-3 py-3">
+          {pt('masterData.locationsWorkspace.table.region')}
+        </th>
+        <th scope="col" className="w-[150px] px-3 py-3">
+          {pt('masterData.locationsWorkspace.table.city')}
+        </th>
+        <th scope="col" className="w-[220px] px-3 py-3">
+          {pt('masterData.locationsWorkspace.table.street')}
+        </th>
+        <th scope="col" className="w-[128px] px-3 py-3">
+          {pt('masterData.locationsWorkspace.table.houseNumbers')}
+        </th>
+        <th scope="col" className="w-[220px] px-3 py-3">
+          {pt('masterData.locationsWorkspace.table.tours')}
+        </th>
+        <th scope="col" className="w-[92px] px-3 py-3">
+          {pt('masterData.locationsWorkspace.table.status')}
+        </th>
+        <th scope="col" className="w-[144px] px-3 py-3 text-right">
+          {pt('masterData.locationsWorkspace.table.actions')}
+        </th>
       </tr>
     </thead>
   );
@@ -388,7 +441,9 @@ export const WasteMasterDataLocationsRow = ({
   const region = location.regionId ? maps.regionsById.get(location.regionId) : undefined;
   const city = maps.citiesById.get(location.cityId);
   const street = location.streetId ? maps.streetsById.get(location.streetId) : undefined;
-  const houseNumber = location.houseNumberId ? maps.houseNumbersById.get(location.houseNumberId) : undefined;
+  const houseNumber = location.houseNumberId
+    ? maps.houseNumbersById.get(location.houseNumberId)
+    : undefined;
   const linkedTours = maps.locationToursByLocationId?.get(location.id) ?? [];
   const editLabel = pt('masterData.collectionLocations.actions.edit');
   const copyLabel = pt('masterData.collectionLocations.actions.copy');
@@ -404,16 +459,24 @@ export const WasteMasterDataLocationsRow = ({
         />
       </td>
       <td className="px-3 py-3 align-top">
-        <p className="font-medium">{region?.name ?? pt('masterData.locationsWorkspace.table.regionUnavailable')}</p>
+        <p className="font-medium">
+          {region?.name ?? pt('masterData.locationsWorkspace.table.regionUnavailable')}
+        </p>
       </td>
       <td className="px-3 py-3 align-top">
-        <p className="font-medium">{city?.name ?? pt('masterData.locationsWorkspace.table.cityUnavailable')}</p>
+        <p className="font-medium">
+          {city?.name ?? pt('masterData.locationsWorkspace.table.cityUnavailable')}
+        </p>
       </td>
       <td className="px-3 py-3 align-top">
-        <p className="font-medium">{street?.name ?? pt('masterData.locationsWorkspace.table.streetUnavailable')}</p>
+        <p className="font-medium">
+          {street?.name ?? pt('masterData.locationsWorkspace.table.streetUnavailable')}
+        </p>
       </td>
       <td className="px-3 py-3 align-top">
-        <span className="text-sm">{houseNumber?.number ?? pt('masterData.locationsWorkspace.table.houseNumbersUnavailable')}</span>
+        <span className="text-sm">
+          {houseNumber?.number ?? pt('masterData.locationsWorkspace.table.houseNumbersUnavailable')}
+        </span>
       </td>
       <td className="px-3 py-3 align-top">
         {linkedTours.length ? (
@@ -438,11 +501,15 @@ export const WasteMasterDataLocationsRow = ({
             )}
           </div>
         ) : (
-          <span className="text-sm text-muted-foreground">{pt('masterData.locationsWorkspace.table.noTours')}</span>
+          <span className="text-sm text-muted-foreground">
+            {pt('masterData.locationsWorkspace.table.noTours')}
+          </span>
         )}
       </td>
       <td className="px-3 py-3 align-top">
-        <span className="text-sm">{location.active ? pt('common.active') : pt('common.inactive')}</span>
+        <span className="text-sm">
+          {location.active ? pt('common.active') : pt('common.inactive')}
+        </span>
       </td>
       <td className="px-3 py-3 align-top text-right">
         <div className="flex justify-end gap-1.5">

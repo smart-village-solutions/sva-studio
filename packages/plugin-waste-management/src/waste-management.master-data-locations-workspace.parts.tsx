@@ -104,11 +104,15 @@ export const WasteMasterDataLocationsTableSection = ({
   availableTours,
   page,
   pageSize,
+  sortMode,
+  sortDirection,
   pageCount,
   totalItems,
   selectedTourId,
   onPageChange,
   onPageSizeChange,
+  onSortModeChange,
+  onSortDirectionChange,
   onTourFilterChange,
   onToggleSelectAll,
   onToggleLocation,
@@ -139,6 +143,10 @@ export const WasteMasterDataLocationsTableSection = ({
   | 'selectedTourId'
   | 'onPageChange'
   | 'onPageSizeChange'
+  | 'sortMode'
+  | 'sortDirection'
+  | 'onSortModeChange'
+  | 'onSortDirectionChange'
   | 'onTourFilterChange'
   | 'onToggleSelectAll'
   | 'onToggleLocation'
@@ -173,11 +181,15 @@ export const WasteMasterDataLocationsTableSection = ({
     availableTours={availableTours}
     page={page}
     pageSize={pageSize}
+    sortMode={sortMode}
+    sortDirection={sortDirection}
     pageCount={pageCount}
     totalItems={totalItems}
     selectedTourId={selectedTourId}
     onPageChange={onPageChange}
     onPageSizeChange={onPageSizeChange}
+    onSortModeChange={onSortModeChange}
+    onSortDirectionChange={onSortDirectionChange}
     onTourFilterChange={onTourFilterChange}
     onToggleSelectAll={onToggleSelectAll}
     onToggleLocation={onToggleLocation}

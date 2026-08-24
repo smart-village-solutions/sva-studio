@@ -77,6 +77,28 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
+### Datenbankweiter Sortiervertrag für Waste-Abholorte
+
+Die serverseitig paginierte Abholortliste sortiert Textfelder explizit mit
+`public.sva_de_numeric`. Die ICU-Collation verwendet
+`de-u-kn-true-ks-level2`, ist nicht deterministisch und verbindet damit
+deutsche, groß-/kleinschreibungsunabhängige Vergleichsregeln mit natürlicher
+Zahlensortierung, beispielsweise `2` vor `10`.
+
+Für neue Waste-Tenant-Datenbanken legt der Schema-Builder die Collation an.
+Bestandsdatenbanken erhalten sie ausschließlich über die idempotente Migration
+`20260824_01_add_german_numeric_collation`. Die Migration verifiziert Provider,
+Determinismus und normalisierte ICU-Locale, bevor ihr Ledger-Eintrag geschrieben
+wird. Die Anwendung fällt nicht auf die Prozess-Locale oder eine clientseitige
+Sortierung zurück. Fehlt oder driftet die Collation, scheitert der Read
+fail-closed als Datenbankfehler.
+
+Der zentrale Soll-Snapshot wurde für diese Änderung geprüft und bleibt
+unverändert: Er wird ausschließlich aus `packages/data/migrations/` abgeleitet.
+Die Collation und die fachlichen Waste-Tabellen verbleiben in den jeweils
+instanzbezogenen Waste-Datenbanken; ihre Provisionierung wird nicht durch den
+zentralen Studio-Snapshot ersetzt.
+
 ## Schema-Übersicht nach Domänen
 
 ### 1. IAM-Kernmodell

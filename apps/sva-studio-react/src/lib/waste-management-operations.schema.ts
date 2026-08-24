@@ -150,6 +150,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
   return [
     'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
     'CREATE EXTENSION IF NOT EXISTS btree_gist;',
+    "CREATE COLLATION IF NOT EXISTS public.sva_de_numeric (provider = icu, locale = 'de-u-kn-true-ks-level2', deterministic = false);",
     `CREATE SCHEMA IF NOT EXISTS ${schema};`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_regions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_cities (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, postal_code TEXT, region_id UUID REFERENCES ${schema}.waste_regions(id) ON DELETE SET NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,

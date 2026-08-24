@@ -4,6 +4,9 @@ import type {
   WasteManagementSettingsInterfaceOption,
   StudioJobStartRequest,
   WasteCollectionLocationRecord,
+  WasteCollectionLocationPage,
+  WasteCollectionLocationQuery,
+  WasteCollectionLocationSelectionFilter,
   WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
@@ -208,6 +211,14 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
     instanceId: string,
     locationId: string
   ) => Promise<WasteCollectionLocationRecord | null>;
+  readonly loadWasteCollectionLocationPage?: (
+    instanceId: string,
+    query: WasteCollectionLocationQuery
+  ) => Promise<WasteCollectionLocationPage>;
+  readonly loadWasteCollectionLocationIds?: (
+    instanceId: string,
+    filter: WasteCollectionLocationSelectionFilter
+  ) => Promise<readonly string[]>;
   readonly deleteWasteCollectionLocation?: (
     instanceId: string,
     locationId: string

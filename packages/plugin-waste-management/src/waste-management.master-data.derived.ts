@@ -1,4 +1,7 @@
-import type { WasteCollectionLocationRecord, WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
+import type {
+  WasteCollectionLocationRecord,
+  WasteManagementMasterDataOverview,
+} from '@sva/plugin-sdk';
 
 import { wasteMasterDataPresentation } from './waste-management.master-data.presentation.js';
 import { wasteMasterDataFormDefaults } from './waste-management.master-data.forms.js';
@@ -23,11 +26,7 @@ export const createWasteMasterDataDerivedState = (
   search: WasteManagementSearchParams
 ) => {
   const overview = state.overview ?? emptyOverview;
-  const filteredCollectionLocations = wasteMasterDataPresentation.filterCollectionLocations(
-    overview.collectionLocations,
-    search,
-    overview
-  );
+  const filteredCollectionLocations = state.collectionLocationPage?.items ?? [];
   const selectedCollectionLocations = overview.collectionLocations.filter((location) =>
     state.selectedLocationIds.includes(location.id)
   );
@@ -37,13 +36,20 @@ export const createWasteMasterDataDerivedState = (
     filteredRegions: wasteMasterDataPresentation.filterRegions(overview.regions, search),
     filteredCities: wasteMasterDataPresentation.filterCities(overview.cities, search),
     filteredStreets: wasteMasterDataPresentation.filterStreets(overview.streets, search),
-    filteredHouseNumbers: wasteMasterDataPresentation.filterHouseNumbers(overview.houseNumbers, search),
+    filteredHouseNumbers: wasteMasterDataPresentation.filterHouseNumbers(
+      overview.houseNumbers,
+      search
+    ),
     filteredCollectionLocations,
     selectedCollectionLocations,
-    selectedLocations: wasteMasterDataPresentation.mapSelectedLocations(pt, state.overview, selectedCollectionLocations),
+    selectedLocations: wasteMasterDataPresentation.mapSelectedLocations(
+      pt,
+      state.overview,
+      selectedCollectionLocations
+    ),
     allFilteredLocationsSelected:
-      filteredCollectionLocations.length > 0 &&
-      filteredCollectionLocations.every((location) => state.selectedLocationIds.includes(location.id)),
+      state.filteredLocationIds.length > 0 &&
+      state.filteredLocationIds.every((id) => state.selectedLocationIds.includes(id)),
     getLocationLabel: (location: WasteCollectionLocationRecord) =>
       wasteMasterDataPresentation.formatCollectionLocationLabel(pt, overview, location),
   };
@@ -54,7 +60,10 @@ export const createWasteMasterDataResetActions = (state: WasteMasterDataState) =
   resetRegionForm: () => state.setRegionForm(wasteMasterDataFormDefaults.createRegion()),
   resetCityForm: () => state.setCityForm(wasteMasterDataFormDefaults.createCity()),
   resetStreetForm: () => state.setStreetForm(wasteMasterDataFormDefaults.createStreet()),
-  resetHouseNumberForm: () => state.setHouseNumberForm(wasteMasterDataFormDefaults.createHouseNumber()),
-  resetLocationForm: () => state.setLocationForm(wasteMasterDataFormDefaults.createCollectionLocation()),
-  resetBulkAssignmentsForm: () => state.setBulkAssignmentsForm(wasteMasterDataFormDefaults.createBulkAssignments()),
+  resetHouseNumberForm: () =>
+    state.setHouseNumberForm(wasteMasterDataFormDefaults.createHouseNumber()),
+  resetLocationForm: () =>
+    state.setLocationForm(wasteMasterDataFormDefaults.createCollectionLocation()),
+  resetBulkAssignmentsForm: () =>
+    state.setBulkAssignmentsForm(wasteMasterDataFormDefaults.createBulkAssignments()),
 });

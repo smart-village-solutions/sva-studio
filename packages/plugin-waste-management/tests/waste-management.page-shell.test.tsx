@@ -23,6 +23,8 @@ const searchState = {
   tourValidityPeriod: 'all',
   tourWasteFractionId: undefined,
   shiftContext: 'tour',
+  locationSortMode: 'address',
+  locationSortDirection: 'asc',
   regionId: undefined,
   cityId: undefined,
   wasteFractionId: undefined,
@@ -33,6 +35,8 @@ const searchState = {
   endDateTo: undefined,
   schedulingEntryType: undefined,
   schedulingEntryId: undefined,
+  schedulingTourId: undefined,
+  schedulingOriginalDate: undefined,
 };
 const useWasteManagementUiAccessMock = vi.fn(() => ({
   isResolved: true,

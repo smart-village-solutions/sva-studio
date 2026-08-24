@@ -18,7 +18,14 @@ describe('WasteMasterDataLocationsWorkspace', () => {
 
     render(
       <WasteMasterDataLocationsWorkspace
-        regions={[{ id: 'region-1', name: 'Nord', createdAt: '2026-05-09T10:00:00.000Z', updatedAt: '2026-05-09T10:00:00.000Z' }]}
+        regions={[
+          {
+            id: 'region-1',
+            name: 'Nord',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
         cities={[
           {
             id: 'city-1',
@@ -82,9 +89,15 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         ]}
         page={1}
         pageSize={25}
+        pageCount={1}
+        totalItems={1}
+        sortMode="address"
+        sortDirection="asc"
         selectedTourId="tour-1"
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
+        onSortModeChange={vi.fn()}
+        onSortDirectionChange={vi.fn()}
         onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
@@ -106,7 +119,9 @@ describe('WasteMasterDataLocationsWorkspace', () => {
 
     expect(screen.getAllByText('Tour Nord').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.filters.clearTour' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.filters.clearTour' })
+    );
 
     expect(onTourFilterChange).toHaveBeenCalledWith('');
   });
@@ -114,7 +129,14 @@ describe('WasteMasterDataLocationsWorkspace', () => {
   it('renders address context and linked-tour counts directly in the dense location table', () => {
     render(
       <WasteMasterDataLocationsWorkspace
-        regions={[{ id: 'region-1', name: 'Nord', createdAt: '2026-05-09T10:00:00.000Z', updatedAt: '2026-05-09T10:00:00.000Z' }]}
+        regions={[
+          {
+            id: 'region-1',
+            name: 'Nord',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
         cities={[
           {
             id: 'city-1',
@@ -193,9 +215,15 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         ]}
         page={1}
         pageSize={25}
+        pageCount={1}
+        totalItems={1}
+        sortMode="address"
+        sortDirection="asc"
         selectedTourId={undefined}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
+        onSortModeChange={vi.fn()}
+        onSortDirectionChange={vi.fn()}
         onTourFilterChange={vi.fn()}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
@@ -215,11 +243,21 @@ describe('WasteMasterDataLocationsWorkspace', () => {
       />
     );
 
-    expect(screen.getAllByRole('table', { name: 'masterData.collectionLocations.title' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('masterData.locationsWorkspace.table.region').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('masterData.locationsWorkspace.table.city').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('masterData.locationsWorkspace.table.tours').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('masterData.locationsWorkspace.table.status').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('table', { name: 'masterData.collectionLocations.title' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('masterData.locationsWorkspace.table.region').length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('masterData.locationsWorkspace.table.city').length).toBeGreaterThan(
+      0
+    );
+    expect(screen.getAllByText('masterData.locationsWorkspace.table.tours').length).toBeGreaterThan(
+      0
+    );
+    expect(
+      screen.getAllByText('masterData.locationsWorkspace.table.status').length
+    ).toBeGreaterThan(0);
     expect(screen.getAllByText('Nord').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Musterstadt').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Hauptstraße').length).toBeGreaterThan(0);
@@ -231,7 +269,14 @@ describe('WasteMasterDataLocationsWorkspace', () => {
   it('shows the real collection-location count in the pagination range', () => {
     render(
       <WasteMasterDataLocationsWorkspace
-        regions={[{ id: 'region-1', name: 'Nord', createdAt: '2026-05-09T10:00:00.000Z', updatedAt: '2026-05-09T10:00:00.000Z' }]}
+        regions={[
+          {
+            id: 'region-1',
+            name: 'Nord',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
         cities={[]}
         streets={[]}
         houseNumbers={[]}
@@ -264,9 +309,15 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         availableTours={[]}
         page={1}
         pageSize={25}
+        pageCount={1}
+        totalItems={2}
+        sortMode="address"
+        sortDirection="asc"
         selectedTourId={undefined}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
+        onSortModeChange={vi.fn()}
+        onSortDirectionChange={vi.fn()}
         onTourFilterChange={vi.fn()}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
@@ -286,15 +337,24 @@ describe('WasteMasterDataLocationsWorkspace', () => {
       />
     );
 
-    expect(document.body.textContent).toContain('meta.pagination.rangeLabel:{"start":1,"end":2,"total":2}');
+    expect(document.body.textContent).toContain(
+      'meta.pagination.rangeLabel:{"start":1,"end":2,"total":2}'
+    );
   });
 
-  it('syncs an out-of-range page to the safe page and renders only that page of locations', () => {
+  it('syncs an out-of-range page and renders the server page without local slicing', () => {
     const onSyncPageChange = vi.fn();
 
     render(
       <WasteMasterDataLocationsWorkspace
-        regions={[{ id: 'region-1', name: 'Nord', createdAt: '2026-05-09T10:00:00.000Z', updatedAt: '2026-05-09T10:00:00.000Z' }]}
+        regions={[
+          {
+            id: 'region-1',
+            name: 'Nord',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
         cities={[
           {
             id: 'city-1',
@@ -338,16 +398,6 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         ]}
         collectionLocations={[
           {
-            id: 'location-1',
-            regionId: 'region-1',
-            cityId: 'city-1',
-            streetId: 'street-1',
-            houseNumberId: 'house-1',
-            active: true,
-            createdAt: '2026-05-09T10:00:00.000Z',
-            updatedAt: '2026-05-09T10:00:00.000Z',
-          },
-          {
             id: 'location-2',
             regionId: 'region-1',
             cityId: 'city-1',
@@ -365,10 +415,16 @@ describe('WasteMasterDataLocationsWorkspace', () => {
         availableTours={[]}
         page={3}
         pageSize={1}
+        pageCount={2}
+        totalItems={2}
+        sortMode="address"
+        sortDirection="asc"
         selectedTourId={undefined}
         onPageChange={vi.fn()}
         onSyncPageChange={onSyncPageChange}
         onPageSizeChange={vi.fn()}
+        onSortModeChange={vi.fn()}
+        onSortDirectionChange={vi.fn()}
         onTourFilterChange={vi.fn()}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
@@ -393,6 +449,8 @@ describe('WasteMasterDataLocationsWorkspace', () => {
     expect(screen.getAllByText('7').length).toBeGreaterThan(0);
     expect(screen.queryByText('Hauptstraße')).toBeNull();
     expect(screen.queryByText('12')).toBeNull();
-    expect(document.body.textContent).toContain('meta.pagination.rangeLabel:{"start":2,"end":2,"total":2}');
+    expect(document.body.textContent).toContain(
+      'meta.pagination.rangeLabel:{"start":2,"end":2,"total":2}'
+    );
   });
 });

@@ -71,12 +71,18 @@ vi.mock('../src/waste-management.master-data-locations-table.parts.js', () => ({
   WasteMasterDataLocationsTableToolbar: ({
     onRequestDeleteSelected,
     onToggleFiltersOpen,
+    onSortModeChange,
+    onSortDirectionChange,
   }: {
     readonly onRequestDeleteSelected: () => void;
     readonly onToggleFiltersOpen: () => void;
+    readonly onSortModeChange: (mode: 'addressWithRegion') => void;
+    readonly onSortDirectionChange: (direction: 'desc') => void;
   }) => (
     <div>
       <button onClick={onToggleFiltersOpen}>toggle-filters</button>
+      <button onClick={() => onSortModeChange('addressWithRegion')}>include-region</button>
+      <button onClick={() => onSortDirectionChange('desc')}>descending</button>
       <button onClick={onRequestDeleteSelected}>bulk-delete</button>
     </div>
   ),
@@ -97,28 +103,24 @@ vi.mock('../src/waste-management.master-data-locations-table.parts.js', () => ({
 vi.mock('../src/waste-management.master-data-locations-table.section.js', () => ({
   WasteMasterDataLocationsTableSection: ({
     collectionLocations,
-    onSortChange,
     onDeleteLocation,
   }: {
     readonly collectionLocations: Array<{ id: string }>;
-    readonly onSortChange: (field: 'tours') => void;
     readonly onDeleteLocation: (location: { id: string }) => Promise<void>;
   }) => (
     <div>
-      <button onClick={() => onSortChange('city')}>sort-city</button>
-      <button onClick={() => onSortChange('street')}>sort-street</button>
-      <button onClick={() => onSortChange('houseNumbers')}>sort-house-numbers</button>
-      <button onClick={() => onSortChange('status')}>sort-status</button>
-      <button onClick={() => onSortChange('tours')}>sort-tours</button>
-      <button onClick={() => onSortChange('tours')}>sort-tours-again</button>
       <button onClick={() => void onDeleteLocation(collectionLocations[0]!)}>single-delete</button>
-      <div data-testid="location-order">{collectionLocations.map((location) => location.id).join(',')}</div>
+      <div data-testid="location-order">
+        {collectionLocations.map((location) => location.id).join(',')}
+      </div>
     </div>
   ),
 }));
 
 vi.mock('../src/waste-management.table-frame.js', () => ({
-  WastePanelTableTopBar: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  WastePanelTableTopBar: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   WastePanelTableBottomBar: ({ page }: { readonly page: number }) => <div>page:{page}</div>,
 }));
 
@@ -127,10 +129,12 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
     cleanup();
   });
 
-  it('sorts locations by tours and confirms single plus bulk deletions', async () => {
+  it('keeps server order, forwards global sorting, and confirms single plus bulk deletions', async () => {
     const onDeleteLocation = vi.fn(async () => undefined);
     const onDeleteLocations = vi.fn(async () => undefined);
     const onTourFilterChange = vi.fn();
+    const onSortModeChange = vi.fn();
+    const onSortDirectionChange = vi.fn();
 
     render(
       <WasteMasterDataLocationsTable
@@ -139,8 +143,22 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
         streets={[]}
         houseNumbers={[]}
         collectionLocations={[
-          { id: 'location-1', regionId: 'region-1', cityId: 'city-1', streetId: 'street-1', houseNumberId: 'house-1', active: true } as never,
-          { id: 'location-2', regionId: 'region-2', cityId: 'city-2', streetId: 'street-2', houseNumberId: 'house-2', active: true } as never,
+          {
+            id: 'location-1',
+            regionId: 'region-1',
+            cityId: 'city-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+          } as never,
+          {
+            id: 'location-2',
+            regionId: 'region-2',
+            cityId: 'city-2',
+            streetId: 'street-2',
+            houseNumberId: 'house-2',
+            active: true,
+          } as never,
         ]}
         locationTourLinks={[]}
         selectedLocationIds={['location-1', 'location-2']}
@@ -151,9 +169,13 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
         pageSize={25}
         pageCount={1}
         totalItems={2}
+        sortMode="address"
+        sortDirection="asc"
         selectedTourId="tour-1"
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
+        onSortModeChange={onSortModeChange}
+        onSortDirectionChange={onSortDirectionChange}
         onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
@@ -172,34 +194,37 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
     );
 
     expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
-    fireEvent.click(screen.getByRole('button', { name: 'sort-city' }));
-    expect(screen.getByTestId('location-order').textContent).toBe('location-2,location-1');
-    fireEvent.click(screen.getByRole('button', { name: 'sort-street' }));
-    expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
-    fireEvent.click(screen.getByRole('button', { name: 'sort-house-numbers' }));
-    expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
-    fireEvent.click(screen.getByRole('button', { name: 'sort-status' }));
-    expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
-    fireEvent.click(screen.getByRole('button', { name: 'sort-tours' }));
-    expect(screen.getByTestId('location-order').textContent).toBe('location-2,location-1');
-    fireEvent.click(screen.getByRole('button', { name: 'sort-tours-again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'include-region' }));
+    fireEvent.click(screen.getByRole('button', { name: 'descending' }));
+    expect(onSortModeChange).toHaveBeenCalledWith('addressWithRegion');
+    expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
     expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
 
     fireEvent.click(screen.getByRole('button', { name: 'single-delete' }));
     expect(screen.getByText('label:location-1')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.cancel' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.cancel' })
+    );
     expect(onDeleteLocation).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'single-delete' }));
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.delete' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.delete' })
+    );
     expect(onDeleteLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'bulk-delete' }));
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.cancel' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.cancel' })
+    );
     expect(onDeleteLocations).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'bulk-delete' }));
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.bulk.actions.deleteSelected' }));
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'masterData.collectionLocations.bulk.actions.deleteSelected',
+      })
+    );
     expect(onDeleteLocations).toHaveBeenCalledWith(['location-1', 'location-2']);
 
     fireEvent.click(screen.getByRole('button', { name: 'clear-tour-filter' }));

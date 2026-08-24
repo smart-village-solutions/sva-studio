@@ -119,7 +119,11 @@ export const governanceAuthHandlerMap = {
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateHouseNumber),
   },
   '/api/v1/waste-management/collection-locations': {
+    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getCollectionLocations),
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCollectionLocation),
+  },
+  '/api/v1/waste-management/collection-locations/selection': {
+    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getCollectionLocationIds),
   },
   '/api/v1/waste-management/collection-locations/$locationId': {
     DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteCollectionLocation),

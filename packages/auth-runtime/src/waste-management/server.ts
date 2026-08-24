@@ -12,6 +12,8 @@ import {
 const {
   createWasteManagementCityInternal,
   createWasteManagementCollectionLocationInternal,
+  getWasteManagementCollectionLocationsInternal,
+  getWasteManagementCollectionLocationIdsInternal,
   createWasteManagementFractionInternal,
   deleteWasteManagementCollectionLocationInternal,
   deleteWasteManagementFractionInternal,
@@ -85,6 +87,8 @@ const {
   loadWastePdfStaticSettings,
   loadWasteCityById,
   loadWasteCollectionLocationById,
+  loadWasteCollectionLocationPage,
+  loadWasteCollectionLocationIds,
   loadWasteFractionById,
   loadWasteGlobalDateShiftById,
   loadWasteHolidayRuleById,
@@ -135,6 +139,20 @@ const {
 } = wasteManagementEntitySavers;
 
 export const wasteManagementHandlers = {
+  getCollectionLocations: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      getWasteManagementCollectionLocationsInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        loadWasteCollectionLocationPage,
+      })
+    ),
+  getCollectionLocationIds: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      getWasteManagementCollectionLocationIdsInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        loadWasteCollectionLocationIds,
+      })
+    ),
   getHistory: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementHistoryInternal(nextRequest, ctx, {

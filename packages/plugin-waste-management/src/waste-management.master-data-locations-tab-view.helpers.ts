@@ -1,13 +1,19 @@
 import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
-import { wasteMasterDataFormDefaults, wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
+import {
+  wasteMasterDataFormDefaults,
+  wasteMasterDataFormMappers,
+} from './waste-management.master-data.forms.js';
 import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 
-export const useWasteLocationsTabNavigation = (controller: WasteViewModel, search: WasteManagementSearchParams) => {
+export const useWasteLocationsTabNavigation = (
+  controller: WasteViewModel,
+  search: WasteManagementSearchParams
+) => {
   const navigate = useNavigate();
 
   return {
@@ -36,7 +42,9 @@ export const useWasteLocationsTabNavigation = (controller: WasteViewModel, searc
         search: { ...search, locationsView: 'create', collectionLocationId: undefined },
       });
     },
-    toEdit: (location: Parameters<typeof wasteMasterDataFormMappers.collectionLocationToForm>[0]) => {
+    toEdit: (
+      location: Parameters<typeof wasteMasterDataFormMappers.collectionLocationToForm>[0]
+    ) => {
       controller.setLocationDialogMode('edit');
       controller.setLocationDialogOpen(false);
       controller.setLocationForm(wasteMasterDataFormMappers.collectionLocationToForm(location));
@@ -47,7 +55,9 @@ export const useWasteLocationsTabNavigation = (controller: WasteViewModel, searc
         search: { ...search, locationsView: 'edit', collectionLocationId: location.id },
       });
     },
-    toCopy: (location: Parameters<typeof wasteMasterDataFormMappers.collectionLocationToForm>[0]) => {
+    toCopy: (
+      location: Parameters<typeof wasteMasterDataFormMappers.collectionLocationToForm>[0]
+    ) => {
       controller.setLocationDialogMode('create');
       controller.setLocationDialogOpen(false);
       controller.setLocationForm({
@@ -66,7 +76,10 @@ export const useWasteLocationsTabNavigation = (controller: WasteViewModel, searc
       });
     },
     setTourFilter: (tourId: string) => {
-      void navigate({ to: '/plugins/waste-management', search: { ...search, tourId: tourId || undefined } });
+      void navigate({
+        to: '/plugins/waste-management',
+        search: { ...search, page: 1, tourId: tourId || undefined },
+      });
     },
     toEditTour: (tourId: string) => {
       void navigate({
@@ -78,10 +91,28 @@ export const useWasteLocationsTabNavigation = (controller: WasteViewModel, searc
       void navigate({ to: '/plugins/waste-management', search: { ...search, page } });
     },
     syncPage: (page: number) => {
-      void navigate({ to: '/plugins/waste-management', search: { ...search, page }, replace: true });
+      void navigate({
+        to: '/plugins/waste-management',
+        search: { ...search, page },
+        replace: true,
+      });
     },
     setPageSize: (pageSize: number) => {
       void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } });
+    },
+    setSortMode: (locationSortMode: WasteManagementSearchParams['locationSortMode']) => {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: { ...search, page: 1, locationSortMode },
+      });
+    },
+    setSortDirection: (
+      locationSortDirection: WasteManagementSearchParams['locationSortDirection']
+    ) => {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: { ...search, page: 1, locationSortDirection },
+      });
     },
   };
 };

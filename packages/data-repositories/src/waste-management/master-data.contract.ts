@@ -1,6 +1,9 @@
 import type {
   WasteCollectionLocationListFilter,
+  WasteCollectionLocationPage,
+  WasteCollectionLocationQuery,
   WasteCollectionLocationRecord,
+  WasteCollectionLocationSelectionFilter,
   WasteCityListFilter,
   WasteCityRecord,
   WasteCustomRecurrencePresetRecord,
@@ -99,6 +102,14 @@ export const wasteMasterDataRepositoryContract = {
       (
         filter?: WasteCollectionLocationListFilter
       ) => Promise<readonly WasteCollectionLocationRecord[]>
+    >(),
+  listWasteCollectionLocationPage:
+    defineRepositoryMethod<
+      (query: WasteCollectionLocationQuery) => Promise<WasteCollectionLocationPage>
+    >(),
+  listWasteCollectionLocationIds:
+    defineRepositoryMethod<
+      (filter: WasteCollectionLocationSelectionFilter) => Promise<readonly string[]>
     >(),
   getWasteCollectionLocationById:
     defineRepositoryMethod<(id: string) => Promise<WasteCollectionLocationRecord | null>>(),

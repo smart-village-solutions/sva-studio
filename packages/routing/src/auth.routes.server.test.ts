@@ -172,6 +172,12 @@ const authServerMocks = vi.hoisted(() => {
     },
     wasteManagementHandlers: {
       getHistory: vi.fn(async () => response('getWasteManagementHistoryHandler')),
+      getCollectionLocations: vi.fn(async () =>
+        response('getWasteManagementCollectionLocationsHandler')
+      ),
+      getCollectionLocationIds: vi.fn(async () =>
+        response('getWasteManagementCollectionLocationIdsHandler')
+      ),
       createCity: vi.fn(async () => response('createWasteManagementCityHandler')),
       createCollectionLocation: vi.fn(async () =>
         response('createWasteManagementCollectionLocationHandler')
@@ -638,6 +644,9 @@ describe('auth.routes.server', () => {
     const collectionLocationHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/collection-locations'
     );
+    const collectionLocationSelectionHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/collection-locations/selection'
+    );
     const collectionLocationDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/collection-locations/$locationId'
     );
@@ -724,6 +733,8 @@ describe('auth.routes.server', () => {
     expect(fractionHandlers?.POST).toBeDefined();
     expect(fractionDetailHandlers?.DELETE).toBeDefined();
     expect(collectionLocationHandlers?.POST).toBeDefined();
+    expect(collectionLocationHandlers?.GET).toBeDefined();
+    expect(collectionLocationSelectionHandlers?.GET).toBeDefined();
     expect(collectionLocationDetailHandlers?.PUT).toBeDefined();
     expect(streetHandlers?.POST).toBeDefined();
     expect(streetDetailHandlers?.PUT).toBeDefined();
@@ -779,6 +790,17 @@ describe('auth.routes.server', () => {
       request: new Request('http://localhost/api/v1/waste-management/collection-locations', {
         method: 'POST',
       }),
+    });
+    await collectionLocationHandlers.GET?.({
+      request: new Request('http://localhost/api/v1/waste-management/collection-locations', {
+        method: 'GET',
+      }),
+    });
+    await collectionLocationSelectionHandlers.GET?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/collection-locations/selection',
+        { method: 'GET' }
+      ),
     });
     await collectionLocationDetailHandlers.PUT?.({
       request: new Request(
@@ -1032,6 +1054,8 @@ describe('auth.routes.server', () => {
     });
 
     expect(authServerMocks.wasteManagementHandlers.getMasterDataOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getCollectionLocations).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getCollectionLocationIds).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createFraction).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createCollectionLocation).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.deleteCollectionLocation).toHaveBeenCalled();

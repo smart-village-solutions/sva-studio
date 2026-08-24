@@ -1,4 +1,7 @@
-import { createWasteMasterDataDialogActions, createWasteMasterDataSelectionActions } from './waste-management.master-data.actions.js';
+import {
+  createWasteMasterDataDialogActions,
+  createWasteMasterDataSelectionActions,
+} from './waste-management.master-data.actions.js';
 import {
   createWasteMasterDataDerivedState,
   createWasteMasterDataResetActions,
@@ -9,6 +12,7 @@ import { createWasteMasterDataMutationHandlers } from './waste-management.master
 import { useWasteTrackedJob } from './waste-management.tools.job-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteMasterDataState } from './use-waste-master-data-state.js';
+import { useWasteCollectionLocationList } from './use-waste-collection-location-list.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
@@ -17,15 +21,22 @@ const noopRefreshTechnicalHistory = async () => undefined;
 export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteMasterDataState();
   const loadOverview = useWasteMasterDataOverview(state, pt, search.masterDataTab);
+  const loadCollectionLocationList = useWasteCollectionLocationList(state, pt, search);
   const derivedState = createWasteMasterDataDerivedState(state, pt, search);
   const dialogActions = createWasteMasterDataDialogActions(state, search);
-  const selectionActions = createWasteMasterDataSelectionActions(state, search, derivedState.filteredCollectionLocations);
+  const selectionActions = createWasteMasterDataSelectionActions(
+    state,
+    search,
+    state.filteredLocationIds
+  );
   const submitHandlers = createWasteMasterDataMutationHandlers({
     state,
     pt,
     search,
     loadOverview,
-    selectedCollectionLocationIds: derivedState.selectedCollectionLocations.map((location) => location.id),
+    selectedCollectionLocationIds: derivedState.selectedCollectionLocations.map(
+      (location) => location.id
+    ),
   });
   const resetActions = createWasteMasterDataResetActions(state);
 
@@ -70,7 +81,9 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     ...selectionActions,
     ...submitHandlers,
     ...resetActions,
-    reloadOverview: loadOverview,
+    reloadOverview: async () => {
+      await Promise.all([loadOverview(), loadCollectionLocationList()]);
+    },
     retrySyncWasteTypes,
   };
 };

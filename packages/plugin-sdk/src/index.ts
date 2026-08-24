@@ -188,12 +188,12 @@ export type {
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
 } from './public-api.js';
+export type * from './waste-collection-location-list-public-api.js';
 export type * from './waste-annual-tour-transfer.js';
 export * from './media-content-save-client.js';
 export * from './content-media-permissions.js';
 export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
 export { buildWasteStreetKey, resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
-export type { EffectiveWasteTourDateShift } from '@sva/core';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,

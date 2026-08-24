@@ -28,6 +28,8 @@ const createSearch = (): WasteManagementSearchParams => ({
   shiftContext: 'all',
   fractionsSortBy: 'name',
   fractionsSortDirection: 'asc',
+  locationSortMode: 'address',
+  locationSortDirection: 'asc',
   regionId: 'region-1',
   cityId: 'city-1',
   wasteFractionId: undefined,
@@ -86,7 +88,7 @@ describe('useWasteLocationsTabNavigation', () => {
       expect.objectContaining({
         regionId: 'region-1',
         cityId: 'city-1',
-      }),
+      })
     );
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
@@ -116,7 +118,7 @@ describe('useWasteLocationsTabNavigation', () => {
         streetId: 'street-2',
         houseNumberId: 'house-2',
         active: false,
-      }),
+      })
     );
   });
 
@@ -147,7 +149,7 @@ describe('useWasteLocationsTabNavigation', () => {
         cityId: 'city-1',
         streetId: 'street-9',
         houseNumberId: 'house-9',
-      }),
+      })
     );
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
@@ -159,11 +161,13 @@ describe('useWasteLocationsTabNavigation', () => {
       result.current.setPage(9);
       result.current.syncPage(2);
       result.current.setPageSize(100);
+      result.current.setSortMode('addressWithRegion');
+      result.current.setSortDirection('desc');
     });
 
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
-      search: { ...search, tourId: undefined },
+      search: { ...search, page: 1, tourId: undefined },
     });
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
@@ -177,6 +181,14 @@ describe('useWasteLocationsTabNavigation', () => {
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
       search: { ...search, page: 1, pageSize: 100 },
+    });
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: { ...search, page: 1, locationSortMode: 'addressWithRegion' },
+    });
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: { ...search, page: 1, locationSortDirection: 'desc' },
     });
   });
 });

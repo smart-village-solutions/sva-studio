@@ -18,6 +18,12 @@ const createHeaders = () => ({
   'x-requested-with': 'XMLHttpRequest',
 });
 
+const filterIds = {
+  region: '10000000-0000-4000-8000-000000000001',
+  city: '20000000-0000-4000-8000-000000000001',
+  tour: '30000000-0000-4000-8000-000000000001',
+} as const;
+
 const createDeps = () => ({
   getRequestId: () => 'req-test',
   getSessionById: vi.fn(async () => ({
@@ -31,11 +37,142 @@ const createDeps = () => ({
         action: 'waste-management.master-data.manage',
         resourceType: 'waste-management',
       },
+      {
+        action: 'waste-management.read',
+        resourceType: 'waste-management',
+      },
     ],
   })),
 });
 
 describe('waste-management collection location handlers', () => {
+  it('loads a normalized global page and resolves filtered ids through the read contract', async () => {
+    const loadWasteCollectionLocationPage = vi.fn(async (_instanceId, query) => ({
+      items: [],
+      page: query.page,
+      pageSize: query.pageSize,
+      total: 0,
+      pageCount: 0,
+    }));
+    const pageResponse =
+      await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationsInternal(
+        new Request(
+          `https://studio.test/api/v1/waste-management/collection-locations?q=Nord&status=active&regionId=${filterIds.region}&cityId=${filterIds.city}&tourId=${filterIds.tour}&sortMode=addressWithRegion&sortDirection=desc&page=2&pageSize=50`
+        ),
+        actor,
+        { ...createDeps(), loadWasteCollectionLocationPage }
+      );
+
+    expect(pageResponse.status).toBe(200);
+    expect(loadWasteCollectionLocationPage).toHaveBeenCalledWith('tenant-a', {
+      q: 'Nord',
+      status: 'active',
+      regionId: filterIds.region,
+      cityId: filterIds.city,
+      tourId: filterIds.tour,
+      sortMode: 'addressWithRegion',
+      sortDirection: 'desc',
+      page: 2,
+      pageSize: 50,
+    });
+    await expect(pageResponse.json()).resolves.toMatchObject({
+      data: { page: 2, pageSize: 50, total: 0, pageCount: 0 },
+      requestId: 'req-test',
+    });
+
+    const loadWasteCollectionLocationIds = vi.fn(async () => ['location-1', 'location-2']);
+    const idsResponse =
+      await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationIdsInternal(
+        new Request(
+          `https://studio.test/api/v1/waste-management/collection-locations/selection?status=inactive&cityId=${filterIds.city}`
+        ),
+        actor,
+        { ...createDeps(), loadWasteCollectionLocationIds }
+      );
+    expect(idsResponse.status).toBe(200);
+    expect(loadWasteCollectionLocationIds).toHaveBeenCalledWith('tenant-a', {
+      q: undefined,
+      status: 'inactive',
+      regionId: undefined,
+      cityId: filterIds.city,
+      tourId: undefined,
+    });
+    await expect(idsResponse.json()).resolves.toMatchObject({
+      data: { ids: ['location-1', 'location-2'] },
+    });
+  });
+
+  it.each([
+    'sortMode=street',
+    'sortDirection=sideways',
+    'sortField=city',
+    'sortMode=address&sortMode=addressWithRegion',
+    'page=0',
+    'pageSize=20',
+    'regionId=not-a-uuid',
+    'cityId=not-a-uuid',
+    'tourId=not-a-uuid',
+    'q=%00',
+  ])('rejects invalid direct list parameters: %s', async (query) => {
+    const loadWasteCollectionLocationPage = vi.fn();
+    const response =
+      await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationsInternal(
+        new Request(`https://studio.test/api/v1/waste-management/collection-locations?${query}`),
+        actor,
+        { ...createDeps(), loadWasteCollectionLocationPage }
+      );
+
+    expect(response.status).toBe(400);
+    expect(loadWasteCollectionLocationPage).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request' },
+    });
+  });
+
+  it.each(['regionId=not-a-uuid', 'cityId=not-a-uuid', 'tourId=not-a-uuid', 'q=%00'])(
+    'rejects invalid selection filters before querying: %s',
+    async (query) => {
+      const loadWasteCollectionLocationIds = vi.fn();
+      const response =
+        await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationIdsInternal(
+          new Request(
+            `https://studio.test/api/v1/waste-management/collection-locations/selection?${query}`
+          ),
+          actor,
+          { ...createDeps(), loadWasteCollectionLocationIds }
+        );
+
+      expect(response.status).toBe(400);
+      expect(loadWasteCollectionLocationIds).not.toHaveBeenCalled();
+      await expect(response.json()).resolves.toMatchObject({
+        error: { code: 'invalid_request' },
+      });
+    }
+  );
+
+  it('rejects the list read without waste-management.read', async () => {
+    const loadWasteCollectionLocationPage = vi.fn();
+    const response =
+      await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationsInternal(
+        new Request('https://studio.test/api/v1/waste-management/collection-locations'),
+        actor,
+        {
+          ...createDeps(),
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: [],
+          })),
+          loadWasteCollectionLocationPage,
+        }
+      );
+
+    expect(response.status).toBe(403);
+    expect(loadWasteCollectionLocationPage).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'forbidden' },
+    });
+  });
+
   it('creates, updates, and deletes collection locations with normalized optional ids', async () => {
     const saveWasteCollectionLocation = vi.fn(async (_instanceId, input) => input);
     const loadWasteCollectionLocationById = vi.fn(async (_instanceId, id) => ({

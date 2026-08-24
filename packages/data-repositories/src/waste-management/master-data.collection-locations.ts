@@ -1,10 +1,11 @@
-import type {
-  WasteCollectionLocationListFilter,
-  WasteCollectionLocationRecord,
-} from '@sva/core';
+import type { WasteCollectionLocationListFilter, WasteCollectionLocationRecord } from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
+import {
+  createWasteCollectionLocationListRepositoryPart,
+  wasteCollectionLocationListStatements,
+} from './master-data.collection-location-list.js';
 
 type WasteCollectionLocationRow = {
   readonly id: string;
@@ -17,7 +18,9 @@ type WasteCollectionLocationRow = {
   readonly updated_at: string;
 };
 
-const mapWasteCollectionLocationRow = (row: WasteCollectionLocationRow): WasteCollectionLocationRecord => ({
+const mapWasteCollectionLocationRow = (
+  row: WasteCollectionLocationRow
+): WasteCollectionLocationRecord => ({
   id: row.id,
   cityId: row.city_id,
   regionId: row.region_id ?? undefined,
@@ -28,7 +31,9 @@ const mapWasteCollectionLocationRow = (row: WasteCollectionLocationRow): WasteCo
   updatedAt: row.updated_at,
 });
 
-const buildCollectionLocationListStatement = (filter: WasteCollectionLocationListFilter = {}): SqlStatement => {
+const buildCollectionLocationListStatement = (
+  filter: WasteCollectionLocationListFilter = {}
+): SqlStatement => {
   const values: SqlPrimitive[] = [];
   const conditions: string[] = [];
 
@@ -138,10 +143,13 @@ export const createWasteCollectionLocationRepositoryPart = (
 ): Pick<
   WasteMasterDataRepository,
   | 'listWasteCollectionLocations'
+  | 'listWasteCollectionLocationPage'
+  | 'listWasteCollectionLocationIds'
   | 'getWasteCollectionLocationById'
   | 'upsertWasteCollectionLocation'
   | 'deleteWasteCollectionLocation'
 > => ({
+  ...createWasteCollectionLocationListRepositoryPart(executor),
   async listWasteCollectionLocations(filter) {
     const result = await executor.execute<WasteCollectionLocationRow>(
       buildCollectionLocationListStatement(filter)
@@ -163,6 +171,7 @@ export const createWasteCollectionLocationRepositoryPart = (
 });
 
 export const wasteCollectionLocationStatements = {
+  ...wasteCollectionLocationListStatements,
   listWasteCollectionLocations: buildCollectionLocationListStatement,
   getWasteCollectionLocationById: buildCollectionLocationSelectStatement,
   upsertWasteCollectionLocation: buildCollectionLocationUpsertStatement,

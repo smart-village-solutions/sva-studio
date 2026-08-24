@@ -1,11 +1,12 @@
 import React from 'react';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
 import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
 import { useWasteMasterDataOverview } from '../src/use-waste-master-data-overview.js';
 import { useWasteMasterDataState } from '../src/use-waste-master-data-state.js';
+import { useWasteCollectionLocationList } from '../src/use-waste-collection-location-list.js';
 import { useWasteSchedulingOverview } from '../src/use-waste-scheduling-overview.js';
 import { useWasteSchedulingState } from '../src/use-waste-scheduling-state.js';
 import { useWasteToursOverview } from '../src/use-waste-tours-overview.js';
@@ -13,6 +14,8 @@ import { useWasteToursState } from '../src/use-waste-tours-state.js';
 
 const apiMocks = vi.hoisted(() => ({
   getWasteManagementMasterDataOverview: vi.fn(),
+  getWasteCollectionLocationIds: vi.fn(),
+  getWasteCollectionLocationPage: vi.fn(),
   getWasteManagementSchedulingOverview: vi.fn(),
   getWasteManagementSettings: vi.fn(),
   getWasteManagementToursOverview: vi.fn(),
@@ -87,6 +90,27 @@ const DynamicMasterDataLoaderHarness = ({ tab }: { readonly tab: 'fractions' | '
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
 
+const CollectionLocationLoaderHarness = () => {
+  const state = useWasteMasterDataState();
+  useWasteMasterDataOverview(state, (key) => key, 'locations');
+  useWasteCollectionLocationList(state, (key) => key, {
+    tab: 'locations',
+    masterDataTab: 'locations',
+    locationsView: 'list',
+    q: '',
+    status: 'all',
+    regionId: undefined,
+    cityId: undefined,
+    tourId: undefined,
+    locationSortMode: 'address',
+    locationSortDirection: 'asc',
+    page: 1,
+    pageSize: 25,
+  } as never);
+
+  return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
+};
+
 const ToursLoaderHarness = () => {
   const state = useWasteToursState();
   useWasteToursOverview(state, (key) => key);
@@ -126,6 +150,182 @@ describe('waste management data loaders', () => {
       scope: 'fractions',
     });
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(0);
+  });
+
+  it('keeps an overview failure visible when the concurrent location list succeeds later', async () => {
+    let resolvePage: ((value: object) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockRejectedValue(new Error('overview failed'));
+    apiMocks.getWasteCollectionLocationPage.mockImplementation(
+      () => new Promise((resolve) => (resolvePage = resolve))
+    );
+
+    render(<CollectionLocationLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
+    });
+
+    resolvePage?.({ items: [], page: 1, pageSize: 25, total: 0, pageCount: 0 });
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(1);
+    });
+    expect(apiMocks.getWasteCollectionLocationIds).not.toHaveBeenCalled();
+    expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
+  });
+
+  it('keeps a location-list failure visible when the concurrent overview succeeds later', async () => {
+    let resolveOverview: ((value: object) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      () => new Promise((resolve) => (resolveOverview = resolve))
+    );
+    apiMocks.getWasteCollectionLocationPage.mockRejectedValue(new Error('list failed'));
+
+    render(<CollectionLocationLoaderHarness />);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(1);
+    });
+
+    resolveOverview?.({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
+    });
+  });
+
+  it('retains filtered ids across page and sort reloads and clears them for filters or refreshes', async () => {
+    apiMocks.getWasteCollectionLocationPage.mockImplementation(() => new Promise(() => undefined));
+    let resolveIds: ((value: readonly string[]) => void) | undefined;
+    apiMocks.getWasteCollectionLocationIds.mockImplementation(
+      () => new Promise((resolve) => (resolveIds = resolve))
+    );
+    const setCollectionLocationPage = vi.fn();
+    const setFilteredLocationIds = vi.fn();
+
+    const state = {
+      setCollectionLocationListError: vi.fn(),
+      setCollectionLocationPage,
+      setFilteredLocationIds,
+    } as never;
+    const initialSearch = {
+      tab: 'locations',
+      masterDataTab: 'locations',
+      locationsView: 'list',
+      q: 'neue Suche',
+      status: 'all',
+      locationSortMode: 'address',
+      locationSortDirection: 'asc',
+      page: 2,
+      pageSize: 25,
+    } as never;
+    const { result, rerender } = renderHook(
+      ({ search }) => useWasteCollectionLocationList(state, (key) => key, search),
+      { initialProps: { search: initialSearch } }
+    );
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledOnce();
+    });
+    expect(setCollectionLocationPage).toHaveBeenCalledWith(null);
+    expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
+    expect(apiMocks.getWasteCollectionLocationIds).not.toHaveBeenCalled();
+
+    let loadedIds: readonly string[] | null = null;
+    await act(async () => {
+      const request = result.current.loadFilteredLocationIds();
+      resolveIds?.(['location-1', 'location-2']);
+      loadedIds = await request;
+    });
+    expect(loadedIds).toEqual(['location-1', 'location-2']);
+    expect(setFilteredLocationIds).toHaveBeenLastCalledWith(['location-1', 'location-2']);
+
+    setFilteredLocationIds.mockClear();
+    rerender({
+      search: {
+        ...initialSearch,
+        page: 3,
+        locationSortDirection: 'desc',
+      } as never,
+    });
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(2);
+    });
+    expect(setFilteredLocationIds).not.toHaveBeenCalled();
+
+    apiMocks.getWasteCollectionLocationPage.mockResolvedValueOnce({
+      items: [],
+      page: 3,
+      pageSize: 25,
+      total: 0,
+      pageCount: 0,
+    });
+    await act(async () => result.current.refreshList());
+    expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
+
+    setFilteredLocationIds.mockClear();
+    rerender({
+      search: {
+        ...initialSearch,
+        q: 'anderer Filter',
+      } as never,
+    });
+    await waitFor(() => {
+      expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
+    });
+  });
+
+  it('stops the location loader while its tab is hidden and reloads when it becomes active', async () => {
+    apiMocks.getWasteCollectionLocationPage.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 25,
+      total: 0,
+      pageCount: 0,
+    });
+    const state = {
+      setCollectionLocationListError: vi.fn(),
+      setCollectionLocationPage: vi.fn(),
+      setFilteredLocationIds: vi.fn(),
+    } as never;
+    const activeSearch = {
+      tab: 'locations',
+      masterDataTab: 'locations',
+      locationsView: 'list',
+      q: '',
+      status: 'all',
+      locationSortMode: 'address',
+      locationSortDirection: 'asc',
+      page: 1,
+      pageSize: 25,
+    } as never;
+    const { rerender } = renderHook(
+      ({ search }) => useWasteCollectionLocationList(state, (key) => key, search),
+      { initialProps: { search: activeSearch } }
+    );
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledOnce();
+    });
+
+    rerender({ search: { ...activeSearch, tab: 'tours', q: 'hidden change' } as never });
+    await waitFor(() => {
+      expect(state.setCollectionLocationListError).toHaveBeenLastCalledWith(null);
+    });
+    expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledOnce();
+
+    rerender({ search: activeSearch });
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('keeps the tours loader on a single failed fetch cycle', async () => {

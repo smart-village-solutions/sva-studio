@@ -42,6 +42,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import type { Session } from '../../types.js';
 import type { WasteAnnualTourTransferHandlerDeps } from './annual-tour-transfer-deps.js';
 import type { WasteCityHandlerDeps } from './city-deps.js';
+import type { WasteCollectionLocationReadHandlerDeps } from './collection-location-read-deps.js';
 import type { SaveWasteCustomRecurrencePresetsInput } from './custom-recurrence-deps.js';
 import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
 
@@ -311,4 +312,5 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
 };
 
 export type WasteManagementHandlerDeps = WasteManagementHandlerDepsBase &
-  WasteAnnualTourTransferHandlerDeps;
+  WasteAnnualTourTransferHandlerDeps &
+  WasteCollectionLocationReadHandlerDeps;

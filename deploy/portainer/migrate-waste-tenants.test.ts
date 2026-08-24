@@ -10,6 +10,7 @@ const {
 
 const migrationId = '20260816_01_add_waste_city_postal_code';
 const tourShiftMigrationId = '20260816_02_tour_date_shift_date_contract';
+const germanNumericCollationMigrationId = '20260824_01_add_german_numeric_collation';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -23,12 +24,14 @@ const createTenantClient = ({
   appliedMigrationIds = [],
   failMessage = 'database_failure',
   failOnSql,
+  collationVerificationSatisfied = true,
   tourShiftVerificationSatisfied = true,
   verificationSatisfied = true,
 }: {
   readonly appliedMigrationIds?: readonly string[];
   readonly failMessage?: string;
   readonly failOnSql?: string;
+  readonly collationVerificationSatisfied?: boolean;
   readonly tourShiftVerificationSatisfied?: boolean;
   readonly verificationSatisfied?: boolean;
 } = {}) => ({
@@ -49,6 +52,9 @@ const createTenantClient = ({
         ],
       };
     }
+    if (sql.includes('FROM pg_collation')) {
+      return { rows: [{ satisfied: collationVerificationSatisfied }] };
+    }
     return { rows: [] };
   }),
 });
@@ -63,9 +69,9 @@ const createAdminClient = (rows: readonly object[]) => ({
 });
 
 describe('Waste-Tenant-Migration', () => {
-  it('contains the additive postal-code migration and the guarded tour-shift contract', () => {
+  it('contains the additive postal-code, tour-shift, and collation contracts', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(2);
+    expect(wasteTenantMigrations).toHaveLength(3);
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
       statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
@@ -84,6 +90,23 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[1]?.verification.sql).toContain('pg_get_expr');
     expect(wasteTenantMigrations[1]?.verification.sql).toContain('indnkeyatts = 3');
     expect(wasteTenantMigrations[1]?.verification.sql).toContain('nothas_year');
+    expect(wasteTenantMigrations[2]).toMatchObject({
+      id: germanNumericCollationMigrationId,
+      statements: [
+        "CREATE COLLATION IF NOT EXISTS public.sva_de_numeric (provider = icu, locale = 'de-u-kn-true-ks-level2', deterministic = false);",
+      ],
+    });
+    expect(wasteTenantMigrations[2]?.verification.sql).toContain('FROM pg_collation');
+    expect(wasteTenantMigrations[2]?.verification.sql).toContain(
+      'FROM pg_collation AS collation_row'
+    );
+    expect(wasteTenantMigrations[2]?.verification.sql).toContain("collprovider = 'i'");
+    expect(wasteTenantMigrations[2]?.verification.sql).toContain(
+      'NOT collation_row.collisdeterministic'
+    );
+    expect(wasteTenantMigrations[2]?.verification.sql).toContain(
+      'collation_row.collversion = pg_collation_actual_version(collation_row.oid)'
+    );
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {
@@ -112,7 +135,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 4, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 6, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -148,7 +171,7 @@ describe('Waste-Tenant-Migration', () => {
 
   it('verifies but does not reapply an already recorded migration', async () => {
     const client = createTenantClient({
-      appliedMigrationIds: [migrationId, tourShiftMigrationId],
+      appliedMigrationIds: [migrationId, tourShiftMigrationId, germanNumericCollationMigrationId],
     });
 
     await expect(

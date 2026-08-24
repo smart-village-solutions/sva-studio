@@ -3,7 +3,8 @@ import { createWasteManagementLocationsWorkspaceTranslations } from './plugin.tr
 export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
   createWasteManagementLocationsWorkspaceTranslations({
     title: 'Abholorte & Adresshierarchie',
-    description: 'Arbeiten Sie wie im Newcms-Modus zentral an Abholorten, Tourfiltern und der geografischen Hierarchie.',
+    description:
+      'Arbeiten Sie wie im Newcms-Modus zentral an Abholorten, Tourfiltern und der geografischen Hierarchie.',
     emptyTitle: 'Keine Abholorte gefunden',
     emptyBody: 'Passen Sie die Filter an oder legen Sie den ersten Abholort an.',
     emptyRegions: 'Noch keine Regionen angelegt.',
@@ -29,9 +30,19 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       activeTour: 'Aktive Tour',
       clearTour: 'Filter entfernen',
     },
+    sorting: {
+      label: 'Globale Adresssortierung',
+      criteria: 'Ort → Straße → Hausnummer',
+      criteriaWithRegion: 'Region → Ort → Straße → Hausnummer',
+      includeRegion: 'Region berücksichtigen',
+      ascending: 'Aufsteigend',
+      descending: 'Absteigend',
+      directionLabel: 'Sortierrichtung: {{direction}}',
+    },
     coverage: {
       title: 'Vollständigkeit der Fraktionszuordnung prüfen',
-      description: 'Prüfen Sie, ob alle aktiven Abholorte im gewählten Zeitraum lückenlos einer Tour der Abfallfraktion zugeordnet sind.',
+      description:
+        'Prüfen Sie, ob alle aktiven Abholorte im gewählten Zeitraum lückenlos einer Tour der Abfallfraktion zugeordnet sind.',
       fraction: 'Abfallfraktion',
       fractionUnset: 'Abfallfraktion auswählen',
       startDate: 'Startdatum',
@@ -39,8 +50,10 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       check: 'Prüfen',
       required: 'Wählen Sie eine Abfallfraktion sowie Start- und Enddatum aus.',
       invalidDateRange: 'Das Enddatum darf nicht vor dem Startdatum liegen.',
-      complete: 'Alle {{value}} aktiven Abholorte sind im gewählten Zeitraum vollständig zugeordnet.',
-      summary: '{{checked}} aktive Abholorte geprüft: {{missing}} ohne Zuordnung, {{incomplete}} mit zeitlichen Lücken.',
+      complete:
+        'Alle {{value}} aktiven Abholorte sind im gewählten Zeitraum vollständig zugeordnet.',
+      summary:
+        '{{checked}} aktive Abholorte geprüft: {{missing}} ohne Zuordnung, {{incomplete}} mit zeitlichen Lücken.',
       missing: 'Keine Zuordnung',
       incomplete: 'Zeitraum unvollständig',
       gap: 'Nicht abgedeckt: {{startDate}} bis {{endDate}}',

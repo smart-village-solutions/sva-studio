@@ -26,8 +26,8 @@ const controllerState = {
   filteredHouseNumbers: [{ id: 'house-1', number: '12', streetId: 'street-1' }],
   filteredCollectionLocations: [{ id: 'location-1', cityId: 'city-1', active: true }],
   fractionForm: { id: 'fraction-form-1' },
-  selectedLocationIds: [],
-  selectedCollectionLocations: [],
+  selectedLocationIds: [] as string[],
+  selectedCollectionLocations: [] as Array<{ id: string }>,
   allFilteredLocationsSelected: false,
   availableTours: [{ id: 'tour-1', name: 'Tour 1' }],
   getLocationLabel: () => 'Nord / Musterstadt / Hauptstraße / 12',
@@ -114,7 +114,16 @@ vi.mock('../src/waste-management.master-data-fractions-content.js', () => ({
 }));
 
 vi.mock('../src/waste-management.master-data-locations-workspace.js', () => ({
-  WasteMasterDataLocationsWorkspace: () => <div>masterData.locationsWorkspace.title</div>,
+  WasteMasterDataLocationsWorkspace: ({
+    selectedCollectionLocationsCount,
+  }: {
+    readonly selectedCollectionLocationsCount: number;
+  }) => (
+    <div>
+      masterData.locationsWorkspace.title
+      <span data-testid="selected-location-count">{selectedCollectionLocationsCount}</span>
+    </div>
+  ),
 }));
 
 describe('WasteMasterDataPanel', () => {
@@ -136,6 +145,8 @@ describe('WasteMasterDataPanel', () => {
     controllerState.filteredStreets = [{ id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' }];
     controllerState.filteredHouseNumbers = [{ id: 'house-1', number: '12', streetId: 'street-1' }];
     controllerState.filteredCollectionLocations = [{ id: 'location-1', cityId: 'city-1', active: true }];
+    controllerState.selectedLocationIds = [];
+    controllerState.selectedCollectionLocations = [];
   });
 
   it('renders the fractions workspace directly for the fractions top-level tab', () => {
@@ -200,6 +211,42 @@ describe('WasteMasterDataPanel', () => {
 
     expect(screen.getByText('masterData.locationsWorkspace.title')).toBeTruthy();
     expect(screen.queryByText('masterData.fractions.title')).toBeNull();
+  });
+
+  it('counts selected ids that are not present in the stale overview projection', () => {
+    controllerState.selectedLocationIds = ['new-location'];
+    controllerState.selectedCollectionLocations = [];
+
+    render(
+      <WasteMasterDataPanel
+        tab="locations"
+        search={{
+          tab: 'locations',
+          masterDataTab: 'locations',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'list',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          locationSortMode: 'address',
+          locationSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('selected-location-count').textContent).toBe('1');
   });
 
   it('keeps the fractions workspace visible when filters hide all results but overview data still exists', () => {

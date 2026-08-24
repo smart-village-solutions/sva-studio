@@ -1,15 +1,21 @@
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { createApiError, parseRequestBody } from '../../shared/request-helpers.js';
+import { wasteManagementCollectionLocationReadHandlers } from './collection-location-reads.js';
 import {
   authorizeWasteMasterDataMutationPathRequest,
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
-import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import {
+  runWasteCreateMutation,
+  runWasteDeleteMutation,
+  runWasteUpdateMutation,
+} from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { normalizeOptionalString, requireDeps } from './utils.js';
 
-const { createWasteCollectionLocationSchema, updateWasteCollectionLocationSchema } = wasteManagementMasterDataSchemas;
+const { createWasteCollectionLocationSchema, updateWasteCollectionLocationSchema } =
+  wasteManagementMasterDataSchemas;
 
 type PgLikeError = Error & {
   code?: string;
@@ -53,6 +59,7 @@ const toCollectionLocationInput = (
 });
 
 export const wasteManagementCollectionLocationHandlers = {
+  ...wasteManagementCollectionLocationReadHandlers,
   createWasteManagementCollectionLocationInternal: async (
     request: Request,
     ctx: AuthenticatedRequestContext,
@@ -90,7 +97,10 @@ export const wasteManagementCollectionLocationHandlers = {
           toCollectionLocationInput(parsed.data.id, parsed.data)
         ),
       loadSaved: () =>
-        requireDeps(deps.loadWasteCollectionLocationById, 'loadWasteCollectionLocationById')(instanceId, parsed.data.id),
+        requireDeps(deps.loadWasteCollectionLocationById, 'loadWasteCollectionLocationById')(
+          instanceId,
+          parsed.data.id
+        ),
     });
   },
   updateWasteManagementCollectionLocationInternal: async (
@@ -115,7 +125,10 @@ export const wasteManagementCollectionLocationHandlers = {
       deps.loadWasteCollectionLocationById,
       'loadWasteCollectionLocationById'
     );
-    const saveCollectionLocation = requireDeps(deps.saveWasteCollectionLocation, 'saveWasteCollectionLocation');
+    const saveCollectionLocation = requireDeps(
+      deps.saveWasteCollectionLocation,
+      'saveWasteCollectionLocation'
+    );
 
     return runWasteUpdateMutation({
       deps,
@@ -134,7 +147,8 @@ export const wasteManagementCollectionLocationHandlers = {
         mapPersistenceErrorMessage: mapCollectionLocationPersistenceErrorMessage,
       },
       loadExisting: () => loadCollectionLocation(instanceId, locationId),
-      save: () => saveCollectionLocation(instanceId, toCollectionLocationInput(locationId, parsed.data)),
+      save: () =>
+        saveCollectionLocation(instanceId, toCollectionLocationInput(locationId, parsed.data)),
       loadSaved: () => loadCollectionLocation(instanceId, locationId),
     });
   },

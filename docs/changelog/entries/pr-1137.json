@@ -1,0 +1,4 @@
+{
+  "prNumber": 1137,
+  "body": "Abholorte lassen sich jetzt über den gesamten gefilterten Bestand in einer verlässlichen Adressreihenfolge anzeigen.\n\n- Die Standardsortierung folgt Ort, Straße und Hausnummer; optional kann die Region vorangestellt werden.\n- Eine gemeinsame Sortierrichtung gilt auf Desktop und Mobilansicht und bleibt beim Seitenwechsel erhalten.\n- Filter- und Sortieränderungen führen konsistent zur ersten Seite zurück, während Auswahlen auch über mehrere Seiten hinweg korrekt bleiben."
+}

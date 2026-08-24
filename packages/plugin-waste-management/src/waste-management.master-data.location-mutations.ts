@@ -14,12 +14,14 @@ export const createWasteMasterDataLocationMutations = ({
   pt,
   search,
   loadOverview,
+  loadCollectionLocationList,
   selectedCollectionLocationIds,
 }: {
   state: WasteMasterDataState;
   pt: Translate;
   search: WasteManagementSearchParams;
   loadOverview: (active?: boolean) => Promise<void>;
+  loadCollectionLocationList: () => Promise<void>;
   selectedCollectionLocationIds: readonly string[];
 }) => {
   const context = {
@@ -27,6 +29,7 @@ export const createWasteMasterDataLocationMutations = ({
     pt,
     search,
     loadOverview,
+    loadCollectionLocationList,
     selectedCollectionLocationIds,
   };
 

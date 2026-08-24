@@ -70,6 +70,7 @@ describe('createWasteMasterDataLocationMutations', () => {
       pt,
       search: createSearch(),
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: [],
     });
 
@@ -107,6 +108,7 @@ describe('createWasteMasterDataLocationMutations', () => {
         locationsView: 'list',
       },
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: [],
     });
 
@@ -143,6 +145,7 @@ describe('createWasteMasterDataLocationMutations', () => {
         locationsView: 'create',
       },
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: [],
     });
 
@@ -185,6 +188,7 @@ describe('createWasteMasterDataLocationMutations', () => {
         locationsView: 'create',
       },
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: [],
     });
 
@@ -209,11 +213,13 @@ describe('createWasteMasterDataLocationMutations', () => {
   it('maps delete branches for single and bulk deletions', async () => {
     const state = createState();
     const loadOverview = vi.fn(async () => undefined);
+    const loadCollectionLocationList = vi.fn(async () => undefined);
     const handlers = createWasteMasterDataLocationMutations({
       state,
       pt: (key: string) => key,
       search: createSearch(),
       loadOverview,
+      loadCollectionLocationList,
       selectedCollectionLocationIds: ['location-1', 'location-2'],
     });
 
@@ -224,6 +230,7 @@ describe('createWasteMasterDataLocationMutations', () => {
       kind: 'success',
       text: 'masterData.collectionLocations.messages.deleteSuccess',
     });
+    expect(loadCollectionLocationList).toHaveBeenCalledTimes(1);
 
     deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(
       new WasteManagementApiError('conflict', 'Konflikt')
@@ -243,6 +250,7 @@ describe('createWasteMasterDataLocationMutations', () => {
       kind: 'success',
       text: 'masterData.collectionLocations.bulk.messages.deleteSuccess',
     });
+    expect(loadCollectionLocationList).toHaveBeenCalledTimes(2);
 
     deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(
       new WasteManagementApiError('forbidden', 'Verboten')
@@ -262,6 +270,7 @@ describe('createWasteMasterDataLocationMutations', () => {
       pt: (key: string) => key,
       search: createSearch(),
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: ['location-1', 'location-2'],
     });
 
@@ -299,6 +308,7 @@ describe('createWasteMasterDataLocationMutations', () => {
       pt: (key: string) => key,
       search: createSearch(),
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds,
     });
 

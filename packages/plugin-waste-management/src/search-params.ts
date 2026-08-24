@@ -1,3 +1,14 @@
+import type {
+  WasteCollectionLocationSortDirection,
+  WasteCollectionLocationSortMode,
+} from '@sva/plugin-sdk';
+
+import {
+  normalizeWasteCollectionLocationSortDirection,
+  normalizeWasteCollectionLocationSortMode,
+} from './collection-location-search-params.js';
+import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
+
 const wasteManagementTabs = [
   'fractions',
   'tours',
@@ -24,7 +35,6 @@ const wasteManagementFractionSortFields = [
   'status',
 ] as const;
 const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
-const allowedPageSizes = new Set([10, 25, 50, 100]);
 
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
 export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTabs)[number];
@@ -57,6 +67,8 @@ export type WasteManagementSearchParams = Readonly<{
   shiftContext: WasteManagementShiftContext;
   fractionsSortBy: WasteManagementFractionSortField;
   fractionsSortDirection: WasteManagementFractionSortDirection;
+  locationSortMode: WasteCollectionLocationSortMode;
+  locationSortDirection: WasteCollectionLocationSortDirection;
   regionId?: string;
   cityId?: string;
   wasteFractionId?: string;
@@ -173,24 +185,6 @@ const normalizeFractionsSortDirection = (value: unknown): WasteManagementFractio
     ? (value as WasteManagementFractionSortDirection)
     : 'asc';
 
-const normalizePositiveInteger = (value: unknown, fallback: number): number => {
-  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
-    return value;
-  }
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isInteger(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
-  return fallback;
-};
-
-const normalizePageSize = (value: unknown): number => {
-  const pageSize = normalizePositiveInteger(value, 25);
-  return allowedPageSizes.has(pageSize) ? pageSize : 25;
-};
-
 const normalizeMasterDataTabForTab = (
   tab: WasteManagementTabId,
   masterDataTab: WasteManagementMasterDataTabId
@@ -230,6 +224,10 @@ export const normalizeWasteManagementSearchParams = (
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
     fractionsSortDirection: normalizeFractionsSortDirection(search.fractionsSortDirection),
+    locationSortMode: normalizeWasteCollectionLocationSortMode(search.locationSortMode),
+    locationSortDirection: normalizeWasteCollectionLocationSortDirection(
+      search.locationSortDirection
+    ),
     regionId: compactOptionalString(search.regionId),
     cityId: compactOptionalString(search.cityId),
     wasteFractionId: compactOptionalString(search.wasteFractionId),

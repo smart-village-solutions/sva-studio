@@ -906,6 +906,98 @@ describe('waste master data repository', () => {
     expect(wasteMasterDataStatements.listWasteCollectionLocations({}).text).not.toContain('WHERE');
   });
 
+  it('builds the global collection-location page and filtered-id queries from fixed contracts', async () => {
+    const page = createExecutor([
+      {
+        id: 'location-1',
+        city_id: 'city-1',
+        region_id: 'region-1',
+        street_id: 'street-1',
+        house_number_id: 'house-1',
+        active: true,
+        created_at: '2026-08-24T10:00:00.000Z',
+        updated_at: '2026-08-24T11:00:00.000Z',
+        region_name: 'Region 2',
+        city_name: 'Ort 10',
+        street_name: 'Ährenweg',
+        house_number: '2a',
+        tour_ids: ['tour-1'],
+        tour_names: ['Tour Nord'],
+        total_count: '26',
+      },
+    ]);
+    const query = {
+      q: 'Nord',
+      status: 'active' as const,
+      regionId: 'region-1',
+      cityId: 'city-1',
+      tourId: 'tour-1',
+      sortMode: 'addressWithRegion' as const,
+      sortDirection: 'desc' as const,
+      page: 2,
+      pageSize: 25 as const,
+    };
+
+    await expect(
+      createWasteMasterDataRepository(page.executor).listWasteCollectionLocationPage(query)
+    ).resolves.toEqual({
+      items: [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          regionId: 'region-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+          active: true,
+          createdAt: '2026-08-24T10:00:00.000Z',
+          updatedAt: '2026-08-24T11:00:00.000Z',
+          regionName: 'Region 2',
+          cityName: 'Ort 10',
+          streetName: 'Ährenweg',
+          houseNumber: '2a',
+          tours: [{ id: 'tour-1', name: 'Tour Nord' }],
+        },
+      ],
+      page: 2,
+      pageSize: 25,
+      total: 26,
+      pageCount: 2,
+    });
+
+    const pageStatement = page.statements[0];
+    expect(pageStatement?.values).toEqual(['Nord', true, 'region-1', 'city-1', 'tour-1', 25, 25]);
+    expect(pageStatement?.text).toContain('WITH filtered AS');
+    expect(pageStatement?.text).toContain('COUNT(*)::text AS total_count');
+    expect(pageStatement?.text).toContain('filter_link.location_id = location.id');
+    expect(pageStatement?.text).toContain("location.id::text ILIKE '%' || $1 || '%' ESCAPE '!'");
+    expect(pageStatement?.text).toContain(
+      'region_name COLLATE public.sva_de_numeric DESC NULLS LAST'
+    );
+    expect(pageStatement?.text).toContain('id ASC');
+    expect(pageStatement?.text).not.toContain('addressWithRegion');
+
+    const ids = createExecutor([{ id: 'location-1' }, { id: 'location-2' }]);
+    await expect(
+      createWasteMasterDataRepository(ids.executor).listWasteCollectionLocationIds({
+        q: undefined,
+        status: 'inactive',
+        regionId: undefined,
+        cityId: 'city-1',
+        tourId: undefined,
+      })
+    ).resolves.toEqual(['location-1', 'location-2']);
+    expect(ids.statements[0]?.values).toEqual([false, 'city-1']);
+    expect(ids.statements[0]?.text).not.toContain('LIMIT');
+    expect(ids.statements[0]?.text).not.toContain('COLLATE public.sva_de_numeric');
+
+    const literalSearchStatement = wasteMasterDataStatements.listWasteCollectionLocationPage({
+      ...query,
+      q: '50%_!off',
+    });
+    expect(literalSearchStatement.values[0]).toBe('50!%!_!!off');
+    expect(literalSearchStatement.text).toContain("ILIKE '%' || $1 || '%' ESCAPE '!'");
+  });
+
   it('lists, reads and upserts tours with location counts and custom date payloads', async () => {
     const list = createExecutor([
       {

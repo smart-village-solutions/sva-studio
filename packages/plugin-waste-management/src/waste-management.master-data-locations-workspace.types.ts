@@ -7,6 +7,8 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
+  WasteCollectionLocationSortDirection,
+  WasteCollectionLocationSortMode,
 } from '@sva/plugin-sdk';
 
 export type WasteMasterDataLocationsWorkspaceProps = {
@@ -24,10 +26,17 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly availableTours: readonly WasteTourRecord[];
   readonly page: number;
   readonly pageSize: number;
+  readonly pageCount: number;
+  readonly totalItems: number;
+  readonly pageResponseReceived?: boolean;
+  readonly sortMode: WasteCollectionLocationSortMode;
+  readonly sortDirection: WasteCollectionLocationSortDirection;
   readonly selectedTourId?: string;
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
+  readonly onSortModeChange: (sortMode: WasteCollectionLocationSortMode) => void;
+  readonly onSortDirectionChange: (sortDirection: WasteCollectionLocationSortDirection) => void;
   readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;

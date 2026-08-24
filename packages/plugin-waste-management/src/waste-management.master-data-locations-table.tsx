@@ -1,44 +1,20 @@
 import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StudioConfirmDialog } from '@sva/studio-ui-react';
 import {
   WasteMasterDataActiveTourBanner,
   WasteMasterDataLocationsTableToolbar,
   createLocationsTableMaps,
-  type WasteMasterDataLocationsTableMaps,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
 import { useLocationsFiltersOpen } from './waste-management.master-data-locations-table.filters-state.js';
 import { WasteMasterDataLocationsTableSection } from './waste-management.master-data-locations-table.section.js';
-import type {
-  WasteMasterDataLocationsSortDirection,
-  WasteMasterDataLocationsSortField,
-} from './waste-management.master-data-locations-table.types.js';
 import { WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
 
 type WasteMasterDataLocationsTableContentProps = WasteMasterDataLocationsTableProps & {
   readonly filtersOpen: boolean;
   readonly onToggleFiltersOpen: () => void;
-};
-
-const getLocationSortValue = (
-  location: WasteCollectionLocationRecord,
-  field: WasteMasterDataLocationsSortField,
-  maps: WasteMasterDataLocationsTableMaps
-): string => {
-  const values: Record<WasteMasterDataLocationsSortField, () => string> = {
-    region: () => (location.regionId ? (maps.regionsById.get(location.regionId)?.name ?? '') : ''),
-    city: () => maps.citiesById.get(location.cityId)?.name ?? '',
-    street: () => (location.streetId ? (maps.streetsById.get(location.streetId)?.name ?? '') : ''),
-    houseNumbers: () =>
-      location.houseNumberId
-        ? (maps.houseNumbersById.get(location.houseNumberId)?.number ?? '')
-        : '',
-    tours: () => (maps.locationTourNamesByLocationId.get(location.id) ?? []).join('|'),
-    status: () => (location.active ? 'active' : 'inactive'),
-  };
-  return values[field]();
 };
 
 const WasteMasterDataLocationsTableContent = ({
@@ -52,19 +28,6 @@ const WasteMasterDataLocationsTableContent = ({
   const [pendingDeleteLocation, setPendingDeleteLocation] =
     useState<WasteCollectionLocationRecord | null>(null);
   const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
-  const [sortField, setSortField] = useState<WasteMasterDataLocationsSortField>('region');
-  const [sortDirection, setSortDirection] = useState<WasteMasterDataLocationsSortDirection>('asc');
-  const sortedCollectionLocations = useMemo(() => {
-    return [...props.collectionLocations].sort((left, right) => {
-      const leftValue = getLocationSortValue(left, sortField, maps);
-      const rightValue = getLocationSortValue(right, sortField, maps);
-      const comparison = leftValue.localeCompare(rightValue, 'de', {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      return sortDirection === 'asc' ? comparison : comparison * -1;
-    });
-  }, [maps, props.collectionLocations, sortDirection, sortField]);
 
   return (
     <>
@@ -84,6 +47,10 @@ const WasteMasterDataLocationsTableContent = ({
             onOpenBulkAssignments={props.onOpenBulkAssignments}
             onTourFilterChange={props.onTourFilterChange}
             onToggleSelectAll={props.onToggleSelectAll}
+            sortMode={props.sortMode}
+            sortDirection={props.sortDirection}
+            onSortModeChange={props.onSortModeChange}
+            onSortDirectionChange={props.onSortDirectionChange}
             onRequestDeleteSelected={() => setBulkDeleteRequested(true)}
             onToggleFiltersOpen={onToggleFiltersOpen}
           />
@@ -93,22 +60,10 @@ const WasteMasterDataLocationsTableContent = ({
           onTourFilterChange={props.onTourFilterChange}
         />
         <WasteMasterDataLocationsTableSection
-          collectionLocations={sortedCollectionLocations}
+          collectionLocations={props.collectionLocations}
           allFilteredLocationsSelected={props.allFilteredLocationsSelected}
           maps={maps}
           selectedLocationIds={props.selectedLocationIds}
-          sortField={sortField}
-          sortDirection={sortDirection}
-          onSortChange={(field) => {
-            if (field === sortField) {
-              setSortDirection((current: WasteMasterDataLocationsSortDirection) =>
-                current === 'asc' ? 'desc' : 'asc'
-              );
-              return;
-            }
-            setSortField(field);
-            setSortDirection('asc');
-          }}
           onToggleSelectAll={props.onToggleSelectAll}
           onToggleLocation={props.onToggleLocation}
           onCopyLocation={props.onCopyLocation}

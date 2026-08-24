@@ -77,6 +77,37 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
+### Datenbankweiter Sortiervertrag für Waste-Abholorte
+
+Die serverseitig paginierte Abholortliste sortiert Textfelder explizit mit
+`public.sva_de_numeric`. Die ICU-Collation verwendet
+`de-u-kn-true-ks-level2`, ist nicht deterministisch und verbindet damit
+deutsche, groß-/kleinschreibungsunabhängige Vergleichsregeln mit natürlicher
+Zahlensortierung, beispielsweise `2` vor `10`.
+
+Für neue Waste-Tenant-Datenbanken legt der Schema-Builder die Collation an.
+Bestandsdatenbanken erhalten sie ausschließlich über die idempotente Migration
+`20260824_01_add_german_numeric_collation`. Die Migration verifiziert Provider,
+Determinismus, normalisierte ICU-Locale und die Übereinstimmung von gespeicherter
+mit tatsächlich verfügbarer ICU-Version, bevor ihr Ledger-Eintrag geschrieben
+wird. Die Anwendung fällt nicht auf die Prozess-Locale oder eine clientseitige
+Sortierung zurück. Fehlt oder driftet die Collation, scheitert der Read
+fail-closed als Datenbankfehler.
+
+Ein ICU-Versionsdrift wird nicht automatisch repariert. Vor einem erneuten
+Migrationslauf müssen im Wartungsfenster alle von `public.sva_de_numeric`
+abhängigen Datenbankobjekte ermittelt und mit der neuen ICU-Version neu aufgebaut
+werden. Erst danach darf die gespeicherte Version mit
+`ALTER COLLATION public.sva_de_numeric REFRESH VERSION` aktualisiert und die
+Migration erneut ausgeführt werden. `REFRESH VERSION` allein baut abhängige
+Indizes nicht neu und ist deshalb kein zulässiger Abkürzungsschritt.
+
+Der zentrale Soll-Snapshot wurde für diese Änderung geprüft und bleibt
+unverändert: Er wird ausschließlich aus `packages/data/migrations/` abgeleitet.
+Die Collation und die fachlichen Waste-Tabellen verbleiben in den jeweils
+instanzbezogenen Waste-Datenbanken; ihre Provisionierung wird nicht durch den
+zentralen Studio-Snapshot ersetzt.
+
 ## Schema-Übersicht nach Domänen
 
 ### 1. IAM-Kernmodell

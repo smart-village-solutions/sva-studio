@@ -22,6 +22,7 @@ import { WastePendingSaveButton } from './waste-management.pending-save-button.j
 type BulkDialogProps = {
   readonly open: boolean;
   readonly form: LocationTourLinkBulkFormState;
+  readonly selectedLocationCount: number;
   readonly selectedLocations: readonly { id: string; label: string }[];
   readonly tours: readonly WasteTourRecord[];
   readonly saving: boolean;
@@ -34,6 +35,7 @@ type BulkDialogProps = {
 export const BulkLocationAssignmentsDialog = ({
   open,
   form,
+  selectedLocationCount,
   selectedLocations,
   tours,
   saving,
@@ -54,7 +56,7 @@ export const BulkLocationAssignmentsDialog = ({
           <DialogTitle>{pt('masterData.collectionLocations.bulk.dialog.title')}</DialogTitle>
           <DialogDescription>
             {pt('masterData.collectionLocations.bulk.dialog.description', {
-              value: selectedLocations.length,
+              value: selectedLocationCount,
             })}
           </DialogDescription>
         </DialogHeader>
@@ -100,7 +102,7 @@ export const BulkLocationAssignmentsDialog = ({
             <WastePendingSaveButton
               type="submit"
               saving={saving}
-              disabled={selectedLocations.length === 0}
+              disabled={selectedLocationCount === 0}
               label={submitLabel}
             />
           </DialogFooter>

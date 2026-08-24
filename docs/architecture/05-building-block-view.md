@@ -30,11 +30,12 @@ Abhängigkeiten des aktuellen Systems.
 - Nx-Targets für `build`, `serve`, `lint`, das aggregierte `test:unit`, die gezielten App-Slices `test:unit:ui|routes|hooks|server`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 
 1a. Öffentliche Projektberichterstattung (`apps/project-report`)
-   - eigenständige statische Vite-/React-App mit Meilenstein- und Arbeitspaketansicht
-   - verwendet das app-lokale öffentliche Reporting-JSON als einzige fachlich gepflegte Datenquelle und leitet Fortschritt ausschließlich aus dem Statusmodell ab
-   - modelliert Ansicht und Filter als teilbare URL-Search-Params
-   - besitzt keine Abhängigkeit auf `apps/sva-studio-react` oder `@sva/studio-ui-react`; UI, Styles, Datenadapter und Tests bleiben app-lokal
-   - bleibt im gebauten Pages-Artefakt read-only; die lokale Vite-Middleware für direkte JSON-Bearbeitung wird nur auf lokalen Hosts aktiviert
+
+- eigenständige statische Vite-/React-App mit Meilenstein- und Arbeitspaketansicht
+- verwendet das app-lokale öffentliche Reporting-JSON als einzige fachlich gepflegte Datenquelle und leitet Fortschritt ausschließlich aus dem Statusmodell ab
+- modelliert Ansicht und Filter als teilbare URL-Search-Params
+- besitzt keine Abhängigkeit auf `apps/sva-studio-react` oder `@sva/studio-ui-react`; UI, Styles, Datenadapter und Tests bleiben app-lokal
+- bleibt im gebauten Pages-Artefakt read-only; die lokale Vite-Middleware für direkte JSON-Bearbeitung wird nur auf lokalen Hosts aktiviert
 
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
@@ -794,7 +795,10 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 ### Ergänzung 2026-08: Ownership global sortierter Tabellen
 
 - `StudioDataTable` besitzt ausschließlich Darstellung und Interaktion. Jeder Aufrufer muss den Sortiermodus explizit als deaktiviert, clientseitig auf einem vollständigen Bestand oder extern kontrolliert deklarieren.
-- Paginierte Inhalts-, Organisations-, Governance- und DSR-Listen lassen Filterung, Sortierung, stabile Gleichstandsauflösung und Pagination in ihrem serverseitigen Repository beziehungsweise Read-Model ausführen. Waste-Fraktionen verwenden denselben Ablauf auf dem vollständig geladenen, statusgefilterten Bestand.
+- Paginierte Inhalts-, Organisations-, Governance-, DSR- und Waste-Abholortlisten lassen Filterung, Sortierung, stabile Gleichstandsauflösung und Pagination in ihrem serverseitigen Repository beziehungsweise Read-Model ausführen. Waste-Fraktionen verwenden denselben Ablauf auf dem vollständig geladenen, statusgefilterten Bestand.
+- Die Waste-Abholortprojektion gehört `@sva/data-repositories`. `@sva/core` definiert den framework-agnostischen Query-, Page- und List-Item-Vertrag; `@sva/auth-runtime` besitzt Autorisierung und strikte HTTP-Parameterprüfung; das Browser-Plugin kontrolliert ausschließlich URL-Zustand, Darstellung und ID-basierte Auswahl.
+- Die Projektion verbindet Filter, Gesamtzahl und Seite in einer SQL-Anweisung, aggregiert Touren erst für die Seite und sortiert mit der migrierten ICU-Collation `public.sva_de_numeric`. Beide fachlichen Sortiermodi enden unabhängig von der Richtung mit `ID asc` und behandeln fehlende Werte zuletzt.
+- Ein separater, nur lesender Resolver liefert alle IDs desselben Filtervertrags ohne Pagination oder Sortierparameter. Dadurch bleibt „Alle gefilterten auswählen“ global korrekt, ohne den vollständigen Listendatensatz in den Browser zu laden.
 - Tenant- und Plattform-Benutzerlisten bleiben führend Keycloak-paginiert und bieten deshalb ohne vollständige Benutzerprojektion keine Sortieraktion an.
 
 ### Ergänzung 2026-08: Permission-Denial-Vertrag

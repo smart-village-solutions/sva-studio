@@ -1220,6 +1220,16 @@ const loadWasteCollectionLocationById = createLoader(
   'load_waste_collection_location_by_id',
   (repository, locationId: string) => repository.getWasteCollectionLocationById(locationId)
 );
+const loadWasteCollectionLocationPage = createLoader(
+  'load_waste_collection_location_page',
+  (repository, query: Parameters<WasteRepository['listWasteCollectionLocationPage']>[0]) =>
+    repository.listWasteCollectionLocationPage(query)
+);
+const loadWasteCollectionLocationIds = createLoader(
+  'load_waste_collection_location_ids',
+  (repository, filter: Parameters<WasteRepository['listWasteCollectionLocationIds']>[0]) =>
+    repository.listWasteCollectionLocationIds(filter)
+);
 const saveWasteCollectionLocation = createLoader(
   'save_waste_collection_location',
   (repository, input: Omit<WasteCollectionLocationRecord, 'createdAt' | 'updatedAt'>) =>
@@ -1673,6 +1683,8 @@ export const wasteManagementEntityLoaders = {
   loadWasteStreetById,
   loadWasteHouseNumberById,
   loadWasteCollectionLocationById,
+  loadWasteCollectionLocationPage,
+  loadWasteCollectionLocationIds,
   loadWasteLocationTourLinkById,
   loadWasteLocationTourPickupDateById,
   loadWasteTourAssignmentById,

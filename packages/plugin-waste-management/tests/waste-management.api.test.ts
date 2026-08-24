@@ -25,6 +25,8 @@ import {
   getWasteManagementJobDetail,
   getLatestWasteManagementJob,
   getWasteManagementMasterDataOverview,
+  getWasteCollectionLocationIds,
+  getWasteCollectionLocationPage,
   getWasteManagementSchedulingOverview,
   getWasteManagementSettings,
   getWasteManagementToursOverview,
@@ -684,6 +686,58 @@ describe('waste-management api client', () => {
       expect.objectContaining({
         method: 'PUT',
       })
+    );
+  });
+
+  it('loads the server-ordered collection-location page and filtered ids', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: { items: [], page: 2, pageSize: 50, total: 75, pageCount: 2 },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { ids: ['location-1', 'location-2'] } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+    await expect(
+      getWasteCollectionLocationPage({
+        q: ' Nord ',
+        status: 'active',
+        regionId: 'region-1',
+        cityId: 'city-1',
+        tourId: 'tour-1',
+        sortMode: 'addressWithRegion',
+        sortDirection: 'desc',
+        page: 2,
+        pageSize: 50,
+      })
+    ).resolves.toMatchObject({ page: 2, total: 75 });
+    await expect(
+      getWasteCollectionLocationIds({
+        q: undefined,
+        status: 'inactive',
+        regionId: undefined,
+        cityId: 'city-1',
+        tourId: undefined,
+      })
+    ).resolves.toEqual(['location-1', 'location-2']);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/waste-management/collection-locations?q=Nord&status=active&regionId=region-1&cityId=city-1&tourId=tour-1&sortMode=addressWithRegion&sortDirection=desc&page=2&pageSize=50',
+      expect.anything()
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/waste-management/collection-locations/selection?status=inactive&cityId=city-1',
+      expect.anything()
     );
   });
 

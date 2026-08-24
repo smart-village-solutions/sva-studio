@@ -1,4 +1,4 @@
-import { createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
+import { usePagedRouteSync } from './waste-management.table-frame.js';
 
 import type { WasteMasterDataLocationsWorkspaceProps } from './waste-management.master-data-locations-workspace.types.js';
 import { WasteMasterDataLocationsTableSection } from './waste-management.master-data-locations-workspace.parts.js';
@@ -7,6 +7,9 @@ export const WasteMasterDataPagedLocationsTable = ({
   collectionLocations,
   page,
   pageSize,
+  pageCount,
+  totalItems,
+  pageResponseReceived = true,
   onSyncPageChange,
   ...props
 }: Pick<
@@ -23,10 +26,17 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'availableTours'
   | 'page'
   | 'pageSize'
+  | 'pageCount'
+  | 'totalItems'
+  | 'pageResponseReceived'
+  | 'sortMode'
+  | 'sortDirection'
   | 'selectedTourId'
   | 'onPageChange'
   | 'onSyncPageChange'
   | 'onPageSizeChange'
+  | 'onSortModeChange'
+  | 'onSortDirectionChange'
   | 'onTourFilterChange'
   | 'onToggleSelectAll'
   | 'onToggleLocation'
@@ -43,10 +53,10 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'onOpenEditTour'
   | 'getLocationLabel'
 >) => {
-  const pagedCollectionLocations = createPagedItems({ items: collectionLocations, page, pageSize });
+  const safePage = pageResponseReceived ? (pageCount > 0 ? Math.min(page, pageCount) : 1) : page;
   usePagedRouteSync({
     page,
-    safePage: pagedCollectionLocations.safePage,
+    safePage,
     onPageChange: props.onPageChange,
     onSyncPageChange,
   });
@@ -54,11 +64,11 @@ export const WasteMasterDataPagedLocationsTable = ({
   return (
     <WasteMasterDataLocationsTableSection
       {...props}
-      collectionLocations={pagedCollectionLocations.items}
-      page={pagedCollectionLocations.safePage}
+      collectionLocations={collectionLocations}
+      page={safePage}
       pageSize={pageSize}
-      pageCount={pagedCollectionLocations.pageCount}
-      totalItems={pagedCollectionLocations.totalItems}
+      pageCount={pageCount}
+      totalItems={totalItems}
     />
   );
 };

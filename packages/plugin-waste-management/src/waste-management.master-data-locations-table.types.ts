@@ -6,6 +6,8 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
+  WasteCollectionLocationSortDirection,
+  WasteCollectionLocationSortMode,
 } from '@sva/plugin-sdk';
 
 export type WasteMasterDataLocationsTableProps = {
@@ -23,9 +25,13 @@ export type WasteMasterDataLocationsTableProps = {
   readonly pageSize: number;
   readonly pageCount: number;
   readonly totalItems: number;
+  readonly sortMode: WasteCollectionLocationSortMode;
+  readonly sortDirection: WasteCollectionLocationSortDirection;
   readonly selectedTourId?: string;
   readonly onPageChange: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
+  readonly onSortModeChange: (sortMode: WasteCollectionLocationSortMode) => void;
+  readonly onSortDirectionChange: (sortDirection: WasteCollectionLocationSortDirection) => void;
   readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
@@ -42,16 +48,6 @@ export type WasteMasterDataLocationsTableProps = {
   readonly onOpenEditTour?: (tourId: string) => void;
   readonly getLocationLabel: (location: WasteCollectionLocationRecord) => string;
 };
-export type WasteMasterDataLocationsSortField =
-  | 'region'
-  | 'city'
-  | 'street'
-  | 'houseNumbers'
-  | 'tours'
-  | 'status';
-
-export type WasteMasterDataLocationsSortDirection = 'asc' | 'desc';
-
 export type WasteMasterDataLocationsTableMaps = {
   readonly regionsById: ReadonlyMap<string, WasteRegionRecord>;
   readonly citiesById: ReadonlyMap<string, WasteCityRecord>;

@@ -115,6 +115,7 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/house-numbers'
   | '/api/v1/waste-management/house-numbers/$houseNumberId'
   | '/api/v1/waste-management/collection-locations'
+  | '/api/v1/waste-management/collection-locations/selection'
   | '/api/v1/waste-management/collection-locations/$locationId'
   | '/api/v1/waste-management/location-tour-links'
   | '/api/v1/waste-management/location-tour-links/bulk'
@@ -269,6 +270,7 @@ export const authRoutePaths = [
   '/api/v1/waste-management/house-numbers',
   '/api/v1/waste-management/house-numbers/$houseNumberId',
   '/api/v1/waste-management/collection-locations',
+  '/api/v1/waste-management/collection-locations/selection',
   '/api/v1/waste-management/collection-locations/$locationId',
   '/api/v1/waste-management/location-tour-links',
   '/api/v1/waste-management/location-tour-links/bulk',

@@ -26,6 +26,7 @@ export const WasteMasterDataLocationDialogs = ({ controller }: { readonly contro
     <BulkLocationAssignmentsDialog
       open={controller.bulkAssignmentsDialogOpen}
       form={controller.bulkAssignmentsForm}
+      selectedLocationCount={controller.selectedLocationIds.length}
       selectedLocations={controller.selectedLocations}
       tours={controller.availableTours}
       saving={controller.saving}

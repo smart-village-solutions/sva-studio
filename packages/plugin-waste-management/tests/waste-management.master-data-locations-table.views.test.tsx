@@ -20,6 +20,8 @@ describe('waste-management master-data location table views', () => {
     const onOpenCreateCity = vi.fn();
     const onTourFilterChange = vi.fn();
     const onToggleSelectAll = vi.fn();
+    const onSortModeChange = vi.fn();
+    const onSortDirectionChange = vi.fn();
 
     render(
       <WasteMasterDataLocationsTableToolbar
@@ -45,6 +47,10 @@ describe('waste-management master-data location table views', () => {
         onOpenBulkAssignments={vi.fn()}
         onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={onToggleSelectAll}
+        sortMode="address"
+        sortDirection="asc"
+        onSortModeChange={onSortModeChange}
+        onSortDirectionChange={onSortDirectionChange}
         onRequestDeleteSelected={vi.fn()}
         onToggleFiltersOpen={vi.fn()}
       />
@@ -55,33 +61,63 @@ describe('waste-management master-data location table views', () => {
     });
     expect(onTourFilterChange).toHaveBeenCalledWith('tour-1');
 
-    fireEvent.click(screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered'));
+    fireEvent.click(
+      screen.getByLabelText('masterData.collectionLocations.bulk.actions.selectAllFiltered')
+    );
     expect(onToggleSelectAll).toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByText('masterData.locationsWorkspace.sorting.includeRegion'));
+    expect(onSortModeChange).toHaveBeenCalledWith('addressWithRegion');
+    expect(
+      screen.getByRole('group', { name: 'masterData.locationsWorkspace.sorting.label' })
+    ).toBeTruthy();
+    const directionButton = screen.getByRole('button', {
+      name: /masterData\.locationsWorkspace\.sorting\.directionLabel/,
+    });
+    expect(directionButton.getAttribute('type')).toBe('button');
+    fireEvent.click(directionButton);
+    expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
 
-    const createMenuTrigger = screen.getByRole('button', { name: /masterData\.locationsWorkspace\.actions\.createMenu/ });
+    const createMenuTrigger = screen.getByRole('button', {
+      name: /masterData\.locationsWorkspace\.actions\.createMenu/,
+    });
     fireEvent.click(createMenuTrigger);
-    await screen.findByRole('menuitem', { name: /masterData\.locationsWorkspace\.actions\.createCity/ });
+    await screen.findByRole('menuitem', {
+      name: /masterData\.locationsWorkspace\.actions\.createCity/,
+    });
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await waitFor(() => {
-      expect(screen.queryByRole('menuitem', { name: /masterData\.locationsWorkspace\.actions\.createCity/ })).toBeNull();
+      expect(
+        screen.queryByRole('menuitem', {
+          name: /masterData\.locationsWorkspace\.actions\.createCity/,
+        })
+      ).toBeNull();
     });
 
     fireEvent.click(createMenuTrigger);
-    await screen.findByRole('menuitem', { name: /masterData\.locationsWorkspace\.actions\.createCity/ });
+    await screen.findByRole('menuitem', {
+      name: /masterData\.locationsWorkspace\.actions\.createCity/,
+    });
     document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     await waitFor(() => {
-      expect(screen.queryByRole('menuitem', { name: /masterData\.locationsWorkspace\.actions\.createCity/ })).toBeNull();
+      expect(
+        screen.queryByRole('menuitem', {
+          name: /masterData\.locationsWorkspace\.actions\.createCity/,
+        })
+      ).toBeNull();
     });
 
     fireEvent.click(createMenuTrigger);
-    fireEvent.click(await screen.findByRole('menuitem', { name: /masterData\.locationsWorkspace\.actions\.createCity/ }));
+    fireEvent.click(
+      await screen.findByRole('menuitem', {
+        name: /masterData\.locationsWorkspace\.actions\.createCity/,
+      })
+    );
     expect(onOpenCreateCity).toHaveBeenCalledTimes(1);
   });
 
-  it('renders sortable headers and forwards select-all plus sort interactions', () => {
+  it('renders plain server-ordered headers and forwards select-all', () => {
     const onToggleSelectAll = vi.fn();
-    const onSortChange = vi.fn();
 
     render(
       <table>
@@ -89,9 +125,6 @@ describe('waste-management master-data location table views', () => {
           allFilteredLocationsSelected={false}
           someFilteredLocationsSelected
           onToggleSelectAll={onToggleSelectAll}
-          sortField="region"
-          sortDirection="desc"
-          onSortChange={onSortChange}
         />
       </table>
     );
@@ -99,10 +132,12 @@ describe('waste-management master-data location table views', () => {
     fireEvent.click(screen.getByLabelText(/masterData\.locationsWorkspace\.table\.selectAllRows/));
     expect(onToggleSelectAll).toHaveBeenCalledWith(true);
 
-    fireEvent.click(screen.getByRole('button', { name: /masterData\.locationsWorkspace\.table\.region/ }));
-    fireEvent.click(screen.getByRole('button', { name: /masterData\.locationsWorkspace\.table\.city/ }));
-    expect(onSortChange).toHaveBeenNthCalledWith(1, 'region');
-    expect(onSortChange).toHaveBeenNthCalledWith(2, 'city');
+    expect(
+      screen.getByRole('columnheader', { name: 'masterData.locationsWorkspace.table.region' })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: /masterData\.locationsWorkspace\.table\.region/ })
+    ).toBeNull();
   });
 
   it('renders fallback location values and forwards row actions', () => {
@@ -146,13 +181,21 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('masterData.locationsWorkspace.table.regionUnavailable')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.table.cityUnavailable')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.table.streetUnavailable')).toBeTruthy();
-    expect(screen.getByText('masterData.locationsWorkspace.table.houseNumbersUnavailable')).toBeTruthy();
+    expect(
+      screen.getByText('masterData.locationsWorkspace.table.houseNumbersUnavailable')
+    ).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.table.noTours')).toBeTruthy();
     expect(screen.getByText('common.inactive')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.edit' }));
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.copy' }));
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.delete' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.edit' })
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.copy' })
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.delete' })
+    );
 
     expect(onOpenEditLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
     expect(onCopyLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
@@ -202,6 +245,56 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('Straße')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Tour Nord' }));
+    expect(onOpenEditTour).toHaveBeenCalledWith('tour-1');
+  });
+
+  it('renders address and tour names from the paginated server projection', () => {
+    const onOpenEditTour = vi.fn();
+
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={{
+              id: 'location-1',
+              regionId: 'region-1',
+              regionName: 'Projektionsregion',
+              cityId: 'city-1',
+              cityName: 'Projektionsort',
+              streetId: 'street-1',
+              streetName: 'Projektionsstraße',
+              houseNumberId: 'house-1',
+              houseNumber: '27b',
+              tours: [{ id: 'tour-1', name: 'Projektionstour' }],
+              active: true,
+              createdAt: '',
+              updatedAt: '',
+            }}
+            maps={{
+              regionsById: new Map(),
+              citiesById: new Map(),
+              streetsById: new Map(),
+              houseNumbersById: new Map(),
+              toursById: new Map(),
+              locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn(async () => undefined)}
+            onOpenEditLocation={vi.fn()}
+            onOpenEditTour={onOpenEditTour}
+          />
+        </tbody>
+      </table>
+    );
+
+    expect(screen.getByText('Projektionsregion')).toBeTruthy();
+    expect(screen.getByText('Projektionsort')).toBeTruthy();
+    expect(screen.getByText('Projektionsstraße')).toBeTruthy();
+    expect(screen.getByText('27b')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Projektionstour' }));
     expect(onOpenEditTour).toHaveBeenCalledWith('tour-1');
   });
 });

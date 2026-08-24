@@ -1,4 +1,4 @@
-import type { StudioJobResponse } from '@sva/plugin-sdk';
+import type { StudioJobResponse, WasteCollectionLocationPage } from '@sva/plugin-sdk';
 import { startTransition, useState } from 'react';
 
 import type { WasteManagementMasterDataOverview } from './waste-management.api.js';
@@ -9,11 +9,24 @@ import { useWasteMasterDataLocationState } from './waste-management.master-data.
 export const useWasteMasterDataState = () => {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementMasterDataOverview | null>(null);
+  const [collectionLocationPage, setCollectionLocationPage] =
+    useState<WasteCollectionLocationPage | null>(null);
+  const [filteredLocationIds, setFilteredLocationIds] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [collectionLocationListError, setCollectionLocationListError] = useState<string | null>(
+    null
+  );
   const [message, setMessage] = useState<StatusMessage | null>(null);
-  const [trackedSyncWasteTypesJob, setTrackedSyncWasteTypesJob] = useState<StudioJobResponse['data'] | null>(null);
+  const [trackedSyncWasteTypesJob, setTrackedSyncWasteTypesJob] = useState<
+    StudioJobResponse['data'] | null
+  >(null);
   const [lastOutcome, setLastOutcome] = useState<
-    'fraction-create-success' | 'fraction-update-success' | 'location-create-success' | 'location-update-success' | null
+    | 'fraction-create-success'
+    | 'fraction-update-success'
+    | 'location-create-success'
+    | 'location-update-success'
+    | null
   >(null);
   const [saving, setSaving] = useState(false);
   const entityState = useWasteMasterDataEntityState();
@@ -22,7 +35,9 @@ export const useWasteMasterDataState = () => {
   return {
     loading,
     overview,
-    error,
+    collectionLocationPage,
+    filteredLocationIds,
+    error: error ?? overviewError ?? collectionLocationListError,
     message,
     trackedSyncWasteTypesJob,
     lastOutcome,
@@ -31,7 +46,11 @@ export const useWasteMasterDataState = () => {
     ...locationState,
     setLoading,
     setOverview,
+    setCollectionLocationPage,
+    setFilteredLocationIds,
     setError,
+    setOverviewError,
+    setCollectionLocationListError,
     setMessage,
     setTrackedSyncWasteTypesJob,
     setLastOutcome,

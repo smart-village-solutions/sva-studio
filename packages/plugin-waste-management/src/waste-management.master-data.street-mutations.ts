@@ -13,6 +13,7 @@ export const createWasteMasterDataStreetMutations = ({
   pt,
   search,
   loadOverview,
+  loadCollectionLocationList,
 }: WasteMasterDataSubmissionContext) => ({
   onSubmitStreet: async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,14 +34,16 @@ export const createWasteMasterDataStreetMutations = ({
     };
     try {
       if (state.streetDialogMode === 'create') {
-        await createWasteManagementStreet(wasteMasterDataInputMappers.toCreateStreetInput(submittedForm));
+        await createWasteManagementStreet(
+          wasteMasterDataInputMappers.toCreateStreetInput(submittedForm)
+        );
       } else {
         await updateWasteManagementStreet(
           state.streetForm.id,
           wasteMasterDataInputMappers.toUpdateStreetInput(submittedForm)
         );
       }
-      await loadOverview(true);
+      await Promise.all([loadOverview(true), loadCollectionLocationList()]);
       applySuccess(
         () => state.setStreetDialogOpen(false),
         state.setMessage,

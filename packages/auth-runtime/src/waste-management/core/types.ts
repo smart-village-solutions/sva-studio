@@ -4,9 +4,6 @@ import type {
   WasteManagementSettingsInterfaceOption,
   StudioJobStartRequest,
   WasteCollectionLocationRecord,
-  WasteCollectionLocationPage,
-  WasteCollectionLocationQuery,
-  WasteCollectionLocationSelectionFilter,
   WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
@@ -45,6 +42,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import type { Session } from '../../types.js';
 import type { WasteAnnualTourTransferHandlerDeps } from './annual-tour-transfer-deps.js';
 import type { WasteCityHandlerDeps } from './city-deps.js';
+import type { WasteCollectionLocationReadHandlerDeps } from './collection-location-read-deps.js';
 import type { SaveWasteCustomRecurrencePresetsInput } from './custom-recurrence-deps.js';
 import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
 
@@ -211,14 +209,6 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
     instanceId: string,
     locationId: string
   ) => Promise<WasteCollectionLocationRecord | null>;
-  readonly loadWasteCollectionLocationPage?: (
-    instanceId: string,
-    query: WasteCollectionLocationQuery
-  ) => Promise<WasteCollectionLocationPage>;
-  readonly loadWasteCollectionLocationIds?: (
-    instanceId: string,
-    filter: WasteCollectionLocationSelectionFilter
-  ) => Promise<readonly string[]>;
   readonly deleteWasteCollectionLocation?: (
     instanceId: string,
     locationId: string
@@ -322,4 +312,5 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
 };
 
 export type WasteManagementHandlerDeps = WasteManagementHandlerDepsBase &
-  WasteAnnualTourTransferHandlerDeps;
+  WasteAnnualTourTransferHandlerDeps &
+  WasteCollectionLocationReadHandlerDeps;

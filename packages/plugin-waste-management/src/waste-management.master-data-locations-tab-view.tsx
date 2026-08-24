@@ -10,6 +10,35 @@ type WasteMasterDataLocationsTabViewProps = {
   readonly search: WasteManagementSearchParams;
 };
 
+const WasteMasterDataLocationFormView = ({
+  controller,
+  search,
+  onCancel,
+}: WasteMasterDataLocationsTabViewProps & { readonly onCancel: () => void }) => (
+  <WasteMasterDataLocationFormContent
+    mode={search.locationsView === 'edit' ? 'edit' : 'create'}
+    form={controller.locationForm}
+    regions={controller.overview?.regions ?? []}
+    cities={controller.overview?.cities ?? []}
+    streets={controller.overview?.streets ?? []}
+    houseNumbers={controller.overview?.houseNumbers ?? []}
+    fractions={controller.overview?.fractions ?? []}
+    availableTours={controller.availableTours}
+    locationTourLinks={controller.overview?.locationTourLinks ?? []}
+    saving={controller.saving}
+    onChange={(patch) => controller.setLocationForm((current) => ({ ...current, ...patch }))}
+    onCancel={onCancel}
+    onSubmit={(values, cityPostalCodeUpdate) =>
+      controller.onSubmitLocation(
+        values,
+        search.locationsView === 'edit' ? 'edit' : 'create',
+        cityPostalCodeUpdate
+      )
+    }
+    onReloadAssignments={() => controller.reloadOverview()}
+  />
+);
+
 export const WasteMasterDataLocationsTabView = ({
   controller,
   search,
@@ -18,27 +47,10 @@ export const WasteMasterDataLocationsTabView = ({
 
   if (search.locationsView !== 'list') {
     return (
-      <WasteMasterDataLocationFormContent
-        mode={search.locationsView === 'edit' ? 'edit' : 'create'}
-        form={controller.locationForm}
-        regions={controller.overview?.regions ?? []}
-        cities={controller.overview?.cities ?? []}
-        streets={controller.overview?.streets ?? []}
-        houseNumbers={controller.overview?.houseNumbers ?? []}
-        fractions={controller.overview?.fractions ?? []}
-        availableTours={controller.availableTours}
-        locationTourLinks={controller.overview?.locationTourLinks ?? []}
-        saving={controller.saving}
-        onChange={(patch) => controller.setLocationForm((current) => ({ ...current, ...patch }))}
+      <WasteMasterDataLocationFormView
+        controller={controller}
+        search={search}
         onCancel={navigation.toList}
-        onSubmit={(values, cityPostalCodeUpdate) =>
-          controller.onSubmitLocation(
-            values,
-            search.locationsView === 'edit' ? 'edit' : 'create',
-            cityPostalCodeUpdate
-          )
-        }
-        onReloadAssignments={() => controller.reloadOverview()}
       />
     );
   }

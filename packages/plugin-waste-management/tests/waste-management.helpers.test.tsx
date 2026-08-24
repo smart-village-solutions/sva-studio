@@ -821,6 +821,7 @@ describe('waste management helper modules', () => {
     const setDialogOpen = vi.fn();
     const setRegionDialogOpen = vi.fn();
     const loadOverview = vi.fn().mockResolvedValue(undefined);
+    const loadCollectionLocationList = vi.fn().mockResolvedValue(undefined);
     const state = {
       dialogMode: 'create',
       regionDialogMode: 'edit',
@@ -839,6 +840,7 @@ describe('waste management helper modules', () => {
       pt,
       search: {} as never,
       loadOverview,
+      loadCollectionLocationList,
     });
 
     const createEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;

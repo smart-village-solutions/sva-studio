@@ -96,13 +96,11 @@ export const useWasteCollectionLocationList = (
   const loadList = useCallback(async () => {
     if (search.masterDataTab !== 'locations' || search.locationsView !== 'list') {
       requestSequence.current += 1;
-      clearFilteredLocationIds();
       setCollectionLocationListError(null);
       return;
     }
     const sequence = ++requestSequence.current;
     setCollectionLocationPage(null);
-    clearFilteredLocationIds();
     try {
       const page = await getWasteCollectionLocationPage(toQuery(search));
       if (sequence !== requestSequence.current) return;
@@ -129,9 +127,21 @@ export const useWasteCollectionLocationList = (
     search.regionId,
     search.status,
     search.tourId,
-    clearFilteredLocationIds,
     setCollectionLocationPage,
     setCollectionLocationListError,
+  ]);
+
+  useEffect(() => {
+    clearFilteredLocationIds();
+  }, [
+    search.cityId,
+    search.locationsView,
+    search.masterDataTab,
+    search.q,
+    search.regionId,
+    search.status,
+    search.tourId,
+    clearFilteredLocationIds,
   ]);
 
   useEffect(() => {

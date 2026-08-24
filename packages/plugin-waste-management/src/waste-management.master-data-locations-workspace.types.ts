@@ -28,6 +28,7 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly pageSize: number;
   readonly pageCount: number;
   readonly totalItems: number;
+  readonly pageResponseReceived?: boolean;
   readonly sortMode: WasteCollectionLocationSortMode;
   readonly sortDirection: WasteCollectionLocationSortDirection;
   readonly selectedTourId?: string;

@@ -18,6 +18,7 @@ type FractionRegionSubmissionHelperContext = {
   readonly state: WasteMasterDataState;
   readonly pt: Translate;
   readonly loadOverview: (active?: boolean) => Promise<void>;
+  readonly loadCollectionLocationList: () => Promise<void>;
 };
 
 const setDeleteErrorMessage = (ctx: FractionRegionSubmissionHelperContext, error: unknown) => {
@@ -204,7 +205,7 @@ export const createSubmitRegionHandler = (ctx: FractionRegionSubmissionHelperCon
         wasteMasterDataInputMappers.toUpdateRegionInput(ctx.state.regionForm)
       );
     }
-    await ctx.loadOverview(true);
+    await Promise.all([ctx.loadOverview(true), ctx.loadCollectionLocationList()]);
     applySuccess(
       () => ctx.state.setRegionDialogOpen(false),
       ctx.state.setMessage,

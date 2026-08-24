@@ -9,6 +9,7 @@ export const WasteMasterDataPagedLocationsTable = ({
   pageSize,
   pageCount,
   totalItems,
+  pageResponseReceived = true,
   onSyncPageChange,
   ...props
 }: Pick<
@@ -27,6 +28,7 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'pageSize'
   | 'pageCount'
   | 'totalItems'
+  | 'pageResponseReceived'
   | 'sortMode'
   | 'sortDirection'
   | 'selectedTourId'
@@ -51,7 +53,7 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'onOpenEditTour'
   | 'getLocationLabel'
 >) => {
-  const safePage = pageCount > 0 ? Math.min(page, pageCount) : 1;
+  const safePage = pageResponseReceived ? (pageCount > 0 ? Math.min(page, pageCount) : 1) : page;
   usePagedRouteSync({
     page,
     safePage,

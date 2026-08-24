@@ -247,4 +247,54 @@ describe('waste-management master-data location table views', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tour Nord' }));
     expect(onOpenEditTour).toHaveBeenCalledWith('tour-1');
   });
+
+  it('renders address and tour names from the paginated server projection', () => {
+    const onOpenEditTour = vi.fn();
+
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={{
+              id: 'location-1',
+              regionId: 'region-1',
+              regionName: 'Projektionsregion',
+              cityId: 'city-1',
+              cityName: 'Projektionsort',
+              streetId: 'street-1',
+              streetName: 'Projektionsstraße',
+              houseNumberId: 'house-1',
+              houseNumber: '27b',
+              tours: [{ id: 'tour-1', name: 'Projektionstour' }],
+              active: true,
+              createdAt: '',
+              updatedAt: '',
+            }}
+            maps={{
+              regionsById: new Map(),
+              citiesById: new Map(),
+              streetsById: new Map(),
+              houseNumbersById: new Map(),
+              toursById: new Map(),
+              locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn(async () => undefined)}
+            onOpenEditLocation={vi.fn()}
+            onOpenEditTour={onOpenEditTour}
+          />
+        </tbody>
+      </table>
+    );
+
+    expect(screen.getByText('Projektionsregion')).toBeTruthy();
+    expect(screen.getByText('Projektionsort')).toBeTruthy();
+    expect(screen.getByText('Projektionsstraße')).toBeTruthy();
+    expect(screen.getByText('27b')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Projektionstour' }));
+    expect(onOpenEditTour).toHaveBeenCalledWith('tour-1');
+  });
 });

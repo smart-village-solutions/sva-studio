@@ -12,6 +12,7 @@ export const createWasteMasterDataHouseNumberMutations = ({
   state,
   pt,
   loadOverview,
+  loadCollectionLocationList,
 }: WasteMasterDataSubmissionContext) => ({
   onSubmitHouseNumber: async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,14 +32,16 @@ export const createWasteMasterDataHouseNumberMutations = ({
     };
     try {
       if (state.houseNumberDialogMode === 'create') {
-        await createWasteManagementHouseNumber(wasteMasterDataInputMappers.toCreateHouseNumberInput(submittedForm));
+        await createWasteManagementHouseNumber(
+          wasteMasterDataInputMappers.toCreateHouseNumberInput(submittedForm)
+        );
       } else {
         await updateWasteManagementHouseNumber(
           state.houseNumberForm.id,
           wasteMasterDataInputMappers.toUpdateHouseNumberInput(submittedForm)
         );
       }
-      await loadOverview(true);
+      await Promise.all([loadOverview(true), loadCollectionLocationList()]);
       applySuccess(
         () => state.setHouseNumberDialogOpen(false),
         state.setMessage,

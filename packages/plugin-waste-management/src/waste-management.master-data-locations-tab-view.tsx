@@ -73,6 +73,7 @@ export const WasteMasterDataLocationsTabView = ({
       pageSize={search.pageSize}
       pageCount={controller.collectionLocationPage?.pageCount ?? 0}
       totalItems={controller.collectionLocationPage?.total ?? 0}
+      pageResponseReceived={controller.collectionLocationPage !== null}
       sortMode={search.locationSortMode}
       sortDirection={search.locationSortDirection}
       selectedTourId={search.tourId}

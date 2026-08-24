@@ -1,4 +1,8 @@
-import type { WasteCollectionLocationRecord, WasteTourRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCollectionLocationListItem,
+  WasteCollectionLocationRecord,
+  WasteTourRecord,
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   IconBuildingCommunity,
@@ -428,7 +432,7 @@ export const WasteMasterDataLocationsRow = ({
   onOpenEditLocation,
   onOpenEditTour,
 }: {
-  readonly location: WasteCollectionLocationRecord;
+  readonly location: WasteCollectionLocationRecord | WasteCollectionLocationListItem;
   readonly maps: WasteMasterDataLocationsTableMaps;
   readonly selectedLocationIds: readonly string[];
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
@@ -444,7 +448,12 @@ export const WasteMasterDataLocationsRow = ({
   const houseNumber = location.houseNumberId
     ? maps.houseNumbersById.get(location.houseNumberId)
     : undefined;
-  const linkedTours = maps.locationToursByLocationId?.get(location.id) ?? [];
+  const regionName = 'regionName' in location ? location.regionName : region?.name;
+  const cityName = 'cityName' in location ? location.cityName : city?.name;
+  const streetName = 'streetName' in location ? location.streetName : street?.name;
+  const houseNumberName = 'houseNumber' in location ? location.houseNumber : houseNumber?.number;
+  const linkedTours =
+    'tours' in location ? location.tours : (maps.locationToursByLocationId?.get(location.id) ?? []);
   const editLabel = pt('masterData.collectionLocations.actions.edit');
   const copyLabel = pt('masterData.collectionLocations.actions.copy');
   const deleteLabel = pt('masterData.collectionLocations.actions.delete');
@@ -460,22 +469,22 @@ export const WasteMasterDataLocationsRow = ({
       </td>
       <td className="px-3 py-3 align-top">
         <p className="font-medium">
-          {region?.name ?? pt('masterData.locationsWorkspace.table.regionUnavailable')}
+          {regionName ?? pt('masterData.locationsWorkspace.table.regionUnavailable')}
         </p>
       </td>
       <td className="px-3 py-3 align-top">
         <p className="font-medium">
-          {city?.name ?? pt('masterData.locationsWorkspace.table.cityUnavailable')}
+          {cityName ?? pt('masterData.locationsWorkspace.table.cityUnavailable')}
         </p>
       </td>
       <td className="px-3 py-3 align-top">
         <p className="font-medium">
-          {street?.name ?? pt('masterData.locationsWorkspace.table.streetUnavailable')}
+          {streetName ?? pt('masterData.locationsWorkspace.table.streetUnavailable')}
         </p>
       </td>
       <td className="px-3 py-3 align-top">
         <span className="text-sm">
-          {houseNumber?.number ?? pt('masterData.locationsWorkspace.table.houseNumbersUnavailable')}
+          {houseNumberName ?? pt('masterData.locationsWorkspace.table.houseNumbersUnavailable')}
         </span>
       </td>
       <td className="px-3 py-3 align-top">

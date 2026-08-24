@@ -9,6 +9,7 @@ export const createWasteMasterDataCityMutations = ({
   state,
   pt,
   loadOverview,
+  loadCollectionLocationList,
 }: WasteMasterDataSubmissionContext) => ({
   onSubmitCity: async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -35,7 +36,7 @@ export const createWasteMasterDataCityMutations = ({
           wasteMasterDataInputMappers.toUpdateCityInput(submittedForm)
         );
       }
-      await loadOverview(true);
+      await Promise.all([loadOverview(true), loadCollectionLocationList()]);
       applySuccess(
         () => state.setCityDialogOpen(false),
         state.setMessage,

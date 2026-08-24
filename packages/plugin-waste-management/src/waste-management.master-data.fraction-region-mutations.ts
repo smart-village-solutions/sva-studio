@@ -11,8 +11,9 @@ export const createWasteMasterDataFractionRegionMutations = ({
   state,
   pt,
   loadOverview,
+  loadCollectionLocationList,
 }: WasteMasterDataSubmissionContext) => {
-  const context = { state, pt, loadOverview };
+  const context = { state, pt, loadOverview, loadCollectionLocationList };
   return {
     onSubmitFraction: createFractionMutationHandler(context),
     deleteFraction: createDeleteFractionHandler(context),

@@ -93,23 +93,19 @@ const DynamicMasterDataLoaderHarness = ({ tab }: { readonly tab: 'fractions' | '
 const CollectionLocationLoaderHarness = () => {
   const state = useWasteMasterDataState();
   useWasteMasterDataOverview(state, (key) => key, 'locations');
-  useWasteCollectionLocationList(
-    state,
-    (key) => key,
-    {
-      masterDataTab: 'locations',
-      locationsView: 'list',
-      q: '',
-      status: 'all',
-      regionId: undefined,
-      cityId: undefined,
-      tourId: undefined,
-      locationSortMode: 'address',
-      locationSortDirection: 'asc',
-      page: 1,
-      pageSize: 25,
-    } as never
-  );
+  useWasteCollectionLocationList(state, (key) => key, {
+    masterDataTab: 'locations',
+    locationsView: 'list',
+    q: '',
+    status: 'all',
+    regionId: undefined,
+    cityId: undefined,
+    tourId: undefined,
+    locationSortMode: 'address',
+    locationSortDirection: 'asc',
+    page: 1,
+    pageSize: 25,
+  } as never);
 
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
@@ -205,7 +201,7 @@ describe('waste management data loaders', () => {
     });
   });
 
-  it('clears stale location rows and filtered ids before loading the next query', async () => {
+  it('retains filtered ids across page and sort reloads and clears them when filters change', async () => {
     apiMocks.getWasteCollectionLocationPage.mockImplementation(() => new Promise(() => undefined));
     let resolveIds: ((value: readonly string[]) => void) | undefined;
     apiMocks.getWasteCollectionLocationIds.mockImplementation(
@@ -214,25 +210,24 @@ describe('waste management data loaders', () => {
     const setCollectionLocationPage = vi.fn();
     const setFilteredLocationIds = vi.fn();
 
-    const { result } = renderHook(() =>
-      useWasteCollectionLocationList(
-        {
-          setCollectionLocationListError: vi.fn(),
-          setCollectionLocationPage,
-          setFilteredLocationIds,
-        } as never,
-        (key) => key,
-        {
-          masterDataTab: 'locations',
-          locationsView: 'list',
-          q: 'neue Suche',
-          status: 'all',
-          locationSortMode: 'address',
-          locationSortDirection: 'asc',
-          page: 2,
-          pageSize: 25,
-        } as never
-      )
+    const state = {
+      setCollectionLocationListError: vi.fn(),
+      setCollectionLocationPage,
+      setFilteredLocationIds,
+    } as never;
+    const initialSearch = {
+      masterDataTab: 'locations',
+      locationsView: 'list',
+      q: 'neue Suche',
+      status: 'all',
+      locationSortMode: 'address',
+      locationSortDirection: 'asc',
+      page: 2,
+      pageSize: 25,
+    } as never;
+    const { result, rerender } = renderHook(
+      ({ search }) => useWasteCollectionLocationList(state, (key) => key, search),
+      { initialProps: { search: initialSearch } }
     );
 
     await waitFor(() => {
@@ -250,6 +245,29 @@ describe('waste management data loaders', () => {
     });
     expect(loadedIds).toEqual(['location-1', 'location-2']);
     expect(setFilteredLocationIds).toHaveBeenLastCalledWith(['location-1', 'location-2']);
+
+    setFilteredLocationIds.mockClear();
+    rerender({
+      search: {
+        ...initialSearch,
+        page: 3,
+        locationSortDirection: 'desc',
+      } as never,
+    });
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(2);
+    });
+    expect(setFilteredLocationIds).not.toHaveBeenCalled();
+
+    rerender({
+      search: {
+        ...initialSearch,
+        q: 'anderer Filter',
+      } as never,
+    });
+    await waitFor(() => {
+      expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
+    });
   });
 
   it('keeps the tours loader on a single failed fetch cycle', async () => {

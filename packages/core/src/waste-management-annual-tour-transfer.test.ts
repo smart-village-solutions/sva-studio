@@ -987,6 +987,51 @@ describe('waste annual tour transfer', () => {
     expect(preview.summary.selected).toBe(1);
   });
 
+  it('excludes shifted-away occurrences from symmetric shift-to-recurrence checks', async () => {
+    const sourceTour = tour({ recurrence: 'weekly', firstDate: '2026-01-11' });
+    const targetTour = tour({
+      id: '9c9c9c9c-9c9c-4c9c-8c9c-9c9c9c9c9c9c',
+      recurrence: 'weekly',
+      firstDate: '2027-01-05',
+      endDate: '2027-12-31',
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'mapped-shift-to-target-origin',
+            tourId: sourceTour.id,
+            originalDate: '2026-01-11',
+            actualDate: '2026-01-06',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([targetTour], {
+        tourDateShifts: [
+          {
+            id: 'target-shift-away',
+            tourId: targetTour.id,
+            originalDate: '2027-01-05',
+            actualDate: '2027-01-06',
+            hasYear: true,
+            createdAt: '2027-01-01T00:00:00.000Z',
+            updatedAt: '2027-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    });
+
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2027-01-05');
+    expect(preview.tours[0]?.conflicts).toEqual([]);
+    expect(preview.summary.selected).toBe(1);
+  });
+
   it('preserves the year offset of annual shifts during conflict detection', async () => {
     const sourceTour = tour({
       recurrence: 'on-demand',

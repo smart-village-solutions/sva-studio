@@ -11,7 +11,7 @@ import {
 import {
   effectiveWasteAnnualShiftedDates,
   resolvedWasteAnnualShiftActualDates,
-  wasteAnnualDateOccursOnRecurringTour,
+  wasteAnnualDateOccursOnEffectiveRecurringTour,
   wasteAnnualRecurringSchedulesIntersect,
 } from './waste-management-annual-tour-transfer.conflict-dates.js';
 import {
@@ -142,10 +142,22 @@ const parallelPlanningConflict = (
   const matches =
     indexedDates.some((date) => mappedDates.includes(date)) ||
     mappedShiftDates.some((date) =>
-      wasteAnnualDateOccursOnRecurringTour(date, tour, interval)
+      wasteAnnualDateOccursOnEffectiveRecurringTour(
+        date,
+        tour,
+        interval,
+        indexed.tourDateShifts,
+        targetYear
+      )
     ) ||
     indexedShiftDates.some((date) =>
-      wasteAnnualDateOccursOnRecurringTour(date, mapped.targetTour as WasteTourRecord, interval)
+      wasteAnnualDateOccursOnEffectiveRecurringTour(
+        date,
+        mapped.targetTour as WasteTourRecord,
+        interval,
+        mapped.tourDateShifts,
+        targetYear
+      )
     ) ||
     wasteAnnualRecurringSchedulesIntersect({
       left: mapped.targetTour as WasteTourRecord,

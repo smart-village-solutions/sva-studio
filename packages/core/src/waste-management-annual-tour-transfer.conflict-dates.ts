@@ -74,6 +74,16 @@ export const wasteAnnualDateOccursOnRecurringTour = (
   return Number.isInteger(elapsedDays) && elapsedDays % intervalDays === 0;
 };
 
+export const wasteAnnualDateOccursOnEffectiveRecurringTour = (
+  date: string,
+  tour: WasteTourRecord,
+  intervalDays: number | null,
+  shifts: MappedShifts,
+  year: number
+): boolean =>
+  wasteAnnualDateOccursOnRecurringTour(date, tour, intervalDays) &&
+  !shiftedOriginsFor(shifts, year).has(date);
+
 const recurringOverlap = (input: {
   left: WasteTourRecord;
   right: WasteTourRecord;

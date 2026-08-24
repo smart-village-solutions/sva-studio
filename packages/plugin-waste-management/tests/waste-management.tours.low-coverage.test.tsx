@@ -585,9 +585,10 @@ describe('waste-management tours low coverage views', () => {
 
     fireEvent.change(screen.getByLabelText('tours.fields.name'), { target: { value: 'Bio Nord' } });
     fireEvent.click(screen.getByRole('button', { name: 'tours.fields.wasteFractions' }));
-    fireEvent.change(screen.getByLabelText('tours.fields.description'), {
-      target: { value: 'Neue Beschreibung' },
-    });
+    const longDescription = 'Ausführliche Tourbeschreibung '.repeat(20);
+    const descriptionField = screen.getByLabelText('tours.fields.description');
+    expect(descriptionField.getAttribute('maxlength')).toBeNull();
+    fireEvent.change(descriptionField, { target: { value: longDescription } });
     expect(screen.getByLabelText('tours.fields.firstDate')).toBeTruthy();
     expect(screen.getByLabelText('tours.fields.endDate')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('tours.fields.firstDate'), {
@@ -600,7 +601,7 @@ describe('waste-management tours low coverage views', () => {
 
     expect(onChange).toHaveBeenCalledWith({ name: 'Bio Nord' });
     expect(onChange).toHaveBeenCalledWith({ wasteFractionIds: ['fraction-2'] });
-    expect(onChange).toHaveBeenCalledWith({ description: 'Neue Beschreibung' });
+    expect(onChange).toHaveBeenCalledWith({ description: longDescription });
     expect(onChange).toHaveBeenCalledWith({ firstDate: '2026-08-01' });
     expect(onChange).toHaveBeenCalledWith({ endDate: '2026-08-31' });
     expect(onChange).toHaveBeenCalledWith({ active: false });

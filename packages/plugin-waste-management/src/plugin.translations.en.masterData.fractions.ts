@@ -98,7 +98,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     },
     fieldHints: {
       name: 'This is how the waste type will later appear in lists.',
-      description: 'Describe the waste type briefly and clearly. Maximum 300 characters.',
+      description: 'Describe the waste type briefly and clearly.',
       translationDe: 'Optional: German label for multilingual output.',
       translationEn: 'Optional: English label for multilingual output.',
       pdfShortLabel: 'Required: Short label for the PDF legend. This short label is used directly in PDF output and legends.',
@@ -123,9 +123,6 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
       nameRequired: 'Please enter a name.',
       pdfShortLabelRequired: 'Please enter a PDF short label.',
       colorRequired: 'Please enter a valid hex color.',
-    },
-    meta: {
-      descriptionCounter: '{{count}} / 300 characters',
     },
     actions: {
       backToList: 'Back to list',

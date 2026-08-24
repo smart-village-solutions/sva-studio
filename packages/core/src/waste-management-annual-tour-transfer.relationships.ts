@@ -5,10 +5,7 @@ import {
   mapWasteAnnualConcreteDate,
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
-import {
-  mapWasteAnnualRecurringShiftDates,
-  wasteAnnualIntervalForTour,
-} from './waste-management-annual-tour-transfer.shift-cadence.js';
+import { mapWasteAnnualRecurringShiftDates } from './waste-management-annual-tour-transfer.shift-cadence.js';
 
 export const wasteAnnualRelationshipsFor = <T extends { readonly tourId: string }>(
   items: readonly T[],

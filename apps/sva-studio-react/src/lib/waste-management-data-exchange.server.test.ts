@@ -270,6 +270,51 @@ describe('Waste data exchange operations', () => {
     expect(result.details).toMatchObject({ created: 1, updated: 0, unchanged: 0 });
   });
 
+  it('allocates collision-free labels for fractions without an optional PDF short label', async () => {
+    repository.listWasteFractions.mockResolvedValueOnce([{
+      id: 'existing-fraction',
+      name: 'Bio',
+      pdfShortLabel: 'BIO',
+      color: '#008800',
+      active: true,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: { push: false, email: false, calendar: false },
+      },
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }]);
+    const { deps } = createDeps();
+    const envelope = {
+      formatVersion: '1.0.0',
+      pluginId: 'waste-management',
+      profileId: 'waste-management.fraktionen',
+      exportedAt: '2026-08-16T09:00:00.000Z',
+      records: [
+        { entityType: 'fraction', id: 'fraction-1', name: 'Bioabfall', color: '#00aa00' },
+        { entityType: 'fraction', id: 'fraction-2', name: 'Biomüll', color: '#00bb00' },
+      ],
+    };
+
+    await importCanonicalWasteManagementJson({
+      deps: {
+        ...deps,
+        readBinarySource: vi.fn(async () => new TextEncoder().encode(JSON.stringify(envelope))),
+      },
+      instanceId: 'instance-1',
+      profileId: 'waste-management.fraktionen',
+      blobRef: 'blob:import-collisions',
+      dryRun: false,
+    });
+
+    expect(repository.upsertWasteFraction).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'fraction-1', pdfShortLabel: 'BIO-2' })
+    );
+    expect(repository.upsertWasteFraction).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'fraction-2', pdfShortLabel: 'BIO-3' })
+    );
+  });
+
   it('rolls back a profile with unresolved references', async () => {
     const { deps, query } = createDeps();
     const importDeps = {

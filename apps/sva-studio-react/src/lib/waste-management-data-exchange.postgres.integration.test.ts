@@ -24,6 +24,9 @@ const instanceId = 'waste-data-exchange-integration';
 const emptyDatabaseFractionId = '10000000-0000-4000-8000-000000000101';
 const prefilledDatabaseFractionId = '10000000-0000-4000-8000-000000000102';
 const rolledBackFractionId = '10000000-0000-4000-8000-000000000103';
+const existingCollisionFractionId = '10000000-0000-4000-8000-000000000104';
+const firstCollisionFractionId = '10000000-0000-4000-8000-000000000105';
+const secondCollisionFractionId = '10000000-0000-4000-8000-000000000106';
 const invalidTourId = '20000000-0000-4000-8000-000000000101';
 const missingFractionId = '10000000-0000-4000-8000-000000000199';
 
@@ -172,6 +175,54 @@ describe('Waste data exchange against PostgreSQL', () => {
       description: 'bestehend',
       active: false,
     }]);
+  });
+
+  it('allocates collision-free fallback labels against the target database and import batch', async () => {
+    await pool.query(
+      `INSERT INTO waste_fractions (id, name, pdf_short_label, color)
+       VALUES ($1::uuid, 'Bio', 'BIO', '#118811');`,
+      [existingCollisionFractionId]
+    );
+    const body = strToU8(JSON.stringify({
+      formatVersion: '1.0.0',
+      pluginId: 'waste-management',
+      profileId: 'waste-management.fraktionen',
+      exportedAt: '2026-08-24T00:00:00.000Z',
+      records: [
+        {
+          entityType: 'fraction',
+          id: firstCollisionFractionId,
+          name: 'Bioabfall',
+          color: '#228822',
+        },
+        {
+          entityType: 'fraction',
+          id: secondCollisionFractionId,
+          name: 'Biomüll',
+          color: '#338833',
+        },
+      ],
+    }));
+
+    await importCanonicalWasteManagementJson({
+      deps: createDeps(body),
+      instanceId,
+      profileId: 'waste-management.fraktionen',
+      blobRef: 'integration:collision-fallbacks',
+      dryRun: false,
+    });
+
+    const stored = await pool.query<{ id: string; pdf_short_label: string }>(
+      `SELECT id::text, pdf_short_label
+       FROM waste_fractions
+       WHERE id = ANY($1::uuid[])
+       ORDER BY id;`,
+      [[firstCollisionFractionId, secondCollisionFractionId]]
+    );
+    expect(stored.rows).toEqual([
+      { id: firstCollisionFractionId, pdf_short_label: 'BIO-2' },
+      { id: secondCollisionFractionId, pdf_short_label: 'BIO-3' },
+    ]);
   });
 
   it('rolls back earlier profile writes when a later package profile is invalid', async () => {

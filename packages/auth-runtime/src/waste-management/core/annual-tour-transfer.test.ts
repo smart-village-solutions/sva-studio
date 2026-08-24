@@ -320,6 +320,7 @@ describe('annual tour transfer handlers', () => {
   });
 
   it('releases the fenced reservation after a transient failure so the request can retry', async () => {
+    const emitAuditEvent = vi.fn(async () => undefined);
     const response =
       await wasteManagementAnnualTourTransferHandlers.createWasteAnnualTourTransferInternal(
         request(
@@ -342,7 +343,7 @@ describe('annual tour transfer handlers', () => {
           createWasteAnnualTourTransfer: vi.fn(async () => {
             throw new Error('connection_lost_around_commit');
           }),
-          emitAuditEvent: vi.fn(async () => undefined),
+          emitAuditEvent,
         }
       );
 
@@ -355,6 +356,8 @@ describe('annual tour transfer handlers', () => {
       leaseToken: 'lease-1',
     });
     expect(idempotency.complete).not.toHaveBeenCalled();
+    expect(idempotency.hasAudit).not.toHaveBeenCalled();
+    expect(emitAuditEvent).not.toHaveBeenCalled();
   });
 
   it('does not execute or audit while the same idempotency key is still in progress', async () => {

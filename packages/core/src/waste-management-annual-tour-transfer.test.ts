@@ -923,6 +923,47 @@ describe('waste annual tour transfer', () => {
     expect(preview.tours[0]?.conflicts).toEqual([]);
   });
 
+  it('includes cross-year shift destinations when selecting conflict candidates', async () => {
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-12-31' }],
+    });
+    const targetTour = tour({
+      id: 'abababab-abab-4aba-8bab-abababababab',
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2028-01-01' }],
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'cross-year-conflict-shift',
+            tourId: sourceTour.id,
+            originalDate: '2026-12-31',
+            actualDate: '2027-01-02',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([targetTour]),
+    });
+
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2028-01-01');
+    expect(preview.tours[0]?.conflicts).toEqual([
+      expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
+    ]);
+    expect(preview.summary.selected).toBe(0);
+  });
+
   it('ignores annual shifts on source tours whose validity ended before the target year', async () => {
     const sourceTour = tour();
     const annualShift = {

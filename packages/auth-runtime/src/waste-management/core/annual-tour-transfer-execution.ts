@@ -26,6 +26,16 @@ export const completeAnnualTourTransfer = async (input: {
   ctx: AuthenticatedRequestContext;
 }): Promise<Response> => {
   const responseBody = await input.response.clone().json();
+  if (input.response.status >= 500) {
+    await releaseIdempotencyReservation({
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      endpoint: annualTourTransferEndpoint,
+      idempotencyKey: input.idempotencyKey,
+      leaseToken: input.leaseToken,
+    });
+    return input.response;
+  }
   const updatedPreview = (
     responseBody as {
       error?: { details?: { updatedPreview?: WasteAnnualTourTransferPreview } };
@@ -68,16 +78,6 @@ export const completeAnnualTourTransfer = async (input: {
       ctx: input.ctx,
       requestId: input.idempotencyKey,
     });
-  }
-  if (input.response.status >= 500) {
-    await releaseIdempotencyReservation({
-      instanceId: input.instanceId,
-      actorAccountId: input.actorAccountId,
-      endpoint: annualTourTransferEndpoint,
-      idempotencyKey: input.idempotencyKey,
-      leaseToken: input.leaseToken,
-    });
-    return input.response;
   }
   await completeIdempotency({
     instanceId: input.instanceId,

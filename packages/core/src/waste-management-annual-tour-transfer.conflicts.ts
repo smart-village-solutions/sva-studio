@@ -216,6 +216,12 @@ export const findWasteAnnualTourConflicts = (
     ];
   }
   const targetYear = wasteAnnualYearOf(wasteAnnualEffectiveDates(mapped)[0] ?? '') ?? 0;
+  const conflictYears = new Set([
+    targetYear,
+    ...resolvedShiftActualDates(mapped.tourDateShifts, targetYear)
+      .map((date) => wasteAnnualYearOf(date))
+      .filter((year): year is number => year !== null),
+  ]);
   const signature = wasteAnnualPlanningSignature(
     mapped.targetTour.wasteFractionIds,
     mapped.locationTourLinks.map((item) => item.locationId),
@@ -224,7 +230,8 @@ export const findWasteAnnualTourConflicts = (
   return (index.bySignature.get(signature) ?? [])
     .filter(
       (indexed) =>
-        indexed.tour.id !== mapped.targetTour.id && tourHasEffectiveDateInYear(indexed, targetYear)
+        indexed.tour.id !== mapped.targetTour.id &&
+        [...conflictYears].some((year) => tourHasEffectiveDateInYear(indexed, year))
     )
     .map((indexed) => parallelPlanningConflict(sourceTourId, mapped, indexed))
     .filter((conflict): conflict is WasteAnnualTourTransferConflict => conflict !== null);

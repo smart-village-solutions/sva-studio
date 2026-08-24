@@ -13,7 +13,7 @@
 
 ## 3. Betrieb und Datensicherheit
 
-- [x] 3.1 `sva_waste` sowie `sva_waste_owner`, `sva_waste_migrator`, `sva_waste_app` und `sva_waste_public_app` mit minimalen Rechten reproduzierbar für die kanonischen Umgebungen provisionieren.
+- [x] 3.1 Die aus der Instanz-ID deterministisch abgeleitete Waste-Datenbank sowie ihre tenantbezogenen Owner-, Migrator-, Studio- und Public-Rollen mit minimalen Rechten reproduzierbar für die kanonischen Umgebungen provisionieren.
 - [x] 3.2 Backup- und Restore-Abläufe um die Waste-Fachdatenbank erweitern und mit einem Restore-Drill nachweisen.
 - [x] 3.3 Kontrollierten Schreibstopp für das Sonntagsfenster festlegen und produktiv nachweisen: Der geschützte Cutover-Run `31315095719` stoppte die Public-Waste-App, sperrte neue Verbindungen der Studio-/Worker-Runtime zur tenantgebundenen Zieldatenbank, wartete den Sitzungs-Drain ab und startete Public Waste erst nach erfolgreichem Import und Smoke-Test wieder; ein neuer Anwendungs-Wartungsmodus war nicht erforderlich (Nachweis: `docs/reports/bb-prignitz-waste-cutover-completion-2026-08-24.md`).
 - [x] 3.4 Maschinenlesbare Vorher-/Nachher-Verifikation für Schemaobjekte, Migrationen und Zeilenzahlen bereitstellen.
@@ -24,7 +24,7 @@
 - [x] 4.2 Quellinventar der vorhandenen Supabase-Datenbank ohne Secret- oder PII-Offenlegung erstellen und migrationsrelevante Abweichungen dokumentieren.
 - [x] 4.3 Trockenlauf gegen eine isolierte Ziel-Datenbank durchführen und die Verifikationskriterien nachweisen.
 - [x] 4.4 Produktiven Offline-Cutover durchführen und den umgebungsspezifischen Nachweis unter `docs/staging/YYYY-MM/` beziehungsweise `docs/reports/` ablegen; der Abschlussnachweis referenziert den erfolgreichen Cutover-Run und die redigierte Import-Evidenz.
-- [x] 4.5 Supabase nach Freigabe der Zielschreibzugriffe 14 Tage als nicht mehr produktiv verwendete Vergleichs- und Notfallquelle erhalten; das Rückfallfenster lief am 23. August 2026 ohne Rückwechsel ab, ein späterer Rückwechsel bleibt eine neue Datenmigration, und die anschließend festgestellte Stilllegung ist im Abschlussnachweis dokumentiert.
+- [x] 4.5 Supabase nach Freigabe der Zielschreibzugriffe 14 Tage als Vergleichs- und Notfallquelle erhalten, ohne sie in einer produktiven Waste-Runtime zu verwenden; das Rückfallfenster lief am 23. August 2026 ohne Rückwechsel ab, ein späterer Rückwechsel bleibt eine neue Datenmigration, und die anschließend festgestellte Stilllegung sowie die Evidenzgrenze für manuelle Zugriffe sind im Abschlussnachweis dokumentiert.
 
 ## 5. Dokumentation und Gates
 

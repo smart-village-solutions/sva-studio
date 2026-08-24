@@ -1257,7 +1257,7 @@ Das System SHALL seine fachliche Waste-Persistenz über eine direkte serverseiti
 #### Scenario: Waste-Datenbank bleibt von Studio-Governance getrennt
 
 - **WHEN** Waste-Management in derselben PostgreSQL-Serverinstanz wie das Studio betrieben wird
-- **THEN** liegen die Waste-Fachdaten in der separaten Datenbank `sva_waste`
+- **THEN** liegen die Waste-Fachdaten in einer aus der Instanz-ID deterministisch abgeleiteten separaten Datenbank
 - **AND** verwenden administrative und öffentliche Runtime getrennte Rollen mit minimalen Rechten
 - **AND** IAM-, Audit-, Registry- und sonstige Studio-Governance-Daten verbleiben in der Studio-Datenbank
 
@@ -1268,9 +1268,9 @@ Das System SHALL für die eine vorhandene Waste-Supabase einen kontrollierten Of
 #### Scenario: Finaler Dump entsteht ohne parallele Waste-Schreibzugriffe
 
 - **WHEN** der produktive Cutover beginnt
-- **THEN** werden Studio-App, Public-Waste-App und Waste-Worker im angekündigten Betriebsfenster kontrolliert gestoppt
-- **AND** laufende Waste-Jobs werden vor dem finalen Dump beendet oder kontrolliert abgebrochen
-- **AND** verbleibende schreibende Datenbanksitzungen werden ausgeschlossen
+- **THEN** wird die Public-Waste-App im angekündigten Betriebsfenster kontrolliert gestoppt
+- **AND** werden neue Verbindungen der Studio-/Worker-Runtime zur Waste-Zieldatenbank gesperrt
+- **AND** wird vor dem Import gewartet, bis verbleibende Anwendungssitzungen beendet sind
 - **AND** die Quelle bleibt bis zur abgeschlossenen Umschaltung unverändert
 - **AND** das System führt dafür keinen dauerhaften Anwendungs-Wartungsmodus ein
 
@@ -1291,7 +1291,7 @@ Das System SHALL für die eine vorhandene Waste-Supabase einen kontrollierten Of
 #### Scenario: Supabase bleibt zeitlich begrenzt als Rollback-Stand erhalten
 
 - **WHEN** der Cutover erfolgreich abgeschlossen ist
-- **THEN** bleibt die alte Supabase-Datenbank 14 Tage schreibgeschützt als Vergleichs- und Notfallquelle verfügbar
+- **THEN** bleibt die alte Supabase-Datenbank 14 Tage als Vergleichs- und Notfallquelle erhalten, ohne von einer produktiven Waste-Runtime verwendet zu werden
 - **AND** beschreibt das Runbook den verlustfreien Rollback beider Runtimes vor Freigabe neuer Zielschreibzugriffe
 - **AND** behandelt es einen späteren Rückwechsel als erneute kontrollierte Datenmigration
 - **AND** erfolgt eine spätere Stilllegung erst nach gesonderter Bestätigung

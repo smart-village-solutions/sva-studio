@@ -40,9 +40,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     search,
     loadOverview,
     loadCollectionLocationList: refreshCollectionLocationList,
-    selectedCollectionLocationIds: derivedState.selectedCollectionLocations.map(
-      (location) => location.id
-    ),
+    selectedCollectionLocationIds: state.selectedLocationIds,
   });
   const resetActions = createWasteMasterDataResetActions(state);
 

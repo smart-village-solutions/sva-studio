@@ -43,6 +43,18 @@ type PreviewTourInput = Readonly<{
   replacements: ReadonlyMap<string, string>;
 }>;
 
+const previewReplacementResources = (
+  input: PreviewTourInput,
+  requiredResourceIds: readonly string[] = []
+) => {
+  const requestedIds = [...new Set([...requiredResourceIds, ...input.replacements.keys()])];
+  const targetYears = wasteAnnualReplacementTargetYearsFor(input, requestedIds);
+  return {
+    resourceIds: [...new Set([...requiredResourceIds, ...Object.keys(targetYears)])],
+    targetYears,
+  } as const;
+};
+
 const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview> => {
   const counts = wasteAnnualTourRelationshipCounts(input.tour, input.sourceYear, input.source);
   const common = {
@@ -70,25 +82,13 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
   }
   const mappedResult = await mapWasteAnnualTour(input);
   if ('blocker' in mappedResult) {
-    const requestedReplacementResourceIds = [
-      ...new Set([...mappedResult.replacementResourceIds, ...input.replacements.keys()]),
-    ];
-    const replacementTargetYears = wasteAnnualReplacementTargetYearsFor(
-      input,
-      requestedReplacementResourceIds
-    );
-    const replacementResourceIds = [
-      ...new Set([
-        ...mappedResult.replacementResourceIds,
-        ...Object.keys(replacementTargetYears),
-      ]),
-    ];
+    const replacements = previewReplacementResources(input, mappedResult.replacementResourceIds);
     return {
       ...common,
       classification: 'blocked',
       reasonCode: mappedResult.blocker,
-      replacementResourceIds,
-      replacementTargetYears,
+      replacementResourceIds: replacements.resourceIds,
+      replacementTargetYears: replacements.targetYears,
       dateExamples: [],
       conflicts: [],
     };
@@ -101,9 +101,7 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
   const identityConflict = conflicts.some(
     (conflict) => conflict.kind === 'target-identity-conflict'
   );
-  const replacementTargetYears = wasteAnnualReplacementTargetYearsFor(input, [
-    ...input.replacements.keys(),
-  ]);
+  const replacements = previewReplacementResources(input);
   return {
     ...common,
     classification: identityConflict ? 'blocked' : 'transferable',
@@ -114,8 +112,8 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
     },
     firstTargetDate: [...wasteAnnualEffectiveDates(mappedResult.mapped)].sort()[0],
     relationshipCounts: { ...counts, excluded: mappedResult.excluded },
-    replacementResourceIds: Object.keys(replacementTargetYears),
-    replacementTargetYears,
+    replacementResourceIds: replacements.resourceIds,
+    replacementTargetYears: replacements.targetYears,
     dateExamples: wasteAnnualConcreteDateExamples(
       input.tour,
       input.sourceYear,

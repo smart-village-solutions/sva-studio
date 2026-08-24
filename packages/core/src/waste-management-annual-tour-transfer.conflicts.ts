@@ -19,7 +19,7 @@ import {
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
 import { stableWasteAnnualSerialize } from './waste-management-annual-tour-transfer.identity.js';
-import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.mapping.js';
+import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.shift-cadence.js';
 
 export const sortWasteAnnualItems = <T>(
   items: readonly T[],
@@ -135,10 +135,7 @@ const parallelPlanningConflict = (
   );
   const interval = wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord);
   const mappedShiftDates = resolvedWasteAnnualShiftActualDates(mapped.tourDateShifts, targetYear);
-  const indexedShiftDates = resolvedWasteAnnualShiftActualDates(
-    indexed.tourDateShifts,
-    targetYear
-  );
+  const indexedShiftDates = resolvedWasteAnnualShiftActualDates(indexed.tourDateShifts, targetYear);
   const matches =
     indexedDates.some((date) => mappedDates.includes(date)) ||
     mappedShiftDates.some((date) =>

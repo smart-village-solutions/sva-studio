@@ -1,6 +1,6 @@
 import type { WasteAnnualTourTransferSource } from './waste-management-annual-tour-transfer.contract.js';
 import { stableWasteAnnualSerialize } from './waste-management-annual-tour-transfer.identity.js';
-import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.mapping.js';
+import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.shift-cadence.js';
 import type { WasteTourRecord } from './waste-management/master-data-tours.js';
 
 export type IndexedWasteAnnualTargetTour = Readonly<{
@@ -75,11 +75,7 @@ export const createWasteAnnualTourConflictIndex = (
           .filter((item) => item.hasYear)
           .map((item) => item.actualDate),
       ],
-      signature: wasteAnnualPlanningSignature(
-        tour.wasteFractionIds,
-        locations,
-        tour
-      ),
+      signature: wasteAnnualPlanningSignature(tour.wasteFractionIds, locations, tour),
     } satisfies IndexedWasteAnnualTargetTour;
     byId.set(tour.id, indexed);
     const candidates = bySignature.get(indexed.signature);

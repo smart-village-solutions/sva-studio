@@ -5,6 +5,12 @@ import {
   mapWasteAnnualConcreteDate,
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
+import {
+  isWasteAnnualCadenceOccurrence,
+  mapWasteAnnualCadenceOccurrence,
+  mapWasteAnnualRelativeDate,
+  wasteAnnualIntervalForTour,
+} from './waste-management-annual-tour-transfer.shift-cadence.js';
 
 export const wasteAnnualRelationshipsFor = <T extends { readonly tourId: string }>(
   items: readonly T[],
@@ -89,28 +95,78 @@ const mapAssignments = (input: AnnualRelationshipMappingInput) =>
 const targetYearForShiftDate = (value: string, input: AnnualRelationshipMappingInput): number =>
   input.targetYear + ((wasteAnnualYearOf(value) ?? input.sourceYear) - input.sourceYear);
 
+const mapShiftOriginalDate = (
+  source: WasteAnnualTourTransferSource['tourDateShifts'][number],
+  input: AnnualRelationshipMappingInput
+): string | null => {
+  const resourceId = `${source.id}:original`;
+  const replacement = input.replacements.get(resourceId);
+  const intervalDays = wasteAnnualIntervalForTour(input.tour);
+  if (
+    !input.tour.customRecurrenceId ||
+    intervalDays === null ||
+    !input.tour.firstDate ||
+    !input.targetValidity?.firstDate
+  ) {
+    return mapWasteAnnualConcreteDate(source.originalDate, input.targetYear, replacement);
+  }
+  if (replacement !== undefined) {
+    return isWasteAnnualCadenceOccurrence({
+      date: replacement,
+      firstDate: input.targetValidity.firstDate,
+      endDate: input.targetValidity.endDate,
+      year: input.targetYear,
+      intervalDays,
+    })
+      ? replacement
+      : null;
+  }
+  return mapWasteAnnualCadenceOccurrence({
+    sourceDate: source.originalDate,
+    sourceFirstDate: input.tour.firstDate,
+    sourceEndDate: input.tour.endDate,
+    sourceYear: input.sourceYear,
+    targetYear: input.targetYear,
+    targetFirstDate: input.targetValidity.firstDate,
+    targetEndDate: input.targetValidity.endDate,
+    intervalDays,
+  });
+};
+
+const mapShiftActualDate = (
+  source: WasteAnnualTourTransferSource['tourDateShifts'][number],
+  originalDate: string | null,
+  input: AnnualRelationshipMappingInput
+): string | null => {
+  const resourceId = `${source.id}:actual`;
+  const targetYear = targetYearForShiftDate(source.actualDate, input);
+  if (!input.tour.customRecurrenceId || !originalDate) {
+    return mapDate(source.actualDate, resourceId, targetYear, input.replacements);
+  }
+  return mapWasteAnnualRelativeDate({
+    sourceOrigin: source.originalDate,
+    sourceDate: source.actualDate,
+    targetOrigin: originalDate,
+    targetYear,
+    replacementDate: input.replacements.get(resourceId),
+  });
+};
+
 const mapShifts = (input: AnnualRelationshipMappingInput) =>
   wasteAnnualRelationshipsFor(input.source.tourDateShifts, input.tour.id)
     .filter((item) => !item.hasYear || isWasteAnnualDateInYear(item.originalDate, input.sourceYear))
-    .map((source) => ({
-      source,
-      originalDate: source.hasYear
-        ? mapDate(
-            source.originalDate,
-            `${source.id}:original`,
-            input.targetYear,
-            input.replacements
-          )
-        : source.originalDate,
-      actualDate: source.hasYear
-        ? mapDate(
-            source.actualDate,
-            `${source.id}:actual`,
-            targetYearForShiftDate(source.actualDate, input),
-            input.replacements
-          )
-        : source.actualDate,
-    }));
+    .map((source) => {
+      const originalDate = source.hasYear
+        ? mapShiftOriginalDate(source, input)
+        : source.originalDate;
+      return {
+        source,
+        originalDate,
+        actualDate: source.hasYear
+          ? mapShiftActualDate(source, originalDate, input)
+          : source.actualDate,
+      };
+    });
 
 type AnnualRelationshipMappingInput = Readonly<{
   tour: WasteTourRecord;
@@ -118,6 +174,7 @@ type AnnualRelationshipMappingInput = Readonly<{
   targetYear: number;
   source: WasteAnnualTourTransferSource;
   replacements: ReadonlyMap<string, string>;
+  targetValidity?: Readonly<{ firstDate?: string; endDate?: string }>;
 }>;
 
 export const mapWasteAnnualRelationships = (input: AnnualRelationshipMappingInput) => {

@@ -2,7 +2,7 @@ import type { WasteTourRecord } from './waste-management/master-data-tours.js';
 import type { WasteAnnualTourTransferSource } from './waste-management-annual-tour-transfer.contract.js';
 import { wasteAnnualTourOverlapsYear } from './waste-management-annual-tour-transfer.conflicts.js';
 import { isWasteAnnualDateInYear } from './waste-management-annual-tour-transfer.dates.js';
-import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.mapping.js';
+import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.shift-cadence.js';
 import { wasteAnnualRelationshipsFor } from './waste-management-annual-tour-transfer.relationships.js';
 
 export const isWasteAnnualTourRelevant = (

@@ -423,6 +423,41 @@ describe('waste annual tour transfer', () => {
     });
   });
 
+  it('maps recurring shift origins to the same occurrence in the continued cadence', async () => {
+    const sourceTour = tour({
+      recurrence: undefined,
+      customRecurrenceId: 'preset-10',
+      customRecurrenceName: 'Alle zehn Tage',
+      customRecurrenceIntervalDays: 10,
+      firstDate: '2026-01-01',
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'shift-second-occurrence',
+            tourId: sourceTour.id,
+            originalDate: '2026-01-11',
+            actualDate: '2026-01-12',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]?.mappedTour?.targetTour.firstDate).toBe('2027-01-06');
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]).toMatchObject({
+      originalDate: '2027-01-16',
+      actualDate: '2027-01-17',
+    });
+  });
+
   it('accepts the approved batch limits exactly and rejects either value above them', () => {
     expect(() =>
       assertWasteAnnualTourTransferLimits({ tours: 1_000, relationships: 100_000 })
@@ -1245,10 +1280,7 @@ describe('waste annual tour transfer', () => {
       reasonCode: 'target_date_collision',
     });
     expect(preview.tours[0]?.replacementResourceIds).toEqual(
-      expect.arrayContaining([
-        'shift-january-1:original',
-        'shift-january-8:original',
-      ])
+      expect.arrayContaining(['shift-january-1:original', 'shift-january-8:original'])
     );
   });
 

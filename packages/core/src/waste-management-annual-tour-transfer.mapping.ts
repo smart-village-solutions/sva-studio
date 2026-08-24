@@ -6,6 +6,7 @@ import {
   wasteAnnualEndOfYear,
   wasteAnnualStartOfYear,
 } from './waste-management-annual-tour-transfer.dates.js';
+import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.shift-cadence.js';
 import { deriveWasteAnnualTourTransferId } from './waste-management-annual-tour-transfer.identity.js';
 import type {
   WasteAnnualTourMappingBlocker,
@@ -20,14 +21,6 @@ import {
   filterReplaceableWasteAnnualCollisionResources,
   hasImmutableWasteAnnualShiftCollision,
 } from './waste-management-annual-tour-transfer.collision-resources.js';
-
-export const wasteAnnualIntervalForTour = (tour: WasteTourRecord): number | null => {
-  if (tour.customRecurrenceId) return tour.customRecurrenceIntervalDays ?? null;
-  if (tour.recurrence === 'weekly') return 7;
-  if (tour.recurrence === 'biweekly') return 14;
-  if (tour.recurrence === 'fourweekly') return 28;
-  return null;
-};
 
 type ValidityMappingResult =
   | Readonly<{ ok: true; validity: Readonly<{ firstDate?: string; endDate?: string }> }>
@@ -127,7 +120,10 @@ export const findWasteAnnualTourReplacementResourceIds = (
 ) => {
   const withoutReplacements = { ...input, replacements: new Map<string, string>() };
   const validity = mapValidity(withoutReplacements);
-  const relationships = mapWasteAnnualRelationships(withoutReplacements);
+  const relationships = mapWasteAnnualRelationships({
+    ...withoutReplacements,
+    targetValidity: validity.ok ? validity.validity : undefined,
+  });
   const collisions = findWasteAnnualRelationshipCollisions(relationships);
   return [
     ...(!validity.ok ? validity.replacementResourceIds : []),
@@ -190,7 +186,10 @@ export const mapWasteAnnualTour = async (
       replacementResourceIds: validity.replacementResourceIds,
     };
   }
-  const relationships = mapWasteAnnualRelationships(input);
+  const relationships = mapWasteAnnualRelationships({
+    ...input,
+    targetValidity: validity.validity,
+  });
   if (relationships.missing.length > 0) {
     return { blocker: 'replacement_date_required', replacementResourceIds: relationships.missing };
   }

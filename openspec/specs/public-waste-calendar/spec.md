@@ -24,11 +24,12 @@ Das System SHALL die Konfiguration und den Zugriff auf die Waste-Datenquelle fü
 - **AND** die lokale JSON-Konfiguration wird nur serverseitig geladen
 - **AND** Datenbank-Credentials oder vergleichbare Geheimnisse werden nicht an den Browser ausgeliefert
 
-#### Scenario: Öffentliche App nutzt dieselbe Waste-Supabase wie die Admin-Pflege
+#### Scenario: Öffentliche App nutzt dieselbe PostgreSQL-Waste-Datenbank wie die Admin-Pflege
 
 - **WHEN** die öffentliche App Daten für Standortauflösung oder Kalenderanzeige liest
-- **THEN** greift sie auf dieselbe Waste-Supabase zu wie das administrative Waste-Management
+- **THEN** greift sie auf dieselbe PostgreSQL-Waste-Datenbank zu wie das administrative Waste-Management
 - **AND** die öffentliche Capability führt keine zweite fachliche Primärquelle für dieselben Kalenderdaten ein
+- **AND** die öffentliche Runtime benötigt keine Supabase-API oder Supabase-Credentials
 
 ### Requirement: Öffentliche App unterstützt einen datengetriebenen Standortauswahlfluss
 
@@ -639,3 +640,21 @@ Das System SHALL in jedem noch offenen Schritt der Standortauswahl alle verfügb
 - **AND** verlangt sie keine vorherige Texteingabe
 - **AND** kennzeichnet sie sichtbar, wenn unterhalb des aktuellen Ausschnitts weitere Optionen vorhanden sind
 - **AND** filtert sie die Liste nach einer Eingabe auf passende Optionen
+
+### Requirement: Öffentliche Waste-Terminprojektion verwendet dieselbe wirksame Tourverschiebung
+
+Das System SHALL für öffentliche Kalender-, PDF- und iCal-Ausgaben dieselbe framework-agnostische Auswahlregel für tourbezogene Ausweichtermine verwenden wie Studio und Mainserver-Materialisierung.
+
+#### Scenario: Jahresbezogene Ausnahme verdrängt die jährliche Grundregel
+
+- **GIVEN** für eine Tour gilt eine jahresunabhängige Grundregel an einem Monat und Tag
+- **WHEN** für ein konkretes Jahr zusätzlich eine jahresbezogene Ausnahme am selben Ursprung existiert
+- **THEN** zeigt die öffentliche Terminprojektion in diesem Jahr ausschließlich das Ergebnis der jahresbezogenen Ausnahme
+- **AND** wendet die jährliche Grundregel nicht zusätzlich an
+- **AND** Kalenderansicht, PDF und iCal bleiben zueinander konsistent
+
+#### Scenario: Öffentliche Projektion bleibt zeitzonenunabhängig
+
+- **WHEN** öffentliche Kalenderdaten unter unterschiedlichen Prozesszeitzonen materialisiert werden
+- **THEN** bleiben Original- und Zieldatum als ISO-Kalenderdaten identisch
+- **AND** Sommer- oder Winterzeit verändert keinen Abholtag

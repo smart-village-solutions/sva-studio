@@ -1,7 +1,8 @@
 # action-feedback-platform Specification
 
 ## Purpose
-TBD - created by archiving change standardize-save-action-feedback. Update Purpose after archive.
+Diese Spezifikation definiert die einheitliche, kontextgebundene und barrierefreie Rückmeldung für Speicheraktionen in Host- und Plugin-Formularen.
+
 ## Requirements
 ### Requirement: Kontextgebundener Save-Button bildet den Speicherstatus ab
 

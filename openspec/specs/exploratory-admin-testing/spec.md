@@ -1,7 +1,8 @@
 # exploratory-admin-testing Specification
 
 ## Purpose
-TBD - created by archiving change add-stagehand-admin-exploration. Update Purpose after archive.
+Diese Spezifikation definiert die lokale, nicht blockierende Stagehand-Exploration realer Admin-Flows samt reproduzierbaren Missions- und Review-Artefakten.
+
 ## Requirements
 ### Requirement: Separate lokale Stagehand-Explorationsschicht für Admin-Flows
 

@@ -1797,24 +1797,24 @@ host-side content-list projection is separated into focused internal modules.
 
 ### Requirement: SVA-Mainserver-Service-Interna sind modular getrennt bei stabiler Fassade
 
-The system SHALL keep the public server-side Mainserver service facade stable while separating infrastructure and resource-specific implementation concerns into internal modules.
+Das System SHALL die öffentliche serverseitige Mainserver-Service-Fassade stabil halten und Infrastruktur- sowie ressourcenspezifische Implementierungsbelange in interne Module trennen.
 
-The public facade includes `createSvaMainserverService`, the returned service methods, and the existing top-level helper exports from `@sva/sva-mainserver/server`.
+Die öffentliche Fassade umfasst `createSvaMainserverService`, die zurückgegebenen Service-Methoden und die bestehenden Top-Level-Helper-Exporte aus `@sva/sva-mainserver/server`.
 
-#### Scenario: Internal modules are refactored
-- **GIVEN** the Mainserver server runtime is maintained internally
-- **WHEN** cache, credential loading, token loading, GraphQL transport, telemetry, or resource mappings are changed
-- **THEN** those responsibilities live in dedicated internal modules instead of one monolithic service file
-- **AND** callers still use the unchanged public facade
+#### Scenario: Interne Module werden refaktoriert
+- **GIVEN** die Mainserver-Serverlaufzeit wird intern gewartet
+- **WHEN** Cache, Credential-Laden, Token-Laden, GraphQL-Transport, Telemetrie oder Ressourcen-Mappings geändert werden
+- **THEN** liegen diese Verantwortlichkeiten in dedizierten internen Modulen statt in einer monolithischen Service-Datei
+- **AND** verwenden Aufrufer weiterhin die unveränderte öffentliche Fassade
 
-#### Scenario: Existing callers keep their contract
-- **GIVEN** a server-side caller imports `createSvaMainserverService` or a top-level helper from `@sva/sva-mainserver/server`
-- **WHEN** the refactored package is built and executed
-- **THEN** no caller-facing method name, parameter contract, or deterministic error code changes
-- **AND** the caller does not need to adopt new imports or a generic transport API
+#### Scenario: Bestehende Aufrufer behalten ihren Vertrag
+- **GIVEN** ein serverseitiger Aufrufer importiert `createSvaMainserverService` oder einen Top-Level-Helper aus `@sva/sva-mainserver/server`
+- **WHEN** das refaktorierte Package gebaut und ausgeführt wird
+- **THEN** ändern sich keine aufruferseitigen Methodennamen, Parameterverträge oder deterministischen Fehlercodes
+- **AND** muss der Aufrufer keine neuen Importe oder eine generische Transport-API übernehmen
 
-#### Scenario: Internal behavior stays testable in focused units
-- **GIVEN** credential caching, token renewal, retry semantics, or nested Mainserver mapping behavior must be changed
-- **WHEN** tests are updated for that behavior
-- **THEN** focused unit tests exist for the relevant internal module
-- **AND** a smaller service-level test layer still verifies facade wiring and default-service behavior
+#### Scenario: Internes Verhalten bleibt fokussiert testbar
+- **GIVEN** Credential-Caching, Token-Erneuerung, Retry-Semantik oder verschachteltes Mainserver-Mapping-Verhalten muss geändert werden
+- **WHEN** Tests für dieses Verhalten aktualisiert werden
+- **THEN** existieren fokussierte Unit-Tests für das relevante interne Modul
+- **AND** prüft eine kleinere Service-Level-Testschicht weiterhin die Verdrahtung der Fassade und das Verhalten des Default-Service

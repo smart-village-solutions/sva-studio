@@ -497,11 +497,11 @@ Das System SHALL im hostseitigen Einstieg `/admin/media` für berechtigte Benutz
 - **AND** führt den eigentlichen Datei-Transfer an den freigegebenen MinIO-/S3-kompatiblen Zielpfad aus, ohne dem Benutzer primär technische Upload-Artefakte als Endschritt zu präsentieren
 - **AND** behandelt der Flow Dateiauswahl, Upload und Finalisierung als zusammenhängende Enduser-Aktion
 
-#### Scenario: Benutzer wird nach erfolgreichem Upload in das Asset gefuehrt
+#### Scenario: Benutzer wird nach erfolgreichem Upload in das Asset geführt
 
 - **WHEN** der Datei-Upload erfolgreich abgeschlossen und das Medienobjekt finalisiert wurde
 - **THEN** leitet das System den Benutzer direkt in die Detailansicht des neu entstandenen `MediaAsset` weiter
-- **AND** zeigt nicht nur die signierte Upload-URL oder Upload-Session als primaeren Erfolgsausgang
+- **AND** zeigt nicht nur die signierte Upload-URL oder Upload-Session als primären Erfolgsausgang
 
 ### Requirement: Upload-first-Minimalpersistenz für neue Assets
 

@@ -87,35 +87,35 @@ Das System MUST einen generischen Route-Guard bereitstellen, der öffentliche, a
 
 ### Requirement: Account-Profilseite
 
-Das System MUST eine Account-Profilseite unter `/account` bereitstellen, auf der authentifizierte Nutzer ihre eigenen Basis-Daten einsehen und bearbeiten koennen. Credential-bezogene Aenderungen wie Passwort und E-Mail gehoeren nicht in dieses Formular, sondern werden ueber Keycloak-gestuetzte Self-Service-Flows gestartet.
+Das System MUST eine Account-Profilseite unter `/account` bereitstellen, auf der authentifizierte Nutzer ihre eigenen Basis-Daten einsehen und bearbeiten können. Credential-bezogene Änderungen wie Passwort und E-Mail gehören nicht in dieses Formular, sondern werden über Keycloak-gestützte Self-Service-Flows gestartet.
 
 #### Scenario: Profil anzeigen
 
 - **WENN** ein authentifizierter Nutzer `/account` aufruft
 - **DANN** werden Benutzername, Name, E-Mail, Telefon, Position, Abteilung, Sprache und Zeitzone angezeigt
 - **UND** die kanonischen Rollen und der Account-Status sind sichtbar (read-only)
-- **UND** eine getrennte technische Ansicht fuer rohe Keycloak-Rollen ist verfuegbar
+- **UND** eine getrennte technische Ansicht für rohe Keycloak-Rollen ist verfügbar
 - **UND** ein Avatar oder Platzhalter-Bild wird angezeigt
-- **UND** die Seite zeigt einen Loading-State (`aria-busy="true"`) waehrend die Daten geladen werden
+- **UND** die Seite zeigt einen Loading-State (`aria-busy="true"`) während die Daten geladen werden
 - **UND** bei einem Ladefehler wird eine Fehlermeldung mit Retry-Button angezeigt
 
 #### Scenario: Basis-Daten bearbeiten
 
-- **WENN** ein Nutzer seine Basis-Daten wie Name, Telefon, Position, Abteilung, Sprache oder gleichwertige nicht-credential-bezogene Profilfelder aendert
+- **WENN** ein Nutzer seine Basis-Daten wie Name, Telefon, Position, Abteilung, Sprache oder gleichwertige nicht-credential-bezogene Profilfelder ändert
 - **UND** das Formular absendet
-- **DANN** werden die Aenderungen in der IAM-Datenbank gespeichert
-- **UND** Keycloak wird nur fuer die dafuer vorgesehenen Profilfelder synchronisiert, sofern der bestehende Profilpfad dies verlangt
-- **UND** die Benutzerverwaltung zeigt bei der naechsten Datenladung den aktualisierten Anzeigenamen und die aktualisierten Profilfelder
-- **UND** Aenderungen an Vor- und Nachname aktualisieren den `displayName`, sofern kein abweichender benutzerdefinierter Anzeigename gepflegt wurde
-- **UND** eine Erfolgsbestaetigung wird angezeigt (`role="status"`, `aria-live="polite"`)
+- **DANN** werden die Änderungen in der IAM-Datenbank gespeichert
+- **UND** Keycloak wird nur für die dafür vorgesehenen Profilfelder synchronisiert, sofern der bestehende Profilpfad dies verlangt
+- **UND** die Benutzerverwaltung zeigt bei der nächsten Datenladung den aktualisierten Anzeigenamen und die aktualisierten Profilfelder
+- **UND** Änderungen an Vor- und Nachname aktualisieren den `displayName`, sofern kein abweichender benutzerdefinierter Anzeigename gepflegt wurde
+- **UND** eine Erfolgsbestätigung wird angezeigt (`role="status"`, `aria-live="polite"`)
 - **UND** der `AuthProvider`-State wird aktualisiert
-- **UND** der Fokus wird nach dem Speichern auf die Erfolgsbestaetigung gesetzt
+- **UND** der Fokus wird nach dem Speichern auf die Erfolgsbestätigung gesetzt
 
-#### Scenario: E-Mail- und Passwortaenderung sind nicht Teil des Profilformulars
+#### Scenario: E-Mail- und Passwortänderung sind nicht Teil des Profilformulars
 
 - **WENN** ein authentifizierter Nutzer `/account` verwendet
-- **DANN** bietet das Profilformular keine lokalen Eingabefelder fuer Passwort oder neue E-Mail-Adresse an
-- **UND** werden solche Credential-Aenderungen ueber die dafuer vorgesehenen Menue- oder Self-Service-Einstiege des Studios gestartet
+- **DANN** bietet das Profilformular keine lokalen Eingabefelder für Passwort oder neue E-Mail-Adresse an
+- **UND** werden solche Credential-Änderungen über die dafür vorgesehenen Menü- oder Self-Service-Einstiege des Studios gestartet
 
 ### Requirement: User-Administrationsliste
 
@@ -1210,9 +1210,9 @@ kompakten Kopf und den drei dauerhaften Modi `Betrieb`, `Doctor` und
 
 ### Requirement: Zentraler Admin-Bereich fuer instanzbezogene Modulzuweisung auf Studio-Root-Ebene
 
-Das System SHALL einen zentralen Bereich `Module` auf Studio-Root-Ebene bereitstellen, der ausschliesslich fuer den Studio-Admin zugaenglich ist und ueber den Module Instanzen zugewiesen oder entzogen werden. Dieselbe fachliche Modulverwaltung darf zusaetzlich in der instanzgebundenen Root-Admin-Betriebsansicht der Instanz-Detailseite wiederverwendet werden, solange keine zweite Mutationslogik entsteht.
+Das System SHALL einen zentralen Bereich `Module` auf Studio-Root-Ebene bereitstellen, der ausschließlich für den Studio-Admin zugänglich ist und über den Module Instanzen zugewiesen oder entzogen werden. Dieselbe fachliche Modulverwaltung darf zusätzlich in der instanzgebundenen Root-Admin-Betriebsansicht der Instanz-Detailseite wiederverwendet werden, solange keine zweite Mutationslogik entsteht.
 
-#### Scenario: Studio-Admin weist einer Instanz ein Modul ueber die Sammelseite zu
+#### Scenario: Studio-Admin weist einer Instanz ein Modul über die Sammelseite zu
 
 - **GIVEN** ein Studio-Admin oeffnet den zentralen Bereich `Module` auf Studio-Root-Ebene
 - **WHEN** er eine konkrete Instanz auswaehlt und ein Modul zuweist
@@ -1223,10 +1223,10 @@ Das System SHALL einen zentralen Bereich `Module` auf Studio-Root-Ebene bereitst
 
 #### Scenario: Sammelseite und Betriebsansicht verwenden denselben Fach-Workspace
 
-- **GIVEN** die Modulverwaltung ist sowohl auf `/admin/modules` als auch in `/admin/instances/:instanceId` verfuegbar
-- **WHEN** ein Root-Admin dieselbe Modulmutation in einem der beiden Einstiege ausloest
-- **THEN** verwenden beide Oberflaechen dieselben Root-only-Mutationen und dieselbe fachliche Zustandsdarstellung
-- **AND** fuehrt die Betriebsansicht keine abweichende zweite Aktivierungslogik ein
+- **GIVEN** die Modulverwaltung ist sowohl auf `/admin/modules` als auch in `/admin/instances/:instanceId` verfügbar
+- **WHEN** ein Root-Admin dieselbe Modulmutation in einem der beiden Einstiege auslöst
+- **THEN** verwenden beide Oberflächen dieselben Root-only-Mutationen und dieselbe fachliche Zustandsdarstellung
+- **AND** führt die Betriebsansicht keine abweichende zweite Aktivierungslogik ein
 
 ### Requirement: Modulzuweisung zeigt integrierten IAM-Seeding-Effekt
 
@@ -1275,12 +1275,12 @@ Das System SHALL auf der Instanz-Detailseite einen expliziten Befund fuer die IA
 
 ### Requirement: Instanz-Detailseite zeigt Modultransparenz fuer alle global bekannten Module
 
-Das System SHALL auf der Instanz-Detailseite alle global bekannten Module in der Root-Admin-Betriebsansicht anzeigen. Der Status wird pro Modul ausschliesslich aus der Root-Modulzuordnung der Instanz abgeleitet; die Seite fuehrt keine zweite Aktivierungslogik ein. Die Beschreibung eines Moduls stammt aus pluginseitig gepflegter Metadatenauflosung.
+Das System SHALL auf der Instanz-Detailseite alle global bekannten Module in der Root-Admin-Betriebsansicht anzeigen. Der Status wird pro Modul ausschließlich aus der Root-Modulzuordnung der Instanz abgeleitet; die Seite führt keine zweite Aktivierungslogik ein. Die Beschreibung eines Moduls stammt aus pluginseitig gepflegter Metadatenauflösung.
 
 #### Scenario: Instanz zeigt aktive und deaktivierte Module in der Betriebsansicht
 
 - **GIVEN** eine Instanzdetailseite kennt die global bekannte Modulliste und den aktuell zugewiesenen Modulsatz der Instanz
-- **WHEN** der Studio-Admin den Tab `Betrieb` oeffnet
+- **WHEN** der Studio-Admin den Tab `Betrieb` öffnet
 - **THEN** zeigt die UI alle global bekannten Module in einer Tabelle oder gleichwertigen Listenansicht an
 - **AND** markiert sie Module aus `assignedModules` als aktiv
 - **AND** markiert sie global bekannte, aber nicht zugewiesene Module als deaktiviert
@@ -1289,7 +1289,7 @@ Das System SHALL auf der Instanz-Detailseite alle global bekannten Module in der
 #### Scenario: Fehlende Modulbeschreibung nutzt Fallback ohne die Tabelle zu verbergen
 
 - **GIVEN** ein global bekanntes Modul liefert keine aufloesbare Beschreibung
-- **WHEN** der Studio-Admin den Tab `Betrieb` oeffnet
+- **WHEN** der Studio-Admin den Tab `Betrieb` öffnet
 - **THEN** bleibt das Modul in der Uebersicht sichtbar
 - **AND** rendert die UI fuer dieses Modul einen definierten Fallbacktext statt einer leeren Beschreibung
 - **AND** bleibt die Modultransparenz der restlichen Eintraege unveraendert lesbar
@@ -1874,75 +1874,75 @@ Das Studio MUST lokalisierte Permission-Namen aus einem gemeinsamen Hostvertrag 
 - **THEN** prüft ein automatisierter Katalogtest die vorgesehenen deutschen und englischen Namen
 - **AND** bleibt die technische Action-ID der Laufzeit-Fallback für kompatible oder unbekannte Erweiterungen
 
-### Requirement: Header-Kontomenue bietet Credential-Self-Service-Einstiege
+### Requirement: Header-Kontomenü bietet Credential-Self-Service-Einstiege
 
-Das System SHALL den vorgesehenen Menueeintrag fuer die Passwort-Aenderung im Header-Kontomenue aktivieren und direkt an den serverseitigen Account-Action-Pfad anbinden. Die E-Mail-Aenderung SHALL erst exponiert werden, nachdem `UPDATE_EMAIL` im Ziel-Keycloak bestaetigt verfuegbar ist; der serverseitige Pfad bleibt zusaetzlich fail-closed.
+Das System SHALL den vorgesehenen Menüeintrag für die Passwort-Änderung im Header-Kontomenü aktivieren und direkt an den serverseitigen Account-Action-Pfad anbinden. Die E-Mail-Änderung SHALL erst exponiert werden, nachdem `UPDATE_EMAIL` im Ziel-Keycloak bestätigt verfügbar ist; der serverseitige Pfad bleibt zusätzlich fail-closed.
 
-#### Scenario: Passwort-Menueeintrag ist aktiv
+#### Scenario: Passwort-Menüeintrag ist aktiv
 
-- **WENN** ein authentifizierter Nutzer das Kontomenue in der Kopfzeile oeffnet
-- **DANN** ist der Eintrag `Passwort aendern` aktiv und nicht deaktiviert
-- **UND** fuehrt direkt auf einen klaren Self-Service-Pfad des Studios, der die Keycloak-Aktion serverseitig initialisiert
+- **WENN** ein authentifizierter Nutzer das Kontomenü in der Kopfzeile öffnet
+- **DANN** ist der Eintrag `Passwort ändern` aktiv und nicht deaktiviert
+- **UND** führt direkt auf einen klaren Self-Service-Pfad des Studios, der die Keycloak-Aktion serverseitig initialisiert
 
-#### Scenario: E-Mail-Menueeintrag bleibt ohne bestaetigte Keycloak-Unterstuetzung ausgeblendet
+#### Scenario: E-Mail-Menüeintrag bleibt ohne bestätigte Keycloak-Unterstützung ausgeblendet
 
-- **GIVEN** `UPDATE_EMAIL` ist im Ziel-Keycloak noch nicht bestaetigt verfuegbar
-- **WENN** ein authentifizierter Nutzer das Kontomenue in der Kopfzeile oeffnet
-- **DANN** wird der Eintrag `E-Mail aendern` nicht angeboten
+- **GIVEN** `UPDATE_EMAIL` ist im Ziel-Keycloak noch nicht bestätigt verfügbar
+- **WENN** ein authentifizierter Nutzer das Kontomenü in der Kopfzeile öffnet
+- **DANN** wird der Eintrag `E-Mail ändern` nicht angeboten
 - **UND** lehnt der serverseitige Account-Action-Pfad einen direkten Start kontrolliert mit einem Studio-eigenen Status ab
 
-#### Scenario: E-Mail-Menueeintrag darf nach bestaetigter Unterstuetzung aktiviert werden
+#### Scenario: E-Mail-Menüeintrag darf nach bestätigter Unterstützung aktiviert werden
 
-- **GIVEN** `UPDATE_EMAIL` ist im Ziel-Keycloak bestaetigt verfuegbar
-- **WENN** das Studio den Eintrag `E-Mail aendern` exponiert
-- **DANN** fuehrt er auf den serverseitigen Account-Action-Pfad des Studios
-- **UND** initialisiert dieser die Keycloak-Aktion nur nach erneuter serverseitiger Capability-Pruefung
+- **GIVEN** `UPDATE_EMAIL` ist im Ziel-Keycloak bestätigt verfügbar
+- **WENN** das Studio den Eintrag `E-Mail ändern` exponiert
+- **DANN** führt er auf den serverseitigen Account-Action-Pfad des Studios
+- **UND** initialisiert dieser die Keycloak-Aktion nur nach erneuter serverseitiger Capability-Prüfung
 
-### Requirement: Rueckkehrstatus wird auf der Account-Seite angezeigt
+### Requirement: Rückkehrstatus wird auf der Account-Seite angezeigt
 
-Das System SHALL nach Rueckkehr aus einem ueber das Studio gestarteten Keycloak-Credential-Flow auf `/account` eine verstaendliche Statusmeldung fuer Erfolg oder Abbruch anzeigen.
+Das System SHALL nach Rückkehr aus einem über das Studio gestarteten Keycloak-Credential-Flow auf `/account` eine verständliche Statusmeldung für Erfolg oder Abbruch anzeigen.
 
-#### Scenario: Passwortaenderung war erfolgreich
+#### Scenario: Passwortänderung war erfolgreich
 
-- **WENN** ein Nutzer nach erfolgreicher Passwortaenderung zu `/account` zurueckkehrt
-- **DANN** zeigt die Seite eine verstaendliche Erfolgsbestaetigung
+- **WENN** ein Nutzer nach erfolgreicher Passwortänderung zu `/account` zurückkehrt
+- **DANN** zeigt die Seite eine verständliche Erfolgsbestätigung
 - **UND** bleibt das Profilformular normal nutzbar
 
-#### Scenario: E-Mail-Aenderung war erfolgreich
+#### Scenario: E-Mail-Änderung war erfolgreich
 
-- **WENN** ein Nutzer nach erfolgreicher E-Mail-Aenderung zu `/account` zurueckkehrt
-- **DANN** zeigt die Seite eine verstaendliche Erfolgsbestaetigung
+- **WENN** ein Nutzer nach erfolgreicher E-Mail-Änderung zu `/account` zurückkehrt
+- **DANN** zeigt die Seite eine verständliche Erfolgsbestätigung
 - **UND** bleibt das Profilformular normal nutzbar
 
 #### Scenario: Nutzer hat die Aktion abgebrochen
 
-- **WENN** ein Nutzer einen ueber das Studio gestarteten Credential-Flow in Keycloak abbricht und zu `/account` zurueckkehrt
+- **WENN** ein Nutzer einen über das Studio gestarteten Credential-Flow in Keycloak abbricht und zu `/account` zurückkehrt
 - **DANN** zeigt die Seite eine neutrale Abbruchmeldung
 - **UND** bleibt das Profilformular normal nutzbar
 
 ### Requirement: Instanz-Detailseite bietet einen Root-Admin-Modul-Workspace in der Betriebsansicht
 
-Das System SHALL auf der Root-Admin-Instanz-Detailseite unter `/admin/instances/:instanceId` im Tab `Betrieb` die instanzgebundene Modulverwaltung fuer genau diese Instanz bereitstellen. Die Sammelseite `/admin/modules` bleibt daneben als rootweiter Ueberblick bestehen.
+Das System SHALL auf der Root-Admin-Instanz-Detailseite unter `/admin/instances/:instanceId` im Tab `Betrieb` die instanzgebundene Modulverwaltung für genau diese Instanz bereitstellen. Die Sammelseite `/admin/modules` bleibt daneben als rootweiter Überblick bestehen.
 
 #### Scenario: Root-Admin verwaltet Module direkt im Instanz-Detail
 
-- **GIVEN** ein Root-Admin oeffnet `/admin/instances/:instanceId`
-- **WHEN** er den Tab `Betrieb` waehlt
-- **THEN** zeigt die Detailseite fuer genau diese Instanz die Bereiche `Zugewiesene Module` und `Verfuegbare Module`
+- **GIVEN** ein Root-Admin öffnet `/admin/instances/:instanceId`
+- **WHEN** er den Tab `Betrieb` wählt
+- **THEN** zeigt die Detailseite für genau diese Instanz die Bereiche `Zugewiesene Module` und `Verfügbare Module`
 - **AND** bietet sie dort dieselben fachlichen Aktionen wie die Sammelseite an
-- **AND** benoetigt der Root-Admin keine zusaetzliche Instanzauswahl
+- **AND** benötigt der Root-Admin keine zusätzliche Instanzauswahl
 
-#### Scenario: Modulzuweisung und IAM-Baseline laufen ohne zusaetzlichen Confirm-Schritt
+#### Scenario: Modulzuweisung und IAM-Baseline laufen ohne zusätzlichen Confirm-Schritt
 
 - **GIVEN** ein Root-Admin befindet sich in der Betriebsansicht einer Instanz
-- **WHEN** er ein Modul zuweist oder `IAM-Basis neu aufbauen` ausloest
-- **THEN** fuehrt die UI die bestehende Root-only-Mutation direkt aus
-- **AND** zeigt danach eine verstaendliche Ergebnisrueckmeldung
+- **WHEN** er ein Modul zuweist oder `IAM-Basis neu aufbauen` auslöst
+- **THEN** führt die UI die bestehende Root-only-Mutation direkt aus
+- **AND** zeigt danach eine verständliche Ergebnisrückmeldung
 
-#### Scenario: Entzug und Admin-Struktur-Initialisierung verlangen eine explizite Bestaetigung
+#### Scenario: Entzug und Admin-Struktur-Initialisierung verlangen eine explizite Bestätigung
 
 - **GIVEN** ein Root-Admin befindet sich in der Betriebsansicht einer Instanz
 - **WHEN** er ein Modul entziehen oder die Admin-Struktur initialisieren will
-- **THEN** verlangt die UI vor der Mutation eine explizite Bestaetigung in einem Dialog
+- **THEN** verlangt die UI vor der Mutation eine explizite Bestätigung in einem Dialog
 - **AND** bleibt der Dialoginhalt fachlich eindeutig auf diese Instanz bezogen
-- **AND** wird die Mutation ohne bestaetigenden Abschluss nicht ausgefuehrt
+- **AND** wird die Mutation ohne bestätigenden Abschluss nicht ausgeführt

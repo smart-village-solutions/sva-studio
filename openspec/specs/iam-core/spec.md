@@ -1445,62 +1445,62 @@ Der IAM-Diagnosekern MUST gleichzeitig vorliegende sichere Signale in einer stab
 - **THEN** normalisiert der Diagnosekern weiterhin nur die bekannten Sync-Felder
 - **AND** gibt er ausschließlich die bestehende Safe-Details-Allowlist aus
 
-### Requirement: Keycloak-AIA fuer Credential-Self-Service
+### Requirement: Keycloak-AIA für Credential-Self-Service
 
-Das System SHALL Passwort- und E-Mail-Aenderungen angemeldeter Nutzer ueber Keycloak Application Initiated Actions (AIA) statt ueber lokale Studio-Credential-Formulare ausfuehren.
+Das System SHALL Passwort- und E-Mail-Änderungen angemeldeter Nutzer über Keycloak Application Initiated Actions (AIA) statt über lokale Studio-Credential-Formulare ausführen.
 
-#### Scenario: Passwortaenderung bleibt IdP-owned
+#### Scenario: Passwortänderung bleibt IdP-owned
 
-- **WENN** ein angemeldeter Nutzer im Studio eine Passwortaenderung anstoesst
-- **DANN** fuehrt das System die Mutation nicht ueber einen lokalen IAM-API-Endpunkt aus
+- **WENN** ein angemeldeter Nutzer im Studio eine Passwortänderung anstößt
+- **DANN** führt das System die Mutation nicht über einen lokalen IAM-API-Endpunkt aus
 - **UND** startet stattdessen einen Keycloak-Flow mit `kc_action=UPDATE_PASSWORD`
-- **UND** bleibt Keycloak der einzige Mutationsort fuer das Passwort
+- **UND** bleibt Keycloak der einzige Mutationsort für das Passwort
 
-#### Scenario: E-Mail-Aenderung bleibt IdP-owned
+#### Scenario: E-Mail-Änderung bleibt IdP-owned
 
-- **WENN** ein angemeldeter Nutzer im Studio eine E-Mail-Aenderung anstoesst
-- **DANN** fuehrt das System die Mutation nicht ueber das Studio-Profilformular aus
+- **WENN** ein angemeldeter Nutzer im Studio eine E-Mail-Änderung anstößt
+- **DANN** führt das System die Mutation nicht über das Studio-Profilformular aus
 - **UND** startet stattdessen einen Keycloak-Flow mit `kc_action=UPDATE_EMAIL`
-- **UND** bleibt Keycloak der einzige fuehrende Mutationsort fuer die Identitaets-E-Mail
+- **UND** bleibt Keycloak der einzige führende Mutationsort für die Identitäts-E-Mail
 
-### Requirement: Fresh Reauth fuer sensitive Self-Service-Aktionen
+### Requirement: Fresh Reauth für sensitive Self-Service-Aktionen
 
-Das System SHALL Passwort- und E-Mail-Aenderungen aus dem Studio nur ueber einen serverseitig kontrollierten Self-Service-Pfad mit frischer Re-Authentisierung starten.
+Das System SHALL Passwort- und E-Mail-Änderungen aus dem Studio nur über einen serverseitig kontrollierten Self-Service-Pfad mit frischer Re-Authentisierung starten.
 
-#### Scenario: Passwortaenderung erfordert frische Re-Authentisierung
+#### Scenario: Passwortänderung erfordert frische Re-Authentisierung
 
-- **WENN** ein angemeldeter Nutzer die Passwortaenderung aus dem Studio startet
+- **WENN** ein angemeldeter Nutzer die Passwortänderung aus dem Studio startet
 - **DANN** erzwingt der serverseitige Einstiegspfad frische Re-Authentisierung im OIDC-Flow
-- **UND** genuegt eine alte SSO-Session alleine nicht als hinreichender Nachweis fuer diese Aktion
+- **UND** genügt eine alte SSO-Session alleine nicht als hinreichender Nachweis für diese Aktion
 
-#### Scenario: E-Mail-Aenderung erfordert frische Re-Authentisierung
+#### Scenario: E-Mail-Änderung erfordert frische Re-Authentisierung
 
-- **WENN** ein angemeldeter Nutzer die E-Mail-Aenderung aus dem Studio startet
+- **WENN** ein angemeldeter Nutzer die E-Mail-Änderung aus dem Studio startet
 - **DANN** erzwingt der serverseitige Einstiegspfad frische Re-Authentisierung im OIDC-Flow
-- **UND** genuegt eine alte SSO-Session alleine nicht als hinreichender Nachweis fuer diese Aktion
+- **UND** genügt eine alte SSO-Session alleine nicht als hinreichender Nachweis für diese Aktion
 
-### Requirement: Realm-seitiger E-Mail-Aenderungsworkflow bleibt Keycloak-owned
+### Requirement: Realm-seitiger E-Mail-Änderungsworkflow bleibt Keycloak-owned
 
-Das System SHALL fuer E-Mail-Aenderungen den von Keycloak bereitgestellten `UPDATE_EMAIL`-Workflow voraussetzen und dessen Verifikationslogik nicht im Studio nachbauen.
+Das System SHALL für E-Mail-Änderungen den von Keycloak bereitgestellten `UPDATE_EMAIL`-Workflow voraussetzen und dessen Verifikationslogik nicht im Studio nachbauen.
 
 #### Scenario: E-Mail-Verifikation bleibt beim IdP
 
-- **WENN** eine Zielumgebung fuer E-Mail-Aenderungen eine Verifikation verlangt
+- **WENN** eine Zielumgebung für E-Mail-Änderungen eine Verifikation verlangt
 - **DANN** erfolgt diese Verifikation innerhalb des Keycloak-Workflows
-- **UND** das Studio fuehrt keine eigene Pending-E-Mail- oder Verifikationslogik als Parallelzustand
+- **UND** das Studio führt keine eigene Pending-E-Mail- oder Verifikationslogik als Parallelzustand
 
-### Requirement: Studio-owned Rueckkehrstatus fuer Account-AIA
+### Requirement: Studio-owned Rückkehrstatus für Account-AIA
 
-Das System SHALL den Ausgang von Keycloak-gestuetzten Account-Aktionen nach Rueckkehr in einen stabilen Studio-Statusvertrag ueberfuehren.
+Das System SHALL den Ausgang von Keycloak-gestützten Account-Aktionen nach Rückkehr in einen stabilen Studio-Statusvertrag überführen.
 
-#### Scenario: Erfolgreiche Rueckkehr wird in Studio-Status uebersetzt
+#### Scenario: Erfolgreiche Rückkehr wird in Studio-Status übersetzt
 
-- **WENN** ein Nutzer eine durch das Studio gestartete Account-AIA erfolgreich abschliesst
+- **WENN** ein Nutzer eine durch das Studio gestartete Account-AIA erfolgreich abschließt
 - **DANN** kennt der serverseitige Callback die zuvor angeforderte Account-Aktion
-- **UND** leitet auf ein sanitisiertes Rueckkehrziel mit einem Studio-eigenen Erfolgsstatus weiter
+- **UND** leitet auf ein sanitisiertes Rückkehrziel mit einem Studio-eigenen Erfolgsstatus weiter
 
-#### Scenario: Abbruch wird in Studio-Status uebersetzt
+#### Scenario: Abbruch wird in Studio-Status übersetzt
 
 - **WENN** ein Nutzer eine durch das Studio gestartete Account-AIA abbricht
 - **DANN** kennt der serverseitige Callback die zuvor angeforderte Account-Aktion
-- **UND** leitet auf ein sanitisiertes Rueckkehrziel mit einem Studio-eigenen Abbruchstatus weiter
+- **UND** leitet auf ein sanitisiertes Rückkehrziel mit einem Studio-eigenen Abbruchstatus weiter

@@ -12,6 +12,7 @@ import {
   mapWasteAnnualConcreteDate,
 } from './waste-management-annual-tour-transfer.dates.js';
 import { createWasteAnnualTourConflictIndex } from './waste-management-annual-tour-transfer.conflict-index.js';
+import { createWasteAnnualSourceRelationshipIndex } from './waste-management-annual-tour-transfer.relationships.js';
 import {
   buildWasteAnnualTourTransferFingerprint,
   deriveWasteAnnualTourTransferId,
@@ -132,9 +133,14 @@ describe('waste annual tour transfer', () => {
     );
 
     const index = createWasteAnnualTourConflictIndex(source(tours, { locationTourLinks }));
+    const sourceIndex = createWasteAnnualSourceRelationshipIndex(
+      source(tours, { locationTourLinks })
+    );
 
     expect(index.byId.size).toBe(1_000);
     expect(index.bySignature.size).toBe(1_000);
+    expect(sourceIndex.locationTourLinks.size).toBe(1_000);
+    expect(sourceIndex.locationTourLinks.get('tour-999')).toHaveLength(100);
   });
 
   it('invalidates the preview fingerprint when a copy-relevant source record changes', async () => {
@@ -903,6 +909,41 @@ describe('waste annual tour transfer', () => {
       }),
     });
 
+    expect(preview.tours[0]?.conflicts).toEqual([
+      expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
+    ]);
+    expect(preview.summary.selected).toBe(0);
+  });
+
+  it('matches shifted dates against occurrences of another recurring tour', async () => {
+    const sourceTour = tour({ recurrence: 'weekly', firstDate: '2026-01-12' });
+    const targetTour = tour({
+      id: '9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a',
+      recurrence: 'weekly',
+      firstDate: '2027-01-05',
+      endDate: '2027-12-31',
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'shift-recurring-occurrence',
+            tourId: sourceTour.id,
+            originalDate: '2026-01-12',
+            actualDate: '2026-01-13',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([targetTour]),
+    });
+
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2027-01-12');
     expect(preview.tours[0]?.conflicts).toEqual([
       expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
     ]);

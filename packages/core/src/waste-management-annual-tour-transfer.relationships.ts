@@ -11,6 +11,46 @@ export const wasteAnnualRelationshipsFor = <T extends { readonly tourId: string 
   tourId: string
 ): readonly T[] => items.filter((item) => item.tourId === tourId);
 
+const relationshipsByTour = <T extends { readonly tourId: string }>(items: readonly T[]) => {
+  const grouped = new Map<string, T[]>();
+  for (const item of items) {
+    const current = grouped.get(item.tourId);
+    if (current) current.push(item);
+    else grouped.set(item.tourId, [item]);
+  }
+  return grouped as ReadonlyMap<string, readonly T[]>;
+};
+
+export const createWasteAnnualSourceRelationshipIndex = (
+  source: WasteAnnualTourTransferSource
+) => ({
+  locationTourLinks: relationshipsByTour(source.locationTourLinks),
+  locationTourPickupDates: relationshipsByTour(source.locationTourPickupDates),
+  tourAssignments: relationshipsByTour(source.tourAssignments),
+  tourDateShifts: relationshipsByTour(source.tourDateShifts),
+});
+
+export const wasteAnnualSourceForTour = (
+  source: WasteAnnualTourTransferSource,
+  index: ReturnType<typeof createWasteAnnualSourceRelationshipIndex>,
+  tourId: string
+): WasteAnnualTourTransferSource => ({
+  ...source,
+  locationTourLinks: index.locationTourLinks.get(tourId) ?? [],
+  locationTourPickupDates: index.locationTourPickupDates.get(tourId) ?? [],
+  tourAssignments: index.tourAssignments.get(tourId) ?? [],
+  tourDateShifts: index.tourDateShifts.get(tourId) ?? [],
+});
+
+export const createWasteAnnualSourceResolver = (source: WasteAnnualTourTransferSource) => {
+  const index = createWasteAnnualSourceRelationshipIndex(source);
+  const scopedSources = new Map(
+    source.tours.map((tour) => [tour.id, wasteAnnualSourceForTour(source, index, tour.id)])
+  );
+  return (tour: WasteTourRecord): WasteAnnualTourTransferSource =>
+    scopedSources.get(tour.id) ?? source;
+};
+
 const mapDate = (
   value: string,
   resourceId: string,

@@ -49,6 +49,7 @@ export const buildValidatedWasteAnnualReplacementMap = (input: {
   readonly relevantTours: readonly WasteTourRecord[];
   readonly replacementDates: readonly WasteAnnualTourTransferReplacementDate[];
   readonly allowObsoleteReplacementDates?: boolean;
+  readonly sourceForTour?: (tour: WasteTourRecord) => WasteAnnualTourTransferSource;
 }): ReadonlyMap<string, string> => {
   if (input.replacementDates.length === 0) return new Map();
   const allowedResources = new Map(
@@ -58,7 +59,7 @@ export const buildValidatedWasteAnnualReplacementMap = (input: {
           instanceId: input.instanceId,
           sourceYear: input.sourceYear,
           targetYear: input.targetYear,
-          source: input.source,
+          source: input.sourceForTour?.(tour) ?? input.source,
           tour,
         })
       )

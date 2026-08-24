@@ -28,7 +28,6 @@ export type MasterDataFractionsCreateViewCopy = Readonly<{
   >;
   statusHints: Readonly<Record<'active' | 'inactive', string>>;
   validation: Readonly<Record<'nameRequired' | 'pdfShortLabelRequired' | 'colorRequired', string>>;
-  meta: Readonly<{ descriptionCounter: string }>;
   actions: Readonly<Record<'backToList' | 'cancel' | 'savePrimary', string>>;
   preview: Readonly<
     Record<

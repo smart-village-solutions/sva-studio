@@ -93,6 +93,15 @@ describe('WasteMasterDataFractionCreateContent', () => {
     );
 
     expect(screen.getByText('masterData.fractions.createView.sections.reminders')).toBeTruthy();
+    const longDescription = 'Ausführliche Fraktionsbeschreibung '.repeat(20);
+    const descriptionField = document.getElementById('waste-fraction-description');
+    expect(descriptionField).toBeTruthy();
+    if (!(descriptionField instanceof HTMLTextAreaElement)) {
+      throw new Error('missing fraction description textarea');
+    }
+    expect(descriptionField.getAttribute('maxlength')).toBeNull();
+    fireEvent.change(descriptionField, { target: { value: longDescription } });
+    expect(onChange).toHaveBeenCalledWith({ description: longDescription });
     expect(document.getElementById('waste-fraction-push-slot-1-max-lead-days')).toBeNull();
     expect(
       screen

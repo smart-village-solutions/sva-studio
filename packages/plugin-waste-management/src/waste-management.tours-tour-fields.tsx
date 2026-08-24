@@ -99,7 +99,6 @@ export const WasteToursTourFields = ({
               id="waste-tour-description"
               value={form.description}
               rows={4}
-              maxLength={300}
               onChange={(event) => onChange({ description: event.target.value })}
             />
           </StudioField>

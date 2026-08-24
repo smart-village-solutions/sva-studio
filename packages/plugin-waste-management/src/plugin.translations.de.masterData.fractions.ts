@@ -98,7 +98,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     },
     fieldHints: {
       name: 'So wird die Abfallart später in Listen angezeigt.',
-      description: 'Beschreiben Sie die Abfallart kurz und verständlich. Maximal 300 Zeichen.',
+      description: 'Beschreiben Sie die Abfallart kurz und verständlich.',
       translationDe: 'Optional: deutsche Bezeichnung für mehrsprachige Ausgaben.',
       translationEn: 'Optional: englische Bezeichnung für mehrsprachige Ausgaben.',
       pdfShortLabel: 'Pflichtfeld: Kürzel für die PDF-Legende. Dieses Kürzel wird direkt für Ausgabe und Legende verwendet.',
@@ -123,9 +123,6 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       nameRequired: 'Bitte geben Sie einen Namen ein.',
       pdfShortLabelRequired: 'Bitte geben Sie ein PDF-Kürzel ein.',
       colorRequired: 'Bitte geben Sie eine gültige Farbe im Hex-Format an.',
-    },
-    meta: {
-      descriptionCounter: '{{count}} / 300 Zeichen',
     },
     actions: {
       backToList: 'Zurück zur Liste',

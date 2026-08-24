@@ -49,21 +49,6 @@ export const FractionFormActions = ({
   </div>
 );
 
-const FractionDescriptionHint = ({
-  count,
-  pt,
-}: {
-  readonly count: number;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
-}) => (
-  <span className="flex items-center justify-between gap-3">
-    <span>{pt('masterData.fractions.createView.fieldHints.description')}</span>
-    <span className="shrink-0">
-      {pt('masterData.fractions.createView.meta.descriptionCounter', { count })}
-    </span>
-  </span>
-);
-
 const FractionBasicsFields = ({
   form,
   submitAttempted,
@@ -95,13 +80,12 @@ const FractionBasicsFields = ({
     <StudioField
       id="waste-fraction-description"
       label={pt('masterData.fractions.fields.description')}
-      description={<FractionDescriptionHint count={form.description.length} pt={pt} />}
+      description={pt('masterData.fractions.createView.fieldHints.description')}
     >
       <Textarea
         id="waste-fraction-description"
         value={form.description}
         rows={4}
-        maxLength={300}
         onChange={(event) => onChange({ description: event.target.value })}
       />
     </StudioField>

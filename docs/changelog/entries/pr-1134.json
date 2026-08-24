@@ -1,0 +1,4 @@
+{
+  "prNumber": 1134,
+  "body": "Öffentliche Projektberichterstattung dokumentiert\n\n- Die bereits produktive Projektbericht-App ist jetzt vollständig in den kanonischen Spezifikationen dokumentiert.\n- Die Architekturdokumentation beschreibt die öffentliche GitHub-Pages-Auslieferung und die lokale Bearbeitungsgrenze korrekt.\n- Der abgeschlossene OpenSpec-Change wurde mit überprüfter Build-, Test- und Deployment-Evidenz archiviert."
+}

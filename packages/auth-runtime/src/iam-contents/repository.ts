@@ -59,7 +59,7 @@ const hasAuthorDisplayAffectingChange = (
   (input.organizationId !== undefined && input.organizationId !== current.organization_id);
 
 const listSortColumnByField = {
-  title: 'LOWER(content.title) COLLATE "C"',
+  title: `LOWER(REGEXP_REPLACE(content.title COLLATE "unicode", '^[^[:alnum:]]+', '')) COLLATE "C"`,
   createdAt: 'content.created_at',
   updatedAt: 'content.updated_at',
   publishedAt: 'content.published_at',

@@ -71,7 +71,7 @@ Monitoring-, Schema-Diff-, Backup-, Restore- und Release-Spezialpfade.
 
 ## Git-Workflow
 
-- Branch: `refactor/ci-gate-orchestration-shadow`
+- Branch: `chore/ci-gate-orchestration-shadow`
 - Commitblöcke: `test(ci): characterize gate topology`,
   `refactor(ci): add consolidated gate shadow`, `docs(ci): record shadow parity`
 - Nicht pushen oder PR eröffnen, sofern der Operator das nicht anweist.

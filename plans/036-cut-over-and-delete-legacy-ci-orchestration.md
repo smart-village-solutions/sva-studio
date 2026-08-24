@@ -68,7 +68,7 @@ Remote-Caches.
 
 ## Git-Workflow
 
-- Branch: `refactor/ci-gate-orchestration-cutover`
+- Branch: `chore/ci-gate-orchestration-cutover`
 - Commits: `refactor(ci): cut over consolidated gates`, danach
   `chore(ci): remove legacy orchestration` nur wenn beide Commits zusammen im
   PR bleiben und jeder final validierte Head alle Kontexte erzeugt.

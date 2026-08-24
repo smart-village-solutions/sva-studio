@@ -143,9 +143,10 @@ jobs:
         if: always() && steps.changes.outputs.relevant == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: unit-feedback-direct-${{ github.run_id }}-${{ github.run_attempt }}
+          name: unit-feedback-direct-${{ github.run_id }}
           path: artifacts/ci-feedback/unit-unit-direct.json
           if-no-files-found: error
+          overwrite: true
           retention-days: 7
 
   unit-complete:
@@ -225,9 +226,10 @@ jobs:
         if: always() && github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: unit-feedback-remaining-${{ github.run_id }}-${{ github.run_attempt }}
+          name: unit-feedback-remaining-${{ github.run_id }}
           path: artifacts/ci-feedback/unit-unit-remaining.json
           if-no-files-found: error
+          overwrite: true
           retention-days: 7
 
   unit:
@@ -255,7 +257,7 @@ jobs:
         if: needs.unit-complete.outputs.evidence_required == 'true'
         uses: actions/download-artifact@v8
         with:
-          pattern: unit-feedback-*-${{ github.run_id }}-${{ github.run_attempt }}
+          pattern: unit-feedback-*-${{ github.run_id }}
           path: artifacts/downloaded-unit-feedback
           merge-multiple: true
 

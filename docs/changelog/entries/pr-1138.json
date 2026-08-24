@@ -1,0 +1,4 @@
+{
+  "prNumber": 1138,
+  "body": "Fehlgeschlagene Unit-Prüfungen können zuverlässiger erneut ausgeführt werden.\n\n- Bereits erfolgreiche Teilprüfungen behalten ihre gültigen Nachweise bei einem partiellen GitHub-Rerun.\n- Erneut ausgeführte Teilprüfungen ersetzen nur ihren eigenen Nachweis.\n- Der abschließende Unit-Check bleibt vollständig und an den aktuellen PR-Stand gebunden."
+}

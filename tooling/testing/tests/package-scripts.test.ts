@@ -241,6 +241,33 @@ describe('workspace package scripts', () => {
     expect(evidenceRequiredBranch).toBeLessThan(evidenceAggregation);
   });
 
+  it('retains successful Unit shard evidence across partial workflow reruns', () => {
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const directUploadStart = qualityWorkflow.indexOf(
+      '      - name: Upload direct unit feedback evidence'
+    );
+    const completeJobStart = qualityWorkflow.indexOf('\n  unit-complete:', directUploadStart);
+    const directUpload = qualityWorkflow.slice(directUploadStart, completeJobStart);
+    const remainingUploadStart = qualityWorkflow.indexOf(
+      '      - name: Upload remaining unit feedback evidence'
+    );
+    const aggregatorJobStart = qualityWorkflow.indexOf('\n  unit:', remainingUploadStart);
+    const remainingUpload = qualityWorkflow.slice(remainingUploadStart, aggregatorJobStart);
+    const downloadStart = qualityWorkflow.indexOf('      - name: Download unit evidence');
+    const aggregateStart = qualityWorkflow.indexOf(
+      '      - name: Aggregate required Unit status',
+      downloadStart
+    );
+    const evidenceDownload = qualityWorkflow.slice(downloadStart, aggregateStart);
+
+    expect(directUpload).toContain('name: unit-feedback-direct-${{ github.run_id }}');
+    expect(directUpload).toContain('overwrite: true');
+    expect(remainingUpload).toContain('name: unit-feedback-remaining-${{ github.run_id }}');
+    expect(remainingUpload).toContain('overwrite: true');
+    expect(evidenceDownload).toContain('pattern: unit-feedback-*-${{ github.run_id }}');
+    expect(evidenceDownload).not.toContain('github.run_attempt');
+  });
+
   it('sets up the repository Node runtime before running TypeScript aggregators', () => {
     const qualityWorkflow = loadQualityGatesWorkflow();
     const runtimeWorkflow = loadRuntimeGatesWorkflow();

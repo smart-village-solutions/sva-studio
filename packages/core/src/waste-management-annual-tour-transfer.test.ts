@@ -13,6 +13,7 @@ import {
 } from './waste-management-annual-tour-transfer.dates.js';
 import { createWasteAnnualTourConflictIndex } from './waste-management-annual-tour-transfer.conflict-index.js';
 import { createWasteAnnualSourceRelationshipIndex } from './waste-management-annual-tour-transfer.relationships.js';
+import { mapWasteAnnualRecurringShiftDates } from './waste-management-annual-tour-transfer.shift-cadence.js';
 import {
   buildWasteAnnualTourTransferFingerprint,
   deriveWasteAnnualTourTransferId,
@@ -485,6 +486,81 @@ describe('waste annual tour transfer', () => {
       originalDate: '2027-01-14',
       actualDate: '2027-01-15',
     });
+  });
+
+  it('validates explicit recurring shift replacements against the continued cadence', () => {
+    const sourceShift = {
+      id: 'shift-replacement',
+      tourId: tour().id,
+      originalDate: '2026-01-01',
+      actualDate: '2026-01-02',
+      hasYear: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as const;
+    const input = {
+      source: sourceShift,
+      tour: tour({ firstDate: '2026-01-01' }),
+      sourceYear: 2026,
+      targetYear: 2027,
+      targetFirstDate: '2027-01-14',
+      targetEndDate: '2027-12-31',
+    } as const;
+
+    expect(
+      mapWasteAnnualRecurringShiftDates({
+        ...input,
+        replacements: new Map([
+          ['shift-replacement:original', '2027-01-28'],
+          ['shift-replacement:actual', '2027-01-29'],
+        ]),
+      })
+    ).toEqual({ originalDate: '2027-01-28', actualDate: '2027-01-29' });
+
+    expect(
+      mapWasteAnnualRecurringShiftDates({
+        ...input,
+        replacements: new Map([['shift-replacement:original', '2027-01-15']]),
+      })
+    ).toEqual({ originalDate: null, actualDate: null });
+  });
+
+  it('accepts only the actual yearly occurrence as an explicit shift origin', () => {
+    const sourceShift = {
+      id: 'yearly-shift-replacement',
+      tourId: tour().id,
+      originalDate: '2026-07-15',
+      actualDate: '2026-07-16',
+      hasYear: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as const;
+    const yearlyTour = tour({ recurrence: 'yearly', firstDate: '2026-07-15' });
+
+    expect(
+      mapWasteAnnualRecurringShiftDates({
+        source: sourceShift,
+        tour: yearlyTour,
+        sourceYear: 2026,
+        targetYear: 2027,
+        targetFirstDate: '2027-07-15',
+        replacements: new Map([
+          ['yearly-shift-replacement:original', '2027-07-15'],
+          ['yearly-shift-replacement:actual', '2027-07-16'],
+        ]),
+      })
+    ).toEqual({ originalDate: '2027-07-15', actualDate: '2027-07-16' });
+
+    expect(
+      mapWasteAnnualRecurringShiftDates({
+        source: { ...sourceShift, originalDate: '2026-07-16' },
+        tour: yearlyTour,
+        sourceYear: 2026,
+        targetYear: 2027,
+        targetFirstDate: '2027-07-15',
+        replacements: new Map(),
+      })
+    ).toBeUndefined();
   });
 
   it('accepts the approved batch limits exactly and rejects either value above them', () => {

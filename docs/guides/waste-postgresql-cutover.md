@@ -4,7 +4,7 @@
 
 Dieses Runbook beschreibt die einmalige Offline-Migration der vorhandenen Supabase-Waste-Datenbank ausschließlich für `bb-prignitz`. Die Zieldatenbank wird zuvor durch die normale Aktivierung von `waste-management` provisioniert. Das Runbook legt weder Datenbank noch Interface manuell an und führt keinen zweiten Studio-Rolloutpfad ein; Deployments folgen ausschließlich dem [Studio-Rollout-Prozess](./studio-rollout-process.md).
 
-Ein verlustfreier Rückwechsel ist nur möglich, solange nach dem finalen Dump keine Schreibzugriffe auf der neuen Zieldatenbank freigegeben wurden. Nach der Freigabe wäre jeder Rückwechsel eine neue Datenmigration. Die Supabase-Quelle bleibt anschließend 14 Tage unverändert und schreibgeschützt.
+Ein verlustfreier Rückwechsel ist nur möglich, solange nach dem finalen Dump keine Schreibzugriffe auf der neuen Zieldatenbank freigegeben wurden. Nach der Freigabe wäre jeder Rückwechsel eine neue Datenmigration. Die Supabase-Quelle bleibt anschließend 14 Tage als Vergleichs- und Notfallquelle erhalten, ohne von einer produktiven Waste-Runtime verwendet zu werden.
 
 ## Einmalige Vorbereitung
 
@@ -56,7 +56,7 @@ Waste-Runtime. Schlägt danach Import oder Verifikation fehl, bleibt sie
 gestoppt; ein automatischer Start auf einem ungeprüften Ziel findet nicht
 statt.
 
-Am vereinbarten Sonntag werden über den bestehenden Betriebsweg Studio-App, öffentliche Waste-App und relevante Worker gestoppt. Ein eigener Wartungsmodus ist nicht vorgesehen. Vor dem Dump müssen folgende Prüfungen leer sein:
+Am vereinbarten Sonntag wird über den bestehenden Betriebsweg die öffentliche Waste-App gestoppt. Studio-App und Worker bleiben in Betrieb; vor der Zielmutation sperrt der Import-Agent ihre neuen Verbindungen zur Waste-Zieldatenbank und wartet den Sitzungs-Drain ab. Ein eigener Wartungsmodus ist nicht vorgesehen. Vor der Erstellung beziehungsweise Annahme des finalen Quellartefakts müssen folgende Prüfungen leer sein:
 
 ```sql
 SELECT id, status
@@ -139,6 +139,6 @@ Es enthält keine Passwörter oder Verbindungs-URLs und wird nicht ins Git-Repos
 
 ## Freigabe und Rückfall
 
-Erst nach allen erfolgreichen Prüfungen werden Studio, Worker und die öffentliche Waste-App wieder gestartet. Das allgemeine Interface bleibt für Nutzer unsichtbar; der Runtime-Resolver verwendet ausschließlich das aktive pluginverwaltete Interface von `bb-prignitz`.
+Erst nach allen erfolgreichen Prüfungen reconciliert der Import-Agent die Studio-/Worker-Runtime-Rolle einschließlich `CONNECT` und Rechteprobe; anschließend wird die öffentliche Waste-App mit der PostgreSQL-Konfiguration wieder gestartet. Das allgemeine Interface bleibt für Nutzer unsichtbar; der Runtime-Resolver verwendet ausschließlich das aktive pluginverwaltete Interface von `bb-prignitz`.
 
 Bis zur Freigabe erfolgt ein Rückfall durch erneuten Stopp der Public-Waste-App, Sperre und Drain der Studio-/Worker-Verbindungen zur Zieldatenbank sowie Wiederanlauf mit der Supabase-Quelle. Der fehlgeschlagene PostgreSQL-Zielstand bleibt isoliert zur Analyse erhalten. Nach der Freigabe bleibt Supabase 14 Tage ohne produktive Runtime-Nutzung als Vergleichsquelle erhalten; tägliche Read-Smokes, Jobfehler, Reminder-Outbox und tenantgenaue Backups werden kontrolliert. Die endgültige Supabase-Stilllegung benötigt eine separate Freigabe.

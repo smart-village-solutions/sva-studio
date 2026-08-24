@@ -1,0 +1,4 @@
+{
+  "prNumber": 1136,
+  "body": "Die Qualitätssicherung für die Waste-Jahresplanung ist wieder vollständig ausführbar.\n\n- Browser-Mockantworten entsprechen dem veröffentlichten API-Vertrag für Vorschau und Übernahme.\n- Die Vorschauprüfung berücksichtigt die sichtbaren Wochentage und die vollständige Erfolgsmeldung.\n- Das Laufzeitverhalten des Studios bleibt unverändert."
+}

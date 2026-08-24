@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { BrowserContext, Page, Route } from '@playwright/test';
+import type {
+  WasteAnnualTourTransferPreview,
+  WasteAnnualTourTransferResult,
+} from '@sva/plugin-sdk';
 
 import { registerSharedIamRoutes } from './studio-shell.helpers';
 
@@ -295,6 +299,7 @@ const mockWasteFacade = async (
               targetPeriod: { firstDate: '2027-01-04', endDate: '2027-12-31' },
               firstTargetDate: '2027-01-04',
               recurrence: 'weekly',
+              dateExamples: [{ sourceDate: '2026-01-05', targetDate: '2027-01-04' }],
               relationshipCounts: {
                 wasteFractions: 1,
                 customDates: 0,
@@ -317,7 +322,7 @@ const mockWasteFacade = async (
             relationships: 1,
             excluded: 0,
           },
-        }),
+        } satisfies WasteAnnualTourTransferPreview),
       });
       return;
     }
@@ -346,8 +351,9 @@ const mockWasteFacade = async (
           existingTourIds: [],
           createdCount: 1,
           existingCount: 0,
+          classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
           listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
-        }),
+        } satisfies WasteAnnualTourTransferResult),
       });
       return;
     }
@@ -1255,11 +1261,13 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Tourensatz ins Folgejahr übernehmen' }).click();
     await expect(page.getByText('Unveränderliches Folgejahr: 2027')).toBeVisible();
     await page.getByRole('button', { name: 'Vorschau erstellen' }).click();
-    await expect(page.getByText('2026-01-05 → 2027-01-04')).toBeVisible();
+    await expect(page.getByText('2026-01-05 (Montag) → 2027-01-04 (Montag)')).toBeVisible();
     await page.getByRole('button', { name: 'Auswahl prüfen' }).click();
     await page.getByRole('button', { name: 'Inaktiv übernehmen' }).click();
 
-    await expect(page.getByText('1 Touren wurden inaktiv für 2027 angelegt.')).toBeVisible();
+    await expect(page.getByRole('status')).toContainText(
+      '1 Touren wurden inaktiv für 2027 angelegt; 0 bereits identische Touren wurden wiederverwendet.'
+    );
     expect(harness.requests.annualTourTransfers).toEqual([
       expect.objectContaining({
         sourceYear: 2026,

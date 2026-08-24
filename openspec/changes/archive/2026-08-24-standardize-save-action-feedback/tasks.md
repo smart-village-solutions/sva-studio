@@ -34,7 +34,7 @@
 - [x] 3.9 Pro Änderungsblock Zustands-, Fehler-, Create-Navigations- und Accessibility-Tests ergänzen und den kleinsten relevanten Unit-/Type-/Lint-Gate ausführen
 - [x] 3.10 Abschließend nachweisen, dass jeder verbleibende Submit-Flow klassifiziert ist und verbleibende Toasts ausschließlich dokumentierte kontextlose Aktionen betreffen
 - [x] 3.11 Betroffene Entwickler- und arc42-Dokumentation auf den vollständigen PR-Scope aktualisieren und `openspec validate standardize-save-action-feedback --strict` ausführen
-- [ ] 3.12 Vor finaler PR-Freigabe den affected Scope messen, `pnpm test:pr` ausführen und alle GitHub-Gates auf dem veröffentlichten Head prüfen
+- [x] 3.12 Vor finaler PR-Freigabe den affected Scope messen, `pnpm test:pr` ausführen und alle GitHub-Gates auf dem veröffentlichten Head prüfen
 
 ## 4. Explizit separate Folge-Changes
 

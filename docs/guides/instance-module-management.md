@@ -29,7 +29,7 @@ Tenant-Nutzer sehen den Menüpunkt `Module` und dürfen `/modules` direkt öffne
 Alternativ:
 
 1. Instanzdetail unter `/admin/instances/$instanceId` öffnen.
-2. Tab `Module` wählen.
+2. Tab `Betrieb` wählen.
 3. Das gewünschte Modul im Bereich `Verfügbare Module` zuweisen.
 
 Erwartetes Ergebnis:
@@ -45,7 +45,7 @@ Erwartetes Ergebnis:
 3. Im zugewiesenen Modul `Entziehen` auslösen.
 4. die Bestätigung `REVOKE` explizit abschließen.
 
-Alternativ kann derselbe Entzug direkt im Tab `Module` der Instanz-Detailseite ausgelöst werden.
+Alternativ kann derselbe Entzug direkt im Tab `Betrieb` der Instanz-Detailseite ausgelöst werden.
 
 Erwartetes Ergebnis:
 
@@ -58,7 +58,7 @@ Erwartetes Ergebnis:
 Wenn die Detailansicht im Instanz-Cockpit oder im Modulbereich einen degradierten Modul-IAM-Befund zeigt:
 
 1. Instanzdetail unter `/admin/instances/$instanceId` öffnen.
-2. im Tab `Module` die Aktion `IAM-Basis neu aufbauen` ausführen.
+2. im Tab `Betrieb` die Aktion `IAM-Basis neu aufbauen` ausführen.
 
 Erwartetes Ergebnis:
 
@@ -74,7 +74,7 @@ Erwartetes Ergebnis:
 ## Diagnose
 
 - `/admin/instances/$instanceId` zeigt `IAM-Basis zugewiesener Module` als eigene Betriebsachse.
-- Der Tab `Module` in `/admin/instances/$instanceId` bietet denselben instanzgebundenen Root-Admin-Arbeitsbereich wie `/admin/modules`, aber ohne zusätzliche Instanzauswahl.
+- Der Tab `Betrieb` in `/admin/instances/$instanceId` bietet denselben instanzgebundenen Root-Admin-Arbeitsbereich wie `/admin/modules`, aber ohne zusätzliche Instanzauswahl.
 - `/auth/me` liefert für Instanz-Sessions die kanonische Liste `assignedModules`.
 - Plugin-Routen prüfen diese Liste clientseitig fail-closed vor dem Rendern.
 

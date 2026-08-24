@@ -1,16 +1,15 @@
-# Change: Modul-Workspace als eigener Tab in der Instanz-Detailseite
+# Change: Modul-Workspace in die Betriebsansicht der Instanz-Detailseite integrieren
 
 ## Why
 
 Die bestehende Root-Admin-Modulverwaltung unter `/admin/modules` funktioniert fachlich, liegt aber getrennt von der operativen Instanzverwaltung. Für Root-Admins ist die Modulfreigabe einer konkreten Instanz damit ein Medienbruch: Befund, Konfiguration und Historie liegen auf der Instanz-Detailseite, die eigentliche Modulmutation aber auf einer separaten Sammelseite.
 
-Der neue Root-Admin-Tab soll diese Lücke schließen, ohne den bestehenden zentralen Bereich `Module` abzuschaffen oder eine zweite fachliche Mutationslogik einzuführen.
+Der instanzgebundene Workspace soll diese Lücke in der bestehenden Betriebsansicht schließen, ohne den zentralen Bereich `Module` abzuschaffen oder eine zweite fachliche Mutationslogik einzuführen.
 
 ## What Changes
 
-- Erweitere die Root-Admin-Instanz-Detailseite `/admin/instances/:instanceId` um einen vierten Tab `Module`.
-- Verlege die instanzgebundene Modulverwaltung für Root-Admins in einen gemeinsamen, wiederverwendbaren Workspace, der sowohl im neuen Detail-Tab als auch weiter auf `/admin/modules` genutzt wird.
-- Ermögliche im neuen Tab für genau diese Instanz:
+- Integriere die instanzgebundene Modulverwaltung für Root-Admins in einen gemeinsamen, wiederverwendbaren Workspace, der sowohl im Tab `Betrieb` der Detailseite als auch weiter auf `/admin/modules` genutzt wird.
+- Ermögliche in der Betriebsansicht für genau diese Instanz:
   - Modul zuweisen
   - Modul entziehen
   - IAM-Baseline neu aufbauen

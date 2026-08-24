@@ -11,6 +11,7 @@ const idempotency = vi.hoisted(() => ({
   reserve: vi.fn(),
   renew: vi.fn(),
   complete: vi.fn(),
+  release: vi.fn(),
   hasAudit: vi.fn(),
 }));
 
@@ -19,6 +20,7 @@ vi.mock('../../iam-account-management/shared.js', async (importOriginal) => ({
   reserveIdempotency: idempotency.reserve,
   renewIdempotencyLease: idempotency.renew,
   completeIdempotency: idempotency.complete,
+  releaseIdempotencyReservation: idempotency.release,
   hasIdempotentAuditEvent: idempotency.hasAudit,
 }));
 
@@ -82,6 +84,7 @@ describe('annual tour transfer handlers', () => {
     idempotency.reserve.mockResolvedValue({ status: 'reserved', leaseToken: 'lease-1' });
     idempotency.renew.mockResolvedValue(true);
     idempotency.complete.mockResolvedValue(true);
+    idempotency.release.mockResolvedValue(true);
     idempotency.hasAudit.mockResolvedValue(false);
   });
 
@@ -251,7 +254,10 @@ describe('annual tour transfer handlers', () => {
       expect.objectContaining({ inProgressLeaseMs: 5 * 60 * 1_000 })
     );
     expect(idempotency.hasAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: 'idem-1' })
+      expect.objectContaining({
+        actorAccountId: 'account-1',
+        idempotencyKey: 'idem-1',
+      })
     );
     expect(emitAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ requestId: 'idem-1' })
@@ -311,6 +317,44 @@ describe('annual tour transfer handlers', () => {
     expect(response.status).toBe(201);
     expect(emitAuditEvent).not.toHaveBeenCalled();
     expect(idempotency.complete).toHaveBeenCalled();
+  });
+
+  it('releases the fenced reservation after a transient failure so the request can retry', async () => {
+    const response =
+      await wasteManagementAnnualTourTransferHandlers.createWasteAnnualTourTransferInternal(
+        request(
+          '/api/v1/waste-management/tours/annual-transfer',
+          {
+            sourceYear: 2026,
+            selectedTourIds: ['source-1'],
+            replacementDates: [],
+            acknowledgedConflictTourIds: [],
+            previewFingerprint: `sha256:${'a'.repeat(64)}`,
+          },
+          { 'Idempotency-Key': 'idem-retry' }
+        ),
+        actor,
+        {
+          resolvePermissions: permissions,
+          resolveActorInfo: vi.fn(async () => ({
+            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
+          })),
+          createWasteAnnualTourTransfer: vi.fn(async () => {
+            throw new Error('connection_lost_around_commit');
+          }),
+          emitAuditEvent: vi.fn(async () => undefined),
+        }
+      );
+
+    expect(response.status).toBe(503);
+    expect(idempotency.release).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      actorAccountId: 'account-1',
+      endpoint: 'POST:/api/v1/waste-management/tours/annual-transfer',
+      idempotencyKey: 'idem-retry',
+      leaseToken: 'lease-1',
+    });
+    expect(idempotency.complete).not.toHaveBeenCalled();
   });
 
   it('does not execute or audit while the same idempotency key is still in progress', async () => {

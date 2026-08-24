@@ -22,6 +22,7 @@ export {
 export {
   completeIdempotency,
   hasIdempotentAuditEvent,
+  releaseIdempotencyReservation,
   renewIdempotencyLease,
   reserveIdempotency,
 } from './shared-idempotency.js';

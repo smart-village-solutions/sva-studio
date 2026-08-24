@@ -7,6 +7,7 @@ import type {
 import {
   completeIdempotency,
   hasIdempotentAuditEvent,
+  releaseIdempotencyReservation,
 } from '../../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { emitWasteAuditEvent } from './auth.js';
@@ -55,6 +56,7 @@ export const completeAnnualTourTransfer = async (input: {
   } as const;
   const auditExists = await hasIdempotentAuditEvent({
     instanceId: input.instanceId,
+    actorAccountId: input.actorAccountId,
     idempotencyKey: input.idempotencyKey,
     eventType: input.response.ok ? 'plugin_action_authorized' : 'plugin_action_failed',
     actionId: auditEvent.actionId,
@@ -66,6 +68,16 @@ export const completeAnnualTourTransfer = async (input: {
       ctx: input.ctx,
       requestId: input.idempotencyKey,
     });
+  }
+  if (input.response.status >= 500) {
+    await releaseIdempotencyReservation({
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      endpoint: annualTourTransferEndpoint,
+      idempotencyKey: input.idempotencyKey,
+      leaseToken: input.leaseToken,
+    });
+    return input.response;
   }
   await completeIdempotency({
     instanceId: input.instanceId,

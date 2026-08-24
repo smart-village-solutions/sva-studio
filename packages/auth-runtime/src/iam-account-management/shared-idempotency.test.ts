@@ -24,6 +24,8 @@ vi.mock('./shared-runtime.js', () => ({
 
 import {
   completeIdempotency,
+  hasIdempotentAuditEvent,
+  releaseIdempotencyReservation,
   renewIdempotencyLease,
   reserveIdempotency,
 } from './shared-idempotency.js';
@@ -58,6 +60,13 @@ describe('shared idempotency store', () => {
           status: 'IN_PROGRESS',
           updated_at: new Date(),
         });
+      }
+      if (text.includes("DELETE FROM iam.idempotency_keys\nWHERE instance_id")) {
+        const row = mocks.rows.get(rowKey(values));
+        const token = (row?.response_body as { leaseToken?: string } | null)?.leaseToken;
+        const released = row?.status === 'IN_PROGRESS' && token === values[4];
+        if (released) mocks.rows.delete(rowKey(values));
+        return { rowCount: released ? 1 : 0, rows: released ? [{ id: 'idem-row' }] : [] };
       }
       if (text.includes('response_body = $5::jsonb')) {
         const row = mocks.rows.get(rowKey(values));
@@ -211,5 +220,42 @@ describe('shared idempotency store', () => {
         leaseToken: reserved.leaseToken,
       })
     ).resolves.toBe(true);
+  });
+
+  it('releases only the current lease owner so transient failures can be retried', async () => {
+    const reserved = await reserveIdempotency({ ...input, inProgressLeaseMs: 5 * 60 * 1_000 });
+    if (reserved.status !== 'reserved' || !reserved.leaseToken)
+      throw new Error('missing test lease');
+
+    await expect(
+      releaseIdempotencyReservation({ ...input, leaseToken: 'replaced' })
+    ).resolves.toBe(false);
+    await expect(
+      releaseIdempotencyReservation({ ...input, leaseToken: reserved.leaseToken })
+    ).resolves.toBe(true);
+    await expect(
+      reserveIdempotency({ ...input, inProgressLeaseMs: 5 * 60 * 1_000 })
+    ).resolves.toMatchObject({ status: 'reserved', leaseToken: expect.any(String) });
+  });
+
+  it('scopes audit deduplication to the actor account', async () => {
+    await hasIdempotentAuditEvent({
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      idempotencyKey: input.idempotencyKey,
+      eventType: 'plugin_action_authorized',
+      actionId: 'waste-management.annual-tour-transfer.created',
+    });
+
+    expect(mocks.client.query).toHaveBeenCalledWith(
+      expect.stringContaining('AND account_id = $5::uuid'),
+      [
+        input.instanceId,
+        input.idempotencyKey,
+        'plugin_action_authorized',
+        'waste-management.annual-tour-transfer.created',
+        input.actorAccountId,
+      ]
+    );
   });
 });

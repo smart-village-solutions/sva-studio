@@ -200,6 +200,7 @@ RETURNING id;
 
 export const hasIdempotentAuditEvent = async (input: {
   instanceId: string;
+  actorAccountId: string;
   idempotencyKey: string;
   eventType: string;
   actionId: string;
@@ -213,12 +214,45 @@ WHERE instance_id = $1
   AND request_id = $2
   AND event_type = $3
   AND payload->>'action_id' = $4
+  AND account_id = $5::uuid
   AND created_at >= NOW() - INTERVAL '24 hours'
 LIMIT 1;
 `,
-      [input.instanceId, input.idempotencyKey, input.eventType, input.actionId]
+      [
+        input.instanceId,
+        input.idempotencyKey,
+        input.eventType,
+        input.actionId,
+        input.actorAccountId,
+      ]
     );
     return (existing.rowCount ?? 0) > 0;
+  });
+
+export const releaseIdempotencyReservation = async (
+  input: IdempotencyScope & Readonly<{ leaseToken: string }>
+): Promise<boolean> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const released = await client.query(
+      `
+DELETE FROM iam.idempotency_keys
+WHERE instance_id = $1
+  AND actor_account_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4
+  AND status = 'IN_PROGRESS'
+  AND response_body->>'leaseToken' = $5
+RETURNING id;
+`,
+      [
+        input.instanceId,
+        input.actorAccountId,
+        input.endpoint,
+        input.idempotencyKey,
+        input.leaseToken,
+      ]
+    );
+    return (released.rowCount ?? 0) > 0;
   });
 
 type CompleteIdempotencyInput = {

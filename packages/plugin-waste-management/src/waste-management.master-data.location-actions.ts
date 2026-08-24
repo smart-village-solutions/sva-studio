@@ -10,7 +10,8 @@ import type { WasteManagementSearchParams } from './search-params.js';
 export const createWasteMasterDataLocationActions = (
   state: WasteMasterDataState,
   search: WasteManagementSearchParams,
-  filteredLocationIds: readonly string[]
+  loadFilteredLocationIds: () => Promise<readonly string[] | null>,
+  clearFilteredLocationIds: () => void
 ) => ({
   openCreateLocationDialog: () => {
     state.setLocationDialogMode('create');
@@ -46,7 +47,12 @@ export const createWasteMasterDataLocationActions = (
     ),
   replaceLocationSelection: (locationIds: readonly string[]) =>
     state.setSelectedLocationIds(Array.from(new Set(locationIds))),
-  toggleSelectAllFilteredLocations: (checked: boolean) =>
+  toggleSelectAllFilteredLocations: async (checked: boolean) => {
+    const filteredLocationIds = checked
+      ? await loadFilteredLocationIds()
+      : state.filteredLocationIds;
+    if (filteredLocationIds === null) return;
+    if (!checked) clearFilteredLocationIds();
     state.setSelectedLocationIds((current) => {
       if (!checked) {
         const filteredIds = new Set(filteredLocationIds);
@@ -57,5 +63,6 @@ export const createWasteMasterDataLocationActions = (
         merged.add(locationId);
       }
       return Array.from(merged);
-    }),
+    });
+  },
 });

@@ -21,13 +21,18 @@ const noopRefreshTechnicalHistory = async () => undefined;
 export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteMasterDataState();
   const loadOverview = useWasteMasterDataOverview(state, pt, search.masterDataTab);
-  const loadCollectionLocationList = useWasteCollectionLocationList(state, pt, search);
+  const {
+    clearFilteredLocationIds,
+    loadFilteredLocationIds,
+    loadList: loadCollectionLocationList,
+  } = useWasteCollectionLocationList(state, pt, search);
   const derivedState = createWasteMasterDataDerivedState(state, pt, search);
   const dialogActions = createWasteMasterDataDialogActions(state, search);
   const selectionActions = createWasteMasterDataSelectionActions(
     state,
     search,
-    state.filteredLocationIds
+    loadFilteredLocationIds,
+    clearFilteredLocationIds
   );
   const submitHandlers = createWasteMasterDataMutationHandlers({
     state,

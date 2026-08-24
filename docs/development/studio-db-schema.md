@@ -88,10 +88,19 @@ Zahlensortierung, beispielsweise `2` vor `10`.
 Für neue Waste-Tenant-Datenbanken legt der Schema-Builder die Collation an.
 Bestandsdatenbanken erhalten sie ausschließlich über die idempotente Migration
 `20260824_01_add_german_numeric_collation`. Die Migration verifiziert Provider,
-Determinismus und normalisierte ICU-Locale, bevor ihr Ledger-Eintrag geschrieben
+Determinismus, normalisierte ICU-Locale und die Übereinstimmung von gespeicherter
+mit tatsächlich verfügbarer ICU-Version, bevor ihr Ledger-Eintrag geschrieben
 wird. Die Anwendung fällt nicht auf die Prozess-Locale oder eine clientseitige
 Sortierung zurück. Fehlt oder driftet die Collation, scheitert der Read
 fail-closed als Datenbankfehler.
+
+Ein ICU-Versionsdrift wird nicht automatisch repariert. Vor einem erneuten
+Migrationslauf müssen im Wartungsfenster alle von `public.sva_de_numeric`
+abhängigen Datenbankobjekte ermittelt und mit der neuen ICU-Version neu aufgebaut
+werden. Erst danach darf die gespeicherte Version mit
+`ALTER COLLATION public.sva_de_numeric REFRESH VERSION` aktualisiert und die
+Migration erneut ausgeführt werden. `REFRESH VERSION` allein baut abhängige
+Indizes nicht neu und ist deshalb kein zulässiger Abkürzungsschritt.
 
 Der zentrale Soll-Snapshot wurde für diese Änderung geprüft und bleibt
 unverändert: Er wird ausschließlich aus `packages/data/migrations/` abgeleitet.

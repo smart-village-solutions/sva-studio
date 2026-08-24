@@ -104,6 +104,9 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[2]?.verification.sql).toContain(
       'NOT collation_row.collisdeterministic'
     );
+    expect(wasteTenantMigrations[2]?.verification.sql).toContain(
+      'collation_row.collversion = pg_collation_actual_version(collation_row.oid)'
+    );
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {

@@ -540,7 +540,7 @@ describe('waste management helper modules', () => {
     });
   });
 
-  it('covers entity actions and location selection helpers', () => {
+  it('covers entity actions and location selection helpers', async () => {
     const state = {
       overview: {
         regions: [{ id: 'region-1' }],
@@ -569,6 +569,7 @@ describe('waste management helper modules', () => {
       setLocationDialogOpen: vi.fn(),
       setBulkAssignmentsForm: vi.fn(),
       setBulkAssignmentsDialogOpen: vi.fn(),
+      filteredLocationIds: ['location-1', 'location-2'],
       setSelectedLocationIds: vi.fn(
         (next: readonly string[] | ((current: readonly string[]) => readonly string[])) =>
           typeof next === 'function' ? next(['location-2']) : next
@@ -638,7 +639,8 @@ describe('waste management helper modules', () => {
     const locationActions = createWasteMasterDataLocationActions(
       state as never,
       { regionId: 'region-7', cityId: 'city-7' },
-      ['location-1', 'location-2']
+      vi.fn(async () => ['location-1', 'location-2']),
+      vi.fn()
     );
     locationActions.openCreateLocationDialog();
     locationActions.openEditLocationDialog({
@@ -655,8 +657,8 @@ describe('waste management helper modules', () => {
     locationActions.toggleLocationSelection('location-1', true);
     locationActions.toggleLocationSelection('location-2', false);
     locationActions.replaceLocationSelection(['location-2', 'location-2', 'location-3']);
-    locationActions.toggleSelectAllFilteredLocations(true);
-    locationActions.toggleSelectAllFilteredLocations(false);
+    await locationActions.toggleSelectAllFilteredLocations(true);
+    await locationActions.toggleSelectAllFilteredLocations(false);
 
     expect(state.setLocationForm).toHaveBeenCalledWith(
       expect.objectContaining({ regionId: 'region-7', cityId: 'city-7' })
@@ -680,10 +682,11 @@ describe('waste management helper modules', () => {
     const filteredSelectionActions = createWasteMasterDataLocationActions(
       selectionState as never,
       { regionId: 'region-7', cityId: 'city-7' },
-      ['location-1', 'location-2']
+      vi.fn(async () => ['location-1', 'location-2']),
+      vi.fn()
     );
-    filteredSelectionActions.toggleSelectAllFilteredLocations(true);
-    filteredSelectionActions.toggleSelectAllFilteredLocations(false);
+    await filteredSelectionActions.toggleSelectAllFilteredLocations(true);
+    await filteredSelectionActions.toggleSelectAllFilteredLocations(false);
     expect(selectionResults).toEqual([
       ['location-outside', 'location-1', 'location-2'],
       ['location-outside'],

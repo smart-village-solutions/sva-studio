@@ -58,3 +58,7 @@ Schemaaufbau. Für bestehende Datenbanken installiert sie die versionierte
 Waste-Tenant-Migration `20260824_01_add_german_numeric_collation`. Reguläre
 Rollouts und Migrationen folgen ausschließlich dem
 [Studio-Rollout-Prozess](./studio-rollout-process.md).
+Die Migration prüft auch die ICU-Version. Bei Versionsdrift gilt das in der
+[Datenbankschema-Dokumentation](../development/studio-db-schema.md#datenbankweiter-sortiervertrag-für-waste-abholorte)
+beschriebene Wartungsverfahren; ein automatisches Versions-Refresh findet nicht
+statt.

@@ -37,32 +37,31 @@ export const useWasteCollectionLocationList = (
   search: WasteManagementSearchParams
 ) => {
   const requestSequence = useRef(0);
+  const filteredIdsRequestSequence = useRef(0);
   const ptRef = useRef(pt);
   ptRef.current = pt;
   const {
     setCollectionLocationListError,
     setCollectionLocationPage,
     setFilteredLocationIds,
+    setMessage,
   } = state;
 
   const loadList = useCallback(async () => {
     if (search.masterDataTab !== 'locations' || search.locationsView !== 'list') {
       requestSequence.current += 1;
+      filteredIdsRequestSequence.current += 1;
       setCollectionLocationListError(null);
       return;
     }
     const sequence = ++requestSequence.current;
+    filteredIdsRequestSequence.current += 1;
     setCollectionLocationPage(null);
     setFilteredLocationIds([]);
     try {
-      const filter = toFilter(search);
-      const [page, filteredIds] = await Promise.all([
-        getWasteCollectionLocationPage(toQuery(search)),
-        getWasteCollectionLocationIds(filter),
-      ]);
+      const page = await getWasteCollectionLocationPage(toQuery(search));
       if (sequence !== requestSequence.current) return;
       setCollectionLocationPage(page);
-      setFilteredLocationIds(filteredIds);
       setCollectionLocationListError(null);
     } catch (loadError) {
       if (sequence !== requestSequence.current) return;
@@ -90,9 +89,43 @@ export const useWasteCollectionLocationList = (
     setFilteredLocationIds,
   ]);
 
+  const loadFilteredLocationIds = useCallback(async (): Promise<readonly string[] | null> => {
+    const sequence = ++filteredIdsRequestSequence.current;
+    try {
+      const filteredIds = await getWasteCollectionLocationIds(toFilter(search));
+      if (sequence !== filteredIdsRequestSequence.current) return null;
+      setFilteredLocationIds(filteredIds);
+      return filteredIds;
+    } catch (loadError) {
+      if (sequence !== filteredIdsRequestSequence.current) return null;
+      const code = resolveApiErrorCode(loadError);
+      setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? ptRef.current('masterData.messages.loadForbidden')
+            : ptRef.current('masterData.messages.loadError'),
+      });
+      return null;
+    }
+  }, [
+    search.cityId,
+    search.q,
+    search.regionId,
+    search.status,
+    search.tourId,
+    setFilteredLocationIds,
+    setMessage,
+  ]);
+
+  const clearFilteredLocationIds = useCallback(() => {
+    filteredIdsRequestSequence.current += 1;
+    setFilteredLocationIds([]);
+  }, [setFilteredLocationIds]);
+
   useEffect(() => {
     void loadList();
   }, [loadList]);
 
-  return loadList;
+  return { clearFilteredLocationIds, loadFilteredLocationIds, loadList };
 };

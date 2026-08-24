@@ -11,5 +11,12 @@ export const createWasteMasterDataDialogActions = (
 export const createWasteMasterDataSelectionActions = (
   state: WasteMasterDataState,
   search: WasteManagementSearchParams,
-  filteredLocationIds: readonly string[]
-) => createWasteMasterDataLocationActions(state, search, filteredLocationIds);
+  loadFilteredLocationIds: () => Promise<readonly string[] | null>,
+  clearFilteredLocationIds: () => void
+) =>
+  createWasteMasterDataLocationActions(
+    state,
+    search,
+    loadFilteredLocationIds,
+    clearFilteredLocationIds
+  );

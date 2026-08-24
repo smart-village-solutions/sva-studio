@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
@@ -157,13 +157,9 @@ describe('waste management data loaders', () => {
 
   it('keeps an overview failure visible when the concurrent location list succeeds later', async () => {
     let resolvePage: ((value: object) => void) | undefined;
-    let resolveIds: ((value: readonly string[]) => void) | undefined;
     apiMocks.getWasteManagementMasterDataOverview.mockRejectedValue(new Error('overview failed'));
     apiMocks.getWasteCollectionLocationPage.mockImplementation(
       () => new Promise((resolve) => (resolvePage = resolve))
-    );
-    apiMocks.getWasteCollectionLocationIds.mockImplementation(
-      () => new Promise((resolve) => (resolveIds = resolve))
     );
 
     render(<CollectionLocationLoaderHarness />);
@@ -173,11 +169,11 @@ describe('waste management data loaders', () => {
     });
 
     resolvePage?.({ items: [], page: 1, pageSize: 25, total: 0, pageCount: 0 });
-    resolveIds?.([]);
 
     await waitFor(() => {
-      expect(apiMocks.getWasteCollectionLocationIds).toHaveBeenCalledTimes(1);
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(1);
     });
+    expect(apiMocks.getWasteCollectionLocationIds).not.toHaveBeenCalled();
     expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
   });
 
@@ -187,7 +183,6 @@ describe('waste management data loaders', () => {
       () => new Promise((resolve) => (resolveOverview = resolve))
     );
     apiMocks.getWasteCollectionLocationPage.mockRejectedValue(new Error('list failed'));
-    apiMocks.getWasteCollectionLocationIds.mockResolvedValue([]);
 
     render(<CollectionLocationLoaderHarness />);
 
@@ -212,11 +207,14 @@ describe('waste management data loaders', () => {
 
   it('clears stale location rows and filtered ids before loading the next query', async () => {
     apiMocks.getWasteCollectionLocationPage.mockImplementation(() => new Promise(() => undefined));
-    apiMocks.getWasteCollectionLocationIds.mockImplementation(() => new Promise(() => undefined));
+    let resolveIds: ((value: readonly string[]) => void) | undefined;
+    apiMocks.getWasteCollectionLocationIds.mockImplementation(
+      () => new Promise((resolve) => (resolveIds = resolve))
+    );
     const setCollectionLocationPage = vi.fn();
     const setFilteredLocationIds = vi.fn();
 
-    renderHook(() =>
+    const { result } = renderHook(() =>
       useWasteCollectionLocationList(
         {
           setCollectionLocationListError: vi.fn(),
@@ -242,6 +240,16 @@ describe('waste management data loaders', () => {
     });
     expect(setCollectionLocationPage).toHaveBeenCalledWith(null);
     expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
+    expect(apiMocks.getWasteCollectionLocationIds).not.toHaveBeenCalled();
+
+    let loadedIds: readonly string[] | null = null;
+    await act(async () => {
+      const request = result.current.loadFilteredLocationIds();
+      resolveIds?.(['location-1', 'location-2']);
+      loadedIds = await request;
+    });
+    expect(loadedIds).toEqual(['location-1', 'location-2']);
+    expect(setFilteredLocationIds).toHaveBeenLastCalledWith(['location-1', 'location-2']);
   });
 
   it('keeps the tours loader on a single failed fetch cycle', async () => {

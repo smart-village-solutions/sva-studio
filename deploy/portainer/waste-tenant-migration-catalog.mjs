@@ -103,6 +103,7 @@ export const wasteTenantMigrations = Object.freeze([
             collation_row.collprovider = 'i'
             AND NOT collation_row.collisdeterministic
             AND collation_row.colliculocale IN ('de-u-kn-true-ks-level2', 'de-u-kn-ks-level2')
+            AND collation_row.collversion = pg_collation_actual_version(collation_row.oid)
           FROM pg_collation AS collation_row
           INNER JOIN pg_namespace AS namespace_row
             ON namespace_row.oid = collation_row.collnamespace

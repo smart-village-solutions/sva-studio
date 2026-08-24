@@ -94,6 +94,7 @@ const CollectionLocationLoaderHarness = () => {
   const state = useWasteMasterDataState();
   useWasteMasterDataOverview(state, (key) => key, 'locations');
   useWasteCollectionLocationList(state, (key) => key, {
+    tab: 'locations',
     masterDataTab: 'locations',
     locationsView: 'list',
     q: '',
@@ -216,6 +217,7 @@ describe('waste management data loaders', () => {
       setFilteredLocationIds,
     } as never;
     const initialSearch = {
+      tab: 'locations',
       masterDataTab: 'locations',
       locationsView: 'list',
       q: 'neue Suche',
@@ -278,6 +280,51 @@ describe('waste management data loaders', () => {
     });
     await waitFor(() => {
       expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
+    });
+  });
+
+  it('stops the location loader while its tab is hidden and reloads when it becomes active', async () => {
+    apiMocks.getWasteCollectionLocationPage.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 25,
+      total: 0,
+      pageCount: 0,
+    });
+    const state = {
+      setCollectionLocationListError: vi.fn(),
+      setCollectionLocationPage: vi.fn(),
+      setFilteredLocationIds: vi.fn(),
+    } as never;
+    const activeSearch = {
+      tab: 'locations',
+      masterDataTab: 'locations',
+      locationsView: 'list',
+      q: '',
+      status: 'all',
+      locationSortMode: 'address',
+      locationSortDirection: 'asc',
+      page: 1,
+      pageSize: 25,
+    } as never;
+    const { rerender } = renderHook(
+      ({ search }) => useWasteCollectionLocationList(state, (key) => key, search),
+      { initialProps: { search: activeSearch } }
+    );
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledOnce();
+    });
+
+    rerender({ search: { ...activeSearch, tab: 'tours', q: 'hidden change' } as never });
+    await waitFor(() => {
+      expect(state.setCollectionLocationListError).toHaveBeenLastCalledWith(null);
+    });
+    expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledOnce();
+
+    rerender({ search: activeSearch });
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(2);
     });
   });
 

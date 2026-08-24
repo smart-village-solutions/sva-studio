@@ -31,6 +31,11 @@ const toQuery = (search: WasteManagementSearchParams): WasteCollectionLocationQu
   pageSize: search.pageSize as WasteCollectionLocationPageSize,
 });
 
+const isActiveLocationList = (search: WasteManagementSearchParams): boolean =>
+  search.tab === 'locations' &&
+  search.masterDataTab === 'locations' &&
+  search.locationsView === 'list';
+
 const useFilteredLocationIdsLoader = (
   state: WasteMasterDataState,
   pt: Translate,
@@ -94,7 +99,7 @@ export const useWasteCollectionLocationList = (
   );
 
   const loadList = useCallback(async () => {
-    if (search.masterDataTab !== 'locations' || search.locationsView !== 'list') {
+    if (!isActiveLocationList(search)) {
       requestSequence.current += 1;
       setCollectionLocationListError(null);
       return;
@@ -126,6 +131,7 @@ export const useWasteCollectionLocationList = (
     search.q,
     search.regionId,
     search.status,
+    search.tab,
     search.tourId,
     setCollectionLocationPage,
     setCollectionLocationListError,

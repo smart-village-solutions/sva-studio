@@ -13,7 +13,8 @@ export const wasteAnnualTourTransferLimits = { tours: 1_000, relationships: 100_
 export class WasteAnnualTourTransferError extends Error {
   public constructor(
     public readonly code:
-      'invalid_source_year' | 'batch_limit_exceeded' | 'replacement_date_invalid'
+      'invalid_source_year' | 'batch_limit_exceeded' | 'replacement_date_invalid',
+    public readonly replacement?: Readonly<{ sourceResourceId: string; expectedYear: number }>
   ) {
     super(code);
     this.name = 'WasteAnnualTourTransferError';

@@ -679,6 +679,24 @@ describe('waste annual tour transfer', () => {
     });
 
     expect(resolved.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2029-02-28');
+    expect(resolved.tours[0]?.replacementTargetYears).toEqual({
+      'shift-leap-year:actual': 2029,
+    });
+    await expect(
+      buildWasteAnnualTourTransferPreview({
+        instanceId: 'tenant-a',
+        sourceYear: 2027,
+        currentYear: 2028,
+        source: transferSource,
+        target: source([]),
+        replacementDates: [
+          { sourceResourceId: 'shift-leap-year:actual', targetDate: '2028-02-28' },
+        ],
+      })
+    ).rejects.toMatchObject({
+      code: 'replacement_date_invalid',
+      replacement: { sourceResourceId: 'shift-leap-year:actual', expectedYear: 2029 },
+    });
   });
 
   it('rejects replacement overrides that are unknown or not required', async () => {

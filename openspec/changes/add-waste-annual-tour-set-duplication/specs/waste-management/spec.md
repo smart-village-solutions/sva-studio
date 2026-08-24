@@ -113,6 +113,7 @@ Das System SHALL wiederkehrende Tagesabstandstouren ohne Taktunterbrechung in da
 - **WHEN** ein nicht darstellbares Verschiebungsdatum durch den erhaltenen relativen Jahresversatz nach dem direkten Folgejahr liegt
 - **THEN** weist die Vorschau dieses ressourcenspezifische Zieljahr an der Ersatzdatumseingabe aus
 - **AND** akzeptiert der Server ausschließlich ein Ersatzdatum in diesem Zieljahr
+- **AND** nennt ein Validierungsfehler genau dieses erwartete Kalenderjahr
 
 #### Scenario: Mehrere Quellen kollidieren auf derselben Zielbeziehung
 
@@ -163,6 +164,7 @@ Das System SHALL vor der Erstellung serverseitig eine schreibfreie Vorschau mit 
 - **WHEN** eine bestätigte Ersatzressource bei der transaktionalen Revalidierung nicht mehr erforderlich ist
 - **THEN** lehnt das System die Erstellung mit `preview_stale` statt `replacement_date_invalid` ab
 - **AND** liefert es die aktualisierte Vorschau ohne die entfallene Ersatzressource
+- **AND** kennzeichnet es weiterhin anwendbare Ersatzressourcen, damit deren gültige Eingaben erhalten bleiben
 
 #### Scenario: Batch überschreitet ein serverseitiges Limit
 

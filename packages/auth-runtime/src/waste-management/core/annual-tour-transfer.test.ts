@@ -192,6 +192,30 @@ describe('annual tour transfer handlers', () => {
     await expect(response.json()).resolves.toMatchObject({ error: { code } });
   });
 
+  it('reports the resource-specific expected year for invalid replacements', async () => {
+    const response =
+      await wasteManagementAnnualTourTransferHandlers.previewWasteAnnualTourTransferInternal(
+        request('/api/v1/waste-management/tours/annual-transfer/preview', { sourceYear: 2027 }),
+        actor,
+        {
+          resolvePermissions: permissions,
+          previewWasteAnnualTourTransfer: vi.fn(async () => {
+            throw new WasteAnnualTourTransferError('replacement_date_invalid', {
+              sourceResourceId: 'shift-leap-year:actual',
+              expectedYear: 2029,
+            });
+          }),
+        }
+      );
+
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'replacement_date_invalid',
+        message: 'Das Ersatzdatum muss im Kalenderjahr 2029 liegen.',
+      },
+    });
+  });
+
   it('creates once with central idempotency and one data-minimizing audit event', async () => {
     const create = vi.fn(async () => result);
     const emitAuditEvent = vi.fn(async () => undefined);

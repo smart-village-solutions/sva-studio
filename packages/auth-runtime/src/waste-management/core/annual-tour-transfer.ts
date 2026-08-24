@@ -55,7 +55,9 @@ const toDomainErrorResponse = (error: unknown, requestId: string | undefined): R
       error.code,
       error.code === 'invalid_source_year'
         ? 'Als Quelljahr sind nur das aktuelle und das vorherige Kalenderjahr zulässig.'
-        : 'Ein Ersatzdatum muss im direkten Folgejahr liegen.',
+        : error.replacement
+          ? `Das Ersatzdatum muss im Kalenderjahr ${error.replacement.expectedYear} liegen.`
+          : 'Das Ersatzdatum ist für die aktuelle Planung nicht gültig.',
       requestId
     );
   }

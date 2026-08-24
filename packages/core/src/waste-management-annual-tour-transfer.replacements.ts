@@ -65,15 +65,24 @@ export const buildValidatedWasteAnnualReplacementMap = (input: {
       .map((resource) => [resource.sourceResourceId, resource.targetYear] as const)
   );
   const submittedResourceIds = new Set(input.replacementDates.map((item) => item.sourceResourceId));
-  const invalidReplacement = input.replacementDates.some((replacement) => {
+  if (submittedResourceIds.size !== input.replacementDates.length) {
+    throw new WasteAnnualTourTransferError('replacement_date_invalid');
+  }
+  const invalidReplacement = input.replacementDates.find((replacement) => {
     const targetYear = allowedResources.get(replacement.sourceResourceId);
     return (
       (targetYear === undefined && !input.allowObsoleteReplacementDates) ||
       (targetYear !== undefined && !isWasteAnnualDateInYear(replacement.targetDate, targetYear))
     );
   });
-  if (submittedResourceIds.size !== input.replacementDates.length || invalidReplacement) {
-    throw new WasteAnnualTourTransferError('replacement_date_invalid');
+  if (invalidReplacement) {
+    const expectedYear = allowedResources.get(invalidReplacement.sourceResourceId);
+    throw new WasteAnnualTourTransferError(
+      'replacement_date_invalid',
+      expectedYear === undefined
+        ? undefined
+        : { sourceResourceId: invalidReplacement.sourceResourceId, expectedYear }
+    );
   }
   return new Map(
     input.replacementDates

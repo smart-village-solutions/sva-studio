@@ -198,12 +198,14 @@ const createAnnualTransfer = async (input: {
     if (resolveApiErrorCode(error) === 'preview_stale') {
       const updatedPreview = updatedPreviewFromError(error);
       if (updatedPreview) {
-        const requiredReplacementIds = new Set(
-          updatedPreview.tours.flatMap((tour) => tour.replacementResourceIds)
+        const applicableReplacementIds = new Set(
+          updatedPreview.tours.flatMap((tour) => Object.keys(tour.replacementTargetYears))
         );
         state.setReplacementDates((current) =>
           Object.fromEntries(
-            Object.entries(current).filter(([resourceId]) => requiredReplacementIds.has(resourceId))
+            Object.entries(current).filter(([resourceId]) =>
+              applicableReplacementIds.has(resourceId)
+            )
           )
         );
         applyAnnualPreview({ state, next: updatedPreview, nextStep: 'preview' });

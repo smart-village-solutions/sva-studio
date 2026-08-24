@@ -70,15 +70,15 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
   }
   const mappedResult = await mapWasteAnnualTour(input);
   if ('blocker' in mappedResult) {
+    const replacementResourceIds = [
+      ...new Set([...mappedResult.replacementResourceIds, ...input.replacements.keys()]),
+    ];
     return {
       ...common,
       classification: 'blocked',
       reasonCode: mappedResult.blocker,
       replacementResourceIds: mappedResult.replacementResourceIds,
-      replacementTargetYears: wasteAnnualReplacementTargetYearsFor(
-        input,
-        mappedResult.replacementResourceIds
-      ),
+      replacementTargetYears: wasteAnnualReplacementTargetYearsFor(input, replacementResourceIds),
       dateExamples: [],
       conflicts: [],
     };
@@ -102,7 +102,9 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
     firstTargetDate: [...wasteAnnualEffectiveDates(mappedResult.mapped)].sort()[0],
     relationshipCounts: { ...counts, excluded: mappedResult.excluded },
     replacementResourceIds: [],
-    replacementTargetYears: {},
+    replacementTargetYears: wasteAnnualReplacementTargetYearsFor(input, [
+      ...input.replacements.keys(),
+    ]),
     dateExamples: wasteAnnualConcreteDateExamples(
       input.tour,
       input.sourceYear,

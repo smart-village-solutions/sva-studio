@@ -446,6 +446,59 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect(screen.getByRole('button', { name: 'tours.annualTransfer.review' })).toBeTruthy();
   });
 
+  it('retains still-applicable replacement dates from an updated stale preview', async () => {
+    const previewWithReplacement = {
+      ...preview,
+      tours: [
+        {
+          ...preview.tours[0],
+          replacementResourceIds: ['kept-date'],
+          replacementTargetYears: { 'kept-date': 2027 },
+        },
+      ],
+    };
+    const updatedPreview = {
+      ...preview,
+      previewFingerprint: `sha256:${'c'.repeat(64)}`,
+      tours: [
+        {
+          ...preview.tours[0],
+          replacementResourceIds: [],
+          replacementTargetYears: { 'kept-date': 2027 },
+        },
+      ],
+    };
+    api.preview.mockResolvedValue(previewWithReplacement);
+    const staleError = new WasteManagementApiError('preview_stale');
+    Object.defineProperty(staleError, 'details', { value: { updatedPreview } });
+    api.create.mockRejectedValueOnce(staleError);
+    render(
+      <WasteToursAnnualTransferDialog
+        open
+        onOpenChange={vi.fn()}
+        onCreated={vi.fn(async () => undefined)}
+        onShowResult={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.loadPreview' }));
+    const replacementInput = await screen.findByLabelText(
+      'tours.annualTransfer.replacementDate:Bio Nord 1|2027'
+    );
+    fireEvent.change(replacementInput, { target: { value: '2027-02-01' } });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'tours.annualTransfer.confirm' }));
+    expect(await screen.findByText('tours.annualTransfer.stale')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
+
+    await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(3));
+    expect(api.preview).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        replacementDates: [{ sourceResourceId: 'kept-date', targetDate: '2027-02-01' }],
+      })
+    );
+  });
+
   it('explains hard target conflicts instead of asking for an unrelated date decision', async () => {
     api.preview.mockResolvedValueOnce({
       ...preview,

@@ -53,7 +53,7 @@
 - [x] 6.4 `docs/architecture/07-deployment-view.md` um GitHub Pages, Runtime-Konfiguration, unabhängige Veröffentlichung und Ausfallverhalten ergänzen.
 - [x] 6.5 `docs/architecture/08-cross-cutting-concepts.md` um Remote-Content-Sicherheit, Datenschutz, Accessibility, i18n und HTTP-Caching ergänzen.
 - [x] 6.6 Eine deutsche Entwickleranleitung für neue Studio-Seiten erstellen: Dokumentations-ID wählen, Ausschluss begründen, Katalog aktualisieren, additive Hilfeseite erzeugen und Cross-Repository-Evidenz prüfen.
-- [ ] 6.7 Nach Eröffnung des Studio-PR den Changelog-Eintrag mit dessen tatsächlicher Nummer unter `docs/changelog/entries/` ergänzen.
+- [x] 6.7 Nach Eröffnung des Studio-PR den Changelog-Eintrag mit dessen tatsächlicher Nummer unter `docs/changelog/entries/` ergänzen.
 
 ## 7. Integrierte Abnahme
 

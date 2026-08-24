@@ -1,4 +1,4 @@
-import type { AdminResourceDefinition } from '@sva/plugin-sdk';
+import { defineRouteDocumentation, type AdminResourceDefinition } from '@sva/plugin-sdk';
 import { createRoute, type RootRoute } from '@tanstack/react-router';
 
 import { withCoreContentAdminResource } from './admin-resource-route-aliases.js';
@@ -20,6 +20,10 @@ import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import type { RouteGuardContext } from './protected.routes.js';
 import { enforceRouteAccessRequirement } from './ui-route-access.js';
+import {
+  toDocumentationPageCatalogEntry,
+  type DocumentationPageCatalogEntry,
+} from './route-documentation.js';
 
 export { createLegacyContentAliasFactories } from './admin-resource-route-legacy-alias-factories.js';
 
@@ -190,6 +194,40 @@ const createAdminResourceRouteDefinitions = (
     ] as const;
   });
 
+const createAdminResourceRouteDocumentation = (
+  definition: UiRouteDefinition
+) =>
+  defineRouteDocumentation({
+    kind: 'page',
+    id: `${definition.resource.resourceId}.${definition.routeKind}`,
+    pageType: definition.routeKind,
+  });
+
+export const collectAdminResourceRouteDocumentationPages = (
+  bindings: AppRouteBindings,
+  resources: readonly AdminResourceDefinition[]
+): readonly DocumentationPageCatalogEntry[] =>
+  createAdminResourceRouteDefinitions(bindings, resources).map((definition) => {
+    const entry = toDocumentationPageCatalogEntry({
+      documentation: createAdminResourceRouteDocumentation(definition),
+      path: definition.path,
+      owner: definition.resource.resourceId.includes('.')
+        ? {
+            kind: 'plugin',
+            pluginId: definition.resource.resourceId.slice(
+              0,
+              definition.resource.resourceId.indexOf('.')
+            ),
+          }
+        : { kind: 'host' },
+      titleKey: definition.resource.titleKey,
+    });
+    if (!entry) {
+      throw new Error(`admin_resource_documentation_missing:${definition.resource.resourceId}`);
+    }
+    return entry;
+  });
+
 export const createAdminResourceRouteFactories = (
   bindings: AppRouteBindings,
   resources: readonly AdminResourceDefinition[],
@@ -202,6 +240,7 @@ export const createAdminResourceRouteFactories = (
         return createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
+          staticData: { documentation: createAdminResourceRouteDocumentation(definition) },
           beforeLoad: async (beforeLoadOptions) => {
             const userContext = createMemoizedUserContext(beforeLoadOptions);
             await guard(userContext.options);

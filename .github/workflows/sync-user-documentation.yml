@@ -1,0 +1,39 @@
+name: Anwenderdokumentation synchronisieren
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/sync-user-documentation.yml'
+      - 'docs/user-documentation/page-catalog.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Doku-Sync auslösen
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.DOCUMENTATION_REPOSITORY_DISPATCH_TOKEN }}
+    steps:
+      - name: Katalog-Sync für exakten Studio-Commit auslösen
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "Repository-Secret DOCUMENTATION_REPOSITORY_DISPATCH_TOKEN fehlt." >&2
+            exit 1
+          fi
+
+          jq --null-input \
+            --arg studio_sha "$GITHUB_SHA" \
+            '{event_type: "studio-documentation-catalog-updated", client_payload: {studio_sha: $studio_sha}}' \
+            > "$RUNNER_TEMP/documentation-dispatch.json"
+
+          gh api \
+            --method POST \
+            repos/smart-village-solutions/sva-studio-user-documentation/dispatches \
+            --input "$RUNNER_TEMP/documentation-dispatch.json"

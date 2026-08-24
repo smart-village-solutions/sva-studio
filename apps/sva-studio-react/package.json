@@ -54,6 +54,8 @@
     "@tanstack/react-start": "^1.168.41",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
+    "fflate": "^0.8.2",
     "lucide-react": "^1.28.0",
     "nitro": "3.0.260429-beta",
     "pg": "^8.22.0",
@@ -62,9 +64,9 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.80.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",
-    "exceljs": "^4.4.0",
-    "fflate": "^0.8.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {

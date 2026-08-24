@@ -67,6 +67,7 @@ const createAuthServerRouteFactory =
     createRoute({
       getParentRoute: () => rootRoute,
       path,
+      staticData: { documentation: { kind: 'excluded', reason: 'technical' } },
       component: () => null,
       server: {
         handlers: wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(path), path),

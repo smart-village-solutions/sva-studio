@@ -848,3 +848,15 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - 1.000 Touren und 100.000 kopierrelevante Beziehungen sind zentrale inklusive Grenzwerte. Eine Überschreitung liefert in Vorschau und Erstellung `batch_limit_exceeded` ohne Teilverarbeitung.
 - Der Vorschau-Fingerprint schützt vor veralteter Bestätigung. Planungsrelevante Tabellen bleiben zwischen Revalidierung und Commit gegen konkurrierende Writes gesperrt. Inzwischen entfallene Ersatzressourcen werden bei der Revalidierung toleriert, damit `preview_stale` die aktualisierte Vorschau liefert. Stabile IDs ermöglichen Commit-/Response-Recovery und abweichend belegte IDs liefern `target_identity_conflict`.
 - Genau ein datensparsames Audit-Ereignis fasst Quell- und Zieljahr, Erstellungs-/Bestandsmengen und technische Ressourcen-IDs zusammen. Namen, Termine und Adressdaten werden nicht protokolliert.
+
+### Remote-Content-Vertrag der Anwenderdokumentation
+
+- Die serverseitig konfigurierte HTTPS-Basis ist die einzige erlaubte Remote-Quelle. Redirects,
+  fremde Origins, zu große Antworten und unerwartete Content-Types werden fail-closed abgelehnt.
+- Upstream-Anfragen enthalten keine Cookies, Tokens, Mandanten-, Benutzer-, Datensatz- oder
+  Search-Parameter. Logs enthalten nur Seiten-ID, begrenzten Fehlercode und HTTP-Status.
+- Raw HTML ist deaktiviert. Bilder bleiben auf den Dokumentations-Origin begrenzt; Links verwenden
+  sichere Protokolle und öffnen externe Ziele mit `noopener noreferrer`.
+- Hinweisfeld, Overlay, Lade- und Fehlerzustände verwenden i18n-Schlüssel sowie die bestehenden
+  Radix-/Studio-Primitives für Fokusfalle, Escape und Fokusrückgabe. ETag und begrenztes privates
+  Browser-Caching vermeiden unnötige Abrufe ohne eine persistente Studio-Cache-Schicht.

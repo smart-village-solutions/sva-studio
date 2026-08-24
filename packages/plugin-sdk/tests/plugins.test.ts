@@ -26,7 +26,14 @@ describe('plugin registry', () => {
   const pluginA = {
     id: 'news',
     displayName: 'News',
-    routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+    routes: [
+      {
+        id: 'news.list',
+        path: '/plugins/news',
+        documentation: { kind: 'page', id: 'news.overview', pageType: 'overview' },
+        component: (() => null) as never,
+      },
+    ],
     navigation: [{ id: 'news.nav', to: '/plugins/news', titleKey: 'news.navigation.title', section: 'dataManagement' as const }],
     actions: definePluginActions('news', [
       {
@@ -66,6 +73,7 @@ describe('plugin registry', () => {
           {
             id: 'news.create.route',
             path: '/plugins/news/new',
+            documentation: { kind: 'page', id: 'news.create', pageType: 'create' },
             guard: 'news.publish',
             actionId: 'news.publish',
             accessRequirement: {
@@ -275,7 +283,14 @@ describe('plugin registry', () => {
       {
         id: 'events',
         displayName: 'Events',
-        routes: [{ id: 'events.list', path: '/plugins/events', component: (() => null) as never }],
+        routes: [
+          {
+            id: 'events.list',
+            path: '/plugins/events',
+            documentation: { kind: 'page', id: 'events.overview', pageType: 'overview' },
+            component: (() => null) as never,
+          },
+        ],
         translations: {
           de: {
             news: {
@@ -299,12 +314,30 @@ describe('plugin registry', () => {
       {
         id: 'calendar',
         displayName: 'Calendar',
-        routes: [{ id: 'calendar.list', path: '/plugins/calendar', component: (() => null) as never }],
+        routes: [
+          {
+            id: 'calendar.list',
+            path: '/plugins/calendar',
+            documentation: { kind: 'page', id: 'calendar.overview', pageType: 'overview' },
+            component: (() => null) as never,
+          },
+        ],
       },
       {
         id: 'news-override',
         displayName: 'News Override',
-        routes: [{ id: 'news-override.override', path: '/plugins/news-override/override', component: (() => null) as never }],
+        routes: [
+          {
+            id: 'news-override.override',
+            path: '/plugins/news-override/override',
+            documentation: {
+              kind: 'page',
+              id: 'news-override.overview',
+              pageType: 'overview',
+            },
+            component: (() => null) as never,
+          },
+        ],
         translations: {
           de: {
             newsOverride: {
@@ -778,7 +811,14 @@ describe('build-time registry', () => {
     const plugin = {
       id: 'news',
       displayName: 'News',
-      routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+      routes: [
+        {
+          id: 'news.list',
+          path: '/plugins/news',
+          documentation: { kind: 'page', id: 'news.overview', pageType: 'overview' },
+          component: (() => null) as never,
+        },
+      ],
       navigation: [
         {
           id: 'news.navigation',

@@ -1118,3 +1118,13 @@ Fehlerpfad:
 5. Touren und alle kopierrelevanten Beziehungen werden mit stabilen IDs gemeinsam und inaktiv angelegt. Große Beziehungsmengen werden in begrenzten JSON-Batches geschrieben. Jeder Fehler rollt die gesamte Transaktion zurück.
 6. Frische Idempotenz-Reservierungen bleiben über einen zufälligen Ownership-Token exklusiv und werden vom aktiven Request minütlich erneuert. Nach fünf Minuten ohne Heartbeat darf derselbe Request die verwaiste Reservierung mit einem neuen Token übernehmen und nach einem Commit-/Response-Abbruch dieselben Ziel-IDs rekonstruieren, ohne weitere Touren anzulegen. Der abgelöste Token kann weder Audit noch Antwort finalisieren.
 7. Das zusammenfassende Audit wird vor der dauerhaften Idempotenz-Completion abgeschlossen. Ein Prozessabbruch davor bleibt wiederaufnehmbar; ein gespeichertes Replay verweist damit nicht dauerhaft auf eine noch ausstehende Audit-Zusammenfassung.
+
+### Kontextbezogene Hilfe öffnen
+
+1. Die Shell liest die Dokumentations-ID aus dem tiefsten aktiven Route-Match.
+2. Erst beim Öffnen fragt der Browser die Same-Origin-Fassade mit ausschließlich dieser ID ab.
+3. Die Fassade validiert die bekannte ID und die konfigurierte HTTPS-Basis, lädt `manifest.json`
+   und anschließend das darin referenzierte Markdown unter Größen-, Typ- und Timeout-Grenzen.
+4. Das Overlay rendert Markdown ohne Raw HTML und bietet den kanonischen Website-Link an.
+5. Fehlende Konfiguration, unbekannte Inhalte und Upstream-Ausfälle enden in einem begrenzten
+   Retry-Zustand; Route und Fachfunktion bleiben bedienbar.

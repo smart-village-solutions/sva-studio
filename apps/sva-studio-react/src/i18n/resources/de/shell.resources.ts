@@ -5,6 +5,20 @@ export const shellDEResources = {
     loadingLabel: 'Inhalt lädt',
     loadingStatus: 'Inhalt wird geladen.',
   },
+  contextualHelp: {
+    hintTitle: 'Hilfe zu dieser Seite',
+    hintDescription: 'Öffnen Sie die passende Anwenderdokumentation direkt im Studio.',
+    open: 'Hilfe öffnen',
+    close: 'Hilfe schließen',
+    title: 'Hilfe zu dieser Seite',
+    description: 'Aktuelle Anwenderdokumentation für die geöffnete Studio-Seite.',
+    loading: 'Hilfe wird geladen.',
+    errorTitle: 'Hilfe ist vorübergehend nicht verfügbar',
+    errorDescription: 'Die Studio-Seite bleibt vollständig nutzbar. Versuchen Sie es später erneut.',
+    retry: 'Erneut versuchen',
+    empty: 'Für diese Seite ist noch kein Hilfetext hinterlegt.',
+    openWebsite: 'Vollständige Dokumentation öffnen',
+  },
   permissionsDegraded: {
     message:
       'Berechtigungen konnten nicht vollständig geladen werden. Einige Bereiche sind vorübergehend nicht erreichbar.',

@@ -233,3 +233,10 @@ Core- und Modul-Permissions werden in einer typsicheren, validierten Katalogsich
 Die Merge-Absicherung bleibt vollständig, wird aber nach erwarteter Reparaturwirkung geordnet. Direkt geänderte Nx-Projekte und eindeutig zuordenbare App-Slices laufen vor transitiv betroffenen Projekten. Deterministische PR-Fehler brechen den jeweiligen Gate-Pfad ab; Main und Nightly behalten die vollständige Diagnose. Coverage prüft die priorisierte Projektphase sofort gegen Paket-Floors und Baseline und führt anschließend den disjunkten übrigen Scope samt globalem Vertrag aus. Diese Reihenfolge ist eine Latenzoptimierung und keine Reduktion der Schutzgrenze.
 
 Die öffentlichen Required-Check-Namen `Unit` und `Coverage` bleiben stabil. Parallele Fast-Feedback-, Rest- und Coverage-Teiljobs veröffentlichen versionierte Evidenz für exakt den PR-Head; ausschließlich finale Aggregatoren entscheiden fail-closed über Vollständigkeit, Disjunktheit und Ergebnis. Vollständiges App-E2E ist kein PR-Gate mehr: Ein automatischer Lauf pro `main`-Commit attestiert den Quellstand, während die OCI-Revision den davon getrennten Image-Nachweis liefert. Staging verlangt beide Verträge vor jeder Mutation.
+
+### Ergänzung 2026-08: Route-owned Anwenderdokumentation
+
+Produktive Seiten deklarieren ihre stabile Dokumentations-ID direkt im kanonischen Routenvertrag
+oder einen begründeten Ausschluss. Ein generierter Katalog verbindet diesen Vertrag mit einem
+eigenständig veröffentlichten Hilfe-Repository. Das Studio lädt stets dessen aktuellen Stand über
+eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht eingeführt.

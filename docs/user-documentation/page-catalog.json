@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "pages": [
+    {
+      "id": "account.privacy",
+      "path": "/account/privacy",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "account.privacy-detail",
+      "path": "/account/privacy/$caseId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "account.profile",
+      "path": "/account",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "account.rules",
+      "path": "/account/rules",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.groups.create",
+      "path": "/admin/groups/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.groups.detail",
+      "path": "/admin/groups/$groupId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.groups.list",
+      "path": "/admin/groups",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.iam.dsr-detail",
+      "path": "/admin/iam/dsr/$caseId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.iam.governance-detail",
+      "path": "/admin/iam/governance/$caseId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.iam.overview",
+      "path": "/admin/iam",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.instances.create",
+      "path": "/admin/instances/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.instances.detail",
+      "path": "/admin/instances/$instanceId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.instances.list",
+      "path": "/admin/instances",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.instances.setup",
+      "path": "/admin/instances/$instanceId/setup",
+      "pageType": "setup",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.legal-texts.create",
+      "path": "/admin/legal-texts/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.legal-texts.detail",
+      "path": "/admin/legal-texts/$legalTextVersionId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.legal-texts.list",
+      "path": "/admin/legal-texts",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.organizations.create",
+      "path": "/admin/organizations/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.organizations.detail",
+      "path": "/admin/organizations/$organizationId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.organizations.list",
+      "path": "/admin/organizations",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.roles.create",
+      "path": "/admin/roles/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.roles.detail",
+      "path": "/admin/roles/$roleId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.roles.list",
+      "path": "/admin/roles",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.users.create",
+      "path": "/admin/users/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.users.detail",
+      "path": "/admin/users/$userId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "admin.users.list",
+      "path": "/admin/users",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "app.overview",
+      "path": "/app",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "categories.overview",
+      "path": "/categories",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "content.create",
+      "path": "/admin/content/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "host"
+      },
+      "titleKey": "content.page.title"
+    },
+    {
+      "id": "content.detail",
+      "path": "/admin/content/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      },
+      "titleKey": "content.page.title"
+    },
+    {
+      "id": "content.list",
+      "path": "/admin/content",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      },
+      "titleKey": "content.page.title"
+    },
+    {
+      "id": "home.overview",
+      "path": "/",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "host.media.create",
+      "path": "/admin/media/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "host"
+      },
+      "titleKey": "shell.sidebar.media"
+    },
+    {
+      "id": "host.media.detail",
+      "path": "/admin/media/$mediaId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "host"
+      },
+      "titleKey": "shell.sidebar.media"
+    },
+    {
+      "id": "host.media.list",
+      "path": "/admin/media",
+      "pageType": "list",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "host"
+      },
+      "titleKey": "shell.sidebar.media"
+    },
+    {
+      "id": "interfaces.overview",
+      "path": "/interfaces",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "media.overview",
+      "path": "/media",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "media.usage",
+      "path": "/admin/media/$mediaId/usage",
+      "pageType": "usage",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "modules.overview",
+      "path": "/modules",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "monitoring.job-detail",
+      "path": "/monitoring/jobs/$jobId",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "monitoring.jobs-list",
+      "path": "/monitoring/jobs",
+      "pageType": "list",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "monitoring.overview",
+      "path": "/monitoring",
+      "pageType": "overview",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
+      "id": "waste-management.overview",
+      "path": "/plugins/waste-management",
+      "pageType": "overview",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "waste-management"
+      }
+    }
+  ]
+}

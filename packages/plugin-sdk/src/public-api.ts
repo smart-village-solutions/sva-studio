@@ -193,6 +193,18 @@ export type {
   PluginRouteGuard,
   PluginTranslations,
 } from './plugins.js';
+export type {
+  DocumentationPageId,
+  DocumentationPageType,
+  RouteDocumentation,
+  RouteDocumentationExclusionReason,
+} from './route-documentation.js';
+export {
+  assertPluginRouteDocumentation,
+  defineRouteDocumentation,
+  isDocumentationPageType,
+  normalizeDocumentationPageId,
+} from './route-documentation.js';
 export {
   createPluginActionRegistry,
   collectPluginAccessTransitionDiagnostics,

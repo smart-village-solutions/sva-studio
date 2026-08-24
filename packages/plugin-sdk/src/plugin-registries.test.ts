@@ -81,6 +81,7 @@ const pluginWithLinkedRequirements = (
       {
         id: 'news-open',
         path: '/plugins/news/open',
+        documentation: { kind: 'page', id: 'news.open', pageType: 'detail' },
         actionId: 'news.open',
         accessRequirement: resolvedRouteRequirement,
         component,
@@ -96,6 +97,7 @@ const newsPlugin: PluginDefinition = {
     {
       id: 'news-list',
       path: '/plugins/news',
+      documentation: { kind: 'page', id: 'news.overview', pageType: 'overview' },
       guard: 'news.read',
       actionId: 'news.read',
       accessRequirement: {

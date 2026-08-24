@@ -35,6 +35,33 @@
         "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/check-account-ui-foundation.ts"
       }
     },
+    "documentation-catalog": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/scripts/ci/generate-documentation-page-catalog.ts"
+      ],
+      "outputs": ["{workspaceRoot}/docs/user-documentation/page-catalog.json"],
+      "options": {
+        "command": "pnpm exec tsx scripts/ci/generate-documentation-page-catalog.ts --write"
+      }
+    },
+    "check:documentation-catalog": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/scripts/ci/generate-documentation-page-catalog.ts",
+        "{workspaceRoot}/docs/user-documentation/page-catalog.json"
+      ],
+      "outputs": [],
+      "options": {
+        "command": "pnpm exec tsx scripts/ci/generate-documentation-page-catalog.ts --check"
+      }
+    },
     "serve": {
       "executor": "@nx/vite:dev-server",
       "continuous": true,
@@ -52,7 +79,8 @@
         "^build",
         "check:toolchain-consistency",
         "check:i18n",
-        "check:account-ui-foundation"
+        "check:account-ui-foundation",
+        "check:documentation-catalog"
       ],
       "inputs": [
         "production",

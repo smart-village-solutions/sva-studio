@@ -204,6 +204,11 @@ export const pluginWasteManagement: PluginDefinition = {
     {
       id: 'waste-management.home',
       path: '/plugins/waste-management',
+      documentation: {
+        kind: 'page',
+        id: 'waste-management.overview',
+        pageType: 'overview',
+      },
       guard: 'waste-management.read',
       accessRequirement: {
         kind: 'tenant',

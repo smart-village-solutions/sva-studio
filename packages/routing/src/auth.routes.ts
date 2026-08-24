@@ -18,6 +18,7 @@ const createAuthRouteFactory = (path: string) => {
     return createRoute({
       getParentRoute: () => rootRoute,
       path,
+      staticData: { documentation: { kind: 'excluded', reason: 'technical' } },
       component: () => null,
       // NOTE: Server handlers are in auth.routes.server.ts
       // This client-safe version only defines routing structure

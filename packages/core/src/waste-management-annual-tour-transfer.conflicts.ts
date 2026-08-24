@@ -42,6 +42,29 @@ export const wasteAnnualEffectiveDates = (
   ...mapped.tourAssignments.map((item) => item.pickupDate),
 ];
 
+const effectiveDatesForYears = (
+  dates: readonly string[],
+  shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
+  years: ReadonlySet<number>
+): readonly string[] => [
+  ...new Set(
+    [...years].flatMap((year) =>
+      effectiveWasteAnnualShiftedDates(
+        dates.filter((date) => wasteAnnualYearOf(date) === year),
+        shifts,
+        year
+      )
+    )
+  ),
+];
+
+const shiftActualDatesForYears = (
+  shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
+  years: ReadonlySet<number>
+): readonly string[] => [
+  ...new Set([...years].flatMap((year) => resolvedWasteAnnualShiftActualDates(shifts, year))),
+];
+
 const comparableMappedTour = (mapped: WasteAnnualTourTransferMappedTour): unknown => ({
   tour: mapped.targetTour,
   locationTourLinks: sortWasteAnnualItems(mapped.locationTourLinks, (item) => item.id).map(
@@ -123,19 +146,25 @@ const parallelPlanningConflict = (
   const baseMappedDates = wasteAnnualEffectiveDates(mapped);
   const targetYear = wasteAnnualYearOf(baseMappedDates[0] ?? mapped.targetTour.firstDate ?? '');
   if (targetYear === null) return null;
-  const mappedDates = effectiveWasteAnnualShiftedDates(
-    baseMappedDates,
-    mapped.tourDateShifts,
-    targetYear
-  );
-  const indexedDates = effectiveWasteAnnualShiftedDates(
-    indexed.effectiveDates,
-    indexed.tourDateShifts,
-    targetYear
-  );
   const interval = wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord);
   const mappedShiftDates = resolvedWasteAnnualShiftActualDates(mapped.tourDateShifts, targetYear);
-  const indexedShiftDates = resolvedWasteAnnualShiftActualDates(indexed.tourDateShifts, targetYear);
+  const comparisonYears = new Set([
+    targetYear,
+    ...mappedShiftDates
+      .map((date) => wasteAnnualYearOf(date))
+      .filter((year): year is number => year !== null),
+  ]);
+  const mappedDates = effectiveDatesForYears(
+    baseMappedDates,
+    mapped.tourDateShifts,
+    new Set([targetYear])
+  );
+  const indexedDates = effectiveDatesForYears(
+    indexed.effectiveDates,
+    indexed.tourDateShifts,
+    comparisonYears
+  );
+  const indexedShiftDates = shiftActualDatesForYears(indexed.tourDateShifts, comparisonYears);
   const matches =
     indexedDates.some((date) => mappedDates.includes(date)) ||
     mappedShiftDates.some((date) =>
@@ -144,7 +173,7 @@ const parallelPlanningConflict = (
         tour,
         interval,
         indexed.tourDateShifts,
-        targetYear
+        wasteAnnualYearOf(date) ?? targetYear
       )
     ) ||
     indexedShiftDates.some((date) =>
@@ -153,7 +182,7 @@ const parallelPlanningConflict = (
         mapped.targetTour as WasteTourRecord,
         interval,
         mapped.tourDateShifts,
-        targetYear
+        wasteAnnualYearOf(date) ?? targetYear
       )
     ) ||
     wasteAnnualRecurringSchedulesIntersect({

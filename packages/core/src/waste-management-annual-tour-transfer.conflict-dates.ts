@@ -65,7 +65,13 @@ export const wasteAnnualDateOccursOnRecurringTour = (
   tour: WasteTourRecord,
   intervalDays: number | null
 ): boolean => {
-  if (intervalDays === null || !tour.firstDate) return false;
+  if (!tour.firstDate) return false;
+  if (tour.recurrence === 'yearly') {
+    const year = wasteAnnualYearOf(date);
+    const occurrence = year === null ? null : replaceWasteAnnualYear(tour.firstDate, year);
+    return occurrence === date && date >= tour.firstDate && (!tour.endDate || date <= tour.endDate);
+  }
+  if (intervalDays === null) return false;
   const occurrence = parseWasteAnnualIsoDate(date);
   const first = parseWasteAnnualIsoDate(tour.firstDate);
   if (!occurrence || !first || date < tour.firstDate || (tour.endDate && date > tour.endDate))
@@ -92,9 +98,8 @@ const recurringOverlap = (input: {
   if (input.intervalDays === null || !input.left.firstDate || !input.right.firstDate) return null;
   const targetYear = wasteAnnualYearOf(input.left.firstDate);
   if (targetYear === null) return null;
-  const start = input.left.firstDate >= input.right.firstDate
-    ? input.left.firstDate
-    : input.right.firstDate;
+  const start =
+    input.left.firstDate >= input.right.firstDate ? input.left.firstDate : input.right.firstDate;
   const leftEnd = input.left.endDate ?? wasteAnnualEndOfYear(targetYear);
   const rightEnd = input.right.endDate ?? wasteAnnualEndOfYear(targetYear);
   const end = leftEnd <= rightEnd ? leftEnd : rightEnd;
@@ -112,7 +117,7 @@ const hasUnshiftedSharedOccurrence = (input: {
 }): boolean => {
   const start = parseWasteAnnualIsoDate(input.start);
   if (!start) return false;
-  for (let date = start; formatWasteAnnualIsoDate(date) <= input.end; ) {
+  for (let date = start; formatWasteAnnualIsoDate(date) <= input.end;) {
     const value = formatWasteAnnualIsoDate(date);
     const shared =
       wasteAnnualDateOccursOnRecurringTour(value, input.left, input.intervalDays) &&

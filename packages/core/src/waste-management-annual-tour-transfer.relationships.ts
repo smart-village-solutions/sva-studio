@@ -6,9 +6,7 @@ import {
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
 import {
-  isWasteAnnualCadenceOccurrence,
-  mapWasteAnnualCadenceOccurrence,
-  mapWasteAnnualRelativeDate,
+  mapWasteAnnualRecurringShiftDates,
   wasteAnnualIntervalForTour,
 } from './waste-management-annual-tour-transfer.shift-cadence.js';
 
@@ -95,76 +93,47 @@ const mapAssignments = (input: AnnualRelationshipMappingInput) =>
 const targetYearForShiftDate = (value: string, input: AnnualRelationshipMappingInput): number =>
   input.targetYear + ((wasteAnnualYearOf(value) ?? input.sourceYear) - input.sourceYear);
 
-const mapShiftOriginalDate = (
+const mapYearSpecificShift = (
   source: WasteAnnualTourTransferSource['tourDateShifts'][number],
   input: AnnualRelationshipMappingInput
-): string | null => {
-  const resourceId = `${source.id}:original`;
-  const replacement = input.replacements.get(resourceId);
-  const intervalDays = wasteAnnualIntervalForTour(input.tour);
-  if (
-    !input.tour.customRecurrenceId ||
-    intervalDays === null ||
-    !input.tour.firstDate ||
-    !input.targetValidity?.firstDate
-  ) {
-    return mapWasteAnnualConcreteDate(source.originalDate, input.targetYear, replacement);
-  }
-  if (replacement !== undefined) {
-    return isWasteAnnualCadenceOccurrence({
-      date: replacement,
-      firstDate: input.targetValidity.firstDate,
-      endDate: input.targetValidity.endDate,
-      year: input.targetYear,
-      intervalDays,
-    })
-      ? replacement
-      : null;
-  }
-  return mapWasteAnnualCadenceOccurrence({
-    sourceDate: source.originalDate,
-    sourceFirstDate: input.tour.firstDate,
-    sourceEndDate: input.tour.endDate,
+): Readonly<{ originalDate: string | null; actualDate: string | null }> => {
+  const recurring = mapWasteAnnualRecurringShiftDates({
+    source,
+    tour: input.tour,
     sourceYear: input.sourceYear,
     targetYear: input.targetYear,
-    targetFirstDate: input.targetValidity.firstDate,
-    targetEndDate: input.targetValidity.endDate,
-    intervalDays,
+    targetFirstDate: input.targetValidity?.firstDate,
+    targetEndDate: input.targetValidity?.endDate,
+    replacements: input.replacements,
   });
-};
-
-const mapShiftActualDate = (
-  source: WasteAnnualTourTransferSource['tourDateShifts'][number],
-  originalDate: string | null,
-  input: AnnualRelationshipMappingInput
-): string | null => {
-  const resourceId = `${source.id}:actual`;
-  const targetYear = targetYearForShiftDate(source.actualDate, input);
-  if (!input.tour.customRecurrenceId || !originalDate) {
-    return mapDate(source.actualDate, resourceId, targetYear, input.replacements);
-  }
-  return mapWasteAnnualRelativeDate({
-    sourceOrigin: source.originalDate,
-    sourceDate: source.actualDate,
-    targetOrigin: originalDate,
-    targetYear,
-    replacementDate: input.replacements.get(resourceId),
-  });
+  if (recurring) return recurring;
+  if (input.tour.customRecurrenceId) return { originalDate: null, actualDate: null };
+  return {
+    originalDate: mapDate(
+      source.originalDate,
+      `${source.id}:original`,
+      input.targetYear,
+      input.replacements
+    ),
+    actualDate: mapDate(
+      source.actualDate,
+      `${source.id}:actual`,
+      targetYearForShiftDate(source.actualDate, input),
+      input.replacements
+    ),
+  };
 };
 
 const mapShifts = (input: AnnualRelationshipMappingInput) =>
   wasteAnnualRelationshipsFor(input.source.tourDateShifts, input.tour.id)
     .filter((item) => !item.hasYear || isWasteAnnualDateInYear(item.originalDate, input.sourceYear))
     .map((source) => {
-      const originalDate = source.hasYear
-        ? mapShiftOriginalDate(source, input)
-        : source.originalDate;
+      const mapped = source.hasYear
+        ? mapYearSpecificShift(source, input)
+        : { originalDate: source.originalDate, actualDate: source.actualDate };
       return {
         source,
-        originalDate,
-        actualDate: source.hasYear
-          ? mapShiftActualDate(source, originalDate, input)
-          : source.actualDate,
+        ...mapped,
       };
     });
 

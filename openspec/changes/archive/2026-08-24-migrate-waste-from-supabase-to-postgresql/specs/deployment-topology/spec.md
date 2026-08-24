@@ -7,9 +7,9 @@ Das System SHALL die Waste-Fachdatenbank als separate Datenbank mit eigenem Zugr
 #### Scenario: Studio- und Waste-Datenbanken teilen keinen fachlichen Datenbankvertrag
 
 - **WHEN** Studio und Waste auf derselben PostgreSQL-Serverinstanz betrieben werden
-- **THEN** verwendet Waste die getrennte Datenbank `sva_waste`
-- **AND** besitzt `sva_waste_owner` als `NOLOGIN`-Rolle die Waste-Objekte
-- **AND** sind `sva_waste_migrator`, `sva_waste_app` und `sva_waste_public_app` nach Migration, administrativer Runtime und öffentlicher Runtime getrennt
+- **THEN** verwendet Waste eine aus der Instanz-ID deterministisch abgeleitete getrennte Datenbank
+- **AND** besitzt die tenantbezogene Owner-Rolle als `NOLOGIN`-Rolle die Waste-Objekte
+- **AND** sind die tenantbezogenen Rollen nach Migration, administrativer Runtime und öffentlicher Runtime getrennt
 - **AND** erhalten die Waste-Rollen keinen regulären Zugriff auf Studio-Governance-Daten
 - **AND** die Studio-Runtime erhält keinen impliziten Vollzugriff auf die Waste-Datenbank
 

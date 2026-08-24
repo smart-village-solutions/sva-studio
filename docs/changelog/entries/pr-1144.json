@@ -1,0 +1,4 @@
+{
+  "prNumber": 1144,
+  "body": "Die Dokumentation der bereits ausgelieferten Abfall-Funktionen wurde konsolidiert.\n\n- Der PostgreSQL-Umzug und die tenantbezogene Datenbankbereitstellung sind mit ihren Betriebsnachweisen abgeschlossen.\n- Die Dokumentation für Ausweichtermine, Folgejahrübernahme, globale Abholortsortierung und Datenaustausch entspricht jetzt dem produktiven Stand."
+}

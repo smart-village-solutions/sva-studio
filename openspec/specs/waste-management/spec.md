@@ -177,29 +177,28 @@ Das System SHALL zentrale Studio-Governance-Daten von instanzbezogenen Waste-Fac
 
 ### Requirement: Waste-Management erlaubt die instanzbezogene Konfiguration der Waste-Datenquelle
 
-Das System SHALL für jede Studio-Instanz eine über Studio-Einstellungen pflegbare Waste-Datenquelle bereitstellen.
+Das System SHALL für jede Studio-Instanz eine automatisch provisionierte und pluginverwaltete Waste-Datenquelle bereitstellen, deren technische Verbindungsdetails nicht durch Tenant-Benutzer konfiguriert werden.
 
-#### Scenario: Berechtigter Benutzer pflegt die Waste-Datenquelle über Studio-Einstellungen
+#### Scenario: Berechtigter Benutzer sieht den Waste-Bereitstellungsstatus
 
-- **WHEN** ein Benutzer mit `waste-management.settings.manage` die Modul-Einstellungen der aktiven Instanz bearbeitet
-- **THEN** kann er die für diese Instanz vorgesehene genau eine Waste-Datenquelle konfigurieren oder aktualisieren
-- **AND** die Änderung wird über die Host-Fassade verarbeitet
-- **AND** die Verbindungsdaten werden im zentralen Studio-Postgres gehalten
-- **AND** Secrets oder Zugangsdaten werden nicht im Browser offengelegt
+- **WHEN** ein Benutzer mit `waste-management.settings.manage` die Modul-Einstellungen der aktiven Instanz öffnet
+- **THEN** sieht er einen kompakten Status der genau einen dieser Instanz zugeordneten Waste-Datenquelle
+- **AND** kann er keine Verbindungsdaten, Datenbanknamen, Rollen oder Secrets erstellen, bearbeiten oder löschen
+- **AND** erhält er bei einem wiederholbaren Fehler eine berechtigte Retry-Aktion
 
-#### Scenario: Studio validiert die konfigurierte Waste-Datenquelle nachvollziehbar
+#### Scenario: Studio validiert die verwaltete Waste-Datenquelle nachvollziehbar
 
-- **WHEN** für eine Instanz eine Waste-Datenquelle gespeichert oder aktualisiert wird
-- **THEN** validiert das System die Konfiguration serverseitig
-- **AND** Erfolg oder Fehler werden für den Benutzer nachvollziehbar rückgemeldet
-- **AND** ungültige oder unvollständige Konfigurationen dürfen nicht stillschweigend aktiv werden
+- **WHEN** der Provisionierer die Waste-Datenquelle anlegt, aktualisiert oder reconciled
+- **THEN** validiert das System Konfiguration, Schema und vorgesehene Runtime-Rechte serverseitig
+- **AND** Erfolg oder redigierte Fehler werden über den instanzbezogenen Provisionierungsstatus nachvollziehbar projiziert
+- **AND** ungültige oder unvollständige Konfigurationen werden nicht aktiv
 
-#### Scenario: Rekonfiguration bleibt bei nicht erreichbarer Datenquelle möglich
+#### Scenario: Nicht erreichbare Datenquelle wird durch Reconcile repariert
 
-- **WHEN** die aktuell hinterlegte Waste-Datenquelle einer Instanz nicht mehr erreichbar ist, etwa nach einem Umzug der Supabase-Datenbank
-- **THEN** bleibt mindestens der Settings-Pfad zur Datenquellenkonfiguration verfügbar
-- **AND** ein berechtigter Benutzer kann die Verbindungsdaten serverseitig aktualisieren und erneut prüfen
-- **AND** die Unerreichbarkeit der alten Datenquelle blockiert die Rekonfiguration nicht
+- **WHEN** die verwaltete Waste-Datenquelle einer Instanz nicht erreichbar ist oder Drift aufweist
+- **THEN** bleibt der Status- und Retry-Pfad in den Waste-Modul-Einstellungen verfügbar
+- **AND** ein berechtigter Benutzer kann einen serverseitigen Reconcile anstoßen
+- **AND** die allgemeine Interface-Verwaltung wird dadurch nicht zur manuellen Rekonfiguration freigeschaltet
 
 ### Requirement: `Newcms` darf nur als UX- und Fachreferenz portiert werden
 
@@ -328,13 +327,13 @@ Das System SHALL Waste-Management-Daten im Zielbild instanzbezogen scopen.
 
 ### Requirement: Waste-Management-Datenquellen und Migrationen bleiben administrierbar
 
-Das System SHALL die instanzbezogene Waste-Datenquelle und deren Schema-Migrationsstand administrierbar halten.
+Das System SHALL die instanzbezogene PostgreSQL-Waste-Datenquelle und deren Schema-Migrationsstand administrierbar halten.
 
 #### Scenario: Plugin bietet Initialisierung oder Update-Migrationen an
 
 - **WHEN** das Waste-Management-Plugin für eine Instanz erstmals gestartet wird oder nach einem Update feststellt, dass ausstehende Waste-Migrationen vorliegen
 - **THEN** bietet das System die erforderliche Initialisierung oder Migration als explizite Admin-Operation an
-- **AND** die Migration wird nicht als verdeckter Browser-Direktzugriff an Supabase ausgeführt
+- **AND** die Migration wird nicht als verdeckter Browser-Direktzugriff auf die Datenbank ausgeführt
 
 #### Scenario: Migrationen sind nachvollziehbare technische Operationen
 
@@ -1243,3 +1242,854 @@ Das Waste-Management MUST in der Tourenliste die gemeinsamen Studio-Muster für 
 - **DANN** sind alle Body-Zellen einschließlich Auswahl, Werte, Status und Aktionsgruppe einheitlich oben ausgerichtet
 - **UND** verwenden die Zellen dasselbe vertikale Padding
 - **UND** bleiben Controls innerhalb ihrer eigenen Trefferfläche zentriert
+
+### Requirement: Waste-Management verwendet PostgreSQL ohne Supabase-Laufzeitabhängigkeit
+
+Das System SHALL seine fachliche Waste-Persistenz über eine direkte serverseitige PostgreSQL-Verbindung betreiben.
+
+#### Scenario: Waste-Runtime löst eine PostgreSQL-Schnittstelle auf
+
+- **WHEN** die Host-Fassade Waste-Daten liest, schreibt oder migriert
+- **THEN** löst sie die für die aktive Instanz ausgewählte Schnittstelle vom Typ `postgresql` auf
+- **AND** verwendet sie deren entschlüsselte `databaseUrl` und das konfigurierte Schema ausschließlich serverseitig
+- **AND** benötigt sie keine Supabase-API, Projekt-URL oder Service-Role-Credentials
+
+#### Scenario: Waste-Datenbank bleibt von Studio-Governance getrennt
+
+- **WHEN** Waste-Management in derselben PostgreSQL-Serverinstanz wie das Studio betrieben wird
+- **THEN** liegen die Waste-Fachdaten in einer aus der Instanz-ID deterministisch abgeleiteten separaten Datenbank
+- **AND** verwenden administrative und öffentliche Runtime getrennte Rollen mit minimalen Rechten
+- **AND** IAM-, Audit-, Registry- und sonstige Studio-Governance-Daten verbleiben in der Studio-Datenbank
+
+### Requirement: Vorhandene Waste-Supabase wird einmalig offline migriert
+
+Das System SHALL für die eine vorhandene Waste-Supabase einen kontrollierten Offline-Cutover in die neue PostgreSQL-Fachdatenbank bereitstellen.
+
+#### Scenario: Finaler Dump entsteht ohne parallele Waste-Schreibzugriffe
+
+- **WHEN** der produktive Cutover beginnt
+- **THEN** wird die Public-Waste-App im angekündigten Betriebsfenster kontrolliert gestoppt
+- **AND** werden neue Verbindungen der Studio-/Worker-Runtime zur Waste-Zieldatenbank gesperrt
+- **AND** wird vor dem Import gewartet, bis verbleibende Anwendungssitzungen beendet sind
+- **AND** die Quelle bleibt bis zur abgeschlossenen Umschaltung unverändert
+- **AND** das System führt dafür keinen dauerhaften Anwendungs-Wartungsmodus ein
+
+#### Scenario: Restore wird vor der Umschaltung vollständig verifiziert
+
+- **WHEN** der PostgreSQL-Dump in die vorbereitete Ziel-Datenbank eingespielt wurde
+- **THEN** prüft der Migrationsablauf Schemaobjekte, Migrationen und fachliche Zeilenzahlen
+- **AND** prüft er die echte Runtime-Rolle mit Lese- und kontrollierten Schreibzugriffen
+- **AND** darf die Zielverbindung erst nach erfolgreichen Pflichtprüfungen aktiviert werden
+
+#### Scenario: Cutover schaltet beide Waste-Runtimes gemeinsam um
+
+- **WHEN** die Ziel-Datenbank erfolgreich verifiziert wurde
+- **THEN** verwenden Studio-Waste und Public-Waste dieselbe neue PostgreSQL-Fachdatenbank
+- **AND** werden administrative und öffentliche Smoke-Tests vor der Freigabe gemeinsam ausgeführt
+- **AND** entsteht kein dauerhafter Dual-Write- oder Replikationsvertrag
+
+#### Scenario: Supabase bleibt zeitlich begrenzt als Rollback-Stand erhalten
+
+- **WHEN** der Cutover erfolgreich abgeschlossen ist
+- **THEN** bleibt die alte Supabase-Datenbank 14 Tage als Vergleichs- und Notfallquelle erhalten, ohne von einer produktiven Waste-Runtime verwendet zu werden
+- **AND** beschreibt das Runbook den verlustfreien Rollback beider Runtimes vor Freigabe neuer Zielschreibzugriffe
+- **AND** behandelt es einen späteren Rückwechsel als erneute kontrollierte Datenmigration
+- **AND** erfolgt eine spätere Stilllegung erst nach gesonderter Bestätigung
+
+### Requirement: Waste-Management provisioniert eine eigene Datenbank pro Instanz
+
+Das System SHALL für jede Studio-Instanz mit zugewiesenem `waste-management` genau eine physisch getrennte PostgreSQL-Datenbank automatisch und idempotent provisionieren.
+
+#### Scenario: Neuer Waste-Tenant erhält eine leere Fachdatenbank
+
+- **GIVEN** einer Instanz ist `waste-management` noch nicht zugewiesen
+- **WHEN** die Modulzuweisung erfolgreich abgeschlossen wird
+- **THEN** provisioniert das System asynchron genau eine dieser Instanz zugeordnete Waste-Datenbank
+- **AND** wendet alle erforderlichen Waste-Migrationen an
+- **AND** gibt die Waste-Runtime erst nach erfolgreichen Verbindungs- und Rechteprüfungen frei
+- **AND** übernimmt keine Fachdaten eines anderen Tenants
+
+#### Scenario: Wiederholung reconciled den vorhandenen Bestand
+
+- **GIVEN** Datenbank, Rollen, Migrationen oder Interface sind für eine Instanz bereits vollständig oder teilweise vorhanden
+- **WHEN** die Provisionierung für dieselbe Instanz erneut ausgeführt wird
+- **THEN** gleicht das System den vorhandenen Bestand idempotent mit dem Sollzustand ab
+- **AND** legt keine zweite Waste-Datenbank für dieselbe Instanz an
+- **AND** überschreibt oder löscht keine vorhandenen Fachdaten
+
+#### Scenario: Jede Instanz erhält eigene Runtime-Credentials
+
+- **WHEN** die Waste-Datenbank einer Instanz provisioniert wird
+- **THEN** erhält sie tenantbezogene Rollen und Secrets für die vorgesehenen Migrations-, Studio- und Public-Runtime-Zugriffe
+- **AND** keine dieser Runtime-Rollen erhält clusterweite Datenbank- oder Rollenverwaltungsrechte
+- **AND** Credentials einer Instanz erlauben keinen Zugriff auf Waste-Datenbanken anderer Instanzen
+
+### Requirement: Waste-Management hält Fachzugriffe bis zur Bereitschaft geschlossen
+
+Das System SHALL den technischen Waste-Zustand pro Instanz nachvollziehbar führen und fachliche Datenzugriffe bis zur vollständigen Bereitschaft fail-closed ablehnen.
+
+#### Scenario: Provisionierung läuft noch
+
+- **WHEN** die Waste-Datenbank einer Instanz noch provisioniert oder migriert wird
+- **THEN** ist der Zustand mindestens als `provisioning` erkennbar
+- **AND** fachliche Waste-Datenzugriffe werden mit einem stabilen, handlungsleitenden Fehler abgelehnt
+- **AND** eine teilweise eingerichtete Datenquelle wird nicht produktiv verwendet
+
+#### Scenario: Provisionierung schlägt fehl
+
+- **WHEN** ein Provisionierungsschritt fehlschlägt
+- **THEN** setzt das System den instanzbezogenen Waste-Zustand auf `failed`
+- **AND** hält das verwaltete Interface deaktiviert
+- **AND** stellt eine berechtigte, idempotente Wiederholungsaktion bereit
+- **AND** gibt in UI, API, Audit oder Logs keine Secrets aus
+
+#### Scenario: Alle Bereitschaftsprüfungen sind erfolgreich
+
+- **WHEN** Datenbank und Rollen vorhanden, Waste-Migrationen aktuell und vorgesehene Runtime-Zugriffe erfolgreich geprüft sind
+- **THEN** aktiviert das System das verwaltete Interface
+- **AND** setzt den Waste-Zustand auf `ready`
+- **AND** erst dann verarbeitet die Waste-Host-Fassade fachliche Datenzugriffe für diese Instanz
+
+### Requirement: Die Supabase-Bestandsdaten werden ausschließlich `bb-prignitz` zugeordnet
+
+Das System SHALL den einmaligen Supabase-Bestand nur in die provisionierte Waste-Datenbank der kanonisch identifizierten Instanz `bb-prignitz` importieren.
+
+#### Scenario: Einmalimport prüft die Zielidentität
+
+- **WHEN** der Supabase-Einmalimport gestartet wird
+- **THEN** prüft das System vor schreibenden Operationen die kanonische Instanzidentität und deren zugeordnete Zieldatenbank
+- **AND** lehnt den Import bei einer anderen oder mehrdeutigen Zielinstanz ab
+- **AND** dokumentiert den Lauf mit redigierter Migrationsevidenz
+
+#### Scenario: Ein anderer Tenant wird neu provisioniert
+
+- **WHEN** `waste-management` für eine andere Instanz als `bb-prignitz` provisioniert wird
+- **THEN** erhält diese Instanz das aktuelle leere Waste-Schema
+- **AND** keine Daten aus dem Supabase-Dump werden übernommen
+
+### Requirement: Modulentzug bewahrt die tenantbezogenen Waste-Daten
+
+Das System SHALL beim Entzug von `waste-management` den Runtime-Zugriff deaktivieren, ohne die tenantbezogene Datenbank oder ihre Sicherungen automatisch zu löschen.
+
+#### Scenario: Studio-Admin entzieht das Waste-Modul
+
+- **WHEN** der Studio-Admin einer Instanz `waste-management` entzieht
+- **THEN** deaktiviert das System das pluginverwaltete Interface und fachliche Waste-Zugriffe
+- **AND** bewahrt Datenbank, Fachdaten, Rollen, Secrets, Jobhistorie und Sicherungen auf
+- **AND** führt keine implizite Drop- oder Löschoperation aus
+
+#### Scenario: Waste wird derselben Instanz erneut zugewiesen
+
+- **GIVEN** der erhaltene Waste-Bestand einer früheren Zuweisung existiert noch
+- **WHEN** `waste-management` derselben Instanz erneut zugewiesen wird
+- **THEN** reconciled das System den vorhandenen Bestand
+- **AND** aktiviert ihn erst nach erneuten Migrations-, Verbindungs- und Rechteprüfungen
+
+### Requirement: Tourbezogene Ausweichtermine sind aus ihrem Arbeitskontext erreichbar
+
+Das System SHALL berechtigten Benutzern ermöglichen, die bestehende Erstellungsansicht für tourbezogene Ausweichtermine direkt aus Tourenliste, Verschiebungsdetails, Jahreskalender und Terminlogik einer gespeicherten wiederkehrenden Tour in einem neuen Browser-Tab zu öffnen, ohne den Ausgangskontext zu ersetzen.
+
+#### Scenario: Neuer Browser-Tab erhält den begonnenen Workflow
+
+- **WHEN** ein Benutzer einen kontextuellen Einstieg zum Anlegen eines tourbezogenen Ausweichtermins aktiviert
+- **THEN** öffnet das System die bestehende Scheduling-Erstellungsansicht über einen nativen sicheren Link in einem neuen Browser-Tab
+- **AND** der ursprüngliche Browser-Tab behält seinen Listen-, Filter-, Kalender-, Dialog- und Formularzustand
+- **AND** Speichern oder Abbrechen verändert ausschließlich den neuen Browser-Tab
+
+#### Scenario: Benutzer legt aus der Verschiebungsspalte einen Ausweichtermin an
+
+- **WHEN** ein Benutzer mit `waste-management.scheduling.manage` in der Tourenliste eine Tour ohne Verschiebungen sieht oder die vorhandenen Verschiebungen einer Tour geöffnet hat
+- **THEN** bietet das System in der Tabellenzelle die räumlich kompakte Aktion `Anlegen` an
+- **AND** ihr zugänglicher Name benennt den tourbezogenen Ausweichtermin, die Tour und den neuen Browser-Tab vollständig
+- **AND** der geöffnete Detaildialog verwendet sichtbar die eindeutige Bezeichnung `Tourbezogenen Ausweichtermin anlegen`
+- **AND** die bestehende Scheduling-Erstellungsansicht wird in einem neuen Browser-Tab mit der betroffenen Tour vorausgewählt geöffnet
+
+#### Scenario: Benutzer verschiebt einen regulären Termin aus dem Jahreskalender
+
+- **WHEN** ein Benutzer mit `waste-management.scheduling.manage` im Jahreskalender einen regulären, noch nicht verschobenen Termin einer turnusbasierten Tour auswählt
+- **THEN** öffnet das System die bestehende Scheduling-Erstellungsansicht für einen tourbezogenen Ausweichtermin in einem neuen Browser-Tab
+- **AND** Tour und ursprüngliches Datum sind vorausgefüllt
+- **AND** das Zieldatum bleibt eine bewusste Eingabe des Benutzers
+- **AND** der sichtbare Aktionstext bleibt räumlich kompakt
+- **AND** der zugängliche Name benennt Datum, Tour und den neuen Browser-Tab vollständig
+
+#### Scenario: Bereits verschobener Kalendertermin erzeugt keine zweite Aktion
+
+- **WHEN** der Jahreskalender einen bereits verschobenen Ersatztermin darstellt
+- **THEN** bietet das System an diesem Ersatztermin keine Aktion zum Anlegen einer weiteren Verschiebung an
+- **AND** der Ursprungstermin bleibt wie bisher nachvollziehbar
+
+#### Scenario: Kontextuelle Erstellung bleibt auf Tourverschiebung fokussiert
+
+- **WHEN** die Erstellungsansicht über einen gültigen Tourkontext geöffnet wurde
+- **THEN** zeigt das System statt der Typauswahl einen kompakten Kontextblock mit Tour und optionalem Originaldatum
+- **AND** Tour und Originaldatum bleiben in ihren Formularfeldern bewusst korrigierbar
+- **AND** die allgemeine Scheduling-Erstellung ohne Tourkontext behält ihre bestehende Typauswahl
+
+### Requirement: Kontextuelle Vorauswahl bleibt sicher und reload-stabil
+
+Das System SHALL Tour und optionales Originaldatum über eigene normalisierte Search-Parameter initial vorausfüllen, ohne spätere Benutzereingaben zu überschreiben oder fremden Tourformularzustand wiederzuverwenden.
+
+#### Scenario: Gültiger Kontext wird genau einmal übernommen
+
+- **WHEN** `schedulingTourId` eine verfügbare Tour und `schedulingOriginalDate` ein gültiges ISO-Kalenderdatum bezeichnet
+- **THEN** übernimmt das System beide Werte nach dem Laden genau einmal in ein noch unbearbeitetes Formular
+- **AND** spätere Benutzereingaben werden nicht durch Lade- oder Navigationseffekte überschrieben
+- **AND** ein Reload stellt die ursprüngliche Vorauswahl aus der URL wieder her
+
+#### Scenario: Ungültiger Route-Kontext wird sichtbar verworfen
+
+- **WHEN** eine kontextuelle Erstellungs-URL ein ungültiges Datum oder eine nicht verfügbare Tour enthält
+- **THEN** übernimmt das System den ungültigen Wert nicht in das Formular
+- **AND** zeigt einen nicht blockierenden Hinweis auf die nicht mehr verfügbare Vorauswahl
+- **AND** ein Ausweichtermin kann nicht unbemerkt mit veraltetem Route-Kontext gespeichert werden
+
+#### Scenario: Widersprüchlicher globaler Kontext verwirft Tourparameter
+
+- **WHEN** eine URL `schedulingEntryType=global-shift` mit Tourkontext kombiniert
+- **THEN** verwirft das System `schedulingTourId` und `schedulingOriginalDate`
+- **AND** zeigt keine tourbezogene Vorauswahl in der globalen Erstellung
+
+#### Scenario: Verlassen der Erstellung bereinigt den Kontext
+
+- **WHEN** ein Benutzer die kontextuelle Erstellung abbricht oder erfolgreich speichert
+- **THEN** entfernt das System beide Kontextparameter aus der folgenden Listen-URL
+
+### Requirement: Tourformular verwendet ausschließlich gespeicherte Terminlogik als Verschiebungskontext
+
+Das System SHALL den Einstieg aus dem Tourformular nur für eine gespeicherte turnusbasierte Tour und nur auf Basis ihres persistierten Terminstands anbieten.
+
+#### Scenario: Gespeicherte turnusbasierte Tour bietet den Einstieg an
+
+- **WHEN** ein Benutzer mit `waste-management.scheduling.manage` eine gespeicherte Tour mit festem Turnus oder gespeichertem Abstandspreset bearbeitet
+- **THEN** bietet die Terminlogik eine Aktion zum Anlegen eines tourbezogenen Ausweichtermins an
+- **AND** die bestehende Scheduling-Erstellungsansicht wird in einem neuen Browser-Tab mit der gespeicherten Tour vorausgewählt geöffnet
+
+#### Scenario: Ungespeicherte Terminänderung blockiert den Einstieg
+
+- **WHEN** Turnus, Abstandspreset, Startdatum oder Enddatum vom persistierten Tourstand abweicht
+- **THEN** bleibt die Erstellungsaktion sichtbar, aber deaktiviert
+- **AND** ein zugänglicher Hinweis fordert zum vorherigen Speichern der Tour auf
+- **AND** Änderungen ausschließlich an Name, Beschreibung oder Sichtbarkeit blockieren die Aktion nicht
+
+#### Scenario: Direkte Terminpflege bleibt von Verschiebungsregeln getrennt
+
+- **WHEN** ein Benutzer eine gespeicherte individuelle oder bedarfsabhängige Tour bearbeitet
+- **THEN** bietet die Terminlogik keinen kontextuellen Einstieg für eine Verschiebungsregel an
+- **AND** eine ungespeicherte Umstellung auf einen Turnus schaltet die Aktion nicht vorzeitig frei
+- **AND** individuelle Termine und explizite Tour-Einsätze werden weiterhin direkt an der Tour gepflegt
+
+#### Scenario: Schreibaktion folgt der Scheduling-Berechtigung
+
+- **WHEN** ein Benutzer nicht über `waste-management.scheduling.manage` verfügt
+- **THEN** zeigt das System keine der kontextuellen Erstellungsaktionen an
+- **AND** die lesenden Tour- und Kalenderinformationen bleiben gemäß den bestehenden Rechten sichtbar
+
+### Requirement: Tourbezogene Ausweichtermine sind pro Ursprung und Spezifität eindeutig
+
+Das System SHALL mehrdeutige tourbezogene Ausweichtermine konkurrenzsicher verhindern und zwischen jahresunabhängiger Grundregel und jahresbezogener Ausnahme unterscheiden.
+
+#### Scenario: Zweite jahresbezogene Regel wird abgelehnt
+
+- **WHEN** für dieselbe Tour und dasselbe vollständige Originaldatum bereits eine jahresbezogene Regel existiert
+- **THEN** lehnt das System eine zweite Regel derselben Spezifität mit `409 Conflict` ab
+- **AND** überschreibt die vorhandene Regel nicht
+
+#### Scenario: Zweite jahresunabhängige Regel wird abgelehnt
+
+- **WHEN** für dieselbe Tour und denselben Monat und Tag bereits eine jahresunabhängige Regel existiert
+- **THEN** lehnt das System eine zweite jahresunabhängige Regel mit `409 Conflict` ab
+- **AND** überschreibt die vorhandene Regel nicht
+
+#### Scenario: Jahresbezogene Ausnahme überschreibt jährliche Grundregel
+
+- **GIVEN** für eine Tour gilt eine jahresunabhängige Grundregel an einem Monat und Tag
+- **WHEN** für dasselbe konkrete Originaldatum eines Jahres eine jahresbezogene Regel existiert
+- **THEN** verwendet das System in diesem Jahr ausschließlich die jahresbezogene Regel
+- **AND** wendet die jährliche Grundregel nicht zusätzlich auf dasselbe Vorkommen an
+- **AND** in anderen Jahren bleibt die jährliche Grundregel wirksam
+
+#### Scenario: Benutzer erkennt die Override-Wirkung vor dem Speichern
+
+- **WHEN** eine jahresbezogene Ausnahme eine vorhandene jährliche Grundregel für dasselbe Vorkommen verdrängen würde
+- **THEN** zeigt das Formular einen nicht blockierenden Hinweis auf das betroffene Jahr
+- **AND** der Benutzer kann die ausdrückliche Ausnahme speichern
+
+### Requirement: Tourbezogene Ausweichtermine verwenden einen zeitzonenfreien Date-only-Vertrag
+
+Das System SHALL Original- und Zieldatum als PostgreSQL `DATE` persistieren und außerhalb der Datenbank ausschließlich als normalisierte ISO-Kalenderdaten ohne Uhrzeit- oder Zeitzonenbedeutung transportieren.
+
+#### Scenario: Prozesszeitzone verändert kein Kalenderdatum
+
+- **WHEN** dieselbe Tourverschiebung unter unterschiedlichen Prozesszeitzonen einschließlich `Europe/Berlin` geladen, berechnet oder dargestellt wird
+- **THEN** bleiben Original- und Zieldatum als `YYYY-MM-DD` identisch
+- **AND** Sommer- oder Winterzeit verschiebt keinen Wert auf den vorherigen oder folgenden Kalendertag
+
+#### Scenario: Datenbank erzwingt Datumstyp und Eindeutigkeit
+
+- **WHEN** das Waste-Tenant-Schema für tourbezogene Ausweichtermine provisioniert oder migriert wird
+- **THEN** sind `original_date` und `actual_date` als PostgreSQL `DATE` definiert
+- **AND** partielle Unique-Indizes schützen jahresbezogene Regeln nach vollständigem Datum sowie jahresunabhängige Regeln nach Monat und Tag
+- **AND** Repository-Grenzen geben die Werte unabhängig vom Session-`DateStyle` als `YYYY-MM-DD` aus und wandeln sie nicht implizit in JavaScript-`Date`-Objekte um
+
+#### Scenario: Unerwarteter Bestand stoppt den harten Schemaschnitt
+
+- **WHEN** der Migrations-Preflight entgegen der bestätigten Ausgangslage zu erhaltende Ausweichtermin-Daten findet
+- **THEN** stoppt die Migration fail-closed
+- **AND** führt weder eine automatische Dublettenbereinigung noch eine geratene Datumstransformation aus
+
+### Requirement: Waste-Management übernimmt einen Jahres-Tourensatz ausschließlich in das direkte Folgejahr
+
+Das System SHALL berechtigten Benutzern einen mehrstufigen Assistenten bereitstellen, der ein unterstütztes Quelljahr erfasst und das unveränderliche Folgejahr ausschließlich serverseitig als `Quelljahr + 1` ableitet. Es SHALL keine freie Zieljahrauswahl, Rückwärtskopie oder Mehrjahresverschiebung anbieten.
+
+#### Scenario: Aktuelles Jahr wird in das nächste Jahr übernommen
+
+- **WHEN** ein Benutzer das aktuelle Kalenderjahr als Quelljahr auswählt
+- **THEN** zeigt das System das nächste Kalenderjahr unveränderlich als Folgejahr an
+- **AND** verwendet es dieses Folgejahr in Vorschau und Erstellung
+
+#### Scenario: Vorheriges Jahr wird in das aktuelle Jahr übernommen
+
+- **WHEN** ein Benutzer das unmittelbar vorherige Kalenderjahr als Quelljahr auswählt
+- **THEN** zeigt das System das aktuelle Kalenderjahr unveränderlich als Folgejahr an
+- **AND** bleibt der erzeugte Bestand über den vorhandenen relativen Jahresfilter auffindbar
+
+#### Scenario: Nicht unterstütztes Quelljahr wird abgelehnt
+
+- **WHEN** ein Request ein anderes als das aktuelle oder unmittelbar vorherige Kalenderjahr enthält oder ein Zieljahr mitsendet
+- **THEN** verhindert das System die Vorschau und Erstellung
+- **AND** erklärt verständlich, welche Quelljahre unterstützt werden
+
+### Requirement: Waste-Management klassifiziert den vollständigen relevanten Quellbestand
+
+Das System SHALL alle aktiven Touren berücksichtigen, deren Gültigkeitszeitraum das Quelljahr überschneidet oder die mindestens einen expliziten Termin im Quelljahr besitzen. Es SHALL jede relevante Tour nachvollziehbar genau als `wird übernommen`, `gilt bereits im Folgejahr` oder `blockiert` klassifizieren.
+
+#### Scenario: Auf das Quelljahr begrenzte Tour wird übernommen
+
+- **WHEN** eine aktive Tour im Quelljahr wirksam ist und weder ihr Gültigkeitszeitraum noch ein expliziter Termin bereits im Folgejahr wirksam ist
+- **THEN** klassifiziert das System die Tour als `wird übernommen`
+- **AND** lässt es den Benutzer die Tour vor der Bestätigung abwählen
+
+#### Scenario: Quelltour gilt bereits im Folgejahr
+
+- **WHEN** eine aktive Quelltour durch ihren Gültigkeitszeitraum oder einen expliziten Termin bereits im Folgejahr wirksam ist
+- **THEN** klassifiziert das System die Tour als `gilt bereits im Folgejahr`
+- **AND** dupliziert es die Tour nicht
+- **AND** erklärt es, dass die unveränderte Quelltour im Folgejahr weiterwirkt
+
+#### Scenario: Tour kann nicht sicher abgebildet werden
+
+- **WHEN** eine relevante Tour ungültige oder unvollständige Planungsdaten oder einen ungelösten Datumsblocker besitzt
+- **THEN** klassifiziert das System die Tour als `blockiert`
+- **AND** nennt es den konkreten Grund und eine geeignete manuelle Folgeaktion
+- **AND** lässt es die Tour nicht bestätigen
+
+#### Scenario: Wiederkehrender Tour fehlt der Taktanker
+
+- **WHEN** eine Intervall- oder Jahrestour keinen Gültigkeitsbeginn als Taktanker besitzt, aber ihr Gültigkeitsende bis in das Folgejahr reicht
+- **THEN** klassifiziert das System die Tour als `blockiert` wegen unvollständiger Planungsdaten
+- **AND** klassifiziert es sie nicht als `gilt bereits im Folgejahr`
+
+### Requirement: Waste-Management verwendet einen vollständigen Folgejahr-Übernahmevertrag
+
+Das System SHALL für jede bestätigte Tour genau einen Übernahmevertrag verwenden. Dieser SHALL die Tourstammdaten, Abholorte und alle im Quelljahr wirksamen Planungsbeziehungen vollständig in das Folgejahr übertragen und Daten außerhalb des Quelljahres ausschließen.
+
+#### Scenario: Tour und Beziehungen werden vollständig übernommen
+
+- **WHEN** eine als `wird übernommen` klassifizierte Tour bestätigt wird
+- **THEN** übernimmt das System Name, Beschreibung, Abfallarten, Abholorte, Turnus oder Abstandspreset
+- **AND** übernimmt es konkrete Tourtermine, ortsbezogene Abholtermine und explizite Tour-Einsätze einschließlich ihrer Abholorte
+- **AND** ergänzt es kein Kopie-Suffix am Tournamen
+
+#### Scenario: Tourbezogene Verschiebungen werden nach ihrer Jahressemantik übernommen
+
+- **WHEN** die bestätigte Tour jahresunabhängige oder im Quelljahr wirksame jahresspezifische Verschiebungen besitzt
+- **THEN** verknüpft das System jahresunabhängige Regeln unverändert mit der neuen Tour
+- **AND** bildet es jahresspezifische Verschiebungen des Quelljahres auf das Folgejahr ab
+- **AND** erhält es bei einer Verschiebung über die Jahresgrenze den relativen Jahresversatz zwischen Ursprungs- und Zieldatum
+- **AND** übernimmt es keine jahresspezifischen Verschiebungen außerhalb des Quelljahres
+
+### Requirement: Waste-Management überträgt Folgejahrdaten deterministisch
+
+Das System SHALL wiederkehrende Tagesabstandstouren ohne Taktunterbrechung in das Folgejahr fortführen und SHALL konkrete Jahresdaten nach einer festen, serverseitig identischen Folgejahrregel abbilden.
+
+#### Scenario: Tagesabstand wird ohne Unterbrechung fortgeführt
+
+- **WHEN** eine wöchentliche, zweiwöchentliche, vierwöchentliche oder durch ein Abstandspreset bestimmte Tour übernommen wird
+- **THEN** überträgt das System den im Quelljahr wirksamen Gültigkeitsausschnitt nach Monat und Tag in das Folgejahr
+- **AND** berechnet es den ersten Zieltermin durch Fortführung des bestehenden Tagesabstands
+- **AND** bleiben Wochentag und Taktlage auch über einen Schaltjahreswechsel hinweg erhalten
+
+#### Scenario: Konkreter Termin behält seine fachliche Wochenlage
+
+- **WHEN** ein konkreter Quelltermin in das Folgejahr übertragen wird
+- **THEN** verwendet das System den nächstgelegenen gleichen Wochentag zu demselben Monat und Tag des Folgejahres
+- **AND** liegt das Ergebnis stets innerhalb des Folgejahres
+- **AND** zeigt die Vorschau Quell- und Zieldatum einschließlich Wochentag an
+
+#### Scenario: Jährliche Tour behält ihren ursprünglichen Jahrestag
+
+- **WHEN** eine jährliche Tour bereits vor dem Quelljahr begonnen hat
+- **THEN** verwendet das System im Folgejahr weiterhin Monat und Tag ihres ursprünglichen Beginns
+- **AND** setzt es den Jahrestag nicht auf den Beginn des wirksamen Quelljahrausschnitts
+
+#### Scenario: Jährlicher Jahrestag liegt außerhalb des wirksamen Ausschnitts
+
+- **WHEN** der wirksame Quelljahrausschnitt einer jährlichen Tour vor ihrem ursprünglichen Jahrestag endet
+- **THEN** erzeugt das System keinen invertierten Zielzeitraum
+- **AND** blockiert es die Tour als ungültige Planungsdaten
+
+#### Scenario: Kalenderdatum existiert im Folgejahr nicht
+
+- **WHEN** ein zu übertragender Monat und Tag wie der 29. Februar im Folgejahr nicht existiert
+- **THEN** trifft das System keine stille Ersatzentscheidung
+- **AND** verlangt es ein konkretes Ersatzdatum im für die betroffene Quellressource ausgewiesenen Zieljahr
+- **AND** blockiert es die Tour bis zu einer gültigen Auswahl oder Abwahl
+
+#### Scenario: Jahresübergreifende Verschiebung benötigt ein Ersatzdatum
+
+- **WHEN** ein nicht darstellbares Verschiebungsdatum durch den erhaltenen relativen Jahresversatz nach dem direkten Folgejahr liegt
+- **THEN** weist die Vorschau dieses ressourcenspezifische Zieljahr an der Ersatzdatumseingabe aus
+- **AND** akzeptiert der Server ausschließlich ein Ersatzdatum in diesem Zieljahr
+- **AND** nennt ein Validierungsfehler genau dieses erwartete Kalenderjahr
+
+#### Scenario: Mehrere Quellen kollidieren auf derselben Zielbeziehung
+
+- **WHEN** unterschiedliche Quelltermine oder Verschiebungen auf dieselbe fachliche Zielbeziehung abgebildet würden
+- **THEN** führt das System sie nicht stillschweigend zusammen
+- **AND** verlangt es eine eindeutige Ersatzentscheidung oder die Abwahl der betroffenen Tour
+
+#### Scenario: Ersatzdatum darf nur einen gemeldeten Konflikt auflösen
+
+- **WHEN** ein Client ein Ersatzdatum für eine unbekannte, doppelte oder ohne Ersatz abbildbare Quellressource sendet
+- **THEN** lehnt der Server die Vorschau als `replacement_date_invalid` ab
+- **AND** verändert er die deterministische Folgejahrabbildung nicht
+
+#### Scenario: Doppelte jahresunabhängige Verschiebungen erfordern Datenbereinigung
+
+- **WHEN** zwei jahresunabhängige Verschiebungsregeln derselben Tour dieselbe fachliche Zielbeziehung erzeugen
+- **THEN** blockiert die Vorschau die Tour als ungültige Planungsdaten
+- **AND** bietet sie keine wirkungslose Ersatzdatumseingabe an
+- **AND** fordert sie zur Bereinigung der Quelldaten auf
+
+#### Scenario: Bestehende jährliche Tour besitzt denselben Jahrestag
+
+- **WHEN** eine andere im Zieljahr wirksame jährliche Tour dieselben Abfallarten, Abholorte und denselben Jahrestag besitzt
+- **THEN** meldet die Vorschau eine mögliche parallele Planung
+- **AND** bleibt die Quelltour bis zur ausdrücklichen Kenntnisnahme abgewählt
+
+### Requirement: Waste-Management bindet die Bestätigung an eine unveränderte Vorschau
+
+Das System SHALL vor der Erstellung serverseitig eine schreibfreie Vorschau mit einem kanonischen fachlichen Fingerprint erzeugen und SHALL ausschließlich den unverändert erneut berechneten Vorschaustand schreiben.
+
+#### Scenario: Vorschau erklärt den vollständigen Jahreswechsel
+
+- **WHEN** eine gültige Quelljahrauswahl vorliegt
+- **THEN** zeigt das System je Tour Klassifikation, Quell- und Zielzeitraum, ersten Zieltermin, den tatsächlichen festen oder benutzerdefinierten Turnus sowie die Anzahl der Abfallarten, Abholorte, Termine, Einsätze und Verschiebungen
+- **AND** zeigt es für konkrete Termine bis zu fünf nachvollziehbare Abbildungen im Format `Quelle → Folgejahr`, auch wenn die Tour keinen Gültigkeitsbeginn besitzt
+- **AND** fasst es übernommene, bereits weitergeltende, blockierte und ausgeschlossene Daten verständlich zusammen
+- **AND** verändert die Vorschau keine Waste-Daten
+
+#### Scenario: Quellplanung ändert sich nach der Vorschau
+
+- **WHEN** sich eine kopierrelevante Tour, Beziehung oder Ersatzdatumsentscheidung zwischen Vorschau und Bestätigung ändert
+- **THEN** lehnt das System die Erstellung mit `preview_stale` ohne Schreibzugriff ab
+- **AND** liefert es eine aktualisierte Vorschau
+- **AND** verlangt es eine erneute ausdrückliche Bestätigung
+
+#### Scenario: Bestätigte Ersatzressource entfällt durch eine Quelländerung
+
+- **WHEN** eine bestätigte Ersatzressource bei der transaktionalen Revalidierung nicht mehr erforderlich ist
+- **THEN** lehnt das System die Erstellung mit `preview_stale` statt `replacement_date_invalid` ab
+- **AND** liefert es die aktualisierte Vorschau ohne die entfallene Ersatzressource
+- **AND** kennzeichnet es weiterhin anwendbare Ersatzressourcen, damit deren gültige Eingaben erhalten bleiben
+
+#### Scenario: Batch überschreitet ein serverseitiges Limit
+
+- **WHEN** die Anzahl von 1.000 Touren oder insgesamt 100.000 zu kopierenden Beziehungen überschritten wird
+- **THEN** lehnen Vorschau und Erstellung den Vorgang konsistent mit `batch_limit_exceeded` ab
+- **AND** nennen sie den überschrittenen Grenzwert ohne Teilverarbeitung
+
+### Requirement: Waste-Management behandelt Zielkonflikte nachvollziehbar
+
+Das System SHALL stabile fachliche Zielidentitäten und mögliche inhaltliche Überschneidungen unterscheiden. Es SHALL keine bestehende Tour automatisch ersetzen, verändern oder löschen.
+
+#### Scenario: Vorhandene stabile Zielidentität entspricht dem Ergebnis
+
+- **WHEN** die aus Instanz, Quelltour und Folgejahr stabil abgeleitete Zieltour bereits mit vollständig identischem fachlichem Inhalt existiert
+- **THEN** behandelt das System sie als vorhandenes idempotentes Ergebnis
+- **AND** erzeugt es keine weitere Tour oder Beziehung
+
+#### Scenario: Vorhandene stabile Zielidentität weicht ab
+
+- **WHEN** die stabil abgeleitete Zieltour oder eine ihrer stabil abgeleiteten Beziehungen mit abweichendem fachlichem Inhalt existiert
+- **THEN** lehnt das System die gesamte Erstellung mit `target_identity_conflict` ohne Änderung ab
+- **AND** überschreibt es keine vorhandenen Daten
+
+#### Scenario: Andere Tour besitzt eine möglicherweise parallele Planung
+
+- **WHEN** eine andere bestehende Tour identische Abfallarten und Abholorte, denselben effektiven Tagesabstand, einen überschneidenden Zielzeitraum und mindestens einen gemeinsamen regulären oder durch eine Verschiebung wirksamen Termin besitzt
+- **THEN** zeigt das System einen möglichen fachlichen Konflikt mit den ausschlaggebenden Merkmalen
+- **AND** wählt es die Quelltour zunächst ab
+- **AND** erlaubt es die Übernahme nur nach ausdrücklicher Kenntnisnahme, weil parallele Einsätze zulässig sein können
+
+#### Scenario: Neuer Konflikt entsteht vor der Bestätigung
+
+- **WHEN** nach der Vorschau und vor dem Schreiben ein neuer stabiler oder möglicher Zielkonflikt entsteht
+- **THEN** legt das System keine Tour und keine Beziehung an
+- **AND** liefert es eine aktualisierte Vorschau zur erneuten Bestätigung
+
+### Requirement: Waste-Management legt den bestätigten Tourensatz atomar und idempotent inaktiv an
+
+Das System SHALL den ausdrücklich bestätigten Tourensatz einschließlich aller Beziehungen unter einer mandanten- und folgejahrbezogenen Sperre in einer Waste-Datenbanktransaktion mit `active = false` anlegen. Wiederholungen SHALL fachlich auf dieselben stabilen Zielressourcen konvergieren.
+
+#### Scenario: Bestätigter Tourensatz wird vollständig angelegt
+
+- **WHEN** ein berechtigter Benutzer einen gültigen und unveränderten Vorschaustand ausdrücklich bestätigt
+- **THEN** sperrt der Server den Jahreswechsel für Mandant und Folgejahr
+- **AND** sperrt er die planungsrelevanten Tabellen des mandanteneigenen Waste-Schemas gegen konkurrierende Änderungen
+- **AND** prüft er Quellbestand, Fingerprint und Konflikte innerhalb derselben Transaktion erneut
+- **AND** legt er alle bestätigten Touren und Beziehungen gemeinsam inaktiv und große Beziehungsmengen in begrenzten Batches an
+- **AND** lässt er den Quellbestand unverändert
+- **AND** gibt er die IDs, eine verständliche Ergebnissumme und ein Ziel zur gefilterten Tourenliste zurück
+
+#### Scenario: Fehler rollt den gesamten Satz zurück
+
+- **WHEN** das Prüfen oder Anlegen einer Tour oder Beziehung fehlschlägt
+- **THEN** rollt das System die vollständige Waste-Datenbanktransaktion zurück
+- **AND** bleibt kein Teilergebnis des bestätigten Satzes bestehen
+
+#### Scenario: Identischer Request wird idempotent wiederholt
+
+- **WHEN** derselbe mandantenbezogene Idempotenzschlüssel mit derselben fachlichen Payload erneut übermittelt wird
+- **THEN** gibt das System dasselbe fachliche Ergebnis zurück
+- **AND** erzeugt es keine weiteren Touren oder Beziehungen
+- **AND** lehnt es denselben Schlüssel mit einer abweichenden Payload als Konflikt ab
+
+#### Scenario: Identischer Request wird während der Verarbeitung erneut gesendet
+
+- **WHEN** derselbe Idempotenzschlüssel mit derselben Payload noch verarbeitet wird
+- **THEN** antwortet das System mit `idempotency_in_progress`
+- **AND** startet es keine zweite Waste-Transaktion
+- **AND** erzeugt es kein zusätzliches Audit-Ereignis
+- **AND** erneuert der aktive Request seine Lease und darf nur mit seinem aktuellen Ownership-Token Audit und Antwort finalisieren
+
+#### Scenario: Prozess endet nach dem Waste-Commit
+
+- **WHEN** die Waste-Transaktion erfolgreich committet und der Prozess vor Abschluss des zentralen Idempotenzeintrags endet
+- **THEN** darf eine Wiederholung nach Ablauf der kurzen Verarbeitungs-Lease die verwaiste Reservierung übernehmen
+- **AND** rekonstruiert sie das Ergebnis anhand der stabilen Ziel- und Beziehungs-IDs
+- **AND** kann der abgelöste Owner mit seinem alten Ownership-Token weder Audit noch Antwort finalisieren
+- **AND** behandelt sie vollständig identische Daten als Replay
+- **AND** behandelt sie fehlende Daten als erneut atomar ausführbar und abweichende Daten als `target_identity_conflict`
+
+### Requirement: Folgejahrübernahme schützt Berechtigungen, Auditdaten und barrierefreie Bedienung
+
+Das System SHALL Vorschau und Erstellung gemäß den Waste-Berechtigungen schützen, die bestätigte Erstellung datensparsam auditieren und den gesamten Assistenten barrierefrei sowie ohne interne technische Begriffe erklären.
+
+#### Scenario: Fehlende Berechtigung verhindert den Vorgang
+
+- **WHEN** ein Benutzer nicht über `waste-management.tours.manage` und `waste-management.scheduling.manage` verfügt
+- **THEN** verweigert das System Vorschau und Erstellung
+- **AND** verändert es keine Waste-Daten
+
+#### Scenario: Batch-Ergebnis wird revisionsfähig auditiert
+
+- **WHEN** die bestätigte Erstellung erfolgreich ist oder fehlschlägt
+- **THEN** erzeugt das System genau ein zusammenfassendes Audit-Ereignis mit Jahren, Klassifikations- und Ergebnismengen, Ergebnis und technischen Ressourcen-IDs
+- **AND** protokolliert es keine Notizen, Adressdaten oder fachlichen Freitexte
+- **AND** erzeugen Vorschau und reine Validierungsfehler vor einer bestätigten Mutation kein Audit-Ereignis
+- **AND** markiert das System die Idempotenzantwort erst nach dem Audit-Abschluss dauerhaft als wiederholbar
+
+#### Scenario: Fehlgeschlagene Bestätigung behält Klassifikationsmengen im Audit
+
+- **WHEN** eine bestätigte Erstellung wegen einer veralteten Vorschau oder eines neu erkannten stabilen Zielkonflikts fehlschlägt
+- **THEN** enthält das zusammenfassende Fehler-Audit die Klassifikationsmengen der aktualisierten serverseitigen Vorschau
+
+#### Scenario: Assistent ist verständlich und barrierefrei bedienbar
+
+- **WHEN** ein Benutzer den Assistenten per Tastatur oder Screenreader bedient
+- **THEN** sind Schritte, Tourgruppen, Auswahl, Ersatzdatumseingaben, Vorschau, Konflikte, Bestätigung und Fehlermeldungen vollständig erreichbar und beschriftet
+- **AND** werden Status oder Konflikte nicht ausschließlich durch Farbe vermittelt
+- **AND** erklären die Texte das unveränderliche Folgejahr und alle Ausschlussgründe ohne interne technische Begriffe
+
+#### Scenario: Veraltete Vorschau wird zugänglich aktualisiert
+
+- **WHEN** die Erstellung mit `preview_stale` abgelehnt wird
+- **THEN** bleiben Quelljahrauswahl und gültige Ersatzdaten erhalten
+- **AND** setzt das System den Fokus auf die aktualisierte verständliche Zusammenfassung
+- **AND** verlangt es vor einem neuen Schreibversuch eine erneute Bestätigung
+
+### Requirement: Waste-Abholorte werden serverseitig global nach Adresse sortiert
+
+Das System MUST die autorisierte Abholort-Stammdatenliste serverseitig zuerst nach allen aktiven Fachfiltern eingrenzen, danach den vollständigen gefilterten Bestand deterministisch nach einer fest erlaubten Adressfolge sortieren und erst anschließend paginieren. Die Standardsortierung MUST `Ort → Straße → Hausnummer` aufsteigend verwenden; optional MUST die Region als erstes Kriterium vorgeschaltet werden können. Fehlende Werte MUST unabhängig von der Richtung hinter vorhandenen Werten stehen, und die eindeutige Abholort-ID MUST Gleichstände aufsteigend stabilisieren.
+
+#### Scenario: Standardsortierung gilt über mehrere Seiten
+
+- **GIVEN** der gefilterte Abholortbestand umfasst mehr Treffer als auf eine Seite passen
+- **WHEN** ein berechtigter Benutzer die Abholort-Stammdatenliste ohne abweichende Sortierparameter öffnet
+- **THEN** filtert das System den vollständigen autorisierten Bestand
+- **AND** sortiert ihn aufsteigend nach Ort, Straße, Hausnummer und abschließend ID
+- **AND** schneidet erst danach die angeforderte Seite zu
+- **AND** ein Seitenwechsel erhält dieselbe globale Reihenfolge
+
+#### Scenario: Region wird als erstes Kriterium berücksichtigt
+
+- **WHEN** ein Benutzer die Option `Region berücksichtigen` aktiviert
+- **THEN** sortiert das System den vollständigen gefilterten Bestand nach Region, Ort, Straße und Hausnummer
+- **AND** gilt die gewählte Richtung gemeinsam für alle vier fachlichen Kriterien
+- **AND** bleibt die ID als letzter Gleichstandsauflöser aufsteigend
+
+#### Scenario: Fehlende Werte bleiben in beiden Richtungen zuletzt
+
+- **GIVEN** mindestens ein Abholort besitzt für ein aktives Sortierkriterium keinen Wert
+- **WHEN** ein Benutzer aufsteigend oder absteigend sortiert
+- **THEN** stehen Abholorte mit vorhandenem Wert vor Abholorten ohne Wert
+- **AND** werden zwei Abholorte mit gleichen vorhandenen beziehungsweise fehlenden Fachwerten über ihre ID stabil geordnet
+
+#### Scenario: Hausnummern werden fachlich numerisch geordnet
+
+- **GIVEN** zwei ansonsten gleiche Abholorte besitzen die Hausnummern `2` und `10`
+- **WHEN** die Liste aufsteigend nach der Adressfolge sortiert wird
+- **THEN** steht Hausnummer `2` vor Hausnummer `10`
+- **AND** verwendet die produktive Serverprojektion dieselbe dokumentierte Vergleichssemantik wie die Repository-Integrationstests
+
+#### Scenario: Direkter Request enthält unerlaubte Sortierwerte
+
+- **WHEN** ein direkter API-Request ein unbekanntes Sortierfeld, einen unbekannten Sortiermodus, eine unbekannte Richtung oder widersprüchliche Mehrfachwerte enthält
+- **THEN** antwortet das System mit `400 invalid_request`
+- **AND** übernimmt es keinen Requestwert als freien SQL-Ausdruck
+
+### Requirement: Abholortlisten-Zustand bleibt über Darstellungen und Pagination konsistent
+
+Das System MUST Sortiermodus, Sortierrichtung, Filter, Seite und Seitengröße als kontrollierten, typisierten Listenzustand führen. Desktop- und schmale Darstellung MUST denselben Sortierzustand bedienen und die empfangene Serverreihenfolge unverändert darstellen. Filter-, Sortier- und Seitengrößenwechsel MUST die Seite auf eins zurücksetzen, ohne ID-basierte Auswahlen anderen Abholorten zuzuordnen.
+
+#### Scenario: Benutzer ändert die Sortierung auf einer späteren Seite
+
+- **GIVEN** ein Benutzer befindet sich auf einer Seite größer als eins
+- **WHEN** er Sortiermodus oder Sortierrichtung ändert
+- **THEN** navigiert das System atomar auf Seite eins
+- **AND** fordert es die neu sortierte erste Seite beim Server an
+- **AND** sortiert die Tabellenkomponente diese Seite nicht nochmals lokal
+
+#### Scenario: Filter und Seitengröße setzen die Seite zurück
+
+- **WHEN** ein Benutzer Suche, Status, Region, Ort, Tour oder Seitengröße ändert
+- **THEN** wird die Seite auf eins gesetzt
+- **AND** Gesamtzahl und Seiteninhalt beruhen auf demselben serverseitigen Filtervertrag
+
+#### Scenario: Desktop und schmale Ansicht teilen den Zustand
+
+- **WHEN** ein Benutzer Sortiermodus oder Richtung über eine der beiden Darstellungen ändert
+- **THEN** zeigen beide Darstellungen denselben aktiven Modus und dieselbe Richtung an
+- **AND** sind Kriterien, Richtung und Bedienung für Maus, Tastatur und Screenreader verständlich
+
+#### Scenario: Auswahl bleibt an IDs gebunden
+
+- **GIVEN** ein Benutzer hat Abholorte auf einer oder mehreren Seiten ausgewählt
+- **WHEN** er Seite, Sortierung oder Filter ändert
+- **THEN** bleibt jede Auswahl ausschließlich ihrer Abholort-ID zugeordnet
+- **AND** eine neu sichtbare Zeile übernimmt keinen Auswahlzustand über ihren Zeilenindex
+- **AND** Auswahlen außerhalb des aktuellen Filters bleiben erhalten
+
+#### Scenario: Alle gefilterten Abholorte werden seitenübergreifend ausgewählt
+
+- **WHEN** ein Benutzer `Alle gefilterten auswählen` aktiviert
+- **THEN** löst das System alle Abholort-IDs über denselben serverseitigen Filtervertrag wie die Liste auf
+- **AND** begrenzt es die Auswahl nicht auf die sichtbare Seite
+- **AND** beeinflussen Sortiermodus und Pagination nicht die ermittelte ID-Menge
+
+### Requirement: Waste-Management bietet symmetrische Datenaustauschprofile
+
+Das System SHALL transferrelevante Waste-Fachdaten über kanonische, versionierte Datenprofile importieren und exportieren.
+
+#### Scenario: Import und Export verwenden denselben Profilvertrag
+
+- **WHEN** das System ein Waste-Datenprofil importiert oder exportiert
+- **THEN** stammen Feldmenge, Typen, Referenzen, Pflichtsemantik, Defaults und Formatversion aus demselben kanonischen Profilvertrag
+- **AND** getrennte Import- und Exportdefinitionen dürfen nicht unbemerkt auseinanderlaufen
+
+#### Scenario: Bestehender Spezialimport bleibt getrennt
+
+- **WHEN** ein Benutzer den adress- und fraktionsorientierten Spezialimport für Tourzuordnungen verwendet
+- **THEN** darf dieser fehlende Entitäten weiterhin mit dokumentierten Defaults erzeugen
+- **AND** er gilt nicht als verlustfreies Export- oder Roundtrip-Profil
+
+### Requirement: Jedes Waste-Transferfeld besitzt eine eindeutige Semantik
+
+Das System SHALL jedes transferrelevante Modellfeld als Pflichtwert, optionalen Wert oder defaultfähigen Wert klassifizieren und seine Transferentscheidung dokumentieren.
+
+#### Scenario: Pflichtwert fehlt
+
+- **WHEN** ein importierter Datensatz einen als `required` klassifizierten Wert nicht enthält
+- **THEN** weist der Preflight den Datensatz mit Profil- und Feldbezug zurück
+
+#### Scenario: Optionaler Wert wird explizit geleert
+
+- **WHEN** ein nullable Feld als `optional` klassifiziert ist und der Import explizit `null` enthält
+- **THEN** leert der Import den fachlichen Zielwert
+
+#### Scenario: Defaultfähiger Wert fehlt bei Neuanlage
+
+- **WHEN** ein `defaultable` Feld beim Erstellen eines neuen Datensatzes fehlt
+- **THEN** verwendet der Import den für die Profilversion dokumentierten Default
+- **AND** weist der Preflight die Defaultanwendung aus
+
+#### Scenario: Defaultfähiger Wert fehlt bei Aktualisierung
+
+- **WHEN** ein `defaultable` Feld beim Aktualisieren eines bestehenden Datensatzes fehlt
+- **THEN** bleibt der vorhandene Zielwert unverändert
+
+#### Scenario: Systemexport materialisiert das vollständige Profil
+
+- **WHEN** das System ein Profil exportiert
+- **THEN** enthält der Export alle eingeschlossenen Felder einschließlich optionaler `null`-Werte und tatsächlich wirksamer Defaults
+
+### Requirement: JSON ist ein eigenständiges Format jedes Waste-Datenprofils
+
+Das System SHALL jedes kanonische Waste-Datenprofil einzeln als versioniertes JSON importieren und exportieren können.
+
+#### Scenario: Benutzer exportiert ein einzelnes JSON-Profil
+
+- **WHEN** ein berechtigter Benutzer ein einzelnes Waste-Profil im Format JSON exportiert
+- **THEN** enthält die Datei mindestens Formatversion, Plugin-ID, Profil-ID, Exportzeitpunkt und Datensätze
+- **AND** die Datei kann ohne ein umgebendes ZIP-Paket wieder als dasselbe Profil importiert werden
+
+#### Scenario: Unbekannte JSON-Version wird importiert
+
+- **WHEN** die Profil- oder Formatversion einer JSON-Datei nicht unterstützt wird
+- **THEN** stoppt der Preflight vor jedem Schreibzugriff mit einem verständlichen Versionsfehler
+
+### Requirement: Tabellarische Waste-Formate bleiben verlustfrei
+
+Das System SHALL CSV oder XLSX für ein Datenprofil nur anbieten, wenn sämtliche eingeschlossenen Profilfelder verlustfrei abgebildet werden.
+
+#### Scenario: Komplexes Feld besitzt keine kanonische Tabellenabbildung
+
+- **WHEN** ein Profil verschachtelte Werte enthält, die ein tabellarischer Adapter nicht verlustfrei serialisieren und parsen kann
+- **THEN** bietet das System dieses Format für das Profil nicht an
+- **AND** JSON bleibt für das einzelne Profil verfügbar
+
+#### Scenario: Tabellarischer Export wird wieder importiert
+
+- **WHEN** das System einen CSV- oder XLSX-Export für ein Profil anbietet
+- **THEN** stellt ein erneuter Import denselben normalisierten Fachdatenbestand wie der Export her
+
+### Requirement: Waste-Management bündelt unabhängige Profile in Testdatenpaketen
+
+Das System SHALL mehrere ausgewählte Waste-Profile als manifestbasiertes ZIP-Paket exportieren und importieren können.
+
+#### Scenario: Benutzer exportiert mehrere Profile
+
+- **WHEN** ein berechtigter Benutzer mehrere Waste-Profile auswählt
+- **THEN** enthält das ZIP-Paket eigenständige JSON-Profildateien sowie ein Manifest mit Versionen, Abhängigkeiten, Datensatzanzahlen und Prüfsummen
+- **AND** das Manifest führt keine zweite fachliche Datenrepräsentation ein
+
+#### Scenario: Paketabhängigkeit fehlt
+
+- **WHEN** eine Referenz weder durch ein früheres Profil im Paket noch durch den Zielbestand aufgelöst werden kann
+- **THEN** stoppt der Preflight das gesamte Paket vor jedem Schreibzugriff
+
+### Requirement: Die erste Waste-Profilmenge deckt alle portablen Fachdaten ab
+
+Das System SHALL alle portablen Waste-Fachdaten vollständig über die kanonische Profilmenge übertragen.
+
+#### Scenario: Vollständige Profilmenge wird exportiert
+
+- **WHEN** ein berechtigter Benutzer alle Waste-Fachprofile auswählt
+- **THEN** umfasst der Export Fraktionen, Geografie und Abholorte, Abstandspresets, Touren, Abholort–Tour-Zuordnungen, Tour-Einsätze, globale und tourbezogene Ausweichtermine, Feiertagsregeln sowie portable Ausgabe- und Facheinstellungen
+- **AND** stabile IDs und profilübergreifende Referenzen bleiben erhalten
+
+#### Scenario: Fraktionsprofil wird übertragen
+
+- **WHEN** das System Fraktionen exportiert und importiert
+- **THEN** umfasst das Profil mindestens PDF-Kürzel, Übersetzungen, Behältergröße, Farbe, Beschreibung, Aktivstatus und fachliche Reminder-Konfiguration
+
+#### Scenario: Legacy-Einzeltermine sind bereits fachlich migriert
+
+- **WHEN** das System Tour-Einsätze exportiert
+- **THEN** exportiert es das kanonische Einsatzmodell einschließlich mehrerer Abholorte
+- **AND** es überträgt `waste_location_tour_pickup_dates` nicht als konkurrierende zweite Source of Truth
+
+### Requirement: Waste-Datenaustausch schließt personenbezogene und betriebliche Daten aus
+
+Das System SHALL den operativen E-Mail-Abodienst und umgebungsspezifische Betriebsdaten vollständig aus Waste-Importen und -Exporten ausschließen.
+
+#### Scenario: Waste-Fachdaten werden exportiert
+
+- **WHEN** ein Benutzer ein einzelnes Profil oder ein Mehrprofilpaket exportiert
+- **THEN** enthält das Artefakt keine E-Mail-Abonnements, personenbezogenen Adressauswahlen, Consent-Daten, Subscription-Items, DOI-/Abmeldetoken oder Token-Hashes und keine Outbox-Daten
+- **AND** es enthält keine Credentials, Datenbankverbindungen, Instanzidentitäten, IAM-, Audit-, Job- oder Monitoringdaten
+
+#### Scenario: Vollständigkeitsgate bewertet Ausschlüsse
+
+- **WHEN** das automatische Coverage-Gate alle Waste-Modellfelder prüft
+- **THEN** gelten ausgeschlossene Felder nur mit einer expliziten stabilen Begründung als vollständig klassifiziert
+- **AND** ein Ausschluss darf nicht durch einen generischen Fallback oder eine stille Serialisierung umgangen werden
+
+### Requirement: Waste-Importe sind vorab prüfbar und atomar
+
+Das System SHALL Einzelprofile und Mehrprofilpakete vor dem Commit vollständig prüfen und ohne Teilerfolge schreiben.
+
+#### Scenario: Benutzer prüft einen Import vorab
+
+- **WHEN** ein Benutzer einen Waste-Import als Preflight startet
+- **THEN** zeigt das System neue, geänderte, unveränderte, fehlerhafte und defaultierte Datensätze
+- **AND** es weist Versions-, Typ-, Pflichtfeld-, Referenz- und portable Referenzprobleme verständlich aus
+
+#### Scenario: Einzelprofil schlägt beim Commit fehl
+
+- **WHEN** ein Schreibzugriff innerhalb eines Einzelprofilimports fehlschlägt
+- **THEN** rollt das System alle Schreibzugriffe dieses Profils zurück
+
+#### Scenario: Mehrprofilpaket schlägt beim Commit fehl
+
+- **WHEN** ein Schreibzugriff innerhalb eines Pakets fehlschlägt
+- **THEN** rollt das System alle Schreibzugriffe des Pakets zurück
+- **AND** persistiert keinen fachlichen Teilerfolg
+
+### Requirement: Waste-Importe löschen keine fremden Zielwerte implizit
+
+Das System SHALL kanonische Datenprofile standardmäßig als Upsert ohne implizite Löschungen importieren.
+
+#### Scenario: Ziel enthält zusätzliche Datensätze
+
+- **WHEN** ein importiertes Profil einen bereits im Ziel vorhandenen Datensatz nicht enthält
+- **THEN** bleibt dieser Datensatz unverändert bestehen
+- **AND** der Import wird nicht als Tenant-Klon oder Replace-Operation interpretiert
+
+### Requirement: Waste-Exporte sind getrennt autorisiert und geschützt
+
+Das System SHALL Waste-Exporte ausschließlich als hostgeführte, instanzbezogene und autorisierte Operation bereitstellen.
+
+#### Scenario: Berechtigter Benutzer startet einen Export
+
+- **WHEN** ein Benutzer mit `waste-management.export.execute` einen Export für die aktive Instanz startet
+- **THEN** führt der Host den Export als generischen Studio-Job aus
+- **AND** löst die Waste-Fachdatenbank serverseitig aus dem autorisierten Instanzkontext auf
+
+#### Scenario: Benutzer lädt ein Exportartefakt herunter
+
+- **WHEN** ein Exportjob erfolgreich abgeschlossen ist
+- **THEN** erhält der Benutzer das Artefakt nur über eine erneut autorisierte, zeitlich begrenzte Downloadreferenz
+- **AND** das System publiziert keinen öffentlichen Waste-Export-Feed
+
+#### Scenario: Benutzer besitzt nur Importrecht
+
+- **WHEN** ein Benutzer `waste-management.import.execute`, aber nicht `waste-management.export.execute` besitzt
+- **THEN** kann er keinen Export starten oder dessen Artefakt herunterladen
+
+### Requirement: Waste-Datenaustausch besitzt verpflichtende Roundtrip- und Coverage-Gates
+
+Das System SHALL die Vollständigkeit und Symmetrie jedes Waste-Datenprofils automatisch prüfen.
+
+#### Scenario: Profil besteht den Roundtrip
+
+- **WHEN** Testdaten über ein angebotenes Profilformat exportiert und wieder importiert werden
+- **THEN** entspricht der resultierende normalisierte Fachdatenbestand dem exportierten normalisierten Bestand
+
+#### Scenario: Neues Waste-Modellfeld ist unklassifiziert
+
+- **WHEN** ein neues Waste-Modellfeld weder eingeschlossen noch begründet ausgeschlossen wurde
+- **THEN** schlägt das Coverage-Gate fehl
+- **AND** Import und Export dürfen für das betroffene Profil nicht als vollständig gelten

@@ -38,6 +38,6 @@
 - [x] 5.1 Relevante Waste-Bedienungsdokumentation aktualisieren
 - [x] 5.2 Zentralen Studio-Snapshot geprüft und unverändert gelassen; `docs/development/studio-db-schema.md` sowie das davon getrennte kanonische externe Waste-Runtime-Schema fortgeschrieben
 - [x] 5.3 `docs/architecture/05-building-block-view.md`, `docs/architecture/06-runtime-view.md` und `docs/architecture/08-cross-cutting-concepts.md` um gemeinsame Regel-Ownership, Laufzeitfluss und Date-only-Vertrag ergänzen
-- [ ] 5.4 Vor Migration und Rollout den bestätigten leeren Produktivbestand der betroffenen Ausweichtermin-Daten erneut fail-closed verifizieren
+- [x] 5.4 Vor Migration und Rollout den bestätigten leeren Produktivbestand der betroffenen Ausweichtermin-Daten erneut fail-closed verifizieren; der erfolgreiche Production-Promote-Run `31974456870` führte die bei vorhandenen Datensätzen abbrechende Migration `20260816_02_tour_date_shift_date_contract` aus (Nachweis: `docs/reports/bb-prignitz-waste-cutover-completion-2026-08-24.md`)
 - [x] 5.5 Betroffene Nx-Unit- und Type-Gates sowie bei Core-, Repository- und Auth-Runtime-Änderungen früh `pnpm check:server-runtime` ausführen
 - [x] 5.6 `pnpm check:file-placement` und `pnpm exec openspec validate add-contextual-waste-tour-shift-creation --strict` ausführen

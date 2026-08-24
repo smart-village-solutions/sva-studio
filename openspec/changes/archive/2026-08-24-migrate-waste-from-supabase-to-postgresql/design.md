@@ -35,18 +35,18 @@ Alternativen:
 
 ### Getrennte Datenbank und Rollen
 
-Die Zielinstanz erhält in allen Umgebungen die Datenbank `sva_waste`. Passwörter und Hosts unterscheiden sich je Umgebung, die Bezeichner bleiben stabil:
+Die Zielinstanz erhält in allen Umgebungen eine aus der Instanz-ID deterministisch abgeleitete Datenbank. Der gemeinsame tenantbezogene Namensstamm verbindet Datenbank und Rollen eindeutig mit der Instanz:
 
-- `sva_waste_owner` besitzt als `NOLOGIN`-Rolle Schema und Objekte.
-- `sva_waste_migrator` darf ausschließlich im expliziten Migrationspfad auf `sva_waste_owner` wechseln.
-- `sva_waste_app` ist die Runtime-Rolle der administrativen Studio-Waste-Fassade und erhält fachliche CRUD-, aber keine Owner- oder Rollenverwaltungsrechte.
-- `sva_waste_public_app` ist die getrennte Runtime-Rolle der öffentlichen App und erhält Leserechte sowie ausschließlich die erforderlichen Schreibrechte für Reminder-, Double-Opt-In-, Abmelde- und Outbox-Pfade.
+- Die Owner-Rolle besitzt als `NOLOGIN`-Rolle Schema und Objekte.
+- Die Migrator-Rolle darf ausschließlich im expliziten Migrationspfad auf die Owner-Rolle wechseln.
+- Die App-Rolle ist die Runtime-Rolle der administrativen Studio-Waste-Fassade und erhält fachliche CRUD-, aber keine Owner- oder Rollenverwaltungsrechte.
+- Die Public-Rolle ist die getrennte Runtime-Rolle der öffentlichen App und erhält Leserechte sowie ausschließlich die erforderlichen Schreibrechte für Reminder-, Double-Opt-In-, Abmelde- und Outbox-Pfade.
 
 Studio-IAM, Audit und Registry verbleiben in der separaten Studio-Datenbank. Keine Waste-Runtime-Rolle erhält regulären Zugriff auf die Studio-Governance-Datenbank.
 
-### Vollständiger Betriebsstopp statt Anwendungs-Wartungsmodus
+### Kontrollierter Writer-Drain statt Anwendungs-Wartungsmodus
 
-Der Cutover erfolgt in einem angekündigten Sonntagsfenster. Studio-App, Public-Waste-App und Waste-Worker werden vor dem finalen Dump kontrolliert gestoppt. Nach dem Stop wird geprüft, dass keine Waste-Jobs und keine schreibenden Datenbanksitzungen mehr aktiv sind. Ein dauerhafter Wartungsmodus oder neuer Anwendungsschalter wird nicht eingeführt.
+Der Cutover erfolgt in einem angekündigten Sonntagsfenster. Die Public-Waste-App wird kontrolliert gestoppt. Der Import-Agent sperrt neue Verbindungen der Studio-/Worker-Runtime zur Waste-Zieldatenbank und wartet, bis bestehende Anwendungssitzungen beendet sind. Ein dauerhafter Wartungsmodus oder neuer Anwendungsschalter wird nicht eingeführt.
 
 Nach der Offline-Grenze werden mit einem zur PostgreSQL-17-Quelle passenden Client zwei getrennte Artefakte erstellt. Ein vollständiges PostgreSQL-Custom-Archiv aller `public.waste_*`-Tabellen bleibt als unverändertes Quellbackup erhalten. Für die eigentliche Übertragung nach PostgreSQL 16 wird zusätzlich ein datenorientiertes Artefakt mit expliziten Tabellen und Spalten erzeugt. Das Zielschema entsteht vor dem Import ausschließlich durch die versionierten Waste-Migrationen. Erst danach werden die Daten importiert und vor der Umschaltung verifiziert.
 
@@ -66,27 +66,27 @@ Die Verifikation umfasst mindestens:
 
 ### Rollback-Gate und Aufbewahrungsfrist
 
-Ein verlustfreier Konfigurations-Rollback auf Supabase ist nur möglich, solange nach dem finalen Dump keine neuen Waste-Schreibzugriffe freigegeben wurden. Deshalb bleiben alle Waste-Runtimes bis zum Abschluss sämtlicher Pflicht- und Smoke-Tests gestoppt. Schlägt eine Prüfung fehl, wird noch innerhalb dieser Offline-Grenze auf die unveränderte Supabase-Konfiguration zurückgeschaltet.
+Ein verlustfreier Konfigurations-Rollback auf Supabase ist nur möglich, solange nach dem finalen Dump keine neuen Waste-Schreibzugriffe freigegeben wurden. Deshalb bleibt die Public-Waste-App gestoppt und die Verbindungen der Studio-/Worker-Runtime zur Zieldatenbank bleiben bis zum Abschluss sämtlicher Pflicht- und Smoke-Tests gesperrt. Schlägt eine Prüfung fehl, wird noch innerhalb dieser Offline-Grenze auf die Supabase-Konfiguration zurückgeschaltet.
 
-Nach Freigabe der neuen PostgreSQL-Datenbank bleibt die Supabase-Quelle 14 Tage unverändert und schreibgeschützt als Vergleichs- und Notfallquelle erhalten. Ein späterer Rückwechsel wäre wegen neuer Daten in `sva_waste` eine erneute kontrollierte Datenmigration und kein einfacher Konfigurations-Rollback. Nach 14 fehlerfreien Tagen kann Supabase separat außer Betrieb genommen werden; die Stilllegung ist nicht Teil des atomaren Cutovers.
+Nach Freigabe der neuen PostgreSQL-Datenbank bleibt die Supabase-Quelle 14 Tage als Vergleichs- und Notfallquelle erhalten, ohne von einer produktiven Waste-Runtime verwendet zu werden. Ein späterer Rückwechsel wäre wegen neuer Daten in der tenantgebundenen Zieldatenbank eine erneute kontrollierte Datenmigration und kein einfacher Konfigurations-Rollback. Nach 14 fehlerfreien Tagen kann Supabase separat außer Betrieb genommen werden; die Stilllegung ist nicht Teil des atomaren Cutovers.
 
 ## Migration Plan
 
-1. Datenbank `sva_waste`, die vier festgelegten Rollen, Netzwerkzugriff und Backup-Aufnahme vorbereiten.
+1. Tenantgebundene Datenbank, die vier abgeleiteten Rollen, Netzwerkzugriff und Backup-Aufnahme vorbereiten.
 2. PostgreSQL-Schnittstelle anlegen, aber noch nicht als aktive Waste-Quelle auswählen.
-3. Im angekündigten Sonntagsfenster Studio-App, Public-Waste-App und Waste-Worker stoppen; anschließend Job- und Session-Drain nachweisen.
+3. Im angekündigten Sonntagsfenster die Public-Waste-App stoppen, neue Studio-/Worker-Verbindungen zur Zieldatenbank sperren und den Session-Drain nachweisen.
 4. Vollständiges Custom-Sicherungsarchiv der `public.waste_*`-Tabellen sowie ein getrenntes, PostgreSQL-16-kompatibles Datenartefakt erstellen und beide auf Integrität prüfen.
 5. Das leere Zielschema durch die versionierten Waste-Migrationen erzeugen und das Datenartefakt innerhalb einer Transaktion importieren; Eigentümer und Grants kontrolliert auf Zielrollen abbilden.
 6. Schema- und Datenvergleich ausführen und den aktuellen Waste-Migrationsstand nachweisen.
 7. Studio-Registry und Public-Waste-Konfiguration auf dieselbe Ziel-Datenbank umstellen.
 8. Runtimes kontrolliert mit der neuen Konfiguration starten und Connection-, Read-, Write-, Kalender- und Reminder-Smoke-Tests ausführen, ohne den öffentlichen Zugriff freizugeben.
 9. Bei Erfolg Systeme freigeben; bei Fehlern die Runtimes erneut stoppen und innerhalb des verlustfreien Rollback-Gates auf Supabase zurückschalten.
-10. Supabase 14 Tage schreibgeschützt erhalten; anschließend Stilllegung gesondert freigeben.
+10. Supabase 14 Tage ohne produktive Runtime-Nutzung erhalten; anschließend Stilllegung gesondert freigeben.
 
 ## Risks / Trade-offs
 
 - Nicht übertragene Supabase-spezifische Objekte → Vorab-Inventar von Extensions, Rollen, RLS, Funktionen und Grants; nur tatsächlich benötigte PostgreSQL-Objekte werden zielgerichtet übernommen.
-- Veralteter Dump durch parallele Änderungen → Vollständiger Stopp aller Waste-Runtimes vor dem finalen Dump und nachgewiesener Job- und Session-Drain.
+- Parallele Zielzugriffe während des Imports → Public-Waste-Stopp, Sperre neuer Studio-/Worker-Verbindungen und nachgewiesener Session-Drain.
 - Unterschiedliche Eigentümer oder Rechte → Restore ohne unkontrollierte Quell-Owner und explizite Ziel-Grants; Laufzeittest mit der echten Runtime-Rolle.
 - Unterschiedliche PostgreSQL-Hauptversionen → Quellbackup mit PostgreSQL 17 erstellen, aber keinen Schema-Downgrade durchführen; Zielschema auf PostgreSQL 16 aus versionierten Migrationen aufbauen und ausschließlich explizit inventarisierte Fachdaten übertragen.
 - Unvollständige Backup-Abdeckung → Waste-Datenbank vor Freigabe in Backup, Restore-Validierung und Betriebsdokumentation aufnehmen.

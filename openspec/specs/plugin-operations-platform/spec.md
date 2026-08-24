@@ -174,3 +174,66 @@ Das System SHALL Datenbankmigration, App-Enqueue und Jobverarbeitung mit getrenn
 - **AND** protokolliert die Runtime den Start- oder Laufzeitfehler als Fehlerereignis
 - **AND** bleibt eine ausdrücklich deaktivierte Worker-Lane readiness-neutral
 
+### Requirement: Waste-Datenbankprovisionierung ist ein zentral persistenter Plugin-Operations-Job
+
+Das System SHALL die tenantbezogene Waste-Datenbankprovisionierung als hostgeführten, namespaced und zentral persistent geführten Plugin-Operations-Job modellieren.
+
+#### Scenario: Waste-Provisionierungsjob wird registriert
+
+- **WHEN** `waste-management` seinen Provisionierungsbeitrag deklariert
+- **THEN** registriert es den Jobtyp `waste-management.provision-tenant-database` über den kanonischen Plugin-Vertrag
+- **AND** der führende Jobdatensatz liegt im zentralen Studio-Postgres
+- **AND** die tenantbezogene Waste-Datenbank wird nicht zur führenden Persistenz dieses Plattformjobs
+
+#### Scenario: Provisionierungsfortschritt wird gemeldet
+
+- **WHEN** der Job Datenbank, Rollen, Interface, Migrationen oder Verbindungsprüfungen bearbeitet
+- **THEN** projiziert er die aktuelle Phase und einen stabilen Status über den generischen Jobvertrag
+- **AND** korreliert die Evidenz mindestens Instanz, Plugin und Jobtyp
+- **AND** Fortschrittsdetails und Fehler enthalten keine Zugangsdaten oder Secret-Werte
+
+#### Scenario: Derselbe Sollzustand wird mehrfach angefordert
+
+- **WHEN** für dieselbe Instanz wiederholt eine Waste-Provisionierung angefordert wird
+- **THEN** verhindert der Host konkurrierende aktive Provisionierungsjobs für denselben Sollzustand
+- **AND** gibt er deterministisch den aktiven oder bereits erfolgreichen Lauf zurück oder startet einen expliziten Retry des fehlgeschlagenen Laufs
+- **AND** die Ausführung bleibt auf Ebene jedes Provisionierungsschritts idempotent
+
+### Requirement: Exportprofile werden über den Plugin-Vertrag registriert
+
+Das System SHALL strukturierte Exportprofile über einen expliziten Plugin-Vertrag registrieren.
+
+#### Scenario: Plugin registriert ein Exportprofil
+
+- **WHEN** ein Plugin einen strukturierten Export anbieten will
+- **THEN** enthält das Exportprofil mindestens eine technische Kennung, einen owning Namespace, das kanonische Datenprofil, erlaubte Zielformate sowie Schema-/Mappingversionen
+- **AND** Kollisionen oder Namespace-Verstöße werden bei der Host-Validierung deterministisch abgewiesen
+
+#### Scenario: Import- und Exportprofil teilen einen Datenvertrag
+
+- **WHEN** ein Plugin dasselbe fachliche Datenprofil importieren und exportieren kann
+- **THEN** referenzieren beide Richtungen denselben kanonischen Feld- und Versionsvertrag
+- **AND** die Plattform erzwingt keine getrennte, driftanfällige Duplikation der Fachdatenstruktur
+
+### Requirement: Generische Studio-Jobs können geschützte Ergebnisartefakte liefern
+
+Das System SHALL generischen Plugin-Operations-Jobs geschützt herunterladbare Ergebnisartefakte zuordnen können.
+
+#### Scenario: Exportjob erzeugt ein Ergebnisartefakt
+
+- **WHEN** ein autorisierter Exportjob erfolgreich abgeschlossen wird
+- **THEN** beschreibt sein Ergebnisartefakt mindestens Content-Type, sicheren Dateinamen, Größe, Prüfsumme und Ablauf
+- **AND** der zentrale Jobdatensatz enthält keine eingebetteten Massendaten als Ersatz für das geschützte Artefakt
+
+#### Scenario: Benutzer lädt ein Ergebnisartefakt herunter
+
+- **WHEN** ein Benutzer ein Job-Ergebnisartefakt anfordert
+- **THEN** prüft der Host Actor, Instanzkontext und erforderliche vollqualifizierte Action erneut
+- **AND** liefert das Artefakt nur über eine zeitlich und fachlich begrenzte Downloadreferenz
+
+#### Scenario: Ergebnisartefakt ist abgelaufen
+
+- **WHEN** die Aufbewahrungsdauer eines Ergebnisartefakts abgelaufen ist
+- **THEN** verweigert der Host den Download mit einem stabilen Fehlervertrag
+- **AND** der Jobstatus bleibt ohne das Artefakt historisch nachvollziehbar
+

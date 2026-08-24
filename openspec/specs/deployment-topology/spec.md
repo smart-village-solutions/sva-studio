@@ -1009,3 +1009,84 @@ Das System SHALL das interne Graphile-Worker-Schema ausschließlich mit dem priv
 - **WHEN** Dev, Staging oder Production ohne das erforderliche Worker-Datenbank-Secret ausgerollt werden soll
 - **THEN** stoppt der geschützte Rollout vor dem App-Deploy
 - **AND** werden weder Secret-Wert noch abgeleitete Zugangsdaten in Evidenz oder Logs ausgegeben
+
+### Requirement: Waste-Fachdatenbank wird getrennt und wiederherstellbar betrieben
+
+Das System SHALL die Waste-Fachdatenbank als separate Datenbank mit eigenem Zugriffsvertrag in der PostgreSQL-Betriebsumgebung bereitstellen.
+
+#### Scenario: Studio- und Waste-Datenbanken teilen keinen fachlichen Datenbankvertrag
+
+- **WHEN** Studio und Waste auf derselben PostgreSQL-Serverinstanz betrieben werden
+- **THEN** verwendet Waste eine aus der Instanz-ID deterministisch abgeleitete getrennte Datenbank
+- **AND** besitzt die tenantbezogene Owner-Rolle als `NOLOGIN`-Rolle die Waste-Objekte
+- **AND** sind die tenantbezogenen Rollen nach Migration, administrativer Runtime und öffentlicher Runtime getrennt
+- **AND** erhalten die Waste-Rollen keinen regulären Zugriff auf Studio-Governance-Daten
+- **AND** die Studio-Runtime erhält keinen impliziten Vollzugriff auf die Waste-Datenbank
+
+#### Scenario: Backup umfasst die Waste-Fachdatenbank
+
+- **WHEN** der kanonische Datenbank-Backup-Ablauf einer Umgebung ausgeführt wird
+- **THEN** erzeugt er auch für die aktive Waste-Fachdatenbank einen überprüfbaren PostgreSQL-Dump
+- **AND** ordnet er Artefakt, Integritätsnachweis und Aufbewahrung eindeutig der Umgebung und Datenbank zu
+
+#### Scenario: Restore der Waste-Fachdatenbank wird nachgewiesen
+
+- **WHEN** die Betriebsbereitschaft der Waste-Datenbank abgenommen wird
+- **THEN** wird ein Restore in ein isoliertes Ziel erfolgreich durchgeführt
+- **AND** werden Schema, Migrationen und repräsentative Read-Pfade mit der vorgesehenen Runtime-Rolle geprüft
+
+### Requirement: Waste-Cutover folgt dem kanonischen Studio-Rollout-Prozess
+
+Das System SHALL den einmaligen Datenbank-Cutover als kontrollierten Betriebsbaustein innerhalb des bestehenden Studio-Rollout-Prozesses ausführen.
+
+#### Scenario: Runbook definiert keinen konkurrierenden Deploypfad
+
+- **WHEN** der Supabase-zu-PostgreSQL-Cutover dokumentiert oder ausgeführt wird
+- **THEN** bleiben Build, Dev-, Staging- und Production-Promotion an `docs/guides/studio-rollout-process.md` gebunden
+- **AND** beschreibt das Cutover-Runbook ausschließlich den angekündigten Betriebsstopp sowie zusätzliche Datenmigrations-, Verifikations- und Rollback-Schritte
+- **AND** führt der Change keinen dauerhaften Anwendungs-Wartungsmodus ein
+
+### Requirement: Das Swarm-Referenzprofil betreibt tenantbezogene Waste-Datenbanken als inventarisierte Persistenz
+
+Das System SHALL dynamisch provisionierte tenantbezogene Waste-Datenbanken im PostgreSQL-Betriebsvertrag inventarisieren, sichern, überwachen und wiederherstellen können.
+
+#### Scenario: Provisionierung verwendet vorhandene Laufzeitkomponenten
+
+- **WHEN** die automatische Waste-Datenbankprovisionierung ausgerollt wird
+- **THEN** führt die vorhandene Plugin-Operations-/Worker-Infrastruktur den Provisionierungsjob aus
+- **AND** es entsteht kein neuer dauerhaft laufender Service, Container, Port oder separater Stack
+- **AND** das vorhandene Deployment wird einmalig um das geschützte Provisionierer-Secret, die PostgreSQL-Rolle, erforderliche Migrationen und Backup-Discovery ergänzt
+
+#### Scenario: Ein weiterer Tenant aktiviert Waste-Management
+
+- **GIVEN** die Provisionierungsfunktion wurde vollständig ausgerollt
+- **WHEN** `waste-management` einer weiteren Instanz zugewiesen wird
+- **THEN** provisioniert das System deren Datenbank und tenantbezogene Secrets automatisch
+- **AND** dafür ist keine Änderung am Swarm-Deployment und kein manuelles Anlegen eines Tenant-Secrets erforderlich
+
+#### Scenario: Waste-Datenbank wird im vorhandenen PostgreSQL-Cluster provisioniert
+
+- **WHEN** `waste-management` für eine Instanz provisioniert wird
+- **THEN** legt der geschützte Provisionierer eine eigene Datenbank im dafür vorgesehenen PostgreSQL-Cluster an
+- **AND** die normale Studio-App-Runtime erhält keine clusterweiten `CREATEDB`- oder `CREATEROLE`-Rechte
+- **AND** tenantbezogene Runtime-Credentials werden als Secrets und nicht als allgemeine Stack-Config behandelt
+
+#### Scenario: Backup inventarisiert dynamische Waste-Datenbanken
+
+- **WHEN** der reguläre Sicherungslauf den PostgreSQL-Bestand verarbeitet
+- **THEN** entdeckt er jede aktive oder erhaltene tenantbezogene Waste-Datenbank über einen kanonischen Inventarpfad
+- **AND** ordnet die Sicherung eindeutig der Studio-Instanz und Datenbank zu
+- **AND** gibt weder in Artefaktnamen noch in Logs Credentials aus
+
+#### Scenario: Tenantbezogene Waste-Datenbank wird wiederhergestellt
+
+- **WHEN** ein Operator eine Waste-Sicherung wiederherstellt oder eine Restore-Probe ausführt
+- **THEN** prüft der Betriebsprozess Zielinstanz und Zieldatenbank vor schreibenden Operationen
+- **AND** dokumentiert er Restore-Ergebnis, Schema-Version und redigierte Verifikation
+- **AND** ein Restore darf nicht still in die Datenbank eines anderen Tenants schreiben
+
+#### Scenario: Standard-Rollout bleibt unverändert
+
+- **WHEN** Provisionierer, Migrationen oder Betriebswerkzeuge für tenantbezogene Waste-Datenbanken ausgerollt werden
+- **THEN** erfolgt der reguläre Rollout weiterhin über GitHub Actions von Dev über Staging nach Production mit demselben Image-Digest
+- **AND** direkte Portainer-, Docker- oder rohe `quantum-cli`-Mutationen werden dadurch nicht zum konkurrierenden Standardpfad

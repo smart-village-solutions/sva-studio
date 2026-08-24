@@ -196,6 +196,7 @@
     "test:integration": {
       "executor": "nx:run-commands",
       "cache": false,
+      "dependsOn": ["^build"],
       "inputs": [
         "default",
         "^production",

@@ -42,8 +42,8 @@
 
 - [x] 6.1 Den Migrationslauf hart an die kanonische Instanzidentität und provisionierte Zieldatenbank von `bb-prignitz` binden.
 - [x] 6.2 Preflight für Dump-Version, Erweiterungen, Schemaausgangszustand, Zielidentität und verfügbaren Speicher implementieren.
-- [ ] 6.3 Finalen Supabase-Dump im vereinbarten Offline-Fenster importieren und Migrationsevidenz ohne Zugangsdaten sichern.
-- [ ] 6.4 Schema, Constraints, Sequenzen, Zeilenzahlen und fachliche Stichproben verifizieren sowie Studio- und Public-Smoke-Tests durchführen.
+- [x] 6.3 Finalen Supabase-Dump im vereinbarten Offline-Fenster importieren und Migrationsevidenz ohne Zugangsdaten sichern; der geschützte Cutover-Run `31315095719` und sein redigiertes Artefakt `waste-bb-prignitz-import-31315095719-1` belegen den erfolgreichen Import (Nachweis: `docs/reports/bb-prignitz-waste-cutover-completion-2026-08-24.md`).
+- [x] 6.4 Schema, Constraints, Sequenzen, Zeilenzahlen und fachliche Stichproben verifizieren sowie Studio- und Public-Smoke-Tests durchführen; Importartefakt, Runtime-Rechteprobe, Production-Migrationsgates und aktuelle HTTP-Smokes sind im Abschlussnachweis zusammengeführt.
 - [x] 6.5 Den zeitlich begrenzten Rückfallpfad dokumentieren und sicherstellen, dass kein anderer Tenant Daten aus diesem Dump erhält.
 
 ## 7. Betrieb, Dokumentation und Gates

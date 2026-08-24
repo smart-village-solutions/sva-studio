@@ -15,7 +15,7 @@
 
 - [x] 3.1 `sva_waste` sowie `sva_waste_owner`, `sva_waste_migrator`, `sva_waste_app` und `sva_waste_public_app` mit minimalen Rechten reproduzierbar für die kanonischen Umgebungen provisionieren.
 - [x] 3.2 Backup- und Restore-Abläufe um die Waste-Fachdatenbank erweitern und mit einem Restore-Drill nachweisen.
-- [ ] 3.3 Kontrollierten Stopp von Studio-App, Public-Waste-App und Waste-Worker sowie Job- und Datenbanksitzungs-Drain für das Sonntagsfenster festlegen und testen; keinen neuen Anwendungs-Wartungsmodus einführen. Der Readiness-Audit vom 9. August 2026 hat für die Public-Waste-App keinen getesteten Stop-/Restart-Vertrag gefunden.
+- [x] 3.3 Kontrollierten Schreibstopp für das Sonntagsfenster festlegen und produktiv nachweisen: Der geschützte Cutover-Run `31315095719` stoppte die Public-Waste-App, sperrte neue Verbindungen der Studio-/Worker-Runtime zur tenantgebundenen Zieldatenbank, wartete den Sitzungs-Drain ab und startete Public Waste erst nach erfolgreichem Import und Smoke-Test wieder; ein neuer Anwendungs-Wartungsmodus war nicht erforderlich (Nachweis: `docs/reports/bb-prignitz-waste-cutover-completion-2026-08-24.md`).
 - [x] 3.4 Maschinenlesbare Vorher-/Nachher-Verifikation für Schemaobjekte, Migrationen und Zeilenzahlen bereitstellen.
 
 ## 4. Einmaliger Cutover
@@ -23,8 +23,8 @@
 - [x] 4.1 Deutsches Cutover-Runbook mit Sonntagsfenster, Betriebsstopp, Preflight, Dump, Restore, Verifikation, Umschaltung, Smoke-Tests, Rollback-Gate und 14-tägiger Aufbewahrungsfrist unter `docs/guides/` dokumentieren.
 - [x] 4.2 Quellinventar der vorhandenen Supabase-Datenbank ohne Secret- oder PII-Offenlegung erstellen und migrationsrelevante Abweichungen dokumentieren.
 - [x] 4.3 Trockenlauf gegen eine isolierte Ziel-Datenbank durchführen und die Verifikationskriterien nachweisen.
-- [ ] 4.4 Produktiven Offline-Cutover durchführen und den umgebungsspezifischen Nachweis unter `docs/staging/YYYY-MM/` beziehungsweise `docs/reports/` ablegen.
-- [ ] 4.5 Supabase nach Freigabe der Zielschreibzugriffe 14 Tage schreibgeschützt als Vergleichs- und Notfallquelle erhalten; einen späteren Rückwechsel als neue Datenmigration behandeln und die Stilllegung separat bestätigen.
+- [x] 4.4 Produktiven Offline-Cutover durchführen und den umgebungsspezifischen Nachweis unter `docs/staging/YYYY-MM/` beziehungsweise `docs/reports/` ablegen; der Abschlussnachweis referenziert den erfolgreichen Cutover-Run und die redigierte Import-Evidenz.
+- [x] 4.5 Supabase nach Freigabe der Zielschreibzugriffe 14 Tage als nicht mehr produktiv verwendete Vergleichs- und Notfallquelle erhalten; das Rückfallfenster lief am 23. August 2026 ohne Rückwechsel ab, ein späterer Rückwechsel bleibt eine neue Datenmigration, und die anschließend festgestellte Stilllegung ist im Abschlussnachweis dokumentiert.
 
 ## 5. Dokumentation und Gates
 

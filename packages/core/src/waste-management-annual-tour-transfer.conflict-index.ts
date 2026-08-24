@@ -21,13 +21,18 @@ export type WasteAnnualTourConflictIndex = Readonly<{
 export const wasteAnnualPlanningSignature = (
   wasteFractionIds: readonly string[],
   locations: readonly string[],
-  intervalDays: number | null
-): string =>
-  stableWasteAnnualSerialize({
+  tour: WasteTourRecord
+): string => {
+  const intervalDays = wasteAnnualIntervalForTour(tour);
+  return stableWasteAnnualSerialize({
     wasteFractionIds: [...new Set(wasteFractionIds)].sort(),
     locations: [...new Set(locations)].sort(),
-    intervalDays,
+    cadence:
+      intervalDays === null
+        ? `recurrence:${tour.recurrence ?? `custom:${tour.customRecurrenceId ?? 'unspecified'}`}`
+        : `interval:${intervalDays}`,
   });
+};
 
 const relationshipsByTour = <T extends { readonly tourId: string }>(
   items: readonly T[]
@@ -73,7 +78,7 @@ export const createWasteAnnualTourConflictIndex = (
       signature: wasteAnnualPlanningSignature(
         tour.wasteFractionIds,
         locations,
-        wasteAnnualIntervalForTour(tour)
+        tour
       ),
     } satisfies IndexedWasteAnnualTargetTour;
     byId.set(tour.id, indexed);

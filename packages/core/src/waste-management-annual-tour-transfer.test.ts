@@ -796,6 +796,34 @@ describe('waste annual tour transfer', () => {
     expect(preview.summary.selected).toBe(0);
   });
 
+  it('does not conflate matching dates across different non-interval recurrence modes', async () => {
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-06-15' }],
+    });
+    const targetTour = tour({
+      id: '78787878-7878-4787-8787-787878787878',
+      recurrence: 'yearly',
+      firstDate: '2027-06-14',
+      endDate: '2027-12-31',
+      customDates: undefined,
+    });
+
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour]),
+      target: source([targetTour]),
+    });
+
+    expect(preview.tours[0]?.firstTargetDate).toBe('2027-06-14');
+    expect(preview.tours[0]?.conflicts).toEqual([]);
+    expect(preview.summary.selected).toBe(1);
+  });
+
   it('detects an earlier yearly target tour with the same target-year anniversary', async () => {
     const sourceTour = tour({
       recurrence: 'yearly',

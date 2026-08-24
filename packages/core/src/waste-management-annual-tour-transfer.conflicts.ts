@@ -219,7 +219,7 @@ export const findWasteAnnualTourConflicts = (
   const signature = wasteAnnualPlanningSignature(
     mapped.targetTour.wasteFractionIds,
     mapped.locationTourLinks.map((item) => item.locationId),
-    wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord)
+    mapped.targetTour as WasteTourRecord
   );
   return (index.bySignature.get(signature) ?? [])
     .filter(

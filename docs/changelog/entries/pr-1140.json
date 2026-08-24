@@ -1,0 +1,4 @@
+{
+  "prNumber": 1140,
+  "body": "Waste-Fachdaten lassen sich verlässlicher zwischen Studio-Instanzen übertragen.\n\n- Unvollständige Fraktionsdaten werden bereits vor dem Schreiben mit einem verständlichen Pflichtfeldfehler abgewiesen.\n- Aktualisierungen erhalten bestehende optionale Werte, wenn diese im Import nicht enthalten sind.\n- Mehrteilige Importpakete werden vollständig zurückgerollt, falls ein späterer Bestandteil fehlerhaft ist."
+}

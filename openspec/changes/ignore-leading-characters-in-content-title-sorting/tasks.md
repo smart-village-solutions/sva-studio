@@ -14,4 +14,4 @@
 
 - [x] 3.1 Betroffene Unit- und Server-Runtime-/Type-Gates ausführen
 - [x] 3.2 Prüfen und dokumentieren, dass keine arc42- oder DB-Schema-Aktualisierung erforderlich ist
-- [ ] 3.3 Changelog-Eintrag für den späteren PR ergänzen
+- [x] 3.3 Changelog-Eintrag für PR #1139 ergänzen

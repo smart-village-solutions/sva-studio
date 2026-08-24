@@ -21,6 +21,7 @@ export {
 } from './shared-activity.js';
 export {
   completeIdempotency,
+  hasIdempotentAuditEvent,
   renewIdempotencyLease,
   reserveIdempotency,
 } from './shared-idempotency.js';

@@ -4,7 +4,10 @@ import type {
   WasteAnnualTourTransferResult,
 } from '@sva/core';
 
-import { completeIdempotency } from '../../iam-account-management/shared.js';
+import {
+  completeIdempotency,
+  hasIdempotentAuditEvent,
+} from '../../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { emitWasteAuditEvent } from './auth.js';
 import { annualTourTransferEndpoint } from './annual-tour-transfer-idempotency.js';
@@ -28,9 +31,7 @@ export const completeAnnualTourTransfer = async (input: {
     }
   ).error?.details?.updatedPreview;
   const classificationCounts = input.result?.classificationCounts ?? updatedPreview?.summary;
-  await emitWasteAuditEvent({
-    deps: input.deps,
-    ctx: input.ctx,
+  const auditEvent = {
     instanceId: input.instanceId,
     actionId: 'waste-management.annual-tour-transfer.created',
     result: input.response.ok ? 'success' : 'failure',
@@ -51,7 +52,21 @@ export const completeAnnualTourTransfer = async (input: {
         ...(input.result?.existingTourIds ?? []),
       ],
     },
+  } as const;
+  const auditExists = await hasIdempotentAuditEvent({
+    instanceId: input.instanceId,
+    idempotencyKey: input.idempotencyKey,
+    eventType: input.response.ok ? 'plugin_action_authorized' : 'plugin_action_failed',
+    actionId: auditEvent.actionId,
   });
+  if (!auditExists) {
+    await emitWasteAuditEvent({
+      ...auditEvent,
+      deps: input.deps,
+      ctx: input.ctx,
+      requestId: input.idempotencyKey,
+    });
+  }
   await completeIdempotency({
     instanceId: input.instanceId,
     actorAccountId: input.actorAccountId,

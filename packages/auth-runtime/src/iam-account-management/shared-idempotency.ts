@@ -59,7 +59,8 @@ VALUES ($1, $2::uuid, $3, $4, $5, $6::jsonb, 'IN_PROGRESS', NOW() + INTERVAL '24
 const reclaimIdempotencyReservation = (
   client: InstanceScopedClient,
   input: IdempotencyScope,
-  leaseToken: string
+  leaseToken: string,
+  expected: Readonly<{ responseBody: unknown; leaseMs: number }>
 ) =>
   client.query(
     `
@@ -68,7 +69,11 @@ SET response_body = $5::jsonb, updated_at = NOW(), expires_at = NOW() + INTERVAL
 WHERE instance_id = $1
   AND actor_account_id = $2::uuid
   AND endpoint = $3
-  AND idempotency_key = $4;
+  AND idempotency_key = $4
+  AND status = 'IN_PROGRESS'
+  AND updated_at <= NOW() - ($6::bigint * INTERVAL '1 millisecond')
+  AND response_body IS NOT DISTINCT FROM $7::jsonb
+RETURNING id;
 `,
     [
       input.instanceId,
@@ -76,6 +81,8 @@ WHERE instance_id = $1
       input.endpoint,
       input.idempotencyKey,
       JSON.stringify({ leaseToken }),
+      expected.leaseMs,
+      JSON.stringify(expected.responseBody),
     ]
   );
 
@@ -132,7 +139,18 @@ LIMIT 1;
     if (row.status === 'IN_PROGRESS') {
       if (hasExpiredIdempotencyLease(row.updated_at, input.inProgressLeaseMs)) {
         if (!leaseToken) throw new Error('idempotency_lease_missing');
-        await reclaimIdempotencyReservation(client, input, leaseToken);
+        if (input.inProgressLeaseMs === undefined) throw new Error('idempotency_lease_missing');
+        const reclaimed = await reclaimIdempotencyReservation(client, input, leaseToken, {
+          responseBody: row.response_body,
+          leaseMs: input.inProgressLeaseMs,
+        });
+        if ((reclaimed.rowCount ?? 0) === 0) {
+          return {
+            status: 'conflict',
+            reason: 'in_progress',
+            message: 'Idempotenter Request wurde zwischenzeitlich übernommen oder abgeschlossen.',
+          };
+        }
         return { status: 'reserved', leaseToken };
       }
       return {
@@ -178,6 +196,29 @@ RETURNING id;
       ]
     );
     return (renewed.rowCount ?? 0) > 0;
+  });
+
+export const hasIdempotentAuditEvent = async (input: {
+  instanceId: string;
+  idempotencyKey: string;
+  eventType: string;
+  actionId: string;
+}): Promise<boolean> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const existing = await client.query(
+      `
+SELECT 1
+FROM iam.activity_logs
+WHERE instance_id = $1
+  AND request_id = $2
+  AND event_type = $3
+  AND payload->>'action_id' = $4
+  AND created_at >= NOW() - INTERVAL '24 hours'
+LIMIT 1;
+`,
+      [input.instanceId, input.idempotencyKey, input.eventType, input.actionId]
+    );
+    return (existing.rowCount ?? 0) > 0;
   });
 
 type CompleteIdempotencyInput = {

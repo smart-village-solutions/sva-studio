@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
       updated_at: Date;
     }
   >(),
+  reclaimRace: false,
   client: {
     query: vi.fn(),
   },
@@ -41,6 +42,7 @@ const rowKey = (values: readonly unknown[]) =>
 describe('shared idempotency store', () => {
   beforeEach(() => {
     mocks.rows.clear();
+    mocks.reclaimRace = false;
     mocks.client.query.mockReset();
     mocks.withInstanceScopedDb.mockImplementation(async (_instanceId, work) => work(mocks.client));
     mocks.client.query.mockImplementation(async (text: string, values: readonly unknown[] = []) => {
@@ -59,11 +61,24 @@ describe('shared idempotency store', () => {
       }
       if (text.includes('response_body = $5::jsonb')) {
         const row = mocks.rows.get(rowKey(values));
-        if (row) {
+        if (row && mocks.reclaimRace) {
+          row.status = 'COMPLETED';
+          row.response_body = { completed: true };
+          row.response_status = 201;
+          row.updated_at = new Date();
+        }
+        const matchesObservedVersion =
+          row?.status === 'IN_PROGRESS' &&
+          Date.now() - row.updated_at.getTime() >= (values[5] as number) &&
+          JSON.stringify(row.response_body) === values[6];
+        if (row && matchesObservedVersion) {
           row.response_body = JSON.parse(values[4] as string) as unknown;
           row.updated_at = new Date();
         }
-        return { rowCount: row ? 1 : 0, rows: row ? [{ id: 'idem-row' }] : [] };
+        return {
+          rowCount: matchesObservedVersion ? 1 : 0,
+          rows: matchesObservedVersion ? [{ id: 'idem-row' }] : [],
+        };
       }
       if (text.includes("response_body->>'leaseToken' = $5")) {
         const row = mocks.rows.get(rowKey(values));
@@ -145,6 +160,25 @@ describe('shared idempotency store', () => {
     await expect(
       reserveIdempotency({ ...input, inProgressLeaseMs: 5 * 60 * 1_000 })
     ).resolves.toMatchObject({ status: 'reserved', leaseToken: expect.any(String) });
+  });
+
+  it('does not overwrite completion racing with an expired lease reclaim', async () => {
+    await reserveIdempotency({ ...input, inProgressLeaseMs: 5 * 60 * 1_000 });
+    const row = mocks.rows.get(
+      `${input.instanceId}:${input.actorAccountId}:${input.endpoint}:${input.idempotencyKey}`
+    );
+    if (!row) throw new Error('missing test reservation');
+    row.updated_at = new Date(Date.now() - 5 * 60 * 1_000 - 1);
+    mocks.reclaimRace = true;
+
+    await expect(
+      reserveIdempotency({ ...input, inProgressLeaseMs: 5 * 60 * 1_000 })
+    ).resolves.toMatchObject({ status: 'conflict', reason: 'in_progress' });
+    expect(row).toMatchObject({
+      status: 'COMPLETED',
+      response_body: { completed: true },
+      response_status: 201,
+    });
   });
 
   it('renews and completes only the current lease owner', async () => {

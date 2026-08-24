@@ -18,6 +18,7 @@ export const emitWasteAuditEvent = async (input: {
   readonly reasonCode?: string;
   readonly resourceType?: string;
   readonly resourceId?: string;
+  readonly requestId?: string;
   readonly batchSummary?: NonNullable<
     Parameters<typeof emitAuthAuditEvent>[0]['pluginAction']
   >['batchSummary'];
@@ -36,7 +37,7 @@ export const emitWasteAuditEvent = async (input: {
     scope: { kind: 'instance', instanceId: input.instanceId },
     workspaceId: input.instanceId,
     outcome: input.result,
-    requestId: context.requestId,
+    requestId: input.requestId ?? context.requestId,
     traceId: context.traceId,
     pluginAction: {
       actionId: input.actionId,

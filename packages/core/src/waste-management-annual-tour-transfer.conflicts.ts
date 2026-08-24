@@ -87,21 +87,41 @@ const recurringSchedulesIntersect = (
 
 const comparableMappedTour = (mapped: WasteAnnualTourTransferMappedTour): unknown => ({
   tour: mapped.targetTour,
-  locations: sortWasteAnnualItems(mapped.locationTourLinks, (item) => item.locationId).map(
-    (item) => item.locationId
+  locationTourLinks: sortWasteAnnualItems(mapped.locationTourLinks, (item) => item.id).map(
+    ({ id, locationId, tourId }) => ({ id, locationId, tourId })
   ),
   pickupDates: sortWasteAnnualItems(mapped.locationTourPickupDates, (item) => item.id).map(
-    ({ locationId, pickupDate, note }) => ({ locationId, pickupDate, note })
-  ),
-  assignments: sortWasteAnnualItems(mapped.tourAssignments, (item) => item.id).map(
-    ({ pickupDate, note, locationIds }) => ({
+    ({ id, locationId, tourId, pickupDate, note }) => ({
+      id,
+      locationId,
+      tourId,
       pickupDate,
       note,
-      locationIds: [...locationIds].sort(),
+    })
+  ),
+  assignments: sortWasteAnnualItems(mapped.tourAssignments, (item) => item.id).map(
+    ({ id, tourId, pickupDate, note, locationIds }) => ({
+      id,
+      tourId,
+      pickupDate,
+      note,
+      locationIds,
     })
   ),
   shifts: sortWasteAnnualItems(mapped.tourDateShifts, (item) => item.id).map(
-    ({ originalDate, actualDate, hasYear, reasonType, reasonKey, followUpMode, description }) => ({
+    ({
+      id,
+      tourId,
+      originalDate,
+      actualDate,
+      hasYear,
+      reasonType,
+      reasonKey,
+      followUpMode,
+      description,
+    }) => ({
+      id,
+      tourId,
       originalDate,
       actualDate,
       hasYear,
@@ -172,7 +192,7 @@ const tourHasEffectiveDateInYear = (indexed: IndexedWasteAnnualTargetTour, year:
   wasteAnnualTourOverlapsYear(indexed.tour, year) ||
   indexed.effectiveDates.some((date) => wasteAnnualYearOf(date) === year) ||
   indexed.tourDateShifts.some(
-    (shift) => !shift.hasYear || wasteAnnualYearOf(shift.actualDate) === year
+    (shift) => shift.hasYear && wasteAnnualYearOf(shift.actualDate) === year
   );
 
 export const findWasteAnnualTourConflicts = (

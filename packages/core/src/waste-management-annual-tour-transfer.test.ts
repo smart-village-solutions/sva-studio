@@ -895,6 +895,29 @@ describe('waste annual tour transfer', () => {
     expect(preview.tours[0]?.conflicts).toEqual([]);
   });
 
+  it('ignores annual shifts on source tours whose validity ended before the target year', async () => {
+    const sourceTour = tour();
+    const annualShift = {
+      id: 'expired-annual-shift',
+      tourId: sourceTour.id,
+      originalDate: '2024-12-24',
+      actualDate: '2024-12-27',
+      hasYear: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as const;
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], { tourDateShifts: [annualShift] }),
+      target: source([sourceTour], { tourDateShifts: [annualShift] }),
+    });
+
+    expect(preview.tours[0]?.conflicts).toEqual([]);
+    expect(preview.summary.selected).toBe(1);
+  });
+
   it('reports all colliding date resources and resolves the collision with an explicit replacement', async () => {
     const collidingTour = tour({
       recurrence: 'on-demand',
@@ -1025,6 +1048,66 @@ describe('waste annual tour transfer', () => {
       source: source([sourceTour]),
       target: source([conflictingTarget]),
     });
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'target_identity_conflict',
+      conflicts: [expect.objectContaining({ kind: 'target-identity-conflict' })],
+    });
+  });
+
+  it('blocks a stable target whose relationship content matches under a different identity', async () => {
+    const sourceTour = tour();
+    const transferSource = source([sourceTour], {
+      locationTourPickupDates: [
+        {
+          id: 'source-pickup',
+          tourId: sourceTour.id,
+          locationId: 'location-a',
+          pickupDate: '2026-06-15',
+          note: 'Abholung',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+    const initial = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: transferSource,
+      target: source([]),
+    });
+    const mapped = initial.tours[0]?.mappedTour;
+    if (!mapped) throw new Error('missing mapped tour');
+    const [mappedPickup] = mapped.locationTourPickupDates;
+    if (!mappedPickup) throw new Error('missing mapped pickup date');
+
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: transferSource,
+      target: source(
+        [
+          {
+            ...mapped.targetTour,
+            createdAt: '2027-01-01T00:00:00.000Z',
+            updatedAt: '2027-01-01T00:00:00.000Z',
+          },
+        ],
+        {
+          locationTourPickupDates: [
+            {
+              ...mappedPickup,
+              id: 'different-pickup-id',
+              createdAt: '2027-01-01T00:00:00.000Z',
+              updatedAt: '2027-01-01T00:00:00.000Z',
+            },
+          ],
+        }
+      ),
+    });
+
     expect(preview.tours[0]).toMatchObject({
       classification: 'blocked',
       reasonCode: 'target_identity_conflict',

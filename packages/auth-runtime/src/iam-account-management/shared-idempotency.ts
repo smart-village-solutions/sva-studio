@@ -3,6 +3,16 @@ import { withInstanceScopedDb } from './shared-runtime.js';
 
 const IDEMPOTENCY_CLEANUP_INTERVAL_MS = 60_000;
 
+const hasExpiredIdempotencyLease = (
+  updatedAt: Date | string,
+  leaseMs: number | undefined
+): boolean => {
+  const updatedAtMs = new Date(updatedAt).getTime();
+  return (
+    leaseMs !== undefined && Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs >= leaseMs
+  );
+};
+
 let nextCleanupAt = 0;
 
 const cleanupExpiredIdempotencyKeys = async (
@@ -86,12 +96,7 @@ VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
     }
 
     if (row.status === 'IN_PROGRESS') {
-      const updatedAt = new Date(row.updated_at).getTime();
-      const leaseExpired =
-        input.inProgressLeaseMs !== undefined &&
-        Number.isFinite(updatedAt) &&
-        Date.now() - updatedAt >= input.inProgressLeaseMs;
-      if (leaseExpired) {
+      if (hasExpiredIdempotencyLease(row.updated_at, input.inProgressLeaseMs)) {
         await client.query(
           `
 UPDATE iam.idempotency_keys

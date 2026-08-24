@@ -738,9 +738,22 @@ describe('waste-management server loaders', () => {
     });
 
     expect(result).toMatchObject({ sourceYear: 2026, targetYear: 2027, createdCount: 1 });
-    expect(repositoryMocks.upsertWasteTour).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Bio Nord', active: false })
-    );
+    const tourInsertCall = poolFactoryInstances
+      .at(-1)
+      ?.query.mock.calls.find(([statement]) => String(statement).includes('INSERT INTO waste_tours'));
+    const [persistedTourRow] = JSON.parse(String(tourInsertCall?.[1]?.[0])) as Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      waste_fraction_ids: readonly string[];
+      recurrence: 'weekly';
+      custom_recurrence_id: string | null;
+      first_date: string | null;
+      end_date: string | null;
+      custom_dates: readonly unknown[] | null;
+      active: boolean;
+    }>;
+    expect(persistedTourRow).toMatchObject({ name: 'Bio Nord', active: false });
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith(
       'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
       ['tenant-a', 'waste-annual-tour-transfer:2027']
@@ -751,7 +764,17 @@ describe('waste-management server loaders', () => {
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
 
     const persistedTargetTour = {
-      ...repositoryMocks.upsertWasteTour.mock.calls.at(-1)?.[0],
+      id: persistedTourRow?.id,
+      name: persistedTourRow?.name,
+      description: persistedTourRow?.description ?? undefined,
+      wasteFractionIds: persistedTourRow?.waste_fraction_ids ?? [],
+      recurrence: persistedTourRow?.recurrence,
+      customRecurrenceId: persistedTourRow?.custom_recurrence_id ?? undefined,
+      firstDate: persistedTourRow?.first_date ?? undefined,
+      endDate: persistedTourRow?.end_date ?? undefined,
+      customDates: persistedTourRow?.custom_dates ?? [],
+      active: persistedTourRow?.active ?? false,
+      locationCount: 1,
       createdAt: '2027-01-01T00:00:00.000Z',
       updatedAt: '2027-01-01T00:00:00.000Z',
     };

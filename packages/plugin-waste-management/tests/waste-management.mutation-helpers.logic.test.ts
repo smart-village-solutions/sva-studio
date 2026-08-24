@@ -103,11 +103,13 @@ describe('waste-management mutation helper logic', () => {
   it('submits a new location, reloads overview and applies success state', async () => {
     const state = createLocationState();
     const loadOverview = vi.fn(async () => undefined);
+    const loadCollectionLocationList = vi.fn(async () => undefined);
     const handler = createLocationSubmitHandler({
       state: state as never,
       pt,
       search: { locationsView: 'list' } as never,
       loadOverview,
+      loadCollectionLocationList,
       selectedCollectionLocationIds: [],
     });
 
@@ -115,6 +117,7 @@ describe('waste-management mutation helper logic', () => {
 
     expect(createWasteManagementCollectionLocationMock).toHaveBeenCalledOnce();
     expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(loadCollectionLocationList).toHaveBeenCalledOnce();
     expect(applySuccessMock).toHaveBeenCalledOnce();
     expect(state.setLocationDialogOpen).toHaveBeenCalledWith(false);
     expect(state.setMessage).toHaveBeenCalledWith({
@@ -136,6 +139,7 @@ describe('waste-management mutation helper logic', () => {
       pt,
       search: { locationsView: 'edit' } as never,
       loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: [],
     });
 
@@ -159,11 +163,13 @@ describe('waste-management mutation helper logic', () => {
       },
     };
     const loadOverview = vi.fn(async () => undefined);
+    const loadCollectionLocationList = vi.fn(async () => undefined);
     const handler = createLocationSubmitHandler({
       state: state as never,
       pt,
       search: { locationsView: 'edit' } as never,
       loadOverview,
+      loadCollectionLocationList,
       selectedCollectionLocationIds: [],
     });
 
@@ -171,6 +177,7 @@ describe('waste-management mutation helper logic', () => {
 
     expect(updateWasteManagementCollectionLocationMock).toHaveBeenCalledOnce();
     expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(loadCollectionLocationList).toHaveBeenCalledOnce();
     expect(applySuccessMock).not.toHaveBeenCalled();
     expect(state.setLocationDialogOpen).not.toHaveBeenCalled();
     expect(state.setMessage).toHaveBeenLastCalledWith({
@@ -188,6 +195,7 @@ describe('waste-management mutation helper logic', () => {
       pt,
       search: { locationsView: 'list' } as never,
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: [],
     });
 
@@ -208,6 +216,7 @@ describe('waste-management mutation helper logic', () => {
       pt,
       search: { locationsView: 'list' } as never,
       loadOverview,
+      loadCollectionLocationList: vi.fn(async () => undefined),
       selectedCollectionLocationIds: ['location-1', 'location-2'],
     });
 

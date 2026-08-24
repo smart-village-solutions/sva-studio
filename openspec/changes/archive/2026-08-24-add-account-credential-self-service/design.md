@@ -5,7 +5,8 @@ Das aktuelle Studio erlaubt auf `/account` die Pflege von Profilstammdaten, waeh
 ## Ziele / Nicht-Ziele
 
 - Ziele:
-  - Nutzer koennen Passwort- und E-Mail-Aenderung aus dem Studio heraus starten.
+  - Nutzer koennen die Passwort-Aenderung aus dem Studio heraus starten.
+  - Die E-Mail-Aenderung wird erst nach bestaetigter `UPDATE_EMAIL`-Unterstuetzung exponiert und bleibt serverseitig fail-closed abgesichert.
   - Das Studio bleibt Einstiegspunkt, Keycloak bleibt Mutationsort.
   - Rueckkehr nach dem Self-Service-Flow ist fuer Nutzer nachvollziehbar.
   - Die Loesung bleibt tenant- und plattformfaehig.
@@ -18,7 +19,7 @@ Das aktuelle Studio erlaubt auf `/account` die Pflege von Profilstammdaten, waeh
 
 ### Entscheidung 1: Direktabsprung aus dem Menue fuer den ersten Schritt
 
-Die Menueeintraege in der Kopfzeile fuehren direkt auf den serverseitigen Pfad `/auth/account-action`. Ein zusaetzlicher Sicherheitsbereich wird im ersten Schritt nicht eingefuehrt. Damit bleibt der Scope klein, waehrend Passwort- und E-Mail-Aenderung trotzdem sicher ueber das BFF in Keycloak-AIA starten.
+Der sichtbare Menueeintrag fuer die Passwort-Aenderung fuehrt direkt auf den serverseitigen Pfad `/auth/account-action`. Die E-Mail-Aenderung bleibt ausgeblendet, bis `UPDATE_EMAIL` im Ziel-Keycloak nachweislich bereitsteht; auch ein direkter Aufruf wird serverseitig fail-closed geprueft. Ein zusaetzlicher Sicherheitsbereich wird im ersten Schritt nicht eingefuehrt.
 
 ### Entscheidung 2: Serverseitiger AIA-Einstiegspfad
 
@@ -68,7 +69,7 @@ Keycloak liefert fuer AIA keinen fuer alle Faelle gleich ergonomischen Studio-UX
 
 1. OpenSpec- und Plan-Artefakte anlegen.
 2. Auth-Runtime um AIA-Einstieg und Rueckkehrstatus erweitern.
-3. Header-Menueeintraege aktivieren und Rueckkehrstatus auf `/account` anzeigen.
+3. Passwort-Menueeintrag aktivieren, die E-Mail-Aktion bis zur Keycloak-Freischaltung ausgeblendet lassen und Rueckkehrstatus auf `/account` anzeigen.
 4. Tests und Architekturdoku aktualisieren.
 
 ## Open Questions

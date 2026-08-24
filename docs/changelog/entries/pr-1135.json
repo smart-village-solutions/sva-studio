@@ -1,0 +1,4 @@
+{
+  "prNumber": 1135,
+  "body": "Sieben bereits ausgelieferte OpenSpec-Changes formal abgeschlossen\n\n- Credential-Self-Service, Bulk-Mainserver-Reprovisionierung, Einzeldatei-Medienupload, Stagehand-Admin-Exploration, Mainserver-Service-Modularisierung, einheitliches Speicherfeedback und der Instanz-Modul-Workspace wurden archiviert.\n- Die zugehörigen Anforderungen sind jetzt Bestandteil der kanonischen OpenSpec-Spezifikationen.\n- Der Credential-Vertrag bildet die fail-closed abgesicherte E-Mail-Änderung ab; der Modul-Workspace ist entsprechend der aktuellen Oberfläche im Tab Betrieb dokumentiert."
+}

@@ -7,7 +7,8 @@ Das Studio besitzt bereits einen Self-Service-Profilpfad und reservierte Menueei
 ## What Changes
 
 - fuehrt einen serverseitig kontrollierten Auth-Einstiegspfad fuer Keycloak Application Initiated Actions ein
-- aktiviert die Header-Menueeintraege fuer Passwort- und E-Mail-Aenderung
+- aktiviert den Header-Menueeintrag fuer die Passwort-Aenderung und haelt die
+  E-Mail-Aenderung bis zur bestaetigten Keycloak-Unterstuetzung ausgeblendet
 - trennt Self-Service-Stammdatenpflege im Studio explizit von Credential-Mutationen im IdP
 - definiert einen stabilen Rueckkehr- und Statusvertrag zwischen Keycloak-AIA und Studio-UI
 

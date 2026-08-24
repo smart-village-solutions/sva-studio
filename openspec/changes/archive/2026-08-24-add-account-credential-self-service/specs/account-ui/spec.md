@@ -34,7 +34,7 @@ Das System MUST eine Account-Profilseite unter `/account` bereitstellen, auf der
 
 ### Requirement: Header-Kontomenue bietet Credential-Self-Service-Einstiege
 
-Das System SHALL die bereits vorgesehenen Menueeintraege fuer Passwort- und E-Mail-Aenderung im Header-Kontomenue aktivieren und direkt an den serverseitigen Account-Action-Pfad anbinden.
+Das System SHALL den vorgesehenen Menueeintrag fuer die Passwort-Aenderung im Header-Kontomenue aktivieren und direkt an den serverseitigen Account-Action-Pfad anbinden. Die E-Mail-Aenderung SHALL erst exponiert werden, nachdem `UPDATE_EMAIL` im Ziel-Keycloak bestaetigt verfuegbar ist; der serverseitige Pfad bleibt zusaetzlich fail-closed.
 
 #### Scenario: Passwort-Menueeintrag ist aktiv
 
@@ -42,11 +42,19 @@ Das System SHALL die bereits vorgesehenen Menueeintraege fuer Passwort- und E-Ma
 - **DANN** ist der Eintrag `Passwort aendern` aktiv und nicht deaktiviert
 - **UND** fuehrt direkt auf einen klaren Self-Service-Pfad des Studios, der die Keycloak-Aktion serverseitig initialisiert
 
-#### Scenario: E-Mail-Menueeintrag ist aktiv
+#### Scenario: E-Mail-Menueeintrag bleibt ohne bestaetigte Keycloak-Unterstuetzung ausgeblendet
 
+- **GIVEN** `UPDATE_EMAIL` ist im Ziel-Keycloak noch nicht bestaetigt verfuegbar
 - **WENN** ein authentifizierter Nutzer das Kontomenue in der Kopfzeile oeffnet
-- **DANN** ist der Eintrag `E-Mail aendern` aktiv und nicht deaktiviert
-- **UND** fuehrt direkt auf einen klaren Self-Service-Pfad des Studios, der die Keycloak-Aktion serverseitig initialisiert
+- **DANN** wird der Eintrag `E-Mail aendern` nicht angeboten
+- **UND** lehnt der serverseitige Account-Action-Pfad einen direkten Start kontrolliert mit einem Studio-eigenen Status ab
+
+#### Scenario: E-Mail-Menueeintrag darf nach bestaetigter Unterstuetzung aktiviert werden
+
+- **GIVEN** `UPDATE_EMAIL` ist im Ziel-Keycloak bestaetigt verfuegbar
+- **WENN** das Studio den Eintrag `E-Mail aendern` exponiert
+- **DANN** fuehrt er auf den serverseitigen Account-Action-Pfad des Studios
+- **UND** initialisiert dieser die Keycloak-Aktion nur nach erneuter serverseitiger Capability-Pruefung
 
 ### Requirement: Rueckkehrstatus wird auf der Account-Seite angezeigt
 

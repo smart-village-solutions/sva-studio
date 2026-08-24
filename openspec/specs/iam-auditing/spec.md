@@ -426,6 +426,7 @@ The system SHALL include the domain capability and resolved primitive action in 
 - **THEN** the stored audit record exposes the fachliche capability, resolved primitive action, result, reason code, actor reference, and scope consistently
 
 ### Requirement: Admin Standard Interaction Auditing
+
 The system SHALL audit host-standard admin interactions that mutate multiple records, restore revisions, or expose history-sensitive operations.
 
 #### Scenario: Bulk action is audited
@@ -442,6 +443,13 @@ The system SHALL audit host-standard admin interactions that mutate multiple rec
 - **GIVEN** a user opens or executes a host-standard history-sensitive admin operation
 - **WHEN** the operation is accepted by the host
 - **THEN** the host emits or reuses the appropriate activity-log or audit-event mechanism with resource identifier, actor, scope, and operation metadata
+
+#### Scenario: Bulk mainserver reprovision is audited without cleartext PII
+- **GIVEN** a user executes the bulk action `Mainserver-Daten aktualisieren` on admin users
+- **WHEN** the operation completes with full or partial success
+- **THEN** the host emits an audit-capable record for the bulk request containing action, actor, scope, success count, and failure count
+- **AND** existing per-user success audit events remain available for successfully reprovisioned targets
+- **AND** cleartext PII or secrets are not written into bulk audit payloads
 
 ### Requirement: Revisionssichere Auditspur für Medienereignisse
 
@@ -736,4 +744,3 @@ Für Mainserver-Inhalte MUST der Host die bereits etablierte External-Content-Re
 - **WENN** eine Mainserver-Mutation fehlschlägt
 - **DANN** erfasst die Auditspur Ergebnis und redigierten Grund
 - **UND** die sichtbare Inhaltshistorie enthält keinen falschen Erfolgseintrag
-

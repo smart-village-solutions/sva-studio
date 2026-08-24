@@ -231,7 +231,8 @@ Das bestehende IAM-Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`
 - **UND** die Tabelle ist nach `created_at` partitioniert (monatlich) für effiziente Archivierung – wird als separater Follow-up-Change umgesetzt
 
 ### Requirement: Keycloak Admin API Integration
-Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Identitätsattribute, technische Realm-Artefakte und die wenigen normativ verbleibenden Sonderrollen im jeweiligen Platform- oder Tenant-Scope zu verwalten. Keycloak bleibt System of Record für Identitäten, Login und technische Realm-Zugänge; tenantlokale Fachrollen und deren Permissions werden normativ im Studio-IAM-Modell verwaltet.
+
+Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Identitätsattribute, technische Realm-Artefakte und die ausdrücklich verbleibenden Sonderrollen im jeweiligen Platform- oder Tenant-Scope vollständig listen, bearbeiten und synchronisieren zu können. Keycloak bleibt System of Record für Identitäten, Login und technische Realm-Zugänge; tenantlokale Fachrollen und deren Permissions werden normativ im Studio-IAM-Modell verwaltet.
 
 #### Scenario: Keycloak-first user mutation
 - **WHEN** ein berechtigter Admin einen User im Studio erstellt, deaktiviert oder Identitäts-/Profilfelder ändert
@@ -244,6 +245,13 @@ Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST AP
 - **WHEN** ein berechtigter Tenant-Admin eine fachliche Rolle oder deren Permissions ändert
 - **THEN** führt das System die fachliche Mutation im IAM-Rollenmodell aus
 - **AND** ein technischer Keycloak-Call ist nur dann erforderlich, wenn ausdrücklich eine verbleibende Sonderrolle betroffen ist
+
+#### Scenario: Bulk-Reprovision aktualisiert Mainserver-Attribute pro Zielnutzer
+
+- **WENN** ein berechtigter Tenant-Admin `POST /api/v1/iam/users/bulk-reprovision-mainserver` mit explizit markierten Nutzer-IDs ausführt
+- **DANN** verarbeitet das System höchstens 50 eindeutige Zielnutzer
+- **UND** aktualisiert pro erfolgreich verarbeitetem Zielnutzer die Mainserver-Credentials in den Keycloak-Attributen
+- **UND** liefert pro nicht erfolgreich verarbeitetem Zielnutzer einen stabilen Fehlercode zurück, ohne erfolgreiche Zielnutzer zurückzurollen
 
 ### Requirement: Instanz-Registry speichert Auth-Metadaten pro Instanz
 
@@ -271,7 +279,7 @@ Das System MUST Idempotency für duplikatskritische Mutationen erzwingen, um dop
 
 #### Scenario: Erstanfrage mit Idempotency-Key
 
-- **WENN** ein Client `POST /api/v1/iam/users`, `POST /api/v1/iam/users/bulk-deactivate` oder `POST /api/v1/iam/roles` mit `X-Idempotency-Key` aufruft
+- **WENN** ein Client `POST /api/v1/iam/users`, `POST /api/v1/iam/users/bulk-deactivate`, `POST /api/v1/iam/users/bulk-reprovision-mainserver` oder `POST /api/v1/iam/roles` mit `X-Idempotency-Key` aufruft
 - **DANN** wird die Operation genau einmal ausgeführt und das Ergebnis serverseitig gespeichert
 - **UND** der Key wird im Scope (`actor_account_id`, `endpoint`, `idempotency_key`) ausgewertet
 
@@ -1436,3 +1444,63 @@ Der IAM-Diagnosekern MUST gleichzeitig vorliegende sichere Signale in einer stab
 - **WHEN** Diagnose-Details snake_case-, camelCase-, unbekannte, nicht-stringförmige oder sensitive Werte enthalten
 - **THEN** normalisiert der Diagnosekern weiterhin nur die bekannten Sync-Felder
 - **AND** gibt er ausschließlich die bestehende Safe-Details-Allowlist aus
+
+### Requirement: Keycloak-AIA für Credential-Self-Service
+
+Das System SHALL Passwort- und E-Mail-Änderungen angemeldeter Nutzer über Keycloak Application Initiated Actions (AIA) statt über lokale Studio-Credential-Formulare ausführen.
+
+#### Scenario: Passwortänderung bleibt IdP-owned
+
+- **WENN** ein angemeldeter Nutzer im Studio eine Passwortänderung anstößt
+- **DANN** führt das System die Mutation nicht über einen lokalen IAM-API-Endpunkt aus
+- **UND** startet stattdessen einen Keycloak-Flow mit `kc_action=UPDATE_PASSWORD`
+- **UND** bleibt Keycloak der einzige Mutationsort für das Passwort
+
+#### Scenario: E-Mail-Änderung bleibt IdP-owned
+
+- **WENN** ein angemeldeter Nutzer im Studio eine E-Mail-Änderung anstößt
+- **DANN** führt das System die Mutation nicht über das Studio-Profilformular aus
+- **UND** startet stattdessen einen Keycloak-Flow mit `kc_action=UPDATE_EMAIL`
+- **UND** bleibt Keycloak der einzige führende Mutationsort für die Identitäts-E-Mail
+
+### Requirement: Fresh Reauth für sensitive Self-Service-Aktionen
+
+Das System SHALL Passwort- und E-Mail-Änderungen aus dem Studio nur über einen serverseitig kontrollierten Self-Service-Pfad mit frischer Re-Authentisierung starten.
+
+#### Scenario: Passwortänderung erfordert frische Re-Authentisierung
+
+- **WENN** ein angemeldeter Nutzer die Passwortänderung aus dem Studio startet
+- **DANN** erzwingt der serverseitige Einstiegspfad frische Re-Authentisierung im OIDC-Flow
+- **UND** genügt eine alte SSO-Session alleine nicht als hinreichender Nachweis für diese Aktion
+
+#### Scenario: E-Mail-Änderung erfordert frische Re-Authentisierung
+
+- **WENN** ein angemeldeter Nutzer die E-Mail-Änderung aus dem Studio startet
+- **DANN** erzwingt der serverseitige Einstiegspfad frische Re-Authentisierung im OIDC-Flow
+- **UND** genügt eine alte SSO-Session alleine nicht als hinreichender Nachweis für diese Aktion
+
+### Requirement: Realm-seitiger E-Mail-Änderungsworkflow bleibt Keycloak-owned
+
+Das System SHALL für E-Mail-Änderungen den von Keycloak bereitgestellten `UPDATE_EMAIL`-Workflow voraussetzen und dessen Verifikationslogik nicht im Studio nachbauen.
+
+#### Scenario: E-Mail-Verifikation bleibt beim IdP
+
+- **WENN** eine Zielumgebung für E-Mail-Änderungen eine Verifikation verlangt
+- **DANN** erfolgt diese Verifikation innerhalb des Keycloak-Workflows
+- **UND** das Studio führt keine eigene Pending-E-Mail- oder Verifikationslogik als Parallelzustand
+
+### Requirement: Studio-owned Rückkehrstatus für Account-AIA
+
+Das System SHALL den Ausgang von Keycloak-gestützten Account-Aktionen nach Rückkehr in einen stabilen Studio-Statusvertrag überführen.
+
+#### Scenario: Erfolgreiche Rückkehr wird in Studio-Status übersetzt
+
+- **WENN** ein Nutzer eine durch das Studio gestartete Account-AIA erfolgreich abschließt
+- **DANN** kennt der serverseitige Callback die zuvor angeforderte Account-Aktion
+- **UND** leitet auf ein sanitisiertes Rückkehrziel mit einem Studio-eigenen Erfolgsstatus weiter
+
+#### Scenario: Abbruch wird in Studio-Status übersetzt
+
+- **WENN** ein Nutzer eine durch das Studio gestartete Account-AIA abbricht
+- **DANN** kennt der serverseitige Callback die zuvor angeforderte Account-Aktion
+- **UND** leitet auf ein sanitisiertes Rückkehrziel mit einem Studio-eigenen Abbruchstatus weiter

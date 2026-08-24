@@ -682,6 +682,7 @@ describe('waste annual tour transfer', () => {
     expect(resolved.tours[0]?.replacementTargetYears).toEqual({
       'shift-leap-year:actual': 2029,
     });
+    expect(resolved.tours[0]?.replacementResourceIds).toEqual(['shift-leap-year:actual']);
     await expect(
       buildWasteAnnualTourTransferPreview({
         instanceId: 'tenant-a',
@@ -923,6 +924,51 @@ describe('waste annual tour transfer', () => {
       replacementDates: [{ sourceResourceId: firstResourceId as string, targetDate: '2027-06-15' }],
     });
     expect(resolved.tours[0]?.classification).toBe('transferable');
+  });
+
+  it('detects date-shift collisions by their mapped persisted origin', async () => {
+    const sourceTour = tour();
+    const transferSource = source([sourceTour], {
+      tourDateShifts: [
+        {
+          id: 'shift-january-1',
+          tourId: sourceTour.id,
+          originalDate: '2026-01-01',
+          actualDate: '2026-03-01',
+          hasYear: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'shift-january-8',
+          tourId: sourceTour.id,
+          originalDate: '2026-01-08',
+          actualDate: '2026-03-08',
+          hasYear: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: transferSource,
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'target_date_collision',
+    });
+    expect(preview.tours[0]?.replacementResourceIds).toEqual(
+      expect.arrayContaining([
+        'shift-january-1:original',
+        'shift-january-8:original',
+      ])
+    );
   });
 
   it('requires source cleanup for duplicate year-independent shift rules', async () => {

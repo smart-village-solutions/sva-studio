@@ -70,15 +70,25 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
   }
   const mappedResult = await mapWasteAnnualTour(input);
   if ('blocker' in mappedResult) {
-    const replacementResourceIds = [
+    const requestedReplacementResourceIds = [
       ...new Set([...mappedResult.replacementResourceIds, ...input.replacements.keys()]),
+    ];
+    const replacementTargetYears = wasteAnnualReplacementTargetYearsFor(
+      input,
+      requestedReplacementResourceIds
+    );
+    const replacementResourceIds = [
+      ...new Set([
+        ...mappedResult.replacementResourceIds,
+        ...Object.keys(replacementTargetYears),
+      ]),
     ];
     return {
       ...common,
       classification: 'blocked',
       reasonCode: mappedResult.blocker,
-      replacementResourceIds: mappedResult.replacementResourceIds,
-      replacementTargetYears: wasteAnnualReplacementTargetYearsFor(input, replacementResourceIds),
+      replacementResourceIds,
+      replacementTargetYears,
       dateExamples: [],
       conflicts: [],
     };
@@ -91,6 +101,9 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
   const identityConflict = conflicts.some(
     (conflict) => conflict.kind === 'target-identity-conflict'
   );
+  const replacementTargetYears = wasteAnnualReplacementTargetYearsFor(input, [
+    ...input.replacements.keys(),
+  ]);
   return {
     ...common,
     classification: identityConflict ? 'blocked' : 'transferable',
@@ -101,10 +114,8 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
     },
     firstTargetDate: [...wasteAnnualEffectiveDates(mappedResult.mapped)].sort()[0],
     relationshipCounts: { ...counts, excluded: mappedResult.excluded },
-    replacementResourceIds: [],
-    replacementTargetYears: wasteAnnualReplacementTargetYearsFor(input, [
-      ...input.replacements.keys(),
-    ]),
+    replacementResourceIds: Object.keys(replacementTargetYears),
+    replacementTargetYears,
     dateExamples: wasteAnnualConcreteDateExamples(
       input.tour,
       input.sourceYear,

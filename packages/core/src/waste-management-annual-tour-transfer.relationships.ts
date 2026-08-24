@@ -114,7 +114,9 @@ export const findWasteAnnualRelationshipCollisions = (
       resourceIds: [item.source.id],
     })),
     ...mapped.shifts.map((item) => ({
-      key: `shift:${item.originalDate}:${item.actualDate}:${item.source.hasYear}`,
+      key: item.source.hasYear
+        ? `shift:specific:${item.originalDate}`
+        : `shift:annual:${item.originalDate?.slice(5)}`,
       resourceIds: [`${item.source.id}:original`, `${item.source.id}:actual`],
     })),
   ];

@@ -463,7 +463,7 @@ describe('WasteToursAnnualTransferDialog', () => {
       tours: [
         {
           ...preview.tours[0],
-          replacementResourceIds: [],
+          replacementResourceIds: ['kept-date'],
           replacementTargetYears: { 'kept-date': 2027 },
         },
       ],
@@ -489,6 +489,13 @@ describe('WasteToursAnnualTransferDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
     fireEvent.click(await screen.findByRole('button', { name: 'tours.annualTransfer.confirm' }));
     expect(await screen.findByText('tours.annualTransfer.stale')).toBeTruthy();
+    expect(
+      (
+        screen.getByLabelText(
+          'tours.annualTransfer.replacementDate:Bio Nord 1|2027'
+        ) as HTMLInputElement
+      ).value
+    ).toBe('2027-02-01');
     fireEvent.click(screen.getByRole('button', { name: 'tours.annualTransfer.review' }));
 
     await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(3));

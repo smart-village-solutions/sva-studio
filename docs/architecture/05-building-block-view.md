@@ -29,6 +29,13 @@ Abhängigkeiten des aktuellen Systems.
 - Host-Standard-Bausteine für Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und dünne Label-/Routing-Bindings für `@sva/studio-ui-react` statt app-eigener Tabellen-Owner-Schicht
 - Nx-Targets für `build`, `serve`, `lint`, das aggregierte `test:unit`, die gezielten App-Slices `test:unit:ui|routes|hooks|server`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 
+1a. Öffentliche Projektberichterstattung (`apps/project-report`)
+   - eigenständige statische Vite-/React-App mit Meilenstein- und Arbeitspaketansicht
+   - verwendet das app-lokale öffentliche Reporting-JSON als einzige fachlich gepflegte Datenquelle und leitet Fortschritt ausschließlich aus dem Statusmodell ab
+   - modelliert Ansicht und Filter als teilbare URL-Search-Params
+   - besitzt keine Abhängigkeit auf `apps/sva-studio-react` oder `@sva/studio-ui-react`; UI, Styles, Datenadapter und Tests bleiben app-lokal
+   - bleibt im gebauten Pages-Artefakt read-only; die lokale Vite-Middleware für direkte JSON-Bearbeitung wird nur auf lokalen Hosts aktiviert
+
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
    - kanonisches Inhaltsmodell für `Content`, Statusmodell und JSON-Payload-Validierung

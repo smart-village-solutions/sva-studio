@@ -22,6 +22,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 ### Lokale Entwicklungsverteilung
 
 - App: `pnpm nx run sva-studio-react:serve` auf `localhost:3000`
+- Projektbericht: `pnpm nx run project-report:serve` auf `localhost:3001`
 - Öffentliche App: `pnpm nx run public-waste-calendar-web:serve` auf `localhost:3002`
 - Postgres IAM-DB: `compose.yaml` (`5432`)
 - Redis: `compose.yaml` (`6379`, optional TLS `6380`)
@@ -37,6 +38,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 ### Deployment-Bausteine (logisch)
 
 - Web-App Runtime (TanStack Start / Node)
+- Öffentliche Projektberichterstattung als statisches GitHub-Pages-Artefakt ohne Server-Runtime
 - Öffentliche Waste-Web-App als separates Vite-Frontend mit eigenem Playwright-Gate
 - Nx-/pnpm-basierte Build- und Test-Pipeline
 - Separates IAM-Acceptance-Gate für Paket-1-/2-Abnahmen
@@ -49,6 +51,13 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Loki/Prometheus als Storage, Grafana für Auswertung
 - `redis-exporter` als Prometheus-Scrape-Target für Redis-Infrastrukturmetriken
 - Plugin-Distributionsartefakte als eigener Betriebsgegenstand neben dem App-Image; sie werden über Manifest plus gebaute Artefakte aktiviert, nicht über Core-Codeänderungen
+
+### Öffentliche Projektberichterstattung über GitHub Pages
+
+- Der Workflow `.github/workflows/project-report-pages.yml` baut `apps/project-report` auf `main` mit dem Nx-Target `project-report:build` und veröffentlicht ausschließlich `apps/project-report/dist`.
+- GitHub Pages liefert das statische Artefakt öffentlich über HTTPS aus; eine serverseitige Anwendungsruntime, Studio-Session oder Verbindung zur Studio-Control-Plane ist nicht erforderlich.
+- Das gebaute Artefakt bleibt read-only. Die lokale Bearbeitungs-Middleware gehört ausschließlich zu `serve` und `preview` auf lokalen Hosts und ist kein Bestandteil des öffentlichen Laufzeitvertrags.
+- Änderungen an Studio-Image und Promote-Pipeline sind von diesem separaten Pages-Workflow unabhängig.
 
 ### Ergänzung 2026-03: Minimaler Server-Rollout mit Portainer
 

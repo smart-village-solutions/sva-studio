@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   load: vi.fn(),
@@ -16,8 +16,12 @@ vi.mock('./user-documentation.server', async (importOriginal) => ({
 import { dispatchUserDocumentationRequest } from './user-documentation-api.server';
 
 describe('user-documentation-api.server', () => {
-  it('returns the current markdown and supports conditional responses', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) => handler({}));
+  });
+
+  it('returns the current markdown and supports conditional responses', async () => {
     state.load.mockResolvedValue({
       id: 'home.overview',
       markdown: '# Start',
@@ -59,7 +63,6 @@ describe('user-documentation-api.server', () => {
 
   it('maps controlled upstream errors without exposing details', async () => {
     const { UserDocumentationError } = await import('./user-documentation.server');
-    state.withAuthenticatedUser.mockImplementation(async (_request, handler) => handler({}));
     state.load.mockRejectedValue(
       new UserDocumentationError('documentation_not_configured', 503)
     );
@@ -72,5 +75,39 @@ describe('user-documentation-api.server', () => {
       'home.overview',
       expect.objectContaining({ code: 'documentation_not_configured' })
     );
+  });
+
+  it('ignores unrelated routes and rejects invalid percent encoding', async () => {
+    await expect(
+      dispatchUserDocumentationRequest(new Request('https://studio.test/api/other'))
+    ).resolves.toBeNull();
+
+    const response = await dispatchUserDocumentationRequest(
+      new Request('https://studio.test/api/studio/documentation/%E0%A4%A')
+    );
+    expect(response?.status).toBe(404);
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
+  it('returns payloads without etags and maps unexpected errors to a controlled response', async () => {
+    state.load.mockResolvedValueOnce({
+      id: 'home.overview',
+      markdown: '# Start',
+      websiteUrl: 'https://docs.example.test/pages/home.overview/',
+    });
+    const success = await dispatchUserDocumentationRequest(
+      new Request('https://studio.test/api/studio/documentation/home.overview')
+    );
+    expect(success?.status).toBe(200);
+    expect(success?.headers.get('etag')).toBeNull();
+
+    state.load.mockRejectedValueOnce(new Error('upstream failed'));
+    const failure = await dispatchUserDocumentationRequest(
+      new Request('https://studio.test/api/studio/documentation/home.overview')
+    );
+    expect(failure?.status).toBe(502);
+    await expect(failure?.json()).resolves.toEqual({
+      error: 'documentation_upstream_unavailable',
+    });
   });
 });

@@ -56,4 +56,81 @@ describe('ContextualHelp', () => {
     await waitFor(() => expect(screen.getByText('Wieder da')).toBeTruthy());
     expect(request).toHaveBeenCalledTimes(2);
   });
+
+  it('rejects malformed payloads without rendering remote content', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          id: 'another.page',
+          markdown: '# Falsche Seite',
+          websiteUrl: 'https://docs.example.test/pages/another.page/',
+        })
+      )
+    );
+
+    render(<ContextualHelp pageId="home.overview" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hilfe öffnen' }));
+
+    expect(
+      await screen.findByText('Hilfe ist vorübergehend nicht verfügbar')
+    ).toBeTruthy();
+    expect(screen.queryByText('Falsche Seite')).toBeNull();
+  });
+
+  it('filters unsafe markdown links and images while retaining allowed targets', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          id: 'home.overview',
+          markdown: [
+            '## Verweise',
+            '',
+            '[E-Mail](mailto:hilfe@example.test)',
+            '',
+            '[Unsicher](javascript:alert(1))',
+            '',
+            '![Intern](../media/hilfe.png)',
+            '',
+            '![Extern](https://other.example.test/hilfe.png)',
+          ].join('\n'),
+          websiteUrl: 'https://docs.example.test/pages/home.overview/',
+        })
+      )
+    );
+
+    render(<ContextualHelp pageId="home.overview" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hilfe öffnen' }));
+
+    expect(await screen.findByRole('heading', { name: 'Verweise' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'E-Mail' }).getAttribute('href')).toBe(
+      'mailto:hilfe@example.test'
+    );
+    expect(screen.queryByRole('link', { name: 'Unsicher' })).toBeNull();
+    expect(screen.getByRole('img', { name: 'Intern' }).getAttribute('src')).toBe(
+      'https://docs.example.test/pages/media/hilfe.png'
+    );
+    expect(screen.queryByRole('img', { name: 'Extern' })).toBeNull();
+  });
+
+  it('shows an explicit empty state for blank markdown', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          id: 'home.overview',
+          markdown: '   ',
+          websiteUrl: 'https://docs.example.test/pages/home.overview/',
+        })
+      )
+    );
+
+    render(<ContextualHelp pageId="home.overview" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hilfe öffnen' }));
+
+    expect(
+      await screen.findByText('Für diese Seite ist noch kein Hilfetext hinterlegt.')
+    ).toBeTruthy();
+  });
 });

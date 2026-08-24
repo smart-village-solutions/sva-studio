@@ -1,0 +1,4 @@
+{
+  "prNumber": 1131,
+  "body": "Waste-Touren lassen sich kontrolliert in das direkte Folgejahr übernehmen.\n\n- Vor der Übernahme zeigt eine Vorschau, welche Touren übernommen werden, bereits im Folgejahr gelten oder wegen fachlicher Konflikte blockiert sind.\n- Termine und Beziehungen werden gemeinsam und zunächst inaktiv angelegt, damit sie vor der Freigabe geprüft werden können.\n- Wiederholte oder parallele Übernahmen werden technisch abgesichert; vorhandene Zieltouren werden nicht überschrieben."
+}

@@ -197,6 +197,10 @@ const authServerMocks = vi.hoisted(() => {
       createRegion: vi.fn(async () => response('createWasteManagementRegionHandler')),
       createStreet: vi.fn(async () => response('createWasteManagementStreetHandler')),
       createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
+      createAnnualTourTransfer: vi.fn(async () => response('createWasteAnnualTourTransferHandler')),
+      previewAnnualTourTransfer: vi.fn(async () =>
+        response('previewWasteAnnualTourTransferHandler')
+      ),
       createTourAssignment: vi.fn(async () =>
         response('createWasteManagementTourAssignmentHandler')
       ),
@@ -680,6 +684,12 @@ describe('auth.routes.server', () => {
     const tourValidityBulkHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tours/bulk-validity'
     );
+    const annualTourTransferHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tours/annual-transfer'
+    );
+    const annualTourTransferPreviewHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tours/annual-transfer/preview'
+    );
     const tourDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tours/$tourId');
     const settingsHandlers = resolveAuthHandlers('/api/v1/waste-management/settings');
     const holidaySyncHandlers = resolveAuthHandlers(
@@ -923,6 +933,17 @@ describe('auth.routes.server', () => {
     await toursHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tours', { method: 'POST' }),
     });
+    await annualTourTransferHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tours/annual-transfer', {
+        method: 'POST',
+      }),
+    });
+    await annualTourTransferPreviewHandlers.POST?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/tours/annual-transfer/preview',
+        { method: 'POST' }
+      ),
+    });
     await tourValidityBulkHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/tours/bulk-validity', {
         method: 'PUT',
@@ -1000,10 +1021,9 @@ describe('auth.routes.server', () => {
       }),
     });
     await enrichPostalCodesHandlers.POST?.({
-      request: new Request(
-        'http://localhost/api/v1/waste-management/tools/postal-codes/enrich',
-        { method: 'POST' }
-      ),
+      request: new Request('http://localhost/api/v1/waste-management/tools/postal-codes/enrich', {
+        method: 'POST',
+      }),
     });
     await resetHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/reset', {
@@ -1042,6 +1062,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.deleteTourDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getToursOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createTour).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createAnnualTourTransfer).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.previewAnnualTourTransfer).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTourValidityBulk).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.deleteTour).toHaveBeenCalled();

@@ -83,6 +83,7 @@ export type IamGroupMembershipRow = IamGroupRow & {
 export type IdempotencyReserveResult =
   | {
       status: 'reserved';
+      leaseToken?: string;
     }
   | {
       status: 'replay';
@@ -91,5 +92,6 @@ export type IdempotencyReserveResult =
     }
   | {
       status: 'conflict';
+      reason: 'payload_mismatch' | 'in_progress';
       message: string;
     };

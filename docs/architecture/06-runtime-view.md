@@ -1103,3 +1103,13 @@ Fehlerpfad:
 4. Der Downloadpfad prüft Job, Instanz, Actor, aktuelle Export-Action, Ablauf, Größe und SHA-256 vor der Antwort mit `private, no-store`.
 5. Der Import validiert Envelope, Version, Feldtypen, Defaults und Referenzen vor dem Schreiben. Ein ZIP wird vollständig geprüft und in einer gemeinsamen Waste-Datenbanktransaktion verarbeitet.
 6. Dry-Runs und Fehler rollen die Transaktion zurück. Nicht enthaltene Zielwerte oder Zielzeilen werden nicht implizit gelöscht.
+
+### Waste-Management: Tourensatz in das Folgejahr übernehmen
+
+1. Der Assistent sendet nur Quelljahr, Auswahl und Ersatzdaten. Die Runtime leitet das direkte Folgejahr ab, prüft beide Manage-Actions sowie CSRF und liefert eine schreibfreie, vollständig klassifizierte Vorschau.
+2. Core bildet aus Quell- und Zielbestand, Auswahl, Ersatzdaten und stabil abgeleiteten Zielressourcen einen kanonischen Fingerprint. Mögliche parallele Planungen bleiben zunächst abgewählt.
+3. Die bestätigte Erstellung reserviert den zentralen Idempotenzschlüssel und öffnet eine Waste-Datenbanktransaktion. Ein mandanten- und zieljahrbezogener Advisory Lock serialisiert konkurrierende Übernahmen; ein Tabellen-Lock im mandanteneigenen Waste-Schema hält normale Planungsänderungen bis zum Transaktionsende zurück.
+4. Innerhalb der Sperre werden Quelle, Ziel, Grenzen, Fingerprint und Konflikte erneut geprüft. Beziehungen, durch Verschiebungen wirksame Abholtermine und Konfliktsignaturen werden dafür einmal pro Snapshot indiziert. Bei Abweichung endet der Vorgang mit aktualisierter Vorschau; es wird nichts geschrieben.
+5. Touren und alle kopierrelevanten Beziehungen werden mit stabilen IDs gemeinsam und inaktiv angelegt. Große Beziehungsmengen werden in begrenzten JSON-Batches geschrieben. Jeder Fehler rollt die gesamte Transaktion zurück.
+6. Frische Idempotenz-Reservierungen bleiben über einen zufälligen Ownership-Token exklusiv und werden vom aktiven Request minütlich erneuert. Nach fünf Minuten ohne Heartbeat darf derselbe Request die verwaiste Reservierung mit einem neuen Token übernehmen und nach einem Commit-/Response-Abbruch dieselben Ziel-IDs rekonstruieren, ohne weitere Touren anzulegen. Der abgelöste Token kann weder Audit noch Antwort finalisieren.
+7. Das zusammenfassende Audit wird vor der dauerhaften Idempotenz-Completion abgeschlossen. Ein Prozessabbruch davor bleibt wiederaufnehmbar; ein gespeichertes Replay verweist damit nicht dauerhaft auf eine noch ausstehende Audit-Zusammenfassung.

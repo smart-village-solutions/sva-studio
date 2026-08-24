@@ -31,6 +31,8 @@ const {
   createWasteManagementTourDateShiftInternal,
   createWasteManagementTourAssignmentInternal,
   createWasteManagementTourInternal,
+  previewWasteAnnualTourTransferInternal,
+  createWasteAnnualTourTransferInternal,
   deleteWasteManagementTourInternal,
   deleteWasteManagementTourAssignmentInternal,
   getWasteManagementHistoryInternal,
@@ -76,6 +78,7 @@ const {
   loadToursOverview,
   loadWasteHistoryOverview,
   previewWasteLocationTourPickupDateImport,
+  previewWasteAnnualTourTransfer,
 } = wasteManagementOverviewLoaders;
 const {
   loadWasteCustomRecurrencePresets,
@@ -121,6 +124,7 @@ const {
   saveWasteRegion,
   saveWasteStreet,
   saveWasteTour,
+  createWasteAnnualTourTransfer,
   updateWasteTourValidityBulk,
   saveWasteTourAssignment,
   deleteWasteTour,
@@ -153,6 +157,20 @@ export const wasteManagementHandlers = {
       getWasteManagementToursOverviewInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         loadToursOverview,
+      })
+    ),
+  previewAnnualTourTransfer: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      previewWasteAnnualTourTransferInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        previewWasteAnnualTourTransfer,
+      })
+    ),
+  createAnnualTourTransfer: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      createWasteAnnualTourTransferInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        createWasteAnnualTourTransfer,
       })
     ),
   getSchedulingOverview: (request: Request): Promise<Response> =>

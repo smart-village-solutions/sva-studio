@@ -808,3 +808,9 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/plugin-sdk` registriert Exportprofile neben Job- und Importprofilen. `@sva/waste-management-contracts` besitzt die konkreten Import-, Export- und Jobdefinitionen.
 - Die hostseitige Waste-Runtime liest und schreibt ausschließlich die im Profil enthaltenen Fachfelder. E-Mail-Abonnements, Consent, Token und Outbox bleiben außerhalb dieses Bausteins.
 - Exportartefakte werden instanzgebunden im geschützten Media-Speicher abgelegt. Die Auth-Runtime prüft beim Download Job, Actor, Instanz, aktuelle Exportberechtigung, Ablauf, Größe und SHA-256 erneut.
+
+### Ergänzung 2026-08: Waste-Tourensatz im Folgejahr
+
+- `@sva/plugin-waste-management` besitzt ausschließlich den zugänglichen Drei-Schritt-Assistenten, die Auswahl und die ausdrückliche Konfliktbestätigung. Das Zieljahr ist dort nur Anzeige und kein frei wählbarer Parameter.
+- `@sva/core` besitzt die frameworkunabhängige Klassifikation, Datums- und Taktabbildung, stabile Zielidentitäten, Konflikterkennung, Fingerprint-Bildung sowie die zentralen Grenzen von 1.000 Touren und 100.000 Beziehungen.
+- `@sva/auth-runtime` besitzt Mandanten-, Berechtigungs-, CSRF- und Idempotenzgrenze. Die Waste-Repository-Operation lädt Quelle und Ziel erneut und schreibt den vollständigen inaktiven Tourensatz unter Advisory Lock in genau einer Transaktion.

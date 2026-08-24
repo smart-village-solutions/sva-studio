@@ -199,6 +199,7 @@ const repositoryMocks = vi.hoisted(() => ({
     async (input: { tourIds: readonly string[] }) => input.tourIds.length
   ),
   upsertWasteTour: vi.fn(async () => undefined),
+  upsertWasteTourAssignment: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
   insertWasteTourDateShift: vi.fn(async () => undefined),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
@@ -677,6 +678,268 @@ describe('waste-management server loaders', () => {
     });
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('BEGIN');
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('creates the selected annual tour set under an advisory lock in one transaction', async () => {
+    const sourceTour = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Bio Nord',
+      wasteFractionIds: ['bio'],
+      recurrence: 'weekly' as const,
+      firstDate: '2026-01-05',
+      endDate: '2026-12-31',
+      active: true,
+      locationCount: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+    };
+    repositoryMocks.listWasteTours
+      .mockResolvedValueOnce([sourceTour])
+      .mockResolvedValueOnce([sourceTour]);
+    repositoryMocks.listWasteLocationTourLinks
+      .mockResolvedValueOnce([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          tourId: sourceTour.id,
+          locationId: '33333333-3333-4333-8333-333333333333',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          tourId: sourceTour.id,
+          locationId: '33333333-3333-4333-8333-333333333333',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+    repositoryMocks.listWasteLocationTourPickupDates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourAssignments.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const preview = await wasteManagementOverviewLoaders.previewWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      selectedTourIds: [sourceTour.id],
+    });
+    const result = await wasteManagementEntitySavers.createWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      create: {
+        sourceYear: 2026,
+        selectedTourIds: [sourceTour.id],
+        replacementDates: [],
+        acknowledgedConflictTourIds: [],
+        previewFingerprint: preview.previewFingerprint,
+      },
+    });
+
+    expect(result).toMatchObject({ sourceYear: 2026, targetYear: 2027, createdCount: 1 });
+    const tourInsertCall = poolFactoryInstances
+      .at(-1)
+      ?.query.mock.calls.find(([statement]) => String(statement).includes('INSERT INTO waste_tours'));
+    const [persistedTourRow] = JSON.parse(String(tourInsertCall?.[1]?.[0])) as Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      waste_fraction_ids: readonly string[];
+      recurrence: 'weekly';
+      custom_recurrence_id: string | null;
+      first_date: string | null;
+      end_date: string | null;
+      custom_dates: readonly unknown[] | null;
+      active: boolean;
+    }>;
+    expect(persistedTourRow).toMatchObject({ name: 'Bio Nord', active: false });
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
+      ['tenant-a', 'waste-annual-tour-transfer:2027']
+    );
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith(
+      expect.stringContaining('waste_custom_recurrence_presets')
+    );
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
+
+    const persistedTargetTour = {
+      id: persistedTourRow?.id,
+      name: persistedTourRow?.name,
+      description: persistedTourRow?.description ?? undefined,
+      wasteFractionIds: persistedTourRow?.waste_fraction_ids ?? [],
+      recurrence: persistedTourRow?.recurrence,
+      customRecurrenceId: persistedTourRow?.custom_recurrence_id ?? undefined,
+      firstDate: persistedTourRow?.first_date ?? undefined,
+      endDate: persistedTourRow?.end_date ?? undefined,
+      customDates: persistedTourRow?.custom_dates ?? [],
+      active: persistedTourRow?.active ?? false,
+      locationCount: 1,
+      createdAt: '2027-01-01T00:00:00.000Z',
+      updatedAt: '2027-01-01T00:00:00.000Z',
+    };
+    const persistedTargetLink = {
+      ...repositoryMocks.upsertWasteLocationTourLink.mock.calls.at(-1)?.[0],
+      createdAt: '2027-01-01T00:00:00.000Z',
+      updatedAt: '2027-01-01T00:00:00.000Z',
+    };
+    const sourceLink = {
+      id: '22222222-2222-4222-8222-222222222222',
+      tourId: sourceTour.id,
+      locationId: '33333333-3333-4333-8333-333333333333',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    repositoryMocks.listWasteTours
+      .mockResolvedValueOnce([sourceTour, persistedTargetTour])
+      .mockResolvedValueOnce([sourceTour, persistedTargetTour]);
+    repositoryMocks.listWasteLocationTourLinks
+      .mockResolvedValueOnce([sourceLink, persistedTargetLink])
+      .mockResolvedValueOnce([sourceLink, persistedTargetLink]);
+    repositoryMocks.listWasteLocationTourPickupDates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourAssignments.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const repeatedPreview = await wasteManagementOverviewLoaders.previewWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      selectedTourIds: [sourceTour.id],
+    });
+    const repeated = await wasteManagementEntitySavers.createWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      create: {
+        sourceYear: 2026,
+        selectedTourIds: [sourceTour.id],
+        replacementDates: [],
+        acknowledgedConflictTourIds: [],
+        previewFingerprint: repeatedPreview.previewFingerprint,
+      },
+    });
+
+    expect(repeated).toMatchObject({ createdCount: 0, existingCount: 1 });
+  });
+
+  it('writes large annual relationship sets in bounded JSON batches', async () => {
+    const sourceTour = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Bio Nord',
+      wasteFractionIds: ['bio'],
+      recurrence: 'weekly' as const,
+      firstDate: '2026-01-05',
+      endDate: '2026-12-31',
+      active: true,
+      locationCount: 101,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+    };
+    const links = Array.from({ length: 101 }, (_, index) => ({
+      id: `22222222-2222-4222-8222-${String(index).padStart(12, '0')}`,
+      tourId: sourceTour.id,
+      locationId: `33333333-3333-4333-8333-${String(index).padStart(12, '0')}`,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }));
+    repositoryMocks.listWasteTours
+      .mockResolvedValueOnce([sourceTour])
+      .mockResolvedValueOnce([sourceTour]);
+    repositoryMocks.listWasteLocationTourLinks
+      .mockResolvedValueOnce(links)
+      .mockResolvedValueOnce(links);
+    repositoryMocks.listWasteLocationTourPickupDates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourAssignments.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const preview = await wasteManagementOverviewLoaders.previewWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      selectedTourIds: [sourceTour.id],
+    });
+    await wasteManagementEntitySavers.createWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      create: {
+        sourceYear: 2026,
+        selectedTourIds: [sourceTour.id],
+        replacementDates: [],
+        acknowledgedConflictTourIds: [],
+        previewFingerprint: preview.previewFingerprint,
+      },
+    });
+
+    expect(repositoryMocks.upsertWasteLocationTourLink).not.toHaveBeenCalled();
+    const bulkCall = poolFactoryInstances
+      .at(-1)
+      ?.query.mock.calls.find(([text]) =>
+        String(text).includes('INSERT INTO waste_location_tour_links')
+      );
+    expect(bulkCall).toBeDefined();
+    expect(JSON.parse(String(bulkCall?.[1]?.[0]))).toHaveLength(101);
+  });
+
+  it('rolls back the complete annual tour set when a relationship write fails', async () => {
+    const sourceTour = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Bio Nord',
+      wasteFractionIds: ['bio'],
+      recurrence: 'weekly' as const,
+      firstDate: '2026-01-05',
+      endDate: '2026-12-31',
+      active: true,
+      locationCount: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+    };
+    repositoryMocks.listWasteTours
+      .mockResolvedValueOnce([sourceTour])
+      .mockResolvedValueOnce([sourceTour]);
+    repositoryMocks.listWasteLocationTourLinks
+      .mockResolvedValueOnce([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          tourId: sourceTour.id,
+          locationId: '33333333-3333-4333-8333-333333333333',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          tourId: sourceTour.id,
+          locationId: '33333333-3333-4333-8333-333333333333',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+    repositoryMocks.listWasteLocationTourPickupDates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourAssignments.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const preview = await wasteManagementOverviewLoaders.previewWasteAnnualTourTransfer({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      selectedTourIds: [sourceTour.id],
+    });
+    repositoryMocks.upsertWasteLocationTourLink.mockRejectedValueOnce(new Error('write failed'));
+
+    await expect(
+      wasteManagementEntitySavers.createWasteAnnualTourTransfer({
+        instanceId: 'tenant-a',
+        create: {
+          sourceYear: 2026,
+          selectedTourIds: [sourceTour.id],
+          replacementDates: [],
+          acknowledgedConflictTourIds: [],
+          previewFingerprint: preview.previewFingerprint,
+        },
+      })
+    ).rejects.toThrow('write failed');
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(poolFactoryInstances.at(-1)?.query).not.toHaveBeenCalledWith('COMMIT');
   });
 
   it('rolls back tour validity changes when one resulting range is invalid', async () => {

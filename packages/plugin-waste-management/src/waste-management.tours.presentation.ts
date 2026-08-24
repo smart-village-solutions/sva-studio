@@ -253,6 +253,43 @@ const resolveHolidayRulesForYear = (scheduling: WasteManagementSchedulingOvervie
       } => rule.direction !== null
     );
 
+type ShiftedTourOccurrence = Omit<TourOccurrenceEntryInternal, 'date'>;
+
+const addInboundTourShifts = (
+  target: Map<string, ShiftedTourOccurrence>,
+  tour: WasteTourRecord,
+  year: number,
+  scheduling: WasteManagementSchedulingOverview,
+  holidayRules: ReturnType<typeof resolveHolidayRulesForYear>
+) => {
+  const priorYearDates = new Set<string>();
+  collectScheduledTourDates(priorYearDates, tour, year - 1);
+  collectCustomTourDates(priorYearDates, tour, year - 1);
+  const shifts = resolveEffectiveWasteTourDateShiftsForYear(
+    (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id),
+    year - 1
+  ).filter(
+    (shift) => priorYearDates.has(shift.originalDate) && shift.actualDate.startsWith(`${year}-`)
+  );
+  for (const shift of shifts) {
+    const holidayNames: string[] = [];
+    const date = holidayRules.reduce((currentDate, rule) => {
+      const nextDate = applyHolidayRule(currentDate, rule);
+      if (nextDate !== currentDate) holidayNames.push(rule.holidayName);
+      return nextDate;
+    }, shift.actualDate);
+    if (!date.startsWith(`${year}-`)) continue;
+    const previous = target.get(date);
+    const combinedHolidayNames = [...new Set([...(previous?.holidayNames ?? []), ...holidayNames])];
+    target.set(date, {
+      shifted: true,
+      originalDate: previous?.originalDate ?? shift.originalDate,
+      shiftedByHoliday: combinedHolidayNames.length > 0,
+      holidayNames: combinedHolidayNames,
+    });
+  }
+};
+
 const calculateTourOccurrenceEntriesForYearInternal = (
   tour: WasteTourRecord,
   year: number,
@@ -275,15 +312,7 @@ const calculateTourOccurrenceEntriesForYearInternal = (
   );
   const holidayRules = resolveHolidayRulesForYear(scheduling, year);
 
-  const shiftedResults = new Map<
-    string,
-    {
-      readonly shifted: boolean;
-      readonly originalDate: string | null;
-      readonly shiftedByHoliday: boolean;
-      readonly holidayNames: readonly string[];
-    }
-  >();
+  const shiftedResults = new Map<string, ShiftedTourOccurrence>();
   for (const date of results) {
     const manuallyShifted = tourShiftMap.get(date) ?? globalShiftMap.get(date) ?? date;
     const holidayNames: string[] = [];
@@ -306,6 +335,8 @@ const calculateTourOccurrenceEntriesForYearInternal = (
       holidayNames: combinedHolidayNames,
     });
   }
+
+  addInboundTourShifts(shiftedResults, tour, year, scheduling, holidayRules);
 
   return Array.from(shiftedResults.entries())
     .filter(([date]) => date.startsWith(`${year}-`))

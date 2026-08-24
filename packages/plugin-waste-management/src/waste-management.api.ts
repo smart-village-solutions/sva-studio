@@ -4,3 +4,4 @@ export * from './waste-management.api.read.js';
 export * from './waste-management.api.master-data.js';
 export * from './waste-management.api.master-data-addresses.js';
 export * from './waste-management.api.operations.js';
+export * from './waste-management.api.annual-tour-transfer.js';

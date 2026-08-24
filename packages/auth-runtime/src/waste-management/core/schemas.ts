@@ -1,6 +1,7 @@
 import {
   isPlausibleEmailAddress,
   isValidWasteIsoDateOnly,
+  wasteAnnualTourTransferLimits,
   wasteManagementMasterDataContract,
   type WasteTourRecurrence,
 } from '@sva/core';
@@ -370,6 +371,44 @@ const createWasteTourSchema = z.object({
 
 const updateWasteTourSchema = createWasteTourSchema.omit({ id: true });
 
+const wasteAnnualTourReplacementDateSchema = z
+  .object({
+    sourceResourceId: z.string().trim().min(1),
+    targetDate: wasteTourDateSchema,
+  })
+  .strict();
+
+const previewWasteAnnualTourTransferSchema = z
+  .object({
+    sourceYear: z.number().int(),
+    selectedTourIds: z
+      .array(z.string().trim().min(1))
+      .max(wasteAnnualTourTransferLimits.tours)
+      .optional(),
+    replacementDates: z
+      .array(wasteAnnualTourReplacementDateSchema)
+      .max(wasteAnnualTourTransferLimits.relationships)
+      .optional(),
+  })
+  .strict();
+
+const createWasteAnnualTourTransferSchema = z
+  .object({
+    sourceYear: z.number().int(),
+    selectedTourIds: z
+      .array(z.string().trim().min(1))
+      .min(1)
+      .max(wasteAnnualTourTransferLimits.tours),
+    replacementDates: z
+      .array(wasteAnnualTourReplacementDateSchema)
+      .max(wasteAnnualTourTransferLimits.relationships),
+    acknowledgedConflictTourIds: z
+      .array(z.string().trim().min(1))
+      .max(wasteAnnualTourTransferLimits.tours),
+    previewFingerprint: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  })
+  .strict();
+
 const wasteTourValidityDateOperationSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('unchanged') }).strict(),
   z.object({ mode: z.literal('clear') }).strict(),
@@ -472,6 +511,8 @@ export const wasteManagementTourSchemas = {
   createWasteLocationTourLinksBulkSchema,
   createWasteTourSchema,
   updateWasteTourSchema,
+  previewWasteAnnualTourTransferSchema,
+  createWasteAnnualTourTransferSchema,
   updateWasteTourValidityBulkSchema,
   createWasteTourDateShiftSchema,
   updateWasteTourDateShiftSchema,

@@ -87,6 +87,7 @@ type WasteToursContentBodyProps = {
   readonly onOpenCreateDialog: () => void;
   readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
   readonly setBulkValidityOpen: Dispatch<SetStateAction<boolean>>;
+  readonly onOpenAnnualTransfer: () => void;
   readonly filters: WasteToursFilterViewModel;
   readonly table: WasteToursTableViewModel;
 };
@@ -96,6 +97,7 @@ export const WasteToursContentBody = ({
   onOpenCreateDialog,
   setBulkDeleteOpen,
   setBulkValidityOpen,
+  onOpenAnnualTransfer,
   filters,
   table,
 }: WasteToursContentBodyProps) => (
@@ -123,6 +125,8 @@ export const WasteToursContentBody = ({
         draftEndDateTo={filters.draftEndDateTo}
         hasActiveFilters={filters.hasActiveFilters}
         onOpenCreateDialog={onOpenCreateDialog}
+        onOpenAnnualTransfer={onOpenAnnualTransfer}
+        canTransferAnnualTours={table.canDuplicateTour && table.canManageScheduling}
         onOpenFilterDialog={filters.onOpenFilterDialog}
         onFilterDialogOpenChange={filters.onFilterDialogOpenChange}
         onOpenBulkDelete={() => setBulkDeleteOpen(true)}

@@ -26,6 +26,7 @@ const getAuditLogContext = (input: {
         action_owner: input.event.pluginAction.actionOwner,
         plugin_action_result: input.event.pluginAction.result,
         reason_code: input.event.pluginAction.reasonCode,
+        batch_summary: input.event.pluginAction.batchSummary,
         ...(input.event.pluginAction.mainserverMutation
           ? {
               acting_principal_type:

@@ -12,8 +12,10 @@ import { applyWasteToursFilters, resetWasteToursFilters, updateWasteToursSorting
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 import { WasteToursBulkValidityDialog } from './waste-management.tours-bulk-validity.js';
 import { useWasteToursContentSorting } from './waste-management.tours.content.sorting.js';
+import { useWasteToursAnnualTransfer } from './waste-management.tours-annual-transfer.js';
 export { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
 export const WasteToursContent = (props: WasteToursContentProps) => {
+  const annualTransfer = useWasteToursAnnualTransfer(props);
   const {
     assignmentContextLoading,
     message,
@@ -60,8 +62,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     readonly tour: (typeof tours)[number];
     readonly nextActive: boolean;
   } | null>(null);
-  const [statusChangePending, setStatusChangePending] = useState(false);
-  const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
+  const [statusChangePending, setStatusChangePending] = useState(false); const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
   const {
     selectedTourIds,
     setSelectedTourIds,
@@ -203,9 +204,11 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         setBulkValidityOpen={setBulkValidityOpen}
         fractions={fractions}
         onOpenCreateDialog={onOpenCreateDialog}
+        onOpenAnnualTransfer={annualTransfer.open}
         filters={filters}
         table={table}
       />
+      {annualTransfer.dialog}
       <WasteToursBulkValidityDialog
         open={bulkValidityOpen}
         tours={sortedTours}

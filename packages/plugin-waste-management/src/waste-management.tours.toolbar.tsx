@@ -29,6 +29,8 @@ type WasteToursToolbarProps = {
   readonly draftEndDateTo: string | undefined;
   readonly hasActiveFilters: boolean;
   readonly onOpenCreateDialog: () => void;
+  readonly onOpenAnnualTransfer: () => void;
+  readonly canTransferAnnualTours: boolean;
   readonly onOpenFilterDialog: () => void;
   readonly onFilterDialogOpenChange: (open: boolean) => void;
   readonly onOpenBulkDelete: () => void;
@@ -124,7 +126,7 @@ const toWasteToursToolbarFiltersProps = ({
 });
 
 export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
-  const { onOpenCreateDialog } = props;
+  const { onOpenCreateDialog, onOpenAnnualTransfer, canTransferAnnualTours } = props;
   const actionsProps = toWasteToursToolbarActionsProps(props);
   const filtersProps = toWasteToursToolbarFiltersProps(props);
   const pt = usePluginTranslation('wasteManagement');
@@ -135,7 +137,17 @@ export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
         <WasteToursToolbarActions {...actionsProps} />
         <WasteToursToolbarFilters {...filtersProps} />
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {canTransferAnnualTours ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onOpenAnnualTransfer}
+            className="rounded-lg"
+          >
+            {pt('tours.annualTransfer.open')}
+          </Button>
+        ) : null}
         <Button type="button" onClick={onOpenCreateDialog} className="rounded-lg">
           {pt('tours.actions.openCreate')}
         </Button>

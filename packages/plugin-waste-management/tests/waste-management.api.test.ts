@@ -16,6 +16,7 @@ import {
   createWasteManagementTour,
   createWasteManagementTourDateShift,
   createWasteManagementTourAssignment,
+  createWasteAnnualTourTransfer,
   deleteWasteManagementLocationTourLink,
   deleteWasteManagementLocationTourPickupDate,
   deleteWasteManagementTourAssignment,
@@ -27,6 +28,7 @@ import {
   getWasteManagementSchedulingOverview,
   getWasteManagementSettings,
   getWasteManagementToursOverview,
+  previewWasteAnnualTourTransfer,
   startWasteManagementInitialize,
   startWasteManagementImport,
   uploadWasteManagementImportSource,
@@ -1166,6 +1168,72 @@ describe('waste-management api client', () => {
     );
   });
 
+  it('previews and creates an annual tour transfer with an explicit idempotency key', async () => {
+    const preview = {
+      sourceYear: 2026,
+      targetYear: 2027,
+      previewFingerprint: `sha256:${'a'.repeat(64)}`,
+      tours: [],
+      summary: {
+        transferable: 0,
+        alreadyEffective: 0,
+        blocked: 0,
+        selected: 0,
+        relationships: 0,
+        excluded: 0,
+      },
+    };
+    const result = {
+      sourceYear: 2026,
+      targetYear: 2027,
+      createdTourIds: ['target-1'],
+      existingTourIds: [],
+      createdCount: 1,
+      existingCount: 0,
+      listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+    };
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: preview }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: result }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+    await previewWasteAnnualTourTransfer({ sourceYear: 2026 });
+    await createWasteAnnualTourTransfer(
+      {
+        sourceYear: 2026,
+        selectedTourIds: ['source-1'],
+        replacementDates: [],
+        acknowledgedConflictTourIds: [],
+        previewFingerprint: preview.previewFingerprint,
+      },
+      'annual-idem-1'
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/waste-management/tours/annual-transfer/preview',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ sourceYear: 2026 }) })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/waste-management/tours/annual-transfer',
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+    const createHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Headers;
+    expect(createHeaders.get('Idempotency-Key')).toBe('annual-idem-1');
+  });
+
   it('loads the waste scheduling overview through the host facade', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
@@ -1814,12 +1882,17 @@ describe('waste-management api client', () => {
   });
 
   it('uploads import files before job creation and returns the opaque source reference', async () => {
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
-      data: {
-        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
-        sizeBytes: 3,
-      },
-    }), { status: 201, headers: { 'Content-Type': 'application/json' } }));
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
+            sizeBytes: 3,
+          },
+        }),
+        { status: 201, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
     const file = new File(['zip'], 'waste.zip', { type: 'application/zip' });
 
     await expect(uploadWasteManagementImportSource(file, 'application/zip')).resolves.toBe(

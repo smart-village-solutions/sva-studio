@@ -2,6 +2,7 @@ import { parsePermissionDenialDetails, type PermissionDenialDetails } from '@sva
 
 import { mergeRequestHeaders } from './http-client.js';
 import { combineAbortSignals } from './mainserver-abort-signal.js';
+import { attachMainserverErrorMetadata } from './mainserver-error-metadata.js';
 
 export type MainserverErrorFactory<TError extends Error> = (
   code: string,
@@ -189,6 +190,7 @@ const parseMainserverErrorResponse = async (
 ): Promise<{
   readonly code: string;
   readonly message: string;
+  readonly details?: unknown;
   readonly permissionDenial?: PermissionDenialDetails;
 }> => {
   if (isHtmlLikeContentType(response)) {
@@ -211,10 +213,12 @@ const parseMainserverErrorResponse = async (
     const structuredError = readStructuredErrorDetails(body.error);
     const errorCode = readNonEmptyString(body.error) ?? structuredError.code ?? fallback.code;
     const message = readNonEmptyString(body.message) ?? structuredError.message ?? errorCode;
-    const permissionDenial = parsePermissionDenialDetails(body.details ?? structuredError.details);
+    const details = body.details ?? structuredError.details;
+    const permissionDenial = parsePermissionDenialDetails(details);
     return {
       code: errorCode,
       message,
+      ...(details !== undefined ? { details } : {}),
       ...(permissionDenial ? { permissionDenial } : {}),
     };
   } catch (error) {
@@ -233,22 +237,17 @@ const assertMainserverResponseOk = async <TError extends Error>(
   if (response.ok) {
     return;
   }
-  const { code, message, permissionDenial } = await parseMainserverErrorResponse(response, signal);
+  const { code, message, details, permissionDenial } = await parseMainserverErrorResponse(
+    response,
+    signal
+  );
   const error = resolveMainserverErrorFactory(errorFactory)(code, message, permissionDenial);
-  if (!('httpStatus' in error)) {
-    Object.defineProperty(error, 'httpStatus', {
-      configurable: true,
-      enumerable: false,
-      value: response.status,
-    });
-  }
-  if (permissionDenial && !('permissionDenial' in error)) {
-    Object.defineProperty(error, 'permissionDenial', {
-      configurable: true,
-      enumerable: true,
-      value: permissionDenial,
-    });
-  }
+  attachMainserverErrorMetadata({
+    error,
+    httpStatus: response.status,
+    details,
+    permissionDenial,
+  });
   throw error;
 };
 

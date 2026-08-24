@@ -102,6 +102,45 @@ describe('waste-management.tours.presentation', () => {
     ).toEqual(['2026-09-09']);
   });
 
+  it('carries a valid prior-year tour shift into its destination year', () => {
+    const entries = calculateTourOccurrenceEntriesForYear(
+      {
+        id: 'tour-cross-year-shift',
+        recurrence: 'weekly',
+        firstDate: '2026-12-31',
+        endDate: '2027-01-10',
+        customDates: [],
+      } as never,
+      2027,
+      {
+        tourDateShifts: [
+          {
+            id: 'shift-cross-year',
+            tourId: 'tour-cross-year-shift',
+            originalDate: '2026-12-31',
+            actualDate: '2027-01-02',
+            hasYear: true,
+          },
+        ],
+        globalDateShifts: [],
+        holidayRules: [],
+      } as never
+    );
+
+    expect(entries).toEqual([
+      {
+        date: '2027-01-02',
+        shifted: true,
+        originalDate: '2026-12-31',
+      },
+      {
+        date: '2027-01-07',
+        shifted: false,
+        originalDate: null,
+      },
+    ]);
+  });
+
   it('returns no occurrences when the tour has no recurrence or no first date', () => {
     expect(
       calculateTourOccurrencesForYear(

@@ -17,6 +17,22 @@ Die Mehrfachbearbeitung gilt für feste Wiederholungen wie wöchentlich, zweiwö
 
 `Gültig ab` ist zugleich der Startanker für die Berechnung wiederkehrender Termine und kann deshalb nicht entfernt werden. Soll eine Tour vorübergehend keine Termine liefern, deaktivieren Sie stattdessen die Tour.
 
+## Tourensatz in das Folgejahr übernehmen
+
+Die Aktion `Tourensatz ins Folgejahr übernehmen` führt durch Quelljahr, Vorschau und Bestätigung. Als Quelle stehen ausschließlich das aktuelle und das vorherige Kalenderjahr zur Verfügung; das Ziel ist unveränderlich das direkte Folgejahr. Erforderlich sind die Berechtigungen für Touren- und Terminplanung.
+
+Die Vorschau zeigt jede relevante aktive Tour in einer von drei Gruppen:
+
+- `Wird übernommen`: Die Tour kann ausgewählt werden. Ein möglicher paralleler Planungsstand muss ausdrücklich bestätigt werden.
+- `Gilt bereits im Folgejahr`: Die Quelltour reicht fachlich bereits in das Zieljahr und wird nicht kopiert.
+- `Blockiert`: Ungültige Planungsdaten, eine abweichend belegte stabile Zielidentität oder ein nicht eindeutig abbildbares Datum verhindern die Übernahme. Für Schalttage und Datumskollisionen kann die Vorschau ein Ersatzdatum im Folgejahr verlangen.
+
+Wöchentliche, zweiwöchentliche, vierwöchentliche und benutzerdefinierte Tagesabstände setzen ihren bisherigen Rhythmus ohne Neustart fort. Konkrete Termine werden auf den nächstgelegenen gleichen Wochentag im Folgejahr abgebildet und überschreiten dessen Grenzen nicht. Tourfelder, Abfallarten, Abholorte, konkrete Termine, Einsätze und tourbezogene Verschiebungen werden gemeinsam übernommen.
+
+Bei Touren, die bereits vor dem Quelljahr begonnen haben, wird nur der im Quelljahr wirksame Gültigkeitsausschnitt übertragen; der ursprüngliche Beginn bleibt der Taktanker. Jährliche Touren behalten dagegen den Monat und Tag ihres ursprünglichen Jahrestags. Endet ihr wirksamer Ausschnitt bereits vor diesem Jahrestag, wird kein invertierter Zielzeitraum erzeugt und die Tour bleibt blockiert. Bereits bestehende jährliche Touren mit demselben Jahrestag werden als mögliche parallele Planung angezeigt. Jahresbezogene Verschiebungen über Silvester behalten ihren relativen Jahresversatz. Nicht automatisch abbildbare Grenzen werden getrennt als Gültigkeitsbeginn oder Gültigkeitsende benannt; Ersatztage sind ausschließlich für die von der Vorschau gemeldeten Ressourcen und das jeweils an der Eingabe ausgewiesene Zieljahr zulässig. Dieses kann bei einer jahresübergreifenden Verschiebung nach dem direkten Folgejahr liegen. Doppelte jahresunabhängige Verschiebungsregeln können durch ein Ersatzdatum nicht verändert werden und müssen in den Quelldaten bereinigt werden. Die Vorschau zeigt außerdem den tatsächlichen festen oder benutzerdefinierten Turnus, Quell- und Zielzeitraum mit Wochentagen, bis zu fünf konkrete Datumsabbildungen, Mengen je Beziehungstyp, ausgeschlossene Daten sowie die konkreten Merkmale möglicher Konflikte. „Ergebnis anzeigen“ entfernt alte Such-, Fraktions- und Datumsfilter und zeigt den inaktiven Bestand im Zieljahr.
+
+Nach der Bestätigung entstehen alle neuen Touren atomar und zunächst inaktiv. Prüfen Sie anschließend die gefilterte Tourenliste und aktivieren Sie ausschließlich fachlich freigegebene Touren. Die Quelle bleibt unverändert; vorhandene Zieltouren werden weder ersetzt noch gelöscht. Pro Vorgang sind höchstens 1.000 Touren und 100.000 kopierrelevante Beziehungen zulässig.
+
 ## Verschiebungen nachvollziehen
 
 Die Spalte `Verschiebungen` der Tourentabelle zählt tourspezifische und globale Verschiebungen sowie tatsächlich berechnete Feiertagsverschiebungen. Ist mindestens eine Verschiebung vorhanden, öffnet der Zähler eine Detailansicht mit ursprünglichem und neuem Datum, Quelle und vorhandenem Grund. Zähler und Detailansicht basieren auf derselben chronologisch sortierten Datenmenge.

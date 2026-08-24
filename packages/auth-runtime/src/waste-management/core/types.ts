@@ -40,18 +40,10 @@ import type { ResolvedWasteDataSource } from '@sva/server-runtime';
 import type { emitAuthAuditEvent } from '../../audit-events.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import type { Session } from '../../types.js';
+import type { WasteAnnualTourTransferHandlerDeps } from './annual-tour-transfer-deps.js';
 import type { WasteCityHandlerDeps } from './city-deps.js';
+import type { SaveWasteCustomRecurrencePresetsInput } from './custom-recurrence-deps.js';
 import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
-
-export type WasteCustomRecurrencePresetFallback = {
-  readonly kind: 'preset' | 'default';
-  readonly value: string;
-};
-
-export type SaveWasteCustomRecurrencePresetsInput = {
-  readonly nextItems: readonly Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>[];
-  readonly deletedPresetFallbacks: Readonly<Record<string, WasteCustomRecurrencePresetFallback>>;
-};
 
 type ResolveWasteActorInfoResult =
   | {
@@ -66,7 +58,7 @@ type ResolveWasteActorInfoResult =
       readonly error: Response;
     };
 
-export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
+type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
   readonly getRequestId?: () => string | undefined;
   readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
   readonly loadDefaultInterfaceRecord?: (
@@ -317,3 +309,6 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
   ) => Promise<WasteHolidayRuleRecord | null>;
   readonly deleteWasteGlobalDateShift?: (instanceId: string, shiftId: string) => Promise<void>;
 };
+
+export type WasteManagementHandlerDeps = WasteManagementHandlerDepsBase &
+  WasteAnnualTourTransferHandlerDeps;

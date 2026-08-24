@@ -180,6 +180,78 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     apply: 'Zeitraum ändern',
     cancel: 'Abbrechen',
   },
+  annualTransfer: {
+    open: 'Tourensatz ins Folgejahr übernehmen',
+    title: 'Jahresplanung ins Folgejahr übernehmen',
+    description: 'Wählen Sie das Quelljahr. Das direkte Folgejahr wird automatisch festgelegt.',
+    sourceYear: 'Quelljahr',
+    targetYear: 'Unveränderliches Folgejahr: {{year}}',
+    loadPreview: 'Vorschau erstellen',
+    refreshPreview: 'Vorschau aktualisieren',
+    review: 'Auswahl prüfen',
+    confirm: 'Inaktiv übernehmen',
+    back: 'Zurück',
+    cancel: 'Abbrechen',
+    close: 'Schließen',
+    loading: 'Vorschau wird erstellt…',
+    creating: 'Tourensatz wird angelegt…',
+    transferable: 'Wird übernommen',
+    alreadyEffective: 'Gilt bereits im Folgejahr',
+    blocked: 'Prüfung erforderlich',
+    selectTour: 'Tour {{name}} übernehmen',
+    acknowledgeConflict: 'Mögliche parallele Planung für {{name}} geprüft und bestätigt',
+    replacementDate: 'Ersatzdatum für {{name}} im Zieljahr {{year}}',
+    summaryDetailed:
+      '{{transferable}} übernehmbar, {{alreadyEffective}} gelten bereits, {{blocked}} blockiert. Ausgewählt: {{selected}} Touren mit {{relationships}} Beziehungen; {{excluded}} Daten außerhalb des Quelljahres werden ausgeschlossen.',
+    recurrence: 'Turnus: {{value}}',
+    firstTargetDate: 'Erster Termin im Folgejahr: {{date}}',
+    tourCounts:
+      'Abfallarten: {{wasteFractions}}, konkrete Tourtermine: {{customDates}}, Abholorte: {{locations}}, ortsbezogene Termine: {{pickupDates}}, Einsätze: {{assignments}}, Verschiebungen: {{shifts}}, ausgeschlossen: {{excluded}}',
+    period: 'Gültigkeitszeitraum: {{source}} → {{target}}',
+    dateExample: '{{source}} → {{target}}',
+    conflicts: 'Mögliche parallele Planung',
+    conflictDetails: 'Ausschlaggebende Merkmale: {{features}}',
+    conflictFeatures: {
+      'waste-fractions': 'gleiche Abfallarten',
+      locations: 'gleiche Abholorte',
+      cadence: 'gleicher Tagesabstand',
+      date: 'gemeinsamer Termin',
+      'stable-target-id': 'bereits vorhandenes Ziel derselben Quelltour',
+    },
+    alreadyEffectiveReason: 'Diese Tour wirkt bereits im Folgejahr und wird nicht dupliziert.',
+    blockedReasons: {
+      invalidPlanningData:
+        'Die Planungsdaten sind unvollständig oder ungültig und müssen zuerst an der Quelltour korrigiert werden.',
+      replacementDateRequired:
+        'Mindestens ein Kalenderdatum benötigt ein ausdrückliches Ersatzdatum im Folgejahr.',
+      targetDateCollision:
+        'Mehrere Quelldaten würden auf dasselbe Zieldatum fallen. Legen Sie eindeutige Ersatzdaten fest.',
+      targetIdentityConflict:
+        'Ein bereits vorhandenes Ziel derselben Quelltour weicht fachlich ab und wird nicht überschrieben.',
+      unknown:
+        'Die Tour kann nicht sicher übernommen werden. Prüfen Sie die Planungsdaten der Quelltour.',
+    },
+    replacementValidityStart:
+      'Ersatzdatum für den Gültigkeitsbeginn von {{name}} im Zieljahr {{year}}',
+    replacementValidityEnd: 'Ersatzdatum für das Gültigkeitsende von {{name}} im Zieljahr {{year}}',
+    noTours: 'Für dieses Quelljahr wurden keine relevanten Touren gefunden.',
+    previewError: 'Die Vorschau konnte nicht erstellt werden.',
+    createError: 'Der Tourensatz konnte nicht angelegt werden.',
+    stale: 'Die Planung hat sich geändert. Bitte prüfen Sie die aktualisierte Vorschau erneut.',
+    result:
+      '{{created}} Touren wurden inaktiv für {{year}} angelegt; {{existing}} bereits identische Touren wurden wiederverwendet.',
+    showResult: 'Inaktive Touren im Folgejahr anzeigen',
+    steps: 'Schritt {{current}} von 3',
+    weekdays: {
+      sunday: 'Sonntag',
+      monday: 'Montag',
+      tuesday: 'Dienstag',
+      wednesday: 'Mittwoch',
+      thursday: 'Donnerstag',
+      friday: 'Freitag',
+      saturday: 'Samstag',
+    },
+  },
   shiftDetails: {
     open: '{{count}} Verschiebungen für {{name}} anzeigen',
     title: 'Verschiebungen: {{name}}',

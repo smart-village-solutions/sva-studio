@@ -107,10 +107,6 @@ export type {
   PluginNavigationSection,
   PluginRouteDefinition,
   PluginRouteGuard,
-  DocumentationPageId,
-  DocumentationPageType,
-  RouteDocumentation,
-  RouteDocumentationExclusionReason,
   PluginRequestExecutionContext,
   PluginSnapshot,
   ResolvedPluginCatalog,
@@ -191,12 +187,6 @@ export type {
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
-} from './public-api.js';
-export {
-  assertPluginRouteDocumentation,
-  defineRouteDocumentation,
-  isDocumentationPageType,
-  normalizeDocumentationPageId,
 } from './public-api.js';
 export type * from './waste-collection-location-list-public-api.js';
 export type * from './waste-annual-tour-transfer.js';

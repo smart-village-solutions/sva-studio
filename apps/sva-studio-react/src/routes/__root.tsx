@@ -10,7 +10,7 @@ import {
   useMatches,
   useRouterState,
 } from '@tanstack/react-router';
-import { resolveActiveRouteDocumentation } from '@sva/routing';
+import { resolveActiveRouteDocumentation } from '@sva/routing/documentation';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { createServerOnlyFn } from '@tanstack/react-start';
 import React from 'react';

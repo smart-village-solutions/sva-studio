@@ -49,7 +49,11 @@
         "../../packages/plugin-waste-management/src/waste-management.job-definitions.ts"
       ],
       "@sva/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
+      "@sva/plugin-sdk/route-documentation": [
+        "../../packages/plugin-sdk/src/route-documentation.ts"
+      ],
       "@sva/routing": ["../../packages/routing/src/index.ts"],
+      "@sva/routing/documentation": ["../../packages/routing/src/route-documentation.ts"],
       "@sva/routing/route-search": ["../../packages/routing/src/route-search.ts"],
       "@sva/routing/server": ["../../packages/routing/src/index.server.ts"],
       "@sva/mail-runtime": ["../../packages/mail-runtime/src/index.ts"],

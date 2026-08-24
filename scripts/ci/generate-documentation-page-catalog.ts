@@ -12,9 +12,9 @@ import { pluginProjects } from '../../packages/plugin-projects/src/plugin.tsx';
 import { pluginSurveys } from '../../packages/plugin-surveys/src/plugin.tsx';
 import { pluginWasteManagement } from '../../packages/plugin-waste-management/src/plugin.tsx';
 import {
-  collectDocumentationPageCatalog,
   type AppRouteBindings,
 } from '../../packages/routing/src/index.ts';
+import { collectDocumentationPageCatalog } from '../../packages/routing/src/documentation-page-catalog.ts';
 import { appAdminResources } from '../../apps/sva-studio-react/src/routing/admin-resources.ts';
 
 const outputPath = resolve('docs/user-documentation/page-catalog.json');

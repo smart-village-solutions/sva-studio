@@ -1,4 +1,4 @@
-import type { RouteDocumentation } from '@sva/plugin-sdk';
+import type { RouteDocumentation } from '@sva/plugin-sdk/route-documentation';
 
 declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {

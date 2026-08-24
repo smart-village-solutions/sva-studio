@@ -1,4 +1,4 @@
-import { defineRouteDocumentation, type AdminResourceDefinition } from '@sva/plugin-sdk';
+import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 import { createRoute, type RootRoute } from '@tanstack/react-router';
 
 import { withCoreContentAdminResource } from './admin-resource-route-aliases.js';
@@ -17,6 +17,7 @@ import {
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
+import { createAdminResourceRouteDocumentation } from './admin-resource-route-documentation.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import type { RouteGuardContext } from './protected.routes.js';
 import { enforceRouteAccessRequirement } from './ui-route-access.js';
@@ -192,15 +193,6 @@ const createAdminResourceRouteDefinitions = (
       },
       ...createHistoryRouteDefinition(resolvedBindings.history, resource, detailPath),
     ] as const;
-  });
-
-const createAdminResourceRouteDocumentation = (
-  definition: UiRouteDefinition
-) =>
-  defineRouteDocumentation({
-    kind: 'page',
-    id: `${definition.resource.resourceId}.${definition.routeKind}`,
-    pageType: definition.routeKind,
   });
 
 export const collectAdminResourceRouteDocumentationPages = (

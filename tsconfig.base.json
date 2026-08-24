@@ -109,6 +109,9 @@
       "@sva/instance-registry/service-types": ["packages/instance-registry/src/service-types.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
+      "@sva/plugin-sdk/route-documentation": [
+        "packages/plugin-sdk/src/route-documentation.ts"
+      ],
       "@sva/plugin-events/events.pages": ["packages/plugin-events/src/events.pages.tsx"],
       "@sva/studio-module-iam": ["packages/studio-module-iam/src/index.ts"],
       "@sva/plugin-events": ["packages/plugin-events/src/index.ts"],
@@ -121,6 +124,7 @@
       "@sva/studio-ui-react": ["packages/studio-ui-react/src/index.ts"],
       "@sva/server-runtime": ["packages/server-runtime/src/index.ts"],
       "@sva/routing": ["packages/routing/src/index.ts"],
+      "@sva/routing/documentation": ["packages/routing/src/route-documentation.ts"],
       "@sva/sva-mainserver": ["packages/sva-mainserver/src/index.ts"],
       "@sva/sva-mainserver/server": ["packages/sva-mainserver/src/index.server.ts"],
       "@sva/plugin-poi": ["packages/plugin-poi/src/index.ts"],

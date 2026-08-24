@@ -19,6 +19,9 @@ export const sharedVitestConfig = defineConfig({
       'react-dom/server': fileURLToPath(
         new URL('./src/lib/react-dom-server-compat.ts', import.meta.url)
       ),
+      '@sva/routing/documentation': fileURLToPath(
+        new URL('../../packages/routing/src/route-documentation.ts', import.meta.url)
+      ),
       '@sva/routing/server': fileURLToPath(
         new URL('../../packages/routing/src/index.server.ts', import.meta.url)
       ),
@@ -118,6 +121,9 @@ export const sharedVitestConfig = defineConfig({
       ),
       '@sva/plugin-waste-management': fileURLToPath(
         new URL('../../packages/plugin-waste-management/src/index.ts', import.meta.url)
+      ),
+      '@sva/plugin-sdk/route-documentation': fileURLToPath(
+        new URL('../../packages/plugin-sdk/src/route-documentation.ts', import.meta.url)
       ),
       '@sva/plugin-sdk': fileURLToPath(
         new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)

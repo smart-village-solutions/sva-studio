@@ -13,4 +13,15 @@ describe('routing vitest config', () => {
       ]),
     );
   });
+
+  it('resolves the plugin SDK documentation subpath from source', () => {
+    expect(vitestConfig.resolve?.alias).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          find: /^@sva\/plugin-sdk\/route-documentation$/,
+          replacement: expect.stringContaining('/packages/plugin-sdk/src/route-documentation.ts'),
+        }),
+      ])
+    );
+  });
 });

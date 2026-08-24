@@ -14,6 +14,10 @@
     "./admin-resources": {
       "types": "./dist/admin-resources.d.ts",
       "default": "./dist/admin-resources.js"
+    },
+    "./route-documentation": {
+      "types": "./dist/route-documentation.d.ts",
+      "default": "./dist/route-documentation.js"
     }
   },
   "dependencies": {

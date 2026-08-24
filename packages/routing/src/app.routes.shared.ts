@@ -1,5 +1,7 @@
-import type { AdminResourceDefinition, RouteDocumentation, RouteFactory } from '@sva/plugin-sdk';
-import { defineRouteDocumentation, mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
+import type { AdminResourceDefinition, RouteFactory } from '@sva/plugin-sdk';
+import { mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
+import { defineRouteDocumentation } from '@sva/plugin-sdk/route-documentation';
+import type { RouteDocumentation } from '@sva/plugin-sdk/route-documentation';
 import { createRoute, type AnyRoute, type RootRoute } from '@tanstack/react-router';
 
 import {

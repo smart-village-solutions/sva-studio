@@ -156,7 +156,11 @@ export default defineConfig({
       },
       { find: /^@sva\/instance-registry$/, replacement: resolve(__dirname, '../instance-registry/src/index.ts') },
       { find: /^@sva\/studio-module-iam$/, replacement: resolve(__dirname, '../studio-module-iam/src/index.ts') },
-      { find: '@sva/plugin-sdk', replacement: resolve(__dirname, '../plugin-sdk/src/index.ts') },
+      {
+        find: /^@sva\/plugin-sdk\/route-documentation$/,
+        replacement: resolve(__dirname, '../plugin-sdk/src/route-documentation.ts'),
+      },
+      { find: /^@sva\/plugin-sdk$/, replacement: resolve(__dirname, '../plugin-sdk/src/index.ts') },
       { find: '@sva/server-runtime', replacement: resolve(__dirname, '../server-runtime/src/index.ts') },
     ],
   },

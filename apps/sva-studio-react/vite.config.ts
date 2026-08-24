@@ -110,6 +110,9 @@ const config = defineConfig({
         '../../node_modules/.pnpm/node_modules/use-callback-ref/dist/es2015'
       ),
       // Workspace package subpath exports direkt auf Source files mappen (für Dev-SSR)
+      '@sva/routing/documentation': resolveAppPath(
+        '../../packages/routing/src/route-documentation.ts'
+      ),
       '@sva/routing/server': resolveAppPath('../../packages/routing/src/index.server.ts'),
       '@sva/routing/auth': resolveAppPath('../../packages/routing/src/auth.routes.ts'),
       '@sva/routing/route-search': resolveAppPath('../../packages/routing/src/route-search.ts'),
@@ -254,6 +257,9 @@ const config = defineConfig({
       '@sva/plugin-surveys': resolveAppPath('../../packages/plugin-surveys/src/index.ts'),
       '@sva/plugin-waste-management': resolveAppPath(
         '../../packages/plugin-waste-management/src/index.ts'
+      ),
+      '@sva/plugin-sdk/route-documentation': resolveAppPath(
+        '../../packages/plugin-sdk/src/route-documentation.ts'
       ),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
       '@sva/plugin-events/events.pages': resolveAppPath(

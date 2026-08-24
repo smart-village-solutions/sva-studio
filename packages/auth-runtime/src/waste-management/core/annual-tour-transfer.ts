@@ -128,7 +128,7 @@ const executeConfirmedAnnualTourTransfer = async (input: {
 }): Promise<Response> => {
   const reservation = await reserveAnnualTourTransfer(input);
   if ('response' in reservation) return reservation.response;
-  const stopLeaseHeartbeat = startAnnualTourTransferLeaseHeartbeat({
+  const leaseHeartbeat = startAnnualTourTransferLeaseHeartbeat({
     instanceId: input.instanceId,
     actorAccountId: input.actorAccountId,
     idempotencyKey: input.idempotencyKey,
@@ -155,7 +155,7 @@ const executeConfirmedAnnualTourTransfer = async (input: {
           input.requestId
         );
     }
-    leaseVerified = await stopLeaseHeartbeat();
+    leaseVerified = await leaseHeartbeat.verify();
     if (!leaseVerified) {
       return createApiError(
         409,
@@ -164,14 +164,14 @@ const executeConfirmedAnnualTourTransfer = async (input: {
         input.requestId
       );
     }
-    return completeAnnualTourTransfer({
+    return await completeAnnualTourTransfer({
       ...input,
       result,
       response,
       leaseToken: reservation.leaseToken,
     });
   } finally {
-    if (!leaseVerified) await stopLeaseHeartbeat();
+    await leaseHeartbeat.stop();
   }
 };
 

@@ -950,6 +950,43 @@ describe('waste annual tour transfer', () => {
     expect(preview.summary.selected).toBe(0);
   });
 
+  it('excludes shifted occurrences from recurring schedule fallback conflicts', async () => {
+    const sourceTour = tour({
+      recurrence: 'weekly',
+      firstDate: '2026-01-12',
+      endDate: '2026-01-18',
+    });
+    const targetTour = tour({
+      id: '9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b',
+      recurrence: 'weekly',
+      firstDate: '2027-01-11',
+      endDate: '2027-01-11',
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'shift-single-recurring-occurrence',
+            tourId: sourceTour.id,
+            originalDate: '2026-01-12',
+            actualDate: '2026-01-13',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([targetTour]),
+    });
+
+    expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]?.actualDate).toBe('2027-01-12');
+    expect(preview.tours[0]?.conflicts).toEqual([]);
+    expect(preview.summary.selected).toBe(1);
+  });
+
   it('preserves the year offset of annual shifts during conflict detection', async () => {
     const sourceTour = tour({
       recurrence: 'on-demand',

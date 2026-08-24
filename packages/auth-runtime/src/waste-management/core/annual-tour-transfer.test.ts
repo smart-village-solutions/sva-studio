@@ -91,7 +91,7 @@ describe('annual tour transfer handlers', () => {
   it('renews the fenced lease while a long-running transfer remains active', async () => {
     vi.useFakeTimers();
     try {
-      const stop = startAnnualTourTransferLeaseHeartbeat({
+      const heartbeat = startAnnualTourTransferLeaseHeartbeat({
         instanceId: 'tenant-a',
         actorAccountId: 'account-1',
         idempotencyKey: 'idem-1',
@@ -102,7 +102,8 @@ describe('annual tour transfer handlers', () => {
       expect(idempotency.renew).toHaveBeenCalledWith(
         expect.objectContaining({ leaseToken: 'lease-1' })
       );
-      await expect(stop()).resolves.toBe(true);
+      await expect(heartbeat.verify()).resolves.toBe(true);
+      await expect(heartbeat.stop()).resolves.toBe(true);
       expect(idempotency.renew).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
@@ -317,6 +318,38 @@ describe('annual tour transfer handlers', () => {
     expect(response.status).toBe(201);
     expect(emitAuditEvent).not.toHaveBeenCalled();
     expect(idempotency.complete).toHaveBeenCalled();
+  });
+
+  it('returns a conflict when fenced completion loses lease ownership', async () => {
+    idempotency.complete.mockResolvedValueOnce(false);
+    const response =
+      await wasteManagementAnnualTourTransferHandlers.createWasteAnnualTourTransferInternal(
+        request(
+          '/api/v1/waste-management/tours/annual-transfer',
+          {
+            sourceYear: 2026,
+            selectedTourIds: ['source-1'],
+            replacementDates: [],
+            acknowledgedConflictTourIds: [],
+            previewFingerprint: `sha256:${'a'.repeat(64)}`,
+          },
+          { 'Idempotency-Key': 'idem-lost-at-completion' }
+        ),
+        actor,
+        {
+          resolvePermissions: permissions,
+          resolveActorInfo: vi.fn(async () => ({
+            actor: { instanceId: 'tenant-a', actorAccountId: 'account-1' },
+          })),
+          createWasteAnnualTourTransfer: vi.fn(async () => result),
+          emitAuditEvent: vi.fn(async () => undefined),
+        }
+      );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'idempotency_in_progress' },
+    });
   });
 
   it('releases the fenced reservation after a transient failure so the request can retry', async () => {

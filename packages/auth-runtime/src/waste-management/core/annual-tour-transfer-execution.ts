@@ -10,6 +10,7 @@ import {
   releaseIdempotencyReservation,
 } from '../../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import { createApiError } from '../../shared/request-helpers.js';
 import { emitWasteAuditEvent } from './auth.js';
 import { annualTourTransferEndpoint } from './annual-tour-transfer-idempotency.js';
 import type { WasteManagementHandlerDeps } from './types.js';
@@ -18,6 +19,7 @@ export const completeAnnualTourTransfer = async (input: {
   instanceId: string;
   actorAccountId: string;
   idempotencyKey: string;
+  requestId?: string;
   create: WasteAnnualTourTransferCreateInput;
   result?: WasteAnnualTourTransferResult;
   response: Response;
@@ -79,7 +81,7 @@ export const completeAnnualTourTransfer = async (input: {
       requestId: input.idempotencyKey,
     });
   }
-  await completeIdempotency({
+  const completed = await completeIdempotency({
     instanceId: input.instanceId,
     actorAccountId: input.actorAccountId,
     endpoint: annualTourTransferEndpoint,
@@ -89,5 +91,13 @@ export const completeAnnualTourTransfer = async (input: {
     responseBody,
     leaseToken: input.leaseToken,
   });
+  if (!completed) {
+    return createApiError(
+      409,
+      'idempotency_in_progress',
+      'Der Request wurde durch einen Wiederholungsversuch übernommen.',
+      input.requestId
+    );
+  }
   return input.response;
 };

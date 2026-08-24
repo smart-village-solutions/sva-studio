@@ -11,10 +11,10 @@ import {
 import {
   effectiveWasteAnnualShiftedDates,
   resolvedWasteAnnualShiftActualDates,
+  wasteAnnualDateOccursOnRecurringTour,
+  wasteAnnualRecurringSchedulesIntersect,
 } from './waste-management-annual-tour-transfer.conflict-dates.js';
 import {
-  parseWasteAnnualIsoDate,
-  replaceWasteAnnualYear,
   wasteAnnualEndOfYear,
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
@@ -41,59 +41,6 @@ export const wasteAnnualEffectiveDates = (
   ...mapped.locationTourPickupDates.map((item) => item.pickupDate),
   ...mapped.tourAssignments.map((item) => item.pickupDate),
 ];
-
-const yearlySchedulesIntersect = (
-  left: WasteAnnualTourTransferMappedTour['targetTour'],
-  right: WasteTourRecord
-): boolean => {
-  if (!left.firstDate || !right.firstDate) return false;
-  const targetYear = wasteAnnualYearOf(left.firstDate);
-  if (targetYear === null) return false;
-  const leftOccurrence = replaceWasteAnnualYear(left.firstDate, targetYear);
-  const rightOccurrence = replaceWasteAnnualYear(right.firstDate, targetYear);
-  if (!leftOccurrence || leftOccurrence !== rightOccurrence) return false;
-  const targetYearEnd = wasteAnnualEndOfYear(targetYear);
-  return (
-    leftOccurrence >= left.firstDate &&
-    leftOccurrence <= (left.endDate ?? targetYearEnd) &&
-    rightOccurrence >= right.firstDate &&
-    rightOccurrence <= (right.endDate ?? targetYearEnd)
-  );
-};
-
-const recurringSchedulesIntersect = (
-  left: WasteAnnualTourTransferMappedTour['targetTour'],
-  right: WasteTourRecord,
-  intervalDays: number | null
-): boolean => {
-  if (left.recurrence === 'yearly' && right.recurrence === 'yearly')
-    return yearlySchedulesIntersect(left, right);
-  if (intervalDays === null || !left.firstDate || !right.firstDate) return false;
-  const leftFirst = parseWasteAnnualIsoDate(left.firstDate);
-  const rightFirst = parseWasteAnnualIsoDate(right.firstDate);
-  if (!leftFirst || !rightFirst) return false;
-  const phaseDifferenceDays = Math.abs(leftFirst.getTime() - rightFirst.getTime()) / 86_400_000;
-  if (phaseDifferenceDays % intervalDays !== 0) return false;
-  const targetYear = leftFirst.getUTCFullYear();
-  const overlapStart = left.firstDate >= right.firstDate ? left.firstDate : right.firstDate;
-  const leftEnd = left.endDate ?? wasteAnnualEndOfYear(targetYear);
-  const rightEnd = right.endDate ?? wasteAnnualEndOfYear(targetYear);
-  return overlapStart <= (leftEnd <= rightEnd ? leftEnd : rightEnd);
-};
-
-const dateOccursOnRecurringTour = (
-  date: string,
-  tour: WasteTourRecord,
-  intervalDays: number | null
-): boolean => {
-  if (intervalDays === null || !tour.firstDate) return false;
-  const occurrence = parseWasteAnnualIsoDate(date);
-  const first = parseWasteAnnualIsoDate(tour.firstDate);
-  if (!occurrence || !first || date < tour.firstDate || (tour.endDate && date > tour.endDate))
-    return false;
-  const elapsedDays = (occurrence.getTime() - first.getTime()) / 86_400_000;
-  return Number.isInteger(elapsedDays) && elapsedDays % intervalDays === 0;
-};
 
 const comparableMappedTour = (mapped: WasteAnnualTourTransferMappedTour): unknown => ({
   tour: mapped.targetTour,
@@ -194,11 +141,19 @@ const parallelPlanningConflict = (
   );
   const matches =
     indexedDates.some((date) => mappedDates.includes(date)) ||
-    mappedShiftDates.some((date) => dateOccursOnRecurringTour(date, tour, interval)) ||
-    indexedShiftDates.some((date) =>
-      dateOccursOnRecurringTour(date, mapped.targetTour as WasteTourRecord, interval)
+    mappedShiftDates.some((date) =>
+      wasteAnnualDateOccursOnRecurringTour(date, tour, interval)
     ) ||
-    recurringSchedulesIntersect(mapped.targetTour, tour, interval);
+    indexedShiftDates.some((date) =>
+      wasteAnnualDateOccursOnRecurringTour(date, mapped.targetTour as WasteTourRecord, interval)
+    ) ||
+    wasteAnnualRecurringSchedulesIntersect({
+      left: mapped.targetTour as WasteTourRecord,
+      right: tour,
+      intervalDays: interval,
+      leftShifts: mapped.tourDateShifts,
+      rightShifts: indexed.tourDateShifts,
+    });
   return matches
     ? {
         kind: 'possible-parallel-planning',

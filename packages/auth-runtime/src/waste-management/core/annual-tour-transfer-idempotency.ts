@@ -55,7 +55,7 @@ export const startAnnualTourTransferLeaseHeartbeat = (input: {
   actorAccountId: string;
   idempotencyKey: string;
   leaseToken: string;
-}): (() => Promise<boolean>) => {
+}) => {
   const renewalInput = { ...input, endpoint: annualTourTransferEndpoint };
   let active = true;
   let renewal = Promise.resolve(true);
@@ -65,11 +65,16 @@ export const startAnnualTourTransferLeaseHeartbeat = (input: {
       .catch(() => false);
   }, annualTourTransferHeartbeatMs);
   timer.unref();
-  return async () => {
-    if (!active) return renewal;
-    active = false;
-    clearInterval(timer);
-    const owned = await renewal;
-    return owned ? renewIdempotencyLease(renewalInput) : false;
+  const verify = async () => {
+    renewal = renewal
+      .then((owned) => (owned ? renewIdempotencyLease(renewalInput) : false))
+      .catch(() => false);
+    return renewal;
   };
+  const stop = async () => {
+    if (active) clearInterval(timer);
+    active = false;
+    return renewal;
+  };
+  return { verify, stop } as const;
 };

@@ -145,6 +145,9 @@ const createDeleteInput = (overrides: Partial<DeleteContentInput> = {}): DeleteC
 });
 
 describe('iam content repository', () => {
+  const normalizedTitleSortColumn =
+    `LOWER(REGEXP_REPLACE(content.title COLLATE "unicode", '^[^[:alnum:]]+', '')) COLLATE "C"`;
+
   beforeEach(() => {
     for (const mock of Object.values(state)) {
       mock.mockReset();
@@ -272,7 +275,9 @@ describe('iam content repository', () => {
     expect(state.queryMock.mock.calls[0]?.[0]).not.toContain('content.organization_id IS NULL');
     expect(state.queryMock).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('ORDER BY (LOWER(content.title) COLLATE "C" IS NULL) ASC, LOWER(content.title) COLLATE "C" ASC, content.id ASC'),
+      expect.stringContaining(
+        `ORDER BY (${normalizedTitleSortColumn} IS NULL) ASC, ${normalizedTitleSortColumn} ASC, content.id ASC`
+      ),
       [
         'instance-1',
         ['news.article', 'events.event-record'],
@@ -284,6 +289,35 @@ describe('iam content repository', () => {
         10,
         10,
       ]
+    );
+  });
+
+  it('ignores only the leading non-alphanumeric prefix when sorting titles descending', async () => {
+    state.queryMock
+      .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await loadContentListItems(
+      'instance-1',
+      {
+        page: 1,
+        pageSize: 25,
+        sortBy: 'title',
+        sortDirection: 'desc',
+      },
+      {
+        allowGlobal: true,
+        allowOwn: false,
+        allowedOrganizationIds: [],
+      }
+    );
+
+    expect(state.queryMock).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        `ORDER BY (${normalizedTitleSortColumn} IS NULL) ASC, ${normalizedTitleSortColumn} DESC, content.id ASC`
+      ),
+      ['instance-1', 25, 0]
     );
   });
 

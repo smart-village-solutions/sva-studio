@@ -20,7 +20,12 @@ type LocationMutationContext = {
   readonly pt: Translate;
   readonly search: WasteManagementSearchParams;
   readonly loadOverview: (active?: boolean) => Promise<void>;
+  readonly loadCollectionLocationList: () => Promise<void>;
   readonly selectedCollectionLocationIds: readonly string[];
+};
+
+const reloadLocationData = async (context: LocationMutationContext): Promise<void> => {
+  await Promise.all([context.loadOverview(true), context.loadCollectionLocationList()]);
 };
 
 const resolveLocationMode = (state: WasteMasterDataState, search: WasteManagementSearchParams) =>
@@ -84,7 +89,7 @@ export const createLocationSubmitHandler =
             postalCode: cityPostalCodeUpdate.postalCode,
           });
         } catch {
-          await context.loadOverview(true);
+          await reloadLocationData(context);
           context.state.setMessage({
             kind: 'warning',
             text: context.pt('masterData.collectionLocations.messages.postalCodeSaveWarning'),
@@ -92,7 +97,7 @@ export const createLocationSubmitHandler =
           return;
         }
       }
-      await context.loadOverview(true);
+      await reloadLocationData(context);
       applySuccess(
         () => context.state.setLocationDialogOpen(false),
         context.state.setMessage,
@@ -118,7 +123,7 @@ export const createLocationDeleteHandler =
     context.state.setLastOutcome(null);
     try {
       await deleteWasteManagementCollectionLocation(location.id);
-      await context.loadOverview(true);
+      await reloadLocationData(context);
       context.state.setSelectedLocationIds((current) => current.filter((selectedId) => selectedId !== location.id));
       context.state.setMessage({
         kind: 'success',
@@ -143,7 +148,7 @@ export const createLocationsBulkDeleteHandler =
       for (const locationId of locationIds) {
         await deleteWasteManagementCollectionLocation(locationId);
       }
-      await context.loadOverview(true);
+      await reloadLocationData(context);
       context.state.setSelectedLocationIds([]);
       context.state.setMessage({
         kind: 'success',
@@ -173,7 +178,7 @@ export const createLocationBulkAssignmentsHandler =
         ),
         createWasteManagementLocationTourLinksBulk
       );
-      await context.loadOverview(true);
+      await reloadLocationData(context);
       context.state.setBulkAssignmentsDialogOpen(false);
       context.state.setSelectedLocationIds([]);
       context.state.setMessage({

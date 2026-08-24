@@ -13,6 +13,10 @@ export const useWasteMasterDataState = () => {
     useState<WasteCollectionLocationPage | null>(null);
   const [filteredLocationIds, setFilteredLocationIds] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [collectionLocationListError, setCollectionLocationListError] = useState<string | null>(
+    null
+  );
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [trackedSyncWasteTypesJob, setTrackedSyncWasteTypesJob] = useState<
     StudioJobResponse['data'] | null
@@ -33,7 +37,7 @@ export const useWasteMasterDataState = () => {
     overview,
     collectionLocationPage,
     filteredLocationIds,
-    error,
+    error: error ?? overviewError ?? collectionLocationListError,
     message,
     trackedSyncWasteTypesJob,
     lastOutcome,
@@ -45,6 +49,8 @@ export const useWasteMasterDataState = () => {
     setCollectionLocationPage,
     setFilteredLocationIds,
     setError,
+    setOverviewError,
+    setCollectionLocationListError,
     setMessage,
     setTrackedSyncWasteTypesJob,
     setLastOutcome,

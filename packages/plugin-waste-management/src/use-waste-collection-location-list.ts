@@ -39,10 +39,18 @@ export const useWasteCollectionLocationList = (
   const requestSequence = useRef(0);
   const ptRef = useRef(pt);
   ptRef.current = pt;
-  const { setCollectionLocationPage, setError, setFilteredLocationIds } = state;
+  const {
+    setCollectionLocationListError,
+    setCollectionLocationPage,
+    setFilteredLocationIds,
+  } = state;
 
   const loadList = useCallback(async () => {
-    if (search.masterDataTab !== 'locations' || search.locationsView !== 'list') return;
+    if (search.masterDataTab !== 'locations' || search.locationsView !== 'list') {
+      requestSequence.current += 1;
+      setCollectionLocationListError(null);
+      return;
+    }
     const sequence = ++requestSequence.current;
     try {
       const filter = toFilter(search);
@@ -53,11 +61,11 @@ export const useWasteCollectionLocationList = (
       if (sequence !== requestSequence.current) return;
       setCollectionLocationPage(page);
       setFilteredLocationIds(filteredIds);
-      setError(null);
+      setCollectionLocationListError(null);
     } catch (loadError) {
       if (sequence !== requestSequence.current) return;
       const code = resolveApiErrorCode(loadError);
-      setError(
+      setCollectionLocationListError(
         code === 'forbidden'
           ? ptRef.current('masterData.messages.loadForbidden')
           : ptRef.current('masterData.messages.loadError')
@@ -76,7 +84,7 @@ export const useWasteCollectionLocationList = (
     search.status,
     search.tourId,
     setCollectionLocationPage,
-    setError,
+    setCollectionLocationListError,
     setFilteredLocationIds,
   ]);
 

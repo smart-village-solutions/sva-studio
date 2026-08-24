@@ -100,13 +100,14 @@ export const wasteTenantMigrations = Object.freeze([
       sql: `
         SELECT COALESCE((
           SELECT
-            collation.collprovider = 'i'
-            AND NOT collation.collisdeterministic
-            AND collation.colliculocale IN ('de-u-kn-true-ks-level2', 'de-u-kn-ks-level2')
-          FROM pg_collation AS collation
-          INNER JOIN pg_namespace AS namespace ON namespace.oid = collation.collnamespace
-          WHERE namespace.nspname = $1
-            AND collation.collname = $2
+            collation_row.collprovider = 'i'
+            AND NOT collation_row.collisdeterministic
+            AND collation_row.colliculocale IN ('de-u-kn-true-ks-level2', 'de-u-kn-ks-level2')
+          FROM pg_collation AS collation_row
+          INNER JOIN pg_namespace AS namespace_row
+            ON namespace_row.oid = collation_row.collnamespace
+          WHERE namespace_row.nspname = $1
+            AND collation_row.collname = $2
         ), FALSE) AS satisfied;
       `,
       values: Object.freeze(['public', 'sva_de_numeric']),

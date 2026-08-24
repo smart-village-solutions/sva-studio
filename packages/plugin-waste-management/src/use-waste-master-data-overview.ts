@@ -58,7 +58,7 @@ export const useWasteMasterDataOverview = (
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
   ptRef.current = pt;
-  const { setAvailableTours, setError, setLoading, setOverview } = state;
+  const { setAvailableTours, setLoading, setOverview, setOverviewError } = state;
 
   const loadOverview = useCallback(
     async () => {
@@ -66,16 +66,16 @@ export const useWasteMasterDataOverview = (
         const overviewResponse = await getWasteManagementMasterDataOverview(resolveMasterDataOverviewScope(tab));
         if (!isMountedRef.current) return;
         setOverview(overviewResponse);
-        setError(null);
+        setOverviewError(null);
       } catch (loadError) {
         if (!isMountedRef.current) return;
-        setError(resolveMasterDataLoadError(ptRef.current, loadError));
+        setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));
         setAvailableTours([]);
       } finally {
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [setAvailableTours, setError, setLoading, setOverview, tab]
+    [setAvailableTours, setLoading, setOverview, setOverviewError, tab]
   );
 
   useEffect(() => {

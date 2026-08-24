@@ -34,6 +34,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     pt,
     search,
     loadOverview,
+    loadCollectionLocationList,
     selectedCollectionLocationIds: derivedState.selectedCollectionLocations.map(
       (location) => location.id
     ),

@@ -97,9 +97,12 @@ describe('Waste-Tenant-Migration', () => {
       ],
     });
     expect(wasteTenantMigrations[2]?.verification.sql).toContain('FROM pg_collation');
+    expect(wasteTenantMigrations[2]?.verification.sql).toContain(
+      'FROM pg_collation AS collation_row'
+    );
     expect(wasteTenantMigrations[2]?.verification.sql).toContain("collprovider = 'i'");
     expect(wasteTenantMigrations[2]?.verification.sql).toContain(
-      'NOT collation.collisdeterministic'
+      'NOT collation_row.collisdeterministic'
     );
   });
 

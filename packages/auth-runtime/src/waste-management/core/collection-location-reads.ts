@@ -5,6 +5,7 @@ import type {
 } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import { isUuid } from '../../shared/input-readers.js';
 import { createApiError } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction } from './auth.js';
 import { createJsonApiItemResponse, logWasteReadFailure } from './read-support.js';
@@ -44,7 +45,13 @@ const parseCollectionLocationFilters = (
   ) as Record<(typeof listFilterKeys)[number], string | undefined | null>;
   if (Object.values(values).some((value) => value === null)) return { ok: false };
   const status = values.status ?? 'all';
-  if (!listStatuses.has(status)) return { ok: false };
+  const identifierValues = [values.regionId, values.cityId, values.tourId];
+  if (
+    !listStatuses.has(status) ||
+    identifierValues.some((value) => typeof value === 'string' && !isUuid(value))
+  ) {
+    return { ok: false };
+  }
   return {
     ok: true,
     value: {

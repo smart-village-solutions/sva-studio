@@ -10,14 +10,23 @@ export const createWasteMasterDataMutationHandlers = ({
   pt,
   search,
   loadOverview,
+  loadCollectionLocationList,
   selectedCollectionLocationIds,
 }: {
   state: WasteMasterDataState;
   pt: Translate;
   search: WasteManagementSearchParams;
   loadOverview: (active?: boolean) => Promise<void>;
+  loadCollectionLocationList: () => Promise<void>;
   selectedCollectionLocationIds: readonly string[];
 }) => ({
   ...createWasteMasterDataEntityMutations({ state, pt, search, loadOverview }),
-  ...createWasteMasterDataLocationMutations({ state, pt, search, loadOverview, selectedCollectionLocationIds }),
+  ...createWasteMasterDataLocationMutations({
+    state,
+    pt,
+    search,
+    loadOverview,
+    loadCollectionLocationList,
+    selectedCollectionLocationIds,
+  }),
 });

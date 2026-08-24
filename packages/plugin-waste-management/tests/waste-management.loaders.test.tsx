@@ -6,6 +6,7 @@ import { WasteManagementApiError } from '../src/waste-management.api.js';
 import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
 import { useWasteMasterDataOverview } from '../src/use-waste-master-data-overview.js';
 import { useWasteMasterDataState } from '../src/use-waste-master-data-state.js';
+import { useWasteCollectionLocationList } from '../src/use-waste-collection-location-list.js';
 import { useWasteSchedulingOverview } from '../src/use-waste-scheduling-overview.js';
 import { useWasteSchedulingState } from '../src/use-waste-scheduling-state.js';
 import { useWasteToursOverview } from '../src/use-waste-tours-overview.js';
@@ -13,6 +14,8 @@ import { useWasteToursState } from '../src/use-waste-tours-state.js';
 
 const apiMocks = vi.hoisted(() => ({
   getWasteManagementMasterDataOverview: vi.fn(),
+  getWasteCollectionLocationIds: vi.fn(),
+  getWasteCollectionLocationPage: vi.fn(),
   getWasteManagementSchedulingOverview: vi.fn(),
   getWasteManagementSettings: vi.fn(),
   getWasteManagementToursOverview: vi.fn(),
@@ -87,6 +90,30 @@ const DynamicMasterDataLoaderHarness = ({ tab }: { readonly tab: 'fractions' | '
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
 
+const CollectionLocationLoaderHarness = () => {
+  const state = useWasteMasterDataState();
+  useWasteMasterDataOverview(state, (key) => key, 'locations');
+  useWasteCollectionLocationList(
+    state,
+    (key) => key,
+    {
+      masterDataTab: 'locations',
+      locationsView: 'list',
+      q: '',
+      status: 'all',
+      regionId: undefined,
+      cityId: undefined,
+      tourId: undefined,
+      locationSortMode: 'address',
+      locationSortDirection: 'asc',
+      page: 1,
+      pageSize: 25,
+    } as never
+  );
+
+  return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
+};
+
 const ToursLoaderHarness = () => {
   const state = useWasteToursState();
   useWasteToursOverview(state, (key) => key);
@@ -126,6 +153,61 @@ describe('waste management data loaders', () => {
       scope: 'fractions',
     });
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(0);
+  });
+
+  it('keeps an overview failure visible when the concurrent location list succeeds later', async () => {
+    let resolvePage: ((value: object) => void) | undefined;
+    let resolveIds: ((value: readonly string[]) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockRejectedValue(new Error('overview failed'));
+    apiMocks.getWasteCollectionLocationPage.mockImplementation(
+      () => new Promise((resolve) => (resolvePage = resolve))
+    );
+    apiMocks.getWasteCollectionLocationIds.mockImplementation(
+      () => new Promise((resolve) => (resolveIds = resolve))
+    );
+
+    render(<CollectionLocationLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
+    });
+
+    resolvePage?.({ items: [], page: 1, pageSize: 25, total: 0, pageCount: 0 });
+    resolveIds?.([]);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationIds).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
+  });
+
+  it('keeps a location-list failure visible when the concurrent overview succeeds later', async () => {
+    let resolveOverview: ((value: object) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      () => new Promise((resolve) => (resolveOverview = resolve))
+    );
+    apiMocks.getWasteCollectionLocationPage.mockRejectedValue(new Error('list failed'));
+    apiMocks.getWasteCollectionLocationIds.mockResolvedValue([]);
+
+    render(<CollectionLocationLoaderHarness />);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteCollectionLocationPage).toHaveBeenCalledTimes(1);
+    });
+
+    resolveOverview?.({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('masterData.messages.loadError')).toBeTruthy();
+    });
   });
 
   it('keeps the tours loader on a single failed fetch cycle', async () => {

@@ -18,6 +18,12 @@ const createHeaders = () => ({
   'x-requested-with': 'XMLHttpRequest',
 });
 
+const filterIds = {
+  region: '10000000-0000-4000-8000-000000000001',
+  city: '20000000-0000-4000-8000-000000000001',
+  tour: '30000000-0000-4000-8000-000000000001',
+} as const;
+
 const createDeps = () => ({
   getRequestId: () => 'req-test',
   getSessionById: vi.fn(async () => ({
@@ -51,7 +57,7 @@ describe('waste-management collection location handlers', () => {
     const pageResponse =
       await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationsInternal(
         new Request(
-          'https://studio.test/api/v1/waste-management/collection-locations?q=Nord&status=active&regionId=region-1&cityId=city-1&tourId=tour-1&sortMode=addressWithRegion&sortDirection=desc&page=2&pageSize=50'
+          `https://studio.test/api/v1/waste-management/collection-locations?q=Nord&status=active&regionId=${filterIds.region}&cityId=${filterIds.city}&tourId=${filterIds.tour}&sortMode=addressWithRegion&sortDirection=desc&page=2&pageSize=50`
         ),
         actor,
         { ...createDeps(), loadWasteCollectionLocationPage }
@@ -61,9 +67,9 @@ describe('waste-management collection location handlers', () => {
     expect(loadWasteCollectionLocationPage).toHaveBeenCalledWith('tenant-a', {
       q: 'Nord',
       status: 'active',
-      regionId: 'region-1',
-      cityId: 'city-1',
-      tourId: 'tour-1',
+      regionId: filterIds.region,
+      cityId: filterIds.city,
+      tourId: filterIds.tour,
       sortMode: 'addressWithRegion',
       sortDirection: 'desc',
       page: 2,
@@ -78,7 +84,7 @@ describe('waste-management collection location handlers', () => {
     const idsResponse =
       await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationIdsInternal(
         new Request(
-          'https://studio.test/api/v1/waste-management/collection-locations/selection?status=inactive&cityId=city-1'
+          `https://studio.test/api/v1/waste-management/collection-locations/selection?status=inactive&cityId=${filterIds.city}`
         ),
         actor,
         { ...createDeps(), loadWasteCollectionLocationIds }
@@ -88,7 +94,7 @@ describe('waste-management collection location handlers', () => {
       q: undefined,
       status: 'inactive',
       regionId: undefined,
-      cityId: 'city-1',
+      cityId: filterIds.city,
       tourId: undefined,
     });
     await expect(idsResponse.json()).resolves.toMatchObject({
@@ -103,6 +109,9 @@ describe('waste-management collection location handlers', () => {
     'sortMode=address&sortMode=addressWithRegion',
     'page=0',
     'pageSize=20',
+    'regionId=not-a-uuid',
+    'cityId=not-a-uuid',
+    'tourId=not-a-uuid',
   ])('rejects invalid direct list parameters: %s', async (query) => {
     const loadWasteCollectionLocationPage = vi.fn();
     const response =
@@ -118,6 +127,27 @@ describe('waste-management collection location handlers', () => {
       error: { code: 'invalid_request' },
     });
   });
+
+  it.each(['regionId=not-a-uuid', 'cityId=not-a-uuid', 'tourId=not-a-uuid'])(
+    'rejects invalid selection filters before querying: %s',
+    async (query) => {
+      const loadWasteCollectionLocationIds = vi.fn();
+      const response =
+        await wasteManagementCollectionLocationHandlers.getWasteManagementCollectionLocationIdsInternal(
+          new Request(
+            `https://studio.test/api/v1/waste-management/collection-locations/selection?${query}`
+          ),
+          actor,
+          { ...createDeps(), loadWasteCollectionLocationIds }
+        );
+
+      expect(response.status).toBe(400);
+      expect(loadWasteCollectionLocationIds).not.toHaveBeenCalled();
+      await expect(response.json()).resolves.toMatchObject({
+        error: { code: 'invalid_request' },
+      });
+    }
+  );
 
   it('rejects the list read without waste-management.read', async () => {
     const loadWasteCollectionLocationPage = vi.fn();

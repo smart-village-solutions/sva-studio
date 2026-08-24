@@ -48,6 +48,7 @@ const parseCollectionLocationFilters = (
   const identifierValues = [values.regionId, values.cityId, values.tourId];
   if (
     !listStatuses.has(status) ||
+    values.q?.includes('\0') ||
     identifierValues.some((value) => typeof value === 'string' && !isUuid(value))
   ) {
     return { ok: false };

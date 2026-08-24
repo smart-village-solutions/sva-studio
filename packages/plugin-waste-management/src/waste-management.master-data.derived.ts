@@ -30,6 +30,14 @@ export const createWasteMasterDataDerivedState = (
   const selectedCollectionLocations = overview.collectionLocations.filter((location) =>
     state.selectedLocationIds.includes(location.id)
   );
+  const knownFilteredLocationIds =
+    state.filteredLocationIds.length > 0
+      ? state.filteredLocationIds
+      : state.collectionLocationPage &&
+          state.collectionLocationPage.total > 0 &&
+          state.collectionLocationPage.items.length === state.collectionLocationPage.total
+        ? state.collectionLocationPage.items.map((location) => location.id)
+        : [];
 
   return {
     filteredFractions: wasteMasterDataPresentation.filterFractions(overview.fractions, search),
@@ -48,8 +56,8 @@ export const createWasteMasterDataDerivedState = (
       selectedCollectionLocations
     ),
     allFilteredLocationsSelected:
-      state.filteredLocationIds.length > 0 &&
-      state.filteredLocationIds.every((id) => state.selectedLocationIds.includes(id)),
+      knownFilteredLocationIds.length > 0 &&
+      knownFilteredLocationIds.every((id) => state.selectedLocationIds.includes(id)),
     getLocationLabel: (location: WasteCollectionLocationRecord) =>
       wasteMasterDataPresentation.formatCollectionLocationLabel(pt, overview, location),
   };

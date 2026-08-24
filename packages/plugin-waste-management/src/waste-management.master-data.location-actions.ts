@@ -7,6 +7,13 @@ import {
 import type { WasteMasterDataState } from './use-waste-master-data-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
+const resolveKnownFilteredLocationIds = (state: WasteMasterDataState): readonly string[] => {
+  if (state.filteredLocationIds.length > 0) return state.filteredLocationIds;
+  const page = state.collectionLocationPage;
+  if (!page || page.total === 0 || page.items.length !== page.total) return [];
+  return page.items.map((location) => location.id);
+};
+
 export const createWasteMasterDataLocationActions = (
   state: WasteMasterDataState,
   search: WasteManagementSearchParams,
@@ -50,7 +57,7 @@ export const createWasteMasterDataLocationActions = (
   toggleSelectAllFilteredLocations: async (checked: boolean) => {
     const filteredLocationIds = checked
       ? await loadFilteredLocationIds()
-      : state.filteredLocationIds;
+      : resolveKnownFilteredLocationIds(state);
     if (filteredLocationIds === null) return;
     if (!checked) clearFilteredLocationIds();
     state.setSelectedLocationIds((current) => {

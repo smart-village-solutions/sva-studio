@@ -112,6 +112,7 @@ describe('waste-management collection location handlers', () => {
     'regionId=not-a-uuid',
     'cityId=not-a-uuid',
     'tourId=not-a-uuid',
+    'q=%00',
   ])('rejects invalid direct list parameters: %s', async (query) => {
     const loadWasteCollectionLocationPage = vi.fn();
     const response =
@@ -128,7 +129,7 @@ describe('waste-management collection location handlers', () => {
     });
   });
 
-  it.each(['regionId=not-a-uuid', 'cityId=not-a-uuid', 'tourId=not-a-uuid'])(
+  it.each(['regionId=not-a-uuid', 'cityId=not-a-uuid', 'tourId=not-a-uuid', 'q=%00'])(
     'rejects invalid selection filters before querying: %s',
     async (query) => {
       const loadWasteCollectionLocationIds = vi.fn();

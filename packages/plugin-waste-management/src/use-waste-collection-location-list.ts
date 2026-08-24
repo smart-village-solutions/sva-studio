@@ -148,5 +148,10 @@ export const useWasteCollectionLocationList = (
     void loadList();
   }, [loadList]);
 
-  return { clearFilteredLocationIds, loadFilteredLocationIds, loadList };
+  const refreshList = useCallback(async () => {
+    clearFilteredLocationIds();
+    await loadList();
+  }, [clearFilteredLocationIds, loadList]);
+
+  return { clearFilteredLocationIds, loadFilteredLocationIds, loadList, refreshList };
 };

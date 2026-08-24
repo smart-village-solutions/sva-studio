@@ -24,7 +24,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
   const {
     clearFilteredLocationIds,
     loadFilteredLocationIds,
-    loadList: loadCollectionLocationList,
+    refreshList: refreshCollectionLocationList,
   } = useWasteCollectionLocationList(state, pt, search);
   const derivedState = createWasteMasterDataDerivedState(state, pt, search);
   const dialogActions = createWasteMasterDataDialogActions(state, search);
@@ -39,7 +39,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     pt,
     search,
     loadOverview,
-    loadCollectionLocationList,
+    loadCollectionLocationList: refreshCollectionLocationList,
     selectedCollectionLocationIds: derivedState.selectedCollectionLocations.map(
       (location) => location.id
     ),
@@ -88,7 +88,7 @@ export const useWasteMasterDataViewModel = (pt: Translate, search: WasteManageme
     ...submitHandlers,
     ...resetActions,
     reloadOverview: async () => {
-      await Promise.all([loadOverview(), loadCollectionLocationList()]);
+      await Promise.all([loadOverview(), refreshCollectionLocationList()]);
     },
     retrySyncWasteTypes,
   };

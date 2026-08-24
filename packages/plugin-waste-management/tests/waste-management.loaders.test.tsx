@@ -201,7 +201,7 @@ describe('waste management data loaders', () => {
     });
   });
 
-  it('retains filtered ids across page and sort reloads and clears them when filters change', async () => {
+  it('retains filtered ids across page and sort reloads and clears them for filters or refreshes', async () => {
     apiMocks.getWasteCollectionLocationPage.mockImplementation(() => new Promise(() => undefined));
     let resolveIds: ((value: readonly string[]) => void) | undefined;
     apiMocks.getWasteCollectionLocationIds.mockImplementation(
@@ -259,6 +259,17 @@ describe('waste management data loaders', () => {
     });
     expect(setFilteredLocationIds).not.toHaveBeenCalled();
 
+    apiMocks.getWasteCollectionLocationPage.mockResolvedValueOnce({
+      items: [],
+      page: 3,
+      pageSize: 25,
+      total: 0,
+      pageCount: 0,
+    });
+    await act(async () => result.current.refreshList());
+    expect(setFilteredLocationIds).toHaveBeenCalledWith([]);
+
+    setFilteredLocationIds.mockClear();
     rerender({
       search: {
         ...initialSearch,

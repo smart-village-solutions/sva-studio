@@ -66,6 +66,12 @@ const coreHandlerMocks = vi.hoisted(() => ({
     async () => new Response('delete-tour-assignment')
   ),
   getWasteManagementHistoryInternal: vi.fn(async () => new Response('get-history')),
+  getWasteManagementCollectionLocationsInternal: vi.fn(
+    async () => new Response('get-collection-locations')
+  ),
+  getWasteManagementCollectionLocationIdsInternal: vi.fn(
+    async () => new Response('get-collection-location-ids')
+  ),
   getWasteManagementMasterDataOverviewInternal: vi.fn(
     async () => new Response('get-master-data-overview')
   ),
@@ -129,6 +135,8 @@ const loaderMocks = vi.hoisted(() => ({
   loadWasteCustomRecurrencePresets: vi.fn(async () => []),
   loadWasteCityById: vi.fn(async () => null),
   loadWasteCollectionLocationById: vi.fn(async () => null),
+  loadWasteCollectionLocationPage: vi.fn(async () => null),
+  loadWasteCollectionLocationIds: vi.fn(async () => []),
   loadWasteFractionById: vi.fn(async () => null),
   loadWasteGlobalDateShiftById: vi.fn(async () => null),
   loadWasteHolidayRuleById: vi.fn(async () => null),
@@ -205,6 +213,8 @@ vi.mock('./server-loaders.js', () => ({
     loadWasteCustomRecurrencePresets: loaderMocks.loadWasteCustomRecurrencePresets,
     loadWasteCityById: loaderMocks.loadWasteCityById,
     loadWasteCollectionLocationById: loaderMocks.loadWasteCollectionLocationById,
+    loadWasteCollectionLocationPage: loaderMocks.loadWasteCollectionLocationPage,
+    loadWasteCollectionLocationIds: loaderMocks.loadWasteCollectionLocationIds,
     loadWasteFractionById: loaderMocks.loadWasteFractionById,
     loadWasteGlobalDateShiftById: loaderMocks.loadWasteGlobalDateShiftById,
     loadWasteHolidayRuleById: loaderMocks.loadWasteHolidayRuleById,
@@ -265,6 +275,22 @@ describe('wasteManagementHandlers', () => {
   it('wires every handler to the authenticated wrapper and its delegated dependency set', async () => {
     const request = new Request('https://studio.test/api/v1/waste-management');
     const cases = [
+      {
+        handlerKey: 'getCollectionLocations',
+        internal: coreHandlerMocks.getWasteManagementCollectionLocationsInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          loadWasteCollectionLocationPage: loaderMocks.loadWasteCollectionLocationPage,
+        },
+      },
+      {
+        handlerKey: 'getCollectionLocationIds',
+        internal: coreHandlerMocks.getWasteManagementCollectionLocationIdsInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          loadWasteCollectionLocationIds: loaderMocks.loadWasteCollectionLocationIds,
+        },
+      },
       {
         handlerKey: 'getHistory',
         internal: coreHandlerMocks.getWasteManagementHistoryInternal,

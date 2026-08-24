@@ -35,6 +35,13 @@ gleichzeitig beeinflussen.
 - Für kritische framework-agnostische Kernlogik wird `fast-check` selektiv über dokumentierte Hotspots und Review-Entscheidungen eingesetzt.
 - Legacy- und Spezialausnahmen müssen in `docs/development/studio-foundations-governance.md`, in der konkreten Formularinventur `docs/development/studio-form-migrationsinventur.md` und im PR- oder Arbeitskontext nachvollziehbar dokumentiert werden.
 
+### Öffentliche Projektberichtsdaten
+
+- `apps/project-report/src/data/project-status.json` ist die einzige fachlich gepflegte Quelle der öffentlichen Projektberichterstattung; eine zweite App-Kopie ist unzulässig.
+- Arbeitspakete sind jeweils genau einem Meilenstein untergeordnet. Das öffentliche Schema und die Unit-Tests sichern eindeutige IDs, bekannte Status-, Warn- und Prioritätswerte sowie gültige Referenzen ab.
+- Fortschrittswerte werden nicht redundant gespeichert, sondern ausschließlich über das öffentliche `statusModel` aus dem Arbeitspaketstatus abgeleitet; Meilensteinwerte entstehen als Aggregation der enthaltenen Arbeitspakete.
+- Das öffentliche Modell enthält keine internen Owner- oder Zuständigkeitsdaten. Der Pages-Build bleibt read-only und technisch von Auth-, IAM- und Studio-Runtime-Verträgen getrennt.
+
 ### Kontextgebundenes Speicherfeedback
 
 - Normale Save-Aktionen verwenden `StudioSaveButton` und `useStudioSaveFeedback` aus `@sva/studio-ui-react`; Host und Plugins besitzen keine abweichenden Timer oder Basis-Save-Buttons.

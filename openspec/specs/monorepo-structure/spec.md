@@ -37,13 +37,20 @@ Das System SHALL Packages als eigenstaendige npm-Module organisieren, inklusive 
 - **AND** das Monorepo kann produktive Plugins ohne ein mitgefuehrtes Referenz-Plugin betreiben
 
 ### Requirement: App-Stack Definition
+Das System SHALL Web-Apps unter `apps/` mit klar getrennten Verantwortlichkeiten bereitstellen.
 
-Das System SHALL eine Web-App unter apps/sva-studio-react mit React und TanStack Start bereitstellen.
+Die interne Studio-Anwendung bleibt unter `apps/sva-studio-react` als TanStack-Start-App bestehen.
+Für die öffentliche Fortschrittsberichterstattung SHALL zusätzlich eine eigenständige statische Reporting-App unter `apps/project-report` existieren.
 
-#### Scenario: Start-App vorhanden
-
+#### Scenario: Interne Studio-App vorhanden
 - **WHEN** das Workspace-Setup abgeschlossen ist
-- **THEN** existiert apps/sva-studio-react als TanStack-Start-App
+- **THEN** existiert `apps/sva-studio-react` als interne Studio-App
+
+#### Scenario: Öffentliche Reporting-App vorhanden
+- **WHEN** die Projektberichterstattung bereitgestellt wird
+- **THEN** existiert `apps/project-report` als eigenständige App im Workspace
+- **AND** die App ist baulich von `apps/sva-studio-react` getrennt
+- **AND** die App besitzt eigene Nx-Targets für Build, Lint und mindestens einen Testtyp
 
 ### Requirement: Build- und Target-Konventionen
 

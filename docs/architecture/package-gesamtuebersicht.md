@@ -186,7 +186,7 @@ Die App ist fachlich eng mit Waste-Management verbunden, aber technisch von der 
 
 ### `apps/project-report`
 
-`project-report` ist eine kleine interne Hilfs-App für lokale, read-only Projektstatusdarstellung. Sie ist kein zentraler Produktbaustein des Studios, gehört aber zum tatsächlichen Workspace-Bestand und besitzt eigene Nx-Targets für Build, Lint sowie Unit- und Type-Tests.
+`project-report` ist eine eigenständige öffentliche Vite-/React-App für die read-only Projektstatusdarstellung über GitHub Pages. Sie liest das app-lokale öffentliche Reporting-JSON, bleibt technisch von `apps/sva-studio-react` und `@sva/studio-ui-react` getrennt und besitzt eigene Nx-Targets für Build, Lint sowie Unit- und Type-Tests. Eine direkte Bearbeitung ist ausschließlich im lokalen Entwicklungskontext aktiviert.
 
 ### `tooling/testing`
 

@@ -22,7 +22,7 @@ Der aktuelle Repo-Ist-Stand ist kein reines Fundament mehr: Neben Routing, Auth,
 
 - Web-App `sva-studio-react` mit TanStack Start
 - Öffentliche Web-App `public-waste-calendar-web` als eigenständige, iFrame-taugliche Bürgeroberfläche für Abfallkalenderdaten
-- Interne Hilfs-App `project-report` für lokale, read-only Projektstatusdarstellung
+- Öffentliche, statische Web-App `project-report` für die read-only Projektstatusdarstellung über GitHub Pages; Bearbeitung ist ausschließlich im lokalen Entwicklungskontext möglich
 - Zentrales Routing (`@sva/core`, `@sva/routing`, `@sva/plugin-...`-Routen)
 - Auth-BFF-Endpunkte (`/auth/login`, `/auth/callback`, `/auth/me`, `/auth/logout`)
 - Session-Verwaltung mit Redis (inkl. optionaler Token-Verschlüsselung)

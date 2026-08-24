@@ -1,0 +1,4 @@
+{
+  "prNumber": 1142,
+  "body": "Die technische Absicherung der Abholort-Funktionen wurde vervollständigt.\n\n- Die öffentlichen Abfragen für Abholorte und deren Kennungen sind jetzt durch zusätzliche Tests abgedeckt.\n- Das Coverage-Gate erkennt die zugehörigen Server-Anbindungen vollständig."
+}

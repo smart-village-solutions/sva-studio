@@ -90,8 +90,7 @@ const mapWasteAnnualRelativeDate = (input: {
   if (!sourceOrigin || !sourceDate || !targetOrigin) return null;
   const elapsedDays = (sourceDate.getTime() - sourceOrigin.getTime()) / 86_400_000;
   if (!Number.isInteger(elapsedDays)) return null;
-  const targetDate = formatWasteAnnualIsoDate(addUtcDays(targetOrigin, elapsedDays));
-  return isWasteAnnualDateInYear(targetDate, input.targetYear) ? targetDate : null;
+  return formatWasteAnnualIsoDate(addUtcDays(targetOrigin, elapsedDays));
 };
 
 type Shift = WasteAnnualTourTransferSource['tourDateShifts'][number];

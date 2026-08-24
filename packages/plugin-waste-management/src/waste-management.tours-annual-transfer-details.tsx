@@ -85,6 +85,13 @@ export const AnnualTourDetails = ({
         value: recurrenceValue(tour, translate),
       })}
     </p>
+    {tour.firstTargetDate ? (
+      <p className="text-sm text-muted-foreground">
+        {translate('tours.annualTransfer.firstTargetDate', {
+          date: formatAnnualDate(tour.firstTargetDate, translate),
+        })}
+      </p>
+    ) : null}
     <p className="text-sm text-muted-foreground">
       {translate('tours.annualTransfer.tourCounts', {
         wasteFractions: tour.relationshipCounts.wasteFractions,

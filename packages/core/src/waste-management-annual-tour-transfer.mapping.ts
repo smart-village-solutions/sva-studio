@@ -127,7 +127,7 @@ export const findWasteAnnualTourReplacementResourceIds = (
   const collisions = findWasteAnnualRelationshipCollisions(relationships);
   return [
     ...(!validity.ok ? validity.replacementResourceIds : []),
-    ...relationships.missing,
+    ...(!relationships.invalidPlanning ? relationships.missing : []),
     ...filterReplaceableWasteAnnualCollisionResources(
       input.tour.id,
       input.source.tourDateShifts,
@@ -190,6 +190,9 @@ export const mapWasteAnnualTour = async (
     ...input,
     targetValidity: validity.validity,
   });
+  if (relationships.invalidPlanning) {
+    return { blocker: 'invalid_planning_data', replacementResourceIds: [] };
+  }
   if (relationships.missing.length > 0) {
     return { blocker: 'replacement_date_required', replacementResourceIds: relationships.missing };
   }

@@ -10,21 +10,21 @@ import {
 } from './waste-management-annual-tour-transfer.conflict-index.js';
 import {
   effectiveWasteAnnualShiftedDates,
-  resolvedWasteAnnualShiftActualDates,
   wasteAnnualDateOccursOnEffectiveRecurringTour,
   wasteAnnualRecurringSchedulesIntersect,
 } from './waste-management-annual-tour-transfer.conflict-dates.js';
+import {
+  operationalWasteAnnualShiftActualDates,
+  wasteAnnualShiftActualDatesForYears,
+} from './waste-management-annual-tour-transfer.conflict-shifts.js';
 import {
   wasteAnnualEndOfYear,
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
 import { stableWasteAnnualSerialize } from './waste-management-annual-tour-transfer.identity.js';
 import { wasteAnnualIntervalForTour } from './waste-management-annual-tour-transfer.shift-cadence.js';
+import { sortWasteAnnualItems } from './waste-management-annual-tour-transfer.sort.js';
 
-export const sortWasteAnnualItems = <T>(
-  items: readonly T[],
-  key: (item: T) => string
-): readonly T[] => [...items].sort((left, right) => key(left).localeCompare(key(right)));
 export const wasteAnnualTourOverlapsYear = (tour: WasteTourRecord, year: number): boolean => {
   if (!tour.firstDate && !tour.endDate) return false;
   return (
@@ -33,14 +33,13 @@ export const wasteAnnualTourOverlapsYear = (tour: WasteTourRecord, year: number)
   );
 };
 
-export const wasteAnnualEffectiveDates = (
-  mapped: WasteAnnualTourTransferMappedTour
-): readonly string[] => [
-  ...(mapped.targetTour.firstDate ? [mapped.targetTour.firstDate] : []),
-  ...(mapped.targetTour.customDates ?? []).map((item) => item.date),
-  ...mapped.locationTourPickupDates.map((item) => item.pickupDate),
-  ...mapped.tourAssignments.map((item) => item.pickupDate),
-];
+export const wasteAnnualEffectiveDates = (mapped: WasteAnnualTourTransferMappedTour) =>
+  [
+    ...(mapped.targetTour.firstDate ? [mapped.targetTour.firstDate] : []),
+    ...(mapped.targetTour.customDates ?? []).map((item) => item.date),
+    ...mapped.locationTourPickupDates.map((item) => item.pickupDate),
+    ...mapped.tourAssignments.map((item) => item.pickupDate),
+  ] as const;
 
 const effectiveDatesForYears = (
   dates: readonly string[],
@@ -56,13 +55,6 @@ const effectiveDatesForYears = (
       )
     )
   ),
-];
-
-const shiftActualDatesForYears = (
-  shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
-  years: ReadonlySet<number>
-): readonly string[] => [
-  ...new Set([...years].flatMap((year) => resolvedWasteAnnualShiftActualDates(shifts, year))),
 ];
 
 const comparableMappedTour = (mapped: WasteAnnualTourTransferMappedTour): unknown => ({
@@ -147,7 +139,12 @@ const parallelPlanningConflict = (
   const targetYear = wasteAnnualYearOf(baseMappedDates[0] ?? mapped.targetTour.firstDate ?? '');
   if (targetYear === null) return null;
   const interval = wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord);
-  const mappedShiftDates = resolvedWasteAnnualShiftActualDates(mapped.tourDateShifts, targetYear);
+  const mappedShiftDates = operationalWasteAnnualShiftActualDates(
+    mapped.targetTour as WasteTourRecord,
+    baseMappedDates,
+    mapped.tourDateShifts,
+    targetYear
+  );
   const comparisonYears = new Set([
     targetYear,
     ...mappedShiftDates
@@ -164,7 +161,12 @@ const parallelPlanningConflict = (
     indexed.tourDateShifts,
     comparisonYears
   );
-  const indexedShiftDates = shiftActualDatesForYears(indexed.tourDateShifts, comparisonYears);
+  const indexedShiftDates = wasteAnnualShiftActualDatesForYears(
+    indexed.tour,
+    indexed.effectiveDates,
+    indexed.tourDateShifts,
+    comparisonYears
+  );
   const matches =
     indexedDates.some((date) => mappedDates.includes(date)) ||
     mappedShiftDates.some((date) =>
@@ -232,7 +234,12 @@ export const findWasteAnnualTourConflicts = (
   const targetYear = wasteAnnualYearOf(wasteAnnualEffectiveDates(mapped)[0] ?? '') ?? 0;
   const conflictYears = new Set([
     targetYear,
-    ...resolvedWasteAnnualShiftActualDates(mapped.tourDateShifts, targetYear)
+    ...operationalWasteAnnualShiftActualDates(
+      mapped.targetTour as WasteTourRecord,
+      wasteAnnualEffectiveDates(mapped),
+      mapped.tourDateShifts,
+      targetYear
+    )
       .map((date) => wasteAnnualYearOf(date))
       .filter((year): year is number => year !== null),
   ]);

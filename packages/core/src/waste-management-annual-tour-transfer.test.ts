@@ -307,8 +307,8 @@ describe('waste annual tour transfer', () => {
         {
           id: 'shift-a',
           tourId: sourceTour.id,
-          originalDate: '2026-06-01',
-          actualDate: '2026-06-02',
+          originalDate: '2026-05-25',
+          actualDate: '2026-05-26',
           hasYear: true,
           reasonType: 'holiday',
           reasonKey: 'holiday-a',
@@ -360,8 +360,8 @@ describe('waste annual tour transfer', () => {
     });
     expect(mapped?.tourDateShifts).toHaveLength(2);
     expect(mapped?.tourDateShifts[0]).toMatchObject({
-      originalDate: '2027-05-31',
-      actualDate: '2027-06-01',
+      originalDate: '2027-06-07',
+      actualDate: '2027-06-08',
       reasonType: 'holiday',
       reasonKey: 'holiday-a',
       followUpMode: 'single',
@@ -485,6 +485,36 @@ describe('waste annual tour transfer', () => {
     expect(preview.tours[0]?.mappedTour?.tourDateShifts[0]).toMatchObject({
       originalDate: '2027-01-14',
       actualDate: '2027-01-15',
+    });
+    expect(preview.tours[0]?.firstTargetDate).toBe('2027-01-15');
+  });
+
+  it('blocks recurring shifts whose origins are not source-tour occurrences', async () => {
+    const sourceTour = tour({ recurrence: 'yearly', firstDate: '2026-01-01' });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour], {
+        tourDateShifts: [
+          {
+            id: 'invalid-yearly-shift',
+            tourId: sourceTour.id,
+            originalDate: '2026-01-02',
+            actualDate: '2026-01-03',
+            hasYear: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      target: source([]),
+    });
+
+    expect(preview.tours[0]).toMatchObject({
+      classification: 'blocked',
+      reasonCode: 'invalid_planning_data',
+      replacementResourceIds: [],
     });
   });
 
@@ -782,7 +812,12 @@ describe('waste annual tour transfer', () => {
   });
 
   it('preserves the relative year offset of a cross-year date shift', async () => {
-    const sourceTour = tour();
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-12-31' }],
+    });
     const preview = await buildWasteAnnualTourTransferPreview({
       instanceId: 'tenant-a',
       sourceYear: 2026,
@@ -810,7 +845,12 @@ describe('waste annual tour transfer', () => {
   });
 
   it('accepts a required cross-year shift replacement in its shifted target year', async () => {
-    const sourceTour = tour({ firstDate: '2027-01-01', endDate: '2027-12-31' });
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2027-12-31' }],
+    });
     const transferSource = source([sourceTour], {
       tourDateShifts: [
         {
@@ -1097,6 +1137,37 @@ describe('waste annual tour transfer', () => {
     expect(preview.summary.selected).toBe(0);
   });
 
+  it('ignores target shifts whose origins are not operational tour occurrences', async () => {
+    const sourceTour = tour({ recurrence: 'weekly', firstDate: '2026-01-05' });
+    const targetTour = tour({
+      id: '98989898-9898-4989-8989-989898989898',
+      recurrence: 'weekly',
+      firstDate: '2027-01-05',
+      endDate: '2027-12-31',
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour]),
+      target: source([targetTour], {
+        tourDateShifts: [
+          {
+            id: 'invalid-target-shift',
+            tourId: targetTour.id,
+            originalDate: '2027-01-06',
+            actualDate: '2027-01-04',
+            hasYear: true,
+            createdAt: '2027-01-01T00:00:00.000Z',
+            updatedAt: '2027-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    });
+
+    expect(preview.tours[0]?.conflicts).toEqual([]);
+  });
+
   it('matches shifted dates against occurrences of another recurring tour', async () => {
     const sourceTour = tour({ recurrence: 'weekly', firstDate: '2026-01-12' });
     const targetTour = tour({
@@ -1314,8 +1385,8 @@ describe('waste annual tour transfer', () => {
           {
             id: 'mapped-cross-year-shift',
             tourId: sourceTour.id,
-            originalDate: '2026-12-26',
-            actualDate: '2027-01-02',
+            originalDate: '2026-12-19',
+            actualDate: '2026-12-26',
             hasYear: true,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -1439,7 +1510,12 @@ describe('waste annual tour transfer', () => {
   });
 
   it('detects date-shift collisions by their mapped persisted origin', async () => {
-    const sourceTour = tour();
+    const sourceTour = tour({
+      recurrence: 'on-demand',
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: [{ date: '2026-01-01' }, { date: '2026-01-08' }],
+    });
     const transferSource = source([sourceTour], {
       tourDateShifts: [
         {

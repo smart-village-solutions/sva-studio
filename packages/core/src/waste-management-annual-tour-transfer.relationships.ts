@@ -5,7 +5,10 @@ import {
   mapWasteAnnualConcreteDate,
   wasteAnnualYearOf,
 } from './waste-management-annual-tour-transfer.dates.js';
-import { mapWasteAnnualRecurringShiftDates } from './waste-management-annual-tour-transfer.shift-cadence.js';
+import {
+  mapWasteAnnualRecurringShiftDates,
+  wasteAnnualIntervalForTour,
+} from './waste-management-annual-tour-transfer.shift-cadence.js';
 
 export const wasteAnnualRelationshipsFor = <T extends { readonly tourId: string }>(
   items: readonly T[],
@@ -90,10 +93,16 @@ const mapAssignments = (input: AnnualRelationshipMappingInput) =>
 const targetYearForShiftDate = (value: string, input: AnnualRelationshipMappingInput): number =>
   input.targetYear + ((wasteAnnualYearOf(value) ?? input.sourceYear) - input.sourceYear);
 
+type MappedShiftDates = Readonly<{
+  originalDate: string | null;
+  actualDate: string | null;
+  invalidPlanning?: boolean;
+}>;
+
 const mapYearSpecificShift = (
   source: WasteAnnualTourTransferSource['tourDateShifts'][number],
   input: AnnualRelationshipMappingInput
-): Readonly<{ originalDate: string | null; actualDate: string | null }> => {
+): MappedShiftDates => {
   const recurring = mapWasteAnnualRecurringShiftDates({
     source,
     tour: input.tour,
@@ -103,8 +112,14 @@ const mapYearSpecificShift = (
     targetEndDate: input.targetValidity?.endDate,
     replacements: input.replacements,
   });
-  if (recurring) return recurring;
-  if (input.tour.customRecurrenceId) return { originalDate: null, actualDate: null };
+  if (recurring !== undefined) return recurring;
+  if (
+    input.tour.customRecurrenceId ||
+    wasteAnnualIntervalForTour(input.tour) !== null ||
+    input.tour.recurrence === 'yearly'
+  ) {
+    return { originalDate: null, actualDate: null, invalidPlanning: true };
+  }
   return {
     originalDate: mapDate(
       source.originalDate,
@@ -157,7 +172,14 @@ export const mapWasteAnnualRelationships = (input: AnnualRelationshipMappingInpu
       ...(item.actualDate ? [] : [`${item.source.id}:actual`]),
     ]),
   ];
-  return { customDates, pickupDates, assignments, shifts, missing } as const;
+  return {
+    customDates,
+    pickupDates,
+    assignments,
+    shifts,
+    missing,
+    invalidPlanning: shifts.some((item) => item.invalidPlanning === true),
+  } as const;
 };
 
 export const findWasteAnnualRelationshipCollisions = (

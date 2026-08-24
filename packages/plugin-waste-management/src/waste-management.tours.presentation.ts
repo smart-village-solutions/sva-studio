@@ -307,6 +307,35 @@ const calculateTourOccurrenceEntriesForYearInternal = (
     });
   }
 
+  const priorYearDates = new Set<string>();
+  collectScheduledTourDates(priorYearDates, tour, year - 1);
+  collectCustomTourDates(priorYearDates, tour, year - 1);
+  const inboundShifts = resolveEffectiveWasteTourDateShiftsForYear(
+    (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id),
+    year - 1
+  ).filter(
+    (shift) => priorYearDates.has(shift.originalDate) && shift.actualDate.startsWith(`${year}-`)
+  );
+  for (const shift of inboundShifts) {
+    const holidayNames: string[] = [];
+    const date = holidayRules.reduce((currentDate, rule) => {
+      const nextDate = applyHolidayRule(currentDate, rule);
+      if (nextDate !== currentDate) holidayNames.push(rule.holidayName);
+      return nextDate;
+    }, shift.actualDate);
+    if (!date.startsWith(`${year}-`)) continue;
+    const previous = shiftedResults.get(date);
+    const combinedHolidayNames = Array.from(
+      new Set([...(previous?.holidayNames ?? []), ...holidayNames])
+    );
+    shiftedResults.set(date, {
+      shifted: true,
+      originalDate: previous?.originalDate ?? shift.originalDate,
+      shiftedByHoliday: combinedHolidayNames.length > 0,
+      holidayNames: combinedHolidayNames,
+    });
+  }
+
   return Array.from(shiftedResults.entries())
     .filter(([date]) => date.startsWith(`${year}-`))
     .sort(([left], [right]) => left.localeCompare(right))

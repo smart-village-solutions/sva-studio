@@ -204,6 +204,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     summaryDetailed:
       '{{transferable}} übernehmbar, {{alreadyEffective}} gelten bereits, {{blocked}} blockiert. Ausgewählt: {{selected}} Touren mit {{relationships}} Beziehungen; {{excluded}} Daten außerhalb des Quelljahres werden ausgeschlossen.',
     recurrence: 'Turnus: {{value}}',
+    firstTargetDate: 'Erster Termin im Folgejahr: {{date}}',
     tourCounts:
       'Abfallarten: {{wasteFractions}}, konkrete Tourtermine: {{customDates}}, Abholorte: {{locations}}, ortsbezogene Termine: {{pickupDates}}, Einsätze: {{assignments}}, Verschiebungen: {{shifts}}, ausgeschlossen: {{excluded}}',
     period: 'Gültigkeitszeitraum: {{source}} → {{target}}',

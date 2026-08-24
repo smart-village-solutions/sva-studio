@@ -16,15 +16,22 @@ const resolvedShifts = (shifts: MappedShifts, year: number) =>
 
 export const resolvedWasteAnnualShiftActualDates = (
   shifts: MappedShifts,
-  year: number
-): readonly string[] => resolvedShifts(shifts, year).map((shift) => shift.actualDate);
+  year: number,
+  acceptsOrigin: (date: string) => boolean = () => true
+): readonly string[] =>
+  resolvedShifts(shifts, year)
+    .filter((shift) => acceptsOrigin(shift.originalDate))
+    .map((shift) => shift.actualDate);
 
 export const effectiveWasteAnnualShiftedDates = (
   baseDates: readonly string[],
   shifts: MappedShifts,
   year: number
 ): readonly string[] => {
-  const effectiveShifts = resolvedShifts(shifts, year);
+  const baseDateSet = new Set(baseDates);
+  const effectiveShifts = resolvedShifts(shifts, year).filter((shift) =>
+    baseDateSet.has(shift.originalDate)
+  );
   const shiftedOrigins = new Set(effectiveShifts.map((shift) => shift.originalDate));
   return [
     ...new Set([

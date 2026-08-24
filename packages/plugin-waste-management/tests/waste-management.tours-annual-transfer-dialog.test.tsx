@@ -150,6 +150,7 @@ describe('WasteToursAnnualTransferDialog', () => {
     expect(screen.getByText(/tours\.annualTransfer\.summaryDetailed/)).toBeTruthy();
     expect(screen.getByText(/tours\.annualTransfer\.tourCounts/)).toBeTruthy();
     expect(screen.getByText(/tours\.annualTransfer\.period/)).toBeTruthy();
+    expect(screen.getByText(/tours\.annualTransfer\.firstTargetDate.*2027-01-04/)).toBeTruthy();
     expect(screen.getByText(/tours\.annualTransfer\.dateExample.*weekdays/)).toBeTruthy();
     expect(
       (

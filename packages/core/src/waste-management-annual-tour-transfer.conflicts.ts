@@ -39,6 +39,17 @@ export const wasteAnnualEffectiveDates = (
   ...mapped.tourAssignments.map((item) => item.pickupDate),
 ];
 
+const resolvedShiftActualDates = (
+  shifts: WasteAnnualTourTransferMappedTour['tourDateShifts'],
+  year: number
+): readonly string[] =>
+  shifts.flatMap((shift) => {
+    const actualDate = shift.hasYear
+      ? shift.actualDate
+      : replaceWasteAnnualYear(shift.actualDate, year);
+    return actualDate ? [actualDate] : [];
+  });
+
 const yearlySchedulesIntersect = (
   left: WasteAnnualTourTransferMappedTour['targetTour'],
   right: WasteTourRecord
@@ -136,10 +147,20 @@ const parallelPlanningConflict = (
   indexed: IndexedWasteAnnualTargetTour
 ): WasteAnnualTourTransferConflict | null => {
   const { tour } = indexed;
-  const mappedDates = wasteAnnualEffectiveDates(mapped);
+  const baseMappedDates = wasteAnnualEffectiveDates(mapped);
+  const targetYear = wasteAnnualYearOf(baseMappedDates[0] ?? mapped.targetTour.firstDate ?? '');
+  if (targetYear === null) return null;
+  const mappedDates = [
+    ...baseMappedDates,
+    ...resolvedShiftActualDates(mapped.tourDateShifts, targetYear),
+  ];
+  const indexedDates = [
+    ...indexed.effectiveDates,
+    ...resolvedShiftActualDates(indexed.tourDateShifts, targetYear),
+  ];
   const interval = wasteAnnualIntervalForTour(mapped.targetTour as WasteTourRecord);
   const matches =
-    indexed.effectiveDates.some((date) => mappedDates.includes(date)) ||
+    indexedDates.some((date) => mappedDates.includes(date)) ||
     recurringSchedulesIntersect(mapped.targetTour, tour, interval);
   return matches
     ? {
@@ -153,7 +174,10 @@ const parallelPlanningConflict = (
 
 const tourHasEffectiveDateInYear = (indexed: IndexedWasteAnnualTargetTour, year: number): boolean =>
   wasteAnnualTourOverlapsYear(indexed.tour, year) ||
-  indexed.effectiveDates.some((date) => wasteAnnualYearOf(date) === year);
+  indexed.effectiveDates.some((date) => wasteAnnualYearOf(date) === year) ||
+  indexed.tourDateShifts.some(
+    (shift) => !shift.hasYear || wasteAnnualYearOf(shift.actualDate) === year
+  );
 
 export const findWasteAnnualTourConflicts = (
   sourceTourId: string,

@@ -66,6 +66,9 @@ export const createWasteAnnualTourConflictIndex = (
         ...(tour.customDates ?? []).map((item) => item.date),
         ...locationTourPickupDates.map((item) => item.pickupDate),
         ...tourAssignments.map((item) => item.pickupDate),
+        ...(shifts.get(tour.id) ?? [])
+          .filter((item) => item.hasYear)
+          .map((item) => item.actualDate),
       ],
       signature: wasteAnnualPlanningSignature(
         tour.wasteFractionIds,

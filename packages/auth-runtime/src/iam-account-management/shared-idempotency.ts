@@ -22,6 +22,7 @@ export const reserveIdempotency = async (input: {
   endpoint: string;
   idempotencyKey: string;
   payloadHash: string;
+  inProgressLeaseMs?: number;
 }): Promise<IdempotencyReserveResult> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
     await cleanupExpiredIdempotencyKeys(client);
@@ -36,9 +37,10 @@ export const reserveIdempotency = async (input: {
       payload_hash: string;
       response_status: number | null;
       response_body: unknown;
+      updated_at: Date | string;
     }>(
       `
-SELECT status, payload_hash, response_status, response_body
+SELECT status, payload_hash, response_status, response_body, updated_at
 FROM iam.idempotency_keys
 WHERE instance_id = $1
   AND actor_account_id = $2::uuid
@@ -84,6 +86,25 @@ VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
     }
 
     if (row.status === 'IN_PROGRESS') {
+      const updatedAt = new Date(row.updated_at).getTime();
+      const leaseExpired =
+        input.inProgressLeaseMs !== undefined &&
+        Number.isFinite(updatedAt) &&
+        Date.now() - updatedAt >= input.inProgressLeaseMs;
+      if (leaseExpired) {
+        await client.query(
+          `
+UPDATE iam.idempotency_keys
+SET updated_at = NOW(), expires_at = NOW() + INTERVAL '24 hours'
+WHERE instance_id = $1
+  AND actor_account_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4;
+`,
+          [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey]
+        );
+        return { status: 'reserved' };
+      }
       return {
         status: 'conflict',
         reason: 'in_progress',

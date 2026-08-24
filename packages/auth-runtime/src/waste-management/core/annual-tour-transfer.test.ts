@@ -195,10 +195,16 @@ describe('annual tour transfer handlers', () => {
         }
       );
     expect(response.status).toBe(201);
+    expect(idempotency.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({ inProgressLeaseMs: 5 * 60 * 1_000 })
+    );
     expect(idempotency.complete).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 })
     );
     expect(emitAuditEvent).toHaveBeenCalledTimes(1);
+    expect(emitAuditEvent.mock.invocationCallOrder[0]).toBeLessThan(
+      idempotency.complete.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
     expect(emitAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         pluginAction: expect.objectContaining({

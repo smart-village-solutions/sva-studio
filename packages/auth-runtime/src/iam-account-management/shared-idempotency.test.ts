@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  rows: new Map<string, {
-    payload_hash: string;
-    response_body: unknown;
-    response_status: number | null;
-    status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-  }>(),
+  rows: new Map<
+    string,
+    {
+      payload_hash: string;
+      response_body: unknown;
+      response_status: number | null;
+      status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+      updated_at: Date;
+    }
+  >(),
   client: {
     query: vi.fn(),
   },
@@ -27,7 +31,8 @@ const input = {
   payloadHash: 'hash-1',
 };
 
-const rowKey = (values: readonly unknown[]) => `${values[0]}:${values[1]}:${values[2]}:${values[3]}`;
+const rowKey = (values: readonly unknown[]) =>
+  `${values[0]}:${values[1]}:${values[2]}:${values[3]}`;
 
 describe('shared idempotency store', () => {
   beforeEach(() => {
@@ -45,9 +50,13 @@ describe('shared idempotency store', () => {
           response_body: null,
           response_status: null,
           status: 'IN_PROGRESS',
+          updated_at: new Date(),
         });
       }
-      if (text.includes('UPDATE iam.idempotency_keys')) {
+      if (text.includes('SET updated_at = NOW()')) {
+        const row = mocks.rows.get(rowKey(values));
+        if (row) row.updated_at = new Date();
+      } else if (text.includes('UPDATE iam.idempotency_keys')) {
         const key = `${values[1]}:${values[0]}:${values[2]}:${values[3]}`;
         const row = mocks.rows.get(key);
         if (row) {
@@ -63,8 +72,11 @@ describe('shared idempotency store', () => {
   it('reserves first-use idempotency keys', async () => {
     await expect(reserveIdempotency(input)).resolves.toEqual({ status: 'reserved' });
 
-    expect(mocks.rows.get(`${input.instanceId}:${input.actorAccountId}:${input.endpoint}:${input.idempotencyKey}`))
-      .toMatchObject({ payload_hash: input.payloadHash, status: 'IN_PROGRESS' });
+    expect(
+      mocks.rows.get(
+        `${input.instanceId}:${input.actorAccountId}:${input.endpoint}:${input.idempotencyKey}`
+      )
+    ).toMatchObject({ payload_hash: input.payloadHash, status: 'IN_PROGRESS' });
   });
 
   it('replays completed requests with the stored response', async () => {
@@ -97,5 +109,18 @@ describe('shared idempotency store', () => {
     await expect(reserveIdempotency(input)).resolves.toMatchObject({
       status: 'conflict',
     });
+  });
+
+  it('recovers an in-progress reservation after its explicit lease expires', async () => {
+    await reserveIdempotency(input);
+    const row = mocks.rows.get(
+      `${input.instanceId}:${input.actorAccountId}:${input.endpoint}:${input.idempotencyKey}`
+    );
+    if (!row) throw new Error('missing test reservation');
+    row.updated_at = new Date(Date.now() - 5 * 60 * 1_000 - 1);
+
+    await expect(
+      reserveIdempotency({ ...input, inProgressLeaseMs: 5 * 60 * 1_000 })
+    ).resolves.toEqual({ status: 'reserved' });
   });
 });

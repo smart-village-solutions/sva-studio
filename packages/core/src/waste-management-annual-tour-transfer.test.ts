@@ -804,6 +804,40 @@ describe('waste annual tour transfer', () => {
     expect(preview.summary.selected).toBe(0);
   });
 
+  it('detects parallel planning when a target shift lands on the mapped cadence', async () => {
+    const sourceTour = tour({ recurrence: 'weekly', firstDate: '2026-01-06' });
+    const targetTour = tour({
+      id: '99999999-9999-4999-8999-999999999999',
+      recurrence: 'weekly',
+      firstDate: '2027-01-13',
+      endDate: '2027-12-31',
+    });
+    const preview = await buildWasteAnnualTourTransferPreview({
+      instanceId: 'tenant-a',
+      sourceYear: 2026,
+      currentYear: 2026,
+      source: source([sourceTour]),
+      target: source([targetTour], {
+        tourDateShifts: [
+          {
+            id: 'shift-target',
+            tourId: targetTour.id,
+            originalDate: '2027-01-13',
+            actualDate: '2027-01-12',
+            hasYear: true,
+            createdAt: '2027-01-01T00:00:00.000Z',
+            updatedAt: '2027-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    });
+
+    expect(preview.tours[0]?.conflicts).toEqual([
+      expect.objectContaining({ kind: 'possible-parallel-planning', targetTourId: targetTour.id }),
+    ]);
+    expect(preview.summary.selected).toBe(0);
+  });
+
   it('reports all colliding date resources and resolves the collision with an explicit replacement', async () => {
     const collidingTour = tour({
       recurrence: 'on-demand',

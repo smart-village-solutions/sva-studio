@@ -12,6 +12,7 @@ import { emitWasteAuditEvent } from './auth.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 
 export const annualTourTransferEndpoint = 'POST:/api/v1/waste-management/tours/annual-transfer';
+const annualTourTransferIdempotencyLeaseMs = 5 * 60 * 1_000;
 
 export const reserveAnnualTourTransfer = async (input: {
   instanceId: string;
@@ -26,6 +27,7 @@ export const reserveAnnualTourTransfer = async (input: {
     endpoint: annualTourTransferEndpoint,
     idempotencyKey: input.idempotencyKey,
     payloadHash: await buildWasteAnnualTourTransferFingerprint(input.create),
+    inProgressLeaseMs: annualTourTransferIdempotencyLeaseMs,
   });
   if (reservation.status === 'replay') {
     return new Response(JSON.stringify(reservation.responseBody), {
@@ -61,15 +63,6 @@ export const completeAnnualTourTransfer = async (input: {
     }
   ).error?.details?.updatedPreview;
   const classificationCounts = input.result?.classificationCounts ?? updatedPreview?.summary;
-  await completeIdempotency({
-    instanceId: input.instanceId,
-    actorAccountId: input.actorAccountId,
-    endpoint: annualTourTransferEndpoint,
-    idempotencyKey: input.idempotencyKey,
-    status: input.response.ok ? 'COMPLETED' : 'FAILED',
-    responseStatus: input.response.status,
-    responseBody,
-  });
   await emitWasteAuditEvent({
     deps: input.deps,
     ctx: input.ctx,
@@ -93,6 +86,15 @@ export const completeAnnualTourTransfer = async (input: {
         ...(input.result?.existingTourIds ?? []),
       ],
     },
+  });
+  await completeIdempotency({
+    instanceId: input.instanceId,
+    actorAccountId: input.actorAccountId,
+    endpoint: annualTourTransferEndpoint,
+    idempotencyKey: input.idempotencyKey,
+    status: input.response.ok ? 'COMPLETED' : 'FAILED',
+    responseStatus: input.response.status,
+    responseBody,
   });
   return input.response;
 };

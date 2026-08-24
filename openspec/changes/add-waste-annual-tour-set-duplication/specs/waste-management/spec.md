@@ -188,7 +188,7 @@ Das System SHALL stabile fachliche Zielidentitäten und mögliche inhaltliche Ü
 
 #### Scenario: Andere Tour besitzt eine möglicherweise parallele Planung
 
-- **WHEN** eine andere bestehende Tour identische Abfallarten und Abholorte, denselben effektiven Tagesabstand, einen überschneidenden Zielzeitraum und mindestens einen gemeinsamen Termin besitzt
+- **WHEN** eine andere bestehende Tour identische Abfallarten und Abholorte, denselben effektiven Tagesabstand, einen überschneidenden Zielzeitraum und mindestens einen gemeinsamen regulären oder durch eine Verschiebung wirksamen Termin besitzt
 - **THEN** zeigt das System einen möglichen fachlichen Konflikt mit den ausschlaggebenden Merkmalen
 - **AND** wählt es die Quelltour zunächst ab
 - **AND** erlaubt es die Übernahme nur nach ausdrücklicher Kenntnisnahme, weil parallele Einsätze zulässig sein können
@@ -236,7 +236,8 @@ Das System SHALL den ausdrücklich bestätigten Tourensatz einschließlich aller
 #### Scenario: Prozess endet nach dem Waste-Commit
 
 - **WHEN** die Waste-Transaktion erfolgreich committet und der Prozess vor Abschluss des zentralen Idempotenzeintrags endet
-- **THEN** rekonstruiert eine Wiederholung das Ergebnis anhand der stabilen Ziel- und Beziehungs-IDs
+- **THEN** darf eine Wiederholung nach Ablauf der kurzen Verarbeitungs-Lease die verwaiste Reservierung übernehmen
+- **AND** rekonstruiert sie das Ergebnis anhand der stabilen Ziel- und Beziehungs-IDs
 - **AND** behandelt sie vollständig identische Daten als Replay
 - **AND** behandelt sie fehlende Daten als erneut atomar ausführbar und abweichende Daten als `target_identity_conflict`
 
@@ -256,6 +257,7 @@ Das System SHALL Vorschau und Erstellung gemäß den Waste-Berechtigungen schüt
 - **THEN** erzeugt das System genau ein zusammenfassendes Audit-Ereignis mit Jahren, Klassifikations- und Ergebnismengen, Ergebnis und technischen Ressourcen-IDs
 - **AND** protokolliert es keine Notizen, Adressdaten oder fachlichen Freitexte
 - **AND** erzeugen Vorschau und reine Validierungsfehler vor einer bestätigten Mutation kein Audit-Ereignis
+- **AND** markiert das System die Idempotenzantwort erst nach dem Audit-Abschluss dauerhaft als wiederholbar
 
 #### Scenario: Fehlgeschlagene Bestätigung behält Klassifikationsmengen im Audit
 

@@ -143,6 +143,7 @@ describe('Waste data exchange operations', () => {
       {
         id: 'fraction-1',
         name: 'Restmüll',
+        pdfShortLabel: 'RES',
         color: '#112233',
         active: true,
         reminderConfig: {
@@ -236,7 +237,13 @@ describe('Waste data exchange operations', () => {
       pluginId: 'waste-management',
       profileId: 'waste-management.fraktionen',
       exportedAt: '2026-08-16T09:00:00.000Z',
-      records: [{ entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00' }],
+      records: [{
+        entityType: 'fraction',
+        id: 'fraction-1',
+        name: 'Bio',
+        pdfShortLabel: 'BIO',
+        color: '#00aa00',
+      }],
     };
     const importDeps = {
       ...deps,
@@ -305,6 +312,7 @@ describe('Waste data exchange operations', () => {
       {
         id: 'fraction-package',
         name: 'Bio',
+        pdfShortLabel: 'BIO',
         color: '#00aa00',
         active: true,
         reminderConfig: {

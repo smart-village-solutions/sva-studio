@@ -23,7 +23,7 @@ export const wasteManagementMasterDataProfiles = [
       entity('fraction', [
         required('id', 'string'),
         required('name', 'string'),
-        optional('pdfShortLabel', 'string'),
+        required('pdfShortLabel', 'string'),
         optionalStructured('translations', 'localized-text'),
         optional('containerSize', 'string'),
         required('color', 'string'),

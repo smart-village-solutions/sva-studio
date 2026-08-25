@@ -1,4 +1,5 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
+import { wasteManagementJobStatusesDE } from './plugin.translations.tools-job-statuses.js';
 
 export const wasteManagementPluginTranslationsDETools = createWasteManagementToolsTranslations({
   exports: {
@@ -241,6 +242,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
       failed: 'Import fehlgeschlagen',
       cancelled: 'Import abgebrochen',
     },
+    jobStatuses: wasteManagementJobStatusesDE,
     steps: {
       'prepare-import': 'Import wird vorbereitet',
       'process-rows': 'Gültige Zeilen werden importiert',

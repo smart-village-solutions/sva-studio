@@ -185,7 +185,7 @@ export const WasteToolsHistory = ({
         announcement={
           displayedLastJob
             ? pt('tools.meta.statusAnnouncement', {
-                status: pt(`tools.progress.statuses.${displayedLastJob.status}`),
+                status: pt(`tools.progress.jobStatuses.${displayedLastJob.status}`),
                 phase: displayedLastJob.progress?.currentPhase
                   ? ` ${pt(`tools.progress.phases.${displayedLastJob.progress.currentPhase}`)}`
                   : '',

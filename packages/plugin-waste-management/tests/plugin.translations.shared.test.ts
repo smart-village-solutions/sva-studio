@@ -477,6 +477,16 @@ describe('waste-management translation builders', () => {
       failed: 'Import failed',
       cancelled: 'Import cancelled',
     });
+    expect(wasteManagementPluginTranslationsDETools.tools.progress.jobStatuses).toMatchObject({
+      succeeded: 'Vorgang abgeschlossen',
+      failed: 'Vorgang fehlgeschlagen',
+      cancelled: 'Vorgang abgebrochen',
+    });
+    expect(wasteManagementPluginTranslationsENTools.tools.progress.jobStatuses).toMatchObject({
+      succeeded: 'Operation completed',
+      failed: 'Operation failed',
+      cancelled: 'Operation cancelled',
+    });
   });
 
   it('defines localized labels for every registered Waste job phase', () => {

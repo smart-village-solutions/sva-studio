@@ -86,6 +86,7 @@ vi.mock('@sva/studio-ui-react', () => ({
     description,
     statusLabel,
     statusTone,
+    announcement,
     metadata,
     emptyState,
     actions,
@@ -94,6 +95,7 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly description: string;
     readonly statusLabel: string;
     readonly statusTone: string;
+    readonly announcement?: string;
     readonly metadata?: readonly { id: string; label: string; value: string }[];
     readonly emptyState?: string;
     readonly actions?: React.ReactNode;
@@ -103,6 +105,7 @@ vi.mock('@sva/studio-ui-react', () => ({
       <p>{description}</p>
       <p>{statusLabel}</p>
       <p>{statusTone}</p>
+      {announcement ? <p data-testid="announcement">{announcement}</p> : null}
       {emptyState ? <p>{emptyState}</p> : null}
       {metadata?.map((item) => (
         <p key={item.id}>{`${item.label}:${item.value}`}</p>
@@ -212,6 +215,25 @@ describe('WasteToolsHistory', () => {
     expect(variants).toContain('destructive');
     expect(variants).toContain('default');
     expect(screen.queryByRole('button', { name: 'tools.actions.openJob' })).toBeNull();
+  });
+
+  it('announces a non-import job with operation-neutral status copy', () => {
+    render(
+      <WasteToolsHistory
+        lastJob={
+          {
+            id: 'reset-job-1',
+            jobTypeId: 'waste-management.reset',
+            status: 'succeeded',
+          } as never
+        }
+        technicalHistory={[]}
+      />
+    );
+
+    expect(screen.getByTestId('announcement').textContent).toBe(
+      'tools.meta.statusAnnouncement:tools.progress.jobStatuses.succeeded|'
+    );
   });
 
   it('renders a live progress card for a running import job', () => {

@@ -39,7 +39,10 @@ const loadWorkspacePlugin = async (
   const manifest = JSON.parse(
     await readFile(resolve(pluginRoot, 'plugin.manifest.json'), 'utf8')
   ) as PluginManifest;
-  for (const candidate of getWorkspacePluginModuleCandidates(manifest)) {
+  const sourceCandidates = getWorkspacePluginModuleCandidates(manifest).filter((candidate) =>
+    candidate.startsWith('src/')
+  );
+  for (const candidate of sourceCandidates) {
     const modulePath = resolve(pluginRoot, candidate);
     if (!modulePath.startsWith(`${pluginRoot}/`)) {
       continue;

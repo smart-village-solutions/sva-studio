@@ -50,6 +50,7 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({
         id,
         markdown: `# Hilfe ${id}\n\nKontext für ${id}.`,
+        documentationBaseUrl: 'https://docs.example.test/',
         websiteUrl: `https://docs.example.test/pages/${id}/`,
       }),
     });

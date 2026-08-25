@@ -65,7 +65,7 @@ const isWithinDirectory = (parentDirectory: string, filePath: string): boolean =
   return relativePath !== '..' && !relativePath.startsWith(`..${sep}`);
 };
 
-const stripKnownOptionalJsxDevHelper = (sourceText: string): string => {
+const stripKnownOptionalJsxDevReferences = (sourceText: string): string => {
   const regionStartPattern =
     /^\/\/#region .*\/node_modules\/hast-util-to-jsx-runtime\/lib\/index\.js\r?$/mu;
   const regionStartMatch = regionStartPattern.exec(sourceText);
@@ -78,8 +78,26 @@ const stripKnownOptionalJsxDevHelper = (sourceText: string): string => {
     return sourceText;
   }
 
-  return `${sourceText.slice(0, regionStartMatch.index)}${sourceText.slice(
-    regionEndIndex + '//#endregion'.length
+  const regionEndOffset = regionEndIndex + '//#endregion'.length;
+  const helperRegion = sourceText.slice(regionStartMatch.index, regionEndOffset);
+  const knownOptionalReferencePatterns = [
+    /^\s*if \(typeof options\.jsxDEV !== "function"\) throw new TypeError\("Expected `jsxDEV` in options when `development: true`"\);\s*$/u,
+    /^\s*create = developmentCreate\(filePath, options\.jsxDEV\);\s*$/u,
+    /^\s*\* @param \{JsxDev\} jsxDEV\s*$/u,
+    /^\s*function developmentCreate\(filePath, jsxDEV\) \{\s*$/u,
+    /^\s*return jsxDEV\(type, props, key, isStaticChildren, \{\s*$/u,
+  ];
+  const guardedHelperRegion = helperRegion
+    .split(/\r?\n/u)
+    .map((line) =>
+      line.includes('jsxDEV') && knownOptionalReferencePatterns.some((pattern) => pattern.test(line))
+        ? line.replaceAll('jsxDEV', 'jsxOptionalDevelopmentHelper')
+        : line
+    )
+    .join('\n');
+
+  return `${sourceText.slice(0, regionStartMatch.index)}${guardedHelperRegion}${sourceText.slice(
+    regionEndOffset
   )}`;
 };
 
@@ -117,7 +135,7 @@ export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly s
     }
 
     const sourceText = readFileSync(filePath, 'utf8');
-    const guardedSourceText = stripKnownOptionalJsxDevHelper(sourceText);
+    const guardedSourceText = stripKnownOptionalJsxDevReferences(sourceText);
     if (guardedSourceText.includes('jsx-dev-runtime')) {
       throw new Error(`Erreichbarer Server-Output enthält React Development-JSX: ${filePath}`);
     }

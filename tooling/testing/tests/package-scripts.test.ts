@@ -274,9 +274,7 @@ describe('workspace package scripts', () => {
     const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
     const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
     const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
-    const coverageAggregatorStart = runtimeWorkflow.indexOf(
-      '  coverage:\n    name: Coverage'
-    );
+    const coverageAggregatorStart = runtimeWorkflow.indexOf('  coverage:\n    name: Coverage');
     const complexityStart = runtimeWorkflow.indexOf('\n  complexity:', coverageAggregatorStart);
     const coverageAggregator = runtimeWorkflow.slice(coverageAggregatorStart, complexityStart);
 

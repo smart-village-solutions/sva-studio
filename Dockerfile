@@ -79,14 +79,7 @@ const walk = (dir) => { \
   } \
 }; \
 for (const distRoot of distRoots) walk(distRoot);"
-RUN if find /workspace/apps/sva-studio-react/.output/server -type f \
-      \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) \
-      ! -name '*.map' \
-      ! -path '*/node_modules/*' \
-      -exec grep -E -l 'jsxDEV|jsx-dev-runtime' {} + | grep -q .; then \
-      echo "Docker production artifact must not contain React development JSX runtime." >&2; \
-      exit 1; \
-    fi
+RUN pnpm exec tsx scripts/ci/check-production-jsx-runtime.ts /workspace/apps/sva-studio-react
 RUN pnpm --filter sva-studio-react deploy --prod /workspace/.deploy/sva-studio-react
 
 # Copy built dist/ artifacts of workspace packages into deployed pnpm package locations.

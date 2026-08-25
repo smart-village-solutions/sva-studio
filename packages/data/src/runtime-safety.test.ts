@@ -458,6 +458,11 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'deploy/portainer/Dockerfile'),
     'utf8'
   );
+  const rootDockerfile = readFileSync(resolve(testDirectory, '..', '..', '..', 'Dockerfile'), 'utf8');
+  const productionJsxRuntimeGuard = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.ts'),
+    'utf8'
+  );
   const dockerignore = readFileSync(resolve(testDirectory, '..', '..', '..', '.dockerignore'), 'utf8');
   const patchRuntimeArtifact = readFileSync(
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
@@ -493,15 +498,16 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);
   assert.doesNotMatch(runtimeVerifyScript, /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/);
 
-  assert.match(
-    portainerDockerfile,
-    /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f[\s\S]*-name '\*\.js'[\s\S]*-name '\*\.mjs'[\s\S]*-name '\*\.cjs'/
-  );
-  assert.match(portainerDockerfile, /! -name '\*\.map'/);
-  assert.match(portainerDockerfile, /! -path '\*\/node_modules\/\*'/);
-  assert.match(portainerDockerfile, /-exec grep -E -l 'jsxDEV\|jsx-dev-runtime' \{\} \+ \| grep -q \./);
-  assert.doesNotMatch(portainerDockerfile, /--include='\*\.mjs'/);
-  assert.doesNotMatch(portainerDockerfile, /--exclude-dir='node_modules'/);
+  for (const dockerfile of [rootDockerfile, portainerDockerfile]) {
+    assert.match(
+      dockerfile,
+      /pnpm exec tsx scripts\/ci\/check-production-jsx-runtime\.ts \/workspace\/apps\/sva-studio-react/
+    );
+    assert.doesNotMatch(dockerfile, /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f/);
+  }
+  assert.match(productionJsxRuntimeGuard, /collectRuntimeSpecifiers/);
+  assert.match(productionJsxRuntimeGuard, /pendingPaths/);
+  assert.match(productionJsxRuntimeGuard, /stripKnownOptionalJsxDevReferences/);
   assert.match(portainerDockerfile, /RUN apk add --no-cache bash git/);
   assert.match(
     dockerignore,
@@ -549,38 +555,91 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/);
 });
 
-test('portable docker runtime guard only fails when a JSX dev runtime match is present', () => {
+test('portable docker runtime guard follows reachable modules and excludes only the known optional helper', { timeout: 10_000 }, () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
-  const noMatchDir = resolve(tempRoot, 'no-match');
-  const matchDir = resolve(tempRoot, 'match');
-  const guardScript = `if find "$TARGET_DIR" -type f \\
-  \\( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \\) \\
-  ! -name '*.map' \\
-  ! -path '*/node_modules/*' \\
-  -exec grep -E -l 'jsxDEV|jsx-dev-runtime' {} + | grep -q .; then
-  exit 1
-fi`;
+  const serverDir = resolve(tempRoot, '.output/server');
+  const ssrDir = resolve(serverDir, '_ssr');
+  const libraryDir = resolve(serverDir, '_libs');
+  const chunksDir = resolve(serverDir, '_chunks');
+  const otelChunkDir = resolve(serverDir, 'chunks/_');
+  const recoveryChunkDir = resolve(serverDir, 'chunks/build');
+  const guardScript = resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.ts');
 
   try {
-    execFileSync('mkdir', ['-p', noMatchDir, matchDir]);
-    writeFileSync(resolve(noMatchDir, 'server.js'), 'export const server = "prod-runtime";\n');
-    writeFileSync(resolve(matchDir, 'server.js'), 'const runtime = "jsxDEV";\n');
+    mkdirSync(ssrDir, { recursive: true });
+    mkdirSync(libraryDir, { recursive: true });
+    mkdirSync(chunksDir, { recursive: true });
+    mkdirSync(otelChunkDir, { recursive: true });
+    mkdirSync(recoveryChunkDir, { recursive: true });
+    writeFileSync(serverDir + '/index.mjs', 'import "./_chunks/ssr-renderer.mjs";\n');
+    writeFileSync(resolve(chunksDir, 'ssr-renderer.mjs'), 'export { service } from "../_libs/service.mjs";\n');
+    writeFileSync(resolve(libraryDir, 'service.mjs'), 'export const service = import("../_ssr/ssr.mjs");\n');
+    writeFileSync(
+      resolve(ssrDir, 'ssr.mjs'),
+      'import "./server-test.mjs"; import "../_libs/hast-util-to-jsx-runtime+[...].mjs";\n'
+    );
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'commonjs.cjs'), 'require("./resolution-target");\n');
+    writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "jsxDEV";\n');
+    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "prod-runtime";\n');
+    writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'export const preload = "prod-runtime";\n');
+    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
+    writeFileSync(
+      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
+    );
 
-    execFileSync('sh', ['-c', guardScript], {
-      env: {
-        ...process.env,
-        TARGET_DIR: noMatchDir,
-      },
-    });
+    execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
 
-    expect(() =>
-      execFileSync('sh', ['-c', guardScript], {
-        env: {
-          ...process.env,
-          TARGET_DIR: matchDir,
-        },
-      })
-    ).toThrowError(/Command failed/);
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "./commonjs.cjs";\n');
+    execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
+    writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "jsxDEV";\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'template-target.mjs'), 'export const template = "jsxDEV";\n');
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import(`./template-target.mjs`);\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+    writeFileSync(resolve(ssrDir, 'extensionless-target'), 'module.exports = "jsxDEV";\n');
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'require("./extensionless-target");\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
+
+    writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'const preload = "jsxDEV";\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+
+    writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'export const preload = "prod-runtime";\n');
+    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'const recovery = "jsxDEV";\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+
+    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
+    writeFileSync(
+      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\nconst inlinedDevelopmentTransform = "jsxDEV";\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
+    );
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+
+    writeFileSync(
+      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
+    );
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "react/jsx-dev-runtime";\n');
+
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
   } finally {
     rmSync(tempRoot, { force: true, recursive: true });
   }

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1147,
+  "body": "Der Produktionsbuild der kontextbezogenen Anwenderhilfe wird nicht mehr durch ungenutzte Development-Helfer einer Bibliothek blockiert.\n\n- Der Build prüft weiterhin die tatsächlich ausgeführten Server-Einstiegspunkte auf Development-JSX.\n- Fehlende Runtime-Artefakte bleiben ein harter Buildfehler."
+}

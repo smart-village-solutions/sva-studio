@@ -189,7 +189,8 @@ describe('waste-management mutation helper logic', () => {
   it('maps delete conflicts to the singular delete error message', async () => {
     const state = createLocationState();
     const loadOverview = vi.fn(async () => undefined);
-    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce({ code: 'conflict' });
+    const deleteError = { code: 'conflict' };
+    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(deleteError);
     const handler = createLocationDeleteHandler({
       state: state as never,
       pt,
@@ -199,7 +200,7 @@ describe('waste-management mutation helper logic', () => {
       selectedCollectionLocationIds: [],
     });
 
-    await handler({ id: 'location-9' });
+    await expect(handler({ id: 'location-9' })).rejects.toBe(deleteError);
 
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'error',

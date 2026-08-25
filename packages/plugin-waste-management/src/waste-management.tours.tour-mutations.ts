@@ -14,7 +14,7 @@ import {
   logWasteTourDeleteStart,
   logWasteTourDeleteSuccess,
 } from './waste-management.tours.delete-debug.js';
-import { setTourDeleteErrorMessage } from './waste-management.tours.messages.js';
+import { throwTourDeleteError } from './waste-management.tours.messages.js';
 import {
   createTourDateLocationAssignmentKey,
   isCustomDatesRecurrence,
@@ -192,7 +192,7 @@ const createDeleteTourHandler =
       });
     } catch (saveError) {
       logWasteTourDeleteError(tour, saveError);
-      setTourDeleteErrorMessage(state, pt, saveError);
+      throwTourDeleteError(state, pt, saveError);
     } finally {
       state.setSaving(false);
     }
@@ -238,9 +238,9 @@ const createDeleteToursHandler =
         return;
       }
 
-      setTourDeleteErrorMessage(state, pt, failedResults[0]?.reason);
+      throw failedResults[0]?.reason;
     } catch (saveError) {
-      setTourDeleteErrorMessage(state, pt, saveError);
+      throwTourDeleteError(state, pt, saveError);
     } finally {
       state.setSaving(false);
     }

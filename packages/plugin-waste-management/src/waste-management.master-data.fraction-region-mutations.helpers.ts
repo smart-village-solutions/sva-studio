@@ -123,6 +123,7 @@ export const createDeleteFractionHandler = (ctx: FractionRegionSubmissionHelperC
     }
   } catch (error) {
     setDeleteErrorMessage(ctx, error);
+    throw error;
   } finally {
     ctx.state.setSaving(false);
   }
@@ -161,7 +162,9 @@ export const createDeleteFractionsHandler = (ctx: FractionRegionSubmissionHelper
       }
       return;
     }
-    setDeleteErrorMessage(ctx, failedResults[0]?.reason);
+    const deleteError = failedResults[0]?.reason;
+    setDeleteErrorMessage(ctx, deleteError);
+    throw deleteError;
   } finally {
     ctx.state.setSaving(false);
   }

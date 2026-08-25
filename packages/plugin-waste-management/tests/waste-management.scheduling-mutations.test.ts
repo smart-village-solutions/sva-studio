@@ -104,9 +104,8 @@ describe('createWasteSchedulingMutationHandlers', () => {
   });
 
   it('maps forbidden delete errors to the dedicated scheduling message', async () => {
-    deleteWasteManagementGlobalDateShiftMock.mockRejectedValueOnce(
-      new WasteManagementApiErrorMock('forbidden')
-    );
+    const deleteError = new WasteManagementApiErrorMock('forbidden');
+    deleteWasteManagementGlobalDateShiftMock.mockRejectedValueOnce(deleteError);
 
     const state = {
       setSaving: vi.fn(),
@@ -119,19 +118,21 @@ describe('createWasteSchedulingMutationHandlers', () => {
       loadOverview: vi.fn(async () => undefined),
     });
 
-    await handlers.onDeleteSchedulingRows([
-      {
-        id: 'global-1',
-        entryType: 'global-shift',
-        kind: 'global',
-        originalDate: '2026-01-01',
-        actualDate: '2026-01-02',
-        shift: {} as never,
-        contextLabel: 'alle Touren',
-        sortLabel: 'alle Touren',
-        canDelete: true,
-      },
-    ]);
+    await expect(
+      handlers.onDeleteSchedulingRows([
+        {
+          id: 'global-1',
+          entryType: 'global-shift',
+          kind: 'global',
+          originalDate: '2026-01-01',
+          actualDate: '2026-01-02',
+          shift: {} as never,
+          contextLabel: 'alle Touren',
+          sortLabel: 'alle Touren',
+          canDelete: true,
+        },
+      ])
+    ).rejects.toBe(deleteError);
 
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'error',

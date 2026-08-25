@@ -905,10 +905,9 @@ describe('waste management helper modules', () => {
       text: 'masterData.fractions.messages.saveForbidden',
     });
 
-    deleteWasteManagementFractionMock.mockRejectedValueOnce(
-      new WasteManagementApiError('invalid_request', 'busy')
-    );
-    await handlers.deleteFraction('fraction-1');
+    const fractionDeleteError = new WasteManagementApiError('invalid_request', 'busy');
+    deleteWasteManagementFractionMock.mockRejectedValueOnce(fractionDeleteError);
+    await expect(handlers.deleteFraction('fraction-1')).rejects.toBe(fractionDeleteError);
     expect(setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
       text: 'masterData.fractions.messages.deleteConflict',

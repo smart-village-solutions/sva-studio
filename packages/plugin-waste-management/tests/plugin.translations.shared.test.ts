@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createWasteManagementPluginTranslationLocale } from '../src/plugin.translations.shared.base.js';
 import { wasteManagementPluginTranslationsDEMasterData } from '../src/plugin.translations.de.masterData.js';
+import { wasteManagementPluginTranslationsDETools } from '../src/plugin.translations.de.tools.js';
+import { wasteManagementPluginTranslationsENTools } from '../src/plugin.translations.en.tools.js';
 import { wasteManagementPluginTranslationsDETours } from '../src/plugin.translations.de.tours.js';
 import { createMasterDataEntityTranslations } from '../src/plugin.translations.shared.master-data.js';
 import { createWasteManagementToursTranslations } from '../src/plugin.translations.shared.scheduling.js';
@@ -460,6 +462,19 @@ describe('waste-management translation builders', () => {
           },
         },
       },
+    });
+  });
+
+  it('defines localized labels for every terminal plugin-operation status', () => {
+    expect(wasteManagementPluginTranslationsDETools.tools.progress.statuses).toMatchObject({
+      succeeded: 'Import abgeschlossen',
+      failed: 'Import fehlgeschlagen',
+      cancelled: 'Import abgebrochen',
+    });
+    expect(wasteManagementPluginTranslationsENTools.tools.progress.statuses).toMatchObject({
+      succeeded: 'Import completed',
+      failed: 'Import failed',
+      cancelled: 'Import cancelled',
     });
   });
 });

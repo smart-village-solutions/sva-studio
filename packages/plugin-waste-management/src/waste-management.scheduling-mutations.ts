@@ -112,6 +112,7 @@ const createDeleteSchedulingRowsHandler =
           'scheduling.messages.deleteForbidden'
         )
       );
+      throw error;
     } finally {
       state.setSaving(false);
     }

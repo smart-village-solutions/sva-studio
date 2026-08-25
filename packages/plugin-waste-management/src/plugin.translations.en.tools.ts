@@ -212,6 +212,9 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
       queued: 'Import is being prepared',
       running: 'Import is being processed',
       retrying: 'Import is being retried',
+      succeeded: 'Import completed',
+      failed: 'Import failed',
+      cancelled: 'Import cancelled',
     },
     steps: {
       'prepare-import': 'Import is being prepared',

@@ -217,6 +217,9 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
       queued: 'Import wird vorbereitet',
       running: 'Import wird verarbeitet',
       retrying: 'Import wird erneut versucht',
+      succeeded: 'Import abgeschlossen',
+      failed: 'Import fehlgeschlagen',
+      cancelled: 'Import abgebrochen',
     },
     steps: {
       'prepare-import': 'Import wird vorbereitet',

@@ -312,7 +312,9 @@ describe('createWasteToursTourMutationHandlers', () => {
     apiMocks.deleteWasteManagementTour.mockReset();
     apiMocks.deleteWasteManagementTour.mockRejectedValueOnce(new Error('invalid_request'));
 
-    await errorMutations.onDeleteTour({ id: 'tour-5' } as never);
+    await expect(errorMutations.onDeleteTour({ id: 'tour-5' } as never)).rejects.toThrow(
+      'invalid_request'
+    );
 
     expect(errorState.setMessage).toHaveBeenCalledWith({
       kind: 'error',
@@ -398,7 +400,9 @@ describe('createWasteToursTourMutationHandlers', () => {
       { status: 'rejected', reason: new Error('forbidden') },
     ] as PromiseSettledResult<unknown>[]);
 
-    await failedMutations.onDeleteTours(['tour-1', 'tour-2']);
+    await expect(failedMutations.onDeleteTours(['tour-1', 'tour-2'])).rejects.toThrow(
+      'forbidden'
+    );
 
     expect(failedState.setMessage).toHaveBeenCalledWith({
       kind: 'error',
@@ -414,7 +418,7 @@ describe('createWasteToursTourMutationHandlers', () => {
     });
     const allSettledSpy = vi.spyOn(Promise, 'allSettled').mockRejectedValueOnce(new Error('boom'));
 
-    await outerErrorMutations.onDeleteTours(['tour-3']);
+    await expect(outerErrorMutations.onDeleteTours(['tour-3'])).rejects.toThrow('boom');
 
     expect(outerErrorState.setMessage).toHaveBeenCalledWith({
       kind: 'error',

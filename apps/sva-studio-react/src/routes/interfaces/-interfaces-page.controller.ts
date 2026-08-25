@@ -297,7 +297,9 @@ export const useInterfacesPageController = () => {
       const deletedName = pendingDelete.name;
       const refreshed = await refresh(false);
       if (!refreshed) {
-        throw new Error(t('interfaces.messages.refreshAfterDeleteError'));
+        setPendingDelete(null);
+        setDeleteResultMessage(t('interfaces.messages.refreshAfterDeleteError'));
+        return;
       }
       setPendingDelete(null);
       setDeleteResultMessage(t('interfaces.messages.deleteSuccess', { name: deletedName }));

@@ -134,6 +134,7 @@ export const createLocationDeleteHandler =
         kind: 'error',
         text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), false),
       });
+      throw deleteError;
     } finally {
       context.state.setSaving(false);
     }
@@ -159,6 +160,7 @@ export const createLocationsBulkDeleteHandler =
         kind: 'error',
         text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), true),
       });
+      throw deleteError;
     } finally {
       context.state.setSaving(false);
     }

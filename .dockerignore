@@ -18,6 +18,9 @@ packages/*/dist
 docs
 !docs/changelog/
 !docs/changelog/**
+!docs/user-documentation/
+docs/user-documentation/*
+!docs/user-documentation/page-catalog.json
 dev/monitoring
 
 .DS_Store

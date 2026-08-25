@@ -4,7 +4,7 @@
 
 Der beobachtende Coverage-Aggregator lieferte in 20 aufeinanderfolgenden, nicht abgebrochenen PR-Läufen für dasselbe Head-SHA dasselbe terminale Ergebnis wie der bisherige Required-Pfad. Damit ist die Ergebnisparität für den Cutover belegt.
 
-Der Workflow benennt nun den bisherigen ausführenden Abschlussjob in `Coverage Complete` und den fail-closed aggregierenden Job von `Coverage Shadow` in den stabilen Required-Kontext `Coverage` um. Die eigentlichen Coverage-Phasen und Shards bleiben interne Implementierungsdetails.
+Der Workflow benennt nun den bisherigen ausführenden Abschlussjob im PR-Pfad in `Coverage Complete` und den fail-closed aggregierenden Job von `Coverage Shadow` in den stabilen Required-Kontext `Coverage` um. Auf `main` und im Nightly-Lauf behält der vollständige Abschlussjob den Namen `Coverage`. Das Coverage-Artefakt ist pro Workflow-Run stabil und bleibt damit auch bei partiellen Reruns für den Aggregator verfügbar. Die eigentlichen Coverage-Phasen und Shards bleiben interne Implementierungsdetails.
 
 ## Ausgewertete Läufe
 

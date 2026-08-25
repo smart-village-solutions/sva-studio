@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   coverage-complete:
-    name: Coverage Complete
+    name: ${{ github.event_name == 'pull_request' && 'Coverage Complete' || 'Coverage' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -133,7 +133,7 @@ jobs:
         if: always() && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'))
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          name: coverage-reports-${{ github.run_id }}
           path: |
             **/coverage/coverage-summary.json
             **/coverage/lcov.info
@@ -141,6 +141,7 @@ jobs:
             artifacts/ci-feedback/coverage-shards/*.json
             tooling/testing/coverage-policy.json
           if-no-files-found: error
+          overwrite: true
           retention-days: 7
 
       - name: Prepare SonarCloud coverage report
@@ -193,7 +194,7 @@ jobs:
             echo 'Scope: voller Coverage-Lauf für main/schedule' >> "$GITHUB_STEP_SUMMARY"
           fi
           if [ "${{ github.event_name }}" != "pull_request" ] || ([ "${{ steps.changes.outputs.relevant }}" = "true" ] && [ "${{ steps.scope.outputs.coverage_mode }}" != "skip" ]); then
-            echo "Artifact: \`coverage-reports-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "Artifact: \`coverage-reports-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   coverage:
@@ -219,7 +220,7 @@ jobs:
         if: needs.coverage-complete.outputs.evidence_required == 'true'
         uses: actions/download-artifact@v8
         with:
-          name: coverage-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          name: coverage-reports-${{ github.run_id }}
           path: artifacts/downloaded-coverage
 
       - name: Aggregate required Coverage status

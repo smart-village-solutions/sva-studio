@@ -216,7 +216,9 @@ describe('workspace package scripts', () => {
     expect(qualityWorkflow).toContain('  unit:\n    name: Unit');
     expect(qualityWorkflow).toContain('--expected unit-direct,unit-remaining');
     expect(qualityWorkflow).toContain('if-no-files-found: error');
-    expect(runtimeWorkflow).toContain('coverage-complete:\n    name: Coverage Complete');
+    expect(runtimeWorkflow).toContain(
+      "coverage-complete:\n    name: ${{ github.event_name == 'pull_request' && 'Coverage Complete' || 'Coverage' }}"
+    );
     expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage');
     expect(runtimeWorkflow).toContain('--expected coverage-complete');
     expect(runtimeWorkflow).toContain('validate-downloaded-coverage.ts');
@@ -266,6 +268,28 @@ describe('workspace package scripts', () => {
     expect(remainingUpload).toContain('overwrite: true');
     expect(evidenceDownload).toContain('pattern: unit-feedback-*-${{ github.run_id }}');
     expect(evidenceDownload).not.toContain('github.run_attempt');
+  });
+
+  it('retains Coverage evidence across partial workflow reruns', () => {
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const uploadStart = runtimeWorkflow.indexOf('      - name: Upload coverage artifacts');
+    const prepareSonarStart = runtimeWorkflow.indexOf(
+      '      - name: Prepare SonarCloud coverage report',
+      uploadStart
+    );
+    const coverageUpload = runtimeWorkflow.slice(uploadStart, prepareSonarStart);
+    const downloadStart = runtimeWorkflow.indexOf('      - name: Download coverage evidence');
+    const aggregateStart = runtimeWorkflow.indexOf(
+      '      - name: Aggregate required Coverage status',
+      downloadStart
+    );
+    const coverageDownload = runtimeWorkflow.slice(downloadStart, aggregateStart);
+
+    expect(coverageUpload).toContain('name: coverage-reports-${{ github.run_id }}');
+    expect(coverageUpload).toContain('overwrite: true');
+    expect(coverageUpload).not.toContain('github.run_attempt');
+    expect(coverageDownload).toContain('name: coverage-reports-${{ github.run_id }}');
+    expect(coverageDownload).not.toContain('github.run_attempt');
   });
 
   it('sets up the repository Node runtime before running TypeScript aggregators', () => {

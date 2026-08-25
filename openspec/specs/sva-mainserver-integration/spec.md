@@ -3,7 +3,9 @@
 ## Purpose
 
 This specification defines the host-owned, typed SVA Mainserver integration contract for News, Events, and POI so fachplugins consume Mainserver data and mutations without bypassing package boundaries, per-user delegation, or deterministic validation and error handling.
+
 ## Requirements
+
 ### Requirement: Typed News GraphQL Adapters
 
 The system SHALL expose typed, server-only SVA Mainserver adapters for News list, detail, create, update, and archive-or-delete operations.
@@ -1802,19 +1804,54 @@ Das System SHALL die öffentliche serverseitige Mainserver-Service-Fassade stabi
 Die öffentliche Fassade umfasst `createSvaMainserverService`, die zurückgegebenen Service-Methoden und die bestehenden Top-Level-Helper-Exporte aus `@sva/sva-mainserver/server`.
 
 #### Scenario: Interne Module werden refaktoriert
+
 - **GIVEN** die Mainserver-Serverlaufzeit wird intern gewartet
 - **WHEN** Cache, Credential-Laden, Token-Laden, GraphQL-Transport, Telemetrie oder Ressourcen-Mappings geändert werden
 - **THEN** liegen diese Verantwortlichkeiten in dedizierten internen Modulen statt in einer monolithischen Service-Datei
 - **AND** verwenden Aufrufer weiterhin die unveränderte öffentliche Fassade
 
 #### Scenario: Bestehende Aufrufer behalten ihren Vertrag
+
 - **GIVEN** ein serverseitiger Aufrufer importiert `createSvaMainserverService` oder einen Top-Level-Helper aus `@sva/sva-mainserver/server`
 - **WHEN** das refaktorierte Package gebaut und ausgeführt wird
 - **THEN** ändern sich keine aufruferseitigen Methodennamen, Parameterverträge oder deterministischen Fehlercodes
 - **AND** muss der Aufrufer keine neuen Importe oder eine generische Transport-API übernehmen
 
 #### Scenario: Internes Verhalten bleibt fokussiert testbar
+
 - **GIVEN** Credential-Caching, Token-Erneuerung, Retry-Semantik oder verschachteltes Mainserver-Mapping-Verhalten muss geändert werden
 - **WHEN** Tests für dieses Verhalten aktualisiert werden
 - **THEN** existieren fokussierte Unit-Tests für das relevante interne Modul
 - **AND** prüft eine kleinere Service-Level-Testschicht weiterhin die Verdrahtung der Fassade und das Verhalten des Default-Service
+
+### Requirement: Mainserver-Diagnostik besitzt eindeutige Fehlerownership und semantische Level
+
+Das System MUST das abschließende Mainserver-Ergebnis an genau einer verantwortlichen Grenze protokollieren. Unerwartete interne oder Providerfehler mit 5xx-Ergebnis MUST dort als `error` erscheinen; erwartbare validierte Ablehnungen dürfen höchstens als `warn` erscheinen. Tiefere Clients MUST Fehler klassifiziert propagieren und dürfen dasselbe operative Ergebnis nicht erneut protokollieren.
+
+#### Scenario: Providerfehler führt zu einem 5xx-Ergebnis
+
+- **WHEN** ein unerwarteter Mainserver-Providerfehler als 5xx-Ergebnis beantwortet wird
+- **THEN** emittiert die verantwortliche Mainserver-Routengrenze genau ein korreliertes `error`-Ereignis
+- **AND** protokollieren tiefere Client- und Mapper-Schichten kein Duplikat desselben Fehlerereignisses
+
+#### Scenario: Validierte Eingabe wird erwartbar abgelehnt
+
+- **WHEN** eine Mainserver-Operation aufgrund eines erwartbaren fachlichen oder Eingabefehlers abgelehnt wird
+- **THEN** emittiert die verantwortliche Grenze höchstens ein `warn`-Ereignis
+- **AND** klassifiziert sie das Ergebnis mit einem stabilen Fehlercode ohne Payload oder freien Provider-Fehlertext
+
+### Requirement: Routinemäßige Mainserver-Leseaktivität bleibt unterhalb von Info
+
+Das System MUST erfolgreiche routinemäßige GraphQL-Reads, Credential-Cache-Treffer, Pagination- und Konfigurationszugriffe als `debug` protokollieren oder ohne Einzelereignis lassen. Erfolgreiche fachliche Mutationen dürfen an der verantwortlichen Grenze genau ein `info`-Ereignis erzeugen.
+
+#### Scenario: GraphQL-Read und Credential-Cache sind erfolgreich
+
+- **WHEN** ein GraphQL-Lesezugriff mit Credential-Cache-Treffer ohne Abweichung erfolgreich endet
+- **THEN** erzeugen Client und Cache kein `info`-Ereignis pro internem Schritt
+- **AND** dürfen diagnostische Details ausschließlich auf `debug` erscheinen
+
+#### Scenario: Fachliche Mutation ist erfolgreich
+
+- **WHEN** eine autorisierte Mainserver-Mutation erfolgreich fachlichen Zustand ändert
+- **THEN** darf die verantwortliche Grenze genau ein strukturiertes `info`-Ergebnis mit sicheren Korrelationsfeldern emittieren
+- **AND** erzeugen interne Cache- und GraphQL-Schritte keine zusätzlichen `info`-Erfolge

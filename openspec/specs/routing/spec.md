@@ -1,145 +1,199 @@
 # Capability: routing
 
 ## Purpose
+
 Die Routing-Capability definiert, wie Routen aus Core und Plugins typsicher zusammengeführt und zur Laufzeit registriert werden.
+
 ## Requirements
+
 ### Requirement: Code-Route-Registry
+
 Das System SHALL eine einzige öffentliche Routing-Schnittstelle in `@sva/routing` bereitstellen, die UI-, Auth- und Plugin-Routen zusammenführt und für pfadspezifische Handler-Mappings in Teilbereichen wie Auth-Routing als Single Source of Truth dient. App-lokale Parallel-Registrierungen DÜRFEN NICHT existieren.
 
 #### Scenario: App bezieht alle produktiven Routen aus dem Routing-Package
+
 - **WHEN** die Frontend-App ihren Router erzeugt
 - **THEN** bezieht sie die Route-Factories ausschließlich aus `@sva/routing` oder `@sva/routing/server`
 - **AND** die App liefert nur noch Root-Route, Context und Seiten-Bindings
 
 #### Scenario: Produktive Seitenrouten sind code-based
+
 - **WHEN** die Codebasis nach produktiven Seitenrouten durchsucht wird
 - **THEN** liegen diese nicht in file-based Route-Dateien
 - **AND** file-based Routing bleibt auf `__root.tsx` und notwendige TanStack-Integrationsartefakte reduziert
 
 #### Scenario: Demo-Routen sind kein Teil des Produkt-Routings
+
 - **WHEN** der produktive Route-Baum aufgebaut wird
 - **THEN** enthält er keine `/demo`-Routen
 - **AND** Demo- oder Sandbox-Routen benötigen einen separaten, expliziten Integrationseintrag
 
 #### Scenario: Generische Plugin-Operations-Endpunkte laufen über den typisierten Host-Katalog
+
 - **WHEN** generische Job- oder Import-Endpunkte des Hosts produktiv eingeführt werden
 - **THEN** werden sie in denselben typisierten Runtime-Route-Katalog aufgenommen wie bestehende Auth- und IAM-Endpunkte
 - **AND** Handler-Mappings und Route-Abdeckung bleiben dadurch zentral prüfbar
 - **AND** produktive Plugin-Operations-Endpunkte entstehen nicht nur durch lose Handler-Registrierung außerhalb des Katalogs
 
 #### Scenario: Erste Plugin-Operations-Endpunkte sind im Katalog sichtbar
+
 - **WHEN** die erste Plattformausbaustufe generische Jobs produktiv anbietet
 - **THEN** enthält der Runtime-Route-Katalog mindestens einen Start-Endpunkt und einen Detail-/Status-Endpunkt für Plugin-Operations
 - **AND** deren Handler werden über dieselben Host-Mappings verdrahtet wie bestehende Runtime-Endpunkte
 
 #### Scenario: Plugin-Operations-Listenendpunkt wird für Monitoring ergänzt
+
 - **WHEN** der Host unter `Monitoring > Jobs` eine lesende Jobs-Ansicht bereitstellt
 - **THEN** enthält der Runtime-Route-Katalog zusätzlich einen Listenendpunkt für Plugin-Operations-Jobs
 - **AND** dieser Endpunkt bleibt Teil desselben zentralen Host-Katalogs statt einer app-lokalen Sonderverdrahtung
 
 #### Scenario: Monitoring-Jobs-Routen bleiben Teil der kanonischen App-Routen
+
 - **WHEN** die App einen Unterbereich `Monitoring > Jobs` mit Listen- und Detailroute anbietet
 - **THEN** werden diese Seitenrouten über die kanonische Route-Registry bereitgestellt
 - **AND** sie entstehen nicht als app-lokale Parallelrouten außerhalb des bestehenden Routing-Contracts
 
 ### Requirement: Plugin-Route-Exports
+
 Plugins SHALL eigene Routen als Exporte bereitstellen können, die von der Route-Registry aufgenommen werden.
 
 #### Scenario: Plugin liefert Route-Definition
+
 - **WHEN** ein Plugin eine Route exportiert
 - **THEN** kann die App diese Route registrieren
 
 ### Requirement: Root-Level Error Boundary
+
 Die App SHALL auf Root-Route-Ebene ein `errorComponent` bereitstellen, das unbehandelte Runtime-Fehler abfängt und eine benutzerfreundliche Fehlerseite rendert.
 
 #### Scenario: Unbehandelter Runtime-Fehler in einer Route
+
 - **WHEN** eine Route einen unbehandelten Fehler wirft
 - **THEN** wird die Error-Fallback-Komponente gerendert
 - **AND** der Benutzer sieht eine verständliche Fehlermeldung mit Retry-Option
 
 #### Scenario: Fehlerseite ist barrierefrei
+
 - **WHEN** die Error-Fallback-Komponente angezeigt wird
 - **THEN** ist sie per Keyboard navigierbar
 - **AND** Screen Reader erhalten `role="alert"` und `aria-live="assertive"`
 
 ### Requirement: Stabile Dependency-Versionen
+
 Die App SHALL ausschließlich stabile Release-Versionen für Laufzeit-Dependencies verwenden und Framework-Versionen workspace-weit synchronisieren.
 
 #### Scenario: Keine Nightly-Dependencies in Produktion
+
 - **WHEN** die Dependency-Liste der App geprüft wird
 - **THEN** enthält sie keine `nightly`-, `canary`- oder `latest`-Tags für Laufzeit-Dependencies
 
 #### Scenario: TanStack-Router-Version synchronisiert
+
 - **WHEN** `@tanstack/react-router` in mehreren Packages verwendet wird
 - **THEN** ist die aufgelöste Version im gesamten Workspace identisch
 
 ### Requirement: Handler Error Observability
-Auth-Route-Handler und routing-nahe Server-Dispatch-Pfade SHALL bei unbehandelten Fehlern und relevanten Dispatch-Anomalien strukturierte Logs mit Correlation-IDs erzeugen, um serverseitige Fehlerpfade im Monitoring sichtbar zu machen.
+
+Auth-Route-Handler und routing-nahe Server-Dispatch-Pfade SHALL innerhalb eines isolierten request-lokalen Korrelationskontexts laufen und bei unbehandelten Fehlern sowie relevanten Dispatch-Anomalien strukturierte Logs erzeugen. Der Kontext MUST vor Sonder-, Auth-, Mainserver- oder regulärem Studio-Dispatch beginnen und unabhängig von OTEL- sowie optionalen Diagnoseschaltern verfügbar sein. Jeder HTTP-Request MUST eine gültige `request_id` besitzen; eine `trace_id` darf nur aus einem gültigen eingehenden oder aktiven Tracing-Kontext stammen. Korrelations-IDs dienen ausschließlich der Diagnose und dürfen keine Security- oder Idempotenzentscheidung beeinflussen.
+
+#### Scenario: Request-Kontext beginnt vor jedem fachlichen Dispatch
+
+- **WHEN** ein Request von einer Sonder-, Auth-, Mainserver- oder regulären Studio-Route verarbeitet wird
+- **THEN** laufen deren Handler und nachgelagerte synchrone Server-Logs innerhalb desselben Request-Kontexts
+- **AND** steht vor dem ersten fachlichen Dispatch eine gültige `request_id` zur Verfügung
+- **AND** ist der Kontext nicht von einem OTEL- oder optionalen Diagnoseschalter abhängig
 
 #### Scenario: Error-Boundary loggt mit Kontext
+
 - **WHEN** ein Auth-Route-Handler einen unbehandelten Fehler wirft
-- **THEN** erzeugt die Error-Boundary einen `error`-Log-Eintrag über den Server-Runtime-Logger mit `component: 'auth-routing'`
-- **AND** der Eintrag enthält `event: "routing.handler.error_caught"`, `request_id` (aus `@sva/server-runtime`-Extraktion, Pflicht für Server-Handler), `trace_id` (aus `@sva/server-runtime`-Extraktion, Pflicht für Server-Handler), `route`, `method`, `error_type`, `error_message`
-- **AND** der Eintrag enthält **kein** `error.stack`-Feld
-- **AND** es wird kein `console.error` verwendet
+- **THEN** erzeugt die Error-Boundary ein `error`-Log-Ereignis über den Server-Runtime-Logger mit `component: 'auth-routing'`
+- **AND** enthält der Eintrag `event: "routing.handler.error_caught"`, `request_id`, optional eine echte `trace_id`, `route`, `method`, `error_type` und einen stabilen `error_code`
+- **AND** ist `error_message` optional und ausschließlich nach sicherer Klassifizierung beziehungsweise Sanitization zulässig
+- **AND** enthält der Eintrag kein `error.stack`-Feld
+- **AND** wird kein `console.error` verwendet
 
 #### Scenario: Error-Boundary bei Non-Error-Throws
-- **WHEN** ein Auth-Route-Handler einen Nicht-Error-Wert wirft (z. B. String, Object, `null`)
-- **THEN** erzeugt die Error-Boundary trotzdem einen `error`-Log-Eintrag
-- **AND** `error_type` enthält `typeof`-Ergebnis oder Konstruktorname als Fallback
-- **AND** `error_message` enthält `String(error)` als Fallback
 
-#### Scenario: Error-Boundary bei fehlenden Headern
-- **WHEN** ein Auth-Route-Handler fehlschlägt und der Request keine `X-Request-Id` oder `traceparent`-Header hat
-- **THEN** enthält der Log-Eintrag `request_id: undefined` und `trace_id: undefined`
-- **AND** `route` und `method` sind weiterhin als Korrelationsersatz vorhanden
-- **AND** die Error-Boundary wirft keinen eigenen Fehler
+- **WHEN** ein Auth-Route-Handler einen Nicht-Error-Wert wirft, etwa einen String, ein Objekt oder `null`
+- **THEN** erzeugt die Error-Boundary trotzdem ein `error`-Log-Ereignis
+- **AND** klassifiziert `error_type` den Nicht-Error-Throw sicher und stabil
+- **AND** wird der rohe geworfene Wert weder serialisiert noch als freie Fehlermeldung protokolliert
 
-#### Scenario: Error-Boundary bei ungültigen Headern
-- **WHEN** ein Auth-Route-Handler fehlschlägt und `X-Request-Id` oder `traceparent` ungültig formatiert sind
-- **THEN** werden die ungültigen Headerwerte verworfen
-- **AND** der Log-Eintrag enthält `request_id: undefined` und/oder `trace_id: undefined`
-- **AND** kein ungefilterter Headerwert erscheint im Log-Eintrag
+#### Scenario: Eingehende Korrelations-IDs fehlen
+
+- **WHEN** ein Request keine gültige `X-Request-Id` und keinen gültigen Trace-Kontext besitzt
+- **THEN** erzeugt der Server vor dem ersten fachlichen Dispatch eine sichere lokale `request_id`
+- **AND** verwendet er sie konsistent im gesamten Request und in der bestehenden Response-Propagation
+- **AND** erfindet er keine `trace_id`
+
+#### Scenario: Eingehende Korrelations-IDs sind ungültig
+
+- **WHEN** `X-Request-Id`, `X-Correlation-Id`, `traceparent` oder ein vergleichbarer Korrelationsheader ungültig formatiert ist
+- **THEN** verwirft der Server den ungültigen Wert
+- **AND** erzeugt er eine sichere lokale `request_id`, falls keine andere gültige Request-Korrelation vorhanden ist
+- **AND** bleibt `trace_id` ohne anderen echten Trace-Kontext leer
+- **AND** erscheint kein ungefilterter Headerwert im Log-Ereignis
+
+#### Scenario: Requests werden parallel verarbeitet
+
+- **WHEN** zwei Requests mit unterschiedlichen Korrelations-IDs zeitlich überlappen
+- **THEN** sieht jeder Handler ausschließlich seinen eigenen Kontext
+- **AND** übernimmt kein Log-Ereignis die IDs des anderen Requests
+
+#### Scenario: Unabhängige Hintergrundarbeit wird losgelöst
+
+- **WHEN** Worker-Bootstrap oder andere bewusst unabhängige Hintergrundarbeit aus dem Serverprozess gestartet wird
+- **THEN** läuft sie außerhalb beziehungsweise explizit losgelöst vom HTTP-Request-Kontext
+- **AND** erfindet sie keine HTTP-Request-ID
+- **AND** verwendet sie eine vorhandene Job-, Execution- oder vergleichbare Ausführungskorrelation
 
 #### Scenario: Server-Runtime-Logger-Fallback
+
 - **WHEN** der Server-Runtime-Logger bei der Fehlerbehandlung selbst eine Exception wirft
 - **THEN** wird ein sanitierter Minimal-JSON-Eintrag auf `process.stderr` geschrieben
-- **AND** der Fallback enthält nur Safe-Felder wie `component`, `event`, `route`, `method`, `error_type` und best-effort `request_id`
-- **AND** das rohe Error-Objekt und Stack-Traces werden nicht ausgegeben
-- **AND** der Client erhält trotzdem eine JSON-500-Response
+- **AND** enthält der Fallback nur Safe-Felder wie `component`, `event`, `route`, `method`, `error_type`, `error_code` und best-effort `request_id`
+- **AND** werden das rohe Error-Objekt, freie Providertexte und Stack-Traces nicht ausgegeben
+- **AND** erhält der Client trotzdem eine JSON-500-Response
 
 #### Scenario: Method not allowed wird observierbar
+
 - **WHEN** ein bekannter Auth-/IAM-Route-Pfad mit einer nicht unterstützten HTTP-Methode aufgerufen wird
-- **THEN** erzeugt der Server ein strukturiertes Routing-Ereignis mit `event: "routing.handler.method_not_allowed"`, `warn`-Schweregrad
-- **AND** das Ereignis enthält mindestens `route`, `method`, `allow` und best-effort `request_id`, `trace_id`
-- **AND** der Client erhält weiterhin eine JSON-405-Response
-- **AND** Health-Check-Routen (`/health/ready`, `/health/live`, `/api/v1/iam/health/ready`, `/api/v1/iam/health/live`) sind von diesem Logging **explizit ausgenommen**
+- **THEN** erzeugt der Server ein strukturiertes Routing-Ereignis mit `event: "routing.handler.method_not_allowed"` und höchstens `warn`-Schweregrad
+- **AND** enthält das Ereignis mindestens `route`, `method`, `allow`, `request_id` und optional eine echte `trace_id`
+- **AND** erhält der Client weiterhin eine JSON-405-Response
+- **AND** sind Health-Check-Routen (`/health/ready`, `/health/live`, `/api/v1/iam/health/ready`, `/api/v1/iam/health/live`) von diesem Einzelereignis explizit ausgenommen
 
 #### Scenario: JSON-Response bei Handler-Fehler
+
 - **WHEN** ein Auth-Route-Handler einen unbehandelten Fehler wirft
 - **THEN** antwortet der Server mit HTTP 500 und einem JSON-Body `{ error: "internal_error", message: "Ein unerwarteter Fehler ist aufgetreten." }`
-- **AND** der Response-Shape wird über den gemeinsamen `toJsonErrorResponse()`-Utility aus `@sva/server-runtime` erzeugt
-- **AND** keine Stack-Traces oder internen Details werden an den Client übermittelt
+- **AND** wird der Response-Shape über den gemeinsamen `toJsonErrorResponse()`-Utility aus `@sva/server-runtime` erzeugt
+- **AND** werden keine Stack-Traces oder internen Details an den Client übermittelt
 
 ### Requirement: Einheitlicher Error-Response-Contract
+
 Auth-Error-Boundaries SHALL einen einheitlichen JSON-Error-Response-Shape verwenden, um konsistente API-Antworten für Konsumenten sicherzustellen.
 
 #### Scenario: Infrastruktur-Boundary und Business-Boundary nutzen gleichen Shape
+
 - **WHEN** `wrapHandlersWithJsonErrorBoundary` (Infrastruktur) oder `withAuthenticatedIamHandler` (Business) einen Fehler abfängt
 - **THEN** erzeugen beide für stabile IAM-v1-Endpunkte eine Response mit dem Shape `{ error: string, message?: string }`
 - **AND** das Feld `error` bleibt der maschinenlesbare Fehlercode; `message` ist additiv und nicht für Client-Logik bestimmt
 - **AND** beide nutzen den `toJsonErrorResponse()`-Utility aus `@sva/server-runtime`
 
 #### Scenario: toJsonErrorResponse liefert korrektes Format
+
 - **WHEN** `toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Fehler ist aufgetreten.')` aufgerufen wird
 - **THEN** wird eine `Response` mit Status 500, `Content-Type: application/json` und dem Body `{ "error": "internal_error", "message": "Ein unerwarteter Fehler ist aufgetreten." }` zurückgegeben
 
 #### Scenario: Request-ID als stabiler Response-Header
+
 - **WHEN** ein IAM-Endpunkt eine Response zurückgibt, auch im Fehlerfall
 - **THEN** enthält die Response best-effort den Header `X-Request-Id`
 - **AND** der Header kann von Clients und Support-Tools zur Korrelation mit Server-Logs verwendet werden
 
 ### Requirement: Kontrollierter Silent-SSO-Routing-Vertrag
+
 Das System SHALL für den Auth-Router einen expliziten, kontrollierten Silent-SSO-Vertrag bereitstellen.
 
 #### Scenario: Silent Login über bestehenden Auth-Pfad
@@ -157,9 +211,11 @@ Das System SHALL für den Auth-Router einen expliziten, kontrollierten Silent-SS
 - **AND** normale interaktive Login-Callbacks behalten ihr Redirect-Verhalten bei
 
 ### Requirement: Routing Decision Observability
+
 Das System SHALL für `@sva/routing` einen einheitlichen, typisierten Observability-Vertrag bereitstellen, über den routing-relevante Entscheidungen und Anomalien strukturiert emittiert werden können, ohne direkte `console.*`-Nutzung im Package zu erzwingen.
 
 #### Scenario: Routing verwendet einen expliziten Diagnostics-Vertrag
+
 - **WHEN** Guard-, Plugin- oder Dispatch-Logik in `@sva/routing` ein beobachtbares Ereignis emittiert
 - **THEN** erfolgt die Emission über einen expliziten Routing-Diagnostics- oder Logger-Vertrag
 - **AND** die framework-agnostische Routing-Logik bleibt von konkreten Transporten wie Console oder OTEL getrennt
@@ -167,51 +223,61 @@ Das System SHALL für `@sva/routing` einen einheitlichen, typisierten Observabil
 - **AND** der Diagnostics-Hook ist ein optionaler Parameter (Dependency-Injection) mit No-op-Default; die Hook-Typ-Definition lebt als reine `interface`-Deklaration in `@sva/routing` ohne Server-Runtime-Import
 
 #### Scenario: Diagnostics-Hook-Injektion über Options-Parameter
+
 - **WHEN** ein Consumer `createProtectedRoute()` oder `getPluginRouteFactories()` aufruft
 - **THEN** kann ein optionaler `diagnostics`-Parameter vom Typ `RoutingDiagnosticsHook` übergeben werden
 - **AND** fehlt dieser Parameter, wird ein No-op-Fallback verwendet
 - **AND** der Hook ist eine synchrone Callback-Funktion ohne Rückgabewert, die keine Exceptions propagiert
 
 #### Scenario: Browser-Produktion bleibt standardmäßig still
+
 - **WHEN** clientseitige Routing-Logik in einer Produktionsumgebung ohne expliziten Diagnostics-Hook ausgeführt wird
 - **THEN** entstehen daraus keine unkontrollierten Browser-Logs
 - **AND** der Vertrag erlaubt stattdessen einen No-op-Fallback
 - **AND** das `@sva/routing`-Package enthält im eigenen Code keinerlei `console.*`-Aufrufe (Enforcement via ESLint)
 
 #### Scenario: Kein Diagnostics-Event ohne Aktion verifizierbar
+
 - **WHEN** ein Guard den Zugriff erlaubt oder eine erwartete Normalisierung ohne Anomalie läuft
 - **THEN** MUSS der injizierte Diagnostics-Hook nachweislich **nicht aufgerufen** worden sein
 - **AND** die Implementierung erlaubt dies durch den injizierten Hook als Mock-Funktion in Tests zu verifizieren
 
 ### Requirement: Guard Decision Logging
+
 Guard-basierte Routing-Entscheidungen SHALL bei Zugriffsdialogik und Redirect-Denials strukturierte Diagnoseereignisse erzeugen, damit Authentifizierungs- und Autorisierungsprobleme nachvollziehbar bleiben.
 
 #### Scenario: Unauthentifizierter Zugriff auf geschützte Route
+
 - **WHEN** `createProtectedRoute()` einen Benutzer auf den Login-Pfad umleitet, weil kein User-Kontext vorhanden ist
 - **THEN** erzeugt der Routing-Vertrag ein strukturiertes Ereignis für einen Guard-Denial mit Log-Level `info`
 - **AND** das Ereignis enthält `event: "routing.guard.access_denied"`, `route` (normalisierter Template-Pfad, z. B. `/admin/users/$userId`), `reason: "unauthenticated"` und den sanitisierten Redirect-Zielpfad **ohne Query-Parameter**
 - **AND** `route` enthält **niemals** den aufgelösten Pfad mit konkreten IDs oder Werten
 
 #### Scenario: Fehlende Rolle auf geschützter Route
+
 - **WHEN** `createProtectedRoute()` oder `createAdminRoute()` wegen fehlender Rollen auf einen Fallback-Pfad umleitet
 - **THEN** erzeugt der Routing-Vertrag ein strukturiertes Ereignis für einen Guard-Denial mit Log-Level `info`
 - **AND** das Ereignis enthält `event: "routing.guard.access_denied"`, `route` (normalisierter Template-Pfad), `reason: "insufficient-role"` und nur die **Rollennamen ohne Kontext-Identifier** als Liste
 - **AND** zusammengesetzte Claim-Strings wie `tenant:abc:admin` werden auf den Rollenname-Anteil reduziert oder verworfen
 
 #### Scenario: Erfolgreicher Guard ohne Anomalie bleibt still
+
 - **WHEN** ein Guard den Zugriff erlaubt und keine auffällige Korrektur oder Fehlersituation vorliegt
 - **THEN** wird kein operatives Standard-Log für die erfolgreiche Navigation erzeugt
 
 ### Requirement: Plugin Routing Observability
+
 Plugin-Routing SHALL Konfigurations- und Guard-Anomalien strukturiert sichtbar machen, ohne normale Plugin-Routenauflösung zu verrauschen.
 
 #### Scenario: Nicht unterstütztes Plugin-Guard-Mapping
+
 - **WHEN** `getPluginRouteFactories()` eine Plugin-Route mit einem Guard registriert, der nicht auf einen bekannten Account-Guard abgebildet werden kann
 - **THEN** erzeugt das System **einmalig bei der Factory-Erstellung** ein strukturiertes Diagnoseereignis mit `event: "routing.plugin.guard_unsupported"`, `plugin`, `route` und `reason: "unsupported-plugin-guard"`
 - **AND** das Ereignis verwendet `warn`-Schweregrad
 - **AND** das Ereignis wird **nicht** in `beforeLoad`-Callbacks emittiert, um wiederholtes Feuern bei jeder Navigation zu verhindern
 
 #### Scenario: Unterstütztes Plugin-Guard-Mapping bleibt ohne Noise
+
 - **WHEN** eine Plugin-Route erfolgreich auf einen bekannten Guard gemappt und registriert wird
 - **THEN** wird dafür kein reguläres operatives Erfolgslog erzeugt
 
@@ -239,19 +305,23 @@ Das Routing-System MUST Plugin-Routen und zugehörige UI-Bindings so integrieren
 - **AND** materialisiert das Routing die Route nicht
 
 ### Requirement: Routing Materializes After Plugin Contribution Phases
+
 The system SHALL materialize host routes only after existing content, admin-resource, action, and guard metadata from plugin phases have been validated and published in the registry snapshot.
 
 #### Scenario: Route depends on admin resource metadata
+
 - **GIVEN** a plugin declares an admin resource in the admin phase
 - **WHEN** route materialization starts
 - **THEN** the route builder uses the validated admin metadata, action metadata, and guard information
 
 #### Scenario: Route references missing action metadata
+
 - **GIVEN** a plugin route references action metadata that was not registered in an earlier phase
 - **WHEN** the route registry is validated
 - **THEN** the host rejects the route contribution
 
 #### Scenario: Direct route input remains fail-fast
+
 - **GIVEN** a caller provides plugin route metadata directly instead of through a validated snapshot
 - **WHEN** the App-Host attempts to build the route tree
 - **THEN** route materialization still validates route guardrails before publishing a partial route tree
@@ -264,12 +334,14 @@ The system SHALL materialize plugin-provided routes only through the host routin
 Plugin-provided UI components SHALL remain allowed when they are bound to a host-materialized route and do not define independent route handlers, guard functions, or search-parameter parsing outside the registry contract.
 
 #### Scenario: Plugin route is materialized by host
+
 - **GIVEN** a plugin declares an admin route contribution
 - **WHEN** the host builds the route tree from the validated plugin snapshot
 - **THEN** the route is created with the host-owned guard, canonical path, and search-parameter schema
 - **AND** the plugin UI is rendered only inside the host-materialized route boundary
 
 #### Scenario: Plugin attempts to bypass host routing
+
 - **GIVEN** a plugin exposes a runtime route outside the registry or snapshot contract
 - **WHEN** the host validates plugin contributions
 - **THEN** the contribution is rejected before the route tree is built
@@ -376,9 +448,11 @@ Das Routing-System MUST Konflikte zwischen registrierten Admin-Ressourcen determ
 - **AND** es wird kein teilweise inkonsistenter Admin-Route-Baum veroeffentlicht
 
 ### Requirement: Plugin Custom View Bindings Use Studio UI
+
 The routing integration SHALL allow plugin custom view components while preserving host-owned routing, guard, shell, and state responsibilities.
 
 #### Scenario: Route materializes plugin custom view
+
 - **GIVEN** a plugin route or admin resource binding references a custom view component
 - **WHEN** the host materializes the route
 - **THEN** routing and guard evaluation remain host-owned
@@ -386,45 +460,54 @@ The routing integration SHALL allow plugin custom view components while preservi
 - **AND** shared page structure and state components are provided through `@sva/studio-ui-react`
 
 #### Scenario: Custom view bypasses host route contract
+
 - **GIVEN** a plugin custom view attempts to define its own top-level shell, guard boundary, or app route materialization
 - **WHEN** the route registry is validated or reviewed
 - **THEN** the integration is rejected or documented as an architecture deviation
 - **AND** the plugin is directed to use the host route binding plus `@sva/studio-ui-react`
 
 ### Requirement: Specialized Content Bindings Are Materialized By The Host
+
 The routing integration SHALL materialize registered specialized content bindings through host-owned routes and SHALL NOT allow packages to replace route ownership, shell ownership, or guard ownership.
 
 #### Scenario: Host materializes specialized content binding
+
 - **GIVEN** a registered content type declares a specialized list, detail, or editor binding
 - **WHEN** the host materializes the corresponding route
 - **THEN** the route, params, guards, shell, and fallback states remain host-owned
 - **AND** the specialized binding is rendered only inside the designated host region
 
 #### Scenario: Binding registration references invalid route ownership
+
 - **GIVEN** a package attempts to bind a specialized content view by introducing its own top-level shell, route ownership, or guard boundary
 - **WHEN** the host validates or materializes the registration
 - **THEN** the integration is rejected with deterministic diagnostics
 - **AND** the package is directed to the host-owned content binding contract instead
 
 ### Requirement: Standard Content Plugins Use Canonical Admin Routes
+
 The routing integration SHALL place standard CRUD-style content plugins under canonical host-owned admin routes instead of plugin-local top-level CRUD routes.
 
 #### Scenario: News, Events, and POI use canonical admin routes
+
 - **GIVEN** the existing standard content plugins `news`, `events`, and `poi`
 - **WHEN** the migration is completed
 - **THEN** their productive list, create, and detail routes are materialized under canonical host-owned admin paths
 - **AND** the host no longer treats `/plugins/news`, `/plugins/events`, or `/plugins/poi` as the primary productive CRUD path
 
 #### Scenario: Exception route stays outside canonical admin CRUD path
+
 - **GIVEN** a plugin declares a documented non-CRUD exception route
 - **WHEN** the host materializes the route tree
 - **THEN** the exception route may remain under the plugin route namespace
 - **AND** it does not replace the canonical admin CRUD routes for that plugin
 
 ### Requirement: Missing Specialized Bindings Do Not Break Route Availability
+
 The routing integration SHALL keep content routes available even when no specialized binding is registered for a content type.
 
 #### Scenario: Host falls back on standard detail route
+
 - **GIVEN** a content detail route exists for a registered content type
 - **AND** no specialized detail binding is registered
 - **WHEN** the route is rendered

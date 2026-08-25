@@ -20,4 +20,12 @@ Ein Reproduktionstest mit zwei getrennt evaluierten Kopien von `@sva/server-runt
 
 ## Abschlussgrenze
 
-Der betroffene Delivery-Slice wird nicht weiter aktiviert oder archiviert. Die Korrektur muss zuerst gemergt und über den kanonischen Rollout nach Production gelangen. Danach ist dieselbe Abfrageklasse erneut auszuwerten. Task 6.7 und der daran gebundene Abschluss bleiben bis zu diesem Live-Nachweis offen; ein pauschales Zurückrollen der bereits wirksamen Redaction- und Severity-Härtung wäre gegenüber dem isolierten Korrelationsfix unverhältnismäßig und ist nicht erfolgt.
+Der betroffene Delivery-Slice wurde zunächst gestoppt; ein pauschales Zurückrollen der bereits wirksamen Redaction- und Severity-Härtung wäre gegenüber dem isolierten Korrelationsfix unverhältnismäßig gewesen und ist nicht erfolgt.
+
+## Erneute Prüfung nach dem Korrelationsfix
+
+Der Cross-Bundle-Carrier-Fix besitzt einen Reproduktionstest, der zwei getrennt evaluierte Runtime-Modulkopien verwendet und den gemeinsamen Request-Kontext verifiziert. Er wurde mit PR `#1145` gemergt. Der aktuelle Main-HEAD `e027debabfda8ac0cc6d18c84aa786a9c51a0663` enthält diesen Fix und wurde anschließend über Build/Dev `32901324453`, Staging `32902510167` und Production `32902798040` mit demselben App-Digest `sha256:5816de1849920f4459fe5398abbb15af2211d1707f2f6193557ff581e6bbc1d4` ausgerollt. Beide geschützten Promote-Läufe bestanden Preflight, Backup, Deploy, Konvergenz, Runtime-Smoke und Digestprüfung. `/health/live` und `/health/ready` antworteten danach in Production jeweils mit HTTP 200.
+
+Die erneute Loki-Abfrage begann erst nach dem Production-Umschaltzeitpunkt `2026-08-25T21:50:30Z`. Die durch den Bedien-Smoke erzeugte Stichprobe enthielt einen `tenant_auth_callback` und sieben `audit_event`-Ereignisse. Alle acht Ereignisse besaßen eine Request-ID; keine vorhandene Trace-ID war ungültig. Alte Callback-Doppellogs, korrelationslose HTTP-Ereignisse und unredigierte `projection_scope_key`-Werte wurden nicht beobachtet. Im kurzen Nachlauf trat keine natürliche Mainserver-Mutation und kein Jobabschluss auf; hierfür wird daher kein Ereignis behauptet. Der Erhalt dieser Signalarten ist durch die vorherige Production-Stichprobe und die unveränderten Vertrags- und Canary-Tests belegt, während der konkrete Carrier-Defekt durch den im ausgelieferten Artefakt enthaltenen Cross-Bundle-Reproduktionstest geschlossen ist.
+
+Damit liegen für den pragmatischen Abschluss kombinierte Artefakt-, Test-, Same-Digest-Rollout- und Live-Transportnachweise vor. Es besteht kein Rollback-Signal; der zuvor gestoppte Korrelations-Slice ist freigegeben.

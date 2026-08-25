@@ -168,6 +168,16 @@ if (
 }
 
 export const studioPlugins = studioBuildTimeRegistry.plugins;
+export const getStudioPluginTranslationNamespace = (pluginId: string): string => {
+  const translations = studioBuildTimeRegistry.pluginRegistry.get(pluginId)?.translations;
+  const localeResources = translations ? Object.values(translations) : [];
+  const firstLocaleResources = localeResources[0];
+  if (!firstLocaleResources) return pluginId;
+  const sharedNamespaces = Object.keys(firstLocaleResources).filter((namespace) =>
+    localeResources.every((resources) => Object.hasOwn(resources, namespace))
+  );
+  return sharedNamespaces.length === 1 ? (sharedNamespaces[0] ?? pluginId) : pluginId;
+};
 export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;
 export const studioAdminResources = studioBuildTimeRegistry.adminResources;
 export const studioContentTypes = studioBuildTimeRegistry.studioContentTypes;

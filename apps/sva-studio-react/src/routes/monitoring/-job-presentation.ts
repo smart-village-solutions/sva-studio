@@ -1,7 +1,9 @@
 import type { StudioJobDetail, StudioJobListItem, StudioJobProgress } from '@sva/core';
+import { translatePluginKey } from '@sva/plugin-sdk';
 
 import { getActiveLocale, t } from '../../i18n';
 import { formatTechnicalEditorDateTime } from '../../lib/editor-date-time';
+import { getStudioPluginTranslationNamespace } from '../../lib/plugins';
 
 type MonitoringJobStatus = StudioJobListItem['status'];
 type MonitoringJobStaleState = NonNullable<StudioJobDetail['runtime']>['staleState'];
@@ -45,7 +47,8 @@ export const formatMonitoringJobProgressSummary = (progress?: StudioJobProgress)
     return t('monitoring.jobs.values.notAvailable');
   }
 
-  const percent = progress.totalSteps > 0 ? Math.round((progress.completedSteps / progress.totalSteps) * 100) : 0;
+  const percent =
+    progress.totalSteps > 0 ? Math.round((progress.completedSteps / progress.totalSteps) * 100) : 0;
   return t('monitoring.jobs.progress.summary', {
     current: progress.completedSteps,
     total: progress.totalSteps,
@@ -87,7 +90,8 @@ type MonitoringWasteLiveProgress = Readonly<{
 
 type MonitoringWasteStepKey = keyof typeof monitoringWasteStepLabelKeyByValue;
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
 const readNumber = (record: Record<string, unknown>, key: string): number | null => {
   const value = record[key];
@@ -99,7 +103,9 @@ const toMonitoringNumberLocale = (): string => (getActiveLocale() === 'en' ? 'en
 export const formatMonitoringInteger = (value: number): string =>
   new Intl.NumberFormat(toMonitoringNumberLocale()).format(value);
 
-const resolveMonitoringWasteLiveProgressFromProgress = (progress?: StudioJobProgress): MonitoringWasteLiveProgress | null => {
+const resolveMonitoringWasteLiveProgressFromProgress = (
+  progress?: StudioJobProgress
+): MonitoringWasteLiveProgress | null => {
   const details = progress?.details;
   if (!isRecord(details)) {
     return null;
@@ -139,22 +145,29 @@ const resolveMonitoringWasteLiveProgressFromProgress = (progress?: StudioJobProg
     processedItemCount,
     createCount,
     deleteCount,
-    lastSuccessfulBatchAt: typeof details.lastSuccessfulBatchAt === 'string' ? details.lastSuccessfulBatchAt : undefined,
+    lastSuccessfulBatchAt:
+      typeof details.lastSuccessfulBatchAt === 'string' ? details.lastSuccessfulBatchAt : undefined,
     lastBatchDurationMs: readNumber(details, 'lastBatchDurationMs') ?? undefined,
     averageBatchDurationMs: readNumber(details, 'averageBatchDurationMs') ?? undefined,
   };
 };
 
-const isMonitoringWasteStepKey = (value: string): value is MonitoringWasteStepKey => value in monitoringWasteStepLabelKeyByValue;
+const isMonitoringWasteStepKey = (value: string): value is MonitoringWasteStepKey =>
+  value in monitoringWasteStepLabelKeyByValue;
 
 export const resolveMonitoringJobStepLabel = (progress?: StudioJobProgress): string | null => {
   if (!progress) {
     return null;
   }
 
-  if (progress.currentStepKey === 'create-batches' || progress.currentStepKey === 'delete-batches') {
+  if (
+    progress.currentStepKey === 'create-batches' ||
+    progress.currentStepKey === 'delete-batches'
+  ) {
     return (
-      formatMonitoringWasteLiveProgressSummary(resolveMonitoringWasteLiveProgressFromProgress(progress)) ??
+      formatMonitoringWasteLiveProgressSummary(
+        resolveMonitoringWasteLiveProgressFromProgress(progress)
+      ) ??
       progress.currentStepLabel ??
       progress.currentStepKey ??
       null
@@ -171,8 +184,23 @@ export const resolveMonitoringJobStepLabel = (progress?: StudioJobProgress): str
 export const getMonitoringJobCurrentStep = (progress?: StudioJobProgress): string =>
   resolveMonitoringJobStepLabel(progress) ?? t('monitoring.jobs.values.notAvailable');
 
+export const resolveMonitoringJobPhaseLabel = (
+  job: Pick<StudioJobDetail, 'pluginId' | 'progress'>
+): string | null => {
+  const currentPhase = job.progress?.currentPhase;
+  if (!currentPhase || !job.pluginId) return null;
+  const key = `tools.progress.phases.${currentPhase}`;
+  const namespace = getStudioPluginTranslationNamespace(job.pluginId);
+  const translated = translatePluginKey(namespace, key);
+  return translated === `${namespace}.${key}`
+    ? getMonitoringJobCurrentStep(job.progress)
+    : translated;
+};
+
 export const extractMonitoringWasteLiveProgress = (
-  job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'> | Pick<StudioJobListItem, 'jobTypeId' | 'progress' | 'runtime'>
+  job:
+    | Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'>
+    | Pick<StudioJobListItem, 'jobTypeId' | 'progress' | 'runtime'>
 ): MonitoringWasteLiveProgress | null => {
   if (job.jobTypeId !== 'waste-management.sync-mainserver') {
     return null;
@@ -180,7 +208,9 @@ export const extractMonitoringWasteLiveProgress = (
   return resolveMonitoringWasteLiveProgressFromProgress(job.progress);
 };
 
-export const formatMonitoringWasteLiveProgressSummary = (progress: MonitoringWasteLiveProgress | null): string | null => {
+export const formatMonitoringWasteLiveProgressSummary = (
+  progress: MonitoringWasteLiveProgress | null
+): string | null => {
   if (!progress) {
     return null;
   }
@@ -196,7 +226,9 @@ export const formatMonitoringWasteLiveProgressSummary = (progress: MonitoringWas
   );
 };
 
-export const formatMonitoringWasteLiveProgressSecondary = (progress: MonitoringWasteLiveProgress | null): string | null => {
+export const formatMonitoringWasteLiveProgressSecondary = (
+  progress: MonitoringWasteLiveProgress | null
+): string | null => {
   if (!progress) {
     return null;
   }
@@ -218,7 +250,9 @@ export const getMonitoringWasteLikelyStuckHint = (
   return t('monitoring.jobs.detail.liveProgressLikelyStuck');
 };
 
-export const extractMonitoringJobWriteSummary = (job: Pick<StudioJobDetail, 'jobTypeId' | 'resultPayload'>): MonitoringJobWriteSummary | null => {
+export const extractMonitoringJobWriteSummary = (
+  job: Pick<StudioJobDetail, 'jobTypeId' | 'resultPayload'>
+): MonitoringJobWriteSummary | null => {
   if (!isRecord(job.resultPayload)) {
     return null;
   }

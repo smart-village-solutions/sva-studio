@@ -365,6 +365,10 @@ describe('MonitoringJobDetailPage', () => {
 
     expect(await screen.findByText('Jobstatus: Läuft. Phase: Importlauf läuft.')).toBeTruthy();
     expect(screen.queryByText(/waste-management\.import-running/)).toBeNull();
+    expect(translatePluginKeyMock).toHaveBeenCalledWith(
+      'wasteManagement',
+      'tools.progress.phases.waste-management.import-running'
+    );
   });
 
   it('does not invent cancellation or retry actions without a server capability', async () => {

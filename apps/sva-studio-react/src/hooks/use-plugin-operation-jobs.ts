@@ -168,7 +168,7 @@ export const usePluginOperationJobDetail = (jobId: string) => {
   const abortControllersRef = useAbortControllerSet();
   const activeJobIdRef = React.useRef(jobId);
   activeJobIdRef.current = jobId;
-  const cancellationInFlightJobIdRef = React.useRef<string | null>(null);
+  const cancellationInFlightJobIdsRef = React.useRef<Set<string>>(new Set());
   const latestRequestIdRef = React.useRef(0);
   const [state, setState] = React.useState<JobDetailState>({
     detail: null,
@@ -257,7 +257,10 @@ export const usePluginOperationJobDetail = (jobId: string) => {
   }, [jobId, refetch]);
 
   React.useEffect(() => {
-    if (!state.detail || ['succeeded', 'failed', 'cancelled'].includes(state.detail.status)) {
+    if (
+      state.detail?.id !== jobId ||
+      ['succeeded', 'failed', 'cancelled'].includes(state.detail.status)
+    ) {
       return;
     }
 
@@ -268,17 +271,17 @@ export const usePluginOperationJobDetail = (jobId: string) => {
     return () => {
       window.clearInterval(interval);
     };
-  }, [refetch, state.detail]);
+  }, [jobId, refetch, state.detail]);
 
   const cancel = React.useCallback(async () => {
     if (
       state.detail?.id !== jobId ||
       !state.detail?.availableActions?.includes('cancel') ||
-      cancellationInFlightJobIdRef.current
+      cancellationInFlightJobIdsRef.current.has(jobId)
     ) {
       return false;
     }
-    cancellationInFlightJobIdRef.current = jobId;
+    cancellationInFlightJobIdsRef.current.add(jobId);
     setIsCancelling(true);
     setActionError(null);
     try {
@@ -306,12 +309,12 @@ export const usePluginOperationJobDetail = (jobId: string) => {
       }
       return false;
     } finally {
-      cancellationInFlightJobIdRef.current = null;
+      cancellationInFlightJobIdsRef.current.delete(jobId);
       if (activeJobIdRef.current === jobId) {
         setIsCancelling(false);
       }
     }
-  }, [jobId, refetch, state.detail?.availableActions]);
+  }, [jobId, refetch, state.detail?.availableActions, state.detail?.id]);
 
   return {
     actionError,
@@ -319,7 +322,7 @@ export const usePluginOperationJobDetail = (jobId: string) => {
     detail: state.detail?.id === jobId ? state.detail : null,
     error: state.error,
     isLoading: state.isLoading,
-    isCancelling: isCancelling && cancellationInFlightJobIdRef.current === jobId,
+    isCancelling: isCancelling && cancellationInFlightJobIdsRef.current.has(jobId),
     refetch,
   };
 };

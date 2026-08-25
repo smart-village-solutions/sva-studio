@@ -508,7 +508,10 @@ describe('usePluginOperationJobDetail', () => {
     await waitFor(() => expect(cancelPluginOperationJobMock).toHaveBeenCalledWith('job-1'));
 
     rerender({ jobId: 'job-2' });
-    await waitFor(() => expect(result.current.detail?.id).toBe('job-2'));
+    await waitFor(() => {
+      expect(result.current.detail?.id).toBe('job-2');
+      expect(result.current.detail?.availableActions).toContain('cancel');
+    });
 
     await act(async () => {
       resolveCancellation?.({
@@ -550,6 +553,52 @@ describe('usePluginOperationJobDetail', () => {
       resolveSecondJob?.({ ...runningJobDetail, id: 'job-2' });
     });
     await waitFor(() => expect(result.current.detail?.id).toBe('job-2'));
+  });
+
+  it('allows cancellation of a loaded job while another job cancellation is still pending', async () => {
+    let resolveFirstCancellation: ((value: StudioJobDetail) => void) | undefined;
+    getPluginOperationJobMock
+      .mockResolvedValueOnce(runningJobDetail)
+      .mockResolvedValueOnce({ ...runningJobDetail, id: 'job-2' })
+      .mockResolvedValueOnce({ ...runningJobDetail, id: 'job-2', availableActions: [] });
+    cancelPluginOperationJobMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstCancellation = resolve;
+          })
+      )
+      .mockResolvedValueOnce({
+        ...runningJobDetail,
+        id: 'job-2',
+        cancelRequestedAt: '2026-05-09T10:03:00.000Z',
+      });
+
+    const { result, rerender } = renderHook(
+      ({ jobId }: { jobId: string }) => usePluginOperationJobDetail(jobId),
+      { initialProps: { jobId: 'job-1' } }
+    );
+    await waitFor(() => expect(result.current.detail?.id).toBe('job-1'));
+
+    let firstCancellation: Promise<boolean> | undefined;
+    act(() => {
+      firstCancellation = result.current.cancel();
+    });
+    await waitFor(() => expect(cancelPluginOperationJobMock).toHaveBeenCalledWith('job-1'));
+
+    rerender({ jobId: 'job-2' });
+    await waitFor(() => expect(result.current.detail?.id).toBe('job-2'));
+
+    await act(async () => {
+      expect(await result.current.cancel()).toBe(true);
+    });
+    expect(cancelPluginOperationJobMock).toHaveBeenCalledWith('job-2');
+
+    await act(async () => {
+      resolveFirstCancellation?.(runningJobDetail);
+      await firstCancellation;
+    });
+    expect(cancelPluginOperationJobMock).toHaveBeenCalledTimes(2);
   });
 
   it('exposes detail errors when loading fails', async () => {

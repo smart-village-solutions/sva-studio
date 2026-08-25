@@ -1,5 +1,3 @@
-import { translatePluginKey } from '@sva/plugin-sdk';
-
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -24,6 +22,7 @@ import {
   monitoringJobStaleStateLabelKeyByValue,
   monitoringJobStatusLabelKeyByValue,
   monitoringJobStatusVariantByValue,
+  resolveMonitoringJobPhaseLabel,
 } from './-job-presentation';
 
 type MonitoringJobDetailPageProps = Readonly<{
@@ -330,16 +329,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
   const jobApi = usePluginOperationJobDetail(jobId);
   const job = jobApi.detail;
   const writeSummary = job ? extractMonitoringJobWriteSummary(job) : null;
-  const currentPhase = job?.progress?.currentPhase;
-  const currentPhaseKey = currentPhase ? `tools.progress.phases.${currentPhase}` : null;
-  const translatedCurrentPhase =
-    job?.pluginId && currentPhaseKey ? translatePluginKey(job.pluginId, currentPhaseKey) : null;
-  const currentPhaseLabel =
-    translatedCurrentPhase && translatedCurrentPhase !== `${job?.pluginId}.${currentPhaseKey}`
-      ? translatedCurrentPhase
-      : job
-        ? getMonitoringJobCurrentStep(job.progress)
-        : null;
+  const currentPhaseLabel = job ? resolveMonitoringJobPhaseLabel(job) : null;
   const statusLabel = job
     ? t(monitoringJobStatusLabelKeyByValue[job.status])
     : t('monitoring.jobs.status.queued');

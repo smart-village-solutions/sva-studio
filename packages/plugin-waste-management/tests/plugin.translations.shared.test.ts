@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createWasteManagementPluginTranslationLocale } from '../src/plugin.translations.shared.base.js';
+import { createWasteManagementPluginJobTypes } from '../src/waste-management.job-definitions.js';
 import { wasteManagementPluginTranslationsDEMasterData } from '../src/plugin.translations.de.masterData.js';
 import { wasteManagementPluginTranslationsDETools } from '../src/plugin.translations.de.tools.js';
 import { wasteManagementPluginTranslationsENTools } from '../src/plugin.translations.en.tools.js';
@@ -476,5 +477,22 @@ describe('waste-management translation builders', () => {
       failed: 'Import failed',
       cancelled: 'Import cancelled',
     });
+  });
+
+  it('defines localized labels for every registered Waste job phase', () => {
+    const dePhases = wasteManagementPluginTranslationsDETools.tools.progress.phases as Readonly<
+      Record<string, string>
+    >;
+    const enPhases = wasteManagementPluginTranslationsENTools.tools.progress.phases as Readonly<
+      Record<string, string>
+    >;
+    const registeredPhases = new Set(
+      createWasteManagementPluginJobTypes().flatMap((jobType) => jobType.progress.phaseKeys)
+    );
+
+    for (const phase of registeredPhases) {
+      expect(dePhases[phase], `missing DE label for ${phase}`).toEqual(expect.any(String));
+      expect(enPhases[phase], `missing EN label for ${phase}`).toEqual(expect.any(String));
+    }
   });
 });

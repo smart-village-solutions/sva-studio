@@ -10,32 +10,34 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: ({
-    children,
-    type = 'button',
-    onClick,
-  }: {
-    readonly children: React.ReactNode;
-    readonly type?: 'button' | 'submit';
-    readonly onClick?: () => void;
-  }) => (
-    <button type={type} onClick={onClick}>
-      {children}
-    </button>
-  ),
-  Dialog: ({
+  StudioDestructiveActionDialog: ({
     children,
     open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
   }: {
     readonly children: React.ReactNode;
     readonly open: boolean;
-    readonly onOpenChange?: (open: boolean) => void;
-  }) => (open ? <div>{children}</div> : null),
-  DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {children}
+        <button onClick={onCancel}>{cancelLabel}</button>
+        <button onClick={onConfirm}>{confirmLabel}</button>
+      </div>
+    ) : null,
   Select: ({ id, value, onChange, children }: React.ComponentProps<'select'>) => (
     <select id={id} value={value} onChange={onChange}>
       {children}
@@ -96,8 +98,32 @@ describe('WasteSettingsCustomRecurrenceDeleteDialog', () => {
       (screen.getByLabelText('settings.fields.customRecurrenceFallback') as HTMLSelectElement).value
     ).toBe('preset:preset-d');
 
-    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.deleteCustomRecurrence' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'settings.actions.deleteCustomRecurrence' })
+    );
 
     expect(onConfirm).toHaveBeenCalledWith({ kind: 'preset', value: 'preset-d' });
+  });
+
+  it('uses the shared destructive dialog and resets the fallback on cancel', () => {
+    const onOpenChange = vi.fn();
+    render(
+      <WasteSettingsCustomRecurrenceDeleteDialog
+        open
+        preset={{ id: 'preset-a', name: 'A', description: '', intervalDays: 10 }}
+        availableFallbacks={[{ id: 'preset-b', name: 'B', description: '', intervalDays: 14 }]}
+        initialFallback={{ kind: 'preset', value: 'preset-b' }}
+        onOpenChange={onOpenChange}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('settings.fields.customRecurrenceFallback'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.cancel' }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

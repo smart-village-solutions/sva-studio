@@ -503,10 +503,10 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.doesNotMatch(portainerDockerfile, /--include='\*\.mjs'/);
   assert.doesNotMatch(portainerDockerfile, /--exclude-dir='node_modules'/);
   assert.match(portainerDockerfile, /RUN apk add --no-cache bash git/);
-  assert.match(dockerignore, /^!docs\/changelog\/$/m);
-  assert.match(dockerignore, /^!docs\/changelog\/\*\*$/m);
-  assert.match(dockerignore, /^!docs\/user-documentation\/$/m);
-  assert.match(dockerignore, /^!docs\/user-documentation\/page-catalog\.json$/m);
+  assert.match(
+    dockerignore,
+    /^docs\n!docs\/changelog\/\n!docs\/changelog\/\*\*\n!docs\/user-documentation\/\ndocs\/user-documentation\/\*\n!docs\/user-documentation\/page-catalog\.json$/m
+  );
   assert.match(dockerignore, /^\.git$/m);
 
   assert.match(patchRuntimeArtifact, /findPnpmPackageDir/);

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1152,
+  "body": "Die beschleunigte Pull-Request-Validierung und die gehärtete Logging-Diagnostik sind vollständig abgeschlossen.\n\n- Coverage- und Main-E2E-Nachweise sind bis zum geschützten Same-Digest-Rollout dokumentiert.\n- Die produktive Request-Korrelation ist durch den ausgelieferten Cross-Bundle-Fix und die erneute Laufzeitstichprobe abgesichert.\n- Beide OpenSpec-Changes sind archiviert und ihre Anforderungen in die kanonischen Spezifikationen übernommen."
+}

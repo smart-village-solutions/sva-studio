@@ -81,6 +81,7 @@ const pluginWithLinkedRequirements = (
       {
         id: 'news-open',
         path: '/plugins/news/open',
+        documentation: { kind: 'page', id: 'news.open', pageType: 'detail' },
         actionId: 'news.open',
         accessRequirement: resolvedRouteRequirement,
         component,
@@ -96,6 +97,7 @@ const newsPlugin: PluginDefinition = {
     {
       id: 'news-list',
       path: '/plugins/news',
+      documentation: { kind: 'page', id: 'news.overview', pageType: 'overview' },
       guard: 'news.read',
       actionId: 'news.read',
       accessRequirement: {
@@ -249,6 +251,24 @@ const newsPlugin: PluginDefinition = {
 };
 
 describe('plugin registries', () => {
+  it('stores normalized route documentation in the registry', () => {
+    const registry = createPluginRegistry([
+      {
+        ...newsPlugin,
+        routes: newsPlugin.routes.map((route) => ({
+          ...route,
+          documentation: { kind: 'page', id: ' News.Overview ', pageType: 'overview' },
+        })),
+      },
+    ]);
+
+    expect(registry.get('news')?.routes[0]?.documentation).toEqual({
+      kind: 'page',
+      id: 'news.overview',
+      pageType: 'overview',
+    });
+  });
+
   it('reports legacy contributions that still lack explicit access requirements', () => {
     const legacyPlugin = {
       ...newsPlugin,

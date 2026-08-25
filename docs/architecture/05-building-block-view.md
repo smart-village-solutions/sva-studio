@@ -825,3 +825,13 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/plugin-waste-management` besitzt ausschließlich den zugänglichen Drei-Schritt-Assistenten, die Auswahl und die ausdrückliche Konfliktbestätigung. Das Zieljahr ist dort nur Anzeige und kein frei wählbarer Parameter.
 - `@sva/core` besitzt die frameworkunabhängige Klassifikation, Datums- und Taktabbildung, stabile Zielidentitäten, Konflikterkennung, Fingerprint-Bildung sowie die zentralen Grenzen von 1.000 Touren und 100.000 Beziehungen.
 - `@sva/auth-runtime` besitzt Mandanten-, Berechtigungs-, CSRF- und Idempotenzgrenze. Die Waste-Repository-Operation lädt Quelle und Ziel erneut und schreibt den vollständigen inaktiven Tourensatz unter Advisory Lock in genau einer Transaktion.
+
+### Ergänzung 2026-08: Kontextbezogene Anwenderdokumentation
+
+- `@sva/plugin-sdk` besitzt den framework-agnostischen Metadatenvertrag für freie Plugin-Routen.
+- `@sva/routing` materialisiert Dokumentationsmetadaten und erzeugt den eindeutigen Seitenkatalog
+  aus statischen Routen, Admin-Ressourcen und Plugins.
+- Die Studio-App besitzt Fassade, Hinweisfeld und Markdown-Overlay. Das separate Hilfe-Repository
+  besitzt Texte, Website, Manifest und Roh-Markdown.
+
+Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-documentation.md).

@@ -20,7 +20,13 @@ type AppShellProps = Readonly<{
   isMobileSidebarOpen?: boolean;
   onMobileSidebarOpenChange?: (open: boolean) => void;
   sidebarSlot?: React.ReactNode;
+  documentationPageId?: string;
 }>;
+
+const LazyContextualHelp = React.lazy(async () => {
+  const module = await import('./ContextualHelp');
+  return { default: module.ContextualHelp };
+});
 
 const LazyRuntimeHealthIndicator = React.lazy(async () => {
   const module = await import('./RuntimeHealthIndicator');
@@ -106,6 +112,7 @@ export default function AppShell({
   isMobileSidebarOpen = false,
   onMobileSidebarOpenChange,
   sidebarSlot,
+  documentationPageId,
 }: AppShellProps) {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [isHydrated, setIsHydrated] = React.useState(false);
@@ -163,6 +170,11 @@ export default function AppShell({
               <React.Suspense fallback={null}>
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
+              {isAuthenticated && documentationPageId ? (
+                <React.Suspense fallback={null}>
+                  <LazyContextualHelp key={documentationPageId} pageId={documentationPageId} />
+                </React.Suspense>
+              ) : null}
               <div className="space-y-4">{children}</div>
               {runtimeHealthIndicatorEnabled ? (
                 <React.Suspense fallback={null}>

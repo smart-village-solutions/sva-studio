@@ -75,6 +75,12 @@ vi.mock('./LegalTextAcceptanceDialog', () => ({
   LegalTextAcceptanceDialog: () => <div data-testid="legal-text-acceptance-dialog" />,
 }));
 
+vi.mock('./ContextualHelp', () => ({
+  ContextualHelp: ({ pageId }: { pageId: string }) => (
+    <div data-testid="contextual-help">{pageId}</div>
+  ),
+}));
+
 vi.mock('./RuntimeHealthIndicator', () => ({
   RuntimeHealthIndicator: () => <div data-testid="runtime-health-indicator" />,
 }));
@@ -192,6 +198,28 @@ describe('AppShell', () => {
     expect(screen.queryByLabelText('Seitenleiste')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Navigation öffnen' })).toBeNull();
     expect(screen.getByRole('main')).toBeTruthy();
+  });
+
+  it('zeigt die kontextuelle Hilfe nicht fuer anonyme Nutzer', async () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+    });
+
+    render(
+      <AppShell currentPathname="/" documentationPageId="home.overview">
+        <div>Startseite</div>
+      </AppShell>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('contextual-help')).toBeNull();
+    });
   });
 
   it('laedt den Rechtstext-Dialog nicht fuer anonyme Nutzer nach der Hydrierung', async () => {

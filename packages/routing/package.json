@@ -30,6 +30,10 @@
     "./plugins": {
       "types": "./dist/plugins.d.ts",
       "default": "./dist/plugins.js"
+    },
+    "./documentation": {
+      "types": "./dist/route-documentation.d.ts",
+      "default": "./dist/route-documentation.js"
     }
   },
   "dependencies": {

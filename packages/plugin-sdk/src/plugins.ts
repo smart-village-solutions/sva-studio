@@ -30,6 +30,10 @@ import {
   buildPluginActionRegistry,
   normalizePluginActionDefinition,
 } from './plugin-platform/plugin-actions.js';
+import {
+  assertPluginRouteDocumentation,
+  type RouteDocumentation,
+} from './route-documentation.js';
 
 export type PluginRouteGuard = string;
 
@@ -38,6 +42,7 @@ export type PluginNavigationSection = 'dataManagement' | 'applications' | 'syste
 export type PluginRouteDefinition = {
   readonly id: string;
   readonly path: string;
+  readonly documentation?: RouteDocumentation;
   readonly guard?: PluginRouteGuard;
   readonly actionId?: string;
   readonly accessRequirement?: UiAccessRequirement;
@@ -160,6 +165,7 @@ const pluginDefinitionAllowedKeys = new Set([
 const routeDefinitionAllowedKeys = new Set([
   'id',
   'path',
+  'documentation',
   'guard',
   'actionId',
   'accessRequirement',
@@ -738,30 +744,42 @@ const assertPluginRegistryRoutes = ({
     );
 
     const routeActionId = normalizePluginIdentifier(route.actionId ?? '');
-    if (!routeActionId) {
-      continue;
+    if (routeActionId) {
+      const action = assertOwnedPluginActionReference(
+        plugin,
+        pluginNamespace,
+        routeActionId,
+        `invalid_plugin_route_action_id:${pluginNamespace}:${route.id}:${routeActionId}`,
+        `plugin_route_action_owner_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`,
+        `plugin_route_action_missing:${pluginNamespace}:${route.id}:${routeActionId}`
+      );
+      if (route.guard !== action.requiredAction) {
+        throw new Error(
+          `plugin_route_action_guard_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
+        );
+      }
+      if (!hasMatchingPluginAccessRequirement(route.accessRequirement, action.accessRequirement)) {
+        throw new Error(
+          `plugin_route_action_access_requirement_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
+        );
+      }
     }
 
-    const action = assertOwnedPluginActionReference(
-      plugin,
-      pluginNamespace,
-      routeActionId,
-      `invalid_plugin_route_action_id:${pluginNamespace}:${route.id}:${routeActionId}`,
-      `plugin_route_action_owner_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`,
-      `plugin_route_action_missing:${pluginNamespace}:${route.id}:${routeActionId}`
-    );
-    if (route.guard !== action.requiredAction) {
-      throw new Error(
-        `plugin_route_action_guard_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
-      );
-    }
-    if (!hasMatchingPluginAccessRequirement(route.accessRequirement, action.accessRequirement)) {
-      throw new Error(
-        `plugin_route_action_access_requirement_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
-      );
-    }
   }
 };
+
+const normalizePluginRegistryRouteDocumentation = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): readonly PluginRouteDefinition[] =>
+  plugin.routes.map((route) => ({
+    ...route,
+    documentation: assertPluginRouteDocumentation(
+      pluginNamespace,
+      route.id,
+      route.documentation
+    ),
+  }));
 
 const assertPluginRegistryStandardContentRouteGuardrails = ({
   plugin,
@@ -1082,11 +1100,13 @@ export const createPluginRegistry = (
     assertPluginRegistryAdminResources(context);
     assertPluginRegistryAuditEvents(context);
     assertPluginRegistryModuleIam(context);
+    const normalizedRoutes = normalizePluginRegistryRouteDocumentation(context);
 
     registry.set(context.pluginNamespace, {
       ...plugin,
       id: context.pluginNamespace,
       displayName: context.displayName,
+      routes: normalizedRoutes,
       ...normalizedOperations,
     });
   }

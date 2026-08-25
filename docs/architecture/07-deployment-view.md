@@ -307,3 +307,11 @@ Die Datenbankanlage selbst läuft ohne neue Topologie in der privilegierten Work
 Der dedizierte GitHub-Workflow rendert aus demselben unveränderlichen Stackvertrag zwei Zustände: `stopped` mit App und Provisioner auf null Replikate sowie `running` mit dem normalen Replikatvertrag. PostgreSQL bleibt in beiden Zuständen ein Singleton. Der Agent beendet die Stilllegung nie selbst. Jeder Restore wird ausschließlich durch das GitHub Environment der Zielumgebung freigegeben und innerhalb dieser Umgebung vollständig nachgeprüft; Staging- und Production-Restores sind voneinander unabhängig.
 
 Die GitHub Environments stellen einen tenantgebundenen Restore-Smoke-Zugang getrennt vom Agenten bereit. Nach dem Wiederanlauf muss dieser Zugang sowohl einen nicht degradierten Session-Snapshot als auch den effektiven Permissions-Endpunkt erfolgreich lesen; andernfalls wird der gestoppte Stackvertrag erneut ausgerollt.
+
+### Eigenständige Anwenderdokumentation
+
+Das Hilfe-Repository wird unabhängig als GitHub Page veröffentlicht. Derselbe atomare Build enthält
+Website, Manifest und Roh-Markdown. Das Studio-Image enthält keine Anwendertexte; es erhält nur die
+optionale HTTPS-Basis `SVA_DOCUMENTATION_BASE_URL` über den bestehenden Promote-Konfigurationspfad.
+Ein Pages-Ausfall beeinträchtigt keine fachliche Studio-Funktion. Reine Textänderungen benötigen
+weder einen Studio-Build noch einen Studio-Rollout.

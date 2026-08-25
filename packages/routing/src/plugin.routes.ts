@@ -8,8 +8,31 @@ import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import type { RouteGuardContext } from './protected.routes.js';
 import { enforceRouteAccessRequirement } from './ui-route-access.js';
+import {
+  toDocumentationPageCatalogEntry,
+  type DocumentationPageCatalogEntry,
+} from './route-documentation.js';
 
 type PluginRouteFactory = RouteFactory<RootRoute, AnyRoute>;
+
+export const collectPluginRouteDocumentationPages = (
+  pluginDefinitions: readonly PluginDefinition[] = []
+): readonly DocumentationPageCatalogEntry[] =>
+  pluginDefinitions.flatMap((pluginDefinition) =>
+    pluginDefinition.routes.flatMap((routeDefinition) => {
+      if (!routeDefinition.documentation) {
+        throw new Error(
+          `plugin_route_documentation_missing:${pluginDefinition.id}:${routeDefinition.id}`
+        );
+      }
+      const entry = toDocumentationPageCatalogEntry({
+        documentation: routeDefinition.documentation,
+        path: routeDefinition.path,
+        owner: { kind: 'plugin', pluginId: pluginDefinition.id },
+      });
+      return entry ? [entry] : [];
+    })
+  );
 
 export const getPluginRouteFactories = (
   pluginDefinitions: readonly PluginDefinition[] = [],
@@ -43,6 +66,7 @@ export const getPluginRouteFactories = (
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
+          staticData: { documentation: routeDefinition.documentation },
           validateSearch: routeDefinition.validateSearch,
           beforeLoad: async (beforeLoadOptions) => {
             const userContext = createMemoizedUserContext(beforeLoadOptions);

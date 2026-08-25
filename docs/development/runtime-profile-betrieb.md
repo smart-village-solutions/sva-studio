@@ -66,6 +66,7 @@ Gemeinsam:
 
 - `SVA_RUNTIME_PROFILE`
 - `SVA_PUBLIC_BASE_URL`
+- `SVA_DOCUMENTATION_BASE_URL` (lokal optional; HTTPS-Basis der eigenständig veröffentlichten Anwenderdokumentation)
 - `OTEL_EXPORTER_OTLP_ENDPOINT`
 - `SVA_MAINSERVER_GRAPHQL_URL`
 - `SVA_MAINSERVER_OAUTH_TOKEN_URL`
@@ -76,6 +77,7 @@ Gemeinsam:
 
 Remote (`studio`) verpflichtend:
 
+- `SVA_DOCUMENTATION_BASE_URL`
 - `SVA_STACK_NAME`
 - `QUANTUM_ENDPOINT`
 - `POSTGRES_DB`

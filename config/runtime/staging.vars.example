@@ -4,6 +4,7 @@
 SVA_RUNTIME_PROFILE=studio
 SVA_STACK_NAME=studio-staging
 SVA_PUBLIC_BASE_URL=https://studio-staging.smart-village.app
+SVA_DOCUMENTATION_BASE_URL=https://smart-village-solutions.github.io/sva-studio-user-documentation/
 SVA_PARENT_DOMAIN=studio-staging.smart-village.app
 SVA_ALLOWED_INSTANCE_IDS=
 SVA_AUTH_ISSUER=https://keycloak.smart-village.app/realms/studio-staging

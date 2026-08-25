@@ -1,0 +1,4 @@
+{
+  "prNumber": 1143,
+  "body": "Das SVA Studio bietet jetzt auf seinen produktiven Seiten eine passende kontextbezogene Anwenderhilfe an. Ein Hinweisfeld öffnet die zugehörige Dokumentation direkt im Studio als barrierefreies Overlay.\n\n- Die Hilfetexte werden unabhängig vom Studio veröffentlicht und sind dadurch ohne neuen Studio-Build aktualisierbar.\n- Neue Studio-Seiten werden nach dem Merge automatisch an das Dokumentations-Repository gemeldet, damit dort fehlende Hilfeseiten additiv angelegt werden können.\n- Ist die Dokumentation vorübergehend nicht erreichbar, bleiben die eigentlichen Studio-Funktionen uneingeschränkt nutzbar."
+}

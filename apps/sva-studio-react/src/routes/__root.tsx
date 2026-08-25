@@ -7,8 +7,10 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useMatches,
   useRouterState,
 } from '@tanstack/react-router';
+import { resolveActiveRouteDocumentation } from '@sva/routing/documentation';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { createServerOnlyFn } from '@tanstack/react-start';
 import React from 'react';
@@ -94,6 +96,8 @@ function RootComponent() {
 }
 
 export function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
+  const matches = useMatches();
+  const routeDocumentation = resolveActiveRouteDocumentation(matches);
   const isRouterPending = useRouterState({
     select: (state) => state.status === 'pending' || state.isLoading,
   });
@@ -157,6 +161,9 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                 isLoading={isHydrated && isRouterPending}
                 isMobileSidebarOpen={isMobileSidebarOpen}
                 onMobileSidebarOpenChange={setIsMobileSidebarOpen}
+                documentationPageId={
+                  routeDocumentation?.kind === 'page' ? routeDocumentation.id : undefined
+                }
               >
                 {children}
               </AppShell>

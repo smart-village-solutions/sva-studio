@@ -10,6 +10,7 @@ vi.mock('@tanstack/react-router', () => ({
   Outlet: () => <div data-testid="outlet" />,
   Scripts: () => null,
   createRootRoute: (options: unknown) => options,
+  useMatches: () => [],
   useRouterState: (input: { select: (state: any) => unknown }) => useRouterStateMock(input),
 }));
 

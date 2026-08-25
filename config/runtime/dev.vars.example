@@ -4,6 +4,7 @@
 SVA_RUNTIME_PROFILE=studio
 SVA_STACK_NAME=studio-dev
 SVA_PUBLIC_BASE_URL=https://studio-dev.smart-village.app
+SVA_DOCUMENTATION_BASE_URL=https://smart-village-solutions.github.io/sva-studio-user-documentation/
 SVA_PARENT_DOMAIN=studio-dev.smart-village.app
 SVA_ALLOWED_INSTANCE_IDS=
 SVA_AUTH_ISSUER=__SET_DEV_AUTH_ISSUER__

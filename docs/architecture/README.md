@@ -36,6 +36,7 @@ Der einzige normative Bedienablauf für Studio-Rollouts nach Dev, Staging und Pr
 ## Bestehende Architekturdokumente
 
 - Routing: `./routing-architecture.md`
+- Kontextbezogene Anwenderdokumentation: `./contextual-user-documentation.md`
 - Logging und Observability: `./logging-architecture.md`
 - Technische Wandkarte: `./technical-wall-map.md`
 - Session-Analyse: `./session-management-analysis.md`

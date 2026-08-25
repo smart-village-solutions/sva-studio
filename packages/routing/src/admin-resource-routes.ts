@@ -17,11 +17,20 @@ import {
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
+import { createAdminResourceRouteDocumentation } from './admin-resource-route-documentation.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import type { RouteGuardContext } from './protected.routes.js';
 import { enforceRouteAccessRequirement } from './ui-route-access.js';
+import {
+  toDocumentationPageCatalogEntry,
+  type DocumentationPageCatalogOwner,
+  type DocumentationPageCatalogEntry,
+} from './route-documentation.js';
 
-export { createLegacyContentAliasFactories } from './admin-resource-route-legacy-alias-factories.js';
+export {
+  collectLegacyContentAliasDefinitions,
+  createLegacyContentAliasFactories,
+} from './admin-resource-route-legacy-alias-factories.js';
 
 type BindingKey = keyof AppRouteBindings;
 type UiRouteDefinition = {
@@ -190,6 +199,24 @@ const createAdminResourceRouteDefinitions = (
     ] as const;
   });
 
+export const collectAdminResourceRouteDocumentationPages = (
+  bindings: AppRouteBindings,
+  resources: readonly AdminResourceDefinition[],
+  ownerByResourceId: ReadonlyMap<string, DocumentationPageCatalogOwner>
+): readonly DocumentationPageCatalogEntry[] =>
+  createAdminResourceRouteDefinitions(bindings, resources).map((definition) => {
+    const entry = toDocumentationPageCatalogEntry({
+      documentation: createAdminResourceRouteDocumentation(definition),
+      path: definition.path,
+      owner: ownerByResourceId.get(definition.resource.resourceId) ?? { kind: 'host' },
+      titleKey: definition.resource.titleKey,
+    });
+    if (!entry) {
+      throw new Error(`admin_resource_documentation_missing:${definition.resource.resourceId}`);
+    }
+    return entry;
+  });
+
 export const createAdminResourceRouteFactories = (
   bindings: AppRouteBindings,
   resources: readonly AdminResourceDefinition[],
@@ -202,6 +229,7 @@ export const createAdminResourceRouteFactories = (
         return createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
+          staticData: { documentation: createAdminResourceRouteDocumentation(definition) },
           beforeLoad: async (beforeLoadOptions) => {
             const userContext = createMemoizedUserContext(beforeLoadOptions);
             await guard(userContext.options);

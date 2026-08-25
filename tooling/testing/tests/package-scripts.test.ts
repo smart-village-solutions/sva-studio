@@ -33,6 +33,7 @@ interface NxProjectJson {
     {
       cache?: boolean;
       dependsOn?: string[];
+      inputs?: string[];
       options?: { command?: string; lintFilePatterns?: string[] };
     }
   >;
@@ -540,6 +541,25 @@ describe('workspace package scripts', () => {
     expect(workflow).toContain("'scripts/ci/check-db-schema-snapshot.ts'");
     expect(workflow).toContain('pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts');
     expect(workflow).toContain('Median-Mehrlast <= 2 Minuten');
+  });
+
+  it('keeps documentation catalog drift advisory and outside the app build graph', () => {
+    const appProject = loadProjectJson('apps/sva-studio-react');
+    const build = appProject.targets?.build;
+    const workflow = loadRepositoryHygieneWorkflow();
+    const jobStart = workflow.indexOf('  check-documentation-catalog:');
+    const jobEnd = workflow.indexOf('\n  check-db-schema-snapshot:', jobStart);
+    const job = workflow.slice(jobStart, jobEnd);
+
+    expect(build?.dependsOn).not.toContain('check:documentation-catalog');
+    expect(build?.inputs).toContain('{workspaceRoot}/docs/user-documentation/page-catalog.json');
+    expect(jobStart).toBeGreaterThan(-1);
+    expect(jobEnd).toBeGreaterThan(jobStart);
+    expect(job).toContain('name: Documentation Catalog (advisory)');
+    expect(job).toContain("'apps/sva-studio-react/src/lib/plugin-catalog-loader.ts'");
+    expect(job).toContain('continue-on-error: true');
+    expect(job).toContain('pnpm nx run sva-studio-react:check:documentation-catalog');
+    expect(job).toContain('steps.catalog.outcome');
   });
 
   it('runs full App E2E only for main pushes and diagnostic invocations', () => {

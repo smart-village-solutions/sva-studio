@@ -315,3 +315,8 @@ Website, Manifest und Roh-Markdown. Das Studio-Image enthält keine Anwendertext
 optionale HTTPS-Basis `SVA_DOCUMENTATION_BASE_URL` über den bestehenden Promote-Konfigurationspfad.
 Ein Pages-Ausfall beeinträchtigt keine fachliche Studio-Funktion. Reine Textänderungen benötigen
 weder einen Studio-Build noch einen Studio-Rollout.
+
+Der eingecheckte Seitenkatalog bleibt ein Input des Studio-Builds. Seine Reproduzierbarkeitsprüfung
+läuft jedoch als nicht blockierende Repository-Hygiene-Diagnose und ist keine Abhängigkeit des
+Image-Builds oder der Promotion. Erkannte Katalogdrift wird im separaten Dokumentationsflow
+behoben.

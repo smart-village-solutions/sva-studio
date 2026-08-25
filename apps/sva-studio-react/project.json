@@ -89,8 +89,7 @@
         "^build",
         "check:toolchain-consistency",
         "check:i18n",
-        "check:account-ui-foundation",
-        "check:documentation-catalog"
+        "check:account-ui-foundation"
       ],
       "inputs": [
         "production",

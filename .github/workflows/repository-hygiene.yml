@@ -40,6 +40,63 @@ jobs:
           echo 'File-Placement-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Validierung: `pnpm check:file-placement` und `pnpm check:rollout-docs`.' >> "$GITHUB_STEP_SUMMARY"
 
+  check-documentation-catalog:
+    name: Documentation Catalog (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+
+      - name: Detect documentation catalog relevant changes
+        id: changes
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            relevant:
+              - 'apps/sva-studio-react/plugin-catalog.json'
+              - 'apps/sva-studio-react/project.json'
+              - 'apps/sva-studio-react/src/lib/plugin-catalog-loader.ts'
+              - 'apps/sva-studio-react/src/routing/admin-resources.ts'
+              - 'packages/plugin-*/plugin.manifest.json'
+              - 'packages/plugin-*/src/**'
+              - 'packages/routing/src/**'
+              - 'scripts/ci/generate-documentation-page-catalog.ts'
+              - 'docs/user-documentation/page-catalog.json'
+              - '.github/workflows/repository-hygiene.yml'
+
+      - name: Setup workspace
+        if: steps.changes.outputs.relevant == 'true'
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Diagnose documentation catalog drift
+        id: catalog
+        if: steps.changes.outputs.relevant == 'true'
+        continue-on-error: true
+        run: pnpm nx run sva-studio-react:check:documentation-catalog
+
+      - name: Publish documentation catalog summary
+        if: always()
+        env:
+          CATALOG_OUTCOME: ${{ steps.catalog.outcome }}
+          RELEVANT: ${{ steps.changes.outputs.relevant }}
+        run: |
+          if [ "$RELEVANT" != 'true' ]; then
+            echo 'Dokumentationskatalog: keine relevanten Änderungen, die Diagnose endet als No-op.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$CATALOG_OUTCOME" != 'success' ]; then
+            echo '::warning title=Dokumentationskatalog ist veraltet::Der Advisory-Check hat Katalogdrift erkannt. App-Build und Deployment bleiben davon unabhängig.'
+            echo '### Dokumentationskatalog: Drift erkannt' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Diese Diagnose blockiert App-Build und Deployment bewusst nicht.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Katalog aktualisieren: `pnpm nx run sva-studio-react:documentation-catalog`.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo 'Dokumentationskatalog: reproduzierbar und aktuell.' >> "$GITHUB_STEP_SUMMARY"
+
   check-db-schema-snapshot:
     name: DB Schema Snapshot
     runs-on: ubuntu-latest

@@ -137,6 +137,7 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
         'Erstellen Sie einen neuen Abholort aus Region, Ort, Straße und Hausnummer.',
       editTitle: 'Abholort bearbeiten',
       editDescription: 'Ändern Sie geografische Zuordnung und Sichtbarkeit des Abholorts.',
+      deleteDescription: 'Der Abholort {{value}} wird dauerhaft gelöscht.',
     },
     meta: {
       locationId: 'Abholort-ID: {{value}}',
@@ -195,7 +196,7 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
         title: 'Tour gesammelt zuweisen',
         description: '{{value}} ausgewählte Abholorte werden einer Tour zugeordnet.',
         deleteTitle: 'Markierte Abholorte löschen',
-        deleteDescription: '{{value}} ausgewählte Abholorte werden gelöscht.',
+        deleteDescription: '{{value}} ausgewählte Abholorte werden dauerhaft gelöscht.',
       },
       selectedTitle: 'Ausgewählte Abholorte',
       meta: { selectedCount: '{{value}} ausgewählt' },

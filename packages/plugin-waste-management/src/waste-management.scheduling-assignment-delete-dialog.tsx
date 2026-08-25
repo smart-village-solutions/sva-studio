@@ -34,7 +34,10 @@ export const WasteTourAssignmentDeleteDialog = ({
     <StudioDestructiveActionDialog
       open={entry !== null}
       title={pt('scheduling.assignments.dialog.deleteTitle')}
-      description={pt('scheduling.assignments.dialog.deleteDescription')}
+      description={pt('scheduling.assignments.dialog.deleteDescription', {
+        tourId: entry?.tourId ?? '',
+        pickupDate: entry?.pickupDate ?? '',
+      })}
       confirmLabel={pt('scheduling.assignments.actions.confirmDelete')}
       pendingLabel={pt('common.deleting')}
       cancelLabel={pt('scheduling.assignments.actions.cancel')}

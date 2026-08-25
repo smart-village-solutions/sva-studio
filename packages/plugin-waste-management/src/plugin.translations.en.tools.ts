@@ -163,6 +163,8 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     previewReady: 'The import preview is ready.',
     historyDeleteSuccess: 'The history entry was deleted.',
     historyDeleteError: 'The history entry could not be deleted.',
+    historyRefreshAfterDeleteError:
+      'The history entry was deleted, but the history could not be refreshed. Please reload the page.',
     jobStartError: 'The waste job could not be started.',
     jobStartErrorWithReason: 'The waste job could not be started: {{reason}}',
     forbidden: 'Missing permission for this waste operation.',

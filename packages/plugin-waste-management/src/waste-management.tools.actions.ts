@@ -74,9 +74,6 @@ export const createWasteToolsHistoryDeletionRunner =
       if (currentLastJobId === jobId) {
         setLastJob(null);
       }
-      await refreshTechnicalHistory(true);
-      setMessage({ kind: 'success', text: pt('tools.messages.historyDeleteSuccess') });
-      return true;
     } catch (error) {
       setMessage({
         kind: 'error',
@@ -84,6 +81,17 @@ export const createWasteToolsHistoryDeletionRunner =
       });
       return false;
     }
+    try {
+      await refreshTechnicalHistory(true);
+    } catch {
+      setMessage({
+        kind: 'warning',
+        text: pt('tools.messages.historyRefreshAfterDeleteError'),
+      });
+      return true;
+    }
+    setMessage({ kind: 'success', text: pt('tools.messages.historyDeleteSuccess') });
+    return true;
   };
 
 export const createWasteToolsActions = ({

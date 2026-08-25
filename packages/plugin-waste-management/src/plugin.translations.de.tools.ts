@@ -167,6 +167,8 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     previewReady: 'Die Importvorschau ist bereit.',
     historyDeleteSuccess: 'Der Historieneintrag wurde gelöscht.',
     historyDeleteError: 'Der Historieneintrag konnte nicht gelöscht werden.',
+    historyRefreshAfterDeleteError:
+      'Der Historieneintrag wurde gelöscht, aber die Historie konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
     jobStartError: 'Der Abfallprozess konnte nicht gestartet werden.',
     jobStartErrorWithReason: 'Der Abfallprozess konnte nicht gestartet werden: {{reason}}',
     forbidden: 'Für diesen Abfallvorgang fehlt die Berechtigung.',

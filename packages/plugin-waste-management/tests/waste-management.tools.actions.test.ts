@@ -99,6 +99,23 @@ describe('waste-management tools action helpers', () => {
     });
   });
 
+  it('keeps a successful history deletion successful when only the refresh fails', async () => {
+    const setMessage = vi.fn();
+    const deleteRunner = createWasteToolsHistoryDeletionRunner({
+      pt: (key) => key,
+      refreshTechnicalHistory: vi.fn(async () => Promise.reject(new Error('refresh failed'))),
+      setMessage,
+      setLastJob: vi.fn(),
+    });
+
+    await expect(deleteRunner('job-refresh', 'other-job')).resolves.toBe(true);
+
+    expect(setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'tools.messages.historyRefreshAfterDeleteError',
+    });
+  });
+
   it('guards preview execution, reports preview success or failure, and resets reset-dialog state after reset jobs', async () => {
     const setPreviewResult = vi.fn();
     const setPreviewReady = vi.fn();

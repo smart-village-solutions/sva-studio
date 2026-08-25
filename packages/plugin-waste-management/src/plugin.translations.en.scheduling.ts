@@ -123,7 +123,8 @@ export const wasteManagementPluginTranslationsENScheduling =
         editTitle: 'Edit tour assignment',
         editDescription: 'Adjust the tour, date, pickup locations, or optional note.',
         deleteTitle: 'Delete tour assignment',
-        deleteDescription: 'Do you really want to delete this tour assignment?',
+        deleteDescription:
+          'The tour assignment for tour {{tourId}} on {{pickupDate}} will be deleted permanently.',
       },
       fields: {
         pickupDate: 'Date',

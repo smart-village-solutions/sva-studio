@@ -125,7 +125,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
         editTitle: 'Tour-Einsatz bearbeiten',
         editDescription: 'Passen Sie Tour, Datum, Abholorte oder den optionalen Hinweis an.',
         deleteTitle: 'Tour-Einsatz löschen',
-        deleteDescription: 'Möchten Sie diesen Tour-Einsatz wirklich löschen?',
+        deleteDescription:
+          'Der Tour-Einsatz für Tour {{tourId}} am {{pickupDate}} wird dauerhaft gelöscht.',
       },
       fields: {
         pickupDate: 'Datum',

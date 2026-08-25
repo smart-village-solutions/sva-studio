@@ -94,7 +94,13 @@ const WasteMasterDataLocationsTableContent = ({
       <StudioDestructiveActionDialog
         open={pendingDeleteLocation !== null}
         title={pt('masterData.collectionLocations.actions.delete')}
-        description={pendingDeleteLocation ? props.getLocationLabel(pendingDeleteLocation) : ''}
+        description={
+          pendingDeleteLocation
+            ? pt('masterData.collectionLocations.dialog.deleteDescription', {
+                value: props.getLocationLabel(pendingDeleteLocation),
+              })
+            : ''
+        }
         confirmLabel={pt('masterData.collectionLocations.actions.delete')}
         pendingLabel={pt('common.deleting')}
         cancelLabel={pt('masterData.collectionLocations.actions.cancel')}

@@ -76,7 +76,15 @@ export const MonitoringJobDetailHeader = ({
 }: MonitoringJobDetailHeaderProps) => {
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!canCancel) setCancelDialogOpen(false);
+  }, [canCancel]);
+
   const requestCancellation = async () => {
+    if (!canCancel) {
+      setCancelDialogOpen(false);
+      return;
+    }
     if (await onCancel()) setCancelDialogOpen(false);
   };
 
@@ -99,6 +107,7 @@ export const MonitoringJobDetailHeader = ({
         pendingLabel={t('monitoring.jobs.actions.cancelling')}
         cancelLabel={t('monitoring.jobs.actions.keepRunning')}
         pending={isCancelling}
+        confirmDisabled={!canCancel}
         errorMessage={cancelErrorMessage}
         onCancel={() => setCancelDialogOpen(false)}
         onConfirm={() => void requestCancellation()}

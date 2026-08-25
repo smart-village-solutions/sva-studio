@@ -240,7 +240,11 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
     expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
 
     fireEvent.click(screen.getByRole('button', { name: 'single-delete' }));
-    expect(screen.getByText('label:location-1')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'masterData.collectionLocations.dialog.deleteDescription:{"value":"label:location-1"}'
+      )
+    ).toBeTruthy();
     fireEvent.click(
       screen.getByRole('button', { name: 'masterData.collectionLocations.actions.cancel' })
     );
@@ -251,9 +255,18 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
       screen.getByRole('button', { name: 'masterData.collectionLocations.actions.delete' })
     );
     expect(onDeleteLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
-    await waitFor(() => expect(screen.queryByText('label:location-1')).toBeNull());
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'masterData.collectionLocations.dialog.deleteDescription:{"value":"label:location-1"}'
+        )
+      ).toBeNull()
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'bulk-delete' }));
+    expect(
+      screen.getByText('masterData.collectionLocations.bulk.dialog.deleteDescription:{"value":2}')
+    ).toBeTruthy();
     fireEvent.click(
       screen.getByRole('button', { name: 'masterData.collectionLocations.actions.cancel' })
     );

@@ -332,7 +332,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
   const currentPhaseLabel = job ? resolveMonitoringJobPhaseLabel(job) : null;
   const statusLabel = job
     ? t(monitoringJobStatusLabelKeyByValue[job.status])
-    : t('monitoring.jobs.status.queued');
+    : t('monitoring.jobs.values.notAvailable');
 
   return (
     <section className="space-y-6">
@@ -344,12 +344,14 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
           job?.status === 'failed' ? 'error' : job?.status === 'succeeded' ? 'success' : 'warning'
         }
         announcement={
-          currentPhaseLabel
-            ? t('monitoring.jobs.messages.statusPhaseAnnouncement', {
-                status: statusLabel,
-                phase: currentPhaseLabel,
-              })
-            : t('monitoring.jobs.messages.statusAnnouncement', { status: statusLabel })
+          !job
+            ? ''
+            : currentPhaseLabel
+              ? t('monitoring.jobs.messages.statusPhaseAnnouncement', {
+                  status: statusLabel,
+                  phase: currentPhaseLabel,
+                })
+              : t('monitoring.jobs.messages.statusAnnouncement', { status: statusLabel })
         }
         runtimeLabel={
           job?.runtime

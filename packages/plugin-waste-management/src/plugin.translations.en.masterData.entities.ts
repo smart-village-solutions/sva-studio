@@ -144,6 +144,7 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       editTitle: 'Edit collection location',
       editDescription:
         'Adjust the geographic assignment and visibility of the collection location.',
+      deleteDescription: 'The collection location {{value}} will be deleted permanently.',
     },
     meta: {
       locationId: 'Location ID: {{value}}',
@@ -202,7 +203,7 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
         title: 'Bulk assign tour',
         description: 'Assign a tour to {{value}} selected collection locations.',
         deleteTitle: 'Delete selected collection locations',
-        deleteDescription: '{{value}} selected collection locations will be deleted.',
+        deleteDescription: '{{value}} selected collection locations will be deleted permanently.',
       },
       selectedTitle: 'Selected collection locations',
       meta: { selectedCount: '{{value}} selected' },

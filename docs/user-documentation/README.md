@@ -18,6 +18,11 @@ Der CI-Driftcheck verwendet:
 pnpm nx run sva-studio-react:check:documentation-catalog
 ```
 
+Repository Hygiene führt diesen Check als sichtbare Advisory-Diagnose aus. Eine Abweichung
+erscheint als Warnung und in der Job-Zusammenfassung, blockiert aber weder den Studio-App-Build
+noch den regulären Deploymentpfad. Der Katalog wird anschließend über den separaten
+Dokumentationsflow aktualisiert.
+
 Das Hilfe-Repository liest diesen Katalog additiv ein: Es legt ausschließlich fehlende
 Markdown-Dateien an. Bestehende Inhalte werden weder überschrieben noch gelöscht.
 

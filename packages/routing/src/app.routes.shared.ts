@@ -10,11 +10,7 @@ import {
 } from './admin-resource-route-conflicts.js';
 import type { AppRouteBindings } from './app-route-bindings.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import {
-  collectLegacyContentAliasDefinitions,
-  createAdminResourceRouteFactories,
-  createLegacyContentAliasFactories,
-} from './admin-resource-routes.js';
+import { collectLegacyContentAliasDefinitions, createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 export { mapPluginGuardToAccountGuard } from './plugin-guard-mapping.js';
 import type { RouteGuardContext } from './protected.routes.js';

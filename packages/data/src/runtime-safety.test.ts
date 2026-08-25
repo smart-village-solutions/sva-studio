@@ -562,6 +562,7 @@ test('portable docker runtime guard follows reachable modules and excludes only 
   const libraryDir = resolve(serverDir, '_libs');
   const chunksDir = resolve(serverDir, '_chunks');
   const otelChunkDir = resolve(serverDir, 'chunks/_');
+  const recoveryChunkDir = resolve(serverDir, 'chunks/build');
   const guardScript = resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.ts');
 
   try {
@@ -569,6 +570,7 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     mkdirSync(libraryDir, { recursive: true });
     mkdirSync(chunksDir, { recursive: true });
     mkdirSync(otelChunkDir, { recursive: true });
+    mkdirSync(recoveryChunkDir, { recursive: true });
     writeFileSync(serverDir + '/index.mjs', 'import "./_chunks/ssr-renderer.mjs";\n');
     writeFileSync(resolve(chunksDir, 'ssr-renderer.mjs'), 'export { service } from "../_libs/service.mjs";\n');
     writeFileSync(resolve(libraryDir, 'service.mjs'), 'export const service = import("../_ssr/ssr.mjs");\n');
@@ -578,6 +580,7 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     );
     writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
     writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'export const preload = "prod-runtime";\n');
+    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
     writeFileSync(
       resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
       'export const optionalDevelopmentHelper = "jsxDEV";\n'
@@ -591,6 +594,12 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     );
 
     writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'export const preload = "prod-runtime";\n');
+    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'const recovery = "jsxDEV";\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+
+    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
     writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "react/jsx-dev-runtime";\n');
 
     expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(

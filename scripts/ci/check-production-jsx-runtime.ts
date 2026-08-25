@@ -73,14 +73,17 @@ export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly s
   const serverDirectory = resolve(appDirectory, '.output/server');
   const serverEntryPath = resolve(serverDirectory, 'index.mjs');
   const otelPreloadServerPath = resolve(serverDirectory, 'chunks/_/server.mjs');
+  const recoveryServerPath = resolve(serverDirectory, 'chunks/build/server.mjs');
 
   if (!existsSync(serverEntryPath)) {
     throw new Error(`Finaler Server-Entry fehlt: ${serverEntryPath}`);
   }
 
   const pendingPaths = [serverEntryPath];
-  if (existsSync(otelPreloadServerPath)) {
-    pendingPaths.push(otelPreloadServerPath);
+  for (const optionalRuntimeRoot of [otelPreloadServerPath, recoveryServerPath]) {
+    if (existsSync(optionalRuntimeRoot)) {
+      pendingPaths.push(optionalRuntimeRoot);
+    }
   }
   const reachablePaths = new Set<string>();
 

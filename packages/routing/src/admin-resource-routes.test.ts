@@ -553,6 +553,10 @@ describe('admin resource routes', () => {
     );
     expect(readRouteOptions(routeMap.get('/content')).getParentRoute?.()).toBe(rootRoute);
     expect(readRouteOptions(routeMap.get('/content')).component?.()).toBeNull();
+    expect(readRouteOptions(routeMap.get('/content')).staticData?.documentation).toEqual({
+      kind: 'excluded',
+      reason: 'technical',
+    });
   });
 
   it('rejects unknown admin resource binding keys before route creation', () => {

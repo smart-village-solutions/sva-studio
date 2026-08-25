@@ -27,7 +27,10 @@ import {
   type DocumentationPageCatalogEntry,
 } from './route-documentation.js';
 
-export { createLegacyContentAliasFactories } from './admin-resource-route-legacy-alias-factories.js';
+export {
+  collectLegacyContentAliasDefinitions,
+  createLegacyContentAliasFactories,
+} from './admin-resource-route-legacy-alias-factories.js';
 
 type BindingKey = keyof AppRouteBindings;
 type UiRouteDefinition = {

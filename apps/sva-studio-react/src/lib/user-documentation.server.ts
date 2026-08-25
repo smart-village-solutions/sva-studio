@@ -160,7 +160,11 @@ const parseManifest = (body: string, baseUrl: URL): DocumentationManifest => {
   } catch {
     throw new UserDocumentationError('documentation_upstream_invalid', 502);
   }
-  if (!value || typeof value !== 'object' || (value as { schemaVersion?: unknown }).schemaVersion !== 1) {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    (value as { schemaVersion?: unknown }).schemaVersion !== 1
+  ) {
     throw new UserDocumentationError('documentation_upstream_invalid', 502);
   }
   const pages = (value as { pages?: unknown }).pages;
@@ -217,11 +221,14 @@ export const loadUserDocumentation = async (
   };
 };
 
-export const logUserDocumentationError = (pageId: string, error: UserDocumentationError): void => {
+export const logUserDocumentationError = (
+  pageId: string | undefined,
+  error: UserDocumentationError
+): void => {
   logger ??= createSdkLogger({ component: 'user-documentation' });
   logger.warn('Anwenderdokumentation konnte nicht geladen werden', {
     operation: 'user_documentation_load',
-    page_id: pageId,
+    ...(pageId ? { page_id: pageId } : {}),
     reason_code: error.code,
     http_status: error.status,
   });

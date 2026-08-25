@@ -11,6 +11,7 @@ import {
 import type { AppRouteBindings } from './app-route-bindings.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import {
+  collectLegacyContentAliasDefinitions,
   createAdminResourceRouteFactories,
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
@@ -205,7 +206,10 @@ const resolveUiRouteDefinitions = (
 export const collectUiRouteDocumentationPages = (
   adminResources: readonly AdminResourceDefinition[] = []
 ): readonly DocumentationPageCatalogEntry[] =>
-  resolveUiRouteDefinitions(mergeAdminResourceDefinitions(adminResources)).flatMap((definition) => {
+  [
+    ...resolveUiRouteDefinitions(mergeAdminResourceDefinitions(adminResources)),
+    ...collectLegacyContentAliasDefinitions(adminResources),
+  ].flatMap((definition) => {
     const entry = toDocumentationPageCatalogEntry({
       documentation: definition.documentation,
       path: definition.path,

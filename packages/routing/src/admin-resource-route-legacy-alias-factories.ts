@@ -1,4 +1,5 @@
 import type { AdminResourceDefinition } from '@sva/plugin-sdk';
+import type { RouteDocumentation } from '@sva/plugin-sdk/route-documentation';
 import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
 import {
@@ -32,9 +33,16 @@ const normalizeAliasHref = (href: string, sourcePrefix: string, targetPrefix: st
   return targetPrefix;
 };
 
-export const createLegacyContentAliasFactories = (
+type LegacyContentAliasDefinition = Readonly<{
+  documentation: RouteDocumentation;
+  path: string;
+  sourcePrefix: string;
+  targetPrefix: string;
+}>;
+
+export const collectLegacyContentAliasDefinitions = (
   resources: readonly AdminResourceDefinition[] = []
-): readonly AppRouteFactory[] => {
+): readonly LegacyContentAliasDefinition[] => {
   const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
   const aliasMappings = [
     {
@@ -54,17 +62,30 @@ export const createLegacyContentAliasFactories = (
   ] as const;
 
   return aliasMappings.flatMap(({ sourcePrefix, targetPrefix }) =>
-    [sourcePrefix, `${sourcePrefix}/new`, `${sourcePrefix}/$contentId`].map((path) => (rootRoute: RootRoute) =>
-      createRoute({
-        getParentRoute: () => rootRoute,
-        path,
-        beforeLoad: (options) => {
-          const href = readBeforeLoadHref(options);
-          const normalizedHref = normalizeAliasHref(href, sourcePrefix, targetPrefix);
-          throw redirect({ href: normalizedHref });
-        },
-        component: () => null,
-      })
-    )
+    [sourcePrefix, `${sourcePrefix}/new`, `${sourcePrefix}/$contentId`].map((path) => ({
+      documentation: { kind: 'excluded', reason: 'technical' },
+      path,
+      sourcePrefix,
+      targetPrefix,
+    }))
   );
 };
+
+export const createLegacyContentAliasFactories = (
+  resources: readonly AdminResourceDefinition[] = []
+): readonly AppRouteFactory[] =>
+  collectLegacyContentAliasDefinitions(resources).map(
+    ({ documentation, path, sourcePrefix, targetPrefix }) =>
+      (rootRoute: RootRoute) =>
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path,
+          staticData: { documentation },
+          beforeLoad: (options) => {
+            const href = readBeforeLoadHref(options);
+            const normalizedHref = normalizeAliasHref(href, sourcePrefix, targetPrefix);
+            throw redirect({ href: normalizedHref });
+          },
+          component: () => null,
+        })
+  );

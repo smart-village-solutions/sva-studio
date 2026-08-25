@@ -81,9 +81,7 @@ describe('user-documentation-api.server', () => {
 
   it('maps controlled upstream errors without exposing details', async () => {
     const { UserDocumentationError } = await import('./user-documentation.server');
-    state.load.mockRejectedValue(
-      new UserDocumentationError('documentation_not_configured', 503)
-    );
+    state.load.mockRejectedValue(new UserDocumentationError('documentation_not_configured', 503));
     const response = await dispatchUserDocumentationRequest(
       new Request('https://studio.test/api/studio/documentation/home.overview')
     );
@@ -92,6 +90,21 @@ describe('user-documentation-api.server', () => {
     expect(state.log).toHaveBeenCalledWith(
       'home.overview',
       expect.objectContaining({ code: 'documentation_not_configured' })
+    );
+  });
+
+  it('does not log unvalidated unknown page ids', async () => {
+    const { UserDocumentationError } = await import('./user-documentation.server');
+    state.load.mockRejectedValue(new UserDocumentationError('documentation_page_unknown', 404));
+
+    const response = await dispatchUserDocumentationRequest(
+      new Request('https://studio.test/api/studio/documentation/person%40example.test')
+    );
+
+    expect(response?.status).toBe(404);
+    expect(state.log).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ code: 'documentation_page_unknown' })
     );
   });
 

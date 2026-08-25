@@ -13,7 +13,9 @@ const pathPrefix = '/api/studio/documentation/';
 const createPayloadEtag = (payload: unknown): string =>
   `"${createHash('sha256').update(JSON.stringify(payload)).digest('base64url')}"`;
 
-export const dispatchUserDocumentationRequest = async (request: Request): Promise<Response | null> => {
+export const dispatchUserDocumentationRequest = async (
+  request: Request
+): Promise<Response | null> => {
   const pathname = new URL(request.url).pathname;
   if (!pathname.startsWith(pathPrefix)) {
     return null;
@@ -50,7 +52,10 @@ export const dispatchUserDocumentationRequest = async (request: Request): Promis
         error instanceof UserDocumentationError
           ? error
           : new UserDocumentationError('documentation_upstream_unavailable', 502);
-      logUserDocumentationError(pageId, controlled);
+      logUserDocumentationError(
+        controlled.code === 'documentation_page_unknown' ? undefined : pageId,
+        controlled
+      );
       return Response.json({ error: controlled.code }, { status: controlled.status });
     }
   });

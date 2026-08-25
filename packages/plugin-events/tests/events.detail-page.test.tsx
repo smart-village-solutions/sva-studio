@@ -672,6 +672,26 @@ describe('EventsDetailPage', () => {
     });
   });
 
+  it('closes the delete dialog without reporting a delete failure when navigation fails', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    navigateMock.mockRejectedValueOnce(new Error('navigation failed'));
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await screen.findByDisplayValue('Stadtfest');
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(deleteEvent)).toHaveBeenCalledWith('event-1', 'user');
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(screen.queryByText('Event konnte nicht gelöscht werden.')).toBeNull();
+  });
+
   it('updates events even without media contents', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',

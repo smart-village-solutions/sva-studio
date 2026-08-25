@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { evaluateAuthorizeDecisionMock, resolveEffectivePermissionsMock } = vi.hoisted(() => ({
-  evaluateAuthorizeDecisionMock: vi.fn(),
-  resolveEffectivePermissionsMock: vi.fn(),
-}));
+const { evaluateAuthorizeDecisionMock, resolveEffectivePermissionsMock, warnMock } = vi.hoisted(
+  () => ({
+    evaluateAuthorizeDecisionMock: vi.fn(),
+    resolveEffectivePermissionsMock: vi.fn(),
+    warnMock: vi.fn(),
+  })
+);
 
 vi.mock('@sva/iam-core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/iam-core')>();
@@ -16,7 +19,7 @@ vi.mock('@sva/iam-core', async (importOriginal) => {
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     error: vi.fn(),
-    warn: vi.fn(),
+    warn: warnMock,
     info: vi.fn(),
     debug: vi.fn(),
   }),
@@ -34,8 +37,41 @@ describe('instance permission authorization', () => {
   beforeEach(() => {
     evaluateAuthorizeDecisionMock.mockReset();
     resolveEffectivePermissionsMock.mockReset();
+    warnMock.mockReset();
     evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
     resolveEffectivePermissionsMock.mockResolvedValue({ ok: true, permissions: [] });
+  });
+
+  it('evaluates optional capabilities from supplied permissions without logging denials', async () => {
+    const permissions = [{ action: 'iam.monitoring.read' }] as never;
+    evaluateAuthorizeDecisionMock.mockReturnValueOnce({
+      allowed: false,
+      reason: 'permission_missing',
+    });
+
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: 'iam.monitoring.write',
+        logDeniedDecision: false,
+        permissions,
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+    });
+
+    expect(resolveEffectivePermissionsMock).not.toHaveBeenCalled();
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(expect.anything(), permissions);
+    expect(warnMock).not.toHaveBeenCalled();
   });
 
   it('authorizes instance-scoped actions for custom-role users through permissions', async () => {

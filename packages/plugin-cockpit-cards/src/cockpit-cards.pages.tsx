@@ -849,13 +849,21 @@ function Editor({
     setDeletePending(true);
     try {
       await deleteCockpitCard(contentId, actingPrincipalType);
+    } catch {
+      setDeleteError(pt('messages.deleteError'));
+      setDeletePending(false);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    try {
       await navigate({
         to: '/admin/content',
         state: (previous) =>
           addStudioDestructiveNavigationFeedback(previous, 'cockpit-cards', contentId),
       });
     } catch {
-      setDeleteError(pt('messages.deleteError'));
+      return;
     } finally {
       setDeletePending(false);
     }

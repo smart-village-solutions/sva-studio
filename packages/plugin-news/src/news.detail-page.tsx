@@ -994,12 +994,20 @@ export const NewsDetailPage = ({
 
     try {
       await deleteNews(contentId, actingPrincipalType);
+    } catch (error) {
+      setDeleteErrorMessage(resolveNewsErrorMessage(pt, error, 'messages.deleteError'));
+      setDeletePending(false);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    try {
       await navigate({
         to: '/admin/content',
         state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'news', contentId),
       });
-    } catch (error) {
-      setDeleteErrorMessage(resolveNewsErrorMessage(pt, error, 'messages.deleteError'));
+    } catch {
+      return;
     } finally {
       setDeletePending(false);
     }

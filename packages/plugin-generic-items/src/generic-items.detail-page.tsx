@@ -415,6 +415,7 @@ export function GenericItemsDetailPage({
     contentId,
     mode,
     navigate,
+    onDeleted: () => setDeleteDialogOpen(false),
     pt,
     setStatus,
     actingPrincipalType,

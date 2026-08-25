@@ -950,12 +950,20 @@ export function EventsDetailPage({
     setDeleteErrorMessage(null);
     try {
       await deleteEvent(contentId, actingPrincipalType);
+    } catch (deleteError) {
+      setDeleteErrorMessage(errorMessage(pt, deleteError, 'messages.deleteError'));
+      setDeletePending(false);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    try {
       await navigate({
         to: '/admin/content',
         state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'events', contentId),
       });
-    } catch (deleteError) {
-      setDeleteErrorMessage(errorMessage(pt, deleteError, 'messages.deleteError'));
+    } catch {
+      return;
     } finally {
       setDeletePending(false);
     }

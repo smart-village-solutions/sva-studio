@@ -499,6 +499,16 @@ describe('plugin operations handlers', () => {
         },
       },
     });
+    expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(1, {
+      ctx: expect.anything(),
+      action: 'iam.monitoring.read',
+    });
+    expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(2, {
+      ctx: expect.anything(),
+      action: 'iam.monitoring.write',
+      logDeniedDecision: false,
+      permissions: [],
+    });
   });
 
   it('lists plugin operation jobs for the authenticated instance', async () => {

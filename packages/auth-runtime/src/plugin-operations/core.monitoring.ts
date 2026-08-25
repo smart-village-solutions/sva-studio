@@ -130,11 +130,24 @@ const parseJobId = async (request: Request): Promise<string | Response> => readJ
 
 export const getPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
-    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
-    if (authorizationError) return authorizationError;
+    const readAuthorization = await authorizeInstancePermissionForUser({
+      ctx,
+      action: MONITORING_READ_ACTION,
+    });
+    if (!readAuthorization.ok) {
+      return createApiError(
+        readAuthorization.status,
+        toInstancePermissionApiErrorCode(readAuthorization.error),
+        'Keine Berechtigung für Plugin-Operations-Monitoring.',
+        getRequestId(),
+        readAuthorization.permissionDenial
+      );
+    }
     const writeAuthorization = await authorizeInstancePermissionForUser({
       ctx,
       action: MONITORING_WRITE_ACTION,
+      logDeniedDecision: false,
+      permissions: readAuthorization.permissions,
     });
 
     const instanceId = requireActorInstanceId(ctx.user.instanceId);

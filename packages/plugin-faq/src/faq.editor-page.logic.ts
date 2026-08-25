@@ -136,17 +136,23 @@ export const useFaqEditorActions = ({
     setDeletePending(true);
     try {
       await deleteFaq(contentId, actingPrincipalType);
+    } catch (error) {
+      setDeleteErrorMessage(resolveDeleteErrorMessage(error, pt));
+      setDeletePending(false);
+      return false;
+    }
+
+    try {
       await navigate({
         to: '/admin/content',
         state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'faq', contentId),
       });
+    } catch {
       return true;
-    } catch (error) {
-      setDeleteErrorMessage(resolveDeleteErrorMessage(error, pt));
-      return false;
     } finally {
       setDeletePending(false);
     }
+    return true;
   };
 
   return { deletePending, onDelete, onSubmit };

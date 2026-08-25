@@ -174,6 +174,7 @@ export const useGenericItemsDetailActions = ({
   contentId,
   mode,
   navigate,
+  onDeleted,
   pt,
   setStatus,
   actingPrincipalType,
@@ -181,6 +182,7 @@ export const useGenericItemsDetailActions = ({
   contentId?: string;
   mode: 'create' | 'edit';
   navigate: NavigateFn;
+  onDeleted: () => void;
   pt: ReturnType<typeof usePluginTranslation>;
   setStatus: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
   actingPrincipalType: MainserverPrincipalType;
@@ -195,17 +197,25 @@ export const useGenericItemsDetailActions = ({
 
     try {
       await deleteGenericItem(contentId, actingPrincipalType);
+    } catch (error) {
+      setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
+      setDeleting(false);
+      return;
+    }
+
+    onDeleted();
+    try {
       await navigate({
         ...genericItemsListNavigationTarget,
         state: (previous) =>
           addStudioDestructiveNavigationFeedback(previous, 'generic-items', contentId),
       });
-    } catch (error) {
-      setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
+    } catch {
+      return;
     } finally {
       setDeleting(false);
     }
-  }, [actingPrincipalType, contentId, deleting, mode, navigate, pt, setStatus]);
+  }, [actingPrincipalType, contentId, deleting, mode, navigate, onDeleted, pt, setStatus]);
 
   const [activeTab, setActiveTab] = React.useState<GenericItemsDetailTabId>('basis');
 

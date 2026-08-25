@@ -875,12 +875,20 @@ export function PoiDetailPage({
     setDeletePending(true);
     try {
       await deletePoi(contentId, actingPrincipalType);
+    } catch (deleteError) {
+      setDeleteErrorMessage(errorMessage(pt, deleteError, 'messages.deleteError'));
+      setDeletePending(false);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    try {
       await navigate({
         to: '/admin/content',
         state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'poi', contentId),
       });
-    } catch (deleteError) {
-      setDeleteErrorMessage(errorMessage(pt, deleteError, 'messages.deleteError'));
+    } catch {
+      return;
     } finally {
       setDeletePending(false);
     }

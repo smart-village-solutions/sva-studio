@@ -1867,7 +1867,7 @@ Das System MUST News, Events, POI, Generic Items, Projects und Cockpit Cards üb
 
 ### Requirement: Inhaltslisten-Sortierung gilt für den vollständigen verfügbaren Trefferbestand
 
-Das System MUST die Sortierung der paginierten Inhaltsübersicht serverseitig auf den vollständigen, durch Berechtigungen und aktuelle Filter definierten verfügbaren Trefferbestand anwenden und erst danach die angeforderte Seite bilden. Es MUST dafür ausschließlich die sichtbaren Felder `title`, `createdAt`, `updatedAt` und `publishedAt` unterstützen und standardmäßig `updatedAt desc` verwenden.
+Das System MUST die Sortierung der paginierten Inhaltsübersicht serverseitig auf den vollständigen, durch Berechtigungen und aktuelle Filter definierten verfügbaren Trefferbestand anwenden und erst danach die angeforderte Seite bilden. Es MUST dafür ausschließlich die sichtbaren Felder `title`, `createdAt`, `updatedAt` und `publishedAt` unterstützen und standardmäßig `updatedAt desc` verwenden. Bei der Sortierung nach `title` MUST es ausschließlich den zusammenhängenden Präfix aus führenden Leer-, Satz- und Symbolzeichen bis zum ersten Buchstaben oder zur ersten Ziffer für den Vergleich ignorieren, ohne den gespeicherten oder angezeigten Titel zu verändern.
 
 #### Scenario: Inhaltsübersicht erhält eine serverseitig sortierte Seite
 
@@ -1883,6 +1883,16 @@ Das System MUST die Sortierung der paginierten Inhaltsübersicht serverseitig au
 - **WHEN** das System die erste Seite lädt
 - **THEN** sortiert die führende Listenquelle den vollständigen gefilterten Bestand nach `updatedAt desc`
 - **AND** zeigt der Tabellenkopf diesen Default aktiv an
+
+#### Scenario: Inhaltstitel ignorieren ausschließlich führende Sonderzeichen
+
+- **GIVEN** mehrere Inhaltstitel beginnen mit Leerraum, geraden oder typografischen Anführungszeichen oder anderen Satz- und Symbolzeichen
+- **WHEN** ein Benutzer die Inhaltsübersicht nach `title` sortiert
+- **THEN** vergleicht die führende serverseitige Listenquelle jeden Titel ab seinem ersten Buchstaben oder seiner ersten Ziffer
+- **AND** beginnt sie den Vergleich beispielsweise bei `"Apfel"`, `„Apfel“` und `Apfel` jeweils mit `Apfel`
+- **AND** berücksichtigt sie Bindestriche und andere Zeichen innerhalb oder am Ende eines Titels weiterhin
+- **AND** verändert sie weder den gespeicherten noch den angezeigten Titel
+- **AND** stabilisiert sie gleiche normalisierte Vergleichswerte mit `ID asc`, bevor die Pagination erfolgt
 
 #### Scenario: Erstellung und Veröffentlichung werden vollständig serverseitig sortiert
 

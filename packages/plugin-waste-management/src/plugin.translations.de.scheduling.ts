@@ -156,6 +156,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
         deleteSuccess: 'Der Tour-Einsatz wurde gelöscht.',
         deleteError: 'Der Tour-Einsatz konnte nicht gelöscht werden.',
         deleteForbidden: 'Für das Löschen von Tour-Einsätzen fehlt die Berechtigung.',
+        refreshAfterDeleteError:
+          'Der Tour-Einsatz wurde gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
       },
     },
     actions: {

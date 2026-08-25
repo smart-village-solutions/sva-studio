@@ -6,6 +6,15 @@ import type { StudioJobDetail } from '@sva/core';
 import { MonitoringJobDetailPage } from './-job-detail-page';
 
 const usePluginOperationJobDetailMock = vi.fn();
+const translatePluginKeyMock = vi.hoisted(() =>
+  vi.fn((pluginId: string, key: string) => `${pluginId}.${key}`)
+);
+
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
+  translatePluginKey: (...args: Parameters<typeof translatePluginKeyMock>) =>
+    translatePluginKeyMock(...args),
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
@@ -150,6 +159,8 @@ const detailRecord: StudioJobDetail = {
 describe('MonitoringJobDetailPage', () => {
   beforeEach(() => {
     usePluginOperationJobDetailMock.mockReset();
+    translatePluginKeyMock.mockReset();
+    translatePluginKeyMock.mockImplementation((pluginId, key) => `${pluginId}.${key}`);
   });
 
   afterEach(() => {
@@ -311,6 +322,49 @@ describe('MonitoringJobDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Job abbrechen' }));
 
     await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));
+  });
+
+  it('closes an open cancellation dialog when navigating to another job', async () => {
+    usePluginOperationJobDetailMock.mockImplementation((jobId: string) => ({
+      detail: { ...detailRecord, id: jobId, availableActions: ['cancel'] },
+      actionError: null,
+      cancel: vi.fn(async () => true),
+      error: null,
+      isCancelling: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    }));
+
+    const { rerender } = render(<MonitoringJobDetailPage jobId="job-1" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Job abbrechen' }));
+    expect(screen.getByRole('alertdialog', { name: 'Job abbrechen?' })).toBeTruthy();
+
+    rerender(<MonitoringJobDetailPage jobId="job-2" />);
+
+    expect(screen.queryByRole('alertdialog', { name: 'Job abbrechen?' })).toBeNull();
+  });
+
+  it('announces a localized plugin phase instead of its technical identifier', async () => {
+    translatePluginKeyMock.mockReturnValue('Importlauf läuft');
+    usePluginOperationJobDetailMock.mockReturnValue({
+      detail: {
+        ...detailRecord,
+        pluginId: 'waste-management',
+        status: 'running',
+        progress: {
+          ...detailRecord.progress,
+          currentPhase: 'waste-management.import-running',
+        },
+      },
+      error: null,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MonitoringJobDetailPage jobId="job-1" />);
+
+    expect(await screen.findByText('Jobstatus: Läuft. Phase: Importlauf läuft.')).toBeTruthy();
+    expect(screen.queryByText(/waste-management\.import-running/)).toBeNull();
   });
 
   it('does not invent cancellation or retry actions without a server capability', async () => {

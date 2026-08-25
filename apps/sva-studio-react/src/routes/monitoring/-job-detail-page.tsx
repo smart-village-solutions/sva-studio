@@ -1,3 +1,5 @@
+import { translatePluginKey } from '@sva/plugin-sdk';
+
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -27,7 +29,6 @@ import {
 type MonitoringJobDetailPageProps = Readonly<{
   jobId: string;
 }>;
-
 type JobDetail = ReturnType<typeof usePluginOperationJobDetail>['detail'];
 type MonitoringJob = NonNullable<JobDetail>;
 type MonitoringJobEvent = MonitoringJob['history'][number];
@@ -330,6 +331,15 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
   const job = jobApi.detail;
   const writeSummary = job ? extractMonitoringJobWriteSummary(job) : null;
   const currentPhase = job?.progress?.currentPhase;
+  const currentPhaseKey = currentPhase ? `tools.progress.phases.${currentPhase}` : null;
+  const translatedCurrentPhase =
+    job?.pluginId && currentPhaseKey ? translatePluginKey(job.pluginId, currentPhaseKey) : null;
+  const currentPhaseLabel =
+    translatedCurrentPhase && translatedCurrentPhase !== `${job?.pluginId}.${currentPhaseKey}`
+      ? translatedCurrentPhase
+      : job
+        ? getMonitoringJobCurrentStep(job.progress)
+        : null;
   const statusLabel = job
     ? t(monitoringJobStatusLabelKeyByValue[job.status])
     : t('monitoring.jobs.status.queued');
@@ -337,21 +347,24 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
   return (
     <section className="space-y-6">
       <MonitoringJobDetailHeader
+        key={jobId}
         jobId={jobId}
         statusLabel={statusLabel}
         statusTone={
           job?.status === 'failed' ? 'error' : job?.status === 'succeeded' ? 'success' : 'warning'
         }
         announcement={
-          currentPhase
+          currentPhaseLabel
             ? t('monitoring.jobs.messages.statusPhaseAnnouncement', {
                 status: statusLabel,
-                phase: currentPhase,
+                phase: currentPhaseLabel,
               })
             : t('monitoring.jobs.messages.statusAnnouncement', { status: statusLabel })
         }
         runtimeLabel={
-          job?.runtime ? t(monitoringJobStaleStateLabelKeyByValue[job.runtime.staleState]) : undefined
+          job?.runtime
+            ? t(monitoringJobStaleStateLabelKeyByValue[job.runtime.staleState])
+            : undefined
         }
         canCancel={job?.availableActions?.includes('cancel') ?? false}
         cancelRequested={Boolean(job?.cancelRequestedAt || job?.runtime?.cancellationRequested)}

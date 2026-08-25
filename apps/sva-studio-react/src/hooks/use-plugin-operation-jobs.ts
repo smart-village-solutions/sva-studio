@@ -251,6 +251,8 @@ export const usePluginOperationJobDetail = (jobId: string) => {
   }, [abortControllersRef, jobId]);
 
   React.useEffect(() => {
+    setActionError(null);
+    setIsCancelling(false);
     void refetch();
   }, [jobId, refetch]);
 
@@ -270,6 +272,7 @@ export const usePluginOperationJobDetail = (jobId: string) => {
 
   const cancel = React.useCallback(async () => {
     if (
+      state.detail?.id !== jobId ||
       !state.detail?.availableActions?.includes('cancel') ||
       cancellationInFlightJobIdRef.current
     ) {
@@ -313,7 +316,7 @@ export const usePluginOperationJobDetail = (jobId: string) => {
   return {
     actionError,
     cancel,
-    detail: state.detail,
+    detail: state.detail?.id === jobId ? state.detail : null,
     error: state.error,
     isLoading: state.isLoading,
     isCancelling: isCancelling && cancellationInFlightJobIdRef.current === jobId,

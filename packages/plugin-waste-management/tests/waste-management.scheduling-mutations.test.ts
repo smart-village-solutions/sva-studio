@@ -284,4 +284,29 @@ describe('createWasteSchedulingMutationHandlers', () => {
       text: 'scheduling.assignments.messages.deleteError',
     });
   });
+
+  it('keeps a successful assignment deletion when refreshing the overview fails', async () => {
+    const refreshError = new Error('refresh failed');
+    const state = {
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setLastOutcome: vi.fn(),
+    } as never;
+    const handlers = createWasteSchedulingMutationHandlers({
+      state,
+      pt: (key: string) => key,
+      loadOverview: vi.fn(async () => {
+        throw refreshError;
+      }),
+    });
+
+    await expect(handlers.onDeleteTourAssignment('pickup-1')).resolves.toBeUndefined();
+
+    expect(deleteWasteManagementTourAssignmentMock).toHaveBeenCalledWith('pickup-1');
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'scheduling.assignments.messages.refreshAfterDeleteError',
+    });
+    expect(state.setSaving).toHaveBeenLastCalledWith(false);
+  });
 });

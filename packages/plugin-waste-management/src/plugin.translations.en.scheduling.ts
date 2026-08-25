@@ -154,6 +154,8 @@ export const wasteManagementPluginTranslationsENScheduling =
         deleteSuccess: 'The tour assignment was deleted.',
         deleteError: 'The tour assignment could not be deleted.',
         deleteForbidden: 'Missing permission to delete tour assignments.',
+        refreshAfterDeleteError:
+          'The tour assignment was deleted, but the overview could not be refreshed. Please reload the page.',
       },
     },
     actions: {

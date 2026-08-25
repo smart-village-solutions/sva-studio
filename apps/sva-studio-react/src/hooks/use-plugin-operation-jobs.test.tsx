@@ -523,6 +523,35 @@ describe('usePluginOperationJobDetail', () => {
     expect(getPluginOperationJobMock).toHaveBeenCalledTimes(2);
   });
 
+  it('does not cancel a newly selected job while its capabilities are still loading', async () => {
+    let resolveSecondJob: ((value: StudioJobDetail) => void) | undefined;
+    getPluginOperationJobMock.mockResolvedValueOnce(runningJobDetail).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSecondJob = resolve;
+        })
+    );
+
+    const { result, rerender } = renderHook(
+      ({ jobId }: { jobId: string }) => usePluginOperationJobDetail(jobId),
+      { initialProps: { jobId: 'job-1' } }
+    );
+    await waitFor(() => expect(result.current.detail?.id).toBe('job-1'));
+
+    rerender({ jobId: 'job-2' });
+
+    expect(result.current.detail).toBeNull();
+    await act(async () => {
+      expect(await result.current.cancel()).toBe(false);
+    });
+    expect(cancelPluginOperationJobMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveSecondJob?.({ ...runningJobDetail, id: 'job-2' });
+    });
+    await waitFor(() => expect(result.current.detail?.id).toBe('job-2'));
+  });
+
   it('exposes detail errors when loading fails', async () => {
     const apiError = {
       code: 'not_found',

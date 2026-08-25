@@ -507,7 +507,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   }
   assert.match(productionJsxRuntimeGuard, /collectRuntimeSpecifiers/);
   assert.match(productionJsxRuntimeGuard, /pendingPaths/);
-  assert.match(productionJsxRuntimeGuard, /isKnownOptionalJsxDevHelper/);
+  assert.match(productionJsxRuntimeGuard, /stripKnownOptionalJsxDevHelper/);
   assert.match(portainerDockerfile, /RUN apk add --no-cache bash git/);
   assert.match(
     dockerignore,
@@ -583,7 +583,7 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
     writeFileSync(
       resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
-      'export const optionalDevelopmentHelper = "jsxDEV";\n'
+      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nconst optionalDevelopmentHelper = "jsxDEV";\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
     );
 
     execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
@@ -600,6 +600,18 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     );
 
     writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
+    writeFileSync(
+      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nconst optionalDevelopmentHelper = "jsxDEV";\n//#endregion\nconst coalescedDevelopmentTransform = "jsxDEV";\n'
+    );
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+
+    writeFileSync(
+      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nconst optionalDevelopmentHelper = "jsxDEV";\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
+    );
     writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "react/jsx-dev-runtime";\n');
 
     expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(

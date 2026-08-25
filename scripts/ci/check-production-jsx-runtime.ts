@@ -65,8 +65,23 @@ const isWithinDirectory = (parentDirectory: string, filePath: string): boolean =
   return relativePath !== '..' && !relativePath.startsWith(`..${sep}`);
 };
 
-const isKnownOptionalJsxDevHelper = (serverDirectory: string, filePath: string): boolean =>
-  relative(serverDirectory, filePath).startsWith(`_libs${sep}hast-util-to-jsx-runtime+`);
+const stripKnownOptionalJsxDevHelper = (sourceText: string): string => {
+  const regionStartPattern =
+    /^\/\/#region .*\/node_modules\/hast-util-to-jsx-runtime\/lib\/index\.js\r?$/mu;
+  const regionStartMatch = regionStartPattern.exec(sourceText);
+  if (!regionStartMatch) {
+    return sourceText;
+  }
+
+  const regionEndIndex = sourceText.indexOf('//#endregion', regionStartMatch.index);
+  if (regionEndIndex < 0) {
+    return sourceText;
+  }
+
+  return `${sourceText.slice(0, regionStartMatch.index)}${sourceText.slice(
+    regionEndIndex + '//#endregion'.length
+  )}`;
+};
 
 export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly string[] => {
   const appDirectory = resolve(appDirectoryInput);
@@ -102,10 +117,11 @@ export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly s
     }
 
     const sourceText = readFileSync(filePath, 'utf8');
-    if (sourceText.includes('jsx-dev-runtime')) {
+    const guardedSourceText = stripKnownOptionalJsxDevHelper(sourceText);
+    if (guardedSourceText.includes('jsx-dev-runtime')) {
       throw new Error(`Erreichbarer Server-Output enthält React Development-JSX: ${filePath}`);
     }
-    if (sourceText.includes('jsxDEV') && !isKnownOptionalJsxDevHelper(serverDirectory, filePath)) {
+    if (guardedSourceText.includes('jsxDEV')) {
       throw new Error(`Erreichbarer Server-Output enthält React Development-JSX: ${filePath}`);
     }
 

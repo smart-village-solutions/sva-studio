@@ -61,7 +61,7 @@
 - [x] 7.2 E2E-/Integrationsevidenz für fehlende Dokumentationskonfiguration und nicht erreichbares GitHub Pages erbringen; die fachliche Seite muss vollständig bedienbar bleiben.
 - [x] 7.3 Nachweisen, dass eine reine Markdown-Änderung im separaten Repository nach dessen Pages-Deployment ohne Studio-Build im Overlay sichtbar ist.
 - [x] 7.4 Vor breiten lokalen Runs den affected Scope messen und anschließend die kleinsten relevanten Unit-, Type-, ESLint-, Server-Runtime- und E2E-Gates gemäß `AGENTS.md` ausführen.
-- [ ] 7.5 Vor dem initialen Implementierungs-PR nach Möglichkeit `pnpm test:pr`, `pnpm check:file-placement`, `pnpm check:studio-changelog` und `openspec validate add-contextual-user-documentation --strict` ausführen.
+- [x] 7.5 Vor dem initialen Implementierungs-PR nach Möglichkeit `pnpm test:pr`, `pnpm check:file-placement`, `pnpm check:studio-changelog` und `openspec validate add-contextual-user-documentation --strict` ausführen.
 - [ ] 7.6 Die Aktivierung über Dev und Staging prüfen; ein Production-Rollout erfolgt ausschließlich über `Build` → Dev → Staging → Production mit demselben unveränderlichen Image-Digest.
 
 ### Veröffentlichungsevidenz
@@ -71,6 +71,8 @@
 - Initiale Veröffentlichung: Commit `c2ada508b4077e182f0f5dc21d0fdb066d53cc25`, Pages-Lauf `32772358708`
 - Reiner Markdown-Nachweis: Commit `26ca778b1ba6be86d4a0e99d98f385387808e784`, Pages-Lauf `32772480918`
 - Live geprüft: Startseite, `manifest.json` mit 43 Seiten und `markdown/home.overview.md` liefern HTTP 200; die Studio-Laufzeitfassade liest die ausschließlich im Doku-Repository ergänzte Passage mit unverändertem Studio-Artefakt.
+- Studio-PR-Abnahme: PR `#1143`, exakter Head `d75e2a24b3a74444d5fcb5cfe5087a78342cf072`; File Placement, Studio Changelog, Unit, Types, A11y, PR Integration, Coverage und die weiteren verpflichtenden GitHub-Gates waren vor dem Merge grün. Beim Abschluss wurden `pnpm check:file-placement`, `pnpm check:studio-changelog` und `openspec validate add-contextual-user-documentation --strict` erneut erfolgreich ausgeführt.
+- Erster echter Katalog-Dispatch: Studio-Merge `8cc4cb7a8ce4ee2e8abb8eb851b174bc3ec4d523`, Studio-Lauf `32808670246`, Doku-Repository-Lauf `32808677105`; der Sync erzeugte automatisch Doku-PR `#1` auf `automation/sync-studio-page-catalog`, ohne bestehende Markdown-Dateien zu überschreiben.
 
 ## 8. Merge-getriebene additive Synchronisation
 
@@ -79,4 +81,4 @@
 - [x] 8.3 Im Studio einen auf Änderungen an `docs/user-documentation/page-catalog.json` begrenzten `main`-Workflow ergänzen, der den Ziel-Dispatch mit Merge-SHA sendet und bei fehlendem beziehungsweise abgelehntem Credential sichtbar fehlschlägt.
 - [x] 8.4 Den Least-Privilege-Vertrag für `DOCUMENTATION_REPOSITORY_DISPATCH_TOKEN`, die erforderlichen Workflow-Permissions und die Aktivierung von GitHub-Actions-PR-Erstellung dokumentieren und konfigurieren.
 - [x] 8.5 Den additiven Sync mit unbekannter ID, unveränderten vorhandenen Dateien, wiederholtem Lauf und No-change-Fall testen; Workflow-Syntax und OpenSpec strict validieren.
-- [ ] 8.6 Den Cross-Repository-Ablauf mit einem kontrollierten Dispatch prüfen und nach dem ersten echten Studio-Merge den automatisch erzeugten beziehungsweise aktualisierten Doku-PR als Live-Evidenz ergänzen.
+- [x] 8.6 Den Cross-Repository-Ablauf mit einem kontrollierten Dispatch prüfen und nach dem ersten echten Studio-Merge den automatisch erzeugten beziehungsweise aktualisierten Doku-PR als Live-Evidenz ergänzen.

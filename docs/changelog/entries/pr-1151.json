@@ -1,0 +1,4 @@
+{
+  "prNumber": 1151,
+  "body": "Ein veralteter Anwenderdokumentationskatalog blockiert den regulären Studio-Build und Deploymentpfad nicht mehr.\n\n- Katalogabweichungen bleiben als sichtbare Repository-Hygiene-Warnung erhalten.\n- Der Studio-Build verwendet weiterhin den eingecheckten Seitenkatalog.\n- Die Katalogkorrektur kann unabhängig im separaten Dokumentationsflow erfolgen."
+}

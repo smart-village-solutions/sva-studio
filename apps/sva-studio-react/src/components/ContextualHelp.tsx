@@ -20,6 +20,7 @@ import { t } from '../i18n';
 type DocumentationResponse = Readonly<{
   id: string;
   markdown: string;
+  documentationBaseUrl: string;
   websiteUrl: string;
 }>;
 
@@ -41,6 +42,7 @@ const loadDocumentation = async (pageId: string): Promise<DocumentationResponse>
   if (
     value.id !== pageId ||
     typeof value.markdown !== 'string' ||
+    typeof value.documentationBaseUrl !== 'string' ||
     typeof value.websiteUrl !== 'string'
   ) {
     throw new Error('documentation_invalid');
@@ -60,11 +62,18 @@ const resolveLink = (value: string | undefined, websiteUrl: string): string | un
   }
 };
 
-const resolveImage = (value: string | undefined, websiteUrl: string): string | undefined => {
+const resolveImage = (
+  value: string | undefined,
+  websiteUrl: string,
+  documentationBaseUrl: string
+): string | undefined => {
   if (!value) return undefined;
   try {
     const resolved = new URL(value, websiteUrl);
-    return resolved.protocol === 'https:' && resolved.origin === new URL(websiteUrl).origin
+    const baseUrl = new URL(documentationBaseUrl);
+    return resolved.protocol === 'https:' &&
+      resolved.origin === baseUrl.origin &&
+      resolved.pathname.startsWith(baseUrl.pathname)
       ? resolved.toString()
       : undefined;
   } catch {
@@ -92,7 +101,11 @@ const DocumentationMarkdown = ({ payload }: Readonly<{ payload: DocumentationRes
           );
         },
         img: ({ src, alt }) => {
-          const safeSrc = resolveImage(src, payload.websiteUrl);
+          const safeSrc = resolveImage(
+            src,
+            payload.websiteUrl,
+            payload.documentationBaseUrl
+          );
           return safeSrc ? <img src={safeSrc} alt={alt ?? ''} loading="lazy" /> : null;
         },
       }}

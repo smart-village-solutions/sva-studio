@@ -32,7 +32,7 @@ export const collectDocumentationPageCatalog = (input: {
       (resource) => [resource.resourceId, { kind: 'host' as const }] as const
     ),
     ...plugins.flatMap((plugin) =>
-      (plugin.adminResources ?? []).map(
+      mergeAdminResourceDefinitions(plugin.adminResources ?? []).map(
         (resource) =>
           [resource.resourceId, { kind: 'plugin' as const, pluginId: plugin.id }] as const
       )

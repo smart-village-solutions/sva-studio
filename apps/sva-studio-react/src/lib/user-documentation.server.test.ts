@@ -41,6 +41,7 @@ describe('user-documentation.server', () => {
     ).resolves.toEqual({
       id: 'home.overview',
       markdown: '# Startseite',
+      documentationBaseUrl: 'https://docs.example.test/studio/',
       websiteUrl: 'https://docs.example.test/studio/pages/home.overview/',
       etag: '"markdown-1"',
     });
@@ -259,6 +260,7 @@ describe('user-documentation.server', () => {
     ).resolves.toEqual({
       id: 'home.overview',
       markdown: '# Startseite',
+      documentationBaseUrl: 'https://docs.example.test/',
       websiteUrl: 'https://docs.example.test/pages/home.overview/',
     });
 

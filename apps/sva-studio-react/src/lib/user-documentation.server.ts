@@ -21,6 +21,7 @@ type DocumentationManifest = Readonly<{
 export type UserDocumentationPayload = Readonly<{
   id: string;
   markdown: string;
+  documentationBaseUrl: string;
   websiteUrl: string;
   etag?: string;
 }>;
@@ -210,6 +211,7 @@ export const loadUserDocumentation = async (
   return {
     id: pageId,
     markdown: markdownResponse.body,
+    documentationBaseUrl: baseUrl.toString(),
     websiteUrl: resolveAllowedUrl(page.websiteUrl, baseUrl).toString(),
     ...(markdownResponse.etag ? { etag: markdownResponse.etag } : {}),
   };

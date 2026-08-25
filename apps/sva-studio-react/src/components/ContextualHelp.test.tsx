@@ -14,6 +14,7 @@ describe('ContextualHelp', () => {
         id: 'home.overview',
         markdown:
           '# Startseite\n\n[Mehr](https://docs.example.test/guide)\n\n<script>alert(1)</script>',
+        documentationBaseUrl: 'https://docs.example.test/',
         websiteUrl: 'https://docs.example.test/pages/home.overview/',
       })
     );
@@ -42,6 +43,7 @@ describe('ContextualHelp', () => {
         Response.json({
           id: 'home.overview',
           markdown: '# Wieder da',
+          documentationBaseUrl: 'https://docs.example.test/',
           websiteUrl: 'https://docs.example.test/pages/home.overview/',
         })
       );
@@ -64,6 +66,7 @@ describe('ContextualHelp', () => {
         Response.json({
           id: 'another.page',
           markdown: '# Falsche Seite',
+          documentationBaseUrl: 'https://docs.example.test/',
           websiteUrl: 'https://docs.example.test/pages/another.page/',
         })
       )
@@ -94,8 +97,11 @@ describe('ContextualHelp', () => {
             '![Intern](../media/hilfe.png)',
             '',
             '![Extern](https://other.example.test/hilfe.png)',
+            '',
+            '![Außerhalb](/anderes-projekt/hilfe.png)',
           ].join('\n'),
-          websiteUrl: 'https://docs.example.test/pages/home.overview/',
+          documentationBaseUrl: 'https://docs.example.test/studio/',
+          websiteUrl: 'https://docs.example.test/studio/pages/home.overview/',
         })
       )
     );
@@ -109,9 +115,10 @@ describe('ContextualHelp', () => {
     );
     expect(screen.queryByRole('link', { name: 'Unsicher' })).toBeNull();
     expect(screen.getByRole('img', { name: 'Intern' }).getAttribute('src')).toBe(
-      'https://docs.example.test/pages/media/hilfe.png'
+      'https://docs.example.test/studio/pages/media/hilfe.png'
     );
     expect(screen.queryByRole('img', { name: 'Extern' })).toBeNull();
+    expect(screen.queryByRole('img', { name: 'Außerhalb' })).toBeNull();
   });
 
   it('shows an explicit empty state for blank markdown', async () => {
@@ -121,6 +128,7 @@ describe('ContextualHelp', () => {
         Response.json({
           id: 'home.overview',
           markdown: '   ',
+          documentationBaseUrl: 'https://docs.example.test/',
           websiteUrl: 'https://docs.example.test/pages/home.overview/',
         })
       )

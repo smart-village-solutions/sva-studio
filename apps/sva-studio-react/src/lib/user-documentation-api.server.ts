@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { withAuthenticatedUser } from '@sva/auth-runtime/server';
 
 import {
@@ -7,6 +9,9 @@ import {
 } from './user-documentation.server';
 
 const pathPrefix = '/api/studio/documentation/';
+
+const createPayloadEtag = (payload: unknown): string =>
+  `"${createHash('sha256').update(JSON.stringify(payload)).digest('base64url')}"`;
 
 export const dispatchUserDocumentationRequest = async (request: Request): Promise<Response | null> => {
   const pathname = new URL(request.url).pathname;
@@ -30,13 +35,14 @@ export const dispatchUserDocumentationRequest = async (request: Request): Promis
   return withAuthenticatedUser(request, async () => {
     try {
       const payload = await loadUserDocumentation(pageId);
-      if (payload.etag && request.headers.get('if-none-match') === payload.etag) {
-        return new Response(null, { status: 304, headers: { etag: payload.etag } });
+      const payloadEtag = createPayloadEtag(payload);
+      if (request.headers.get('if-none-match') === payloadEtag) {
+        return new Response(null, { status: 304, headers: { etag: payloadEtag } });
       }
       return Response.json(payload, {
         headers: {
           'cache-control': 'private, max-age=60',
-          ...(payload.etag ? { etag: payload.etag } : {}),
+          etag: payloadEtag,
         },
       });
     } catch (error) {

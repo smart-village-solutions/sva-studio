@@ -25,6 +25,7 @@ describe('user-documentation-api.server', () => {
     state.load.mockResolvedValue({
       id: 'home.overview',
       markdown: '# Start',
+      documentationBaseUrl: 'https://docs.example.test/',
       websiteUrl: 'https://docs.example.test/pages/home.overview/',
       etag: '"v1"',
     });
@@ -33,13 +34,30 @@ describe('user-documentation-api.server', () => {
     );
     expect(response?.status).toBe(200);
     expect(response?.headers.get('cache-control')).toBe('private, max-age=60');
+    const responseEtag = response?.headers.get('etag');
+    expect(responseEtag).toMatch(/^"[A-Za-z0-9_-]+"$/u);
 
     const unchanged = await dispatchUserDocumentationRequest(
       new Request('https://studio.test/api/studio/documentation/home.overview', {
-        headers: { 'if-none-match': '"v1"' },
+        headers: { 'if-none-match': responseEtag ?? '' },
       })
     );
     expect(unchanged?.status).toBe(304);
+
+    state.load.mockResolvedValueOnce({
+      id: 'home.overview',
+      markdown: '# Start',
+      documentationBaseUrl: 'https://docs.example.test/',
+      websiteUrl: 'https://docs.example.test/pages/home.overview-neu/',
+      etag: '"v1"',
+    });
+    const changedMetadata = await dispatchUserDocumentationRequest(
+      new Request('https://studio.test/api/studio/documentation/home.overview', {
+        headers: { 'if-none-match': responseEtag ?? '' },
+      })
+    );
+    expect(changedMetadata?.status).toBe(200);
+    expect(changedMetadata?.headers.get('etag')).not.toBe(responseEtag);
   });
 
   it('rejects unsupported methods and malformed page paths', async () => {
@@ -89,17 +107,18 @@ describe('user-documentation-api.server', () => {
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
   });
 
-  it('returns payloads without etags and maps unexpected errors to a controlled response', async () => {
+  it('creates payload etags without upstream etags and maps unexpected errors to a controlled response', async () => {
     state.load.mockResolvedValueOnce({
       id: 'home.overview',
       markdown: '# Start',
+      documentationBaseUrl: 'https://docs.example.test/',
       websiteUrl: 'https://docs.example.test/pages/home.overview/',
     });
     const success = await dispatchUserDocumentationRequest(
       new Request('https://studio.test/api/studio/documentation/home.overview')
     );
     expect(success?.status).toBe(200);
-    expect(success?.headers.get('etag')).toBeNull();
+    expect(success?.headers.get('etag')).toMatch(/^"[A-Za-z0-9_-]+"$/u);
 
     state.load.mockRejectedValueOnce(new Error('upstream failed'));
     const failure = await dispatchUserDocumentationRequest(

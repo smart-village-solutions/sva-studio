@@ -17,6 +17,7 @@ describe('ContextualHelp accessibility', () => {
         Response.json({
           id: 'home.overview',
           markdown: '# Startseite\n\nEine kurze Hilfe.',
+          documentationBaseUrl: 'https://docs.example.test/',
           websiteUrl: 'https://docs.example.test/pages/home.overview/',
         })
       )

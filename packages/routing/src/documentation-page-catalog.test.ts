@@ -82,6 +82,23 @@ describe('documentation page catalog', () => {
     );
   });
 
+  it('keeps ownership for normalized plugin resource ids', () => {
+    const catalog = collectDocumentationPageCatalog({
+      bindings,
+      plugins: [
+        {
+          ...plugin,
+          adminResources: [{ ...pluginResource, resourceId: ' Catalog.Reports ' }],
+        },
+      ],
+    });
+
+    expect(catalog.pages.find((page) => page.id === 'catalog.reports.list')?.owner).toEqual({
+      kind: 'plugin',
+      pluginId: 'catalog',
+    });
+  });
+
   it('rejects plugin routes without an explicit documentation decision', () => {
     const undocumentedPlugin: PluginDefinition = {
       ...plugin,

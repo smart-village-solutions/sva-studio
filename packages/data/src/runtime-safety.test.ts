@@ -579,6 +579,9 @@ test('portable docker runtime guard follows reachable modules and excludes only 
       'import "./server-test.mjs"; import "../_libs/hast-util-to-jsx-runtime+[...].mjs";\n'
     );
     writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'commonjs.cjs'), 'require("./resolution-target");\n');
+    writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "jsxDEV";\n');
+    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "prod-runtime";\n');
     writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'export const preload = "prod-runtime";\n');
     writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
     writeFileSync(
@@ -587,6 +590,15 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     );
 
     execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
+
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "./commonjs.cjs";\n');
+    execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
+    writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "jsxDEV";\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
 
     writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'const preload = "jsxDEV";\n');
     expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(

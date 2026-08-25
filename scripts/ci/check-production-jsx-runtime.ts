@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, extname, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -6,7 +7,12 @@ import * as ts from 'typescript';
 
 const runtimeExtensions = new Set(['.cjs', '.js', '.json', '.mjs']);
 
-const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonly string[] => {
+type RuntimeSpecifier = {
+  readonly kind: 'commonjs' | 'module';
+  readonly value: string;
+};
+
+const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonly RuntimeSpecifier[] => {
   const sourceFile = ts.createSourceFile(
     filePath,
     sourceText,
@@ -14,7 +20,7 @@ const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonl
     true,
     ts.ScriptKind.JS
   );
-  const specifiers: string[] = [];
+  const specifiers: RuntimeSpecifier[] = [];
 
   const visit = (node: ts.Node): void => {
     if (
@@ -22,7 +28,7 @@ const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonl
       node.moduleSpecifier &&
       ts.isStringLiteral(node.moduleSpecifier)
     ) {
-      specifiers.push(node.moduleSpecifier.text);
+      specifiers.push({ kind: 'module', value: node.moduleSpecifier.text });
     } else if (
       ts.isCallExpression(node) &&
       (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
@@ -30,7 +36,10 @@ const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonl
       node.arguments.length > 0 &&
       ts.isStringLiteral(node.arguments[0])
     ) {
-      specifiers.push(node.arguments[0].text);
+      specifiers.push({
+        kind: ts.isIdentifier(node.expression) ? 'commonjs' : 'module',
+        value: node.arguments[0].text,
+      });
     }
 
     ts.forEachChild(node, visit);
@@ -40,24 +49,27 @@ const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonl
   return specifiers;
 };
 
-const resolveRuntimeImport = (importerPath: string, specifier: string): string | null => {
-  if (!specifier.startsWith('.')) {
+const resolveRuntimeImport = (importerPath: string, specifier: RuntimeSpecifier): string | null => {
+  if (!specifier.value.startsWith('.')) {
     return null;
   }
 
-  const cleanSpecifier = specifier.replace(/[?#].*$/, '');
+  const cleanSpecifier = specifier.value.replace(/[?#].*$/, '');
   const candidate = resolve(dirname(importerPath), cleanSpecifier);
-  const candidates = extname(candidate)
-    ? [candidate]
-    : [candidate, ...[...runtimeExtensions].map((extension) => `${candidate}${extension}`)];
+  const candidates =
+    specifier.kind === 'commonjs'
+      ? [createRequire(importerPath).resolve(cleanSpecifier)]
+      : [candidate];
 
   for (const path of candidates) {
     if (existsSync(path) && statSync(path).isFile()) {
-      return path;
+      return realpathSync(path);
     }
   }
 
-  throw new Error(`Lokaler Runtime-Import kann nicht aufgelöst werden: ${specifier} aus ${importerPath}`);
+  throw new Error(
+    `Lokaler Runtime-Import kann nicht aufgelöst werden: ${specifier.value} aus ${importerPath}`
+  );
 };
 
 const isWithinDirectory = (parentDirectory: string, filePath: string): boolean => {
@@ -103,7 +115,7 @@ const stripKnownOptionalJsxDevReferences = (sourceText: string): string => {
 
 export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly string[] => {
   const appDirectory = resolve(appDirectoryInput);
-  const serverDirectory = resolve(appDirectory, '.output/server');
+  const serverDirectory = realpathSync(resolve(appDirectory, '.output/server'));
   const serverEntryPath = resolve(serverDirectory, 'index.mjs');
   const otelPreloadServerPath = resolve(serverDirectory, 'chunks/_/server.mjs');
   const recoveryServerPath = resolve(serverDirectory, 'chunks/build/server.mjs');

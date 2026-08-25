@@ -66,10 +66,10 @@ Dieses Protokoll wird nur beim Abschluss eines Blocks aktualisiert. Es muss dess
 
 ## 7. Shadow-Vergleich und Aktivierung
 
-- [ ] 7.1 Changed-first-Pläne und Coverage-Shard-Aggregation zunächst beobachtend gegen den bestehenden ungeteilten Pfad vergleichen; Scope und terminales Ergebnis müssen identisch sein.
+- [x] 7.1 Changed-first-Pläne und Coverage-Shard-Aggregation zunächst beobachtend gegen den bestehenden ungeteilten Pfad vergleichen; Scope und terminales Ergebnis müssen identisch sein. Der Vergleich von 20 nicht abgebrochenen PR-Läufen ist in `docs/reports/pr-coverage-parity-cutover-2026-08-25.md` dokumentiert; alter Abschlussjob und Shadow-Aggregator waren jeweils demselben Head-SHA zugeordnet und terminal identisch.
 - [x] 7.2 Unit-Fail-fast nach erfolgreichem Contract-Test blockierend aktivieren.
 - [x] 7.3 Main-E2E-Evidenz und Staging-Preflight zunächst beobachtend auswerten; nach nachgewiesener SHA-/Event-/Branch- und OCI-Kettenparität den Preflight blockierend vor jeder Staging-Mutation aktivieren.
-- [ ] 7.4 Zweiphasige Coverage und Shard-Aggregatoren erst nach dokumentierter Parität blockierend aktivieren; alte Implementierung danach entfernen.
+- [ ] 7.4 Zweiphasige Coverage und Shard-Aggregatoren erst nach dokumentierter Parität blockierend aktivieren; alte Implementierung danach entfernen. Die lokale Umbenennung auf den stabilen Aggregator `Coverage` ist vorbereitet; der Task bleibt bis zum Merge und zur Prüfung des veröffentlichten Required-Kontexts offen.
 - [x] 7.5 Mindestens 20 repräsentative PR-Läufe auswerten und Zielwerte von Median höchstens 3 Minuten sowie P90 höchstens 5 Minuten bis zum bestätigten relevanten Unit-/Coverage-Fehler prüfen; E2E-Kosten separat pro Main-Commit ausweisen.
 - [x] 7.6 Prüfen, dass die mediane terminale Zeit grüner Required Checks um höchstens 30 Sekunden steigt; die Einsparung von mindestens 30 Prozent bei einem zweiten kleinen PR-Push erst nach Aktivierung eines unterstützten Remote-Caches nachweisen.
 

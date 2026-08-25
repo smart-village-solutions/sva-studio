@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   coverage-complete:
-    name: Coverage
+    name: Coverage Complete
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -197,7 +197,7 @@ jobs:
           fi
 
   coverage:
-    name: Coverage Shadow
+    name: Coverage
     if: always() && github.event_name == 'pull_request'
     needs: coverage-complete
     runs-on: ubuntu-latest

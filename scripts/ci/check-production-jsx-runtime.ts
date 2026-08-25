@@ -34,7 +34,7 @@ const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonl
       (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
         (ts.isIdentifier(node.expression) && node.expression.text === 'require')) &&
       node.arguments.length > 0 &&
-      ts.isStringLiteral(node.arguments[0])
+      ts.isStringLiteralLike(node.arguments[0])
     ) {
       specifiers.push({
         kind: ts.isIdentifier(node.expression) ? 'commonjs' : 'module',

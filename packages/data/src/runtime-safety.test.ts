@@ -555,7 +555,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/);
 });
 
-test('portable docker runtime guard follows reachable modules and excludes only the known optional helper', () => {
+test('portable docker runtime guard follows reachable modules and excludes only the known optional helper', { timeout: 10_000 }, () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
   const serverDir = resolve(tempRoot, '.output/server');
   const ssrDir = resolve(serverDir, '_ssr');
@@ -595,6 +595,12 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
     writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "prod-runtime";\n');
     writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "jsxDEV";\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
+    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'template-target.mjs'), 'export const template = "jsxDEV";\n');
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import(`./template-target.mjs`);\n');
     expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
       /Command failed/
     );

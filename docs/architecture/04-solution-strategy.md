@@ -145,7 +145,8 @@ Referenzen:
 - Normale Create- und Update-Aktionen verwenden ihren sichtbaren Formular- und Buttonkontext statt Toast, Modal oder Overlay.
 - `@sva/studio-ui-react` besitzt die gemeinsame Save-Darstellung, das feste Zwei-Sekunden-Timing, die Live-Region und persistente technische Formularfehler; Fachvalidierung, Mutation, Fehlermapping und sichere Retry-Semantik verbleiben im Host- oder Plugin-Flow.
 - Erfolgreiche Create-Flows wechseln auf die kanonische Detailroute und übergeben den an die Datensatz-ID gebundenen Erfolg einmalig im transienten Router-History-State.
-- Delete/Undo, kontextlose Aktionen sowie Job- und Progress-Feedback bleiben separate Architekturthemen und erzeugen keine generische Outcome- oder Feedback-Registry im Core oder Plugin-SDK.
+- Destruktive Aktionen und Job-/Progress-Feedback folgen eigenen kontextgebundenen Verträgen und erzeugen keine generische Outcome- oder Feedback-Registry im Core oder Plugin-SDK. Destruktives Feedback besitzt kein Undo; fachliches Restore bleibt eine separat autorisierte Aktion.
+- `@sva/studio-ui-react` stellt gemeinsame destruktive Dialog-/Ergebnisprimitives und die gemeinsame Job-Kurzsicht bereit. Der Hostvertrag bleibt alleinige Wahrheit für Jobstatus und erlaubte Folgeaktionen.
 
 ### Fortschreibung 2026-05: Plugin-Plattform v2 als Zielbild für externe Distribution
 

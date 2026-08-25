@@ -18,6 +18,45 @@ vi.mock('@tabler/icons-react', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  StudioDestructiveActionDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+    pending,
+    confirmDisabled,
+    errorMessage,
+    children,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly pending?: boolean;
+    readonly confirmDisabled?: boolean;
+    readonly errorMessage?: React.ReactNode;
+    readonly children?: React.ReactNode;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {children}
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+        <button type="button" disabled={pending} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" disabled={pending || confirmDisabled} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   StudioConfirmDialog: ({
@@ -132,41 +171,43 @@ describe('WasteSchedulingShiftsTable', () => {
 
     render(
       <WasteSchedulingShiftsTable
-        entries={[
-          {
-            id: 'holiday-rule-1',
-            entryType: 'holiday-rule',
-            kind: 'holiday',
-            originalDate: '2025-12-25',
-            actualDate: undefined,
-            contextLabel: 'Weihnachten',
-            sortLabel: 'Weihnachten',
-            canDelete: true,
-            rule: holidayRule,
-          },
-          {
-            id: 'global-1',
-            entryType: 'global-shift',
-            kind: 'global',
-            originalDate: '2026-01-01',
-            actualDate: '2026-01-02',
-            contextLabel: 'Restmüll Nord',
-            sortLabel: 'Restmüll Nord',
-            canDelete: true,
-            shift: globalShift,
-          },
-          {
-            id: 'tour-shift-1',
-            entryType: 'tour-shift',
-            kind: 'tour',
-            originalDate: '2026-02-01',
-            actualDate: '2026-02-03',
-            contextLabel: 'Restmüll Nord',
-            sortLabel: 'Restmüll Nord',
-            canDelete: true,
-            shift: tourShift,
-          },
-        ] as never}
+        entries={
+          [
+            {
+              id: 'holiday-rule-1',
+              entryType: 'holiday-rule',
+              kind: 'holiday',
+              originalDate: '2025-12-25',
+              actualDate: undefined,
+              contextLabel: 'Weihnachten',
+              sortLabel: 'Weihnachten',
+              canDelete: true,
+              rule: holidayRule,
+            },
+            {
+              id: 'global-1',
+              entryType: 'global-shift',
+              kind: 'global',
+              originalDate: '2026-01-01',
+              actualDate: '2026-01-02',
+              contextLabel: 'Restmüll Nord',
+              sortLabel: 'Restmüll Nord',
+              canDelete: true,
+              shift: globalShift,
+            },
+            {
+              id: 'tour-shift-1',
+              entryType: 'tour-shift',
+              kind: 'tour',
+              originalDate: '2026-02-01',
+              actualDate: '2026-02-03',
+              contextLabel: 'Restmüll Nord',
+              sortLabel: 'Restmüll Nord',
+              canDelete: true,
+              shift: tourShift,
+            },
+          ] as never
+        }
         onOpenCreateShiftDialog={onOpenCreateShiftDialog}
         onEditHolidayRule={onEditHolidayRule}
         onEditGlobalShiftDialog={onEditGlobalShiftDialog}
@@ -190,7 +231,11 @@ describe('WasteSchedulingShiftsTable', () => {
     expect(tableProps.ariaLabel).toBe('scheduling.table.ariaLabel');
     expect(tableProps.caption).toBe('scheduling.table.caption');
     expect(data).toEqual([
-      expect.objectContaining({ kind: 'holiday', id: 'holiday-rule-1', contextLabel: 'Weihnachten' }),
+      expect.objectContaining({
+        kind: 'holiday',
+        id: 'holiday-rule-1',
+        contextLabel: 'Weihnachten',
+      }),
       expect.objectContaining({ kind: 'global', id: 'global-1', contextLabel: 'Restmüll Nord' }),
       expect.objectContaining({ kind: 'tour', id: 'tour-shift-1', contextLabel: 'Restmüll Nord' }),
     ]);
@@ -203,12 +248,7 @@ describe('WasteSchedulingShiftsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'scheduling.holidayRules.editAction' }));
     expect(onEditHolidayRule).toHaveBeenCalledWith(holidayRule);
     fireEvent.click(screen.getByRole('button', { name: 'scheduling.actions.delete' }));
-    expect(confirmDialogMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        open: true,
-        description: 'scheduling.bulkDeleteDialog.description:1',
-      })
-    );
+    expect(screen.getByText('scheduling.bulkDeleteDialog.description:1')).toBeTruthy();
 
     cleanup();
 
@@ -226,28 +266,30 @@ describe('WasteSchedulingShiftsTable', () => {
   it('renders both date columns in explicit German short date format', () => {
     render(
       <WasteSchedulingShiftsTable
-        entries={[
-          {
-            id: 'global-1',
-            entryType: 'global-shift',
-            kind: 'global',
-            originalDate: '2026-01-01',
-            actualDate: '2026-01-02',
-            contextLabel: 'Alle Touren',
-            sortLabel: 'Alle Touren',
-            canDelete: true,
-            shift: {
+        entries={
+          [
+            {
               id: 'global-1',
+              entryType: 'global-shift',
+              kind: 'global',
               originalDate: '2026-01-01',
               actualDate: '2026-01-02',
-              description: 'Neujahr',
-              hasYear: true,
-              reasonType: 'holiday',
-              reasonKey: 'holiday.new-year',
-              tourIds: [],
+              contextLabel: 'Alle Touren',
+              sortLabel: 'Alle Touren',
+              canDelete: true,
+              shift: {
+                id: 'global-1',
+                originalDate: '2026-01-01',
+                actualDate: '2026-01-02',
+                description: 'Neujahr',
+                hasYear: true,
+                reasonType: 'holiday',
+                reasonKey: 'holiday.new-year',
+                tourIds: [],
+              },
             },
-          },
-        ] as never}
+          ] as never
+        }
         onOpenCreateShiftDialog={vi.fn()}
         onEditHolidayRule={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
@@ -263,7 +305,10 @@ describe('WasteSchedulingShiftsTable', () => {
     );
 
     const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
-    const columns = tableProps.columns as Array<{ id: string; cell: (row: Record<string, unknown>) => React.ReactNode }>;
+    const columns = tableProps.columns as Array<{
+      id: string;
+      cell: (row: Record<string, unknown>) => React.ReactNode;
+    }>;
     const originalDateColumn = columns.find((column) => column.id === 'originalDate');
     const actualDateColumn = columns.find((column) => column.id === 'actualDate');
     const row = (tableProps.data as Array<Record<string, unknown>>)[0];
@@ -282,28 +327,30 @@ describe('WasteSchedulingShiftsTable', () => {
 
     render(
       <WasteSchedulingShiftsTable
-        entries={[
-          {
-            id: 'global-1',
-            entryType: 'global-shift',
-            kind: 'global',
-            originalDate: '2026-01-01',
-            actualDate: '2026-01-02',
-            contextLabel: 'Alle Touren',
-            sortLabel: 'Alle Touren',
-            canDelete: true,
-            shift: {
+        entries={
+          [
+            {
               id: 'global-1',
+              entryType: 'global-shift',
+              kind: 'global',
               originalDate: '2026-01-01',
               actualDate: '2026-01-02',
-              description: 'Neujahr',
-              hasYear: true,
-              reasonType: 'holiday',
-              reasonKey: 'holiday.new-year',
-              tourIds: [],
+              contextLabel: 'Alle Touren',
+              sortLabel: 'Alle Touren',
+              canDelete: true,
+              shift: {
+                id: 'global-1',
+                originalDate: '2026-01-01',
+                actualDate: '2026-01-02',
+                description: 'Neujahr',
+                hasYear: true,
+                reasonType: 'holiday',
+                reasonKey: 'holiday.new-year',
+                tourIds: [],
+              },
             },
-          },
-        ] as never}
+          ] as never
+        }
         onOpenCreateShiftDialog={vi.fn()}
         onEditHolidayRule={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
@@ -342,71 +389,73 @@ describe('WasteSchedulingShiftsTable', () => {
 
     render(
       <WasteSchedulingShiftsTable
-        entries={[
-          {
-            id: 'holiday-rule-1',
-            entryType: 'holiday-rule',
-            kind: 'holiday',
-            originalDate: '2025-12-25',
-            actualDate: undefined,
-            contextLabel: 'Weihnachten',
-            sortLabel: 'Weihnachten',
-            canDelete: true,
-            rule: {
+        entries={
+          [
+            {
               id: 'holiday-rule-1',
-              holidayDate: '2025-12-25',
-              holidayName: 'Weihnachten',
-              year: 2025,
-              stateCode: 'BB',
-              sourceStatus: 'confirmed',
-              configurationStatus: 'draft',
-              conflictStatus: 'none',
-              createdAt: '2026-05-09T10:00:00.000Z',
-              updatedAt: '2026-05-09T10:00:00.000Z',
+              entryType: 'holiday-rule',
+              kind: 'holiday',
+              originalDate: '2025-12-25',
+              actualDate: undefined,
+              contextLabel: 'Weihnachten',
+              sortLabel: 'Weihnachten',
+              canDelete: true,
+              rule: {
+                id: 'holiday-rule-1',
+                holidayDate: '2025-12-25',
+                holidayName: 'Weihnachten',
+                year: 2025,
+                stateCode: 'BB',
+                sourceStatus: 'confirmed',
+                configurationStatus: 'draft',
+                conflictStatus: 'none',
+                createdAt: '2026-05-09T10:00:00.000Z',
+                updatedAt: '2026-05-09T10:00:00.000Z',
+              },
             },
-          },
-          {
-            id: 'global-1',
-            entryType: 'global-shift',
-            kind: 'global',
-            originalDate: '2026-01-01',
-            actualDate: '2026-01-02',
-            contextLabel: 'Alle Touren',
-            sortLabel: 'Alle Touren',
-            canDelete: true,
-            shift: {
+            {
               id: 'global-1',
+              entryType: 'global-shift',
+              kind: 'global',
               originalDate: '2026-01-01',
               actualDate: '2026-01-02',
-              description: 'Neujahr',
-              hasYear: true,
-              reasonType: 'holiday',
-              reasonKey: 'holiday.new-year',
-              tourIds: [],
+              contextLabel: 'Alle Touren',
+              sortLabel: 'Alle Touren',
+              canDelete: true,
+              shift: {
+                id: 'global-1',
+                originalDate: '2026-01-01',
+                actualDate: '2026-01-02',
+                description: 'Neujahr',
+                hasYear: true,
+                reasonType: 'holiday',
+                reasonKey: 'holiday.new-year',
+                tourIds: [],
+              },
             },
-          },
-          {
-            id: 'tour-shift-1',
-            entryType: 'tour-shift',
-            kind: 'tour',
-            originalDate: '2026-02-01',
-            actualDate: '2026-02-03',
-            contextLabel: 'Restmüll Nord',
-            sortLabel: 'Restmüll Nord',
-            canDelete: true,
-            shift: {
+            {
               id: 'tour-shift-1',
-              tourId: 'tour-1',
+              entryType: 'tour-shift',
+              kind: 'tour',
               originalDate: '2026-02-01',
               actualDate: '2026-02-03',
-              description: 'Baustelle',
-              hasYear: false,
-              reasonType: 'operational-disruption',
-              reasonKey: 'ops.roadwork',
-              followUpMode: 'propagate-series',
+              contextLabel: 'Restmüll Nord',
+              sortLabel: 'Restmüll Nord',
+              canDelete: true,
+              shift: {
+                id: 'tour-shift-1',
+                tourId: 'tour-1',
+                originalDate: '2026-02-01',
+                actualDate: '2026-02-03',
+                description: 'Baustelle',
+                hasYear: false,
+                reasonType: 'operational-disruption',
+                reasonKey: 'ops.roadwork',
+                followUpMode: 'propagate-series',
+              },
             },
-          },
-        ] as never}
+          ] as never
+        }
         onOpenCreateShiftDialog={vi.fn()}
         onEditHolidayRule={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
@@ -423,11 +472,17 @@ describe('WasteSchedulingShiftsTable', () => {
 
     const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
     const data = tableProps.data as Array<Record<string, unknown>>;
-    const canSelectRow = tableProps.canSelectRow as ((row: Record<string, unknown>) => boolean) | undefined;
-    const bulkActions = tableProps.bulkActions as Array<{
-      label: string;
-      onClick: (context: { selectedRows: Array<Record<string, unknown>>; clearSelection: () => void }) => Promise<void>;
-    }> | undefined;
+    const canSelectRow = tableProps.canSelectRow as
+      ((row: Record<string, unknown>) => boolean) | undefined;
+    const bulkActions = tableProps.bulkActions as
+      | Array<{
+          label: string;
+          onClick: (context: {
+            selectedRows: Array<Record<string, unknown>>;
+            clearSelection: () => void;
+          }) => Promise<void>;
+        }>
+      | undefined;
 
     expect(tableProps.selectionMode).toBe('multiple');
     expect(canSelectRow).toBeTruthy();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataLocationsTable } from '../src/waste-management.master-data-locations-table.js';
@@ -10,6 +10,45 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  StudioDestructiveActionDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+    pending,
+    confirmDisabled,
+    errorMessage,
+    children,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly pending?: boolean;
+    readonly confirmDisabled?: boolean;
+    readonly errorMessage?: React.ReactNode;
+    readonly children?: React.ReactNode;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {children}
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+        <button type="button" disabled={pending} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" disabled={pending || confirmDisabled} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   StudioConfirmDialog: ({
     open,
     confirmLabel,
@@ -212,6 +251,7 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
       screen.getByRole('button', { name: 'masterData.collectionLocations.actions.delete' })
     );
     expect(onDeleteLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
+    await waitFor(() => expect(screen.queryByText('label:location-1')).toBeNull());
 
     fireEvent.click(screen.getByRole('button', { name: 'bulk-delete' }));
     fireEvent.click(

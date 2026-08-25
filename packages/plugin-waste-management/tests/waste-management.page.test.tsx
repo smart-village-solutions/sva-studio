@@ -37,6 +37,15 @@ const uiAccessMock = vi.hoisted(() => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    params,
+    to,
+  }: {
+    children: React.ReactNode;
+    params?: { jobId?: string };
+    to: string;
+  }) => <a href={params?.jobId ? to.replace('$jobId', params.jobId) : to}>{children}</a>,
   useNavigate: () => navigateMock,
   useSearch: () => searchMock(),
 }));

@@ -1,6 +1,11 @@
 import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioConfirmDialog, StudioDataTable } from '@sva/studio-ui-react';
+import {
+  StudioConfirmDialog,
+  StudioDataTable,
+  StudioDestructiveActionDialog,
+} from '@sva/studio-ui-react';
+import { useState } from 'react';
 
 import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 import {
@@ -14,7 +19,10 @@ import {
   type WasteFractionsContentProps,
 } from './waste-management.master-data-fractions-content.parts.js';
 import type { useFractionColumns } from './waste-management.master-data-fractions-content.columns.js';
-import type { WasteManagementFractionSortDirection, WasteManagementFractionSortField } from './search-params.js';
+import type {
+  WasteManagementFractionSortDirection,
+  WasteManagementFractionSortField,
+} from './search-params.js';
 
 type WasteMasterDataFractionsTableSectionProps = {
   readonly fractions: readonly WasteFractionRecord[];
@@ -39,7 +47,9 @@ type WasteMasterDataFractionsTableSectionProps = {
   readonly draftFractionsStatus: WasteFractionsContentProps['fractionsStatus'];
   readonly onOpenFilterDialog: () => void;
   readonly onFilterDialogOpenChange: (open: boolean) => void;
-  readonly onDraftFractionsStatusChange: (status: WasteFractionsContentProps['fractionsStatus']) => void;
+  readonly onDraftFractionsStatusChange: (
+    status: WasteFractionsContentProps['fractionsStatus']
+  ) => void;
   readonly onApplyFractionsStatus: () => void;
   readonly onResetFractionsStatus: () => void;
   readonly onPageChange: (page: number) => void;
@@ -49,7 +59,7 @@ type WasteMasterDataFractionsTableSectionProps = {
 const renderFractionRowActions = (
   fraction: WasteFractionRecord,
   onOpenEditFraction: (fraction: WasteFractionRecord) => void,
-  onRequestDeleteFraction: (fraction: WasteFractionRecord) => void,
+  onRequestDeleteFraction: (fraction: WasteFractionRecord) => void
 ) => (
   <FractionRowActions
     fraction={fraction}
@@ -62,7 +72,7 @@ const resolveNextFractionSorting = (
   nextSorting: readonly {
     readonly id: string;
     readonly desc: boolean;
-  }[],
+  }[]
 ): readonly [WasteManagementFractionSortField, WasteManagementFractionSortDirection] => {
   const current = nextSorting[0];
   if (!current) {
@@ -124,7 +134,9 @@ export const WasteMasterDataFractionsTableSection = ({
         }
         toolbarEnd={<FractionPrimaryAction onOpenCreateFraction={onOpenCreateFraction} />}
         selectionMode="multiple"
-        emptyState={<p className="text-sm text-muted-foreground">{pt('masterData.messages.emptyBody')}</p>}
+        emptyState={
+          <p className="text-sm text-muted-foreground">{pt('masterData.messages.emptyBody')}</p>
+        }
         sorting={{
           mode: 'external',
           labels: sortingLabels,
@@ -134,7 +146,9 @@ export const WasteMasterDataFractionsTableSection = ({
             onFractionsSortChange(sortBy, sortDirection);
           },
         }}
-        rowActions={(fraction) => renderFractionRowActions(fraction, onOpenEditFraction, onRequestDeleteFraction)}
+        rowActions={(fraction) =>
+          renderFractionRowActions(fraction, onOpenEditFraction, onRequestDeleteFraction)
+        }
       />
       <WastePanelTableBottomBar
         pt={pt}
@@ -172,22 +186,39 @@ export const WasteMasterDataFractionDeleteDialog = ({
   onCancel,
 }: WasteMasterDataFractionDeleteDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
+  const [pending, setPending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   return (
-    <StudioConfirmDialog
+    <StudioDestructiveActionDialog
       open={fractionPendingDelete !== null}
       title={pt('masterData.fractions.deleteDialog.title')}
       description={pt('masterData.fractions.deleteDialog.description', {
         value: fractionPendingDelete?.name ?? '',
       })}
       confirmLabel={pt('masterData.fractions.deleteDialog.confirm')}
+      pendingLabel={pt('common.deleting')}
       cancelLabel={pt('masterData.fractions.deleteDialog.cancel')}
-      onCancel={onCancel}
-      onConfirm={() => {
+      pending={pending}
+      errorMessage={errorMessage}
+      onCancel={() => {
+        setErrorMessage(null);
+        onCancel();
+      }}
+      onConfirm={async () => {
         if (!fractionPendingDelete) {
           return;
         }
-        void Promise.resolve(onOpenDeleteFraction(fractionPendingDelete)).finally(onCancel);
+        setPending(true);
+        setErrorMessage(null);
+        try {
+          await onOpenDeleteFraction(fractionPendingDelete);
+          onCancel();
+        } catch {
+          setErrorMessage(pt('masterData.fractions.messages.deleteError'));
+        } finally {
+          setPending(false);
+        }
       }}
     />
   );

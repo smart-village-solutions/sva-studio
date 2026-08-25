@@ -46,6 +46,7 @@ export const contentDEResources = {
     archive: 'Archivieren',
     delete: 'Löschen',
     deleteConfirm: 'Soll dieser Inhalt wirklich gelöscht werden?',
+    dismissFeedback: 'Schließen',
   },
   fields: {
     title: 'Überschrift',
@@ -181,6 +182,8 @@ export const contentDEResources = {
     body: 'Legen Sie den ersten Inhalt an, um Liste, Status und Historie zu nutzen.',
   },
   messages: {
+    deleteSuccessTitle: 'Inhalt gelöscht',
+    deleteSuccess: 'Der Inhalt mit der ID {{id}} wurde endgültig gelöscht.',
     loading: 'Inhalte werden geladen ...',
     loadError: 'Inhalte konnten nicht geladen werden.',
     saveError: 'Inhalt konnte nicht gespeichert werden.',

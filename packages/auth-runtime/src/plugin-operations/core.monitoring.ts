@@ -132,6 +132,10 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
   withAuthenticatedUser(request, async (ctx) => {
     const authorizationError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
     if (authorizationError) return authorizationError;
+    const writeAuthorization = await authorizeInstancePermissionForUser({
+      ctx,
+      action: MONITORING_WRITE_ACTION,
+    });
 
     const instanceId = requireActorInstanceId(ctx.user.instanceId);
     if (instanceId instanceof Response) return instanceId;
@@ -144,7 +148,11 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
         repository.getJobDetail(instanceId, jobId)
       );
       return job
-        ? createJsonItemResponse(200, normalizeStudioJobDetail(job), getRequestId())
+        ? createJsonItemResponse(
+            200,
+            normalizeStudioJobDetail(job, { canCancel: writeAuthorization.ok }),
+            getRequestId()
+          )
         : createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
     } catch {
       return createApiError(
@@ -233,15 +241,32 @@ export const cancelPluginOperationJobHandler = async (request: Request): Promise
       parse: async (inputRequest) => parseJobId(inputRequest),
       execute: async ({ instanceId, requestId }, jobId) => {
         try {
-          const job = await withStudioJobRepository(instanceId, (repository) =>
-            repository.requestJobCancellation({
+          const result = await withStudioJobRepository(instanceId, async (repository) => {
+            const job = await repository.requestJobCancellation({
               jobId,
               instanceId,
               cancelRequestedAt: new Date().toISOString(),
-            })
-          );
-          if (!job) return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
-          return new Response(JSON.stringify(asApiItem(job, requestId)), {
+            });
+            return job
+              ? { kind: 'accepted' as const, job }
+              : {
+                  kind: (await repository.getJobById(instanceId, jobId))
+                    ? ('conflict' as const)
+                    : ('not_found' as const),
+                };
+          });
+          if (result.kind === 'not_found') {
+            return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
+          }
+          if (result.kind === 'conflict') {
+            return createApiError(
+              409,
+              'conflict',
+              'Der Plugin-Job kann nicht mehr abgebrochen werden.',
+              requestId
+            );
+          }
+          return new Response(JSON.stringify(asApiItem(result.job, requestId)), {
             status: 202,
             headers: { 'Content-Type': 'application/json' },
           });
@@ -249,7 +274,7 @@ export const cancelPluginOperationJobHandler = async (request: Request): Promise
           return createApiError(
             503,
             'database_unavailable',
-            'Die Abbruchanfrage fuer den Plugin-Job konnte nicht gespeichert werden.',
+            'Die Abbruchanfrage für den Plugin-Job konnte nicht gespeichert werden.',
             requestId
           );
         }

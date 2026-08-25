@@ -45,6 +45,7 @@ export const contentENResources = {
     archive: 'Archive',
     delete: 'Delete',
     deleteConfirm: 'Do you really want to delete this content item?',
+    dismissFeedback: 'Dismiss',
   },
   fields: {
     title: 'Title',
@@ -177,6 +178,8 @@ export const contentENResources = {
     body: 'Create the first content item to use the list, status, and history views.',
   },
   messages: {
+    deleteSuccessTitle: 'Content deleted',
+    deleteSuccess: 'The content item with ID {{id}} was permanently deleted.',
     loading: 'Loading content ...',
     loadError: 'Content could not be loaded.',
     saveError: 'Content could not be saved.',

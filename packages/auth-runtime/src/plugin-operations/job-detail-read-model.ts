@@ -9,21 +9,25 @@ import type {
 import { studioJobContract } from '@sva/core';
 
 type NormalizeStudioJobDetailOptions = {
+  readonly canCancel?: boolean;
   readonly now?: () => string;
   readonly staleAfterSeconds?: number;
 };
 
 const defaultStaleAfterSeconds = 120;
 
-export const resolveLatestStudioJobEvent = (history: readonly StudioJobEventRecord[]): StudioJobEventRecord | undefined =>
+export const resolveLatestStudioJobEvent = (
+  history: readonly StudioJobEventRecord[]
+): StudioJobEventRecord | undefined =>
   history.length > 0 ? history[history.length - 1] : undefined;
 
 export const resolveStudioJobLastObservedAt = (
   job: Pick<StudioJobDetail, 'heartbeatAt' | 'lastProgressAt' | 'startedAt' | 'updatedAt'>
-): string | undefined =>
-  job.heartbeatAt ?? job.lastProgressAt ?? job.startedAt ?? job.updatedAt;
+): string | undefined => job.heartbeatAt ?? job.lastProgressAt ?? job.startedAt ?? job.updatedAt;
 
-export const createStudioJobEventPresentation = (event: StudioJobEventRecord): StudioJobEventPresentation => {
+export const createStudioJobEventPresentation = (
+  event: StudioJobEventRecord
+): StudioJobEventPresentation => {
   switch (event.eventType) {
     case 'job.queued':
       return { tone: 'info', title: 'job.queued', isTerminal: false };
@@ -50,13 +54,17 @@ export const normalizeStudioJobEventDetails = (
     ...(job.workerId && !event.details?.host?.workerId ? { workerId: job.workerId } : {}),
     ...(event.eventType === 'job.failed' || event.eventType === 'job.retrying'
       ? {
-          ...(job.errorPayload?.code && !event.details?.host?.errorCode ? { errorCode: job.errorPayload.code } : {}),
+          ...(job.errorPayload?.code && !event.details?.host?.errorCode
+            ? { errorCode: job.errorPayload.code }
+            : {}),
           ...(job.errorPayload?.category && !event.details?.host?.errorCategory
             ? { errorCategory: job.errorPayload.category }
             : {}),
         }
       : {}),
-    ...(event.eventType === 'job.cancelled' && job.cancelRequestedAt && !event.details?.host?.cancellationRequestedAt
+    ...(event.eventType === 'job.cancelled' &&
+    job.cancelRequestedAt &&
+    !event.details?.host?.cancellationRequestedAt
       ? { cancellationRequestedAt: job.cancelRequestedAt }
       : {}),
     ...(event.details?.host ?? {}),
@@ -81,7 +89,10 @@ const normalizeHistory = (job: StudioJobDetail): readonly StudioJobEventRecord[]
     }));
 
 export const createStudioJobRuntimeDiagnostics = (
-  job: Pick<StudioJobDetail, 'status' | 'heartbeatAt' | 'lastProgressAt' | 'startedAt' | 'updatedAt' | 'cancelRequestedAt'>,
+  job: Pick<
+    StudioJobDetail,
+    'status' | 'heartbeatAt' | 'lastProgressAt' | 'startedAt' | 'updatedAt' | 'cancelRequestedAt'
+  >,
   options?: NormalizeStudioJobDetailOptions
 ): StudioJobRuntimeDiagnostics => {
   const now = (options?.now ?? (() => new Date().toISOString()))();
@@ -119,6 +130,12 @@ export const normalizeStudioJobDetail = (
   return {
     ...normalizedJob,
     latestEvent,
+    availableActions:
+      options?.canCancel &&
+      !normalizedJob.cancelRequestedAt &&
+      !studioJobContract.isTerminalStatus(normalizedJob.status)
+        ? ['cancel']
+        : [],
     runtime: createStudioJobRuntimeDiagnostics(normalizedJob, options),
   };
 };

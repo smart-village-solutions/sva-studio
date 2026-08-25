@@ -23,6 +23,7 @@ import {
 } from '@sva/plugin-sdk';
 import {
   addStudioCreatedSaveFeedback,
+  addStudioDestructiveNavigationFeedback,
   Button,
   ContentMediaUsageBlock,
   contentMediaUsageToReference,
@@ -39,7 +40,7 @@ import {
   resolveContentMediaUsageDrafts,
   RichTextHtmlEditor,
   Select,
-  StudioConfirmDialog,
+  StudioDestructiveActionDialog,
   StudioContentHistory,
   StudioDataTable,
   StudioDetailCard,
@@ -332,6 +333,7 @@ function ProjectEditor({
   const [mutationError, setMutationError] = React.useState<string>();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string>();
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const mediaAssetsRef = React.useRef(mediaAssets);
@@ -833,13 +835,18 @@ function ProjectEditor({
   ];
 
   const removeProject = async () => {
-    if (!contentId) return;
+    if (!contentId || deletePending) return;
+    setDeleteError(undefined);
     setDeletePending(true);
     try {
       await deleteProject(contentId, actingPrincipalType);
-      await navigate({ to: '/admin/content' });
+      await navigate({
+        to: '/admin/content',
+        state: (previous) =>
+          addStudioDestructiveNavigationFeedback(previous, 'projects', contentId),
+      });
     } catch {
-      setMutationError(pt('messages.deleteError'));
+      setDeleteError(pt('messages.deleteError'));
     } finally {
       setDeletePending(false);
     }
@@ -855,7 +862,14 @@ function ProjectEditor({
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' && accessCapabilities.canDelete ? (
-            <Button type="button" variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setDeleteError(undefined);
+                setDeleteDialogOpen(true);
+              }}
+            >
               {pt('actions.delete')}
             </Button>
           ) : null}
@@ -966,16 +980,20 @@ function ProjectEditor({
           keepMounted
         />
       </form>
-      <StudioConfirmDialog
+      <StudioDestructiveActionDialog
         open={deleteDialogOpen}
         title={pt('messages.deleteTitle')}
-        description={pt('messages.deleteDescription')}
+        description={pt('messages.deleteDescription', { title: form.getValues('title') })}
         confirmLabel={pt('actions.delete')}
+        pendingLabel={pt('messages.deleting')}
         cancelLabel={pt('actions.back')}
-        confirmDisabled={deletePending}
-        cancelDisabled={deletePending}
+        pending={deletePending}
+        errorMessage={deleteError}
         onConfirm={() => void removeProject()}
-        onCancel={() => setDeleteDialogOpen(false)}
+        onCancel={() => {
+          setDeleteError(undefined);
+          setDeleteDialogOpen(false);
+        }}
       />
     </StudioDetailPageTemplate>
   );

@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -27,6 +28,7 @@ import {
   StudioActionMenu,
   StudioConfirmDialog,
   StudioDataTable,
+  StudioDestructiveActionDialog,
   type StudioDataTableLabels,
   StudioDetailTabs,
   StudioDetailPageTemplate,
@@ -42,6 +44,7 @@ import {
   StudioListPageTemplate,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioPersistentActionResult,
   StudioResourceHeader,
   StudioSection,
   StudioStateBlock,
@@ -1284,6 +1287,131 @@ describe('studio-ui-react primitives', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('keeps destructive dialogs open while pending and renders persistent errors', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <StudioDestructiveActionDialog
+        open
+        title="Schnittstelle löschen?"
+        description="Die Schnittstelle wird endgültig entfernt."
+        confirmLabel="Endgültig löschen"
+        pendingLabel="Wird gelöscht…"
+        cancelLabel="Abbrechen"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+
+    rerender(
+      <StudioDestructiveActionDialog
+        open
+        pending
+        title="Schnittstelle löschen?"
+        description="Die Schnittstelle wird endgültig entfernt."
+        confirmLabel="Endgültig löschen"
+        pendingLabel="Wird gelöscht…"
+        cancelLabel="Abbrechen"
+        errorMessage="Löschen fehlgeschlagen."
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    expect(screen.getByRole('alert').textContent).toContain('Löschen fehlgeschlagen.');
+    const pendingAction = screen.getByRole('button', { name: 'Wird gelöscht…' });
+    expect(pendingAction).toHaveProperty('disabled', true);
+    fireEvent.click(pendingAction);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveProperty('disabled', true);
+  });
+
+  it('returns focus to the destructive action trigger after cancellation', async () => {
+    const Harness = () => {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button type="button" onClick={() => setOpen(true)}>
+            Schnittstelle löschen
+          </Button>
+          <StudioDestructiveActionDialog
+            open={open}
+            title="Schnittstelle löschen?"
+            description="Die Schnittstelle wird endgültig entfernt."
+            confirmLabel="Endgültig löschen"
+            pendingLabel="Wird gelöscht…"
+            cancelLabel="Abbrechen"
+            onConfirm={vi.fn()}
+            onCancel={() => setOpen(false)}
+          />
+        </>
+      );
+    };
+
+    render(<Harness />);
+    const trigger = screen.getByRole('button', { name: 'Schnittstelle löschen' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it('keeps destructive confirmation disabled until its domain prerequisite is satisfied', () => {
+    const onConfirm = vi.fn();
+    const { rerender } = render(
+      <StudioDestructiveActionDialog
+        open
+        confirmDisabled
+        title="Datenbestand zurücksetzen?"
+        description="Der Datenbestand wird vollständig entfernt."
+        confirmLabel="Zurücksetzen"
+        pendingLabel="Wird zurückgesetzt…"
+        cancelLabel="Abbrechen"
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Zurücksetzen' })).toHaveProperty('disabled', true);
+
+    rerender(
+      <StudioDestructiveActionDialog
+        open
+        title="Datenbestand zurücksetzen?"
+        description="Der Datenbestand wird vollständig entfernt."
+        confirmLabel="Zurücksetzen"
+        pendingLabel="Wird zurückgesetzt…"
+        cancelLabel="Abbrechen"
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Zurücksetzen' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders persistent action results until explicitly dismissed', () => {
+    const onDismiss = vi.fn();
+    render(
+      <StudioPersistentActionResult
+        kind="success"
+        title="Veranstaltung gelöscht"
+        description="Die Liste wurde aktualisiert."
+        dismissLabel="Schließen"
+        onDismiss={onDismiss}
+      />
+    );
+
+    expect(screen.getByRole('status').textContent).toContain('Veranstaltung gelöscht');
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it('renders technical status panels and generic job summary cards', () => {

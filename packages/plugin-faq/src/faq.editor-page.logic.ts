@@ -1,7 +1,10 @@
 import type { NavigateOptions } from '@tanstack/react-router';
 import type { UseFormReturn } from 'react-hook-form';
 import type { MainserverPrincipalType } from '@sva/studio-ui-react';
-import { addStudioCreatedSaveFeedback } from '@sva/studio-ui-react';
+import {
+  addStudioCreatedSaveFeedback,
+  addStudioDestructiveNavigationFeedback,
+} from '@sva/studio-ui-react';
 import * as React from 'react';
 
 import { createFaq, deleteFaq, FaqApiError, getFaqDetail, updateFaq } from './faq.api.js';
@@ -133,7 +136,10 @@ export const useFaqEditorActions = ({
     setDeletePending(true);
     try {
       await deleteFaq(contentId, actingPrincipalType);
-      await navigate({ to: '/admin/content' });
+      await navigate({
+        to: '/admin/content',
+        state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'faq', contentId),
+      });
       return true;
     } catch (error) {
       setDeleteErrorMessage(resolveDeleteErrorMessage(error, pt));

@@ -390,7 +390,9 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
     await waitFor(() => expect(state.delete).toHaveBeenCalledWith('card-1', 'user'));
-    expect(state.navigate).toHaveBeenCalledWith({ to: '/admin/content' });
+    expect(state.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/admin/content', state: expect.any(Function) })
+    );
   });
 
   it('keeps library and upload actions unavailable without media permissions', async () => {

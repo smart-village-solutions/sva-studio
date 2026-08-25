@@ -81,8 +81,9 @@ export const pluginFaqTranslations = {
       deleteDialog: {
         title: 'FAQ löschen?',
         description:
-          'Die FAQ wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
+          'Die FAQ „{{target}}“ wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
         confirm: 'FAQ löschen',
+        pending: 'Wird gelöscht …',
         cancel: 'Abbrechen',
       },
       pagination: {
@@ -195,8 +196,10 @@ export const pluginFaqTranslations = {
       },
       deleteDialog: {
         title: 'Delete FAQ?',
-        description: 'The FAQ will be deleted permanently. This action cannot be undone.',
+        description:
+          'The FAQ “{{target}}” will be permanently deleted. This action cannot be undone.',
         confirm: 'Delete FAQ',
+        pending: 'Deleting…',
         cancel: 'Cancel',
       },
       pagination: {

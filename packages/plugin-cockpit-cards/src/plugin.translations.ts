@@ -1,6 +1,7 @@
 import type { PluginTranslations } from '@sva/plugin-sdk';
 import { cockpitCardsHistoryTranslations } from './cockpit-cards.history-translations.js';
 import { cockpitCardsMediaTranslations } from './cockpit-cards.media-translations.js';
+import { cockpitCardsDeleteDialogTranslations } from './cockpit-cards.delete-translations.js';
 export const pluginCockpitCardsTranslations = {
   de: {
     'cockpit-cards': {
@@ -89,12 +90,7 @@ export const pluginCockpitCardsTranslations = {
         description: 'Verwalte die Kacheln des Cockpits.',
         empty: 'Keine Kacheln vorhanden.',
       },
-      deleteDialog: {
-        title: 'Kachel löschen?',
-        description: 'Die Kachel wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
-        confirm: 'Kachel löschen',
-        cancel: 'Abbrechen',
-      },
+      deleteDialog: cockpitCardsDeleteDialogTranslations.de,
       pagination: {
         ariaLabel: 'Kachelpaginierung',
         pageLabel: 'Seite {{page}}',
@@ -214,12 +210,7 @@ export const pluginCockpitCardsTranslations = {
         description: 'Manage the cockpit cards.',
         empty: 'No cockpit cards available.',
       },
-      deleteDialog: {
-        title: 'Delete cockpit card?',
-        description: 'The cockpit card will be deleted permanently. This action cannot be undone.',
-        confirm: 'Delete cockpit card',
-        cancel: 'Cancel',
-      },
+      deleteDialog: cockpitCardsDeleteDialogTranslations.en,
       pagination: {
         ariaLabel: 'Cockpit cards pagination',
         pageLabel: 'Page {{page}}',

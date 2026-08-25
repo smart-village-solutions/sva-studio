@@ -33,6 +33,7 @@ import type {
   StudioJobListItem,
   StudioJobListQuery,
   StudioJobListResponse,
+  StudioJobResponse,
   IamUserTimelineEvent,
   IamUserDetail,
   IamUserImportSyncReport,
@@ -1126,6 +1127,15 @@ export const getPluginOperationJob = async (
     }
   );
 
+  return response.data;
+};
+
+export const cancelPluginOperationJob = async (jobId: string) => {
+  const response = await postJson<StudioJobResponse, Record<string, never>>(
+    `/api/v1/plugin-operations/jobs/${encodeURIComponent(jobId)}/cancel`,
+    {},
+    true
+  );
   return response.data;
 };
 

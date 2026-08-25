@@ -5,6 +5,10 @@ import {
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import { type NavigateFn } from '@tanstack/react-router';
+import {
+  addStudioDestructiveNavigationFeedback,
+  type MainserverPrincipalType,
+} from '@sva/studio-ui-react';
 import React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 
@@ -18,7 +22,6 @@ import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 import { mapGenericItemToDetailFormValues } from './generic-items.detail-form.js';
 import type { GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
-import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 
 export type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -192,7 +195,11 @@ export const useGenericItemsDetailActions = ({
 
     try {
       await deleteGenericItem(contentId, actingPrincipalType);
-      await navigate(genericItemsListNavigationTarget);
+      await navigate({
+        ...genericItemsListNavigationTarget,
+        state: (previous) =>
+          addStudioDestructiveNavigationFeedback(previous, 'generic-items', contentId),
+      });
     } catch (error) {
       setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
     } finally {

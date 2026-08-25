@@ -23,6 +23,7 @@ import {
 } from '@sva/plugin-sdk';
 import {
   addStudioCreatedSaveFeedback,
+  addStudioDestructiveNavigationFeedback,
   Button,
   Checkbox,
   hasStudioCreatedSaveFeedback,
@@ -38,7 +39,7 @@ import {
   createManualContentMediaUsage,
   isPersistableContentMediaUrl,
   StudioDataTable,
-  StudioConfirmDialog,
+  StudioDestructiveActionDialog,
   StudioContentHistory,
   StudioDetailCard,
   StudioDetailTabs,
@@ -288,6 +289,7 @@ function Editor({
   const [mutationError, setMutationError] = React.useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<Awaited<
     ReturnType<typeof getCockpitCard>
   > | null>(null);
@@ -842,15 +844,18 @@ function Editor({
     },
   ];
   const deleteCard = async () => {
-    if (!contentId) return;
-    setMutationError(null);
+    if (!contentId || deletePending) return;
+    setDeleteError(null);
     setDeletePending(true);
     try {
       await deleteCockpitCard(contentId, actingPrincipalType);
-      await navigate({ to: '/admin/content' });
-      setDeleteDialogOpen(false);
+      await navigate({
+        to: '/admin/content',
+        state: (previous) =>
+          addStudioDestructiveNavigationFeedback(previous, 'cockpit-cards', contentId),
+      });
     } catch {
-      setMutationError(pt('messages.deleteError'));
+      setDeleteError(pt('messages.deleteError'));
     } finally {
       setDeletePending(false);
     }
@@ -869,7 +874,10 @@ function Editor({
               type="button"
               variant="destructive"
               disabled={deletePending || form.formState.isSubmitting}
-              onClick={() => setDeleteDialogOpen(true)}
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteDialogOpen(true);
+              }}
             >
               {pt('actions.delete')}
             </Button>
@@ -995,16 +1003,20 @@ function Editor({
           keepMounted
         />
       </form>
-      <StudioConfirmDialog
+      <StudioDestructiveActionDialog
         open={deleteDialogOpen}
         title={pt('deleteDialog.title')}
-        description={pt('deleteDialog.description')}
+        description={pt('deleteDialog.description', { target: form.getValues('heading') })}
         confirmLabel={pt('deleteDialog.confirm')}
+        pendingLabel={pt('deleteDialog.pending')}
         cancelLabel={pt('deleteDialog.cancel')}
-        confirmDisabled={deletePending}
-        cancelDisabled={deletePending}
+        pending={deletePending}
+        errorMessage={deleteError}
         onConfirm={() => void deleteCard()}
-        onCancel={() => setDeleteDialogOpen(false)}
+        onCancel={() => {
+          setDeleteError(null);
+          setDeleteDialogOpen(false);
+        }}
       />
     </StudioDetailPageTemplate>
   );

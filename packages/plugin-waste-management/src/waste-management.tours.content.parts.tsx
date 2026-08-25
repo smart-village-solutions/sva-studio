@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioConfirmDialog } from '@sva/studio-ui-react';
 
 import {
   type WasteToursFilterDate,
@@ -12,6 +10,7 @@ import {
 } from './waste-management.tours.filter-state.js';
 
 export type { WasteToursContentProps } from './waste-management.tours.view-model.js';
+export { WasteToursDeleteDialogs } from './waste-management.tours-delete-dialogs.js';
 
 type UseWasteToursSelectionStateArgs = {
   readonly tours: readonly WasteTourRecord[];
@@ -148,98 +147,4 @@ export const useWasteToursSelectionState = ({
     bulkValidityOpen,
     setBulkValidityOpen,
   };
-};
-
-type WasteToursDeleteDialogsProps = {
-  readonly tourPendingDelete: WasteTourRecord | null;
-  readonly tourPendingStatusChange: {
-    readonly tour: WasteTourRecord;
-    readonly nextActive: boolean;
-  } | null;
-  readonly bulkDeleteOpen: boolean;
-  readonly selectedTourIds: readonly string[];
-  readonly onCancelSingle: () => void;
-  readonly onCancelStatusChange: () => void;
-  readonly onCancelBulk: () => void;
-  readonly onConfirmStatusChange: () => Promise<void>;
-  readonly statusChangePending: boolean;
-  readonly statusChangeError: string | null;
-  readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
-  readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
-  readonly onAfterBulkDelete: () => void;
-};
-
-export const WasteToursDeleteDialogs = ({
-  tourPendingDelete,
-  tourPendingStatusChange,
-  bulkDeleteOpen,
-  selectedTourIds,
-  onCancelSingle,
-  onCancelStatusChange,
-  onCancelBulk,
-  onConfirmStatusChange,
-  statusChangePending,
-  statusChangeError,
-  onDeleteTour,
-  onDeleteTours,
-  onAfterBulkDelete,
-}: WasteToursDeleteDialogsProps) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const nextActive = tourPendingStatusChange?.nextActive ?? false;
-  const statusDialogTranslationPrefix = nextActive ? 'activate' : 'deactivate';
-
-  return (
-    <>
-      <StudioConfirmDialog
-        open={tourPendingStatusChange !== null}
-        title={pt(`tours.statusDialog.${statusDialogTranslationPrefix}Title`)}
-        description={pt(`tours.statusDialog.${statusDialogTranslationPrefix}Description`, {
-          value: tourPendingStatusChange?.tour.name ?? '',
-        })}
-        confirmLabel={pt('tours.statusDialog.confirm')}
-        cancelLabel={pt('tours.statusDialog.cancel')}
-        onCancel={onCancelStatusChange}
-        confirmDisabled={statusChangePending}
-        cancelDisabled={statusChangePending}
-        onConfirm={() => {
-          void onConfirmStatusChange();
-        }}
-      >
-        {statusChangeError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {statusChangeError}
-          </p>
-        ) : null}
-      </StudioConfirmDialog>
-      <StudioConfirmDialog
-        open={tourPendingDelete !== null}
-        title={pt('tours.deleteDialog.title')}
-        description={pt('tours.deleteDialog.description', {
-          value: tourPendingDelete?.name ?? '',
-        })}
-        confirmLabel={pt('tours.deleteDialog.confirm')}
-        cancelLabel={pt('tours.deleteDialog.cancel')}
-        onCancel={onCancelSingle}
-        onConfirm={() => {
-          if (!tourPendingDelete) {
-            return;
-          }
-          void Promise.resolve(onDeleteTour(tourPendingDelete)).finally(onCancelSingle);
-        }}
-      />
-      <StudioConfirmDialog
-        open={bulkDeleteOpen}
-        title={pt('tours.bulkDeleteDialog.title')}
-        description={pt('tours.bulkDeleteDialog.description', {
-          value: selectedTourIds.length,
-        })}
-        confirmLabel={pt('tours.bulkDeleteDialog.confirm')}
-        cancelLabel={pt('tours.bulkDeleteDialog.cancel')}
-        onCancel={onCancelBulk}
-        onConfirm={() => {
-          void Promise.resolve(onDeleteTours(selectedTourIds)).finally(onAfterBulkDelete);
-        }}
-      />
-    </>
-  );
 };

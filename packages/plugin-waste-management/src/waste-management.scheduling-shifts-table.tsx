@@ -124,11 +124,10 @@ export const WasteSchedulingShiftsTable = ({
       <WasteSchedulingDeleteDialog
         pendingDeleteRows={pendingDeleteRows}
         onCancel={() => setPendingDeleteRows([])}
-        onConfirm={() => {
-          void Promise.resolve(onDeleteSchedulingRows(pendingDeleteRows)).finally(() => {
-            clearSelectionRef.current();
-            setPendingDeleteRows([]);
-          });
+        onConfirm={async () => {
+          await onDeleteSchedulingRows(pendingDeleteRows);
+          clearSelectionRef.current();
+          setPendingDeleteRows([]);
         }}
       />
     </div>

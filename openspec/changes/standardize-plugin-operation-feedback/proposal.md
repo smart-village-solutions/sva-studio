@@ -14,7 +14,7 @@ Die Plugin-Operations-Plattform besitzt bereits persistente Jobdatensätze, stab
 
 ## Approval Status
 
-Dieser Change hält den Folgeumfang dauerhaft fest, ist aber noch nicht zur Implementierung freigegeben. Vor der Umsetzung sind Referenzjob, Startkontext, Retry-/Cancel-Capabilities und die Beziehung zwischen Fachbereich und Monitoring zu bestätigen.
+Der Change wurde am 25. August 2026 gemeinsam mit `standardize-destructive-action-feedback` zur Umsetzung freigegeben. Der Waste-Import bildet den Referenzjob. Cancel wird nur über den vorhandenen autorisierten Host-Endpunkt angeboten; ein manueller Retry bleibt ohne expliziten Hostvertrag außerhalb des Umfangs.
 
 Related change: `standardize-save-action-feedback` verantwortet synchrone Formular-Saves und erzeugt keinen konkurrierenden Jobstatusvertrag.
 

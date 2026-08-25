@@ -28,6 +28,7 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  addStudioDestructiveNavigationFeedback,
   addStudioCreatedSaveFeedback,
   contentMediaUsageToReference,
   contentMediaUsagesToLocalDrafts,
@@ -49,6 +50,7 @@ import {
   type MainserverPrincipalType,
   Select,
   StudioDetailPageTemplate,
+  StudioDestructiveActionDialog,
   StudioFormSummary,
   StudioLoadingState,
   StudioMediaPickerOverlay,
@@ -321,6 +323,9 @@ export function EventsDetailPage({
   const [loading, setLoading] = React.useState(mode === 'edit');
   const initialSaveFeedbackShownRef = React.useRef(false);
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
@@ -937,15 +942,22 @@ export function EventsDetailPage({
   });
 
   const remove = async () => {
-    if (!contentId || !globalThis.confirm(pt('actions.deleteConfirm'))) {
+    if (!contentId || deletePending) {
       return;
     }
 
+    setDeletePending(true);
+    setDeleteErrorMessage(null);
     try {
       await deleteEvent(contentId, actingPrincipalType);
-      await navigate({ to: '/admin/content' });
+      await navigate({
+        to: '/admin/content',
+        state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'events', contentId),
+      });
     } catch (deleteError) {
-      setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
+      setDeleteErrorMessage(errorMessage(pt, deleteError, 'messages.deleteError'));
+    } finally {
+      setDeletePending(false);
     }
   };
 
@@ -980,13 +992,37 @@ export function EventsDetailPage({
               <Link to="/admin/content">{pt('actions.back')}</Link>
             </Button>
             {mode === 'edit' && accessCapabilities.canDelete ? (
-              <Button type="button" variant="destructive" onClick={() => void remove()}>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  setDeleteErrorMessage(null);
+                  setDeleteDialogOpen(true);
+                }}
+              >
                 {pt('actions.delete')}
               </Button>
             ) : null}
           </div>
         }
       >
+        <StudioDestructiveActionDialog
+          open={deleteDialogOpen}
+          title={pt('actions.deleteConfirmTitle')}
+          description={pt('actions.deleteConfirm', {
+            title: methods.getValues('title') || pt('detail.editTitle'),
+          })}
+          confirmLabel={pt('actions.delete')}
+          pendingLabel={pt('actions.deleting')}
+          cancelLabel={pt('actions.cancel')}
+          pending={deletePending}
+          errorMessage={deleteErrorMessage}
+          onCancel={() => {
+            setDeleteErrorMessage(null);
+            setDeleteDialogOpen(false);
+          }}
+          onConfirm={() => void remove()}
+        />
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toEventsMediaPickerSummary)}
           canUpload={canUploadMedia}

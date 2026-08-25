@@ -164,9 +164,7 @@ describe('faq editor pages', () => {
       'tabs.settings.label',
       'tabs.history.label',
     ]);
-    expect(
-      screen.getAllByRole('option').map((option) => option.getAttribute('label'))
-    ).toEqual([
+    expect(screen.getAllByRole('option').map((option) => option.getAttribute('label'))).toEqual([
       'tabs.basis.label',
       'tabs.content.label',
       'tabs.settings.label',
@@ -308,7 +306,20 @@ describe('faq editor pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
     await waitFor(() => expect(state.deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user'));
-    expect(state.navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+    expect(state.navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/admin/content', state: expect.any(Function) })
+    );
+    const navigationState = state.navigateMock.mock.calls.at(-1)?.[0]?.state as (
+      previous: Record<string, unknown>
+    ) => Record<string, unknown>;
+    expect(navigationState({ preserved: true })).toEqual({
+      preserved: true,
+      studioActionFeedback: {
+        kind: 'destructive-complete',
+        resourceType: 'faq',
+        resourceId: 'faq-1',
+      },
+    });
   });
 
   it('shows a validation error when sort weight is not an integer', async () => {

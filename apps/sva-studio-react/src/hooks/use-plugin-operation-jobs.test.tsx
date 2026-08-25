@@ -14,12 +14,17 @@ const browserLoggerMock = vi.hoisted(() => ({
 
 const listPluginOperationJobsMock = vi.fn();
 const getPluginOperationJobMock = vi.fn();
+const cancelPluginOperationJobMock = vi.fn();
 const asIamErrorMock = vi.fn();
 
 vi.mock('../lib/iam-api', () => ({
   asIamError: (...args: Parameters<typeof asIamErrorMock>) => asIamErrorMock(...args),
-  getPluginOperationJob: (...args: Parameters<typeof getPluginOperationJobMock>) => getPluginOperationJobMock(...args),
-  listPluginOperationJobs: (...args: Parameters<typeof listPluginOperationJobsMock>) => listPluginOperationJobsMock(...args),
+  cancelPluginOperationJob: (...args: Parameters<typeof cancelPluginOperationJobMock>) =>
+    cancelPluginOperationJobMock(...args),
+  getPluginOperationJob: (...args: Parameters<typeof getPluginOperationJobMock>) =>
+    getPluginOperationJobMock(...args),
+  listPluginOperationJobs: (...args: Parameters<typeof listPluginOperationJobsMock>) =>
+    listPluginOperationJobsMock(...args),
 }));
 
 vi.mock('@sva/monitoring-client/logging', () => ({
@@ -129,6 +134,7 @@ const runningJobDetail: StudioJobDetail = {
     evaluatedAt: '2026-05-09T10:00:00.000Z',
     lastObservedAt: '2026-05-09T10:00:00.000Z',
   },
+  availableActions: ['cancel'],
 };
 
 describe('usePluginOperationJobs', () => {
@@ -150,7 +156,10 @@ describe('usePluginOperationJobs', () => {
     let intervalCallback: (() => void) | undefined;
     const originalSetInterval = window.setInterval;
     const originalClearInterval = window.clearInterval;
-    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((handler: TimerHandler, timeout?: number) => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number
+    ) => {
       if (timeout === 10_000) {
         intervalCallback = handler as () => void;
         return 1 as unknown as ReturnType<typeof window.setInterval>;
@@ -165,9 +174,12 @@ describe('usePluginOperationJobs', () => {
       pagination: { page: 1, pageSize: 25, total: 1 },
     });
 
-    const { result } = renderHook(({ query }: { query: StudioJobListQuery }) => usePluginOperationJobs(query), {
-      initialProps: { query: activeQuery },
-    });
+    const { result } = renderHook(
+      ({ query }: { query: StudioJobListQuery }) => usePluginOperationJobs(query),
+      {
+        initialProps: { query: activeQuery },
+      }
+    );
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -175,7 +187,10 @@ describe('usePluginOperationJobs', () => {
       expect(result.current.total).toBe(1);
     });
 
-    expect(listPluginOperationJobsMock).toHaveBeenCalledWith(activeQuery, expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    expect(listPluginOperationJobsMock).toHaveBeenCalledWith(
+      activeQuery,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 10_000);
 
     await act(async () => {
@@ -190,7 +205,7 @@ describe('usePluginOperationJobs', () => {
     });
 
     await waitFor(() => {
-    expect(listPluginOperationJobsMock).toHaveBeenCalledTimes(3);
+      expect(listPluginOperationJobsMock).toHaveBeenCalledTimes(3);
     });
 
     expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 10_000);
@@ -200,7 +215,10 @@ describe('usePluginOperationJobs', () => {
 
   it('stops polling for history views and exposes structured list errors', async () => {
     const originalSetInterval = window.setInterval;
-    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((handler: TimerHandler, timeout?: number) => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number
+    ) => {
       return originalSetInterval(handler, timeout);
     }) as typeof window.setInterval);
     const apiError = {
@@ -276,10 +294,16 @@ describe('usePluginOperationJobs', () => {
 
   it('keeps the newest list response when an older request resolves later', async () => {
     let resolveFirst:
-      | ((value: { data: readonly StudioJobListItem[]; pagination: { page: number; pageSize: number; total: number } }) => void)
+      | ((value: {
+          data: readonly StudioJobListItem[];
+          pagination: { page: number; pageSize: number; total: number };
+        }) => void)
       | undefined;
     let resolveSecond:
-      | ((value: { data: readonly StudioJobListItem[]; pagination: { page: number; pageSize: number; total: number } }) => void)
+      | ((value: {
+          data: readonly StudioJobListItem[];
+          pagination: { page: number; pageSize: number; total: number };
+        }) => void)
       | undefined;
 
     listPluginOperationJobsMock
@@ -358,6 +382,7 @@ describe('usePluginOperationJobs', () => {
 
 describe('usePluginOperationJobDetail', () => {
   beforeEach(() => {
+    cancelPluginOperationJobMock.mockReset();
     getPluginOperationJobMock.mockReset();
     asIamErrorMock.mockReset();
     browserLoggerMock.debug.mockReset();
@@ -385,7 +410,10 @@ describe('usePluginOperationJobDetail', () => {
   it('loads a running job, refetches manually, and polls until the job is terminal', async () => {
     let intervalCallback: (() => void) | undefined;
     const originalSetInterval = window.setInterval;
-    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((handler: TimerHandler, timeout?: number) => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number
+    ) => {
       if (timeout === 10_000) {
         intervalCallback = handler as () => void;
         return 1 as unknown as ReturnType<typeof window.setInterval>;
@@ -430,6 +458,29 @@ describe('usePluginOperationJobDetail', () => {
     expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 10_000);
   });
 
+  it('accepts cancellation once and keeps the accepted state when the following refetch fails', async () => {
+    const refreshError = { code: 'database_unavailable', message: 'Nicht erreichbar', status: 503 };
+    getPluginOperationJobMock
+      .mockResolvedValueOnce(runningJobDetail)
+      .mockRejectedValueOnce(refreshError);
+    cancelPluginOperationJobMock.mockResolvedValue({
+      ...runningJobDetail,
+      cancelRequestedAt: '2026-05-09T10:02:00.000Z',
+    });
+    asIamErrorMock.mockReturnValue(refreshError);
+
+    const { result } = renderHook(() => usePluginOperationJobDetail('job-1'));
+    await waitFor(() => expect(result.current.detail?.availableActions).toEqual(['cancel']));
+
+    await act(async () => {
+      expect(await result.current.cancel()).toBe(true);
+    });
+
+    expect(cancelPluginOperationJobMock).toHaveBeenCalledTimes(1);
+    expect(result.current.detail?.cancelRequestedAt).toBe('2026-05-09T10:02:00.000Z');
+    expect(result.current.detail?.availableActions).toEqual([]);
+  });
+
   it('exposes detail errors when loading fails', async () => {
     const apiError = {
       code: 'not_found',
@@ -464,24 +515,30 @@ describe('usePluginOperationJobDetail', () => {
       finishedAt: '2026-05-09T10:05:00.000Z',
     };
     const originalSetInterval = window.setInterval;
-    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((handler: TimerHandler, timeout?: number) => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number
+    ) => {
       return originalSetInterval(handler, timeout);
     }) as typeof window.setInterval);
 
-    getPluginOperationJobMock.mockResolvedValueOnce(terminalJob).mockImplementationOnce(
-      async (_jobId: string, options?: { signal?: AbortSignal }) => {
+    getPluginOperationJobMock
+      .mockResolvedValueOnce(terminalJob)
+      .mockImplementationOnce(async (_jobId: string, options?: { signal?: AbortSignal }) => {
         abortedSignal = options?.signal;
         await new Promise<never>((_, reject) => {
           options?.signal?.addEventListener('abort', () => {
             reject(new Error('aborted'));
           });
         });
+      });
+
+    const { result, rerender, unmount } = renderHook(
+      ({ jobId }: { jobId: string }) => usePluginOperationJobDetail(jobId),
+      {
+        initialProps: { jobId: 'job-1' },
       }
     );
-
-    const { result, rerender, unmount } = renderHook(({ jobId }: { jobId: string }) => usePluginOperationJobDetail(jobId), {
-      initialProps: { jobId: 'job-1' },
-    });
 
     await waitFor(() => {
       expect(result.current.detail?.status).toBe('failed');

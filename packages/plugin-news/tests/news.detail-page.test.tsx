@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import React from 'react';
 import { fileURLToPath } from 'node:url';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getHostMediaAsset,
@@ -15,7 +15,7 @@ import {
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
-import { getNewsDetail, listNewsCategories } from '../src/news.api.js';
+import { deleteNews, getNewsDetail, listNewsCategories } from '../src/news.api.js';
 import { NewsDetailPage } from '../src/news.detail-page.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
@@ -201,6 +201,11 @@ describe('NewsDetailPage', () => {
         'news.actions.update': 'Änderungen speichern',
         'news.actions.save': 'Speichern',
         'news.actions.back': 'Zurück zur Liste',
+        'news.actions.delete': 'Löschen',
+        'news.actions.deleteConfirmTitle': 'Nachricht löschen?',
+        'news.actions.deleteConfirm':
+          'Die Nachricht „Sommerfest“ wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
+        'news.actions.deleting': 'Wird gelöscht …',
         'news.actions.addImage': 'Bild aus Mediathek',
         'news.actions.uploadMedia': 'Bild hochladen',
         'news.actions.uploadingMedia': 'Bild wird hochgeladen',
@@ -236,6 +241,7 @@ describe('NewsDetailPage', () => {
         'news.messages.mediaUploadError': 'Bild konnte nicht hochgeladen werden.',
         'news.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
         'news.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
+        'news.messages.deleteError': 'Die Nachricht konnte nicht gelöscht werden.',
         'news.values.mediaContentTypes.image': 'Bild',
         'news.values.mediaContentTypes.audio': 'Audio',
         'news.values.mediaContentTypes.video': 'Video',
@@ -388,6 +394,55 @@ describe('NewsDetailPage', () => {
     });
     fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
     expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+  });
+
+  it('deletes a news item through the shared dialog and returns contextual feedback', async () => {
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: {
+        id: '9082',
+        title: 'Sommerfest',
+        contentType: 'news.article',
+        payload: {},
+        status: 'draft',
+        author: 'Redaktion',
+        createdAt: '2026-08-11T10:00:00.000Z',
+        updatedAt: '2026-08-11T10:00:00.000Z',
+      },
+      deviations: [],
+      access: {
+        'news.update': true,
+        'news.delete': true,
+        'content.publish': true,
+        'content.changeStatus': true,
+      },
+    });
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal('confirm', nativeConfirm);
+
+    render(<NewsDetailPage mode="edit" contentId="9082" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Löschen' }));
+    const dialog = screen.getByRole('alertdialog');
+    expect(within(dialog).getByText(/Sommerfest/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(deleteNews)).toHaveBeenCalledWith('9082', 'user');
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/content',
+        state: expect.any(Function),
+      });
+    });
+    const navigationState = navigateMock.mock.calls[0]?.[0]?.state({ preserved: true });
+    expect(navigationState).toEqual({
+      preserved: true,
+      studioActionFeedback: {
+        kind: 'destructive-complete',
+        resourceType: 'news',
+        resourceId: '9082',
+      },
+    });
+    expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
   it('keeps a selected upload local until the news item is saved', async () => {

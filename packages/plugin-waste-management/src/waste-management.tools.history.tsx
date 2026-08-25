@@ -1,7 +1,8 @@
 import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
 import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { useState } from 'react';
-import { StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
+import { Link } from '@tanstack/react-router';
+import { Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
 
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
 import { WasteToolsPostalCodeStatus } from './waste-management.tools.postal-code-status.js';
@@ -181,6 +182,16 @@ export const WasteToolsHistory = ({
         }
         statusLabel={displayedLastJob?.status ?? pt('tools.meta.noJobStatus')}
         statusTone={toJobStatusTone(displayedLastJob?.status)}
+        announcement={
+          displayedLastJob
+            ? pt('tools.meta.statusAnnouncement', {
+                status: pt(`tools.progress.statuses.${displayedLastJob.status}`),
+                phase: displayedLastJob.progress?.currentPhase
+                  ? ` ${pt(`tools.progress.phases.${displayedLastJob.progress.currentPhase}`)}`
+                  : '',
+              })
+            : undefined
+        }
         metadata={
           displayedLastJob
             ? [
@@ -197,6 +208,15 @@ export const WasteToolsHistory = ({
                 },
               ]
             : undefined
+        }
+        actions={
+          displayedLastJob ? (
+            <Button asChild variant="secondary">
+              <Link to="/monitoring/jobs/$jobId" params={{ jobId: displayedLastJob.id }}>
+                {pt('tools.actions.openJobDetails')}
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
       {isActiveImportJob(displayedLastJob) ? (

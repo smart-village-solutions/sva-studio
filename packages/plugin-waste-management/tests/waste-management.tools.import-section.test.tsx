@@ -17,14 +17,31 @@ import {
   transitionToReachableStep,
 } from '../src/waste-management.tools.import-wizard-state.js';
 
-const { downloadImportTemplateMock, downloadImportPreviewErrorsMock, uploadImportSourceMock } = vi.hoisted(() => ({
-  downloadImportTemplateMock: vi.fn(),
-  downloadImportPreviewErrorsMock: vi.fn(),
-  uploadImportSourceMock: vi.fn(async () => 'plugin-operation-input:00000000-0000-4000-8000-000000000001'),
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    params,
+    to,
+  }: {
+    children: React.ReactNode;
+    params?: { jobId?: string };
+    to: string;
+  }) => <a href={params?.jobId ? to.replace('$jobId', params.jobId) : to}>{children}</a>,
 }));
 
+const { downloadImportTemplateMock, downloadImportPreviewErrorsMock, uploadImportSourceMock } =
+  vi.hoisted(() => ({
+    downloadImportTemplateMock: vi.fn(),
+    downloadImportPreviewErrorsMock: vi.fn(),
+    uploadImportSourceMock: vi.fn(
+      async () => 'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+    ),
+  }));
+
 vi.mock('../src/waste-management.api.js', async () => ({
-  ...(await vi.importActual<typeof import('../src/waste-management.api.js')>('../src/waste-management.api.js')),
+  ...(await vi.importActual<typeof import('../src/waste-management.api.js')>(
+    '../src/waste-management.api.js'
+  )),
   uploadWasteManagementImportSource: uploadImportSourceMock,
 }));
 
@@ -327,7 +344,9 @@ describe('WasteToolsImportSection', () => {
       expect(callbacks.onStartImport).toHaveBeenCalledTimes(1);
     });
     expect(screen.getByText('tools.imports.wizard.resultTitle')).toBeTruthy();
-    expect(screen.getByText('job-77')).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'tools.actions.openJobDetails' }).getAttribute('href')
+    ).toBe('/monitoring/jobs/job-77');
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.startNew' }));
     expect(screen.getAllByText('tools.imports.wizard.steps.profile.title').length).toBeGreaterThan(

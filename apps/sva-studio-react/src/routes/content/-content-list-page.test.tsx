@@ -27,6 +27,7 @@ const deleteSurveyMock = vi.fn();
 const deleteProjectMock = vi.fn();
 const navigateMock = vi.fn();
 let searchState: Record<string, unknown> = {};
+let locationState: Record<string, unknown> = {};
 const DEFAULT_VISIBLE_TYPES = [
   'generic',
   'news.article',
@@ -103,6 +104,7 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: locationState }),
   useSearch: () => searchState,
   Link: ({
     children,
@@ -198,6 +200,7 @@ describe('ContentListPage', () => {
     deleteProjectMock.mockReset();
     navigateMock.mockReset();
     searchState = {};
+    locationState = {};
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -516,6 +519,36 @@ describe('ContentListPage', () => {
 
   it('does not load contents before content access has resolved', () => {
     renderWithUnresolvedContentAccess();
+  });
+
+  it('keeps a destructive result visible after navigation and consumes the route feedback', async () => {
+    locationState = {
+      preserved: 'value',
+      studioActionFeedback: {
+        kind: 'destructive-complete',
+        resourceType: 'events',
+        resourceId: 'event-42',
+      },
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(await screen.findByText('Inhalt gelöscht')).toBeTruthy();
+    expect(
+      screen.getByText('Der Inhalt mit der ID event-42 wurde endgültig gelöscht.')
+    ).toBeTruthy();
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/admin/content', replace: true })
+    );
+
+    const navigation = navigateMock.mock.calls[0]?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(navigation.state(locationState)).toEqual({
+      preserved: 'value',
+      studioActionFeedback: undefined,
+    });
   });
 
   it('deletes a mainserver content row when delete permission exists', async () => {

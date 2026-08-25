@@ -472,6 +472,7 @@ describe('plugin operations handlers', () => {
       data: {
         id: 'job-1',
         status: 'running',
+        availableActions: ['cancel'],
         progress: {
           completedSteps: 1,
           totalSteps: 3,
@@ -861,6 +862,7 @@ describe('plugin operations handlers', () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
         requestJobCancellation: vi.fn(async () => null),
+        getJobById: vi.fn(async () => null),
       })
     );
 
@@ -882,6 +884,33 @@ describe('plugin operations handlers', () => {
       error: {
         code: 'not_found',
       },
+    });
+  });
+
+  it('returns conflict when cancellation is no longer available for an existing job', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        requestJobCancellation: vi.fn(async () => null),
+        getJobById: vi.fn(async () => ({ id: 'job-1' }) as never),
+      })
+    );
+
+    const response = await cancelPluginOperationJobHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel',
+        {
+          method: 'POST',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'conflict' },
     });
   });
 
@@ -1048,7 +1077,9 @@ describe('plugin operations handlers', () => {
 
   it('rejects invalid artifact paths before actor and repository resolution', async () => {
     const response = await downloadPluginOperationArtifactHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/not-a-job/artifacts/not-an-artifact')
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/not-a-job/artifacts/not-an-artifact'
+      )
     );
 
     expect(response.status).toBe(400);
@@ -1156,14 +1187,16 @@ describe('plugin operations handlers', () => {
           pluginId: 'news',
           actorAccountId: 'account-1',
           resultPayload: {
-            artifacts: [{
-              artifactId,
-              contentType: 'application/json',
-              fileName: 'broken.json',
-              sizeBytes: 999,
-              sha256: 'wrong',
-              expiresAt: '2026-05-10T12:02:00.000Z',
-            }],
+            artifacts: [
+              {
+                artifactId,
+                contentType: 'application/json',
+                fileName: 'broken.json',
+                sizeBytes: 999,
+                sha256: 'wrong',
+                expiresAt: '2026-05-10T12:02:00.000Z',
+              },
+            ],
           },
         })),
       })

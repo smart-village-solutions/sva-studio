@@ -1,5 +1,6 @@
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesDe } from './plugin.translations.de.messages.js';
+import { poiDeleteActionTranslationsDe } from './plugin.translations.de.delete-actions.js';
 
 const poiEditorTranslations = {
   createTitle: 'Ort anlegen',
@@ -104,7 +105,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     edit: 'Bearbeiten',
     delete: 'Löschen',
     back: 'Zurück zur Liste',
-    deleteConfirm: 'Soll dieser Ort wirklich gelöscht werden?',
+    ...poiDeleteActionTranslationsDe,
     clearMedia: 'Medium entfernen',
     add: 'Hinzufügen',
     addOpeningHour: 'Öffnungszeit hinzufügen',

@@ -151,6 +151,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
   actions: {
     startExport: 'Export starten',
     startImport: 'Import starten',
+    openJobDetails: 'Jobdetails öffnen',
     startMigrations: 'Migrationen starten',
     startSeed: 'Initialdaten laden',
     startPostalCodeEnrichment: 'Postleitzahlen ergänzen',
@@ -197,6 +198,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     jobType: 'Typ: {{value}}',
     jobStatus: 'Status: {{value}}',
     jobIdLabel: 'Prozess',
+    statusAnnouncement: 'Jobstatus: {{status}}.{{phase}}',
     jobTypeLabel: 'Typ',
     jobStatusLabel: 'Status',
   },

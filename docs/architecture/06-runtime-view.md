@@ -72,7 +72,7 @@ Für Uploads aus Content-Editoren gilt ergänzend:
 5. Laufende Worker-Schritte schreiben Progress, Heartbeat und technische Lifecycle-Events gegen denselben zentralen Host-Store zurück.
 6. Falls ein Fachhandler strukturierte Fortschrittsdetails wie `processedRows` und `totalRows` kennt, meldet er diese über denselben generischen Progress-Vertrag und nicht über einen separaten Plugin-Endpunkt.
 7. Der Client liest Status, Progress, Heartbeat und Verlauf über `GET /api/v1/plugin-operations/jobs/:jobId`.
-8. Eine Abbruchanforderung wird über `POST /api/v1/plugin-operations/jobs/:jobId/cancel` zunächst nur als gespeicherter Cancel-Request modelliert; die kooperative Reaktion bleibt Worker-Verantwortung.
+8. Der Detailvertrag liefert `availableActions`; `cancel` erscheint nur mit Schreibberechtigung für aktive Jobs ohne frühere Abbruchanforderung. `POST /api/v1/plugin-operations/jobs/:jobId/cancel` schreibt den Request konditional genau einmal; die kooperative Reaktion bleibt Worker-Verantwortung.
 9. Status, Progress, Verlauf, Ergebnis- und Fehlerfelder stammen immer aus derselben zentralen Persistenz `iam.studio_jobs` plus `iam.studio_job_events`.
 10. Der App-Principal reiht Jobs ausschließlich über den migrationsverwalteten, eingabevalidierenden `SECURITY DEFINER`-Wrapper `graphile_worker.sva_enqueue_job` ein; die Worker-Lane verarbeitet sie mit einem eigenen Principal und führt beim Start keine Schema-Migration aus.
 
@@ -81,6 +81,7 @@ Fehlerpfad:
 - Ohne gültigen Instanzkontext oder Idempotency-Key antwortet der Host fail-closed mit einem stabilen Fehlervertrag.
 - Datenbankfehler beim Anlegen oder Lesen werden als hostgeführte `database_unavailable`-Antworten abgebildet.
 - Die öffentliche API bleibt runner-agnostisch; eine interne Worker-Technologie darf den Fehler- und Statusvertrag nicht verändern.
+- Ein fehlender manueller Retry-Vertrag erzeugt keine UI-Aktion. Automatische Runner-Retries erscheinen als `retrying` im bestehenden Job; Cancel-Konflikte antworten stabil mit `409`.
 - Fehlt das migrierte Graphile-Schema oder der dedizierte Worker-Zugang, startet die Runtime fail-closed; sie versucht keine privilegierte Selbstreparatur.
 - Bei aktivierter Worker-Lane umfasst die HTTP-Readiness den tatsächlichen Worker-Zustand. Startfehler und unerwartete Abbrüche setzen `jobWorker` mit stabilem Reason-Code auf `not_ready` und werden als Fehlerereignis protokolliert; eine bewusst deaktivierte Lane bleibt readiness-neutral.
 

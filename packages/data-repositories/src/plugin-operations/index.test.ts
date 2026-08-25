@@ -57,7 +57,9 @@ const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unkn
   const statements: SqlStatement[] = [];
   const queue = [...queuedRows];
   const executor: SqlExecutor = {
-    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+    async execute<TRow = Record<string, unknown>>(
+      statement: SqlStatement
+    ): Promise<SqlExecutionResult<TRow>> {
       statements.push(statement);
       const rows = queue.shift() ?? [];
       return {
@@ -263,6 +265,8 @@ describe('studio job repository', () => {
     expect(statements[0]?.text).toContain('last_progress_at = $2');
     expect(statements[1]?.text).toContain('heartbeat_at = $1');
     expect(statements[2]?.text).toContain('cancel_requested_at = $1');
+    expect(statements[2]?.text).toContain("status IN ('queued', 'running', 'retrying')");
+    expect(statements[2]?.text).toContain('cancel_requested_at IS NULL');
   });
 
   it('returns null for missing updates and detail reads', async () => {
@@ -549,10 +553,7 @@ describe('studio job repository', () => {
   });
 
   it('keeps the total count when the requested page is empty', async () => {
-    const { executor, statements } = createQueuedExecutor([
-      [],
-      [{ total_count: 3 }],
-    ]);
+    const { executor, statements } = createQueuedExecutor([[], [{ total_count: 3 }]]);
     const repository = createStudioJobRepository(executor);
 
     await expect(

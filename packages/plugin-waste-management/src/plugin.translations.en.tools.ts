@@ -147,6 +147,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
   actions: {
     startExport: 'Start export',
     startImport: 'Start import',
+    openJobDetails: 'Open job details',
     startMigrations: 'Start migrations',
     startSeed: 'Start seed',
     startPostalCodeEnrichment: 'Add postal codes',
@@ -192,6 +193,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     jobType: 'Type: {{value}}',
     jobStatus: 'Status: {{value}}',
     jobIdLabel: 'Job',
+    statusAnnouncement: 'Job status: {{status}}.{{phase}}',
     jobTypeLabel: 'Type',
     jobStatusLabel: 'Status',
   },

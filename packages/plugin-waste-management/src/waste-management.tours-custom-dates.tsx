@@ -1,6 +1,11 @@
 import type { WasteCustomTourDate } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconCalendarPlus, IconChevronLeft, IconChevronRight, IconTrash } from '@tabler/icons-react';
+import {
+  IconCalendarPlus,
+  IconChevronLeft,
+  IconChevronRight,
+  IconTrash,
+} from '@tabler/icons-react';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Badge,
@@ -12,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  StudioConfirmDialog,
+  StudioDestructiveActionDialog,
   Textarea,
 } from '@sva/studio-ui-react';
 
@@ -55,7 +60,9 @@ const TourCustomDateMonth = ({
 
   return (
     <section className="space-y-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-shell">
-      <h3 className="text-base font-semibold capitalize text-foreground">{formatMonthLabel(year, monthIndex)}</h3>
+      <h3 className="text-base font-semibold capitalize text-foreground">
+        {formatMonthLabel(year, monthIndex)}
+      </h3>
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
         {weekdayLabels.map((day) => (
           <div key={`${monthIndex}-${day}`}>{day}</div>
@@ -110,7 +117,9 @@ const TourCustomDatesSelectionDialog = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const months = Array.from({ length: 12 }, (_, monthIndex) => monthIndex);
-  const selectedCount = Array.from(selectedDates).filter((date) => Number(date.slice(0, 4)) === year).length;
+  const selectedCount = Array.from(selectedDates).filter(
+    (date) => Number(date.slice(0, 4)) === year
+  ).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,15 +130,27 @@ const TourCustomDatesSelectionDialog = ({
             <DialogDescription>{pt('tours.customDates.dialog.description')}</DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-between gap-4 px-6 py-5">
-            <Button type="button" variant="secondary" disabled={disabled} onClick={() => onYearChange(year - 1)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={disabled}
+              onClick={() => onYearChange(year - 1)}
+            >
               <IconChevronLeft aria-hidden="true" className="mr-2 h-4 w-4" />
               {year - 1}
             </Button>
             <div className="flex flex-col items-center gap-2">
               <span className="text-4xl font-semibold tracking-tight text-foreground">{year}</span>
-              <Badge variant="outline">{pt('tours.customDates.meta.selectedCount', { value: selectedCount })}</Badge>
+              <Badge variant="outline">
+                {pt('tours.customDates.meta.selectedCount', { value: selectedCount })}
+              </Badge>
             </div>
-            <Button type="button" variant="secondary" disabled={disabled} onClick={() => onYearChange(year + 1)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={disabled}
+              onClick={() => onYearChange(year + 1)}
+            >
               {year + 1}
               <IconChevronRight aria-hidden="true" className="ml-2 h-4 w-4" />
             </Button>
@@ -178,7 +199,9 @@ export const WasteToursCustomDatesField = ({
   readonly endDate: string;
   readonly disabled?: boolean;
   readonly onChange: (customDates: readonly WasteCustomTourDate[]) => void;
-  readonly onAssignmentsChange: (assignments: readonly TourDateLocationAssignmentFormState[]) => void;
+  readonly onAssignmentsChange: (
+    assignments: readonly TourDateLocationAssignmentFormState[]
+  ) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const firstCustomDate = useMemo(
@@ -188,7 +211,10 @@ export const WasteToursCustomDatesField = ({
         .sort((left, right) => left.localeCompare(right))[0] ?? '',
     [customDates]
   );
-  const initialYear = useMemo(() => resolveInitialYear(firstCustomDate, firstDate, endDate), [endDate, firstCustomDate, firstDate]);
+  const initialYear = useMemo(
+    () => resolveInitialYear(firstCustomDate, firstDate, endDate),
+    [endDate, firstCustomDate, firstDate]
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null);
   const [duplicateAssignmentId, setDuplicateAssignmentId] = useState<string | null>(null);
@@ -205,7 +231,10 @@ export const WasteToursCustomDatesField = ({
     () => [...customDates].sort((left, right) => left.date.localeCompare(right.date)),
     [customDates]
   );
-  const selectedDates = useMemo(() => new Set(sortedDates.map((entry) => entry.date)), [sortedDates]);
+  const selectedDates = useMemo(
+    () => new Set(sortedDates.map((entry) => entry.date)),
+    [sortedDates]
+  );
   const assignmentsByDate = useMemo(() => {
     const grouped = new Map<string, TourDateLocationAssignmentFormState[]>();
 
@@ -220,7 +249,10 @@ export const WasteToursCustomDatesField = ({
 
     return grouped;
   }, [dateLocationAssignments]);
-  const locationLabels = useMemo(() => new Map(locations.map((location) => [location.id, location.label])), [locations]);
+  const locationLabels = useMemo(
+    () => new Map(locations.map((location) => [location.id, location.label])),
+    [locations]
+  );
 
   const updateEntry = (date: string, patch: Partial<WasteCustomTourDate>) => {
     onChange(
@@ -250,7 +282,9 @@ export const WasteToursCustomDatesField = ({
       removeEntry(date);
       return;
     }
-    syncDates([...sortedDates, { date }].sort((left, right) => left.date.localeCompare(right.date)));
+    syncDates(
+      [...sortedDates, { date }].sort((left, right) => left.date.localeCompare(right.date))
+    );
   };
 
   const addAssignment = (pickupDate: string) => {
@@ -267,7 +301,10 @@ export const WasteToursCustomDatesField = ({
     );
   };
 
-  const updateAssignment = (assignmentId: string, patch: Partial<TourDateLocationAssignmentFormState>) => {
+  const updateAssignment = (
+    assignmentId: string,
+    patch: Partial<TourDateLocationAssignmentFormState>
+  ) => {
     const currentAssignment = dateLocationAssignments.find((entry) => entry.id === assignmentId);
     if (!currentAssignment) {
       return;
@@ -312,12 +349,19 @@ export const WasteToursCustomDatesField = ({
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">{pt('tours.customDates.description')}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" disabled={disabled} onClick={() => setDialogOpen(true)}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={disabled}
+            onClick={() => setDialogOpen(true)}
+          >
             <IconCalendarPlus aria-hidden="true" className="mr-2 h-4 w-4" />
             {pt('tours.customDates.actions.openPicker')}
           </Button>
           {sortedDates.length > 0 ? (
-            <Badge variant="outline">{pt('tours.customDates.meta.selectedSummary', { value: sortedDates.length })}</Badge>
+            <Badge variant="outline">
+              {pt('tours.customDates.meta.selectedSummary', { value: sortedDates.length })}
+            </Badge>
           ) : null}
         </div>
       </div>
@@ -331,10 +375,18 @@ export const WasteToursCustomDatesField = ({
           <table className="min-w-full border-collapse">
             <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th scope="col" className="px-4 py-3">{pt('tours.customDates.fields.date')}</th>
-                <th scope="col" className="px-4 py-3">{pt('tours.customDates.fields.comment')}</th>
-                <th scope="col" className="px-4 py-3">{pt('tours.customDates.fields.assignments')}</th>
-                <th scope="col" className="px-4 py-3 text-right">{pt('tours.customDates.fields.actions')}</th>
+                <th scope="col" className="px-4 py-3">
+                  {pt('tours.customDates.fields.date')}
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  {pt('tours.customDates.fields.comment')}
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  {pt('tours.customDates.fields.assignments')}
+                </th>
+                <th scope="col" className="px-4 py-3 text-right">
+                  {pt('tours.customDates.fields.actions')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -353,7 +405,9 @@ export const WasteToursCustomDatesField = ({
                           id={`waste-tour-custom-date-${entry.date}`}
                           value={entry.description ?? ''}
                           disabled={disabled}
-                          onChange={(event) => updateEntry(entry.date, { description: event.target.value })}
+                          onChange={(event) =>
+                            updateEntry(entry.date, { description: event.target.value })
+                          }
                           placeholder={pt('tours.customDates.fields.commentPlaceholder')}
                         />
                       </td>
@@ -362,7 +416,9 @@ export const WasteToursCustomDatesField = ({
                           <p className="text-sm font-medium text-foreground">
                             {assignments.length === 0
                               ? pt('tours.customDates.assignmentSection.summaryEmpty')
-                              : pt('tours.customDates.assignmentSection.summaryCount', { value: assignments.length })}
+                              : pt('tours.customDates.assignmentSection.summaryCount', {
+                                  value: assignments.length,
+                                })}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {assignments.length === 0
@@ -377,7 +433,11 @@ export const WasteToursCustomDatesField = ({
                             type="button"
                             variant="secondary"
                             disabled={disabled}
-                            onClick={() => setActiveAssignmentDate((current) => (current === entry.date ? null : entry.date))}
+                            onClick={() =>
+                              setActiveAssignmentDate((current) =>
+                                current === entry.date ? null : entry.date
+                              )
+                            }
                           >
                             {assignmentsOpen
                               ? pt('tours.customDates.actions.closeAssignments')
@@ -402,12 +462,19 @@ export const WasteToursCustomDatesField = ({
                           <div className="space-y-3 rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <div className="space-y-1">
-                                <p className="text-sm font-medium text-foreground">{pt('tours.customDates.assignmentSection.title')}</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {pt('tours.customDates.assignmentSection.title')}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
                                   {pt('tours.customDates.assignmentSection.description')}
                                 </p>
                               </div>
-                              <Button type="button" variant="secondary" disabled={disabled} onClick={() => addAssignment(entry.date)}>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={disabled}
+                                onClick={() => addAssignment(entry.date)}
+                              >
                                 {pt('tours.customDates.actions.addAssignment')}
                               </Button>
                             </div>
@@ -418,19 +485,29 @@ export const WasteToursCustomDatesField = ({
                             ) : (
                               <div className="space-y-3">
                                 {assignments.map((assignment) => (
-                                  <div key={assignment.id} className="rounded-2xl border border-border/70 bg-card p-4">
+                                  <div
+                                    key={assignment.id}
+                                    className="rounded-2xl border border-border/70 bg-card p-4"
+                                  >
                                     <div className="grid gap-3 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_auto] lg:items-start">
                                       <fieldset
                                         className="space-y-2"
                                         onBlur={(event) => {
                                           const nextTarget = event.relatedTarget;
-                                          if (nextTarget instanceof HTMLElement && event.currentTarget.contains(nextTarget)) {
+                                          if (
+                                            nextTarget instanceof HTMLElement &&
+                                            event.currentTarget.contains(nextTarget)
+                                          ) {
                                             return;
                                           }
-                                          setActiveLocationPickerId((current) => (current === assignment.id ? null : current));
+                                          setActiveLocationPickerId((current) =>
+                                            current === assignment.id ? null : current
+                                          );
                                         }}
                                       >
-                                        <legend className="sr-only">{pt('tours.customDates.fields.location')}</legend>
+                                        <legend className="sr-only">
+                                          {pt('tours.customDates.fields.location')}
+                                        </legend>
                                         <label
                                           className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
                                           htmlFor={`assignment-location-${assignment.id}`}
@@ -458,7 +535,9 @@ export const WasteToursCustomDatesField = ({
                                                 [assignment.id]: event.target.value,
                                               }));
                                             }}
-                                            placeholder={pt('tours.customDates.fields.locationSearchPlaceholder')}
+                                            placeholder={pt(
+                                              'tours.customDates.fields.locationSearchPlaceholder'
+                                            )}
                                           />
                                           {activeLocationPickerId === assignment.id ? (
                                             <div
@@ -483,7 +562,9 @@ export const WasteToursCustomDatesField = ({
                                                     [assignment.id]: '',
                                                   }));
                                                   setActiveLocationPickerId(null);
-                                                  updateAssignment(assignment.id, { locationId: '' });
+                                                  updateAssignment(assignment.id, {
+                                                    locationId: '',
+                                                  });
                                                 }}
                                               >
                                                 {pt('tours.customDates.fields.locationPlaceholder')}
@@ -495,14 +576,18 @@ export const WasteToursCustomDatesField = ({
                                                   );
                                                   return query.length === 0
                                                     ? true
-                                                    : normalizeSearchValue(location.label).includes(query);
+                                                    : normalizeSearchValue(location.label).includes(
+                                                        query
+                                                      );
                                                 })
                                                 .map((location) => (
                                                   <button
                                                     key={location.id}
                                                     type="button"
                                                     role="option"
-                                                    aria-selected={assignment.locationId === location.id}
+                                                    aria-selected={
+                                                      assignment.locationId === location.id
+                                                    }
                                                     className={[
                                                       'flex w-full items-start rounded-lg px-3 py-2 text-left text-sm transition-colors',
                                                       assignment.locationId === location.id
@@ -516,32 +601,47 @@ export const WasteToursCustomDatesField = ({
                                                         [assignment.id]: location.label,
                                                       }));
                                                       setActiveLocationPickerId(null);
-                                                      updateAssignment(assignment.id, { locationId: location.id });
+                                                      updateAssignment(assignment.id, {
+                                                        locationId: location.id,
+                                                      });
                                                     }}
                                                   >
                                                     {location.label}
                                                   </button>
                                                 ))}
                                               {locations.filter((location) => {
-                                                const query = normalizeSearchValue(locationSearchValues[assignment.id] ?? '');
+                                                const query = normalizeSearchValue(
+                                                  locationSearchValues[assignment.id] ?? ''
+                                                );
                                                 return query.length === 0
                                                   ? false
-                                                  : normalizeSearchValue(location.label).includes(query);
+                                                  : normalizeSearchValue(location.label).includes(
+                                                      query
+                                                    );
                                               }).length === 0 &&
-                                              normalizeSearchValue(locationSearchValues[assignment.id] ?? '').length > 0 ? (
+                                              normalizeSearchValue(
+                                                locationSearchValues[assignment.id] ?? ''
+                                              ).length > 0 ? (
                                                 <p className="px-3 py-2 text-sm text-muted-foreground">
-                                                  {pt('tours.customDates.fields.locationSearchEmpty')}
+                                                  {pt(
+                                                    'tours.customDates.fields.locationSearchEmpty'
+                                                  )}
                                                 </p>
                                               ) : null}
                                             </div>
                                           ) : null}
                                         </div>
                                         {duplicateAssignmentId === assignment.id ? (
-                                          <p className="text-xs text-destructive">{pt('tours.customDates.messages.duplicateLocation')}</p>
+                                          <p className="text-xs text-destructive">
+                                            {pt('tours.customDates.messages.duplicateLocation')}
+                                          </p>
                                         ) : null}
                                       </fieldset>
                                       <div className="space-y-2">
-                                        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground" htmlFor={`assignment-note-${assignment.id}`}>
+                                        <label
+                                          className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                          htmlFor={`assignment-note-${assignment.id}`}
+                                        >
                                           {pt('tours.customDates.fields.note')}
                                         </label>
                                         <Textarea
@@ -549,8 +649,14 @@ export const WasteToursCustomDatesField = ({
                                           value={assignment.note}
                                           disabled={disabled}
                                           rows={3}
-                                          onChange={(event) => updateAssignment(assignment.id, { note: event.target.value })}
-                                          placeholder={pt('tours.customDates.fields.notePlaceholder')}
+                                          onChange={(event) =>
+                                            updateAssignment(assignment.id, {
+                                              note: event.target.value,
+                                            })
+                                          }
+                                          placeholder={pt(
+                                            'tours.customDates.fields.notePlaceholder'
+                                          )}
                                         />
                                       </div>
                                       <div className="flex justify-end lg:pt-6">
@@ -591,11 +697,14 @@ export const WasteToursCustomDatesField = ({
         onYearChange={setYear}
         onToggleDate={toggleDate}
       />
-      <StudioConfirmDialog
+      <StudioDestructiveActionDialog
         open={pendingDeleteDate !== null}
         title={pt('tours.customDates.dialog.removeTitle')}
-        description={pt('tours.customDates.dialog.removeDescription', { value: pendingDeleteDate ?? '' })}
+        description={pt('tours.customDates.dialog.removeDescription', {
+          value: pendingDeleteDate ?? '',
+        })}
         confirmLabel={pt('tours.customDates.dialog.removeConfirm')}
+        pendingLabel={pt('common.deleting')}
         cancelLabel={pt('tours.customDates.dialog.removeCancel')}
         onCancel={() => setPendingDeleteDate(null)}
         onConfirm={() => {

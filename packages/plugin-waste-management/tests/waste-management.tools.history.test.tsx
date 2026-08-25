@@ -4,6 +4,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToolsHistory } from '../src/waste-management.tools.history.js';
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    params,
+    to,
+  }: {
+    children: React.ReactNode;
+    params?: { jobId?: string };
+    to: string;
+  }) => <a href={params?.jobId ? to.replace('$jobId', params.jobId) : to}>{children}</a>,
+}));
+
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
@@ -26,9 +38,15 @@ vi.mock('@sva/studio-ui-react', () => ({
   }: {
     readonly children: React.ReactNode;
     readonly variant?: string;
-  }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
+  }) => (
+    <span data-testid="badge" data-variant={variant ?? 'default'}>
+      {children}
+    </span>
+  ),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
+  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div data-testid="empty-state">{children}</div>
+  ),
   StudioJobSummaryCard: ({
     title,
     description,
@@ -71,42 +89,48 @@ describe('WasteToolsHistory', () => {
     expect(screen.getAllByText('tools.meta.noJobYet')).toHaveLength(1);
     expect(screen.getByText('tools.meta.noJobStatus')).toBeTruthy();
     expect(screen.getByText('tone:none')).toBeTruthy();
-    expect(screen.getByTestId('empty-state').textContent).toContain('tools.meta.noTechnicalHistory');
+    expect(screen.getByTestId('empty-state').textContent).toContain(
+      'tools.meta.noTechnicalHistory'
+    );
   });
 
   it('renders job metadata and optional history fields without an admin-only CTA', () => {
     const onDeleteEntry = vi.fn();
     render(
       <WasteToolsHistory
-        lastJob={{
-          id: 'job-7',
-          jobTypeId: 'waste-management.import-data',
-          status: 'failed',
-        } as never}
-        technicalHistory={[
+        lastJob={
           {
-            id: 'entry-1',
-            eventType: 'import.failed',
-            outcome: 'failure',
-            occurredAt: '2026-05-10T10:00:00.000Z',
-            jobId: 'job-7',
+            id: 'job-7',
             jobTypeId: 'waste-management.import-data',
-            requestId: 'req-7',
-            errorCode: 'invalid_sheet',
-            message: 'Worksheet fehlt',
-          },
-          {
-            id: 'entry-2',
-            eventType: 'seed.succeeded',
-            outcome: 'success',
-            occurredAt: '2026-05-09T10:00:00.000Z',
-            jobId: null,
-            jobTypeId: null,
-            requestId: null,
-            errorCode: null,
-            message: null,
-          },
-        ] as never}
+            status: 'failed',
+          } as never
+        }
+        technicalHistory={
+          [
+            {
+              id: 'entry-1',
+              eventType: 'import.failed',
+              outcome: 'failure',
+              occurredAt: '2026-05-10T10:00:00.000Z',
+              jobId: 'job-7',
+              jobTypeId: 'waste-management.import-data',
+              requestId: 'req-7',
+              errorCode: 'invalid_sheet',
+              message: 'Worksheet fehlt',
+            },
+            {
+              id: 'entry-2',
+              eventType: 'seed.succeeded',
+              outcome: 'success',
+              occurredAt: '2026-05-09T10:00:00.000Z',
+              jobId: null,
+              jobTypeId: null,
+              requestId: null,
+              errorCode: null,
+              message: null,
+            },
+          ] as never
+        }
         canDeleteHistoryEntries={true}
         onDeleteEntry={onDeleteEntry}
       />
@@ -118,8 +142,12 @@ describe('WasteToolsHistory', () => {
     expect(screen.getByText('tools.meta.jobIdLabel:job-7')).toBeTruthy();
     expect(screen.getByText('tools.meta.jobTypeLabel:waste-management.import-data')).toBeTruthy();
     expect(screen.getByText('tools.meta.jobStatusLabel:failed')).toBeTruthy();
-    expect(screen.getByText('overview.meta.occurredAt:formatted:2026-05-10T10:00:00.000Z')).toBeTruthy();
-    const detailsButtons = screen.getAllByRole('button', { name: 'tools.meta.historyDetailsAction' });
+    expect(
+      screen.getByText('overview.meta.occurredAt:formatted:2026-05-10T10:00:00.000Z')
+    ).toBeTruthy();
+    const detailsButtons = screen.getAllByRole('button', {
+      name: 'tools.meta.historyDetailsAction',
+    });
     const firstDetailsButton = detailsButtons[0];
     expect(firstDetailsButton).toBeTruthy();
     if (!firstDetailsButton) {
@@ -139,7 +167,9 @@ describe('WasteToolsHistory', () => {
     expect(screen.getByText('Worksheet fehlt')).toBeTruthy();
     expect(onDeleteEntry).toHaveBeenCalledWith('job-7');
 
-    const variants = screen.getAllByTestId('badge').map((node) => node.getAttribute('data-variant'));
+    const variants = screen
+      .getAllByTestId('badge')
+      .map((node) => node.getAttribute('data-variant'));
     expect(variants).toContain('destructive');
     expect(variants).toContain('default');
     expect(screen.queryByRole('button', { name: 'tools.actions.openJob' })).toBeNull();
@@ -148,22 +178,24 @@ describe('WasteToolsHistory', () => {
   it('renders a live progress card for a running import job', () => {
     render(
       <WasteToolsHistory
-        lastJob={{
-          id: 'job-8',
-          jobTypeId: 'waste-management.import-data',
-          status: 'running',
-          progress: {
-            completedSteps: 25,
-            totalSteps: 50,
-            currentPhase: 'waste-management.import-running',
-            currentStepKey: 'process-rows',
-            details: {
-              processedRows: 25,
-              totalRows: 50,
+        lastJob={
+          {
+            id: 'job-8',
+            jobTypeId: 'waste-management.import-data',
+            status: 'running',
+            progress: {
+              completedSteps: 25,
+              totalSteps: 50,
+              currentPhase: 'waste-management.import-running',
+              currentStepKey: 'process-rows',
+              details: {
+                processedRows: 25,
+                totalRows: 50,
+              },
+              lastUpdatedAt: '2026-05-10T11:00:00.000Z',
             },
-            lastUpdatedAt: '2026-05-10T11:00:00.000Z',
-          },
-        } as never}
+          } as never
+        }
         technicalHistory={[]}
       />
     );
@@ -173,21 +205,25 @@ describe('WasteToolsHistory', () => {
     expect(screen.getAllByText('tools.progress.steps.process-rows').length).toBeGreaterThan(0);
     expect(screen.getByText('tools.progress.rows:25|50')).toBeTruthy();
     expect(screen.getByText('tools.progress.phases.waste-management.import-running')).toBeTruthy();
-    expect(screen.getByText('tools.progress.updatedAt:formatted:2026-05-10T11:00:00.000Z')).toBeTruthy();
+    expect(
+      screen.getByText('tools.progress.updatedAt:formatted:2026-05-10T11:00:00.000Z')
+    ).toBeTruthy();
   });
 
   it('falls back to queued progress labels and clamps oversized percentages', () => {
     render(
       <WasteToolsHistory
-        lastJob={{
-          id: 'job-9',
-          jobTypeId: 'waste-management.import-data',
-          status: 'queued',
-          progress: {
-            completedSteps: 5,
-            totalSteps: 4,
-          },
-        } as never}
+        lastJob={
+          {
+            id: 'job-9',
+            jobTypeId: 'waste-management.import-data',
+            status: 'queued',
+            progress: {
+              completedSteps: 5,
+              totalSteps: 4,
+            },
+          } as never
+        }
         technicalHistory={[]}
       />
     );
@@ -202,29 +238,33 @@ describe('WasteToolsHistory', () => {
   it('prefers explicit step labels, hides row metadata when progress details are incomplete, and omits import progress for other job types', () => {
     const { rerender } = render(
       <WasteToolsHistory
-        lastJob={{
-          id: 'job-10',
-          jobTypeId: 'waste-management.import-data',
-          status: 'retrying',
-          progress: {
-            currentStepLabel: 'Importiere Zeilenblock 4',
-            completedSteps: 7,
-            totalSteps: 0,
-          },
-        } as never}
-        technicalHistory={[
+        lastJob={
           {
-            id: 'entry-3',
-            eventType: 'job.retrying',
-            outcome: 'running',
-            occurredAt: '2026-05-10T12:00:00.000Z',
-            jobId: null,
-            jobTypeId: null,
-            requestId: null,
-            errorCode: null,
-            message: null,
-          },
-        ] as never}
+            id: 'job-10',
+            jobTypeId: 'waste-management.import-data',
+            status: 'retrying',
+            progress: {
+              currentStepLabel: 'Importiere Zeilenblock 4',
+              completedSteps: 7,
+              totalSteps: 0,
+            },
+          } as never
+        }
+        technicalHistory={
+          [
+            {
+              id: 'entry-3',
+              eventType: 'job.retrying',
+              outcome: 'running',
+              occurredAt: '2026-05-10T12:00:00.000Z',
+              jobId: null,
+              jobTypeId: null,
+              requestId: null,
+              errorCode: null,
+              message: null,
+            },
+          ] as never
+        }
       />
     );
 
@@ -236,17 +276,17 @@ describe('WasteToolsHistory', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDetailsAction' }));
     expect(screen.queryByText(/overview.meta.jobId:/)).toBeNull();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'tools.meta.historyCloseDetailsAction' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyCloseDetailsAction' }));
 
     rerender(
       <WasteToolsHistory
-        lastJob={{
-          id: 'job-11',
-          jobTypeId: 'waste-management.initialize',
-          status: 'running',
-        } as never}
+        lastJob={
+          {
+            id: 'job-11',
+            jobTypeId: 'waste-management.initialize',
+            status: 'running',
+          } as never
+        }
         technicalHistory={[]}
       />
     );
@@ -258,19 +298,21 @@ describe('WasteToolsHistory', () => {
     render(
       <WasteToolsHistory
         lastJob={null}
-        technicalHistory={[
-          {
-            id: 'entry-4',
-            eventType: 'import.failed',
-            outcome: 'failure',
-            occurredAt: '2026-05-10T13:00:00.000Z',
-            jobId: 'job-9',
-            jobTypeId: 'waste-management.import-data',
-            requestId: 'req-9',
-            errorCode: 'forbidden',
-            message: 'Nicht erlaubt',
-          },
-        ] as never}
+        technicalHistory={
+          [
+            {
+              id: 'entry-4',
+              eventType: 'import.failed',
+              outcome: 'failure',
+              occurredAt: '2026-05-10T13:00:00.000Z',
+              jobId: 'job-9',
+              jobTypeId: 'waste-management.import-data',
+              requestId: 'req-9',
+              errorCode: 'forbidden',
+              message: 'Nicht erlaubt',
+            },
+          ] as never
+        }
         canDeleteHistoryEntries={false}
         onDeleteEntry={vi.fn()}
       />
@@ -283,17 +325,19 @@ describe('WasteToolsHistory', () => {
     render(
       <WasteToolsHistory
         lastJob={null}
-        technicalHistory={[
-          {
-            id: 'job:postal-job-1:succeeded',
-            eventType: 'postal-code-enrichment.succeeded',
-            outcome: 'success',
-            occurredAt: '2026-08-14T14:00:00.000Z',
-            source: 'job',
-            jobId: 'postal-job-1',
-            jobTypeId: 'waste-management.enrich-postal-codes',
-          },
-        ] as never}
+        technicalHistory={
+          [
+            {
+              id: 'job:postal-job-1:succeeded',
+              eventType: 'postal-code-enrichment.succeeded',
+              outcome: 'success',
+              occurredAt: '2026-08-14T14:00:00.000Z',
+              source: 'job',
+              jobId: 'postal-job-1',
+              jobTypeId: 'waste-management.enrich-postal-codes',
+            },
+          ] as never
+        }
       />
     );
 
@@ -306,18 +350,20 @@ describe('WasteToolsHistory', () => {
     render(
       <WasteToolsHistory
         lastJob={null}
-        technicalHistory={[
-          {
-            id: 'job:postal-job-2:cancelled',
-            eventType: 'postal-code-enrichment.failed',
-            outcome: 'failure',
-            jobStatus: 'cancelled',
-            occurredAt: '2026-08-14T15:00:00.000Z',
-            source: 'job',
-            jobId: 'postal-job-2',
-            jobTypeId: 'waste-management.enrich-postal-codes',
-          },
-        ] as never}
+        technicalHistory={
+          [
+            {
+              id: 'job:postal-job-2:cancelled',
+              eventType: 'postal-code-enrichment.failed',
+              outcome: 'failure',
+              jobStatus: 'cancelled',
+              occurredAt: '2026-08-14T15:00:00.000Z',
+              source: 'job',
+              jobId: 'postal-job-2',
+              jobTypeId: 'waste-management.enrich-postal-codes',
+            },
+          ] as never
+        }
       />
     );
 

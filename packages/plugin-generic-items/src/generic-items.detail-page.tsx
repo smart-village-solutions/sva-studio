@@ -27,7 +27,7 @@ import {
   addStudioCreatedSaveFeedback,
   Button,
   hasStudioCreatedSaveFeedback,
-  StudioConfirmDialog,
+  StudioDestructiveActionDialog,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioFormSummaryErrors,
@@ -829,21 +829,23 @@ export function GenericItemsDetailPage({
           }}
         />
         {accessCapabilities.canDelete ? (
-          <StudioConfirmDialog
+          <StudioDestructiveActionDialog
             open={deleteDialogOpen}
-            title={pt('actions.delete')}
-            description={pt('actions.deleteConfirm')}
+            title={pt('actions.deleteConfirmTitle')}
+            description={pt('actions.deleteConfirm', {
+              title: methods.getValues('title'),
+            })}
             confirmLabel={pt('actions.delete')}
+            pendingLabel={pt('actions.deleting')}
             cancelLabel={pt('actions.back')}
-            confirmDisabled={deleting}
-            cancelDisabled={deleting}
+            pending={deleting}
+            errorMessage={status?.kind === 'error' ? status.text : undefined}
             onConfirm={() => void handleDelete()}
-            onCancel={() => setDeleteDialogOpen(false)}
-          >
-            {status?.kind === 'error' ? (
-              <StudioFormSummary kind="error">{status.text}</StudioFormSummary>
-            ) : null}
-          </StudioConfirmDialog>
+            onCancel={() => {
+              setStatus(null);
+              setDeleteDialogOpen(false);
+            }}
+          />
         ) : null}
       </StudioDetailPageTemplate>
     </FormProvider>

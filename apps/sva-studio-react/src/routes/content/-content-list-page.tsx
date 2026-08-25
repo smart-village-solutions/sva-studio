@@ -15,16 +15,19 @@ import { deleteSurvey } from '@sva/plugin-surveys';
 import { IconTrash } from '@tabler/icons-react';
 import {
   Button,
+  readStudioDestructiveNavigationFeedback,
+  removeStudioActionNavigationFeedback,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   type StudioBulkAction,
   type StudioColumnDef,
   StudioDataTable,
   StudioListPageTemplate,
+  StudioPersistentActionResult,
   StudioTableActionButton,
   StudioTableValueAction,
 } from '@sva/studio-ui-react';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
 import {
@@ -532,7 +535,22 @@ export const ContentListPage = ({
   const studioDataTableLabels = createStudioDataTableLabels();
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const navigate = useNavigate();
+  const location = useLocation();
   const search = useSearch({ strict: false }) as RouteSearchState;
+  const [destructiveResult, setDestructiveResult] = React.useState(() =>
+    readStudioDestructiveNavigationFeedback(location.state)
+  );
+  React.useEffect(() => {
+    const feedback = readStudioDestructiveNavigationFeedback(location.state);
+    if (!feedback) return;
+    setDestructiveResult(feedback);
+    void navigate({
+      to: '/admin/content',
+      replace: true,
+      search: (current: RouteSearchState) => current,
+      state: (previous) => removeStudioActionNavigationFeedback(previous),
+    });
+  }, [location.state, navigate]);
   const auth = useAuth();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
@@ -842,6 +860,18 @@ export const ContentListPage = ({
         title={t('content.page.title')}
         description={t('content.page.subtitle')}
       />
+
+      {destructiveResult ? (
+        <StudioPersistentActionResult
+          kind="success"
+          title={t('content.messages.deleteSuccessTitle')}
+          description={t('content.messages.deleteSuccess', {
+            id: destructiveResult.resourceId,
+          })}
+          dismissLabel={t('content.actions.dismissFeedback')}
+          onDismiss={() => setDestructiveResult(null)}
+        />
+      ) : null}
 
       {contentsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/5 text-destructive">

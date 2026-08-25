@@ -182,6 +182,9 @@ export const useInterfacesPageController = () => {
   const [pickerType, setPickerType] = React.useState<InstanceInterfaceType>('s3');
   const [editState, setEditState] = React.useState<EditState>({ mode: 'closed' });
   const [pendingDelete, setPendingDelete] = React.useState<InstanceInterface | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
+  const [deleteResultMessage, setDeleteResultMessage] = React.useState<string | null>(null);
   const saveFeedback = useStudioSaveFeedback();
 
   const refresh = React.useCallback(
@@ -276,12 +279,14 @@ export const useInterfacesPageController = () => {
   };
 
   const onConfirmDelete = async () => {
-    if (!pendingDelete) {
+    if (!pendingDelete || deletePending) {
       setPendingDelete(null);
       return;
     }
 
-    setErrorMessage(null);
+    setDeletePending(true);
+    setDeleteErrorMessage(null);
+    setDeleteResultMessage(null);
     try {
       const result = await deleteInterfaceRef.current({
         data: { instanceId, id: pendingDelete.id },
@@ -289,11 +294,19 @@ export const useInterfacesPageController = () => {
       if (!result.deleted) {
         throw new Error('interface_not_found');
       }
+      const deletedName = pendingDelete.name;
+      const refreshed = await refresh(false);
+      if (!refreshed) {
+        throw new Error(t('interfaces.messages.refreshAfterDeleteError'));
+      }
       setPendingDelete(null);
-      await refresh();
+      setDeleteResultMessage(t('interfaces.messages.deleteSuccess', { name: deletedName }));
     } catch (error) {
-      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.saveError')));
-      setPendingDelete(null);
+      setDeleteErrorMessage(
+        translateInterfacesErrorMessage(error, t('interfaces.messages.deleteError'))
+      );
+    } finally {
+      setDeletePending(false);
     }
   };
 
@@ -304,6 +317,9 @@ export const useInterfacesPageController = () => {
     instanceId,
     interfaces,
     isLoading,
+    deleteErrorMessage,
+    deletePending,
+    deleteResultMessage,
     saveErrorMessage,
     saveStatus: saveFeedback.status,
     pendingDelete,
@@ -311,7 +327,17 @@ export const useInterfacesPageController = () => {
     pickerType,
     refresh,
     setEditState,
-    setPendingDelete,
+    cancelDelete: () => {
+      if (deletePending) return;
+      setDeleteErrorMessage(null);
+      setPendingDelete(null);
+    },
+    dismissDeleteResult: () => setDeleteResultMessage(null),
+    requestDelete: (entry: InstanceInterface) => {
+      setDeleteErrorMessage(null);
+      setDeleteResultMessage(null);
+      setPendingDelete(entry);
+    },
     setPickerOpen,
     setPickerType,
     markDraftDirty: saveFeedback.markDirty,

@@ -1,7 +1,13 @@
 import type { StudioJobDetail, StudioJobListItem, StudioJobListQuery } from '@sva/core';
 import React from 'react';
 
-import { asIamError, getPluginOperationJob, listPluginOperationJobs, type IamHttpError } from '../lib/iam-api';
+import {
+  asIamError,
+  cancelPluginOperationJob,
+  getPluginOperationJob,
+  listPluginOperationJobs,
+  type IamHttpError,
+} from '../lib/iam-api';
 import {
   createOperationLogger,
   logBrowserOperationAbort,
@@ -82,7 +88,9 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
     }));
 
     try {
-      const response = await listPluginOperationJobs(normalizedQuery, { signal: controller.signal });
+      const response = await listPluginOperationJobs(normalizedQuery, {
+        signal: controller.signal,
+      });
       if (requestId !== latestRequestIdRef.current) {
         return;
       }
@@ -115,10 +123,15 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
         error: resolvedError,
         isLoading: false,
       }));
-      logBrowserOperationFailure(jobsLogger, 'studio_plugin_operation_jobs_list_failed', resolvedError, {
-        operation: 'list_plugin_operation_jobs',
-        view: normalizedQuery.view,
-      });
+      logBrowserOperationFailure(
+        jobsLogger,
+        'studio_plugin_operation_jobs_list_failed',
+        resolvedError,
+        {
+          operation: 'list_plugin_operation_jobs',
+          view: normalizedQuery.view,
+        }
+      );
     } finally {
       abortControllersRef.current.delete(controller);
     }
@@ -153,12 +166,15 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
 
 export const usePluginOperationJobDetail = (jobId: string) => {
   const abortControllersRef = useAbortControllerSet();
+  const cancellationInFlightRef = React.useRef(false);
   const latestRequestIdRef = React.useRef(0);
   const [state, setState] = React.useState<JobDetailState>({
     detail: null,
     error: null,
     isLoading: true,
   });
+  const [actionError, setActionError] = React.useState<IamHttpError | null>(null);
+  const [isCancelling, setIsCancelling] = React.useState(false);
 
   const refetch = React.useCallback(async () => {
     if (!jobId) {
@@ -218,10 +234,15 @@ export const usePluginOperationJobDetail = (jobId: string) => {
         error: resolvedError,
         isLoading: false,
       }));
-      logBrowserOperationFailure(jobsLogger, 'studio_plugin_operation_job_detail_failed', resolvedError, {
-        operation: 'get_plugin_operation_job',
-        job_id: jobId,
-      });
+      logBrowserOperationFailure(
+        jobsLogger,
+        'studio_plugin_operation_job_detail_failed',
+        resolvedError,
+        {
+          operation: 'get_plugin_operation_job',
+          job_id: jobId,
+        }
+      );
     } finally {
       abortControllersRef.current.delete(controller);
     }
@@ -245,10 +266,45 @@ export const usePluginOperationJobDetail = (jobId: string) => {
     };
   }, [refetch, state.detail]);
 
+  const cancel = React.useCallback(async () => {
+    if (!state.detail?.availableActions?.includes('cancel') || cancellationInFlightRef.current) {
+      return false;
+    }
+    cancellationInFlightRef.current = true;
+    setIsCancelling(true);
+    setActionError(null);
+    try {
+      const acceptedJob = await cancelPluginOperationJob(jobId);
+      setState((current) =>
+        current.detail
+          ? {
+              ...current,
+              detail: {
+                ...current.detail,
+                availableActions: [],
+                cancelRequestedAt: acceptedJob.cancelRequestedAt,
+              },
+            }
+          : current
+      );
+      await refetch();
+      return true;
+    } catch (error) {
+      setActionError(asIamError(error));
+      return false;
+    } finally {
+      cancellationInFlightRef.current = false;
+      setIsCancelling(false);
+    }
+  }, [jobId, refetch, state.detail?.availableActions]);
+
   return {
+    actionError,
+    cancel,
     detail: state.detail,
     error: state.error,
     isLoading: state.isLoading,
+    isCancelling,
     refetch,
   };
 };

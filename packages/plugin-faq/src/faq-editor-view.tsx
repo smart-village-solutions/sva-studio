@@ -149,6 +149,7 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
         open={props.deleteDialogOpen}
         pending={props.deletePending}
         errorMessage={props.deleteErrorMessage}
+        target={props.form.getValues('question')}
         onConfirm={() => void props.onDelete()}
         onCancel={() => {
           props.setDeleteDialogOpen(false);

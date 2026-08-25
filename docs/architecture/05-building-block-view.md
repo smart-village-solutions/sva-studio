@@ -68,6 +68,8 @@ Abhängigkeiten des aktuellen Systems.
 - stellt für Buttons zentrale Theme-Zustände, 44 × 44 Pixel Mindestzielgröße, sichtbaren Fokus, Disabled-/Loading-Semantik und fokusfähige Icon-Tooltips bereit
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
 - besitzt mit `StudioSaveButton`, `useStudioSaveFeedback` und `StudioPersistentFormError` die gemeinsame Darstellung normaler Save-Lifecycles; die kleinen `*StudioCreatedSaveFeedback`-Hilfen transportieren einen Create-Erfolg transient und datensatzgebunden zur Detailroute; fachliche Mutationen und Fehlerübersetzungen bleiben außerhalb des UI-Pakets
+- besitzt mit `StudioDestructiveActionDialog` und `StudioPersistentActionResult` die gemeinsame Darstellung endgültiger Entscheidungen und stabiler Ergebnisse; die Navigationshilfen transportieren ausschließlich den einmaligen ressourcengebundenen Abschluss, niemals Undo- oder Restore-Semantik
+- erweitert `StudioJobSummaryCard` um eine höfliche Status-/Phasenansage; Jobstatus, Berechtigungen und `availableActions` bleiben Hostdaten
 - ist kanonischer Owner für wiederverwendbare Host-Listen-UI wie `StudioDataTable` und `StudioListPageTemplate`; die App liefert nur noch explizite Labels, Routen und Seitendaten
 - besitzt mit `ContentMediaUsageBlock` den kontrollierten, pluginneutralen Bildeditor. Er trennt stabile UI-Identität, optionale Asset-Identität, persistierbare Inhalts-URL, transiente Vorschau und redaktionelle Metadaten; pluginnahe Adapter erhalten alle nicht bearbeiteten Fachfelder.
 - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik

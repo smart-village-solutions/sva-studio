@@ -12,13 +12,55 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  StudioDestructiveActionDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+    pending,
+    confirmDisabled,
+    errorMessage,
+    children,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly pending?: boolean;
+    readonly confirmDisabled?: boolean;
+    readonly errorMessage?: React.ReactNode;
+    readonly children?: React.ReactNode;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {children}
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+        <button type="button" disabled={pending} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" disabled={pending || confirmDisabled} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
-  Dialog: ({ open, children }: { readonly open?: boolean; readonly children: React.ReactNode }) => (open ? <div>{children}</div> : null),
+  Dialog: ({ open, children }: { readonly open?: boolean; readonly children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   StudioConfirmDialog: ({
     open,
@@ -58,7 +100,9 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button
           type="button"
           onClick={() =>
-            (props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }).onChange([{ id: 'color', desc: true }])
+            (
+              props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }
+            ).onChange([{ id: 'color', desc: true }])
           }
         >
           sort-color
@@ -66,9 +110,9 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button
           type="button"
           onClick={() =>
-            (props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }).onChange([
-              { id: 'description', desc: false },
-            ])
+            (
+              props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }
+            ).onChange([{ id: 'description', desc: false }])
           }
         >
           sort-description
@@ -76,12 +120,19 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button
           type="button"
           onClick={() =>
-            (props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }).onChange([{ id: 'status', desc: true }])
+            (
+              props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }
+            ).onChange([{ id: 'status', desc: true }])
           }
         >
           sort-status
         </button>
-        <button type="button" onClick={() => (props.rowActions as (row: unknown) => React.ReactNode)((props.data as unknown[])[0])}>
+        <button
+          type="button"
+          onClick={() =>
+            (props.rowActions as (row: unknown) => React.ReactNode)((props.data as unknown[])[0])
+          }
+        >
           render-row-actions
         </button>
       </div>
@@ -146,20 +197,14 @@ describe('WasteMasterDataFractionsContent', () => {
       mode: 'external',
       state: [{ id: 'nameWithContainerSize', desc: false }],
     });
-    expect((tableProps.columns as Array<{ id: string; sortable?: boolean }>).map((column) => column.id)).toEqual([
-      'nameWithContainerSize',
-      'pdfShortLabel',
-      'color',
-      'description',
-      'status',
-    ]);
-    expect((tableProps.columns as Array<{ id: string; sortable?: boolean }>).map((column) => column.sortable ?? false)).toEqual([
-      true,
-      false,
-      true,
-      true,
-      true,
-    ]);
+    expect(
+      (tableProps.columns as Array<{ id: string; sortable?: boolean }>).map((column) => column.id)
+    ).toEqual(['nameWithContainerSize', 'pdfShortLabel', 'color', 'description', 'status']);
+    expect(
+      (tableProps.columns as Array<{ id: string; sortable?: boolean }>).map(
+        (column) => column.sortable ?? false
+      )
+    ).toEqual([true, false, true, true, true]);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-color' }));
     const updatedTableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
@@ -169,10 +214,11 @@ describe('WasteMasterDataFractionsContent', () => {
     });
     expect(onFractionsSortChange).toHaveBeenCalledWith('color', 'desc');
 
-    const [nameColumn, pdfShortLabelColumn, colorColumn, descriptionColumn, statusColumn] = tableProps.columns as Array<{
-      id: string;
-      cell: (row: typeof fraction) => React.ReactNode;
-    }>;
+    const [nameColumn, pdfShortLabelColumn, colorColumn, descriptionColumn, statusColumn] =
+      tableProps.columns as Array<{
+        id: string;
+        cell: (row: typeof fraction) => React.ReactNode;
+      }>;
     expect(nameColumn.cell(fraction)).toBeTruthy();
     expect(pdfShortLabelColumn.cell(fraction)).toBeTruthy();
     expect(colorColumn.cell(fraction)).toBeTruthy();
@@ -194,7 +240,9 @@ describe('WasteMasterDataFractionsContent', () => {
     expect(onOpenEditFraction).toHaveBeenCalledWith(fraction);
     expect(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeTruthy();
     expect(screen.getByText('masterData.fractions.deleteDialog.title')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.confirm' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.confirm' })
+    );
     expect(onOpenDeleteFraction).toHaveBeenCalledWith(fraction);
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' }));
@@ -206,7 +254,9 @@ describe('WasteMasterDataFractionsContent', () => {
       })
     );
     expect(screen.getByText('masterData.fractions.statusDialog.deactivateTitle')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.statusDialog.confirm' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.statusDialog.confirm' })
+    );
     expect(onToggleFractionStatus).toHaveBeenCalledWith(fraction, false);
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.open' }));
@@ -216,7 +266,9 @@ describe('WasteMasterDataFractionsContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.apply' }));
     expect(onFractionsStatusChange).toHaveBeenCalledWith('inactive');
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.openCreate' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.actions.openCreate' })
+    );
     expect(onOpenCreateFraction).toHaveBeenCalledTimes(1);
   });
 
@@ -264,15 +316,24 @@ describe('WasteMasterDataFractionsContent', () => {
     );
 
     let tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-1', 'fraction-2']);
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual([
+      'fraction-1',
+      'fraction-2',
+    ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-description' }));
     tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-1', 'fraction-2']);
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual([
+      'fraction-1',
+      'fraction-2',
+    ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-status' }));
     tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual([
+      'fraction-2',
+      'fraction-1',
+    ]);
     expect(screen.queryByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeNull();
 
     const [, pdfShortLabelColumn, , , statusColumn] = tableProps.columns as Array<{
@@ -281,7 +342,9 @@ describe('WasteMasterDataFractionsContent', () => {
     }>;
     expect(pdfShortLabelColumn.cell(fractions[0]!)).toBeTruthy();
     expect(pdfShortLabelColumn.cell(fractions[1]!)).toBeNull();
-    const rowActions = tableProps.rowActions as (row: (typeof fractions)[number]) => React.ReactNode;
+    const rowActions = tableProps.rowActions as (
+      row: (typeof fractions)[number]
+    ) => React.ReactNode;
     render(
       <div>
         {statusColumn.cell(fractions[1]!)}
@@ -290,7 +353,9 @@ describe('WasteMasterDataFractionsContent', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.delete' }));
     expect(screen.getByText('masterData.fractions.deleteDialog.title')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.cancel' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.cancel' })
+    );
     expect(screen.queryByText('masterData.fractions.deleteDialog.title')).toBeNull();
 
     fireEvent.click(
@@ -299,7 +364,9 @@ describe('WasteMasterDataFractionsContent', () => {
       })
     );
     expect(screen.getByText('masterData.fractions.statusDialog.activateTitle')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.statusDialog.cancel' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.statusDialog.cancel' })
+    );
     expect(screen.queryByText('masterData.fractions.statusDialog.activateTitle')).toBeNull();
     expect(onToggleFractionStatus).not.toHaveBeenCalled();
   });

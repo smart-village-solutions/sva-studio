@@ -8,7 +8,10 @@ export const genericItemsTranslationsDeActions = {
     back: 'Zurück zur Liste',
     edit: 'Bearbeiten',
     delete: 'Löschen',
-    deleteConfirm: 'Soll dieser generische Inhalt wirklich gelöscht werden?',
+    deleteConfirmTitle: 'Generischen Inhalt löschen?',
+    deleteConfirm:
+      'Der generische Inhalt „{{title}}“ wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
+    deleting: 'Wird gelöscht …',
     addContentBlock: 'Block hinzufügen',
     addAddress: 'Adresse hinzufügen',
     addOpeningHour: 'Öffnungszeit hinzufügen',

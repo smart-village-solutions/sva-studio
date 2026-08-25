@@ -87,6 +87,19 @@ describe('job detail read model', () => {
       evaluatedAt: '2026-05-09T12:05:00.000Z',
       lastObservedAt: '2026-05-09T12:01:00.000Z',
     });
+    expect(detail.availableActions).toEqual([]);
+
+    const cancellableDetail = normalizeStudioJobDetail(
+      { ...detail, cancelRequestedAt: undefined, status: 'running' },
+      { canCancel: true, now: () => '2026-05-09T12:05:00.000Z' }
+    );
+    expect(cancellableDetail.availableActions).toEqual(['cancel']);
+    expect(
+      normalizeStudioJobDetail(
+        { ...cancellableDetail, status: 'succeeded' },
+        { canCancel: true, now: () => '2026-05-09T12:05:00.000Z' }
+      ).availableActions
+    ).toEqual([]);
   });
 
   it('covers event presentation and default messages for every event type', () => {
@@ -168,9 +181,14 @@ describe('job detail read model', () => {
       },
     });
 
-    expect(normalizeStudioJobEventDetails({ workerId: undefined, errorPayload: undefined, cancelRequestedAt: undefined }, {
-      eventType: 'job.started',
-    } as never)).toBeUndefined();
+    expect(
+      normalizeStudioJobEventDetails(
+        { workerId: undefined, errorPayload: undefined, cancelRequestedAt: undefined },
+        {
+          eventType: 'job.started',
+        } as never
+      )
+    ).toBeUndefined();
 
     expect(
       createStudioJobRuntimeDiagnostics(
@@ -204,10 +222,7 @@ describe('job detail read model', () => {
   it('resolves latest events and last observed timestamps defensively', () => {
     expect(resolveLatestStudioJobEvent([])).toBeUndefined();
     expect(
-      resolveLatestStudioJobEvent([
-        { id: 'event-1' },
-        { id: 'event-2' },
-      ] as never)
+      resolveLatestStudioJobEvent([{ id: 'event-1' }, { id: 'event-2' }] as never)
     ).toMatchObject({ id: 'event-2' });
 
     expect(

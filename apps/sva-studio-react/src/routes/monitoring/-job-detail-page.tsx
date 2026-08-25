@@ -1,12 +1,10 @@
-import { Link } from '@tanstack/react-router';
-
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { usePluginOperationJobDetail } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
 import { formatMonitoringJobDetailError } from './-job-error-presentation';
+import { MonitoringJobDetailHeader } from './-job-detail-header';
 import {
   formatMonitoringJobEventMessage,
   formatMonitoringJobEventTitle,
@@ -331,35 +329,38 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
   const jobApi = usePluginOperationJobDetail(jobId);
   const job = jobApi.detail;
   const writeSummary = job ? extractMonitoringJobWriteSummary(job) : null;
+  const currentPhase = job?.progress?.currentPhase;
+  const statusLabel = job
+    ? t(monitoringJobStatusLabelKeyByValue[job.status])
+    : t('monitoring.jobs.status.queued');
 
   return (
     <section className="space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={job ? monitoringJobStatusVariantByValue[job.status] : 'outline'}>
-              {job
-                ? t(monitoringJobStatusLabelKeyByValue[job.status])
-                : t('monitoring.jobs.status.queued')}
-            </Badge>
-            {job?.runtime ? (
-              <Badge variant={job.runtime.staleState === 'stale' ? 'destructive' : 'outline'}>
-                {t(monitoringJobStaleStateLabelKeyByValue[job.runtime.staleState])}
-              </Badge>
-            ) : null}
-          </div>
-          <h1 className="text-3xl font-semibold text-foreground">
-            {t('monitoring.jobs.detail.title')}
-          </h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">
-            {t('monitoring.jobs.detail.subtitle')}
-          </p>
-          <p className="text-xs text-muted-foreground">{jobId}</p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link to="/monitoring/jobs">{t('monitoring.jobs.detail.back')}</Link>
-        </Button>
-      </header>
+      <MonitoringJobDetailHeader
+        jobId={jobId}
+        statusLabel={statusLabel}
+        statusTone={
+          job?.status === 'failed' ? 'error' : job?.status === 'succeeded' ? 'success' : 'warning'
+        }
+        announcement={
+          currentPhase
+            ? t('monitoring.jobs.messages.statusPhaseAnnouncement', {
+                status: statusLabel,
+                phase: currentPhase,
+              })
+            : t('monitoring.jobs.messages.statusAnnouncement', { status: statusLabel })
+        }
+        runtimeLabel={
+          job?.runtime ? t(monitoringJobStaleStateLabelKeyByValue[job.runtime.staleState]) : undefined
+        }
+        canCancel={job?.availableActions?.includes('cancel') ?? false}
+        cancelRequested={Boolean(job?.cancelRequestedAt || job?.runtime?.cancellationRequested)}
+        isCancelling={jobApi.isCancelling}
+        cancelErrorMessage={
+          jobApi.actionError ? formatMonitoringJobDetailError(jobApi.actionError) : undefined
+        }
+        onCancel={jobApi.cancel}
+      />
 
       {jobApi.error ? (
         <Alert className="border-destructive/40 text-destructive">

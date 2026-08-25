@@ -170,7 +170,7 @@ export default function AppShell({
               <React.Suspense fallback={null}>
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
-              {documentationPageId ? (
+              {isAuthenticated && documentationPageId ? (
                 <React.Suspense fallback={null}>
                   <LazyContextualHelp key={documentationPageId} pageId={documentationPageId} />
                 </React.Suspense>

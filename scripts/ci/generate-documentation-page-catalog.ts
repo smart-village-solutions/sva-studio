@@ -2,7 +2,7 @@ import { access, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import type { PluginDefinition, PluginManifest } from '@sva/plugin-sdk';
+import { createPluginRegistry, type PluginDefinition, type PluginManifest } from '@sva/plugin-sdk';
 
 import type { AppRouteBindings } from '../../packages/routing/src/index.ts';
 import { collectDocumentationPageCatalog } from '../../packages/routing/src/documentation-page-catalog.ts';
@@ -71,11 +71,12 @@ const loadPackagePlugin = async (
 
 const loadEnabledPlugins = async (): Promise<readonly PluginDefinition[]> => {
   const entries = (await readPluginCatalog()).filter((entry) => entry.enabled);
-  return Promise.all(
+  const plugins = await Promise.all(
     entries.map((entry) =>
       entry.sourceType === 'workspace' ? loadWorkspacePlugin(entry) : loadPackagePlugin(entry)
     )
   );
+  return Array.from(createPluginRegistry(plugins).values());
 };
 
 export const createDocumentationPageCatalogJson = async (): Promise<string> =>

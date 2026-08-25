@@ -62,7 +62,7 @@
 - [x] 7.3 Nachweisen, dass eine reine Markdown-Änderung im separaten Repository nach dessen Pages-Deployment ohne Studio-Build im Overlay sichtbar ist.
 - [x] 7.4 Vor breiten lokalen Runs den affected Scope messen und anschließend die kleinsten relevanten Unit-, Type-, ESLint-, Server-Runtime- und E2E-Gates gemäß `AGENTS.md` ausführen.
 - [x] 7.5 Vor dem initialen Implementierungs-PR nach Möglichkeit `pnpm test:pr`, `pnpm check:file-placement`, `pnpm check:studio-changelog` und `openspec validate add-contextual-user-documentation --strict` ausführen.
-- [ ] 7.6 Die Aktivierung über Dev und Staging prüfen; ein Production-Rollout erfolgt ausschließlich über `Build` → Dev → Staging → Production mit demselben unveränderlichen Image-Digest.
+- [x] 7.6 Die Aktivierung über Dev und Staging prüfen; ein Production-Rollout erfolgt ausschließlich über `Build` → Dev → Staging → Production mit demselben unveränderlichen Image-Digest.
 
 ### Veröffentlichungsevidenz
 
@@ -73,6 +73,9 @@
 - Live geprüft: Startseite, `manifest.json` mit 43 Seiten und `markdown/home.overview.md` liefern HTTP 200; die Studio-Laufzeitfassade liest die ausschließlich im Doku-Repository ergänzte Passage mit unverändertem Studio-Artefakt.
 - Studio-PR-Abnahme: PR `#1143`, exakter Head `d75e2a24b3a74444d5fcb5cfe5087a78342cf072`; File Placement, Studio Changelog, Unit, Types, A11y, PR Integration, Coverage und die weiteren verpflichtenden GitHub-Gates waren vor dem Merge grün. Beim Abschluss wurden `pnpm check:file-placement`, `pnpm check:studio-changelog` und `openspec validate add-contextual-user-documentation --strict` erneut erfolgreich ausgeführt.
 - Erster echter Katalog-Dispatch: Studio-Merge `8cc4cb7a8ce4ee2e8abb8eb851b174bc3ec4d523`, Studio-Lauf `32808670246`, Doku-Repository-Lauf `32808677105`; der Sync erzeugte automatisch Doku-PR `#1` auf `automation/sync-studio-page-catalog`, ohne bestehende Markdown-Dateien zu überschreiben.
+- Abschluss-Build und Dev: Merge-Commit `88299958a855253fd98a9d71cc2c7de33c9fb745`, Build-/Dev-Lauf `32895367324`, unveränderlicher Studio-Digest `sha256:f1c0937bf992c9334fa2694a73f153ac920810c1bfe11103facbf1301d171f4c`; Runtime-Artefakt, Image-Build, Migration, Bootstrap, Deploy, Swarm-Konvergenz, Runtime-Smoke und Live-Digest-Prüfung waren erfolgreich.
+- Main-E2E-Evidenz: Lauf `32895367032` war für exakt `88299958a855253fd98a9d71cc2c7de33c9fb745` einschließlich Evidence-Job erfolgreich.
+- Staging-Aktivierung: Promote-Lauf `32896798053` verwendete denselben Digest und war mit verifizierten Studio- und Waste-Backups, Migration, Bootstrap, Postconditions, Deploy, Swarm-Konvergenz, Runtime-Smoke, Live-Digest-Prüfung und Staging-Paritätsevidenz erfolgreich. Production wurde im Rahmen dieses Abschlusses nicht verändert.
 
 ## 8. Merge-getriebene additive Synchronisation
 

@@ -8,7 +8,13 @@ export interface WorkspaceContext {
   sessionId?: string;
 }
 
-const workspaceStorage = new AsyncLocalStorage<WorkspaceContext>();
+const workspaceStorageSymbol = Symbol.for('@sva/server-runtime/workspace-context/v1');
+const workspaceStorageRegistry = globalThis as typeof globalThis & {
+  [workspaceStorageSymbol]?: AsyncLocalStorage<WorkspaceContext>;
+};
+const workspaceStorage =
+  workspaceStorageRegistry[workspaceStorageSymbol] ??
+  (workspaceStorageRegistry[workspaceStorageSymbol] = new AsyncLocalStorage<WorkspaceContext>());
 
 export const runWithWorkspaceContext = <T>(context: WorkspaceContext, fn: () => T): T => {
   return workspaceStorage.run(context, fn);

@@ -104,4 +104,17 @@ describe('workspace observability context', () => {
       expect.objectContaining({ code: 'SVA_WORKSPACE_CONTEXT' })
     );
   });
+
+  it('shares request context across separately evaluated runtime module copies', async () => {
+    const firstRuntime = await import('./context.server.js');
+    vi.resetModules();
+    const secondRuntime = await import('./context.server.js');
+
+    const observedContext = firstRuntime.runWithWorkspaceContext(
+      { workspaceId: 'tenant-a', requestId: 'req-shared' },
+      () => secondRuntime.getWorkspaceContext()
+    );
+
+    expect(observedContext).toEqual({ workspaceId: 'tenant-a', requestId: 'req-shared' });
+  });
 });

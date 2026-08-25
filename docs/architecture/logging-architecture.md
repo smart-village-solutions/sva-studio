@@ -136,7 +136,7 @@ Der Logger injiziert Kontextdaten in `context` beziehungsweise den strukturierte
 Diese werden als Kontext-Payload gefuehrt, nicht als frei skalierende Labels.
 Pseudonyme technische IDs bleiben dennoch personenbeziehbar und duerfen nur bei begruendeter Betriebsnotwendigkeit erscheinen.
 
-Die HTTP-Kontextgrenze beginnt im Server-Entry vor allen fachlichen Dispatchern. Verschachtelte Request-Grenzen erhalten die bereits erzeugte Korrelation. Unabhängige Worker- und Bootstrap-Arbeit wird mit `runWithoutWorkspaceContext(...)` explizit gelöst.
+Die HTTP-Kontextgrenze beginnt im Server-Entry vor allen fachlichen Dispatchern. Verschachtelte Request-Grenzen erhalten die bereits erzeugte Korrelation. Unabhängige Worker- und Bootstrap-Arbeit wird mit `runWithoutWorkspaceContext(...)` explizit gelöst. Der zugrunde liegende `AsyncLocalStorage`-Carrier wird pro Node-Prozess über einen versionierten `Symbol.for(...)`-Schlüssel geteilt. Dadurch lesen auch getrennt evaluierte SSR-/Server-Bundles denselben Request-Kontext, ohne die Isolation paralleler Requests aufzuheben.
 
 Sensible Schlüssel werden vor der Redaction hinsichtlich Groß-/Kleinschreibung sowie `-`, `_` und `.` normalisiert. Account-, Actor-, Subject-, User-, Session- und Credential-Aliase sowie identitätshaltige Verbundwerte werden redigiert. Für Routen ist ausschließlich ein query-freier Pfad zulässig; Provider-Freitext und vollständige URLs sind ausgeschlossen.
 

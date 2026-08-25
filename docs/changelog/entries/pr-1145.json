@@ -1,0 +1,4 @@
+{
+  "prNumber": 1145,
+  "body": "Fehler in Pull Requests werden durch den stabilen Coverage-Abschluss eindeutiger und schneller sichtbar.\n\n- Der Coverage-Status fasst die internen Prüfschritte weiterhin ausfallsicher unter dem bekannten Namen zusammen.\n- Serverseitige Diagnosemeldungen behalten ihre Request-Korrelation auch dann, wenn Laufzeitmodule getrennt geladen werden.\n- Die verbleibenden Produktionsnachweise für beide Verbesserungen sind nachvollziehbar dokumentiert."
+}

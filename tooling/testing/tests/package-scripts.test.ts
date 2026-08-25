@@ -207,7 +207,7 @@ describe('workspace package scripts', () => {
     expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 
-  it('keeps Unit fail-closed and Coverage aggregation in shadow mode', () => {
+  it('keeps Unit and Coverage aggregation fail-closed behind stable required names', () => {
     const qualityWorkflow = loadQualityGatesWorkflow();
     const runtimeWorkflow = loadRuntimeGatesWorkflow();
 
@@ -216,8 +216,10 @@ describe('workspace package scripts', () => {
     expect(qualityWorkflow).toContain('  unit:\n    name: Unit');
     expect(qualityWorkflow).toContain('--expected unit-direct,unit-remaining');
     expect(qualityWorkflow).toContain('if-no-files-found: error');
-    expect(runtimeWorkflow).toContain('coverage-complete:\n    name: Coverage');
-    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage Shadow');
+    expect(runtimeWorkflow).toContain(
+      "coverage-complete:\n    name: ${{ github.event_name == 'pull_request' && 'Coverage Complete' || 'Coverage' }}"
+    );
+    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage');
     expect(runtimeWorkflow).toContain('--expected coverage-complete');
     expect(runtimeWorkflow).toContain('validate-downloaded-coverage.ts');
   });
@@ -268,15 +270,35 @@ describe('workspace package scripts', () => {
     expect(evidenceDownload).not.toContain('github.run_attempt');
   });
 
+  it('retains Coverage evidence across partial workflow reruns', () => {
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const uploadStart = runtimeWorkflow.indexOf('      - name: Upload coverage artifacts');
+    const prepareSonarStart = runtimeWorkflow.indexOf(
+      '      - name: Prepare SonarCloud coverage report',
+      uploadStart
+    );
+    const coverageUpload = runtimeWorkflow.slice(uploadStart, prepareSonarStart);
+    const downloadStart = runtimeWorkflow.indexOf('      - name: Download coverage evidence');
+    const aggregateStart = runtimeWorkflow.indexOf(
+      '      - name: Aggregate required Coverage status',
+      downloadStart
+    );
+    const coverageDownload = runtimeWorkflow.slice(downloadStart, aggregateStart);
+
+    expect(coverageUpload).toContain('name: coverage-reports-${{ github.run_id }}');
+    expect(coverageUpload).toContain('overwrite: true');
+    expect(coverageUpload).not.toContain('github.run_attempt');
+    expect(coverageDownload).toContain('name: coverage-reports-${{ github.run_id }}');
+    expect(coverageDownload).not.toContain('github.run_attempt');
+  });
+
   it('sets up the repository Node runtime before running TypeScript aggregators', () => {
     const qualityWorkflow = loadQualityGatesWorkflow();
     const runtimeWorkflow = loadRuntimeGatesWorkflow();
     const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
     const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
     const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
-    const coverageAggregatorStart = runtimeWorkflow.indexOf(
-      '  coverage:\n    name: Coverage Shadow'
-    );
+    const coverageAggregatorStart = runtimeWorkflow.indexOf('  coverage:\n    name: Coverage');
     const complexityStart = runtimeWorkflow.indexOf('\n  complexity:', coverageAggregatorStart);
     const coverageAggregator = runtimeWorkflow.slice(coverageAggregatorStart, complexityStart);
 

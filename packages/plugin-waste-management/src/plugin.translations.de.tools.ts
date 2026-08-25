@@ -186,6 +186,11 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     historyDetailsAction: 'Details anzeigen',
     historyCloseDetailsAction: 'Details schließen',
     historyDeleteAction: 'Eintrag löschen',
+    historyDeleteTitle: 'Historieneintrag dauerhaft löschen?',
+    historyDeleteDescription:
+      'Der Historieneintrag für Prozess {{jobId}} wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    historyDeleteConfirm: 'Dauerhaft löschen',
+    historyDeleteCancel: 'Abbrechen',
     advancedTitle: 'Erweiterte Systemfunktionen',
     advancedDescription:
       'Technische Wartungsfunktionen und tiefergehende Details für Administratoren.',

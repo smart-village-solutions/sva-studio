@@ -182,6 +182,11 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     historyDetailsAction: 'Show details',
     historyCloseDetailsAction: 'Close details',
     historyDeleteAction: 'Delete entry',
+    historyDeleteTitle: 'Permanently delete history entry?',
+    historyDeleteDescription:
+      'The history entry for job {{jobId}} will be permanently deleted. This action cannot be undone.',
+    historyDeleteConfirm: 'Delete permanently',
+    historyDeleteCancel: 'Cancel',
     advancedTitle: 'Advanced system functions',
     advancedDescription: 'Technical maintenance functions and deeper details for administrators.',
     technicalDetailsToggle: 'Technical details',

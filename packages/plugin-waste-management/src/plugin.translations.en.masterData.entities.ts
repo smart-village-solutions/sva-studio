@@ -154,6 +154,8 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       createSuccess: 'The waste collection location was created.',
       updateSuccess: 'The waste collection location was updated.',
       deleteSuccess: 'The waste collection location was deleted.',
+      refreshAfterDeleteError:
+        'The waste collection location was deleted, but the overview could not be refreshed. Please reload the page.',
       saveError: 'The waste collection location could not be saved.',
       saveErrorWithReason: 'The waste collection location could not be saved: {{reason}}',
       postalCodeSaveWarning:
@@ -210,6 +212,10 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
         assignForbidden: 'Missing permission to create waste tour assignments in bulk.',
         deleteSuccess: 'The selected waste collection locations were deleted.',
         deleteError: 'The selected waste collection locations could not be deleted.',
+        deletePartialError:
+          'Some waste collection locations were deleted. {{value}} locations remain selected for another attempt.',
+        refreshAfterDeleteError:
+          'The selected waste collection locations were deleted, but the overview could not be refreshed. Please reload the page.',
         deleteForbidden: 'Missing permission to delete selected waste collection locations.',
         deleteConflict:
           'At least one selected waste collection location cannot be deleted because assignments still exist.',

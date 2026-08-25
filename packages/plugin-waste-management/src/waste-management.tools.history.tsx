@@ -7,10 +7,9 @@ import { Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-r
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
 import { WasteToolsPostalCodeStatus } from './waste-management.tools.postal-code-status.js';
 import { WasteToolsHistoryEntry } from './waste-management.tools.history-entry.js';
+import { WasteToolsHistoryDeleteDialog } from './waste-management.tools.history-delete-dialog.js';
 import { WasteToolsArtifactDownloads } from './waste-management.tools.artifact-downloads.js';
-
 const activeImportStatuses = new Set(['queued', 'running', 'retrying']);
-
 const isActiveImportJob = (
   job: StudioJobResponse['data'] | null
 ): job is StudioJobResponse['data'] =>
@@ -154,10 +153,11 @@ export const WasteToolsHistory = ({
   readonly lastJob: StudioJobResponse['data'] | null;
   readonly technicalHistory: readonly WasteManagementHistoryOverview['technical']['items'][number][];
   readonly canDeleteHistoryEntries?: boolean;
-  readonly onDeleteEntry?: (jobId: string) => void;
+  readonly onDeleteEntry?: (jobId: string) => boolean | Promise<boolean>;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
+  const [pendingDeleteJobId, setPendingDeleteJobId] = useState<string | null>(null);
   const latestRecordedJob = technicalHistory.find(
     (item) => item.source === 'job' && item.jobId && item.jobTypeId
   );
@@ -238,9 +238,9 @@ export const WasteToolsHistory = ({
                   key={item.id}
                   item={item}
                   isOpen={isOpen}
-                  canDelete={canDeleteHistoryEntries}
+                  canDelete={canDeleteHistoryEntries && Boolean(onDeleteEntry)}
                   onToggle={() => setOpenEntryId(isOpen ? null : item.id)}
-                  onDelete={onDeleteEntry}
+                  onDelete={setPendingDeleteJobId}
                 />
               );
             })}
@@ -249,6 +249,11 @@ export const WasteToolsHistory = ({
           <StudioEmptyState>{pt('tools.meta.noTechnicalHistory')}</StudioEmptyState>
         )}
       </div>
+      <WasteToolsHistoryDeleteDialog
+        jobId={pendingDeleteJobId}
+        onCancel={() => setPendingDeleteJobId(null)}
+        onDelete={onDeleteEntry ?? (() => false)}
+      />
     </div>
   );
 };

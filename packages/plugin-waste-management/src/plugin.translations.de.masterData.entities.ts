@@ -147,6 +147,8 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       createSuccess: 'Der Waste-Abholort wurde angelegt.',
       updateSuccess: 'Der Waste-Abholort wurde aktualisiert.',
       deleteSuccess: 'Der Waste-Abholort wurde gelöscht.',
+      refreshAfterDeleteError:
+        'Der Waste-Abholort wurde gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
       saveError: 'Der Waste-Abholort konnte nicht gespeichert werden.',
       saveErrorWithReason: 'Der Waste-Abholort konnte nicht gespeichert werden: {{reason}}',
       postalCodeSaveWarning:
@@ -204,6 +206,10 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
           'Für das Sammelspeichern von Waste-Tour-Zuordnungen fehlt die Berechtigung.',
         deleteSuccess: 'Die markierten Waste-Abholorte wurden gelöscht.',
         deleteError: 'Die markierten Waste-Abholorte konnten nicht gelöscht werden.',
+        deletePartialError:
+          'Ein Teil der Waste-Abholorte wurde gelöscht. {{value}} Abholorte bleiben für einen erneuten Versuch ausgewählt.',
+        refreshAfterDeleteError:
+          'Die markierten Waste-Abholorte wurden gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
         deleteForbidden: 'Für das Löschen markierter Waste-Abholorte fehlt die Berechtigung.',
         deleteConflict:
           'Mindestens ein markierter Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',

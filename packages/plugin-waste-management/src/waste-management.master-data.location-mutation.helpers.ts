@@ -36,7 +36,11 @@ const resolveLocationSaveErrorMessage = (error: unknown, pt: Translate) => {
   if (code === 'forbidden') {
     return pt('masterData.collectionLocations.messages.saveForbidden');
   }
-  if (error instanceof WasteManagementApiError && error.message.length > 0 && error.message !== error.code) {
+  if (
+    error instanceof WasteManagementApiError &&
+    error.message.length > 0 &&
+    error.message !== error.code
+  ) {
     return pt('masterData.collectionLocations.messages.saveErrorWithReason', {
       reason: error.message,
     });
@@ -57,7 +61,10 @@ const runDeleteMessage = (pt: Translate, code: string | null | undefined, bulk: 
   return pt(`${messageKeyPrefix}.deleteError`);
 };
 
-const runLocationSave = async (submittedForm: CollectionLocationFormState, mode: 'create' | 'edit') => {
+const runLocationSave = async (
+  submittedForm: CollectionLocationFormState,
+  mode: 'create' | 'edit'
+) => {
   if (mode === 'create') {
     await createWasteManagementCollectionLocation(
       wasteMasterDataInputMappers.toCreateCollectionLocationInput(submittedForm)
@@ -104,7 +111,10 @@ export const createLocationSubmitHandler =
         mode === 'create'
           ? context.pt('masterData.collectionLocations.messages.createSuccess')
           : context.pt('masterData.collectionLocations.messages.updateSuccess'),
-        () => context.state.setLastOutcome(mode === 'create' ? 'location-create-success' : 'location-update-success')
+        () =>
+          context.state.setLastOutcome(
+            mode === 'create' ? 'location-create-success' : 'location-update-success'
+          )
       );
     } catch (saveError) {
       context.state.setMessage({
@@ -122,19 +132,31 @@ export const createLocationDeleteHandler =
     context.state.setMessage(null);
     context.state.setLastOutcome(null);
     try {
-      await deleteWasteManagementCollectionLocation(location.id);
-      await reloadLocationData(context);
-      context.state.setSelectedLocationIds((current) => current.filter((selectedId) => selectedId !== location.id));
-      context.state.setMessage({
-        kind: 'success',
-        text: context.pt('masterData.collectionLocations.messages.deleteSuccess'),
-      });
-    } catch (deleteError) {
-      context.state.setMessage({
-        kind: 'error',
-        text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), false),
-      });
-      throw deleteError;
+      try {
+        await deleteWasteManagementCollectionLocation(location.id);
+      } catch (deleteError) {
+        context.state.setMessage({
+          kind: 'error',
+          text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), false),
+        });
+        throw deleteError;
+      }
+
+      context.state.setSelectedLocationIds((current) =>
+        current.filter((selectedId) => selectedId !== location.id)
+      );
+      try {
+        await reloadLocationData(context);
+        context.state.setMessage({
+          kind: 'success',
+          text: context.pt('masterData.collectionLocations.messages.deleteSuccess'),
+        });
+      } catch {
+        context.state.setMessage({
+          kind: 'warning',
+          text: context.pt('masterData.collectionLocations.messages.refreshAfterDeleteError'),
+        });
+      }
     } finally {
       context.state.setSaving(false);
     }
@@ -146,21 +168,48 @@ export const createLocationsBulkDeleteHandler =
     context.state.setMessage(null);
     context.state.setLastOutcome(null);
     try {
-      for (const locationId of locationIds) {
-        await deleteWasteManagementCollectionLocation(locationId);
+      for (const [index, locationId] of locationIds.entries()) {
+        try {
+          await deleteWasteManagementCollectionLocation(locationId);
+        } catch (deleteError) {
+          if (resolveApiErrorCode(deleteError) === 'not_found') {
+            continue;
+          }
+
+          const remainingLocationIds = locationIds.slice(index);
+          context.state.setSelectedLocationIds(remainingLocationIds);
+          if (index > 0) {
+            try {
+              await reloadLocationData(context);
+            } catch {
+              // The retained IDs still provide a safe retry set when reconciliation is unavailable.
+            }
+          }
+          context.state.setMessage({
+            kind: 'error',
+            text:
+              index > 0
+                ? context.pt('masterData.collectionLocations.bulk.messages.deletePartialError', {
+                    value: remainingLocationIds.length,
+                  })
+                : runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), true),
+          });
+          throw deleteError;
+        }
       }
-      await reloadLocationData(context);
       context.state.setSelectedLocationIds([]);
-      context.state.setMessage({
-        kind: 'success',
-        text: context.pt('masterData.collectionLocations.bulk.messages.deleteSuccess'),
-      });
-    } catch (deleteError) {
-      context.state.setMessage({
-        kind: 'error',
-        text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), true),
-      });
-      throw deleteError;
+      try {
+        await reloadLocationData(context);
+        context.state.setMessage({
+          kind: 'success',
+          text: context.pt('masterData.collectionLocations.bulk.messages.deleteSuccess'),
+        });
+      } catch {
+        context.state.setMessage({
+          kind: 'warning',
+          text: context.pt('masterData.collectionLocations.bulk.messages.refreshAfterDeleteError'),
+        });
+      }
     } finally {
       context.state.setSaving(false);
     }

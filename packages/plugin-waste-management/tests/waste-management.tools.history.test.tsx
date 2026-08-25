@@ -44,6 +44,40 @@ vi.mock('@sva/studio-ui-react', () => ({
     </span>
   ),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  StudioDestructiveActionDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+    pending,
+    errorMessage,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly pending?: boolean;
+    readonly errorMessage?: React.ReactNode;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+        <button disabled={pending} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button disabled={pending} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => (
     <div data-testid="empty-state">{children}</div>
   ),
@@ -94,8 +128,8 @@ describe('WasteToolsHistory', () => {
     );
   });
 
-  it('renders job metadata and optional history fields without an admin-only CTA', () => {
-    const onDeleteEntry = vi.fn();
+  it('renders job metadata and confirms admin-only history deletion', async () => {
+    const onDeleteEntry = vi.fn(async () => true);
     render(
       <WasteToolsHistory
         lastJob={
@@ -160,12 +194,17 @@ describe('WasteToolsHistory', () => {
         .getAttribute('aria-expanded')
     ).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDeleteAction' }));
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    expect(screen.getByText('tools.meta.historyDeleteDescription:job-7')).toBeTruthy();
+    expect(onDeleteEntry).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDeleteConfirm' }));
     expect(screen.getByText('overview.meta.jobId:job-7')).toBeTruthy();
     expect(screen.getByText('overview.meta.jobTypeId:waste-management.import-data')).toBeTruthy();
     expect(screen.getByText('overview.meta.requestId:req-7')).toBeTruthy();
     expect(screen.getByText('overview.meta.reasonCode:invalid_sheet')).toBeTruthy();
     expect(screen.getByText('Worksheet fehlt')).toBeTruthy();
-    expect(onDeleteEntry).toHaveBeenCalledWith('job-7');
+    await vi.waitFor(() => expect(onDeleteEntry).toHaveBeenCalledWith('job-7'));
+    await vi.waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
 
     const variants = screen
       .getAllByTestId('badge')
@@ -319,6 +358,37 @@ describe('WasteToolsHistory', () => {
     );
 
     expect(screen.queryByRole('button', { name: 'tools.meta.historyDeleteAction' })).toBeNull();
+  });
+
+  it('keeps the history deletion dialog open with a persistent error', async () => {
+    const onDeleteEntry = vi.fn(async () => false);
+    render(
+      <WasteToolsHistory
+        lastJob={null}
+        technicalHistory={
+          [
+            {
+              id: 'entry-5',
+              eventType: 'import.failed',
+              outcome: 'failure',
+              occurredAt: '2026-05-10T13:00:00.000Z',
+              jobId: 'job-10',
+              jobTypeId: 'waste-management.import-data',
+            },
+          ] as never
+        }
+        canDeleteHistoryEntries
+        onDeleteEntry={onDeleteEntry}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDeleteAction' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDeleteConfirm' }));
+
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toBe('tools.messages.historyDeleteError')
+    );
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
   });
 
   it('uses the latest persisted technical job after a page reload', () => {

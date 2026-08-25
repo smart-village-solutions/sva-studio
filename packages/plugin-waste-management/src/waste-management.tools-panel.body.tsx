@@ -85,7 +85,7 @@ export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
       lastJob={props.lastJob}
       technicalHistory={props.technicalHistory}
       canDeleteHistoryEntries={props.access.canDeleteHistoryEntries}
-      onDeleteEntry={(jobId) => void props.runDeleteHistoryEntry(jobId)}
+      onDeleteEntry={(jobId) => props.runDeleteHistoryEntry(jobId)}
     />
     <WasteToolsAdvancedSection
       canRunInitialize={props.access.canRunInitialize}

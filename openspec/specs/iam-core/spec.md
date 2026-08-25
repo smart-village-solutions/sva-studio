@@ -1,7 +1,11 @@
 # iam-core Specification
+
 ## Purpose
+
 TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Keycloak-OIDC-Integration
 
 Das System MUST eine OIDC-basierte Authentifizierung über Keycloak bereitstellen und sicheres Single Sign-on (SSO) sowohl für das SVA Studio CMS als auch für die Smart Village App ermöglichen.
@@ -26,6 +30,7 @@ Das System MUST eine OIDC-basierte Authentifizierung über Keycloak bereitstelle
 - **AND** wenn die Erneuerung fehlschlägt, wird HTTP 401 zurückgegeben
 
 ### Requirement: Token Validation & User Identity
+
 Das System MUST von Keycloak ausgestellte JWT-Tokens validieren und nur die fuer Session- und Autorisierungspfad erforderlichen Identity-Claims extrahieren.
 
 #### Scenario: User context extraction on tenant hosts
@@ -126,6 +131,7 @@ Das System MUST alle sicherheitsrelevanten IAM-Ereignisse unveränderbar protoko
 - **AND** das Erstellungsereignis wird mit der Keycloak-ID als Verknüpfung protokolliert
 
 ### Requirement: Server-Runtime-Logger for IAM Server Modules
+
 Das System MUST den Server-Runtime-Logger (`createSdkLogger` aus `@sva/server-runtime`) für alle operativen Logs in IAM-Servermodulen verwenden und tokenhaltige oder personenbeziehbare Werte minimieren.
 
 #### Scenario: Structured logging with mandatory fields
@@ -235,6 +241,7 @@ Das bestehende IAM-Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`
 Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Identitätsattribute, technische Realm-Artefakte und die ausdrücklich verbleibenden Sonderrollen im jeweiligen Platform- oder Tenant-Scope vollständig listen, bearbeiten und synchronisieren zu können. Keycloak bleibt System of Record für Identitäten, Login und technische Realm-Zugänge; tenantlokale Fachrollen und deren Permissions werden normativ im Studio-IAM-Modell verwaltet.
 
 #### Scenario: Keycloak-first user mutation
+
 - **WHEN** ein berechtigter Admin einen User im Studio erstellt, deaktiviert oder Identitäts-/Profilfelder ändert
 - **THEN** führt das System die identitätsbezogene Mutation zuerst gegen Keycloak aus
 - **AND** synchronisiert anschließend das Studio-Read-Model
@@ -242,6 +249,7 @@ Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST AP
 - **AND** bei nachgelagertem Sync-Fehler bleibt der Keycloak-Zustand sichtbar und wird als Drift gemeldet
 
 #### Scenario: Tenant-Rollenmutation bleibt fachlich im IAM-Modell
+
 - **WHEN** ein berechtigter Tenant-Admin eine fachliche Rolle oder deren Permissions ändert
 - **THEN** führt das System die fachliche Mutation im IAM-Rollenmodell aus
 - **AND** ein technischer Keycloak-Call ist nur dann erforderlich, wenn ausdrücklich eine verbleibende Sonderrolle betroffen ist
@@ -344,15 +352,18 @@ Das System MUST alle IAM-API-Endpunkte serverseitig gegen unberechtigte Zugriffe
 - **UND** E-Mail-Adressen werden maskiert (`u***@example.com`) falls in Fehlermeldungen nötig
 
 ### Requirement: Health-Checks und Observability
+
 Das System MUST Health-Check-Endpunkte bereitstellen, die den Zustand der IAM-Infrastruktur prüfen und eine stabile, UI-taugliche Darstellung zentraler Abhängigkeiten liefern.
 
 #### Scenario: Readiness-Probe
+
 - **WENN** ein Orchestrator (K8s, Docker) die Readiness prüft via `GET /health/ready`
 - **DANN** prüft der Endpunkt: DB-Connection, Keycloak-Konnektivität, Redis-Session-Store
 - **UND** gibt `200 OK` zurück, wenn alle Systeme erreichbar sind
 - **UND** gibt `503 Service Unavailable` mit Details zurück, wenn ein System ausgefallen ist
 
 #### Scenario: UI-taugliche Dienstübersicht für das Studio
+
 - **WHEN** das Studio den Readiness-Endpunkt für die Shell-Anzeige abfragt
 - **THEN** enthält die Antwort eine stabile Liste oder Struktur einzelner Dienste mit Namen und Status
 - **AND** mindestens `database`, `redis` und `keycloak` sind einzeln auswertbar
@@ -360,6 +371,7 @@ Das System MUST Health-Check-Endpunkte bereitstellen, die den Zustand der IAM-In
 - **AND** optionale Diagnosefelder bleiben auf sichere, nicht-sensitive Werte wie `reason_code` und lokalisierbare Kurzmeldungen begrenzt
 
 #### Scenario: Readiness-Response bleibt für UI und Betrieb korrelierbar
+
 - **WHEN** der Readiness-Endpunkt antwortet
 - **THEN** enthält die Antwort weiterhin `requestId` und Zeitstempel
 - **AND** fehlgeschlagene Dienstprüfungen werden serverseitig strukturiert geloggt
@@ -612,6 +624,7 @@ Das System MUST vor Acceptance-Smoke und nach Migrationen den kritischen IAM-Sol
 - **AND** die Betriebsanalyse muss nicht erst über zufällige `500`- oder `403`-Antworten auf indirekten Fachpfaden erfolgen
 
 ### Requirement: Profil-Sync getrennt vom Session-Kern
+
 Das System SHALL Profilattribute wie Name und E-Mail getrennt vom Session- und Autorisierungskern verarbeiten.
 
 #### Scenario: Profilanzeige ueber dedizierten Profilpfad
@@ -629,6 +642,7 @@ Das System SHALL Profilattribute wie Name und E-Mail getrennt vom Session- und A
 - **AND** die Synchronisation haengt nicht davon ab, dass Name oder E-Mail im Session-Kern enthalten sind
 
 ### Requirement: Erzwungener Re-Login pro Benutzer
+
 Das System SHALL einen deterministischen Forced-Reauth-Mechanismus pro Benutzer bereitstellen.
 
 #### Scenario: App-only Forced Reauth
@@ -646,6 +660,7 @@ Das System SHALL einen deterministischen Forced-Reauth-Mechanismus pro Benutzer 
 - **AND** ein nachfolgender Login erfordert eine echte Re-Authentifizierung
 
 ### Requirement: Versionierte Session-Gültigkeit
+
 Das System SHALL Session-Version und benutzerbezogene Reauth-Marker gemeinsam auswerten.
 
 #### Scenario: Session-Version ist veraltet
@@ -913,6 +928,7 @@ Das System SHALL für den IAM-Laufzeitpfad eine konsistente, schichtübergreifen
 - **AND** diese Felder bleiben über Auth-, IAM- und Provisioning-nahe Laufzeitpfade semantisch kompatibel
 
 ### Requirement: Tenant-spezifische Session-Hydration verwendet den Auth-Scope
+
 Das System MUST fuer tenant-spezifische Requests den Instanzkontext aus dem bereits verifizierten Auth-Scope ableiten und denselben Wert in Session-, Audit- und IAM-Pfaden konsistent weiterfuehren.
 
 #### Scenario: Callback schreibt tenant-spezifische instanceId aus dem Auth-Scope in die Session
@@ -960,15 +976,18 @@ Der IAM-Diagnosekern SHALL öffentliche Fehlerklassifikationen, handlungsleitend
 - **AND** markiert den Zustand nicht als vollständig gesund
 
 ### Requirement: IAM Account Management Scope Resolution
+
 IAM Account Management SHALL resolve each authenticated IAM-v1 request as either `platform` or `instance` scope before reading or mutating users, roles, permissions, or sync state. The platform scope MUST be backed by the Root-Realm with `instance_registry_admin` as the only relevant platform role. The instance scope MUST be backed by the Tenant-Realm with tenantlokale Rollen und Permissions.
 
 #### Scenario: Root-host user list uses platform scope
+
 - **WHEN** an authenticated platform admin without `instanceId` calls `GET /api/v1/iam/users`
 - **THEN** the system returns platform users from the platform identity provider
 - **AND** it projects only platform-relevant roles such as `instance_registry_admin`
 - **AND** it does not require or synthesize a tenant `instanceId`
 
 #### Scenario: Tenant user list remains instance-scoped
+
 - **WHEN** an authenticated tenant admin with `instanceId` calls `GET /api/v1/iam/users`
 - **THEN** the system uses the existing tenant IAM read model for that `instanceId`
 - **AND** it ignores platform-role information from the Root-Realm
@@ -1229,82 +1248,100 @@ Das System MUST für verwaltete IAM-Permissions explizit ausweisen, ob sie insta
 - **AND** dürfen neue verwaltete Permission-Keys nicht stillschweigend ohne diese Klassifikation eingeführt werden
 
 ### Requirement: Root- und Tenant-Rollenmodell sind realm-separiert
+
 Das System SHALL Root-/Plattform-Rollen und tenantlokale Rollen strikt nach Realm trennen. Plattformrollen gelten ausschließlich im Root-Realm; tenantlokale Rollen gelten ausschließlich im Tenant-Realm.
 
 #### Scenario: Root-Request bleibt tenant-los
+
 - **WHEN** ein authentifizierter Benutzer auf dem Root-Host einen IAM- oder Instanzverwaltungs-Request ausführt
 - **THEN** bleibt `instanceId` im Session- und Handler-Kontext leer
 - **AND** der Root-Scope wird nicht als Pseudo-Tenant modelliert
 - **AND** tenantlokale Rollen oder Gruppen werden für diesen Request nicht aufgelöst
 
 #### Scenario: Tenant-Request kennt keine Plattformrollen
+
 - **WHEN** ein authentifizierter Benutzer in einem Tenant-Realm einen tenantseitigen IAM-Request ausführt
 - **THEN** berücksichtigt das System ausschließlich tenantlokale Rollen, Gruppen und Permissions der aktiven `instanceId`
 - **AND** Plattformrollen aus dem Root-Realm haben in diesem Kontext keine Wirkung
 
 ### Requirement: Root-Realm verwendet nur instance_registry_admin als relevante Plattformrolle
+
 Das System SHALL im Root-Realm `instance_registry_admin` als einzige relevante Rolle für Root-Control-Plane- und Instanzverwaltungszugriffe behandeln.
 
 #### Scenario: Plattform-User wird mit Root-Rolle projiziert
+
 - **WHEN** ein Root-User über den Plattformpfad gelesen oder in das Session-Profil projiziert wird
 - **THEN** enthält die Rollenprojektion höchstens die Rolle `instance_registry_admin`
 - **AND** andere tenantbezogene Rollen werden nicht in den Plattformvertrag injiziert
 
 #### Scenario: Root-Control-Plane prüft nur instance_registry_admin
+
 - **WHEN** ein Root-Host-Request eine Instanzverwaltungs-, Provisioning- oder Root-Control-Plane-Mutation ausführt
 - **THEN** prüft das System ausschließlich auf die Plattformrolle `instance_registry_admin`
 - **AND** es verlangt dafür keine tenantlokalen Rollen oder Permissions
 
 ### Requirement: Tenant-Realm verwendet system_admin als geschützte Vollzugriffsrolle
+
 Das System SHALL im Tenant-Realm `system_admin` als geschützte, defaultfähige Vollzugriffsrolle für die initiale Instanzadministration beibehalten. `system_admin` MUST direkt die vollständige tenantlokale Permission-Menge bündeln und darf funktional nicht von zusätzlichen Gruppen, Rollenbündeln oder Übergangs-Standardrollen abhängen.
 
 #### Scenario: Initialer Tenant-Admin erhält system_admin
+
 - **WHEN** eine neue Instanz erfolgreich angelegt und ihr initialer Tenant-Admin gebootstrappt wird
 - **THEN** weist das System diesem Benutzer die Rolle `system_admin` im Tenant-Realm zu
 - **AND** diese Rolle enthält die vollständige tenantlokale Verwaltungs- und Fachrechtebasis
 
 #### Scenario: system_admin wirkt ohne zusätzliche Admin-Gruppe vollständig
+
 - **WHEN** ein Tenant-Benutzer ausschließlich die Rolle `system_admin` besitzt
 - **THEN** erhält er dieselbe vollständige tenantlokale Permission-Basis, die für den geschützten Vollzugriff vorgesehen ist
 - **AND** das System verlangt dafür keine zusätzliche Gruppenmitgliedschaft wie `admins`
 - **AND** das System verlangt dafür keine ergänzende Standardrolle wie `core_admin`
 
 #### Scenario: Tenant-Admin-Projektion enthält keine Root-Rolle
+
 - **WHEN** der initiale Tenant-Admin oder ein anderer Tenant-User im Tenant-Realm gelesen wird
 - **THEN** enthält seine Rollenprojektion keine Plattformrolle `instance_registry_admin`
 - **AND** die Root-/Tenant-Rollenmodelle bleiben getrennt
 
 ### Requirement: Frühere Standardrollen sind nur noch Altbestands- und Migrationsartefakte
+
 Das System SHALL frühere tenantlokale Standardrollen wie `app_manager`, `feature-manager`, `interface-manager`, `designer`, `editor` oder `moderator` nicht mehr als automatisch verwaltete Default- oder Systemrollen materialisieren. Historische Altbestände dürfen nur noch von Cleanup-, Repair- oder Upgrade-Pfaden erkannt und bereinigt werden.
 
 #### Scenario: Reseed oder Reconcile erzeugt keine Legacy-Standardrollen neu
+
 - **WHEN** ein Seed-, Repair- oder Reconcile-Pfad tenantlokale Rollen gegen das aktuelle Sollmodell abgleicht
 - **THEN** materialisiert er `system_admin` als einzige geschützte tenantlokale Defaultrolle
 - **AND** er erzeugt keine frühere Standardrolle wie `app_manager` oder `editor` neu als Default- oder Systemrolle
 
 #### Scenario: Historische Legacy-Rollen bleiben nur Migrationsinput
+
 - **WHEN** eine Bestandsinstanz noch frühere tenantlokale Standardrollen enthält
 - **THEN** dürfen Cleanup- oder Upgrade-Pfade diese Rollen als historischen Altbestand markieren, neutralisieren oder manuell ersetzbar machen
 - **AND** das System behandelt sie nicht mehr als normative Quelle tenantlokaler Verwaltungs- oder Modulrechte
 
 ### Requirement: Keycloak-Rollenabgleich ist auf technische Sonderrollen begrenzt
+
 Das System SHALL Keycloak-Rollen nur noch dort normativ verwalten oder abgleichen, wo sie für Plattform-Scope, Tenant-Bootstrap oder technische Realm-Verträge erforderlich sind. Tenantlokale Fachrollen werden nicht mehr allgemein als Keycloak-Realm-Rollen materialisiert oder gepflegt.
 
 #### Scenario: Tenant-Custom-Rolle bleibt IAM-lokal
+
 - **WHEN** ein `system_admin` im Tenant-Realm eine editierbare Custom-Rolle erstellt, ändert oder löscht
 - **THEN** persistiert das System diese Mutation im tenantlokalen IAM-Rollenmodell
 - **AND** führt dafür keine allgemeine Keycloak-Realm-Rollenmutation aus
 - **AND** behandelt eine fehlende korrespondierende Keycloak-Rolle nicht als Drift des Sollmodells
 
 #### Scenario: Technische Sonderrolle bleibt synchronisierbar
+
 - **WHEN** der Bootstrap-, Repair- oder Schutzpfad die tenantlokale Sonderrolle `system_admin` oder die Plattformrolle `instance_registry_admin` prüft
 - **THEN** darf das System diese technische Sonderrolle weiterhin gezielt in Keycloak abgleichen
 - **AND** bleibt dieser Abgleich auf den jeweils zuständigen Realm-Scope beschränkt
 
 ### Requirement: Kanonische Session-Projektion trennt technische und fachliche Rollen
+
 Das System SHALL für Session-, `/auth/me`- und Profilprojektionen zwischen rohen Keycloak-Rollen und der kanonischen fachlichen Rollen- und Permission-Sicht unterscheiden. Die kanonische Sicht umfasst direkte IAM-Rollen sowie implizite Rollenwirkung aus Gruppenzuordnungen.
 
 #### Scenario: Tenant-Session nutzt kanonische Fachsicht
+
 - **WHEN** ein Benutzer sich in einem Tenant-Realm erfolgreich anmeldet
 - **THEN** enthält die fachliche Session-Projektion die kanonischen tenantlokalen Rollen und Permissions aus IAM
 - **AND** enthält diese kanonische Sicht auch implizite Rollenwirkung aus IAM-Gruppenzuordnungen
@@ -1312,12 +1349,14 @@ Das System SHALL für Session-, `/auth/me`- und Profilprojektionen zwischen rohe
 - **AND** dienen rohe Keycloak-Rollen nicht direkt als normative Quelle für Tenant-UI oder Tenant-Gates
 
 #### Scenario: `/auth/me` liefert beide Rollensichten explizit getrennt
+
 - **WHEN** ein authentifizierter Tenant-Benutzer `/auth/me` aufruft
 - **THEN** liefert die Antwort eine kanonische IAM-Rollensicht inklusive gruppenabgeleiteter Rollenwirkung
 - **AND** liefert die Antwort zusätzlich die rohe Keycloak-Rollensicht als technische Interop- und Diagnoseinformation
 - **AND** bleiben Autorisierungsentscheidungen auf die kanonische IAM-Sicht beschränkt
 
 #### Scenario: Legacy-Keycloak-Rollen bleiben diagnostisch sichtbar
+
 - **WHEN** ein Tenant-Benutzer noch historische Keycloak-Rollen besitzt, die nicht mehr Teil des Sollmodells sind
 - **THEN** kann die Session- oder Diagnoseprojektion diese Rollen als Legacy- oder Rohdaten sichtbar machen
 - **AND** wertet das System sie nicht automatisch als wirksame fachliche Tenant-Rollen
@@ -1359,14 +1398,17 @@ Das System SHALL vor einem privilegierten Tenant-Account-Hard-Delete alle blocki
 - **UND** bricht es den Delete fail-closed ab, wenn ein erforderlicher Referenzpfad nicht regelkonform aufgelöst werden kann
 
 ### Requirement: Zentrale Autorisierungsinvariante
+
 Das System MUST zentrale Autorisierungsentscheidungen ausschließlich über `@sva/iam-core` treffen. `@sva/iam-core` MUST die Authorize-Verträge, Reason Codes, Permission-/Resource-Typen und die reine synchrone `evaluateAuthorizeDecision`-Engine besitzen. Fachpackages MUST diesen Vertrag konsumieren und dürfen keine zweite Berechtigungsauflösung gegen eigene Tabellen, Keycloak-Rollen oder kopierte Rollenlogik einführen.
 
 #### Scenario: Fachpackage prüft Berechtigung
+
 - **WHEN** `@sva/iam-admin`, `@sva/iam-governance` oder `@sva/instance-registry` eine geschützte Operation ausführt
 - **THEN** konsumiert es Authorize-nahe Verträge aus `@sva/iam-core`
 - **AND** fehlender oder unvollständiger Autorisierungskontext führt fail-closed zu einer Ablehnung
 
 #### Scenario: Authorize-Engine bleibt rein
+
 - **WHEN** `evaluateAuthorizeDecision` ausgeführt wird
 - **THEN** benötigt die Funktion keine DB-, Redis-, Keycloak-, React- oder Runtime-Abhängigkeiten
 - **AND** die Funktion liefert bei gleichem Request und gleicher Permission-Liste dieselbe Entscheidung
@@ -1504,3 +1546,36 @@ Das System SHALL den Ausgang von Keycloak-gestützten Account-Aktionen nach Rüc
 - **WENN** ein Nutzer eine durch das Studio gestartete Account-AIA abbricht
 - **DANN** kennt der serverseitige Callback die zuvor angeforderte Account-Aktion
 - **UND** leitet auf ein sanitisiertes Rückkehrziel mit einem Studio-eigenen Abbruchstatus weiter
+
+### Requirement: IAM-Fehlerketten erzeugen genau ein kanonisches operatives Ereignis
+
+Das System MUST für eine zusammenhängende IAM-Fehlerkette genau eine verantwortliche Logging-Grenze bestimmen. Innere Schichten MUST stabile Fehlercodes und sichere Kontextfelder propagieren, dürfen denselben Fehler jedoch nicht zusätzlich als operatives Fehlerereignis protokollieren. Die äußere Auth-Routengrenze MUST das abschließende Ergebnis mit Request-Korrelation und angemessenem Schweregrad protokollieren.
+
+#### Scenario: Tenant-Auflösung schlägt erwartbar fehl
+
+- **WHEN** die Tenant-Auflösung mit einem klassifizierten erwartbaren Fehler endet
+- **THEN** propagiert die innere Konfigurationsschicht den stabilen Fehlercode ohne eigenes kanonisches Fehlerereignis
+- **AND** emittiert die Auth-Routengrenze genau ein korreliertes Ereignis für das abschließende Ergebnis
+- **AND** ist dessen Level höchstens `warn`
+
+#### Scenario: Unerwarteter IAM-Fehler endet als 5xx
+
+- **WHEN** ein unerwarteter IAM-Fehler zu einem 5xx-Ergebnis führt
+- **THEN** emittiert die verantwortliche Auth-Routengrenze genau ein strukturiertes `error`-Ereignis
+- **AND** enthalten innere Schichten keine Duplikate desselben operativen Ereignisses
+
+### Requirement: IAM-Diagnostik begrenzt Request- und Providerdaten
+
+Das System MUST IAM-Request-Diagnostik auf sichere Route-Templates oder Pfade ohne Query-String begrenzen. Providerfehler MUST über stabile interne Codes, Status und Retry-Klassen beschrieben werden; freie Provider-Fehlertexte dürfen nicht ungefiltert protokolliert werden.
+
+#### Scenario: Sessionfehler tritt auf einer URL mit Query auf
+
+- **WHEN** ein Sessionfehler bei einem Request mit Query-Parametern erkannt wird
+- **THEN** enthält das IAM-Log den sicheren Pfad oder das Route-Template
+- **AND** enthält es keine Query-Parameter oder vollständige URL
+
+#### Scenario: Keycloak liefert eine Fehlerbeschreibung
+
+- **WHEN** Keycloak einen Fehlerstatus und eine freie Fehlerbeschreibung liefert
+- **THEN** klassifiziert IAM den Fehler mit einem stabilen internen Code
+- **AND** protokolliert es die freie Beschreibung nicht ungefiltert

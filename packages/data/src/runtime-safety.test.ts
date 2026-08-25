@@ -604,6 +604,11 @@ test('portable docker runtime guard follows reachable modules and excludes only 
     expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
       /Command failed/
     );
+    writeFileSync(resolve(ssrDir, 'extensionless-target'), 'module.exports = "jsxDEV";\n');
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'require("./extensionless-target");\n');
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
     writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
 
     writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'const preload = "jsxDEV";\n');

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 import * as ts from 'typescript';
 
-const runtimeExtensions = new Set(['.cjs', '.js', '.json', '.mjs']);
+const scannableRuntimeExtensions = new Set(['', '.cjs', '.js', '.mjs']);
 
 type RuntimeSpecifier = {
   readonly kind: 'commonjs' | 'module';
@@ -54,7 +54,8 @@ const resolveRuntimeImport = (importerPath: string, specifier: RuntimeSpecifier)
     return null;
   }
 
-  const cleanSpecifier = specifier.value.replace(/[?#].*$/, '');
+  const cleanSpecifier =
+    specifier.kind === 'module' ? specifier.value.replace(/[?#].*$/, '') : specifier.value;
   const candidate = resolve(dirname(importerPath), cleanSpecifier);
   const candidates =
     specifier.kind === 'commonjs'
@@ -142,7 +143,7 @@ export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly s
     }
 
     reachablePaths.add(filePath);
-    if (!runtimeExtensions.has(extname(filePath)) || extname(filePath) === '.json') {
+    if (!scannableRuntimeExtensions.has(extname(filePath))) {
       continue;
     }
 

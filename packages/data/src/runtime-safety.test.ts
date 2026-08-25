@@ -458,6 +458,11 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'deploy/portainer/Dockerfile'),
     'utf8'
   );
+  const rootDockerfile = readFileSync(resolve(testDirectory, '..', '..', '..', 'Dockerfile'), 'utf8');
+  const productionJsxRuntimeGuard = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.sh'),
+    'utf8'
+  );
   const dockerignore = readFileSync(resolve(testDirectory, '..', '..', '..', '.dockerignore'), 'utf8');
   const patchRuntimeArtifact = readFileSync(
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
@@ -493,15 +498,16 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);
   assert.doesNotMatch(runtimeVerifyScript, /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/);
 
-  assert.match(
-    portainerDockerfile,
-    /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f[\s\S]*-name '\*\.js'[\s\S]*-name '\*\.mjs'[\s\S]*-name '\*\.cjs'/
-  );
-  assert.match(portainerDockerfile, /! -name '\*\.map'/);
-  assert.match(portainerDockerfile, /! -path '\*\/node_modules\/\*'/);
-  assert.match(portainerDockerfile, /-exec grep -E -l 'jsxDEV\|jsx-dev-runtime' \{\} \+ \| grep -q \./);
-  assert.doesNotMatch(portainerDockerfile, /--include='\*\.mjs'/);
-  assert.doesNotMatch(portainerDockerfile, /--exclude-dir='node_modules'/);
+  for (const dockerfile of [rootDockerfile, portainerDockerfile]) {
+    assert.match(
+      dockerfile,
+      /bash scripts\/ci\/check-production-jsx-runtime\.sh \/workspace\/apps\/sva-studio-react/
+    );
+    assert.doesNotMatch(dockerfile, /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f/);
+  }
+  assert.match(productionJsxRuntimeGuard, /SERVER_INDEX_PATH=/);
+  assert.match(productionJsxRuntimeGuard, /PATCHED_SERVER_ENTRY_PATH=/);
+  assert.match(productionJsxRuntimeGuard, /SERVER_CHUNK_PATH=/);
   assert.match(portainerDockerfile, /RUN apk add --no-cache bash git/);
   assert.match(
     dockerignore,
@@ -549,37 +555,29 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/);
 });
 
-test('portable docker runtime guard only fails when a JSX dev runtime match is present', () => {
+test('portable docker runtime guard ignores optional library helpers but rejects dev JSX in runtime entrypoints', () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
-  const noMatchDir = resolve(tempRoot, 'no-match');
-  const matchDir = resolve(tempRoot, 'match');
-  const guardScript = `if find "$TARGET_DIR" -type f \\
-  \\( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \\) \\
-  ! -name '*.map' \\
-  ! -path '*/node_modules/*' \\
-  -exec grep -E -l 'jsxDEV|jsx-dev-runtime' {} + | grep -q .; then
-  exit 1
-fi`;
+  const serverDir = resolve(tempRoot, '.output/server');
+  const ssrDir = resolve(serverDir, '_ssr');
+  const libraryDir = resolve(serverDir, '_libs');
+  const guardScript = resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.sh');
 
   try {
-    execFileSync('mkdir', ['-p', noMatchDir, matchDir]);
-    writeFileSync(resolve(noMatchDir, 'server.js'), 'export const server = "prod-runtime";\n');
-    writeFileSync(resolve(matchDir, 'server.js'), 'const runtime = "jsxDEV";\n');
+    execFileSync('mkdir', ['-p', ssrDir, libraryDir]);
+    writeFileSync(resolve(serverDir, 'index.mjs'), 'export const server = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'ssr.mjs'), 'export const ssr = "prod-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
+    writeFileSync(
+      resolve(libraryDir, 'hast-util-to-jsx-runtime.mjs'),
+      'export const optionalDevelopmentHelper = "jsxDEV";\n'
+    );
 
-    execFileSync('sh', ['-c', guardScript], {
-      env: {
-        ...process.env,
-        TARGET_DIR: noMatchDir,
-      },
-    });
+    execFileSync('bash', [guardScript, tempRoot]);
+
+    writeFileSync(resolve(ssrDir, 'ssr.mjs'), 'import "react/jsx-dev-runtime";\n');
 
     expect(() =>
-      execFileSync('sh', ['-c', guardScript], {
-        env: {
-          ...process.env,
-          TARGET_DIR: matchDir,
-        },
-      })
+      execFileSync('bash', [guardScript, tempRoot])
     ).toThrowError(/Command failed/);
   } finally {
     rmSync(tempRoot, { force: true, recursive: true });

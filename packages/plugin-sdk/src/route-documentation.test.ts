@@ -25,4 +25,14 @@ describe('route documentation contract', () => {
       })
     ).toThrow('plugin_route_documentation_owner_mismatch:news:news.list:events.overview');
   });
+
+  it('rejects unsupported runtime page types', () => {
+    expect(() =>
+      defineRouteDocumentation({
+        kind: 'page',
+        id: 'news.overview',
+        pageType: 'unsupported',
+      } as never)
+    ).toThrow('invalid_documentation_page_type:unsupported');
+  });
 });

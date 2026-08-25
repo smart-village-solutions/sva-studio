@@ -51,7 +51,7 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   SVA_STUDIO_MCP_ENABLED: { kind: 'config', required: true, type: 'boolean' },
   SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS: { kind: 'config', required: true, type: 'integer' },
   SVA_PUBLIC_BASE_URL: { kind: 'config', required: true, type: 'url' },
-  SVA_DOCUMENTATION_BASE_URL: { kind: 'config', type: 'url' },
+  SVA_DOCUMENTATION_BASE_URL: { kind: 'config', required: true, type: 'url' },
   SVA_AUTH_ISSUER: { kind: 'config', required: true, type: 'url' },
   SVA_AUTH_REDIRECT_URI: { kind: 'config', required: true, type: 'url' },
   SVA_DEPLOYMENT_ENVIRONMENT: { kind: 'config', required: true, type: 'string', allowedValues: ['development', 'staging', 'production'] },

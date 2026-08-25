@@ -768,14 +768,18 @@ const assertPluginRegistryRoutes = ({
   }
 };
 
-const assertPluginRegistryRouteDocumentation = ({
+const normalizePluginRegistryRouteDocumentation = ({
   plugin,
   pluginNamespace,
-}: PluginRegistryValidationContext): void => {
-  for (const route of plugin.routes) {
-    assertPluginRouteDocumentation(pluginNamespace, route.id, route.documentation);
-  }
-};
+}: PluginRegistryValidationContext): readonly PluginRouteDefinition[] =>
+  plugin.routes.map((route) => ({
+    ...route,
+    documentation: assertPluginRouteDocumentation(
+      pluginNamespace,
+      route.id,
+      route.documentation
+    ),
+  }));
 
 const assertPluginRegistryStandardContentRouteGuardrails = ({
   plugin,
@@ -1096,12 +1100,13 @@ export const createPluginRegistry = (
     assertPluginRegistryAdminResources(context);
     assertPluginRegistryAuditEvents(context);
     assertPluginRegistryModuleIam(context);
-    assertPluginRegistryRouteDocumentation(context);
+    const normalizedRoutes = normalizePluginRegistryRouteDocumentation(context);
 
     registry.set(context.pluginNamespace, {
       ...plugin,
       id: context.pluginNamespace,
       displayName: context.displayName,
+      routes: normalizedRoutes,
       ...normalizedOperations,
     });
   }

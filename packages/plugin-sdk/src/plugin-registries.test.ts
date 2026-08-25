@@ -251,6 +251,24 @@ const newsPlugin: PluginDefinition = {
 };
 
 describe('plugin registries', () => {
+  it('stores normalized route documentation in the registry', () => {
+    const registry = createPluginRegistry([
+      {
+        ...newsPlugin,
+        routes: newsPlugin.routes.map((route) => ({
+          ...route,
+          documentation: { kind: 'page', id: ' News.Overview ', pageType: 'overview' },
+        })),
+      },
+    ]);
+
+    expect(registry.get('news')?.routes[0]?.documentation).toEqual({
+      kind: 'page',
+      id: 'news.overview',
+      pageType: 'overview',
+    });
+  });
+
   it('reports legacy contributions that still lack explicit access requirements', () => {
     const legacyPlugin = {
       ...newsPlugin,

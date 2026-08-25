@@ -53,6 +53,9 @@ export const defineRouteDocumentation = (
   documentation: RouteDocumentation
 ): RouteDocumentation => {
   if (documentation.kind === 'page') {
+    if (!isDocumentationPageType(documentation.pageType)) {
+      throw new Error(`invalid_documentation_page_type:${String(documentation.pageType)}`);
+    }
     return {
       kind: 'page',
       id: normalizeDocumentationPageId(documentation.id),

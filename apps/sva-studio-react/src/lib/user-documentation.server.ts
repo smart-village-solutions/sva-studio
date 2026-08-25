@@ -107,9 +107,30 @@ const fetchLimited = async (
     if (Number.isFinite(declaredLength) && declaredLength > input.maxBytes) {
       throw new UserDocumentationError('documentation_upstream_invalid', 502);
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > input.maxBytes) {
+    if (!response.body) {
       throw new UserDocumentationError('documentation_upstream_invalid', 502);
+    }
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let byteLength = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      byteLength += value.byteLength;
+      if (byteLength > input.maxBytes) {
+        controller.abort();
+        await reader.cancel().catch(() => undefined);
+        throw new UserDocumentationError('documentation_upstream_invalid', 502);
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(byteLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
     }
     const etag = response.headers.get('etag')?.trim();
     return {

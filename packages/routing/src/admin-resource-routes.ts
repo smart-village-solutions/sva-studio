@@ -23,6 +23,7 @@ import type { RouteGuardContext } from './protected.routes.js';
 import { enforceRouteAccessRequirement } from './ui-route-access.js';
 import {
   toDocumentationPageCatalogEntry,
+  type DocumentationPageCatalogOwner,
   type DocumentationPageCatalogEntry,
 } from './route-documentation.js';
 
@@ -197,21 +198,14 @@ const createAdminResourceRouteDefinitions = (
 
 export const collectAdminResourceRouteDocumentationPages = (
   bindings: AppRouteBindings,
-  resources: readonly AdminResourceDefinition[]
+  resources: readonly AdminResourceDefinition[],
+  ownerByResourceId: ReadonlyMap<string, DocumentationPageCatalogOwner>
 ): readonly DocumentationPageCatalogEntry[] =>
   createAdminResourceRouteDefinitions(bindings, resources).map((definition) => {
     const entry = toDocumentationPageCatalogEntry({
       documentation: createAdminResourceRouteDocumentation(definition),
       path: definition.path,
-      owner: definition.resource.resourceId.includes('.')
-        ? {
-            kind: 'plugin',
-            pluginId: definition.resource.resourceId.slice(
-              0,
-              definition.resource.resourceId.indexOf('.')
-            ),
-          }
-        : { kind: 'host' },
+      owner: ownerByResourceId.get(definition.resource.resourceId) ?? { kind: 'host' },
       titleKey: definition.resource.titleKey,
     });
     if (!entry) {

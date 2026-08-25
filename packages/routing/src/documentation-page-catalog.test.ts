@@ -26,9 +26,17 @@ const resource: AdminResourceDefinition = {
   },
 };
 
+const pluginResource: AdminResourceDefinition = {
+  ...resource,
+  resourceId: 'catalog.reports',
+  basePath: 'catalog-reports',
+  titleKey: 'catalog.reports.title',
+};
+
 const plugin: PluginDefinition = {
   id: 'catalog',
   displayName: 'Catalog',
+  adminResources: [pluginResource],
   routes: [
     {
       id: 'catalog.dashboard',
@@ -54,7 +62,15 @@ describe('documentation page catalog', () => {
     expect(ids).toContain('catalog.entries.detail');
     expect(ids).toContain('catalog.entries.history');
     expect(ids).toContain('catalog.dashboard');
+    expect(ids).toContain('catalog.reports.list');
     expect(catalog.pages.some((page) => page.path === '/help')).toBe(false);
+    expect(catalog.pages.find((page) => page.id === 'catalog.entries.list')?.owner).toEqual({
+      kind: 'host',
+    });
+    expect(catalog.pages.find((page) => page.id === 'catalog.reports.list')?.owner).toEqual({
+      kind: 'plugin',
+      pluginId: 'catalog',
+    });
     expect(catalog.pages).toEqual([...catalog.pages].sort((a, b) => a.id.localeCompare(b.id, 'en')));
   });
 

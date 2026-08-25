@@ -41,7 +41,12 @@
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/scripts/ci/generate-documentation-page-catalog.ts"
+        "{workspaceRoot}/scripts/ci/generate-documentation-page-catalog.ts",
+        "{workspaceRoot}/apps/sva-studio-react/plugin-catalog.json",
+        "{workspaceRoot}/apps/sva-studio-react/src/routing/admin-resources.ts",
+        "{workspaceRoot}/packages/plugin-*/plugin.manifest.json",
+        "{workspaceRoot}/packages/plugin-*/src/**",
+        "{workspaceRoot}/packages/routing/src/**"
       ],
       "outputs": ["{workspaceRoot}/docs/user-documentation/page-catalog.json"],
       "options": {
@@ -55,6 +60,11 @@
         "default",
         "^production",
         "{workspaceRoot}/scripts/ci/generate-documentation-page-catalog.ts",
+        "{workspaceRoot}/apps/sva-studio-react/plugin-catalog.json",
+        "{workspaceRoot}/apps/sva-studio-react/src/routing/admin-resources.ts",
+        "{workspaceRoot}/packages/plugin-*/plugin.manifest.json",
+        "{workspaceRoot}/packages/plugin-*/src/**",
+        "{workspaceRoot}/packages/routing/src/**",
         "{workspaceRoot}/docs/user-documentation/page-catalog.json"
       ],
       "outputs": [],

@@ -210,6 +210,37 @@ describe('user-documentation.server', () => {
     ).rejects.toMatchObject({ code: 'documentation_upstream_invalid' });
   });
 
+  it('cancels an oversized markdown stream before consuming further chunks', async () => {
+    let cancelled = false;
+    let chunkCount = 0;
+    const markdownStream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        chunkCount += 1;
+        controller.enqueue(new Uint8Array(1024 * 1024));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        manifest({ markdownPath: 'markdown/home.overview.md', websiteUrl: 'pages/home.overview/' })
+      )
+      .mockResolvedValueOnce(
+        new Response(markdownStream, { headers: { 'content-type': 'text/markdown' } })
+      );
+
+    await expect(
+      loadUserDocumentation('home.overview', {
+        baseUrl: 'https://docs.example.test/',
+        fetch: request,
+      })
+    ).rejects.toMatchObject({ code: 'documentation_upstream_invalid' });
+    expect(cancelled).toBe(true);
+    expect(chunkCount).toBeLessThanOrEqual(4);
+  });
+
   it('omits an absent markdown etag and emits only structured diagnostics', async () => {
     const request = vi
       .fn<typeof fetch>()

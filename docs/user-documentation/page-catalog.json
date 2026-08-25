@@ -226,6 +226,26 @@
       }
     },
     {
+      "id": "cockpit-cards.content.create",
+      "path": "/admin/cockpit-cards/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "cockpit-cards"
+      },
+      "titleKey": "cockpit-cards.navigation.title"
+    },
+    {
+      "id": "cockpit-cards.content.detail",
+      "path": "/admin/cockpit-cards/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "cockpit-cards"
+      },
+      "titleKey": "cockpit-cards.navigation.title"
+    },
+    {
       "id": "content.create",
       "path": "/admin/content/new",
       "pageType": "create",
@@ -253,6 +273,66 @@
       "titleKey": "content.page.title"
     },
     {
+      "id": "events.content.create",
+      "path": "/admin/events/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "events"
+      },
+      "titleKey": "events.navigation.title"
+    },
+    {
+      "id": "events.content.detail",
+      "path": "/admin/events/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "events"
+      },
+      "titleKey": "events.navigation.title"
+    },
+    {
+      "id": "faq.content.create",
+      "path": "/admin/faq/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "faq"
+      },
+      "titleKey": "faq.navigation.title"
+    },
+    {
+      "id": "faq.content.detail",
+      "path": "/admin/faq/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "faq"
+      },
+      "titleKey": "faq.navigation.title"
+    },
+    {
+      "id": "generic-items.content.create",
+      "path": "/admin/generic-items/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "generic-items"
+      },
+      "titleKey": "genericItems.navigation.title"
+    },
+    {
+      "id": "generic-items.content.detail",
+      "path": "/admin/generic-items/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "generic-items"
+      },
+      "titleKey": "genericItems.navigation.title"
+    },
+    {
       "id": "home.overview",
       "path": "/",
       "pageType": "overview",
@@ -265,8 +345,7 @@
       "path": "/admin/media/new",
       "pageType": "create",
       "owner": {
-        "kind": "plugin",
-        "pluginId": "host"
+        "kind": "host"
       },
       "titleKey": "shell.sidebar.media"
     },
@@ -275,8 +354,7 @@
       "path": "/admin/media/$mediaId",
       "pageType": "detail",
       "owner": {
-        "kind": "plugin",
-        "pluginId": "host"
+        "kind": "host"
       },
       "titleKey": "shell.sidebar.media"
     },
@@ -285,8 +363,7 @@
       "path": "/admin/media",
       "pageType": "list",
       "owner": {
-        "kind": "plugin",
-        "pluginId": "host"
+        "kind": "host"
       },
       "titleKey": "shell.sidebar.media"
     },
@@ -345,6 +422,86 @@
       "owner": {
         "kind": "host"
       }
+    },
+    {
+      "id": "news.content.create",
+      "path": "/admin/news/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "news"
+      },
+      "titleKey": "news.navigation.title"
+    },
+    {
+      "id": "news.content.detail",
+      "path": "/admin/news/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "news"
+      },
+      "titleKey": "news.navigation.title"
+    },
+    {
+      "id": "poi.content.create",
+      "path": "/admin/poi/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "poi"
+      },
+      "titleKey": "poi.navigation.title"
+    },
+    {
+      "id": "poi.content.detail",
+      "path": "/admin/poi/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "poi"
+      },
+      "titleKey": "poi.navigation.title"
+    },
+    {
+      "id": "projects.content.create",
+      "path": "/admin/projects/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "projects"
+      },
+      "titleKey": "projects.navigation.title"
+    },
+    {
+      "id": "projects.content.detail",
+      "path": "/admin/projects/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "projects"
+      },
+      "titleKey": "projects.navigation.title"
+    },
+    {
+      "id": "surveys.content.create",
+      "path": "/admin/surveys/new",
+      "pageType": "create",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "surveys"
+      },
+      "titleKey": "surveys.navigation.title"
+    },
+    {
+      "id": "surveys.content.detail",
+      "path": "/admin/surveys/$id",
+      "pageType": "detail",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "surveys"
+      },
+      "titleKey": "surveys.navigation.title"
     },
     {
       "id": "waste-management.overview",

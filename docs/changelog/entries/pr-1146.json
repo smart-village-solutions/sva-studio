@@ -1,0 +1,4 @@
+{
+  "prNumber": 1146,
+  "body": "Die kontextbezogene Anwenderhilfe kann jetzt zuverlässig als Studio-Image gebaut und ausgeliefert werden.\n\n- Der geprüfte Seitenkatalog ist im Docker-Build verfügbar.\n- Ein Regressionstest verhindert, dass der Katalog künftig versehentlich aus dem Build-Kontext ausgeschlossen wird."
+}

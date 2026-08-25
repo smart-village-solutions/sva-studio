@@ -59,6 +59,7 @@ jobs:
             relevant:
               - 'apps/sva-studio-react/plugin-catalog.json'
               - 'apps/sva-studio-react/project.json'
+              - 'apps/sva-studio-react/src/lib/plugin-catalog-loader.ts'
               - 'apps/sva-studio-react/src/routing/admin-resources.ts'
               - 'packages/plugin-*/plugin.manifest.json'
               - 'packages/plugin-*/src/**'

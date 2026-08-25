@@ -556,6 +556,7 @@ describe('workspace package scripts', () => {
     expect(jobStart).toBeGreaterThan(-1);
     expect(jobEnd).toBeGreaterThan(jobStart);
     expect(job).toContain('name: Documentation Catalog (advisory)');
+    expect(job).toContain("'apps/sva-studio-react/src/lib/plugin-catalog-loader.ts'");
     expect(job).toContain('continue-on-error: true');
     expect(job).toContain('pnpm nx run sva-studio-react:check:documentation-catalog');
     expect(job).toContain('steps.catalog.outcome');

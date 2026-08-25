@@ -412,5 +412,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     deleteError: 'The waste tour could not be deleted.',
     deleteForbidden: 'Missing permission to delete waste tours.',
     deleteConflict: 'The waste tour cannot be deleted because assignments still exist.',
+    refreshAfterDeleteError:
+      'At least one waste tour was deleted, but the overview could not be refreshed. Please reload the page.',
   },
 });

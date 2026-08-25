@@ -282,6 +282,21 @@ describe('createWasteToursTourMutationHandlers', () => {
     expect(loadOverview).not.toHaveBeenCalled();
   });
 
+  it('resolves with a warning when refresh fails after a successful tour deletion', async () => {
+    const state = createState();
+    const loadOverview = vi.fn().mockRejectedValue(new Error('refresh'));
+    apiMocks.deleteWasteManagementTour.mockResolvedValue({});
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+
+    await expect(mutations.onDeleteTour({ id: 'tour-1' } as never)).resolves.toBeUndefined();
+
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'tours.messages.refreshAfterDeleteError',
+    });
+    expect(state.setSaving).toHaveBeenLastCalledWith(false);
+  });
+
   it('reports partial bulk delete success and maps delete failures', async () => {
     const partialState = createState();
     const partialLoadOverview = vi.fn().mockResolvedValue(undefined);
@@ -343,6 +358,21 @@ describe('createWasteToursTourMutationHandlers', () => {
     });
   });
 
+  it('does not turn a bulk tour refresh failure into a deletion failure', async () => {
+    const state = createState();
+    const loadOverview = vi.fn().mockRejectedValue(new Error('refresh'));
+    apiMocks.deleteWasteManagementTour.mockReset();
+    apiMocks.deleteWasteManagementTour.mockResolvedValue({});
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+
+    await expect(mutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toBeUndefined();
+
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'tours.messages.refreshAfterDeleteError',
+    });
+  });
+
   it('updates tour validity in bulk and refreshes the overview', async () => {
     const state = createState();
     const loadOverview = vi.fn().mockResolvedValue(undefined);
@@ -400,9 +430,7 @@ describe('createWasteToursTourMutationHandlers', () => {
       { status: 'rejected', reason: new Error('forbidden') },
     ] as PromiseSettledResult<unknown>[]);
 
-    await expect(failedMutations.onDeleteTours(['tour-1', 'tour-2'])).rejects.toThrow(
-      'forbidden'
-    );
+    await expect(failedMutations.onDeleteTours(['tour-1', 'tour-2'])).rejects.toThrow('forbidden');
 
     expect(failedState.setMessage).toHaveBeenCalledWith({
       kind: 'error',

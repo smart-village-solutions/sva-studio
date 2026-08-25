@@ -28,7 +28,10 @@ const WasteManagementApiErrorMock = vi.hoisted(
     }
 );
 
-import { createWasteSchedulingMutationHandlers } from '../src/waste-management.scheduling-mutations.js';
+import {
+  createWasteSchedulingMutationHandlers,
+  WasteSchedulingRowsDeleteError,
+} from '../src/waste-management.scheduling-mutations.js';
 
 vi.mock('../src/waste-management.api.js', () => ({
   deleteWasteManagementHolidayRule: deleteWasteManagementHolidayRuleMock,
@@ -118,8 +121,8 @@ describe('createWasteSchedulingMutationHandlers', () => {
       loadOverview: vi.fn(async () => undefined),
     });
 
-    await expect(
-      handlers.onDeleteSchedulingRows([
+    const error = await handlers
+      .onDeleteSchedulingRows([
         {
           id: 'global-1',
           entryType: 'global-shift',
@@ -132,11 +135,76 @@ describe('createWasteSchedulingMutationHandlers', () => {
           canDelete: true,
         },
       ])
-    ).rejects.toBe(deleteError);
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(WasteSchedulingRowsDeleteError);
+    expect((error as WasteSchedulingRowsDeleteError).cause).toBe(deleteError);
 
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
       text: 'scheduling.messages.deleteForbidden',
+    });
+  });
+
+  it('exposes only the remaining rows after a partial sequential deletion', async () => {
+    const failure = new Error('network');
+    deleteWasteManagementHolidayRuleMock.mockClear();
+    deleteWasteManagementGlobalDateShiftMock.mockClear();
+    deleteWasteManagementTourDateShiftMock.mockClear();
+    deleteWasteManagementGlobalDateShiftMock.mockRejectedValueOnce(failure);
+    const rows = [
+      { id: 'holiday-1', kind: 'holiday', rule: {} },
+      { id: 'global-1', kind: 'global', shift: {} },
+      { id: 'tour-1', kind: 'tour', shift: {} },
+    ] as unknown as readonly import('../src/waste-management.scheduling.shared.js').WasteSchedulingTableEntry[];
+    const handlers = createWasteSchedulingMutationHandlers({
+      state: {
+        setSaving: vi.fn(),
+        setMessage: vi.fn(),
+        setLastOutcome: vi.fn(),
+      } as never,
+      pt: (key: string) => key,
+      loadOverview: vi.fn(async () => undefined),
+    });
+
+    const error = await handlers.onDeleteSchedulingRows(rows).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(WasteSchedulingRowsDeleteError);
+    expect((error as WasteSchedulingRowsDeleteError).remainingRows.map((row) => row.id)).toEqual([
+      'global-1',
+      'tour-1',
+    ]);
+    expect(deleteWasteManagementHolidayRuleMock).toHaveBeenCalledTimes(1);
+    expect(deleteWasteManagementTourDateShiftMock).not.toHaveBeenCalled();
+
+    await handlers.onDeleteSchedulingRows((error as WasteSchedulingRowsDeleteError).remainingRows);
+
+    expect(deleteWasteManagementHolidayRuleMock).toHaveBeenCalledTimes(1);
+    expect(deleteWasteManagementGlobalDateShiftMock).toHaveBeenCalledTimes(2);
+    expect(deleteWasteManagementTourDateShiftMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves with a warning when refresh fails after successful scheduling deletion', async () => {
+    const state = {
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setLastOutcome: vi.fn(),
+    } as never;
+    const handlers = createWasteSchedulingMutationHandlers({
+      state,
+      pt: (key: string) => key,
+      loadOverview: vi.fn(async () => Promise.reject(new Error('refresh'))),
+    });
+
+    await expect(
+      handlers.onDeleteSchedulingRows([
+        { id: 'global-refresh', kind: 'global', shift: {} } as never,
+      ])
+    ).resolves.toBeUndefined();
+
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'scheduling.messages.refreshAfterDeleteError',
     });
   });
 

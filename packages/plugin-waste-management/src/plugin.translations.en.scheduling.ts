@@ -213,6 +213,8 @@ export const wasteManagementPluginTranslationsENScheduling =
       deleteSuccess: 'Deleted {{value}} scheduling shifts.',
       deleteError: 'The selected scheduling shifts could not be deleted.',
       deleteForbidden: 'Missing permission to delete scheduling shifts.',
+      refreshAfterDeleteError:
+        'The scheduling shifts were deleted, but the overview could not be refreshed. Please reload the page.',
     },
     holidayRules: {
       title: 'Holiday rule drafts',

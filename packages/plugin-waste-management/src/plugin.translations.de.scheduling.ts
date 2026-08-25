@@ -217,6 +217,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
       deleteSuccess: '{{value}} Ausweichtermine wurden gelöscht.',
       deleteError: 'Die markierten Ausweichtermine konnten nicht gelöscht werden.',
       deleteForbidden: 'Für das Löschen von Ausweichterminen fehlt die Berechtigung.',
+      refreshAfterDeleteError:
+        'Die Ausweichtermine wurden gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
     },
     holidayRules: {
       title: 'Feiertags-Regelentwürfe',

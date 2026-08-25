@@ -202,6 +202,8 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     deleteError: 'Die Abfall-Fraktion konnte nicht gelöscht werden.',
     deleteForbidden: 'Für das Löschen von Abfall-Fraktionen fehlt die Berechtigung.',
     deleteConflict: 'Die Abfall-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden.',
+    refreshAfterDeleteError:
+      'Mindestens eine Abfall-Fraktion wurde gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
     syncWarning:
       'Die Fraktionsänderung wurde gespeichert, aber wasteTypes konnte nicht mit dem Mainserver synchronisiert werden.',
     syncRetryStarted: 'Die Synchronisation von wasteTypes wurde erneut gestartet.',

@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteSchedulingShiftsTable } from '../src/waste-management.scheduling-shifts-table.js';
+import { WasteSchedulingRowsDeleteError } from '../src/waste-management.scheduling-mutations.js';
 
 const dataTableMock = vi.hoisted(() => vi.fn());
 const confirmDialogMock = vi.hoisted(() => vi.fn());
@@ -381,6 +382,64 @@ describe('WasteSchedulingShiftsTable', () => {
     expect(onDeleteSchedulingRows).toHaveBeenCalledWith([
       expect.objectContaining({ kind: 'global', id: 'global-1' }),
     ]);
+  });
+
+  it('keeps only undeleted scheduling rows selected after a partial failure', async () => {
+    const firstRow = {
+      id: 'global-1',
+      entryType: 'global-shift',
+      kind: 'global',
+      originalDate: '2026-01-01',
+      actualDate: '2026-01-02',
+      contextLabel: 'Alle Touren',
+      sortLabel: 'Alle Touren',
+      canDelete: true,
+      shift: {},
+    } as never;
+    const remainingRow = { ...firstRow, id: 'global-2' } as never;
+    const onDeleteSchedulingRows = vi
+      .fn<(rows: readonly never[]) => Promise<void>>()
+      .mockRejectedValueOnce(
+        new WasteSchedulingRowsDeleteError([remainingRow], new Error('network'))
+      )
+      .mockResolvedValueOnce(undefined);
+
+    render(
+      <WasteSchedulingShiftsTable
+        entries={[firstRow, remainingRow]}
+        onOpenCreateShiftDialog={vi.fn()}
+        onEditHolidayRule={vi.fn()}
+        onEditGlobalShiftDialog={vi.fn()}
+        onEditTourShiftDialog={vi.fn()}
+        onDeleteSchedulingRows={onDeleteSchedulingRows}
+        saving={false}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onSyncPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+      />
+    );
+
+    const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    const [bulkAction] = tableProps.bulkActions as Array<{
+      onClick: (value: unknown) => Promise<void>;
+    }>;
+    expect(bulkAction).toBeDefined();
+    if (!bulkAction) throw new Error('Expected scheduling bulk action');
+    await act(async () => {
+      await bulkAction.onClick({ selectedRows: [firstRow, remainingRow], clearSelection: vi.fn() });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
+    });
+
+    expect(screen.getByText('scheduling.bulkDeleteDialog.description:1')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
+    });
+    expect(onDeleteSchedulingRows).toHaveBeenNthCalledWith(2, [remainingRow]);
   });
 
   it('enables multi-select only for deletable scheduling rows and opens bulk delete via toolbar action', async () => {

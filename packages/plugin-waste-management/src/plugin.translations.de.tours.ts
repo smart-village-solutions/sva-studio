@@ -414,5 +414,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     deleteError: 'Die Abfall-Tour konnte nicht gelöscht werden.',
     deleteForbidden: 'Für das Löschen von Abfall-Touren fehlt die Berechtigung.',
     deleteConflict: 'Die Abfall-Tour kann wegen bestehender Zuordnungen nicht gelöscht werden.',
+    refreshAfterDeleteError:
+      'Mindestens eine Abfall-Tour wurde gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
   },
 });

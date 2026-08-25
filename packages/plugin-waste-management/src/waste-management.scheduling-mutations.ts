@@ -30,17 +30,36 @@ const createSchedulingErrorMessage = (
   text: code === 'forbidden' ? pt(forbiddenKey) : pt(fallbackKey),
 });
 
+export class WasteSchedulingRowsDeleteError extends Error {
+  public constructor(
+    public readonly remainingRows: readonly WasteSchedulingTableEntry[],
+    public readonly cause: unknown
+  ) {
+    super('Some scheduling rows could not be deleted');
+    this.name = 'WasteSchedulingRowsDeleteError';
+  }
+}
+
+const deleteSchedulingRow = async (row: WasteSchedulingTableEntry) => {
+  if (row.kind === 'holiday') {
+    await deleteWasteManagementHolidayRule(row.id);
+    return;
+  }
+  if (row.kind === 'global') {
+    await deleteWasteManagementGlobalDateShift(row.id);
+    return;
+  }
+  await deleteWasteManagementTourDateShift(row.id);
+};
+
 const deleteSchedulingRows = async (rows: readonly WasteSchedulingTableEntry[]) => {
-  for (const row of rows) {
-    if (row.kind === 'holiday') {
-      await deleteWasteManagementHolidayRule(row.id);
-      continue;
+  for (const [index, row] of rows.entries()) {
+    try {
+      await deleteSchedulingRow(row);
+    } catch (error) {
+      if (resolveApiErrorCode(error) === 'not_found') continue;
+      throw new WasteSchedulingRowsDeleteError(rows.slice(index), error);
     }
-    if (row.kind === 'global') {
-      await deleteWasteManagementGlobalDateShift(row.id);
-      continue;
-    }
-    await deleteWasteManagementTourDateShift(row.id);
   }
 };
 
@@ -97,22 +116,33 @@ const createDeleteSchedulingRowsHandler =
   async (rows: readonly WasteSchedulingTableEntry[]) => {
     resetSchedulingFeedback(state);
     try {
-      await deleteSchedulingRows(rows);
-      await loadOverview(true);
+      try {
+        await deleteSchedulingRows(rows);
+      } catch (error) {
+        const cause = error instanceof WasteSchedulingRowsDeleteError ? error.cause : error;
+        state.setMessage(
+          createSchedulingErrorMessage(
+            pt,
+            resolveApiErrorCode(cause),
+            'scheduling.messages.deleteError',
+            'scheduling.messages.deleteForbidden'
+          )
+        );
+        throw error;
+      }
+      try {
+        await loadOverview(true);
+      } catch {
+        state.setMessage({
+          kind: 'warning',
+          text: pt('scheduling.messages.refreshAfterDeleteError'),
+        });
+        return;
+      }
       state.setMessage({
         kind: 'success',
         text: pt('scheduling.messages.deleteSuccess', { value: rows.length }),
       });
-    } catch (error) {
-      state.setMessage(
-        createSchedulingErrorMessage(
-          pt,
-          resolveApiErrorCode(error),
-          'scheduling.messages.deleteError',
-          'scheduling.messages.deleteForbidden'
-        )
-      );
-      throw error;
     } finally {
       state.setSaving(false);
     }

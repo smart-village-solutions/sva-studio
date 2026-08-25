@@ -198,6 +198,8 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     deleteError: 'The waste fraction could not be deleted.',
     deleteForbidden: 'Missing permission to delete waste fractions.',
     deleteConflict: 'The waste fraction cannot be deleted because assignments still exist.',
+    refreshAfterDeleteError:
+      'At least one waste fraction was deleted, but the overview could not be refreshed. Please reload the page.',
     syncWarning:
       'The fraction change was saved, but wasteTypes could not be synchronized with the mainserver.',
     syncRetryStarted: 'The wasteTypes synchronization was started again.',

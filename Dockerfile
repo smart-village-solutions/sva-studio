@@ -79,7 +79,7 @@ const walk = (dir) => { \
   } \
 }; \
 for (const distRoot of distRoots) walk(distRoot);"
-RUN bash scripts/ci/check-production-jsx-runtime.sh /workspace/apps/sva-studio-react
+RUN pnpm exec tsx scripts/ci/check-production-jsx-runtime.ts /workspace/apps/sva-studio-react
 RUN pnpm --filter sva-studio-react deploy --prod /workspace/.deploy/sva-studio-react
 
 # Copy built dist/ artifacts of workspace packages into deployed pnpm package locations.

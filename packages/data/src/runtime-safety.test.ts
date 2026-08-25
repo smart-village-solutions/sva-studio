@@ -460,7 +460,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   );
   const rootDockerfile = readFileSync(resolve(testDirectory, '..', '..', '..', 'Dockerfile'), 'utf8');
   const productionJsxRuntimeGuard = readFileSync(
-    resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.sh'),
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.ts'),
     'utf8'
   );
   const dockerignore = readFileSync(resolve(testDirectory, '..', '..', '..', '.dockerignore'), 'utf8');
@@ -501,13 +501,13 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   for (const dockerfile of [rootDockerfile, portainerDockerfile]) {
     assert.match(
       dockerfile,
-      /bash scripts\/ci\/check-production-jsx-runtime\.sh \/workspace\/apps\/sva-studio-react/
+      /pnpm exec tsx scripts\/ci\/check-production-jsx-runtime\.ts \/workspace\/apps\/sva-studio-react/
     );
     assert.doesNotMatch(dockerfile, /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f/);
   }
-  assert.match(productionJsxRuntimeGuard, /SERVER_INDEX_PATH=/);
-  assert.match(productionJsxRuntimeGuard, /PATCHED_SERVER_ENTRY_PATH=/);
-  assert.match(productionJsxRuntimeGuard, /SERVER_CHUNK_PATH=/);
+  assert.match(productionJsxRuntimeGuard, /collectRuntimeSpecifiers/);
+  assert.match(productionJsxRuntimeGuard, /pendingPaths/);
+  assert.match(productionJsxRuntimeGuard, /isKnownOptionalJsxDevHelper/);
   assert.match(portainerDockerfile, /RUN apk add --no-cache bash git/);
   assert.match(
     dockerignore,
@@ -555,30 +555,38 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/);
 });
 
-test('portable docker runtime guard ignores optional library helpers but rejects dev JSX in runtime entrypoints', () => {
+test('portable docker runtime guard follows reachable modules and excludes only the known optional helper', () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
   const serverDir = resolve(tempRoot, '.output/server');
   const ssrDir = resolve(serverDir, '_ssr');
   const libraryDir = resolve(serverDir, '_libs');
-  const guardScript = resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.sh');
+  const chunksDir = resolve(serverDir, '_chunks');
+  const guardScript = resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.ts');
 
   try {
-    execFileSync('mkdir', ['-p', ssrDir, libraryDir]);
-    writeFileSync(resolve(serverDir, 'index.mjs'), 'export const server = "prod-runtime";\n');
-    writeFileSync(resolve(ssrDir, 'ssr.mjs'), 'export const ssr = "prod-runtime";\n');
+    mkdirSync(ssrDir, { recursive: true });
+    mkdirSync(libraryDir, { recursive: true });
+    mkdirSync(chunksDir, { recursive: true });
+    writeFileSync(serverDir + '/index.mjs', 'import "./_chunks/ssr-renderer.mjs";\n');
+    writeFileSync(resolve(chunksDir, 'ssr-renderer.mjs'), 'export { service } from "../_libs/service.mjs";\n');
+    writeFileSync(resolve(libraryDir, 'service.mjs'), 'export const service = import("../_ssr/ssr.mjs");\n');
+    writeFileSync(
+      resolve(ssrDir, 'ssr.mjs'),
+      'import "./server-test.mjs"; import "../_libs/hast-util-to-jsx-runtime+[...].mjs";\n'
+    );
     writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
     writeFileSync(
-      resolve(libraryDir, 'hast-util-to-jsx-runtime.mjs'),
+      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
       'export const optionalDevelopmentHelper = "jsxDEV";\n'
     );
 
-    execFileSync('bash', [guardScript, tempRoot]);
+    execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
 
-    writeFileSync(resolve(ssrDir, 'ssr.mjs'), 'import "react/jsx-dev-runtime";\n');
+    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "react/jsx-dev-runtime";\n');
 
-    expect(() =>
-      execFileSync('bash', [guardScript, tempRoot])
-    ).toThrowError(/Command failed/);
+    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+      /Command failed/
+    );
   } finally {
     rmSync(tempRoot, { force: true, recursive: true });
   }

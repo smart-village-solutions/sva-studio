@@ -79,7 +79,7 @@ for (const distRoot of distRoots) walk(distRoot);"
 # emits the client bundle for this TanStack Start app, while `vite build`
 # produces client, SSR service bundle and Nitro server output in one pass.
 RUN pnpm nx run sva-studio-react:build --skip-nx-cache
-RUN bash scripts/ci/check-production-jsx-runtime.sh /workspace/apps/sva-studio-react
+RUN pnpm exec tsx scripts/ci/check-production-jsx-runtime.ts /workspace/apps/sva-studio-react
 RUN pnpm --filter sva-studio-react deploy --prod /workspace/.deploy/sva-studio-react
 
 # Copy built dist/ artifacts of workspace packages into deployed pnpm package locations.

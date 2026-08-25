@@ -22,10 +22,11 @@ export const pluginSurveysContentTranslations = {
     moderationEmptyQuestion: 'Zu dieser Frage liegen derzeit keine Freitextantworten vor.',
     moderationReadOnly:
       'Freitextantworten werden derzeit nur lesend angezeigt. Sichtbarkeits- und Löschaktionen folgen erst mit einer host-seitig angebundenen Mainserver-Moderation.',
-    deleteQuestionTitle: 'Frage löschen',
-    deleteQuestionDescription: 'Soll diese Frage wirklich gelöscht werden?',
-    deleteOptionTitle: 'Antwort löschen',
-    deleteOptionDescription: 'Soll diese Antwort wirklich gelöscht werden?',
+    deleteQuestionTitle: 'Frage „{{target}}“ löschen?',
+    deleteQuestionDescription:
+      'Die Frage „{{target}}“ wird zusammen mit allen zugehörigen Antworten aus dem Entwurf entfernt.',
+    deleteOptionTitle: 'Antwort „{{target}}“ löschen?',
+    deleteOptionDescription: 'Die Antwort „{{target}}“ wird aus der Frage „{{question}}“ entfernt.',
     deleteFreeTextTitle: 'Freitextantwort löschen',
     deleteFreeTextDescription: 'Soll diese Freitextantwort wirklich gelöscht werden?',
     resultsQuestionEmpty: 'Für diese Frage liegen derzeit keine Ergebnisse vor.',

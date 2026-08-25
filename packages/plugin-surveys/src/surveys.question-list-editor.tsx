@@ -15,8 +15,38 @@ import { SurveyQuestionDeleteDialog } from './surveys.question-delete-dialog.js'
 import { SurveyQuestionSection } from './surveys.question-section.js';
 import { updateSurveyQuestionList } from './surveys.question-list.shared.js';
 
-const getSurveyQuestionRenderKey = (question: SurveyQuestionFormValues, questionIndex: number): string =>
+const getSurveyQuestionRenderKey = (
+  question: SurveyQuestionFormValues,
+  questionIndex: number
+): string =>
   question.id ?? question.clientId ?? `question-fallback-${question.position}-${questionIndex}`;
+
+const applyPendingDelete = (
+  pendingDelete: PendingDeleteState,
+  questions: readonly SurveyQuestionFormValues[],
+  updateQuestion: (
+    questionIndex: number,
+    updater: (question: SurveyQuestionFormValues) => SurveyQuestionFormValues
+  ) => void,
+  updateQuestions: (nextQuestions: readonly SurveyQuestionFormValues[]) => void
+): boolean => {
+  if (!pendingDelete) return false;
+
+  if (pendingDelete.kind === 'question') {
+    updateQuestions(
+      questions.filter((_, questionIndex) => questionIndex !== pendingDelete.questionIndex)
+    );
+    return true;
+  }
+
+  updateQuestion(pendingDelete.questionIndex, (question) => ({
+    ...question,
+    options: question.options.filter(
+      (_, optionIndex) => optionIndex !== pendingDelete.optionIndex
+    ),
+  }));
+  return true;
+};
 
 export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTranslate }>) {
   const { setValue } = useFormContext<SurveyDetailFormValues>();
@@ -31,7 +61,10 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
   );
 
   const updateQuestion = React.useCallback(
-    (questionIndex: number, updater: (question: SurveyQuestionFormValues) => SurveyQuestionFormValues) => {
+    (
+      questionIndex: number,
+      updater: (question: SurveyQuestionFormValues) => SurveyQuestionFormValues
+    ) => {
       updateQuestions(
         questions.map((question: SurveyQuestionFormValues, currentQuestionIndex: number) =>
           currentQuestionIndex === questionIndex ? updater(question) : question
@@ -42,23 +75,9 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
   );
 
   const handleConfirmDelete = React.useCallback(() => {
-    if (!pendingDelete) {
-      return;
-    }
-
-    if (pendingDelete.kind === 'question') {
-      updateQuestions(
-        questions.filter((_: SurveyQuestionFormValues, questionIndex: number) => questionIndex !== pendingDelete.questionIndex)
-      );
+    if (applyPendingDelete(pendingDelete, questions, updateQuestion, updateQuestions)) {
       setPendingDelete(null);
-      return;
     }
-
-    updateQuestion(pendingDelete.questionIndex, (question) => ({
-      ...question,
-      options: question.options.filter((_, optionIndex) => optionIndex !== pendingDelete.optionIndex),
-    }));
-    setPendingDelete(null);
   }, [pendingDelete, questions, updateQuestion, updateQuestions]);
 
   return (
@@ -85,12 +104,15 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
       <Button
         type="button"
         variant="secondary"
-        onClick={() => updateQuestions([...questions, createDefaultSurveyQuestion(questions.length)])}
+        onClick={() =>
+          updateQuestions([...questions, createDefaultSurveyQuestion(questions.length)])
+        }
       >
         {pt('actions.addQuestion')}
       </Button>
       <SurveyQuestionDeleteDialog
         pt={pt}
+        questions={questions}
         pendingDelete={pendingDelete}
         onConfirm={handleConfirmDelete}
         onCancel={() => setPendingDelete(null)}

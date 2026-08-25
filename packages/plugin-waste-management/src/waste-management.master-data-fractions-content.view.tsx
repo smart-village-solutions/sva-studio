@@ -1,11 +1,6 @@
 import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import {
-  StudioConfirmDialog,
-  StudioDataTable,
-  StudioDestructiveActionDialog,
-} from '@sva/studio-ui-react';
-import { useState } from 'react';
+import { StudioConfirmDialog, StudioDataTable } from '@sva/studio-ui-react';
 
 import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 import {
@@ -163,14 +158,6 @@ export const WasteMasterDataFractionsTableSection = ({
   );
 };
 
-type WasteMasterDataFractionDeleteDialogProps = Pick<
-  WasteFractionsContentProps,
-  'onOpenDeleteFraction'
-> & {
-  readonly fractionPendingDelete: WasteFractionRecord | null;
-  readonly onCancel: () => void;
-};
-
 type WasteMasterDataFractionStatusDialogProps = {
   readonly fractionPendingStatusChange: {
     readonly fraction: WasteFractionRecord;
@@ -178,50 +165,6 @@ type WasteMasterDataFractionStatusDialogProps = {
   } | null;
   readonly onCancel: () => void;
   readonly onConfirm: () => void;
-};
-
-export const WasteMasterDataFractionDeleteDialog = ({
-  fractionPendingDelete,
-  onOpenDeleteFraction,
-  onCancel,
-}: WasteMasterDataFractionDeleteDialogProps) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const [pending, setPending] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  return (
-    <StudioDestructiveActionDialog
-      open={fractionPendingDelete !== null}
-      title={pt('masterData.fractions.deleteDialog.title')}
-      description={pt('masterData.fractions.deleteDialog.description', {
-        value: fractionPendingDelete?.name ?? '',
-      })}
-      confirmLabel={pt('masterData.fractions.deleteDialog.confirm')}
-      pendingLabel={pt('common.deleting')}
-      cancelLabel={pt('masterData.fractions.deleteDialog.cancel')}
-      pending={pending}
-      errorMessage={errorMessage}
-      onCancel={() => {
-        setErrorMessage(null);
-        onCancel();
-      }}
-      onConfirm={async () => {
-        if (!fractionPendingDelete) {
-          return;
-        }
-        setPending(true);
-        setErrorMessage(null);
-        try {
-          await onOpenDeleteFraction(fractionPendingDelete);
-          onCancel();
-        } catch {
-          setErrorMessage(pt('masterData.fractions.messages.deleteError'));
-        } finally {
-          setPending(false);
-        }
-      }}
-    />
-  );
 };
 
 export const WasteMasterDataFractionStatusDialog = ({

@@ -344,6 +344,8 @@ describe('WasteToolsImportSection', () => {
       expect(callbacks.onStartImport).toHaveBeenCalledTimes(1);
     });
     expect(screen.getByText('tools.imports.wizard.resultTitle')).toBeTruthy();
+    expect(screen.getAllByText('tools.progress.statuses.queued').length).toBeGreaterThan(0);
+    expect(screen.queryByText('queued')).toBeNull();
     expect(
       screen.getByRole('link', { name: 'tools.actions.openJobDetails' }).getAttribute('href')
     ).toBe('/monitoring/jobs/job-77');

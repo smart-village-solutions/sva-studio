@@ -84,7 +84,8 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
   },
   createView: {
     title: 'Neue Abfallart anlegen',
-    description: 'Legen Sie eine neue Abfallart an. Die Angaben werden später in Listen, Touren und im Abfallkalender verwendet.',
+    description:
+      'Legen Sie eine neue Abfallart an. Die Angaben werden später in Listen, Touren und im Abfallkalender verwendet.',
     colorPickerLabel: 'Farbe auswählen',
     sections: {
       basics: '1. Grunddaten',
@@ -94,25 +95,33 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       visibility: '3. Sichtbarkeit',
       visibilityHint: 'Bestimmen Sie, ob die Abfallart sofort aktiv verwendet werden kann.',
       reminders: '4. Erinnerungen',
-      remindersHint: 'Steuern Sie, ob Bürger für diese Fraktion Erinnerungen abonnieren dürfen und welche Grenzen dafür gelten.',
+      remindersHint:
+        'Steuern Sie, ob Bürger für diese Fraktion Erinnerungen abonnieren dürfen und welche Grenzen dafür gelten.',
     },
     fieldHints: {
       name: 'So wird die Abfallart später in Listen angezeigt.',
       description: 'Beschreiben Sie die Abfallart kurz und verständlich.',
       translationDe: 'Optional: deutsche Bezeichnung für mehrsprachige Ausgaben.',
       translationEn: 'Optional: englische Bezeichnung für mehrsprachige Ausgaben.',
-      pdfShortLabel: 'Pflichtfeld: Kürzel für die PDF-Legende. Dieses Kürzel wird direkt für Ausgabe und Legende verwendet.',
-      containerSize: 'Optional: Tragen Sie eine Behältergröße nur ein, wenn diese Abfallart in mehreren Größen geführt wird, zum Beispiel 120 l oder 240 l.',
+      pdfShortLabel:
+        'Pflichtfeld: Kürzel für die PDF-Legende. Dieses Kürzel wird direkt für Ausgabe und Legende verwendet.',
+      containerSize:
+        'Optional: Tragen Sie eine Behältergröße nur ein, wenn diese Abfallart in mehreren Größen geführt wird, zum Beispiel 120 l oder 240 l.',
       color: 'Diese Farbe wird später zur Wiedererkennung im Kalender und in Tabellen verwendet.',
       active: 'Nur aktive Abfallarten stehen für die weitere Planung zur Verfügung.',
-      reminderCount: 'Bestimmen Sie, ob Bürger für diese Fraktion keine, eine oder zwei Erinnerungen auswählen dürfen.',
-      reminderChannels: 'Diese Kanäle gelten für die gesamte Fraktion, nicht pro einzelner Erinnerung.',
-      reminderChannelsDisabled: 'Aktivieren Sie zuerst mindestens eine Erinnerung, damit Kanäle für diese Fraktion freigeschaltet werden können.',
+      reminderCount:
+        'Bestimmen Sie, ob Bürger für diese Fraktion keine, eine oder zwei Erinnerungen auswählen dürfen.',
+      reminderChannels:
+        'Diese Kanäle gelten für die gesamte Fraktion, nicht pro einzelner Erinnerung.',
+      reminderChannelsDisabled:
+        'Aktivieren Sie zuerst mindestens eine Erinnerung, damit Kanäle für diese Fraktion freigeschaltet werden können.',
       reminderChannelPushEnabled: 'Erlaubt Push-Benachrichtigungen für diese Fraktion.',
       reminderChannelEmailEnabled: 'Erlaubt E-Mail-Benachrichtigungen für diese Fraktion.',
       reminderChannelCalendarEnabled: 'Erlaubt Kalender-Erinnerungen für diese Fraktion.',
-      reminderChannelSlots: 'Pflegen Sie je Kanal die verfügbaren Erinnerungs-Slots mit maximaler und voreingestellter Vorlaufzeit.',
-      reminderSlotMaxLeadDays: 'Mehr dürfen Nutzer für diesen Slot nicht vor den Abholtermin legen.',
+      reminderChannelSlots:
+        'Pflegen Sie je Kanal die verfügbaren Erinnerungs-Slots mit maximaler und voreingestellter Vorlaufzeit.',
+      reminderSlotMaxLeadDays:
+        'Mehr dürfen Nutzer für diesen Slot nicht vor den Abholtermin legen.',
       reminderSlotDefaultLeadDays: 'Dieser Wert wird in der UI als Standard vorbelegt.',
     },
     statusHints: {
@@ -156,7 +165,8 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
   translationBadge: '{{locale}}: {{value}}',
   dialog: {
     createTitle: 'Abfallfraktion anlegen',
-    createDescription: 'Erstellen Sie eine neue Fraktion für die weitere Touren- und Kalenderpflege.',
+    createDescription:
+      'Erstellen Sie eine neue Fraktion für die weitere Touren- und Kalenderpflege.',
     editTitle: 'Abfallfraktion bearbeiten',
     editDescription: 'Ändern Sie Name, Farbe, Sichtbarkeit und Erinnerungsangebot der Fraktion.',
   },
@@ -164,6 +174,12 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     title: 'Abfallfraktion löschen',
     description: 'Die Abfallfraktion {{value}} wird dauerhaft gelöscht.',
     confirm: 'Löschen',
+    cancel: 'Abbrechen',
+  },
+  bulkDeleteDialog: {
+    title: 'Abfallfraktionen löschen',
+    description: '{{count}} ausgewählte Abfallfraktionen werden dauerhaft gelöscht.',
+    confirm: 'Ausgewählte löschen',
     cancel: 'Abbrechen',
   },
   statusDialog: {
@@ -181,7 +197,8 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     deletePartialSuccess: '{{count}} von {{total}} Abfall-Fraktionen wurden gelöscht.',
     saveError: 'Die Abfall-Fraktion konnte nicht gespeichert werden.',
     saveForbidden: 'Für das Speichern von Abfall-Fraktionen fehlt die Berechtigung.',
-    saveConflict: 'Das PDF-Kürzel wird bereits von einer anderen aktiven Abfall-Fraktion verwendet.',
+    saveConflict:
+      'Das PDF-Kürzel wird bereits von einer anderen aktiven Abfall-Fraktion verwendet.',
     deleteError: 'Die Abfall-Fraktion konnte nicht gelöscht werden.',
     deleteForbidden: 'Für das Löschen von Abfall-Fraktionen fehlt die Berechtigung.',
     deleteConflict: 'Die Abfall-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden.',

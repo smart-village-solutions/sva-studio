@@ -509,16 +509,19 @@ const WasteToolsResultSummary = ({
   readonly onStartNewImport: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const statusLabel = status
+    ? pt(`tools.progress.statuses.${status}`)
+    : pt('tools.meta.noJobStatus');
 
   return (
     <div className="space-y-4">
       <StudioJobSummaryCard
         title={pt('tools.imports.wizard.resultTitle')}
         description={pt('tools.imports.wizard.resultDescription')}
-        statusLabel={status ?? pt('tools.meta.noJobStatus')}
+        statusLabel={statusLabel}
         statusTone={toJobStatusTone(status)}
         announcement={pt('tools.meta.statusAnnouncement', {
-          status: status ?? pt('tools.meta.noJobStatus'),
+          status: statusLabel,
           phase: '',
         })}
         metadata={

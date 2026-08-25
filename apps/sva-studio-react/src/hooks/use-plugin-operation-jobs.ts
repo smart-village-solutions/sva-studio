@@ -166,7 +166,9 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
 
 export const usePluginOperationJobDetail = (jobId: string) => {
   const abortControllersRef = useAbortControllerSet();
-  const cancellationInFlightRef = React.useRef(false);
+  const activeJobIdRef = React.useRef(jobId);
+  activeJobIdRef.current = jobId;
+  const cancellationInFlightJobIdRef = React.useRef<string | null>(null);
   const latestRequestIdRef = React.useRef(0);
   const [state, setState] = React.useState<JobDetailState>({
     detail: null,
@@ -267,14 +269,20 @@ export const usePluginOperationJobDetail = (jobId: string) => {
   }, [refetch, state.detail]);
 
   const cancel = React.useCallback(async () => {
-    if (!state.detail?.availableActions?.includes('cancel') || cancellationInFlightRef.current) {
+    if (
+      !state.detail?.availableActions?.includes('cancel') ||
+      cancellationInFlightJobIdRef.current
+    ) {
       return false;
     }
-    cancellationInFlightRef.current = true;
+    cancellationInFlightJobIdRef.current = jobId;
     setIsCancelling(true);
     setActionError(null);
     try {
       const acceptedJob = await cancelPluginOperationJob(jobId);
+      if (activeJobIdRef.current !== jobId) {
+        return true;
+      }
       setState((current) =>
         current.detail
           ? {
@@ -290,11 +298,15 @@ export const usePluginOperationJobDetail = (jobId: string) => {
       await refetch();
       return true;
     } catch (error) {
-      setActionError(asIamError(error));
+      if (activeJobIdRef.current === jobId) {
+        setActionError(asIamError(error));
+      }
       return false;
     } finally {
-      cancellationInFlightRef.current = false;
-      setIsCancelling(false);
+      cancellationInFlightJobIdRef.current = null;
+      if (activeJobIdRef.current === jobId) {
+        setIsCancelling(false);
+      }
     }
   }, [jobId, refetch, state.detail?.availableActions]);
 
@@ -304,7 +316,7 @@ export const usePluginOperationJobDetail = (jobId: string) => {
     detail: state.detail,
     error: state.error,
     isLoading: state.isLoading,
-    isCancelling,
+    isCancelling: isCancelling && cancellationInFlightJobIdRef.current === jobId,
     refetch,
   };
 };

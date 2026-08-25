@@ -1,10 +1,13 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataFractionsContent } from '../src/waste-management.master-data-fractions-content.js';
 
-const dataTableMock = vi.hoisted(() => vi.fn());
+const { clearSelectionMock, dataTableMock } = vi.hoisted(() => ({
+  clearSelectionMock: vi.fn(),
+  dataTableMock: vi.fn(),
+}));
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
@@ -135,6 +138,23 @@ vi.mock('@sva/studio-ui-react', () => ({
         >
           render-row-actions
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const [action] = props.bulkActions as Array<{
+              onClick: (context: {
+                selectedRows: readonly unknown[];
+                clearSelection: () => void;
+              }) => void | Promise<void>;
+            }>;
+            void action?.onClick({
+              selectedRows: props.data as readonly unknown[],
+              clearSelection: clearSelectionMock,
+            });
+          }}
+        >
+          trigger-bulk-delete
+        </button>
       </div>
     );
   },
@@ -147,9 +167,56 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
 
 afterEach(() => {
   cleanup();
+  clearSelectionMock.mockReset();
+  dataTableMock.mockReset();
 });
 
 describe('WasteMasterDataFractionsContent', () => {
+  it('confirms bulk deletion before mutating and clears selection only after success', async () => {
+    const onDeleteFractions = vi.fn(async () => undefined);
+    const fraction = {
+      id: 'fraction-1',
+      name: 'Biotonne',
+      color: '#16A34A',
+      active: true,
+    };
+
+    render(
+      <WasteMasterDataFractionsContent
+        fractions={[fraction] as never}
+        fractionsSortBy="name"
+        fractionsSortDirection="asc"
+        fractionsStatus="all"
+        onOpenCreateFraction={vi.fn()}
+        onOpenEditFraction={vi.fn()}
+        onOpenDeleteFraction={vi.fn()}
+        onDeleteFractions={onDeleteFractions}
+        onToggleFractionStatus={vi.fn()}
+        onFractionsSortChange={vi.fn()}
+        onFractionsStatusChange={vi.fn()}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-bulk-delete' }));
+
+    expect(onDeleteFractions).not.toHaveBeenCalled();
+    expect(screen.getByText('masterData.fractions.bulkDeleteDialog.title')).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.bulkDeleteDialog.confirm' })
+    );
+
+    await waitFor(() => {
+      expect(onDeleteFractions).toHaveBeenCalledWith(['fraction-1']);
+      expect(clearSelectionMock).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('masterData.fractions.bulkDeleteDialog.title')).toBeNull();
+    });
+  });
+
   it('maps fractions into a selectable sortable data table with icon actions and delete confirmation', () => {
     const onOpenCreateFraction = vi.fn();
     const onOpenEditFraction = vi.fn();

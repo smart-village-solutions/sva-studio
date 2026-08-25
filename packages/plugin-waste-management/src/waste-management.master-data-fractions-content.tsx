@@ -4,6 +4,7 @@ import { createPagedItems, usePagedRouteSync } from './waste-management.table-fr
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 import {
   createFractionSorting,
+  type FractionBulkDeleteRequest,
   type WasteFractionsContentProps,
   useFractionBulkActions,
   useFractionTableLabels,
@@ -11,10 +12,13 @@ import {
 } from './waste-management.master-data-fractions-content.parts.js';
 import { useFractionColumns } from './waste-management.master-data-fractions-content.columns.js';
 import {
-  WasteMasterDataFractionDeleteDialog,
   WasteMasterDataFractionStatusDialog,
   WasteMasterDataFractionsTableSection,
 } from './waste-management.master-data-fractions-content.view.js';
+import {
+  WasteMasterDataFractionDeleteDialog,
+  WasteMasterDataFractionsBulkDeleteDialog,
+} from './waste-management.master-data-fraction-delete-dialogs.js';
 
 const getFractionSortValue = (
   fraction: WasteFractionRecord,
@@ -74,7 +78,12 @@ export const WasteMasterDataFractionsContent = ({
   onPageSizeChange,
   saving,
 }: WasteFractionsContentProps) => {
-  const [fractionPendingDelete, setFractionPendingDelete] = useState<WasteFractionRecord | null>(null);
+  const [fractionPendingDelete, setFractionPendingDelete] = useState<WasteFractionRecord | null>(
+    null
+  );
+  const [bulkDeleteRequest, setBulkDeleteRequest] = useState<FractionBulkDeleteRequest | null>(
+    null
+  );
   const [fractionPendingStatusChange, setFractionPendingStatusChange] = useState<{
     readonly fraction: WasteFractionRecord;
     readonly nextActive: boolean;
@@ -105,10 +114,16 @@ export const WasteMasterDataFractionsContent = ({
       }),
     [page, pageSize, sortedFractions]
   );
-  const sorting = useMemo(() => createFractionSorting(sortField, sortDirection), [sortDirection, sortField]);
+  const sorting = useMemo(
+    () => createFractionSorting(sortField, sortDirection),
+    [sortDirection, sortField]
+  );
   const tableLabels = useFractionTableLabels();
   const sortingLabels = useFractionSortingLabels();
-  const bulkActions = useFractionBulkActions({ saving, onDeleteFractions });
+  const bulkActions = useFractionBulkActions({
+    saving,
+    onRequestDeleteFractions: setBulkDeleteRequest,
+  });
   const columns = useFractionColumns({
     saving,
     onToggleFractionStatus: (fraction, active) => {
@@ -164,6 +179,11 @@ export const WasteMasterDataFractionsContent = ({
         onOpenDeleteFraction={onOpenDeleteFraction}
         onCancel={() => setFractionPendingDelete(null)}
       />
+      <WasteMasterDataFractionsBulkDeleteDialog
+        request={bulkDeleteRequest}
+        onDeleteFractions={onDeleteFractions}
+        onCancel={() => setBulkDeleteRequest(null)}
+      />
       <WasteMasterDataFractionStatusDialog
         fractionPendingStatusChange={fractionPendingStatusChange}
         onCancel={() => setFractionPendingStatusChange(null)}
@@ -173,7 +193,10 @@ export const WasteMasterDataFractionsContent = ({
           }
 
           void Promise.resolve(
-            onToggleFractionStatus(fractionPendingStatusChange.fraction, fractionPendingStatusChange.nextActive)
+            onToggleFractionStatus(
+              fractionPendingStatusChange.fraction,
+              fractionPendingStatusChange.nextActive
+            )
           ).finally(() => setFractionPendingStatusChange(null));
         }}
       />

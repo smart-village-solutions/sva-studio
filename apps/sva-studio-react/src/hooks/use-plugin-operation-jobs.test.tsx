@@ -481,6 +481,48 @@ describe('usePluginOperationJobDetail', () => {
     expect(result.current.detail?.availableActions).toEqual([]);
   });
 
+  it('ignores a cancellation completion after navigating to another job', async () => {
+    let resolveCancellation: ((value: StudioJobDetail) => void) | undefined;
+    getPluginOperationJobMock.mockResolvedValueOnce(runningJobDetail).mockResolvedValueOnce({
+      ...runningJobDetail,
+      id: 'job-2',
+      correlationId: 'corr-2',
+    });
+    cancelPluginOperationJobMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCancellation = resolve;
+        })
+    );
+
+    const { result, rerender } = renderHook(
+      ({ jobId }: { jobId: string }) => usePluginOperationJobDetail(jobId),
+      { initialProps: { jobId: 'job-1' } }
+    );
+    await waitFor(() => expect(result.current.detail?.id).toBe('job-1'));
+
+    let cancellationResult: Promise<boolean> | undefined;
+    act(() => {
+      cancellationResult = result.current.cancel();
+    });
+    await waitFor(() => expect(cancelPluginOperationJobMock).toHaveBeenCalledWith('job-1'));
+
+    rerender({ jobId: 'job-2' });
+    await waitFor(() => expect(result.current.detail?.id).toBe('job-2'));
+
+    await act(async () => {
+      resolveCancellation?.({
+        ...runningJobDetail,
+        cancelRequestedAt: '2026-05-09T10:02:00.000Z',
+      });
+      await cancellationResult;
+    });
+
+    expect(result.current.detail?.id).toBe('job-2');
+    expect(result.current.detail?.cancelRequestedAt).toBeUndefined();
+    expect(getPluginOperationJobMock).toHaveBeenCalledTimes(2);
+  });
+
   it('exposes detail errors when loading fails', async () => {
     const apiError = {
       code: 'not_found',

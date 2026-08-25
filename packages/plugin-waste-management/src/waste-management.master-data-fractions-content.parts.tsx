@@ -49,6 +49,11 @@ export type WasteFractionsContentProps = {
   readonly saving?: boolean;
 };
 
+export type FractionBulkDeleteRequest = Readonly<{
+  fractionIds: readonly string[];
+  clearSelection: () => void;
+}>;
+
 const columnIdBySortField: Record<WasteManagementFractionSortField, string> = {
   name: 'nameWithContainerSize',
   containerSize: 'nameWithContainerSize',
@@ -97,10 +102,10 @@ export const useFractionSortingLabels = () => {
 
 export const useFractionBulkActions = ({
   saving,
-  onDeleteFractions,
+  onRequestDeleteFractions,
 }: {
   readonly saving?: boolean;
-  readonly onDeleteFractions: (fractionIds: readonly string[]) => void | Promise<void>;
+  readonly onRequestDeleteFractions: (request: FractionBulkDeleteRequest) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const actions: readonly StudioBulkAction<WasteFractionRecord>[] = [
@@ -109,9 +114,11 @@ export const useFractionBulkActions = ({
       label: pt('masterData.fractions.actions.deleteSelected'),
       variant: 'secondary',
       ...(saving ? { disabled: true } : {}),
-      onClick: async ({ selectedRows, clearSelection }) => {
-        await onDeleteFractions(selectedRows.map((row) => row.id));
-        clearSelection();
+      onClick: ({ selectedRows, clearSelection }) => {
+        onRequestDeleteFractions({
+          fractionIds: selectedRows.map((row) => row.id),
+          clearSelection,
+        });
       },
     },
   ];

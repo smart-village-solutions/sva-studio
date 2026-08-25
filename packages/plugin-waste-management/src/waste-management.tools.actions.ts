@@ -41,7 +41,7 @@ export const createWasteToolsJobRunner =
     try {
       const job = await callback();
       setLastJob(job);
-      await refreshTechnicalHistory(true);
+      await refreshTechnicalHistory();
       setMessage({ kind: 'success', text: pt('tools.messages.jobStarted', { jobId: job.id }) });
       return job;
     } catch (error) {
@@ -189,15 +189,18 @@ export const createWasteToolsActions = ({
   runSeed: () => runJob('seed', () => startWasteManagementSeed()),
   runPostalCodeEnrichment: () =>
     runJob('postalCode', () => startWasteManagementPostalCodeEnrichment()),
-  runReset: () =>
-    runJob('reset', async () => {
-      const job = await startWasteManagementReset({
+  runReset: async () => {
+    const job = await runJob('reset', () =>
+      startWasteManagementReset({
         confirmationToken: resetToken.trim(),
-      });
-      setResetConfirmOpen(false);
+      })
+    );
+    setResetConfirmOpen(false);
+    if (job) {
       setResetToken('');
-      return job;
-    }),
+    }
+    return job;
+  },
 });
 
 export const useWasteToolsViewModelHelpers = ({

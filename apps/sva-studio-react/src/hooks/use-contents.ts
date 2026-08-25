@@ -27,6 +27,7 @@ type UseContentsResult = {
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
+  readonly refetchWithOutcome: () => Promise<boolean>;
   readonly refreshProjection: (input?: { readonly force?: boolean }) => Promise<boolean>;
   readonly refreshProjectionPending: boolean;
   readonly clearMutationError: () => void;
@@ -50,7 +51,9 @@ export type ContentBulkMutationInput = Readonly<{
 
 export type ContentBulkMutationResult = Readonly<{
   readonly acceptedCount: number;
+  readonly failedContentIds: readonly string[];
   readonly failedCount: number;
+  readonly refreshFailed: boolean;
   readonly skippedCount: number;
 }>;
 
@@ -64,10 +67,7 @@ const DEFAULT_CONTENT_PAGINATION = {
   total: 0,
 } as const satisfies ApiPagination;
 
-const reusePaginationIfUnchanged = (
-  current: ApiPagination,
-  next: ApiPagination
-): ApiPagination =>
+const reusePaginationIfUnchanged = (current: ApiPagination, next: ApiPagination): ApiPagination =>
   current.page === next.page && current.pageSize === next.pageSize && current.total === next.total
     ? current
     : next;
@@ -123,6 +123,79 @@ const useContentProjectionRevalidation = (
   }, [refetch, shouldRevalidate]);
 };
 
+const runContentBulkMutation = async (
+  input: ContentBulkMutationInput,
+  items: readonly IamContentListItem[],
+  refetchWithOutcome: () => Promise<boolean>,
+  mutateOne: (
+    contentId: string,
+    content: IamContentListItem | undefined
+  ) => Promise<'accepted' | 'skipped'>
+): Promise<ContentBulkMutationResult> => {
+  const byId = new Map(items.map((content) => [content.id, content] as const));
+  const meta = {
+    action_id: input.actionId,
+    resource_id: 'content',
+    selection_mode: input.selectionMode,
+    requested_count: input.contentIds.length,
+    matching_count: input.matchingCount,
+    page: input.page,
+    page_size: input.pageSize,
+    ...(input.statusFilter ? { status_filter: input.statusFilter } : {}),
+    ...(input.sort ? { sort_field: input.sort.field, sort_direction: input.sort.direction } : {}),
+  } as const;
+
+  logBrowserOperationStart(contentsLogger, 'content_bulk_action_started', meta);
+  let acceptedCount = 0;
+  const failedContentIds: string[] = [];
+  let failedCount = 0;
+  let skippedCount = 0;
+
+  for (const contentId of input.contentIds) {
+    try {
+      const outcome = await mutateOne(contentId, byId.get(contentId));
+      if (outcome === 'accepted') acceptedCount += 1;
+      else skippedCount += 1;
+    } catch (cause) {
+      failedContentIds.push(contentId);
+      failedCount += 1;
+      logBrowserOperationFailure(contentsLogger, 'content_bulk_action_item_failed', cause, {
+        ...meta,
+        content_id: contentId,
+      });
+    }
+  }
+
+  const refreshFailed = acceptedCount > 0 && !(await refetchWithOutcome());
+  if (refreshFailed) {
+    contentsLogger.warn('content_bulk_action_refresh_failed', {
+      ...meta,
+      accepted_count: acceptedCount,
+    });
+  }
+
+  const result = {
+    acceptedCount,
+    failedContentIds,
+    failedCount,
+    refreshFailed,
+    skippedCount,
+  } as const;
+  logBrowserOperationSuccess(
+    contentsLogger,
+    'content_bulk_action_succeeded',
+    {
+      ...meta,
+      accepted_count: acceptedCount,
+      failed_count: failedCount,
+      refresh_failed: refreshFailed,
+      skipped_count: skippedCount,
+    },
+    'info'
+  );
+  return result;
+};
+
 export const useContents = (
   query: IamContentListQuery,
   options: UseContentsOptions = {}
@@ -170,63 +243,13 @@ export const useContents = (
         contentId: string,
         content: IamContentListItem | undefined
       ) => Promise<'accepted' | 'skipped'>
-    ): Promise<ContentBulkMutationResult> => {
-      const byId = new Map(adminList.items.map((content) => [content.id, content] as const));
-      const meta = {
-        action_id: input.actionId,
-        resource_id: 'content',
-        selection_mode: input.selectionMode,
-        requested_count: input.contentIds.length,
-        matching_count: input.matchingCount,
-        page: input.page,
-        page_size: input.pageSize,
-        ...(input.statusFilter ? { status_filter: input.statusFilter } : {}),
-        ...(input.sort
-          ? { sort_field: input.sort.field, sort_direction: input.sort.direction }
-          : {}),
-      } as const;
-
-      logBrowserOperationStart(contentsLogger, 'content_bulk_action_started', meta);
-
-      let acceptedCount = 0;
-      let failedCount = 0;
-      let skippedCount = 0;
-
-      for (const contentId of input.contentIds) {
-        try {
-          const outcome = await mutateOne(contentId, byId.get(contentId));
-          if (outcome === 'accepted') {
-            acceptedCount += 1;
-          } else {
-            skippedCount += 1;
-          }
-        } catch (cause) {
-          failedCount += 1;
-          logBrowserOperationFailure(contentsLogger, 'content_bulk_action_item_failed', cause, {
-            ...meta,
-            content_id: contentId,
-          });
-        }
-      }
-
-      if (acceptedCount > 0) {
-        await adminList.refetch();
-      }
-
-      const result = { acceptedCount, failedCount, skippedCount } as const;
-      logBrowserOperationSuccess(
-        contentsLogger,
-        'content_bulk_action_succeeded',
-        {
-          ...meta,
-          accepted_count: acceptedCount,
-          failed_count: failedCount,
-          skipped_count: skippedCount,
-        },
-        'info'
-      );
-      return result;
-    },
+    ): Promise<ContentBulkMutationResult> =>
+      runContentBulkMutation(
+        input,
+        adminList.items,
+        adminList.refetchWithOutcome,
+        mutateOne
+      ),
     [adminList]
   );
 
@@ -294,6 +317,7 @@ export const useContents = (
     error: adminList.error,
     mutationError: adminList.mutationError,
     refetch: adminList.refetch,
+    refetchWithOutcome: adminList.refetchWithOutcome,
     refreshProjection: refreshProjectionForList,
     refreshProjectionPending,
     clearMutationError: adminList.clearMutationError,

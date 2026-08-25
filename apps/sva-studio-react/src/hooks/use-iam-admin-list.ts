@@ -25,6 +25,7 @@ type UseIamAdminListResult<TItem> = {
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
+  readonly refetchWithOutcome: () => Promise<boolean>;
   readonly clearMutationError: () => void;
   readonly setError: (error: IamHttpError | null) => void;
   readonly runMutationWithResult: <TResult>(
@@ -58,14 +59,14 @@ export const useIamAdminList = <TItem>(
   const hasLoadedItemsRef = React.useRef(false);
   const latestRequestRef = React.useRef(0);
 
-  const refetch = React.useCallback(async () => {
+  const refetchWithOutcome = React.useCallback(async (): Promise<boolean> => {
     const requestId = latestRequestRef.current + 1;
     latestRequestRef.current = requestId;
     if (!enabled) {
       setItems([]);
       setIsLoading(false);
       setError(null);
-      return;
+      return false;
     }
 
     logBrowserOperationStart(adminListLogger, 'list_refetch_started');
@@ -75,7 +76,7 @@ export const useIamAdminList = <TItem>(
     try {
       const response = await listItems();
       if (requestId !== latestRequestRef.current) {
-        return;
+        return true;
       }
       setItems(response.data);
       hasLoadedItemsRef.current = true;
@@ -88,10 +89,11 @@ export const useIamAdminList = <TItem>(
         },
         'debug'
       );
+      return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (requestId !== latestRequestRef.current) {
-        return;
+        return true;
       }
       if (resolvedError.status === 401) {
         await refreshSession();
@@ -106,12 +108,17 @@ export const useIamAdminList = <TItem>(
       }
       setError(resolvedError);
       logBrowserOperationFailure(adminListLogger, 'list_refetch_failed', resolvedError);
+      return false;
     } finally {
       if (requestId === latestRequestRef.current) {
         setIsLoading(false);
       }
     }
   }, [enabled, refreshSession, listItems, onLoaded]);
+
+  const refetch = React.useCallback(async () => {
+    await refetchWithOutcome();
+  }, [refetchWithOutcome]);
 
   React.useEffect(() => {
     if (!enabled) {
@@ -170,6 +177,7 @@ export const useIamAdminList = <TItem>(
       error,
       mutationError,
       refetch,
+      refetchWithOutcome,
       clearMutationError,
       setError,
       runMutationWithResult,
@@ -182,6 +190,7 @@ export const useIamAdminList = <TItem>(
       items,
       mutationError,
       refetch,
+      refetchWithOutcome,
       runMutation,
       runMutationWithResult,
     ]

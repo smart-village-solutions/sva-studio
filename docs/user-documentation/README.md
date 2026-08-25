@@ -4,6 +4,11 @@
 eigenständigen Repository der Anwenderdokumentation. Der Katalog wird aus den
 kanonischen statischen Routen, Admin-Ressourcen und aktivierten Plugin-Routen erzeugt.
 
+Das Konzept für die einmalige redaktionelle Übergabe mit einer vollständigen Abdeckung aller
+Katalogseiten steht unter [Redaktionelles Starterpaket](./redaktionelles-starterpaket-konzept.md).
+Das daraus ausgearbeitete Übergabematerial beginnt unter
+[Redaktionelles Starterpaket – Inhalt](./starterpaket/README.md).
+
 ## Katalog aktualisieren
 
 Nach dem Ergänzen oder Ändern einer produktiven Route wird der Katalog erzeugt mit:

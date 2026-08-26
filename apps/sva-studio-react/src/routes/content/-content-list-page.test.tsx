@@ -554,57 +554,57 @@ describe('ContentListPage', () => {
 
   it('deletes a mainserver content row when delete permission exists', async () => {
     const refetch = vi.fn(async () => undefined);
-
-    useContentsMock.mockReturnValue(
-      createContentsApiResult({
-        contents: [
-          {
-            id: 'survey-1',
-            contentType: 'surveys.survey',
-            title: 'Beteiligung',
-            publishedAt: '2026-03-21T10:00:00.000Z',
-            createdAt: '2026-03-20T10:00:00.000Z',
-            updatedAt: '2026-03-21T11:00:00.000Z',
-            author: 'mainserver',
-            credentialSource: 'organization',
-            payload: { questionCount: 3 },
-            status: 'published',
-            access: {
-              state: 'editable',
-              canRead: true,
-              canCreate: true,
-              canUpdate: true,
-              organizationIds: ['org-1'],
-              sourceKinds: ['direct_role'],
-            },
+    const content = {
+      id: 'survey-1',
+      contentType: 'surveys.survey',
+      title: 'Beteiligung',
+      publishedAt: '2026-03-21T10:00:00.000Z',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-21T11:00:00.000Z',
+      author: 'mainserver',
+      credentialSource: 'organization',
+      payload: { questionCount: 3 },
+      status: 'published',
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: ['org-1'],
+        sourceKinds: ['direct_role'],
+      },
+    };
+    const Harness = ({ enabled }: { enabled: boolean }) => {
+      const [isLoading, setIsLoading] = React.useState(false);
+      useContentsMock.mockReturnValue(
+        createContentsApiResult({
+          contents: isLoading ? [] : [content],
+          pagination: { page: 1, pageSize: 25, total: 1 },
+          isLoading,
+          refetch,
+          refetchWithOutcome: async () => {
+            setIsLoading(true);
+            await refetch();
+            return true;
           },
-        ],
-        pagination: { page: 1, pageSize: 25, total: 1 },
-        refetch,
-        refetchWithOutcome: async () => {
-          await refetch();
-          return true;
-        },
-      })
-    );
+        })
+      );
+      return (
+        <ContentListPage
+          enabledMainserverMutationActions={enabled ? ['surveys.delete', 'surveys.update'] : []}
+          principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
+        />
+      );
+    };
     deleteSurveyMock.mockResolvedValue(undefined);
 
-    const view = render(
-      <ContentListPage
-        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
-      />
-    );
+    const view = render(<Harness enabled={false} />);
     expect(
       (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
     ).toBe(true);
     expect(screen.queryByRole('button', { name: /Status von Beteiligung ändern/ })).toBeNull();
 
-    view.rerender(
-      <ContentListPage
-        enabledMainserverMutationActions={['surveys.delete', 'surveys.update']}
-        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
-      />
-    );
+    view.rerender(<Harness enabled />);
     expect(
       screen.getAllByRole('button', { name: /Status von Beteiligung ändern/ }).length
     ).toBeGreaterThan(0);
@@ -612,6 +612,7 @@ describe('ContentListPage', () => {
     const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0]!;
     expect(deleteButton.className).toContain('bg-action-destructive');
     expect(deleteButton.className).not.toContain('text-muted-foreground');
+    deleteButton.focus();
     fireEvent.click(deleteButton);
 
     const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
@@ -622,6 +623,9 @@ describe('ContentListPage', () => {
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Inhalte' }));
     });
   });
 

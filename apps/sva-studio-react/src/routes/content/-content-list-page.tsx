@@ -561,6 +561,7 @@ export const ContentListPage = ({
   );
   const [bulkDeletePending, setBulkDeletePending] = React.useState(false);
   const [bulkDeleteError, setBulkDeleteError] = React.useState<string | null>(null);
+  const deleteFocusFallbackRef = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
     const feedback = readStudioDestructiveNavigationFeedback(location.state);
     if (!feedback) return;
@@ -931,6 +932,9 @@ export const ContentListPage = ({
 
   return (
     <section
+      ref={deleteFocusFallbackRef}
+      tabIndex={-1}
+      aria-label={t('content.page.title')}
       className="space-y-5"
       aria-busy={contentsApi.isLoading || authSessionPending || contentAccessPending}
     >
@@ -1146,6 +1150,7 @@ export const ContentListPage = ({
         cancelLabel={t('content.actions.cancel')}
         pending={rowDeletePending}
         errorMessage={rowDeleteError}
+        fallbackFocusRef={deleteFocusFallbackRef}
         onCancel={() => {
           setRowDeleteError(null);
           setPendingRowDeletion(null);
@@ -1164,6 +1169,7 @@ export const ContentListPage = ({
         cancelLabel={t('content.actions.cancel')}
         pending={bulkDeletePending}
         errorMessage={bulkDeleteError}
+        fallbackFocusRef={deleteFocusFallbackRef}
         onCancel={() => {
           setBulkDeleteError(null);
           setPendingBulkDeletion(null);

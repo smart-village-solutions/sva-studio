@@ -1,4 +1,5 @@
 import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
+import type { RefObject } from 'react';
 
 import type { SurveyQuestionFormValues } from './surveys.detail-content-model.js';
 import {
@@ -10,12 +11,14 @@ export function SurveyQuestionDeleteDialog({
   pt,
   questions,
   pendingDelete,
+  fallbackFocusRef,
   onConfirm,
   onCancel,
 }: Readonly<{
   pt: SurveyContentTranslate;
   questions: readonly SurveyQuestionFormValues[];
   pendingDelete: PendingDeleteState;
+  fallbackFocusRef?: RefObject<HTMLElement | null>;
   onConfirm: () => void;
   onCancel: () => void;
 }>) {
@@ -50,6 +53,7 @@ export function SurveyQuestionDeleteDialog({
       confirmLabel={pt('actions.confirmDelete')}
       pendingLabel={pt('actions.confirmDelete')}
       cancelLabel={pt('actions.cancelDelete')}
+      fallbackFocusRef={fallbackFocusRef}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

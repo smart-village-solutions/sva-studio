@@ -269,6 +269,53 @@ const toursSearch = {
 };
 
 describe('WasteToursContent', () => {
+  it('restores focus to the tours region after deleting a row', async () => {
+    const tour = { id: 'tour-1', name: 'Tour 1' } as never;
+    const Harness = () => {
+      const [rowVisible, setRowVisible] = React.useState(true);
+      const [pendingTour, setPendingTour] = React.useState<typeof tour | null>(null);
+      const fallbackFocusRef = React.useRef<HTMLElement | null>(null);
+      return (
+        <section ref={fallbackFocusRef} tabIndex={-1} aria-label="Touren">
+          {rowVisible ? (
+            <button type="button" onClick={() => setPendingTour(tour)}>
+              Tour löschen
+            </button>
+          ) : null}
+          <WasteToursDeleteDialogs
+            tourPendingDelete={pendingTour}
+            tourPendingStatusChange={null}
+            bulkDeleteOpen={false}
+            selectedTourIds={[]}
+            onCancelSingle={() => setPendingTour(null)}
+            onCancelStatusChange={vi.fn()}
+            onCancelBulk={vi.fn()}
+            onConfirmStatusChange={vi.fn(async () => undefined)}
+            statusChangePending={false}
+            statusChangeError={null}
+            onDeleteTour={async () => {
+              setRowVisible(false);
+              await new Promise((resolve) => window.setTimeout(resolve, 0));
+            }}
+            onDeleteTours={vi.fn(async () => ({ failedIds: [] }))}
+            onAfterBulkDelete={vi.fn()}
+            fallbackFocusRef={fallbackFocusRef}
+          />
+        </section>
+      );
+    };
+
+    render(<Harness />);
+    const deleteButton = screen.getByRole('button', { name: 'Tour löschen' });
+    deleteButton.focus();
+    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.deleteDialog.confirm' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Touren' }));
+    });
+  });
+
   it('keeps failed tour ids in the open bulk-delete dialog for retry', async () => {
     const onDeleteTours = vi
       .fn()

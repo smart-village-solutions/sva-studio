@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SurveyQuestionFormValues } from '../src/surveys.detail-content-model.js';
@@ -154,5 +154,52 @@ describe('survey question helper components', () => {
     expect(
       screen.getByText('Die Antwort „Option A“ wird aus der Frage „Frage A“ entfernt.')
     ).toBeTruthy();
+  });
+
+  it('restores focus to the add-question action after removing a draft item', async () => {
+    const Harness = () => {
+      const [questions, setQuestions] = React.useState([question]);
+      const [pendingDelete, setPendingDelete] = React.useState<{
+        kind: 'question';
+        questionIndex: number;
+      } | null>(null);
+      const fallbackFocusRef = React.useRef<HTMLButtonElement | null>(null);
+      return (
+        <>
+          <button ref={fallbackFocusRef} type="button">
+            Frage hinzufügen
+          </button>
+          {questions.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setPendingDelete({ kind: 'question', questionIndex: 0 })}
+            >
+              Frage löschen
+            </button>
+          ) : null}
+          <SurveyQuestionDeleteDialog
+            pt={pt}
+            questions={questions}
+            pendingDelete={pendingDelete}
+            fallbackFocusRef={fallbackFocusRef}
+            onConfirm={() => {
+              setQuestions([]);
+              setPendingDelete(null);
+            }}
+            onCancel={() => setPendingDelete(null)}
+          />
+        </>
+      );
+    };
+
+    render(<Harness />);
+    const deleteButton = screen.getByRole('button', { name: 'Frage löschen' });
+    deleteButton.focus();
+    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Frage hinzufügen' }));
+    });
   });
 });

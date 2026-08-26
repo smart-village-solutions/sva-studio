@@ -41,9 +41,7 @@ const applyPendingDelete = (
 
   updateQuestion(pendingDelete.questionIndex, (question) => ({
     ...question,
-    options: question.options.filter(
-      (_, optionIndex) => optionIndex !== pendingDelete.optionIndex
-    ),
+    options: question.options.filter((_, optionIndex) => optionIndex !== pendingDelete.optionIndex),
   }));
   return true;
 };
@@ -52,6 +50,7 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
   const { setValue } = useFormContext<SurveyDetailFormValues>();
   const questions: SurveyQuestionFormValues[] = useWatch({ name: 'content.questions' }) ?? [];
   const [pendingDelete, setPendingDelete] = React.useState<PendingDeleteState>(null);
+  const addQuestionFocusRef = React.useRef<HTMLButtonElement | null>(null);
 
   const updateQuestions = React.useCallback(
     (nextQuestions: readonly SurveyQuestionFormValues[]) => {
@@ -102,6 +101,7 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
       ))}
 
       <Button
+        ref={addQuestionFocusRef}
         type="button"
         variant="secondary"
         onClick={() =>
@@ -114,6 +114,7 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
         pt={pt}
         questions={questions}
         pendingDelete={pendingDelete}
+        fallbackFocusRef={addQuestionFocusRef}
         onConfirm={handleConfirmDelete}
         onCancel={() => setPendingDelete(null)}
       />

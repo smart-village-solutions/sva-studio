@@ -242,7 +242,7 @@ describe('createFractionMutationHandler', () => {
     });
   });
 
-  it('returns failed fraction ids and keeps partial success feedback authoritative', async () => {
+  it('returns failed fraction ids and keeps synchronization retry feedback authoritative', async () => {
     deleteWasteManagementFractionMock
       .mockResolvedValueOnce({
         data: { id: 'fraction-1' },
@@ -266,8 +266,48 @@ describe('createFractionMutationHandler', () => {
     });
 
     expect(ctx.state.setMessage).toHaveBeenLastCalledWith({
-      kind: 'success',
-      text: 'masterData.fractions.messages.deletePartialSuccess',
+      kind: 'warning',
+      text: 'masterData.fractions.messages.syncWarning',
+      retryAction: 'sync-waste-types',
+    });
+  });
+
+  it('aggregates synchronization outcomes from every deleted fraction', async () => {
+    deleteWasteManagementFractionMock
+      .mockResolvedValueOnce({
+        data: { id: 'fraction-1' },
+        syncStatus: 'queued',
+        syncJob: {
+          id: 'job-sync-1',
+          jobTypeId: 'waste-management.sync-waste-types',
+          status: 'queued',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { id: 'fraction-2' },
+        syncStatus: 'failed',
+      });
+    const ctx = {
+      state: {
+        setSaving: vi.fn(),
+        setMessage: vi.fn(),
+        setTrackedSyncWasteTypesJob: vi.fn(),
+        setLastOutcome: vi.fn(),
+      },
+      pt: (key: string) => key,
+      loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(),
+    } as never;
+
+    await expect(createDeleteFractionsHandler(ctx)(['fraction-1', 'fraction-2'])).resolves.toEqual({
+      failedIds: [],
+    });
+
+    expect(ctx.state.setTrackedSyncWasteTypesJob).toHaveBeenLastCalledWith(null);
+    expect(ctx.state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'masterData.fractions.messages.syncWarning',
+      retryAction: 'sync-waste-types',
     });
   });
 });

@@ -37,6 +37,27 @@ const refreshAfterDelete = async (ctx: FractionRegionSubmissionHelperContext) =>
   }
 };
 
+const applyFractionSyncResults = (
+  ctx: FractionRegionSubmissionHelperContext,
+  responses: readonly WasteFractionMutationResponse<{ readonly id: string }>[]
+) => {
+  const queuedJobs = responses.flatMap((response) =>
+    response.syncStatus === 'queued' && response.syncJob ? [response.syncJob] : []
+  );
+  if (queuedJobs.length === responses.length) {
+    ctx.state.setTrackedSyncWasteTypesJob(queuedJobs.at(-1) ?? null);
+    return true;
+  }
+
+  ctx.state.setTrackedSyncWasteTypesJob(null);
+  ctx.state.setMessage({
+    kind: 'warning',
+    text: ctx.pt('masterData.fractions.messages.syncWarning'),
+    retryAction: 'sync-waste-types',
+  });
+  return false;
+};
+
 export const createDeleteFractionHandler =
   (ctx: FractionRegionSubmissionHelperContext) => async (fractionId: string) => {
     ctx.state.setSaving(true);
@@ -86,7 +107,10 @@ export const createDeleteFractionsHandler =
       const failedResults = results.filter((result) => result.status === 'rejected');
       let syncStarted = false;
       if (deletedCount > 0) {
-        syncStarted = applyFractionSyncResult(ctx, fulfilledResults[0].value);
+        syncStarted = applyFractionSyncResults(
+          ctx,
+          fulfilledResults.map(({ value }) => value)
+        );
         if (!(await refreshAfterDelete(ctx))) return { failedIds };
       }
       if (failedResults.length === 0) {
@@ -99,13 +123,15 @@ export const createDeleteFractionsHandler =
         return { failedIds };
       }
       if (deletedCount > 0) {
-        ctx.state.setMessage({
-          kind: 'success',
-          text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', {
-            count: deletedCount,
-            total: fractionIds.length,
-          }),
-        });
+        if (syncStarted) {
+          ctx.state.setMessage({
+            kind: 'success',
+            text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', {
+              count: deletedCount,
+              total: fractionIds.length,
+            }),
+          });
+        }
         return { failedIds };
       }
       const deleteError = failedResults[0]?.reason;

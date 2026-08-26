@@ -1,7 +1,7 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioConfirmDialog, StudioDestructiveActionDialog } from '@sva/studio-ui-react';
-import { useState } from 'react';
+import { useState, type RefObject } from 'react';
 import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
 
 type WasteToursDeleteDialogsProps = Readonly<{
@@ -21,6 +21,7 @@ type WasteToursDeleteDialogsProps = Readonly<{
   onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   onDeleteTours: (tourIds: readonly string[]) => Promise<WasteBulkDeleteResult>;
   onAfterBulkDelete: (failedIds: readonly string[]) => void;
+  fallbackFocusRef?: RefObject<HTMLElement | null>;
 }>;
 
 const WasteTourStatusDialog = ({
@@ -71,6 +72,7 @@ const WasteTourDeleteDialog = ({
   errorMessage,
   onCancel,
   onConfirm,
+  fallbackFocusRef,
 }: Readonly<{
   open: boolean;
   title: string;
@@ -81,6 +83,7 @@ const WasteTourDeleteDialog = ({
   errorMessage: string | null;
   onCancel: () => void;
   onConfirm: () => void;
+  fallbackFocusRef?: RefObject<HTMLElement | null>;
 }>) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
@@ -93,6 +96,7 @@ const WasteTourDeleteDialog = ({
       cancelLabel={cancelLabel}
       pending={pending}
       errorMessage={errorMessage}
+      fallbackFocusRef={fallbackFocusRef}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />
@@ -146,6 +150,7 @@ export const WasteToursDeleteDialogs = ({
   onDeleteTour,
   onDeleteTours,
   onAfterBulkDelete,
+  fallbackFocusRef,
 }: WasteToursDeleteDialogsProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const { deletePending, deleteError, setDeleteError, runDelete, runBulkDelete } =
@@ -170,13 +175,23 @@ export const WasteToursDeleteDialogs = ({
         cancelLabel={pt('tours.deleteDialog.cancel')}
         pending={deletePending}
         errorMessage={deleteError}
+        fallbackFocusRef={fallbackFocusRef}
         onCancel={() => {
           setDeleteError(null);
           onCancelSingle();
         }}
         onConfirm={() => {
           if (tourPendingDelete) {
-            void runDelete(() => onDeleteTour(tourPendingDelete), onCancelSingle);
+            void runDelete(
+              () => onDeleteTour(tourPendingDelete),
+              () => {
+                onCancelSingle();
+                window.setTimeout(() => {
+                  const focusTarget = fallbackFocusRef?.current;
+                  if (focusTarget?.isConnected) focusTarget.focus();
+                }, 0);
+              }
+            );
           }
         }}
       />
@@ -190,6 +205,7 @@ export const WasteToursDeleteDialogs = ({
         cancelLabel={pt('tours.bulkDeleteDialog.cancel')}
         pending={deletePending}
         errorMessage={deleteError}
+        fallbackFocusRef={fallbackFocusRef}
         onCancel={() => {
           setDeleteError(null);
           onCancelBulk();

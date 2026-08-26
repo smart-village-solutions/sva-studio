@@ -25,7 +25,7 @@
 - [x] 2.5 Die arc42-Abschnitte 04, 08 und 11 um Dokumentationsstrategie, Pflegevertrag und verbleibende Legacy-Risiken ergänzen
 - [x] 2.6 Sicherstellen, dass der kanonische Studio-Rollout ausschließlich in `docs/guides/studio-rollout-process.md` normativ und an diesem Pfad stabil bleibt
 - [x] 2.7 `pnpm check:file-placement`, `pnpm check:rollout-docs`, OpenSpec strict und `git diff --check` ausführen
-- [ ] 2.8 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 1 eröffnen
+- [x] 2.8 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 1 eröffnen
 
 ## 3. PR 3 – Automatischer Dokumentations-Gate
 

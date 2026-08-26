@@ -73,8 +73,11 @@ test.describe('events and POI plugins', () => {
       .getByRole('button', { name: /Speichern|poi\.actions\.save/ })
       .last()
       .click();
-    page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: /Löschen|poi\.actions\.delete/ })
+      .click();
     await expectContentOverviewReady(page);
   });
 
@@ -127,8 +130,11 @@ test.describe('events and POI plugins', () => {
       .getByRole('button', { name: /Speichern|events\.actions\.save/ })
       .last()
       .click();
-    page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: /Löschen|events\.actions\.delete/ })
+      .click();
     await expectContentOverviewReady(page);
   });
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { StudioPageTitle } from '@sva/studio-ui-react';
 
 import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
@@ -20,8 +21,12 @@ const TenantModulesPage = ({
   return (
     <section className="space-y-5">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.instances.instanceModules.detail.title')}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.instances.instanceModules.detail.subtitle')}</p>
+        <StudioPageTitle withAccessory>
+          {t('admin.instances.instanceModules.detail.title')}
+        </StudioPageTitle>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {t('admin.instances.instanceModules.detail.subtitle')}
+        </p>
       </header>
 
       <Card className="space-y-4 p-4">
@@ -49,7 +54,9 @@ const TenantModulesPage = ({
                       ? t('admin.instances.instanceModules.detail.status.active')
                       : t('admin.instances.instanceModules.detail.status.inactive')}
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">{resolveModuleDescription(module.descriptionKey)}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {resolveModuleDescription(module.descriptionKey)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -80,26 +87,41 @@ const AdminModulesPage = () => {
   }, [loadInstance, selectedInstanceId]);
 
   const selectedInstance =
-    instancesApi.selectedInstance?.instanceId === selectedInstanceId ? instancesApi.selectedInstance : null;
+    instancesApi.selectedInstance?.instanceId === selectedInstanceId
+      ? instancesApi.selectedInstance
+      : null;
 
   return (
-    <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading || instancesApi.statusLoading}>
+    <section
+      className="space-y-5"
+      aria-busy={instancesApi.isLoading || instancesApi.detailLoading || instancesApi.statusLoading}
+    >
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.instances.instanceModules.title')}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.instances.instanceModules.subtitle')}</p>
+        <StudioPageTitle withAccessory>
+          {t('admin.instances.instanceModules.title')}
+        </StudioPageTitle>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {t('admin.instances.instanceModules.subtitle')}
+        </p>
       </header>
 
       <StudioFilterSurface className="space-y-4">
         <div className="space-y-1">
-          <div className="font-medium text-foreground">{t('admin.instances.instanceModules.instanceSelect.label')}</div>
-          <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.instanceSelect.hint')}</p>
+          <div className="font-medium text-foreground">
+            {t('admin.instances.instanceModules.instanceSelect.label')}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t('admin.instances.instanceModules.instanceSelect.hint')}
+          </p>
         </div>
         <select
           className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           value={selectedInstanceId}
           onChange={(event) => setSelectedInstanceId(event.target.value)}
         >
-          <option value="">{t('admin.instances.instanceModules.instanceSelect.placeholder')}</option>
+          <option value="">
+            {t('admin.instances.instanceModules.instanceSelect.placeholder')}
+          </option>
           {instancesApi.instances.map((instance) => (
             <option key={instance.instanceId} value={instance.instanceId}>
               {instance.displayName} ({instance.instanceId})

@@ -12,7 +12,7 @@ import { resolvePermissionTitle } from '../lib/permission-labels';
 import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Button, StudioLoadingState } from '@sva/studio-ui-react';
+import { Button, StudioLoadingState, StudioPageTitle } from '@sva/studio-ui-react';
 import { HomeActionCards } from './-home-action-cards';
 import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
@@ -271,9 +271,12 @@ export const HomePage = () => {
               {isAuthenticated ? t('home.hero.eyebrow') : t('home.hero.anonymousEyebrow')}
             </p>
             <div className={isAuthenticated ? 'space-y-4' : 'max-w-3xl space-y-5'}>
-              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
+              <StudioPageTitle
+                withAccessory
+                className="text-4xl tracking-tight sm:text-5xl md:text-6xl"
+              >
                 {t('shell.appName')}
-              </h1>
+              </StudioPageTitle>
               {isAuthenticated ? (
                 <>
                   <p className="max-w-2xl text-lg text-muted-foreground">

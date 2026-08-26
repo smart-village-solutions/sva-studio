@@ -14,16 +14,22 @@ const retryEffectiveAccessMock = vi.fn();
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
  */
 vi.mock('@tanstack/react-router', () => ({
-  useRouterState: (options?: { select?: (state: { location: { pathname: string } }) => unknown }) => {
+  useRouterState: (options?: {
+    select?: (state: { location: { pathname: string } }) => unknown;
+  }) => {
     const state = { location: { pathname: '/' } };
     return options?.select ? options.select(state) : state;
   },
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; activeOptions?: unknown }) => {
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; activeOptions?: unknown }) => {
     const { activeOptions: _activeOptions, ...anchorProps } = props;
     return (
-    <a href={to} {...anchorProps}>
-      {children}
-    </a>
+      <a href={to} {...anchorProps}>
+        {children}
+      </a>
     );
   },
 }));
@@ -68,16 +74,29 @@ vi.mock('../providers/locale-provider', () => ({
 }));
 
 vi.mock('./OrganizationContextSwitcher', () => ({
-  OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
+  OrganizationContextSwitcher: () => (
+    <div data-testid="organization-context-switcher">Organization Context</div>
+  ),
 }));
 
 vi.mock('./LegalTextAcceptanceDialog', () => ({
   LegalTextAcceptanceDialog: () => <div data-testid="legal-text-acceptance-dialog" />,
 }));
 
-vi.mock('./ContextualHelp', () => ({
-  ContextualHelp: ({ pageId }: { pageId: string }) => (
-    <div data-testid="contextual-help">{pageId}</div>
+vi.mock('./ContextualHelpBoundary', () => ({
+  ContextualHelpBoundary: ({
+    children,
+    enabled = true,
+    pageId,
+  }: {
+    children: React.ReactNode;
+    enabled?: boolean;
+    pageId: string;
+  }) => (
+    <div data-testid={enabled ? 'contextual-help' : undefined}>
+      {pageId}
+      {children}
+    </div>
   ),
 }));
 
@@ -131,9 +150,7 @@ beforeEach(() => {
  */
 describe('AppShell', () => {
   it('rendert Sidebar und Main-Landmark', async () => {
-    render(
-      <AppShell currentPathname="/admin/users/123">Inhalt</AppShell>
-    );
+    render(<AppShell currentPathname="/admin/users/123">Inhalt</AppShell>);
 
     expect(await screen.findByLabelText('Seitenleiste')).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
@@ -141,8 +158,14 @@ describe('AppShell', () => {
     expect(screen.getByRole('main').className).toContain('px-4');
     const breadcrumbNavigation = screen.getByRole('navigation', { name: 'Brotkrumen-Navigation' });
     expect(breadcrumbNavigation).toBeTruthy();
-    expect(within(breadcrumbNavigation).getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
-    expect(within(breadcrumbNavigation).getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
+    expect(
+      within(breadcrumbNavigation).getByRole('link', { name: 'Übersicht' }).getAttribute('href')
+    ).toBe('/');
+    expect(
+      within(breadcrumbNavigation)
+        .getByRole('link', { name: 'Benutzerverwaltung' })
+        .getAttribute('href')
+    ).toBe('/admin/users');
     expect(within(breadcrumbNavigation).getByText('Nutzer bearbeiten')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
     expect(screen.getByText('Inhalt').closest('div')?.className).toContain('space-y-4');
@@ -220,6 +243,54 @@ describe('AppShell', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('contextual-help')).toBeNull();
     });
+  });
+
+  it('haelt den Seiteninhalt beim Wiederherstellen der Sitzung gemountet', async () => {
+    const mounted = vi.fn();
+    const RouteContent = () => {
+      React.useEffect(() => {
+        mounted();
+      }, []);
+      return <div>Formular</div>;
+    };
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+    });
+
+    const view = render(
+      <AppShell currentPathname="/admin/users/123" documentationPageId="admin.users.edit">
+        <RouteContent />
+      </AppShell>
+    );
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Admin',
+        roles: ['system_admin'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+    });
+    view.rerender(
+      <AppShell currentPathname="/admin/users/123" documentationPageId="admin.users.edit">
+        <RouteContent />
+      </AppShell>
+    );
+
+    expect(mounted).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('contextual-help')).toBeTruthy();
   });
 
   it('laedt den Rechtstext-Dialog nicht fuer anonyme Nutzer nach der Hydrierung', async () => {

@@ -2,7 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { useMediaLibrary, useSingleFileMediaUpload } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
@@ -81,7 +81,7 @@ export const MediaLibraryPage = () => {
     <section className="space-y-6" data-testid="media-library-page">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{t('media.page.title')}</h1>
+          <StudioPageTitle withAccessory>{t('media.page.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">{t('media.page.subtitle')}</p>
         </div>
         {canCreateMedia ? (

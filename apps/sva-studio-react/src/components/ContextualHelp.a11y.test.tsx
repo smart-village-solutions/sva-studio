@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { StudioPageTitle } from '@sva/studio-ui-react';
 
 import { expectNoA11yViolations } from '../test/a11y.js';
-import { ContextualHelp } from './ContextualHelp';
+import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -22,7 +23,12 @@ describe('ContextualHelp accessibility', () => {
         })
       )
     );
-    render(<ContextualHelp pageId="home.overview" />);
+    render(
+      <ContextualHelpBoundary pageId="home.overview">
+        <StudioPageTitle withAccessory>Start</StudioPageTitle>
+      </ContextualHelpBoundary>
+    );
+    await vi.dynamicImportSettled();
     const trigger = screen.getByRole('button', { name: 'Hilfe öffnen' });
     trigger.focus();
     fireEvent.click(trigger);

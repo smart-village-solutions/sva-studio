@@ -60,6 +60,11 @@ test.beforeEach(async ({ page }) => {
 const expectContextualHelp = async (page: import('@playwright/test').Page, id: string) => {
   const openButton = page.getByRole('button', { name: 'Hilfe öffnen' });
   await expect(openButton).toBeVisible();
+  await expect
+    .poll(() =>
+      openButton.evaluate((button) => button.parentElement?.previousElementSibling?.tagName ?? null)
+    )
+    .toBe('H1');
   await openButton.click();
   await expect(page.getByRole('dialog', { name: 'Hilfe zu dieser Seite' })).toContainText(
     `Hilfe ${id}`

@@ -7,7 +7,7 @@ import { StudioSummaryCard } from '../../../components/StudioSummaryCard';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -102,7 +102,10 @@ const LegalTextsTable = ({
   legalTexts,
 }: Readonly<{ legalTexts: readonly IamLegalTextListItem[] }>) => (
   <StudioTableSurface>
-    <table className="min-w-full border-collapse" aria-label={t('admin.legalTexts.table.ariaLabel')}>
+    <table
+      className="min-w-full border-collapse"
+      aria-label={t('admin.legalTexts.table.ariaLabel')}
+    >
       <caption className="sr-only">{t('admin.legalTexts.table.caption')}</caption>
       <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
         <tr>
@@ -235,9 +238,7 @@ export const LegalTextsPage = () => {
   return (
     <section className="space-y-5" aria-busy={legalTextsApi.isLoading}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">
-          {t('admin.legalTexts.page.title')}
-        </h1>
+        <StudioPageTitle withAccessory>{t('admin.legalTexts.page.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('admin.legalTexts.page.subtitle')}
         </p>

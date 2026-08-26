@@ -4,7 +4,7 @@ import * as QRCode from 'qrcode';
 
 import { ModalDialog } from '../../../components/ModalDialog';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { Card, CardContent } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamMediaDelivery, IamRegisteredMediaAsset } from '../../../lib/iam-api';
@@ -347,9 +347,9 @@ export const MediaDetailWorkspaceHeader = ({
 
         <div className="space-y-5">
           <div className="space-y-3">
-            <h1 className="text-3xl font-semibold text-foreground">
+            <StudioPageTitle withAccessory>
               {asset.metadata.title?.trim() || asset.id}
-            </h1>
+            </StudioPageTitle>
             <p className="max-w-2xl text-sm text-muted-foreground">{t('media.detail.subtitle')}</p>
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">{t(`media.visibility.${asset.visibility}`)}</Badge>

@@ -3,7 +3,7 @@ import React from 'react';
 
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -51,7 +51,8 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
     void loadInstance(instanceId);
   }, [instanceId, loadInstance]);
 
-  const selectedInstance = instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
+  const selectedInstance =
+    instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
   const setupStatusItems = selectedInstance ? getInstanceSetupStatusItems(selectedInstance) : [];
   const setupCompleted = selectedInstance ? isInstanceSetupComplete(selectedInstance) : false;
 
@@ -145,7 +146,10 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
 
     setIsBootstrappingAdminStructure(true);
     try {
-      const bootstrapped = await instancesApi.bootstrapAdminStructure(selectedInstance.instanceId, selectedModuleIds);
+      const bootstrapped = await instancesApi.bootstrapAdminStructure(
+        selectedInstance.instanceId,
+        selectedModuleIds
+      );
       if (!bootstrapped) {
         return;
       }
@@ -160,7 +164,7 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
     <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{t('admin.instances.setup.title')}</h1>
+          <StudioPageTitle withAccessory>{t('admin.instances.setup.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('admin.instances.setup.subtitle', { instanceId })}
           </p>
@@ -189,12 +193,19 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
         <>
           <Card className="space-y-4 p-5">
             <div className="space-y-1">
-              <div className="text-sm font-medium text-foreground">{t('admin.instances.setup.status.title')}</div>
-              <p className="text-sm text-muted-foreground">{t('admin.instances.setup.status.subtitle')}</p>
+              <div className="text-sm font-medium text-foreground">
+                {t('admin.instances.setup.status.title')}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('admin.instances.setup.status.subtitle')}
+              </p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {setupStatusItems.map((item) => (
-                <div key={item.key} className="rounded-xl border border-border/70 bg-background/85 p-4">
+                <div
+                  key={item.key}
+                  className="rounded-xl border border-border/70 bg-background/85 p-4"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="font-medium text-foreground">{item.title}</div>
@@ -213,7 +224,10 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
               </p>
               {setupCompleted ? (
                 <Button asChild>
-                  <Link to="/admin/instances/$instanceId" params={{ instanceId: selectedInstance.instanceId }}>
+                  <Link
+                    to="/admin/instances/$instanceId"
+                    params={{ instanceId: selectedInstance.instanceId }}
+                  >
                     {t('admin.instances.setup.actions.openOperations')}
                   </Link>
                 </Button>
@@ -223,14 +237,21 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
 
           <Card className="space-y-4 p-5">
             <div className="space-y-1">
-              <div className="text-sm font-medium text-foreground">{t('admin.instances.workflow.title')}</div>
-              <p className="text-sm text-muted-foreground">{t('admin.instances.workflow.subtitle')}</p>
+              <div className="text-sm font-medium text-foreground">
+                {t('admin.instances.workflow.title')}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('admin.instances.workflow.subtitle')}
+              </p>
             </div>
             <div className="grid gap-3">
               {getSetupWorkflowSteps(selectedInstance, instancesApi.mutationError).map((step) => {
                 const action = step.action;
                 return (
-                  <div key={step.key} className="rounded-xl border border-border/70 bg-background/85 p-4">
+                  <div
+                    key={step.key}
+                    className="rounded-xl border border-border/70 bg-background/85 p-4"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
                         <div className="font-medium text-foreground">{step.title}</div>
@@ -259,8 +280,12 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
 
           <Card className="space-y-4 p-5">
             <div className="space-y-1">
-              <div className="text-sm font-medium text-foreground">{t('admin.instances.setup.temporaryPasswordTitle')}</div>
-              <p className="text-sm text-muted-foreground">{t('admin.instances.setup.temporaryPasswordHint')}</p>
+              <div className="text-sm font-medium text-foreground">
+                {t('admin.instances.setup.temporaryPasswordTitle')}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('admin.instances.setup.temporaryPasswordHint')}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="instance-setup-tenant-admin-password">
@@ -277,8 +302,12 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
 
           <Card className="space-y-4 p-5">
             <div className="space-y-1">
-              <div className="text-sm font-medium text-foreground">{t('admin.instances.adminBootstrap.title')}</div>
-              <p className="text-sm text-muted-foreground">{t('admin.instances.adminBootstrap.subtitleReady')}</p>
+              <div className="text-sm font-medium text-foreground">
+                {t('admin.instances.adminBootstrap.title')}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('admin.instances.adminBootstrap.subtitleReady')}
+              </p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -332,7 +361,9 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
               >
                 {t('admin.instances.adminBootstrap.action')}
               </Button>
-              <p className="text-xs text-muted-foreground">{t('admin.instances.adminBootstrap.actionHintReady')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('admin.instances.adminBootstrap.actionHintReady')}
+              </p>
             </div>
           </Card>
         </>

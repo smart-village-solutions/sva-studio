@@ -4,6 +4,7 @@ import {
   Button,
   StudioDestructiveActionDialog,
   StudioJobSummaryCard,
+  StudioPageTitle,
   StudioPersistentActionResult,
 } from '@sva/studio-ui-react';
 
@@ -35,31 +36,37 @@ const MonitoringJobSummary = ({
   'jobId' | 'statusLabel' | 'statusTone' | 'announcement' | 'runtimeLabel' | 'canCancel'
 > &
   Readonly<{ onRequestCancel: () => void }>) => (
-  <StudioJobSummaryCard
-    title={t('monitoring.jobs.detail.title')}
-    description={t('monitoring.jobs.detail.subtitle')}
-    statusLabel={statusLabel}
-    statusTone={statusTone}
-    announcement={announcement}
-    metadata={[
-      { id: 'jobId', label: t('monitoring.jobs.labels.jobId'), value: jobId },
-      ...(runtimeLabel
-        ? [{ id: 'runtime', label: t('monitoring.jobs.labels.runtime'), value: runtimeLabel }]
-        : []),
-    ]}
-    actions={
-      <>
-        <Button asChild variant="secondary">
-          <Link to="/monitoring/jobs">{t('monitoring.jobs.detail.back')}</Link>
-        </Button>
-        {canCancel ? (
-          <Button type="button" variant="destructive" onClick={onRequestCancel}>
-            {t('monitoring.jobs.actions.cancel')}
+  <div className="space-y-4">
+    <header className="space-y-2">
+      <StudioPageTitle withAccessory>{t('monitoring.jobs.detail.title')}</StudioPageTitle>
+      <p className="max-w-3xl text-sm text-muted-foreground">
+        {t('monitoring.jobs.detail.subtitle')}
+      </p>
+    </header>
+    <StudioJobSummaryCard
+      statusLabel={statusLabel}
+      statusTone={statusTone}
+      announcement={announcement}
+      metadata={[
+        { id: 'jobId', label: t('monitoring.jobs.labels.jobId'), value: jobId },
+        ...(runtimeLabel
+          ? [{ id: 'runtime', label: t('monitoring.jobs.labels.runtime'), value: runtimeLabel }]
+          : []),
+      ]}
+      actions={
+        <>
+          <Button asChild variant="secondary">
+            <Link to="/monitoring/jobs">{t('monitoring.jobs.detail.back')}</Link>
           </Button>
-        ) : null}
-      </>
-    }
-  />
+          {canCancel ? (
+            <Button type="button" variant="destructive" onClick={onRequestCancel}>
+              {t('monitoring.jobs.actions.cancel')}
+            </Button>
+          ) : null}
+        </>
+      }
+    />
+  </div>
 );
 
 export const MonitoringJobDetailHeader = ({

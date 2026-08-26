@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import {
   Card,
   CardContent,
@@ -96,7 +96,9 @@ export const MediaUnregisteredDetailPage = ({ asset }: MediaUnregisteredDetailPa
 
           <div className="space-y-5">
             <div className="space-y-3">
-              <h1 className="break-all text-3xl font-semibold text-foreground">{asset.fileName}</h1>
+              <StudioPageTitle withAccessory className="break-all">
+                {asset.fileName}
+              </StudioPageTitle>
               <p className="max-w-2xl text-sm text-muted-foreground">
                 {t('media.unregistered.subtitle')}
               </p>

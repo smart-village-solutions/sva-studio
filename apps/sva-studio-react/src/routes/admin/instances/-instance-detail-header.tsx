@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 import { INSTANCE_STATUS_LABELS } from './-instance-detail-view-shared';
 
@@ -28,8 +28,10 @@ export const InstanceDetailHeader = ({
   <header className="space-y-5">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.instances.detail.title')}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.instances.detail.subtitle')}</p>
+        <StudioPageTitle withAccessory>{t('admin.instances.detail.title')}</StudioPageTitle>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {t('admin.instances.detail.subtitle')}
+        </p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" onClick={onOpenDoctor}>
@@ -47,10 +49,14 @@ export const InstanceDetailHeader = ({
           {t('admin.instances.cockpit.identity')}
         </div>
         <div className="mt-3 space-y-1">
-          <div className="text-lg font-semibold text-foreground">{selectedInstance.displayName}</div>
+          <div className="text-lg font-semibold text-foreground">
+            {selectedInstance.displayName}
+          </div>
           <div className="text-sm text-muted-foreground">{selectedInstance.instanceId}</div>
           <div className="text-sm text-muted-foreground">
-            {t('admin.instances.detail.primaryHostname', { value: selectedInstance.primaryHostname })}
+            {t('admin.instances.detail.primaryHostname', {
+              value: selectedInstance.primaryHostname,
+            })}
           </div>
         </div>
       </div>
@@ -68,7 +74,9 @@ export const InstanceDetailHeader = ({
           {t('admin.instances.cockpit.lifecycle')}
         </div>
         <div className="mt-3 space-y-1">
-          <div className="text-lg font-semibold text-foreground">{t(INSTANCE_STATUS_LABELS[selectedInstance.status])}</div>
+          <div className="text-lg font-semibold text-foreground">
+            {t(INSTANCE_STATUS_LABELS[selectedInstance.status])}
+          </div>
           <div className="text-sm text-muted-foreground">
             {t('admin.instances.detail.parentDomain', { value: selectedInstance.parentDomain })}
           </div>

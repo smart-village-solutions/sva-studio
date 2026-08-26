@@ -44,6 +44,8 @@ import {
   StudioListPageTemplate,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioPageHeader,
+  StudioPageTitleAccessoryProvider,
   StudioPersistentActionResult,
   StudioResourceHeader,
   StudioSection,
@@ -95,6 +97,40 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('button', { name: 'Anlegen' })).toBeTruthy();
     expect(screen.getByText('Werkzeuge')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
+  });
+
+  it('renders a page-title accessory beside the heading without changing its accessible name', () => {
+    render(
+      <StudioPageTitleAccessoryProvider
+        accessory={<button type="button" aria-label="Hilfe öffnen" />}
+      >
+        <StudioOverviewPageTemplate title="FAQ bearbeiten">
+          <p>Inhalt</p>
+        </StudioOverviewPageTemplate>
+      </StudioPageTitleAccessoryProvider>
+    );
+
+    const heading = screen.getByRole('heading', { name: 'FAQ bearbeiten', level: 1 });
+    const trigger = screen.getByRole('button', { name: 'Hilfe öffnen' });
+
+    expect(heading.parentElement?.className).toContain('inline-flex');
+    expect(heading.parentElement?.firstElementChild).toBe(heading);
+    expect(heading.parentElement?.lastElementChild?.contains(trigger)).toBe(true);
+  });
+
+  it('renders the page-title accessory only for the primary template heading', () => {
+    render(
+      <StudioPageTitleAccessoryProvider
+        accessory={<button type="button" aria-label="Hilfe öffnen" />}
+      >
+        <StudioOverviewPageTemplate title="Abfallwirtschaft">
+          <StudioPageHeader title="Tour bearbeiten" />
+        </StudioOverviewPageTemplate>
+      </StudioPageTitleAccessoryProvider>
+    );
+
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Hilfe öffnen' })).toHaveLength(1);
   });
 
   it('renders list page templates with a primary action callback', () => {

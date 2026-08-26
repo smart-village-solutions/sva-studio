@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  StudioPageTitle,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -55,9 +56,7 @@ export const GroupCreatePage = () => {
     <section className="space-y-5">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">
-            {t('admin.groups.dialogs.createTitle')}
-          </h1>
+          <StudioPageTitle withAccessory>{t('admin.groups.dialogs.createTitle')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('admin.groups.dialogs.createDescription')}
           </p>

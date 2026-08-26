@@ -5,6 +5,7 @@ import {
   type StudioColumnDef,
   StudioDataTable,
   StudioDestructiveActionDialog,
+  StudioPageTitle,
   StudioPersistentActionResult,
 } from '@sva/studio-ui-react';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
@@ -225,7 +226,9 @@ export const InterfacesPage = () => {
   return (
     <div className="flex flex-col gap-6 text-foreground">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{t('interfaces.page.title')}</h1>
+        <StudioPageTitle withAccessory className="text-2xl">
+          {t('interfaces.page.title')}
+        </StudioPageTitle>
         <p className="text-sm text-muted-foreground">{t('interfaces.page.subtitle')}</p>
         {instanceId ? (
           <p className="text-xs text-muted-foreground">

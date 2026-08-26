@@ -58,63 +58,73 @@ export const useIamAdminList = <TItem>(
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
   const hasLoadedItemsRef = React.useRef(false);
   const latestRequestRef = React.useRef(0);
+  const latestRequestOutcomeRef = React.useRef<Promise<boolean> | null>(null);
 
-  const refetchWithOutcome = React.useCallback(async (): Promise<boolean> => {
+  const executeRefetch = React.useCallback(
+    async (requestId: number): Promise<boolean> => {
+      if (!enabled) {
+        setItems([]);
+        setIsLoading(false);
+        setError(null);
+        return false;
+      }
+
+      logBrowserOperationStart(adminListLogger, 'list_refetch_started');
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await listItems();
+        if (requestId !== latestRequestRef.current) {
+          return (await latestRequestOutcomeRef.current) ?? false;
+        }
+        setItems(response.data);
+        hasLoadedItemsRef.current = true;
+        onLoaded?.(response);
+        logBrowserOperationSuccess(
+          adminListLogger,
+          'list_refetch_succeeded',
+          {
+            item_count: response.data.length,
+          },
+          'debug'
+        );
+        return true;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (requestId !== latestRequestRef.current) {
+          return (await latestRequestOutcomeRef.current) ?? false;
+        }
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          adminListLogger.info('session_refreshed_after_401', {
+            operation: 'list_refetch',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+          });
+        }
+        if (!hasLoadedItemsRef.current) {
+          setItems([]);
+        }
+        setError(resolvedError);
+        logBrowserOperationFailure(adminListLogger, 'list_refetch_failed', resolvedError);
+        return false;
+      } finally {
+        if (requestId === latestRequestRef.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [enabled, refreshSession, listItems, onLoaded]
+  );
+
+  const refetchWithOutcome = React.useCallback((): Promise<boolean> => {
     const requestId = latestRequestRef.current + 1;
     latestRequestRef.current = requestId;
-    if (!enabled) {
-      setItems([]);
-      setIsLoading(false);
-      setError(null);
-      return false;
-    }
-
-    logBrowserOperationStart(adminListLogger, 'list_refetch_started');
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await listItems();
-      if (requestId !== latestRequestRef.current) {
-        return true;
-      }
-      setItems(response.data);
-      hasLoadedItemsRef.current = true;
-      onLoaded?.(response);
-      logBrowserOperationSuccess(
-        adminListLogger,
-        'list_refetch_succeeded',
-        {
-          item_count: response.data.length,
-        },
-        'debug'
-      );
-      return true;
-    } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (requestId !== latestRequestRef.current) {
-        return true;
-      }
-      if (resolvedError.status === 401) {
-        await refreshSession();
-        adminListLogger.info('session_refreshed_after_401', {
-          operation: 'list_refetch',
-          status: resolvedError.status,
-          error_code: resolvedError.code,
-        });
-      }
-      if (!hasLoadedItemsRef.current) {
-        setItems([]);
-      }
-      setError(resolvedError);
-      logBrowserOperationFailure(adminListLogger, 'list_refetch_failed', resolvedError);
-      return false;
-    } finally {
-      if (requestId === latestRequestRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [enabled, refreshSession, listItems, onLoaded]);
+    const outcome = executeRefetch(requestId);
+    latestRequestOutcomeRef.current = outcome;
+    return outcome;
+  }, [executeRefetch]);
 
   const refetch = React.useCallback(async () => {
     await refetchWithOutcome();

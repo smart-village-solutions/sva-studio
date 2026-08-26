@@ -7,7 +7,7 @@ Eine einmal konfliktbehaftete persönliche Mainserver-DataProvider-Bindung bleib
 ## What Changes
 
 - Der bestehende serverseitige Identity-Guard darf einen DataProvider-Konflikt anlassbezogen im selben Mutationsrequest selbst heilen.
-- Automatische Auflösung ist ausschließlich zulässig, wenn der aktuelle Benutzer aktiv ist und sämtliche konkurrierenden aktuellen Bindungen zu endgültig gelöschten oder nicht mehr vorhandenen Benutzer-Accounts derselben Instanz gehören.
+- Automatische Auflösung ist ausschließlich zulässig, wenn der aktuelle Benutzer aktiv ist und sämtliche konkurrierenden aktuellen Bindungen zu endgültig gelöschten Benutzer-Accounts derselben Instanz gehören. Für einen fehlenden Account muss ein unveränderlicher erfolgreicher `user.deleted`-Auditnachweis den abgeschlossenen Hard Delete belegen.
 - Historische Bindungsevidenz bleibt erhalten und wird auf `historical` gesetzt; `revoked` wird ohne bestätigten externen Credential-Widerruf nicht behauptet.
 - Die aktuelle Credential-Version wird über den authentifizierten Identity-Endpunkt bestätigt und in derselben Datenbanktransaktion als `verified` markiert.
 - Bei aktiven, gesperrten, vorläufig gelöschten, organisatorischen oder anderweitig unklaren konkurrierenden Principals bleibt der Konflikt unverändert fail-closed.

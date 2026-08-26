@@ -2,14 +2,14 @@
 
 ### Requirement: Endgültig gelöschte Benutzer blockieren keine eindeutige aktuelle DataProvider-Bindung
 
-Das System SHALL einen persönlichen DataProvider-Konflikt anlassbezogen im serverseitigen Identity-Guard automatisch auflösen dürfen, wenn die aktuelle Credential-Version durch den authentifizierten Identity-Endpunkt bestätigt ist und alle konkurrierenden aktuellen Bindungen ausschließlich zu endgültig gelöschten oder nach Hard Delete nicht mehr vorhandenen Benutzer-Accounts derselben Instanz gehören.
+Das System SHALL einen persönlichen DataProvider-Konflikt anlassbezogen im serverseitigen Identity-Guard automatisch auflösen dürfen, wenn die aktuelle Credential-Version durch den authentifizierten Identity-Endpunkt bestätigt ist und alle konkurrierenden aktuellen Bindungen ausschließlich zu endgültig gelöschten Benutzer-Accounts derselben Instanz gehören. Fehlt ein Account nach Hard Delete, SHALL zusätzlich ein erfolgreicher unveränderlicher `user.deleted`-Eintrag im aktuellen oder archivierten Activity-Log den abgeschlossenen Löschvorgang belegen.
 
 Die Auflösung SHALL die konkurrierende Evidenz als `historical` erhalten, die exakte aktuelle Bindung atomar auf `verified` setzen und den noch nicht an den Mainserver gesendeten Mutationsrequest ohne zusätzlichen UI-Schritt fortsetzen. Sie SHALL keinen externen Credential-Widerruf behaupten. Jeder aktive, gesperrte, vorläufig gelöschte, organisatorische oder nicht eindeutig klassifizierbare konkurrierende Principal SHALL die automatische Auflösung fail-closed verhindern.
 
 #### Scenario: Einziger aktiver Benutzer setzt Mutation nach Selbstheilung fort
 
 - **GIVEN** zwei persönliche Bindungen derselben Instanz beanspruchen konfliktbehaftet denselben DataProvider
-- **AND** der konkurrierende Benutzer wurde endgültig gelöscht oder ist nach abgeschlossenem Hard Delete nicht mehr vorhanden
+- **AND** der konkurrierende Benutzer wurde endgültig gelöscht oder sein Fehlen ist durch einen erfolgreichen unveränderlichen `user.deleted`-Eintrag als abgeschlossener Hard Delete belegt
 - **AND** der aktuelle Benutzer ist aktiv und sein Identity-Endpunkt bestätigt DataProvider und Credential-Version
 - **WHEN** der aktuelle Benutzer eine Mainserver-Mutation auslöst
 - **THEN** historisiert Studio die konkurrierende Bindung und verifiziert die exakte aktuelle Bindung atomar

@@ -1,13 +1,13 @@
 ## 1. Binding-Vertrag und Repro
 
-- [x] 1.1 Den bestehenden Konflikt mit zwei Benutzer-Bindungen desselben DataProviders und einem endgültig gelöschten beziehungsweise nicht mehr vorhandenen Account als Repro-Test abbilden.
+- [x] 1.1 Den bestehenden Konflikt mit zwei Benutzer-Bindungen desselben DataProviders und einem endgültig gelöschten beziehungsweise durch Auditnachweis als hard-gelöscht belegten Account als Repro-Test abbilden.
 - [x] 1.2 Negativtests für aktiven, gesperrten, vorläufig gelöschten, organisatorischen und nicht eindeutig klassifizierbaren konkurrierenden Principal ergänzen.
 - [x] 1.3 Den atomaren Parallelitätsvertrag für denselben DataProvider und wiederholte Auflösungsversuche testen.
 
 ## 2. Anlassbezogene Selbstheilung
 
 - [x] 2.1 Im Binding-Modul eine instanzgebundene, DataProvider-gelockte Klassifikation konkurrierender Principals implementieren.
-- [x] 2.2 Ausschließlich endgültig gelöschte oder nach Hard Delete nicht mehr vorhandene Benutzer-Bindungen auf `historical` setzen und `superseded_at` erhalten.
+- [x] 2.2 Ausschließlich endgültig gelöschte oder durch unveränderlichen Auditnachweis als hard-gelöscht belegte Benutzer-Bindungen auf `historical` setzen und `superseded_at` erhalten.
 - [x] 2.3 Die aktuell per Identity-Endpunkt bestätigte exakte Bindung in derselben Transaktion auf `verified` setzen.
 - [x] 2.4 Den Identity-Guard nach erfolgreicher Auflösung im ursprünglichen Mutationsrequest fortfahren lassen und nicht eindeutig lösbare Konflikte unverändert als `mainserver_data_provider_identity_conflict` ablehnen.
 - [x] 2.5 Strukturierte, PII- und secret-minimierte Ergebnis- und Grundsignale für erfolgreiche und abgelehnte Versuche ergänzen.

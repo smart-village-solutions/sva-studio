@@ -250,6 +250,7 @@ describe('mainserver data provider bindings', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [accountRow()] })
+      .mockResolvedValueOnce({ rows: [{ subject_id: deletedPrincipalId }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
       .mockResolvedValueOnce({ rows: [bindingRow({ status: 'verified' })] });
 
@@ -272,9 +273,38 @@ describe('mainserver data provider bindings', () => {
       expect.stringContaining('pg_advisory_xact_lock'),
       ['de-musterhausen', 'mainserver-data-provider:dp-user-1']
     );
-    expect(String(state.query.mock.calls[3]?.[0])).toContain("SET status = 'historical'");
-    expect(state.query.mock.calls[3]?.[1]).toEqual(['de-musterhausen', ['binding-2']]);
-    expect(String(state.query.mock.calls[4]?.[0])).toContain("SET status = 'verified'");
+    expect(String(state.query.mock.calls[3]?.[0])).toContain("event_type = 'user.deleted'");
+    expect(String(state.query.mock.calls[4]?.[0])).toContain("SET status = 'historical'");
+    expect(state.query.mock.calls[4]?.[1]).toEqual(['de-musterhausen', ['binding-2']]);
+    expect(String(state.query.mock.calls[5]?.[0])).toContain("SET status = 'verified'");
+  });
+
+  it('keeps an orphaned competing binding without hard-delete evidence fail-closed', async () => {
+    const orphanedPrincipalId = '22222222-2222-2222-8222-222222222222';
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          bindingRow({ status: 'conflict' }),
+          bindingRow({ id: 'binding-2', principal_id: orphanedPrincipalId, status: 'conflict' }),
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [accountRow()] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      reconcileDeletedUserDataProviderConflict({
+        instanceId: 'de-musterhausen',
+        principalType: 'user',
+        principalId: '11111111-1111-1111-8111-111111111111',
+        credentialFingerprint: 'a'.repeat(64),
+        dataProviderId: 'dp-user-1',
+      })
+    ).resolves.toEqual({
+      outcome: 'not_resolved',
+      reason: 'competing_user_not_permanently_deleted',
+    });
+    expect(state.query).toHaveBeenCalledTimes(4);
   });
 
   it.each([

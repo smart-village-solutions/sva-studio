@@ -575,7 +575,7 @@ Referenzen:
 
 ### Fortschreibung 2026-08: Selbstheilung historischer DataProvider-Konflikte
 
-- Risiko: Eine reversible Sperrung oder vorläufige Löschung wird als endgültiges Ausscheiden interpretiert und überträgt die aktuelle DataProvider-Zuordnung unzulässig. Maßnahme: Selbstheilung ausschließlich bei endgültig gelöschtem oder nach Hard Delete nicht mehr vorhandenem Benutzer; aktive, gesperrte, soft-gelöschte, organisatorische und unklare Konkurrenten bleiben fail-closed.
+- Risiko: Eine reversible Sperrung oder vorläufige Löschung wird als endgültiges Ausscheiden interpretiert und überträgt die aktuelle DataProvider-Zuordnung unzulässig. Maßnahme: Selbstheilung ausschließlich bei endgültig gelöschtem Benutzer; bei einem nach Hard Delete fehlenden Account ist zusätzlich der unveränderliche erfolgreiche `user.deleted`-Auditnachweis erforderlich. Aktive, gesperrte, soft-gelöschte, organisatorische, verwaiste und unklare Konkurrenten bleiben fail-closed.
 - Risiko: Die lokale Historisierung suggeriert einen externen Credential-Widerruf. Maßnahme: konkurrierende Bindungen werden ausschließlich `historical`, niemals ohne Upstream-Nachweis `revoked`; eine spätere widersprechende aktive Beobachtung erzeugt erneut einen Konflikt.
 - Risiko: Parallele Identity-Beobachtungen erzeugen inkonsistente Bindungszustände. Maßnahme: erneutes tenantlokales Lesen und atomarer Übergang unter dem bestehenden DataProvider-Advisory-Lock; strukturierte technische Ergebnis- und Grundsignale ohne PII oder Secrets.
 

@@ -31,7 +31,7 @@ Automatische Auflösung ist nur erlaubt, wenn alle folgenden Bedingungen gelten:
 1. Der handelnde Principal ist ein aktiver, nicht gesperrter und nicht gelöschter Benutzer der aktuellen Instanz.
 2. Identity-Evidenz bestätigt für seine aktuelle Credential-Version exakt den konfliktbehafteten DataProvider.
 3. Jede andere aktuelle Bindung dieses DataProviders gehört ebenfalls zu einem Benutzerprincipal.
-4. Jeder konkurrierende Benutzer ist entweder endgültig gelöscht oder existiert nach einem abgeschlossenen Hard Delete nicht mehr.
+4. Jeder konkurrierende Benutzer ist entweder endgültig gelöscht oder sein Fehlen ist durch einen erfolgreichen unveränderlichen `user.deleted`-Eintrag im aktuellen oder archivierten Activity-Log als abgeschlossener Hard Delete belegt.
 5. Es existiert keine aktuelle konkurrierende Organisationsbindung und kein aktiver, gesperrter, vorläufig gelöschter oder sonst nicht eindeutig klassifizierbarer Benutzer.
 
 Eine leere oder widersprüchliche Datenbankantwort, ein Identity-Fehler oder ein paralleler unklarer Zustand lässt den bestehenden Konflikt unverändert.
@@ -66,7 +66,7 @@ Löschen zerstört Audit-Evidenz. `revoked` würde ohne bestätigten Upstream-Wi
 
 ## Risks and Mitigations
 
-- Ein nur vorübergehend inaktiver Principal wird fälschlich verdrängt → automatische Auflösung ausschließlich bei endgültiger Löschung oder nachweislich fehlendem Hard-Delete-Account; Sperrung und Soft Delete bleiben Konflikt.
+- Ein nur vorübergehend inaktiver oder verwaister Principal wird fälschlich verdrängt → automatische Auflösung ausschließlich bei endgültiger Löschung oder fehlendem Account mit unveränderlichem erfolgreichem `user.deleted`-Auditnachweis; Sperrung, Soft Delete und unbelegtes Fehlen bleiben Konflikt.
 - Parallele Beobachtungen erzeugen widersprüchliche Übergänge → bestehender DataProvider-Advisory-Lock, erneutes Lesen und atomare Statusänderung in einer Transaktion.
 - Ein externer Credential-Satz des gelöschten Accounts ist weiterhin gültig → lokaler Status wird nur `historical`; kein externer Widerruf wird behauptet. Eine spätere erneute aktive Beobachtung erzeugt wieder fail-closed einen Konflikt.
 - Selbstheilung verdeckt einen häufigeren Systemfehler → strukturierte Metrik und Auditnachweis machen Anzahl und Grund sichtbar.

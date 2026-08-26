@@ -5,6 +5,7 @@ import type {
   MainserverDataProviderEvidenceKind,
   MainserverPrincipalType,
 } from './mainserver-data-provider-bindings.js';
+import { loadHardDeleteEvidence } from './mainserver-data-provider-hard-delete-evidence.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
@@ -178,15 +179,20 @@ const isCurrentActiveUser = (account: AccountLifecycleRow | undefined): boolean 
   account.soft_deleted_at === null &&
   account.permanently_deleted_at === null;
 
-const isPermanentlyDeletedUser = (account: AccountLifecycleRow | undefined): boolean =>
-  account === undefined ||
-  account.deletion_lifecycle_state === 'deleted' ||
-  account.permanently_deleted_at !== null;
+const isPermanentlyDeletedUser = (
+  principalId: string,
+  account: AccountLifecycleRow | undefined,
+  hardDeletedUserIds: ReadonlySet<string>
+): boolean =>
+  account
+    ? account.deletion_lifecycle_state === 'deleted' || account.permanently_deleted_at !== null
+    : hardDeletedUserIds.has(principalId);
 
 const decideReconciliation = (
   input: ReconciliationInput,
   bindings: readonly BindingRow[],
-  accounts: ReadonlyMap<string, AccountLifecycleRow>
+  accounts: ReadonlyMap<string, AccountLifecycleRow>,
+  hardDeletedUserIds: ReadonlySet<string>
 ): ReconciliationDecision => {
   const exactBinding = bindings.find((row) => isExactBinding(row, input));
   if (!exactBinding) return { outcome: 'not_resolved', reason: 'exact_binding_missing' };
@@ -216,7 +222,16 @@ const decideReconciliation = (
   if (competitors.some((row) => row.principal_type !== 'user')) {
     return { outcome: 'not_resolved', reason: 'competing_principal_not_user' };
   }
-  if (competitors.some((row) => !isPermanentlyDeletedUser(accounts.get(row.principal_id)))) {
+  if (
+    competitors.some(
+      (row) =>
+        !isPermanentlyDeletedUser(
+          row.principal_id,
+          accounts.get(row.principal_id),
+          hardDeletedUserIds
+        )
+    )
+  ) {
     return { outcome: 'not_resolved', reason: 'competing_user_not_permanently_deleted' };
   }
   return {
@@ -276,7 +291,15 @@ export const reconcileDeletedUserDataProviderConflict = async (
       return { outcome: 'not_resolved', reason: 'exact_binding_missing' };
     }
     const accounts = await loadUserAccounts(client, input.instanceId, bindings);
-    const decision = decideReconciliation(input, bindings, accounts);
+    const missingUserIds = bindings
+      .filter((row) => row.principal_type === 'user' && !accounts.has(row.principal_id))
+      .map((row) => row.principal_id);
+    const hardDeletedUserIds = await loadHardDeleteEvidence(
+      client,
+      input.instanceId,
+      missingUserIds
+    );
+    const decision = decideReconciliation(input, bindings, accounts, hardDeletedUserIds);
     return decision.outcome === 'ready' ? persistReconciliation(client, input, decision) : decision;
   });
 };

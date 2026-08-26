@@ -88,6 +88,8 @@ Vor dem Öffnen eines PRs prüfen:
 
 - Relevante Tests und Typechecks sind grün.
 - Dokumentation unter `docs/` wurde aktualisiert, wenn Verhalten, Architektur oder Betrieb betroffen sind.
+- Neue aktuelle Dokumente sind im passenden Bereichsindex für [Entwicklung](./docs/development/README.md), [Betrieb](./docs/operations/README.md), [Referenz](./docs/reference/README.md) oder [Governance](./docs/governance/README.md) verlinkt.
+- `docs/guides/` wird nicht als allgemeiner Zielordner verwendet; sein [Migrationsinventar](./docs/guides/README.md) und der stabile kanonische Rolloutpfad bleiben erhalten.
 - Breaking Changes sind im PR klar benannt.
 - Sicherheitsrelevante Änderungen dokumentieren Validierung, Risiko und ggf. Folgemaßnahmen.
 

@@ -871,3 +871,14 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Hinweisfeld, Overlay, Lade- und Fehlerzustände verwenden i18n-Schlüssel sowie die bestehenden
   Radix-/Studio-Primitives für Fokusfalle, Escape und Fokusrückgabe. ETag und begrenztes privates
   Browser-Caching vermeiden unnötige Abrufe ohne eine persistente Studio-Cache-Schicht.
+
+### Pflegevertrag der lokalen Dokumentation
+
+- Jede aktuelle Seite besitzt genau einen fachlichen Bereich und wird von dessen Index aus erreichbar gehalten.
+- Änderungen an Architektur, Implementierung, Betrieb, stabilen Verträgen oder Governance aktualisieren im selben PR die jeweils führende Quelle.
+- Bereichsindizes nennen Autorität und Pflege-Trigger; ein Link aus einem anderen Bereich erzeugt keine zweite Ownership.
+- Maschinenlesbare API-Schemata sind gegenüber erläuternden Referenztexten führend. Kanonische ADRs sind gegenüber Legacy-Entscheidungsdokumenten führend.
+- `docs/reports/`, `docs/pr/`, `docs/staging/`, `docs/changelog/` und `docs/superpowers/` sind Evidenz oder Historie, keine aktuellen Handbücher.
+- `docs/user-documentation/` ist ein separater Integrations- und Synchronisationsbereich für die externe Anwenderdokumentation und wird nicht in die lokale technische Wissensbasis eingemischt.
+- Die Wiki-Publikation folgt der versionierten Positivliste. Ausgeschlossene, weiterhin referenzierte Nachweise werden über explizite Repository-Links erreicht.
+- Der Rolloutvertrag bleibt pfadstabil und ausschließlich unter `docs/guides/studio-rollout-process.md` normativ.

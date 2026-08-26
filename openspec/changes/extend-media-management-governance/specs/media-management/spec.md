@@ -81,6 +81,44 @@ Das System SHALL das Original eines Assets über einen versionierten, fail-close
 - **AND** die fehlerhafte Version wird nicht an bestehende Referenzen ausgeliefert
 - **AND** der Benutzer erhält einen redigierten, nachvollziehbaren Status
 
+### Requirement: Retention und Quota-Abrechnung von Originalversionen
+
+Das System SHALL inaktive und fehlgeschlagene Originalversionen nach instanzbezogenen Retention-Regeln bereinigen und ihre gespeicherten Bytes bis zur bestätigten physischen Löschung konsistent auf die harte Speicherquote anrechnen.
+
+#### Scenario: Erfolgreicher Replace startet die Retention der Altversion
+
+- **WHEN** eine neue Originalversion erfolgreich aktiviert wird
+- **THEN** markiert das System die zuvor aktive Originalversion als inaktiv und nicht mehr auslieferbar
+- **AND** berechnet es aus der zum Übergangszeitpunkt gültigen instanzbezogenen Retention-Regel einen unveränderlichen Bereinigungszeitpunkt
+- **AND** bleiben die Altversion und ihre ausschließlich daraus abgeleiteten Varianten bis zur bestätigten physischen Löschung vollständig quotenwirksam
+
+#### Scenario: Inaktive Altversion erreicht ihren Bereinigungszeitpunkt
+
+- **WHEN** eine abgelöste Originalversion ihren beim Replace berechneten Bereinigungszeitpunkt erreicht
+- **AND** keine dokumentierte Aufbewahrungssperre besteht
+- **THEN** entfernt ein idempotenter Cleanup die Altversion und ihre ausschließlich daraus abgeleiteten Varianten
+- **AND** die aktive Originalversion, Asset-Identität und Medienreferenzen bleiben unverändert
+
+#### Scenario: Fehlgeschlagene Version erreicht ihren Bereinigungszeitpunkt
+
+- **WHEN** eine niemals aktivierte Originalversion ihren aus der Fehler-Retention berechneten Bereinigungszeitpunkt erreicht
+- **AND** keine dokumentierte Aufbewahrungssperre besteht
+- **THEN** entfernt ein idempotenter Cleanup die Originalversion und ihre ausschließlich daraus abgeleiteten Varianten
+- **AND** bestehende aktive Versionen, Asset-Identität und Medienreferenzen bleiben unverändert
+
+#### Scenario: Physische Bereinigung wird bestätigt
+
+- **WHEN** Originalversion und zugehörige Varianten nach Ablauf der Retention physisch vollständig gelöscht wurden
+- **THEN** reduziert das System die serverseitig ermittelte Speichernutzung atomar und höchstens einmal um die bestätigten gespeicherten Bytes
+- **AND** nachfolgende Cleanup-Wiederholungen verändern die Nutzung nicht erneut
+
+#### Scenario: Physische Bereinigung schlägt fehl
+
+- **WHEN** die Löschung einer inaktiven oder fehlgeschlagenen Version nicht vollständig bestätigt werden kann
+- **THEN** bleiben ihre gespeicherten Bytes vollständig quotenwirksam
+- **AND** wird die Bereinigung über den kanonischen Medienjob-Vertrag erneut versucht
+- **AND** führt dieser Governance-Pfad keine eigene Queue-, Retry- oder Dead-Letter-Infrastruktur ein
+
 ### Requirement: Malware-Prüfung als Freigabe-Gate
 
 Das System SHALL neue Originaldateien über einen produktneutralen Malware-Scanner-Port prüfen und nur nach einem Ergebnis `clean` zur Nutzung freigeben.

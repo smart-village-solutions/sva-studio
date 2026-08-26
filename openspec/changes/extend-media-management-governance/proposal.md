@@ -11,7 +11,7 @@ Dieser Change bündelt nur diese weiterhin sinnvollen Lücken. Er führt weder b
 - Ergänzt mehrsprachige globale Medienmetadaten mit deterministischem Fallback
 - Ergänzt Ordner, Tags und kontrollierte Kategorien für Organisation, Suche und Filterung
 - Ergänzt instanzlokale, Hash-basierte Duplikaterkennung mit einer kontrollierten Wiederverwendungsentscheidung
-- Ergänzt den sicheren Austausch eines Originals bei stabiler Asset-Identität und stabilen Medienreferenzen
+- Ergänzt den sicheren Austausch eines Originals bei stabiler Asset-Identität und stabilen Medienreferenzen einschließlich Retention, Bereinigung und konsistenter Quota-Abrechnung alter Versionen
 - Ergänzt einen produktneutralen Malware-Scan als Fail-closed-Freigabe-Gate
 - Ergänzt konfigurierbare Frühwarnungen vor der bereits vorhandenen harten Speicherquote
 - Ergänzt revisionssichere Audit-Ereignisse für diese Governance- und Schutzoperationen

@@ -57,7 +57,9 @@ Die Wiederverwendung erzeugt kein zweites Storage-Objekt. Ein bewusst angelegtes
 
 Ein Replace erzeugt zunächst eine neue interne Originalversion desselben `MediaAsset`. Die bisher aktive Version und alle bestehenden `MediaReference`-IDs bleiben unverändert nutzbar, bis Validierung, Malware-Prüfung und erforderliche Varianten der neuen Version erfolgreich abgeschlossen sind.
 
-Erst danach wird die neue Version atomar aktiv. Bei Fehlern bleibt die bisherige Version führend. Veraltete Varianten werden nicht unter unveränderten technischen Cache-Identitäten weiterverwendet. Aufbewahrung und spätere Bereinigung alter Originalversionen erfolgen nach einer dokumentierten Retention-Regel.
+Erst danach wird die neue Version atomar aktiv. Bei Fehlern bleibt die bisherige Version führend. Veraltete Varianten werden nicht unter unveränderten technischen Cache-Identitäten weiterverwendet.
+
+Jede Instanz besitzt verbindliche Retention-Regeln für abgelöste und fehlgeschlagene Originalversionen. Beim Übergang in einen inaktiven oder fehlgeschlagenen Zustand berechnet der Server einen unveränderlichen Bereinigungszeitpunkt. Nach dessen Ablauf entfernt ein idempotenter Cleanup die Version und alle ausschließlich daraus abgeleiteten Varianten, sofern keine dokumentierte Aufbewahrungssperre besteht. Bis die physische Löschung bestätigt ist, zählen sämtliche gespeicherten Bytes weiterhin vollständig zur harten Speicherquote; ein fehlgeschlagener Cleanup reduziert die Nutzung nicht und wird über die kanonische Processing-Infrastruktur erneut ausgeführt.
 
 ### 5. Malware-Prüfung ist ein produktneutraler Freigabevertrag
 
@@ -83,6 +85,7 @@ Dateiinhalte, rohe Hashes, Scanner-Interna, Storage-Keys, Secrets und Klartext-P
 - Ungültige oder entfernte Taxonomiewerte werden serverseitig abgewiesen; bestehende Zuordnungen werden bei Taxonomieänderungen kontrolliert migriert oder entfernt.
 - Ein Hash-Treffer legt nur Assets offen, die der Benutzer innerhalb derselben Instanz lesen darf.
 - Scan- oder Processing-Fehler lassen neue Uploads unreferenzierbar und Replace-Vorgänge auf der bisherigen aktiven Version.
+- Inaktive und fehlgeschlagene Originalversionen bleiben bis zur bestätigten physischen Löschung quotenwirksam; Cleanup-Fehler verändern die abgerechnete Nutzung nicht.
 - Quota-Warnungen bleiben informativ; erst die bestehende harte Quota blockiert atomar.
 
 ## Abnahme

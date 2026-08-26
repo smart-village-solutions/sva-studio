@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Mehrsprachige globale Asset-Metadaten samt Instanzsprache, Fallback-Reihenfolge und tatsächlich aufgelöster Sprache modellieren
 - [ ] 1.2 Instanzlokale Ordner, normalisierte Tags und kontrollierte Kategorien mit eindeutiger Semantik und referenzschonenden Änderungsregeln modellieren
-- [ ] 1.3 Inhalts-Hash, interne Originalversion, Scan-Ergebnis und Quota-Warnschwellen in Domänen- und Persistenzverträgen ergänzen
+- [ ] 1.3 Inhalts-Hash, interne Originalversion, Scan-Ergebnis, Retention-Zeitpunkte, gespeicherte Bytes und Quota-Warnschwellen in Domänen- und Persistenzverträgen ergänzen
 - [ ] 1.4 Vor Datenbankänderungen den kanonischen Schema-Snapshot prüfen und Migration, `studio-db-schema-final.sql` sowie Schemadokumentation gemeinsam fortschreiben
 
 ## 2. Redaktionelle Governance
@@ -17,9 +17,10 @@
 - [ ] 3.1 Instanzlokale Hash-Duplikaterkennung nach Inhaltsvalidierung implementieren
 - [ ] 3.2 Kontrollierte Wiederverwendung, bestätigtes Duplikat und Abbruch einschließlich Berechtigungs- und Sichtbarkeitsprüfung implementieren
 - [ ] 3.3 Produktneutralen Malware-Scanner-Port und fail-closed Scan-/Freigabevertrag implementieren
-- [ ] 3.4 Replace als versionierten Übergang mit stabiler Asset- und Referenzidentität, atomarer Aktivierung und Varianten-Neugenerierung implementieren
+- [ ] 3.4 Replace als versionierten Übergang mit stabiler Asset- und Referenzidentität, atomarer Aktivierung, Varianten-Neugenerierung und unveränderlichem Retention-Zeitpunkt implementieren
 - [ ] 3.5 Duplikat-, Scan- und Replace-UI mit redigierten Status- und Fehlerangaben ergänzen
 - [ ] 3.6 Hash-, Scan- und Replace-Pfade einschließlich Parallelität, Fehlerfällen, Mandantentrennung und unveränderter Altversion testen
+- [ ] 3.7 Idempotenten Cleanup für inaktive und fehlgeschlagene Originalversionen samt Varianten, Aufbewahrungssperren und atomarer Quota-Abrechnung implementieren und testen
 
 ## 4. Quota-Frühwarnung und Audit
 
@@ -30,7 +31,7 @@
 
 ## 5. Integration, Dokumentation und Abnahme
 
-- [ ] 5.1 Scan- und Replace-Verarbeitung an die vorhandene synchrone Verarbeitung und, sobald verfügbar, an `add-media-async-processing` anbinden, ohne eigene Queue-/Retry-Infrastruktur einzuführen
+- [ ] 5.1 Scan-, Replace- und Retention-Cleanup-Verarbeitung an die vorhandene synchrone Verarbeitung und, sobald verfügbar, an `add-media-async-processing` anbinden, ohne eigene Queue-/Retry-Infrastruktur einzuführen
 - [ ] 5.2 Relevante Medien-, Betriebs- und arc42-Dokumentation auf Deutsch aktualisieren
 - [ ] 5.3 Relevante Unit-, Integrations-, Type-, Server-Runtime- und Dateiplatzierungs-Gates ausführen
 - [ ] 5.4 `openspec validate extend-media-management-governance --strict` ausführen

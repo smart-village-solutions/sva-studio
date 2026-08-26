@@ -135,11 +135,19 @@ describe('user-bulk-reprovision-mainserver-handler', () => {
   });
 
   it.each([
-    { statusCode: 403, upstreamCode: 'forbidden' },
-    { statusCode: 422, upstreamCode: 'invalid_role' },
+    {
+      statusCode: 403,
+      upstreamCode: 'forbidden',
+      expectedCode: 'mainserver_tenant_forbidden',
+    },
+    {
+      statusCode: 422,
+      upstreamCode: 'invalid_role',
+      expectedCode: 'mainserver_request_rejected',
+    },
   ])(
     'returns a safe per-user failure for a $statusCode mainserver rejection',
-    async ({ statusCode, upstreamCode }) => {
+    async ({ statusCode, upstreamCode, expectedCode }) => {
       const provisioningError = new Error('untrusted upstream rejection detail') as Error & {
         code: string;
         statusCode: number;
@@ -179,7 +187,7 @@ describe('user-bulk-reprovision-mainserver-handler', () => {
         failures: [
           {
             id: 'user-1',
-            code: 'mainserver_provisioning_failed',
+            code: expectedCode,
             message:
               statusCode === 403
                 ? 'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt.'

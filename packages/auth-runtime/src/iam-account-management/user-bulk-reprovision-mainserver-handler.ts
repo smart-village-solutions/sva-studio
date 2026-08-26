@@ -56,6 +56,13 @@ const resolveBulkReprovisionIdentityProvider = (provider: unknown): BulkReprovis
 const mapMainserverProvisioningErrorToFailure = (
   error: MainserverUserProvisioningError
 ): BulkReprovisionFailure['code'] => {
+  if (error.statusCode === 403 && error.code !== 'token_request_failed') {
+    return 'mainserver_tenant_forbidden';
+  }
+  if (error.statusCode === 422 && error.code !== 'token_request_failed') {
+    return 'mainserver_request_rejected';
+  }
+
   switch (error.code) {
     case 'database_unavailable':
       return 'database_unavailable';

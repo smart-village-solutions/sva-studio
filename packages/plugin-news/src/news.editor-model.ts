@@ -266,6 +266,9 @@ export const buildNewsSavePayload = (
     values.publicationMode === 'draft' ? (existingPublishedAt ?? nowIso) : publishedAt;
   const visible = values.publicationMode !== 'draft';
   const sourceUrlDescription = values.sourceUrlDescription || values.sourceUrl.description || '';
+  const sourceUrl = hasMeaningfulString(values.sourceUrl.url)
+    ? { url: values.sourceUrl.url, description: sourceUrlDescription }
+    : undefined;
   const publicationDate = resolvePublicationDate(
     values,
     existingSnapshot,
@@ -288,10 +291,7 @@ export const buildNewsSavePayload = (
       categories: values.categories.map((name) => ({ name })),
       publishedAt: effectivePublicationTimestamp,
       publicationDate,
-      sourceUrl: {
-        url: values.sourceUrl.url,
-        description: sourceUrlDescription,
-      },
+      ...(sourceUrl ? { sourceUrl } : {}),
       contentBlocks: buildFirstContentBlock(values),
       ...(payload ? { payload } : {}),
     },

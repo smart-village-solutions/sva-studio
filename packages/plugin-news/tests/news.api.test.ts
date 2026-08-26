@@ -422,7 +422,7 @@ describe('news api', () => {
       expect.objectContaining({
         author: 'Persistierter Autor',
         categories: [],
-        sourceUrl: { url: '', description: '' },
+        sourceUrl: { url: 'https://persisted.example.org', description: 'Persistiert' },
         contentBlocks: [
           { title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] },
         ],
@@ -437,6 +437,7 @@ describe('news api', () => {
       }),
       'user'
     );
+    expect(updateNewsMock.mock.calls[0]?.[1]).not.toHaveProperty('sourceUrl');
   });
 
   it('omits stored Waste targets from editor updates without targeting access', async () => {

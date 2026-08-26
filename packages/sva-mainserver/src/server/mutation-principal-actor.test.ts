@@ -3,19 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   loadBinding: vi.fn(),
   loadIdentity: vi.fn(),
+  reconcileConflict: vi.fn(),
   recordObservation: vi.fn(),
+  loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
   loadCurrentMainserverDataProviderBinding: state.loadBinding,
+  reconcileDeletedUserDataProviderConflict: state.reconcileConflict,
   recordMainserverDataProviderObservation: state.recordObservation,
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: vi.fn(() => ({ warn: state.loggerWarn })),
+  createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'request-1', traceId: 'trace-1' })),
 }));
 
@@ -53,6 +56,10 @@ describe('stable DataProvider identity verification', () => {
     state.recordObservation.mockResolvedValue({
       outcome: 'created',
       binding: { status: 'verified', dataProviderId: '832' },
+    });
+    state.reconcileConflict.mockResolvedValue({
+      outcome: 'not_resolved',
+      reason: 'competing_user_not_permanently_deleted',
     });
   });
 
@@ -101,11 +108,65 @@ describe('stable DataProvider identity verification', () => {
       binding: { status: 'conflict', dataProviderId: '832' },
     });
 
-    const response = await ensureStableDataProviderIdentity(actor);
+    const response = await ensureStableDataProviderIdentity(actor, { reconcileConflicts: true });
 
     expect(response?.status).toBe(409);
     await expect(response?.json()).resolves.toMatchObject({
       error: 'mainserver_data_provider_identity_conflict',
     });
+    expect(state.reconcileConflict).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      principalType: 'user',
+      principalId: '11111111-1111-4111-8111-111111111111',
+      credentialFingerprint: 'a'.repeat(64),
+      dataProviderId: '832',
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver DataProvider identity conflict remained fail-closed',
+      expect.objectContaining({
+        operation: 'mainserver_data_provider_identity_conflict_reconciliation',
+        result: 'not_resolved',
+        reason_code: 'competing_user_not_permanently_deleted',
+        historical_binding_count: 0,
+      })
+    );
+  });
+
+  it('does not reconcile conflicts during resource checks', async () => {
+    state.recordObservation.mockResolvedValue({
+      outcome: 'conflict',
+      binding: { status: 'conflict', dataProviderId: '832' },
+    });
+
+    const response = await ensureStableDataProviderIdentity(actor);
+
+    expect(response?.status).toBe(409);
+    expect(state.reconcileConflict).not.toHaveBeenCalled();
+  });
+
+  it('continues the original request after reconciling a deleted-user conflict', async () => {
+    state.recordObservation.mockResolvedValue({
+      outcome: 'conflict',
+      binding: { status: 'conflict', dataProviderId: '832' },
+    });
+    state.reconcileConflict.mockResolvedValue({
+      outcome: 'resolved',
+      binding: { status: 'verified', dataProviderId: '832' },
+      historicalBindingCount: 1,
+    });
+
+    await expect(
+      ensureStableDataProviderIdentity(actor, { reconcileConflicts: true })
+    ).resolves.toBeNull();
+
+    expect(state.loggerInfo).toHaveBeenCalledWith(
+      'Mainserver DataProvider identity conflict reconciled',
+      expect.objectContaining({
+        operation: 'mainserver_data_provider_identity_conflict_reconciliation',
+        result: 'resolved',
+        reason_code: 'permanently_deleted_competitors_historized',
+        historical_binding_count: 1,
+      })
+    );
   });
 });

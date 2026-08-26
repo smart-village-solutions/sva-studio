@@ -1,0 +1,4 @@
+{
+  "prNumber": 1161,
+  "body": "Gelöschte Benutzer blockieren eindeutig zuordenbare Mainserver-Inhalte nicht mehr dauerhaft.\n\n- Studio löst veraltete persönliche DataProvider-Konflikte beim nächsten Speicherversuch automatisch auf.\n- Historische Bindungen bleiben als Nachweis erhalten, während die bestätigte aktuelle Bindung wieder verwendbar wird.\n- Aktive, gesperrte, vorläufig gelöschte, organisatorische oder unklare Konkurrenten bleiben weiterhin sicher blockiert."
+}

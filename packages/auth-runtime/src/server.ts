@@ -135,6 +135,11 @@ export {
   type RecordMainserverDataProviderObservationResult,
 } from './iam-contents/mainserver-data-provider-bindings.js';
 export {
+  reconcileDeletedUserDataProviderConflict,
+  type DeletedUserDataProviderConflictReason,
+  type ReconcileDeletedUserDataProviderConflictResult,
+} from './iam-contents/mainserver-data-provider-conflict-reconciliation.js';
+export {
   beginMainserverMutationJournal,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,

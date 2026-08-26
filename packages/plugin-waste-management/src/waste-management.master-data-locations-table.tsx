@@ -1,6 +1,6 @@
 import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 import {
   WasteMasterDataActiveTourBanner,
@@ -30,10 +30,16 @@ const WasteMasterDataLocationsTableContent = ({
   const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const feedbackFocusFallbackRef = useRef<HTMLElement | null>(null);
 
   return (
     <>
-      <section className="rounded-none border-y border-border bg-card shadow-shell">
+      <section
+        ref={feedbackFocusFallbackRef}
+        tabIndex={-1}
+        aria-label={pt('masterData.collectionLocations.table.caption')}
+        className="rounded-none border-y border-border bg-card shadow-shell"
+      >
         <WastePanelTableTopBar>
           <WasteMasterDataLocationsTableToolbar
             selectedCollectionLocationsCount={props.selectedCollectionLocationsCount}
@@ -106,6 +112,7 @@ const WasteMasterDataLocationsTableContent = ({
         cancelLabel={pt('masterData.collectionLocations.actions.cancel')}
         pending={deletePending}
         errorMessage={deleteError}
+        fallbackFocusRef={feedbackFocusFallbackRef}
         onCancel={() => {
           setDeleteError(null);
           setPendingDeleteLocation(null);
@@ -137,6 +144,7 @@ const WasteMasterDataLocationsTableContent = ({
         cancelLabel={pt('masterData.collectionLocations.actions.cancel')}
         pending={deletePending}
         errorMessage={deleteError}
+        fallbackFocusRef={feedbackFocusFallbackRef}
         onCancel={() => {
           setDeleteError(null);
           setBulkDeleteRequested(false);

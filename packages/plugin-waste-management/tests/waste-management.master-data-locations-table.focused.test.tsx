@@ -233,6 +233,11 @@ describe('WasteMasterDataLocationsTable focused behavior', () => {
     );
 
     expect(screen.getByTestId('location-order').textContent).toBe('location-1,location-2');
+    expect(
+      screen.getByRole('region', {
+        name: 'masterData.collectionLocations.table.caption',
+      })
+    ).toHaveProperty('tabIndex', -1);
     fireEvent.click(screen.getByRole('button', { name: 'include-region' }));
     fireEvent.click(screen.getByRole('button', { name: 'descending' }));
     expect(onSortModeChange).toHaveBeenCalledWith('addressWithRegion');

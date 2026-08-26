@@ -22,15 +22,16 @@
   verwalten.
 - **Produktfakten:** Die Seite besitzt Bereiche für Abfallarten, Touren, Abholorte,
   Ausweichtermine, Ausgabe, Datentools und Einstellungen sowie technische und Audit-Historie. Die
-  Ausgabe erzeugt PDF-Ausdrücke pro Abholort und Jahr. Abholorte verbinden Regionen, Orte, Straßen,
-  Hausnummern und konkrete Sammelstellen. Einstellungen bleiben auch bei fehlerhafter Datenquelle
-  erreichbar.
+  Ausgabe konfiguriert die statischen PDF-Inhalte für Branding und Kontaktinformationen. Die
+  öffentliche Webversion des Abfallkalenders erzeugt das PDF anschließend ad hoc für die gewählte
+  Adresse, die Fraktionen und das Jahr. Abholorte verbinden Regionen, Orte, Straßen, Hausnummern
+  und konkrete Sammelstellen. Einstellungen bleiben auch bei fehlerhafter Datenquelle erreichbar.
 - **Kontextabhängig:** Route erfordert das Modul `waste-management` und `waste-management.read`;
   einzelne Aktionen besitzen zusätzliche fully-qualified Rechte. Einige Tabtexte weisen noch auf
   künftige oder nachgelagerte Anbindungen hin und dürfen nicht als verfügbare Funktion beschrieben
   werden.
 - **Leitfragen / Stichwörter:** Welche Stammdaten müssen vor Touren vorhanden sein? Wie hängen
   Abholort, Fraktion, Tour und Ausweichtermin zusammen? Abfallkalender, Abfallart, Tour, Abholort,
-  PDF, Datentool, Audit.
+  PDF-Konfiguration, öffentliche Webversion, Datentool, Audit.
 - **Evidenz:** `packages/plugin-waste-management/src/waste-management.page.tsx`,
   `plugin.translations.de.*.ts`, `plugin.tsx`.

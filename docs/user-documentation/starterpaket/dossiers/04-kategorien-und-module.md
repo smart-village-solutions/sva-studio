@@ -2,7 +2,7 @@
 
 ## `categories.overview` – Kategorien
 
-- **Route / Typ / Owner:** `/categories`, Übersicht, Plugin `categories`.
+- **Route / Typ / Owner:** `/categories`, Übersicht, Host.
 - **Nutzerziel:** Mainserver-Kategorien und ihre Hierarchie prüfen.
 - **Produktfakten:** Die aktuelle Seite ist schreibgeschützt. Sie zeigt eine flache Tabelle mit
   Name, ID, Hierarchie, Position und Tags. Bearbeiten, Unterkategorie anlegen und Löschen sind zwar

@@ -220,15 +220,18 @@ haben können.
 ## `surveys.content.detail` – Umfrage bearbeiten
 
 - **Route / Typ / Owner:** `/admin/surveys/$id`, Detail, Plugin `surveys`.
-- **Nutzerziel:** Umfrage bearbeiten sowie Moderation, Ergebnisse, Export und Historie prüfen.
+- **Nutzerziel:** Umfrage bearbeiten sowie Moderation, Ergebnisse und Historie prüfen.
 - **Produktfakten:** Zusätzlich bestehen Tabs für Moderation, Ergebnisse und Historie. Ergebnisse
-  zeigen Teilnahme-, Abgabe- und Antwortzahlen sowie aggregierte Fragen. Exporte sind als CSV,
-  JSON, Excel oder XML mit oder ohne Freitexte vorgesehen. Die aktuelle Moderationssicht zeigt
-  Freitextantworten jedoch nur lesend; Sichtbarkeits- und Löschaktionen sind noch nicht
-  host-seitig angebunden.
+  zeigen Teilnahme-, Abgabe- und Antwortzahlen sowie aggregierte Fragen. Das UI-Modell sieht
+  Exporte als CSV, JSON, Excel oder XML mit oder ohne Freitexte vor. Der aktuelle Editor übergibt
+  jedoch keinen Export-Handler; deshalb sind Exportaktionen derzeit nicht sichtbar oder nutzbar.
+  Die aktuelle Moderationssicht zeigt Freitextantworten nur lesend; Sichtbarkeits- und
+  Löschaktionen sind noch nicht host-seitig angebunden.
 - **Kontextabhängig:** Bearbeiten kann von der Mainserver-Umgebung noch nicht unterstützt sein.
-  Moderation und Export benötigen eigene Rechte.
-- **Leitfragen / Stichwörter:** Welche Funktionen sind aktuell nur lesbar? Dürfen Freitexte
-  exportiert werden? Umfrage bearbeiten, Moderation, Ergebnisse, Freitext, Export.
+  Moderation benötigt eigene Rechte. Das Recht `surveys.export` ist bereits definiert, schaltet
+  ohne die fehlende Editor-Anbindung aber noch keine Exportfunktion frei.
+- **Leitfragen / Stichwörter:** Welche Funktionen sind aktuell nur lesbar? Welche Exportfunktion
+  ist derzeit noch nicht angebunden? Umfrage bearbeiten, Moderation, Ergebnisse, Freitext, Export.
 - **Evidenz:** `packages/plugin-surveys/src/surveys.editor.tsx`,
-  `packages/plugin-surveys/src/surveys.detail-*.tsx`.
+  `packages/plugin-surveys/src/surveys.editor-tabs.tsx`,
+  `packages/plugin-surveys/src/surveys.detail-results-tab.tsx`.

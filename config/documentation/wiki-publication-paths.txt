@@ -1,0 +1,13 @@
+docs/README.md
+docs/BROWSER-SUPPORT.md
+docs/monorepo.md
+docs/redis-setup.md
+docs/routing.md
+:(glob)docs/images/**
+:(glob)docs/adr/**
+:(glob)docs/api/**
+:(glob)docs/architecture/*.md
+:(glob)docs/architecture/*.mmd
+:(glob)docs/development/**
+:(glob)docs/governance/**
+:(glob)docs/guides/**

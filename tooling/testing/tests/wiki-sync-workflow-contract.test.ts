@@ -1,0 +1,70 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+const workspaceRoot = resolve(import.meta.dirname, '../../..');
+const workflow = readFileSync(resolve(workspaceRoot, '.github/workflows/wiki-sync.yml'), 'utf8');
+const publicationManifestPath = 'config/documentation/wiki-publication-paths.txt';
+const publicationManifest = readFileSync(resolve(workspaceRoot, publicationManifestPath), 'utf8')
+  .split('\n')
+  .map((line) => line.trim())
+  .filter((line) => line.length > 0);
+
+const selectedFiles = execFileSync('git', ['ls-files', '--', ...publicationManifest], {
+  cwd: workspaceRoot,
+  encoding: 'utf8',
+})
+  .split('\n')
+  .filter((line) => line.length > 0);
+
+const excludedPublicationPrefixes = [
+  'docs/architecture/decisions/',
+  'docs/changelog/',
+  'docs/pr/',
+  'docs/reports/',
+  'docs/staging/',
+  'docs/superpowers/',
+  'docs/user-documentation/',
+] as const;
+
+describe('wiki sync workflow contract', () => {
+  it('builds the publication from one versioned positive manifest', () => {
+    expect(workflow).toContain(`- '${publicationManifestPath}'`);
+    expect(workflow).toMatch(
+      /mapfile -t publication_pathspecs \\\n+\s+< config\/documentation\/wiki-publication-paths\.txt/u
+    );
+    expect(workflow).toContain('git ls-files -z -- "${publication_pathspecs[@]}"');
+    expect(workflow).toContain('rsync -aR --from0 --files-from="$publication_files"');
+    expect(workflow).toContain('rsync -a --delete "$publication_root/docs/" wiki/docs/');
+    expect(workflow).not.toContain('rsync -a --delete docs/ wiki/docs/');
+  });
+
+  it('selects every declared pathspec and only current local documentation', () => {
+    for (const pathspec of publicationManifest) {
+      const matches = execFileSync('git', ['ls-files', '--', pathspec], {
+        cwd: workspaceRoot,
+        encoding: 'utf8',
+      }).trim();
+
+      expect(matches, `unmatched publication pathspec: ${pathspec}`).not.toBe('');
+    }
+
+    expect(selectedFiles).toContain('docs/README.md');
+    expect(selectedFiles).toContain('docs/architecture/README.md');
+    expect(selectedFiles).toContain('docs/adr/README.md');
+    expect(selectedFiles).toContain('docs/guides/studio-rollout-process.md');
+
+    for (const excludedPrefix of excludedPublicationPrefixes) {
+      expect(selectedFiles.some((file) => file.startsWith(excludedPrefix))).toBe(false);
+    }
+  });
+
+  it('uses the same canonical entrypoints in Wiki home and sidebar', () => {
+    expect(workflow).toContain('[Dokumentationsübersicht](docs/README.md)');
+    expect(workflow).toContain('[Architektur (arc42)](docs/architecture/README.md)');
+    expect(workflow).toContain('[Architekturentscheidungen (ADRs)](docs/adr/README.md)');
+    expect(workflow).not.toContain('docs/architecture/decisions/README.md');
+  });
+});

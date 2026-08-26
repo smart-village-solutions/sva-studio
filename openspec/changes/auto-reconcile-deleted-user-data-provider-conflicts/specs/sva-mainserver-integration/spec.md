@@ -2,7 +2,7 @@
 
 ### Requirement: Endgültig gelöschte Benutzer blockieren keine eindeutige aktuelle DataProvider-Bindung
 
-Das System SHALL einen persönlichen DataProvider-Konflikt anlassbezogen im serverseitigen Identity-Guard automatisch auflösen dürfen, wenn die aktuelle Credential-Version durch den authentifizierten Identity-Endpunkt bestätigt ist und alle konkurrierenden aktuellen Bindungen ausschließlich zu endgültig gelöschten Benutzer-Accounts derselben Instanz gehören. Fehlt ein Account nach Hard Delete, SHALL zusätzlich ein erfolgreicher unveränderlicher `user.deleted`-Eintrag im aktuellen oder archivierten Activity-Log den abgeschlossenen Löschvorgang belegen.
+Das System SHALL einen persönlichen DataProvider-Konflikt anlassbezogen im serverseitigen Identity-Guard automatisch auflösen dürfen, wenn die aktuelle Credential-Version durch den authentifizierten Identity-Endpunkt bestätigt ist und alle konkurrierenden aktuellen Bindungen ausschließlich zu endgültig gelöschten Benutzer-Accounts derselben Instanz gehören. Fehlt ein Account nach Hard Delete, SHALL zusätzlich ein erfolgreicher unveränderlicher `user.deleted`-Eintrag in `iam.activity_logs` den abgeschlossenen Löschvorgang belegen. Archivierte Activity-Logs SHALL nicht als Löschbeweis akzeptiert werden.
 
 Die Auflösung SHALL die konkurrierende Evidenz als `historical` erhalten, die exakte aktuelle Bindung atomar auf `verified` setzen und den noch nicht an den Mainserver gesendeten Mutationsrequest ohne zusätzlichen UI-Schritt fortsetzen. Sie SHALL keinen externen Credential-Widerruf behaupten. Jeder aktive, gesperrte, vorläufig gelöschte, organisatorische oder nicht eindeutig klassifizierbare konkurrierende Principal SHALL die automatische Auflösung fail-closed verhindern.
 

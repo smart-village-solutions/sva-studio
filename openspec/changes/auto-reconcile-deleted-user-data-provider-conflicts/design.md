@@ -31,7 +31,7 @@ Automatische Auflösung ist nur erlaubt, wenn alle folgenden Bedingungen gelten:
 1. Der handelnde Principal ist ein aktiver, nicht gesperrter und nicht gelöschter Benutzer der aktuellen Instanz.
 2. Identity-Evidenz bestätigt für seine aktuelle Credential-Version exakt den konfliktbehafteten DataProvider.
 3. Jede andere aktuelle Bindung dieses DataProviders gehört ebenfalls zu einem Benutzerprincipal.
-4. Jeder konkurrierende Benutzer ist entweder endgültig gelöscht oder sein Fehlen ist durch einen erfolgreichen unveränderlichen `user.deleted`-Eintrag im aktuellen oder archivierten Activity-Log als abgeschlossener Hard Delete belegt.
+4. Jeder konkurrierende Benutzer ist entweder endgültig gelöscht oder sein Fehlen ist durch einen erfolgreichen unveränderlichen `user.deleted`-Eintrag in `iam.activity_logs` als abgeschlossener Hard Delete belegt. Archivierte Activity-Logs sind kein zulässiger Löschbeweis.
 5. Es existiert keine aktuelle konkurrierende Organisationsbindung und kein aktiver, gesperrter, vorläufig gelöschter oder sonst nicht eindeutig klassifizierbarer Benutzer.
 
 Eine leere oder widersprüchliche Datenbankantwort, ein Identity-Fehler oder ein paralleler unklarer Zustand lässt den bestehenden Konflikt unverändert.

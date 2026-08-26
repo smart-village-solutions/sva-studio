@@ -1,0 +1,4 @@
+{
+  "prNumber": 1166,
+  "body": "Studio-Benutzer und technische Organisationskonten erhalten im Mainserver jetzt die vorgesehenen Verwaltungsrechte.\n\n- Neue Konten werden mit der Rolle Studio angelegt, statt auf eingeschränkte Rechte zurückzufallen.\n- Wiederholte Provisionierungen verändern bestehende Mainserver-Rollen nicht.\n- Mandantenfremde und ungültige Anfragen werden eindeutig und ohne vertrauliche Fehlerdetails zurückgewiesen."
+}

@@ -173,10 +173,11 @@ test.describe('news plugin', () => {
       .last()
       .click();
     await expect.poll(() => newsItems[0]?.title).toBe('Erste News aktualisiert');
-    page.once('dialog', async (dialog) => {
-      await dialog.accept();
-    });
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: /Löschen|news\.actions\.delete/ })
+      .click();
     await expect.poll(() => newsItems).toHaveLength(0);
   });
 

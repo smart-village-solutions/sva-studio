@@ -108,7 +108,7 @@ describe('stable DataProvider identity verification', () => {
       binding: { status: 'conflict', dataProviderId: '832' },
     });
 
-    const response = await ensureStableDataProviderIdentity(actor);
+    const response = await ensureStableDataProviderIdentity(actor, { reconcileConflicts: true });
 
     expect(response?.status).toBe(409);
     await expect(response?.json()).resolves.toMatchObject({
@@ -127,8 +127,21 @@ describe('stable DataProvider identity verification', () => {
         operation: 'mainserver_data_provider_identity_conflict_reconciliation',
         result: 'not_resolved',
         reason_code: 'competing_user_not_permanently_deleted',
+        historical_binding_count: 0,
       })
     );
+  });
+
+  it('does not reconcile conflicts during resource checks', async () => {
+    state.recordObservation.mockResolvedValue({
+      outcome: 'conflict',
+      binding: { status: 'conflict', dataProviderId: '832' },
+    });
+
+    const response = await ensureStableDataProviderIdentity(actor);
+
+    expect(response?.status).toBe(409);
+    expect(state.reconcileConflict).not.toHaveBeenCalled();
   });
 
   it('continues the original request after reconciling a deleted-user conflict', async () => {
@@ -142,13 +155,16 @@ describe('stable DataProvider identity verification', () => {
       historicalBindingCount: 1,
     });
 
-    await expect(ensureStableDataProviderIdentity(actor)).resolves.toBeNull();
+    await expect(
+      ensureStableDataProviderIdentity(actor, { reconcileConflicts: true })
+    ).resolves.toBeNull();
 
     expect(state.loggerInfo).toHaveBeenCalledWith(
       'Mainserver DataProvider identity conflict reconciled',
       expect.objectContaining({
         operation: 'mainserver_data_provider_identity_conflict_reconciliation',
         result: 'resolved',
+        reason_code: 'permanently_deleted_competitors_historized',
         historical_binding_count: 1,
       })
     );

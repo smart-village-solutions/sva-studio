@@ -5,6 +5,7 @@ import type {
   MainserverDataProviderEvidenceKind,
   MainserverPrincipalType,
 } from './mainserver-data-provider-bindings.js';
+import { lockMainserverDataProviderBindingScope } from './mainserver-data-provider-binding-lock.js';
 import { loadHardDeleteEvidence } from './mainserver-data-provider-hard-delete-evidence.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
@@ -118,10 +119,7 @@ const loadRelatedBindings = async (
   client: InstanceScopedClient,
   input: ReconciliationInput
 ): Promise<readonly BindingRow[]> => {
-  await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
-    input.instanceId,
-    `mainserver-data-provider:${input.dataProviderId}`,
-  ]);
+  await lockMainserverDataProviderBindingScope(client, input);
   const result = await client.query<BindingRow>(
     `
 SELECT ${bindingColumns}

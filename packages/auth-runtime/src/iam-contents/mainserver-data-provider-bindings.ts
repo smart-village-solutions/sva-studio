@@ -1,4 +1,5 @@
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { lockMainserverDataProviderBindingScope } from './mainserver-data-provider-binding-lock.js';
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
 export type MainserverPrincipalType = 'organization' | 'user';
@@ -230,10 +231,7 @@ export const recordMainserverDataProviderObservation = async (input: {
   const observation = normalizeObservation(input);
 
   return withInstanceScopedDb(input.instanceId, async (client) => {
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
-      observation.instanceId,
-      `mainserver-data-provider:${observation.dataProviderId}`,
-    ]);
+    await lockMainserverDataProviderBindingScope(client, observation);
 
     const relatedResult = await client.query<BindingRow>(
       `

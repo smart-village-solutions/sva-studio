@@ -38,7 +38,7 @@ Eine leere oder widersprüchliche Datenbankantwort, ein Identity-Fehler oder ein
 
 ### Atomarer Statusübergang ohne Evidenzverlust
 
-Der bestehende tenant- und DataProvider-lokale Advisory-Lock wird wiederverwendet. Innerhalb einer Datenbanktransaktion werden die konkurrierenden Bindungen erneut geladen und klassifiziert. Erst nach erfolgreichem Eindeutigkeitsnachweis werden ihre aktuellen `conflict`-Zeilen auf `historical` mit `superseded_at` gesetzt und die exakte aktuelle Beobachtung auf `verified` gesetzt.
+Observation und Reconciliation nehmen zuerst denselben tenantgebundenen Principal-/Credential-Lock und daraus folgend den DataProvider-Lock. Erst danach werden die konkurrierenden Bindungen in einem neuen Statement erneut geladen und klassifiziert. Damit serialisieren auch gleichzeitige Beobachtungen derselben Credential-Version mit unterschiedlichen DataProvidern vor einem frischen Read-Committed-Snapshot. Erst nach erfolgreichem Eindeutigkeitsnachweis werden die aktuellen `conflict`-Zeilen auf `historical` mit `superseded_at` gesetzt und die exakte aktuelle Beobachtung auf `verified` gesetzt.
 
 `revoked` wird nicht verwendet, weil die Löschung eines Studio-Accounts keinen externen Widerruf der Mainserver-Credentials beweist. Keine Bindungszeile wird gelöscht oder überschrieben.
 

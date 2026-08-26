@@ -81,8 +81,13 @@ describe('mainserver data provider bindings', () => {
     expect(state.query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('pg_advisory_xact_lock'),
-      ['de-musterhausen', 'mainserver-data-provider:dp-user-1']
+      [
+        'de-musterhausen',
+        `mainserver-principal-credential:user:11111111-1111-1111-8111-111111111111:${'a'.repeat(64)}`,
+        'mainserver-data-provider:dp-user-1',
+      ]
     );
+    expect(String(state.query.mock.calls[0]?.[0])).toContain('credential_lock AS MATERIALIZED');
     expect(state.query).toHaveBeenLastCalledWith(
       expect.stringContaining('INSERT INTO iam.mainserver_data_provider_bindings'),
       expect.arrayContaining(['dp-user-1', 'Redaktion', 'verified', 'create_response'])
@@ -271,8 +276,13 @@ describe('mainserver data provider bindings', () => {
     expect(state.query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('pg_advisory_xact_lock'),
-      ['de-musterhausen', 'mainserver-data-provider:dp-user-1']
+      [
+        'de-musterhausen',
+        `mainserver-principal-credential:user:11111111-1111-1111-8111-111111111111:${'a'.repeat(64)}`,
+        'mainserver-data-provider:dp-user-1',
+      ]
     );
+    expect(String(state.query.mock.calls[0]?.[0])).toContain('credential_lock AS MATERIALIZED');
     expect(String(state.query.mock.calls[3]?.[0])).toContain("event_type = 'user.deleted'");
     expect(String(state.query.mock.calls[4]?.[0])).toContain("SET status = 'historical'");
     expect(state.query.mock.calls[4]?.[1]).toEqual(['de-musterhausen', ['binding-2']]);

@@ -37,14 +37,13 @@ const accountRow = (overrides: Record<string, unknown> = {}) => ({
 describe('mainserver data provider bindings', () => {
   let recordMainserverDataProviderObservation: typeof import('./mainserver-data-provider-bindings.js').recordMainserverDataProviderObservation;
   let loadCurrentMainserverDataProviderBinding: typeof import('./mainserver-data-provider-bindings.js').loadCurrentMainserverDataProviderBinding;
-  let reconcileDeletedUserDataProviderConflict: typeof import('./mainserver-data-provider-bindings.js').reconcileDeletedUserDataProviderConflict;
+  let reconcileDeletedUserDataProviderConflict: typeof import('./mainserver-data-provider-conflict-reconciliation.js').reconcileDeletedUserDataProviderConflict;
 
   beforeAll(async () => {
-    ({
-      recordMainserverDataProviderObservation,
-      loadCurrentMainserverDataProviderBinding,
-      reconcileDeletedUserDataProviderConflict,
-    } = await import('./mainserver-data-provider-bindings.js'));
+    ({ recordMainserverDataProviderObservation, loadCurrentMainserverDataProviderBinding } =
+      await import('./mainserver-data-provider-bindings.js'));
+    ({ reconcileDeletedUserDataProviderConflict } =
+      await import('./mainserver-data-provider-conflict-reconciliation.js'));
   });
 
   beforeEach(() => {

@@ -62,6 +62,22 @@ Das System SHALL validierte Uploads anhand eines kryptografisch geeigneten Hashe
 - **THEN** legt das System weder Existenz noch Metadaten des Treffers offen
 - **AND** gibt es keine rohen Inhalts-Hashes an den Client aus
 
+#### Scenario: Wiederverwendung oder Abbruch nach einem Direct Upload
+
+- **WHEN** zum Zeitpunkt der Duplikatentscheidung bereits ein temporäres Storage-Objekt oder eine Upload-Session existiert
+- **AND** der Benutzer Wiederverwendung oder Abbruch wählt
+- **THEN** versetzt das System die temporäre Upload-Session in einen terminalen Zustand
+- **AND** plant es die physische Entfernung des temporären Objekts idempotent über den kanonischen Medienjob-Vertrag aus `add-media-async-processing`
+- **AND** erzeugt es aus dem temporären Objekt weder ein neues `MediaAsset` noch eine neue `MediaReference`
+- **AND** bleiben dessen gespeicherte Bytes bis zur bestätigten physischen Löschung vollständig quotenwirksam
+
+#### Scenario: Kompensationsbereinigung eines temporären Uploads
+
+- **WHEN** die physische Entfernung des temporären Upload-Objekts bestätigt wird
+- **THEN** reduziert das System die serverseitig ermittelte Speichernutzung atomar und höchstens einmal um dessen bestätigte gespeicherte Bytes
+- **AND** verändern wiederholte Bereinigungsversuche die Nutzung nicht erneut
+- **BUT** wenn die Entfernung nicht vollständig bestätigt werden kann, bleiben die Bytes quotenwirksam und der kanonische Medienjob-Vertrag wiederholt die Bereinigung
+
 ### Requirement: Sicherer Originalaustausch mit stabiler Asset-Identität
 
 Das System SHALL das Original eines Assets über einen versionierten, fail-closed Übergang austauschen können, ohne bestehende Medienreferenzen zu brechen.
@@ -80,6 +96,15 @@ Das System SHALL das Original eines Assets über einen versionierten, fail-close
 - **THEN** bleibt die bisher aktive Originalversion führend und nutzbar
 - **AND** die fehlerhafte Version wird nicht an bestehende Referenzen ausgeliefert
 - **AND** der Benutzer erhält einen redigierten, nachvollziehbaren Status
+
+#### Scenario: Konkurrierende Replace-Aktivierung ist veraltet
+
+- **GIVEN** zwei Replace-Vorgänge wurden mit derselben erwarteten aktiven Originalversion oder Revision gestartet
+- **WHEN** der erste Vorgang seine neue Version erfolgreich per Compare-and-swap aktiviert
+- **AND** der zweite Vorgang anschließend seine Kandidatenversion aktivieren will
+- **THEN** weist das System die zweite Aktivierung als Konflikt zurück
+- **AND** bleiben die vom ersten Vorgang aktivierte Version und deren Retention- und Quota-Zustand unverändert
+- **AND** wechselt die veraltete Kandidatenversion kontrolliert in den fehlgeschlagenen Retention- und Bereinigungspfad
 
 ### Requirement: Retention und Quota-Abrechnung von Originalversionen
 

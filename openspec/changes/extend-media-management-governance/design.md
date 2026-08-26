@@ -53,11 +53,13 @@ Nach erfolgreicher Inhaltsvalidierung wird ein kryptografisch geeigneter Hash de
 
 Die Wiederverwendung erzeugt kein zweites Storage-Objekt. Ein bewusst angelegtes Duplikat bleibt ein eigenständiges Asset. Welche Entscheidung zulässig ist, wird serverseitig anhand der bestehenden Medienberechtigungen geprüft; Hashes und instanzfremde Treffer werden nicht offengelegt.
 
+Existiert zum Entscheidungszeitpunkt bereits ein temporäres Direct-Upload-Objekt oder eine Upload-Session, führen Wiederverwendung und Abbruch beide in einen terminalen, idempotent bereinigbaren Zustand. Die Kompensationsbereinigung läuft über den kanonischen Medienjob-Vertrag. Temporäre Bytes bleiben bis zur bestätigten physischen Löschung quotenwirksam; erst danach wird die Nutzung atomar und höchstens einmal reduziert. Fehlgeschlagene Bereinigungen verändern die Nutzung nicht und werden wiederholt.
+
 ### 4. Replace verwendet einen versionierten, fail-closed Übergang
 
 Ein Replace erzeugt zunächst eine neue interne Originalversion desselben `MediaAsset`. Die bisher aktive Version und alle bestehenden `MediaReference`-IDs bleiben unverändert nutzbar, bis Validierung, Malware-Prüfung und erforderliche Varianten der neuen Version erfolgreich abgeschlossen sind.
 
-Erst danach wird die neue Version atomar aktiv. Bei Fehlern bleibt die bisherige Version führend. Veraltete Varianten werden nicht unter unveränderten technischen Cache-Identitäten weiterverwendet.
+Erst danach wird die neue Version atomar aktiv. Jeder Replace erfasst dafür die erwartete aktive Vorgängerversion beziehungsweise deren Revision. Die Aktivierung verwendet einen Compare-and-swap-Vertrag und gelingt nur, wenn dieser Erwartungswert weiterhin aktuell ist. Eine konkurrierend veraltete Kandidatenversion darf weder aktiv werden noch Retention oder Quota der inzwischen führenden Version verändern; sie wechselt kontrolliert in den fehlgeschlagenen Bereinigungszustand. Bei sonstigen Fehlern bleibt die bisherige Version führend. Veraltete Varianten werden nicht unter unveränderten technischen Cache-Identitäten weiterverwendet.
 
 Jede Instanz besitzt verbindliche Retention-Regeln für abgelöste und fehlgeschlagene Originalversionen. Beim Übergang in einen inaktiven oder fehlgeschlagenen Zustand berechnet der Server einen unveränderlichen Bereinigungszeitpunkt. Nach dessen Ablauf entfernt ein idempotenter Cleanup die Version und alle ausschließlich daraus abgeleiteten Varianten, sofern keine dokumentierte Aufbewahrungssperre besteht. Bis die physische Löschung bestätigt ist, zählen sämtliche gespeicherten Bytes weiterhin vollständig zur harten Speicherquote; ein fehlgeschlagener Cleanup reduziert die Nutzung nicht und wird über die kanonische Processing-Infrastruktur erneut ausgeführt.
 
@@ -65,7 +67,7 @@ Jede Instanz besitzt verbindliche Retention-Regeln für abgelöste und fehlgesch
 
 Der Medienkern spricht einen internen Scanner-Port an und kennt kein konkretes Scannerprodukt. Ein Asset oder eine neue Replace-Version wird erst nutzbar, wenn das Ergebnis `clean` vorliegt. Ergebnisse wie `infected`, `scan_failed`, `unavailable` oder `unknown` bleiben fail-closed und geben keine Scanner-Interna an Benutzer aus.
 
-Dieser Change definiert Scan-Auftrag, Ergebnis und Freigabewirkung. Wenn der Scan asynchron ausgeführt wird, nutzt er die von `add-media-async-processing` bereitgestellte Job-, Retry- und Betriebsinfrastruktur; er führt keine parallele Orchestrierung ein.
+Dieser Change definiert Scan-Auftrag, Ergebnis und Freigabewirkung. Asynchrone Scans sowie Kompensations- und Retention-Cleanups nutzen verbindlich die von `add-media-async-processing` bereitgestellte Job-, Retry- und Betriebsinfrastruktur; der Governance-Change führt keine parallele Orchestrierung ein.
 
 ### 6. Quota-Warnungen ergänzen, aber verändern die harte Grenze nicht
 
@@ -84,7 +86,9 @@ Dateiinhalte, rohe Hashes, Scanner-Interna, Storage-Keys, Secrets und Klartext-P
 - Fehlende Übersetzungen lösen den dokumentierten Fallback aus und werden in der UI erkennbar dargestellt.
 - Ungültige oder entfernte Taxonomiewerte werden serverseitig abgewiesen; bestehende Zuordnungen werden bei Taxonomieänderungen kontrolliert migriert oder entfernt.
 - Ein Hash-Treffer legt nur Assets offen, die der Benutzer innerhalb derselben Instanz lesen darf.
+- Wiederverwendung oder Abbruch bereinigen bereits angelegte temporäre Upload-Objekte idempotent; bis zur bestätigten Löschung bleiben deren Bytes quotenwirksam.
 - Scan- oder Processing-Fehler lassen neue Uploads unreferenzierbar und Replace-Vorgänge auf der bisherigen aktiven Version.
+- Eine veraltete konkurrierende Replace-Aktivierung wird durch den Vergleich mit der erwarteten aktiven Revision abgewiesen und verändert weder aktive Version noch deren Retention oder Quota.
 - Inaktive und fehlgeschlagene Originalversionen bleiben bis zur bestätigten physischen Löschung quotenwirksam; Cleanup-Fehler verändern die abgerechnete Nutzung nicht.
 - Quota-Warnungen bleiben informativ; erst die bestehende harte Quota blockiert atomar.
 

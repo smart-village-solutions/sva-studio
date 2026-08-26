@@ -5,7 +5,11 @@ import {
   registerStudioJobExecutionHandlers,
   type PluginOperationExecutionRegistration,
 } from '@sva/auth-runtime/server';
-import type { PluginCatalogEntry, PluginManifest } from '@sva/plugin-sdk';
+import {
+  wasteManagementOperationsContract,
+  type PluginCatalogEntry,
+  type PluginManifest,
+} from '@sva/plugin-sdk';
 import studioPluginCatalogConfig from '../../plugin-catalog.json';
 
 import {
@@ -52,6 +56,11 @@ type StudioPluginJobSource = {
 
 const compareAlphabetically = (left: string, right: string): number =>
   left.localeCompare(right, 'de');
+
+const cancellablePluginJobTypeIds = new Set<string>([
+  wasteManagementOperationsContract.jobTypeIds.syncMainserver,
+  wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+]);
 
 const workspaceJobModuleLoaders = import.meta.glob(
   '../../../../packages/plugin-*/src/server.ts'
@@ -330,7 +339,7 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
         {
           handler,
           queueName: 'plugin-operations',
-          supportsCancellation: true,
+          supportsCancellation: cancellablePluginJobTypeIds.has(jobTypeId),
         },
       ])
     );

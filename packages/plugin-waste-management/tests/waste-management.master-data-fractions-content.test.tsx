@@ -173,7 +173,7 @@ afterEach(() => {
 
 describe('WasteMasterDataFractionsContent', () => {
   it('confirms bulk deletion before mutating and clears selection only after success', async () => {
-    const onDeleteFractions = vi.fn(async () => undefined);
+    const onDeleteFractions = vi.fn(async () => ({ failedIds: [] }));
     const fraction = {
       id: 'fraction-1',
       name: 'Biotonne',
@@ -212,6 +212,60 @@ describe('WasteMasterDataFractionsContent', () => {
 
     await waitFor(() => {
       expect(onDeleteFractions).toHaveBeenCalledWith(['fraction-1']);
+      expect(clearSelectionMock).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('masterData.fractions.bulkDeleteDialog.title')).toBeNull();
+    });
+  });
+
+  it('keeps only failed fraction ids in the open bulk-delete dialog for retry', async () => {
+    const onDeleteFractions = vi
+      .fn()
+      .mockResolvedValueOnce({ failedIds: ['fraction-2'] })
+      .mockResolvedValueOnce({ failedIds: [] });
+    const fractions = [
+      { id: 'fraction-1', name: 'Bio', color: '#16A34A', active: true },
+      { id: 'fraction-2', name: 'Rest', color: '#111111', active: true },
+    ];
+
+    render(
+      <WasteMasterDataFractionsContent
+        fractions={fractions as never}
+        fractionsSortBy="name"
+        fractionsSortDirection="asc"
+        fractionsStatus="all"
+        onOpenCreateFraction={vi.fn()}
+        onOpenEditFraction={vi.fn()}
+        onOpenDeleteFraction={vi.fn()}
+        onDeleteFractions={onDeleteFractions}
+        onToggleFractionStatus={vi.fn()}
+        onFractionsSortChange={vi.fn()}
+        onFractionsStatusChange={vi.fn()}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-bulk-delete' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.bulkDeleteDialog.confirm' })
+    );
+
+    await waitFor(() => {
+      expect(onDeleteFractions).toHaveBeenLastCalledWith(['fraction-1', 'fraction-2']);
+      expect(screen.getByRole('alert').textContent).toBe(
+        'masterData.fractions.messages.deleteError'
+      );
+      expect(clearSelectionMock).not.toHaveBeenCalled();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.fractions.bulkDeleteDialog.confirm' })
+    );
+
+    await waitFor(() => {
+      expect(onDeleteFractions).toHaveBeenLastCalledWith(['fraction-2']);
       expect(clearSelectionMock).toHaveBeenCalledTimes(1);
       expect(screen.queryByText('masterData.fractions.bulkDeleteDialog.title')).toBeNull();
     });

@@ -330,6 +330,7 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
         {
           handler,
           queueName: 'plugin-operations',
+          supportsCancellation: true,
         },
       ])
     );

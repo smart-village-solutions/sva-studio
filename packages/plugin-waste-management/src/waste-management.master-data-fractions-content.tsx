@@ -193,6 +193,11 @@ export const WasteMasterDataFractionsContent = ({
         request={bulkDeleteRequest}
         fallbackFocusRef={feedbackFocusFallbackRef}
         onDeleteFractions={onDeleteFractions}
+        onPartialFailure={(failedIds) => {
+          setBulkDeleteRequest((request) =>
+            request ? { ...request, fractionIds: failedIds } : null
+          );
+        }}
         onCancel={() => setBulkDeleteRequest(null)}
       />
       <WasteMasterDataFractionStatusDialog

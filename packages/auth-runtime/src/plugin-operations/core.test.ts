@@ -95,6 +95,7 @@ describe('plugin operations handlers', () => {
           {
             handler: vi.fn(),
             queueName: 'plugin-imports',
+            supportsCancellation: true,
           },
         ],
       ])
@@ -412,12 +413,14 @@ describe('plugin operations handlers', () => {
   });
 
   it('reads a job status for the authenticated instance', async () => {
+    let jobSource: 'plugin' | 'host' = 'plugin';
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
         getJobDetail: vi.fn(async () => ({
           id: 'job-1',
           instanceId: 'tenant-a',
           pluginId: 'news',
+          source: jobSource,
           jobTypeId: 'news.import-articles',
           importProfileId: 'news.article-import',
           queueName: 'plugin-operations',
@@ -498,6 +501,17 @@ describe('plugin operations handlers', () => {
           lastObservedAt: '2026-05-09T12:01:30.000Z',
         },
       },
+    });
+
+    jobSource = 'host';
+    const hostResponse = await getPluginOperationJobHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111',
+        { method: 'GET' }
+      )
+    );
+    await expect(hostResponse.json()).resolves.toMatchObject({
+      data: { availableActions: [] },
     });
     expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(1, {
       ctx: expect.anything(),
@@ -596,6 +610,14 @@ describe('plugin operations handlers', () => {
   it('stores a cancellation request for the authenticated instance', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
+        getJobById: vi.fn(
+          async () =>
+            ({
+              id: 'job-1',
+              source: 'plugin',
+              jobTypeId: 'news.import-articles',
+            }) as never
+        ),
         requestJobCancellation: vi.fn(async () => ({
           id: 'job-1',
           instanceId: 'tenant-a',
@@ -898,10 +920,18 @@ describe('plugin operations handlers', () => {
   });
 
   it('returns conflict when cancellation is no longer available for an existing job', async () => {
+    const requestJobCancellation = vi.fn(async () => null);
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
-        requestJobCancellation: vi.fn(async () => null),
-        getJobById: vi.fn(async () => ({ id: 'job-1' }) as never),
+        requestJobCancellation,
+        getJobById: vi.fn(
+          async () =>
+            ({
+              id: 'job-1',
+              source: 'host',
+              jobTypeId: 'studio.dsr-export',
+            }) as never
+        ),
       })
     );
 
@@ -922,11 +952,20 @@ describe('plugin operations handlers', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'conflict' },
     });
+    expect(requestJobCancellation).not.toHaveBeenCalled();
   });
 
   it('maps cancellation repository failures to database_unavailable', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
+        getJobById: vi.fn(
+          async () =>
+            ({
+              id: 'job-1',
+              source: 'plugin',
+              jobTypeId: 'news.import-articles',
+            }) as never
+        ),
         requestJobCancellation: vi.fn(async () => {
           throw new Error('repo down');
         }),

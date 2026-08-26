@@ -6,7 +6,10 @@ import {
   applyFractionSyncResult,
   type FractionRegionSubmissionHelperContext,
 } from './waste-management.master-data.fraction-sync.js';
-import { resolveApiErrorCode } from './waste-management.page.support.js';
+import {
+  resolveApiErrorCode,
+  type WasteBulkDeleteResult,
+} from './waste-management.page.support.js';
 
 const setDeleteErrorMessage = (ctx: FractionRegionSubmissionHelperContext, error: unknown) => {
   const code = resolveApiErrorCode(error);
@@ -61,8 +64,9 @@ export const createDeleteFractionHandler =
   };
 
 export const createDeleteFractionsHandler =
-  (ctx: FractionRegionSubmissionHelperContext) => async (fractionIds: readonly string[]) => {
-    if (!fractionIds.length) return;
+  (ctx: FractionRegionSubmissionHelperContext) =>
+  async (fractionIds: readonly string[]): Promise<WasteBulkDeleteResult> => {
+    if (!fractionIds.length) return { failedIds: [] };
     ctx.state.setSaving(true);
     ctx.state.setMessage(null);
     ctx.state.setLastOutcome(null);
@@ -78,11 +82,12 @@ export const createDeleteFractionsHandler =
         > => result.status === 'fulfilled'
       );
       const deletedCount = fulfilledResults.length;
+      const failedIds = fractionIds.filter((_, index) => results[index]?.status === 'rejected');
       const failedResults = results.filter((result) => result.status === 'rejected');
       let syncStarted = false;
       if (deletedCount > 0) {
         syncStarted = applyFractionSyncResult(ctx, fulfilledResults[0].value);
-        if (!(await refreshAfterDelete(ctx))) return;
+        if (!(await refreshAfterDelete(ctx))) return { failedIds };
       }
       if (failedResults.length === 0) {
         if (syncStarted) {
@@ -91,19 +96,17 @@ export const createDeleteFractionsHandler =
             text: ctx.pt('masterData.fractions.messages.deleteSuccess'),
           });
         }
-        return;
+        return { failedIds };
       }
       if (deletedCount > 0) {
-        if (syncStarted) {
-          ctx.state.setMessage({
-            kind: 'success',
-            text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', {
-              count: deletedCount,
-              total: fractionIds.length,
-            }),
-          });
-        }
-        return;
+        ctx.state.setMessage({
+          kind: 'success',
+          text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', {
+            count: deletedCount,
+            total: fractionIds.length,
+          }),
+        });
+        return { failedIds };
       }
       const deleteError = failedResults[0]?.reason;
       setDeleteErrorMessage(ctx, deleteError);

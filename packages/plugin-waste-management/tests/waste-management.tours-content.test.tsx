@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const resolveTourAssignmentItemsMock = vi.hoisted(() => vi.fn());
 
 import { WasteToursContent } from '../src/waste-management.tours.content.js';
+import { WasteToursDeleteDialogs } from '../src/waste-management.tours-delete-dialogs.js';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
@@ -268,6 +269,54 @@ const toursSearch = {
 };
 
 describe('WasteToursContent', () => {
+  it('keeps failed tour ids in the open bulk-delete dialog for retry', async () => {
+    const onDeleteTours = vi
+      .fn()
+      .mockResolvedValueOnce({ failedIds: ['tour-2'] })
+      .mockResolvedValueOnce({ failedIds: [] });
+
+    const Harness = () => {
+      const [selectedTourIds, setSelectedTourIds] = React.useState(['tour-1', 'tour-2']);
+      const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(true);
+      return (
+        <WasteToursDeleteDialogs
+          tourPendingDelete={null}
+          tourPendingStatusChange={null}
+          bulkDeleteOpen={bulkDeleteOpen}
+          selectedTourIds={selectedTourIds}
+          onCancelSingle={vi.fn()}
+          onCancelStatusChange={vi.fn()}
+          onCancelBulk={() => setBulkDeleteOpen(false)}
+          onConfirmStatusChange={vi.fn(async () => undefined)}
+          statusChangePending={false}
+          statusChangeError={null}
+          onDeleteTour={vi.fn(async () => undefined)}
+          onDeleteTours={onDeleteTours}
+          onAfterBulkDelete={(failedIds) => {
+            setSelectedTourIds([...failedIds]);
+            if (failedIds.length === 0) setBulkDeleteOpen(false);
+          }}
+        />
+      );
+    };
+
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkDeleteDialog.confirm' }));
+
+    await waitFor(() => {
+      expect(onDeleteTours).toHaveBeenLastCalledWith(['tour-1', 'tour-2']);
+      expect(screen.getByRole('alert').textContent).toBe('tours.messages.deleteError');
+      expect(screen.getByText('tours.bulkDeleteDialog.description:1')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkDeleteDialog.confirm' }));
+
+    await waitFor(() => {
+      expect(onDeleteTours).toHaveBeenLastCalledWith(['tour-2']);
+      expect(screen.queryByText('tours.bulkDeleteDialog.title')).toBeNull();
+    });
+  });
+
   beforeEach(() => {
     resolveTourAssignmentItemsMock.mockReset();
   });

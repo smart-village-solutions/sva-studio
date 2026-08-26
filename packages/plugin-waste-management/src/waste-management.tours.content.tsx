@@ -249,9 +249,9 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         statusChangePending={statusChangePending}
         statusChangeError={statusChangeError}
         onDeleteTours={onDeleteTours}
-        onAfterBulkDelete={() => {
-          setSelectedTourIds([]);
-          setBulkDeleteOpen(false);
+        onAfterBulkDelete={(failedIds) => {
+          setSelectedTourIds(failedIds);
+          setBulkDeleteOpen(failedIds.length > 0);
         }}
       />
     </div>

@@ -232,11 +232,42 @@ describe('createFractionMutationHandler', () => {
       loadCollectionLocationList: vi.fn(),
     } as never;
 
-    await expect(createDeleteFractionsHandler(ctx)(['fraction-1'])).resolves.toBeUndefined();
+    await expect(createDeleteFractionsHandler(ctx)(['fraction-1'])).resolves.toEqual({
+      failedIds: [],
+    });
 
     expect(ctx.state.setMessage).toHaveBeenLastCalledWith({
       kind: 'warning',
       text: 'masterData.fractions.messages.refreshAfterDeleteError',
+    });
+  });
+
+  it('returns failed fraction ids and keeps partial success feedback authoritative', async () => {
+    deleteWasteManagementFractionMock
+      .mockResolvedValueOnce({
+        data: { id: 'fraction-1' },
+        syncStatus: 'failed',
+      })
+      .mockRejectedValueOnce(new Error('conflict'));
+    const ctx = {
+      state: {
+        setSaving: vi.fn(),
+        setMessage: vi.fn(),
+        setTrackedSyncWasteTypesJob: vi.fn(),
+        setLastOutcome: vi.fn(),
+      },
+      pt: (key: string) => key,
+      loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(),
+    } as never;
+
+    await expect(createDeleteFractionsHandler(ctx)(['fraction-1', 'fraction-2'])).resolves.toEqual({
+      failedIds: ['fraction-2'],
+    });
+
+    expect(ctx.state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'success',
+      text: 'masterData.fractions.messages.deletePartialSuccess',
     });
   });
 });

@@ -60,10 +60,12 @@ export const WasteMasterDataFractionsBulkDeleteDialog = ({
   request,
   fallbackFocusRef,
   onDeleteFractions,
+  onPartialFailure,
   onCancel,
 }: Pick<WasteFractionsContentProps, 'onDeleteFractions'> & {
   readonly request: FractionBulkDeleteRequest | null;
   readonly fallbackFocusRef: RefObject<HTMLElement | null>;
+  readonly onPartialFailure: (failedIds: readonly string[]) => void;
   readonly onCancel: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -92,7 +94,12 @@ export const WasteMasterDataFractionsBulkDeleteDialog = ({
         setPending(true);
         setErrorMessage(null);
         try {
-          await onDeleteFractions(request.fractionIds);
+          const result = await onDeleteFractions(request.fractionIds);
+          if (result.failedIds.length > 0) {
+            onPartialFailure(result.failedIds);
+            setErrorMessage(pt('masterData.fractions.messages.deleteError'));
+            return;
+          }
           request.clearSelection();
           onCancel();
         } catch {

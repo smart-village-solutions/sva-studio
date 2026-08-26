@@ -8,6 +8,7 @@ import {
 } from './waste-management.tours.delete-debug.js';
 import { throwTourDeleteError } from './waste-management.tours.messages.js';
 import type { WasteToursSubmissionContext } from './waste-management.tours.mutation-context.js';
+import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
 
 const refreshAfterDelete = async ({ state, pt, loadOverview }: WasteToursSubmissionContext) => {
   try {
@@ -50,7 +51,8 @@ const createDeleteTourHandler =
   };
 
 const createDeleteToursHandler =
-  (context: WasteToursSubmissionContext) => async (tourIds: readonly string[]) => {
+  (context: WasteToursSubmissionContext) =>
+  async (tourIds: readonly string[]): Promise<WasteBulkDeleteResult> => {
     const { state, pt } = context;
     state.setSaving(true);
     state.setMessage(null);
@@ -60,9 +62,10 @@ const createDeleteToursHandler =
         tourIds.map(async (tourId) => deleteWasteManagementTour(tourId))
       );
       const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
+      const failedIds = tourIds.filter((_, index) => results[index]?.status === 'rejected');
       const failedResults = results.filter((result) => result.status === 'rejected');
 
-      if (deletedCount > 0 && !(await refreshAfterDelete(context))) return;
+      if (deletedCount > 0 && !(await refreshAfterDelete(context))) return { failedIds };
 
       if (failedResults.length === 0) {
         startTransition(() => {
@@ -71,7 +74,7 @@ const createDeleteToursHandler =
             text: pt('tours.messages.deleteSuccess'),
           });
         });
-        return;
+        return { failedIds };
       }
 
       if (deletedCount > 0) {
@@ -84,12 +87,12 @@ const createDeleteToursHandler =
             }),
           });
         });
-        return;
+        return { failedIds };
       }
 
       throw failedResults[0]?.reason;
     } catch (saveError) {
-      throwTourDeleteError(state, pt, saveError);
+      return throwTourDeleteError(state, pt, saveError);
     } finally {
       state.setSaving(false);
     }

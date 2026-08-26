@@ -31,6 +31,10 @@ export type StatusMessage = {
   readonly retryAction?: 'sync-waste-types';
 };
 
+export type WasteBulkDeleteResult = Readonly<{
+  failedIds: readonly string[];
+}>;
+
 export type TechnicalStatusTone = 'neutral' | 'success' | 'warning' | 'error';
 
 export const compactOptionalString = (value: string): string | undefined => {

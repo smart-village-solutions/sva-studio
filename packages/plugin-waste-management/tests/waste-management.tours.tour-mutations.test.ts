@@ -311,7 +311,9 @@ describe('createWasteToursTourMutationHandlers', () => {
       loadOverview: partialLoadOverview,
     });
 
-    await partialMutations.onDeleteTours(['tour-1', 'tour-2']);
+    await expect(partialMutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toEqual({
+      failedIds: ['tour-2'],
+    });
 
     expect(partialState.setMessage).toHaveBeenCalledWith({
       kind: 'success',
@@ -349,7 +351,9 @@ describe('createWasteToursTourMutationHandlers', () => {
       loadOverview,
     });
 
-    await mutations.onDeleteTours(['tour-1', 'tour-2']);
+    await expect(mutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toEqual({
+      failedIds: [],
+    });
 
     expect(loadOverview).toHaveBeenCalledWith(true);
     expect(state.setMessage).toHaveBeenCalledWith({
@@ -365,7 +369,9 @@ describe('createWasteToursTourMutationHandlers', () => {
     apiMocks.deleteWasteManagementTour.mockResolvedValue({});
     const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
 
-    await expect(mutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toBeUndefined();
+    await expect(mutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toEqual({
+      failedIds: [],
+    });
 
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'warning',

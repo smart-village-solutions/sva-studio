@@ -1,4 +1,9 @@
-import { studioJobContract, studioJobListContract, type StudioJobListQuery } from '@sva/core';
+import {
+  studioJobContract,
+  studioJobListContract,
+  type StudioJobDetail,
+  type StudioJobListQuery,
+} from '@sva/core';
 import { createMutationWorkflow, getWorkspaceContext } from '@sva/server-runtime';
 
 import {
@@ -20,12 +25,17 @@ import { createJsonItemResponse } from './core.shared.js';
 import { normalizeStudioJobDetail } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
 import { withStudioJobRepository } from './repository.js';
+import { getRegisteredPluginOperationExecutionRegistry } from './runner.js';
 
 const TERMINAL_JOB_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
 const MONITORING_READ_ACTION = 'iam.monitoring.read';
 const MONITORING_WRITE_ACTION = 'iam.monitoring.write';
 
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
+
+const supportsJobCancellation = (job: Pick<StudioJobDetail, 'source' | 'jobTypeId'>): boolean =>
+  (job.source ?? 'plugin') === 'plugin' &&
+  getRegisteredPluginOperationExecutionRegistry().get(job.jobTypeId)?.supportsCancellation === true;
 
 export const requireActorInstanceId = (instanceId: string | null | undefined): string | Response =>
   instanceId && instanceId.trim().length > 0
@@ -163,7 +173,9 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
       return job
         ? createJsonItemResponse(
             200,
-            normalizeStudioJobDetail(job, { canCancel: writeAuthorization.ok }),
+            normalizeStudioJobDetail(job, {
+              canCancel: writeAuthorization.ok && supportsJobCancellation(job),
+            }),
             getRequestId()
           )
         : createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
@@ -255,18 +267,15 @@ export const cancelPluginOperationJobHandler = async (request: Request): Promise
       execute: async ({ instanceId, requestId }, jobId) => {
         try {
           const result = await withStudioJobRepository(instanceId, async (repository) => {
+            const existingJob = await repository.getJobById(instanceId, jobId);
+            if (!existingJob) return { kind: 'not_found' as const };
+            if (!supportsJobCancellation(existingJob)) return { kind: 'conflict' as const };
             const job = await repository.requestJobCancellation({
               jobId,
               instanceId,
               cancelRequestedAt: new Date().toISOString(),
             });
-            return job
-              ? { kind: 'accepted' as const, job }
-              : {
-                  kind: (await repository.getJobById(instanceId, jobId))
-                    ? ('conflict' as const)
-                    : ('not_found' as const),
-                };
+            return job ? { kind: 'accepted' as const, job } : { kind: 'conflict' as const };
           });
           if (result.kind === 'not_found') {
             return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);

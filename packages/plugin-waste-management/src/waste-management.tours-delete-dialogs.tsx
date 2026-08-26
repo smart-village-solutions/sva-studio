@@ -2,6 +2,7 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioConfirmDialog, StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 import { useState } from 'react';
+import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
 
 type WasteToursDeleteDialogsProps = Readonly<{
   tourPendingDelete: WasteTourRecord | null;
@@ -18,8 +19,8 @@ type WasteToursDeleteDialogsProps = Readonly<{
   statusChangePending: boolean;
   statusChangeError: string | null;
   onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
-  onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
-  onAfterBulkDelete: () => void;
+  onDeleteTours: (tourIds: readonly string[]) => Promise<WasteBulkDeleteResult>;
+  onAfterBulkDelete: (failedIds: readonly string[]) => void;
 }>;
 
 const WasteTourStatusDialog = ({
@@ -51,7 +52,11 @@ const WasteTourStatusDialog = ({
       cancelDisabled={pending}
       onConfirm={() => void onConfirm()}
     >
-      {errorMessage ? <p role="alert" className="text-sm text-destructive">{errorMessage}</p> : null}
+      {errorMessage ? (
+        <p role="alert" className="text-sm text-destructive">
+          {errorMessage}
+        </p>
+      ) : null}
     </StudioConfirmDialog>
   );
 };
@@ -94,6 +99,39 @@ const WasteTourDeleteDialog = ({
   );
 };
 
+const useTourDeleteFeedback = (
+  deleteErrorMessage: string,
+  onDeleteTours: WasteToursDeleteDialogsProps['onDeleteTours'],
+  onAfterBulkDelete: WasteToursDeleteDialogsProps['onAfterBulkDelete']
+) => {
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const runDelete = async (mutation: () => Promise<void>, onSuccess: () => void) => {
+    setDeletePending(true);
+    setDeleteError(null);
+    try {
+      await mutation();
+      onSuccess();
+    } catch {
+      setDeleteError(deleteErrorMessage);
+    } finally {
+      setDeletePending(false);
+    }
+  };
+  const runBulkDelete = (selectedTourIds: readonly string[]) => {
+    setDeletePending(true);
+    setDeleteError(null);
+    void onDeleteTours(selectedTourIds)
+      .then(({ failedIds }) => {
+        onAfterBulkDelete(failedIds);
+        if (failedIds.length > 0) setDeleteError(deleteErrorMessage);
+      })
+      .catch(() => setDeleteError(deleteErrorMessage))
+      .finally(() => setDeletePending(false));
+  };
+  return { deletePending, deleteError, setDeleteError, runDelete, runBulkDelete };
+};
+
 export const WasteToursDeleteDialogs = ({
   tourPendingDelete,
   tourPendingStatusChange,
@@ -110,21 +148,8 @@ export const WasteToursDeleteDialogs = ({
   onAfterBulkDelete,
 }: WasteToursDeleteDialogsProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [deletePending, setDeletePending] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const runDelete = async (mutation: () => Promise<void>, onSuccess: () => void) => {
-    setDeletePending(true);
-    setDeleteError(null);
-    try {
-      await mutation();
-      onSuccess();
-    } catch {
-      setDeleteError(pt('tours.messages.deleteError'));
-    } finally {
-      setDeletePending(false);
-    }
-  };
+  const { deletePending, deleteError, setDeleteError, runDelete, runBulkDelete } =
+    useTourDeleteFeedback(pt('tours.messages.deleteError'), onDeleteTours, onAfterBulkDelete);
 
   return (
     <>
@@ -169,7 +194,7 @@ export const WasteToursDeleteDialogs = ({
           setDeleteError(null);
           onCancelBulk();
         }}
-        onConfirm={() => void runDelete(() => onDeleteTours(selectedTourIds), onAfterBulkDelete)}
+        onConfirm={() => runBulkDelete(selectedTourIds)}
       />
     </>
   );

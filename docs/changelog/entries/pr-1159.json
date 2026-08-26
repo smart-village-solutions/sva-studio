@@ -1,0 +1,4 @@
+{
+  "prNumber": 1159,
+  "body": "Medien-Governance auf offene Funktionen zugeschnitten\n\n- Mehrsprachige Metadaten, Taxonomien und instanzlokale Duplikaterkennung sind klar abgegrenzt.\n- Sicherer Originalaustausch nutzt eine konkurrenzfeste Aktivierung; temporäre Uploads, Retention und Quota-Abrechnung folgen idempotenten Fail-closed-Verträgen.\n- Asynchrone Jobs, Wiederholungen und Dead-Letter-Verarbeitung bleiben verbindlich im bestehenden Media-Processing-Change gebündelt."
+}

@@ -418,6 +418,26 @@ describe('organization Mainserver provisioning', () => {
     }
   );
 
+  it.each([403, 422])(
+    'preserves data provider verification failures with status %s',
+    async (statusCode) => {
+      const { MainserverUserProvisioningError } =
+        await import('../iam-account-management/mainserver-user-provisioning-error.js');
+      const { toSafeProvisioningErrorCode } =
+        await import('./organization-mainserver-provisioning.shared.js');
+
+      expect(
+        toSafeProvisioningErrorCode(
+          new MainserverUserProvisioningError({
+            code: 'data_provider_verification_failed',
+            message: 'DataProvider identity could not be verified',
+            statusCode,
+          })
+        )
+      ).toBe('data_provider_verification_failed');
+    }
+  );
+
   it('compensates a newly created Keycloak account when local attachment fails before upstream', async () => {
     const provider = prepareNewProvisioningAccount();
     state.persistCreatedUser.mockRejectedValue(new Error('database unavailable'));

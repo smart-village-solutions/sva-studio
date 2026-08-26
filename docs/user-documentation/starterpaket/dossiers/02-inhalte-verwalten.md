@@ -13,8 +13,9 @@ Ressourcenprincipal ab.
 - **Nutzerziel:** Inhalte finden, ihren Zustand beurteilen und eine zulässige Aktion starten.
 - **Produktfakten:** Suche erfasst Überschrift, Autor und Inhaltstyp. Zusätzlich bestehen Typ-,
   Sprach- und Statusfilter. Die Liste unterstützt Sortierung nach Titel sowie Veröffentlichungs-,
-  Erstellungs- und Änderungsdatum, Pagination und Statusdarstellung. Archivieren unterstützt
-  Auswahl, aktuelle Seite oder alle Filtertreffer; Löschen nur explizit ausgewählte IDs.
+  Erstellungs- und Änderungsdatum, Pagination und Statusdarstellung. Archivieren und Löschen
+  wirken in der aktuellen Oberfläche ausschließlich auf die explizit ausgewählten Inhalte;
+  Aktionen für die gesamte aktuelle Seite oder alle Filtertreffer werden nicht angeboten.
 - **Kontextabhängig:** Einträge können bearbeitbar, nur lesbar, gesperrt oder serverseitig
   verweigert sein. Während Mainserver-Synchronisation kann die Liste einen letzten Stand oder eine
   nur lokal vollständige Teilmenge zeigen.

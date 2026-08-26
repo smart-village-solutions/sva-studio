@@ -48,8 +48,9 @@ Löschen beeinflussen.
   Sichtbarkeit sowie Bildfokus und Zuschnitt. Technische Angaben umfassen Asset-ID, Storage-Key,
   MIME-Typ, Größe, Upload- und Verarbeitungsstatus. Öffentliche URLs können kopiert und als QR-Code
   ausgegeben werden.
-- **Kontextabhängig:** Aktive Referenzen können Änderung oder Löschen blockieren. Ein Objekt aus dem
-  Bucket kann zunächst unregistriert sein und muss als Medium registriert werden.
+- **Kontextabhängig:** Aktive Referenzen blockieren das Löschen, nicht jedoch Änderungen an den
+  Metadaten. Ein Objekt aus dem Bucket kann zunächst unregistriert sein und muss als Medium
+  registriert werden.
 - **Redaktionelle Leitfragen:** Welche Metadaten sind für Barrierefreiheit erforderlich? Wann ist ein
   Asset auslieferbar? Welche Wirkung haben Fokuspunkt und Zuschnitt?
 - **Stichwörter / Querverweise:** Alternativtext, Lizenz, Fokuspunkt, Zuschnitt, Delivery-URL,

@@ -573,6 +573,12 @@ Referenzen:
 - Risiko: Ein fachlicher Listenfilter wird nur auf eine bereits paginierte Browserseite angewandt. Maßnahme: FAQ-Sprachfilter hostseitig auf der vollständig eingesammelten FAQ-Teilmenge ausführen und den Vertrag mit Mehrseiten-Tests absichern.
 - Risiko: Gemeinsame UI-Primitives entwickeln sich zu einer zweiten Fachlogikschicht. Maßnahme: ausschließlich Darstellung, Fokus und Dialogzustand teilen; Mapping, Validierung und Persistenz bleiben plugin- beziehungsweise hostnah.
 
+### Fortschreibung 2026-08: Selbstheilung historischer DataProvider-Konflikte
+
+- Risiko: Eine reversible Sperrung oder vorläufige Löschung wird als endgültiges Ausscheiden interpretiert und überträgt die aktuelle DataProvider-Zuordnung unzulässig. Maßnahme: Selbstheilung ausschließlich bei endgültig gelöschtem oder nach Hard Delete nicht mehr vorhandenem Benutzer; aktive, gesperrte, soft-gelöschte, organisatorische und unklare Konkurrenten bleiben fail-closed.
+- Risiko: Die lokale Historisierung suggeriert einen externen Credential-Widerruf. Maßnahme: konkurrierende Bindungen werden ausschließlich `historical`, niemals ohne Upstream-Nachweis `revoked`; eine spätere widersprechende aktive Beobachtung erzeugt erneut einen Konflikt.
+- Risiko: Parallele Identity-Beobachtungen erzeugen inkonsistente Bindungszustände. Maßnahme: erneutes tenantlokales Lesen und atomarer Übergang unter dem bestehenden DataProvider-Advisory-Lock; strukturierte technische Ergebnis- und Grundsignale ohne PII oder Secrets.
+
 ### Fortschreibung 2026-08: Zentraler scopegebundener UI-Zugriff
 
 - Restrisiko: UI-Negativtests beweisen keine Serverautorisierung. Maßnahme: Die maschinenlesbare Aktionsinventur kennzeichnet Server-Enforcement ohne belegten Endpunktvertrag ausdrücklich als `not_verified`; diese Einträge bleiben Audit- und Migrationsblocker.

@@ -85,6 +85,26 @@ export type RecordMainserverDataProviderObservationResult = Readonly<{
   outcome: 'created' | 'confirmed' | 'conflict';
 }>;
 
+export type DeletedUserDataProviderConflictReason =
+  | 'competing_principal_not_user'
+  | 'competing_user_not_permanently_deleted'
+  | 'current_credential_provider_mismatch'
+  | 'current_user_not_active'
+  | 'exact_binding_missing'
+  | 'no_permanently_deleted_competitor'
+  | 'unsupported_current_principal';
+
+export type ReconcileDeletedUserDataProviderConflictResult =
+  | Readonly<{
+      outcome: 'resolved';
+      binding: MainserverDataProviderBinding;
+      historicalBindingCount: number;
+    }>
+  | Readonly<{
+      outcome: 'not_resolved';
+      reason: DeletedUserDataProviderConflictReason;
+    }>;
+
 type DataProviderObservation = Readonly<{
   instanceId: string;
   principalType: MainserverPrincipalType;
@@ -93,6 +113,14 @@ type DataProviderObservation = Readonly<{
   dataProviderId: string;
   dataProviderName?: string;
   evidenceKind: MainserverDataProviderEvidenceKind;
+}>;
+
+type AccountLifecycleRow = Readonly<{
+  id: string;
+  deletion_lifecycle_state: 'active' | 'deactivated' | 'deleted' | 'pseudonymized';
+  is_blocked: boolean;
+  soft_deleted_at: string | null;
+  permanently_deleted_at: string | null;
 }>;
 
 const normalizeObservation = (input: DataProviderObservation): DataProviderObservation => ({
@@ -265,6 +293,159 @@ FOR UPDATE;
     return {
       binding: mapBinding(row),
       outcome: isConflict ? 'conflict' : exactBinding ? 'confirmed' : 'created',
+    };
+  });
+};
+
+const isCurrentActiveUser = (account: AccountLifecycleRow | undefined): boolean =>
+  account?.deletion_lifecycle_state === 'active' &&
+  account.is_blocked === false &&
+  account.soft_deleted_at === null &&
+  account.permanently_deleted_at === null;
+
+const isPermanentlyDeletedUser = (account: AccountLifecycleRow | undefined): boolean =>
+  account === undefined ||
+  account.deletion_lifecycle_state === 'deleted' ||
+  account.permanently_deleted_at !== null;
+
+export const reconcileDeletedUserDataProviderConflict = async (input: {
+  readonly instanceId: string;
+  readonly principalType: MainserverPrincipalType;
+  readonly principalId: string;
+  readonly credentialFingerprint: string;
+  readonly dataProviderId: string;
+}): Promise<ReconcileDeletedUserDataProviderConflictResult> => {
+  const observation = normalizeObservation({
+    ...input,
+    evidenceKind: 'identity_endpoint',
+  });
+  if (observation.principalType !== 'user') {
+    return { outcome: 'not_resolved', reason: 'unsupported_current_principal' };
+  }
+
+  return withInstanceScopedDb(observation.instanceId, async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+      observation.instanceId,
+      `mainserver-data-provider:${observation.dataProviderId}`,
+    ]);
+
+    const relatedResult = await client.query<BindingRow>(
+      `
+SELECT ${bindingColumns}
+FROM iam.mainserver_data_provider_bindings
+WHERE instance_id = $1
+  AND status IN ('verified', 'conflict')
+  AND (
+    (principal_type = $2 AND principal_id = $3::uuid AND credential_fingerprint = $4)
+    OR data_provider_id = $5
+  )
+FOR UPDATE;
+`,
+      [
+        observation.instanceId,
+        observation.principalType,
+        observation.principalId,
+        observation.credentialFingerprint,
+        observation.dataProviderId,
+      ]
+    );
+    const exactBinding = relatedResult.rows.find((row) => isExactObservation(row, observation));
+    if (!exactBinding) {
+      return { outcome: 'not_resolved', reason: 'exact_binding_missing' };
+    }
+
+    const userPrincipalIds = [
+      ...new Set(
+        relatedResult.rows
+          .filter((row) => row.principal_type === 'user')
+          .map((row) => row.principal_id)
+      ),
+    ];
+    const accountsResult = await client.query<AccountLifecycleRow>(
+      `
+SELECT
+  id::text,
+  deletion_lifecycle_state,
+  is_blocked,
+  soft_deleted_at::text,
+  permanently_deleted_at::text
+FROM iam.accounts
+WHERE instance_id = $1
+  AND id = ANY($2::uuid[])
+FOR UPDATE;
+`,
+      [observation.instanceId, userPrincipalIds]
+    );
+    const accountsById = new Map(accountsResult.rows.map((account) => [account.id, account]));
+    if (!isCurrentActiveUser(accountsById.get(observation.principalId))) {
+      return { outcome: 'not_resolved', reason: 'current_user_not_active' };
+    }
+
+    const hasCurrentCredentialProviderMismatch = relatedResult.rows.some(
+      (row) =>
+        row.principal_type === observation.principalType &&
+        row.principal_id === observation.principalId &&
+        row.credential_fingerprint === observation.credentialFingerprint &&
+        row.data_provider_id !== observation.dataProviderId
+    );
+    if (hasCurrentCredentialProviderMismatch) {
+      return { outcome: 'not_resolved', reason: 'current_credential_provider_mismatch' };
+    }
+
+    const competingBindings = relatedResult.rows.filter(
+      (row) =>
+        row.data_provider_id === observation.dataProviderId &&
+        (row.principal_type !== observation.principalType ||
+          row.principal_id !== observation.principalId)
+    );
+    if (competingBindings.length === 0) {
+      return exactBinding.status === 'verified'
+        ? {
+            outcome: 'resolved',
+            binding: mapBinding(exactBinding),
+            historicalBindingCount: 0,
+          }
+        : { outcome: 'not_resolved', reason: 'no_permanently_deleted_competitor' };
+    }
+    if (competingBindings.some((row) => row.principal_type !== 'user')) {
+      return { outcome: 'not_resolved', reason: 'competing_principal_not_user' };
+    }
+    if (
+      competingBindings.some((row) => !isPermanentlyDeletedUser(accountsById.get(row.principal_id)))
+    ) {
+      return { outcome: 'not_resolved', reason: 'competing_user_not_permanently_deleted' };
+    }
+
+    const historicalBindingIds = [...new Set(competingBindings.map((row) => row.id))];
+    await client.query(
+      `
+UPDATE iam.mainserver_data_provider_bindings
+SET status = 'historical', superseded_at = NOW(), last_observed_at = NOW()
+WHERE instance_id = $1
+  AND id = ANY($2::uuid[])
+  AND status IN ('verified', 'conflict');
+`,
+      [observation.instanceId, historicalBindingIds]
+    );
+    const verifiedResult = await client.query<BindingRow>(
+      `
+UPDATE iam.mainserver_data_provider_bindings
+SET status = 'verified', superseded_at = NULL, last_observed_at = NOW()
+WHERE instance_id = $1
+  AND id = $2::uuid
+  AND status IN ('verified', 'conflict')
+RETURNING ${bindingColumns};
+`,
+      [observation.instanceId, exactBinding.id]
+    );
+    const verifiedBinding = verifiedResult.rows[0];
+    if (!verifiedBinding) {
+      throw new Error('mainserver_data_provider_binding_reconciliation_write_failed');
+    }
+    return {
+      outcome: 'resolved',
+      binding: mapBinding(verifiedBinding),
+      historicalBindingCount: historicalBindingIds.length,
     };
   });
 };

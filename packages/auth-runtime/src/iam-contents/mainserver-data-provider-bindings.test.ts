@@ -25,13 +25,26 @@ const bindingRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const accountRow = (overrides: Record<string, unknown> = {}) => ({
+  id: '11111111-1111-1111-8111-111111111111',
+  deletion_lifecycle_state: 'active',
+  is_blocked: false,
+  soft_deleted_at: null,
+  permanently_deleted_at: null,
+  ...overrides,
+});
+
 describe('mainserver data provider bindings', () => {
   let recordMainserverDataProviderObservation: typeof import('./mainserver-data-provider-bindings.js').recordMainserverDataProviderObservation;
   let loadCurrentMainserverDataProviderBinding: typeof import('./mainserver-data-provider-bindings.js').loadCurrentMainserverDataProviderBinding;
+  let reconcileDeletedUserDataProviderConflict: typeof import('./mainserver-data-provider-bindings.js').reconcileDeletedUserDataProviderConflict;
 
   beforeAll(async () => {
-    ({ recordMainserverDataProviderObservation, loadCurrentMainserverDataProviderBinding } =
-      await import('./mainserver-data-provider-bindings.js'));
+    ({
+      recordMainserverDataProviderObservation,
+      loadCurrentMainserverDataProviderBinding,
+      reconcileDeletedUserDataProviderConflict,
+    } = await import('./mainserver-data-provider-bindings.js'));
   });
 
   beforeEach(() => {
@@ -219,6 +232,179 @@ describe('mainserver data provider bindings', () => {
     expect(query).toContain('account.soft_deleted_at IS NULL');
     expect(query).toContain('account.permanently_deleted_at IS NULL');
     expect(query).toContain('organization.is_active = TRUE');
+  });
+
+  it('reconciles a sticky conflict when every competing user account was hard-deleted', async () => {
+    const deletedPrincipalId = '22222222-2222-2222-8222-222222222222';
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          bindingRow({ status: 'conflict', evidence_kind: 'identity_endpoint' }),
+          bindingRow({
+            id: 'binding-2',
+            principal_id: deletedPrincipalId,
+            credential_fingerprint: 'b'.repeat(64),
+            status: 'conflict',
+            evidence_kind: 'identity_endpoint',
+          }),
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [accountRow()] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rows: [bindingRow({ status: 'verified' })] });
+
+    await expect(
+      reconcileDeletedUserDataProviderConflict({
+        instanceId: 'de-musterhausen',
+        principalType: 'user',
+        principalId: '11111111-1111-1111-8111-111111111111',
+        credentialFingerprint: 'a'.repeat(64),
+        dataProviderId: 'dp-user-1',
+      })
+    ).resolves.toMatchObject({
+      outcome: 'resolved',
+      historicalBindingCount: 1,
+      binding: { status: 'verified', dataProviderId: 'dp-user-1' },
+    });
+
+    expect(state.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('pg_advisory_xact_lock'),
+      ['de-musterhausen', 'mainserver-data-provider:dp-user-1']
+    );
+    expect(String(state.query.mock.calls[3]?.[0])).toContain("SET status = 'historical'");
+    expect(state.query.mock.calls[3]?.[1]).toEqual(['de-musterhausen', ['binding-2']]);
+    expect(String(state.query.mock.calls[4]?.[0])).toContain("SET status = 'verified'");
+  });
+
+  it.each([
+    {
+      name: 'active competing user',
+      competingBinding: bindingRow({
+        id: 'binding-2',
+        principal_id: '22222222-2222-2222-8222-222222222222',
+        credential_fingerprint: 'b'.repeat(64),
+        status: 'conflict',
+      }),
+      competingAccount: accountRow({ id: '22222222-2222-2222-8222-222222222222' }),
+      reason: 'competing_user_not_permanently_deleted',
+    },
+    {
+      name: 'blocked competing user',
+      competingBinding: bindingRow({
+        id: 'binding-2',
+        principal_id: '22222222-2222-2222-8222-222222222222',
+        credential_fingerprint: 'b'.repeat(64),
+        status: 'conflict',
+      }),
+      competingAccount: accountRow({
+        id: '22222222-2222-2222-8222-222222222222',
+        is_blocked: true,
+      }),
+      reason: 'competing_user_not_permanently_deleted',
+    },
+    {
+      name: 'soft-deleted competing user',
+      competingBinding: bindingRow({
+        id: 'binding-2',
+        principal_id: '22222222-2222-2222-8222-222222222222',
+        credential_fingerprint: 'b'.repeat(64),
+        status: 'conflict',
+      }),
+      competingAccount: accountRow({
+        id: '22222222-2222-2222-8222-222222222222',
+        deletion_lifecycle_state: 'deactivated',
+        soft_deleted_at: '2026-08-26T09:00:00.000Z',
+      }),
+      reason: 'competing_user_not_permanently_deleted',
+    },
+    {
+      name: 'organization binding',
+      competingBinding: bindingRow({
+        id: 'binding-2',
+        principal_type: 'organization',
+        principal_id: '22222222-2222-2222-8222-222222222222',
+        credential_fingerprint: 'b'.repeat(64),
+        status: 'conflict',
+      }),
+      competingAccount: undefined,
+      reason: 'competing_principal_not_user',
+    },
+  ])('keeps $name fail-closed', async ({ competingBinding, competingAccount, reason }) => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          bindingRow({ status: 'conflict', evidence_kind: 'identity_endpoint' }),
+          competingBinding,
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [accountRow(), ...(competingAccount ? [competingAccount] : [])],
+      });
+
+    await expect(
+      reconcileDeletedUserDataProviderConflict({
+        instanceId: 'de-musterhausen',
+        principalType: 'user',
+        principalId: '11111111-1111-1111-8111-111111111111',
+        credentialFingerprint: 'a'.repeat(64),
+        dataProviderId: 'dp-user-1',
+      })
+    ).resolves.toEqual({ outcome: 'not_resolved', reason });
+
+    expect(state.query).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not heal a same-credential provider mismatch', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          bindingRow({ status: 'conflict', evidence_kind: 'identity_endpoint' }),
+          bindingRow({
+            id: 'binding-2',
+            data_provider_id: 'dp-user-2',
+            status: 'conflict',
+          }),
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [accountRow()] });
+
+    await expect(
+      reconcileDeletedUserDataProviderConflict({
+        instanceId: 'de-musterhausen',
+        principalType: 'user',
+        principalId: '11111111-1111-1111-8111-111111111111',
+        credentialFingerprint: 'a'.repeat(64),
+        dataProviderId: 'dp-user-1',
+      })
+    ).resolves.toEqual({
+      outcome: 'not_resolved',
+      reason: 'current_credential_provider_mismatch',
+    });
+  });
+
+  it('treats an already verified exact binding as an idempotent resolved result', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [bindingRow({ status: 'verified' })] })
+      .mockResolvedValueOnce({ rows: [accountRow()] });
+
+    await expect(
+      reconcileDeletedUserDataProviderConflict({
+        instanceId: 'de-musterhausen',
+        principalType: 'user',
+        principalId: '11111111-1111-1111-8111-111111111111',
+        credentialFingerprint: 'a'.repeat(64),
+        dataProviderId: 'dp-user-1',
+      })
+    ).resolves.toMatchObject({
+      outcome: 'resolved',
+      historicalBindingCount: 0,
+      binding: { status: 'verified' },
+    });
   });
 
   it('rejects blank provider identifiers before opening a database transaction', async () => {

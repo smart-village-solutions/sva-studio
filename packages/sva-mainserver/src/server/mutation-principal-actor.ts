@@ -1,5 +1,6 @@
 import {
   loadCurrentMainserverDataProviderBinding,
+  reconcileDeletedUserDataProviderConflict,
   recordMainserverDataProviderObservation,
   resolveActorInfo,
   resolveMutationPrincipalContext,
@@ -97,6 +98,36 @@ export const ensureStableDataProviderIdentity = async (
       evidenceKind: 'identity_endpoint',
     });
     if (observation.outcome === 'conflict') {
+      const reconciliation = await reconcileDeletedUserDataProviderConflict({
+        instanceId: actor.instanceId,
+        principalType: actor.mutationPrincipalContext.actingPrincipalType,
+        principalId: actor.mutationPrincipalContext.actingPrincipalId,
+        credentialFingerprint: actor.mutationPrincipalContext.credentialFingerprint,
+        dataProviderId: identity.dataProvider.id,
+      });
+      const workspaceContext = getWorkspaceContext();
+      const reconciliationContext = {
+        operation: 'mainserver_data_provider_identity_conflict_reconciliation',
+        request_id: workspaceContext.requestId,
+        trace_id: workspaceContext.traceId,
+        instance_id: actor.instanceId,
+        principal_type: actor.mutationPrincipalContext.actingPrincipalType,
+        credential_fingerprint: actor.mutationPrincipalContext.credentialFingerprint,
+        data_provider_id: identity.dataProvider.id,
+      };
+      if (reconciliation.outcome === 'resolved') {
+        logger.info('Mainserver DataProvider identity conflict reconciled', {
+          ...reconciliationContext,
+          result: 'resolved',
+          historical_binding_count: reconciliation.historicalBindingCount,
+        });
+        return null;
+      }
+      logger.warn('Mainserver DataProvider identity conflict remained fail-closed', {
+        ...reconciliationContext,
+        result: 'not_resolved',
+        reason_code: reconciliation.reason,
+      });
       return errorJson(
         409,
         'mainserver_data_provider_identity_conflict',

@@ -45,7 +45,7 @@ const applyFractionSyncResults = (
     response.syncStatus === 'queued' && response.syncJob ? [response.syncJob] : []
   );
   if (queuedJobs.length === responses.length) {
-    ctx.state.setTrackedSyncWasteTypesJob(queuedJobs.at(-1) ?? null);
+    ctx.state.setTrackedSyncWasteTypesJob(queuedJobs[queuedJobs.length - 1] ?? null);
     return true;
   }
 

@@ -2,20 +2,9 @@ import { useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StatusNotice } from './waste-management.page.support.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
-import {
-  WasteToursContentBody,
-  type WasteToursFilterViewModel,
-  type WasteToursTableViewModel,
-} from './waste-management.tours.content.body.js';
-import {
-  WasteToursDeleteDialogs,
-  useWasteToursSelectionState,
-} from './waste-management.tours.content.parts.js';
-import {
-  applyWasteToursFilters,
-  resetWasteToursFilters,
-  updateWasteToursSorting,
-} from './waste-management.tours.content.helpers.js';
+import { WasteToursContentBody, type WasteToursFilterViewModel, type WasteToursTableViewModel } from './waste-management.tours.content.body.js';
+import { WasteToursDeleteDialogs, useWasteToursSelectionState } from './waste-management.tours.content.parts.js';
+import { applyWasteToursFilters, resetWasteToursFilters, updateWasteToursSorting } from './waste-management.tours.content.helpers.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 import { WasteToursBulkValidityDialog } from './waste-management.tours-bulk-validity.js';
 import { useWasteToursContentSorting } from './waste-management.tours.content.sorting.js';
@@ -62,16 +51,14 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onStatusChange,
     onFiltersChange,
   } = props;
-  const pt = usePluginTranslation('wasteManagement');
-  const deleteFocusFallbackRef = useRef<HTMLDivElement | null>(null);
+  const pt = usePluginTranslation('wasteManagement'); const deleteFocusFallbackRef = useRef<HTMLElement | null>(null);
   const { sortedTours, sortField, setSortField, sortDirection, setSortDirection } =
     useWasteToursContentSorting(tours, masterDataOverview?.locationTourLinks);
   const [tourPendingStatusChange, setTourPendingStatusChange] = useState<{
     readonly tour: (typeof tours)[number];
     readonly nextActive: boolean;
   } | null>(null);
-  const [statusChangePending, setStatusChangePending] = useState(false);
-  const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
+  const [statusChangePending, setStatusChangePending] = useState(false); const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
   const {
     selectedTourIds,
     setSelectedTourIds,
@@ -206,12 +193,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setTourPendingDelete,
   };
   return (
-    <div
-      ref={deleteFocusFallbackRef}
-      tabIndex={-1}
-      aria-label={pt('tabs.tours.title')}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <StatusNotice message={message} />
       <WasteToursContentBody
         setBulkDeleteOpen={setBulkDeleteOpen}
@@ -221,6 +203,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         onOpenAnnualTransfer={annualTransfer.open}
         filters={filters}
         table={table}
+        focusFallbackRef={deleteFocusFallbackRef} focusFallbackLabel={pt('tabs.tours.title')}
       />
       {annualTransfer.dialog}
       <WasteToursBulkValidityDialog

@@ -14,7 +14,7 @@
 - [x] 1.6 `docs/changelog/`, `docs/reports/`, `docs/pr/`, `docs/staging/`, `docs/superpowers/`, `docs/user-documentation/` und `docs/architecture/decisions/` aus der Wiki-Publikation ausschließen
 - [x] 1.7 Einen fokussierten Vitest-Vertragstest für Manifest, Ausschlüsse und kanonischen ADR-Link ergänzen
 - [x] 1.8 `pnpm check:file-placement`, `pnpm check:rollout-docs`, den fokussierten Vertragstest, Script-Typecheck und `git diff --check` ausführen
-- [ ] 1.9 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR mit ausdrücklicher Scope-/Rollback-Beschreibung eröffnen
+- [x] 1.9 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR mit ausdrücklicher Scope-/Rollback-Beschreibung eröffnen
 
 ## 2. PR 2 – Informationsarchitektur und Ownership
 

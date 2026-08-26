@@ -17,6 +17,7 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 - [Entwicklungs-Playbook](./playbook.md)
 - [Runtime-Profile und Betriebsmodi](./runtime-profile-betrieb.md)
 - [PostgreSQL-Setup](./postgres-setup.md)
+- [Redis-Setup für lokale Entwicklung](../redis-setup.md)
 - [Lokaler Dev-Auth-Modus](./lokaler-dev-auth-modus.md)
 - [Monitoring-Stack](./monitoring-stack.md)
 - [Observability Best Practices](./observability-best-practices.md)
@@ -66,6 +67,8 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 ## Geplante Übernahmen aus `guides/`
 
 Das vollständige und bis PR 4 verbindliche Alt-/Neu-Pfad-Inventar steht im [Migrationsinventar](../guides/README.md). Bis zur tatsächlichen Verschiebung bleiben die dort genannten Altpfade gültig.
+
+Das [Redis-Setup für lokale Entwicklung](../redis-setup.md) liegt bis zur Bereinigung loser Dokumente in PR 4 noch direkt unter `docs/`, gehört inhaltlich aber bereits verbindlich zum Entwicklungsbereich.
 
 ## Benachbarte Bereiche
 

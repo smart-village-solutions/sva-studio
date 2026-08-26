@@ -18,7 +18,6 @@ How-to-Anleitungen gehören nach [Entwicklung](../development/README.md), ausfü
 - [Monorepo-Struktur](../monorepo.md)
 - [Routing](../routing.md)
 - [Browser-Unterstützung](../BROWSER-SUPPORT.md)
-- [Redis-Setup](../redis-setup.md)
 
 ## Übergangsweise Referenzen unter `guides/`
 

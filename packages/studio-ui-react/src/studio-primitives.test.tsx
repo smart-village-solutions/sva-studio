@@ -1476,16 +1476,20 @@ describe('studio-ui-react primitives', () => {
   it('renders persistent action results until explicitly dismissed', () => {
     const onDismiss = vi.fn();
     render(
-      <StudioPersistentActionResult
-        kind="success"
-        title="Veranstaltung gelöscht"
-        description="Die Liste wurde aktualisiert."
-        dismissLabel="Schließen"
-        onDismiss={onDismiss}
-      />
+      <>
+        <StudioPersistentActionResult
+          kind="success"
+          title="Veranstaltung gelöscht"
+          description="Die Liste wurde aktualisiert."
+          dismissLabel="Schließen"
+          onDismiss={onDismiss}
+        />
+        <StudioPersistentActionResult kind="error" title="Löschen fehlgeschlagen" />
+      </>
     );
 
     expect(screen.getByRole('status').textContent).toContain('Veranstaltung gelöscht');
+    expect(screen.getByRole('alert').textContent).toContain('Löschen fehlgeschlagen');
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });

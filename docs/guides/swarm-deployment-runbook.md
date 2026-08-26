@@ -203,4 +203,4 @@ Root- und Wildcard-DNS jeder Umgebung müssen auf denselben vorgesehenen Swarm-I
 - Backup-ADR: [`ADR-048`](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
 - Monitoring: [`monitoring-stack.md`](../development/monitoring-stack.md)
 - Incident Response: [`incident-response.md`](./incident-response.md)
-- Abgeschlossener Production-IAM-Restore vom 1. August 2026: [`production-iam-restore-2026-08-01.md`](../reports/production-iam-restore-2026-08-01.md)
+- Abgeschlossener Production-IAM-Restore vom 1. August 2026: [`production-iam-restore-2026-08-01.md` im Repository](https://github.com/smart-village-solutions/sva-studio/blob/main/docs/reports/production-iam-restore-2026-08-01.md)

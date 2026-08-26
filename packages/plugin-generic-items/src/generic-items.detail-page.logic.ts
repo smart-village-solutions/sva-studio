@@ -188,6 +188,7 @@ export const useGenericItemsDetailActions = ({
   actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [deleting, setDeleting] = React.useState(false);
+  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
 
   const handleDelete = React.useCallback(async () => {
     if (!contentId || deleting || mode !== 'edit') {
@@ -211,7 +212,7 @@ export const useGenericItemsDetailActions = ({
           addStudioDestructiveNavigationFeedback(previous, 'generic-items', contentId),
       });
     } catch {
-      return;
+      setDeleteNavigationFailed(true);
     } finally {
       setDeleting(false);
     }
@@ -219,5 +220,5 @@ export const useGenericItemsDetailActions = ({
 
   const [activeTab, setActiveTab] = React.useState<GenericItemsDetailTabId>('basis');
 
-  return { activeTab, deleting, handleDelete, setActiveTab };
+  return { activeTab, deleting, deleteNavigationFailed, handleDelete, setActiveTab };
 };

@@ -687,7 +687,9 @@ describe('InterfacesPage', () => {
   });
 
   it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {
-    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
+    state.listInterfaces
+      .mockResolvedValueOnce(createListResponse([mainserverEntry, s3Entry]))
+      .mockResolvedValueOnce(createListResponse([mainserverEntry]));
     state.deleteInterface.mockResolvedValue({ deleted: true });
 
     render(<InterfacesPage />);
@@ -706,6 +708,9 @@ describe('InterfacesPage', () => {
       expect(state.deleteInterface).toHaveBeenCalledWith({
         data: { id: 's3-1', instanceId: 'de-musterhausen' },
       });
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Neue Schnittstelle' })
+      );
     });
   });
 

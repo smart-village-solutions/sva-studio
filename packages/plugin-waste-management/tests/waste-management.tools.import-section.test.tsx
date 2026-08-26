@@ -145,6 +145,7 @@ const renderImportSection = () => {
         previewResult={previewReady ? previewResult : null}
         previewReady={previewReady}
         running={false}
+        canOpenJobDetails={true}
         onImportProfileIdChange={(value) => setImportProfileId(value as typeof importProfileId)}
         onImportSourceFormatChange={(value) =>
           setImportSourceFormat(value as typeof importSourceFormat)
@@ -272,6 +273,7 @@ describe('WasteToolsImportSection', () => {
           previewReady={false}
           running={false}
           lastJob={lastJob as never}
+          canOpenJobDetails={true}
           onImportProfileIdChange={(value) => setImportProfileId(value as typeof importProfileId)}
           onImportSourceFormatChange={(value) =>
             setImportSourceFormat(value as typeof importSourceFormat)

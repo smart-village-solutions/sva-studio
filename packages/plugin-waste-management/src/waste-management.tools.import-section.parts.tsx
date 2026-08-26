@@ -502,10 +502,12 @@ const WasteToolsPreviewSummary = ({
 const WasteToolsResultSummary = ({
   jobId,
   status,
+  canOpenJobDetails,
   onStartNewImport,
 }: {
   readonly jobId?: string;
   readonly status?: StudioJobResponse['data']['status'];
+  readonly canOpenJobDetails: boolean;
   readonly onStartNewImport: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -528,7 +530,7 @@ const WasteToolsResultSummary = ({
           jobId ? [{ id: 'jobId', label: pt('tools.meta.jobIdLabel'), value: jobId }] : undefined
         }
         actions={
-          jobId ? (
+          jobId && canOpenJobDetails ? (
             <Button asChild variant="secondary">
               <Link to="/monitoring/jobs/$jobId" params={{ jobId }}>
                 {pt('tools.actions.openJobDetails')}

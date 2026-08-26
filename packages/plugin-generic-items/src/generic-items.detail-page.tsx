@@ -32,6 +32,7 @@ import {
   StudioFormSummary,
   StudioFormSummaryErrors,
   StudioLoadingState,
+  StudioPersistentActionResult,
   StudioMediaPickerOverlay,
   StudioSaveButton,
   contentMediaUsageToReference,
@@ -411,15 +412,16 @@ export function GenericItemsDetailPage({
       state: (previous) => removeStudioSaveFeedback(previous),
     });
   }, [contentId, loading, location.state, navigate, saveFeedback]);
-  const { activeTab, deleting, handleDelete, setActiveTab } = useGenericItemsDetailActions({
-    contentId,
-    mode,
-    navigate,
-    onDeleted: () => setDeleteDialogOpen(false),
-    pt,
-    setStatus,
-    actingPrincipalType,
-  });
+  const { activeTab, deleting, deleteNavigationFailed, handleDelete, setActiveTab } =
+    useGenericItemsDetailActions({
+      contentId,
+      mode,
+      navigate,
+      onDeleted: () => setDeleteDialogOpen(false),
+      pt,
+      setStatus,
+      actingPrincipalType,
+    });
   const isAssetSelectable = React.useCallback(
     (asset: GenericItemsMediaPickerAsset) => {
       if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
@@ -741,6 +743,18 @@ export function GenericItemsDetailPage({
           uploadPhase={mediaPicker.uploadPhase}
         />
         <StudioFormSummaryErrors errors={summaryErrors} />
+        {deleteNavigationFailed ? (
+          <StudioPersistentActionResult
+            kind="success"
+            title={pt('messages.deleteSuccess')}
+            description={pt('messages.deleteNavigationError')}
+            actions={
+              <Button asChild size="sm" variant="secondary">
+                <Link {...genericItemsListLink}>{pt('actions.back')}</Link>
+              </Button>
+            }
+          />
+        ) : null}
         {status ? (
           <StudioFormSummary data-testid="generic-items-status" kind={status.kind}>
             {status.text}

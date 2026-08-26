@@ -48,6 +48,7 @@ import {
   StudioLoadingState,
   StudioMediaPickerOverlay,
   StudioPersistentFormError,
+  StudioPersistentActionResult,
   StudioSaveButton,
   type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
@@ -405,6 +406,7 @@ export const NewsDetailPage = ({
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
@@ -1007,7 +1009,7 @@ export const NewsDetailPage = ({
         state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'news', contentId),
       });
     } catch {
-      return;
+      setDeleteNavigationFailed(true);
     } finally {
       setDeletePending(false);
     }
@@ -1243,6 +1245,18 @@ export const NewsDetailPage = ({
             void saveCurrentItem();
           }}
         >
+          {deleteNavigationFailed ? (
+            <StudioPersistentActionResult
+              kind="success"
+              title={pt('messages.deleteSuccess')}
+              description={pt('messages.deleteNavigationError')}
+              actions={
+                <Button asChild size="sm" variant="secondary">
+                  <Link to="/admin/content">{pt('actions.back')}</Link>
+                </Button>
+              }
+            />
+          ) : null}
           {statusMessage ? (
             <StudioPersistentFormError
               message={statusMessage.text}

@@ -374,6 +374,8 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     createSuccess: 'Die Nachricht wurde erstellt.',
     updateSuccess: 'Die Nachricht wurde aktualisiert.',
     deleteSuccess: 'Die Nachricht wurde gelöscht.',
+    deleteNavigationError:
+      'Die Nachricht wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.',
     deleteError: 'Die Nachricht konnte nicht gelöscht werden.',
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
@@ -836,6 +838,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     createSuccess: 'News entry created.',
     updateSuccess: 'News entry updated.',
     deleteSuccess: 'News entry deleted.',
+    deleteNavigationError: 'The news entry was deleted, but the content list could not be opened.',
     deleteError: 'Failed to delete news entry.',
     categoryOptionsLoading: 'Loading categories.',
     categoryOptionsLoadError: 'Failed to load categories.',

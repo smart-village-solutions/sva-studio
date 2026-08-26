@@ -166,6 +166,8 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     createSuccess: 'Die Veranstaltung wurde erstellt.',
     updateSuccess: 'Die Veranstaltung wurde aktualisiert.',
     deleteSuccess: 'Die Veranstaltung wurde gelöscht.',
+    deleteNavigationError:
+      'Die Veranstaltung wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Kategorien konnten nicht geladen werden.',
@@ -548,6 +550,7 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     createSuccess: 'Event was created.',
     updateSuccess: 'Event was updated.',
     deleteSuccess: 'Event was deleted.',
+    deleteNavigationError: 'The event was deleted, but the content list could not be opened.',
     validationError: 'Please correct the highlighted fields.',
     categoryOptionsLoading: 'Loading categories.',
     categoryOptionsLoadError: 'Failed to load categories.',

@@ -116,6 +116,7 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
     : t('interfaces.edit.title');
 
 export const InterfacesPage = () => {
+  const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
   const {
     availableTypes,
     cancelDelete,
@@ -145,6 +146,12 @@ export const InterfacesPage = () => {
   } = useInterfacesPageController();
   const labels = createStudioDataTableLabels();
   const sortingLabels = createStudioDataTableSortingLabels();
+
+  React.useEffect(() => {
+    if (deleteResultMessage) {
+      deleteFocusFallbackRef.current?.focus();
+    }
+  }, [deleteResultMessage]);
 
   const columns = React.useMemo<readonly StudioColumnDef<InstanceInterface>[]>(
     () => [
@@ -269,7 +276,7 @@ export const InterfacesPage = () => {
             </p>
           }
           toolbarEnd={
-            <Button type="button" onClick={() => setPickerOpen(true)}>
+            <Button ref={deleteFocusFallbackRef} type="button" onClick={() => setPickerOpen(true)}>
               {t('interfaces.create.action')}
             </Button>
           }
@@ -337,6 +344,7 @@ export const InterfacesPage = () => {
         cancelLabel={t('interfaces.edit.cancel')}
         pending={deletePending}
         errorMessage={deleteErrorMessage}
+        fallbackFocusRef={deleteFocusFallbackRef}
         onCancel={cancelDelete}
         onConfirm={() => void onConfirmDelete()}
       />

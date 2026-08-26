@@ -18,6 +18,17 @@ describe('waste-management.ui-access', () => {
     expect(access.canEnrichPostalCodes).toBe(false);
     expect(access.canDuplicateTour).toBe(false);
     expect(access.canManageScheduling).toBe(false);
+    expect(access.canOpenJobDetails).toBe(false);
+  });
+
+  it('exposes monitoring job links only with monitoring read access', () => {
+    expect(
+      deriveWasteManagementUiAccess(['waste-management.import.execute']).canOpenJobDetails
+    ).toBe(false);
+    expect(
+      deriveWasteManagementUiAccess(['waste-management.import.execute', 'iam.monitoring.read'])
+        .canOpenJobDetails
+    ).toBe(true);
   });
 
   it('allows postal-code enrichment only with master-data management access', () => {

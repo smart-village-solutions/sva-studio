@@ -3,7 +3,6 @@ import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/pl
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
-
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
 import { WasteToolsPostalCodeStatus } from './waste-management.tools.postal-code-status.js';
 import { WasteToolsHistoryEntry } from './waste-management.tools.history-entry.js';
@@ -17,7 +16,6 @@ const isActiveImportJob = (
   activeImportStatuses.has(job.status);
 
 const clampPercentage = (value: number) => Math.min(100, Math.max(0, Math.round(value)));
-
 const readStructuredRowProgress = (
   job: StudioJobResponse['data']
 ): {
@@ -148,11 +146,13 @@ export const WasteToolsHistory = ({
   lastJob,
   technicalHistory,
   canDeleteHistoryEntries = false,
+  canOpenJobDetails = false,
   onDeleteEntry,
 }: {
   readonly lastJob: StudioJobResponse['data'] | null;
   readonly technicalHistory: readonly WasteManagementHistoryOverview['technical']['items'][number][];
   readonly canDeleteHistoryEntries?: boolean;
+  readonly canOpenJobDetails?: boolean;
   readonly onDeleteEntry?: (jobId: string) => boolean | Promise<boolean>;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -210,7 +210,7 @@ export const WasteToolsHistory = ({
             : undefined
         }
         actions={
-          displayedLastJob ? (
+          displayedLastJob && canOpenJobDetails ? (
             <Button asChild variant="secondary">
               <Link to="/monitoring/jobs/$jobId" params={{ jobId: displayedLastJob.id }}>
                 {pt('tools.actions.openJobDetails')}

@@ -53,6 +53,7 @@ import {
   StudioDestructiveActionDialog,
   StudioFormSummary,
   StudioLoadingState,
+  StudioPersistentActionResult,
   StudioMediaPickerOverlay,
   StudioSaveButton,
   type StudioMediaPickerAssetDetail,
@@ -325,6 +326,7 @@ export function EventsDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
@@ -963,7 +965,7 @@ export function EventsDetailPage({
         state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'events', contentId),
       });
     } catch {
-      return;
+      setDeleteNavigationFailed(true);
     } finally {
       setDeletePending(false);
     }
@@ -1075,6 +1077,18 @@ export function EventsDetailPage({
           uploadPhase={mediaPicker.uploadPhase}
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
+          {deleteNavigationFailed ? (
+            <StudioPersistentActionResult
+              kind="success"
+              title={pt('messages.deleteSuccess')}
+              description={pt('messages.deleteNavigationError')}
+              actions={
+                <Button asChild size="sm" variant="secondary">
+                  <Link to="/admin/content">{pt('actions.back')}</Link>
+                </Button>
+              }
+            />
+          ) : null}
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
           <MainserverPrincipalControl
             id="events-acting-principal"

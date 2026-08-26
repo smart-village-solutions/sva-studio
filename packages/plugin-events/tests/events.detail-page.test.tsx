@@ -232,8 +232,12 @@ describe('EventsDetailPage', () => {
           'Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
+        'events.messages.deleteSuccess': 'Event wurde gelöscht.',
+        'events.messages.deleteNavigationError':
+          'Event wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.',
         'events.actions.deleteConfirmTitle': 'Veranstaltung löschen?',
         'events.actions.deleteConfirm': 'Die Veranstaltung „{{title}}“ wird endgültig gelöscht.',
+        'events.actions.back': 'Zurück zur Liste',
         'events.actions.addCategory': 'Kategorie hinzufügen',
         'events.actions.addImage': 'Aus Mediathek auswählen',
         'events.actions.uploadMedia': 'Medium hochladen',
@@ -672,7 +676,7 @@ describe('EventsDetailPage', () => {
     });
   });
 
-  it('closes the delete dialog without reporting a delete failure when navigation fails', async () => {
+  it('preserves deletion feedback and a route back when navigation fails', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
@@ -690,6 +694,11 @@ describe('EventsDetailPage', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
     expect(screen.queryByText('Event konnte nicht gelöscht werden.')).toBeNull();
+    expect(screen.getByText('Event wurde gelöscht.')).toBeTruthy();
+    expect(
+      screen.getByText('Event wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.')
+    ).toBeTruthy();
+    expect(screen.getAllByText('Zurück zur Liste').length).toBeGreaterThan(1);
   });
 
   it('updates events even without media contents', async () => {

@@ -46,6 +46,13 @@ export const loadProvisioningOrganization = async (
 
 export const toSafeProvisioningErrorCode = (error: unknown): string => {
   if (error instanceof MainserverUserProvisioningError) {
+    const isProvisioningRequestFailure = error.code !== 'token_request_failed';
+    if (isProvisioningRequestFailure && error.statusCode === 403) {
+      return 'mainserver_tenant_forbidden';
+    }
+    if (isProvisioningRequestFailure && error.statusCode === 422) {
+      return 'mainserver_request_rejected';
+    }
     return error.code;
   }
   if (error instanceof Error) {

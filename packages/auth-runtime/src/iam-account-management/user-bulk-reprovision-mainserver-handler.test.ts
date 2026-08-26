@@ -133,4 +133,110 @@ describe('user-bulk-reprovision-mainserver-handler', () => {
       })
     );
   });
+
+  it.each([
+    { statusCode: 403, upstreamCode: 'forbidden' },
+    { statusCode: 422, upstreamCode: 'invalid_role' },
+  ])(
+    'returns a safe per-user failure for a $statusCode mainserver rejection',
+    async ({ statusCode, upstreamCode }) => {
+      const provisioningError = new Error('untrusted upstream rejection detail') as Error & {
+        code: string;
+        statusCode: number;
+      };
+      provisioningError.name = 'MainserverUserProvisioningError';
+      provisioningError.code = upstreamCode;
+      provisioningError.statusCode = statusCode;
+      state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
+
+      await import('./user-bulk-reprovision-mainserver-handler.js');
+      const executeBulkReprovisionMainserver = state.getExecuteBulkReprovisionMainserver();
+      if (!executeBulkReprovisionMainserver) {
+        throw new Error('executeBulkReprovisionMainserver not captured');
+      }
+
+      await expect(
+        executeBulkReprovisionMainserver({
+          actor: {
+            instanceId: 'instance-1',
+            actorAccountId: 'actor-1',
+            requestId: 'req-1',
+          },
+          ctx: {
+            activeOrganizationId: 'org-1',
+            user: { id: 'kc-actor-1', roles: ['system_admin'] },
+          },
+          userIds: ['user-1'],
+          identityProvider: {
+            provider: {
+              getUserAttributes: vi.fn(async () => ({})),
+              updateUser: vi.fn(async () => undefined),
+            },
+          },
+        })
+      ).resolves.toEqual({
+        successes: [],
+        failures: [
+          {
+            id: 'user-1',
+            code: 'mainserver_provisioning_failed',
+            message:
+              statusCode === 403
+                ? 'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt.'
+                : 'Der Mainserver hat die Provisionierungsanfrage als ungültig abgelehnt.',
+          },
+        ],
+      });
+    }
+  );
+
+  it.each([403, 422])(
+    'does not classify a token endpoint status %s as a provisioning rejection',
+    async (statusCode) => {
+      const provisioningError = new Error('Mainserver-Provisioning-Token konnte nicht geladen werden.') as Error & {
+        code: string;
+        statusCode: number;
+      };
+      provisioningError.name = 'MainserverUserProvisioningError';
+      provisioningError.code = 'token_request_failed';
+      provisioningError.statusCode = statusCode;
+      state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
+
+      await import('./user-bulk-reprovision-mainserver-handler.js');
+      const executeBulkReprovisionMainserver = state.getExecuteBulkReprovisionMainserver();
+      if (!executeBulkReprovisionMainserver) {
+        throw new Error('executeBulkReprovisionMainserver not captured');
+      }
+
+      await expect(
+        executeBulkReprovisionMainserver({
+          actor: {
+            instanceId: 'instance-1',
+            actorAccountId: 'actor-1',
+            requestId: 'req-1',
+          },
+          ctx: {
+            activeOrganizationId: 'org-1',
+            user: { id: 'kc-actor-1', roles: ['system_admin'] },
+          },
+          userIds: ['user-1'],
+          identityProvider: {
+            provider: {
+              getUserAttributes: vi.fn(async () => ({})),
+              updateUser: vi.fn(async () => undefined),
+            },
+          },
+        })
+      ).resolves.toEqual({
+        successes: [],
+        failures: [
+          {
+            id: 'user-1',
+            code: 'mainserver_provisioning_failed',
+            message: 'Mainserver-Provisioning-Token konnte nicht geladen werden.',
+          },
+        ],
+      });
+    }
+  );
 });

@@ -117,6 +117,20 @@ describe('mainserver-upstream-http', () => {
     });
   });
 
+  it.each([
+    { status: 403, code: 'forbidden' },
+    { status: 422, code: 'invalid_role' },
+  ])('maps deterministic $status provisioning rejections as non-retryable', async ({ status, code }) => {
+    const response = new Response(JSON.stringify({ code, message: 'request rejected' }), { status });
+
+    await expect(createProvisioningErrorFromResponse(response)).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code,
+      retryable: false,
+      statusCode: status,
+    });
+  });
+
   it('creates concrete MainserverUserProvisioningError instances', async () => {
     const response = new Response(JSON.stringify({ code: 'conflict', message: 'conflict' }), { status: 409 });
 

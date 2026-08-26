@@ -75,6 +75,18 @@ const mapMainserverProvisioningErrorToFailure = (
   }
 };
 
+const resolveMainserverProvisioningFailureMessage = (
+  error: MainserverUserProvisioningError
+): string => {
+  if (error.statusCode === 403 && error.code !== 'token_request_failed') {
+    return 'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt.';
+  }
+  if (error.statusCode === 422 && error.code !== 'token_request_failed') {
+    return 'Der Mainserver hat die Provisionierungsanfrage als ungültig abgelehnt.';
+  }
+  return error.message;
+};
+
 const emitBulkReprovisionSuccessAudit = async (input: {
   actor: BulkReprovisionInput['actor'];
   client: QueryClient;
@@ -199,7 +211,9 @@ const reprovisionSingleUser = async (input: {
         failure: {
           id: detail.id,
           code: mapMainserverProvisioningErrorToFailure(error as MainserverUserProvisioningError),
-          message: error.message,
+          message: resolveMainserverProvisioningFailureMessage(
+            error as MainserverUserProvisioningError
+          ),
         },
       };
     }

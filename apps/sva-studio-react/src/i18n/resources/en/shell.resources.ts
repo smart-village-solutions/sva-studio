@@ -6,8 +6,6 @@ export const shellENResources = {
     loadingStatus: 'Content is loading.',
   },
   contextualHelp: {
-    hintTitle: 'Help for this page',
-    hintDescription: 'Open the relevant user documentation directly in Studio.',
     open: 'Open help',
     close: 'Close help',
     title: 'Help for this page',

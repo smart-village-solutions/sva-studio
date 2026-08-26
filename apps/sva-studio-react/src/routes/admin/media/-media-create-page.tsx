@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import {
   Card,
   CardContent,
@@ -174,7 +174,7 @@ export const MediaCreatePage = () => {
   return (
     <section className="space-y-6" data-testid="media-create-page">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('media.create.title')}</h1>
+        <StudioPageTitle>{t('media.create.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('media.create.subtitle')}</p>
       </header>
 

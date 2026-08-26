@@ -15,6 +15,37 @@ import { Button, type ButtonProps } from './button.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
 import { cn } from './utils.js';
 
+const StudioPageTitleAccessoryContext = React.createContext<React.ReactNode>(null);
+
+export type StudioPageTitleAccessoryProviderProps = Readonly<{
+  accessory: React.ReactNode;
+  children: React.ReactNode;
+}>;
+
+export function StudioPageTitleAccessoryProvider({
+  accessory,
+  children,
+}: StudioPageTitleAccessoryProviderProps) {
+  return (
+    <StudioPageTitleAccessoryContext.Provider value={accessory}>
+      {children}
+    </StudioPageTitleAccessoryContext.Provider>
+  );
+}
+
+export type StudioPageTitleProps = React.ComponentPropsWithoutRef<'h1'>;
+
+export function StudioPageTitle({ className, ...props }: StudioPageTitleProps) {
+  const accessory = React.useContext(StudioPageTitleAccessoryContext);
+
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <h1 className={cn('text-3xl font-semibold text-foreground', className)} {...props} />
+      {accessory ? <div className="shrink-0">{accessory}</div> : null}
+    </div>
+  );
+}
+
 export type StudioPageHeaderProps = Readonly<{
   title: React.ReactNode;
   titleId?: string;
@@ -35,9 +66,7 @@ export function StudioPageHeader({
       className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', className)}
     >
       <div className="space-y-2">
-        <h1 id={titleId} className="text-3xl font-semibold text-foreground">
-          {title}
-        </h1>
+        <StudioPageTitle id={titleId}>{title}</StudioPageTitle>
         {description ? (
           <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
         ) : null}

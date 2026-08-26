@@ -5,6 +5,7 @@ import {
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
   StudioFormActionBar,
+  StudioPageTitle,
   StudioPersistentFormError,
   StudioSaveButton,
 } from '@sva/studio-ui-react';
@@ -217,7 +218,7 @@ export const UserEditPage = ({
   if (userApi.isLoading) {
     return (
       <section className="space-y-3" aria-busy="true">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.edit.title')}</h1>
+        <StudioPageTitle>{t('admin.users.edit.title')}</StudioPageTitle>
         <p role="status" className="text-sm text-muted-foreground">
           {t('admin.users.messages.loading')}
         </p>
@@ -228,7 +229,7 @@ export const UserEditPage = ({
   if (!userApi.user) {
     return (
       <section className="space-y-3">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.edit.title')}</h1>
+        <StudioPageTitle>{t('admin.users.edit.title')}</StudioPageTitle>
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{userErrorMessage(userApi.error)}</span>
@@ -255,7 +256,7 @@ export const UserEditPage = ({
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">{userApi.user.displayName}</h1>
+            <StudioPageTitle className="text-2xl">{userApi.user.displayName}</StudioPageTitle>
             <p className="text-sm text-muted-foreground">{userApi.user.email ?? '-'}</p>
             <p className="text-sm text-muted-foreground">
               {t('account.fields.username')}: {userApi.user.username ?? '-'}

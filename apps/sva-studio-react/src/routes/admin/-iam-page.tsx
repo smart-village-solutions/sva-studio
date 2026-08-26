@@ -11,6 +11,7 @@ import {
   StudioDataTable,
   type StudioDataTableSortingLabels,
   StudioPersistentFormError,
+  StudioPageTitle,
   StudioSaveButton,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
@@ -1911,7 +1912,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   return (
     <section className="space-y-5">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.iam.page.title')}</h1>
+        <StudioPageTitle>{t('admin.iam.page.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.iam.page.subtitle')}</p>
       </header>
 

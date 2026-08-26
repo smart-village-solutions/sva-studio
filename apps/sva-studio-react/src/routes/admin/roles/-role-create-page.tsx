@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  StudioPageTitle,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -67,9 +68,7 @@ export const RoleCreatePage = () => {
     <section className="space-y-5" aria-busy={saveFeedback.status === 'saving'}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">
-            {t('admin.roles.createDialog.title')}
-          </h1>
+          <StudioPageTitle>{t('admin.roles.createDialog.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('admin.roles.createDialog.description')}
           </p>

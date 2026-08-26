@@ -9,7 +9,7 @@ import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-dia
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -148,7 +148,7 @@ export const GroupsPage = () => {
   return (
     <section className="space-y-5" aria-busy={groupsApi.isLoading}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.groups.page.title')}</h1>
+        <StudioPageTitle>{t('admin.groups.page.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.groups.page.subtitle')}</p>
       </header>
 

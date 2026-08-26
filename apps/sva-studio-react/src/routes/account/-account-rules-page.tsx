@@ -1,3 +1,5 @@
+import { StudioPageTitle } from '@sva/studio-ui-react';
+
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { t } from '../../i18n';
@@ -11,7 +13,7 @@ export const AccountRulesPage = () => {
   return (
     <section className="space-y-6" aria-busy={state.isLoading || state.isSaving}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('account.rules.title')}</h1>
+        <StudioPageTitle>{t('account.rules.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('account.rules.subtitle')}</p>
       </header>
 

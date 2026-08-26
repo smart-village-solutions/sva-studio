@@ -1,4 +1,4 @@
-import { IconExternalLink, IconHelpCircle, IconX } from '@tabler/icons-react';
+import { IconExternalLink, IconX } from '@tabler/icons-react';
 import {
   Alert,
   AlertDescription,
@@ -101,11 +101,7 @@ const DocumentationMarkdown = ({ payload }: Readonly<{ payload: DocumentationRes
           );
         },
         img: ({ src, alt }) => {
-          const safeSrc = resolveImage(
-            src,
-            payload.websiteUrl,
-            payload.documentationBaseUrl
-          );
+          const safeSrc = resolveImage(src, payload.websiteUrl, payload.documentationBaseUrl);
           return safeSrc ? <img src={safeSrc} alt={alt ?? ''} loading="lazy" /> : null;
         },
       }}
@@ -115,18 +111,17 @@ const DocumentationMarkdown = ({ payload }: Readonly<{ payload: DocumentationRes
   </article>
 );
 
-export const ContextualHelp = ({ pageId }: Readonly<{ pageId: string }>) => {
-  const [open, setOpen] = React.useState(false);
+export const ContextualHelp = ({
+  open,
+  onOpenChange,
+  pageId,
+}: Readonly<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pageId: string;
+}>) => {
   const [state, setState] = React.useState<LoadState>({ kind: 'idle' });
   const requestIdRef = React.useRef(0);
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
-
-  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (!nextOpen) {
-      globalThis.setTimeout(() => triggerRef.current?.focus(), 0);
-    }
-  }, []);
 
   const load = React.useCallback(() => {
     const requestId = requestIdRef.current + 1;
@@ -154,75 +149,55 @@ export const ContextualHelp = ({ pageId }: Readonly<{ pageId: string }>) => {
   }, [load, open, state.kind]);
 
   return (
-    <>
-      <Alert className="flex flex-col gap-3 border-primary/30 bg-primary/5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <AlertTitle className="flex items-center gap-2">
-            <IconHelpCircle aria-hidden="true" className="size-5" />
-            {t('shell.contextualHelp.hintTitle')}
-          </AlertTitle>
-          <AlertDescription>{t('shell.contextualHelp.hintDescription')}</AlertDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[92dvh] max-w-4xl flex-col p-0 sm:w-[calc(100%-2rem)]">
+        <DialogHeader className="border-b border-border px-6 py-5 pr-14">
+          <DialogTitle asChild>
+            <h1>{t('shell.contextualHelp.title')}</h1>
+          </DialogTitle>
+          <DialogDescription>{t('shell.contextualHelp.description')}</DialogDescription>
+        </DialogHeader>
+        <DialogClose asChild>
+          <Button
+            type="button"
+            variant="tertiary"
+            size="icon"
+            className="absolute right-4 top-4"
+            aria-label={t('shell.contextualHelp.close')}
+          >
+            <IconX aria-hidden="true" className="size-5" />
+          </Button>
+        </DialogClose>
+        <div className="min-h-48 overflow-y-auto px-6 py-5" aria-live="polite">
+          {state.kind === 'idle' || state.kind === 'loading' ? (
+            <p role="status">{t('shell.contextualHelp.loading')}</p>
+          ) : state.kind === 'error' ? (
+            <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+              <AlertTitle>{t('shell.contextualHelp.errorTitle')}</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{t('shell.contextualHelp.errorDescription')}</p>
+                <Button type="button" variant="secondary" onClick={load}>
+                  {t('shell.contextualHelp.retry')}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : state.payload.markdown.trim() === '' ? (
+            <p>{t('shell.contextualHelp.empty')}</p>
+          ) : (
+            <DocumentationMarkdown payload={state.payload} />
+          )}
         </div>
-        <Button
-          ref={triggerRef}
-          type="button"
-          variant="secondary"
-          onClick={() => setOpen(true)}
-        >
-          {t('shell.contextualHelp.open')}
-        </Button>
-      </Alert>
-
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="flex max-h-[92dvh] max-w-4xl flex-col p-0 sm:w-[calc(100%-2rem)]">
-          <DialogHeader className="border-b border-border px-6 py-5 pr-14">
-            <DialogTitle asChild>
-              <h1>{t('shell.contextualHelp.title')}</h1>
-            </DialogTitle>
-            <DialogDescription>{t('shell.contextualHelp.description')}</DialogDescription>
-          </DialogHeader>
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="tertiary"
-              size="icon"
-              className="absolute right-4 top-4"
-              aria-label={t('shell.contextualHelp.close')}
-            >
-              <IconX aria-hidden="true" className="size-5" />
+        {state.kind === 'ready' ? (
+          <div className="border-t border-border px-6 py-4">
+            <Button asChild variant="secondary">
+              <a href={state.payload.websiteUrl} target="_blank" rel="noopener noreferrer">
+                {t('shell.contextualHelp.openWebsite')}
+                <IconExternalLink aria-hidden="true" className="size-4" />
+              </a>
             </Button>
-          </DialogClose>
-          <div className="min-h-48 overflow-y-auto px-6 py-5" aria-live="polite">
-            {state.kind === 'idle' || state.kind === 'loading' ? (
-              <p role="status">{t('shell.contextualHelp.loading')}</p>
-            ) : state.kind === 'error' ? (
-              <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-                <AlertTitle>{t('shell.contextualHelp.errorTitle')}</AlertTitle>
-                <AlertDescription className="space-y-3">
-                  <p>{t('shell.contextualHelp.errorDescription')}</p>
-                  <Button type="button" variant="secondary" onClick={load}>
-                    {t('shell.contextualHelp.retry')}
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            ) : state.payload.markdown.trim() === '' ? (
-              <p>{t('shell.contextualHelp.empty')}</p>
-            ) : (
-              <DocumentationMarkdown payload={state.payload} />
-            )}
           </div>
-          {state.kind === 'ready' ? (
-            <div className="border-t border-border px-6 py-4">
-              <Button asChild variant="secondary">
-                <a href={state.payload.websiteUrl} target="_blank" rel="noopener noreferrer">
-                  {t('shell.contextualHelp.openWebsite')}
-                  <IconExternalLink aria-hidden="true" className="size-4" />
-                </a>
-              </Button>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -1,3 +1,5 @@
+import { StudioPageTitle } from '@sva/studio-ui-react';
+
 import { t } from '../i18n';
 
 type PlaceholderPageProps = Readonly<{
@@ -14,7 +16,7 @@ export const PlaceholderPage = ({ section, title }: PlaceholderPageProps) => {
         </p>
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">{section}</p>
-          <h1 className="text-3xl font-semibold text-foreground">{title}</h1>
+          <StudioPageTitle>{title}</StudioPageTitle>
           <p className="max-w-2xl text-sm text-muted-foreground">
             {t('placeholder.description', { area: title })}
           </p>
@@ -40,7 +42,9 @@ export const PlaceholderPage = ({ section, title }: PlaceholderPageProps) => {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             {t('placeholder.nextStepLabel')}
           </p>
-          <h2 className="mt-3 text-xl font-semibold text-foreground">{t('placeholder.nextStepTitle')}</h2>
+          <h2 className="mt-3 text-xl font-semibold text-foreground">
+            {t('placeholder.nextStepTitle')}
+          </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             {t('placeholder.nextStepBody', { area: title })}
           </p>

@@ -14,16 +14,22 @@ const retryEffectiveAccessMock = vi.fn();
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
  */
 vi.mock('@tanstack/react-router', () => ({
-  useRouterState: (options?: { select?: (state: { location: { pathname: string } }) => unknown }) => {
+  useRouterState: (options?: {
+    select?: (state: { location: { pathname: string } }) => unknown;
+  }) => {
     const state = { location: { pathname: '/' } };
     return options?.select ? options.select(state) : state;
   },
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; activeOptions?: unknown }) => {
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; activeOptions?: unknown }) => {
     const { activeOptions: _activeOptions, ...anchorProps } = props;
     return (
-    <a href={to} {...anchorProps}>
-      {children}
-    </a>
+      <a href={to} {...anchorProps}>
+        {children}
+      </a>
     );
   },
 }));
@@ -68,16 +74,21 @@ vi.mock('../providers/locale-provider', () => ({
 }));
 
 vi.mock('./OrganizationContextSwitcher', () => ({
-  OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
+  OrganizationContextSwitcher: () => (
+    <div data-testid="organization-context-switcher">Organization Context</div>
+  ),
 }));
 
 vi.mock('./LegalTextAcceptanceDialog', () => ({
   LegalTextAcceptanceDialog: () => <div data-testid="legal-text-acceptance-dialog" />,
 }));
 
-vi.mock('./ContextualHelp', () => ({
-  ContextualHelp: ({ pageId }: { pageId: string }) => (
-    <div data-testid="contextual-help">{pageId}</div>
+vi.mock('./ContextualHelpBoundary', () => ({
+  ContextualHelpBoundary: ({ children, pageId }: { children: React.ReactNode; pageId: string }) => (
+    <div data-testid="contextual-help">
+      {pageId}
+      {children}
+    </div>
   ),
 }));
 
@@ -131,9 +142,7 @@ beforeEach(() => {
  */
 describe('AppShell', () => {
   it('rendert Sidebar und Main-Landmark', async () => {
-    render(
-      <AppShell currentPathname="/admin/users/123">Inhalt</AppShell>
-    );
+    render(<AppShell currentPathname="/admin/users/123">Inhalt</AppShell>);
 
     expect(await screen.findByLabelText('Seitenleiste')).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
@@ -141,8 +150,14 @@ describe('AppShell', () => {
     expect(screen.getByRole('main').className).toContain('px-4');
     const breadcrumbNavigation = screen.getByRole('navigation', { name: 'Brotkrumen-Navigation' });
     expect(breadcrumbNavigation).toBeTruthy();
-    expect(within(breadcrumbNavigation).getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
-    expect(within(breadcrumbNavigation).getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
+    expect(
+      within(breadcrumbNavigation).getByRole('link', { name: 'Übersicht' }).getAttribute('href')
+    ).toBe('/');
+    expect(
+      within(breadcrumbNavigation)
+        .getByRole('link', { name: 'Benutzerverwaltung' })
+        .getAttribute('href')
+    ).toBe('/admin/users');
     expect(within(breadcrumbNavigation).getByText('Nutzer bearbeiten')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
     expect(screen.getByText('Inhalt').closest('div')?.className).toContain('space-y-4');

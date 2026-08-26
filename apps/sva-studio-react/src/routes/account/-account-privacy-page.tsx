@@ -1,4 +1,5 @@
 import React from 'react';
+import { StudioPageTitle } from '@sva/studio-ui-react';
 
 import {
   buildMyDataExportDownloadUrl,
@@ -104,7 +105,7 @@ export const AccountPrivacyPage = () => {
   return (
     <section className="space-y-6" aria-busy={isLoading || isSubmitting}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('account.privacy.title')}</h1>
+        <StudioPageTitle>{t('account.privacy.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('account.privacy.subtitle')}</p>
       </header>
 
@@ -133,7 +134,9 @@ export const AccountPrivacyPage = () => {
         rows={visibleRows}
         filters={filters}
         onFilterChange={setFilters}
-        onDownload={(jobId, format) => window.location.assign(buildMyDataExportDownloadUrl(jobId, format))}
+        onDownload={(jobId, format) =>
+          window.location.assign(buildMyDataExportDownloadUrl(jobId, format))
+        }
       />
 
       <PrivacyDialogs

@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioPageTitle } from '@sva/studio-ui-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { usePluginOperationJobDetail } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
@@ -348,9 +348,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
               </Badge>
             ) : null}
           </div>
-          <h1 className="text-3xl font-semibold text-foreground">
-            {t('monitoring.jobs.detail.title')}
-          </h1>
+          <StudioPageTitle>{t('monitoring.jobs.detail.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('monitoring.jobs.detail.subtitle')}
           </p>

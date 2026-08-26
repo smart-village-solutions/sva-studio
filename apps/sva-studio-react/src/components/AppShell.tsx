@@ -7,11 +7,13 @@
 import React from 'react';
 
 import { AppBreadcrumbs } from './AppBreadcrumbs';
+import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 import Header from './Header';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 
-type LegalTextAcceptanceDialogComponent = typeof import('./LegalTextAcceptanceDialog').LegalTextAcceptanceDialog;
+type LegalTextAcceptanceDialogComponent =
+  typeof import('./LegalTextAcceptanceDialog').LegalTextAcceptanceDialog;
 
 type AppShellProps = Readonly<{
   children: React.ReactNode;
@@ -22,11 +24,6 @@ type AppShellProps = Readonly<{
   sidebarSlot?: React.ReactNode;
   documentationPageId?: string;
 }>;
-
-const LazyContextualHelp = React.lazy(async () => {
-  const module = await import('./ContextualHelp');
-  return { default: module.ContextualHelp };
-});
 
 const LazyRuntimeHealthIndicator = React.lazy(async () => {
   const module = await import('./RuntimeHealthIndicator');
@@ -50,15 +47,20 @@ const LazyPermissionsDegradedBanner = React.lazy(async () => {
 });
 
 const runtimeHealthIndicatorEnabled =
-  import.meta.env.VITE_ENABLE_RUNTIME_HEALTH === 'true' && import.meta.env.VITE_PLAYWRIGHT_TEST !== 'true';
+  import.meta.env.VITE_ENABLE_RUNTIME_HEALTH === 'true' &&
+  import.meta.env.VITE_PLAYWRIGHT_TEST !== 'true';
 
 export const shouldRenderLegalTextAcceptanceDialog = (input: {
   readonly isHydrated: boolean;
   readonly isAuthenticated: boolean;
 }): boolean => input.isHydrated && input.isAuthenticated;
 
-const LegalTextAcceptanceDialogSlot = ({ enabled, pathname }: Readonly<{ enabled: boolean; pathname: string }>) => {
-  const [DialogComponent, setDialogComponent] = React.useState<LegalTextAcceptanceDialogComponent | null>(null);
+const LegalTextAcceptanceDialogSlot = ({
+  enabled,
+  pathname,
+}: Readonly<{ enabled: boolean; pathname: string }>) => {
+  const [DialogComponent, setDialogComponent] =
+    React.useState<LegalTextAcceptanceDialogComponent | null>(null);
 
   React.useEffect(() => {
     if (!enabled) {
@@ -131,12 +133,12 @@ export default function AppShell({
     <div className="isolate flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
       {showSidebar
         ? (sidebarSlot ?? (
-        <React.Suspense fallback={null}>
-          <LazySidebar
-            isMobileOpen={isMobileSidebarOpen}
-            onMobileOpenChange={onMobileSidebarOpenChange}
-          />
-        </React.Suspense>
+            <React.Suspense fallback={null}>
+              <LazySidebar
+                isMobileOpen={isMobileSidebarOpen}
+                onMobileOpenChange={onMobileSidebarOpenChange}
+              />
+            </React.Suspense>
           ))
         : null}
       <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
@@ -158,10 +160,19 @@ export default function AppShell({
                 {t('shell.content.loadingStatus')}
               </span>
               <span aria-hidden="true" className="block h-8 w-48 animate-skeleton rounded-md" />
-              <span aria-hidden="true" className="block h-24 w-full animate-skeleton rounded-lg shadow-shell" />
+              <span
+                aria-hidden="true"
+                className="block h-24 w-full animate-skeleton rounded-lg shadow-shell"
+              />
               <div className="grid gap-4 md:grid-cols-2">
-                <span aria-hidden="true" className="block h-24 w-full animate-skeleton rounded-lg shadow-shell" />
-                <span aria-hidden="true" className="block h-24 w-full animate-skeleton rounded-lg shadow-shell" />
+                <span
+                  aria-hidden="true"
+                  className="block h-24 w-full animate-skeleton rounded-lg shadow-shell"
+                />
+                <span
+                  aria-hidden="true"
+                  className="block h-24 w-full animate-skeleton rounded-lg shadow-shell"
+                />
               </div>
             </section>
           ) : (
@@ -171,11 +182,12 @@ export default function AppShell({
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
               {isAuthenticated && documentationPageId ? (
-                <React.Suspense fallback={null}>
-                  <LazyContextualHelp key={documentationPageId} pageId={documentationPageId} />
-                </React.Suspense>
-              ) : null}
-              <div className="space-y-4">{children}</div>
+                <ContextualHelpBoundary key={documentationPageId} pageId={documentationPageId}>
+                  <div className="space-y-4">{children}</div>
+                </ContextualHelpBoundary>
+              ) : (
+                <div className="space-y-4">{children}</div>
+              )}
               {runtimeHealthIndicatorEnabled ? (
                 <React.Suspense fallback={null}>
                   <LazyRuntimeHealthIndicator />
@@ -184,7 +196,10 @@ export default function AppShell({
             </div>
           )}
         </main>
-        <LegalTextAcceptanceDialogSlot enabled={showLegalTextAcceptanceDialog} pathname={currentPathname} />
+        <LegalTextAcceptanceDialogSlot
+          enabled={showLegalTextAcceptanceDialog}
+          pathname={currentPathname}
+        />
       </div>
     </div>
   );

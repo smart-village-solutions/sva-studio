@@ -4,6 +4,7 @@ import {
   Button,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
+  StudioPageTitle,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -227,9 +228,9 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
     <section className="space-y-5" aria-busy={isLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">
+          <StudioPageTitle>
             {group?.displayName ?? t('admin.groups.dialogs.editTitle')}
-          </h1>
+          </StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {group
               ? t('admin.groups.dialogs.editDescription', { groupKey: group.groupKey })

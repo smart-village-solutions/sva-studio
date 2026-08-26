@@ -1,6 +1,11 @@
 import React from 'react';
 
-import { Button, type StudioColumnDef, StudioDataTable } from '@sva/studio-ui-react';
+import {
+  Button,
+  type StudioColumnDef,
+  StudioDataTable,
+  StudioPageTitle,
+} from '@sva/studio-ui-react';
 
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
@@ -50,9 +55,10 @@ const healthcheckMessageTranslationKeys: Readonly<Record<string, string>> = {
 };
 
 const getStatusMessage = (entry: InstanceInterface): string | undefined => {
-  const translationKey = entry.type === 'mapGeocoding' && entry.errorCode
-    ? healthcheckMessageTranslationKeys[entry.errorCode]
-    : undefined;
+  const translationKey =
+    entry.type === 'mapGeocoding' && entry.errorCode
+      ? healthcheckMessageTranslationKeys[entry.errorCode]
+      : undefined;
   return translationKey ? t(translationKey) : entry.statusMessage;
 };
 
@@ -208,7 +214,7 @@ export const InterfacesPage = () => {
   return (
     <div className="flex flex-col gap-6 text-foreground">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{t('interfaces.page.title')}</h1>
+        <StudioPageTitle className="text-2xl">{t('interfaces.page.title')}</StudioPageTitle>
         <p className="text-sm text-muted-foreground">{t('interfaces.page.subtitle')}</p>
         {instanceId ? (
           <p className="text-xs text-muted-foreground">

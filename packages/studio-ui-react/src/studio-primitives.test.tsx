@@ -113,6 +113,7 @@ describe('studio-ui-react primitives', () => {
     const heading = screen.getByRole('heading', { name: 'FAQ bearbeiten', level: 1 });
     const trigger = screen.getByRole('button', { name: 'Hilfe öffnen' });
 
+    expect(heading.parentElement?.className).toContain('inline-flex');
     expect(heading.parentElement?.firstElementChild).toBe(heading);
     expect(heading.parentElement?.lastElementChild?.contains(trigger)).toBe(true);
   });

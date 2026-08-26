@@ -46,7 +46,7 @@ export function StudioPageTitle({
   const accessory = React.useContext(StudioPageTitleAccessoryContext);
 
   return (
-    <div className="flex min-w-0 items-center gap-1">
+    <div className="inline-flex max-w-full min-w-0 items-center gap-1">
       <h1 className={cn('text-3xl font-semibold text-foreground', className)} {...props} />
       {withAccessory && accessory ? <div className="shrink-0">{accessory}</div> : null}
     </div>

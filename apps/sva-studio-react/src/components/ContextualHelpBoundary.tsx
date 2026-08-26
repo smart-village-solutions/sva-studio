@@ -11,10 +11,15 @@ const LazyContextualHelp = React.lazy(async () => {
 
 export const ContextualHelpBoundary = ({
   children,
+  enabled = true,
   pageId,
-}: Readonly<{ children: React.ReactNode; pageId: string }>) => {
+}: Readonly<{ children: React.ReactNode; enabled?: boolean; pageId: string }>) => {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!enabled) setOpen(false);
+  }, [enabled]);
 
   const handleOpenChange = React.useCallback((nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -23,7 +28,7 @@ export const ContextualHelpBoundary = ({
     }
   }, []);
 
-  const trigger = (
+  const trigger = enabled ? (
     <Button
       ref={triggerRef}
       type="button"
@@ -34,16 +39,18 @@ export const ContextualHelpBoundary = ({
     >
       <IconHelpCircle aria-hidden="true" className="size-5" />
     </Button>
-  );
+  ) : null;
 
   return (
     <>
       <StudioPageTitleAccessoryProvider accessory={trigger}>
         {children}
       </StudioPageTitleAccessoryProvider>
-      <React.Suspense fallback={null}>
-        <LazyContextualHelp open={open} onOpenChange={handleOpenChange} pageId={pageId} />
-      </React.Suspense>
+      {enabled ? (
+        <React.Suspense fallback={null}>
+          <LazyContextualHelp open={open} onOpenChange={handleOpenChange} pageId={pageId} />
+        </React.Suspense>
+      ) : null}
     </>
   );
 };

@@ -181,8 +181,12 @@ export default function AppShell({
               <React.Suspense fallback={null}>
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
-              {isAuthenticated && documentationPageId ? (
-                <ContextualHelpBoundary key={documentationPageId} pageId={documentationPageId}>
+              {documentationPageId ? (
+                <ContextualHelpBoundary
+                  key={documentationPageId}
+                  enabled={isAuthenticated}
+                  pageId={documentationPageId}
+                >
                   <div className="space-y-4">{children}</div>
                 </ContextualHelpBoundary>
               ) : (

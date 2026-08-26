@@ -84,8 +84,16 @@ vi.mock('./LegalTextAcceptanceDialog', () => ({
 }));
 
 vi.mock('./ContextualHelpBoundary', () => ({
-  ContextualHelpBoundary: ({ children, pageId }: { children: React.ReactNode; pageId: string }) => (
-    <div data-testid="contextual-help">
+  ContextualHelpBoundary: ({
+    children,
+    enabled = true,
+    pageId,
+  }: {
+    children: React.ReactNode;
+    enabled?: boolean;
+    pageId: string;
+  }) => (
+    <div data-testid={enabled ? 'contextual-help' : undefined}>
       {pageId}
       {children}
     </div>
@@ -235,6 +243,54 @@ describe('AppShell', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('contextual-help')).toBeNull();
     });
+  });
+
+  it('haelt den Seiteninhalt beim Wiederherstellen der Sitzung gemountet', async () => {
+    const mounted = vi.fn();
+    const RouteContent = () => {
+      React.useEffect(() => {
+        mounted();
+      }, []);
+      return <div>Formular</div>;
+    };
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+    });
+
+    const view = render(
+      <AppShell currentPathname="/admin/users/123" documentationPageId="admin.users.edit">
+        <RouteContent />
+      </AppShell>
+    );
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Admin',
+        roles: ['system_admin'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+    });
+    view.rerender(
+      <AppShell currentPathname="/admin/users/123" documentationPageId="admin.users.edit">
+        <RouteContent />
+      </AppShell>
+    );
+
+    expect(mounted).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('contextual-help')).toBeTruthy();
   });
 
   it('laedt den Rechtstext-Dialog nicht fuer anonyme Nutzer nach der Hydrierung', async () => {

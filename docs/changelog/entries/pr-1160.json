@@ -1,0 +1,4 @@
+{
+  "prNumber": 1160,
+  "body": "Die kontextbezogene Hilfe nimmt auf Studio-Seiten weniger Raum ein.\n\n- Ein kompakter Fragezeichen-Button steht direkt neben der jeweiligen Seitenüberschrift.\n- Der Button öffnet weiterhin die passende Anwenderdokumentation im bestehenden Overlay.\n- Tastaturbedienung, Fokus-Rückgabe sowie Lade- und Fehlerzustände bleiben erhalten."
+}

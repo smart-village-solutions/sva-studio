@@ -147,6 +147,57 @@ describe('logMainserverProvisioningFailure', () => {
   });
 
   it.each([
+    { statusCode: 403, expectedCode: 'mainserver_tenant_forbidden' },
+    { statusCode: 422, expectedCode: 'mainserver_request_rejected' },
+  ])('classifies a bodyless provisioning rejection with status $statusCode', (input) => {
+    const error = Object.assign(new Error('controlled fallback message'), {
+      name: 'MainserverUserProvisioningError',
+      code: 'mainserver_user_provisioning_failed',
+      statusCode: input.statusCode,
+      retryable: false,
+      outcomeUnknown: false,
+    });
+
+    logMainserverProvisioningFailure({
+      actor,
+      email: 'alice@example.com',
+      keycloakSubject: 'kc-user-1',
+      error,
+    });
+
+    expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
+      expect.objectContaining({
+        mainserver_error_code: input.expectedCode,
+        mainserver_failure_phase: 'provisioning',
+      })
+    );
+  });
+
+  it('preserves identity provider failures as credential diagnostics', () => {
+    const error = Object.assign(new Error('controlled identity provider failure'), {
+      name: 'MainserverUserProvisioningError',
+      code: 'identity_provider_unavailable',
+      statusCode: 503,
+      retryable: true,
+      outcomeUnknown: false,
+    });
+
+    logMainserverProvisioningFailure({
+      actor,
+      email: 'alice@example.com',
+      keycloakSubject: 'kc-user-1',
+      error,
+    });
+
+    expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
+      expect.objectContaining({
+        mainserver_error_code: 'identity_provider_unavailable',
+        mainserver_failure_phase: 'credentials',
+      })
+    );
+  });
+
+  it.each([
     'alice@example.com',
     'tenant_forbidden\nforged_log_entry=true',
     'x'.repeat(10_000),

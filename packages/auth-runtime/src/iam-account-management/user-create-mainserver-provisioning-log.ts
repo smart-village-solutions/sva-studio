@@ -19,6 +19,7 @@ type MainserverProvisioningFailurePhase =
 const SAFE_MAINSERVER_ERROR_CODES = new Set([
   'invalid_credentials',
   'invalid_response',
+  'identity_provider_unavailable',
   'mainserver_user_provisioning_config_incomplete',
   'mainserver_user_provisioning_failed',
   'missing_credentials',
@@ -55,6 +56,7 @@ const resolveFailurePhase = (
     error.code === 'missing_credentials' ||
     error.code === 'organization_mainserver_credentials_missing' ||
     error.code === 'secret_unavailable' ||
+    error.code === 'identity_provider_unavailable' ||
     error.code === 'invalid_credentials'
   ) {
     return 'credentials';
@@ -69,7 +71,7 @@ const resolveFailurePhase = (
 };
 
 const resolveSafeErrorCode = (error: MainserverProvisioningLogError): string => {
-  if (SAFE_MAINSERVER_ERROR_CODES.has(error.code)) {
+  if (error.code === 'token_request_failed' || error.code === 'unauthorized') {
     return error.code;
   }
   if (error.statusCode === 403) {
@@ -77,6 +79,9 @@ const resolveSafeErrorCode = (error: MainserverProvisioningLogError): string => 
   }
   if (error.statusCode === 422) {
     return 'mainserver_request_rejected';
+  }
+  if (SAFE_MAINSERVER_ERROR_CODES.has(error.code)) {
+    return error.code;
   }
   return 'mainserver_user_provisioning_failed';
 };

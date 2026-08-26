@@ -357,7 +357,7 @@ Für Entwicklung:
 ## References
 
 - [OTEL Best Practices](https://opentelemetry.io/docs/concepts/observability-primer/)
-- [Logging Strategy (ADR-006)](../architecture/decisions/ADR-006-logging-pipeline-strategy.md)
+- [Logging Strategy (Legacy-ADR-006 im Repository)](https://github.com/smart-village-solutions/sva-studio/blob/main/docs/architecture/decisions/ADR-006-logging-pipeline-strategy.md)
 - [Label Schema & PII Policy (ADR-007)](../architecture/logging-architecture.md#pii--und-label-policy)
 - [Loki LogQL Documentation](https://grafana.com/docs/loki/latest/logql/)
 - [Prometheus PromQL Documentation](https://prometheus.io/docs/prometheus/latest/querying/basics/)

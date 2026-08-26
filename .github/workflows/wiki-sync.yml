@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'config/documentation/wiki-publication-paths.txt'
+      - '.github/workflows/wiki-sync.yml'
   workflow_dispatch:
 
 permissions:
@@ -39,10 +41,31 @@ jobs:
             exit 1
           fi
 
-      - name: Sync docs to wiki/docs
+      - name: Build curated documentation publication
         run: |
+          set -euo pipefail
+
+          publication_root="$(mktemp -d "${RUNNER_TEMP}/wiki-publication.XXXXXX")"
+          publication_files="${RUNNER_TEMP}/wiki-publication-files"
+          mapfile -t publication_pathspecs \
+            < config/documentation/wiki-publication-paths.txt
+
+          git ls-files -z -- "${publication_pathspecs[@]}" > "$publication_files"
+
+          if [[ ! -s "$publication_files" ]]; then
+            echo "Das Wiki-Publikationsmanifest hat keine Dateien ausgewählt." >&2
+            exit 1
+          fi
+
+          rsync -aR --from0 --files-from="$publication_files" ./ "$publication_root/"
+
+          if [[ ! -f "$publication_root/docs/README.md" ]]; then
+            echo "Der kanonische Dokumentationseinstieg fehlt in der Wiki-Publikation." >&2
+            exit 1
+          fi
+
           mkdir -p wiki/docs
-          rsync -a --delete docs/ wiki/docs/
+          rsync -a --delete "$publication_root/docs/" wiki/docs/
 
       - name: Generate wiki entry pages
         run: |
@@ -53,17 +76,20 @@ jobs:
 
           ## Einstieg
 
-          - [Architekturuebersicht (arc42)](docs/architecture/README.md)
-          - [Monorepo Struktur](docs/monorepo.md)
+          - [Dokumentationsübersicht](docs/README.md)
+          - [Architekturübersicht (arc42)](docs/architecture/README.md)
+          - [Architekturentscheidungen (ADRs)](docs/adr/README.md)
+          - [Monorepo-Struktur](docs/monorepo.md)
           - [Routing](docs/routing.md)
-          - [Monitoring Stack](docs/development/monitoring-stack.md)
-          - [Testing & Coverage Governance](docs/development/testing-coverage.md)
+          - [Monitoring-Stack](docs/development/monitoring-stack.md)
+          - [Testing und Coverage Governance](docs/development/testing-coverage.md)
           EOF
 
           cat > wiki/_Sidebar.md <<'EOF'
           - [Home](Home)
+          - [Dokumentationsübersicht](docs/README.md)
           - [Architektur (arc42)](docs/architecture/README.md)
-          - [Architekturentscheidungen (ADRs)](docs/architecture/decisions/README.md)
+          - [Architekturentscheidungen (ADRs)](docs/adr/README.md)
           - [Monorepo](docs/monorepo.md)
           - [Routing](docs/routing.md)
           - [Monitoring](docs/development/monitoring-stack.md)

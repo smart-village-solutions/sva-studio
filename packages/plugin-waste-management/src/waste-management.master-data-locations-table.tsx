@@ -37,7 +37,7 @@ const WasteMasterDataLocationsTableContent = ({
       <section
         ref={feedbackFocusFallbackRef}
         tabIndex={-1}
-        aria-label={pt('masterData.collectionLocations.table.caption')}
+        aria-label={pt('masterData.locationsWorkspace.table.caption')}
         className="rounded-none border-y border-border bg-card shadow-shell"
       >
         <WastePanelTableTopBar>

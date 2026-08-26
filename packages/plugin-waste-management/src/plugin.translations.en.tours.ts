@@ -319,7 +319,12 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
       description:
         'Click individual days in the annual calendar to add or remove custom dates for this tour.',
       removeTitle: 'Remove single date',
-      removeDescription: 'The date {{value}} will be removed from the custom dates.',
+      removeDescription:
+        'The date {{value}} and all of its collection-location assignments will be removed from the draft.',
+      removeAssignmentTitle: 'Remove collection-location assignment',
+      removeAssignmentDescription:
+        'The assignment “{{location}}” for {{date}}, including its note, will be removed from the draft.',
+      removeAssignmentUnknownLocation: 'Collection location not selected yet',
       removeConfirm: 'Remove',
       removeCancel: 'Cancel',
     },

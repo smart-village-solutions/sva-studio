@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -1361,6 +1361,46 @@ describe('studio-ui-react primitives', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abbrechen' }));
 
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it('returns focus to a stable fallback when deletion removes the trigger', async () => {
+    const Harness = () => {
+      const [open, setOpen] = useState(false);
+      const [showTrigger, setShowTrigger] = useState(true);
+      const fallbackFocusRef = useRef<HTMLElement | null>(null);
+      return (
+        <section ref={fallbackFocusRef} tabIndex={-1} aria-label="Schnittstellenliste">
+          {showTrigger ? (
+            <Button type="button" onClick={() => setOpen(true)}>
+              Schnittstelle löschen
+            </Button>
+          ) : null}
+          <StudioDestructiveActionDialog
+            open={open}
+            title="Schnittstelle löschen?"
+            description="Die Schnittstelle wird endgültig entfernt."
+            confirmLabel="Endgültig löschen"
+            pendingLabel="Wird gelöscht…"
+            cancelLabel="Abbrechen"
+            fallbackFocusRef={fallbackFocusRef}
+            onConfirm={() => {
+              setShowTrigger(false);
+              setOpen(false);
+            }}
+            onCancel={() => setOpen(false)}
+          />
+        </section>
+      );
+    };
+
+    render(<Harness />);
+    const fallback = screen.getByRole('region', { name: 'Schnittstellenliste' });
+    const trigger = screen.getByRole('button', { name: 'Schnittstelle löschen' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole('button', { name: 'Endgültig löschen' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(fallback));
   });
 
   it('keeps destructive confirmation disabled until its domain prerequisite is satisfied', () => {

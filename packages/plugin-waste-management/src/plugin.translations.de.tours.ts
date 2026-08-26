@@ -321,7 +321,12 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       description:
         'Klicken Sie im Jahreskalender einzelne Tage an oder ab, um individuelle Termine für diese Tour festzulegen.',
       removeTitle: 'Einzeltermin entfernen',
-      removeDescription: 'Der Termin {{value}} wird aus den individuellen Terminen entfernt.',
+      removeDescription:
+        'Der Termin {{value}} wird zusammen mit allen zugehörigen Abholort-Zuordnungen aus dem Entwurf entfernt.',
+      removeAssignmentTitle: 'Abholort-Zuordnung entfernen',
+      removeAssignmentDescription:
+        'Die Zuordnung „{{location}}“ für den Termin {{date}} wird samt Hinweis aus dem Entwurf entfernt.',
+      removeAssignmentUnknownLocation: 'Noch nicht ausgewählter Abholort',
       removeConfirm: 'Entfernen',
       removeCancel: 'Abbrechen',
     },

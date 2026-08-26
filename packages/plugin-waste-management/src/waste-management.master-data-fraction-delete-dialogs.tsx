@@ -1,5 +1,6 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
+import type { RefObject } from 'react';
 import { useState } from 'react';
 
 import type {
@@ -9,10 +10,12 @@ import type {
 
 export const WasteMasterDataFractionDeleteDialog = ({
   fractionPendingDelete,
+  fallbackFocusRef,
   onOpenDeleteFraction,
   onCancel,
 }: Pick<WasteFractionsContentProps, 'onOpenDeleteFraction'> & {
   readonly fractionPendingDelete: WasteFractionsContentProps['fractions'][number] | null;
+  readonly fallbackFocusRef: RefObject<HTMLElement | null>;
   readonly onCancel: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -31,6 +34,7 @@ export const WasteMasterDataFractionDeleteDialog = ({
       cancelLabel={pt('masterData.fractions.deleteDialog.cancel')}
       pending={pending}
       errorMessage={errorMessage}
+      fallbackFocusRef={fallbackFocusRef}
       onCancel={() => {
         setErrorMessage(null);
         onCancel();
@@ -54,10 +58,12 @@ export const WasteMasterDataFractionDeleteDialog = ({
 
 export const WasteMasterDataFractionsBulkDeleteDialog = ({
   request,
+  fallbackFocusRef,
   onDeleteFractions,
   onCancel,
 }: Pick<WasteFractionsContentProps, 'onDeleteFractions'> & {
   readonly request: FractionBulkDeleteRequest | null;
+  readonly fallbackFocusRef: RefObject<HTMLElement | null>;
   readonly onCancel: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -76,6 +82,7 @@ export const WasteMasterDataFractionsBulkDeleteDialog = ({
       cancelLabel={pt('masterData.fractions.bulkDeleteDialog.cancel')}
       pending={pending}
       errorMessage={errorMessage}
+      fallbackFocusRef={fallbackFocusRef}
       onCancel={() => {
         setErrorMessage(null);
         onCancel();

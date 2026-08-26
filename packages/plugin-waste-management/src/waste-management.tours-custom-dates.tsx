@@ -6,7 +6,7 @@ import {
   IconChevronRight,
   IconTrash,
 } from '@tabler/icons-react';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Button,
@@ -17,7 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  StudioDestructiveActionDialog,
   Textarea,
 } from '@sva/studio-ui-react';
 
@@ -26,6 +25,10 @@ import {
   sortTourDateLocationAssignments,
 } from './waste-management.tours.shared.js';
 import type { TourDateLocationAssignmentFormState } from './waste-management.tours.types.js';
+import {
+  type TourCustomDatePendingDelete,
+  WasteToursCustomDateDeleteDialog,
+} from './waste-management.tours-custom-date-delete-dialogs.js';
 
 const weekdayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 
@@ -204,6 +207,7 @@ export const WasteToursCustomDatesField = ({
   ) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const feedbackFocusFallbackRef = useRef<HTMLDivElement | null>(null);
   const firstCustomDate = useMemo(
     () =>
       [...customDates]
@@ -216,7 +220,7 @@ export const WasteToursCustomDatesField = ({
     [endDate, firstCustomDate, firstDate]
   );
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<TourCustomDatePendingDelete | null>(null);
   const [duplicateAssignmentId, setDuplicateAssignmentId] = useState<string | null>(null);
   const [activeAssignmentDate, setActiveAssignmentDate] = useState<string | null>(null);
   const [activeLocationPickerId, setActiveLocationPickerId] = useState<string | null>(null);
@@ -279,7 +283,7 @@ export const WasteToursCustomDatesField = ({
 
   const toggleDate = (date: string) => {
     if (selectedDates.has(date)) {
-      removeEntry(date);
+      setPendingDelete({ kind: 'date', date });
       return;
     }
     syncDates(
@@ -345,7 +349,13 @@ export const WasteToursCustomDatesField = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div
+      ref={feedbackFocusFallbackRef}
+      role="region"
+      tabIndex={-1}
+      aria-label={pt('tours.customDates.title')}
+      className="space-y-4"
+    >
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">{pt('tours.customDates.description')}</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -448,7 +458,7 @@ export const WasteToursCustomDatesField = ({
                             variant="tertiary"
                             disabled={disabled}
                             className="text-destructive hover:text-destructive"
-                            onClick={() => setPendingDeleteDate(entry.date)}
+                            onClick={() => setPendingDelete({ kind: 'date', date: entry.date })}
                           >
                             <IconTrash aria-hidden="true" className="mr-2 h-4 w-4" />
                             {pt('tours.customDates.actions.removeDate')}
@@ -665,7 +675,12 @@ export const WasteToursCustomDatesField = ({
                                           variant="tertiary"
                                           disabled={disabled}
                                           className="text-destructive hover:text-destructive"
-                                          onClick={() => removeAssignment(assignment.id)}
+                                          onClick={() =>
+                                            setPendingDelete({
+                                              kind: 'assignment',
+                                              assignmentId: assignment.id,
+                                            })
+                                          }
                                         >
                                           <IconTrash aria-hidden="true" className="mr-2 h-4 w-4" />
                                           {pt('tours.customDates.actions.removeAssignment')}
@@ -697,21 +712,16 @@ export const WasteToursCustomDatesField = ({
         onYearChange={setYear}
         onToggleDate={toggleDate}
       />
-      <StudioDestructiveActionDialog
-        open={pendingDeleteDate !== null}
-        title={pt('tours.customDates.dialog.removeTitle')}
-        description={pt('tours.customDates.dialog.removeDescription', {
-          value: pendingDeleteDate ?? '',
-        })}
-        confirmLabel={pt('tours.customDates.dialog.removeConfirm')}
-        pendingLabel={pt('common.deleting')}
-        cancelLabel={pt('tours.customDates.dialog.removeCancel')}
-        onCancel={() => setPendingDeleteDate(null)}
-        onConfirm={() => {
-          if (pendingDeleteDate) {
-            removeEntry(pendingDeleteDate);
-          }
-          setPendingDeleteDate(null);
+      <WasteToursCustomDateDeleteDialog
+        pendingDelete={pendingDelete}
+        assignments={dateLocationAssignments}
+        locationLabels={locationLabels}
+        fallbackFocusRef={feedbackFocusFallbackRef}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={(request) => {
+          if (request.kind === 'date') removeEntry(request.date);
+          else removeAssignment(request.assignmentId);
+          setPendingDelete(null);
         }}
       />
     </div>

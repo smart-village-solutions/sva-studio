@@ -26,6 +26,7 @@ export type StudioDestructiveActionDialogProps = Readonly<{
   confirmDisabled?: boolean;
   errorMessage?: React.ReactNode;
   children?: React.ReactNode;
+  fallbackFocusRef?: React.RefObject<HTMLElement | null>;
 }>;
 
 export function StudioDestructiveActionDialog({
@@ -41,6 +42,7 @@ export function StudioDestructiveActionDialog({
   confirmDisabled = false,
   errorMessage,
   children,
+  fallbackFocusRef,
 }: StudioDestructiveActionDialogProps) {
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
   const wasOpenRef = React.useRef(false);
@@ -62,10 +64,15 @@ export function StudioDestructiveActionDialog({
         aria-busy={pending}
         onCloseAutoFocus={(event) => {
           const restoreTarget = restoreFocusRef.current;
-          if (!restoreTarget?.isConnected) return;
-          event.preventDefault();
-          restoreTarget.focus();
+          const focusTarget = restoreTarget?.isConnected
+            ? restoreTarget
+            : fallbackFocusRef?.current?.isConnected
+              ? fallbackFocusRef.current
+              : null;
           restoreFocusRef.current = null;
+          if (!focusTarget) return;
+          event.preventDefault();
+          focusTarget.focus();
         }}
       >
         <AlertDialogHeader>

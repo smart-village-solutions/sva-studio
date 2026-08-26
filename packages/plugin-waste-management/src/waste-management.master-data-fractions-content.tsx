@@ -1,5 +1,6 @@
 import type { WasteFractionRecord } from '@sva/plugin-sdk';
-import { useEffect, useMemo, useState } from 'react';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 import {
@@ -78,6 +79,8 @@ export const WasteMasterDataFractionsContent = ({
   onPageSizeChange,
   saving,
 }: WasteFractionsContentProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const feedbackFocusFallbackRef = useRef<HTMLDivElement | null>(null);
   const [fractionPendingDelete, setFractionPendingDelete] = useState<WasteFractionRecord | null>(
     null
   );
@@ -135,7 +138,13 @@ export const WasteMasterDataFractionsContent = ({
   useWasteTabPanelActions(null);
 
   return (
-    <div className="space-y-4">
+    <div
+      ref={feedbackFocusFallbackRef}
+      role="region"
+      tabIndex={-1}
+      aria-label={pt('masterData.fractions.table.ariaLabel')}
+      className="space-y-4"
+    >
       <WasteMasterDataFractionsTableSection
         fractions={pagedFractions.items}
         page={pagedFractions.safePage}
@@ -176,11 +185,13 @@ export const WasteMasterDataFractionsContent = ({
       />
       <WasteMasterDataFractionDeleteDialog
         fractionPendingDelete={fractionPendingDelete}
+        fallbackFocusRef={feedbackFocusFallbackRef}
         onOpenDeleteFraction={onOpenDeleteFraction}
         onCancel={() => setFractionPendingDelete(null)}
       />
       <WasteMasterDataFractionsBulkDeleteDialog
         request={bulkDeleteRequest}
+        fallbackFocusRef={feedbackFocusFallbackRef}
         onDeleteFractions={onDeleteFractions}
         onCancel={() => setBulkDeleteRequest(null)}
       />

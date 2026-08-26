@@ -154,6 +154,14 @@ describe('WasteToursCustomDatesField', () => {
 
     expect(screen.getAllByText('tours.customDates.assignmentSection.summaryEmpty')).toHaveLength(2);
 
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.openPicker' }));
+    fireEvent.click(screen.getAllByRole('button', { name: '1' })[0]!);
+    expect(
+      screen.getByText('tours.customDates.dialog.removeDescription:{"value":"2027-01-01"}')
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.dialog.removeCancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.cancel' }));
+
     fireEvent.click(
       screen.getAllByRole('button', { name: 'tours.customDates.actions.removeDate' })[0]!
     );
@@ -379,6 +387,13 @@ describe('WasteToursCustomDatesField', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'tours.customDates.actions.removeAssignment' })
     );
+    expect(
+      screen.getByText(
+        'tours.customDates.dialog.removeAssignmentDescription:{"location":"Musterhausen / Markt","date":"2027-01-01"}'
+      )
+    ).toBeTruthy();
+    expect(onAssignmentsChange).not.toHaveBeenLastCalledWith([]);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.dialog.removeConfirm' }));
     expect(onAssignmentsChange).toHaveBeenCalledWith([]);
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.removeDate' }));

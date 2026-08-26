@@ -1,0 +1,4 @@
+{
+  "prNumber": 1163,
+  "body": "Persistente Fehlermeldungen bleiben durch die Studio-Prüfungen vollständig abgesichert.\n\n- Fehlerzustände werden weiterhin unmittelbar und für assistive Technologien als Warnung ausgegeben.\n- Auch reduzierte Meldungen ohne Beschreibung oder zusätzliche Aktionen bleiben geprüft.\n- Produktverhalten und Qualitätsgrenzen bleiben unverändert."
+}

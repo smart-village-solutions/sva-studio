@@ -84,7 +84,8 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
   },
   createView: {
     title: 'Create new waste type',
-    description: 'Create a new waste type. The details will later be used in lists, tours, and the waste calendar.',
+    description:
+      'Create a new waste type. The details will later be used in lists, tours, and the waste calendar.',
     colorPickerLabel: 'Choose color',
     sections: {
       basics: '1. Basic details',
@@ -94,24 +95,30 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
       visibility: '3. Visibility',
       visibilityHint: 'Decide whether the waste type can be used right away.',
       reminders: '4. Reminders',
-      remindersHint: 'Control whether residents may subscribe to reminders for this fraction and which limits apply.',
+      remindersHint:
+        'Control whether residents may subscribe to reminders for this fraction and which limits apply.',
     },
     fieldHints: {
       name: 'This is how the waste type will later appear in lists.',
       description: 'Describe the waste type briefly and clearly.',
       translationDe: 'Optional: German label for multilingual output.',
       translationEn: 'Optional: English label for multilingual output.',
-      pdfShortLabel: 'Required: Short label for the PDF legend. This short label is used directly in PDF output and legends.',
-      containerSize: 'Optional: Only enter a container size if this waste type exists in multiple sizes, for example 120 l or 240 l.',
+      pdfShortLabel:
+        'Required: Short label for the PDF legend. This short label is used directly in PDF output and legends.',
+      containerSize:
+        'Optional: Only enter a container size if this waste type exists in multiple sizes, for example 120 l or 240 l.',
       color: 'This color will later help users recognize the waste type in calendars and tables.',
       active: 'Only active waste types are available for further planning.',
-      reminderCount: 'Decide whether residents may choose no reminders, one reminder, or two reminders for this fraction.',
+      reminderCount:
+        'Decide whether residents may choose no reminders, one reminder, or two reminders for this fraction.',
       reminderChannels: 'These channels apply to the whole fraction, not to individual reminders.',
-      reminderChannelsDisabled: 'Enable at least one reminder first before channels can be offered for this fraction.',
+      reminderChannelsDisabled:
+        'Enable at least one reminder first before channels can be offered for this fraction.',
       reminderChannelPushEnabled: 'Later allows push notifications for this fraction.',
       reminderChannelEmailEnabled: 'Later allows email notifications for this fraction.',
       reminderChannelCalendarEnabled: 'Later allows calendar reminders for this fraction.',
-      reminderChannelSlots: 'Configure the available reminder slots per channel with maximum and default lead times.',
+      reminderChannelSlots:
+        'Configure the available reminder slots per channel with maximum and default lead times.',
       reminderSlotMaxLeadDays: 'Users may not schedule this slot earlier than this before pickup.',
       reminderSlotDefaultLeadDays: 'This value is preselected as the UI default.',
     },
@@ -166,6 +173,12 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     confirm: 'Delete',
     cancel: 'Cancel',
   },
+  bulkDeleteDialog: {
+    title: 'Delete waste fractions',
+    description: '{{count}} selected waste fractions will be deleted permanently.',
+    confirm: 'Delete selected',
+    cancel: 'Cancel',
+  },
   statusDialog: {
     activateTitle: 'Activate waste fraction',
     activateDescription: 'The waste fraction {{value}} will be activated.',
@@ -185,6 +198,8 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     deleteError: 'The waste fraction could not be deleted.',
     deleteForbidden: 'Missing permission to delete waste fractions.',
     deleteConflict: 'The waste fraction cannot be deleted because assignments still exist.',
+    refreshAfterDeleteError:
+      'At least one waste fraction was deleted, but the overview could not be refreshed. Please reload the page.',
     syncWarning:
       'The fraction change was saved, but wasteTypes could not be synchronized with the mainserver.',
     syncRetryStarted: 'The wasteTypes synchronization was started again.',

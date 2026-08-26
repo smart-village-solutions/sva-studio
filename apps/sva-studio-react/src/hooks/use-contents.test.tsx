@@ -483,7 +483,9 @@ describe('useContents', () => {
         })
       ).toEqual({
         acceptedCount: 1,
+        failedContentIds: [],
         failedCount: 0,
+        refreshFailed: false,
         skippedCount: 1,
       });
     });
@@ -517,12 +519,61 @@ describe('useContents', () => {
         })
       ).toEqual({
         acceptedCount: 1,
+        failedContentIds: [],
         failedCount: 0,
+        refreshFailed: false,
         skippedCount: 0,
       });
     });
 
     expect(deleteContentMock).toHaveBeenCalledWith('content-1');
+
+    deleteContentMock.mockImplementationOnce(async () => {
+      throw new Error('delete failed');
+    });
+    await act(async () => {
+      expect(
+        await result.current.deleteContents({
+          actionId: 'content.delete',
+          contentIds: ['content-2'],
+          matchingCount: 1,
+          page: 1,
+          pageSize: 2,
+          selectionMode: 'explicitIds',
+        })
+      ).toEqual({
+        acceptedCount: 0,
+        failedContentIds: ['content-2'],
+        failedCount: 1,
+        refreshFailed: false,
+        skippedCount: 0,
+      });
+    });
+
+    deleteContentMock.mockResolvedValueOnce({ data: { id: 'content-1' } });
+    listContentsMock.mockRejectedValueOnce({
+      status: 503,
+      code: 'database_unavailable',
+      message: 'refresh failed',
+    });
+    await act(async () => {
+      expect(
+        await result.current.deleteContents({
+          actionId: 'content.delete',
+          contentIds: ['content-1'],
+          matchingCount: 1,
+          page: 1,
+          pageSize: 2,
+          selectionMode: 'explicitIds',
+        })
+      ).toEqual({
+        acceptedCount: 1,
+        failedContentIds: [],
+        failedCount: 0,
+        refreshFailed: true,
+        skippedCount: 0,
+      });
+    });
   });
 
   it('creates content and stores create errors', async () => {

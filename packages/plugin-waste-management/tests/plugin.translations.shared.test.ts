@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { createWasteManagementPluginTranslationLocale } from '../src/plugin.translations.shared.base.js';
+import { createWasteManagementPluginJobTypes } from '../src/waste-management.job-definitions.js';
 import { wasteManagementPluginTranslationsDEMasterData } from '../src/plugin.translations.de.masterData.js';
+import { wasteManagementPluginTranslationsDETools } from '../src/plugin.translations.de.tools.js';
+import { wasteManagementPluginTranslationsENTools } from '../src/plugin.translations.en.tools.js';
 import { wasteManagementPluginTranslationsDETours } from '../src/plugin.translations.de.tours.js';
 import { createMasterDataEntityTranslations } from '../src/plugin.translations.shared.master-data.js';
 import { createWasteManagementToursTranslations } from '../src/plugin.translations.shared.scheduling.js';
@@ -461,5 +464,45 @@ describe('waste-management translation builders', () => {
         },
       },
     });
+  });
+
+  it('defines localized labels for every terminal plugin-operation status', () => {
+    expect(wasteManagementPluginTranslationsDETools.tools.progress.statuses).toMatchObject({
+      succeeded: 'Import abgeschlossen',
+      failed: 'Import fehlgeschlagen',
+      cancelled: 'Import abgebrochen',
+    });
+    expect(wasteManagementPluginTranslationsENTools.tools.progress.statuses).toMatchObject({
+      succeeded: 'Import completed',
+      failed: 'Import failed',
+      cancelled: 'Import cancelled',
+    });
+    expect(wasteManagementPluginTranslationsDETools.tools.progress.jobStatuses).toMatchObject({
+      succeeded: 'Vorgang abgeschlossen',
+      failed: 'Vorgang fehlgeschlagen',
+      cancelled: 'Vorgang abgebrochen',
+    });
+    expect(wasteManagementPluginTranslationsENTools.tools.progress.jobStatuses).toMatchObject({
+      succeeded: 'Operation completed',
+      failed: 'Operation failed',
+      cancelled: 'Operation cancelled',
+    });
+  });
+
+  it('defines localized labels for every registered Waste job phase', () => {
+    const dePhases = wasteManagementPluginTranslationsDETools.tools.progress.phases as Readonly<
+      Record<string, string>
+    >;
+    const enPhases = wasteManagementPluginTranslationsENTools.tools.progress.phases as Readonly<
+      Record<string, string>
+    >;
+    const registeredPhases = new Set(
+      createWasteManagementPluginJobTypes().flatMap((jobType) => jobType.progress.phaseKeys)
+    );
+
+    for (const phase of registeredPhases) {
+      expect(dePhases[phase], `missing DE label for ${phase}`).toEqual(expect.any(String));
+      expect(enPhases[phase], `missing EN label for ${phase}`).toEqual(expect.any(String));
+    }
   });
 });

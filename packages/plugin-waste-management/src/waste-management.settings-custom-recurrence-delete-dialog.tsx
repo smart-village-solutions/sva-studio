@@ -1,23 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Select,
-  StudioField,
-} from '@sva/studio-ui-react';
+import { Select, StudioDestructiveActionDialog, StudioField } from '@sva/studio-ui-react';
 
 import {
   createDeletedPresetFallbackOptions,
   formatDeletedPresetFallback,
   parseDeletedPresetFallback,
 } from './waste-management.settings-custom-recurrence.support.js';
-import type { CustomRecurrencePresetInputState, DeletedPresetFallbackState } from './waste-management.settings.shared.js';
+import type {
+  CustomRecurrencePresetInputState,
+  DeletedPresetFallbackState,
+} from './waste-management.settings.shared.js';
 
 const DeleteFallbackField = ({
   selection,
@@ -69,7 +62,10 @@ export const WasteSettingsCustomRecurrenceDeleteDialog = ({
   const initialSelection = formatDeletedPresetFallback(initialFallback);
   const [selection, setSelection] = useState<string>(initialSelection);
 
-  const fallbackOptions = useMemo(() => createDeletedPresetFallbackOptions(availableFallbacks, pt), [availableFallbacks, pt]);
+  const fallbackOptions = useMemo(
+    () => createDeletedPresetFallbackOptions(availableFallbacks, pt),
+    [availableFallbacks, pt]
+  );
   const resetSelection = () => setSelection(initialSelection);
 
   useEffect(() => {
@@ -80,38 +76,27 @@ export const WasteSettingsCustomRecurrenceDeleteDialog = ({
   }, [initialSelection, open, preset?.id]);
 
   return (
-    <Dialog
+    <StudioDestructiveActionDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          resetSelection();
-        }
-        onOpenChange(nextOpen);
+      title={pt('settings.messages.customRecurrenceDeleteTitle')}
+      description={pt('settings.messages.customRecurrenceDeleteDescription', {
+        name: preset?.name ?? '',
+      })}
+      confirmLabel={pt('settings.actions.deleteCustomRecurrence')}
+      pendingLabel={pt('common.deleting')}
+      cancelLabel={pt('tours.actions.cancel')}
+      onCancel={() => {
+        resetSelection();
+        onOpenChange(false);
       }}
+      onConfirm={() => onConfirm(parseDeletedPresetFallback(selection))}
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{pt('settings.messages.customRecurrenceDeleteTitle')}</DialogTitle>
-          <DialogDescription>
-            {pt('settings.messages.customRecurrenceDeleteDescription', { name: preset?.name ?? '' })}
-          </DialogDescription>
-        </DialogHeader>
-
-        <DeleteFallbackField selection={selection} options={fallbackOptions} pt={pt} onSelectionChange={setSelection} />
-
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-            {pt('tours.actions.cancel')}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => onConfirm(parseDeletedPresetFallback(selection))}
-          >
-            {pt('settings.actions.deleteCustomRecurrence')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <DeleteFallbackField
+        selection={selection}
+        options={fallbackOptions}
+        pt={pt}
+        onSelectionChange={setSelection}
+      />
+    </StudioDestructiveActionDialog>
   );
 };

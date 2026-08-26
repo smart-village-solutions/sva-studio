@@ -29,6 +29,7 @@ import {
   type WasteManagementMasterDataOverview,
 } from '@sva/plugin-sdk';
 import {
+  addStudioDestructiveNavigationFeedback,
   Button,
   contentMediaUsageToReference,
   contentMediaUsagesToLocalDrafts,
@@ -43,9 +44,11 @@ import {
   type ContentMediaUsage,
   Select,
   StudioDetailPageTemplate,
+  StudioDestructiveActionDialog,
   StudioLoadingState,
   StudioMediaPickerOverlay,
   StudioPersistentFormError,
+  StudioPersistentActionResult,
   StudioSaveButton,
   type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
@@ -401,7 +404,10 @@ export const NewsDetailPage = ({
   const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const [scheduledPublicationInput, setScheduledPublicationInput] = React.useState('');
@@ -985,20 +991,25 @@ export const NewsDetailPage = ({
       return;
     }
 
-    if (globalThis.window.confirm(pt('actions.deleteConfirm')) === false) {
-      return;
-    }
-
+    setDeleteErrorMessage(null);
     setDeletePending(true);
 
     try {
       await deleteNews(contentId, actingPrincipalType);
-      await navigate({ to: '/admin/content' });
     } catch (error) {
-      setStatusMessage({
-        source: 'delete',
-        text: resolveNewsErrorMessage(pt, error, 'messages.deleteError'),
+      setDeleteErrorMessage(resolveNewsErrorMessage(pt, error, 'messages.deleteError'));
+      setDeletePending(false);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    try {
+      await navigate({
+        to: '/admin/content',
+        state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'news', contentId),
       });
+    } catch {
+      setDeleteNavigationFailed(true);
     } finally {
       setDeletePending(false);
     }
@@ -1168,7 +1179,15 @@ export const NewsDetailPage = ({
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' && accessCapabilities.canDelete ? (
-            <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
+            <Button
+              variant="destructive"
+              type="button"
+              onClick={() => {
+                setDeleteErrorMessage(null);
+                setDeleteDialogOpen(true);
+              }}
+              disabled={deletePending}
+            >
               {deleteLabel}
             </Button>
           ) : null}
@@ -1226,6 +1245,18 @@ export const NewsDetailPage = ({
             void saveCurrentItem();
           }}
         >
+          {deleteNavigationFailed ? (
+            <StudioPersistentActionResult
+              kind="success"
+              title={pt('messages.deleteSuccess')}
+              description={pt('messages.deleteNavigationError')}
+              actions={
+                <Button asChild size="sm" variant="secondary">
+                  <Link to="/admin/content">{pt('actions.back')}</Link>
+                </Button>
+              }
+            />
+          ) : null}
           {statusMessage ? (
             <StudioPersistentFormError
               message={statusMessage.text}
@@ -1386,6 +1417,23 @@ export const NewsDetailPage = ({
           </Tabs>
         </form>
       </FormProvider>
+      <StudioDestructiveActionDialog
+        open={deleteDialogOpen}
+        title={pt('actions.deleteConfirmTitle')}
+        description={pt('actions.deleteConfirm', {
+          title: methods.getValues('title') || pt('editor.editTitle'),
+        })}
+        confirmLabel={deleteLabel}
+        pendingLabel={pt('actions.deleting')}
+        cancelLabel={pt('actions.back')}
+        pending={deletePending}
+        errorMessage={deleteErrorMessage}
+        onConfirm={() => void onDelete()}
+        onCancel={() => {
+          setDeleteErrorMessage(null);
+          setDeleteDialogOpen(false);
+        }}
+      />
     </StudioDetailPageTemplate>
   );
 };

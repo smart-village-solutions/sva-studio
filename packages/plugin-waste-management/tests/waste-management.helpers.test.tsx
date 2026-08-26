@@ -75,6 +75,45 @@ vi.mock('@sva/plugin-sdk', async (importOriginal) => {
 });
 
 vi.mock('@sva/studio-ui-react', () => ({
+  StudioDestructiveActionDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+    pending,
+    confirmDisabled,
+    errorMessage,
+    children,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly pending?: boolean;
+    readonly confirmDisabled?: boolean;
+    readonly errorMessage?: React.ReactNode;
+    readonly children?: React.ReactNode;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {children}
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+        <button type="button" disabled={pending} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" disabled={pending || confirmDisabled} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   Alert: ({ children }: { readonly children: React.ReactNode }) => (
     <div data-testid="alert">{children}</div>
   ),
@@ -866,10 +905,9 @@ describe('waste management helper modules', () => {
       text: 'masterData.fractions.messages.saveForbidden',
     });
 
-    deleteWasteManagementFractionMock.mockRejectedValueOnce(
-      new WasteManagementApiError('invalid_request', 'busy')
-    );
-    await handlers.deleteFraction('fraction-1');
+    const fractionDeleteError = new WasteManagementApiError('invalid_request', 'busy');
+    deleteWasteManagementFractionMock.mockRejectedValueOnce(fractionDeleteError);
+    await expect(handlers.deleteFraction('fraction-1')).rejects.toBe(fractionDeleteError);
     expect(setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
       text: 'masterData.fractions.messages.deleteConflict',

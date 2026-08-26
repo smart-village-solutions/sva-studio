@@ -232,10 +232,9 @@ describe('createWasteMasterDataLocationMutations', () => {
     });
     expect(loadCollectionLocationList).toHaveBeenCalledTimes(1);
 
-    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(
-      new WasteManagementApiError('conflict', 'Konflikt')
-    );
-    await handlers.onDeleteLocation({ id: 'location-2' });
+    const singleDeleteError = new WasteManagementApiError('conflict', 'Konflikt');
+    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(singleDeleteError);
+    await expect(handlers.onDeleteLocation({ id: 'location-2' })).rejects.toBe(singleDeleteError);
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'error',
       text: 'masterData.collectionLocations.messages.deleteConflict',
@@ -252,10 +251,9 @@ describe('createWasteMasterDataLocationMutations', () => {
     });
     expect(loadCollectionLocationList).toHaveBeenCalledTimes(2);
 
-    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(
-      new WasteManagementApiError('forbidden', 'Verboten')
-    );
-    await handlers.onDeleteLocations(['location-3']);
+    const bulkDeleteError = new WasteManagementApiError('forbidden', 'Verboten');
+    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(bulkDeleteError);
+    await expect(handlers.onDeleteLocations(['location-3'])).rejects.toBe(bulkDeleteError);
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'error',
       text: 'masterData.collectionLocations.bulk.messages.deleteForbidden',

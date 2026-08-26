@@ -87,6 +87,17 @@ export {
 } from './media-intake-panel.js';
 export { Select } from './select.js';
 export {
+  StudioDestructiveActionDialog,
+  StudioPersistentActionResult,
+  type StudioDestructiveActionDialogProps,
+  type StudioPersistentActionResultProps,
+} from './studio-action-feedback.js';
+export {
+  addStudioDestructiveNavigationFeedback,
+  readStudioDestructiveNavigationFeedback,
+  removeStudioActionNavigationFeedback,
+} from './studio-action-navigation-feedback.js';
+export {
   SearchableMultiSelect,
   type SearchableMultiSelectOption,
   type SearchableMultiSelectProps,

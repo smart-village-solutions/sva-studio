@@ -536,10 +536,13 @@ describe('GenericItemsDetailPage', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/admin/content',
-        search: { type: 'generic-items.generic-item' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/content',
+          search: { type: 'generic-items.generic-item' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 });

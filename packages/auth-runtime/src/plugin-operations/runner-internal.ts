@@ -18,11 +18,13 @@ export type StudioJobExecutionRegistration = {
   readonly jobTypeId: string;
   readonly handler: StudioJobExecutionHandler;
   readonly queueName: string;
+  readonly supportsCancellation?: boolean;
 };
 
 export type PluginOperationExecutionRegistration = {
   readonly handler: PluginOperationExecutionHandler;
   readonly queueName: string;
+  readonly supportsCancellation?: boolean;
 };
 
 export type StudioJobExecutionRegistry = ReadonlyMap<string, StudioJobExecutionRegistration>;

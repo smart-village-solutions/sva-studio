@@ -4,6 +4,7 @@ import { Button, StudioDataTable, type StudioBulkAction } from '@sva/studio-ui-r
 
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import { WasteSchedulingDeleteDialog } from './waste-management.scheduling-delete-dialog.js';
+import { WasteSchedulingRowsDeleteError } from './waste-management.scheduling-mutations.js';
 import {
   useSchedulingColumns,
   useSchedulingTableLabels,
@@ -124,11 +125,17 @@ export const WasteSchedulingShiftsTable = ({
       <WasteSchedulingDeleteDialog
         pendingDeleteRows={pendingDeleteRows}
         onCancel={() => setPendingDeleteRows([])}
-        onConfirm={() => {
-          void Promise.resolve(onDeleteSchedulingRows(pendingDeleteRows)).finally(() => {
-            clearSelectionRef.current();
-            setPendingDeleteRows([]);
-          });
+        onConfirm={async () => {
+          try {
+            await onDeleteSchedulingRows(pendingDeleteRows);
+          } catch (error) {
+            if (error instanceof WasteSchedulingRowsDeleteError) {
+              setPendingDeleteRows(error.remainingRows);
+            }
+            throw error;
+          }
+          clearSelectionRef.current();
+          setPendingDeleteRows([]);
         }}
       />
     </div>

@@ -488,7 +488,7 @@ export type StudioTechnicalStatusMetaItem = Readonly<{
 }>;
 
 type StudioStatusCardBodyProps = Readonly<{
-  title: React.ReactNode;
+  title?: React.ReactNode;
   description?: React.ReactNode;
   statusLabel: React.ReactNode;
   statusTone: StudioTechnicalStatusTone;
@@ -508,10 +508,12 @@ const StudioStatusCardBody = ({
 }: StudioStatusCardBodyProps) => (
   <>
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-      </div>
+      {title || description ? (
+        <div className="space-y-1">
+          {title ? <h3 className="text-sm font-semibold">{title}</h3> : null}
+          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        </div>
+      ) : null}
       <Badge variant={technicalStatusBadgeVariantByTone[statusTone]}>{statusLabel}</Badge>
     </div>
     {metadata?.length ? (
@@ -564,7 +566,8 @@ export function StudioTechnicalStatusPanel({
 }
 
 export type StudioJobSummaryCardProps = Readonly<{
-  title: React.ReactNode;
+  announcement?: React.ReactNode;
+  title?: React.ReactNode;
   description?: React.ReactNode;
   statusLabel: React.ReactNode;
   statusTone?: StudioTechnicalStatusTone;
@@ -575,6 +578,7 @@ export type StudioJobSummaryCardProps = Readonly<{
 }>;
 
 export function StudioJobSummaryCard({
+  announcement,
   title,
   description,
   statusLabel,
@@ -586,6 +590,11 @@ export function StudioJobSummaryCard({
 }: StudioJobSummaryCardProps) {
   return (
     <section className={cn('space-y-4 rounded-lg border border-border/70 bg-card p-4', className)}>
+      {announcement ? (
+        <p role="status" aria-live="polite" className="sr-only">
+          {announcement}
+        </p>
+      ) : null}
       <StudioStatusCardBody
         title={title}
         description={description}

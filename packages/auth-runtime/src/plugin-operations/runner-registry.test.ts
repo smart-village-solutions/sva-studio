@@ -38,6 +38,7 @@ describe('plugin operation runner registry', () => {
       'waste.sync': {
         handler: pluginHandler,
         queueName: 'custom-plugin-queue',
+        supportsCancellation: true,
       },
     });
 
@@ -66,6 +67,7 @@ describe('plugin operation runner registry', () => {
             source: 'plugin',
             jobTypeId: 'waste.sync',
             queueName: 'custom-plugin-queue',
+            supportsCancellation: true,
           }),
         ],
       ])
@@ -75,10 +77,12 @@ describe('plugin operation runner registry', () => {
     expect(pluginRegistry.get('waste.import')).toEqual({
       handler: expect.any(Function),
       queueName: 'plugin-operations',
+      supportsCancellation: false,
     });
     expect(pluginRegistry.get('waste.sync')).toEqual({
       handler: expect.any(Function),
       queueName: 'custom-plugin-queue',
+      supportsCancellation: true,
     });
   });
 
@@ -86,13 +90,14 @@ describe('plugin operation runner registry', () => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);
     state.createJobLifecycleOrchestrator.mockReturnValue({ run });
-    state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      await work({
-        getJobById: vi.fn(async () => ({ id: 'job-1' })),
-        updateJobState: vi.fn(async () => undefined),
-        updateJobProgress: vi.fn(async () => undefined),
-        appendJobEvent: vi.fn(async () => undefined),
-      })
+    state.withStudioJobRepository.mockImplementation(
+      async (_instanceId, work) =>
+        await work({
+          getJobById: vi.fn(async () => ({ id: 'job-1' })),
+          updateJobState: vi.fn(async () => undefined),
+          updateJobProgress: vi.fn(async () => undefined),
+          appendJobEvent: vi.fn(async () => undefined),
+        })
     );
 
     const handler = vi.fn(async () => ({}));
@@ -111,12 +116,9 @@ describe('plugin operation runner registry', () => {
         ])
     );
 
-    await taskList[registry.studioJobTaskIdentifier]?.(
-      { instanceId: 'tenant-a', jobId: 'job-1' },
-      {
-        job: { attempts: 2, max_attempts: 5 },
-      } as never
-    );
+    await taskList[registry.studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+      job: { attempts: 2, max_attempts: 5 },
+    } as never);
 
     expect(state.createJobLifecycleOrchestrator).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -124,7 +126,8 @@ describe('plugin operation runner registry', () => {
         loadRepository: expect.any(Function),
       })
     );
-    const [{ resolveHandler, loadRepository }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+    const [{ resolveHandler, loadRepository }] =
+      state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
     expect(resolveHandler({ source: 'plugin', jobTypeId: 'waste.import' })).toBe(handler);
     const repository = await loadRepository('tenant-a');
     await repository.getJobById('tenant-a', 'job-1');

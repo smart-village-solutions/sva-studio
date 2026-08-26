@@ -9,7 +9,8 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
 }));
 
 vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
@@ -17,7 +18,8 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
 }));
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
-  formatTourRecurrence: (_pt: unknown, recurrence: string | undefined) => `recurrence:${recurrence ?? 'none'}`,
+  formatTourRecurrence: (_pt: unknown, recurrence: string | undefined) =>
+    `recurrence:${recurrence ?? 'none'}`,
 }));
 
 vi.mock('../src/waste-management.tours.empty-state.js', () => ({
@@ -26,7 +28,10 @@ vi.mock('../src/waste-management.tours.empty-state.js', () => ({
 
 vi.mock('../src/waste-management.tours.content.parts.js', () => ({
   useWasteToursSelectionState: () => {
-    const [tourPendingDelete, setTourPendingDelete] = React.useState<{ id: string; name: string } | null>(null);
+    const [tourPendingDelete, setTourPendingDelete] = React.useState<{
+      id: string;
+      name: string;
+    } | null>(null);
     const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
     const [selectedTourIds, setSelectedTourIds] = React.useState<string[]>(['tour-1', 'tour-2']);
     return {
@@ -72,8 +77,10 @@ vi.mock('../src/waste-management.tours.content.parts.js', () => ({
     readonly bulkDeleteOpen: boolean;
     readonly selectedTourIds: string[];
     readonly onDeleteTour: (tour: { id: string; name: string }) => Promise<void>;
-    readonly onDeleteTours: (ids: readonly string[]) => Promise<void>;
-    readonly onAfterBulkDelete: () => void;
+    readonly onDeleteTours: (
+      ids: readonly string[]
+    ) => Promise<{ readonly failedIds: readonly string[] }>;
+    readonly onAfterBulkDelete: (failedIds: readonly string[]) => void;
     readonly onCancelSingle: () => void;
   }) => (
     <div>
@@ -90,8 +97,9 @@ vi.mock('../src/waste-management.tours.content.parts.js', () => ({
       {bulkDeleteOpen ? (
         <button
           onClick={() => {
-            void onDeleteTours(selectedTourIds);
-            onAfterBulkDelete();
+            void onDeleteTours(selectedTourIds).then(({ failedIds }) =>
+              onAfterBulkDelete(failedIds)
+            );
           }}
         >
           confirm-bulk-delete
@@ -116,7 +124,9 @@ vi.mock('../src/waste-management.tours.content.body.js', () => ({
     <div>
       <button onClick={() => table.onSortChange('locations')}>sort-locations</button>
       <button onClick={() => table.onSortChange('locations')}>sort-locations-again</button>
-      <button onClick={() => table.setTourPendingDelete(table.tours[0]!)}>open-single-delete</button>
+      <button onClick={() => table.setTourPendingDelete(table.tours[0]!)}>
+        open-single-delete
+      </button>
       <button onClick={() => setBulkDeleteOpen(true)}>open-bulk-delete</button>
       <div data-testid="tour-order">{table.tours.map((tour) => tour.id).join(',')}</div>
     </div>
@@ -130,7 +140,7 @@ describe('WasteToursContent sorting and delete flows', () => {
 
   it('sorts by linked location counts and executes single plus bulk delete flows', async () => {
     const onDeleteTour = vi.fn(async () => undefined);
-    const onDeleteTours = vi.fn(async () => undefined);
+    const onDeleteTours = vi.fn(async () => ({ failedIds: [] }));
 
     render(
       <WasteToursContent
@@ -141,13 +151,15 @@ describe('WasteToursContent sorting and delete flows', () => {
           { id: 'tour-2', name: 'Tour Zwei', recurrence: 'monthly', active: false } as never,
         ]}
         fractions={[] as never}
-        masterDataOverview={{
-          locationTourLinks: [
-            { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' },
-            { id: 'link-2', locationId: 'location-2', tourId: 'tour-1' },
-            { id: 'link-3', locationId: 'location-3', tourId: 'tour-2' },
-          ],
-        } as never}
+        masterDataOverview={
+          {
+            locationTourLinks: [
+              { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' },
+              { id: 'link-2', locationId: 'location-2', tourId: 'tour-1' },
+              { id: 'link-3', locationId: 'location-3', tourId: 'tour-2' },
+            ],
+          } as never
+        }
         schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}

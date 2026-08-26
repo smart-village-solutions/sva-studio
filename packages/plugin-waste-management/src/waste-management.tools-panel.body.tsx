@@ -72,6 +72,7 @@ export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
         previewReady={props.previewReady}
         running={props.runningAction !== null}
         lastJob={props.lastJob}
+        canOpenJobDetails={props.access.canOpenJobDetails}
         onImportProfileIdChange={props.importSelectionHandlers.onImportProfileIdChange}
         onImportSourceFormatChange={props.importSelectionHandlers.onImportSourceFormatChange}
         onImportBlobRefChange={props.setImportBlobRef}
@@ -85,7 +86,8 @@ export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
       lastJob={props.lastJob}
       technicalHistory={props.technicalHistory}
       canDeleteHistoryEntries={props.access.canDeleteHistoryEntries}
-      onDeleteEntry={(jobId) => void props.runDeleteHistoryEntry(jobId)}
+      canOpenJobDetails={props.access.canOpenJobDetails}
+      onDeleteEntry={(jobId) => props.runDeleteHistoryEntry(jobId)}
     />
     <WasteToolsAdvancedSection
       canRunInitialize={props.access.canRunInitialize}

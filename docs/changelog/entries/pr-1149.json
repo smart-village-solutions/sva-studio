@@ -1,0 +1,4 @@
+{
+  "prNumber": 1149,
+  "body": "Rückmeldungen für Löschungen und länger laufende Plugin-Vorgänge sind jetzt einheitlich und verlässlich.\n\n- Löschdialoge benennen das betroffene Objekt, zeigen laufende und fehlgeschlagene Vorgänge direkt an und bestätigen den Abschluss dauerhaft nach der Navigation.\n- Plugin-Vorgänge zeigen Status, Fortschritt, Abbruchmöglichkeiten und Ergebnisse nach einem gemeinsamen Muster.\n- Die neuen Rückmeldungen stehen in allen betroffenen redaktionellen Plugins und in der Abfallverwaltung zur Verfügung."
+}

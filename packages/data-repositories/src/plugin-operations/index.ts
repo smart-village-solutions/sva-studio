@@ -151,7 +151,8 @@ const mapStudioJobListRow = (row: StudioJobListRow): StudioJobListResultItem => 
           instanceId: row.instance_id,
           eventType: row.latest_event_type ?? 'job.queued',
           status: row.latest_event_status ?? row.status,
-          progress: (row.latest_event_progress as StudioJobEventRecord['progress'] | null) ?? undefined,
+          progress:
+            (row.latest_event_progress as StudioJobEventRecord['progress'] | null) ?? undefined,
           attempts: row.latest_event_attempts ?? row.attempts,
           message: row.latest_event_message ?? undefined,
           details: (row.latest_event_details as StudioJobEventDetails | null) ?? undefined,
@@ -161,13 +162,17 @@ const mapStudioJobListRow = (row: StudioJobListRow): StudioJobListResultItem => 
     : {}),
 });
 
-const queryRows = async <TRow>(executor: SqlExecutor, statement: SqlStatement): Promise<readonly TRow[]> => {
+const queryRows = async <TRow>(
+  executor: SqlExecutor,
+  statement: SqlStatement
+): Promise<readonly TRow[]> => {
   const result = await executor.execute<TRow>(statement);
   return result.rows;
 };
 
-const toJsonSqlValue = (value: Readonly<Record<string, unknown>> | null | undefined): string | null =>
-  value ? JSON.stringify(value) : null;
+const toJsonSqlValue = (
+  value: Readonly<Record<string, unknown>> | null | undefined
+): string | null => (value ? JSON.stringify(value) : null);
 
 const jobSelectColumns = `
   id,
@@ -378,7 +383,9 @@ ${jobSelectColumns}
   values: [input.heartbeatAt, input.workerId ?? null, input.instanceId, input.jobId],
 });
 
-const requestJobCancellationStatement = (input: StudioJobCancellationRequestInput): SqlStatement => ({
+const requestJobCancellationStatement = (
+  input: StudioJobCancellationRequestInput
+): SqlStatement => ({
   text: `
 UPDATE iam.studio_jobs
 SET
@@ -386,6 +393,8 @@ SET
   updated_at = NOW()
 WHERE instance_id = $2
   AND id = $3
+  AND status IN ('queued', 'running', 'retrying')
+  AND cancel_requested_at IS NULL
 RETURNING
 ${jobSelectColumns}
   `,
@@ -587,7 +596,10 @@ const requireFirstRow = <TRow>(row: TRow | undefined, errorCode: string): TRow =
   return row;
 };
 
-const createJob = async (executor: SqlExecutor, input: StudioJobCreateInput): Promise<StudioJobRecord> => {
+const createJob = async (
+  executor: SqlExecutor,
+  input: StudioJobCreateInput
+): Promise<StudioJobRecord> => {
   const rows = await queryRows<StudioJobRow>(executor, createJobStatement(input));
   return mapStudioJobRow(requireFirstRow(rows[0], `studio_job_create_failed:${input.id}`));
 };
@@ -611,7 +623,10 @@ const getJobDetail = async (
     return null;
   }
 
-  const eventRows = await queryRows<StudioJobEventRow>(executor, listJobEventsStatement(instanceId, jobId));
+  const eventRows = await queryRows<StudioJobEventRow>(
+    executor,
+    listJobEventsStatement(instanceId, jobId)
+  );
   return {
     ...job,
     history: eventRows.map(mapStudioJobEventRow),
@@ -625,8 +640,9 @@ const listJobs = async (
 ): Promise<StudioJobListResult> => {
   const rows = await queryRows<StudioJobListRow>(executor, listJobsStatement(instanceId, query));
   const shouldFallbackToCount = rows.length === 0 && query.page > 1;
-  const fallbackCountRows =
-    shouldFallbackToCount ? await queryRows<StudioJobCountRow>(executor, countJobsStatement(instanceId, query)) : null;
+  const fallbackCountRows = shouldFallbackToCount
+    ? await queryRows<StudioJobCountRow>(executor, countJobsStatement(instanceId, query))
+    : null;
   return {
     items: rows.map(mapStudioJobListRow),
     total: rows[0]?.total_count ?? fallbackCountRows?.[0]?.total_count ?? 0,
@@ -679,7 +695,9 @@ const appendJobEvent = async (
   input: StudioJobEventCreateInput
 ): Promise<StudioJobEventRecord> => {
   const rows = await queryRows<StudioJobEventRow>(executor, createJobEventStatement(input));
-  return mapStudioJobEventRow(requireFirstRow(rows[0], `studio_job_event_create_failed:${input.id}`));
+  return mapStudioJobEventRow(
+    requireFirstRow(rows[0], `studio_job_event_create_failed:${input.id}`)
+  );
 };
 
 export const createStudioJobRepository = (executor: SqlExecutor): StudioJobRepository => ({

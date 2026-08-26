@@ -182,7 +182,9 @@ vi.mock('../../../../packages/plugin-waste-management/src/index.ts', () => ({
         requiredAction: 'waste-management.read',
       },
     ],
-    permissions: [{ id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' }],
+    permissions: [
+      { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' },
+    ],
     moduleIam: {
       moduleId: 'waste-management',
       permissionIds: ['waste-management.read'],
@@ -221,6 +223,7 @@ describe('plugin action alias lookup', () => {
     const {
       getStudioPluginAction,
       getStudioPluginNavigationModuleId,
+      getStudioPluginTranslationNamespace,
       studioAdminResources,
       studioPluginCatalog,
       studioPluginCatalogIssues,
@@ -258,7 +261,9 @@ describe('plugin action alias lookup', () => {
       'poi',
       'waste-management',
     ]);
-    expect(studioPluginCatalog.every((entry) => entry.sourceType === 'workspace' && entry.enabled)).toBe(true);
+    expect(
+      studioPluginCatalog.every((entry) => entry.sourceType === 'workspace' && entry.enabled)
+    ).toBe(true);
     expect(studioPluginSnapshot.registry).toBe(studioBuildTimeRegistry);
     expect(studioPluginSnapshot.pluginSources.map((source) => source.pluginId)).toEqual([
       'categories',
@@ -287,16 +292,21 @@ describe('plugin action alias lookup', () => {
         }),
       ])
     );
-    expect(getStudioPluginNavigationModuleId({ id: 'waste-management.navigation' })).toBe('waste-management');
+    expect(getStudioPluginNavigationModuleId({ id: 'waste-management.navigation' })).toBe(
+      'waste-management'
+    );
     expect(getStudioPluginNavigationModuleId({ id: 'unknown.navigation' })).toBeNull();
+    expect(getStudioPluginTranslationNamespace('waste-management')).toBe('wasteManagement');
+    expect(getStudioPluginTranslationNamespace('unknown')).toBe('unknown');
     expect(registerPluginTranslationResolverMock).toHaveBeenCalledTimes(1);
     expect(resetTranslatorCacheMock).toHaveBeenCalledTimes(1);
     expect(mergeI18nResourcesMock).toHaveBeenCalledWith(studioBuildTimeRegistry.translations);
 
     const translationResolver = registerPluginTranslationResolverMock.mock.calls[0]?.[0] as
-      | ((key: string, variables?: Record<string, string | number>) => string)
-      | undefined;
-    expect(translationResolver?.('wasteManagement.navigation.title')).toBe('wasteManagement.navigation.title');
+      ((key: string, variables?: Record<string, string | number>) => string) | undefined;
+    expect(translationResolver?.('wasteManagement.navigation.title')).toBe(
+      'wasteManagement.navigation.title'
+    );
     expect(getStudioPluginAction('news.create')).toMatchObject({
       actionId: 'news.create',
     });
@@ -398,49 +408,57 @@ describe('plugin action alias lookup', () => {
     const resolvePluginModuleResults: unknown[] = [];
 
     vi.doMock('./plugin-catalog-loader.js', () => ({
-      createStudioPluginCatalogReport: vi.fn(async (input: {
-        resolveManifest: (entry: { sourceType: 'workspace' | 'package'; sourceRef: string }) => unknown;
-        resolvePluginModule: (
-          entry: { sourceType: 'workspace' | 'package'; sourceRef: string },
-          manifest: { entry?: string }
-        ) => Promise<unknown>;
-      }) => {
-        resolveManifestResults.push(
-          input.resolveManifest({ sourceType: 'workspace', sourceRef: 'packages/missing-plugin' }),
-          input.resolveManifest({ sourceType: 'package', sourceRef: '@missing/plugin' })
-        );
-        resolvePluginModuleResults.push(
-          await input.resolvePluginModule(
-            { sourceType: 'workspace', sourceRef: 'packages/missing-plugin' },
-            { entry: './src/missing.ts' }
-          ),
-          await input.resolvePluginModule(
-            { sourceType: 'package', sourceRef: '@missing/plugin' },
-            { entry: './dist/missing.js' }
-          )
-        );
+      createStudioPluginCatalogReport: vi.fn(
+        async (input: {
+          resolveManifest: (entry: {
+            sourceType: 'workspace' | 'package';
+            sourceRef: string;
+          }) => unknown;
+          resolvePluginModule: (
+            entry: { sourceType: 'workspace' | 'package'; sourceRef: string },
+            manifest: { entry?: string }
+          ) => Promise<unknown>;
+        }) => {
+          resolveManifestResults.push(
+            input.resolveManifest({
+              sourceType: 'workspace',
+              sourceRef: 'packages/missing-plugin',
+            }),
+            input.resolveManifest({ sourceType: 'package', sourceRef: '@missing/plugin' })
+          );
+          resolvePluginModuleResults.push(
+            await input.resolvePluginModule(
+              { sourceType: 'workspace', sourceRef: 'packages/missing-plugin' },
+              { entry: './src/missing.ts' }
+            ),
+            await input.resolvePluginModule(
+              { sourceType: 'package', sourceRef: '@missing/plugin' },
+              { entry: './dist/missing.js' }
+            )
+          );
 
-        return {
-          catalog: [],
-          issues: [],
-          snapshot: {
-            pluginSources: [],
-            registry: {
-              plugins: [],
-              pluginRegistry: new Map(),
-              pluginActionRegistry: new Map(),
-              pluginModuleIamRegistry: new Map(),
-              pluginModuleIamContracts: [],
-              routes: [],
-              navigation: [],
-              contentTypes: [],
-              adminResources: [],
-              translations: {},
-              jobTypes: [],
+          return {
+            catalog: [],
+            issues: [],
+            snapshot: {
+              pluginSources: [],
+              registry: {
+                plugins: [],
+                pluginRegistry: new Map(),
+                pluginActionRegistry: new Map(),
+                pluginModuleIamRegistry: new Map(),
+                pluginModuleIamContracts: [],
+                routes: [],
+                navigation: [],
+                contentTypes: [],
+                adminResources: [],
+                translations: {},
+                jobTypes: [],
+              },
             },
-          },
-        };
-      }),
+          };
+        }
+      ),
       createStudioPluginCatalogSeed: vi.fn(() => ({
         catalog: [],
         issues: [],
@@ -460,9 +478,9 @@ describe('plugin action alias lookup', () => {
     const currentFilePath = fileURLToPath(import.meta.url);
     const source = readFileSync(resolve(dirname(currentFilePath), 'plugins.ts'), 'utf8');
 
-    expect(source).toContain("node_modules/plugin-*/dist/index.js");
-    expect(source).toContain("node_modules/@*/plugin-*/dist/index.js");
-    expect(source).not.toContain("node_modules/*/dist/index.js");
-    expect(source).not.toContain("node_modules/@*/*/dist/index.js");
+    expect(source).toContain('node_modules/plugin-*/dist/index.js');
+    expect(source).toContain('node_modules/@*/plugin-*/dist/index.js');
+    expect(source).not.toContain('node_modules/*/dist/index.js');
+    expect(source).not.toContain('node_modules/@*/*/dist/index.js');
   });
 });

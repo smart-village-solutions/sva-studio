@@ -1,14 +1,15 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SurveyQuestionFormValues } from '../src/surveys.detail-content-model.js';
 import { SurveyQuestionFormFields } from '../src/surveys.question-form-fields.js';
+import { SurveyQuestionDeleteDialog } from '../src/surveys.question-delete-dialog.js';
 import { SurveyQuestionHeader } from '../src/surveys.question-header.js';
 
 const pt = (key: string, variables?: Readonly<Record<string, string | number>>) => {
   const template =
-    ({
+    {
       'fields.questionTitle': 'Fragetitel',
       'fields.questionDescription': 'Fragebeschreibung',
       'fields.questionType': 'Fragetyp',
@@ -19,18 +20,27 @@ const pt = (key: string, variables?: Readonly<Record<string, string | number>>) 
       'fields.questionTypeOptions.singleChoiceWithText': 'Einfachauswahl mit Freitext',
       'fields.questionTypeOptions.multipleChoiceWithText': 'Mehrfachauswahl mit Freitext',
       'labels.questionSection': 'Frage {{index}}',
+      'labels.answerSection': 'Antwort {{index}}',
       'actions.moveQuestionUp': 'Frage {{index}} nach oben',
       'actions.moveQuestionDown': 'Frage {{index}} nach unten',
       'actions.deleteQuestion': 'Frage {{index}} löschen',
       'actions.confirmDelete': 'Löschen',
-    })[key] ?? key;
+      'actions.cancelDelete': 'Abbrechen',
+      'messages.deleteQuestionTitle': 'Frage „{{target}}“ löschen?',
+      'messages.deleteQuestionDescription':
+        'Die Frage „{{target}}“ wird zusammen mit allen zugehörigen Antworten aus dem Entwurf entfernt.',
+      'messages.deleteOptionTitle': 'Antwort „{{target}}“ löschen?',
+      'messages.deleteOptionDescription':
+        'Die Antwort „{{target}}“ wird aus der Frage „{{question}}“ entfernt.',
+    }[key] ?? key;
 
   if (!variables) {
     return template;
   }
 
   return Object.entries(variables).reduce(
-    (value, [variableName, variableValue]) => value.replace(`{{${variableName}}}`, String(variableValue)),
+    (value, [variableName, variableValue]) =>
+      value.replace(`{{${variableName}}}`, String(variableValue)),
     template
   );
 };
@@ -51,9 +61,11 @@ describe('survey question helper components', () => {
 
   it('updates description, type normalization, and required flags through SurveyQuestionFormFields', () => {
     let currentQuestion = question;
-    const updateQuestion = vi.fn((_questionIndex, updater: (value: SurveyQuestionFormValues) => SurveyQuestionFormValues) => {
-      currentQuestion = updater(currentQuestion);
-    });
+    const updateQuestion = vi.fn(
+      (_questionIndex, updater: (value: SurveyQuestionFormValues) => SurveyQuestionFormValues) => {
+        currentQuestion = updater(currentQuestion);
+      }
+    );
 
     render(
       <SurveyQuestionFormFields
@@ -64,7 +76,9 @@ describe('survey question helper components', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Fragebeschreibung'), { target: { value: 'Neue Beschreibung' } });
+    fireEvent.change(screen.getByLabelText('Fragebeschreibung'), {
+      target: { value: 'Neue Beschreibung' },
+    });
     fireEvent.change(screen.getByLabelText('Fragetyp'), { target: { value: 'FREE_TEXT' } });
     fireEvent.click(screen.getByLabelText('Pflichtfrage'));
 
@@ -102,6 +116,90 @@ describe('survey question helper components', () => {
       expect.objectContaining({ title: 'Frage A' }),
     ]);
     expect(requestDeleteQuestion).toHaveBeenCalledWith(1);
-    expect(screen.getByRole('button', { name: 'Frage 2 nach unten' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Frage 2 nach unten' })).toHaveProperty(
+      'disabled',
+      true
+    );
+  });
+
+  it('names draft targets and explains nested question deletion consequences', () => {
+    const { rerender } = render(
+      <SurveyQuestionDeleteDialog
+        pt={pt}
+        questions={[question]}
+        pendingDelete={{ kind: 'question', questionIndex: 0 }}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('alertdialog', { name: 'Frage „Frage A“ löschen?' })).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Die Frage „Frage A“ wird zusammen mit allen zugehörigen Antworten aus dem Entwurf entfernt.'
+      )
+    ).toBeTruthy();
+
+    rerender(
+      <SurveyQuestionDeleteDialog
+        pt={pt}
+        questions={[question]}
+        pendingDelete={{ kind: 'option', questionIndex: 0, optionIndex: 0 }}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('alertdialog', { name: 'Antwort „Option A“ löschen?' })).toBeTruthy();
+    expect(
+      screen.getByText('Die Antwort „Option A“ wird aus der Frage „Frage A“ entfernt.')
+    ).toBeTruthy();
+  });
+
+  it('restores focus to the add-question action after removing a draft item', async () => {
+    const Harness = () => {
+      const [questions, setQuestions] = React.useState([question]);
+      const [pendingDelete, setPendingDelete] = React.useState<{
+        kind: 'question';
+        questionIndex: number;
+      } | null>(null);
+      const fallbackFocusRef = React.useRef<HTMLButtonElement | null>(null);
+      return (
+        <>
+          <button ref={fallbackFocusRef} type="button">
+            Frage hinzufügen
+          </button>
+          {questions.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setPendingDelete({ kind: 'question', questionIndex: 0 })}
+            >
+              Frage löschen
+            </button>
+          ) : null}
+          <SurveyQuestionDeleteDialog
+            pt={pt}
+            questions={questions}
+            pendingDelete={pendingDelete}
+            fallbackFocusRef={fallbackFocusRef}
+            onConfirm={() => {
+              setQuestions([]);
+              setPendingDelete(null);
+            }}
+            onCancel={() => setPendingDelete(null)}
+          />
+        </>
+      );
+    };
+
+    render(<Harness />);
+    const deleteButton = screen.getByRole('button', { name: 'Frage löschen' });
+    deleteButton.focus();
+    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Frage hinzufügen' }));
+    });
   });
 });

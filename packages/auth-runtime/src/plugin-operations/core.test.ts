@@ -95,6 +95,7 @@ describe('plugin operations handlers', () => {
           {
             handler: vi.fn(),
             queueName: 'plugin-imports',
+            supportsCancellation: true,
           },
         ],
       ])
@@ -412,12 +413,14 @@ describe('plugin operations handlers', () => {
   });
 
   it('reads a job status for the authenticated instance', async () => {
+    let jobSource: 'plugin' | 'host' = 'plugin';
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
         getJobDetail: vi.fn(async () => ({
           id: 'job-1',
           instanceId: 'tenant-a',
           pluginId: 'news',
+          source: jobSource,
           jobTypeId: 'news.import-articles',
           importProfileId: 'news.article-import',
           queueName: 'plugin-operations',
@@ -472,6 +475,7 @@ describe('plugin operations handlers', () => {
       data: {
         id: 'job-1',
         status: 'running',
+        availableActions: ['cancel'],
         progress: {
           completedSteps: 1,
           totalSteps: 3,
@@ -497,6 +501,27 @@ describe('plugin operations handlers', () => {
           lastObservedAt: '2026-05-09T12:01:30.000Z',
         },
       },
+    });
+
+    jobSource = 'host';
+    const hostResponse = await getPluginOperationJobHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111',
+        { method: 'GET' }
+      )
+    );
+    await expect(hostResponse.json()).resolves.toMatchObject({
+      data: { availableActions: [] },
+    });
+    expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(1, {
+      ctx: expect.anything(),
+      action: 'iam.monitoring.read',
+    });
+    expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenNthCalledWith(2, {
+      ctx: expect.anything(),
+      action: 'iam.monitoring.write',
+      logDeniedDecision: false,
+      permissions: [],
     });
   });
 
@@ -585,6 +610,14 @@ describe('plugin operations handlers', () => {
   it('stores a cancellation request for the authenticated instance', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
+        getJobById: vi.fn(
+          async () =>
+            ({
+              id: 'job-1',
+              source: 'plugin',
+              jobTypeId: 'news.import-articles',
+            }) as never
+        ),
         requestJobCancellation: vi.fn(async () => ({
           id: 'job-1',
           instanceId: 'tenant-a',
@@ -861,6 +894,7 @@ describe('plugin operations handlers', () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
         requestJobCancellation: vi.fn(async () => null),
+        getJobById: vi.fn(async () => null),
       })
     );
 
@@ -885,9 +919,53 @@ describe('plugin operations handlers', () => {
     });
   });
 
+  it('returns conflict when cancellation is no longer available for an existing job', async () => {
+    const requestJobCancellation = vi.fn(async () => null);
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        requestJobCancellation,
+        getJobById: vi.fn(
+          async () =>
+            ({
+              id: 'job-1',
+              source: 'host',
+              jobTypeId: 'studio.dsr-export',
+            }) as never
+        ),
+      })
+    );
+
+    const response = await cancelPluginOperationJobHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel',
+        {
+          method: 'POST',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'conflict' },
+    });
+    expect(requestJobCancellation).not.toHaveBeenCalled();
+  });
+
   it('maps cancellation repository failures to database_unavailable', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
+        getJobById: vi.fn(
+          async () =>
+            ({
+              id: 'job-1',
+              source: 'plugin',
+              jobTypeId: 'news.import-articles',
+            }) as never
+        ),
         requestJobCancellation: vi.fn(async () => {
           throw new Error('repo down');
         }),
@@ -1048,7 +1126,9 @@ describe('plugin operations handlers', () => {
 
   it('rejects invalid artifact paths before actor and repository resolution', async () => {
     const response = await downloadPluginOperationArtifactHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/not-a-job/artifacts/not-an-artifact')
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/not-a-job/artifacts/not-an-artifact'
+      )
     );
 
     expect(response.status).toBe(400);
@@ -1156,14 +1236,16 @@ describe('plugin operations handlers', () => {
           pluginId: 'news',
           actorAccountId: 'account-1',
           resultPayload: {
-            artifacts: [{
-              artifactId,
-              contentType: 'application/json',
-              fileName: 'broken.json',
-              sizeBytes: 999,
-              sha256: 'wrong',
-              expiresAt: '2026-05-10T12:02:00.000Z',
-            }],
+            artifacts: [
+              {
+                artifactId,
+                contentType: 'application/json',
+                fileName: 'broken.json',
+                sizeBytes: 999,
+                sha256: 'wrong',
+                expiresAt: '2026-05-10T12:02:00.000Z',
+              },
+            ],
           },
         })),
       })

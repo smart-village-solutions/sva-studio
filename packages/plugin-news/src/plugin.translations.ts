@@ -345,7 +345,10 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     remove: 'Entfernen',
     removeCategory: 'Kategorie {{name}} entfernen',
     retryMediaReferences: 'Medienverknüpfungen erneut synchronisieren',
-    deleteConfirm: 'Soll diese Nachricht wirklich gelöscht werden?',
+    deleteConfirmTitle: 'Nachricht löschen?',
+    deleteConfirm:
+      'Die Nachricht „{{title}}“ wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
+    deleting: 'Wird gelöscht …',
   },
   empty: {
     title: 'Noch keine Nachrichten vorhanden',
@@ -371,6 +374,8 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     createSuccess: 'Die Nachricht wurde erstellt.',
     updateSuccess: 'Die Nachricht wurde aktualisiert.',
     deleteSuccess: 'Die Nachricht wurde gelöscht.',
+    deleteNavigationError:
+      'Die Nachricht wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.',
     deleteError: 'Die Nachricht konnte nicht gelöscht werden.',
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
@@ -805,7 +810,10 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     remove: 'Remove',
     removeCategory: 'Remove category {{name}}',
     retryMediaReferences: 'Retry media reference sync',
-    deleteConfirm: 'Do you really want to delete this news entry?',
+    deleteConfirmTitle: 'Delete news entry?',
+    deleteConfirm:
+      'The news entry “{{title}}” will be permanently deleted. This action cannot be undone.',
+    deleting: 'Deleting…',
   },
   empty: {
     title: 'No news entries yet',
@@ -830,6 +838,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     createSuccess: 'News entry created.',
     updateSuccess: 'News entry updated.',
     deleteSuccess: 'News entry deleted.',
+    deleteNavigationError: 'The news entry was deleted, but the content list could not be opened.',
     deleteError: 'Failed to delete news entry.',
     categoryOptionsLoading: 'Loading categories.',
     categoryOptionsLoadError: 'Failed to load categories.',

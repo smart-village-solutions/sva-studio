@@ -14,6 +14,8 @@ import { pageInstancesAdminDEResources } from './resources/de/admin/instances/pa
 import { pageInstancesAdminENResources } from './resources/en/admin/instances/page.resources.js';
 import { shellDEResources } from './resources/de/shell.resources.js';
 import { shellENResources } from './resources/en/shell.resources.js';
+import { interfacesDEResources } from './resources/de/interfaces.resources.js';
+import { interfacesENResources } from './resources/en/interfaces.resources.js';
 
 describe('i18n resource structure', () => {
   it('exports locale feature resources from explicit resource filenames', () => {
@@ -35,5 +37,11 @@ describe('i18n resource structure', () => {
     expect(instancesAdminENResources.page).toBe(pageInstancesAdminENResources);
     expect(accountDEResources.profile).toBe(profileAccountDEResources);
     expect(accountENResources.profile).toBe(profileAccountENResources);
+  });
+
+  it('warns in both locales that interface deletion is permanent', () => {
+    expect(interfacesDEResources.edit.deleteConfirmDescription).toContain('unwiderruflich');
+    expect(interfacesENResources.edit.deleteConfirmDescription).toContain('permanently');
+    expect(interfacesENResources.edit.deleteConfirm).toBe('Delete permanently');
   });
 });

@@ -282,6 +282,21 @@ describe('createWasteToursTourMutationHandlers', () => {
     expect(loadOverview).not.toHaveBeenCalled();
   });
 
+  it('resolves with a warning when refresh fails after a successful tour deletion', async () => {
+    const state = createState();
+    const loadOverview = vi.fn().mockRejectedValue(new Error('refresh'));
+    apiMocks.deleteWasteManagementTour.mockResolvedValue({});
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+
+    await expect(mutations.onDeleteTour({ id: 'tour-1' } as never)).resolves.toBeUndefined();
+
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'tours.messages.refreshAfterDeleteError',
+    });
+    expect(state.setSaving).toHaveBeenLastCalledWith(false);
+  });
+
   it('reports partial bulk delete success and maps delete failures', async () => {
     const partialState = createState();
     const partialLoadOverview = vi.fn().mockResolvedValue(undefined);
@@ -296,7 +311,9 @@ describe('createWasteToursTourMutationHandlers', () => {
       loadOverview: partialLoadOverview,
     });
 
-    await partialMutations.onDeleteTours(['tour-1', 'tour-2']);
+    await expect(partialMutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toEqual({
+      failedIds: ['tour-2'],
+    });
 
     expect(partialState.setMessage).toHaveBeenCalledWith({
       kind: 'success',
@@ -312,7 +329,9 @@ describe('createWasteToursTourMutationHandlers', () => {
     apiMocks.deleteWasteManagementTour.mockReset();
     apiMocks.deleteWasteManagementTour.mockRejectedValueOnce(new Error('invalid_request'));
 
-    await errorMutations.onDeleteTour({ id: 'tour-5' } as never);
+    await expect(errorMutations.onDeleteTour({ id: 'tour-5' } as never)).rejects.toThrow(
+      'invalid_request'
+    );
 
     expect(errorState.setMessage).toHaveBeenCalledWith({
       kind: 'error',
@@ -332,12 +351,31 @@ describe('createWasteToursTourMutationHandlers', () => {
       loadOverview,
     });
 
-    await mutations.onDeleteTours(['tour-1', 'tour-2']);
+    await expect(mutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toEqual({
+      failedIds: [],
+    });
 
     expect(loadOverview).toHaveBeenCalledWith(true);
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'success',
       text: 'tours.messages.deleteSuccess',
+    });
+  });
+
+  it('does not turn a bulk tour refresh failure into a deletion failure', async () => {
+    const state = createState();
+    const loadOverview = vi.fn().mockRejectedValue(new Error('refresh'));
+    apiMocks.deleteWasteManagementTour.mockReset();
+    apiMocks.deleteWasteManagementTour.mockResolvedValue({});
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+
+    await expect(mutations.onDeleteTours(['tour-1', 'tour-2'])).resolves.toEqual({
+      failedIds: [],
+    });
+
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'tours.messages.refreshAfterDeleteError',
     });
   });
 
@@ -398,7 +436,7 @@ describe('createWasteToursTourMutationHandlers', () => {
       { status: 'rejected', reason: new Error('forbidden') },
     ] as PromiseSettledResult<unknown>[]);
 
-    await failedMutations.onDeleteTours(['tour-1', 'tour-2']);
+    await expect(failedMutations.onDeleteTours(['tour-1', 'tour-2'])).rejects.toThrow('forbidden');
 
     expect(failedState.setMessage).toHaveBeenCalledWith({
       kind: 'error',
@@ -414,7 +452,7 @@ describe('createWasteToursTourMutationHandlers', () => {
     });
     const allSettledSpy = vi.spyOn(Promise, 'allSettled').mockRejectedValueOnce(new Error('boom'));
 
-    await outerErrorMutations.onDeleteTours(['tour-3']);
+    await expect(outerErrorMutations.onDeleteTours(['tour-3'])).rejects.toThrow('boom');
 
     expect(outerErrorState.setMessage).toHaveBeenCalledWith({
       kind: 'error',

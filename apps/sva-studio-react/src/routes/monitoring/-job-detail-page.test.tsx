@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { StudioJobDetail } from '@sva/core';
@@ -6,9 +6,20 @@ import type { StudioJobDetail } from '@sva/core';
 import { MonitoringJobDetailPage } from './-job-detail-page';
 
 const usePluginOperationJobDetailMock = vi.fn();
+const translatePluginKeyMock = vi.hoisted(() =>
+  vi.fn((pluginId: string, key: string) => `${pluginId}.${key}`)
+);
+
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
+  translatePluginKey: (...args: Parameters<typeof translatePluginKeyMock>) =>
+    translatePluginKeyMock(...args),
+}));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 vi.mock('../../hooks/use-plugin-operation-jobs', () => ({
@@ -148,6 +159,8 @@ const detailRecord: StudioJobDetail = {
 describe('MonitoringJobDetailPage', () => {
   beforeEach(() => {
     usePluginOperationJobDetailMock.mockReset();
+    translatePluginKeyMock.mockReset();
+    translatePluginKeyMock.mockImplementation((pluginId, key) => `${pluginId}.${key}`);
   });
 
   afterEach(() => {
@@ -172,7 +185,9 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getByText('Abbruch angefordert: Ja')).toBeTruthy();
     expect(screen.getByText('Upstream nicht erreichbar')).toBeTruthy();
     expect(screen.getAllByText('Fortschritt aktualisiert').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: 'Zur Jobliste' }).getAttribute('href')).toBe('/monitoring/jobs');
+    expect(screen.getByRole('link', { name: 'Zur Jobliste' }).getAttribute('href')).toBe(
+      '/monitoring/jobs'
+    );
     expect(screen.getAllByText(/jobs\.csv/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/service_unavailable/).length).toBeGreaterThan(0);
   });
@@ -273,6 +288,135 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getByText('Letzter erfolgreicher Batch: 16.06.2026, 12:17:17,125')).toBeTruthy();
   });
 
+  it('offers cancellation only from the server capability and confirms it in the shared dialog', async () => {
+    const cancel = vi.fn(async () => true);
+    usePluginOperationJobDetailMock.mockReturnValue({
+      detail: {
+        ...detailRecord,
+        status: 'running',
+        availableActions: ['cancel'],
+        cancelRequestedAt: undefined,
+        runtime: {
+          ...detailRecord.runtime,
+          cancellationRequested: false,
+          staleState: 'fresh',
+        },
+      },
+      actionError: null,
+      cancel,
+      error: null,
+      isCancelling: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MonitoringJobDetailPage jobId="job-1" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Job abbrechen' }));
+    expect(screen.getByRole('alertdialog', { name: 'Job abbrechen?' })).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Für den Job job-1 wird ein Abbruch angefordert. Bereits ausgeführte Schritte werden dadurch nicht zurückgenommen.'
+      )
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Job abbrechen' }));
+
+    await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));
+  });
+
+  it('closes an open cancellation dialog when navigating to another job', async () => {
+    usePluginOperationJobDetailMock.mockImplementation((jobId: string) => ({
+      detail: { ...detailRecord, id: jobId, availableActions: ['cancel'] },
+      actionError: null,
+      cancel: vi.fn(async () => true),
+      error: null,
+      isCancelling: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    }));
+
+    const { rerender } = render(<MonitoringJobDetailPage jobId="job-1" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Job abbrechen' }));
+    expect(screen.getByRole('alertdialog', { name: 'Job abbrechen?' })).toBeTruthy();
+
+    rerender(<MonitoringJobDetailPage jobId="job-2" />);
+
+    expect(screen.queryByRole('alertdialog', { name: 'Job abbrechen?' })).toBeNull();
+  });
+
+  it('closes an open cancellation dialog when the server capability disappears', async () => {
+    let canCancel = true;
+    usePluginOperationJobDetailMock.mockImplementation(() => ({
+      detail: {
+        ...detailRecord,
+        status: 'running',
+        availableActions: canCancel ? ['cancel'] : [],
+      },
+      actionError: null,
+      cancel: vi.fn(async () => false),
+      error: null,
+      isCancelling: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    }));
+
+    const { rerender } = render(<MonitoringJobDetailPage jobId="job-1" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Job abbrechen' }));
+    expect(screen.getByRole('alertdialog', { name: 'Job abbrechen?' })).toBeTruthy();
+
+    canCancel = false;
+    rerender(<MonitoringJobDetailPage jobId="job-1" />);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog', { name: 'Job abbrechen?' })).toBeNull()
+    );
+  });
+
+  it('announces a localized plugin phase instead of its technical identifier', async () => {
+    translatePluginKeyMock.mockReturnValue('Importlauf läuft');
+    usePluginOperationJobDetailMock.mockReturnValue({
+      detail: {
+        ...detailRecord,
+        pluginId: 'waste-management',
+        status: 'running',
+        progress: {
+          ...detailRecord.progress,
+          currentPhase: 'waste-management.import-running',
+        },
+      },
+      error: null,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MonitoringJobDetailPage jobId="job-1" />);
+
+    expect(await screen.findByText('Jobstatus: Läuft. Phase: Importlauf läuft.')).toBeTruthy();
+    expect(screen.queryByText(/waste-management\.import-running/)).toBeNull();
+    expect(translatePluginKeyMock).toHaveBeenCalledWith(
+      'wasteManagement',
+      'tools.progress.phases.waste-management.import-running'
+    );
+  });
+
+  it('does not invent cancellation or retry actions without a server capability', async () => {
+    usePluginOperationJobDetailMock.mockReturnValue({
+      detail: { ...detailRecord, availableActions: [] },
+      actionError: null,
+      cancel: vi.fn(),
+      error: null,
+      isCancelling: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MonitoringJobDetailPage jobId="job-1" />);
+
+    expect(await screen.findByRole('heading', { name: 'Job-Details' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Job abbrechen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /wiederholen/i })).toBeNull();
+  });
+
   it('renders loading, empty history, and mapped errors', async () => {
     usePluginOperationJobDetailMock
       .mockReturnValueOnce({
@@ -307,10 +451,14 @@ describe('MonitoringJobDetailPage', () => {
 
     const { rerender } = render(<MonitoringJobDetailPage jobId="job-1" />);
     expect(await screen.findByText('Jobs werden geladen.')).toBeTruthy();
+    expect(screen.getByText('Nicht verfügbar')).toBeTruthy();
+    expect(screen.queryByText('Jobstatus: Warteschlange.')).toBeNull();
 
     rerender(<MonitoringJobDetailPage jobId="job-1" />);
     expect(await screen.findByText('Der angeforderte Job wurde nicht gefunden.')).toBeTruthy();
-    expect(screen.getByText('Für diesen Job wurde noch kein technischer Verlauf gespeichert.')).toBeTruthy();
+    expect(
+      screen.getByText('Für diesen Job wurde noch kein technischer Verlauf gespeichert.')
+    ).toBeTruthy();
     expect(screen.getByText('Abbruch angefordert: Nein')).toBeTruthy();
 
     rerender(<MonitoringJobDetailPage jobId="job-1" />);

@@ -44,7 +44,14 @@ export const contentENResources = {
     back: 'Back to overview',
     archive: 'Archive',
     delete: 'Delete',
-    deleteConfirm: 'Do you really want to delete this content item?',
+    deleteConfirmTitle: 'Delete content permanently?',
+    deleteConfirmDescription:
+      'The content item “{{title}}” will be permanently deleted. This action cannot be undone.',
+    deleteBulkConfirmTitle: 'Delete selected content permanently?',
+    deleteBulkConfirmDescription:
+      '{{count}} selected content items will be permanently deleted. This action cannot be undone.',
+    deletePending: 'Deleting ...',
+    dismissFeedback: 'Dismiss',
   },
   fields: {
     title: 'Title',
@@ -177,6 +184,13 @@ export const contentENResources = {
     body: 'Create the first content item to use the list, status, and history views.',
   },
   messages: {
+    deleteSuccessTitle: 'Content deleted',
+    deleteSuccess: 'The content item with ID {{id}} was permanently deleted.',
+    deleteBulkSuccess: '{{count}} content items were permanently deleted.',
+    deleteError: 'The content item could not be deleted.',
+    deleteBulkError:
+      '{{failedCount}} content items could not be deleted. The failed selection is retained.',
+    deleteRefreshError: 'Deletion succeeded, but the content list could not be refreshed.',
     loading: 'Loading content ...',
     loadError: 'Content could not be loaded.',
     saveError: 'Content could not be saved.',

@@ -151,6 +151,7 @@ export const interfacesENResources = {
     saved: 'Saved',
     retry: 'Try again',
     reload: 'Reload',
+    dismiss: 'Dismiss',
   },
   create: {
     action: 'Create interface',
@@ -163,8 +164,9 @@ export const interfacesENResources = {
     title: 'Edit interface',
     deleteAction: 'Delete interface',
     deleteConfirmTitle: 'Delete interface?',
-    deleteConfirmDescription: 'Do you really want to delete the interface "{{name}}"?',
-    deleteConfirm: 'Delete',
+    deleteConfirmDescription: 'The interface "{{name}}" will be permanently deleted.',
+    deleteConfirm: 'Delete permanently',
+    deletePending: 'Deleting…',
     cancel: 'Cancel',
     commonName: 'Name',
     commonEnabled: 'Enabled',
@@ -176,6 +178,11 @@ export const interfacesENResources = {
     saveError: 'Interface settings could not be saved.',
     refreshAfterSaveError:
       'The settings were submitted but could not be reloaded. Please try again.',
+    deleteSuccessTitle: 'Interface deleted',
+    deleteSuccess: 'The interface “{{name}}” was permanently deleted.',
+    deleteError: 'The interface could not be deleted.',
+    refreshAfterDeleteError:
+      'The interface was deleted, but the list could not be refreshed. Please reload.',
   },
   errors: {
     configNotFound: 'No mainserver configuration exists for this instance yet.',

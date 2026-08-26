@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 
 import type {
@@ -90,6 +90,8 @@ type WasteToursContentBodyProps = {
   readonly onOpenAnnualTransfer: () => void;
   readonly filters: WasteToursFilterViewModel;
   readonly table: WasteToursTableViewModel;
+  readonly focusFallbackRef: RefObject<HTMLElement | null>;
+  readonly focusFallbackLabel: string;
 };
 
 export const WasteToursContentBody = ({
@@ -100,8 +102,15 @@ export const WasteToursContentBody = ({
   onOpenAnnualTransfer,
   filters,
   table,
+  focusFallbackRef,
+  focusFallbackLabel,
 }: WasteToursContentBodyProps) => (
-  <section className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
+  <section
+    ref={focusFallbackRef}
+    tabIndex={-1}
+    aria-label={focusFallbackLabel}
+    className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell"
+  >
     <WastePanelTableTopBar>
       <WasteToursToolbar
         filterDialogOpen={filters.filterDialogOpen}

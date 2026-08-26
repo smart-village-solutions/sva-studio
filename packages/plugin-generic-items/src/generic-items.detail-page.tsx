@@ -27,11 +27,12 @@ import {
   addStudioCreatedSaveFeedback,
   Button,
   hasStudioCreatedSaveFeedback,
-  StudioConfirmDialog,
+  StudioDestructiveActionDialog,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioFormSummaryErrors,
   StudioLoadingState,
+  StudioPersistentActionResult,
   StudioMediaPickerOverlay,
   StudioSaveButton,
   contentMediaUsageToReference,
@@ -411,14 +412,16 @@ export function GenericItemsDetailPage({
       state: (previous) => removeStudioSaveFeedback(previous),
     });
   }, [contentId, loading, location.state, navigate, saveFeedback]);
-  const { activeTab, deleting, handleDelete, setActiveTab } = useGenericItemsDetailActions({
-    contentId,
-    mode,
-    navigate,
-    pt,
-    setStatus,
-    actingPrincipalType,
-  });
+  const { activeTab, deleting, deleteNavigationFailed, handleDelete, setActiveTab } =
+    useGenericItemsDetailActions({
+      contentId,
+      mode,
+      navigate,
+      onDeleted: () => setDeleteDialogOpen(false),
+      pt,
+      setStatus,
+      actingPrincipalType,
+    });
   const isAssetSelectable = React.useCallback(
     (asset: GenericItemsMediaPickerAsset) => {
       if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
@@ -740,6 +743,18 @@ export function GenericItemsDetailPage({
           uploadPhase={mediaPicker.uploadPhase}
         />
         <StudioFormSummaryErrors errors={summaryErrors} />
+        {deleteNavigationFailed ? (
+          <StudioPersistentActionResult
+            kind="success"
+            title={pt('messages.deleteSuccess')}
+            description={pt('messages.deleteNavigationError')}
+            actions={
+              <Button asChild size="sm" variant="secondary">
+                <Link {...genericItemsListLink}>{pt('actions.back')}</Link>
+              </Button>
+            }
+          />
+        ) : null}
         {status ? (
           <StudioFormSummary data-testid="generic-items-status" kind={status.kind}>
             {status.text}
@@ -829,21 +844,23 @@ export function GenericItemsDetailPage({
           }}
         />
         {accessCapabilities.canDelete ? (
-          <StudioConfirmDialog
+          <StudioDestructiveActionDialog
             open={deleteDialogOpen}
-            title={pt('actions.delete')}
-            description={pt('actions.deleteConfirm')}
+            title={pt('actions.deleteConfirmTitle')}
+            description={pt('actions.deleteConfirm', {
+              title: methods.getValues('title'),
+            })}
             confirmLabel={pt('actions.delete')}
+            pendingLabel={pt('actions.deleting')}
             cancelLabel={pt('actions.back')}
-            confirmDisabled={deleting}
-            cancelDisabled={deleting}
+            pending={deleting}
+            errorMessage={status?.kind === 'error' ? status.text : undefined}
             onConfirm={() => void handleDelete()}
-            onCancel={() => setDeleteDialogOpen(false)}
-          >
-            {status?.kind === 'error' ? (
-              <StudioFormSummary kind="error">{status.text}</StudioFormSummary>
-            ) : null}
-          </StudioConfirmDialog>
+            onCancel={() => {
+              setStatus(null);
+              setDeleteDialogOpen(false);
+            }}
+          />
         ) : null}
       </StudioDetailPageTemplate>
     </FormProvider>

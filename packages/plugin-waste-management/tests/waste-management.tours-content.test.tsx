@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const resolveTourAssignmentItemsMock = vi.hoisted(() => vi.fn());
 
 import { WasteToursContent } from '../src/waste-management.tours.content.js';
+import { WasteToursDeleteDialogs } from '../src/waste-management.tours-delete-dialogs.js';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
@@ -67,6 +68,45 @@ vi.mock('../src/waste-management.page.support.js', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  StudioDestructiveActionDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+    pending,
+    confirmDisabled,
+    errorMessage,
+    children,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly pending?: boolean;
+    readonly confirmDisabled?: boolean;
+    readonly errorMessage?: React.ReactNode;
+    readonly children?: React.ReactNode;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {children}
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+        <button type="button" disabled={pending} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" disabled={pending || confirmDisabled} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   Badge: ({
     children,
     variant,
@@ -229,6 +269,101 @@ const toursSearch = {
 };
 
 describe('WasteToursContent', () => {
+  it('restores focus to the tours region after deleting a row', async () => {
+    const tour = { id: 'tour-1', name: 'Tour 1' } as never;
+    const Harness = () => {
+      const [rowVisible, setRowVisible] = React.useState(true);
+      const [pendingTour, setPendingTour] = React.useState<typeof tour | null>(null);
+      const fallbackFocusRef = React.useRef<HTMLElement | null>(null);
+      return (
+        <section ref={fallbackFocusRef} tabIndex={-1} aria-label="Touren">
+          {rowVisible ? (
+            <button type="button" onClick={() => setPendingTour(tour)}>
+              Tour löschen
+            </button>
+          ) : null}
+          <WasteToursDeleteDialogs
+            tourPendingDelete={pendingTour}
+            tourPendingStatusChange={null}
+            bulkDeleteOpen={false}
+            selectedTourIds={[]}
+            onCancelSingle={() => setPendingTour(null)}
+            onCancelStatusChange={vi.fn()}
+            onCancelBulk={vi.fn()}
+            onConfirmStatusChange={vi.fn(async () => undefined)}
+            statusChangePending={false}
+            statusChangeError={null}
+            onDeleteTour={async () => {
+              setRowVisible(false);
+              await new Promise((resolve) => window.setTimeout(resolve, 0));
+            }}
+            onDeleteTours={vi.fn(async () => ({ failedIds: [] }))}
+            onAfterBulkDelete={vi.fn()}
+            fallbackFocusRef={fallbackFocusRef}
+          />
+        </section>
+      );
+    };
+
+    render(<Harness />);
+    const deleteButton = screen.getByRole('button', { name: 'Tour löschen' });
+    deleteButton.focus();
+    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.deleteDialog.confirm' }));
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Touren' }));
+    });
+  });
+
+  it('keeps failed tour ids in the open bulk-delete dialog for retry', async () => {
+    const onDeleteTours = vi
+      .fn()
+      .mockResolvedValueOnce({ failedIds: ['tour-2'] })
+      .mockResolvedValueOnce({ failedIds: [] });
+
+    const Harness = () => {
+      const [selectedTourIds, setSelectedTourIds] = React.useState(['tour-1', 'tour-2']);
+      const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(true);
+      return (
+        <WasteToursDeleteDialogs
+          tourPendingDelete={null}
+          tourPendingStatusChange={null}
+          bulkDeleteOpen={bulkDeleteOpen}
+          selectedTourIds={selectedTourIds}
+          onCancelSingle={vi.fn()}
+          onCancelStatusChange={vi.fn()}
+          onCancelBulk={() => setBulkDeleteOpen(false)}
+          onConfirmStatusChange={vi.fn(async () => undefined)}
+          statusChangePending={false}
+          statusChangeError={null}
+          onDeleteTour={vi.fn(async () => undefined)}
+          onDeleteTours={onDeleteTours}
+          onAfterBulkDelete={(failedIds) => {
+            setSelectedTourIds([...failedIds]);
+            if (failedIds.length === 0) setBulkDeleteOpen(false);
+          }}
+        />
+      );
+    };
+
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkDeleteDialog.confirm' }));
+
+    await waitFor(() => {
+      expect(onDeleteTours).toHaveBeenLastCalledWith(['tour-1', 'tour-2']);
+      expect(screen.getByRole('alert').textContent).toBe('tours.messages.deleteError');
+      expect(screen.getByText('tours.bulkDeleteDialog.description:1')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkDeleteDialog.confirm' }));
+
+    await waitFor(() => {
+      expect(onDeleteTours).toHaveBeenLastCalledWith(['tour-2']);
+      expect(screen.queryByText('tours.bulkDeleteDialog.title')).toBeNull();
+    });
+  });
+
   beforeEach(() => {
     resolveTourAssignmentItemsMock.mockReset();
   });

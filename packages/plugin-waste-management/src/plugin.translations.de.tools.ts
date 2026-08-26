@@ -1,4 +1,5 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
+import { wasteManagementJobStatusesDE } from './plugin.translations.tools-job-statuses.js';
 
 export const wasteManagementPluginTranslationsDETools = createWasteManagementToolsTranslations({
   exports: {
@@ -151,6 +152,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
   actions: {
     startExport: 'Export starten',
     startImport: 'Import starten',
+    openJobDetails: 'Jobdetails öffnen',
     startMigrations: 'Migrationen starten',
     startSeed: 'Initialdaten laden',
     startPostalCodeEnrichment: 'Postleitzahlen ergänzen',
@@ -166,6 +168,8 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     previewReady: 'Die Importvorschau ist bereit.',
     historyDeleteSuccess: 'Der Historieneintrag wurde gelöscht.',
     historyDeleteError: 'Der Historieneintrag konnte nicht gelöscht werden.',
+    historyRefreshAfterDeleteError:
+      'Der Historieneintrag wurde gelöscht, aber die Historie konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
     jobStartError: 'Der Abfallprozess konnte nicht gestartet werden.',
     jobStartErrorWithReason: 'Der Abfallprozess konnte nicht gestartet werden: {{reason}}',
     forbidden: 'Für diesen Abfallvorgang fehlt die Berechtigung.',
@@ -185,6 +189,11 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     historyDetailsAction: 'Details anzeigen',
     historyCloseDetailsAction: 'Details schließen',
     historyDeleteAction: 'Eintrag löschen',
+    historyDeleteTitle: 'Historieneintrag dauerhaft löschen?',
+    historyDeleteDescription:
+      'Der Historieneintrag für Prozess {{jobId}} wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    historyDeleteConfirm: 'Dauerhaft löschen',
+    historyDeleteCancel: 'Abbrechen',
     advancedTitle: 'Erweiterte Systemfunktionen',
     advancedDescription:
       'Technische Wartungsfunktionen und tiefergehende Details für Administratoren.',
@@ -197,6 +206,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     jobType: 'Typ: {{value}}',
     jobStatus: 'Status: {{value}}',
     jobIdLabel: 'Prozess',
+    statusAnnouncement: 'Jobstatus: {{status}}.{{phase}}',
     jobTypeLabel: 'Typ',
     jobStatusLabel: 'Status',
   },
@@ -206,16 +216,33 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     rows: '{{processed}} / {{total}} Zeilen',
     updatedAt: 'Zuletzt aktualisiert: {{value}}',
     phases: {
+      'waste-management.provision-database': 'Datenbank wird provisioniert',
+      'waste-management.apply-migrations': 'Migrationen werden angewendet',
+      'waste-management.verify-access': 'Datenbankzugriff wird geprüft',
+      'waste-management.initialize': 'Datenquelle wird initialisiert',
+      'waste-management.migrations': 'Migrationen werden ausgeführt',
       'waste-management.import-preparation': 'Vorbereitung läuft',
       'waste-management.import-running': 'Importlauf läuft',
+      'waste-management.export-preparation': 'Export wird vorbereitet',
+      'waste-management.export-running': 'Export läuft',
+      'waste-management.seed': 'Initialdaten werden geladen',
+      'waste-management.reset': 'Abfalldaten werden zurückgesetzt',
+      'waste-management.mainserver-sync': 'Mainserver-Synchronisierung läuft',
+      'waste-management.sync-waste-types': 'Abfallarten werden synchronisiert',
       'waste-management.enrich-postal-codes': 'Postleitzahlen werden ermittelt',
-      'waste-management.completed': 'Import wird abgeschlossen',
+      'waste-management.materialize-email-reminders': 'E-Mail-Erinnerungen werden erstellt',
+      'waste-management.process-email-reminder-outbox': 'E-Mail-Erinnerungen werden versendet',
+      'waste-management.completed': 'Vorgang wird abgeschlossen',
     },
     statuses: {
       queued: 'Import wird vorbereitet',
       running: 'Import wird verarbeitet',
       retrying: 'Import wird erneut versucht',
+      succeeded: 'Import abgeschlossen',
+      failed: 'Import fehlgeschlagen',
+      cancelled: 'Import abgebrochen',
     },
+    jobStatuses: wasteManagementJobStatusesDE,
     steps: {
       'prepare-import': 'Import wird vorbereitet',
       'process-rows': 'Gültige Zeilen werden importiert',

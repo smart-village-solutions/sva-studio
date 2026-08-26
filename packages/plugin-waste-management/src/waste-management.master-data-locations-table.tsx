@@ -1,7 +1,7 @@
 import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { useState } from 'react';
-import { StudioConfirmDialog } from '@sva/studio-ui-react';
+import { useRef, useState } from 'react';
+import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 import {
   WasteMasterDataActiveTourBanner,
   WasteMasterDataLocationsTableToolbar,
@@ -28,10 +28,18 @@ const WasteMasterDataLocationsTableContent = ({
   const [pendingDeleteLocation, setPendingDeleteLocation] =
     useState<WasteCollectionLocationRecord | null>(null);
   const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const feedbackFocusFallbackRef = useRef<HTMLElement | null>(null);
 
   return (
     <>
-      <section className="rounded-none border-y border-border bg-card shadow-shell">
+      <section
+        ref={feedbackFocusFallbackRef}
+        tabIndex={-1}
+        aria-label={pt('masterData.locationsWorkspace.table.caption')}
+        className="rounded-none border-y border-border bg-card shadow-shell"
+      >
         <WastePanelTableTopBar>
           <WasteMasterDataLocationsTableToolbar
             selectedCollectionLocationsCount={props.selectedCollectionLocationsCount}
@@ -51,7 +59,10 @@ const WasteMasterDataLocationsTableContent = ({
             sortDirection={props.sortDirection}
             onSortModeChange={props.onSortModeChange}
             onSortDirectionChange={props.onSortDirectionChange}
-            onRequestDeleteSelected={() => setBulkDeleteRequested(true)}
+            onRequestDeleteSelected={() => {
+              setDeleteError(null);
+              setBulkDeleteRequested(true);
+            }}
             onToggleFiltersOpen={onToggleFiltersOpen}
           />
         </WastePanelTableTopBar>
@@ -68,6 +79,7 @@ const WasteMasterDataLocationsTableContent = ({
           onToggleLocation={props.onToggleLocation}
           onCopyLocation={props.onCopyLocation}
           onDeleteLocation={async (location) => {
+            setDeleteError(null);
             setPendingDeleteLocation(location);
           }}
           onOpenEditLocation={props.onOpenEditLocation}
@@ -85,33 +97,69 @@ const WasteMasterDataLocationsTableContent = ({
           />
         ) : null}
       </section>
-      <StudioConfirmDialog
+      <StudioDestructiveActionDialog
         open={pendingDeleteLocation !== null}
         title={pt('masterData.collectionLocations.actions.delete')}
-        description={pendingDeleteLocation ? props.getLocationLabel(pendingDeleteLocation) : ''}
+        description={
+          pendingDeleteLocation
+            ? pt('masterData.collectionLocations.dialog.deleteDescription', {
+                value: props.getLocationLabel(pendingDeleteLocation),
+              })
+            : ''
+        }
         confirmLabel={pt('masterData.collectionLocations.actions.delete')}
+        pendingLabel={pt('common.deleting')}
         cancelLabel={pt('masterData.collectionLocations.actions.cancel')}
-        onCancel={() => setPendingDeleteLocation(null)}
-        onConfirm={() => {
+        pending={deletePending}
+        errorMessage={deleteError}
+        fallbackFocusRef={feedbackFocusFallbackRef}
+        onCancel={() => {
+          setDeleteError(null);
+          setPendingDeleteLocation(null);
+        }}
+        onConfirm={async () => {
           if (!pendingDeleteLocation) {
             return;
           }
-          void props.onDeleteLocation(pendingDeleteLocation);
-          setPendingDeleteLocation(null);
+          setDeletePending(true);
+          setDeleteError(null);
+          try {
+            await props.onDeleteLocation(pendingDeleteLocation);
+            setPendingDeleteLocation(null);
+          } catch {
+            setDeleteError(pt('masterData.collectionLocations.messages.deleteError'));
+          } finally {
+            setDeletePending(false);
+          }
         }}
       />
-      <StudioConfirmDialog
+      <StudioDestructiveActionDialog
         open={bulkDeleteRequested}
         title={pt('masterData.collectionLocations.bulk.dialog.deleteTitle')}
         description={pt('masterData.collectionLocations.bulk.dialog.deleteDescription', {
           value: props.selectedCollectionLocationsCount,
         })}
         confirmLabel={pt('masterData.collectionLocations.bulk.actions.deleteSelected')}
+        pendingLabel={pt('common.deleting')}
         cancelLabel={pt('masterData.collectionLocations.actions.cancel')}
-        onCancel={() => setBulkDeleteRequested(false)}
-        onConfirm={() => {
-          void props.onDeleteLocations(props.selectedLocationIds);
+        pending={deletePending}
+        errorMessage={deleteError}
+        fallbackFocusRef={feedbackFocusFallbackRef}
+        onCancel={() => {
+          setDeleteError(null);
           setBulkDeleteRequested(false);
+        }}
+        onConfirm={async () => {
+          setDeletePending(true);
+          setDeleteError(null);
+          try {
+            await props.onDeleteLocations(props.selectedLocationIds);
+            setBulkDeleteRequested(false);
+          } catch {
+            setDeleteError(pt('masterData.collectionLocations.bulk.messages.deleteError'));
+          } finally {
+            setDeletePending(false);
+          }
         }}
       />
     </>

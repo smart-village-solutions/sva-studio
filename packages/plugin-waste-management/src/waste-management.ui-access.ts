@@ -25,6 +25,7 @@ export type WasteManagementUiAccess = Readonly<{
   canRunReset: boolean;
   canRunMainserverSync: boolean;
   canDeleteHistoryEntries: boolean;
+  canOpenJobDetails: boolean;
 }>;
 
 export const deriveWasteManagementUiAccess = (
@@ -84,6 +85,7 @@ export const deriveWasteManagementUiAccess = (
     canRunReset,
     canRunMainserverSync: canManageScheduling,
     canDeleteHistoryEntries: false,
+    canOpenJobDetails: grantedPermissions.has('iam.monitoring.read'),
   };
 };
 

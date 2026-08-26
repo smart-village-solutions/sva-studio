@@ -304,7 +304,9 @@ describe('PoiDetailPage', () => {
         'poi.messages.mediaPickerLinkAction': 'Medium per Link hinzufügen',
         'poi.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'poi.messages.mediaPickerAssetLoadError': 'Das Medium konnte nicht geladen werden.',
-        'poi.actions.deleteConfirm': 'Wirklich löschen?',
+        'poi.actions.deleteConfirmTitle': 'Ort löschen?',
+        'poi.actions.deleteConfirm':
+          'Der Ort „Rathaus“ wird dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.',
         'poi.actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
         'poi.actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
         'poi.actions.addOpeningHour': 'Öffnungszeit hinzufügen',
@@ -1318,10 +1320,8 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false)
-    );
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal('confirm', nativeConfirm);
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
 
@@ -1330,9 +1330,13 @@ describe('PoiDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    const dialog = screen.getByRole('alertdialog');
+    expect(within(dialog).getByText(/Rathaus/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'poi.actions.back' }));
 
     expect(vi.mocked(deletePoi)).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
+    expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
   it('shows the delete fallback error when deleting fails unexpectedly', async () => {
@@ -1342,11 +1346,6 @@ describe('PoiDetailPage', () => {
       payload: {},
     } as never);
     vi.mocked(deletePoi).mockRejectedValueOnce(new Error('delete boom'));
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true)
-    );
-
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
 
     await waitFor(() => {
@@ -1354,6 +1353,9 @@ describe('PoiDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Ort konnte nicht gelöscht werden.')).toBeTruthy();
@@ -1414,10 +1416,8 @@ describe('PoiDetailPage', () => {
       name: 'Rathaus',
       payload: {},
     } as never);
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true)
-    );
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal('confirm', nativeConfirm);
 
     render(<PoiDetailPage mode="edit" contentId="poi-1" />);
 
@@ -1426,10 +1426,26 @@ describe('PoiDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
 
     await waitFor(() => {
       expect(vi.mocked(deletePoi)).toHaveBeenCalledWith('poi-1', 'user');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/content',
+        state: expect.any(Function),
+      });
     });
+    const navigationState = navigateMock.mock.calls[0]?.[0]?.state({ preserved: true });
+    expect(navigationState).toEqual({
+      preserved: true,
+      studioActionFeedback: {
+        kind: 'destructive-complete',
+        resourceType: 'poi',
+        resourceId: 'poi-1',
+      },
+    });
+    expect(nativeConfirm).not.toHaveBeenCalled();
   });
 });

@@ -55,6 +55,12 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Create-Routentests weisen für seitengebundene Flows den einmaligen, datensatzgebundenen Übergang zur erzeugten Detailseite nach; Reload oder ein fremder Datensatz dürfen den Erfolg nicht erneut anzeigen
   - Tests begründeter Create-Ausnahmen weisen entweder den unmittelbar aktualisierten Elternkontext oder den weiterhin erforderlichen mehrstufigen Setup-Kontext ohne Erfolgstoast nach
   - partielle Ergebnisse zeigen keinen vollständigen Erfolg und wiederholen ausschließlich sicher idempotente Teilschritte
+- Aktionsfeedback-Gate:
+  - destruktive Referenzflüsse prüfen Bestätigung, Abbruch, Pending-Sperre, persistenten Dialogfehler und einmaliges ressourcengebundenes Ergebnis ohne Undo
+  - Host- und Plugin-Flows verwenden gemeinsame Studio-Primitives; neue browsernative Bestätigungen, globale Toast-Ketten oder parallele Basisdialoge sind unzulässig
+  - Job-Kurzsicht und Monitoring lesen denselben Hostvertrag; Status- und Phasenwechsel besitzen eine höfliche Live-Region, rein numerische Fortschritte nicht
+  - Cancel erscheint nur über `availableActions`, wird repositoryseitig konditional genau einmal angenommen und liefert für nicht mehr abbrechbare Jobs einen Konflikt
+  - manueller Retry bleibt ohne expliziten Hostvertrag und Berechtigung unsichtbar
 - IAM-Acceptance-Gate:
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
@@ -175,6 +181,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `@sva/plugin-sdk`, `@sva/core`, `@sva/auth-runtime`, `@sva/routing` und `@sva/data-repositories` müssen die neuen Job-/Import-Verträge über Unit- oder Type-Tests absichern
   - produktive Plugin-Operations-Endpunkte dürfen nur über den typisierten Runtime-Route-Katalog erreichbar sein
   - der Status eines generischen Plugin-Jobs muss aus genau einem zentralen Jobdatensatz gelesen werden
+  - Jobdetails müssen erlaubte Folgeaktionen explizit liefern; die UI darf Cancel oder Retry nicht aus lokalen Statusannahmen ableiten
   - die öffentliche Plattform darf keine konkrete Worker-Technologie im API- oder Plugin-Vertrag voraussetzen
 - Plugin-Plattform v2:
   - `openspec validate refactor-plugin-platform-for-external-publishable-plugins --strict` muss grün sein

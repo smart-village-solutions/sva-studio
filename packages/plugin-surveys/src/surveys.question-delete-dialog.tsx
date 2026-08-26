@@ -1,29 +1,59 @@
-import { StudioConfirmDialog } from '@sva/studio-ui-react';
+import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
+import type { RefObject } from 'react';
 
-import { type PendingDeleteState, type SurveyContentTranslate } from './surveys.question-editor.shared.js';
+import type { SurveyQuestionFormValues } from './surveys.detail-content-model.js';
+import {
+  type PendingDeleteState,
+  type SurveyContentTranslate,
+} from './surveys.question-editor.shared.js';
 
 export function SurveyQuestionDeleteDialog({
   pt,
+  questions,
   pendingDelete,
+  fallbackFocusRef,
   onConfirm,
   onCancel,
 }: Readonly<{
   pt: SurveyContentTranslate;
+  questions: readonly SurveyQuestionFormValues[];
   pendingDelete: PendingDeleteState;
+  fallbackFocusRef?: RefObject<HTMLElement | null>;
   onConfirm: () => void;
   onCancel: () => void;
 }>) {
+  const question = pendingDelete ? questions[pendingDelete.questionIndex] : undefined;
+  const questionTarget =
+    question?.title.trim() ||
+    pt('labels.questionSection', { index: (pendingDelete?.questionIndex ?? 0) + 1 });
+  const option =
+    pendingDelete?.kind === 'option' ? question?.options[pendingDelete.optionIndex] : undefined;
+  const optionTarget =
+    option?.title.trim() ||
+    pt('labels.answerSection', {
+      index: pendingDelete?.kind === 'option' ? pendingDelete.optionIndex + 1 : 1,
+    });
+
   return (
-    <StudioConfirmDialog
+    <StudioDestructiveActionDialog
       open={pendingDelete !== null}
-      title={pendingDelete?.kind === 'question' ? pt('messages.deleteQuestionTitle') : pt('messages.deleteOptionTitle')}
+      title={
+        pendingDelete?.kind === 'question'
+          ? pt('messages.deleteQuestionTitle', { target: questionTarget })
+          : pt('messages.deleteOptionTitle', { target: optionTarget })
+      }
       description={
         pendingDelete?.kind === 'question'
-          ? pt('messages.deleteQuestionDescription')
-          : pt('messages.deleteOptionDescription')
+          ? pt('messages.deleteQuestionDescription', { target: questionTarget })
+          : pt('messages.deleteOptionDescription', {
+              target: optionTarget,
+              question: questionTarget,
+            })
       }
       confirmLabel={pt('actions.confirmDelete')}
+      pendingLabel={pt('actions.confirmDelete')}
       cancelLabel={pt('actions.cancelDelete')}
+      fallbackFocusRef={fallbackFocusRef}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

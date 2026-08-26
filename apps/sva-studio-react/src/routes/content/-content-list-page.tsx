@@ -15,16 +15,20 @@ import { deleteSurvey } from '@sva/plugin-surveys';
 import { IconTrash } from '@tabler/icons-react';
 import {
   Button,
+  readStudioDestructiveNavigationFeedback,
+  removeStudioActionNavigationFeedback,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   type StudioBulkAction,
   type StudioColumnDef,
   StudioDataTable,
+  StudioDestructiveActionDialog,
   StudioListPageTemplate,
+  StudioPersistentActionResult,
   StudioTableActionButton,
   StudioTableValueAction,
 } from '@sva/studio-ui-react';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
 import {
@@ -80,6 +84,14 @@ type RegisteredContentRow = IamContentListItem &
     typeLabel: string;
     editPath: string;
   }>;
+type ContentDeletionResult = Readonly<{
+  kind: 'success';
+  description: string;
+}>;
+type PendingBulkDeletion = Readonly<{
+  clearSelection: () => void;
+  selectedRows: readonly RegisteredContentRow[];
+}>;
 
 const EMPTY_PERMISSION_ACTIONS: readonly string[] = [];
 
@@ -422,13 +434,13 @@ const ContentRowActions = ({
   permissionActions,
   enabledMainserverMutationActions,
   mutationPrincipalAvailable,
-  onDelete,
+  onRequestDelete,
 }: Readonly<{
   item: RegisteredContentRow;
   permissionActions: readonly string[] | undefined;
   enabledMainserverMutationActions: readonly string[];
   mutationPrincipalAvailable: boolean;
-  onDelete: (item: RegisteredContentRow) => Promise<void>;
+  onRequestDelete: (item: RegisteredContentRow) => void;
 }>) => {
   const canDelete =
     canDeleteMainserverItem(
@@ -437,21 +449,15 @@ const ContentRowActions = ({
       enabledMainserverMutationActions
     ) && mutationPrincipalAvailable;
 
-  const handleDelete = () => {
-    if (!canDelete || !window.confirm(t('content.actions.deleteConfirm'))) {
-      return;
-    }
-
-    void onDelete(item).catch(() => undefined);
-  };
-
   return (
     <StudioTableActionButton
       label={t('content.actions.delete')}
       icon={<IconTrash aria-hidden="true" className="h-4 w-4" />}
       tone="destructive"
       disabled={!canDelete}
-      onClick={handleDelete}
+      onClick={() => {
+        if (canDelete) onRequestDelete(item);
+      }}
     />
   );
 };
@@ -532,7 +538,44 @@ export const ContentListPage = ({
   const studioDataTableLabels = createStudioDataTableLabels();
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const navigate = useNavigate();
+  const location = useLocation();
   const search = useSearch({ strict: false }) as RouteSearchState;
+  const [destructiveResult, setDestructiveResult] = React.useState<ContentDeletionResult | null>(
+    () => {
+      const feedback = readStudioDestructiveNavigationFeedback(location.state);
+      return feedback
+        ? {
+            kind: 'success',
+            description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
+          }
+        : null;
+    }
+  );
+  const [pendingRowDeletion, setPendingRowDeletion] = React.useState<RegisteredContentRow | null>(
+    null
+  );
+  const [rowDeletePending, setRowDeletePending] = React.useState(false);
+  const [rowDeleteError, setRowDeleteError] = React.useState<string | null>(null);
+  const [pendingBulkDeletion, setPendingBulkDeletion] = React.useState<PendingBulkDeletion | null>(
+    null
+  );
+  const [bulkDeletePending, setBulkDeletePending] = React.useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = React.useState<string | null>(null);
+  const deleteFocusFallbackRef = React.useRef<HTMLElement | null>(null);
+  React.useEffect(() => {
+    const feedback = readStudioDestructiveNavigationFeedback(location.state);
+    if (!feedback) return;
+    setDestructiveResult({
+      kind: 'success',
+      description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
+    });
+    void navigate({
+      to: '/admin/content',
+      replace: true,
+      search: (current: RouteSearchState) => current,
+      state: (previous) => removeStudioActionNavigationFeedback(previous),
+    });
+  }, [location.state, navigate]);
   const auth = useAuth();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
@@ -659,17 +702,85 @@ export const ContentListPage = ({
     [navigate]
   );
 
-  const handleDeleteContent = React.useCallback(
-    async (item: RegisteredContentRow) => {
+  const confirmRowDeletion = React.useCallback(async () => {
+    const item = pendingRowDeletion;
+    if (!item || rowDeletePending) return;
+    setRowDeletePending(true);
+    setRowDeleteError(null);
+    try {
       const principal = resolveListMutationPrincipal(item, principalControl);
       if (!principal) {
         throw new Error('mainserver_mutation_principal_unavailable');
       }
       await deleteMainserverItem(item.contentType, item.id, principal);
-      await contentsApi.refetch();
-    },
-    [contentsApi, principalControl]
-  );
+    } catch {
+      setRowDeleteError(t('content.messages.deleteError'));
+      setRowDeletePending(false);
+      return;
+    }
+
+    setPendingRowDeletion(null);
+    setDestructiveResult({
+      kind: 'success',
+      description: t('content.messages.deleteSuccess', { id: item.id }),
+    });
+    const refreshSucceeded = await contentsApi.refetchWithOutcome();
+    if (!refreshSucceeded) {
+      setDestructiveResult({
+        kind: 'success',
+        description: t('content.messages.deleteRefreshError'),
+      });
+    }
+    setRowDeletePending(false);
+  }, [contentsApi, pendingRowDeletion, principalControl, rowDeletePending]);
+
+  const confirmBulkDeletion = React.useCallback(async () => {
+    const pending = pendingBulkDeletion;
+    if (!pending || bulkDeletePending) return;
+    setBulkDeletePending(true);
+    setBulkDeleteError(null);
+    let result: Awaited<ReturnType<typeof contentsApi.deleteContents>>;
+    try {
+      result = await contentsApi.deleteContents({
+        actionId: 'content.delete',
+        contentIds: pending.selectedRows.map((item) => item.id),
+        matchingCount: pending.selectedRows.length,
+        page: routeState.page,
+        pageSize: routeState.pageSize,
+        selectionMode: 'explicitIds',
+        sort: routeState.sort,
+        statusFilter: routeState.status,
+      });
+    } catch {
+      setBulkDeleteError(
+        t('content.messages.deleteBulkError', { failedCount: pending.selectedRows.length })
+      );
+      setBulkDeletePending(false);
+      return;
+    }
+    setBulkDeletePending(false);
+
+    if (result.failedCount > 0) {
+      const failedIds = new Set(result.failedContentIds);
+      setPendingBulkDeletion({
+        ...pending,
+        selectedRows: pending.selectedRows.filter((item) => failedIds.has(item.id)),
+      });
+      setBulkDeleteError(
+        t('content.messages.deleteBulkError', { failedCount: result.failedCount })
+      );
+      return;
+    }
+
+    pending.clearSelection();
+    setPendingBulkDeletion(null);
+    setDestructiveResult({
+      kind: 'success',
+      description: result.refreshFailed
+        ? t('content.messages.deleteRefreshError')
+        : t('content.messages.deleteBulkSuccess', { count: result.acceptedCount }),
+    });
+  }, [bulkDeletePending, contentsApi, pendingBulkDeletion, routeState]);
 
   const bulkActionButtons = React.useMemo<readonly StudioBulkAction<RegisteredContentRow>[]>(
     () =>
@@ -701,24 +812,10 @@ export const ContentListPage = ({
               label: buildBulkActionLabel('content.actions.delete'),
               disabled: !unscopedPermissionActions.includes('content.delete'),
               variant: 'destructive',
-              onClick: async ({ selectedRows, clearSelection }) => {
-                if (
-                  selectedRows.length === 0 ||
-                  !window.confirm(t('content.actions.deleteConfirm'))
-                ) {
-                  return;
-                }
-                await contentsApi.deleteContents({
-                  actionId: 'content.delete',
-                  contentIds: selectedRows.map((item) => item.id),
-                  matchingCount: selectedRows.length,
-                  page: routeState.page,
-                  pageSize: routeState.pageSize,
-                  selectionMode: 'explicitIds',
-                  sort: routeState.sort,
-                  statusFilter: routeState.status,
-                });
-                clearSelection();
+              onClick: ({ selectedRows, clearSelection }) => {
+                if (selectedRows.length === 0) return;
+                setBulkDeleteError(null);
+                setPendingBulkDeletion({ selectedRows, clearSelection });
               },
             },
           ]
@@ -835,6 +932,9 @@ export const ContentListPage = ({
 
   return (
     <section
+      ref={deleteFocusFallbackRef}
+      tabIndex={-1}
+      aria-label={t('content.page.title')}
       className="space-y-5"
       aria-busy={contentsApi.isLoading || authSessionPending || contentAccessPending}
     >
@@ -842,6 +942,16 @@ export const ContentListPage = ({
         title={t('content.page.title')}
         description={t('content.page.subtitle')}
       />
+
+      {destructiveResult ? (
+        <StudioPersistentActionResult
+          kind={destructiveResult.kind}
+          title={t('content.messages.deleteSuccessTitle')}
+          description={destructiveResult.description}
+          dismissLabel={t('content.actions.dismissFeedback')}
+          onDismiss={() => setDestructiveResult(null)}
+        />
+      ) : null}
 
       {contentsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
@@ -1016,7 +1126,10 @@ export const ContentListPage = ({
               mutationPrincipalAvailable={
                 resolveListMutationPrincipal(item, principalControl) !== undefined
               }
-              onDelete={handleDeleteContent}
+              onRequestDelete={(itemToDelete) => {
+                setRowDeleteError(null);
+                setPendingRowDeletion(itemToDelete);
+              }}
             />
           )}
         />
@@ -1024,6 +1137,44 @@ export const ContentListPage = ({
 
       <MainserverAuthoringDiagnosticsPanel
         enabled={effectivePermissionActions.includes('iam.monitoring.read')}
+      />
+
+      <StudioDestructiveActionDialog
+        open={pendingRowDeletion !== null}
+        title={t('content.actions.deleteConfirmTitle')}
+        description={t('content.actions.deleteConfirmDescription', {
+          title: pendingRowDeletion?.title ?? '',
+        })}
+        confirmLabel={t('content.actions.delete')}
+        pendingLabel={t('content.actions.deletePending')}
+        cancelLabel={t('content.actions.cancel')}
+        pending={rowDeletePending}
+        errorMessage={rowDeleteError}
+        fallbackFocusRef={deleteFocusFallbackRef}
+        onCancel={() => {
+          setRowDeleteError(null);
+          setPendingRowDeletion(null);
+        }}
+        onConfirm={() => void confirmRowDeletion()}
+      />
+
+      <StudioDestructiveActionDialog
+        open={pendingBulkDeletion !== null}
+        title={t('content.actions.deleteBulkConfirmTitle')}
+        description={t('content.actions.deleteBulkConfirmDescription', {
+          count: pendingBulkDeletion?.selectedRows.length ?? 0,
+        })}
+        confirmLabel={t('content.actions.delete')}
+        pendingLabel={t('content.actions.deletePending')}
+        cancelLabel={t('content.actions.cancel')}
+        pending={bulkDeletePending}
+        errorMessage={bulkDeleteError}
+        fallbackFocusRef={deleteFocusFallbackRef}
+        onCancel={() => {
+          setBulkDeleteError(null);
+          setPendingBulkDeletion(null);
+        }}
+        onConfirm={() => void confirmBulkDeletion()}
       />
     </section>
   );

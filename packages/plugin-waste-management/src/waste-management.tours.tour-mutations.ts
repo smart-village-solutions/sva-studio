@@ -4,17 +4,11 @@ import {
   createWasteManagementTour,
   createWasteManagementLocationTourPickupDate,
   deleteWasteManagementLocationTourPickupDate,
-  deleteWasteManagementTour,
   updateWasteManagementLocationTourPickupDate,
   updateWasteManagementTour,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-import {
-  logWasteTourDeleteError,
-  logWasteTourDeleteStart,
-  logWasteTourDeleteSuccess,
-} from './waste-management.tours.delete-debug.js';
-import { setTourDeleteErrorMessage } from './waste-management.tours.messages.js';
+import { createWasteToursDeleteMutationHandlers } from './waste-management.tours.delete-mutations.js';
 import {
   createTourDateLocationAssignmentKey,
   isCustomDatesRecurrence,
@@ -173,79 +167,6 @@ const createToggleTourStatusHandler =
     }
   };
 
-const createDeleteTourHandler =
-  ({ state, pt, loadOverview }: WasteToursSubmissionContext) =>
-  async (tour: WasteTourRecord) => {
-    state.setSaving(true);
-    state.setMessage(null);
-    state.setLastOutcome(null);
-    try {
-      logWasteTourDeleteStart(tour);
-      await deleteWasteManagementTour(tour.id);
-      logWasteTourDeleteSuccess(tour);
-      await loadOverview(true);
-      startTransition(() => {
-        state.setMessage({
-          kind: 'success',
-          text: pt('tours.messages.deleteSuccess'),
-        });
-      });
-    } catch (saveError) {
-      logWasteTourDeleteError(tour, saveError);
-      setTourDeleteErrorMessage(state, pt, saveError);
-    } finally {
-      state.setSaving(false);
-    }
-  };
-
-const createDeleteToursHandler =
-  ({ state, pt, loadOverview }: WasteToursSubmissionContext) =>
-  async (tourIds: readonly string[]) => {
-    state.setSaving(true);
-    state.setMessage(null);
-    state.setLastOutcome(null);
-    try {
-      const results = await Promise.allSettled(
-        tourIds.map(async (tourId) => deleteWasteManagementTour(tourId))
-      );
-      const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
-      const failedResults = results.filter((result) => result.status === 'rejected');
-
-      if (deletedCount > 0) {
-        await loadOverview(true);
-      }
-
-      if (failedResults.length === 0) {
-        startTransition(() => {
-          state.setMessage({
-            kind: 'success',
-            text: pt('tours.messages.deleteSuccess'),
-          });
-        });
-        return;
-      }
-
-      if (deletedCount > 0) {
-        startTransition(() => {
-          state.setMessage({
-            kind: 'success',
-            text: pt('tours.messages.deletePartialSuccess', {
-              count: deletedCount,
-              total: tourIds.length,
-            }),
-          });
-        });
-        return;
-      }
-
-      setTourDeleteErrorMessage(state, pt, failedResults[0]?.reason);
-    } catch (saveError) {
-      setTourDeleteErrorMessage(state, pt, saveError);
-    } finally {
-      state.setSaving(false);
-    }
-  };
-
 export const createWasteToursTourMutationHandlers = ({
   state,
   pt,
@@ -253,7 +174,6 @@ export const createWasteToursTourMutationHandlers = ({
 }: WasteToursSubmissionContext) => ({
   onSubmitTour: createSubmitTourHandler({ state, pt, loadOverview }),
   onToggleTourStatus: createToggleTourStatusHandler({ state, pt, loadOverview }),
-  onDeleteTour: createDeleteTourHandler({ state, pt, loadOverview }),
-  onDeleteTours: createDeleteToursHandler({ state, pt, loadOverview }),
+  ...createWasteToursDeleteMutationHandlers({ state, pt, loadOverview }),
   onUpdateTourValidityBulk: createUpdateTourValidityBulkHandler({ state, pt, loadOverview }),
 });

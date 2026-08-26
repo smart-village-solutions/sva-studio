@@ -22,10 +22,12 @@ export const pluginSurveysContentEnTranslations = {
     moderationEmptyQuestion: 'There are currently no free-text responses for this question.',
     moderationReadOnly:
       'Free-text responses are currently read-only. Visibility and deletion actions will follow once moderation is wired through the host-owned Mainserver integration.',
-    deleteQuestionTitle: 'Delete question',
-    deleteQuestionDescription: 'Do you really want to delete this question?',
-    deleteOptionTitle: 'Delete answer',
-    deleteOptionDescription: 'Do you really want to delete this answer?',
+    deleteQuestionTitle: 'Delete question “{{target}}”?',
+    deleteQuestionDescription:
+      'The question “{{target}}” and all of its answers will be removed from the draft.',
+    deleteOptionTitle: 'Delete answer “{{target}}”?',
+    deleteOptionDescription:
+      'The answer “{{target}}” will be removed from the question “{{question}}”.',
     deleteFreeTextTitle: 'Delete free-text response',
     deleteFreeTextDescription: 'Do you really want to delete this free-text response?',
     resultsQuestionEmpty: 'There are currently no results for this question.',

@@ -53,7 +53,7 @@ describe('waste-management tools action helpers', () => {
     expect(job).toMatchObject({ id: 'job-1' });
     expect(setRunningAction).toHaveBeenNthCalledWith(1, 'import');
     expect(setLastJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-1' }));
-    expect(refreshTechnicalHistory).toHaveBeenCalledWith(true);
+    expect(refreshTechnicalHistory).toHaveBeenCalledWith();
     expect(setMessage).toHaveBeenCalledWith({
       kind: 'success',
       text: 'tools.messages.jobStarted:{"jobId":"job-1"}',
@@ -96,6 +96,23 @@ describe('waste-management tools action helpers', () => {
     expect(setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
       text: 'tools.messages.historyDeleteError',
+    });
+  });
+
+  it('keeps a successful history deletion successful when only the refresh fails', async () => {
+    const setMessage = vi.fn();
+    const deleteRunner = createWasteToolsHistoryDeletionRunner({
+      pt: (key) => key,
+      refreshTechnicalHistory: vi.fn(async () => Promise.reject(new Error('refresh failed'))),
+      setMessage,
+      setLastJob: vi.fn(),
+    });
+
+    await expect(deleteRunner('job-refresh', 'other-job')).resolves.toBe(true);
+
+    expect(setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'tools.messages.historyRefreshAfterDeleteError',
     });
   });
 
@@ -170,5 +187,19 @@ describe('waste-management tools action helpers', () => {
     expect(startWasteManagementResetMock).toHaveBeenCalledWith({ confirmationToken: 'RESET' });
     expect(setResetConfirmOpen).toHaveBeenCalledWith(false);
     expect(setResetToken).toHaveBeenCalledWith('');
+
+    startWasteManagementResetMock.mockRejectedValueOnce(new Error('reset failed'));
+    runJob.mockImplementationOnce(async (_action, callback: () => Promise<unknown>) => {
+      try {
+        return await callback();
+      } catch {
+        return null;
+      }
+    });
+    setResetConfirmOpen.mockClear();
+    setResetToken.mockClear();
+    await expect(actions.runReset()).resolves.toBeNull();
+    expect(setResetConfirmOpen).toHaveBeenCalledWith(false);
+    expect(setResetToken).not.toHaveBeenCalled();
   });
 });

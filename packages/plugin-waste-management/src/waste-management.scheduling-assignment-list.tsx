@@ -1,8 +1,10 @@
 import type { WasteTourAssignmentRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioConfirmDialog } from '@sva/studio-ui-react';
+import { Button } from '@sva/studio-ui-react';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
+
+import { WasteTourAssignmentDeleteDialog } from './waste-management.scheduling-assignment-delete-dialog.js';
 
 type Translate = ReturnType<typeof usePluginTranslation>;
 
@@ -222,18 +224,10 @@ export const WasteTourExplicitAssignmentsList = ({
           />
         )}
       </div>
-      <StudioConfirmDialog
-        open={pendingDeleteEntry !== null}
-        title={pt('scheduling.assignments.dialog.deleteTitle')}
-        description={pt('scheduling.assignments.dialog.deleteDescription')}
-        confirmLabel={pt('scheduling.assignments.actions.confirmDelete')}
-        cancelLabel={pt('scheduling.assignments.actions.cancel')}
+      <WasteTourAssignmentDeleteDialog
+        entry={pendingDeleteEntry}
         onCancel={() => setPendingDeleteEntry(null)}
-        onConfirm={() => {
-          const entry = pendingDeleteEntry;
-          setPendingDeleteEntry(null);
-          if (entry) void onDelete(entry);
-        }}
+        onDelete={onDelete}
       />
     </section>
   );

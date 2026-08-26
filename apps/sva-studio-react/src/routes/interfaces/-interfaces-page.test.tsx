@@ -687,7 +687,9 @@ describe('InterfacesPage', () => {
   });
 
   it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {
-    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
+    state.listInterfaces
+      .mockResolvedValueOnce(createListResponse([mainserverEntry, s3Entry]))
+      .mockResolvedValueOnce(createListResponse([mainserverEntry]));
     state.deleteInterface.mockResolvedValue({ deleted: true });
 
     render(<InterfacesPage />);
@@ -706,7 +708,39 @@ describe('InterfacesPage', () => {
       expect(state.deleteInterface).toHaveBeenCalledWith({
         data: { id: 's3-1', instanceId: 'de-musterhausen' },
       });
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Neue Schnittstelle' })
+      );
     });
+  });
+
+  it('keeps a successful deletion when the subsequent list refresh fails', async () => {
+    state.listInterfaces
+      .mockResolvedValueOnce(createListResponse([mainserverEntry, s3Entry]))
+      .mockRejectedValueOnce(new Error('refresh failed'));
+    state.deleteInterface.mockResolvedValue({ deleted: true });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    const interfacesTable = screen.getByRole('table', { name: 'Schnittstellen der Instanz' });
+    const s3Row = within(interfacesTable).getByRole('cell', { name: 'Uploads' }).closest('tr');
+    fireEvent.click(within(s3Row!).getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(screen.getByText('Schnittstelle gelöscht')).toBeTruthy();
+      expect(
+        screen.getByText(
+          'Die Schnittstelle wurde gelöscht, die Liste konnte aber nicht aktualisiert werden. Bitte neu laden.'
+        )
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText('Die Schnittstelle konnte nicht gelöscht werden.')).toBeNull();
   });
 
   it('deletes the mainserver interface through the destructive confirm dialog', async () => {

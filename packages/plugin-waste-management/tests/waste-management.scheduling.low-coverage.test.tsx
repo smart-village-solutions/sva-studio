@@ -24,6 +24,45 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  StudioDestructiveActionDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+    pending,
+    confirmDisabled,
+    errorMessage,
+    children,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly pending?: boolean;
+    readonly confirmDisabled?: boolean;
+    readonly errorMessage?: React.ReactNode;
+    readonly children?: React.ReactNode;
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        <div>{title}</div>
+        <div>{description}</div>
+        {children}
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+        <button type="button" disabled={pending} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" disabled={pending || confirmDisabled} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
     void loading;
     return <button {...props} />;

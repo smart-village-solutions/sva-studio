@@ -45,7 +45,14 @@ export const contentDEResources = {
     back: 'Zur Übersicht',
     archive: 'Archivieren',
     delete: 'Löschen',
-    deleteConfirm: 'Soll dieser Inhalt wirklich gelöscht werden?',
+    deleteConfirmTitle: 'Inhalt endgültig löschen?',
+    deleteConfirmDescription:
+      'Der Inhalt „{{title}}“ wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    deleteBulkConfirmTitle: 'Ausgewählte Inhalte endgültig löschen?',
+    deleteBulkConfirmDescription:
+      '{{count}} ausgewählte Inhalte werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    deletePending: 'Wird gelöscht ...',
+    dismissFeedback: 'Schließen',
   },
   fields: {
     title: 'Überschrift',
@@ -181,6 +188,14 @@ export const contentDEResources = {
     body: 'Legen Sie den ersten Inhalt an, um Liste, Status und Historie zu nutzen.',
   },
   messages: {
+    deleteSuccessTitle: 'Inhalt gelöscht',
+    deleteSuccess: 'Der Inhalt mit der ID {{id}} wurde endgültig gelöscht.',
+    deleteBulkSuccess: '{{count}} Inhalte wurden endgültig gelöscht.',
+    deleteError: 'Der Inhalt konnte nicht gelöscht werden.',
+    deleteBulkError:
+      '{{failedCount}} Inhalte konnten nicht gelöscht werden. Die fehlgeschlagene Auswahl bleibt erhalten.',
+    deleteRefreshError:
+      'Die Löschung war erfolgreich, aber die Inhaltsliste konnte nicht aktualisiert werden.',
     loading: 'Inhalte werden geladen ...',
     loadError: 'Inhalte konnten nicht geladen werden.',
     saveError: 'Inhalt konnte nicht gespeichert werden.',

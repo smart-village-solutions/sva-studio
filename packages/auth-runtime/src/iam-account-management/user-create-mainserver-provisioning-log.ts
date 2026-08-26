@@ -64,6 +64,12 @@ const resolveFailurePhase = (
   if (error.code === 'unauthorized' || error.code === 'token_request_failed') {
     return 'token';
   }
+  if (
+    !error.outcomeUnknown &&
+    (error.code === 'network_error' || error.code === 'upstream_timeout')
+  ) {
+    return 'token';
+  }
   if (error.outcomeUnknown || error.statusCode === 403 || error.statusCode === 422) {
     return 'provisioning';
   }
@@ -93,6 +99,9 @@ export const logMainserverProvisioningFailure = (input: {
   error: unknown;
 }) => {
   const mainserverError = isMainserverProvisioningError(input.error) ? input.error : null;
+  const safeErrorCode = mainserverError
+    ? resolveSafeErrorCode(mainserverError)
+    : 'mainserver_user_provisioning_failed';
   logger.error('IAM user mainserver provisioning failed', {
     workspace_id: input.actor.instanceId,
     context: {
@@ -103,10 +112,11 @@ export const logMainserverProvisioningFailure = (input: {
       actor_account_id: input.actor.actorAccountId,
       keycloak_subject: input.keycloakSubject,
       email_masked: maskEmail(input.email),
+      error: safeErrorCode,
       error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
       ...(mainserverError
         ? {
-            mainserver_error_code: resolveSafeErrorCode(mainserverError),
+            mainserver_error_code: safeErrorCode,
             mainserver_failure_phase: resolveFailurePhase(mainserverError),
             mainserver_status_code: mainserverError.statusCode,
             mainserver_retryable: mainserverError.retryable,

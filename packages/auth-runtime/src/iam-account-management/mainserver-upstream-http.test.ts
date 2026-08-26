@@ -31,8 +31,8 @@ describe('mainserver-upstream-http', () => {
     });
   });
 
-  it('rethrows non-abort upstream failures unchanged', async () => {
-    const upstreamError = new Error('boom');
+  it('normalizes non-abort upstream failures without retaining untrusted details', async () => {
+    const upstreamError = new TypeError('fetch failed for https://secret.example/token?key=value');
     const fetchImpl = vi.fn().mockRejectedValueOnce(upstreamError);
 
     await expect(
@@ -43,7 +43,14 @@ describe('mainserver-upstream-http', () => {
         signal: AbortSignal.timeout(100),
         timeoutMessage: 'Zeitüberschreitung beim Laden des Mainserver-Provisioning-Tokens.',
       })
-    ).rejects.toBe(upstreamError);
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'network_error',
+      message: 'Netzwerkfehler bei der Kommunikation mit dem SVA-Mainserver.',
+      retryable: true,
+      statusCode: 503,
+      outcomeUnknown: false,
+    });
   });
 
   it('throws invalid_response when a json body cannot be parsed', async () => {

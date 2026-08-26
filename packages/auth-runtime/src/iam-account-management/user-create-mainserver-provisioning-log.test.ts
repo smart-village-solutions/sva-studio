@@ -51,7 +51,9 @@ describe('logMainserverProvisioningFailure', () => {
         }),
       })
     );
-    expect(loggerState.error.mock.calls[0]?.[1]?.context).not.toHaveProperty('error');
+    expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
+      expect.objectContaining({ error: 'upstream_timeout' })
+    );
   });
 
   it('does not treat lookalike errors with wrong field types as provisioning errors', () => {
@@ -98,7 +100,9 @@ describe('logMainserverProvisioningFailure', () => {
         }),
       })
     );
-    expect(loggerState.error.mock.calls[0]?.[1]?.context).not.toHaveProperty('error');
+    expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
+      expect.objectContaining({ error: 'mainserver_user_provisioning_failed' })
+    );
   });
 
   it.each([
@@ -143,7 +147,9 @@ describe('logMainserverProvisioningFailure', () => {
         mainserver_status_code: input.statusCode,
       })
     );
-    expect(loggerState.error.mock.calls[0]?.[1]?.context).not.toHaveProperty('error');
+    expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
+      expect.objectContaining({ error: input.expectedCode })
+    );
   });
 
   it.each([
@@ -229,8 +235,10 @@ describe('logMainserverProvisioningFailure', () => {
   });
 
   it.each([
-    { code: 'upstream_timeout', outcomeUnknown: false, phase: 'unknown' },
+    { code: 'upstream_timeout', outcomeUnknown: false, phase: 'token' },
     { code: 'upstream_timeout', outcomeUnknown: true, phase: 'provisioning' },
+    { code: 'network_error', outcomeUnknown: false, phase: 'token' },
+    { code: 'network_error', outcomeUnknown: true, phase: 'provisioning' },
     { code: 'invalid_response', outcomeUnknown: false, phase: 'unknown' },
     { code: 'invalid_response', outcomeUnknown: true, phase: 'provisioning' },
   ])('uses outcome knowledge to classify ambiguous $code failures', (input) => {
@@ -250,7 +258,10 @@ describe('logMainserverProvisioningFailure', () => {
     });
 
     expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
-      expect.objectContaining({ mainserver_failure_phase: input.phase })
+      expect.objectContaining({
+        error: input.code,
+        mainserver_failure_phase: input.phase,
+      })
     );
   });
 });

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { posix, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -18,6 +18,15 @@ const selectedFiles = execFileSync('git', ['ls-files', '--', ...publicationManif
 })
   .split('\n')
   .filter((line) => line.length > 0);
+const selectedFileSet = new Set(selectedFiles);
+const trackedDocumentationFiles = new Set(
+  execFileSync('git', ['ls-files', 'docs'], {
+    cwd: workspaceRoot,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter((line) => line.length > 0)
+);
 
 const excludedPublicationPrefixes = [
   'docs/architecture/decisions/',
@@ -66,5 +75,32 @@ describe('wiki sync workflow contract', () => {
     expect(workflow).toContain('[Architektur (arc42)](docs/architecture/README.md)');
     expect(workflow).toContain('[Architekturentscheidungen (ADRs)](docs/adr/README.md)');
     expect(workflow).not.toContain('docs/architecture/decisions/README.md');
+  });
+
+  it('does not leave relative links to tracked documentation outside the publication', () => {
+    const unpublishedLinkTargets: string[] = [];
+
+    for (const sourcePath of selectedFiles.filter((file) => file.endsWith('.md'))) {
+      const source = readFileSync(resolve(workspaceRoot, sourcePath), 'utf8');
+
+      for (const match of source.matchAll(/!?\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/gu)) {
+        const rawTarget = match[1]?.replace(/^<|>$/gu, '');
+        if (!rawTarget || /^(?:[a-z][a-z\d+.-]*:|#|\/)/iu.test(rawTarget)) {
+          continue;
+        }
+
+        const targetPath = rawTarget.split(/[?#]/u, 1)[0];
+        if (!targetPath) {
+          continue;
+        }
+
+        const resolvedTarget = posix.normalize(posix.join(posix.dirname(sourcePath), targetPath));
+        if (trackedDocumentationFiles.has(resolvedTarget) && !selectedFileSet.has(resolvedTarget)) {
+          unpublishedLinkTargets.push(`${sourcePath} -> ${resolvedTarget}`);
+        }
+      }
+    }
+
+    expect(unpublishedLinkTargets).toEqual([]);
   });
 });

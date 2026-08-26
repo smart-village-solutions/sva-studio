@@ -44,7 +44,7 @@ Diese Bereiche werden nicht in die lokale Wiki-Wissensbasis übernommen. Aktuell
 
 ## Externe Anwenderdokumentation
 
-`user-documentation/` enthält den Studio-seitigen Katalog-, Übergabe- und Synchronisationsvertrag für das eigenständige Repository der Anwenderdokumentation. Die dortigen Startermaterialien und der Seitenkatalog gehören nicht zur lokalen Projekt-Wissensbasis und werden über einen separaten Dokumentationsprozess gepflegt. Technische Details stehen im [Integrationsvertrag der Anwenderdokumentation](./user-documentation/README.md).
+`user-documentation/` enthält den Studio-seitigen Katalog-, Übergabe- und Synchronisationsvertrag für das eigenständige Repository der Anwenderdokumentation. Die dortigen Startermaterialien und der Seitenkatalog gehören nicht zur lokalen Projekt-Wissensbasis und werden über einen separaten Dokumentationsprozess gepflegt. Technische Details stehen im [Integrationsvertrag der Anwenderdokumentation im Repository](https://github.com/smart-village-solutions/sva-studio/blob/main/docs/user-documentation/README.md).
 
 ## Kanonische übergreifende Leitfäden
 

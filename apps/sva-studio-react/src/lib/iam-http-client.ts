@@ -33,6 +33,7 @@ const effectiveAccessInvalidationErrorCodes = new Set([
   'permission_snapshot_stale',
   'permission_snapshot_version_mismatch',
 ]);
+const nonAuthorizationForbiddenErrorCodes = new Set(['mainserver_provisioning_failed']);
 export const DEFAULT_IAM_REQUEST_TIMEOUT_MS = 10_000;
 export const HEALTH_REQUEST_TIMEOUT_MS = 5_000;
 export const HEAVY_IAM_REQUEST_TIMEOUT_MS = 20_000;
@@ -207,7 +208,8 @@ export const readIamErrorResponse = async (
     globalThis.window !== undefined &&
     options.emitEffectiveAccessInvalidation !== false &&
     code !== 'legal_acceptance_required' &&
-    (response.status === 403 || effectiveAccessInvalidationErrorCodes.has(code))
+    (effectiveAccessInvalidationErrorCodes.has(code) ||
+      (response.status === 403 && !nonAuthorizationForbiddenErrorCodes.has(code)))
   ) {
     globalThis.dispatchEvent(
       new CustomEvent(EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT, { detail: { code } })

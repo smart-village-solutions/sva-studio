@@ -673,6 +673,31 @@ describe('iam-api organization helpers', () => {
     expect(dispatchEvent).not.toHaveBeenCalled();
   });
 
+  it('does not invalidate effective access for a mainserver dependency rejection', async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('dispatchEvent', dispatchEvent);
+
+    await expect(
+      readIamErrorResponse(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'mainserver_provisioning_failed',
+              message: 'Der Mainserver hat die Provisionierung abgelehnt.',
+              details: {
+                dependency: 'sva_mainserver',
+                reason_code: 'mainserver_tenant_forbidden',
+              },
+            },
+          }),
+          { status: 403, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    ).resolves.toMatchObject({ status: 403, code: 'mainserver_provisioning_failed' });
+    expect(dispatchEvent).not.toHaveBeenCalled();
+  });
+
   it('preserves validated permission denial details from structured IAM errors', async () => {
     await expect(
       readIamErrorResponse(

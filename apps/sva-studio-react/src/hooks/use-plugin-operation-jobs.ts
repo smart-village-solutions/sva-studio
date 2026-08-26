@@ -1,7 +1,13 @@
 import type { StudioJobDetail, StudioJobListItem, StudioJobListQuery } from '@sva/core';
 import React from 'react';
 
-import { asIamError, getPluginOperationJob, listPluginOperationJobs, type IamHttpError } from '../lib/iam-api';
+import {
+  asIamError,
+  cancelPluginOperationJob,
+  getPluginOperationJob,
+  listPluginOperationJobs,
+  type IamHttpError,
+} from '../lib/iam-api';
 import {
   createOperationLogger,
   logBrowserOperationAbort,
@@ -82,7 +88,9 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
     }));
 
     try {
-      const response = await listPluginOperationJobs(normalizedQuery, { signal: controller.signal });
+      const response = await listPluginOperationJobs(normalizedQuery, {
+        signal: controller.signal,
+      });
       if (requestId !== latestRequestIdRef.current) {
         return;
       }
@@ -115,10 +123,15 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
         error: resolvedError,
         isLoading: false,
       }));
-      logBrowserOperationFailure(jobsLogger, 'studio_plugin_operation_jobs_list_failed', resolvedError, {
-        operation: 'list_plugin_operation_jobs',
-        view: normalizedQuery.view,
-      });
+      logBrowserOperationFailure(
+        jobsLogger,
+        'studio_plugin_operation_jobs_list_failed',
+        resolvedError,
+        {
+          operation: 'list_plugin_operation_jobs',
+          view: normalizedQuery.view,
+        }
+      );
     } finally {
       abortControllersRef.current.delete(controller);
     }
@@ -153,12 +166,17 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
 
 export const usePluginOperationJobDetail = (jobId: string) => {
   const abortControllersRef = useAbortControllerSet();
+  const activeJobIdRef = React.useRef(jobId);
+  activeJobIdRef.current = jobId;
+  const cancellationInFlightJobIdsRef = React.useRef<Set<string>>(new Set());
   const latestRequestIdRef = React.useRef(0);
   const [state, setState] = React.useState<JobDetailState>({
     detail: null,
     error: null,
     isLoading: true,
   });
+  const [actionError, setActionError] = React.useState<IamHttpError | null>(null);
+  const [isCancelling, setIsCancelling] = React.useState(false);
 
   const refetch = React.useCallback(async () => {
     if (!jobId) {
@@ -218,21 +236,31 @@ export const usePluginOperationJobDetail = (jobId: string) => {
         error: resolvedError,
         isLoading: false,
       }));
-      logBrowserOperationFailure(jobsLogger, 'studio_plugin_operation_job_detail_failed', resolvedError, {
-        operation: 'get_plugin_operation_job',
-        job_id: jobId,
-      });
+      logBrowserOperationFailure(
+        jobsLogger,
+        'studio_plugin_operation_job_detail_failed',
+        resolvedError,
+        {
+          operation: 'get_plugin_operation_job',
+          job_id: jobId,
+        }
+      );
     } finally {
       abortControllersRef.current.delete(controller);
     }
   }, [abortControllersRef, jobId]);
 
   React.useEffect(() => {
+    setActionError(null);
+    setIsCancelling(false);
     void refetch();
   }, [jobId, refetch]);
 
   React.useEffect(() => {
-    if (!state.detail || ['succeeded', 'failed', 'cancelled'].includes(state.detail.status)) {
+    if (
+      state.detail?.id !== jobId ||
+      ['succeeded', 'failed', 'cancelled'].includes(state.detail.status)
+    ) {
       return;
     }
 
@@ -243,12 +271,58 @@ export const usePluginOperationJobDetail = (jobId: string) => {
     return () => {
       window.clearInterval(interval);
     };
-  }, [refetch, state.detail]);
+  }, [jobId, refetch, state.detail]);
+
+  const cancel = React.useCallback(async () => {
+    if (
+      state.detail?.id !== jobId ||
+      !state.detail?.availableActions?.includes('cancel') ||
+      cancellationInFlightJobIdsRef.current.has(jobId)
+    ) {
+      return false;
+    }
+    cancellationInFlightJobIdsRef.current.add(jobId);
+    setIsCancelling(true);
+    setActionError(null);
+    try {
+      const acceptedJob = await cancelPluginOperationJob(jobId);
+      if (activeJobIdRef.current !== jobId) {
+        return true;
+      }
+      setState((current) =>
+        current.detail
+          ? {
+              ...current,
+              detail: {
+                ...current.detail,
+                availableActions: [],
+                cancelRequestedAt: acceptedJob.cancelRequestedAt,
+              },
+            }
+          : current
+      );
+      await refetch();
+      return true;
+    } catch (error) {
+      if (activeJobIdRef.current === jobId) {
+        setActionError(asIamError(error));
+      }
+      return false;
+    } finally {
+      cancellationInFlightJobIdsRef.current.delete(jobId);
+      if (activeJobIdRef.current === jobId) {
+        setIsCancelling(false);
+      }
+    }
+  }, [jobId, refetch, state.detail?.availableActions, state.detail?.id]);
 
   return {
-    detail: state.detail,
+    actionError,
+    cancel,
+    detail: state.detail?.id === jobId ? state.detail : null,
     error: state.error,
     isLoading: state.isLoading,
+    isCancelling: isCancelling && cancellationInFlightJobIdsRef.current.has(jobId),
     refetch,
   };
 };

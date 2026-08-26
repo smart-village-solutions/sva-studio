@@ -321,7 +321,12 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       description:
         'Klicken Sie im Jahreskalender einzelne Tage an oder ab, um individuelle Termine für diese Tour festzulegen.',
       removeTitle: 'Einzeltermin entfernen',
-      removeDescription: 'Der Termin {{value}} wird aus den individuellen Terminen entfernt.',
+      removeDescription:
+        'Der Termin {{value}} wird zusammen mit allen zugehörigen Abholort-Zuordnungen aus dem Entwurf entfernt.',
+      removeAssignmentTitle: 'Abholort-Zuordnung entfernen',
+      removeAssignmentDescription:
+        'Die Zuordnung „{{location}}“ für den Termin {{date}} wird samt Hinweis aus dem Entwurf entfernt.',
+      removeAssignmentUnknownLocation: 'Noch nicht ausgewählter Abholort',
       removeConfirm: 'Entfernen',
       removeCancel: 'Abbrechen',
     },
@@ -414,5 +419,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     deleteError: 'Die Abfall-Tour konnte nicht gelöscht werden.',
     deleteForbidden: 'Für das Löschen von Abfall-Touren fehlt die Berechtigung.',
     deleteConflict: 'Die Abfall-Tour kann wegen bestehender Zuordnungen nicht gelöscht werden.',
+    refreshAfterDeleteError:
+      'Mindestens eine Abfall-Tour wurde gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
   },
 });

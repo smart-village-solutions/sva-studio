@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioConfirmDialog, StudioFormSummary } from '@sva/studio-ui-react';
+import { Button, StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 
 export type FaqTranslator = ReturnType<typeof usePluginTranslation>;
 
@@ -36,6 +36,7 @@ export const FaqDeleteDialog = ({
   open,
   pending,
   pt,
+  target,
 }: Readonly<{
   errorMessage: string | null;
   onCancel: () => void;
@@ -43,18 +44,18 @@ export const FaqDeleteDialog = ({
   open: boolean;
   pending: boolean;
   pt: FaqTranslator;
+  target: string;
 }>) => (
-  <StudioConfirmDialog
+  <StudioDestructiveActionDialog
     open={open}
     title={pt('deleteDialog.title')}
-    description={pt('deleteDialog.description')}
+    description={pt('deleteDialog.description', { target })}
     confirmLabel={pt('deleteDialog.confirm')}
+    pendingLabel={pt('deleteDialog.pending')}
     cancelLabel={pt('deleteDialog.cancel')}
-    confirmDisabled={pending}
-    cancelDisabled={pending}
+    pending={pending}
+    errorMessage={errorMessage}
     onConfirm={onConfirm}
     onCancel={onCancel}
-  >
-    {errorMessage ? <StudioFormSummary kind="error">{errorMessage}</StudioFormSummary> : null}
-  </StudioConfirmDialog>
+  />
 );

@@ -270,7 +270,9 @@ describe('projects pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     await waitFor(() => expect(state.delete).toHaveBeenCalledWith('project-1', 'user'));
-    expect(state.navigate).toHaveBeenCalledWith({ to: '/admin/content' });
+    expect(state.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/admin/content', state: expect.any(Function) })
+    );
   });
 
   it('renders loading, populated pagination, empty and error list states', async () => {

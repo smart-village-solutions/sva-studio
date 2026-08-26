@@ -97,7 +97,9 @@ const de = {
       imagePreviewEmpty: 'Keine Bildvorschau verfügbar.',
       empty: 'Keine Projekte vorhanden.',
       deleteTitle: 'Projekt löschen?',
-      deleteDescription: 'Das Projekt wird im Studio als gelöscht markiert.',
+      deleteDescription:
+        'Das Projekt „{{title}}“ wird im Studio als gelöscht markiert. Dieser Vorgang kann nicht rückgängig gemacht werden.',
+      deleting: 'Wird gelöscht …',
       mediaReferencePartialFailure:
         'Das Projekt wurde gespeichert, aber die Medienreferenzen konnten nicht gespeichert werden.',
       mediaSaveUploading: 'Bilder werden hochgeladen.',
@@ -220,6 +222,10 @@ const en = {
       ...de.projects.messages,
       saveError: 'Project could not be saved.',
       saveErrorWithReason: 'Project could not be saved: {{reason}}',
+      deleteTitle: 'Delete project?',
+      deleteDescription:
+        'The project “{{title}}” will be marked as deleted in Studio. This action cannot be undone.',
+      deleting: 'Deleting…',
       mediaSaveUploading: 'Uploading images.',
       mediaSaveContent: 'Saving content.',
       mediaSaveLinking: 'Linking media.',

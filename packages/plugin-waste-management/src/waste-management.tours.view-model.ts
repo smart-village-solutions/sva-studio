@@ -11,6 +11,7 @@ import type {
   WasteToursFilterValidityPeriod,
 } from './waste-management.tours.filter-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
 
 export const createTourAssignmentSelectionSummary = ({
   filteredLocationIds,
@@ -151,7 +152,7 @@ export type WasteToursActionsProps = {
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
-  readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
+  readonly onDeleteTours: (tourIds: readonly string[]) => Promise<WasteBulkDeleteResult>;
   readonly onUpdateTourValidityBulk: (input: WasteTourValidityBulkUpdateInput) => Promise<boolean>;
 };
 

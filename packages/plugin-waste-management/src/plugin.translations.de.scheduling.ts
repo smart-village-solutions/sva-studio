@@ -125,7 +125,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
         editTitle: 'Tour-Einsatz bearbeiten',
         editDescription: 'Passen Sie Tour, Datum, Abholorte oder den optionalen Hinweis an.',
         deleteTitle: 'Tour-Einsatz löschen',
-        deleteDescription: 'Möchten Sie diesen Tour-Einsatz wirklich löschen?',
+        deleteDescription:
+          'Der Tour-Einsatz für Tour {{tourId}} am {{pickupDate}} wird dauerhaft gelöscht.',
       },
       fields: {
         pickupDate: 'Datum',
@@ -156,6 +157,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
         deleteSuccess: 'Der Tour-Einsatz wurde gelöscht.',
         deleteError: 'Der Tour-Einsatz konnte nicht gelöscht werden.',
         deleteForbidden: 'Für das Löschen von Tour-Einsätzen fehlt die Berechtigung.',
+        refreshAfterDeleteError:
+          'Der Tour-Einsatz wurde gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
       },
     },
     actions: {
@@ -215,6 +218,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
       deleteSuccess: '{{value}} Ausweichtermine wurden gelöscht.',
       deleteError: 'Die markierten Ausweichtermine konnten nicht gelöscht werden.',
       deleteForbidden: 'Für das Löschen von Ausweichterminen fehlt die Berechtigung.',
+      refreshAfterDeleteError:
+        'Die Ausweichtermine wurden gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
     },
     holidayRules: {
       title: 'Feiertags-Regelentwürfe',

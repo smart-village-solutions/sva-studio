@@ -123,7 +123,8 @@ export const wasteManagementPluginTranslationsENScheduling =
         editTitle: 'Edit tour assignment',
         editDescription: 'Adjust the tour, date, pickup locations, or optional note.',
         deleteTitle: 'Delete tour assignment',
-        deleteDescription: 'Do you really want to delete this tour assignment?',
+        deleteDescription:
+          'The tour assignment for tour {{tourId}} on {{pickupDate}} will be deleted permanently.',
       },
       fields: {
         pickupDate: 'Date',
@@ -154,6 +155,8 @@ export const wasteManagementPluginTranslationsENScheduling =
         deleteSuccess: 'The tour assignment was deleted.',
         deleteError: 'The tour assignment could not be deleted.',
         deleteForbidden: 'Missing permission to delete tour assignments.',
+        refreshAfterDeleteError:
+          'The tour assignment was deleted, but the overview could not be refreshed. Please reload the page.',
       },
     },
     actions: {
@@ -211,6 +214,8 @@ export const wasteManagementPluginTranslationsENScheduling =
       deleteSuccess: 'Deleted {{value}} scheduling shifts.',
       deleteError: 'The selected scheduling shifts could not be deleted.',
       deleteForbidden: 'Missing permission to delete scheduling shifts.',
+      refreshAfterDeleteError:
+        'The scheduling shifts were deleted, but the overview could not be refreshed. Please reload the page.',
     },
     holidayRules: {
       title: 'Holiday rule drafts',

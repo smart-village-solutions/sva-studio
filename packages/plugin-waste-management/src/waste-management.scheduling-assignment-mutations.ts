@@ -112,19 +112,31 @@ const createSaveTourAssignmentHandler =
   };
 
 const createDeleteAssignmentHandler =
-  ({ state, pt, loadOverview }: HandlerContext, deleteAssignment: (id: string) => Promise<unknown>) =>
+  (
+    { state, pt, loadOverview }: HandlerContext,
+    deleteAssignment: (id: string) => Promise<unknown>
+  ) =>
   async (id: string) => {
     resetFeedback(state);
     try {
-      await deleteAssignment(id);
-      await loadOverview(true);
-      state.setMessage({
-        kind: 'success',
-        text: pt('scheduling.assignments.messages.deleteSuccess'),
-      });
-    } catch (error) {
-      state.setMessage(assignmentError(pt, error, 'delete'));
-      throw error;
+      try {
+        await deleteAssignment(id);
+      } catch (error) {
+        state.setMessage(assignmentError(pt, error, 'delete'));
+        throw error;
+      }
+      try {
+        await loadOverview(true);
+        state.setMessage({
+          kind: 'success',
+          text: pt('scheduling.assignments.messages.deleteSuccess'),
+        });
+      } catch {
+        state.setMessage({
+          kind: 'warning',
+          text: pt('scheduling.assignments.messages.refreshAfterDeleteError'),
+        });
+      }
     } finally {
       state.setSaving(false);
     }

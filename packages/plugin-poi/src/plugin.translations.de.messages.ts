@@ -11,6 +11,9 @@ export const poiMessagesDe = {
     'Die folgenden zuvor nicht sicher lesbaren Bereiche wurden geändert: {{fields}}. Sollen diese Werte bewusst überschrieben werden?',
   saveError: 'Der Ort konnte nicht gespeichert werden.',
   deleteError: 'Der Ort konnte nicht gelöscht werden.',
+  deleteSuccess: 'Der Ort wurde gelöscht.',
+  deleteNavigationError:
+    'Der Ort wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.',
   createSuccess: 'Der Ort wurde erstellt.',
   updateSuccess: 'Der Ort wurde aktualisiert.',
   validationError: 'Bitte korrigieren Sie die markierten Felder.',

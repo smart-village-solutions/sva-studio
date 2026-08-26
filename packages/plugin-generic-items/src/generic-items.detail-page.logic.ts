@@ -5,6 +5,10 @@ import {
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import { type NavigateFn } from '@tanstack/react-router';
+import {
+  addStudioDestructiveNavigationFeedback,
+  type MainserverPrincipalType,
+} from '@sva/studio-ui-react';
 import React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 
@@ -18,7 +22,6 @@ import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 import { mapGenericItemToDetailFormValues } from './generic-items.detail-form.js';
 import type { GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
-import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 
 export type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -171,6 +174,7 @@ export const useGenericItemsDetailActions = ({
   contentId,
   mode,
   navigate,
+  onDeleted,
   pt,
   setStatus,
   actingPrincipalType,
@@ -178,11 +182,13 @@ export const useGenericItemsDetailActions = ({
   contentId?: string;
   mode: 'create' | 'edit';
   navigate: NavigateFn;
+  onDeleted: () => void;
   pt: ReturnType<typeof usePluginTranslation>;
   setStatus: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
   actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [deleting, setDeleting] = React.useState(false);
+  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
 
   const handleDelete = React.useCallback(async () => {
     if (!contentId || deleting || mode !== 'edit') {
@@ -192,15 +198,27 @@ export const useGenericItemsDetailActions = ({
 
     try {
       await deleteGenericItem(contentId, actingPrincipalType);
-      await navigate(genericItemsListNavigationTarget);
     } catch (error) {
       setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
+      setDeleting(false);
+      return;
+    }
+
+    onDeleted();
+    try {
+      await navigate({
+        ...genericItemsListNavigationTarget,
+        state: (previous) =>
+          addStudioDestructiveNavigationFeedback(previous, 'generic-items', contentId),
+      });
+    } catch {
+      setDeleteNavigationFailed(true);
     } finally {
       setDeleting(false);
     }
-  }, [actingPrincipalType, contentId, deleting, mode, navigate, pt, setStatus]);
+  }, [actingPrincipalType, contentId, deleting, mode, navigate, onDeleted, pt, setStatus]);
 
   const [activeTab, setActiveTab] = React.useState<GenericItemsDetailTabId>('basis');
 
-  return { activeTab, deleting, handleDelete, setActiveTab };
+  return { activeTab, deleting, deleteNavigationFailed, handleDelete, setActiveTab };
 };

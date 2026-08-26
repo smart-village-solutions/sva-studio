@@ -1,5 +1,7 @@
 import type { ChangeEvent, ReactNode } from 'react';
+import { Link } from '@tanstack/react-router';
 import type {
+  StudioJobResponse,
   WasteManagementCsvDelimiter,
   WasteManagementImportSourceFormat,
 } from '@sva/plugin-sdk';
@@ -13,8 +15,10 @@ import {
   StudioEditSurface,
   StudioField,
   StudioFieldGroup,
+  StudioJobSummaryCard,
 } from '@sva/studio-ui-react';
 import type { PreviewWasteLocationTourPickupDateImportResult } from './waste-management.api.js';
+import { toJobStatusTone } from './waste-management.page.support.js';
 import type { WasteToolsWizardStepId } from './waste-management.tools.import-wizard-state.js';
 
 type ImportCatalogEntry = ReturnType<
@@ -498,38 +502,43 @@ const WasteToolsPreviewSummary = ({
 const WasteToolsResultSummary = ({
   jobId,
   status,
+  canOpenJobDetails,
   onStartNewImport,
 }: {
   readonly jobId?: string;
-  readonly status?: string;
+  readonly status?: StudioJobResponse['data']['status'];
+  readonly canOpenJobDetails: boolean;
   readonly onStartNewImport: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const statusLabel = status
+    ? pt(`tools.progress.statuses.${status}`)
+    : pt('tools.meta.noJobStatus');
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border/70 bg-muted/10 p-4">
-        <p className="text-sm font-semibold">{pt('tools.imports.wizard.resultTitle')}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {pt('tools.imports.wizard.resultDescription')}
-        </p>
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-              {pt('tools.meta.jobStatusLabel')}
-            </dt>
-            <dd className="mt-1 text-sm font-medium text-foreground">
-              {status ?? pt('tools.meta.noJobStatus')}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-              {pt('tools.meta.jobIdLabel')}
-            </dt>
-            <dd className="mt-1 break-all text-sm font-medium text-foreground">{jobId ?? '—'}</dd>
-          </div>
-        </dl>
-      </div>
+      <StudioJobSummaryCard
+        title={pt('tools.imports.wizard.resultTitle')}
+        description={pt('tools.imports.wizard.resultDescription')}
+        statusLabel={statusLabel}
+        statusTone={toJobStatusTone(status)}
+        announcement={pt('tools.meta.statusAnnouncement', {
+          status: statusLabel,
+          phase: '',
+        })}
+        metadata={
+          jobId ? [{ id: 'jobId', label: pt('tools.meta.jobIdLabel'), value: jobId }] : undefined
+        }
+        actions={
+          jobId && canOpenJobDetails ? (
+            <Button asChild variant="secondary">
+              <Link to="/monitoring/jobs/$jobId" params={{ jobId }}>
+                {pt('tools.actions.openJobDetails')}
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="secondary" onClick={onStartNewImport}>
           {pt('tools.imports.wizard.actions.startNew')}

@@ -60,6 +60,9 @@ export const genericItemsTranslationsDeMessages = {
     missingContent: 'Der angeforderte generische Inhalt konnte nicht geladen werden.',
     saveError: 'Der generische Inhalt konnte nicht gespeichert werden.',
     deleteError: 'Der generische Inhalt konnte nicht gelöscht werden.',
+    deleteSuccess: 'Der generische Inhalt wurde gelöscht.',
+    deleteNavigationError:
+      'Der generische Inhalt wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.',
     createSuccess: 'Der generische Inhalt wurde erstellt.',
     updateSuccess: 'Der generische Inhalt wurde aktualisiert.',
     imagePickerEmpty: 'Keine passenden Bilder gefunden.',

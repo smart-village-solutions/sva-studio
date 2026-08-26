@@ -386,8 +386,10 @@ describe('News editor pages', () => {
         'news.actions.openCreatedDetail': 'Erzeugte Nachricht öffnen',
         'news.actions.back': 'Zurück zur Liste',
         'news.actions.delete': 'Löschen',
+        'news.actions.deleting': 'Wird gelöscht …',
         'news.actions.addCategory': 'Kategorie hinzufügen',
         'news.actions.removeCategory': 'Kategorie {{name}} entfernen',
+        'news.actions.deleteConfirmTitle': 'Nachricht löschen?',
         'news.actions.deleteConfirm': 'Soll dieser News-Eintrag wirklich gelöscht werden?',
         'news.editor.createTitle': 'News-Eintrag anlegen',
         'news.editor.createDescription': 'Erstellen Sie einen neuen News-Eintrag.',
@@ -1621,8 +1623,6 @@ describe('News editor pages', () => {
   });
 
   it('loads an existing news entry and deletes it after confirmation', async () => {
-    stubConfirm(true);
-
     render(<NewsEditPage />);
 
     await waitFor(() => {
@@ -1631,15 +1631,18 @@ describe('News editor pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
+    const deleteDialog = await screen.findByRole('alertdialog', { name: 'Nachricht löschen?' });
+    fireEvent.click(within(deleteDialog).getByRole('button', { name: 'Löschen' }));
+
     await waitFor(() => {
       expect(deleteNews).toHaveBeenCalledWith('news-1', 'user');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '/admin/content', state: expect.any(Function) })
+      );
     });
   });
 
   it('does not delete an entry when the user cancels the confirmation dialog', async () => {
-    const confirmSpy = stubConfirm(false);
-
     render(<NewsEditPage />);
 
     await waitFor(() => {
@@ -1648,16 +1651,15 @@ describe('News editor pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
-    await waitFor(() => {
-      expect(confirmSpy).toHaveBeenCalledWith('Soll dieser News-Eintrag wirklich gelöscht werden?');
-    });
+    const deleteDialog = await screen.findByRole('alertdialog', { name: 'Nachricht löschen?' });
+    fireEvent.click(within(deleteDialog).getByRole('button', { name: 'Zurück zur Liste' }));
 
     expect(deleteNews).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog', { name: 'Nachricht löschen?' })).toBeNull();
   });
 
   it('shows a delete error when deleting an existing news entry fails', async () => {
-    stubConfirm(true);
     vi.mocked(deleteNews).mockRejectedValueOnce(new NewsApiError('network_error'));
 
     render(<NewsEditPage />);
@@ -1668,12 +1670,17 @@ describe('News editor pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
+    const deleteDialog = await screen.findByRole('alertdialog', { name: 'Nachricht löschen?' });
+    fireEvent.click(within(deleteDialog).getByRole('button', { name: 'Löschen' }));
+
     await waitFor(() => {
-      expect(screen.getByText('Der Mainserver ist nicht erreichbar.')).toBeTruthy();
+      expect(within(deleteDialog).getByText('Der Mainserver ist nicht erreichbar.')).toBeTruthy();
     });
 
     expect(navigateMock).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Löschen' }).getAttribute('disabled')).toBeNull();
+    expect(
+      within(deleteDialog).getByRole('button', { name: 'Löschen' }).getAttribute('disabled')
+    ).toBeNull();
   });
 
   it('converts ISO timestamps into datetime-local field values during edit', async () => {

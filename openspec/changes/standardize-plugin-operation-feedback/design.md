@@ -38,6 +38,8 @@ Erfolg, Fehler und Abbruch bleiben im Jobdetail und in der Monitoring-Historie s
 
 Retry, Cancel, Ergebnis öffnen oder Download erscheinen nur, wenn Hostvertrag, Berechtigung und aktueller Jobzustand die konkrete Aktion erlauben. Retry erzeugt eine nachvollziehbare neue Ausführung oder verwendet einen explizit definierten Hostvertrag; die UI setzt einen fehlgeschlagenen Job nicht lokal auf `running` zurück.
 
+Für den freigegebenen Referenzumfang ist Cancel durch den hostgeführten Cancel-Endpunkt für aktive Jobs belegt. Ergebnisaktionen stammen aus bereits vorhandenen Waste-Artefaktverträgen. Ein manueller Retry-Vertrag ist nicht vorhanden und wird deshalb nicht angeboten; automatische Runner-Retries bleiben Teil des zentralen Jobstatus.
+
 ### Decision: Bestehende Jobtypen liefern Fachsemantik
 
 Plugins verwenden die bestehenden namespaced Jobtypen und Progress-Metadaten für Labels, Phasen und fachliche Kurzdetails. Der Host verantwortet generische Statusdarstellung, Fokus, Live-Region und Fehlerpersistenz.
@@ -61,6 +63,6 @@ Die zuvor erwogene allgemeine Action-Outcome- und Feedback-Klassen-Registry wird
 
 ## Open Questions
 
-- Welcher bestehende Waste- oder Importjob bildet den ersten Referenzfluss?
-- Welche Retry- und Cancel-Verträge sind für Phase 1 tatsächlich produktiv belegt?
-- Welche bedeutenden Progress-Übergänge werden per Live-Region angekündigt?
+- Keine für den Referenzumfang. Der Waste-Import ist der erste Referenzfluss.
+- Cancel gilt für aktive Jobs über den Host-Endpunkt; manueller Retry bleibt mangels Vertrag ausgeschlossen.
+- Die Live-Region kündigt Status- und Phasenwechsel an, nicht jeden numerischen Fortschrittswert.

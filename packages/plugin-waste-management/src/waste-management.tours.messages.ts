@@ -15,3 +15,8 @@ export const setTourDeleteErrorMessage = (state: WasteToursState, pt: Translate,
           : pt('tours.messages.deleteError'),
   });
 };
+
+export const throwTourDeleteError = (state: WasteToursState, pt: Translate, error: unknown): never => {
+  setTourDeleteErrorMessage(state, pt, error);
+  throw error;
+};

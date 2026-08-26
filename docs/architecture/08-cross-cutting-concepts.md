@@ -51,6 +51,16 @@ gleichzeitig beeinflussen.
 - Erfolgreiche seitengebundene Creates transportieren den einmaligen Erfolg ausschließlich transient und datensatzgebunden zur Detailroute. Untergeordnete Dialoge ohne Detailroute nutzen die aktualisierte Elternliste, mehrstufige Setup-Flows ihren sichtbaren Einrichtungskontext. Toasts sind auf separat spezifizierte Aktionen ohne geeigneten sichtbaren Kontext begrenzt.
 - Coverage-Gates bleiben wichtig, ersetzen aber diese Foundation-Governance nicht.
 
+### Destruktives Feedback und Jobfeedback
+
+- Destruktive oder hochwirksame Aktionen verwenden den gemeinsamen `StudioDestructiveActionDialog`. Ziel, Konsequenz, Berechtigung, Mutation und Fehlermapping bleiben fachlich; Pending-Sperre, Fokusführung und persistenter Dialogfehler sind gemeinsame UI-Semantik.
+- Destruktives Feedback besitzt kein Undo. Ein Restore ist, sofern fachlich vorhanden, eine neue namespaced Action mit eigener Autorisierung und Darstellung.
+- Wenn die Ressource nach Erfolg nicht mehr sichtbar ist, transportiert der Router den Abschluss einmalig und ressourcengebunden zum nächsten stabilen Kontext. Die Zielroute übernimmt und entfernt diesen State mit `replace`.
+- Plugin-Jobs verwenden den zentralen Hostdatensatz als einzige Statuswahrheit. Fachbereiche zeigen mindestens Job-ID, initialen Status und Jobdetail-Link; Monitoring zeigt Progress, Runtime, History und Terminalergebnis.
+- Folgeaktionen werden ausschließlich aus Host-Capabilities abgeleitet. Für aktive Jobs ist derzeit `cancel` belegt; manueller Retry bleibt ohne expliziten Hostvertrag unsichtbar.
+- Live-Regionen kündigen Status- und Phasenwechsel höflich an, nicht jede numerische Fortschrittsänderung. Fehler und Terminalzustände bleiben in ihrem Kontext persistent.
+- Die vollständige Inventur und die Migrationsregeln stehen in [Kontextgebundenes Aktionsfeedback](../development/action-feedback.md).
+
 ### Medienmanagement
 
 - Medienzugriffe bleiben mandantengetrennt und hostgeführt.
@@ -757,7 +767,7 @@ Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fa
 
 ## Einheitliche Content-Editoren
 
-FAQ, Kacheln und GenericItems verwenden für Detailnavigation, Panel-Flächen, Formularfehler, Pagination und destruktive Bestätigungen die Primitives aus `@sva/studio-ui-react`. News, Events und POIs dienen als kuratierte Verhaltensreferenzen; ihre pluginlokalen Implementierungen werden nicht kopiert. Fachliche Mapper, Feldpfade und Mainserver-Verträge bleiben in den jeweiligen Plugins beziehungsweise Host-Fassaden.
+FAQ, Kacheln und GenericItems verwenden für Detailnavigation, Panel-Flächen, Formularfehler, Pagination und destruktive Bestätigungen die Primitives aus `@sva/studio-ui-react`. News, Events und POIs nutzen denselben destruktiven Dialog- und Navigationsergebnisvertrag. Surveys verwenden ihn für lokale Entwurfsentfernungen; Waste zusätzlich für Einzel-, Bulk- und Reset-Löschungen unter Erhalt fachlicher Hürden wie des Reset-Bestätigungstokens. Die Plugins teilen damit die UI-Semantik, kopieren aber keine fachlichen Mapper, Feldpfade oder Mainserver-Verträge.
 
 ### Resilienz- und Erhaltungsvertrag
 

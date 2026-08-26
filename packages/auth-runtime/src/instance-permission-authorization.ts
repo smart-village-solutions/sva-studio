@@ -158,6 +158,7 @@ export const authorizeInstancePermissionForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly action: string;
   readonly instanceId?: string;
+  readonly logDeniedDecision?: boolean;
   readonly permissions?: readonly EffectivePermission[];
 }): Promise<InstancePermissionAuthorizationResult> => {
   const instanceId = input.instanceId ?? input.ctx.user.instanceId;
@@ -199,14 +200,16 @@ export const authorizeInstancePermissionForUser = async (input: {
   });
   const decision = evaluateAuthorizeDecision(request, permissions);
   if (!decision.allowed) {
-    accountLogger.warn('Instance permission authorization denied', {
-      operation: 'instance_permission_authorize',
-      instance_id: instanceId,
-      request_id: workspaceContext.requestId,
-      trace_id: workspaceContext.traceId,
-      action,
-      reason: decision.reason,
-    });
+    if (input.logDeniedDecision !== false) {
+      accountLogger.warn('Instance permission authorization denied', {
+        operation: 'instance_permission_authorize',
+        instance_id: instanceId,
+        request_id: workspaceContext.requestId,
+        trace_id: workspaceContext.traceId,
+        action,
+        reason: decision.reason,
+      });
+    }
 
     const permissionDenial = createPermissionDenialDetailsForAction(action, decision.reason);
     return {

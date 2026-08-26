@@ -5,6 +5,7 @@ import {
   createLocationBulkAssignmentsHandler,
   createLocationDeleteHandler,
   createLocationSubmitHandler,
+  createLocationsBulkDeleteHandler,
 } from '../src/waste-management.master-data.location-mutation.helpers.js';
 import { createToursAssignmentSubmitHandler } from '../src/waste-management.tours.assignment-mutation.helpers.js';
 
@@ -12,7 +13,9 @@ const createWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async
 const updateWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementCityMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async () => undefined));
-const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn(async () => undefined));
+const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() =>
+  vi.fn(async () => undefined)
+);
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
@@ -34,23 +37,29 @@ vi.mock('../src/waste-management.api.js', () => ({
       this.code = code;
     }
   },
-  createWasteManagementCollectionLocation: (...args: Parameters<typeof createWasteManagementCollectionLocationMock>) =>
-    createWasteManagementCollectionLocationMock(...args),
-  updateWasteManagementCollectionLocation: (...args: Parameters<typeof updateWasteManagementCollectionLocationMock>) =>
-    updateWasteManagementCollectionLocationMock(...args),
+  createWasteManagementCollectionLocation: (
+    ...args: Parameters<typeof createWasteManagementCollectionLocationMock>
+  ) => createWasteManagementCollectionLocationMock(...args),
+  updateWasteManagementCollectionLocation: (
+    ...args: Parameters<typeof updateWasteManagementCollectionLocationMock>
+  ) => updateWasteManagementCollectionLocationMock(...args),
   updateWasteManagementCity: (...args: Parameters<typeof updateWasteManagementCityMock>) =>
     updateWasteManagementCityMock(...args),
-  deleteWasteManagementCollectionLocation: (...args: Parameters<typeof deleteWasteManagementCollectionLocationMock>) =>
-    deleteWasteManagementCollectionLocationMock(...args),
+  deleteWasteManagementCollectionLocation: (
+    ...args: Parameters<typeof deleteWasteManagementCollectionLocationMock>
+  ) => deleteWasteManagementCollectionLocationMock(...args),
   createWasteManagementLocationTourLinksBulk: (
     ...args: Parameters<typeof createWasteManagementLocationTourLinksBulkMock>
   ) => createWasteManagementLocationTourLinksBulkMock(...args),
-  createWasteManagementLocationTourLink: (...args: Parameters<typeof createWasteManagementLocationTourLinkMock>) =>
-    createWasteManagementLocationTourLinkMock(...args),
-  deleteWasteManagementLocationTourLink: (...args: Parameters<typeof deleteWasteManagementLocationTourLinkMock>) =>
-    deleteWasteManagementLocationTourLinkMock(...args),
-  updateWasteManagementLocationTourLink: (...args: Parameters<typeof updateWasteManagementLocationTourLinkMock>) =>
-    updateWasteManagementLocationTourLinkMock(...args),
+  createWasteManagementLocationTourLink: (
+    ...args: Parameters<typeof createWasteManagementLocationTourLinkMock>
+  ) => createWasteManagementLocationTourLinkMock(...args),
+  deleteWasteManagementLocationTourLink: (
+    ...args: Parameters<typeof deleteWasteManagementLocationTourLinkMock>
+  ) => deleteWasteManagementLocationTourLinkMock(...args),
+  updateWasteManagementLocationTourLink: (
+    ...args: Parameters<typeof updateWasteManagementLocationTourLinkMock>
+  ) => updateWasteManagementLocationTourLinkMock(...args),
 }));
 
 vi.mock('../src/waste-management.location-tour-links-bulk-client.js', () => ({
@@ -65,7 +74,9 @@ vi.mock('../src/use-waste-master-data-state.js', () => ({
 
 vi.mock('../src/waste-management.page.support.js', () => ({
   resolveApiErrorCode: (error: unknown) =>
-    typeof error === 'object' && error !== null && 'code' in error ? ((error as { code?: string }).code ?? null) : null,
+    typeof error === 'object' && error !== null && 'code' in error
+      ? ((error as { code?: string }).code ?? null)
+      : null,
 }));
 
 const createLocationState = () => ({
@@ -189,7 +200,8 @@ describe('waste-management mutation helper logic', () => {
   it('maps delete conflicts to the singular delete error message', async () => {
     const state = createLocationState();
     const loadOverview = vi.fn(async () => undefined);
-    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce({ code: 'conflict' });
+    const deleteError = { code: 'conflict' };
+    deleteWasteManagementCollectionLocationMock.mockRejectedValueOnce(deleteError);
     const handler = createLocationDeleteHandler({
       state: state as never,
       pt,
@@ -199,11 +211,84 @@ describe('waste-management mutation helper logic', () => {
       selectedCollectionLocationIds: [],
     });
 
-    await handler({ id: 'location-9' });
+    await expect(handler({ id: 'location-9' })).rejects.toBe(deleteError);
 
     expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
       text: 'masterData.collectionLocations.messages.deleteConflict',
+    });
+  });
+
+  it('preserves a successful location deletion when the following refresh fails', async () => {
+    const state = createLocationState();
+    const handler = createLocationDeleteHandler({
+      state: state as never,
+      pt,
+      search: { locationsView: 'list' } as never,
+      loadOverview: vi.fn(async () => {
+        throw new Error('refresh failed');
+      }),
+      loadCollectionLocationList: vi.fn(async () => undefined),
+      selectedCollectionLocationIds: ['location-1'],
+    });
+
+    await expect(handler({ id: 'location-1' })).resolves.toBeUndefined();
+
+    expect(state.setSelectedLocationIds).toHaveBeenCalledOnce();
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'masterData.collectionLocations.messages.refreshAfterDeleteError',
+    });
+  });
+
+  it('retains only undeleted location ids after a partial bulk failure', async () => {
+    const state = createLocationState();
+    const deleteError = { code: 'forbidden' };
+    deleteWasteManagementCollectionLocationMock
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(deleteError);
+    const loadOverview = vi.fn(async () => undefined);
+    const loadCollectionLocationList = vi.fn(async () => undefined);
+    const handler = createLocationsBulkDeleteHandler({
+      state: state as never,
+      pt,
+      search: { locationsView: 'list' } as never,
+      loadOverview,
+      loadCollectionLocationList,
+      selectedCollectionLocationIds: ['location-1', 'location-2', 'location-3'],
+    });
+
+    await expect(handler(['location-1', 'location-2', 'location-3'])).rejects.toBe(deleteError);
+
+    expect(deleteWasteManagementCollectionLocationMock).not.toHaveBeenCalledWith('location-3');
+    expect(state.setSelectedLocationIds).toHaveBeenCalledWith(['location-2', 'location-3']);
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(loadCollectionLocationList).toHaveBeenCalledOnce();
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'error',
+      text: 'masterData.collectionLocations.bulk.messages.deletePartialError:{"value":2}',
+    });
+  });
+
+  it('treats already absent locations as an idempotent bulk-delete success', async () => {
+    const state = createLocationState();
+    deleteWasteManagementCollectionLocationMock
+      .mockRejectedValueOnce({ code: 'not_found' })
+      .mockResolvedValueOnce(undefined);
+    const handler = createLocationsBulkDeleteHandler({
+      state: state as never,
+      pt,
+      search: { locationsView: 'list' } as never,
+      loadOverview: vi.fn(async () => undefined),
+      loadCollectionLocationList: vi.fn(async () => undefined),
+      selectedCollectionLocationIds: ['location-1', 'location-2'],
+    });
+
+    await expect(handler(['location-1', 'location-2'])).resolves.toBeUndefined();
+    expect(state.setSelectedLocationIds).toHaveBeenCalledWith([]);
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'success',
+      text: 'masterData.collectionLocations.bulk.messages.deleteSuccess',
     });
   });
 

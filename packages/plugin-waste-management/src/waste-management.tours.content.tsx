@@ -1,12 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StatusNotice } from './waste-management.page.support.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
-import {
-  WasteToursContentBody,
-  type WasteToursFilterViewModel,
-  type WasteToursTableViewModel,
-} from './waste-management.tours.content.body.js';
+import { WasteToursContentBody, type WasteToursFilterViewModel, type WasteToursTableViewModel } from './waste-management.tours.content.body.js';
 import { WasteToursDeleteDialogs, useWasteToursSelectionState } from './waste-management.tours.content.parts.js';
 import { applyWasteToursFilters, resetWasteToursFilters, updateWasteToursSorting } from './waste-management.tours.content.helpers.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
@@ -55,7 +51,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onStatusChange,
     onFiltersChange,
   } = props;
-  const pt = usePluginTranslation('wasteManagement');
+  const pt = usePluginTranslation('wasteManagement'); const deleteFocusFallbackRef = useRef<HTMLElement | null>(null);
   const { sortedTours, sortField, setSortField, sortDirection, setSortDirection } =
     useWasteToursContentSorting(tours, masterDataOverview?.locationTourLinks);
   const [tourPendingStatusChange, setTourPendingStatusChange] = useState<{
@@ -207,6 +203,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         onOpenAnnualTransfer={annualTransfer.open}
         filters={filters}
         table={table}
+        focusFallbackRef={deleteFocusFallbackRef} focusFallbackLabel={pt('tabs.tours.title')}
       />
       {annualTransfer.dialog}
       <WasteToursBulkValidityDialog
@@ -249,10 +246,11 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         statusChangePending={statusChangePending}
         statusChangeError={statusChangeError}
         onDeleteTours={onDeleteTours}
-        onAfterBulkDelete={() => {
-          setSelectedTourIds([]);
-          setBulkDeleteOpen(false);
+        onAfterBulkDelete={(failedIds) => {
+          setSelectedTourIds(failedIds);
+          setBulkDeleteOpen(failedIds.length > 0);
         }}
+        fallbackFocusRef={deleteFocusFallbackRef}
       />
     </div>
   );

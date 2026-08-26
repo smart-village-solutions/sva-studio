@@ -47,6 +47,7 @@ type MasterDataFractionsCopy = Readonly<{
   translationBadge: string;
   dialog: CrudDialogCopy;
   deleteDialog: Readonly<Record<string, string>>;
+  bulkDeleteDialog: Readonly<Record<string, string>>;
   statusDialog: Readonly<Record<string, string>>;
   messages: Readonly<
     CrudMessagesCopy & {
@@ -152,6 +153,7 @@ const createMasterDataFractionsTranslations = <const TCopy extends MasterDataFra
     translationBadge: copy.translationBadge,
     dialog: createCrudDialog(copy.dialog),
     deleteDialog: copy.deleteDialog,
+    bulkDeleteDialog: copy.bulkDeleteDialog,
     statusDialog: copy.statusDialog,
     messages: copy.messages,
   }) as const;

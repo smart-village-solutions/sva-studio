@@ -27,6 +27,7 @@ const deleteSurveyMock = vi.fn();
 const deleteProjectMock = vi.fn();
 const navigateMock = vi.fn();
 let searchState: Record<string, unknown> = {};
+let locationState: Record<string, unknown> = {};
 const DEFAULT_VISIBLE_TYPES = [
   'generic',
   'news.article',
@@ -103,6 +104,7 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: locationState }),
   useSearch: () => searchState,
   Link: ({
     children,
@@ -198,6 +200,7 @@ describe('ContentListPage', () => {
     deleteProjectMock.mockReset();
     navigateMock.mockReset();
     searchState = {};
+    locationState = {};
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -281,6 +284,7 @@ describe('ContentListPage', () => {
     error: null,
     mutationError: null,
     refetch: vi.fn(),
+    refetchWithOutcome: vi.fn(async () => true),
     refreshProjection: vi.fn(async () => true),
     refreshProjectionPending: false,
     clearMutationError: vi.fn(),
@@ -518,61 +522,89 @@ describe('ContentListPage', () => {
     renderWithUnresolvedContentAccess();
   });
 
+  it('keeps a destructive result visible after navigation and consumes the route feedback', async () => {
+    locationState = {
+      preserved: 'value',
+      studioActionFeedback: {
+        kind: 'destructive-complete',
+        resourceType: 'events',
+        resourceId: 'event-42',
+      },
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(await screen.findByText('Inhalt gelöscht')).toBeTruthy();
+    expect(
+      screen.getByText('Der Inhalt mit der ID event-42 wurde endgültig gelöscht.')
+    ).toBeTruthy();
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/admin/content', replace: true })
+    );
+
+    const navigation = navigateMock.mock.calls[0]?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(navigation.state(locationState)).toEqual({
+      preserved: 'value',
+      studioActionFeedback: undefined,
+    });
+  });
+
   it('deletes a mainserver content row when delete permission exists', async () => {
     const refetch = vi.fn(async () => undefined);
-    const confirmMock = vi.fn(() => true);
-    Object.defineProperty(window, 'confirm', {
-      configurable: true,
-      writable: true,
-      value: confirmMock,
-    });
-
-    useContentsMock.mockReturnValue(
-      createContentsApiResult({
-        contents: [
-          {
-            id: 'survey-1',
-            contentType: 'surveys.survey',
-            title: 'Beteiligung',
-            publishedAt: '2026-03-21T10:00:00.000Z',
-            createdAt: '2026-03-20T10:00:00.000Z',
-            updatedAt: '2026-03-21T11:00:00.000Z',
-            author: 'mainserver',
-            credentialSource: 'organization',
-            payload: { questionCount: 3 },
-            status: 'published',
-            access: {
-              state: 'editable',
-              canRead: true,
-              canCreate: true,
-              canUpdate: true,
-              organizationIds: ['org-1'],
-              sourceKinds: ['direct_role'],
-            },
+    const content = {
+      id: 'survey-1',
+      contentType: 'surveys.survey',
+      title: 'Beteiligung',
+      publishedAt: '2026-03-21T10:00:00.000Z',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-21T11:00:00.000Z',
+      author: 'mainserver',
+      credentialSource: 'organization',
+      payload: { questionCount: 3 },
+      status: 'published',
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: ['org-1'],
+        sourceKinds: ['direct_role'],
+      },
+    };
+    const Harness = ({ enabled }: { enabled: boolean }) => {
+      const [isLoading, setIsLoading] = React.useState(false);
+      useContentsMock.mockReturnValue(
+        createContentsApiResult({
+          contents: isLoading ? [] : [content],
+          pagination: { page: 1, pageSize: 25, total: 1 },
+          isLoading,
+          refetch,
+          refetchWithOutcome: async () => {
+            setIsLoading(true);
+            await refetch();
+            return true;
           },
-        ],
-        pagination: { page: 1, pageSize: 25, total: 1 },
-        refetch,
-      })
-    );
+        })
+      );
+      return (
+        <ContentListPage
+          enabledMainserverMutationActions={enabled ? ['surveys.delete', 'surveys.update'] : []}
+          principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
+        />
+      );
+    };
     deleteSurveyMock.mockResolvedValue(undefined);
 
-    const view = render(
-      <ContentListPage
-        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
-      />
-    );
+    const view = render(<Harness enabled={false} />);
     expect(
       (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
     ).toBe(true);
     expect(screen.queryByRole('button', { name: /Status von Beteiligung ändern/ })).toBeNull();
 
-    view.rerender(
-      <ContentListPage
-        enabledMainserverMutationActions={['surveys.delete', 'surveys.update']}
-        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
-      />
-    );
+    view.rerender(<Harness enabled />);
     expect(
       screen.getAllByRole('button', { name: /Status von Beteiligung ändern/ }).length
     ).toBeGreaterThan(0);
@@ -580,25 +612,25 @@ describe('ContentListPage', () => {
     const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0]!;
     expect(deleteButton.className).toContain('bg-action-destructive');
     expect(deleteButton.className).not.toContain('text-muted-foreground');
+    deleteButton.focus();
     fireEvent.click(deleteButton);
 
-    expect(confirmMock).toHaveBeenCalledWith('Soll dieser Inhalt wirklich gelöscht werden?');
+    const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
+    expect(within(dialog).getByText(/Beteiligung/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
     await waitFor(() => {
       expect(deleteSurveyMock).toHaveBeenCalledWith('survey-1', 'organization');
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
     });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Inhalte' }));
+    });
   });
 
   it('routes faq deletion through the faq client', async () => {
     const refetch = vi.fn(async () => undefined);
-    const confirmMock = vi.fn(() => true);
-    Object.defineProperty(window, 'confirm', {
-      configurable: true,
-      writable: true,
-      value: confirmMock,
-    });
 
     useContentsMock.mockReturnValue(
       createContentsApiResult({
@@ -625,6 +657,10 @@ describe('ContentListPage', () => {
         ],
         pagination: { page: 1, pageSize: 25, total: 1 },
         refetch,
+        refetchWithOutcome: async () => {
+          await refetch();
+          return true;
+        },
       })
     );
     deleteFaqMock.mockResolvedValue(undefined);
@@ -640,6 +676,8 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
       expect(deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user');
@@ -647,6 +685,89 @@ describe('ContentListPage', () => {
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
     });
+  });
+
+  it('reports a refresh warning after a successful row deletion', async () => {
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'faq-1',
+            contentType: 'faq.faq',
+            title: 'FAQ',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'mainserver',
+            payload: {},
+            status: 'published',
+            access: {
+              state: 'editable',
+              canRead: true,
+              canCreate: true,
+              canUpdate: true,
+              organizationIds: ['org-1'],
+              sourceKinds: ['direct_role'],
+            },
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+        refetchWithOutcome: vi.fn(async () => false),
+      })
+    );
+    deleteFaqMock.mockResolvedValue(undefined);
+
+    render(<ContentListPage />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(
+      screen.getByText(
+        'Die Löschung war erfolgreich, aber die Inhaltsliste konnte nicht aktualisiert werden.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('keeps the row dialog open with a persistent error when deletion fails', async () => {
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'faq-1',
+            contentType: 'faq.faq',
+            title: 'FAQ',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'mainserver',
+            payload: {},
+            status: 'published',
+            access: {
+              state: 'editable',
+              canRead: true,
+              canCreate: true,
+              canUpdate: true,
+              organizationIds: ['org-1'],
+              sourceKinds: ['direct_role'],
+            },
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      })
+    );
+    deleteFaqMock.mockRejectedValueOnce(new Error('delete failed'));
+
+    render(<ContentListPage />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Der Inhalt konnte nicht gelöscht werden.'
+    );
+    expect(screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' })).toBeTruthy();
   });
 
   it('encodes content ids when building row detail links', () => {
@@ -1393,6 +1514,86 @@ describe('ContentListPage', () => {
     expect(
       screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile local-1 auswählen' })
     ).toHaveLength(2);
+  });
+
+  it('retains failed bulk deletions in the shared dialog until a retry succeeds', async () => {
+    const deleteContents = vi
+      .fn()
+      .mockResolvedValueOnce({
+        acceptedCount: 1,
+        failedContentIds: ['local-2'],
+        failedCount: 1,
+        refreshFailed: false,
+        skippedCount: 0,
+      })
+      .mockResolvedValueOnce({
+        acceptedCount: 1,
+        failedContentIds: [],
+        failedCount: 0,
+        refreshFailed: false,
+        skippedCount: 0,
+      });
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'local-1',
+            contentType: 'generic',
+            title: 'Lokaler Inhalt 1',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-23T10:00:00.000Z',
+            author: 'Editor',
+            payload: {},
+            status: 'draft',
+          },
+          {
+            id: 'local-2',
+            contentType: 'generic',
+            title: 'Lokaler Inhalt 2',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-23T10:00:00.000Z',
+            author: 'Editor',
+            payload: {},
+            status: 'draft',
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 2 },
+        deleteContents,
+      })
+    );
+    useContentAccessMock.mockReturnValue({
+      access: null,
+      permissionActions: ['content.read', 'content.delete'],
+      unscopedPermissionActions: ['content.read', 'content.delete'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<ContentListPage />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
+    let dialog = screen.getByRole('alertdialog', {
+      name: 'Ausgewählte Inhalte endgültig löschen?',
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      '1 Inhalte konnten nicht gelöscht werden.'
+    );
+    expect(deleteContents).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ contentIds: ['local-1', 'local-2'] })
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(deleteContents).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ contentIds: ['local-2'] })
+    );
+    expect(screen.getByText('1 Inhalte wurden endgültig gelöscht.')).toBeTruthy();
   });
 
   it('disables local bulk mutations when only scoped actions are available', async () => {

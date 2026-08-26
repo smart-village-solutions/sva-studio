@@ -137,6 +137,7 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
         'Erstellen Sie einen neuen Abholort aus Region, Ort, Straße und Hausnummer.',
       editTitle: 'Abholort bearbeiten',
       editDescription: 'Ändern Sie geografische Zuordnung und Sichtbarkeit des Abholorts.',
+      deleteDescription: 'Der Abholort {{value}} wird dauerhaft gelöscht.',
     },
     meta: {
       locationId: 'Abholort-ID: {{value}}',
@@ -147,6 +148,8 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       createSuccess: 'Der Waste-Abholort wurde angelegt.',
       updateSuccess: 'Der Waste-Abholort wurde aktualisiert.',
       deleteSuccess: 'Der Waste-Abholort wurde gelöscht.',
+      refreshAfterDeleteError:
+        'Der Waste-Abholort wurde gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
       saveError: 'Der Waste-Abholort konnte nicht gespeichert werden.',
       saveErrorWithReason: 'Der Waste-Abholort konnte nicht gespeichert werden: {{reason}}',
       postalCodeSaveWarning:
@@ -193,7 +196,7 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
         title: 'Tour gesammelt zuweisen',
         description: '{{value}} ausgewählte Abholorte werden einer Tour zugeordnet.',
         deleteTitle: 'Markierte Abholorte löschen',
-        deleteDescription: '{{value}} ausgewählte Abholorte werden gelöscht.',
+        deleteDescription: '{{value}} ausgewählte Abholorte werden dauerhaft gelöscht.',
       },
       selectedTitle: 'Ausgewählte Abholorte',
       meta: { selectedCount: '{{value}} ausgewählt' },
@@ -204,6 +207,10 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
           'Für das Sammelspeichern von Waste-Tour-Zuordnungen fehlt die Berechtigung.',
         deleteSuccess: 'Die markierten Waste-Abholorte wurden gelöscht.',
         deleteError: 'Die markierten Waste-Abholorte konnten nicht gelöscht werden.',
+        deletePartialError:
+          'Ein Teil der Waste-Abholorte wurde gelöscht. {{value}} Abholorte bleiben für einen erneuten Versuch ausgewählt.',
+        refreshAfterDeleteError:
+          'Die markierten Waste-Abholorte wurden gelöscht, aber die Übersicht konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.',
         deleteForbidden: 'Für das Löschen markierter Waste-Abholorte fehlt die Berechtigung.',
         deleteConflict:
           'Mindestens ein markierter Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',

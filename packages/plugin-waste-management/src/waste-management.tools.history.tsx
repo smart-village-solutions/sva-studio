@@ -1,15 +1,14 @@
 import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
 import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { useState } from 'react';
-import { StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
-
+import { Link } from '@tanstack/react-router';
+import { Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
 import { WasteToolsPostalCodeStatus } from './waste-management.tools.postal-code-status.js';
 import { WasteToolsHistoryEntry } from './waste-management.tools.history-entry.js';
+import { WasteToolsHistoryDeleteDialog } from './waste-management.tools.history-delete-dialog.js';
 import { WasteToolsArtifactDownloads } from './waste-management.tools.artifact-downloads.js';
-
 const activeImportStatuses = new Set(['queued', 'running', 'retrying']);
-
 const isActiveImportJob = (
   job: StudioJobResponse['data'] | null
 ): job is StudioJobResponse['data'] =>
@@ -17,7 +16,6 @@ const isActiveImportJob = (
   activeImportStatuses.has(job.status);
 
 const clampPercentage = (value: number) => Math.min(100, Math.max(0, Math.round(value)));
-
 const readStructuredRowProgress = (
   job: StudioJobResponse['data']
 ): {
@@ -148,15 +146,18 @@ export const WasteToolsHistory = ({
   lastJob,
   technicalHistory,
   canDeleteHistoryEntries = false,
+  canOpenJobDetails = false,
   onDeleteEntry,
 }: {
   readonly lastJob: StudioJobResponse['data'] | null;
   readonly technicalHistory: readonly WasteManagementHistoryOverview['technical']['items'][number][];
   readonly canDeleteHistoryEntries?: boolean;
-  readonly onDeleteEntry?: (jobId: string) => void;
+  readonly canOpenJobDetails?: boolean;
+  readonly onDeleteEntry?: (jobId: string) => boolean | Promise<boolean>;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
+  const [pendingDeleteJobId, setPendingDeleteJobId] = useState<string | null>(null);
   const latestRecordedJob = technicalHistory.find(
     (item) => item.source === 'job' && item.jobId && item.jobTypeId
   );
@@ -181,6 +182,16 @@ export const WasteToolsHistory = ({
         }
         statusLabel={displayedLastJob?.status ?? pt('tools.meta.noJobStatus')}
         statusTone={toJobStatusTone(displayedLastJob?.status)}
+        announcement={
+          displayedLastJob
+            ? pt('tools.meta.statusAnnouncement', {
+                status: pt(`tools.progress.jobStatuses.${displayedLastJob.status}`),
+                phase: displayedLastJob.progress?.currentPhase
+                  ? ` ${pt(`tools.progress.phases.${displayedLastJob.progress.currentPhase}`)}`
+                  : '',
+              })
+            : undefined
+        }
         metadata={
           displayedLastJob
             ? [
@@ -197,6 +208,15 @@ export const WasteToolsHistory = ({
                 },
               ]
             : undefined
+        }
+        actions={
+          displayedLastJob && canOpenJobDetails ? (
+            <Button asChild variant="secondary">
+              <Link to="/monitoring/jobs/$jobId" params={{ jobId: displayedLastJob.id }}>
+                {pt('tools.actions.openJobDetails')}
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
       {isActiveImportJob(displayedLastJob) ? (
@@ -218,9 +238,9 @@ export const WasteToolsHistory = ({
                   key={item.id}
                   item={item}
                   isOpen={isOpen}
-                  canDelete={canDeleteHistoryEntries}
+                  canDelete={canDeleteHistoryEntries && Boolean(onDeleteEntry)}
                   onToggle={() => setOpenEntryId(isOpen ? null : item.id)}
-                  onDelete={onDeleteEntry}
+                  onDelete={setPendingDeleteJobId}
                 />
               );
             })}
@@ -229,6 +249,11 @@ export const WasteToolsHistory = ({
           <StudioEmptyState>{pt('tools.meta.noTechnicalHistory')}</StudioEmptyState>
         )}
       </div>
+      <WasteToolsHistoryDeleteDialog
+        jobId={pendingDeleteJobId}
+        onCancel={() => setPendingDeleteJobId(null)}
+        onDelete={onDeleteEntry ?? (() => false)}
+      />
     </div>
   );
 };

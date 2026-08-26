@@ -117,6 +117,15 @@ describe('plugin operation runtime registration', () => {
       expect.objectContaining({ jobTypeId: 'studio.dsr-export' }),
       expect.objectContaining({ jobTypeId: 'media.content-save-recovery' }),
     ]);
+    expect(handlers['waste-management.sync-mainserver']).toMatchObject({
+      supportsCancellation: true,
+    });
+    expect(handlers['waste-management.reset-data']).toMatchObject({
+      supportsCancellation: false,
+    });
+    expect(handlers['waste-management.seed-data']).toMatchObject({
+      supportsCancellation: false,
+    });
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
   }, 30000);
 

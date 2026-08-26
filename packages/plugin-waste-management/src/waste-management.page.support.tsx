@@ -16,7 +16,7 @@ import {
   AlertTitle,
   Button,
   Input,
-  StudioConfirmDialog,
+  StudioDestructiveActionDialog,
   StudioField,
   StudioFieldGroup,
 } from '@sva/studio-ui-react';
@@ -30,6 +30,10 @@ export type StatusMessage = {
   readonly text: string;
   readonly retryAction?: 'sync-waste-types';
 };
+
+export type WasteBulkDeleteResult = Readonly<{
+  failedIds: readonly string[];
+}>;
 
 export type TechnicalStatusTone = 'neutral' | 'success' | 'warning' | 'error';
 
@@ -64,7 +68,9 @@ export const toTechnicalStatusTone = (
   }
 };
 
-export const toJobStatusTone = (status: StudioJobResponse['data']['status'] | undefined): TechnicalStatusTone => {
+export const toJobStatusTone = (
+  status: StudioJobResponse['data']['status'] | undefined
+): TechnicalStatusTone => {
   switch (status) {
     case 'succeeded':
       return 'success';
@@ -82,16 +88,26 @@ export const toJobStatusTone = (status: StudioJobResponse['data']['status'] | un
 
 const createImportTemplateCsv = (profile: WasteManagementImportProfileCatalogEntry) => {
   const delimiter = profile.templateDelimiter ?? ',';
-  const headers = profile.templateHeaders ?? [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.key);
-  const sampleRows =
-    profile.templateSampleRows ??
-    [[...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.example ?? '')];
-  return [headers.join(delimiter), ...sampleRows.map((row) => row.join(delimiter))].join('\n').concat('\n');
+  const headers =
+    profile.templateHeaders ??
+    [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.key);
+  const sampleRows = profile.templateSampleRows ?? [
+    [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.example ?? ''),
+  ];
+  return [headers.join(delimiter), ...sampleRows.map((row) => row.join(delimiter))]
+    .join('\n')
+    .concat('\n');
 };
 
-const createImportTemplateWorkbookBuffer = async (profile: WasteManagementImportProfileCatalogEntry): Promise<ArrayBuffer> => {
-  const headers = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.key);
-  const sampleRow = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.example ?? '');
+const createImportTemplateWorkbookBuffer = async (
+  profile: WasteManagementImportProfileCatalogEntry
+): Promise<ArrayBuffer> => {
+  const headers = [...profile.requiredColumns, ...profile.optionalColumns].map(
+    (column) => column.key
+  );
+  const sampleRow = [...profile.requiredColumns, ...profile.optionalColumns].map(
+    (column) => column.example ?? ''
+  );
   const workbook = new Workbook();
   const worksheet = workbook.addWorksheet('Import');
   worksheet.addRow(headers);
@@ -130,7 +146,9 @@ export const downloadImportPreviewErrors = (preview: WasteLocationTourPickupDate
       error.value ?? '',
     ]),
   ];
-  const csv = rows.map((row) => row.map((cell) => `"${cell.split('"').join('""')}"`).join(';')).join('\n');
+  const csv = rows
+    .map((row) => row.map((cell) => `"${cell.split('"').join('""')}"`).join(';'))
+    .join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -189,13 +207,15 @@ export const ResetConfirmationDialog = ({
   const pt = usePluginTranslation('wasteManagement');
 
   return (
-    <StudioConfirmDialog
+    <StudioDestructiveActionDialog
       open={open}
       title={pt('tools.reset.confirmTitle')}
       description={pt('tools.reset.confirmDescription')}
       confirmLabel={running ? pt('tools.actions.starting') : pt('tools.reset.confirmAction')}
+      pendingLabel={pt('tools.actions.starting')}
       cancelLabel={pt('tools.reset.confirmCancel')}
-      confirmDisabled={running || token.trim() !== wasteManagementOperationsContract.resetConfirmationToken}
+      pending={running}
+      confirmDisabled={token.trim() !== wasteManagementOperationsContract.resetConfirmationToken}
       onCancel={() => onOpenChange(false)}
       onConfirm={onConfirm}
     >
@@ -209,6 +229,6 @@ export const ResetConfirmationDialog = ({
           />
         </StudioField>
       </StudioFieldGroup>
-    </StudioConfirmDialog>
+    </StudioDestructiveActionDialog>
   );
 };

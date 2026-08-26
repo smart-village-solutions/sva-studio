@@ -92,7 +92,8 @@ export const monitoringDEResources = {
       liveProgressProcessed: 'Verarbeitete Datensätze: {{current}} / {{total}}',
       liveProgressLastActivity: 'Letzte Aktivität: {{value}}',
       liveProgressLastSuccessfulBatch: 'Letzter erfolgreicher Batch: {{value}}',
-      liveProgressLikelyStuck: 'Der Lauf wirkt vermutlich festgefahren, weil seit dem letzten erfolgreichen Batch kein frischer Fortschritt mehr eingegangen ist.',
+      liveProgressLikelyStuck:
+        'Der Lauf wirkt vermutlich festgefahren, weil seit dem letzten erfolgreichen Batch kein frischer Fortschritt mehr eingegangen ist.',
       writeSummaryTitle: 'Schreibübersicht',
       writeSummaryWritten: 'Geschrieben',
       writeSummaryDeleted: 'Gelöscht',
@@ -108,6 +109,17 @@ export const monitoringDEResources = {
     actions: {
       refresh: 'Aktualisieren',
       open: 'Öffnen',
+      cancel: 'Job abbrechen',
+      cancelling: 'Abbruch wird angefordert…',
+      keepRunning: 'Weiterlaufen lassen',
+    },
+    cancel: {
+      title: 'Job abbrechen?',
+      description:
+        'Für den Job {{jobId}} wird ein Abbruch angefordert. Bereits ausgeführte Schritte werden dadurch nicht zurückgenommen.',
+      requestedTitle: 'Abbruch angefordert',
+      requestedDescription:
+        'Der Host hat die Abbruchanfrage angenommen. Der endgültige Status bleibt im Jobverlauf sichtbar.',
     },
     tabs: {
       ariaLabel: 'Job-Ansichten',
@@ -142,6 +154,8 @@ export const monitoringDEResources = {
       loading: 'Jobs werden geladen.',
       loadError: 'Die Jobliste konnte nicht geladen werden.',
       detailLoadError: 'Die Job-Details konnten nicht geladen werden.',
+      statusAnnouncement: 'Jobstatus: {{status}}.',
+      statusPhaseAnnouncement: 'Jobstatus: {{status}}. Phase: {{phase}}.',
     },
     events: {
       titles: {
@@ -224,6 +238,8 @@ export const monitoringDEResources = {
       workerId: 'Worker: {{value}}',
       attempts: 'Versuche: {{current}} / {{max}}',
       cancellationRequested: 'Abbruch angefordert: {{value}}',
+      jobId: 'Job',
+      runtime: 'Runtime',
     },
   },
 } as const;

@@ -51,6 +51,7 @@ export const WasteToolsImportSection = ({
   previewReady,
   running,
   lastJob,
+  canOpenJobDetails = false,
   onImportProfileIdChange,
   onImportSourceFormatChange,
   onImportBlobRefChange,
@@ -69,6 +70,7 @@ export const WasteToolsImportSection = ({
   readonly previewReady: boolean;
   readonly running: boolean;
   readonly lastJob?: StudioJobResponse['data'] | null;
+  readonly canOpenJobDetails?: boolean;
   readonly onImportProfileIdChange: (
     value: StartWasteManagementImportInput['importProfileId']
   ) => void;
@@ -214,6 +216,7 @@ export const WasteToolsImportSection = ({
           <WasteToolsResultStep
             jobId={importResultJob?.id}
             status={importResultJob?.status}
+            canOpenJobDetails={canOpenJobDetails}
             onStartNewImport={handleStartNewImport}
           />
         );

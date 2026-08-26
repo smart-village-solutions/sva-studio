@@ -28,6 +28,7 @@ import {
 } from '@sva/plugin-sdk';
 import {
   addStudioCreatedSaveFeedback,
+  addStudioDestructiveNavigationFeedback,
   Button,
   contentMediaUsagesToLocalDrafts,
   createLocalStudioMediaPickerAsset,
@@ -37,8 +38,10 @@ import {
   Select,
   StudioDetailTabIcon,
   StudioDetailPageTemplate,
+  StudioDestructiveActionDialog,
   StudioFormSummary,
   StudioLoadingState,
+  StudioPersistentActionResult,
   MainserverDeviationSummary,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
@@ -266,6 +269,10 @@ export function PoiDetailPage({
   const initialSaveFeedbackShownRef = React.useRef(false);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [deletePending, setDeletePending] = React.useState(false);
+  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
@@ -862,15 +869,30 @@ export function PoiDetailPage({
   });
 
   const remove = async () => {
-    if (!contentId || !globalThis.confirm(pt('actions.deleteConfirm'))) {
+    if (!contentId || deletePending) {
       return;
     }
 
+    setDeleteErrorMessage(null);
+    setDeletePending(true);
     try {
       await deletePoi(contentId, actingPrincipalType);
-      await navigate({ to: '/admin/content' });
     } catch (deleteError) {
-      setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
+      setDeleteErrorMessage(errorMessage(pt, deleteError, 'messages.deleteError'));
+      setDeletePending(false);
+      return;
+    }
+
+    setDeleteDialogOpen(false);
+    try {
+      await navigate({
+        to: '/admin/content',
+        state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'poi', contentId),
+      });
+    } catch {
+      setDeleteNavigationFailed(true);
+    } finally {
+      setDeletePending(false);
     }
   };
 
@@ -963,7 +985,15 @@ export function PoiDetailPage({
               <Link to="/admin/content">{pt('actions.back')}</Link>
             </Button>
             {mode === 'edit' && accessCapabilities.canDelete ? (
-              <Button type="button" variant="destructive" onClick={() => void remove()}>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deletePending}
+                onClick={() => {
+                  setDeleteErrorMessage(null);
+                  setDeleteDialogOpen(true);
+                }}
+              >
                 {pt('actions.delete')}
               </Button>
             ) : null}
@@ -1014,6 +1044,18 @@ export function PoiDetailPage({
           uploadPhase={mediaPicker.uploadPhase}
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5" noValidate>
+          {deleteNavigationFailed ? (
+            <StudioPersistentActionResult
+              kind="success"
+              title={pt('messages.deleteSuccess')}
+              description={pt('messages.deleteNavigationError')}
+              actions={
+                <Button asChild size="sm" variant="secondary">
+                  <Link to="/admin/content">{pt('actions.back')}</Link>
+                </Button>
+              }
+            />
+          ) : null}
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
           <MainserverPrincipalControl
             id="poi-acting-principal"
@@ -1124,6 +1166,23 @@ export function PoiDetailPage({
           </Tabs>
         </form>
       </StudioDetailPageTemplate>
+      <StudioDestructiveActionDialog
+        open={deleteDialogOpen}
+        title={pt('actions.deleteConfirmTitle')}
+        description={pt('actions.deleteConfirm', {
+          title: methods.getValues('name') || pt('detail.editTitle'),
+        })}
+        confirmLabel={pt('actions.delete')}
+        pendingLabel={pt('actions.deleting')}
+        cancelLabel={pt('actions.back')}
+        pending={deletePending}
+        errorMessage={deleteErrorMessage}
+        onConfirm={() => void remove()}
+        onCancel={() => {
+          setDeleteErrorMessage(null);
+          setDeleteDialogOpen(false);
+        }}
+      />
     </FormProvider>
   );
 }

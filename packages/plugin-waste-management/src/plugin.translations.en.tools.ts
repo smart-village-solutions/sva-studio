@@ -1,4 +1,5 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
+import { wasteManagementJobStatusesEN } from './plugin.translations.tools-job-statuses.js';
 
 export const wasteManagementPluginTranslationsENTools = createWasteManagementToolsTranslations({
   exports: {
@@ -147,6 +148,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
   actions: {
     startExport: 'Start export',
     startImport: 'Start import',
+    openJobDetails: 'Open job details',
     startMigrations: 'Start migrations',
     startSeed: 'Start seed',
     startPostalCodeEnrichment: 'Add postal codes',
@@ -162,6 +164,8 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     previewReady: 'The import preview is ready.',
     historyDeleteSuccess: 'The history entry was deleted.',
     historyDeleteError: 'The history entry could not be deleted.',
+    historyRefreshAfterDeleteError:
+      'The history entry was deleted, but the history could not be refreshed. Please reload the page.',
     jobStartError: 'The waste job could not be started.',
     jobStartErrorWithReason: 'The waste job could not be started: {{reason}}',
     forbidden: 'Missing permission for this waste operation.',
@@ -181,6 +185,11 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     historyDetailsAction: 'Show details',
     historyCloseDetailsAction: 'Close details',
     historyDeleteAction: 'Delete entry',
+    historyDeleteTitle: 'Permanently delete history entry?',
+    historyDeleteDescription:
+      'The history entry for job {{jobId}} will be permanently deleted. This action cannot be undone.',
+    historyDeleteConfirm: 'Delete permanently',
+    historyDeleteCancel: 'Cancel',
     advancedTitle: 'Advanced system functions',
     advancedDescription: 'Technical maintenance functions and deeper details for administrators.',
     technicalDetailsToggle: 'Technical details',
@@ -192,6 +201,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     jobType: 'Type: {{value}}',
     jobStatus: 'Status: {{value}}',
     jobIdLabel: 'Job',
+    statusAnnouncement: 'Job status: {{status}}.{{phase}}',
     jobTypeLabel: 'Type',
     jobStatusLabel: 'Status',
   },
@@ -201,16 +211,33 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     rows: '{{processed}} / {{total}} rows',
     updatedAt: 'Updated: {{value}}',
     phases: {
+      'waste-management.provision-database': 'Database is being provisioned',
+      'waste-management.apply-migrations': 'Migrations are being applied',
+      'waste-management.verify-access': 'Database access is being verified',
+      'waste-management.initialize': 'Data source is being initialized',
+      'waste-management.migrations': 'Migrations are running',
       'waste-management.import-preparation': 'Preparation in progress',
       'waste-management.import-running': 'Import run in progress',
+      'waste-management.export-preparation': 'Export is being prepared',
+      'waste-management.export-running': 'Export is running',
+      'waste-management.seed': 'Initial data is being loaded',
+      'waste-management.reset': 'Waste data is being reset',
+      'waste-management.mainserver-sync': 'Mainserver synchronization is running',
+      'waste-management.sync-waste-types': 'Waste types are being synchronized',
       'waste-management.enrich-postal-codes': 'Postal codes are being resolved',
-      'waste-management.completed': 'Import is being completed',
+      'waste-management.materialize-email-reminders': 'Email reminders are being created',
+      'waste-management.process-email-reminder-outbox': 'Email reminders are being sent',
+      'waste-management.completed': 'Operation is being completed',
     },
     statuses: {
       queued: 'Import is being prepared',
       running: 'Import is being processed',
       retrying: 'Import is being retried',
+      succeeded: 'Import completed',
+      failed: 'Import failed',
+      cancelled: 'Import cancelled',
     },
+    jobStatuses: wasteManagementJobStatusesEN,
     steps: {
       'prepare-import': 'Import is being prepared',
       'process-rows': 'Valid rows are being imported',

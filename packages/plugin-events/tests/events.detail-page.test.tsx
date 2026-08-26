@@ -232,7 +232,12 @@ describe('EventsDetailPage', () => {
           'Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
-        'events.actions.deleteConfirm': 'Wirklich löschen?',
+        'events.messages.deleteSuccess': 'Event wurde gelöscht.',
+        'events.messages.deleteNavigationError':
+          'Event wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.',
+        'events.actions.deleteConfirmTitle': 'Veranstaltung löschen?',
+        'events.actions.deleteConfirm': 'Die Veranstaltung „{{title}}“ wird endgültig gelöscht.',
+        'events.actions.back': 'Zurück zur Liste',
         'events.actions.addCategory': 'Kategorie hinzufügen',
         'events.actions.addImage': 'Aus Mediathek auswählen',
         'events.actions.uploadMedia': 'Medium hochladen',
@@ -635,11 +640,6 @@ describe('EventsDetailPage', () => {
       title: 'Stadtfest',
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
     } as never);
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false)
-    );
-
     render(<EventsDetailPage mode="edit" contentId="event-1" />);
 
     await waitFor(() => {
@@ -647,6 +647,8 @@ describe('EventsDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(screen.getByRole('alertdialog', { name: 'Veranstaltung löschen?' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'events.actions.cancel' }));
 
     expect(vi.mocked(deleteEvent)).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
@@ -659,11 +661,6 @@ describe('EventsDetailPage', () => {
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
     } as never);
     vi.mocked(deleteEvent).mockRejectedValueOnce(new Error('delete boom'));
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true)
-    );
-
     render(<EventsDetailPage mode="edit" contentId="event-1" />);
 
     await waitFor(() => {
@@ -671,11 +668,37 @@ describe('EventsDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
       expect(screen.getByText('Event konnte nicht gelöscht werden.')).toBeTruthy();
       expect(navigateMock).not.toHaveBeenCalled();
     });
+  });
+
+  it('preserves deletion feedback and a route back when navigation fails', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    navigateMock.mockRejectedValueOnce(new Error('navigation failed'));
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await screen.findByDisplayValue('Stadtfest');
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(deleteEvent)).toHaveBeenCalledWith('event-1', 'user');
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(screen.queryByText('Event konnte nicht gelöscht werden.')).toBeNull();
+    expect(screen.getByText('Event wurde gelöscht.')).toBeTruthy();
+    expect(
+      screen.getByText('Event wurde gelöscht, aber die Inhaltsliste konnte nicht geöffnet werden.')
+    ).toBeTruthy();
+    expect(screen.getAllByText('Zurück zur Liste').length).toBeGreaterThan(1);
   });
 
   it('updates events even without media contents', async () => {
@@ -765,11 +788,6 @@ describe('EventsDetailPage', () => {
       title: 'Stadtfest',
       dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
     } as never);
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true)
-    );
-
     render(<EventsDetailPage mode="edit" contentId="event-1" />);
 
     await waitFor(() => {
@@ -777,10 +795,25 @@ describe('EventsDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(screen.getByText(/Die Veranstaltung/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
       expect(vi.mocked(deleteEvent)).toHaveBeenCalledWith('event-1', 'user');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '/admin/content', state: expect.any(Function) })
+      );
+    });
+    const navigation = navigateMock.mock.calls[0]?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(navigation.state({ preserved: true })).toEqual({
+      preserved: true,
+      studioActionFeedback: {
+        kind: 'destructive-complete',
+        resourceId: 'event-1',
+        resourceType: 'events',
+      },
     });
   });
 });

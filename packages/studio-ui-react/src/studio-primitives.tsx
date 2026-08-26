@@ -513,6 +513,7 @@ export function StudioTechnicalStatusPanel({
 }
 
 export type StudioJobSummaryCardProps = Readonly<{
+  announcement?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
   statusLabel: React.ReactNode;
@@ -524,6 +525,7 @@ export type StudioJobSummaryCardProps = Readonly<{
 }>;
 
 export function StudioJobSummaryCard({
+  announcement,
   title,
   description,
   statusLabel,
@@ -535,6 +537,11 @@ export function StudioJobSummaryCard({
 }: StudioJobSummaryCardProps) {
   return (
     <section className={cn('space-y-4 rounded-lg border border-border/70 bg-card p-4', className)}>
+      {announcement ? (
+        <p role="status" aria-live="polite" className="sr-only">
+          {announcement}
+        </p>
+      ) : null}
       <StudioStatusCardBody
         title={title}
         description={description}

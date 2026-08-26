@@ -10,6 +10,8 @@ export const poiMessagesEn = {
     'The following previously unreadable sections were changed: {{fields}}. Do you want to overwrite these values intentionally?',
   saveError: 'POI could not be saved.',
   deleteError: 'POI could not be deleted.',
+  deleteSuccess: 'POI was deleted.',
+  deleteNavigationError: 'The POI was deleted, but the content list could not be opened.',
   createSuccess: 'POI was created.',
   updateSuccess: 'POI was updated.',
   validationError: 'Please correct the highlighted fields.',

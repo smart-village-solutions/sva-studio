@@ -1,44 +1,49 @@
-# Change: Rückmeldung für destruktive Aktionen standardisieren
+# Change: Rückmeldung für destruktive Aktionen ohne Undo standardisieren
 
 ## Why
 
-Lösch-, Archivierungs- und vergleichbare destruktive Aktionen unterscheiden sich fachlich erheblich: Manche Ergebnisse sind innerhalb eines definierten Zeitfensters reversibel, andere sind endgültig oder nur über einen separaten Wiederherstellungspfad korrigierbar. Ein pauschales Toast- oder Undo-Muster würde diese Unterschiede verdecken und könnte eine Wiederherstellbarkeit versprechen, die der Serververtrag nicht besitzt.
+Lösch-, Archivierungs- und vergleichbare destruktive Aktionen werden heute über unterschiedliche Dialoge, browsernative Bestätigungen und Rückmeldungen ausgeführt. Dadurch bleiben Ziel, Konsequenz, laufender Zustand und Fehler nicht überall gleich verständlich oder zugänglich.
 
-Das Studio benötigt deshalb einen gemeinsamen, kontextbezogenen UX- und Accessibility-Vertrag, der vor der Darstellung zwischen reversiblen, irreversiblen und konfliktbehafteten Aktionen unterscheidet.
+Das Studio benötigt deshalb einen gemeinsamen, kontextbezogenen UX- und Accessibility-Vertrag. Dieser Change führt bewusst kein Undo ein: Eine spätere Wiederherstellung bleibt eine eigenständige fachliche Aktion und wird nicht als kurzfristige Rücknahme der gerade ausgeführten Mutation dargestellt.
 
 ## What Changes
 
-- Destruktive Aktionen werden anhand ihres serverseitig belegten Wiederherstellungsvertrags klassifiziert.
-- Reversible Aktionen erhalten eine kontextbezogene Undo-Möglichkeit mit serverautoritativem Zeitfenster und idempotenter Semantik.
-- Irreversible oder hochwirksame Aktionen verwenden eine echte Bestätigung mit klar benanntem Ziel und Konsequenz.
-- Fehler und fehlgeschlagene Wiederherstellungen bleiben persistent am betroffenen Kontext sichtbar.
+- Destruktive Aktionen verwenden eine echte Bestätigung mit klar benanntem Ziel und konkreter Konsequenz.
+- Der Bestätigungsdialog bildet den laufenden Mutationszustand ab und verhindert unbeabsichtigte Mehrfachausführung.
+- Erfolgreiche Ergebnisse bleiben im nächstgelegenen stabilen Detail-, Listen- oder Bereichskontext nachvollziehbar.
+- Fehler bleiben persistent am betroffenen Dialog- oder Seitenkontext sichtbar.
 - Host und Plugins verwenden gemeinsame UI-Primitives, ohne eigene Bestätigungs-, Undo- oder Toast-Infrastrukturen aufzubauen.
+- Alle bestehenden destruktiven Plugin-Flows werden auf diesen Vertrag migriert; die Einführung beschränkt sich nicht auf Referenzflüsse.
 
 ## Approval Status
 
-Dieser Change hält den Folgeumfang dauerhaft fest, ist aber noch nicht zur Implementierung freigegeben. Vor der Umsetzung müssen die Referenzaktionen und ihre tatsächlichen Restore-/Hard-Delete-Verträge bestätigt werden.
+Der Change wurde am 25. August 2026 gemeinsam mit `standardize-plugin-operation-feedback` zur Umsetzung freigegeben. Undo ist ausdrücklich nicht Bestandteil des freigegebenen Produktumfangs.
 
 Related change: `standardize-save-action-feedback` verantwortet ausschließlich normales Create-/Update-Speicherfeedback.
 
 ## Scope Clarification
 
 - Im Scope:
-  - Delete, Archive, Restore und vergleichbare destruktive Aktionen
-  - reversible und irreversible Ergebnisrückmeldung
-  - Bestätigungen, Undo, Konflikte, persistente Fehler und Accessibility
+  - Delete, Archive und vergleichbare destruktive Aktionen
+  - persistierte Einzel- und Bulk-Löschungen, hochwirksame Resets sowie lokale Entwurfsentfernungen in Plugins
+  - Bestätigung, laufender Zustand, stabile Ergebnisrückmeldung, persistente Fehler und Accessibility
 - Nicht im Scope:
+  - Undo, zeitlich begrenzte Rücknahme oder clientseitige Scheinwiederherstellung
+  - fachliche Restore-Flows; diese bleiben eigenständige Aktionen
   - normales Create-/Update-Speicherfeedback
   - Job-/Progress-Rückmeldungen
   - allgemeine kontextlose Toasts
   - eine generische Feedback-Klassen-Registry
+  - nicht-destruktive Sicherheitsabfragen für Push-Versand, degradierte Feldkorrekturen oder Holiday-Overwrite
 
 ## Success Metrics
 
-- Keine UI bietet Undo an, wenn der Serververtrag keine belastbare Wiederherstellung unterstützt.
-- Irreversible Aktionen benennen Ziel, Konsequenz und Abbruchmöglichkeit vor der Ausführung eindeutig.
-- Reversible Aktionen können innerhalb des belegten Zeitfensters serverautoritativ wiederhergestellt werden.
-- Fehler, Konflikte und fehlgeschlagene Undo-Versuche verschwinden nicht automatisch.
+- Destruktive Aktionen benennen Ziel, Konsequenz und Abbruchmöglichkeit vor der Ausführung eindeutig.
+- Eine laufende destruktive Mutation kann nicht versehentlich mehrfach ausgelöst oder durch Schließen des Dialogs verdeckt werden.
+- Erfolgreiche Ergebnisse sind im nächstgelegenen stabilen Kontext sichtbar und nicht von einem globalen Toast abhängig.
+- Technische und fachliche Fehler verschwinden nicht automatisch.
 - Host- und Plugin-Flows verwenden dieselben Basisprimitives und Accessibility-Regeln.
+- Kein bestehender destruktiver Plugin-Flow verwendet danach browsernative Bestätigungen oder `StudioConfirmDialog` als Löschdialog.
 
 ## Impact
 

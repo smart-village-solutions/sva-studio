@@ -109,6 +109,17 @@ export const monitoringENResources = {
     actions: {
       refresh: 'Refresh',
       open: 'Open',
+      cancel: 'Cancel job',
+      cancelling: 'Requesting cancellation…',
+      keepRunning: 'Keep running',
+    },
+    cancel: {
+      title: 'Cancel job?',
+      description:
+        'Cancellation will be requested for job {{jobId}}. Steps that already completed will not be reverted.',
+      requestedTitle: 'Cancellation requested',
+      requestedDescription:
+        'The host accepted the cancellation request. The final status remains visible in the job history.',
     },
     tabs: {
       ariaLabel: 'Job views',
@@ -143,6 +154,8 @@ export const monitoringENResources = {
       loading: 'Loading jobs.',
       loadError: 'The job list could not be loaded.',
       detailLoadError: 'The job details could not be loaded.',
+      statusAnnouncement: 'Job status: {{status}}.',
+      statusPhaseAnnouncement: 'Job status: {{status}}. Phase: {{phase}}.',
     },
     events: {
       titles: {
@@ -225,6 +238,8 @@ export const monitoringENResources = {
       workerId: 'Worker: {{value}}',
       attempts: 'Attempts: {{current}} / {{max}}',
       cancellationRequested: 'Cancellation requested: {{value}}',
+      jobId: 'Job',
+      runtime: 'Runtime',
     },
   },
 } as const;

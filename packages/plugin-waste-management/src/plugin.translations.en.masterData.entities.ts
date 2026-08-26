@@ -144,6 +144,7 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       editTitle: 'Edit collection location',
       editDescription:
         'Adjust the geographic assignment and visibility of the collection location.',
+      deleteDescription: 'The collection location {{value}} will be deleted permanently.',
     },
     meta: {
       locationId: 'Location ID: {{value}}',
@@ -154,6 +155,8 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       createSuccess: 'The waste collection location was created.',
       updateSuccess: 'The waste collection location was updated.',
       deleteSuccess: 'The waste collection location was deleted.',
+      refreshAfterDeleteError:
+        'The waste collection location was deleted, but the overview could not be refreshed. Please reload the page.',
       saveError: 'The waste collection location could not be saved.',
       saveErrorWithReason: 'The waste collection location could not be saved: {{reason}}',
       postalCodeSaveWarning:
@@ -200,7 +203,7 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
         title: 'Bulk assign tour',
         description: 'Assign a tour to {{value}} selected collection locations.',
         deleteTitle: 'Delete selected collection locations',
-        deleteDescription: '{{value}} selected collection locations will be deleted.',
+        deleteDescription: '{{value}} selected collection locations will be deleted permanently.',
       },
       selectedTitle: 'Selected collection locations',
       meta: { selectedCount: '{{value}} selected' },
@@ -210,6 +213,10 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
         assignForbidden: 'Missing permission to create waste tour assignments in bulk.',
         deleteSuccess: 'The selected waste collection locations were deleted.',
         deleteError: 'The selected waste collection locations could not be deleted.',
+        deletePartialError:
+          'Some waste collection locations were deleted. {{value}} locations remain selected for another attempt.',
+        refreshAfterDeleteError:
+          'The selected waste collection locations were deleted, but the overview could not be refreshed. Please reload the page.',
         deleteForbidden: 'Missing permission to delete selected waste collection locations.',
         deleteConflict:
           'At least one selected waste collection location cannot be deleted because assignments still exist.',

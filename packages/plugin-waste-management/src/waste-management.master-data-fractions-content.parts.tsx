@@ -19,6 +19,7 @@ import type {
   WasteManagementFractionSortField,
   WasteManagementStatusFilter,
 } from './search-params.js';
+import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
 export { FractionRowActions } from './waste-management.master-data-fraction-row-actions.js';
 
 type StudioTableSortingState = Extract<StudioDataTableSorting, { mode: 'external' }>['state'];
@@ -31,7 +32,9 @@ export type WasteFractionsContentProps = {
   readonly onOpenCreateFraction: () => void;
   readonly onOpenEditFraction: (fraction: WasteFractionRecord) => void;
   readonly onOpenDeleteFraction: (fraction: WasteFractionRecord) => void | Promise<void>;
-  readonly onDeleteFractions: (fractionIds: readonly string[]) => void | Promise<void>;
+  readonly onDeleteFractions: (
+    fractionIds: readonly string[]
+  ) => WasteBulkDeleteResult | Promise<WasteBulkDeleteResult>;
   readonly onToggleFractionStatus: (
     fraction: WasteFractionRecord,
     active: boolean
@@ -48,6 +51,11 @@ export type WasteFractionsContentProps = {
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly saving?: boolean;
 };
+
+export type FractionBulkDeleteRequest = Readonly<{
+  fractionIds: readonly string[];
+  clearSelection: () => void;
+}>;
 
 const columnIdBySortField: Record<WasteManagementFractionSortField, string> = {
   name: 'nameWithContainerSize',
@@ -97,10 +105,10 @@ export const useFractionSortingLabels = () => {
 
 export const useFractionBulkActions = ({
   saving,
-  onDeleteFractions,
+  onRequestDeleteFractions,
 }: {
   readonly saving?: boolean;
-  readonly onDeleteFractions: (fractionIds: readonly string[]) => void | Promise<void>;
+  readonly onRequestDeleteFractions: (request: FractionBulkDeleteRequest) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const actions: readonly StudioBulkAction<WasteFractionRecord>[] = [
@@ -109,9 +117,11 @@ export const useFractionBulkActions = ({
       label: pt('masterData.fractions.actions.deleteSelected'),
       variant: 'secondary',
       ...(saving ? { disabled: true } : {}),
-      onClick: async ({ selectedRows, clearSelection }) => {
-        await onDeleteFractions(selectedRows.map((row) => row.id));
-        clearSelection();
+      onClick: ({ selectedRows, clearSelection }) => {
+        onRequestDeleteFractions({
+          fractionIds: selectedRows.map((row) => row.id),
+          clearSelection,
+        });
       },
     },
   ];

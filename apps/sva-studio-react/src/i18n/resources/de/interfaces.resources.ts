@@ -37,6 +37,7 @@ export const interfacesDEResources = {
     saved: 'Gespeichert',
     retry: 'Erneut versuchen',
     reload: 'Neu laden',
+    dismiss: 'Schließen',
   },
   messages: {
     loading: 'Schnittstellen werden geladen ...',
@@ -45,6 +46,11 @@ export const interfacesDEResources = {
     saveError: 'Schnittstellen-Einstellungen konnten nicht gespeichert werden.',
     refreshAfterSaveError:
       'Die Einstellungen wurden übertragen, konnten aber nicht neu geladen werden. Bitte erneut versuchen.',
+    deleteSuccessTitle: 'Schnittstelle gelöscht',
+    deleteSuccess: 'Die Schnittstelle „{{name}}“ wurde endgültig gelöscht.',
+    deleteError: 'Die Schnittstelle konnte nicht gelöscht werden.',
+    refreshAfterDeleteError:
+      'Die Schnittstelle wurde gelöscht, die Liste konnte aber nicht aktualisiert werden. Bitte neu laden.',
   },
   errors: {
     configNotFound: 'Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.',
@@ -131,6 +137,7 @@ export const interfacesDEResources = {
     deleteConfirmTitle: 'Schnittstelle löschen?',
     deleteConfirmDescription: 'Die Schnittstelle „{{name}}" wird unwiderruflich entfernt.',
     deleteConfirm: 'Endgültig löschen',
+    deletePending: 'Wird gelöscht…',
     cancel: 'Abbrechen',
     commonName: 'Anzeigename',
     commonEnabled: 'Aktiv',

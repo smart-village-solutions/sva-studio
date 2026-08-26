@@ -41,6 +41,7 @@ export type StudioJobSource = 'plugin' | 'host';
 export type StudioJobStaleState = 'fresh' | 'stale' | 'terminal';
 export type StudioJobEventTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
 export type StudioJobListView = 'active' | 'history';
+export type StudioJobFollowUpAction = 'cancel';
 
 export const studioJobContract = {
   statuses: studioJobStatuses,
@@ -244,6 +245,7 @@ export type StudioJobCancellationRequestInput = {
 export type StudioJobDetail = StudioJobRecord & {
   readonly history: readonly StudioJobEventRecord[];
   readonly latestEvent?: StudioJobEventRecord;
+  readonly availableActions?: readonly StudioJobFollowUpAction[];
   readonly runtime?: {
     readonly cancellationRequested: boolean;
     readonly staleState: StudioJobStaleState;

@@ -1,8 +1,12 @@
 import React from 'react';
 
-import { Button, type StudioColumnDef, StudioDataTable } from '@sva/studio-ui-react';
-
-import { ConfirmDialog } from '../../components/ConfirmDialog';
+import {
+  Button,
+  type StudioColumnDef,
+  StudioDataTable,
+  StudioDestructiveActionDialog,
+  StudioPersistentActionResult,
+} from '@sva/studio-ui-react';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -50,9 +54,10 @@ const healthcheckMessageTranslationKeys: Readonly<Record<string, string>> = {
 };
 
 const getStatusMessage = (entry: InstanceInterface): string | undefined => {
-  const translationKey = entry.type === 'mapGeocoding' && entry.errorCode
-    ? healthcheckMessageTranslationKeys[entry.errorCode]
-    : undefined;
+  const translationKey =
+    entry.type === 'mapGeocoding' && entry.errorCode
+      ? healthcheckMessageTranslationKeys[entry.errorCode]
+      : undefined;
   return translationKey ? t(translationKey) : entry.statusMessage;
 };
 
@@ -88,7 +93,7 @@ const getInterfaceEndpoint = (entry: InstanceInterface): string => {
 const renderInterfaceRowActions = (
   row: InstanceInterface,
   setEditState: React.Dispatch<React.SetStateAction<EditState>>,
-  setPendingDelete: React.Dispatch<React.SetStateAction<InstanceInterface | null>>
+  requestDelete: (entry: InstanceInterface) => void
 ) => (
   <>
     <Button
@@ -99,7 +104,7 @@ const renderInterfaceRowActions = (
     >
       {t('admin.users.actions.edit')}
     </Button>
-    <Button type="button" size="sm" variant="destructive" onClick={() => setPendingDelete(row)}>
+    <Button type="button" size="sm" variant="destructive" onClick={() => requestDelete(row)}>
       {t('interfaces.edit.deleteAction')}
     </Button>
   </>
@@ -111,8 +116,14 @@ const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): st
     : t('interfaces.edit.title');
 
 export const InterfacesPage = () => {
+  const deleteFocusFallbackRef = React.useRef<HTMLButtonElement>(null);
   const {
     availableTypes,
+    cancelDelete,
+    deleteErrorMessage,
+    deletePending,
+    deleteResultMessage,
+    dismissDeleteResult,
     editState,
     errorMessage,
     instanceId,
@@ -123,8 +134,8 @@ export const InterfacesPage = () => {
     pickerOpen,
     pickerType,
     refresh,
+    requestDelete,
     setEditState,
-    setPendingDelete,
     setPickerOpen,
     setPickerType,
     saveErrorMessage,
@@ -135,6 +146,12 @@ export const InterfacesPage = () => {
   } = useInterfacesPageController();
   const labels = createStudioDataTableLabels();
   const sortingLabels = createStudioDataTableSortingLabels();
+
+  React.useEffect(() => {
+    if (deleteResultMessage) {
+      deleteFocusFallbackRef.current?.focus();
+    }
+  }, [deleteResultMessage]);
 
   const columns = React.useMemo<readonly StudioColumnDef<InstanceInterface>[]>(
     () => [
@@ -259,13 +276,23 @@ export const InterfacesPage = () => {
             </p>
           }
           toolbarEnd={
-            <Button type="button" onClick={() => setPickerOpen(true)}>
+            <Button ref={deleteFocusFallbackRef} type="button" onClick={() => setPickerOpen(true)}>
               {t('interfaces.create.action')}
             </Button>
           }
-          rowActions={(row) => renderInterfaceRowActions(row, setEditState, setPendingDelete)}
+          rowActions={(row) => renderInterfaceRowActions(row, setEditState, requestDelete)}
         />
       )}
+
+      {deleteResultMessage ? (
+        <StudioPersistentActionResult
+          kind="success"
+          title={t('interfaces.messages.deleteSuccessTitle')}
+          description={deleteResultMessage}
+          dismissLabel={t('interfaces.actions.dismiss')}
+          onDismiss={dismissDeleteResult}
+        />
+      ) : null}
 
       {editState.mode !== 'closed' ? (
         <Card>
@@ -306,15 +333,19 @@ export const InterfacesPage = () => {
         onConfirm={onConfirmType}
       />
 
-      <ConfirmDialog
+      <StudioDestructiveActionDialog
         open={pendingDelete !== null}
         title={t('interfaces.edit.deleteConfirmTitle')}
         description={t('interfaces.edit.deleteConfirmDescription', {
           name: pendingDelete?.name ?? '',
         })}
         confirmLabel={t('interfaces.edit.deleteConfirm')}
+        pendingLabel={t('interfaces.edit.deletePending')}
         cancelLabel={t('interfaces.edit.cancel')}
-        onCancel={() => setPendingDelete(null)}
+        pending={deletePending}
+        errorMessage={deleteErrorMessage}
+        fallbackFocusRef={deleteFocusFallbackRef}
+        onCancel={cancelDelete}
         onConfirm={() => void onConfirmDelete()}
       />
     </div>

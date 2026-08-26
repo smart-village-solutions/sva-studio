@@ -6,6 +6,7 @@ export const wasteManagementPluginTranslationsDECommon = {
     "inactive": "Inaktiv",
     "statusSuccessTitle": "OK",
     "statusWarningTitle": "Warnung",
-    "statusErrorTitle": "Fehler"
+    "statusErrorTitle": "Fehler",
+    "deleting": "Wird gelöscht …"
   }
 } as const;

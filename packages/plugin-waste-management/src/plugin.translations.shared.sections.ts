@@ -150,6 +150,7 @@ type WasteManagementToolsCopy = Readonly<{
     updatedAt: string;
     phases: Readonly<Record<string, string>>;
     statuses: Readonly<Record<string, string>>;
+    jobStatuses: Readonly<Record<string, string>>;
     steps: Readonly<Record<string, string>>;
   }>;
 }>;

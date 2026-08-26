@@ -347,7 +347,9 @@ export const MediaDetailWorkspaceHeader = ({
 
         <div className="space-y-5">
           <div className="space-y-3">
-            <StudioPageTitle>{asset.metadata.title?.trim() || asset.id}</StudioPageTitle>
+            <StudioPageTitle withAccessory>
+              {asset.metadata.title?.trim() || asset.id}
+            </StudioPageTitle>
             <p className="max-w-2xl text-sm text-muted-foreground">{t('media.detail.subtitle')}</p>
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">{t(`media.visibility.${asset.visibility}`)}</Badge>

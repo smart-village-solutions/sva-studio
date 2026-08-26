@@ -206,7 +206,7 @@ export const InstanceCreatePage = () => {
     <section className="space-y-5" aria-busy={instancesApi.isLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <StudioPageTitle>{t('admin.instances.form.title')}</StudioPageTitle>
+          <StudioPageTitle withAccessory>{t('admin.instances.form.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('admin.instances.form.subtitle')}
           </p>

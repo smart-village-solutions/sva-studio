@@ -7,7 +7,7 @@ import { ContextualHelpBoundary } from './ContextualHelpBoundary';
 const renderContextualHelp = async () => {
   render(
     <ContextualHelpBoundary pageId="home.overview">
-      <StudioPageTitle>Start</StudioPageTitle>
+      <StudioPageTitle withAccessory>Start</StudioPageTitle>
     </ContextualHelpBoundary>
   );
   await vi.dynamicImportSettled();

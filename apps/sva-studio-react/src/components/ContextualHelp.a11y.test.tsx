@@ -25,7 +25,7 @@ describe('ContextualHelp accessibility', () => {
     );
     render(
       <ContextualHelpBoundary pageId="home.overview">
-        <StudioPageTitle>Start</StudioPageTitle>
+        <StudioPageTitle withAccessory>Start</StudioPageTitle>
       </ContextualHelpBoundary>
     );
     await vi.dynamicImportSettled();

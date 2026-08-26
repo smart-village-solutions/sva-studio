@@ -148,7 +148,7 @@ export const GroupsPage = () => {
   return (
     <section className="space-y-5" aria-busy={groupsApi.isLoading}>
       <header className="space-y-2">
-        <StudioPageTitle>{t('admin.groups.page.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('admin.groups.page.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.groups.page.subtitle')}</p>
       </header>
 

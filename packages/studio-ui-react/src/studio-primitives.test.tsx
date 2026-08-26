@@ -42,6 +42,7 @@ import {
   StudioListPageTemplate,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioPageHeader,
   StudioPageTitleAccessoryProvider,
   StudioResourceHeader,
   StudioSection,
@@ -111,6 +112,21 @@ describe('studio-ui-react primitives', () => {
 
     expect(heading.parentElement?.firstElementChild).toBe(heading);
     expect(heading.parentElement?.lastElementChild?.contains(trigger)).toBe(true);
+  });
+
+  it('renders the page-title accessory only for the primary template heading', () => {
+    render(
+      <StudioPageTitleAccessoryProvider
+        accessory={<button type="button" aria-label="Hilfe öffnen" />}
+      >
+        <StudioOverviewPageTemplate title="Abfallwirtschaft">
+          <StudioPageHeader title="Tour bearbeiten" />
+        </StudioOverviewPageTemplate>
+      </StudioPageTitleAccessoryProvider>
+    );
+
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Hilfe öffnen' })).toHaveLength(1);
   });
 
   it('renders list page templates with a primary action callback', () => {

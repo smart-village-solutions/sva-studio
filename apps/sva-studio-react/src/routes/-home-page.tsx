@@ -271,7 +271,10 @@ export const HomePage = () => {
               {isAuthenticated ? t('home.hero.eyebrow') : t('home.hero.anonymousEyebrow')}
             </p>
             <div className={isAuthenticated ? 'space-y-4' : 'max-w-3xl space-y-5'}>
-              <StudioPageTitle className="text-4xl tracking-tight sm:text-5xl md:text-6xl">
+              <StudioPageTitle
+                withAccessory
+                className="text-4xl tracking-tight sm:text-5xl md:text-6xl"
+              >
                 {t('shell.appName')}
               </StudioPageTitle>
               {isAuthenticated ? (

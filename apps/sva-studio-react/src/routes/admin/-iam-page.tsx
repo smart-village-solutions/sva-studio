@@ -1912,7 +1912,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   return (
     <section className="space-y-5">
       <header className="space-y-2">
-        <StudioPageTitle>{t('admin.iam.page.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('admin.iam.page.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.iam.page.subtitle')}</p>
       </header>
 

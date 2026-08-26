@@ -348,7 +348,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
               </Badge>
             ) : null}
           </div>
-          <StudioPageTitle>{t('monitoring.jobs.detail.title')}</StudioPageTitle>
+          <StudioPageTitle withAccessory>{t('monitoring.jobs.detail.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('monitoring.jobs.detail.subtitle')}
           </p>

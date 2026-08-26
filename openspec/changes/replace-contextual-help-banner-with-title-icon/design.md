@@ -15,7 +15,7 @@ Die Shell rendert den kontextbezogenen Hilfeauslöser aktuell als flächiges Hin
 ## Entscheidungen
 
 - Der Hilfeauslöser wird als Titel-Zusatz unmittelbar nach der H1 dargestellt, nicht als Bestandteil ihres zugänglichen Namens.
-- Gemeinsame Seitentemplates konsumieren den Titel-Zusatz zentral. Individuelle H1-Varianten verwenden dieselbe Seitentitel-Primitve beziehungsweise denselben Titel-Zusatz.
+- Gemeinsame Seitentemplates konsumieren den Titel-Zusatz zentral. Individuelle primäre H1-Varianten aktivieren ihn explizit über dieselbe Seitentitel-Primitve. Verschachtelte Seitenköpfe konsumieren ihn standardmäßig nicht, damit pro Seite genau ein Hilfeauslöser entsteht.
 - Der Auslöser verwendet den vorhandenen Fragezeichen-Kreis, den zugänglichen Namen „Hilfe öffnen“ und den bestehenden Fokus-Rückgabepfad.
 - Der Overlay-Inhalt wird weiterhin erst nach dem Öffnen für die konkrete Dokumentations-ID geladen.
 

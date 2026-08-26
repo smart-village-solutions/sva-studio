@@ -33,15 +33,22 @@ export function StudioPageTitleAccessoryProvider({
   );
 }
 
-export type StudioPageTitleProps = React.ComponentPropsWithoutRef<'h1'>;
+export type StudioPageTitleProps = React.ComponentPropsWithoutRef<'h1'> &
+  Readonly<{
+    withAccessory?: boolean;
+  }>;
 
-export function StudioPageTitle({ className, ...props }: StudioPageTitleProps) {
+export function StudioPageTitle({
+  className,
+  withAccessory = false,
+  ...props
+}: StudioPageTitleProps) {
   const accessory = React.useContext(StudioPageTitleAccessoryContext);
 
   return (
     <div className="flex min-w-0 items-center gap-1">
       <h1 className={cn('text-3xl font-semibold text-foreground', className)} {...props} />
-      {accessory ? <div className="shrink-0">{accessory}</div> : null}
+      {withAccessory && accessory ? <div className="shrink-0">{accessory}</div> : null}
     </div>
   );
 }
@@ -51,6 +58,7 @@ export type StudioPageHeaderProps = Readonly<{
   titleId?: string;
   description?: React.ReactNode;
   actions?: React.ReactNode;
+  withTitleAccessory?: boolean;
   className?: string;
 }>;
 
@@ -59,6 +67,7 @@ export function StudioPageHeader({
   titleId,
   description,
   actions,
+  withTitleAccessory = false,
   className,
 }: StudioPageHeaderProps) {
   return (
@@ -66,7 +75,9 @@ export function StudioPageHeader({
       className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', className)}
     >
       <div className="space-y-2">
-        <StudioPageTitle id={titleId}>{title}</StudioPageTitle>
+        <StudioPageTitle id={titleId} withAccessory={withTitleAccessory}>
+          {title}
+        </StudioPageTitle>
         {description ? (
           <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
         ) : null}
@@ -95,7 +106,12 @@ export function StudioOverviewPageTemplate({
 }: StudioOverviewPageTemplateProps) {
   return (
     <section className={cn('space-y-5', className)}>
-      <StudioPageHeader title={title} description={description} actions={primaryAction} />
+      <StudioPageHeader
+        title={title}
+        description={description}
+        actions={primaryAction}
+        withTitleAccessory
+      />
       {toolbar ? <div className="flex flex-wrap items-center gap-3">{toolbar}</div> : null}
       {children}
     </section>
@@ -170,6 +186,7 @@ export function StudioListPageTemplate({
         title={title}
         titleId={titleId}
         description={description}
+        withTitleAccessory
         actions={wrapHeaderActions(
           primaryAction ? renderStudioListPageAction(primaryAction) : undefined
         )}
@@ -251,7 +268,12 @@ export function StudioDetailPageTemplate({
 
   return (
     <section className={cn('space-y-6', className)}>
-      <StudioPageHeader title={title} description={description} actions={headerActions} />
+      <StudioPageHeader
+        title={title}
+        description={description}
+        actions={headerActions}
+        withTitleAccessory
+      />
       <div className="space-y-5">{children}</div>
       {primaryAction ? <StudioFormActionBar>{primaryAction}</StudioFormActionBar> : null}
     </section>

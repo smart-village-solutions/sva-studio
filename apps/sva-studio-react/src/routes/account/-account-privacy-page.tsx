@@ -105,7 +105,7 @@ export const AccountPrivacyPage = () => {
   return (
     <section className="space-y-6" aria-busy={isLoading || isSubmitting}>
       <header className="space-y-2">
-        <StudioPageTitle>{t('account.privacy.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('account.privacy.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('account.privacy.subtitle')}</p>
       </header>
 

@@ -68,7 +68,7 @@ export const RoleCreatePage = () => {
     <section className="space-y-5" aria-busy={saveFeedback.status === 'saving'}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <StudioPageTitle>{t('admin.roles.createDialog.title')}</StudioPageTitle>
+          <StudioPageTitle withAccessory>{t('admin.roles.createDialog.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('admin.roles.createDialog.description')}
           </p>

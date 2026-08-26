@@ -24,7 +24,7 @@ const statusTranslationKeyByValue = {
 
 const AccountProfileLoading = () => (
   <section aria-busy="true" className="space-y-3">
-    <StudioPageTitle>{t('account.profile.title')}</StudioPageTitle>
+    <StudioPageTitle withAccessory>{t('account.profile.title')}</StudioPageTitle>
     <p role="status" className="text-sm text-muted-foreground">
       {t('account.messages.loading')}
     </p>
@@ -53,7 +53,7 @@ const AccountProfileLoadError = ({ error, loginHref, onRetry }: LoadErrorProps) 
     error.status === 401 || error.recommendedAction === 'erneut_anmelden';
   return (
     <section className="space-y-4">
-      <StudioPageTitle>{t('account.profile.title')}</StudioPageTitle>
+      <StudioPageTitle withAccessory>{t('account.profile.title')}</StudioPageTitle>
       <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
         <AlertTitle>
           {requiresLoginRecovery
@@ -122,7 +122,7 @@ export const AccountProfilePage = () => {
   return (
     <section className="space-y-5" aria-busy={accountProfile.saveFeedback.status === 'saving'}>
       <header className="space-y-2">
-        <StudioPageTitle>{t('account.profile.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('account.profile.title')}</StudioPageTitle>
         <p className="max-w-2xl text-sm text-muted-foreground">{t('account.profile.subtitle')}</p>
       </header>
       <AccountProfileSummary

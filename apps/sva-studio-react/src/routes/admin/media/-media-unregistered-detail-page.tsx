@@ -96,7 +96,9 @@ export const MediaUnregisteredDetailPage = ({ asset }: MediaUnregisteredDetailPa
 
           <div className="space-y-5">
             <div className="space-y-3">
-              <StudioPageTitle className="break-all">{asset.fileName}</StudioPageTitle>
+              <StudioPageTitle withAccessory className="break-all">
+                {asset.fileName}
+              </StudioPageTitle>
               <p className="max-w-2xl text-sm text-muted-foreground">
                 {t('media.unregistered.subtitle')}
               </p>

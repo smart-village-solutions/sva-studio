@@ -218,7 +218,7 @@ export const UserEditPage = ({
   if (userApi.isLoading) {
     return (
       <section className="space-y-3" aria-busy="true">
-        <StudioPageTitle>{t('admin.users.edit.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('admin.users.edit.title')}</StudioPageTitle>
         <p role="status" className="text-sm text-muted-foreground">
           {t('admin.users.messages.loading')}
         </p>
@@ -229,7 +229,7 @@ export const UserEditPage = ({
   if (!userApi.user) {
     return (
       <section className="space-y-3">
-        <StudioPageTitle>{t('admin.users.edit.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('admin.users.edit.title')}</StudioPageTitle>
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{userErrorMessage(userApi.error)}</span>
@@ -256,7 +256,9 @@ export const UserEditPage = ({
             </div>
           )}
           <div>
-            <StudioPageTitle className="text-2xl">{userApi.user.displayName}</StudioPageTitle>
+            <StudioPageTitle withAccessory className="text-2xl">
+              {userApi.user.displayName}
+            </StudioPageTitle>
             <p className="text-sm text-muted-foreground">{userApi.user.email ?? '-'}</p>
             <p className="text-sm text-muted-foreground">
               {t('account.fields.username')}: {userApi.user.username ?? '-'}

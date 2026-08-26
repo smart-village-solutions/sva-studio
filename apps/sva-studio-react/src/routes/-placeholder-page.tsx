@@ -16,7 +16,7 @@ export const PlaceholderPage = ({ section, title }: PlaceholderPageProps) => {
         </p>
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">{section}</p>
-          <StudioPageTitle>{title}</StudioPageTitle>
+          <StudioPageTitle withAccessory>{title}</StudioPageTitle>
           <p className="max-w-2xl text-sm text-muted-foreground">
             {t('placeholder.description', { area: title })}
           </p>

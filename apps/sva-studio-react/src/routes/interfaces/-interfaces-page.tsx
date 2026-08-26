@@ -214,7 +214,9 @@ export const InterfacesPage = () => {
   return (
     <div className="flex flex-col gap-6 text-foreground">
       <header className="flex flex-col gap-2">
-        <StudioPageTitle className="text-2xl">{t('interfaces.page.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory className="text-2xl">
+          {t('interfaces.page.title')}
+        </StudioPageTitle>
         <p className="text-sm text-muted-foreground">{t('interfaces.page.subtitle')}</p>
         {instanceId ? (
           <p className="text-xs text-muted-foreground">

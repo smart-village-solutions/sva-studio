@@ -174,7 +174,7 @@ export const MediaCreatePage = () => {
   return (
     <section className="space-y-6" data-testid="media-create-page">
       <header className="space-y-2">
-        <StudioPageTitle>{t('media.create.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('media.create.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('media.create.subtitle')}</p>
       </header>
 

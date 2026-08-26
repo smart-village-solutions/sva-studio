@@ -81,7 +81,7 @@ export const MediaLibraryPage = () => {
     <section className="space-y-6" data-testid="media-library-page">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <StudioPageTitle>{t('media.page.title')}</StudioPageTitle>
+          <StudioPageTitle withAccessory>{t('media.page.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">{t('media.page.subtitle')}</p>
         </div>
         {canCreateMedia ? (

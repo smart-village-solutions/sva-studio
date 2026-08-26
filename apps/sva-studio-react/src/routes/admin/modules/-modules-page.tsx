@@ -21,7 +21,9 @@ const TenantModulesPage = ({
   return (
     <section className="space-y-5">
       <header className="space-y-2">
-        <StudioPageTitle>{t('admin.instances.instanceModules.detail.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>
+          {t('admin.instances.instanceModules.detail.title')}
+        </StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('admin.instances.instanceModules.detail.subtitle')}
         </p>
@@ -95,7 +97,9 @@ const AdminModulesPage = () => {
       aria-busy={instancesApi.isLoading || instancesApi.detailLoading || instancesApi.statusLoading}
     >
       <header className="space-y-2">
-        <StudioPageTitle>{t('admin.instances.instanceModules.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>
+          {t('admin.instances.instanceModules.title')}
+        </StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('admin.instances.instanceModules.subtitle')}
         </p>

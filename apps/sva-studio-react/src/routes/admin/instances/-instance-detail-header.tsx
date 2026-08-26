@@ -28,7 +28,7 @@ export const InstanceDetailHeader = ({
   <header className="space-y-5">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="space-y-2">
-        <StudioPageTitle>{t('admin.instances.detail.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('admin.instances.detail.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('admin.instances.detail.subtitle')}
         </p>

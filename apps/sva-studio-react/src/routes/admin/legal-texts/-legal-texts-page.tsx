@@ -238,7 +238,7 @@ export const LegalTextsPage = () => {
   return (
     <section className="space-y-5" aria-busy={legalTextsApi.isLoading}>
       <header className="space-y-2">
-        <StudioPageTitle>{t('admin.legalTexts.page.title')}</StudioPageTitle>
+        <StudioPageTitle withAccessory>{t('admin.legalTexts.page.title')}</StudioPageTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('admin.legalTexts.page.subtitle')}
         </p>

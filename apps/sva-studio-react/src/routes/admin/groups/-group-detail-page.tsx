@@ -228,7 +228,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
     <section className="space-y-5" aria-busy={isLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <StudioPageTitle>
+          <StudioPageTitle withAccessory>
             {group?.displayName ?? t('admin.groups.dialogs.editTitle')}
           </StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">

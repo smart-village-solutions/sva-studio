@@ -48,16 +48,21 @@ Ressourcenprincipal ab.
 - **Nutzerziel:** Kernmetadaten eines generischen Inhalts prüfen und bearbeiten.
 - **Produktfakten:** Der allgemeine Bereich umfasst Überschrift, Typ, Status,
   Veröffentlichungsdatum und freie JSON-Zusatzdaten. Metadaten wie Autor, ID sowie Erstellungs- und
-  Änderungszeit werden angezeigt. Historie und Revisionen stehen nach dem ersten Speichern zur
-  Verfügung; eine Revision kann über `content.restore` wiederhergestellt werden.
+  Änderungszeit werden angezeigt. Nach dem ersten Speichern zeigt die Historie automatisch
+  protokollierte Änderungen mit Aktion, Zeitpunkt, handelnder Person, Zusammenfassung und
+  betroffenen Feldern. Eine Revisionsauswahl oder Wiederherstellung früherer Revisionen bietet der
+  aktuelle Editor nicht an.
 - **Validierung:** Überschrift ist Pflicht. Zusatzdaten müssen gültiges JSON sein. Veröffentlichte
   Inhalte benötigen ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin.
 - **Kontextabhängig:** Felder und Speichern bleiben bei nur lesbarem oder ungeklärtem Principal
-  deaktiviert. Statuswechsel können über einen eigenen Dialog erfolgen.
+  deaktiviert. Statuswechsel können über einen eigenen Dialog erfolgen. `content.restore`
+  autorisiert dabei den Statuswechsel eines archivierten Inhalts zurück in einen anderen
+  Lebenszyklusstatus; die Action stellt keine frühere Revision wieder her.
 - **Redaktionelle Leitfragen:** Wann genügt der generische Editor und wann sollte der Fach-Editor
-  verwendet werden? Was ist der Unterschied zwischen Historie und Revision? Welche Folgen hat
-  eine Wiederherstellung?
-- **Stichwörter / Querverweise:** Metadaten, JSON, Veröffentlichungsdatum, Historie, Revision,
-  Wiederherstellen; zurück zur Inhaltsliste.
+  verwendet werden? Welche Änderungen zeigt die Historie? Was bedeutet „Wiederherstellen“ beim
+  Statuswechsel eines archivierten Inhalts?
+- **Stichwörter / Querverweise:** Metadaten, JSON, Veröffentlichungsdatum, Historie, Statuswechsel,
+  archivierter Inhalt; zurück zur Inhaltsliste.
 - **Evidenz:** `routes/content/-content-editor-page.tsx`,
-  `routes/content/-content-status-dialog.tsx`, `routing/admin-resources.ts`.
+  `routes/content/-content-status-dialog.tsx`,
+  `packages/plugin-sdk/src/standard-content-access.ts`.

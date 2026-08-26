@@ -1,0 +1,4 @@
+{
+  "prNumber": 1165,
+  "body": "Nachrichten lassen sich wieder ohne Quell-URL speichern.\n\n- Eine Quelle bleibt wie vorgesehen optional.\n- Leere Quellen werden nicht mehr als ungültige URL an den Mainserver gesendet.\n- Angegebene Quell-URLs müssen weiterhin eine gültige HTTPS-Adresse sein."
+}

@@ -396,7 +396,6 @@ describe('news api', () => {
       status: 'draft',
       author: 'Persistierter Autor',
       categories: [{ name: 'Persistiert' }],
-      sourceUrl: { url: 'https://persisted.example.org', description: 'Persistiert' },
       createdAt: '2026-01-01',
       updatedAt: '2026-01-02',
       visible: false,
@@ -422,7 +421,7 @@ describe('news api', () => {
       expect.objectContaining({
         author: 'Persistierter Autor',
         categories: [],
-        sourceUrl: { url: 'https://persisted.example.org', description: 'Persistiert' },
+        sourceUrl: undefined,
         contentBlocks: [
           { title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] },
         ],

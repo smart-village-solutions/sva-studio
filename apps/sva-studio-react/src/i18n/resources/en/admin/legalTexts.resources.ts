@@ -91,6 +91,7 @@ export const legalTextsAdminENResources = {
     blockType: 'Text format',
     bold: 'Bold',
     italic: 'Italic',
+    underline: 'Underline',
     paragraph: 'Paragraph',
     heading2: 'Heading 2',
     heading3: 'Heading 3',

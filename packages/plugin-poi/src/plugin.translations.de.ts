@@ -91,6 +91,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     orderedList: 'Nummerierung',
     bold: 'Fett',
     italic: 'Kursiv',
+    underline: 'Unterstrichen',
     undo: 'Zurück',
     redo: 'Vorwärts',
     linkInput: 'Link-URL',

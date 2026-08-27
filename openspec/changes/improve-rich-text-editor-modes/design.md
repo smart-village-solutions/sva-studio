@@ -12,7 +12,7 @@
 - Non-Goals:
   - kein neuer Rich-Text-Datenvertrag
   - kein vollständiger HTML-/CSS-Editor
-  - keine zweite Editorbibliothek und keine neue Dependency
+  - keine zweite Editorbibliothek
   - keine Erweiterung der erlaubten Rechtstext-Tags oder Linkprotokolle
 
 ## Decisions
@@ -28,6 +28,9 @@
 
 - Decision: Beim Rückwechsel in WYSIWYG wird HTML durch das konfigurierte TipTap-Schema geparst und normalisiert; Rechtstexte werden zusätzlich weiterhin über ihren bestehenden Client- und Server-Sanitizer abgesichert.
   - Rationale: Nicht unterstützte oder gefährliche Strukturen dürfen nicht unbemerkt als WYSIWYG-Inhalt weiterbestehen.
+
+- Decision: Die gemeinsame Allowlist-Sanitizer-Policy liegt framework-agnostisch in `@sva/core`; `@sva/studio-ui-react` und die Mainserver-Eingabegrenzen verwenden dieselbe Implementierung auf Basis von `sanitize-html`.
+  - Rationale: Client und Server dürfen bei sicherheitsrelevanten Tags, Attributen und Protokollen nicht durch duplizierte Policies auseinanderlaufen.
 
 - Decision: Die bestehende native Linkeingabe bleibt zunächst unverändert. Änderungen an Fokus- oder Selection-Logik erfolgen nur, wenn der echte Browser-Repro den Fehler bestätigt.
   - Rationale: TipTap verwaltet Auswahl und Commands; zusätzliche Eigenlogik braucht einen belegten Fehler.

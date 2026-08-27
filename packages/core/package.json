@@ -18,6 +18,10 @@
     "./security": {
       "types": "./dist/security/index.d.ts",
       "default": "./dist/security/index.js"
+    },
+    "./rich-text-html": {
+      "types": "./dist/rich-text-html.d.ts",
+      "default": "./dist/rich-text-html.js"
     }
   },
   "dependencies": {

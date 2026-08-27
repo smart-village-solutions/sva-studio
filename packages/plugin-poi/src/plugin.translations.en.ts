@@ -93,6 +93,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     orderedList: 'Ordered list',
     bold: 'Bold',
     italic: 'Italic',
+    underline: 'Underline',
     undo: 'Undo',
     redo: 'Redo',
     linkInput: 'Link URL',

@@ -16,6 +16,6 @@ Die Rechtstext-Verwaltung verwendet noch einen lokalen `contentEditable`-Editor 
 ## Impact
 
 - Affected specs: `ui-layout-shell`, `content-management`
-- Affected code: `packages/studio-ui-react`, `packages/plugin-news`, `apps/sva-studio-react/src/routes/admin/legal-texts`, Rechtstext-Übersetzungen und Editor-Tests
-- Affected arc42 sections: keine; bestehende UI-Ownership und Paketgrenzen bleiben unverändert
-- Neue Dependencies: keine
+- Affected code: `packages/core`, `packages/studio-ui-react`, Mainserver-Eingabegrenzen, Content-Plugins, `apps/sva-studio-react/src/routes/admin/legal-texts`, Rechtstext-Übersetzungen und Editor-Tests
+- Affected arc42 sections: Lösungsstrategie und Bausteinsicht für die gerichtete Abhängigkeit `@sva/studio-ui-react` → `@sva/core`
+- Neue Dependencies: `sanitize-html` mit Typdefinitionen; die zentrale Sanitizer-Policy liegt in `@sva/core`

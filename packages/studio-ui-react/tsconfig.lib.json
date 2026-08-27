@@ -6,7 +6,10 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["react", "react-dom"]
+    "types": ["react", "react-dom"],
+    "paths": {
+      "@sva/core/rich-text-html": ["packages/core/dist/rich-text-html.d.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.spec.ts", "src/**/*.spec.tsx"]

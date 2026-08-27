@@ -91,6 +91,7 @@ export const legalTextsAdminDEResources = {
     blockType: 'Textformat',
     bold: 'Fett',
     italic: 'Kursiv',
+    underline: 'Unterstrichen',
     paragraph: 'Absatz',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',

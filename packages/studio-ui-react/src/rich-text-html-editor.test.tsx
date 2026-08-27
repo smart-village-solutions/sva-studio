@@ -43,6 +43,10 @@ const tiptapState = vi.hoisted(() => {
       actions.push('italic');
       return chain;
     }),
+    toggleUnderline: vi.fn(() => {
+      actions.push('underline');
+      return chain;
+    }),
     undo: vi.fn(() => {
       actions.push('undo');
       return chain;
@@ -164,6 +168,7 @@ const renderEditor = (props?: Partial<React.ComponentProps<typeof RichTextHtmlEd
         orderedList: 'OL',
         bold: 'Fett',
         italic: 'Kursiv',
+        underline: 'Unterstrichen',
         undo: 'Zurück',
         redo: 'Vorwärts',
         linkPrompt: 'Link-URL',
@@ -201,6 +206,7 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('button', { name: 'Link setzen' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fett' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Kursiv' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Unterstrichen' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Vorwärts' })).toBeTruthy();
     expect(screen.getByRole('textbox')).toBeTruthy();
@@ -311,6 +317,7 @@ describe('RichTextHtmlEditor', () => {
     const orderedListButton = screen.getByRole('button', { name: 'OL' });
     const boldButton = screen.getByRole('button', { name: 'Fett' });
     const italicButton = screen.getByRole('button', { name: 'Kursiv' });
+    const underlineButton = screen.getByRole('button', { name: 'Unterstrichen' });
     const undoButton = screen.getByRole('button', { name: 'Zurück' });
     const redoButton = screen.getByRole('button', { name: 'Vorwärts' });
 
@@ -321,6 +328,7 @@ describe('RichTextHtmlEditor', () => {
     fireEvent.click(orderedListButton);
     fireEvent.click(boldButton);
     fireEvent.click(italicButton);
+    fireEvent.click(underlineButton);
     fireEvent.click(undoButton);
     fireEvent.click(redoButton);
 
@@ -328,7 +336,15 @@ describe('RichTextHtmlEditor', () => {
     expect(bulletListButton.className).toContain('bg-muted');
     expect(boldButton.className).toContain('bg-muted');
     expect(tiptapState.actions).toEqual(
-      expect.arrayContaining(['bulletList', 'orderedList', 'bold', 'italic', 'undo', 'redo'])
+      expect.arrayContaining([
+        'bulletList',
+        'orderedList',
+        'bold',
+        'italic',
+        'underline',
+        'undo',
+        'redo',
+      ])
     );
   });
 

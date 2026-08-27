@@ -13,6 +13,7 @@ const labels = {
   orderedList: 'Nummerierung',
   bold: 'Fett',
   italic: 'Kursiv',
+  underline: 'Unterstrichen',
   undo: 'Zurück',
   redo: 'Vorwärts',
   link: 'Link setzen',
@@ -81,6 +82,17 @@ describe('RichTextHtmlEditor integration', () => {
       target: { value: 'heading-2' },
     });
     await waitFor(() => expect(editor.innerHTML).toContain('<h2>'));
+  });
+
+  it('applies underline formatting to a real TipTap selection', async () => {
+    render(<ControlledEditor />);
+    const editor = await screen.findByRole('textbox');
+
+    await selectAlpha(editor);
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'Unterstrichen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unterstrichen' }));
+
+    await waitFor(() => expect(editor.innerHTML).toContain('<u>Alpha</u>'));
   });
 
   it('normalizes source HTML through the configured TipTap schema before returning to WYSIWYG', async () => {

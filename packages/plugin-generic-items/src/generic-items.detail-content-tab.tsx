@@ -187,6 +187,7 @@ export const GenericItemsDetailContentTab = ({
                       orderedList: labels.richTextOrderedList,
                       bold: labels.richTextBold,
                       italic: labels.richTextItalic,
+                      underline: labels.richTextUnderline,
                       undo: labels.richTextUndo,
                       redo: labels.richTextRedo,
                       link: labels.richTextApplyLink,

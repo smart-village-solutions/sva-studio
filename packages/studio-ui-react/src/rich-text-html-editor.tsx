@@ -94,7 +94,7 @@ type ToolbarButtonProps = Readonly<{
 }>;
 
 const ToolbarButton = ({
-  active = false,
+  active,
   children,
   label,
   disabled = false,
@@ -106,10 +106,12 @@ const ToolbarButton = ({
     variant="tertiary"
     aria-label={label}
     title={label}
+    aria-pressed={active}
     disabled={disabled}
     className={cn(
-      'h-10 w-10 rounded-none border-l border-border text-muted-foreground hover:bg-muted hover:text-foreground',
-      active ? 'bg-muted text-foreground' : ''
+      'h-8 w-8 rounded-sm border border-transparent text-muted-foreground shadow-none',
+      'hover:border-border hover:bg-background hover:text-foreground',
+      active ? 'border-border bg-background text-foreground shadow-sm' : ''
     )}
     onMouseDown={(event) => event.preventDefault()}
     onClick={onClick}
@@ -180,17 +182,21 @@ export const RichTextHtmlEditor = ({
         ...(labelId ? { 'aria-labelledby': labelId } : {}),
         ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         class: cn(
-          'min-h-56 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background',
-          'focus-visible:ring-2 focus-visible:ring-ring',
+          'min-h-56 bg-background px-4 py-3 text-sm leading-6 text-foreground outline-none',
           disabled ? 'cursor-not-allowed opacity-60' : '',
-          '[&_.ProseMirror]:min-h-52 [&_.ProseMirror]:outline-none',
-          '[&_.ProseMirror_h2]:mt-4 [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h2]:font-semibold',
-          '[&_.ProseMirror_h3]:mt-3 [&_.ProseMirror_h3]:text-xl [&_.ProseMirror_h3]:font-semibold',
-          '[&_.ProseMirror_h4]:mt-3 [&_.ProseMirror_h4]:text-lg [&_.ProseMirror_h4]:font-semibold',
-          '[&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-border [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:italic',
-          '[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6',
-          '[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6',
-          '[&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:underline'
+          '[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0',
+          '[&_h1]:mt-6 [&_h1]:mb-3 [&_h1]:text-3xl [&_h1]:font-semibold [&_h1]:leading-tight [&_h1]:tracking-tight',
+          '[&_h2]:mt-5 [&_h2]:mb-2.5 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:leading-tight [&_h2]:tracking-tight',
+          '[&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:leading-snug',
+          '[&_h4]:mt-4 [&_h4]:mb-2 [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:leading-snug',
+          '[&_h5]:mt-3 [&_h5]:mb-1.5 [&_h5]:text-base [&_h5]:font-semibold',
+          '[&_h6]:mt-3 [&_h6]:mb-1.5 [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:uppercase [&_h6]:tracking-wide',
+          '[&_blockquote]:my-4 [&_blockquote]:rounded-r-md [&_blockquote]:border-l-4 [&_blockquote]:border-primary/50',
+          '[&_blockquote]:bg-muted/40 [&_blockquote]:py-2 [&_blockquote]:pr-3 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground',
+          '[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6',
+          '[&_ul]:my-3 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6',
+          '[&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/60 [&_a]:underline-offset-2',
+          '[&_strong]:font-semibold [&_u]:underline [&_u]:underline-offset-2'
         ),
       },
     },
@@ -296,20 +302,29 @@ export const RichTextHtmlEditor = ({
   return (
     <div
       data-rich-text-editor-id={id}
-      className={cn('overflow-hidden rounded-md border border-input bg-background', className)}
+      className={cn(
+        'overflow-hidden rounded-md border border-input bg-background shadow-sm',
+        'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+        ariaInvalid ? 'border-destructive' : '',
+        className
+      )}
     >
-      <div className="flex flex-wrap items-stretch border-b border-input">
+      <div
+        role="toolbar"
+        aria-label={toolbarLabels.mode}
+        className="flex flex-wrap items-center gap-1.5 border-b border-input bg-muted/40 p-1.5"
+      >
         <div
           role="group"
           aria-label={toolbarLabels.mode}
-          className="flex items-stretch border-r border-border"
+          className="flex items-center rounded-md border border-input bg-background p-0.5 shadow-sm"
         >
           <Button
             type="button"
             size="sm"
             variant={mode === 'visual' ? 'secondary' : 'tertiary'}
             aria-pressed={mode === 'visual'}
-            className="h-10 min-h-10 rounded-none border-0"
+            className="h-8 min-h-8 rounded-sm border-0 px-2.5 shadow-none"
             onClick={showVisualMode}
           >
             {toolbarLabels.visualMode}
@@ -319,7 +334,7 @@ export const RichTextHtmlEditor = ({
             size="sm"
             variant={mode === 'html' ? 'secondary' : 'tertiary'}
             aria-pressed={mode === 'html'}
-            className="h-10 min-h-10 rounded-none border-0 border-l border-border"
+            className="h-8 min-h-8 rounded-sm border-0 px-2.5 shadow-none"
             onClick={showHtmlMode}
           >
             {toolbarLabels.htmlMode}
@@ -328,7 +343,7 @@ export const RichTextHtmlEditor = ({
         <Select
           aria-label={toolbarLabels.blockType}
           disabled={formattingDisabled}
-          className="h-10 w-auto min-w-40 rounded-none border-0 border-r border-border bg-background text-sm shadow-none focus-visible:ring-0"
+          className="h-8 w-auto min-w-40 rounded-md border-input bg-background text-sm shadow-sm focus-visible:ring-2"
           value={activeFormat}
           onChange={(event) => {
             const nextValue = event.currentTarget.value;
@@ -362,75 +377,81 @@ export const RichTextHtmlEditor = ({
             </option>
           ))}
         </Select>
-        <ToolbarButton
-          label={String(toolbarLabels.bulletList)}
-          active={editor?.isActive('bulletList') ?? false}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().toggleBulletList().run()}
-        >
-          <List className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.orderedList)}
-          active={editor?.isActive('orderedList') ?? false}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.link)}
-          active={editor?.isActive('link') ?? false}
-          disabled={formattingDisabled}
-          onClick={applyLink}
-        >
-          <Link2 className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.bold)}
-          active={editor?.isActive('bold') ?? false}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().toggleBold().run()}
-        >
-          <Bold className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.italic)}
-          active={editor?.isActive('italic') ?? false}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().toggleItalic().run()}
-        >
-          <Italic className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.underline)}
-          active={editor?.isActive('underline') ?? false}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().toggleUnderline().run()}
-        >
-          <Underline className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.clearFormatting)}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
-        >
-          <RemoveFormatting className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.undo)}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().undo().run()}
-        >
-          <Undo2 className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label={String(toolbarLabels.redo)}
-          disabled={formattingDisabled}
-          onClick={() => editor?.chain().focus().redo().run()}
-        >
-          <Redo2 className="h-4 w-4" />
-        </ToolbarButton>
+        <div className="flex items-center gap-0.5 border-l border-border pl-1.5">
+          <ToolbarButton
+            label={String(toolbarLabels.bulletList)}
+            active={editor?.isActive('bulletList') ?? false}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+          >
+            <List className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            label={String(toolbarLabels.orderedList)}
+            active={editor?.isActive('orderedList') ?? false}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+          >
+            <ListOrdered className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
+        <div className="flex items-center gap-0.5 border-l border-border pl-1.5">
+          <ToolbarButton
+            label={String(toolbarLabels.link)}
+            active={editor?.isActive('link') ?? false}
+            disabled={formattingDisabled}
+            onClick={applyLink}
+          >
+            <Link2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            label={String(toolbarLabels.bold)}
+            active={editor?.isActive('bold') ?? false}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+          >
+            <Bold className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            label={String(toolbarLabels.italic)}
+            active={editor?.isActive('italic') ?? false}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+          >
+            <Italic className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            label={String(toolbarLabels.underline)}
+            active={editor?.isActive('underline') ?? false}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
+          >
+            <Underline className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            label={String(toolbarLabels.clearFormatting)}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
+          >
+            <RemoveFormatting className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
+        <div className="flex items-center gap-0.5 border-l border-border pl-1.5">
+          <ToolbarButton
+            label={String(toolbarLabels.undo)}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().undo().run()}
+          >
+            <Undo2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            label={String(toolbarLabels.redo)}
+            disabled={formattingDisabled}
+            onClick={() => editor?.chain().focus().redo().run()}
+          >
+            <Redo2 className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
       </div>
       <div hidden={mode === 'html'}>
         <EditorContent editor={editor} />
@@ -448,7 +469,7 @@ export const RichTextHtmlEditor = ({
             value={htmlDraft}
             readOnly={disabled}
             spellCheck={false}
-            className="min-h-56 resize-y rounded-none border-0 font-mono text-sm focus-visible:ring-inset focus-visible:ring-offset-0"
+            className="min-h-56 resize-y rounded-none border-0 bg-background px-4 py-3 font-mono text-sm leading-6 focus-visible:ring-0"
             onChange={(event) => {
               const nextDraft = event.currentTarget.value;
               const sanitizedDraft = sanitizeAndNormalizeHtml(nextDraft);

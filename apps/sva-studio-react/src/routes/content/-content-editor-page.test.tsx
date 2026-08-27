@@ -61,6 +61,7 @@ const defaultAccess = {
     organizationIds: ['org-1'],
     sourceKinds: ['direct_role'],
   },
+  permissionActions: [],
   isLoading: false,
   error: null,
 };

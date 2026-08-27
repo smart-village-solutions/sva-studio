@@ -188,6 +188,20 @@ describe('news.editor-model', () => {
     });
   });
 
+  it('omits a source from save payloads when its url is empty', () => {
+    const payload = buildNewsSavePayload(
+      {
+        ...editorValuesFixture,
+        sourceUrl: { url: '', description: 'Beschreibung ohne URL' },
+        sourceUrlDescription: 'Beschreibung ohne URL',
+      },
+      editorValuesFixture.__legacySnapshot ?? null,
+      '2026-06-09T10:00:00.000Z'
+    ).mutation;
+
+    expect(payload).not.toHaveProperty('sourceUrl');
+  });
+
   it('sends an explicit empty target list when the final Waste target is removed', () => {
     const plan = buildNewsSavePayload(
       { ...editorValuesFixture, wasteLocationKeys: [] },

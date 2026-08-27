@@ -281,7 +281,7 @@ export const usersAdminDEResources = {
     mainserverCredentialsInvalid:
       'Der Mainserver lehnt die hinterlegten Zugangsdaten für die Aktualisierung ab. Bitte die Mainserver-Credentials prüfen.',
     mainserverUserConflict:
-      'Der Mainserver meldet einen Konflikt für dieses Benutzerkonto. Bitte den vorhandenen Mainserver-Benutzer prüfen.',
+      'Der Mainserver-Benutzer ist bereits mit einer anderen Identität verknüpft. Eine Wiederholung löst den Konflikt nicht. Bitte den Mainserver-Betrieb mit der angezeigten Request-ID kontaktieren.',
     mainserverProvisioningFailed:
       'Die Aktualisierung der Mainserver-Daten ist am Mainserver fehlgeschlagen. Bitte die Mainserver-Integration prüfen und erneut versuchen.',
     lastAdminProtection:

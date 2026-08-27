@@ -1,43 +1,26 @@
 ## ADDED Requirements
 
-### Requirement: Gleiche normalisierte E-Mail erlaubt einen expliziten Mainserver-Rebind
+### Requirement: Mainserver-Identitätskonflikte bleiben bis zur operativen Korrektur fail-closed
 
-Das System SHALL einen `local_user_conflict` aus persönlichem Mainserver-Provisioning nur dann über den administrativen Reconcile-Pfad auflösen, wenn Studio und Mainserver dieselbe normalisierte E-Mail-Adresse bestätigen. Die E-Mail-Gleichheit SHALL für diesen begrenzten Pfad als ausreichende Identitätszuordnung gelten. Wiederholtes Provisioning und direkte Datenbankzugriffe SHALL den Konflikt nicht auflösen.
+Das System SHALL einen upstream gemeldeten `local_user_conflict` als dedizierten, nicht automatisch wiederholbaren `mainserver_user_conflict` mit Request-ID ausgeben. Studio SHALL weder die Mainserver-Subject-Bindung verändern noch den Konflikt automatisch erneut provisionieren. Für die operative Zuordnung SHALL dieselbe normalisierte E-Mail-Adresse innerhalb derselben Instanz als ausreichendes Identifikationsmerkmal gelten.
 
-#### Scenario: Historische Identität verwendet dieselbe E-Mail-Adresse
+#### Scenario: Mainserver meldet eine abweichende historische Subject-Bindung
 
-- **GIVEN** der Mainserver meldet `local_user_conflict`
-- **WHEN** die Read-only-Prüfung dieselbe normalisierte E-Mail-Adresse bestätigt
-- **THEN** kennzeichnet Studio den Konflikt als direkt administrativ auflösbar
+- **GIVEN** E-Mail und Ziel-Subject werden an die bestehende Mainserver-Provisionierung übergeben
+- **WHEN** der Mainserver `local_user_conflict` meldet
+- **THEN** antwortet Studio mit `mainserver_user_conflict` und der Request-ID
+- **AND** speichert Studio keine neuen persönlichen Credentials
+- **AND** startet Studio keinen automatischen Rebind oder erneuten Provisionierungsversuch
 
-#### Scenario: Normalisierte E-Mail-Adressen weichen ab
+#### Scenario: E-Mail-Abgleich ist nicht eindeutig
 
-- **GIVEN** der Mainserver meldet `local_user_conflict`
-- **WHEN** die Read-only-Prüfung keine E-Mail-Gleichheit bestätigt
-- **THEN** führt Studio keinen Rebind aus
-- **AND** persistiert keine neuen persönlichen Credentials
+- **WHEN** der Mainserver-Betrieb keine eindeutige Gleichheit der normalisierten E-Mail innerhalb derselben Instanz feststellt
+- **THEN** bleibt der Konflikt unverändert bestehen
+- **AND** erfolgt keine operative Subject-Änderung
 
-### Requirement: Mainserver-Rebind ist atomar, idempotent und wiederaufnehmbar
+#### Scenario: Operative Korrektur ist nachgewiesen
 
-Das System SHALL die historische Mainserver-Identität nur über einen dedizierten Rebind-Vertrag an den Ziel-Subject binden. Der Vertrag SHALL die E-Mail-Gleichheit erneut prüfen, Bindung und Credential-Rotation atomar ausführen, eine deterministische Operationsreferenz idempotent behandeln und nach Timeout ein dauerhaftes Ergebnis mit geschütztem Credential-Replay für die serverseitige Wiederherstellung bereitstellen.
-
-#### Scenario: Dedizierter Rebind ist erfolgreich
-
-- **GIVEN** ein berechtigter Reconcile-Aufruf mit bestätigter E-Mail-Gleichheit und deterministischer Operationsreferenz
-- **WHEN** Studio den dedizierten Mainserver-Rebind aufruft
-- **THEN** bindet der Mainserver die Identität atomar an den Ziel-Subject und invalidiert den alten Credential-Zustand
-- **AND** erhält Studio verifizierbare neue persönliche Credentials und den Ziel-DataProvider
-- **AND** persistiert Studio die Credentials ausschließlich serverseitig in Keycloak
-
-#### Scenario: Upstream-Ergebnis ist nach Timeout unklar
-
-- **WHEN** der Rebind-Aufruf ohne eindeutige Antwort endet
-- **THEN** fragt Studio das Ergebnis mit derselben Operationsreferenz ab
-- **AND** startet es keinen unabhängigen zweiten Rebind
-
-#### Scenario: Lokale Persistenz scheitert nach bestätigtem Rebind
-
-- **GIVEN** der Mainserver hat Rebind und Credential-Rotation bestätigt
-- **WHEN** Keycloak-Persistenz oder DataProvider-Verifikation fehlschlägt
-- **THEN** behandelt Studio den Zustand als `reconciliation_required`
-- **AND** kann eine erneute bewusste Reconcile-Aktion das geschützte Ergebnis über dieselbe Operationsreferenz wiederaufnehmen
+- **GIVEN** der Mainserver-Betrieb hat die lokale `User`-/`Member`-Zuordnung kontrolliert korrigiert
+- **WHEN** ein berechtigter Administrator die bestehende Reprovisionierung erneut ausführt
+- **THEN** verarbeitet Studio die unveränderte Mainserver-Provisioning-Antwort
+- **AND** persistiert erfolgreiche persönliche Credentials wie bisher ausschließlich serverseitig in Keycloak

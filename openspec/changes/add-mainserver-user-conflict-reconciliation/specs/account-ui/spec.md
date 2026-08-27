@@ -1,25 +1,19 @@
 ## ADDED Requirements
 
-### Requirement: Benutzer-Detailansicht löst bestätigte Mainserver-E-Mail-Konflikte gezielt auf
+### Requirement: Benutzer-Detailansicht erklärt Mainserver-Identitätskonflikte als Betriebsfall
 
-Das System SHALL einem berechtigten `system_admin` in der Benutzer-Detailansicht einen redigierten Mainserver-Konfliktbefund und eine direkte Reconcile-Aktion anzeigen, wenn Studio und Mainserver dieselbe normalisierte E-Mail-Adresse bestätigen. Die Ansicht SHALL vor der Mutation Wirkung und Fresh-Reauth-Anforderung erklären und SHALL keine Credentials, Tokens, vollständigen Upstream-Antworten oder unmaskierten fremden Identitätsdaten anzeigen.
+Das System SHALL `mainserver_user_conflict` in der Benutzer-Detailansicht als Identitätskonflikt anzeigen, der vor einer erneuten Reprovisionierung durch den Mainserver-Betrieb korrigiert werden muss. Die Ansicht SHALL keine automatische Auflösung oder wiederholte Provisionierung als Abhilfe empfehlen und SHALL die vorhandene Request-ID als sichere Referenz für den Support anzeigen, sofern sie in der Fehlerantwort enthalten ist.
 
-#### Scenario: System-Admin prüft und löst bestätigten E-Mail-Konflikt auf
+#### Scenario: Reprovisionierung trifft auf einen Identitätskonflikt
 
-- **GIVEN** Studio und Mainserver bestätigen dieselbe normalisierte E-Mail-Adresse
-- **AND** der System-Admin besitzt eine gültige Fresh-Reauth-Evidenz
-- **WHEN** er die Wirkung bestätigt und die Reconcile-Aktion ausführt
-- **THEN** zeigt die Detailansicht den laufenden Zustand und anschließend das verifizierte Ergebnis
-- **AND** verlangt sie keine zweite administrative Freigabe
+- **GIVEN** der Mainserver meldet für den Zielbenutzer `local_user_conflict`
+- **WHEN** Studio den Fehler als `mainserver_user_conflict` anzeigt
+- **THEN** erklärt die Detailansicht, dass eine Wiederholung den Konflikt nicht löst
+- **AND** verweist sie auf den Mainserver-Betrieb
+- **AND** zeigt sie eine vorhandene Request-ID ohne Credentials oder fremde Identitätsdaten an
 
-#### Scenario: E-Mail-Adressen stimmen nicht überein
+#### Scenario: Operative Korrektur wurde abgeschlossen
 
-- **WHEN** die Read-only-Prüfung keine Gleichheit der normalisierten E-Mail-Adressen bestätigt
-- **THEN** bietet die Detailansicht keinen Rebind an
-- **AND** erklärt sie den weiterhin bestehenden Konflikt ohne fremde Identitätsdaten offenzulegen
-
-#### Scenario: Fresh Reauth fehlt
-
-- **WHEN** ein berechtigter System-Admin die Reconcile-Aktion ohne gültige Fresh-Reauth-Evidenz ausführt
-- **THEN** fordert die UI eine serverseitig kontrollierte Re-Authentisierung an
-- **AND** startet sie keine Mainserver-Mutation
+- **GIVEN** der Mainserver-Betrieb hat die Zuordnung anhand derselben normalisierten E-Mail-Adresse korrigiert
+- **WHEN** ein berechtigter Administrator die bestehende Reprovisionierung erneut ausführt
+- **THEN** verwendet die Detailansicht unverändert den bestehenden Erfolgs- oder Fehlerpfad

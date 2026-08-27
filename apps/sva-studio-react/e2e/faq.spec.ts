@@ -154,7 +154,13 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
         headers: faq && !deleted ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
         body: JSON.stringify(
           faq && !deleted
-            ? { data: faq, meta: { access: { 'content.publish': true } } }
+            ? {
+                data: {
+                  ...faq,
+                  dataProvider: { id: 'provider-user', name: 'Editor One' },
+                },
+                meta: { access: { 'content.publish': true } },
+              }
             : { error: 'not_found' }
         ),
       });

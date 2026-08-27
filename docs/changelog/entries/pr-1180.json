@@ -1,0 +1,4 @@
+{
+  "prNumber": 1180,
+  "body": "Konflikte zwischen einem Studio-Benutzerkonto und der zugehörigen Identität im SVA-Mainserver lassen sich jetzt gezielter durch den Betrieb klären.\n\n- Die Fehlermeldung erklärt, dass erneutes Speichern den Konflikt nicht behebt.\n- Eine Request-ID erleichtert die Zuordnung bei der Übergabe an den Mainserver-Betrieb.\n- Das Betriebs-Runbook beschreibt Prüfung, kontrollierte Korrektur und Rollback."
+}

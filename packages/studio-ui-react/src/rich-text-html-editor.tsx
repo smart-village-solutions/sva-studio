@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/react';
 import {
   Bold,
+  CodeXml,
   Italic,
   Link2,
   List,
@@ -310,32 +311,6 @@ export const RichTextHtmlEditor = ({
       )}
     >
       <div className="flex flex-wrap items-center gap-1.5 border-b border-input bg-muted/40 p-1.5">
-        <div
-          role="group"
-          aria-label={toolbarLabels.mode}
-          className="flex items-center rounded-md border border-input bg-background p-0.5 shadow-sm"
-        >
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === 'visual' ? 'secondary' : 'tertiary'}
-            aria-pressed={mode === 'visual'}
-            className="h-8 min-h-8 rounded-sm border-0 px-2.5 shadow-none"
-            onClick={showVisualMode}
-          >
-            {toolbarLabels.visualMode}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === 'html' ? 'secondary' : 'tertiary'}
-            aria-pressed={mode === 'html'}
-            className="h-8 min-h-8 rounded-sm border-0 px-2.5 shadow-none"
-            onClick={showHtmlMode}
-          >
-            {toolbarLabels.htmlMode}
-          </Button>
-        </div>
         <Select
           aria-label={toolbarLabels.blockType}
           disabled={formattingDisabled}
@@ -446,6 +421,15 @@ export const RichTextHtmlEditor = ({
             onClick={() => editor?.chain().focus().redo().run()}
           >
             <Redo2 className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
+        <div className="ml-auto flex items-center border-l border-border pl-1.5">
+          <ToolbarButton
+            label={String(toolbarLabels.htmlMode)}
+            active={mode === 'html'}
+            onClick={mode === 'html' ? showVisualMode : showHtmlMode}
+          >
+            <CodeXml className="h-4 w-4" />
           </ToolbarButton>
         </div>
       </div>

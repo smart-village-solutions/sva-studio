@@ -152,7 +152,7 @@ test.describe('news plugin', () => {
     expect(bodyHtml).toContain('>Inhalt</a>');
     expect(bodyHtml).toContain('</h2>');
     await bodyHtmlSource.fill('<h2>Inhalt <em>aktualisiert</em></h2>');
-    await bodyEditorContainer.getByRole('button', { name: 'WYSIWYG' }).click();
+    await bodyEditorContainer.getByRole('button', { name: 'HTML' }).click();
     await expect(bodyEditor.locator('h2')).toContainText('Inhalt aktualisiert');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');

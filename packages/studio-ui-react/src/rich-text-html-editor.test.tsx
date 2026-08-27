@@ -214,13 +214,12 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Vorwärts' })).toBeTruthy();
     expect(screen.getByRole('textbox')).toBeTruthy();
-    expect(screen.getByRole('group', { name: 'Editoransicht' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fett' }).getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByRole('button', { name: 'Zurück' }).getAttribute('aria-pressed')).toBeNull();
-    expect(screen.getByRole('button', { name: 'WYSIWYG' }).getAttribute('aria-pressed')).toBe(
-      'true'
-    );
-    expect(screen.getByRole('button', { name: 'HTML' }).getAttribute('aria-pressed')).toBe('false');
+    const htmlModeButton = screen.getByRole('button', { name: 'HTML' });
+    expect(htmlModeButton.getAttribute('aria-pressed')).toBe('false');
+    expect(htmlModeButton.querySelector('svg')).toBeTruthy();
+    expect(htmlModeButton.parentElement?.nextElementSibling).toBeNull();
   });
 
   it('switches to an editable HTML source view and back to the normalized visual value', () => {
@@ -237,12 +236,10 @@ describe('RichTextHtmlEditor', () => {
     expect(onChange).toHaveBeenLastCalledWith('<h2>Geändert</h2>');
 
     rerenderEditor({ value: '<h2>Geändert</h2>' });
-    fireEvent.click(screen.getByRole('button', { name: 'WYSIWYG' }));
+    fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
 
     expect(tiptapState.calls.setContent).toHaveBeenLastCalledWith('<h2>Geändert</h2>');
-    expect(screen.getByRole('button', { name: 'WYSIWYG' }).getAttribute('aria-pressed')).toBe(
-      'true'
-    );
+    expect(screen.getByRole('button', { name: 'HTML' }).getAttribute('aria-pressed')).toBe('false');
   });
 
   it('keeps raw source editable while only forwarding sanitized html', () => {

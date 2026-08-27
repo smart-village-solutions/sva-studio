@@ -433,7 +433,7 @@ Spezialelemente wie Rich-Text-Editor, Datei-Upload, Medienverwaltung, Farbauswah
 
 Der gemeinsame Rich-Text-Editor nutzt im Browser DOMPurify und auf dem Server `sanitize-html`. Beide Adapter beziehen Tags und erlaubte URL-Schemata aus `@sva/core/rich-text-html-policy`; dadurch bleibt die Policy zentral, während Node-only-Abhängigkeiten nicht in den Browser-Build gelangen. Der Server-Sanitizer ist ausschließlich über `@sva/core/rich-text-html` verfügbar und wird nicht aus dem allgemeinen Core-Einstieg exportiert.
 
-TipTap bleibt die interne Bearbeitungs-Engine des gemeinsamen Rich-Text-Editors. Die Studio-Komponente stellt eine kompakte, gruppierte Werkzeugleiste sowie den Wechsel zwischen WYSIWYG- und HTML-Ansicht bereit. Inhaltsstile werden direkt auf die TipTap-Editorfläche begrenzt, damit Überschriften, Listen, Zitate und Links im WYSIWYG-Modus sichtbar unterscheidbar sind, ohne die gespeicherte HTML-Struktur oder die Sanitizer-Policy zu verändern.
+TipTap bleibt die interne Bearbeitungs-Engine des gemeinsamen Rich-Text-Editors. Die Studio-Komponente stellt eine kompakte, gruppierte Werkzeugleiste sowie den Wechsel zwischen WYSIWYG- und HTML-Ansicht bereit. Der Wechsel erfolgt über einen rechts am Ende der Werkzeugleiste platzierten Code-Icon-Button; dessen aktiver Zustand kennzeichnet die HTML-Ansicht. Inhaltsstile werden direkt auf die TipTap-Editorfläche begrenzt, damit Überschriften, Listen, Zitate und Links im WYSIWYG-Modus sichtbar unterscheidbar sind, ohne die gespeicherte HTML-Struktur oder die Sanitizer-Policy zu verändern.
 
 #### Feldaufbau
 

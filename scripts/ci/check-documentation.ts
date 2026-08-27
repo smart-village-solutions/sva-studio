@@ -70,6 +70,7 @@ export const loadDocumentationIntegrityInput = (
     manifestEntries,
     publishedPaths,
     trackedPaths,
+    validateWikiNavigation: true,
     wikiWorkflow: readFileSync(path.join(rootDir, WIKI_WORKFLOW_PATH), 'utf8'),
   };
 };
@@ -81,7 +82,7 @@ export const runDocumentationCheck = (rootDir = process.cwd()): number => {
   const issues = checkDocumentationIntegrity(loadDocumentationIntegrityInput(rootDir));
   if (issues.length === 0) {
     console.log(
-      'Dokumentationsprüfung erfolgreich: Links, Indizes und Publikationsgrenzen sind konsistent.'
+      'Dokumentationsprüfung erfolgreich: Links, Indizes und gerenderte Wiki-Publikation sind konsistent.'
     );
     return 0;
   }

@@ -247,4 +247,6 @@ eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht
 
 `docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität. `pnpm check:docs` erzwingt relative Linkintegrität, Index-Erreichbarkeit, ADR-Parität und die Grenzen der Wiki-Publikation.
 
+Das GitHub Wiki ist eine abgeleitete Leseansicht und keine zweite redaktionelle Quelle. Ein typsicherer Publikationskern überführt jede freigegebene Markdown-Datei in einen eindeutigen flachen Wiki-Slug, transformiert interne Links und erzeugt einen aufgabenorientierten Einstieg sowie eine kompakte Sidebar. Nicht-Markdown-Ziele bleiben gekennzeichnete Quellartefakte im Repository. Damit nutzt die Wissensbasis die vorhandene GitHub-Wiki-Oberfläche, ohne deren verschachtelte Raw-Pfade als Seitenmodell zu behandeln.
+
 Der frühere gemischte Bereich `docs/guides/` wurde anhand eines vollständigen Alt-/Neu-Pfad-Nachweises kontrolliert abgebaut. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.

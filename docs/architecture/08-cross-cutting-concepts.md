@@ -880,6 +880,9 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Maschinenlesbare API-Schemata sind gegenüber erläuternden Referenztexten führend. Kanonische ADRs sind gegenüber Legacy-Entscheidungsdokumenten führend.
 - `docs/reports/`, `docs/pr/`, `docs/staging/`, `docs/changelog/` und `docs/superpowers/` sind Evidenz oder Historie, keine aktuellen Handbücher.
 - `docs/user-documentation/` ist ein separater Integrations- und Synchronisationsbereich für die externe Anwenderdokumentation und wird nicht in die lokale technische Wissensbasis eingemischt.
-- Die Wiki-Publikation folgt der versionierten Positivliste. Ausgeschlossene, weiterhin referenzierte Nachweise werden über explizite Repository-Links erreicht.
-- `pnpm check:docs` validiert die aktuelle Positivliste blockierend gegen relative Linkziele, Erreichbarkeit ab `docs/README.md`, ADR-Datei/Index-Parität und die Wiki-Einstiege. Historische sowie externe Bestände bleiben bewusst außerhalb dieses Gültigkeitsbereichs.
+- Die Wiki-Publikation folgt der versionierten Positivliste. Markdown-Dateien werden im Wiki-Root unter deterministischen bereichspräfixierten Slugs gerendert; interne Links und Anker werden auf diese Slugs transformiert.
+- Home führt zuerst über konkrete Aufgaben, danach über kritische Einstiege und Bereiche. Die Sidebar bleibt auf kanonische Einstiege begrenzt; einzelne Unterseiten werden über Bereichsindizes erschlossen.
+- Nicht-Markdown-Dateien und nicht publizierte Repository-Ziele werden als Quellartefakte gekennzeichnet und absolut auf das Repository verlinkt. Bilder dürfen als Raw-Assets eingebettet werden, gelten aber nicht als Wiki-Seiten.
+- `pnpm check:docs` validiert die aktuelle Positivliste blockierend gegen relative Linkziele, Erreichbarkeit ab `docs/README.md`, ADR-Datei/Index-Parität, Slug-Kollisionen, transformierbare Wiki-Links und die erzeugten Einstiege. Historische sowie externe Bestände bleiben bewusst außerhalb dieses Gültigkeitsbereichs.
+- `docs/` bleibt die einzige redaktionelle Quelle. Der Wiki-Sync ersetzt seine abgeleitete Arbeitskopie vollständig und bricht vor dem Push ab, wenn Transformation oder Navigation inkonsistent sind.
 - Der Rolloutvertrag bleibt pfadstabil und ausschließlich unter `docs/guides/studio-rollout-process.md` normativ.

@@ -48,8 +48,9 @@ Schulden auf IST-Basis.
 7. Dokumentationsdrift bei schnell wandelnden Architekturteilen
    - Impact: mittel
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: Bereichsindizes mit Autorität, Ownership und Pflege-Triggern verwenden; Architekturänderungen im selben PR in arc42 und ADRs fortschreiben; `pnpm check:docs` prüft Links, Erreichbarkeit, ADR-Parität und Publikationsgrenzen blockierend
+   - Maßnahme: Bereichsindizes mit Autorität, Ownership und Pflege-Triggern verwenden; Architekturänderungen im selben PR in arc42 und ADRs fortschreiben; `pnpm check:docs` prüft Links, Erreichbarkeit, ADR-Parität, Wiki-Slugs, Linktransformation und Publikationsgrenzen blockierend
    - Erledigter Migrationsschritt: Die 59 allgemeinen Dokumente aus `docs/guides/` und vier lose Root-Dokumente sind in die verantworteten Bereiche verschoben; der Migrationsnachweis hält Alt-/Neu-Pfade und Konsolidierungsentscheidungen fest.
+   - Publikationsmaßnahme: Das Wiki wird aus einer flachen, generierten Leseansicht aufgebaut. Aufgaben- und Bereichseinstiege bleiben kuratiert; verschachtelte Raw-Pfade und Slug-Kollisionen blockieren die Publikation.
    - Schutzgrenze: Der kanonische Studio-Rollout bleibt während und nach der Migration ausschließlich unter `docs/guides/studio-rollout-process.md`; externe Anwenderdokumentation und historische Nachweise bleiben außerhalb der aktuellen lokalen Wissensbasis.
 
 8. Globaler Pending-basierter Initial-Loading-Zustand in der Root-Shell

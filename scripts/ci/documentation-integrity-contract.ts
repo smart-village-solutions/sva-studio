@@ -17,7 +17,8 @@ export type DocumentationIssueCode =
   | 'invalid-manifest'
   | 'publication-boundary'
   | 'unreachable-page'
-  | 'wiki-legacy-link';
+  | 'wiki-legacy-link'
+  | 'wiki-publication';
 
 export interface DocumentationIssue {
   code: DocumentationIssueCode;
@@ -31,5 +32,6 @@ export interface DocumentationIntegrityInput {
   manifestEntries: readonly string[];
   publishedPaths: ReadonlySet<string>;
   trackedPaths: ReadonlySet<string>;
+  validateWikiNavigation: boolean;
   wikiWorkflow: string;
 }

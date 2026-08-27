@@ -58,12 +58,12 @@
 
 - [x] 5.1 In der Live-Abnahme dokumentieren, dass verschachtelte Wiki-Pfade auf Raw-Inhalte umleiten und der bisherige Sync deshalb Task 6.3 noch nicht erfüllt
 - [x] 5.2 Das aufgabenorientierte Einstiegs-, Slug-, Linktransformations- und Quellartefakt-Design reviewen und ausdrücklich freigeben
-- [ ] 5.3 Einen framework-agnostischen, typsicheren Publikationskern für deterministische Wiki-Slugs, Linktransformation und Herkunftshinweise implementieren
-- [ ] 5.4 Wiki-Home nach Aufgaben, kritischen Einstiegen und Bereichen gliedern und die Sidebar auf kanonische Einstiege begrenzen
-- [ ] 5.5 Nicht-Markdown-Ziele als Quellartefakte behandeln und Links auf nicht publizierte Repository-Dateien sicher auf kanonische Repository-Ziele abbilden
-- [ ] 5.6 Kollisions-, Link-, Anker-, Asset-, Raw-Redirect-, Home- und Sidebar-Vertrag mit fokussierten Vitest-Fixtures absichern
-- [ ] 5.7 `pnpm check:docs` um die gerenderte Wiki-Publikationsgrenze erweitern und den Workflow vor dem Push gegen das erzeugte Ergebnis prüfen lassen
-- [ ] 5.8 Fokussierte Tests, `pnpm check:docs`, Script-Typecheck, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` ausführen
+- [x] 5.3 Einen framework-agnostischen, typsicheren Publikationskern für deterministische Wiki-Slugs, Linktransformation und Herkunftshinweise implementieren
+- [x] 5.4 Wiki-Home nach Aufgaben, kritischen Einstiegen und Bereichen gliedern und die Sidebar auf kanonische Einstiege begrenzen
+- [x] 5.5 Nicht-Markdown-Ziele als Quellartefakte behandeln und Links auf nicht publizierte Repository-Dateien sicher auf kanonische Repository-Ziele abbilden
+- [x] 5.6 Kollisions-, Link-, Anker-, Asset-, Raw-Redirect-, Home- und Sidebar-Vertrag mit fokussierten Vitest-Fixtures absichern
+- [x] 5.7 `pnpm check:docs` um die gerenderte Wiki-Publikationsgrenze erweitern und den Workflow vor dem Push gegen das erzeugte Ergebnis prüfen lassen
+- [x] 5.8 Fokussierte Tests, `pnpm check:docs`, Script-Typecheck, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` ausführen
 - [ ] 5.9 Den Korrektur-PR von aktuellem `origin/main` eröffnen, regulär reviewen und erst nach grünen terminalen Gates sowie geschlossenen Threads mergen
 - [ ] 5.10 Nach dem Merge Home, Aufgabenpfade, Bereichseinstiege und Stichproben gerenderter Seiten live prüfen; Markdown-Raw-Redirects müssen ausgeschlossen sein
 

@@ -4,6 +4,7 @@ import type {
   DocumentationIssue,
 } from './documentation-integrity-contract';
 import { checkDocumentationGraph } from './documentation-integrity-graph';
+import { buildWikiPublication } from './wiki-publication';
 
 export * from './documentation-integrity-contract';
 
@@ -16,4 +17,8 @@ const sortedIssues = (issues: DocumentationIssue[]): DocumentationIssue[] =>
 export const checkDocumentationIntegrity = (
   input: DocumentationIntegrityInput
 ): DocumentationIssue[] =>
-  sortedIssues([...checkDocumentationBoundaries(input), ...checkDocumentationGraph(input)]);
+  sortedIssues([
+    ...checkDocumentationBoundaries(input),
+    ...checkDocumentationGraph(input),
+    ...buildWikiPublication(input).issues,
+  ]);

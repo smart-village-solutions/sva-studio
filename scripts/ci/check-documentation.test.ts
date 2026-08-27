@@ -34,6 +34,7 @@ const createInput = (
   manifestEntries: ['docs/README.md', ':(glob)docs/development/**', ':(glob)docs/adr/**'],
   publishedPaths: new Set([...validFiles.keys()].filter((path) => path.startsWith('docs/'))),
   trackedPaths: new Set(validFiles.keys()),
+  validateWikiNavigation: false,
   wikiWorkflow: '- [Dokumentation](docs/README.md)\n- [ADRs](docs/adr/README.md)\n',
   ...overrides,
 });
@@ -322,5 +323,21 @@ describe('documentation integrity', () => {
     expect(workflow).toContain('name: Documentation Integrity');
     expect(workflow).toContain('run: pnpm check:docs');
     expect(workflow).not.toContain('continue-on-error: true\n        run: pnpm check:docs');
+  });
+
+  it('builds the Wiki through the rendered publication contract', () => {
+    const workflow = readFileSync(
+      path.join(workspaceRoot, '.github/workflows/wiki-sync.yml'),
+      'utf8'
+    );
+
+    expect(workflow).toContain('uses: ./.github/actions/setup-pnpm-workspace');
+    expect(workflow).toContain('run: pnpm check:docs');
+    expect(workflow).toContain(
+      'run: pnpm exec tsx scripts/ci/build-wiki-publication.ts --output wiki'
+    );
+    expect(workflow).not.toContain('wiki/docs');
+    expect(workflow).not.toContain('](docs/');
+    expect(workflow).not.toContain('cat > wiki/Home.md');
   });
 });

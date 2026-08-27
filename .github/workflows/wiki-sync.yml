@@ -8,6 +8,13 @@ on:
       - 'docs/**'
       - 'config/documentation/wiki-publication-paths.txt'
       - '.github/workflows/wiki-sync.yml'
+      - '.github/actions/setup-pnpm-workspace/action.yml'
+      - 'scripts/ci/build-wiki-publication.ts'
+      - 'scripts/ci/check-documentation.ts'
+      - 'scripts/ci/documentation-integrity*.ts'
+      - 'scripts/ci/wiki-publication.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
 
 permissions:
@@ -23,6 +30,12 @@ jobs:
     steps:
       - name: Checkout source repository
         uses: actions/checkout@v7
+
+      - name: Setup pnpm workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Verify documentation publication
+        run: pnpm check:docs
 
       - name: Clone wiki repository
         env:
@@ -41,74 +54,8 @@ jobs:
             exit 1
           fi
 
-      - name: Build curated documentation publication
-        run: |
-          set -euo pipefail
-
-          publication_root="$(mktemp -d "${RUNNER_TEMP}/wiki-publication.XXXXXX")"
-          publication_files="${RUNNER_TEMP}/wiki-publication-files"
-          if ! awk '
-            {
-              trimmed = $0
-              sub(/^[[:space:]]+/, "", trimmed)
-              sub(/[[:space:]]+$/, "", trimmed)
-              if ($0 == "" || $0 != trimmed || $0 ~ /^#/) {
-                printf "Ungueltige Manifestzeile %d: Pathspec muss nicht leer und ohne Rand-Whitespace oder Kommentar sein.\n", NR > "/dev/stderr"
-                invalid = 1
-              }
-            }
-            END { exit invalid }
-          ' config/documentation/wiki-publication-paths.txt; then
-            exit 1
-          fi
-          mapfile -t publication_pathspecs \
-            < config/documentation/wiki-publication-paths.txt
-
-          git ls-files -z -- "${publication_pathspecs[@]}" > "$publication_files"
-
-          if [[ ! -s "$publication_files" ]]; then
-            echo "Das Wiki-Publikationsmanifest hat keine Dateien ausgewählt." >&2
-            exit 1
-          fi
-
-          rsync -aR --from0 --files-from="$publication_files" ./ "$publication_root/"
-
-          if [[ ! -f "$publication_root/docs/README.md" ]]; then
-            echo "Der kanonische Dokumentationseinstieg fehlt in der Wiki-Publikation." >&2
-            exit 1
-          fi
-
-          mkdir -p wiki/docs
-          rsync -a --delete "$publication_root/docs/" wiki/docs/
-
-      - name: Generate wiki entry pages
-        run: |
-          cat > wiki/Home.md <<'EOF'
-          # SVA Studio Wiki
-
-          Diese Wiki-Inhalte werden automatisch aus `docs/` synchronisiert.
-
-          ## Einstieg
-
-          - [Dokumentationsübersicht](docs/README.md)
-          - [Architekturübersicht (arc42)](docs/architecture/README.md)
-          - [Architekturentscheidungen (ADRs)](docs/adr/README.md)
-          - [Monorepo-Struktur](docs/reference/monorepo.md)
-          - [Routing](docs/reference/routing.md)
-          - [Monitoring-Stack](docs/development/monitoring-stack.md)
-          - [Testing und Coverage Governance](docs/development/testing-coverage.md)
-          EOF
-
-          cat > wiki/_Sidebar.md <<'EOF'
-          - [Home](Home)
-          - [Dokumentationsübersicht](docs/README.md)
-          - [Architektur (arc42)](docs/architecture/README.md)
-          - [Architekturentscheidungen (ADRs)](docs/adr/README.md)
-          - [Monorepo](docs/reference/monorepo.md)
-          - [Routing](docs/reference/routing.md)
-          - [Monitoring](docs/development/monitoring-stack.md)
-          - [Testing/Coverage](docs/development/testing-coverage.md)
-          EOF
+      - name: Build rendered wiki publication
+        run: pnpm exec tsx scripts/ci/build-wiki-publication.ts --output wiki
 
       - name: Commit and push wiki changes
         run: |

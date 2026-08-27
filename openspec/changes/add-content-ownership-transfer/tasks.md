@@ -60,7 +60,7 @@
 - [x] 6.3 Content-/IAM-Bedienungsdokumentation, Permission-Referenz und Mainserver-Runbook auf Deutsch aktualisieren.
 - [x] 6.4 Eine ADR zum kontrollierten Content-Inhabertransfer erstellen und die arc42-Abschnitte 03, 04, 05, 06, 08 und 09 aktualisieren.
 - [x] 6.5 Prüfen und dokumentieren, dass keine Studio-Datenbankschemaänderung erforderlich ist; falls die Implementierung doch Schemaänderungen benötigt, `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` im selben Änderungsblock fortschreiben.
-- [ ] 6.6 Nutzerverständlichen Studio-Changelog-Eintrag ergänzen.
+- [x] 6.6 Nutzerverständlichen Studio-Changelog-Eintrag ergänzen.
 - [x] 6.7 Dokumentieren und testen, dass der aktuelle Inhaber nie aus Audit oder History rekonstruiert wird und eine optionale Historienanzeige auf potenziell fehlende externe Änderungen hinweist.
 
 ## 7. Abnahme und Rollout

@@ -23,4 +23,10 @@ describe('sanitizeLegalTextHtml', () => {
     expect(sanitizeLegalTextHtml('<a href="/hilfe">Hilfe</a>')).toBe('<a href="/hilfe">Hilfe</a>');
     expect(sanitizeLegalTextHtml('<script>alert(1)</script>')).toBe('<p></p>');
   });
+
+  it('keeps numeric ordered-list start values and removes invalid values', () => {
+    expect(
+      sanitizeLegalTextHtml('<ol start="3"><li>Drei</li></ol><ol start="alert(1)"><li>Eins</li></ol>')
+    ).toBe('<ol start="3"><li>Drei</li></ol><ol><li>Eins</li></ol>');
+  });
 });

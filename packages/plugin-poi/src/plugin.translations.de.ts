@@ -1,14 +1,12 @@
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesDe } from './plugin.translations.de.messages.js';
 import { poiDeleteActionTranslationsDe } from './plugin.translations.de.delete-actions.js';
-
 const poiEditorTranslations = {
   createTitle: 'Ort anlegen',
   createDescription: 'Erstellen Sie einen neuen Ort.',
   editTitle: 'Ort bearbeiten',
   editDescription: 'Aktualisieren oder löschen Sie den Ort.',
 };
-
 export const poiTranslationsDe = createPoiLocaleTranslations({
   navigation: { title: 'Orte' },
   list: { title: 'Orte', description: 'Orte aus dem Mainserver bearbeiten.' },
@@ -81,7 +79,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     updatedAt: 'Aktualisiert',
   },
   richText: {
-    blockType: 'Textformat',
+    mode: 'Editoransicht', visualMode: 'WYSIWYG', htmlMode: 'HTML', blockType: 'Textformat',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',
     heading4: 'Überschrift 4',
@@ -91,6 +89,8 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     orderedList: 'Nummerierung',
     bold: 'Fett',
     italic: 'Kursiv',
+    underline: 'Unterstrichen',
+    clearFormatting: 'Formatierung entfernen',
     undo: 'Zurück',
     redo: 'Vorwärts',
     linkInput: 'Link-URL',

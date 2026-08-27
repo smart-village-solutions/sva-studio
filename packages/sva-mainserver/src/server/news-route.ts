@@ -9,6 +9,7 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
+import { sanitizeRichTextHtml } from '@sva/core';
 import { createMutationWorkflow, createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
@@ -384,15 +385,23 @@ const parseContentBlocks = (
     if (mediaContents instanceof Response) {
       return mediaContents;
     }
+    if (typeof block.body === 'string' && block.body.trim().length > 50_000) {
+      return errorJson(
+        400,
+        'invalid_request',
+        'Inhaltsblöcke dürfen maximal 50.000 Zeichen haben.'
+      );
+    }
+    const body = readString(block.body);
+    const intro = readString(block.intro);
+    const sanitizedBody = body ? sanitizeRichTextHtml(body) : undefined;
+    const sanitizedIntro = intro ? sanitizeRichTextHtml(intro) : undefined;
     blocks.push({
       ...(readString(block.title) ? { title: readString(block.title) } : {}),
-      ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
-      ...(readString(block.body) ? { body: readString(block.body) } : {}),
+      ...(sanitizedIntro ? { intro: sanitizedIntro } : {}),
+      ...(sanitizedBody ? { body: sanitizedBody } : {}),
       ...(mediaContents.length > 0 ? { mediaContents } : {}),
     });
-  }
-  if (blocks.some((block) => (block.body?.length ?? 0) > 50_000)) {
-    return errorJson(400, 'invalid_request', 'Inhaltsblöcke dürfen maximal 50.000 Zeichen haben.');
   }
   return blocks;
 };

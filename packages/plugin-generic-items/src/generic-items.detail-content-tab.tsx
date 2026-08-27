@@ -179,11 +179,16 @@ export const GenericItemsDetailContentTab = ({
                       { value: 'blockquote', label: labels.richTextBlockquote },
                     ]}
                     toolbarLabels={{
+                      mode: labels.richTextMode,
+                      visualMode: labels.richTextVisualMode,
+                      htmlMode: labels.richTextHtmlMode,
                       blockType: labels.richTextBlockType,
                       bulletList: labels.richTextBulletList,
                       orderedList: labels.richTextOrderedList,
                       bold: labels.richTextBold,
                       italic: labels.richTextItalic,
+                      underline: labels.richTextUnderline,
+                      clearFormatting: labels.richTextClearFormatting,
                       undo: labels.richTextUndo,
                       redo: labels.richTextRedo,
                       link: labels.richTextApplyLink,

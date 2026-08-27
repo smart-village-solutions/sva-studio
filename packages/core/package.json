@@ -18,12 +18,18 @@
     "./security": {
       "types": "./dist/security/index.d.ts",
       "default": "./dist/security/index.js"
+    },
+    "./rich-text-html": {
+      "types": "./dist/rich-text-html.d.ts",
+      "default": "./dist/rich-text-html.js"
     }
   },
   "dependencies": {
-    "@sva/iam-core": "workspace:*"
+    "@sva/iam-core": "workspace:*",
+    "sanitize-html": "^2.17.6"
   },
   "devDependencies": {
+    "@types/sanitize-html": "^2.16.1",
     "fast-check": "^3.23.2",
     "vitest": "^4.1.10"
   }

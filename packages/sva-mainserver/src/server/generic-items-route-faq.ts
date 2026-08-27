@@ -72,6 +72,6 @@ export const validateFaqItemOrResponse = (genericItem: SvaMainserverGenericItemI
   validateFaqConstraints(genericItem);
 
 export const validateFaqWriteOrResponse = async (request: Request): Promise<SvaMainserverGenericItemInput | Response> => {
-  const genericItem = await parseGenericItemInput(request);
+  const genericItem = await parseGenericItemInput(request, { sanitizeRichText: false });
   return isResponse(genericItem) ? genericItem : validateFaqItemOrResponse(genericItem) ?? genericItem;
 };

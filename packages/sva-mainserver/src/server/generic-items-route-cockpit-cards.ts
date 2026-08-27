@@ -86,7 +86,7 @@ export const validateCockpitCardItemOrResponse = (
 export const validateCockpitCardWriteOrResponse = async (
   request: Request
 ): Promise<SvaMainserverGenericItemInput | Response> => {
-  const item = await parseGenericItemInput(request);
+  const item = await parseGenericItemInput(request, { sanitizeRichText: false });
   if (isResponse(item)) return item;
   const validation = validateCockpitCardItemOrResponse(item);
   if (validation) return validation;

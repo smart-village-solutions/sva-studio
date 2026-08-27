@@ -66,6 +66,7 @@ Plugins sollen eigene Views bauen können, ohne eine eigene visuelle Sprache, ei
 - `@sva/core` bleibt framework-agnostisch und enthält keine React-, shadcn- oder Browser-UI-Abhängigkeiten.
 - `@sva/plugin-sdk` bleibt der Vertrag für Plugin-Metadaten, Registries, Admin-Ressourcen, Content-Type-Erweiterungen und Plugin-i18n.
 - `@sva/studio-ui-react` wird ein React-basiertes UI-Package für Templates, Formularbausteine, Zustände, Tabellen, Header und Studio-Spezialcontrols.
+- `@sva/studio-ui-react` darf framework-agnostische, UI-unabhängige Kernlogik aus `@sva/core` verwenden; sicherheitsrelevante Policies wie die Rich-Text-HTML-Allowlist werden dort zentral besessen und nicht im UI-Package dupliziert.
 - `apps/sva-studio-react` konsumiert `@sva/studio-ui-react` und verdrahtet Shell, Routing, Server-Funktionen und Host-Bindings.
 - `@sva/plugin-*`-Packages dürfen für eigene Views `@sva/studio-ui-react` und `@sva/plugin-sdk` konsumieren, aber keine App-internen Komponenten importieren.
 

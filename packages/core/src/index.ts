@@ -451,6 +451,7 @@ export {
   parseMainserverListQuery,
 } from './mainserver-list-pagination.js';
 export type { MainserverListQuery } from './mainserver-list-pagination.js';
+export { sanitizeRichTextHtml } from './rich-text-html.js';
 export {
   RUNTIME_PROFILES,
   getRuntimeProfileDerivedEnvKeys,

@@ -63,6 +63,7 @@ Abhängigkeiten des aktuellen Systems.
 6. Studio UI React (`packages/studio-ui-react`)
 
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
+- verwendet framework-agnostische Rich-Text-Sicherheitslogik aus `@sva/core`, ohne Core um React- oder Browser-UI-Verantwortung zu erweitern
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
 - ist alleiniger Owner des Studio-Buttons mit der fachlichen Varianten-API `primary`, `secondary`, `tertiary` und `destructive`; App und Plugins besitzen keine parallele Button-Basis
 - stellt für Buttons zentrale Theme-Zustände, 44 × 44 Pixel Mindestzielgröße, sichtbaren Fokus, Disabled-/Loading-Semantik und fokusfähige Icon-Tooltips bereit

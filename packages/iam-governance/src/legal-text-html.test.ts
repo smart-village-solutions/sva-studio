@@ -34,6 +34,12 @@ describe('iam legal texts html sanitization', () => {
     );
   });
 
+  it('keeps numeric ordered-list start values and removes invalid values', () => {
+    expect(
+      sanitizeLegalTextHtml('<ol start="3"><li>Drei</li></ol><ol start="alert(1)"><li>Eins</li></ol>')
+    ).toBe('<ol start="3"><li>Drei</li></ol><ol><li>Eins</li></ol>');
+  });
+
   it('hashes html content deterministically', () => {
     expect(hashLegalTextHtml('<p>Hallo</p>')).toBe('sha256:e78a4d51c4f2f4e6b38fe640173b6e104c331be298029910951fa2fd751489be');
   });

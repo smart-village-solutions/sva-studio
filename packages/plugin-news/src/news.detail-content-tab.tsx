@@ -40,7 +40,6 @@ type NewsContentTextSectionProps = Readonly<{
   bodyField: ContentFieldBindings;
   setValue: ReturnType<typeof useFormContext<NewsDetailFormValues>>['setValue'];
 }>;
-
 function NewsContentTextSection({
   pt,
   title,
@@ -58,11 +57,13 @@ function NewsContentTextSection({
     { value: 'blockquote' as const, label: pt('richText.blockquote') },
   ];
   const toolbarLabels = {
-    blockType: pt('richText.blockType'),
-    bulletList: pt('richText.bulletList'),
-    orderedList: pt('richText.orderedList'),
+    mode: pt('richText.mode'), visualMode: pt('richText.visualMode'),
+    htmlMode: pt('richText.htmlMode'), blockType: pt('richText.blockType'),
+    bulletList: pt('richText.bulletList'), orderedList: pt('richText.orderedList'),
     bold: pt('richText.bold'),
     italic: pt('richText.italic'),
+    underline: pt('richText.underline'),
+    clearFormatting: pt('richText.clearFormatting'),
     undo: pt('richText.undo'),
     redo: pt('richText.redo'),
     link: pt('richText.applyLink'),
@@ -70,7 +71,6 @@ function NewsContentTextSection({
   };
   const introLabelId = `${introField.id}-label`;
   const bodyLabelId = `${bodyField.id}-label`;
-
   return (
     <NewsDetailCard
       title={pt('cards.content.text.title')}

@@ -162,7 +162,7 @@ export default [
             },
             {
               sourceTag: 'scope:studio-ui-react',
-              onlyDependOnLibsWithTags: ['scope:studio-ui-react'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:studio-ui-react'],
             },
             {
               sourceTag: 'scope:routing',

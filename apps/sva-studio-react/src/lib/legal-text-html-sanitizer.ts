@@ -119,6 +119,13 @@ const sanitizeBrowserHtml = (value: string): string => {
       }
     }
 
+    if (tagName === 'ol') {
+      const start = sourceElement.getAttribute('start');
+      if (start && /^-?\d+$/.test(start)) {
+        element.setAttribute('start', start);
+      }
+    }
+
     element.appendChild(sanitizedChildren);
     return element;
   };

@@ -124,7 +124,32 @@ test.describe('news plugin', () => {
     await expect(categoryTrigger).toContainText('Allgemein, Kultur');
     await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
     await page.locator('#news-content-intro').fill('Kurztext');
-    await page.locator('#news-content-body').fill('<p>Inhalt</p>');
+    const bodyEditorContainer = page.locator('[data-rich-text-editor-id="news-content-body"]');
+    const bodyEditor = page.locator('#news-content-body');
+    await bodyEditor.fill('Inhalt');
+    await bodyEditor.selectText();
+    page.once('dialog', async (dialog) => dialog.accept('example.com/news/body'));
+    await bodyEditorContainer.getByRole('button', { name: /Link setzen|Apply link/ }).click();
+    await expect(bodyEditor.locator('a')).toHaveAttribute('href', 'https://example.com/news/body');
+
+    await bodyEditor.selectText();
+    await bodyEditorContainer
+      .getByRole('combobox', { name: /Textformat|Text format/ })
+      .selectOption('heading-2');
+    await expect(bodyEditor.locator('h2')).toContainText('Inhalt');
+
+    await bodyEditorContainer.getByRole('button', { name: 'HTML' }).click();
+    const bodyHtmlSource = bodyEditorContainer.getByRole('textbox', {
+      name: /Inhalt HTML|Content HTML/,
+    });
+    const bodyHtml = await bodyHtmlSource.inputValue();
+    expect(bodyHtml).toContain('<h2>');
+    expect(bodyHtml).toContain('href="https://example.com/news/body"');
+    expect(bodyHtml).toContain('>Inhalt</a>');
+    expect(bodyHtml).toContain('</h2>');
+    await bodyHtmlSource.fill('<h2>Inhalt <em>aktualisiert</em></h2>');
+    await bodyEditorContainer.getByRole('button', { name: 'WYSIWYG' }).click();
+    await expect(bodyEditor.locator('h2')).toContainText('Inhalt aktualisiert');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
     await page

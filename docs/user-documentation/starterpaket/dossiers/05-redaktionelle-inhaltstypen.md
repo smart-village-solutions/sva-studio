@@ -45,7 +45,7 @@ haben können.
 - **Produktfakten:** Erfasst werden Titel, Beschreibung, Kategorien, Sichtbarkeit, einzelne oder
   wiederkehrende Termine, Zeit-Hinweise, Veranstalter, Kontakte, Adresse und Karte, POI-Bezug,
   Links, Preise, Barrierefreiheit, Tags und Medien. Wiederholungen unterstützen Tage, Wochen,
-  Monate oder Jahre sowie Wochentage.
+  Monate oder Jahre sowie Wochentage. Die Beschreibung lässt sich visuell oder als HTML bearbeiten.
 - **Validierung:** Titel erforderlich; gültige Datumswerte, HTTPS-URLs, valide Preise und Geo-
   Koordinaten. Kategorienamen sind auf 128 Zeichen begrenzt.
 - **Leitfragen / Stichwörter:** Einzeltermin oder Wiederholung? Adresse oder POI? Nur Zeit-Hinweis?
@@ -59,7 +59,8 @@ haben können.
 - **Nutzerziel:** Eine bestehende Veranstaltung und ihre strukturierten Angaben aktualisieren.
 - **Produktfakten:** Der Anlegeumfang wird um Historie und Löschen ergänzt. Adresse kann geocodiert
   und ein Kartenpunkt rückwärts in eine Adresse übersetzt werden. Medienreferenzen können nach
-  partiellem Fehler erneut gespeichert werden.
+  partiellem Fehler erneut gespeichert werden. Die Beschreibung bietet eine visuelle und eine
+  HTML-Ansicht; die gemeinsame Werkzeugleiste kann gemischte Textformatierungen gezielt entfernen.
 - **Kontextabhängig:** Kartenfunktionen benötigen eine aktive Karten-/Geocoding-Schnittstelle;
   Credentials und DataProvider beeinflussen Schreibaktionen.
 - **Leitfragen / Stichwörter:** Wie korrigiert man eine Serie ohne falsche Termine? Welche Quelle hat
@@ -98,7 +99,8 @@ haben können.
 - **Nutzerziel:** Einen frei modellierbaren Inhalt anlegen, wenn kein enger Fachtyp passt.
 - **Produktfakten:** Neben Überschrift, freiem Inhaltstyp, Sichtbarkeit und Veröffentlichung stehen
   Content-Blocks, Kategorien, Kontakte, Weblinks, Adressen, Orte, Termine, Öffnungszeiten,
-  Barrierefreiheit, Preise, Medien und freies JSON zur Verfügung.
+  Barrierefreiheit, Preise, Medien und freies JSON zur Verfügung. Content-Blocks lassen sich
+  visuell oder als HTML bearbeiten.
 - **Validierung:** Überschrift erforderlich; Kategorien, Links, Koordinaten und JSON werden
   validiert. Der freie Typ ist ein redaktioneller Marker und keine neue Plugin-Definition.
 - **Leitfragen / Stichwörter:** Warum ist kein Fachtyp geeigneter? Welche Felder braucht die
@@ -112,7 +114,7 @@ haben können.
 - **Nutzerziel:** Freie und strukturierte Daten eines bestehenden generischen Inhalts pflegen.
 - **Produktfakten:** Der große Anlegeumfang wird um Studio-Historie, Löschen und
   Medienreferenzstatus ergänzt. Medien lassen sich sortieren und ihre Metadaten aus der Mediathek
-  gezielt übernehmen.
+  gezielt übernehmen. Für Content-Blocks stehen die visuelle und die HTML-Ansicht bereit.
 - **Kontextabhängig:** Freies JSON und manuelle Medien-URLs erfordern besondere redaktionelle
   Sorgfalt; nicht auflösbare Referenzen werden sichtbar markiert.
 - **Leitfragen / Stichwörter:** Welche Zusatzdaten sind fachlich dokumentiert? Woher stammen
@@ -126,8 +128,9 @@ haben können.
 - **Nutzerziel:** Eine Nachricht als Entwurf, sofort oder zeitgesteuert veröffentlichen.
 - **Produktfakten:** Tabs sind Basis, Inhalte und Einstellungen. Felder umfassen Überschrift,
   Kategorien, Schlagwörter, Einleitung, Richtext, Medien, Quelle, Veröffentlichungsmodus und
-  optional Push. Push kann global oder auf ausgewählte Abholorte begrenzt werden; die Nachricht
-  selbst bleibt dabei öffentlich sichtbar.
+  optional Push. Der Richtext lässt sich visuell oder als HTML bearbeiten; Links, Überschriften
+  und Listen stehen in der visuellen Ansicht bereit. Push kann global oder auf ausgewählte
+  Abholorte begrenzt werden; die Nachricht selbst bleibt dabei öffentlich sichtbar.
 - **Lebenszyklus:** Entwurf, sofort veröffentlichen oder zeitgesteuert; geplanter Zeitpunkt darf in
   Vergangenheit oder Zukunft liegen. Push wird beim Speichern einer veröffentlichten Nachricht
   ausgelöst und kann pro Nachricht nur einmal gesendet werden.
@@ -157,7 +160,8 @@ haben können.
 - **Nutzerziel:** Einen Ort mit Beschreibung, Lage, Kontakt und Öffnungszeiten erfassen.
 - **Produktfakten:** Der Editor umfasst Basis, Inhalt und Einstellungen mit Name, Aktivstatus,
   Kategorien, Beschreibungen, Kontakt, Adresse und Karte, Betreiber, Öffnungszeiten, Links, Preise,
-  Barrierefreiheit, Medien sowie technische Zusatzdaten.
+  Barrierefreiheit, Medien sowie technische Zusatzdaten. Die Beschreibung lässt sich visuell oder
+  als HTML bearbeiten.
 - **Validierung:** Name erforderlich; HTTPS-URLs, gültige Koordinaten, Kategorien und JSON werden
   geprüft.
 - **Leitfragen / Stichwörter:** Was gehört zum Ort und was zum Betreiber? Welche Adresse und
@@ -170,7 +174,8 @@ haben können.
 - **Route / Typ / Owner:** `/admin/poi/$id`, Detail, Plugin `poi`.
 - **Nutzerziel:** Einen bestehenden Ort einschließlich Karte, Medien und Fachdaten aktualisieren.
 - **Produktfakten:** Ergänzt werden Historie, Löschen sowie Geocoding und Reverse-Geocoding.
-  Öffnungszeiten, Links, Preise und Medien können als mehrere Einträge gepflegt werden.
+  Öffnungszeiten, Links, Preise und Medien können als mehrere Einträge gepflegt werden. Für die
+  Beschreibung stehen die visuelle und die HTML-Ansicht bereit.
 - **Kontextabhängig:** Kartenaktionen hängen von der konfigurierten Schnittstelle ab. Historie
   umfasst ausschließlich Studio-Änderungen.
 - **Leitfragen / Stichwörter:** Wie vermeidet man widersprüchliche Adresse und Koordinaten? Welche
@@ -184,7 +189,8 @@ haben können.
 - **Nutzerziel:** Ein Featured Project mit Text, Bildern und Veröffentlichungsstatus erstellen.
 - **Produktfakten:** Felder umfassen Sprache, Titel, Kurzbeschreibung, Richtext, geordnete Bilder
   mit Alternativtext, Bildunterschrift und Nachweis sowie Status und Veröffentlichungszeitpunkt.
-  Bilder kommen aus Mediathek, Upload oder dauerhafter URL.
+  Bilder kommen aus Mediathek, Upload oder dauerhafter URL. Der Richtext lässt sich visuell oder als
+  HTML bearbeiten.
 - **Lebenszyklus:** Entwurf, veröffentlicht oder archiviert.
 - **Leitfragen / Stichwörter:** Was macht ein Projekt „featured“? Welche Bildreihenfolge und
   Nachweise werden benötigt? Projekt, Featured Project, Richtext, Bildnachweis, Archiv.
@@ -197,7 +203,8 @@ haben können.
 - **Nutzerziel:** Inhalte, Bilder und Status eines vorhandenen Projekts ändern.
 - **Produktfakten:** Historie und Löschen ergänzen den Anlegeumfang. Löschen markiert das Projekt im
   Studio als gelöscht. Medienmetadaten können selektiv mit der Mediathek abgeglichen werden;
-  partielle Referenzfehler lassen sich wiederholen.
+  partielle Referenzfehler lassen sich wiederholen. Der Richtext bietet eine visuelle und eine
+  HTML-Ansicht.
 - **Leitfragen / Stichwörter:** Ist Archivieren geeigneter als Löschen? Welche Bildwerte stammen aus
   der Mediathek, welche aus dem Projekt? Projekt bearbeiten, Medienabgleich, Historie, gelöscht.
 - **Evidenz:** `packages/plugin-projects/src/projects.pages.tsx`,

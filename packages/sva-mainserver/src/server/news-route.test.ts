@@ -1022,7 +1022,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     ['with an empty content block list', []],
     [
       'with a content block without visible body text',
-      [{ title: 'Nur Struktur', body: '<p><br></p>' }],
+      [{ title: 'Nur Struktur', body: '<p><br /></p>' }],
     ],
   ])('accepts news %s', async (_description, contentBlocks) => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
@@ -1056,6 +1056,41 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     } else {
       expect(updateInput.news.contentBlocks).toEqual(contentBlocks);
     }
+  });
+
+  it('sanitizes news rich-text blocks before forwarding them', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...updateNewsInput,
+          contentBlocks: [
+            {
+              intro: '<p onclick="alert(1)">Intro</p><script>alert(1)</script>',
+              body: '<p onclick="alert(1)">Text</p><script>alert(1)</script><a href="javascript:alert(1)">Link</a>',
+            },
+          ],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        news: expect.objectContaining({
+          contentBlocks: [{ intro: '<p>Intro</p>', body: '<p>Text</p><a>Link</a>' }],
+        }),
+      })
+    );
   });
 
   it('rejects invalid full-model shapes before GraphQL', async () => {

@@ -34,6 +34,7 @@ const uiAccessMock = vi.hoisted(() => ({
   canRunSeed: true,
   canRunMainserverSync: true,
   canRunReset: true,
+  canOpenJobDetails: true,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -258,6 +259,10 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     tours: [],
   })),
   getWasteManagementSettings: vi.fn(async () => null),
+  getWasteMainserverSyncStatus: vi.fn(async () => ({
+    sourceState: 'clean' as const,
+    expectedYearWindow: [2026, 2027] as const,
+  })),
   updateWasteManagementSettings: vi.fn(async () => null),
   startWasteManagementMigrations: vi.fn(async () => ({
     id: 'job-1',
@@ -409,6 +414,7 @@ describe('WasteManagementPage', () => {
       canRunImport: true,
       canRunSeed: true,
       canRunReset: true,
+      canOpenJobDetails: true,
     });
     navigateMock.mockReset();
     searchMock.mockReset();
@@ -499,6 +505,11 @@ describe('WasteManagementPage', () => {
     ]);
     wasteManagementApiMocks.getWasteManagementSettings.mockReset();
     wasteManagementApiMocks.getWasteManagementSettings.mockImplementation(async () => null);
+    wasteManagementApiMocks.getWasteMainserverSyncStatus.mockReset();
+    wasteManagementApiMocks.getWasteMainserverSyncStatus.mockImplementation(async () => ({
+      sourceState: 'clean',
+      expectedYearWindow: [2026, 2027],
+    }));
     wasteManagementApiMocks.getWasteManagementToursOverview.mockReset();
     wasteManagementApiMocks.getWasteManagementToursOverview.mockImplementation(async () => ({
       tours: [],

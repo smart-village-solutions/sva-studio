@@ -749,6 +749,14 @@ Der reguläre Promote-Migrations-One-shot wendet neben den Goose-Migrationen fü
 
 Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fachdatenbank wechselt der One-shot transaktionslokal in die jeweilige abgeleitete Owner-Rolle. Abweichende Registry-Namen, fehlende Secrets, SQL- oder Verifikationsfehler rollen die aktuelle Tenant-Transaktion zurück und stoppen den Rollout vor dem App-Deploy. Damit bleibt der Schema-Lebenszyklus an Image-Digest, Backup-Gate und Environment-Freigabe gebunden, ohne dem App-Runtime-Principal Clusterrechte zu geben.
 
+### Waste-Mainserver-Abgleichsstatus
+
+- Eine Singleton-Revision in der externen Waste-Tenant-Datenbank kennzeichnet relevante Änderungen an der Terminmaterialisierungsquelle. Statement-Trigger erhöhen sie transaktionsgebunden; der Runtime-Principal darf den Zustand lesen, aber nicht zurücksetzen.
+- Die Trigger-Allowlist umfasst ausschließlich Tabellen, deren Daten der bestehende Mainserver-Sync liest. PDF-, Reminder-, Consent-, Token-, Outbox- und sonstige betriebliche Änderungen erzeugen keinen falschen Abgleichsbedarf.
+- Der zentrale Jobstore bleibt die einzige Historie für Laufstatus und bestätigte Quellrevision. Es entstehen weder eine zweite Jobtabelle noch eine fachliche Mainserver-Kopie.
+- Die Ableitung arbeitet fail-closed: Nur identische Revision und identisches Jahresfenster gelten als synchronisiert. Legacy-Ergebnisse, Erreichbarkeitsfehler und rückläufige Revisionen werden nicht als `clean` ausgegeben.
+- Exakte Create-/Delete-Zahlen gehören zum echten Sync-Lauf. Der reine Seitenstatus führt keinen Dry-Run und keinen Mainserver-Aufruf aus.
+
 ### Partielle Mainserver-Snapshots
 
 - `pagination.total` bezeichnet weiterhin die lokal verfügbare Trefferzahl. Bei partiellen Snapshots erlaubt dieser Wert die Navigation zwischen bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl oder weitere, noch nicht materialisierte Seiten zu behaupten. `totalCount` existiert nur bei einem vollständigen Snapshot; `isTotalFinal` macht die Semantik explizit.

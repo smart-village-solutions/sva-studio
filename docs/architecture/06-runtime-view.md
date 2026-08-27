@@ -142,12 +142,16 @@ Fehlerpfad:
 21. `@sva/auth-runtime` prüft `waste-management.read`, löst die aktive Tenant-Datenbank auf und übergibt ausschließlich den typisierten Query-Vertrag. Das Repository filtert zuerst, ermittelt Gesamtzahl und Seite in einer SQL-Anweisung und aggregiert Touren danach nur für die Seite. Die feste ICU-Collation und `ID asc` erzeugen über Seiten und Richtungswechsel eine stabile globale Reihenfolge.
 22. Parallel lädt das Plugin über `GET /api/v1/waste-management/collection-locations/selection` alle IDs desselben Filtervertrags. Auswahlzustand bleibt ID-basiert über Seiten und Sortierwechsel erhalten; das Abwählen aller gefilterten Einträge entfernt keine Auswahl außerhalb des aktuellen Filters.
 23. Filter-, Sortier- und Seitengrößenwechsel setzen die URL atomar auf Seite eins zurück. Reine Seitenwechsel erhalten Filter und Sortierung; verspätete Antworten älterer Requests überschreiben keinen neueren Zustand.
+24. Beim Seitenaufruf liest die autorisierte Statusroute die monotone Revision aus der externen Waste-Tenant-Datenbank sowie aktiven Lauf, letzten Versuch und letzten kompatiblen Erfolg aus dem zentralen Studio-Jobstore. Der externe Mainserver wird dabei nicht aufgerufen.
+25. Nur gleiche Quellrevision und gleiches Jahresfenster ergeben `clean`. Ohne belastbaren Vergleich bleibt der Zustand `unknown`; eine neuere Revision oder ein abweichendes Jahresfenster ergibt `pending`.
+26. Der echte Sync-Job liest Revision und Materialisierungsdaten in einem wiederholbaren Read-Snapshot. Erst nach dem Mainserver-Snapshot veröffentlicht er geplante Create-/Delete-Zahlen und persistiert bei Erfolg Revision und Jahresfenster im vorhandenen Jobergebnis.
 
 Fehlerpfad:
 
 - Fehlt die Modulfreigabe oder die spezifische `waste-management.*`-Berechtigung, blockiert der Host fail-closed vor der Mutation oder dem Jobstart.
 - Fehlt oder driftet die Waste-Datenquelle einer Instanz, antwortet die Fassade mit technischem Fehlervertrag; Secrets werden nie im Plugin oder Browser aufgelöst.
 - Scheitert nach einer erfolgreichen Fraktionsmutation nur der Mainserver-Sync, bleibt die lokale Änderung bestehen; die UI zeigt stattdessen einen Warning-Hinweis mit Retry über denselben technischen Startpfad.
+- Entsteht während oder nach dem Sync eine weitere relevante Fachänderung, erhöht sie die Quellrevision. Der abgeschlossene Job bleibt historisch erfolgreich, der Seitenstatus fordert aber einen weiteren Abgleich an.
 - Ist die Geocodierung deaktiviert oder nicht konfiguriert, startet keine fachliche Mutation. Einzelne Providerfehler werden im Jobergebnis gezählt; ein erneuter Lauf bleibt durch die Auswahl leerer Werte und das konditionale Update idempotent.
 - Ein `Newcms`-ähnlicher Direktzugriff auf Supabase-Funktionen, direkte DB-Connections oder mitportierte Runtime-Hooks ist kein zulässiger Alternativpfad.
 - Fehlt die migrierte ICU-Collation oder weicht ihr Vertrag ab, bleibt die Tenant-Migration beziehungsweise der Listenread fail-closed; eine lokale Browsersortierung ist kein Fallback.

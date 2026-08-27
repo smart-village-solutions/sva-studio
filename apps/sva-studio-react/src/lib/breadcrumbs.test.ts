@@ -4,6 +4,13 @@ import './plugins';
 import { resolveBreadcrumbItems } from './breadcrumbs';
 
 describe('resolveBreadcrumbItems', () => {
+  it('uses the Waste page title for the Waste breadcrumb', () => {
+    expect(resolveBreadcrumbItems('/plugins/waste-management')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'Abfallkalender' },
+    ]);
+  });
+
   it('returns content breadcrumbs for canonical admin content paths', () => {
     expect(resolveBreadcrumbItems('/admin/content/content-1')).toEqual([
       { href: '/', label: 'Übersicht' },

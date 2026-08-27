@@ -180,6 +180,11 @@ describe('waste management operations runtime', () => {
       'INSERT INTO "wm".waste_tour_assignment_locations (assignment_id, collection_location_id)'
     );
     expect(statements).toContain('ON CONFLICT (assignment_id, collection_location_id) DO NOTHING');
+    expect(statements).toContain('CREATE TABLE IF NOT EXISTS "wm".waste_mainserver_source_state');
+    expect(statements).toContain('SECURITY DEFINER SET search_path = pg_catalog');
+    expect(statements).toContain('FOR EACH STATEMENT EXECUTE FUNCTION "wm".sva_bump_waste_mainserver_source_revision()');
+    expect(statements).toContain('UPDATE OF "name", "postal_code" ON "wm"."waste_cities"');
+    expect(statements).not.toContain('UPDATE OF "reminder_config" ON "wm"."waste_fractions"');
   });
 
   it('normalizes legacy reminders without active channels to none during reminder_config backfill', () => {
@@ -1205,6 +1210,7 @@ const requiredTableRows = [
   { table_name: 'waste_house_numbers' },
   { table_name: 'waste_location_tour_links' },
   { table_name: 'waste_location_tour_pickup_dates' },
+  { table_name: 'waste_mainserver_source_state' },
   { table_name: 'waste_regions' },
   { table_name: 'waste_settings' },
   { table_name: 'waste_streets' },

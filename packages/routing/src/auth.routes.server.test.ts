@@ -171,6 +171,9 @@ const authServerMocks = vi.hoisted(() => {
       archiveInstance: vi.fn(async () => response('archiveInstanceHandler')),
     },
     wasteManagementHandlers: {
+      getMainserverSyncStatus: vi.fn(async () =>
+        response('getWasteManagementMainserverSyncStatusHandler')
+      ),
       getHistory: vi.fn(async () => response('getWasteManagementHistoryHandler')),
       getCollectionLocations: vi.fn(async () =>
         response('getWasteManagementCollectionLocationsHandler')
@@ -721,6 +724,9 @@ describe('auth.routes.server', () => {
     const mainserverSyncHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tools/mainserver-sync'
     );
+    const mainserverSyncStatusHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/mainserver-sync-status'
+    );
     const syncWasteTypesHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tools/sync-waste-types'
     );
@@ -768,6 +774,7 @@ describe('auth.routes.server', () => {
     expect(migrationsHandlers?.POST).toBeDefined();
     expect(importHandlers?.POST).toBeDefined();
     expect(seedHandlers?.POST).toBeDefined();
+    expect(mainserverSyncStatusHandlers?.GET).toBeDefined();
     expect(syncWasteTypesHandlers?.POST).toBeDefined();
     expect(resetHandlers?.POST).toBeDefined();
 
@@ -1037,6 +1044,11 @@ describe('auth.routes.server', () => {
         method: 'POST',
       }),
     });
+    await mainserverSyncStatusHandlers.GET?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/mainserver-sync-status'
+      ),
+    });
     await syncWasteTypesHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/sync-waste-types', {
         method: 'POST',
@@ -1105,6 +1117,7 @@ describe('auth.routes.server', () => {
     ).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMainserverSync).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getMainserverSyncStatus).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSyncWasteTypes).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startEnrichPostalCodes).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startReset).toHaveBeenCalled();

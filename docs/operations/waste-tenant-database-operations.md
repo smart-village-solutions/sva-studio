@@ -1,5 +1,7 @@
 # Betrieb tenantbezogener Waste-Datenbanken
 
+Die versionierte Migration `20260827_01_add_mainserver_source_revision` ergänzt den revisionsbasierten Änderungsstand für den Terminabgleich zum SVA Mainserver. Ihre Verifikation prüft Singleton-Spalten, die gehärtete Triggerfunktion und alle 28 Statement-Trigger. Die App-Rolle darf den Stand lesen, aber nicht direkt aktualisieren oder löschen; fachliche Mutationen erhöhen ihn ausschließlich über die Triggerfunktion.
+
 ## Geltungsbereich
 
 Dieses Runbook beschreibt Diagnose und Wiederherstellung für automatisch provisionierte Waste-Datenbanken. Reguläre Rollouts erfolgen ausschließlich nach dem [Studio-Rollout-Prozess](../guides/studio-rollout-process.md). Direkte Datenbank- oder Stack-Eingriffe sind nur Incident-Recovery und kein zweiter Standardpfad.

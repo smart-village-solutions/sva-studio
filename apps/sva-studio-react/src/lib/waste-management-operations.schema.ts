@@ -1,4 +1,5 @@
 import { quoteIdentifier, requiredWasteTables } from './waste-management-operations.shared.js';
+import { buildWasteMainserverRevisionSchemaStatements } from './waste-management-mainserver-sync.revision-schema.js';
 import type { SqlClient } from './waste-management-operations.types.js';
 
 export const inspectWasteSchema = async (client: SqlClient, schemaName: string) => {
@@ -256,5 +257,6 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_global_date_shifts_tour_ids ON ${schema}.waste_global_date_shifts USING GIN(tour_ids);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_holiday_rules_state_year ON ${schema}.waste_holiday_rules(state_code, year);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_holiday_rules_holiday_date ON ${schema}.waste_holiday_rules(holiday_date);`,
+    ...buildWasteMainserverRevisionSchemaStatements(schemaName),
   ];
 };

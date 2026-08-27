@@ -38,6 +38,7 @@ const {
   deleteWasteManagementTourInternal,
   deleteWasteManagementTourAssignmentInternal,
   getWasteManagementHistoryInternal,
+  getWasteManagementMainserverSyncStatusInternal,
   getWasteManagementMasterDataOverviewInternal,
   getWasteManagementSchedulingOverviewInternal,
   getWasteManagementSettingsInternal,
@@ -72,6 +73,7 @@ const {
 } = wasteManagementCoreHandlers;
 
 const {
+  loadWasteMainserverSyncStatus,
   loadMasterDataOverview,
   loadMasterDataFractionsOverview,
   loadMasterDataLocationsOverview,
@@ -139,6 +141,13 @@ const {
 } = wasteManagementEntitySavers;
 
 export const wasteManagementHandlers = {
+  getMainserverSyncStatus: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      getWasteManagementMainserverSyncStatusInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        loadWasteMainserverSyncStatus,
+      })
+    ),
   getCollectionLocations: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementCollectionLocationsInternal(nextRequest, ctx, {

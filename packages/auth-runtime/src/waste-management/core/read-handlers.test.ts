@@ -63,6 +63,26 @@ describe('waste-management read handlers', () => {
     updateWasteVisibleStatusMock.mockResolvedValue(undefined);
   });
 
+  it('returns the authorized mainserver sync status without starting a comparison', async () => {
+    const loadWasteMainserverSyncStatus = vi.fn(async () => ({
+      sourceState: 'pending' as const,
+      expectedYearWindow: [2026, 2027] as const,
+    }));
+
+    const response =
+      await wasteManagementReadHandlers.getWasteManagementMainserverSyncStatusInternal(
+        new Request('https://studio.test/api/v1/waste-management/mainserver-sync-status'),
+        actor,
+        { ...createDeps(), loadWasteMainserverSyncStatus }
+      );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { sourceState: 'pending', expectedYearWindow: [2026, 2027] },
+    });
+    expect(loadWasteMainserverSyncStatus).toHaveBeenCalledWith('tenant-a');
+  });
+
   it('loads settings and history with sanitized payloads and paging params', async () => {
     const settingsDeps = {
       ...createDeps('waste-management.settings.manage'),

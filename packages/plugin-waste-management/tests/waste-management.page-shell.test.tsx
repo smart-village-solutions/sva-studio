@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WasteManagementPage } from '../src/waste-management.page.js';
 
 const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn(async () => null));
+const getWasteMainserverSyncStatusMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    sourceState: 'pending' as const,
+    expectedYearWindow: [2026, 2027] as const,
+  }))
+);
 const startWasteManagementMainserverSyncMock = vi.hoisted(() =>
   vi.fn(async () => ({
     id: 'job-sync-1',
@@ -49,6 +55,7 @@ const useWasteManagementUiAccessMock = vi.fn(() => ({
   canRunSeed: true,
   canRunMainserverSync: true,
   canRunReset: true,
+  canOpenJobDetails: true,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -65,6 +72,7 @@ vi.mock('../src/waste-management.ui-access.js', () => ({
 }));
 
 vi.mock('../src/waste-management.api.js', () => ({
+  getWasteMainserverSyncStatus: getWasteMainserverSyncStatusMock,
   getWasteManagementSettings: getWasteManagementSettingsMock,
   startWasteManagementMainserverSync: startWasteManagementMainserverSyncMock,
 }));
@@ -142,6 +150,11 @@ describe('WasteManagementPage shell', () => {
   beforeEach(() => {
     getWasteManagementSettingsMock.mockReset();
     getWasteManagementSettingsMock.mockResolvedValue(null);
+    getWasteMainserverSyncStatusMock.mockReset();
+    getWasteMainserverSyncStatusMock.mockResolvedValue({
+      sourceState: 'pending',
+      expectedYearWindow: [2026, 2027],
+    });
     navigateMock.mockReset();
     useWasteManagementUiAccessMock.mockReset();
     useWasteManagementUiAccessMock.mockReturnValue({
@@ -163,6 +176,7 @@ describe('WasteManagementPage shell', () => {
       canRunSeed: true,
       canRunMainserverSync: true,
       canRunReset: true,
+      canOpenJobDetails: true,
     });
     startWasteManagementMainserverSyncMock.mockReset();
     startWasteManagementMainserverSyncMock.mockResolvedValue({
@@ -231,6 +245,7 @@ describe('WasteManagementPage shell', () => {
       canRunSeed: false,
       canRunMainserverSync: false,
       canRunReset: false,
+      canOpenJobDetails: false,
     });
 
     render(<WasteManagementPage />);
@@ -263,10 +278,12 @@ describe('WasteManagementPage shell', () => {
     });
   });
 
-  it('renders the header sync action and starts the mainserver sync job', async () => {
+  it('renders the pending sync action inside the status block and starts the mainserver sync job', async () => {
     render(<WasteManagementPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'tools.sync.actionLabel' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'page.syncStatus.startAction' })
+    );
 
     await waitFor(() => {
       expect(startWasteManagementMainserverSyncMock).toHaveBeenCalledWith({});

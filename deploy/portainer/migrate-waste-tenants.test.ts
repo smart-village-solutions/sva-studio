@@ -11,6 +11,7 @@ const {
 const migrationId = '20260816_01_add_waste_city_postal_code';
 const tourShiftMigrationId = '20260816_02_tour_date_shift_date_contract';
 const germanNumericCollationMigrationId = '20260824_01_add_german_numeric_collation';
+const mainserverRevisionMigrationId = '20260827_01_add_mainserver_source_revision';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -25,6 +26,7 @@ const createTenantClient = ({
   failMessage = 'database_failure',
   failOnSql,
   collationVerificationSatisfied = true,
+  mainserverRevisionVerificationSatisfied = true,
   tourShiftVerificationSatisfied = true,
   verificationSatisfied = true,
 }: {
@@ -32,6 +34,7 @@ const createTenantClient = ({
   readonly failMessage?: string;
   readonly failOnSql?: string;
   readonly collationVerificationSatisfied?: boolean;
+  readonly mainserverRevisionVerificationSatisfied?: boolean;
   readonly tourShiftVerificationSatisfied?: boolean;
   readonly verificationSatisfied?: boolean;
 } = {}) => ({
@@ -40,6 +43,9 @@ const createTenantClient = ({
     if (failOnSql && sql.includes(failOnSql)) throw new Error(failMessage);
     if (sql.includes('SELECT migration_id')) {
       return { rows: appliedMigrationIds.map((migration_id) => ({ migration_id })) };
+    }
+    if (sql.includes('FROM pg_trigger AS trigger_row')) {
+      return { rows: [{ satisfied: mainserverRevisionVerificationSatisfied }] };
     }
     if (sql.includes('information_schema.columns')) {
       return {
@@ -69,9 +75,9 @@ const createAdminClient = (rows: readonly object[]) => ({
 });
 
 describe('Waste-Tenant-Migration', () => {
-  it('contains the additive postal-code, tour-shift, and collation contracts', () => {
+  it('contains the additive postal-code, tour-shift, collation, and source-revision contracts', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(3);
+    expect(wasteTenantMigrations).toHaveLength(4);
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
       statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
@@ -107,6 +113,17 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[2]?.verification.sql).toContain(
       'collation_row.collversion = pg_collation_actual_version(collation_row.oid)'
     );
+    expect(wasteTenantMigrations[3]).toMatchObject({ id: mainserverRevisionMigrationId });
+    expect(wasteTenantMigrations[3]?.statements.join('\n')).toContain(
+      'CREATE TABLE IF NOT EXISTS public.waste_mainserver_source_state'
+    );
+    expect(wasteTenantMigrations[3]?.statements.join('\n')).toContain(
+      'SECURITY DEFINER SET search_path = pg_catalog'
+    );
+    expect(wasteTenantMigrations[3]?.verification.sql).toContain(
+      'FROM pg_trigger AS trigger_row'
+    );
+    expect(wasteTenantMigrations[3]?.verification.values).toEqual([28]);
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {
@@ -135,7 +152,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 6, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 8, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -171,7 +188,12 @@ describe('Waste-Tenant-Migration', () => {
 
   it('verifies but does not reapply an already recorded migration', async () => {
     const client = createTenantClient({
-      appliedMigrationIds: [migrationId, tourShiftMigrationId, germanNumericCollationMigrationId],
+      appliedMigrationIds: [
+        migrationId,
+        tourShiftMigrationId,
+        germanNumericCollationMigrationId,
+        mainserverRevisionMigrationId,
+      ],
     });
 
     await expect(
@@ -190,6 +212,12 @@ describe('Waste-Tenant-Migration', () => {
     expect(queriedSql(client)).toContain('COMMIT;');
     expect(queriedSql(client)).toContain(
       'REVOKE ALL PRIVILEGES ON TABLE public.sva_waste_schema_migrations FROM "alpha_app", "alpha_public"'
+    );
+    expect(queriedSql(client)).toContain(
+      'REVOKE INSERT, UPDATE, DELETE ON TABLE public.waste_mainserver_source_state FROM "alpha_app"'
+    );
+    expect(queriedSql(client)).toContain(
+      'GRANT SELECT ON TABLE public.waste_mainserver_source_state TO "alpha_app"'
     );
   });
 
@@ -264,6 +292,24 @@ describe('Waste-Tenant-Migration', () => {
     ).rejects.toThrow(`waste_migration_verification_failed:${tourShiftMigrationId}`);
 
     expect(queriedSql(client)).toContain('pg_get_indexdef');
+    expect(queriedSql(client)).toContain('ROLLBACK;');
+    expect(queriedSql(client)).not.toContain('COMMIT;');
+  });
+
+  it('rolls back when the source-revision trigger contract cannot be verified', async () => {
+    const client = createTenantClient({ mainserverRevisionVerificationSatisfied: false });
+
+    await expect(
+      migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
+        client,
+        migrations: wasteTenantMigrations,
+        ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
+      })
+    ).rejects.toThrow(`waste_migration_verification_failed:${mainserverRevisionMigrationId}`);
+
+    expect(queriedSql(client)).toContain('FROM pg_trigger AS trigger_row');
     expect(queriedSql(client)).toContain('ROLLBACK;');
     expect(queriedSql(client)).not.toContain('COMMIT;');
   });

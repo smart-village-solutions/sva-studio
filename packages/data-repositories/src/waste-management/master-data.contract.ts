@@ -19,6 +19,7 @@ import type {
   WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkListFilter,
   WasteLocationTourLinkRecord,
+  WasteMainserverSourceRevisionRecord,
   WastePdfStaticSettingsWriteInput,
   WastePdfStaticSettingsRecord,
   WasteRegionListFilter,
@@ -39,6 +40,8 @@ const defineRepositoryMethod = <T extends (...args: any[]) => Promise<unknown>>(
   undefined as unknown as T;
 
 export const wasteMasterDataRepositoryContract = {
+  getWasteMainserverSourceRevision:
+    defineRepositoryMethod<() => Promise<WasteMainserverSourceRevisionRecord | null>>(),
   listWasteFractions:
     defineRepositoryMethod<
       (filter?: WasteFractionListFilter) => Promise<readonly WasteFractionRecord[]>

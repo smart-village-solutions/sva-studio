@@ -270,6 +270,15 @@ export type {
   WasteManagementSyncWasteTypesJobInput,
 } from './waste-management-operations-contract.js';
 export type { WasteManagementSyncMainserverJobInput } from './waste-management-sync-mainserver-job-input.js';
+export type {
+  WasteMainserverSourceRevisionRecord,
+  WasteMainserverSourceState,
+  WasteMainserverSuccessfulSyncSummary,
+  WasteMainserverSyncJobSummary,
+  WasteMainserverSyncStatusRecord,
+  WasteMainserverSyncStatusResponse,
+} from './waste-management-mainserver-sync-status.js';
+export { deriveWasteMainserverSyncStatus } from './waste-management-mainserver-sync-status.js';
 export {
   wasteTenantProvisioningContract,
   type WasteTenantProvisioningRecord,

@@ -72,6 +72,7 @@ export const shellDEResources = {
   },
   breadcrumbs: {
     ariaLabel: 'Brotkrumen-Navigation',
+    wasteCalendar: 'Abfallkalender',
   },
   header: {
     navAriaLabel: 'Hauptnavigation',

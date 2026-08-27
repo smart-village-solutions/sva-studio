@@ -4,7 +4,7 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
-import { sanitizeRichTextHtml } from '@sva/core';
+import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverPoiInput } from '../types.js';

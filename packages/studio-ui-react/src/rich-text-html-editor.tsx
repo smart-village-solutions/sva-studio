@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { sanitizeRichTextHtml } from '@sva/core';
 import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -16,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from './button.js';
+import { sanitizeRichTextEditorHtml } from './rich-text-html-sanitizer.js';
 import { Select } from './select.js';
 import { Textarea } from './textarea.js';
 import { cn } from './utils.js';
@@ -135,7 +135,7 @@ export const RichTextHtmlEditor = ({
   const sanitizeAndNormalizeHtml = React.useCallback(
     (nextValue: string) =>
       normalizeEditorHtml(
-        sanitizeRichTextHtml(normalizeHtml ? normalizeHtml(nextValue) : nextValue)
+        sanitizeRichTextEditorHtml(normalizeHtml ? normalizeHtml(nextValue) : nextValue)
       ),
     [normalizeHtml]
   );

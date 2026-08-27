@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { sanitizeRichTextHtml } from '@sva/core';
+import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
 import type {
   SvaMainserverAccessibilityInformation,

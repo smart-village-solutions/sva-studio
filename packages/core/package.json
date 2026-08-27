@@ -22,6 +22,10 @@
     "./rich-text-html": {
       "types": "./dist/rich-text-html.d.ts",
       "default": "./dist/rich-text-html.js"
+    },
+    "./rich-text-html-policy": {
+      "types": "./dist/rich-text-html-policy.d.ts",
+      "default": "./dist/rich-text-html-policy.js"
     }
   },
   "dependencies": {

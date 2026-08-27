@@ -1,6 +1,8 @@
+// @vitest-environment jsdom
+
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { RichTextHtmlEditor } from './rich-text-html-editor.js';
 
@@ -65,6 +67,17 @@ const selectAlpha = async (editor: HTMLElement) => {
 };
 
 describe('RichTextHtmlEditor integration', () => {
+  beforeAll(() => {
+    Object.defineProperty(Range.prototype, 'getClientRects', {
+      configurable: true,
+      value: () => [] as unknown as DOMRectList,
+    });
+    Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => DOMRect.fromRect(),
+    });
+  });
+
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();

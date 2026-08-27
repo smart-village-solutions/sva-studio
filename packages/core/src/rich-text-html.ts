@@ -1,40 +1,15 @@
 import sanitizeHtml from 'sanitize-html';
 
-const allowedTags = [
-  'a',
-  'b',
-  'blockquote',
-  'br',
-  'code',
-  'div',
-  'em',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'hr',
-  'i',
-  'li',
-  'ol',
-  'p',
-  'pre',
-  's',
-  'span',
-  'strong',
-  'u',
-  'ul',
-] as const;
+import { RICH_TEXT_ALLOWED_SCHEMES, RICH_TEXT_ALLOWED_TAGS } from './rich-text-html-policy.js';
 
 export const sanitizeRichTextHtml = (value: string): string =>
   sanitizeHtml(value, {
-    allowedTags: [...allowedTags],
+    allowedTags: [...RICH_TEXT_ALLOWED_TAGS],
     allowedAttributes: {
       a: ['href', 'target', 'rel'],
       ol: ['start'],
     },
-    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowedSchemes: [...RICH_TEXT_ALLOWED_SCHEMES],
     allowProtocolRelative: false,
     transformTags: {
       a: (tagName, attributes) => ({

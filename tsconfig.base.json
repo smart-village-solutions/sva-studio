@@ -9,6 +9,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
+      "@sva/core/rich-text-html-policy": ["packages/core/src/rich-text-html-policy.ts"],
+      "@sva/core/rich-text-html": ["packages/core/src/rich-text-html.ts"],
       "@sva/core": ["packages/core/src/index.ts"],
       "@sva/core/waste-output": ["packages/core/src/waste-management-output.ts"],
       "@sva/core/security": ["packages/core/src/security/index.ts"],

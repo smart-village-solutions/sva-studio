@@ -141,7 +141,7 @@ const resolveWikiLink = (
     return { artifact: false, url: `${slug}${suffix}` };
   }
   return {
-    artifact: !context.directories.has(target),
+    artifact: true,
     url: `${
       context.directories.has(target)
         ? repositoryTreeUrl(context.options, target)

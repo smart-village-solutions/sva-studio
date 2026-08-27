@@ -44,6 +44,8 @@ describe('wiki sync workflow contract', () => {
     expect(workflow).toContain("if: github.event_name == 'workflow_dispatch'");
     expect(workflow).toContain('"$GITHUB_REF" != "refs/heads/main"');
     expect(workflow).toContain('uses: ./.github/actions/setup-pnpm-workspace');
+    expect(workflow).not.toContain('\n    env:\n      WIKI_SYNC_TOKEN:');
+    expect(workflow).toMatch(/- name: Clone wiki repository[\s\S]*?env:[\s\S]*?WIKI_SYNC_TOKEN:/u);
     expect(workflow).toContain('run: pnpm check:docs');
     expect(workflow).toContain(
       'run: pnpm exec tsx scripts/ci/build-wiki-publication.ts --output wiki'

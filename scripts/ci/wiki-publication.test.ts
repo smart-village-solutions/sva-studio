@@ -53,7 +53,7 @@ describe('Wiki publication', () => {
     const files = new Map([
       [
         'docs/README.md',
-        '# Dokumentation\n\n[Entwicklung](./development/README.md#setup)\n\n[API](./api/schema.yaml)\n\n![Logo][logo]\n\n[Script][script]\n\n[logo]: ./images/logo.png\n[script]: ../scripts/example.ts\n',
+        '# Dokumentation\n\n[Entwicklung](./development/README.md#setup)\n\n[API](./api/schema.yaml)\n\n[API-Verzeichnis](./api/)\n\n![Logo][logo]\n\n[Script][script]\n\n[logo]: ./images/logo.png\n[script]: ../scripts/example.ts\n',
       ],
       ['docs/development/README.md', '# Entwicklung\n'],
       ['docs/api/schema.yaml', 'openapi: 3.1.0\n'],
@@ -67,6 +67,9 @@ describe('Wiki publication', () => {
     expect(overview).toContain('[Entwicklung](development#setup)');
     expect(overview).toContain(
       '[API (Quellartefakt)](https://github.com/smart-village-solutions/sva-studio/blob/main/docs/api/schema.yaml "Quellartefakt im Repository")'
+    );
+    expect(overview).toContain(
+      '[API-Verzeichnis (Quellartefakt)](https://github.com/smart-village-solutions/sva-studio/tree/main/docs/api "Quellartefakt im Repository")'
     );
     expect(overview).toContain(
       '![Logo](https://github.com/smart-village-solutions/sva-studio/raw/main/docs/images/logo.png)'

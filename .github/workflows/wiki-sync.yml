@@ -24,9 +24,6 @@ jobs:
   sync-wiki:
     name: Sync Wiki
     runs-on: ubuntu-latest
-    env:
-      WIKI_SYNC_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
-
     steps:
       - name: Checkout source repository
         uses: actions/checkout@v7
@@ -48,6 +45,7 @@ jobs:
       - name: Clone wiki repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_SYNC_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
         run: |
           set -euo pipefail
 

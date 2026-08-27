@@ -223,10 +223,12 @@ export const enrichMutationProjectionRowWithBinding = async (
     return rowWithoutSyntheticOwner;
   }
 
+  const ownershipType = target.ownershipPrincipal?.type ?? principalContext.actingPrincipalType;
   const principalId =
-    principalContext.actingPrincipalType === 'organization'
+    target.ownershipPrincipal?.id ??
+    (principalContext.actingPrincipalType === 'organization'
       ? target.organizationId
-      : target.actorAccountId;
+      : target.actorAccountId);
   if (!principalId) {
     return rowWithoutSyntheticOwner;
   }
@@ -234,7 +236,7 @@ export const enrichMutationProjectionRowWithBinding = async (
   try {
     const binding = await loadCurrentMainserverDataProviderBinding({
       instanceId: target.instanceId,
-      principalType: principalContext.actingPrincipalType,
+      principalType: ownershipType === 'account' ? 'user' : ownershipType,
       principalId,
       credentialFingerprint: principalContext.credentialFingerprint,
     });
@@ -244,7 +246,7 @@ export const enrichMutationProjectionRowWithBinding = async (
 
     return {
       ...rowWithoutSyntheticOwner,
-      ...(principalContext.actingPrincipalType === 'organization'
+      ...(ownershipType === 'organization'
         ? { ownerOrganizationId: principalId }
         : { ownerUserId: principalId }),
     };

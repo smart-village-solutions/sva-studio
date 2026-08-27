@@ -838,3 +838,10 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
   besitzt Texte, Website, Manifest und Roh-Markdown.
 
 Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-documentation.md).
+
+### Ergänzung 2026-08: Bausteine des Inhabertransfers
+
+- `@sva/core` besitzt Action, Capability und typisierte Principal-/Zielverträge.
+- `@sva/auth-runtime` besitzt lokalen atomaren Transfer, Zielkatalog, Mainserver-Zielauflösung, Lock und Journalanreicherung.
+- `@sva/sva-mainserver` besitzt typspezifische Pre-Reads, Provider-Write, Ergebnisvalidierung und Reconciliation.
+- `@sva/studio-ui-react` besitzt das gemeinsame Inhaberpanel sowie Editor- und Save-Slots; Plugins enthalten keine eigene Zielauflösung.

@@ -35,6 +35,7 @@ export type NewsRecord = {
     readonly intro?: string;
     readonly body?: string;
   }[];
+  dataProvider?: { id: string; name: string };
 };
 
 export const authenticatedUser = {

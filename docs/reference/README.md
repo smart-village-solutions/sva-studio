@@ -23,6 +23,7 @@ How-to-Anleitungen gehören nach [Entwicklung](../development/README.md), ausfü
 
 - [Komponenten-Mapping für die Account-UI](./account-ui-komponenten-mapping.md)
 - [Content-Management-Core-Vertrag](./content-management-core-contract.md)
+- [Inhaber von Inhalten übertragen](./content-ownership-transfer.md)
 - [Featured Projects](./featured-projects.md)
 - [IAM-Authorization-API-Vertrag](./iam-authorization-api-contract.md)
 - [IAM-Authorization-Reason-Codes](./iam-authorization-reason-codes.md)

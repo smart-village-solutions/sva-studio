@@ -13,6 +13,16 @@ export const finalizeMainserverMutation = async (input: {
   readonly contentId?: string;
   readonly observedDataProviderId?: string;
   readonly lastErrorCode?: string;
+  readonly ownershipTransfer?: Readonly<{
+    coverage: 'studio_mutations';
+    sourcePrincipalType: 'account' | 'organization';
+    sourcePrincipalId: string;
+    targetPrincipalType: 'account' | 'organization';
+    targetPrincipalId: string;
+    sourceDataProviderId: string;
+    targetDataProviderId: string;
+    targetBindingVersion: string;
+  }>;
 }): Promise<void> => {
   const journal = await finalizeMainserverMutationJournal({
     instanceId: input.actor.instanceId,
@@ -63,6 +73,7 @@ export const finalizeMainserverMutation = async (input: {
           operationExternalId: input.actor.operationExternalId,
           providerOutcome: input.providerOutcome,
           reconciliationStatus: input.reconciliationStatus,
+          ...(input.ownershipTransfer ? { ownershipTransfer: input.ownershipTransfer } : {}),
         },
       },
     });

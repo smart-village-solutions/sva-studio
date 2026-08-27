@@ -59,6 +59,7 @@ import {
   listAdminDsrCases,
   listGovernanceCases,
   listGroups,
+  listContentOwnershipTargets,
   listContents,
   listInstances,
   listOrganizations,
@@ -81,6 +82,7 @@ import {
   syncUsersFromKeycloak,
   removeOrganizationMembership,
   suspendInstance,
+  transferContentOwnership,
   updateLegalText,
   updateMyProfile,
   updateMyOrganizationContext,
@@ -178,6 +180,52 @@ describe('iam-api organization helpers', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/iam/contents?page=1&pageSize=25&sortBy=updatedAt&sortDirection=desc&type=faq.faq&languageCode=de',
       expect.objectContaining({ credentials: 'include' })
+    );
+  });
+
+  it('lists and transfers typed content ownership targets', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      createJsonResponse({ data: [], pagination: { page: 3, pageSize: 10, total: 0 } })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'ownership-transfer-1' });
+
+    await listContentOwnershipTargets('content/with slash', {
+      type: 'organization',
+      page: 3,
+      pageSize: 10,
+      q: 'Stadt Guben',
+    });
+    await listContentOwnershipTargets('content-2', { type: 'account' });
+    await transferContentOwnership('content/with slash', {
+      targetPrincipal: {
+        type: 'organization',
+        id: '00000000-0000-4000-8000-000000000020',
+      },
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/contents/content%2Fwith%20slash/ownership-targets?type=organization&page=3&pageSize=10&q=Stadt+Guben',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/contents/content-2/ownership-targets?type=account&page=1&pageSize=25',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/iam/contents/content%2Fwith%20slash/transfer-ownership',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          targetPrincipal: {
+            type: 'organization',
+            id: '00000000-0000-4000-8000-000000000020',
+          },
+        }),
+      })
     );
   });
 

@@ -231,6 +231,70 @@ describe('targeted content projection mutations', () => {
     ]);
   });
 
+  it('moves an account transfer projection into the recipient scope and keeps the audit actor', async () => {
+    state.getSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-transfer-1',
+      name: 'Übertragener POI',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      active: true,
+      categories: [],
+      addresses: [],
+      priceInformations: [],
+      openingHours: [],
+      webUrls: [],
+      mediaContents: [],
+      certificates: [],
+      tags: [],
+      visible: true,
+      dataProvider: { id: 'provider-target', name: 'Zielaccount' },
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      dataProviderId: 'provider-target',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'user',
+      authorizationMode: 'credential_visible_compatibility',
+      contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'a'.repeat(64),
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-source',
+      actorAccountId: 'account-source',
+      operation: 'update',
+      entityId: 'poi-transfer-1',
+    });
+    await refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'user',
+      authorizationMode: 'exact',
+      contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'b'.repeat(64),
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-target',
+      actorAccountId: 'account-target',
+      auditActorAccountId: 'account-source',
+      actorDisplayName: 'Ausführende Person',
+      mutationRef: 'transfer-1',
+      ownershipPrincipal: { type: 'account', id: 'account-target' },
+      operation: 'update',
+      entityId: 'poi-transfer-1',
+    });
+
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        owner_user_id: 'account-target',
+        projection_scope_key:
+          'de-musterhausen::account-target::no-organization::user::poi.point-of-interest',
+        source_entity_id: 'poi-transfer-1',
+      }),
+    ]);
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenLastCalledWith(
+      expect.objectContaining({ actorAccountId: 'account-source', mutationRef: 'transfer-1' })
+    );
+  });
+
   it('ignores direct mainserver mutation refreshes without an actor account id', async () => {
     await expect(
       refreshProjectedContentsForMainserverMutation({

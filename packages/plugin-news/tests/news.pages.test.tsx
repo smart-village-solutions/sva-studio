@@ -1498,7 +1498,7 @@ describe('News editor pages', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Bestehende volle News')).toBeTruthy();
-      expect(screen.getByText('Datenquelle')).toBeTruthy();
+      expect(screen.queryByText('Datenquelle')).toBeNull();
       expect(screen.queryByLabelText('Autor')).toBeNull();
       expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
       expect(screen.getByText('Kultur')).toBeTruthy();

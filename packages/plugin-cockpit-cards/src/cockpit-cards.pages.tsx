@@ -26,6 +26,8 @@ import {
   addStudioDestructiveNavigationFeedback,
   Button,
   Checkbox,
+  ContentOwnershipPanelSlot,
+  ContentOwnershipSaveHint,
   hasStudioCreatedSaveFeedback,
   Input,
   MainserverPrincipalControl,
@@ -683,6 +685,7 @@ function Editor({
       icon: 'basis',
       panel: (
         <div className="space-y-4">
+          {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
           <StudioField id="cockpit-card-heading" label={pt('fields.heading')}>
             <Input
               id="cockpit-card-heading"
@@ -894,17 +897,20 @@ function Editor({
       }
       primaryAction={
         canSave ? (
-          <StudioSaveButton
-            type="submit"
-            form={formId}
-            status={saveFeedback.status}
-            disabled={deletePending}
-            labels={{
-              idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
-              saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-              saved: pt('actions.saved'),
-            }}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <ContentOwnershipSaveHint />
+            <StudioSaveButton
+              type="submit"
+              form={formId}
+              status={saveFeedback.status}
+              disabled={deletePending}
+              labels={{
+                idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+                saved: pt('actions.saved'),
+              }}
+            />
+          </div>
         ) : undefined
       }
     >
@@ -998,9 +1004,6 @@ function Editor({
             label: pt(`principal.${actingPrincipalType}`),
           })}
           onChange={setActingPrincipalType}
-          dataProvider={mode === 'edit' ? (loadedItem?.dataProvider ?? null) : undefined}
-          dataProviderLabel={pt('principal.dataProvider')}
-          dataProviderUnavailableLabel={pt('principal.unavailable')}
         />
         <StudioDetailTabs
           ariaLabel={pt('tabs.ariaLabel')}

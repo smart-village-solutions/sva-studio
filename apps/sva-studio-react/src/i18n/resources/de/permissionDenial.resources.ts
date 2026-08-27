@@ -44,6 +44,7 @@ export const permissionDenialDEResources = {
     contentCreate: 'Inhalte erstellen',
     contentUpdateMetadata: 'Inhaltsmetadaten bearbeiten',
     contentUpdatePayload: 'Inhaltsdaten bearbeiten',
+    contentTransferOwnership: 'Inhaltsinhaberschaft übertragen',
     contentChangeStatus: 'Inhaltsstatus ändern',
     contentPublish: 'Inhalte veröffentlichen',
     contentArchive: 'Inhalte archivieren',

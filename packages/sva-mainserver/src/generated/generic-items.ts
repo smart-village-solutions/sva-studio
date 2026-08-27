@@ -362,6 +362,7 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
   mutation SvaMainserverCreateGenericItem(
     $id: ID
     $forceCreate: Boolean
+    $dataProviderId: ID
     $pushNotification: Boolean
     $author: String
     $keywords: String
@@ -387,6 +388,7 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
     createGenericItem(
       id: $id
       forceCreate: $forceCreate
+      dataProviderId: $dataProviderId
       pushNotification: $pushNotification
       author: $author
       keywords: $keywords

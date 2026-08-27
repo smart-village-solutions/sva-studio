@@ -29,9 +29,11 @@ const buildEventMutationVariables = (input: {
   readonly event: SvaMainserverEventInput;
   readonly eventId?: string;
   readonly forceCreate?: boolean;
+  readonly dataProviderId?: string;
 }) => ({
   ...(input.eventId ? { id: input.eventId } : {}),
   ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+  ...(input.dataProviderId ? { dataProviderId: input.dataProviderId } : {}),
   title: input.event.title,
   ...(input.event.parentId === undefined ? {} : { parentId: input.event.parentId }),
   ...(input.event.keywords ? { keywords: input.event.keywords } : {}),
@@ -119,6 +121,7 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
       readonly event: SvaMainserverEventInput;
       readonly eventId?: string;
       readonly forceCreate?: boolean;
+      readonly dataProviderId?: string;
     },
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverEventItem> => {

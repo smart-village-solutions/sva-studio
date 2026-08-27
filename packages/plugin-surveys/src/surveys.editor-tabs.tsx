@@ -1,6 +1,6 @@
 import React from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { type StudioDetailTabDefinition } from '@sva/studio-ui-react';
+import { ContentOwnershipPanelSlot, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
 
 import { SurveyDetailBasisTab, type SurveyTargetAreaOption } from './surveys.detail-basis-tab.js';
 import { SurveyDetailContentTab } from './surveys.detail-content-tab.js';
@@ -44,12 +44,15 @@ export const createSurveyEditorTabs = (
       title: pt('tabs.basis.title'),
       description: pt('tabs.basis.description'),
       panel: (
-        <SurveyDetailBasisTab
-          mode={mode}
-          loadedItem={loadedItem}
-          availableTargetAreas={availableTargetAreas}
-          pt={pt}
-        />
+        <div className="space-y-4">
+          {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
+          <SurveyDetailBasisTab
+            mode={mode}
+            loadedItem={loadedItem}
+            availableTargetAreas={availableTargetAreas}
+            pt={pt}
+          />
+        </div>
       ),
     },
     {

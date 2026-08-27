@@ -35,9 +35,11 @@ const buildPoiMutationVariables = (input: {
   readonly poi: SvaMainserverPoiInput;
   readonly poiId?: string;
   readonly forceCreate?: boolean;
+  readonly dataProviderId?: string;
 }) => ({
   ...includeTruthyField('id', input.poiId),
   ...includeDefinedField('forceCreate', input.forceCreate),
+  ...includeTruthyField('dataProviderId', input.dataProviderId),
   name: input.poi.name,
   ...includeDefinedField('externalId', input.poi.externalId),
   ...includeTruthyField('description', input.poi.description),
@@ -119,6 +121,7 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
       readonly poi: SvaMainserverPoiInput;
       readonly poiId?: string;
       readonly forceCreate?: boolean;
+      readonly dataProviderId?: string;
     },
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverPoiItem> => {

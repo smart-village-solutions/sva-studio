@@ -49,6 +49,7 @@ import {
   StudioMediaPickerOverlay,
   StudioPersistentFormError,
   StudioPersistentActionResult,
+  ContentOwnershipSaveHint,
   StudioSaveButton,
   type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
@@ -1160,17 +1161,20 @@ export const NewsDetailPage = ({
       }
       primaryAction={
         canSave ? (
-          <StudioSaveButton
-            type="submit"
-            form={formId}
-            disabled={Boolean(retryReferenceSync)}
-            status={saveFeedback.status}
-            labels={{
-              idle: pt('actions.save'),
-              saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-              saved: pt('actions.saved'),
-            }}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <ContentOwnershipSaveHint />
+            <StudioSaveButton
+              type="submit"
+              form={formId}
+              disabled={Boolean(retryReferenceSync)}
+              status={saveFeedback.status}
+              labels={{
+                idle: pt('actions.save'),
+                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+                saved: pt('actions.saved'),
+              }}
+            />
+          </div>
         ) : undefined
       }
       actions={

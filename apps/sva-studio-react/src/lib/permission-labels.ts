@@ -32,6 +32,7 @@ const HOST_PERMISSION_TITLE_KEYS = {
   'content.create': 'permissionDenial.titles.contentCreate',
   'content.updateMetadata': 'permissionDenial.titles.contentUpdateMetadata',
   'content.updatePayload': 'permissionDenial.titles.contentUpdatePayload',
+  'content.transferOwnership': 'permissionDenial.titles.contentTransferOwnership',
   'content.changeStatus': 'permissionDenial.titles.contentChangeStatus',
   'content.publish': 'permissionDenial.titles.contentPublish',
   'content.archive': 'permissionDenial.titles.contentArchive',

@@ -53,9 +53,6 @@ const SurveyPrincipalControl = ({
       label: pt(`principal.${actingPrincipalType}`),
     })}
     onChange={onChange}
-    dataProvider={mode === 'edit' ? (loadedItem?.dataProvider ?? null) : undefined}
-    dataProviderLabel={pt('principal.dataProvider')}
-    dataProviderUnavailableLabel={pt('principal.unavailable')}
   />
 );
 

@@ -78,8 +78,10 @@ export {
   deleteContentHandler,
   getContentHandler,
   getContentHistoryHandler,
+  listContentOwnershipTargetsHandler,
   listContentsHandler,
   updateContentHandler,
+  transferContentOwnershipHandler,
 } from './iam-contents/core.js';
 export {
   bulkDeactivateUsersHandler,

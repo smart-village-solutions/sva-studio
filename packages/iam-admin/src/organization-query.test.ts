@@ -162,6 +162,7 @@ describe('organization query helpers', () => {
         search: 'Alpha_%',
         organizationType: 'municipality',
         isActive: true,
+        excludeOrganizationId: '22222222-2222-4222-8222-222222222222',
         sortBy: 'displayName',
         sortDirection: 'asc',
       })
@@ -170,18 +171,26 @@ describe('organization query helpers', () => {
       total: 1,
     });
 
-    expect(queries[0]?.values).toEqual(['de-musterhausen', '%Alpha\\_\\%%', 'municipality', true]);
+    expect(queries[0]?.values).toEqual([
+      'de-musterhausen',
+      '%Alpha\\_\\%%',
+      'municipality',
+      true,
+      '22222222-2222-4222-8222-222222222222',
+    ]);
     expect(queries[1]?.values).toEqual([
       'de-musterhausen',
       '%Alpha\\_\\%%',
       'municipality',
       true,
+      '22222222-2222-4222-8222-222222222222',
       25,
       25,
     ]);
     expect(queries[1]?.text).toContain(
       'ORDER BY (LOWER(organization.display_name) COLLATE "C" IS NULL) ASC, LOWER(organization.display_name) COLLATE "C" ASC, organization.id ASC'
     );
+    expect(queries[0]?.text).toContain('organization.id <> $5::uuid');
   });
 
   it('parses supported organization sorting and rejects unknown values', () => {

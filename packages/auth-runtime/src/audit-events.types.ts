@@ -49,6 +49,16 @@ export type PluginActionAuditPayload = {
     operationExternalId: string;
     providerOutcome?: 'failed' | 'pending' | 'succeeded' | 'unknown';
     reconciliationStatus?: 'complete' | 'failed' | 'pending' | 'reconciliation_required';
+    ownershipTransfer?: Readonly<{
+      coverage: 'studio_mutations';
+      sourcePrincipalType: 'account' | 'organization';
+      sourcePrincipalId: string;
+      targetPrincipalType: 'account' | 'organization';
+      targetPrincipalId: string;
+      sourceDataProviderId: string;
+      targetDataProviderId: string;
+      targetBindingVersion: string;
+    }>;
   }>;
 };
 

@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
 } from './mainserver-mutation-journal.js';
+import {
+  hasUnresolvedMainserverOwnershipTransfer,
+  markMainserverMutationReconciliationRequired,
+} from './mainserver-ownership-transfer-reconciliation.js';
 
 const state = vi.hoisted(() => ({ query: vi.fn(), withInstanceScopedDb: vi.fn() }));
 
@@ -145,5 +150,70 @@ describe('Mainserver mutation journal', () => {
       resolverMode: 'shadow',
       shadowDifference: false,
     });
+  });
+
+  it('annotates the reserved operation with target provider and redacted transfer metadata', async () => {
+    state.query.mockResolvedValueOnce({ rows: [] });
+    const metadata = {
+      coverage: 'studio_mutations',
+      sourcePrincipalId: '11111111-1111-4111-8111-111111111111',
+      targetPrincipalId: '22222222-2222-4222-8222-222222222222',
+      targetBindingVersion: 'binding-1:2026-08-27T09:00:00.000Z',
+    };
+
+    await annotateMainserverMutationJournal({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'operation-1',
+      expectedDataProviderId: 'provider-target',
+      metadata,
+    });
+
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('preimage = COALESCE'), [
+      'de-musterhausen',
+      'operation-1',
+      'provider-target',
+      JSON.stringify(metadata),
+    ]);
+  });
+
+  it('detects unresolved ownership transfers for the exact content', async () => {
+    state.query.mockResolvedValueOnce({ rows: [{ unresolved: true }] });
+
+    await expect(
+      hasUnresolvedMainserverOwnershipTransfer({
+        instanceId: 'de-musterhausen',
+        contentType: 'news.article',
+        contentId: 'news-1',
+      })
+    ).resolves.toBe(true);
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("action_id = 'content.transferOwnership'"),
+      ['de-musterhausen', 'news.article', 'news-1']
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "reconciliation_status IN ('pending', 'reconciliation_required')"
+    );
+  });
+
+  it('marks a confirmed provider result for local reconciliation', async () => {
+    state.query.mockResolvedValueOnce({ rows: [] });
+
+    await markMainserverMutationReconciliationRequired({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'operation-1',
+      completedStep: 'target_projection_refresh_failed',
+      lastErrorCode: 'content_transfer_projection_refresh_failed',
+    });
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("reconciliation_status = 'reconciliation_required'"),
+      [
+        'de-musterhausen',
+        'operation-1',
+        'target_projection_refresh_failed',
+        'content_transfer_projection_refresh_failed',
+      ]
+    );
   });
 });

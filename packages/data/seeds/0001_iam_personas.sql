@@ -200,6 +200,7 @@ VALUES
   ('40111111-1111-1111-1111-111111111128', 'de-musterhausen', 'content.restore', 'content.restore', 'content', NULL, '{}'::jsonb, 'Restore content'),
   ('40111111-1111-1111-1111-111111111129', 'de-musterhausen', 'content.readHistory', 'content.readHistory', 'content', NULL, '{}'::jsonb, 'Read content history'),
   ('40111111-1111-1111-1111-111111111130', 'de-musterhausen', 'content.delete', 'content.delete', 'content', NULL, '{}'::jsonb, 'Delete content'),
+  ('40111111-1111-1111-1111-111111111171', 'de-musterhausen', 'content.transferOwnership', 'content.transferOwnership', 'content', NULL, '{}'::jsonb, 'Transfer content ownership'),
   ('40111111-1111-1111-1111-111111111143', 'de-musterhausen', 'media.read', 'media.read', 'media', NULL, '{}'::jsonb, 'Read media'),
   ('40111111-1111-1111-1111-111111111144', 'de-musterhausen', 'media.create', 'media.create', 'media', NULL, '{}'::jsonb, 'Create media'),
   ('40111111-1111-1111-1111-111111111145', 'de-musterhausen', 'media.update', 'media.update', 'media', NULL, '{}'::jsonb, 'Update media'),
@@ -321,7 +322,8 @@ FROM (
     ('system_admin', 'content.archive'),
     ('system_admin', 'content.restore'),
     ('system_admin', 'content.readHistory'),
-    ('system_admin', 'content.delete')
+    ('system_admin', 'content.delete'),
+    ('system_admin', 'content.transferOwnership')
 ) AS assignments(role_key, permission_key)
 JOIN iam.roles roles
   ON roles.instance_id = 'de-musterhausen'

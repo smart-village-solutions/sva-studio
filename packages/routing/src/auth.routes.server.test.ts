@@ -285,6 +285,12 @@ const authServerMocks = vi.hoisted(() => {
     updateContentHandler: vi.fn(async () => response('updateContentHandler')),
     deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
+    transferContentOwnershipHandler: vi.fn(async () =>
+      response('transferContentOwnershipHandler')
+    ),
+    listContentOwnershipTargetsHandler: vi.fn(async () =>
+      response('listContentOwnershipTargetsHandler')
+    ),
     listMediaHandler: vi.fn(async () => response('listMediaHandler')),
     registerBucketMediaHandler: vi.fn(async () => response('registerBucketMediaHandler')),
     listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
@@ -1174,6 +1180,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.updateContentHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteContentHandler).toHaveBeenCalled();
     expect(authServerMocks.getContentHistoryHandler).toHaveBeenCalled();
+    expect(authServerMocks.transferContentOwnershipHandler).toHaveBeenCalled();
+    expect(authServerMocks.listContentOwnershipTargetsHandler).toHaveBeenCalled();
     expect(authServerMocks.listMediaHandler).toHaveBeenCalled();
     expect(authServerMocks.initializeMediaUploadHandler).toHaveBeenCalled();
     expect(authServerMocks.getMediaHandler).toHaveBeenCalled();

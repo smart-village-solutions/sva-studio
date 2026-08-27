@@ -48,6 +48,7 @@ export type PermissionKey =
   | 'content.create'
   | 'content.updateMetadata'
   | 'content.updatePayload'
+  | 'content.transferOwnership'
   | 'content.changeStatus'
   | 'content.publish'
   | 'content.archive'

@@ -62,6 +62,8 @@ export type AuthRoutePath =
   | '/api/v1/iam/contents'
   | '/api/v1/iam/contents/$contentId'
   | '/api/v1/iam/contents/$contentId/history'
+  | '/api/v1/iam/contents/$contentId/transfer-ownership'
+  | '/api/v1/iam/contents/$contentId/ownership-targets'
   | '/api/v1/iam/media'
   | '/api/v1/iam/media/register'
   | '/api/v1/iam/media/references'
@@ -217,6 +219,8 @@ export const authRoutePaths = [
   '/api/v1/iam/contents',
   '/api/v1/iam/contents/$contentId',
   '/api/v1/iam/contents/$contentId/history',
+  '/api/v1/iam/contents/$contentId/transfer-ownership',
+  '/api/v1/iam/contents/$contentId/ownership-targets',
   '/api/v1/iam/media',
   '/api/v1/iam/media/register',
   '/api/v1/iam/media/references',

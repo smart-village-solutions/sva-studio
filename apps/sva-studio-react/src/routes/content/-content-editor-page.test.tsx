@@ -61,6 +61,7 @@ const defaultAccess = {
     organizationIds: ['org-1'],
     sourceKinds: ['direct_role'],
   },
+  permissionActions: [],
   isLoading: false,
   error: null,
 };
@@ -261,6 +262,140 @@ describe('ContentEditorPage', () => {
         publishedAt: '2026-03-21T10:00:00.000Z',
         payload: { hero: 'Neu' },
       });
+    });
+  });
+
+  it('shows the current owner and transfers ownership through the shared panel', async () => {
+    let transferPayload: unknown;
+    const ownerContent = createContentDetail({
+      ownerUserId: '00000000-0000-4000-8000-000000000010',
+      ownerDisplayName: 'Bisheriger Account',
+    });
+    useContentAccessMock.mockReturnValue({
+      ...defaultAccess,
+      permissionActions: ['content.transferOwnership'],
+    });
+    studioMswServer.use(
+      http.get('/api/v1/iam/contents/content-1', () =>
+        HttpResponse.json({ data: ownerContent })
+      ),
+      http.get('/api/v1/iam/contents/content-1/history', () => HttpResponse.json({ data: [] })),
+      http.get('/api/v1/iam/contents/content-1/ownership-targets', () =>
+        HttpResponse.json({
+          data: [
+            {
+              principal: {
+                type: 'account',
+                id: '00000000-0000-4000-8000-000000000020',
+              },
+              displayName: 'Neuer Account',
+            },
+          ],
+          pagination: { page: 1, pageSize: 10, total: 1 },
+        })
+      ),
+      http.post('/api/v1/iam/contents/content-1/transfer-ownership', async ({ request }) => {
+        transferPayload = await request.json();
+        return HttpResponse.json({
+          data: {
+            contentId: 'content-1',
+            targetPrincipal: {
+              type: 'account',
+              id: '00000000-0000-4000-8000-000000000020',
+            },
+          },
+        });
+      })
+    );
+
+    render(<ContentEditorPage mode="edit" contentId="content-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bisheriger Account')).toBeTruthy();
+    });
+    expect(
+      screen.getAllByText('Normales Speichern ändert den Inhaber nicht.').length
+    ).toBeGreaterThan(1);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Inhalt übertragen' })
+    );
+    await waitFor(() => expect(screen.getByText('Neuer Account')).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /Neuer Account/ }));
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Ich bestätige die Übertragung an den ausgewählten Inhaber.',
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Jetzt übertragen' }));
+
+    await waitFor(() => {
+      expect(transferPayload).toEqual({
+        targetPrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      });
+      expect(screen.getAllByText('Der Inhalt wurde erfolgreich übertragen.').length).toBeGreaterThan(
+        0
+      );
+    });
+  });
+
+  it('keeps the transfer dialog open and reports failed ownership transfers', async () => {
+    useContentAccessMock.mockReturnValue({
+      ...defaultAccess,
+      permissionActions: ['content.transferOwnership'],
+    });
+    studioMswServer.use(
+      http.get('/api/v1/iam/contents/content-1', () =>
+        HttpResponse.json({
+          data: createContentDetail({
+            ownerOrganizationId: '00000000-0000-4000-8000-000000000010',
+            ownerDisplayName: 'Bisherige Organisation',
+          }),
+        })
+      ),
+      http.get('/api/v1/iam/contents/content-1/history', () => HttpResponse.json({ data: [] })),
+      http.get('/api/v1/iam/contents/content-1/ownership-targets', () =>
+        HttpResponse.json({
+          data: [
+            {
+              principal: {
+                type: 'organization',
+                id: '00000000-0000-4000-8000-000000000020',
+              },
+              displayName: 'Neue Organisation',
+            },
+          ],
+          pagination: { page: 1, pageSize: 10, total: 1 },
+        })
+      ),
+      http.post('/api/v1/iam/contents/content-1/transfer-ownership', () =>
+        HttpResponse.json({ error: { code: 'conflict', message: 'conflict' } }, { status: 409 })
+      )
+    );
+
+    render(<ContentEditorPage mode="edit" contentId="content-1" />);
+    await waitFor(() => expect(screen.getByText('Bisherige Organisation')).toBeTruthy());
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Inhalt übertragen' })
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: 'Art des Zielinhabers' }), {
+      target: { value: 'organization' },
+    });
+    await waitFor(() => expect(screen.getByText('Neue Organisation')).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /Neue Organisation/ }));
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Ich bestätige die Übertragung an den ausgewählten Inhaber.',
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Jetzt übertragen' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Der Inhalt konnte nicht übertragen werden.').length).toBeGreaterThan(
+        0
+      );
     });
   });
 

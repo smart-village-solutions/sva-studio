@@ -31,6 +31,7 @@ import {
   deleteContentResponse,
   updateContentResponse,
 } from './mutations.js';
+import { transferContentOwnershipResponse } from './ownership-transfer-mutation.js';
 import { loadExternalContentReferenceBySourceEntity } from './external-content-references.js';
 import {
   loadContentById,
@@ -39,8 +40,10 @@ import {
   loadContentListScopes,
 } from './repository.js';
 import { getContentInternal } from './detail.js';
+import { listContentOwnershipTargetsInternal } from './ownership-targets-route.js';
 
 export { getContentInternal } from './detail.js';
+export { listContentOwnershipTargetsInternal } from './ownership-targets-route.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
@@ -280,15 +283,29 @@ export const deleteContentInternal = async (
     : deleteContentResponse(request, actorResolution.actor);
 };
 
+export const transferContentOwnershipInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const actorResolution = await resolveContentActor(request, ctx, { requireActorAccountId: true });
+  return 'error' in actorResolution
+    ? actorResolution.error
+    : transferContentOwnershipResponse(request, actorResolution.actor);
+};
+
 export const listContentsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, listContentsInternal);
 export const getContentHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, getContentInternal);
 export const getContentHistoryHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, getContentHistoryInternal);
+export const listContentOwnershipTargetsHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, listContentOwnershipTargetsInternal);
 export const createContentHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, createContentInternal);
 export const updateContentHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, updateContentInternal);
 export const deleteContentHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, deleteContentInternal);
+export const transferContentOwnershipHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, transferContentOwnershipInternal);

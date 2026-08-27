@@ -28,6 +28,39 @@ const routeState = vi.hoisted(() => ({
   organizationContextError: null as null | Error,
   enabledMainserverMutationActions: [] as string[],
   getContent: vi.fn(),
+  requestMainserverJson: vi.fn(),
+}));
+
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
+  requestMainserverJson: routeState.requestMainserverJson,
+}));
+
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
+  ContentOwnershipPanel: ({
+    canTransfer,
+    currentOwner,
+  }: {
+    canTransfer: boolean;
+    currentOwner: { displayName: string };
+  }) => (
+    <div data-can-transfer={String(canTransfer)} data-testid="content-ownership-panel">
+      {currentOwner.displayName}
+    </div>
+  ),
+  ContentOwnershipSlotsProvider: ({
+    children,
+    value,
+  }: {
+    children: React.ReactNode;
+    value: { panel: React.ReactNode };
+  }) => (
+    <>
+      {value.panel}
+      {children}
+    </>
+  ),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -462,6 +495,10 @@ describe('appRouteBindings', () => {
     routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
     routeState.getContent.mockReset();
+    routeState.requestMainserverJson.mockReset();
+    routeState.requestMainserverJson.mockResolvedValue({
+      data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
+    });
     routeState.getContent.mockResolvedValue({
       data: {
         credentialSource: 'user',
@@ -754,31 +791,38 @@ describe('appRouteBindings', () => {
     };
 
     const { appRouteBindings } = await import('./app-route-bindings');
-    const cases: Array<[ComponentType, string, string]> = [
-      [appRouteBindings.newsDetail, 'news-edit-page', 'news.article'],
-      [appRouteBindings.eventsDetail, 'events-edit-page', 'events.event-record'],
+    const cases: Array<[ComponentType, string, string, string]> = [
+      [appRouteBindings.newsDetail, 'news-edit-page', 'news.article', 'news'],
+      [appRouteBindings.eventsDetail, 'events-edit-page', 'events.event-record', 'events'],
       [
         appRouteBindings.genericItemsDetail,
         'generic-items-edit-page',
         'generic-items.generic-item',
+        'generic-items',
       ],
-      [appRouteBindings.faqDetail, 'faq-edit-page', 'faq.faq'],
+      [appRouteBindings.faqDetail, 'faq-edit-page', 'faq.faq', 'faqs'],
       [
         appRouteBindings.cockpitCardsDetail,
         'cockpit-cards-edit-page',
         'cockpit-cards.cockpit-card',
+        'cockpit-cards',
       ],
-      [appRouteBindings.projectsDetail, 'projects-edit-page', 'projects.project'],
-      [appRouteBindings.poiDetail, 'poi-edit-page', 'poi.point-of-interest'],
-      [appRouteBindings.surveysDetail, 'surveys-edit-page', 'surveys.survey'],
+      [appRouteBindings.projectsDetail, 'projects-edit-page', 'projects.project', 'projects'],
+      [appRouteBindings.poiDetail, 'poi-edit-page', 'poi.point-of-interest', 'poi'],
+      [appRouteBindings.surveysDetail, 'surveys-edit-page', 'surveys.survey', 'surveys'],
     ];
 
-    for (const [Binding, testId, contentType] of cases) {
+    for (const [Binding, testId, contentType, collection] of cases) {
       render(<Binding />);
       await waitFor(() => {
         expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
       });
       expect(routeState.getContent).toHaveBeenLastCalledWith('content-1', { contentType });
+      expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: `/api/v1/mainserver/${collection}/content-1`,
+        })
+      );
       cleanup();
     }
   });
@@ -812,6 +856,37 @@ describe('appRouteBindings', () => {
       );
     });
     expect(screen.queryByText('Resource principal loading')).toBeNull();
+  });
+
+  it('enables the ownership panel only after server-side transfer authorization', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.enabledMainserverMutationActions = ['content.transferOwnership'];
+    routeState.requestMainserverJson
+      .mockResolvedValueOnce({
+        data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: true },
+        currentOwner: {
+          principal: { type: 'account', id: 'account-1' },
+          displayName: 'Aktueller Account',
+        },
+      });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
+        'true'
+      );
+    });
+    expect(screen.getByTestId('content-ownership-panel').textContent).toBe('Aktueller Account');
+    expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/api/v1/mainserver/content-ownership/news.article/content-1/authorization',
+      })
+    );
   });
 
   it('keeps an editor fail-closed when the resource principal is missing', async () => {

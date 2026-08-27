@@ -77,6 +77,10 @@ Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er 
 - Organisations-Provisioning verwendet einen realen zweckgebundenen Keycloak-Account, bleibt aber nach dem lokalen Organisations-Commit ein fehlertoleranter Folgeprozess. Der unveränderte Mainserver-Benutzer-Endpunkt und der Mainserver selbst bleiben außerhalb der Repo-Ownership.
 - Externe Dienste werden angebunden, aber nicht hier implementiert
 
+### Ergänzung 2026-08: Kontrollierter Inhabertransfer
+
+Das Studio besitzt Auswahl, Autorisierung, Sperre, Journal, Audit und UX des Transfers. Der Mainserver bleibt Quelle des aktuellen DataProviders und führt den eigentlichen Provider-Write aus. Browser und Plugins senden nur einen typisierten Account- oder Organisations-Principal; DataProvider-IDs und Credentials bleiben an der serverseitigen Integrationsgrenze.
+
 Referenzen:
 
 - `packages/auth-runtime/src/oidc.ts`

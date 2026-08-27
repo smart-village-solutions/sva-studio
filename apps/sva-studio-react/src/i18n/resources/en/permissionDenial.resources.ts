@@ -44,6 +44,7 @@ export const permissionDenialENResources = {
     contentCreate: 'Create content',
     contentUpdateMetadata: 'Edit content metadata',
     contentUpdatePayload: 'Edit content data',
+    contentTransferOwnership: 'Transfer content ownership',
     contentChangeStatus: 'Change content status',
     contentPublish: 'Publish content',
     contentArchive: 'Archive content',

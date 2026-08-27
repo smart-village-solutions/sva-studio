@@ -28,6 +28,8 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  ContentOwnershipPanelSlot,
+  ContentOwnershipSaveHint,
   addStudioDestructiveNavigationFeedback,
   addStudioCreatedSaveFeedback,
   contentMediaUsageToReference,
@@ -984,16 +986,19 @@ export function EventsDetailPage({
         }
         primaryAction={
           canSave ? (
-            <StudioSaveButton
-              type="submit"
-              form={formId}
-              status={saveFeedback.status}
-              labels={{
-                idle: pt('actions.save'),
-                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-                saved: pt('actions.saved'),
-              }}
-            />
+            <div className="flex flex-col items-end gap-1">
+              <ContentOwnershipSaveHint />
+              <StudioSaveButton
+                type="submit"
+                form={formId}
+                status={saveFeedback.status}
+                labels={{
+                  idle: pt('actions.save'),
+                  saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+                  saved: pt('actions.saved'),
+                }}
+              />
+            </div>
           ) : undefined
         }
         actions={
@@ -1100,9 +1105,6 @@ export function EventsDetailPage({
               label: pt(`principal.${actingPrincipalType}`),
             })}
             onChange={setActingPrincipalType}
-            dataProvider={mode === 'edit' ? loadedItem?.dataProvider : undefined}
-            dataProviderLabel={pt('principal.dataProvider')}
-            dataProviderUnavailableLabel={pt('principal.unavailable')}
           />
           <MainserverDeviationSummary
             deviations={deviations}
@@ -1191,6 +1193,7 @@ export function EventsDetailPage({
                   className="mt-0 data-[state=inactive]:hidden"
                 >
                   <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
+                    {tab.id === 'basis' && mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
                     <section
                       aria-label={tab.title}
                       className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"

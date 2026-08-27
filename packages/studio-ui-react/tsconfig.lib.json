@@ -8,7 +8,7 @@
     "rootDir": "src",
     "types": ["react", "react-dom"],
     "paths": {
-      "@sva/core": ["packages/core/dist/index.d.ts"]
+      "@sva/core/rich-text-html-policy": ["packages/core/dist/rich-text-html-policy.d.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

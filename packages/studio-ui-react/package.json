@@ -25,6 +25,7 @@
     "@tiptap/starter-kit": "^3.27.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dompurify": "^3.4.14",
     "lucide-react": "^1.28.0",
     "tailwind-merge": "^3.5.0"
   },

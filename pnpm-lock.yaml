@@ -68,6 +68,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
+      '@types/mdast':
+        specifier: 4.0.4
+        version: 4.0.4
       '@types/node':
         specifier: ^25.6.0
         version: 25.9.1
@@ -98,6 +101,9 @@ importers:
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
+      remark-parse:
+        specifier: 11.0.0
+        version: 11.0.0
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3
@@ -110,6 +116,12 @@ importers:
       typescript-eslint:
         specifier: 8.62.1
         version: 8.62.1(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3)
+      unified:
+        specifier: 11.0.5
+        version: 11.0.5
+      unist-util-visit:
+        specifier: 5.1.0
+        version: 5.1.0
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)

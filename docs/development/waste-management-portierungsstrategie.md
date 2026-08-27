@@ -6,8 +6,8 @@ Dieses Dokument beschreibt die verbindliche Portierungsstrategie für das Studio
 
 Es ergänzt die OpenSpec-Artefakte des Changes `add-waste-management-plugin`, insbesondere:
 
-- [Portierungsinventur](../../openspec/changes/add-waste-management-plugin/porting-inventory.md)
-- [Design des Changes](../../openspec/changes/add-waste-management-plugin/design.md)
+- [Portierungsinventur](../../openspec/changes/archive/2026-05-15-add-waste-management-plugin/porting-inventory.md)
+- [Design des Changes](../../openspec/changes/archive/2026-05-15-add-waste-management-plugin/design.md)
 
 ## Grundsatz
 

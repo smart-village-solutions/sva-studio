@@ -17,16 +17,17 @@ Diese Seite ist der zentrale Einstieg in die lokale Projekt- und Betriebsdokumen
 
 ## Aktuelle Wissensbasis
 
-| Bereich                   | Zweck                                                             | Maßgeblicher Einstieg                                       |
-| ------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- |
-| Architektur               | arc42-Systemdokumentation und architekturspezifische Vertiefungen | [Architekturübersicht](./architecture/README.md)            |
-| Architekturentscheidungen | kanonische Architecture Decision Records                          | [ADR-Index](./adr/README.md)                                |
-| Entwicklung               | lokales Setup, Testing, Monitoring und Entwicklungsstandards      | [Bereichsindex Entwicklung](./development/README.md)        |
-| Betrieb und Runbooks      | Deployment, Diagnose, Recovery und fachliche Betriebsabläufe      | [Bereichsindex Betrieb](./operations/README.md)             |
-| Technische Referenz       | stabile Verträge, Datenmodelle und Nachschlagewerke               | [Bereichsindex Referenz](./reference/README.md)             |
-| API-Referenz              | maschinenlesbare Schnittstellenverträge                           | [IAM API v1](./api/iam-v1.yaml)                             |
-| Governance                | Delivery-, Review- und Projektregeln                              | [Bereichsindex Governance](./governance/README.md)          |
-| Monorepo und Routing      | Paketgrenzen, Workspace-Struktur und Routingkonzept               | [Monorepo-Struktur](./monorepo.md), [Routing](./routing.md) |
+| Bereich                     | Zweck                                                             | Maßgeblicher Einstieg                                                          |
+| --------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Architektur                 | arc42-Systemdokumentation und architekturspezifische Vertiefungen | [Architekturübersicht](./architecture/README.md)                               |
+| Architekturentscheidungen   | kanonische Architecture Decision Records                          | [ADR-Index](./adr/README.md)                                                   |
+| Entwicklung                 | lokales Setup, Testing, Monitoring und Entwicklungsstandards      | [Bereichsindex Entwicklung](./development/README.md)                           |
+| Betrieb und Runbooks        | Deployment, Diagnose, Recovery und fachliche Betriebsabläufe      | [Bereichsindex Betrieb](./operations/README.md)                                |
+| Technische Referenz         | stabile Verträge, Datenmodelle und Nachschlagewerke               | [Bereichsindex Referenz](./reference/README.md)                                |
+| API-Referenz                | maschinenlesbare Schnittstellenverträge                           | [IAM API v1](./api/iam-v1.yaml)                                                |
+| Governance                  | Delivery-, Review- und Projektregeln                              | [Bereichsindex Governance](./governance/README.md)                             |
+| Monorepo und Routing        | Paketgrenzen, Workspace-Struktur und Routingkonzept               | [Monorepo-Struktur](./monorepo.md), [Routing](./routing.md)                    |
+| Plattform und lokales Setup | Browser-Kompatibilität und lokale Redis-Infrastruktur             | [Browser-Unterstützung](./BROWSER-SUPPORT.md), [Redis-Setup](./redis-setup.md) |
 
 `docs/guides/` ist ein befristeter Übergangsbereich. Das [vollständige Migrationsinventar](./guides/README.md) benennt für jede dortige Datei Zielbereich, geplanten Zielpfad und Konsolidierungsbedarf. [Der kanonische Studio-Rollout](./guides/studio-rollout-process.md) bleibt dort dauerhaft die einzige verbindliche Bedienanleitung für reguläre Rollouts nach Dev, Staging und Production.
 

@@ -29,6 +29,7 @@ export default defineConfig({
       '../../scripts/ci/run-pr-gate.test.ts',
       '../../scripts/ci/run-integration-gate.test.ts',
       '../../scripts/ci/check-db-schema-snapshot.test.ts',
+      '../../scripts/ci/check-documentation.test.ts',
       '../../scripts/ci/database-restore-workflow-contract.test.ts',
       '../../scripts/ci/pr-review-intake.test.ts',
       '../../scripts/ci/promote-deploy-gates.test.ts',

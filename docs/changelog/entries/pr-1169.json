@@ -1,0 +1,4 @@
+{
+  "prNumber": 1169,
+  "body": "Die aktuelle technische Studio-Dokumentation wird jetzt automatisch auf strukturelle Konsistenz geprüft.\n\n- Relative Links, Bereichsindizes und der kanonische ADR-Index werden blockierend validiert.\n- Wiki-Einstiege und Publikationsgrenzen bleiben mit der freigegebenen lokalen Wissensbasis synchron.\n- Historische Nachweise und die externe Anwenderdokumentation bleiben ausdrücklich außerhalb des neuen Gates."
+}

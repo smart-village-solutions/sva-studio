@@ -48,7 +48,7 @@ Schulden auf IST-Basis.
 7. Dokumentationsdrift bei schnell wandelnden Architekturteilen
    - Impact: mittel
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: Bereichsindizes mit Autorität, Ownership und Pflege-Triggern verwenden; Architekturänderungen im selben PR in arc42 und ADRs fortschreiben; in PR 3 Links, Erreichbarkeit, ADR-Parität und Publikationsgrenzen automatisiert prüfen
+   - Maßnahme: Bereichsindizes mit Autorität, Ownership und Pflege-Triggern verwenden; Architekturänderungen im selben PR in arc42 und ADRs fortschreiben; `pnpm check:docs` prüft Links, Erreichbarkeit, ADR-Parität und Publikationsgrenzen blockierend
    - Verbleibende Schuld: `docs/guides/` enthält bis PR 4 weiterhin 60 unterschiedlich verantwortete Dokumente. Das vollständige Migrationsinventar begrenzt den Drift, ersetzt aber noch nicht die kontrollierte Verschiebung und Konsolidierung.
    - Schutzgrenze: Der kanonische Studio-Rollout bleibt während und nach der Migration ausschließlich unter `docs/guides/studio-rollout-process.md`; externe Anwenderdokumentation und historische Nachweise bleiben außerhalb der aktuellen lokalen Wissensbasis.
 

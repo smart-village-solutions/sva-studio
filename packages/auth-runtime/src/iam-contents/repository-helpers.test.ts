@@ -261,6 +261,13 @@ describe('iam content repository helpers', () => {
       expect.stringContaining('INSERT INTO iam.contents'),
       expect.arrayContaining(['Stadt Musterhausen'])
     );
+    expect(client.query.mock.calls[1]?.[1]).toEqual(
+      expect.arrayContaining([
+        '00000000-0000-0000-0000-000000000002',
+        null,
+        'Stadt Musterhausen',
+      ])
+    );
   });
 
   it('enforces organization author policy for create author display mode', async () => {

@@ -21,6 +21,7 @@ import {
   loadCurrentContentRow,
   resolveContentMutationMetadata,
 } from './repository-shared.js';
+import { resolveContentOwnerPrincipal } from './ownership-principal.js';
 import { mapContentHistoryItem, mapContentListItem } from './repository-mappers.js';
 import { resolveNextContentState } from './repository-state.js';
 import {
@@ -61,26 +62,17 @@ export class ContentOwnershipTransferError extends Error {
 }
 
 const resolveCurrentOwnerPrincipal = (row: ContentRow): IamContentOwnerPrincipal | undefined => {
-  if (row.owner_user_id && !row.owner_organization_id) {
-    return { type: 'account', id: row.owner_user_id };
-  }
-  if (row.owner_organization_id && !row.owner_user_id) {
-    return { type: 'organization', id: row.owner_organization_id };
-  }
-  return undefined;
+  return resolveContentOwnerPrincipal({
+    ownerUserId: row.owner_user_id ?? undefined,
+    ownerOrganizationId: row.owner_organization_id ?? undefined,
+  });
 };
 
 const resolveContentItemOwnerPrincipal = (item: {
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;
 }): IamContentOwnerPrincipal | undefined => {
-  if (item.ownerUserId && !item.ownerOrganizationId) {
-    return { type: 'account', id: item.ownerUserId };
-  }
-  if (item.ownerOrganizationId && !item.ownerUserId) {
-    return { type: 'organization', id: item.ownerOrganizationId };
-  }
-  return undefined;
+  return resolveContentOwnerPrincipal(item);
 };
 
 const assertActiveOwnershipTarget = async (

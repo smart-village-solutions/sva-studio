@@ -123,7 +123,7 @@ describe('content ownership target route', () => {
     });
   });
 
-  it('lists organization targets and tolerates ambiguous current ownership', async () => {
+  it('lists organization targets and prefers the organization for legacy dual ownership', async () => {
     state.loadContent.mockResolvedValueOnce({
       id: 'content-1',
       contentType: 'generic',
@@ -142,6 +142,7 @@ describe('content ownership target route', () => {
       type: 'organization',
       page: 2,
       pageSize: 10,
+      currentOwner: { type: 'organization', id: 'organization-owner' },
     });
   });
 

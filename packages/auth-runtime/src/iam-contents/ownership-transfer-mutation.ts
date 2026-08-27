@@ -13,6 +13,7 @@ import {
   loadContentById,
   transferContentOwnership,
 } from './repository.js';
+import { resolveContentOwnerPrincipal } from './ownership-principal.js';
 import type { ResolvedContentActor } from './request-context.js';
 import { authorizeContentAction } from './request-context.js';
 import { transferContentOwnershipSchema } from './schemas.js';
@@ -23,13 +24,7 @@ export const resolveCurrentOwner = (content: {
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;
 }) => {
-  if (content.ownerUserId && !content.ownerOrganizationId) {
-    return { type: 'account' as const, id: content.ownerUserId };
-  }
-  if (content.ownerOrganizationId && !content.ownerUserId) {
-    return { type: 'organization' as const, id: content.ownerOrganizationId };
-  }
-  return undefined;
+  return resolveContentOwnerPrincipal(content);
 };
 
 export const transferErrorResponse = (

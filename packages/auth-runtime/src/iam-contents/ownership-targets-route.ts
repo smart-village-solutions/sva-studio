@@ -9,6 +9,7 @@ import {
 } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { loadContentById, loadContentOwnershipTargets } from './repository.js';
+import { resolveContentOwnerPrincipal } from './ownership-principal.js';
 import { authorizeContentAction, resolveContentActor } from './request-context.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
@@ -17,13 +18,7 @@ const resolveCurrentOwner = (content: {
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;
 }): IamContentOwnerPrincipal | undefined => {
-  if (content.ownerUserId && !content.ownerOrganizationId) {
-    return { type: 'account', id: content.ownerUserId };
-  }
-  if (content.ownerOrganizationId && !content.ownerUserId) {
-    return { type: 'organization', id: content.ownerOrganizationId };
-  }
-  return undefined;
+  return resolveContentOwnerPrincipal(content);
 };
 
 export const listContentOwnershipTargetsInternal = async (

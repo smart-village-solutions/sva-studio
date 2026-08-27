@@ -270,7 +270,7 @@ describe('content projection mutation recovery and audit', () => {
         operation: 'update',
         entityId: 'poi-stale-1',
       })
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow('detail failed');
 
     expect(fixture.projectionRows).toEqual([
       expect.objectContaining({
@@ -333,15 +333,17 @@ describe('content projection mutation recovery and audit', () => {
       sortDirection: 'desc',
     });
 
-    await refreshProjectedContentsForMainserverMutation({
-      contentType: 'poi.point-of-interest',
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'kc-user-1',
-      actorAccountId: 'account-1',
-      organizationId: 'org-1',
-      operation: 'update',
-      entityId: 'poi-log-1',
-    });
+    await expect(
+      refreshProjectedContentsForMainserverMutation({
+        contentType: 'poi.point-of-interest',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        organizationId: 'org-1',
+        operation: 'update',
+        entityId: 'poi-log-1',
+      })
+    ).rejects.toThrow('mutation detail failed');
 
     expect(state.loggerDebug).toHaveBeenCalledWith(
       'mainserver_projection_page_loaded',

@@ -61,15 +61,20 @@ const finalizeUnclearTransfer = async (input: {
 }): Promise<Response | null> => {
   const evidence = await verifyTransferResult(input);
   if (evidence === 'target') {
-    await finalizeMainserverMutation({
-      actor: input.actor,
-      providerOutcome: 'succeeded',
-      reconciliationStatus: 'complete',
-      completedSteps: ['target_reread_confirmed'],
-      contentId: input.route.contentId,
-      observedDataProviderId: input.target.dataProviderId,
-      ownershipTransfer: input.ownershipTransfer,
-    });
+    try {
+      await finalizeMainserverMutation({
+        actor: input.actor,
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'complete',
+        completedSteps: ['target_reread_confirmed'],
+        contentId: input.route.contentId,
+        observedDataProviderId: input.target.dataProviderId,
+        ownershipTransfer: input.ownershipTransfer,
+      });
+    } catch {
+      // The target reread conclusively confirmed success. Keep the pending journal
+      // as the reconciliation barrier instead of turning success into a retryable error.
+    }
     recordOwnershipTransferOutcome({
       actor: input.actor,
       contentType: input.route.contentType,

@@ -791,31 +791,38 @@ describe('appRouteBindings', () => {
     };
 
     const { appRouteBindings } = await import('./app-route-bindings');
-    const cases: Array<[ComponentType, string, string]> = [
-      [appRouteBindings.newsDetail, 'news-edit-page', 'news.article'],
-      [appRouteBindings.eventsDetail, 'events-edit-page', 'events.event-record'],
+    const cases: Array<[ComponentType, string, string, string]> = [
+      [appRouteBindings.newsDetail, 'news-edit-page', 'news.article', 'news'],
+      [appRouteBindings.eventsDetail, 'events-edit-page', 'events.event-record', 'events'],
       [
         appRouteBindings.genericItemsDetail,
         'generic-items-edit-page',
         'generic-items.generic-item',
+        'generic-items',
       ],
-      [appRouteBindings.faqDetail, 'faq-edit-page', 'faq.faq'],
+      [appRouteBindings.faqDetail, 'faq-edit-page', 'faq.faq', 'faqs'],
       [
         appRouteBindings.cockpitCardsDetail,
         'cockpit-cards-edit-page',
         'cockpit-cards.cockpit-card',
+        'cockpit-cards',
       ],
-      [appRouteBindings.projectsDetail, 'projects-edit-page', 'projects.project'],
-      [appRouteBindings.poiDetail, 'poi-edit-page', 'poi.point-of-interest'],
-      [appRouteBindings.surveysDetail, 'surveys-edit-page', 'surveys.survey'],
+      [appRouteBindings.projectsDetail, 'projects-edit-page', 'projects.project', 'projects'],
+      [appRouteBindings.poiDetail, 'poi-edit-page', 'poi.point-of-interest', 'poi'],
+      [appRouteBindings.surveysDetail, 'surveys-edit-page', 'surveys.survey', 'surveys'],
     ];
 
-    for (const [Binding, testId, contentType] of cases) {
+    for (const [Binding, testId, contentType, collection] of cases) {
       render(<Binding />);
       await waitFor(() => {
         expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
       });
       expect(routeState.getContent).toHaveBeenLastCalledWith('content-1', { contentType });
+      expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: `/api/v1/mainserver/${collection}/content-1`,
+        })
+      );
       cleanup();
     }
   });

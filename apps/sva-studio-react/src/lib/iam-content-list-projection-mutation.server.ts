@@ -51,10 +51,11 @@ type MutationRefreshInput = Readonly<{
 
 const recordDeletionAudit = async (input: MutationRefreshInput): Promise<void> => {
   const { target, entityId } = input;
-  if (!target.actorAccountId || !target.actorDisplayName || !target.mutationRef) return;
+  const auditActorAccountId = target.auditActorAccountId ?? target.actorAccountId;
+  if (!auditActorAccountId || !target.actorDisplayName || !target.mutationRef) return;
   await recordSuccessfulExternalContentDeletion({
     instanceId: target.instanceId,
-    actorAccountId: target.actorAccountId,
+    actorAccountId: auditActorAccountId,
     actorDisplayName: target.actorDisplayName,
     mutationRef: target.mutationRef,
     sourceSystem: 'mainserver',
@@ -87,11 +88,12 @@ const recordMutationAudit = async (
   row: MainserverProjectionRowInput
 ): Promise<void> => {
   const { target } = input;
-  if (!target.actorAccountId || !target.actorDisplayName || !target.mutationRef) return;
+  const auditActorAccountId = target.auditActorAccountId ?? target.actorAccountId;
+  if (!auditActorAccountId || !target.actorDisplayName || !target.mutationRef) return;
   if (input.operation !== 'create' && input.operation !== 'update') return;
   await recordSuccessfulExternalContentMutation({
     instanceId: target.instanceId,
-    actorAccountId: target.actorAccountId,
+    actorAccountId: auditActorAccountId,
     actorDisplayName: target.actorDisplayName,
     mutationRef: target.mutationRef,
     operation: input.operation,
@@ -173,6 +175,7 @@ export const refreshMainserverProjectionForMutation = async (
         : upsertProjectionMutation(input, refreshRunId));
     } catch (error) {
       await finalizeFailedMutation(input, refreshRunId, error);
+      throw error;
     }
   });
 };
@@ -214,9 +217,10 @@ const recordGenericItemDeletionAudit = async (
   input: GenericItemSiblingRefreshInput
 ): Promise<void> => {
   const { target } = input;
+  const auditActorAccountId = target.auditActorAccountId ?? target.actorAccountId;
   if (
     input.operation !== 'delete' ||
-    !target.actorAccountId ||
+    !auditActorAccountId ||
     !target.actorDisplayName ||
     !target.mutationRef
   ) {
@@ -229,7 +233,7 @@ const recordGenericItemDeletionAudit = async (
   for (const sourceEntityType of sourceEntityTypes) {
     await recordSuccessfulExternalContentDeletion({
       instanceId: target.instanceId,
-      actorAccountId: target.actorAccountId,
+      actorAccountId: auditActorAccountId,
       actorDisplayName: target.actorDisplayName,
       mutationRef: target.mutationRef,
       sourceSystem: 'mainserver',

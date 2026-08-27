@@ -198,16 +198,17 @@ type MainserverResourcePrincipalResolution =
     }>;
 
 const resolveMainserverDetailUrl = (contentType: string, contentId: string): string => {
-  const collection =
-    contentType === 'news.article'
-      ? 'news'
-      : contentType === 'events.event-record'
-        ? 'events'
-        : contentType === 'poi.point-of-interest'
-          ? 'poi'
-          : contentType === 'surveys.survey'
-            ? 'surveys'
-            : 'generic-items';
+  const collections: Readonly<Record<string, string>> = {
+    'news.article': 'news',
+    'events.event-record': 'events',
+    'poi.point-of-interest': 'poi',
+    'generic-items.generic-item': 'generic-items',
+    'faq.faq': 'faqs',
+    'cockpit-cards.cockpit-card': 'cockpit-cards',
+    'projects.project': 'projects',
+    'surveys.survey': 'surveys',
+  };
+  const collection = collections[contentType] ?? 'generic-items';
   return `/api/v1/mainserver/${collection}/${encodeURIComponent(contentId)}`;
 };
 

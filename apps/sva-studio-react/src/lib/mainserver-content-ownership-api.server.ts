@@ -83,7 +83,8 @@ export const dispatchMainserverContentOwnershipRequest = async (
         await refreshProjectedContentsForMainserverMutation({
           instanceId: followUp.instanceId,
           keycloakSubject: target.target.connection.keycloakSubject,
-          actorAccountId: followUp.actorAccountId,
+          actorAccountId: principal.type === 'account' ? principal.id : followUp.actorAccountId,
+          auditActorAccountId: followUp.actorAccountId,
           actorDisplayName: followUp.actorDisplayName,
           ownershipPrincipal: { type: principal.type, id: principal.id },
           mutationRef: followUp.operationExternalId,

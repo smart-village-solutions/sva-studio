@@ -638,6 +638,24 @@ describe('Mainserver content ownership route', () => {
     );
   });
 
+  it('keeps target-reread success when journal finalization fails', async () => {
+    state.transfer.mockRejectedValueOnce(new Error('network'));
+    state.finalize.mockRejectedValueOnce(new Error('database unavailable'));
+    state.getNews
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-target' } });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+  });
+
   it('returns the provider error when the source reread confirms no transfer', async () => {
     state.transfer.mockRejectedValueOnce(
       new SvaMainserverError({ code: 'graphql_error', message: 'rejected', statusCode: 502 })

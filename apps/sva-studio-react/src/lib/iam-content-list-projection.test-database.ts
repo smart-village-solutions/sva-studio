@@ -284,6 +284,23 @@ const deleteProjectionQueryResult = (
   if (!text.includes('DELETE FROM iam.content_list_projection')) {
     return null;
   }
+  if (text.includes('projection_scope_key <> $5')) {
+    const instanceId = String(queryValue(values, 0));
+    const contentType = String(queryValue(values, 1));
+    const sourceEntityType = String(queryValue(values, 2));
+    const sourceEntityId = String(queryValue(values, 3));
+    const retainedScopeKey = String(queryValue(values, 4));
+    fixture.projectionRows = fixture.projectionRows.filter(
+      (row) =>
+        row.instance_id !== instanceId ||
+        row.source_system !== 'mainserver' ||
+        row.content_type !== contentType ||
+        row.source_entity_type !== sourceEntityType ||
+        row.source_entity_id !== sourceEntityId ||
+        row.projection_scope_key === retainedScopeKey
+    );
+    return { rows: [], rowCount: 0 };
+  }
   const contentType = String(queryValue(values, 1));
   const projectionScopeKey = fixture.projectionScopeKeyColumnAvailable
     ? String(queryValue(values, 2))

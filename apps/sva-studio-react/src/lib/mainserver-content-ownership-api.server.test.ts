@@ -127,4 +127,46 @@ describe('mainserver content ownership API projection follow-up', () => {
       lastErrorCode: 'content_transfer_projection_refresh_failed',
     });
   });
+
+  it('writes account transfers into the recipient scope while retaining the audit actor', async () => {
+    state.resolveTarget.mockResolvedValueOnce({
+      ok: true,
+      target: {
+        connection: {
+          keycloakSubject: 'kc-recipient',
+          actingPrincipalType: 'user',
+          credentialFingerprint: 'b'.repeat(64),
+        },
+      },
+    });
+    state.dispatch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            contentId: 'news-1',
+            targetPrincipal: {
+              type: 'account',
+              id: '22222222-2222-4222-8222-222222222222',
+            },
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.refreshProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: '22222222-2222-4222-8222-222222222222',
+        auditActorAccountId: '11111111-1111-4111-8111-111111111111',
+        keycloakSubject: 'kc-recipient',
+      })
+    );
+  });
 });

@@ -53,6 +53,7 @@ vi.mock('./service.js', () => ({
 }));
 
 import { dispatchSvaMainserverContentOwnershipRequest } from './content-ownership-route.js';
+import { SvaMainserverError } from './errors.js';
 
 const actor = {
   instanceId: 'instance-1',
@@ -282,4 +283,248 @@ describe('Mainserver content ownership route', () => {
       })
     );
   });
+
+  it.each([
+    'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1',
+    'https://studio.test/api/v1/mainserver/content-ownership/unknown/news-1/targets',
+    'https://studio.test/api/v1/mainserver/content-ownership/news.article//targets',
+    'https://studio.test/api/v1/mainserver/content-ownership/%E0%A4%A/news-1/targets',
+  ])('ignores malformed ownership route %s', async (url) => {
+    await expect(
+      dispatchSvaMainserverContentOwnershipRequest(new Request(url))
+    ).resolves.toBeNull();
+  });
+
+  it('rejects a transfer GET and forwards actor resolution responses', async () => {
+    const wrongMethod = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer'
+      )
+    );
+    expect(wrongMethod?.status).toBe(405);
+
+    const actorError = new Response('actor unavailable', { status: 503 });
+    state.resolveMutationActor.mockResolvedValueOnce(actorError);
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets'
+      )
+    );
+    expect(response).toBe(actorError);
+  });
+
+  it('fails closed when source ownership or transfer access cannot be resolved', async () => {
+    state.getNews.mockResolvedValueOnce({ id: 'news-1', dataProvider: null });
+    let response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets'
+      )
+    );
+    expect(response?.status).toBe(409);
+
+    state.resolveSource.mockResolvedValueOnce(undefined);
+    response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets'
+      )
+    );
+    expect(response?.status).toBe(409);
+
+    state.resolveResourceAccess.mockResolvedValueOnce({ 'content.transferOwnership': false });
+    response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets'
+      )
+    );
+    expect(response?.status).toBe(403);
+  });
+
+  it('normalizes target pagination, search and owner fallback values', async () => {
+    state.resolveSource.mockResolvedValueOnce({
+      principal: { type: 'organization', id: 'organization-source' },
+      dataProviderId: 'provider-source',
+    });
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets?type=account&page=-2&pageSize=200&q=%20Target%20'
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      currentOwner: { displayName: 'provider-source' },
+    });
+    expect(state.listTargets).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 50, search: 'Target' })
+    );
+
+    const invalidType = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets?type=service'
+      )
+    );
+    expect(invalidType?.status).toBe(400);
+  });
+
+  it.each([
+    ['events.event-record', 'event-1', 'getEvent'],
+    ['poi.point-of-interest', 'poi-1', 'getPoi'],
+    ['generic-items.generic-item', 'generic-1', 'getGenericItem'],
+    ['faq.faq', 'faq-1', 'getGenericItem'],
+    ['cockpit-cards.cockpit-card', 'card-1', 'getGenericItem'],
+    ['projects.project', 'project-1', 'getGenericItem'],
+  ] as const)('loads %s ownership through its Mainserver collection', async (type, id, getter) => {
+    state[getter].mockResolvedValueOnce({ id, dataProvider: { id: 'provider-source' } });
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        `https://studio.test/api/v1/mainserver/content-ownership/${type}/${id}/authorization`
+      )
+    );
+    expect(response?.status).toBe(200);
+    expect(state[getter]).toHaveBeenCalled();
+  });
+
+  it.each([
+    [null, 400],
+    [{ targetPrincipal: { type: 'service', id: target.principal.id } }, 400],
+    [{ targetPrincipal: { type: 'organization', id: 'not-a-uuid' } }, 400],
+    [{ targetPrincipal: target.principal, extra: true }, 400],
+  ])('rejects invalid transfer payload %#', async (body, status) => {
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: body === null ? 'null' : JSON.stringify(body),
+        }
+      )
+    );
+    expect(response?.status).toBe(status);
+  });
+
+  it('returns csrf, authorization, source and unchanged-target transfer conflicts', async () => {
+    const csrf = new Response('csrf', { status: 403 });
+    state.validateCsrf.mockReturnValueOnce(csrf);
+    let response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response).toBe(csrf);
+
+    state.getNews.mockResolvedValueOnce({ id: 'news-1', dataProvider: null });
+    response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response?.status).toBe(409);
+
+    state.resolveSource.mockResolvedValueOnce(undefined);
+    response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response?.status).toBe(409);
+
+    const denied = new Response('denied', { status: 403 });
+    state.authorize.mockResolvedValueOnce(denied);
+    response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response).toBe(denied);
+
+    state.resolveTarget.mockResolvedValueOnce({
+      ok: true,
+      target: { ...target, dataProviderId: 'provider-source' },
+    });
+    response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response?.status).toBe(409);
+  });
+
+  it.each([
+    ['content_transfer_target_invalid', 400],
+    ['content_transfer_target_credentials_missing', 409],
+    ['content_transfer_target_binding_missing', 409],
+    ['content_transfer_target_binding_conflict', 409],
+    ['database_unavailable', 503],
+  ] as const)('maps target resolution error %s', async (code, status) => {
+    state.resolveTarget.mockResolvedValueOnce({ ok: false, code });
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response?.status).toBe(status);
+  });
+
+  it('maps a changed target binding to a deterministic conflict', async () => {
+    state.withTargetLock.mockRejectedValueOnce(
+      new Error('content_transfer_target_binding_changed')
+    );
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'content_transfer_target_binding_conflict',
+    });
+  });
+
+  it('accepts a transfer confirmed by the target reread after a provider error', async () => {
+    state.transfer.mockRejectedValueOnce(new Error('network'));
+    state.getNews
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-target' } });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response?.status).toBe(200);
+    expect(state.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({ completedSteps: ['target_reread_confirmed'] })
+    );
+  });
+
+  it('returns the provider error when the source reread confirms no transfer', async () => {
+    state.transfer.mockRejectedValueOnce(
+      new SvaMainserverError({ code: 'graphql_error', message: 'rejected', statusCode: 502 })
+    );
+    state.getNews
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'other-provider' } })
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
+      )
+    );
+    expect(response?.status).toBe(502);
+    expect(state.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({ completedSteps: ['source_reread_confirmed'] })
+    );
+  });
+
 });

@@ -36,6 +36,33 @@ vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
   requestMainserverJson: routeState.requestMainserverJson,
 }));
 
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
+  ContentOwnershipPanel: ({
+    canTransfer,
+    currentOwner,
+  }: {
+    canTransfer: boolean;
+    currentOwner: { displayName: string };
+  }) => (
+    <div data-can-transfer={String(canTransfer)} data-testid="content-ownership-panel">
+      {currentOwner.displayName}
+    </div>
+  ),
+  ContentOwnershipSlotsProvider: ({
+    children,
+    value,
+  }: {
+    children: React.ReactNode;
+    value: { panel: React.ReactNode };
+  }) => (
+    <>
+      {value.panel}
+      {children}
+    </>
+  ),
+}));
+
 vi.mock('@tanstack/react-router', () => ({
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
@@ -822,6 +849,37 @@ describe('appRouteBindings', () => {
       );
     });
     expect(screen.queryByText('Resource principal loading')).toBeNull();
+  });
+
+  it('enables the ownership panel only after server-side transfer authorization', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.enabledMainserverMutationActions = ['content.transferOwnership'];
+    routeState.requestMainserverJson
+      .mockResolvedValueOnce({
+        data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: true },
+        currentOwner: {
+          principal: { type: 'account', id: 'account-1' },
+          displayName: 'Aktueller Account',
+        },
+      });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
+        'true'
+      );
+    });
+    expect(screen.getByTestId('content-ownership-panel').textContent).toBe('Aktueller Account');
+    expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/api/v1/mainserver/content-ownership/news.article/content-1/authorization',
+      })
+    );
   });
 
   it('keeps an editor fail-closed when the resource principal is missing', async () => {

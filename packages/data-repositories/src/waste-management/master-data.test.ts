@@ -21,6 +21,26 @@ const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {
 };
 
 describe('waste master data repository', () => {
+  it('reads the monotone mainserver source revision without mutating it', async () => {
+    const { executor, statements } = createExecutor([
+      { source_revision: '42', changed_at: '2026-08-27T12:00:00.000Z' },
+    ]);
+
+    await expect(
+      createWasteMasterDataRepository(executor).getWasteMainserverSourceRevision()
+    ).resolves.toEqual({
+      sourceRevision: '42',
+      changedAt: '2026-08-27T12:00:00.000Z',
+    });
+
+    expect(statements).toEqual([
+      {
+        text: expect.stringContaining('FROM waste_mainserver_source_state'),
+        values: [],
+      },
+    ]);
+  });
+
   it('lists tour assignments with normalized filters and maps their locations', async () => {
     const { executor, statements } = createExecutor([
       {

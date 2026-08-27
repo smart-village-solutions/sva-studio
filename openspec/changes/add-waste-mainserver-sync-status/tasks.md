@@ -1,0 +1,32 @@
+## 1. Verträge und Datenmodell
+
+- [x] 1.1 Typisierten Statusvertrag mit getrenntem Quellzustand `clean | pending | unknown`, optionalem aktivem Job, letztem relevanten Versuch und letztem kompatiblen Erfolg einschließlich `finishedAt` und Jahresfenster definieren; rohe Quellrevisionen auf Server- und Jobresultatverträge begrenzen.
+- [x] 1.2 Additive versionierte Waste-Tenant-Migration für eine `BIGINT`-/`TIMESTAMPTZ`-Singleton-Revision, eine atomische Triggerfunktion und Statement-Trigger ergänzen; Neuprovisionierungs-Builder auf denselben Sollvertrag bringen und mehrere Revisionserhöhungen pro Fachtransaktion zulassen.
+- [x] 1.3 Zentralen Triggerkatalog gegen alle vom Mainserver-Materialisierungspfad gelesenen Tabellen und erforderlichen Update-Spalten prüfen; PDF-, Reminder- und sonstige irrelevante Änderungen ausdrücklich ausschließen sowie Privilegien minimal halten.
+- [x] 1.4 Externe Waste-Schemadokumentation aktualisieren; zentralen Snapshot `docs/development/studio-db-schema-final.sql` prüfen und die begründete Nichtänderung der externen Fachtabelle dokumentieren.
+
+## 2. Hoststatus und Jobergebnis
+
+- [x] 2.1 Repository-Abfrage für den nach `finished_at` letzten erfolgreichen `waste-management.sync-mainserver`-Job derselben Instanz implementieren und aktive Läufe separat bestimmen.
+- [x] 2.2 Autorisierten Waste-Status-Endpunkt über `packages/auth-runtime` und `packages/routing` ergänzen, der externe Quellrevision, zentralen Jobstore und Jahresfenster ohne Mainserver-Aufruf kombiniert.
+- [x] 2.3 Sync-Job auf einen konsistenten Waste-Quellsnapshot umstellen und gelesene Revision sowie Jahresfenster im deklarierten Ergebnisvertrag persistieren.
+- [x] 2.4 Pure Differenzplanung vor den Schreibbatches separieren und geplante Create-, Delete- und Gesamtzahlen nach dem echten Mainserver-Snapshot im zentralen Jobfortschritt veröffentlichen.
+- [x] 2.5 `unknown`, Legacy-Ergebnis, fehlgeschlagenen Job, parallele Mutation und Jahresfensterwechsel fail-closed behandeln; direkte Mainserver-Parität nicht behaupten.
+
+## 3. Fachliche UI und Accessibility
+
+- [x] 3.1 Waste-Seite an den Status-Endpunkt anbinden, ohne beim Seitenaufruf einen Mainserver-Dry-Run oder eine Mainserver-Abfrage auszulösen.
+- [x] 3.2 Gemeinsamen Studio-Header beibehalten, aktuellen Breadcrumb und H1 auf `Abfallkalender` vereinheitlichen sowie Beschreibung und Webversionslink von den operativen Synchronisierungshinweisen trennen.
+- [x] 3.3 Direkt unter dem Header und vor der Tabnavigation genau eine pluginlokale responsive Statuskomponente ergänzen: bei `pending` Erklärung und hervorgehobene Aktion `Änderungen synchronisieren` gemeinsam darstellen; zum Abschluss und Speichern aller geplanten Termin-/Abholortänderungen auffordern sowie den erneuten Abgleich bei späteren Änderungen erklären; bei `clean` den Button vollständig ausblenden; aktiven Job, `unknown` und Fehler samt passender Handlung im selben Bereich eindeutig und ohne alleinige Farbcodierung darstellen; initialen Ladezustand und fehlende Ausführungsberechtigung ohne falsche Statusbehauptung abdecken.
+- [x] 3.4 Nach Jobannahme die stabile Job-ID und den zentralen Status verfolgen; nach der Differenzphase getrennte Übertragungs-/Löschzahlen und den Hinweis auf bis zu eine Stunde Verarbeitungsdauer anzeigen.
+- [x] 3.5 Deutsche und englische Übersetzungen mit korrekter Pluralisierung ergänzen; dauerhafte `clean`-/`pending`-Hinweise ohne assertive Alert-Semantik umsetzen sowie Live-Region und Fokusverhalten auf bedeutende Status-/Phasenwechsel begrenzen.
+
+## 4. Tests, Dokumentation und Verifikation
+
+- [ ] 4.1 Repository- und Migrationsintegrationstests für relevante Inserts, Updates, Deletes, Kaskaden, Bulk-Operationen, irrelevante Felder und monotone Revisionen ergänzen.
+- [ ] 4.2 Runtime-Tests für konsistenten Quellsnapshot, Create-/Delete-Plan, Jobergebnis, parallele Änderungen, Legacy-Jobs, Fehler und Jahreswechsel ergänzen.
+- [ ] 4.3 API-, Berechtigungs- und Plugin-UI-Tests für alle Status, ausgeblendete Clean-Aktion, den beratenden Abschluss-/Speicherhinweis, nicht blockierte dringende Korrekturen, Job-Polling, Reload, Counts, Fehlerpersistenz, i18n und Accessibility ergänzen.
+- [x] 4.4 Arc42-Abschnitte 05, 06 und 08 sowie eine ADR mit Verweis in Abschnitt 09 aktualisieren; keine zweite normative Rolloutanleitung einführen.
+- [x] 4.5 Kleinsten relevanten Unit-, Type-, ESLint-, Server-Runtime-, Accessibility-, DB-/Migrations- und File-Placement-Gate-Pfad je abgeschlossenem Änderungsblock ausführen.
+- [ ] 4.6 Affected-Scope vor breiten Runs messen und vor dem initialen PR-Push bevorzugt `pnpm test:pr` sowie `openspec validate add-waste-mainserver-sync-status --strict` ausführen.
+- [ ] 4.7 Staging-Migration, Buttonstatus, echten Sync, geplante und finale Counts, parallele Änderung und unveränderten Mainserver-Zugriff beim Seitenaufruf evidenzbasiert verifizieren.

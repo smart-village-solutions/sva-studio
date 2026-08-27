@@ -1,5 +1,9 @@
 import type { SqlExecutor } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
+import {
+  createWasteMainserverSourceStateRepositoryPart,
+  wasteMainserverSourceStateStatements,
+} from './master-data.mainserver-source-state.js';
 
 import {
   createWasteCollectionLocationRepositoryPart,
@@ -60,6 +64,7 @@ export type { WasteMasterDataRepository } from './master-data.contract.js';
 export const createWasteMasterDataRepository = (
   executor: SqlExecutor
 ): WasteMasterDataRepository => ({
+  ...createWasteMainserverSourceStateRepositoryPart(executor),
   ...createWasteFractionRepositoryPart(executor),
   ...createWasteRegionCityRepositoryPart(executor),
   ...createWasteStreetHouseNumberRepositoryPart(executor),
@@ -77,6 +82,7 @@ export const createWasteMasterDataRepository = (
 });
 
 export const wasteMasterDataStatements = {
+  ...wasteMainserverSourceStateStatements,
   ...wasteFractionStatements,
   ...wasteRegionCityStatements,
   ...wasteStreetHouseNumberStatements,

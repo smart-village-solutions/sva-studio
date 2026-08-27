@@ -216,7 +216,7 @@ const breadcrumbRoutes: ReadonlyArray<
   },
   {
     pattern: /^\/plugins\/waste-management$/,
-    build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.wasteManagement') }],
+    build: () => [overviewBreadcrumb(), { label: t('shell.breadcrumbs.wasteCalendar') }],
   },
   {
     pattern: /^\/admin\/users\/[^/]+$/,

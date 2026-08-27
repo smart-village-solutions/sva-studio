@@ -191,6 +191,8 @@ const wasteManagementPluginJobTypes = [
         'longestBatchDurationMs',
         'studioSnapshotCount',
         'mainserverSnapshotCount',
+        'sourceRevision',
+        'yearWindow',
       ],
     },
     errors: {

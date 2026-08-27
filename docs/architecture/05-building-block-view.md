@@ -151,6 +151,7 @@ Abhängigkeiten des aktuellen Systems.
 - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
 - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
 - stößt nach erfolgreichen Fraktionsmutationen asynchron den dedizierten Job `waste-management.sync-waste-types` an und degradiert reine Mainserver-Sync-Fehler bewusst zu einem Retry-Hinweis im Fraktionskontext
+- zeigt den Stand des separaten Terminabgleichs zum SVA Mainserver revisionsbasiert direkt unter dem ruhigen Seitenheader; der Lesepfad kombiniert die tenantlokale Waste-Quellrevision mit dem bestehenden zentralen Jobstore und führt weder Dry-Run noch Mainserver-Abfrage aus
 - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
 - bietet unter den eingeklappten erweiterten Systemfunktionen die autorisierte Aktion zur Ergänzung fehlender Orts-Postleitzahlen an; Providerzugriff, Bewertung und Mutation bleiben vollständig hostgeführt
 
@@ -192,6 +193,7 @@ Abhängigkeiten des aktuellen Systems.
 - der Job `waste-management.enrich-postal-codes` verwendet die konfigurierte Karten-Geocodierung serverseitig, taktet Provideraufrufe und schreibt ausschließlich weiterhin leere `waste_cities.postal_code`-Felder über ein konditionales Repository-Update
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
 - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
+- der Mainserver-Terminabgleich liest seine tenantlokale Quellrevision zusammen mit allen Materialisierungstabellen in einem PostgreSQL-Snapshot; `iam.studio_jobs` bleibt alleinige Wahrheit für aktiven Lauf, letzten Erfolg, Progress und Fehler
 - Tourverschiebungen überschreiten die Repository-Grenze als ISO-Kalenderdaten; PostgreSQL persistiert sie als `DATE` und erzwingt ihre Eindeutigkeit über partielle Indizes
 - jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird
 - Modulzuweisung und erneute Aktivierung enqueueen den namespaced Provisionierungsjob im vorhandenen Plugin-Operations-Pfad; nur die privilegierte Lane im vorhandenen Provisioner-Service darf Datenbanken und Rollen anlegen

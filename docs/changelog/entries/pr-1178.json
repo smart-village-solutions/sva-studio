@@ -1,0 +1,4 @@
+{
+  "prNumber": 1178,
+  "body": "Im Abfallmanagement ist jetzt direkt erkennbar, ob Änderungen noch an den externen SVA-Mainserver übertragen werden müssen.\n\n- Der Hinweis „Abgleich steht aus“ erscheint nur bei noch nicht übertragenen Änderungen und enthält die Aktion „Änderungen synchronisieren“.\n- Während der Übertragung werden Fortschritt und Anzahl der betroffenen Termine beziehungsweise Orte angezeigt.\n- Ein Laufzeithinweis erklärt, dass die Übertragung je nach Datenmenge bis zu einer Stunde dauern kann."
+}

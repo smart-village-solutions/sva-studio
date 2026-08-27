@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import { usePluginTranslation, type WasteMainserverSyncStatusRecord } from '@sva/plugin-sdk';
+import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
 
 import {
   normalizeWasteManagementSearchParams,
@@ -11,8 +11,10 @@ import {
 } from './search-params.js';
 import {
   getWasteManagementSettings,
+  getWasteMainserverSyncStatus,
   startWasteManagementMainserverSync,
 } from './waste-management.api.js';
+import { WasteManagementMainserverSyncStatus } from './waste-management-sync-status.js';
 import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
@@ -111,20 +113,24 @@ const useWasteManagementSyncAction = (pt: ReturnType<typeof usePluginTranslation
   const [syncRunning, setSyncRunning] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
 
-  const startSync = async () => {
+  const startSync = async (onStarted: () => Promise<void>) => {
     setStatusMessage(null);
     setSyncRunning(true);
     try {
-      await startWasteManagementMainserverSync({});
+      try {
+        await startWasteManagementMainserverSync({});
+      } catch {
+        setStatusMessage({
+          kind: 'error',
+          text: pt('tools.sync.startError'),
+        });
+        return;
+      }
       setStatusMessage({
         kind: 'success',
         text: pt('tools.sync.startSuccess'),
       });
-    } catch {
-      setStatusMessage({
-        kind: 'error',
-        text: pt('tools.sync.startError'),
-      });
+      await onStarted().catch(() => undefined);
     } finally {
       setSyncRunning(false);
     }
@@ -137,22 +143,68 @@ const useWasteManagementSyncAction = (pt: ReturnType<typeof usePluginTranslation
   };
 };
 
-const WasteManagementSyncAction = ({
-  canRunMainserverSync,
-  disabled,
-  onClick,
-  pt,
-}: Readonly<{
-  canRunMainserverSync: boolean;
-  disabled: boolean;
-  onClick: () => Promise<void>;
-  pt: ReturnType<typeof usePluginTranslation>;
-}>) =>
-  canRunMainserverSync ? (
-    <Button type="button" disabled={disabled} onClick={() => void onClick()}>
-      {pt('tools.sync.actionLabel')}
-    </Button>
-  ) : null;
+const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
+  const [status, setStatus] = useState<WasteMainserverSyncStatusRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const latestRequestId = useRef(0);
+
+  const refresh = useCallback(async () => {
+    if (!enabled) return;
+    const requestId = ++latestRequestId.current;
+    try {
+      setError(false);
+      const nextStatus = await getWasteMainserverSyncStatus();
+      if (requestId === latestRequestId.current) {
+        setStatus(nextStatus);
+      }
+    } catch {
+      if (requestId === latestRequestId.current) {
+        setError(true);
+      }
+    } finally {
+      if (requestId === latestRequestId.current) {
+        setLoading(false);
+      }
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) {
+      latestRequestId.current += 1;
+      setLoading(false);
+      return;
+    }
+    void refresh();
+  }, [enabled, refresh]);
+
+  const pollingDelayMs = status?.activeJob ? 3_000 : 10_000;
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    let cancelled = false;
+    let timeoutId: number | undefined;
+    const scheduleRefresh = () => {
+      timeoutId = window.setTimeout(async () => {
+        await refresh();
+        if (!cancelled) {
+          scheduleRefresh();
+        }
+      }, pollingDelayMs);
+    };
+
+    scheduleRefresh();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [enabled, pollingDelayMs, refresh]);
+
+  return { error, loading, refresh, status };
+};
 
 export const WasteManagementPage = () => {
   const pt = usePluginTranslation('wasteManagement');
@@ -162,6 +214,9 @@ export const WasteManagementPage = () => {
   const uiAccess = useWasteManagementUiAccess(search.tab);
   const calendarWebUrl = useWasteManagementCalendarWebUrl(uiAccess);
   const { syncRunning, statusMessage, startSync } = useWasteManagementSyncAction(pt);
+  const syncStatus = useWasteManagementMainserverSyncStatus(
+    uiAccess.isResolved && uiAccess.visibleTabIds.length > 0
+  );
 
   useWasteManagementVisibleTabRedirect(navigate, search, uiAccess);
 
@@ -176,16 +231,21 @@ export const WasteManagementPage = () => {
           webVersionLinkLabel={pt('page.webVersionLinkLabel')}
         />
       }
-      primaryAction={
-        <WasteManagementSyncAction
-          canRunMainserverSync={uiAccess.canRunMainserverSync}
-          disabled={syncRunning}
-          onClick={startSync}
-          pt={pt}
-        />
-      }
-      toolbar={statusMessage ? <StatusNotice message={statusMessage} /> : null}
     >
+      <div className="mb-6 space-y-3">
+        <WasteManagementMainserverSyncStatus
+          canOpenJobDetails={uiAccess.canOpenJobDetails}
+          canRunMainserverSync={uiAccess.canRunMainserverSync}
+          error={syncStatus.error}
+          loading={syncStatus.loading}
+          onOpenJob={(jobId) => void navigate({ to: '/monitoring/jobs/$jobId', params: { jobId } })}
+          onStartSync={() => startSync(syncStatus.refresh)}
+          pt={pt}
+          starting={syncRunning}
+          status={syncStatus.status}
+        />
+        {statusMessage ? <StatusNotice message={statusMessage} /> : null}
+      </div>
       <WasteManagementPageTabs
         pt={pt}
         search={search}

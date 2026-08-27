@@ -94,6 +94,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 052 | [Create-Policy, Read-Scope und Bestandsprincipal trennen](./ADR-052-create-policy-read-scope-und-bestandsprincipal.md)                                                        | ✅     | 2026-08-13         | IAM / Content                     |
 | 053 | [Layout-Shell mit Skeleton-Bereichen](./ADR-053-layout-shell-skeleton-architecture.md)                                                                                        | ✅     | 2026-02-25         | Frontend / Layout                 |
 | 054 | [Kontrollierter Inhabertransfer für Inhalte](./ADR-054-kontrollierter-inhabertransfer-fuer-inhalte.md)                                                                        | ✅     | 2026-08-27         | IAM / Content / Mainserver        |
+| 055 | [Waste-Mainserver-Abgleichsstatus über Quellrevision](./ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)                                                      | ✅     | 2026-08-27         | Waste / Integration / Runtime     |
 
 ### Kanonischer Ablageort
 

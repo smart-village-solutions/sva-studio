@@ -48,6 +48,18 @@ type WasteSyncClientState = {
     createdAt: string;
     updatedAt: string;
   }[];
+  readonly tourAssignments?: readonly {
+    id: string;
+    tourId: string;
+    wasteFractionId: string;
+    startDate: string;
+    endDate?: string;
+    recurrence: string;
+    recurrenceInterval: number;
+    weekdays: readonly number[];
+    createdAt: string;
+    updatedAt: string;
+  }[];
   readonly locationTourPickupDates: readonly {
     id: string;
     locationId: string;
@@ -130,18 +142,67 @@ const listSvaMainserverWasteSyncSnapshotMock = vi.hoisted(() =>
 );
 const createSvaMainserverWastePickupTimesMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteSvaMainserverWastePickupTimesMock = vi.hoisted(() => vi.fn(async () => undefined));
-const withWasteClientMock = vi.hoisted(() => vi.fn(async () => ({
+const withWasteClientMock = vi.hoisted(() => vi.fn());
+
+const createWasteClientContext = (state: WasteSyncClientState) => ({
+  client: {
+    query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+    release: vi.fn(),
+  },
+  repository: {
+    getWasteMainserverSourceRevision: vi.fn(async () => ({
+      sourceRevision: '7',
+      changedAt: '2026-01-14T12:00:00.000Z',
+    })),
+    listWasteTours: vi.fn(async () => state.tours),
+    listWasteFractions: vi.fn(async () => state.fractions),
+    listWasteLocationTourLinks: vi.fn(async () => state.links),
+    listWasteCollectionLocations: vi.fn(async () => state.locations),
+    listWasteHouseNumbers: vi.fn(async () => state.houseNumbers ?? []),
+    listWasteLocationTourPickupDates: vi.fn(async () => state.locationTourPickupDates),
+    listWasteTourAssignments: vi.fn(async () => state.tourAssignments ?? []),
+    listWasteCities: vi.fn(async () => state.cities),
+    listWasteStreets: vi.fn(async () => state.streets),
+    listWasteTourDateShifts: vi.fn(async () => state.tourDateShifts),
+    listWasteGlobalDateShifts: vi.fn(async () => state.globalDateShifts),
+    listWasteHolidayRules: vi.fn(async () => state.holidayRules),
+  },
+});
+
+const setWasteClientState = (state: WasteSyncClientState) => {
+  withWasteClientMock.mockImplementationOnce(
+    async (
+      _deps: unknown,
+      _instanceId: string,
+      work: (context: ReturnType<typeof createWasteClientContext>) => Promise<unknown>
+    ) => work(createWasteClientContext(state))
+  );
+};
+
+const setDefaultWasteClientState = (state: WasteSyncClientState) => {
+  withWasteClientMock.mockImplementation(
+    async (
+      _deps: unknown,
+      _instanceId: string,
+      work: (context: ReturnType<typeof createWasteClientContext>) => Promise<unknown>
+    ) => work(createWasteClientContext(state))
+  );
+};
+
+const emptyWasteClientState = (): WasteSyncClientState => ({
   tours: [],
   fractions: [],
   links: [],
   locations: [],
+  houseNumbers: [],
   locationTourPickupDates: [],
+  tourAssignments: [],
   cities: [],
   streets: [],
   tourDateShifts: [],
   globalDateShifts: [],
   holidayRules: [],
-}) as unknown as WasteSyncClientState));
+});
 
 vi.mock('@sva/sva-mainserver/server', () => ({
   CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE: 100,
@@ -169,18 +230,7 @@ describe('waste-management-mainserver-sync.server', () => {
     deleteSvaMainserverWastePickupTimesMock.mockReset();
     deleteSvaMainserverWastePickupTimesMock.mockResolvedValue(undefined);
     withWasteClientMock.mockReset();
-    withWasteClientMock.mockResolvedValue({
-      tours: [],
-      fractions: [],
-      links: [],
-      locations: [],
-      locationTourPickupDates: [],
-      cities: [],
-      streets: [],
-      tourDateShifts: [],
-      globalDateShifts: [],
-      holidayRules: [],
-    } as unknown as WasteSyncClientState);
+    setDefaultWasteClientState(emptyWasteClientState());
   });
 
   it('computes create and delete sets from normalized Studio and Mainserver rows', async () => {
@@ -500,7 +550,7 @@ describe('waste-management-mainserver-sync.server', () => {
   });
 
   it('includes imported location pickup dates in the mainserver sync materialization', async () => {
-    withWasteClientMock.mockResolvedValueOnce({
+    setWasteClientState({
       tours: [
         {
           id: 'tour-1',
@@ -603,7 +653,7 @@ describe('waste-management-mainserver-sync.server', () => {
   });
 
   it('materializes studio rows from tour recurrence and date-shift rules before sync', async () => {
-    withWasteClientMock.mockResolvedValueOnce({
+    setWasteClientState({
       tours: [
         {
           id: 'tour-1',
@@ -748,7 +798,7 @@ describe('waste-management-mainserver-sync.server', () => {
 
     const progressEvents: StudioJobProgress[] = [];
 
-    withWasteClientMock.mockResolvedValueOnce({
+    setWasteClientState({
       tours: [
         {
           id: 'tour-1',

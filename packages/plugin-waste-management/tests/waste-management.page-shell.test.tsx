@@ -1,10 +1,16 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementPage } from '../src/waste-management.page.js';
 
 const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn(async () => null));
+const getWasteMainserverSyncStatusMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    sourceState: 'pending' as const,
+    expectedYearWindow: [2026, 2027] as const,
+  }))
+);
 const startWasteManagementMainserverSyncMock = vi.hoisted(() =>
   vi.fn(async () => ({
     id: 'job-sync-1',
@@ -12,6 +18,14 @@ const startWasteManagementMainserverSyncMock = vi.hoisted(() =>
     jobTypeId: 'waste-management.sync-mainserver',
   }))
 );
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
+};
 const navigateMock = vi.fn();
 const searchState = {
   tab: 'tools',
@@ -49,6 +63,7 @@ const useWasteManagementUiAccessMock = vi.fn(() => ({
   canRunSeed: true,
   canRunMainserverSync: true,
   canRunReset: true,
+  canOpenJobDetails: true,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -65,6 +80,7 @@ vi.mock('../src/waste-management.ui-access.js', () => ({
 }));
 
 vi.mock('../src/waste-management.api.js', () => ({
+  getWasteMainserverSyncStatus: getWasteMainserverSyncStatusMock,
   getWasteManagementSettings: getWasteManagementSettingsMock,
   startWasteManagementMainserverSync: startWasteManagementMainserverSyncMock,
 }));
@@ -142,6 +158,11 @@ describe('WasteManagementPage shell', () => {
   beforeEach(() => {
     getWasteManagementSettingsMock.mockReset();
     getWasteManagementSettingsMock.mockResolvedValue(null);
+    getWasteMainserverSyncStatusMock.mockReset();
+    getWasteMainserverSyncStatusMock.mockResolvedValue({
+      sourceState: 'pending',
+      expectedYearWindow: [2026, 2027],
+    });
     navigateMock.mockReset();
     useWasteManagementUiAccessMock.mockReset();
     useWasteManagementUiAccessMock.mockReturnValue({
@@ -163,6 +184,7 @@ describe('WasteManagementPage shell', () => {
       canRunSeed: true,
       canRunMainserverSync: true,
       canRunReset: true,
+      canOpenJobDetails: true,
     });
     startWasteManagementMainserverSyncMock.mockReset();
     startWasteManagementMainserverSyncMock.mockResolvedValue({
@@ -231,6 +253,7 @@ describe('WasteManagementPage shell', () => {
       canRunSeed: false,
       canRunMainserverSync: false,
       canRunReset: false,
+      canOpenJobDetails: false,
     });
 
     render(<WasteManagementPage />);
@@ -263,13 +286,104 @@ describe('WasteManagementPage shell', () => {
     });
   });
 
-  it('renders the header sync action and starts the mainserver sync job', async () => {
+  it('renders the pending sync action inside the status block and starts the mainserver sync job', async () => {
     render(<WasteManagementPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'tools.sync.actionLabel' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'page.syncStatus.startAction' }));
 
     await waitFor(() => {
       expect(startWasteManagementMainserverSyncMock).toHaveBeenCalledWith({});
     });
+  });
+
+  it('keeps the successful start notice when the following status refresh fails', async () => {
+    getWasteMainserverSyncStatusMock
+      .mockResolvedValueOnce({ sourceState: 'pending', expectedYearWindow: [2026, 2027] })
+      .mockRejectedValueOnce(new Error('status unavailable'));
+
+    render(<WasteManagementPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'page.syncStatus.startAction' }));
+
+    expect(await screen.findByText('tools.sync.startSuccess')).toBeTruthy();
+    expect(screen.queryByText('tools.sync.startError')).toBeNull();
+  });
+
+  it('waits for a polling response before scheduling the next status request', async () => {
+    const activeStatus = {
+      sourceState: 'pending' as const,
+      expectedYearWindow: [2026, 2027] as const,
+      activeJob: { id: 'job-sync-1', status: 'running' as const },
+    };
+    const pendingPoll = createDeferred<typeof activeStatus>();
+    const scheduledPolls: Array<() => Promise<void>> = [];
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    const setTimeoutSpy = vi
+      .spyOn(window, 'setTimeout')
+      .mockImplementation((handler: TimerHandler, timeout?: number) => {
+        if (timeout === 3_000) {
+          scheduledPolls.push(handler as () => Promise<void>);
+          return 2_147_483_647;
+        }
+        return nativeSetTimeout(handler, timeout);
+      });
+    getWasteMainserverSyncStatusMock
+      .mockResolvedValueOnce(activeStatus)
+      .mockImplementationOnce(() => pendingPoll.promise);
+
+    try {
+      render(<WasteManagementPage />);
+      expect(await screen.findByText('page.syncStatus.runningTitle')).toBeTruthy();
+      await waitFor(() => expect(scheduledPolls).toHaveLength(1));
+
+      act(() => void scheduledPolls[0]?.());
+      expect(getWasteMainserverSyncStatusMock).toHaveBeenCalledTimes(2);
+      expect(scheduledPolls).toHaveLength(1);
+
+      await act(async () => {
+        pendingPoll.resolve(activeStatus);
+        await pendingPoll.promise;
+      });
+      await waitFor(() => expect(scheduledPolls).toHaveLength(2));
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it('polls a clean status so in-page data changes become actionable without a remount', async () => {
+    const cleanStatus = {
+      sourceState: 'clean' as const,
+      expectedYearWindow: [2026, 2027] as const,
+    };
+    const pendingStatus = {
+      sourceState: 'pending' as const,
+      expectedYearWindow: [2026, 2027] as const,
+    };
+    let poll: (() => Promise<void>) | undefined;
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    const setTimeoutSpy = vi
+      .spyOn(window, 'setTimeout')
+      .mockImplementation((handler: TimerHandler, timeout?: number) => {
+        if (timeout === 10_000) {
+          poll = handler as () => Promise<void>;
+          return 2_147_483_647;
+        }
+        return nativeSetTimeout(handler, timeout);
+      });
+    getWasteMainserverSyncStatusMock
+      .mockResolvedValueOnce(cleanStatus)
+      .mockResolvedValueOnce(pendingStatus);
+
+    try {
+      render(<WasteManagementPage />);
+      expect(await screen.findByText('page.syncStatus.cleanTitle')).toBeTruthy();
+      await waitFor(() => expect(poll).toBeTypeOf('function'));
+
+      await act(async () => {
+        await poll?.();
+      });
+      expect(await screen.findByText('page.syncStatus.pendingTitle')).toBeTruthy();
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
   });
 });

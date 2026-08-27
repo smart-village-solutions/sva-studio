@@ -9,6 +9,7 @@ export { wasteTenantMigrations } from './waste-tenant-migration-catalog.mjs';
 const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
 const migrationIdPattern = /^\d{8}_\d{2}_[a-z0-9_]+$/u;
 const migrationLedgerTable = 'public.sva_waste_schema_migrations';
+const mainserverSourceStateTable = 'public.waste_mainserver_source_state';
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -106,6 +107,16 @@ export const migrateWasteTenantDatabase = async ({
         await verifyMigration(client, migration);
       }
     }
+
+    await client.query(
+      `REVOKE ALL PRIVILEGES ON TABLE ${mainserverSourceStateTable} FROM PUBLIC, ${quoteIdentifier(publicAppRole)};`
+    );
+    await client.query(
+      `REVOKE INSERT, UPDATE, DELETE ON TABLE ${mainserverSourceStateTable} FROM ${quoteIdentifier(appRole)};`
+    );
+    await client.query(
+      `GRANT SELECT ON TABLE ${mainserverSourceStateTable} TO ${quoteIdentifier(appRole)};`
+    );
 
     await client.query('COMMIT;');
     transactionStarted = false;

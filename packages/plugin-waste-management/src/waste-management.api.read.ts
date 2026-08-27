@@ -5,6 +5,7 @@ import {
   type WasteCollectionLocationSelectionFilter,
   type WasteManagementImportProfileCatalogEntry,
   type WasteManagementHistoryOverview,
+  type WasteMainserverSyncStatusRecord,
   type WasteManagementSettingsRecord,
 } from '@sva/plugin-sdk';
 
@@ -40,6 +41,13 @@ export const getWasteManagementSettings = async (): Promise<WasteManagementSetti
   requestWasteManagementRead('settings', async () =>
     requestWasteManagementItem<WasteManagementSettingsRecord | null>({
       url: '/api/v1/waste-management/settings',
+    })
+  );
+
+export const getWasteMainserverSyncStatus = async (): Promise<WasteMainserverSyncStatusRecord> =>
+  requestWasteManagementRead('mainserver-sync-status', async () =>
+    requestWasteManagementItem<WasteMainserverSyncStatusRecord>({
+      url: '/api/v1/waste-management/mainserver-sync-status',
     })
   );
 

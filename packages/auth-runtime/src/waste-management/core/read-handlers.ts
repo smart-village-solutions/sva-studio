@@ -4,6 +4,7 @@ import { buildLogContext } from '../../log-context.js';
 import { createApiError, readPage } from '../../shared/request-helpers.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { authorizeWasteManagementAction } from './auth.js';
+import { getWasteManagementMainserverSyncStatusInternal } from './mainserver-sync-status-read-handler.js';
 import {
   buildMasterDataLogFields,
   resolveMasterDataOverview,
@@ -40,6 +41,7 @@ const updateWasteVisibleStatusSafely = async (
 };
 
 export const wasteManagementReadHandlers = {
+  getWasteManagementMainserverSyncStatusInternal,
   getWasteManagementSettingsInternal: async (
     _request: Request,
     ctx: AuthenticatedRequestContext,

@@ -133,7 +133,8 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
   },
   sync: {
     actionLabel: 'Synchronize',
-    startSuccess: 'Mainserver synchronization was started.',
+    startSuccess:
+      'Mainserver synchronization was started. The transfer can take up to one hour.',
     startError: 'Mainserver synchronization could not be started.',
   },
   reset: {

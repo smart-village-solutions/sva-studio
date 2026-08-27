@@ -2,11 +2,12 @@ import * as authRuntimeRoutes from '@sva/auth-runtime/runtime-routes';
 
 import type { AuthHandlers, AuthRoutePath } from './auth.route-handlers.types.js';
 import { createMethodNotAllowedHandler } from './auth.route-runtime.server.js';
-
 const routeHandler =
   (handler: (request: Request) => Promise<Response> | Response) =>
   async ({ request }: { request: Request }): Promise<Response> =>
     handler(request);
+
+const { getMainserverSyncStatus: getSyncStatus } = authRuntimeRoutes.wasteManagementHandlers;
 
 export const governanceAuthHandlerMap = {
   '/iam/governance/workflows': {
@@ -227,6 +228,7 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/tools/mainserver-sync': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startMainserverSync),
   },
+  '/api/v1/waste-management/mainserver-sync-status': { GET: routeHandler(getSyncStatus) },
   '/api/v1/waste-management/tools/sync-waste-types': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startSyncWasteTypes),
   },

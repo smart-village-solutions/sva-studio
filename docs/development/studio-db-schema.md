@@ -273,6 +273,8 @@ Kernidee:
 
 Mandantenspezifische Waste-Stammdaten gehören nicht zum zentralen `iam`-Snapshot. Ihr kanonisches Provisioning liegt in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`. Für ortsbezogene News-Zielgruppen enthält `waste_cities` dort die optionale Spalte `postal_code`; neu auswählbar sind nur aktive Abholorte mit vollständigem Stadt-, Postleitzahl- und Straßenbezug. Eine Hausnummer ist optional: Ist sie vorhanden, wird sie Bestandteil des Zielschlüssels; ohne Hausnummer gilt das Ziel für die gesamte Straße.
 
+Der Mainserver-Abgleich führt in jeder Waste-Tenant-Datenbank zusätzlich den Singleton `waste_mainserver_source_state`. Statement-Trigger auf den materialisierungsrelevanten Waste-Tabellen erhöhen dessen monotone `BIGINT`-Revision und `changed_at` transaktional. Der Sync liest Revision und Fachdaten in einem konsistenten Snapshot und speichert die verarbeitete Revision ausschließlich im Ergebnis des zentralen Jobs `waste-management.sync-mainserver`. Die Tabelle bleibt deshalb bewusst außerhalb von `studio-db-schema-final.sql`: Dieser Snapshot beschreibt nur die zentrale Studio-Datenbank. Bestands-Tenants erhalten den Vertrag über die versionierte Migration `20260827_01_add_mainserver_source_revision`.
+
 ### 7. Media-Management
 
 Kernmodell für hochgeladene und referenzierte Medien:

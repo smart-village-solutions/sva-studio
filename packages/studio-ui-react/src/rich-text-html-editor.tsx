@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
+import { sanitizeRichTextHtml } from '@sva/core';
 import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/react';

@@ -164,9 +164,6 @@ export const sharedVitestConfig = defineConfig({
       '@sva/core/security': fileURLToPath(
         new URL('../../packages/core/src/security/index.ts', import.meta.url)
       ),
-      '@sva/core/rich-text-html': fileURLToPath(
-        new URL('../../packages/core/src/rich-text-html.ts', import.meta.url)
-      ),
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
       '@sva/waste-management-runtime': fileURLToPath(
         new URL('../../packages/waste-management-runtime/src/index.ts', import.meta.url)

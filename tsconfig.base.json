@@ -10,7 +10,6 @@
     "baseUrl": ".",
     "paths": {
       "@sva/core": ["packages/core/src/index.ts"],
-      "@sva/core/rich-text-html": ["packages/core/src/rich-text-html.ts"],
       "@sva/core/waste-output": ["packages/core/src/waste-management-output.ts"],
       "@sva/core/security": ["packages/core/src/security/index.ts"],
       "@sva/auth-runtime": ["packages/auth-runtime/src/index.ts"],

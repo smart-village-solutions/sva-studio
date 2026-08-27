@@ -136,7 +136,11 @@ test.describe('news plugin', () => {
     await bodyEditorContainer
       .getByRole('combobox', { name: /Textformat|Text format/ })
       .selectOption('heading-2');
-    await expect(bodyEditor.locator('h2')).toContainText('Inhalt');
+    const bodyHeading = bodyEditor.locator('h2');
+    await expect(bodyHeading).toContainText('Inhalt');
+    await expect(bodyHeading).toHaveCSS('font-size', '24px');
+    await expect(bodyHeading).toHaveCSS('font-weight', '600');
+    await expect(bodyHeading.locator('a')).toHaveCSS('text-decoration-line', 'underline');
 
     await bodyEditorContainer.getByRole('button', { name: 'HTML' }).click();
     const bodyHtmlSource = bodyEditorContainer.getByRole('textbox', {

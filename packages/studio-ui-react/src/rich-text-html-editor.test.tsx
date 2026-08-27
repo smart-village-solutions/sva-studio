@@ -215,6 +215,8 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('button', { name: 'Vorwärts' })).toBeTruthy();
     expect(screen.getByRole('textbox')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Editoransicht' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Fett' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Zurück' }).getAttribute('aria-pressed')).toBeNull();
     expect(screen.getByRole('button', { name: 'WYSIWYG' }).getAttribute('aria-pressed')).toBe(
       'true'
     );
@@ -337,8 +339,10 @@ describe('RichTextHtmlEditor', () => {
     fireEvent.click(redoButton);
 
     expect(mouseDownEvent.defaultPrevented).toBe(true);
-    expect(bulletListButton.className).toContain('bg-muted');
-    expect(boldButton.className).toContain('bg-muted');
+    expect(bulletListButton.className).toContain('bg-background');
+    expect(bulletListButton.className).toContain('border-border');
+    expect(boldButton.className).toContain('bg-background');
+    expect(boldButton.className).toContain('border-border');
     expect(tiptapState.actions).toEqual(
       expect.arrayContaining([
         'bulletList',

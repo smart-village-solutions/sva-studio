@@ -109,7 +109,13 @@ export const fulfillContentRoute = async (route: Route, newsItems: NewsRecord[])
       body: JSON.stringify(
         item
           ? {
-              data: item,
+              data: {
+                ...item,
+                dataProvider: item.dataProvider ?? {
+                  id: 'provider-source',
+                  name: 'Redaktion Musterhausen',
+                },
+              },
               meta: {
                 access: {
                   'news.update': true,

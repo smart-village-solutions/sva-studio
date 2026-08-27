@@ -88,7 +88,7 @@ describe('deployment contracts', () => {
   });
 
   it('documents the active Traefik v3 ingress contract', () => {
-    const overview = load('docs/guides/deployment-overview.md');
+    const overview = load('docs/operations/deployment-overview.md');
     const rolloutAgent = load('.github/agents/rollout-operator.agent.md');
 
     expect(overview).toContain('Traefik auf `sva` läuft derzeit v3.6');

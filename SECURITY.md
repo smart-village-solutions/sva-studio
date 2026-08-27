@@ -6,7 +6,7 @@ Diese Richtlinie beschreibt den verbindlichen Melde- und Bearbeitungsprozess fü
 
 - Sie gilt für den aktiv gepflegten Stand auf `main`.
 - Sie deckt Anwendungscode, Infrastrukturdefinitionen im Repository, Build-Konfiguration und dokumentierte Betriebsprofile ab.
-- Sie ersetzt keine Incident-Kommunikation für laufende Ausfälle. Dafür gilt [`docs/guides/incident-response.md`](./docs/guides/incident-response.md).
+- Sie ersetzt keine Incident-Kommunikation für laufende Ausfälle. Dafür gilt [`docs/operations/incident-response.md`](./docs/operations/incident-response.md).
 
 ## Unterstützte Stände
 
@@ -152,5 +152,5 @@ Für dieses Repository gilt bei SSRF- und ähnlichen Outbound-Request-Befunden:
 ## Verweise
 
 - GitHub-Einstieg: [`.github/SECURITY.md`](./.github/SECURITY.md)
-- ausführliche Richtlinie: [`docs/guides/security-policy.md`](./docs/guides/security-policy.md)
-- Incident-Kommunikation: [`docs/guides/incident-response.md`](./docs/guides/incident-response.md)
+- ausführliche Richtlinie: [`docs/governance/security-policy.md`](./docs/governance/security-policy.md)
+- Incident-Kommunikation: [`docs/operations/incident-response.md`](./docs/operations/incident-response.md)

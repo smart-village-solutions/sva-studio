@@ -44,6 +44,7 @@ import type { WasteAnnualTourTransferHandlerDeps } from './annual-tour-transfer-
 import type { WasteCityHandlerDeps } from './city-deps.js';
 import type { WasteCollectionLocationReadHandlerDeps } from './collection-location-read-deps.js';
 import type { SaveWasteCustomRecurrencePresetsInput } from './custom-recurrence-deps.js';
+import type { WasteMainserverSyncStatusHandlerDeps } from './mainserver-sync-status-deps.js';
 import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
 
 type ResolveWasteActorInfoResult =
@@ -313,4 +314,5 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
 
 export type WasteManagementHandlerDeps = WasteManagementHandlerDepsBase &
   WasteAnnualTourTransferHandlerDeps &
-  WasteCollectionLocationReadHandlerDeps;
+  WasteCollectionLocationReadHandlerDeps &
+  WasteMainserverSyncStatusHandlerDeps;

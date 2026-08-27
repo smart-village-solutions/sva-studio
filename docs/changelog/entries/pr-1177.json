@@ -1,0 +1,4 @@
+{
+  "prNumber": 1177,
+  "body": "Die HTML-Ansicht des Rich-Text-Editors lässt sich jetzt über einen kompakten Code-Button am rechten Ende der Werkzeugleiste ein- und ausschalten.\n\n- Das `< />`-Symbol ersetzt die bisherigen Textschaltflächen für WYSIWYG und HTML.\n- Der aktive HTML-Modus bleibt am hervorgehobenen Button erkennbar.\n- Bearbeitung, Formatierungen und Sicherheitsregeln bleiben unverändert."
+}

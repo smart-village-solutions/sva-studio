@@ -8,4 +8,5 @@ export type {
   WasteCollectionLocationSelectionFilter,
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
+  WasteMainserverSyncStatusRecord,
 } from '@sva/core';

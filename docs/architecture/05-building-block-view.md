@@ -63,6 +63,7 @@ Abhängigkeiten des aktuellen Systems.
 6. Studio UI React (`packages/studio-ui-react`)
 
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
+- verwendet die framework-agnostische Rich-Text-Allowlist aus `@sva/core/rich-text-html-policy` und wendet sie im Browser mit DOMPurify an, ohne den Node-basierten Server-Sanitizer in das Client-Bundle zu übernehmen
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
 - ist alleiniger Owner des Studio-Buttons mit der fachlichen Varianten-API `primary`, `secondary`, `tertiary` und `destructive`; App und Plugins besitzen keine parallele Button-Basis
 - stellt für Buttons zentrale Theme-Zustände, 44 × 44 Pixel Mindestzielgröße, sichtbaren Fokus, Disabled-/Loading-Semantik und fokusfähige Icon-Tooltips bereit
@@ -150,6 +151,7 @@ Abhängigkeiten des aktuellen Systems.
 - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
 - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
 - stößt nach erfolgreichen Fraktionsmutationen asynchron den dedizierten Job `waste-management.sync-waste-types` an und degradiert reine Mainserver-Sync-Fehler bewusst zu einem Retry-Hinweis im Fraktionskontext
+- zeigt den Stand des separaten Terminabgleichs zum SVA Mainserver revisionsbasiert direkt unter dem ruhigen Seitenheader; der Lesepfad kombiniert die tenantlokale Waste-Quellrevision mit dem bestehenden zentralen Jobstore und führt weder Dry-Run noch Mainserver-Abfrage aus
 - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
 - bietet unter den eingeklappten erweiterten Systemfunktionen die autorisierte Aktion zur Ergänzung fehlender Orts-Postleitzahlen an; Providerzugriff, Bewertung und Mutation bleiben vollständig hostgeführt
 
@@ -191,6 +193,7 @@ Abhängigkeiten des aktuellen Systems.
 - der Job `waste-management.enrich-postal-codes` verwendet die konfigurierte Karten-Geocodierung serverseitig, taktet Provideraufrufe und schreibt ausschließlich weiterhin leere `waste_cities.postal_code`-Felder über ein konditionales Repository-Update
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
 - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
+- der Mainserver-Terminabgleich liest seine tenantlokale Quellrevision zusammen mit allen Materialisierungstabellen in einem PostgreSQL-Snapshot; `iam.studio_jobs` bleibt alleinige Wahrheit für aktiven Lauf, letzten Erfolg, Progress und Fehler
 - Tourverschiebungen überschreiten die Repository-Grenze als ISO-Kalenderdaten; PostgreSQL persistiert sie als `DATE` und erzwingt ihre Eindeutigkeit über partielle Indizes
 - jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird
 - Modulzuweisung und erneute Aktivierung enqueueen den namespaced Provisionierungsjob im vorhandenen Plugin-Operations-Pfad; nur die privilegierte Lane im vorhandenen Provisioner-Service darf Datenbanken und Rollen anlegen
@@ -837,3 +840,10 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
   besitzt Texte, Website, Manifest und Roh-Markdown.
 
 Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-documentation.md).
+
+### Ergänzung 2026-08: Bausteine des Inhabertransfers
+
+- `@sva/core` besitzt Action, Capability und typisierte Principal-/Zielverträge.
+- `@sva/auth-runtime` besitzt lokalen atomaren Transfer, Zielkatalog, Mainserver-Zielauflösung, Lock und Journalanreicherung.
+- `@sva/sva-mainserver` besitzt typspezifische Pre-Reads, Provider-Write, Ergebnisvalidierung und Reconciliation.
+- `@sva/studio-ui-react` besitzt das gemeinsame Inhaberpanel sowie Editor- und Save-Slots; Plugins enthalten keine eigene Zielauflösung.

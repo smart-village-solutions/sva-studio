@@ -44,7 +44,7 @@ Architekturprinzipien auf IST-Basis.
 - HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/server-runtime`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
-- Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API
+- Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API. Die framework-agnostische Rich-Text-Allowlist wird über den browser-sicheren Subpfad `@sva/core/rich-text-html-policy` geteilt; Browser und Server wenden sie mit laufzeitgeeigneten Sanitizern an.
 - Medienmanagement ist eine hostseitige Querschnitts-Capability: Domänenvertrag in `@sva/media`, Persistenz in `@sva/data-repositories`, Runtime in `@sva/auth-runtime`, Host-UI unter `/admin/media`, Plugin-Bindings nur über `@sva/plugin-sdk` und `@sva/studio-ui-react`
 - Hintergrundprozesse und asynchrone Folgearbeiten werden über einen hostgeführten, runner-agnostischen Plattformvertrag standardisiert; Graphile Worker ist die bevorzugte erste interne Runner-Implementierung, Temporal bleibt eine dokumentierte spätere Eskalationsoption
 - Wiederkehrende Mainserver-HTTP-Basis, Standard-Content-Metadaten und kleine UI-nahe Utilities werden für News, Events und POI im `@sva/plugin-sdk` gebündelt; fachliche Modelle und Editor-Spezialisierungen bleiben in den Plugins
@@ -101,13 +101,13 @@ Architekturprinzipien auf IST-Basis.
 
 Referenzen:
 
-- `./decisions/ADR-001-frontend-framework-selection.md`
-- `./decisions/ADR-002-plugin-architecture-pattern.md`
-- `./decisions/ADR-003-design-token-architecture.md`
-- `./decisions/ADR-004-monitoring-stack-loki-grafana-prometheus.md`
-- `./decisions/ADR-006-logging-pipeline-strategy.md`
-- `./decisions/ADR-007-label-schema-and-pii-policy.md`
-- `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`
+- `../adr/ADR-001-frontend-framework-selection.md`
+- `../adr/ADR-002-plugin-architecture-pattern.md`
+- `../adr/ADR-003-design-token-architecture.md`
+- `../adr/ADR-004-monitoring-stack-loki-grafana-prometheus.md`
+- `../adr/ADR-006-logging-pipeline-strategy.md`
+- `../adr/ADR-007-label-schema-and-pii-policy.md`
+- `../adr/ADR-008-codecov-coverage-reporting-and-gates.md`
 - `./iam-service-architektur.md`
 - `../adr/ADR-034-plugin-sdk-vertrag-v1.md`
 - `../adr/ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
@@ -243,8 +243,14 @@ oder einen begründeten Ausschluss. Ein generierter Katalog verbindet diesen Ver
 eigenständig veröffentlichten Hilfe-Repository. Das Studio lädt stets dessen aktuellen Stand über
 eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht eingeführt.
 
+### Ergänzung 2026-08: Expliziter Inhabertransfer
+
+Inhaltsupdates und Inhaberwechsel sind getrennte Befehle. Ein gemeinsamer Editorvertrag zeigt den frisch gelesenen Inhaber und wiederholt am Save, dass Bearbeitung keine Übertragung auslöst. Der Transfer löst Ziel-Principal, Credentials und DataProvider-Binding serverseitig auf und revalidiert sie unter Lock.
+
 ### Ergänzung 2026-08: Lokale Dokumentationsarchitektur
 
-`docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität.
+`docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität. `pnpm check:docs` erzwingt relative Linkintegrität, Index-Erreichbarkeit, ADR-Parität und die Grenzen der Wiki-Publikation.
 
-Der gemischte Bereich `docs/guides/` wird anhand eines vollständigen Alt-/Neu-Pfad-Inventars kontrolliert abgebaut. Bis zur Migration bleiben die Altpfade gültig. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.
+Das GitHub Wiki ist eine abgeleitete Leseansicht und keine zweite redaktionelle Quelle. Ein typsicherer Publikationskern überführt jede freigegebene Markdown-Datei in einen eindeutigen flachen Wiki-Slug, transformiert interne Links und erzeugt einen aufgabenorientierten Einstieg sowie eine kompakte Sidebar. Nicht-Markdown-Ziele bleiben gekennzeichnete Quellartefakte im Repository. Damit nutzt die Wissensbasis die vorhandene GitHub-Wiki-Oberfläche, ohne deren verschachtelte Raw-Pfade als Seitenmodell zu behandeln.
+
+Der frühere gemischte Bereich `docs/guides/` wurde anhand eines vollständigen Alt-/Neu-Pfad-Nachweises kontrolliert abgebaut. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.

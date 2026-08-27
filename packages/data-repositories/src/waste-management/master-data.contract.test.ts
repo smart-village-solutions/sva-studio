@@ -5,6 +5,7 @@ import { wasteMasterDataRepositoryContract } from './master-data.contract.js';
 describe('waste master-data repository contract', () => {
   it('exposes the canonical waste repository method surface', () => {
     expect(Object.keys(wasteMasterDataRepositoryContract)).toEqual([
+      'getWasteMainserverSourceRevision',
       'listWasteFractions',
       'getWasteFractionById',
       'upsertWasteFraction',

@@ -142,12 +142,16 @@ Fehlerpfad:
 21. `@sva/auth-runtime` prüft `waste-management.read`, löst die aktive Tenant-Datenbank auf und übergibt ausschließlich den typisierten Query-Vertrag. Das Repository filtert zuerst, ermittelt Gesamtzahl und Seite in einer SQL-Anweisung und aggregiert Touren danach nur für die Seite. Die feste ICU-Collation und `ID asc` erzeugen über Seiten und Richtungswechsel eine stabile globale Reihenfolge.
 22. Parallel lädt das Plugin über `GET /api/v1/waste-management/collection-locations/selection` alle IDs desselben Filtervertrags. Auswahlzustand bleibt ID-basiert über Seiten und Sortierwechsel erhalten; das Abwählen aller gefilterten Einträge entfernt keine Auswahl außerhalb des aktuellen Filters.
 23. Filter-, Sortier- und Seitengrößenwechsel setzen die URL atomar auf Seite eins zurück. Reine Seitenwechsel erhalten Filter und Sortierung; verspätete Antworten älterer Requests überschreiben keinen neueren Zustand.
+24. Beim Seitenaufruf liest die autorisierte Statusroute die monotone Revision aus der externen Waste-Tenant-Datenbank sowie aktiven Lauf, letzten Versuch und letzten kompatiblen Erfolg aus dem zentralen Studio-Jobstore. Der externe Mainserver wird dabei nicht aufgerufen.
+25. Nur gleiche Quellrevision und gleiches Jahresfenster ergeben `clean`. Ohne belastbaren Vergleich bleibt der Zustand `unknown`; eine neuere Revision oder ein abweichendes Jahresfenster ergibt `pending`.
+26. Der echte Sync-Job liest Revision und Materialisierungsdaten in einem wiederholbaren Read-Snapshot. Erst nach dem Mainserver-Snapshot veröffentlicht er geplante Create-/Delete-Zahlen und persistiert bei Erfolg Revision und Jahresfenster im vorhandenen Jobergebnis.
 
 Fehlerpfad:
 
 - Fehlt die Modulfreigabe oder die spezifische `waste-management.*`-Berechtigung, blockiert der Host fail-closed vor der Mutation oder dem Jobstart.
 - Fehlt oder driftet die Waste-Datenquelle einer Instanz, antwortet die Fassade mit technischem Fehlervertrag; Secrets werden nie im Plugin oder Browser aufgelöst.
 - Scheitert nach einer erfolgreichen Fraktionsmutation nur der Mainserver-Sync, bleibt die lokale Änderung bestehen; die UI zeigt stattdessen einen Warning-Hinweis mit Retry über denselben technischen Startpfad.
+- Entsteht während oder nach dem Sync eine weitere relevante Fachänderung, erhöht sie die Quellrevision. Der abgeschlossene Job bleibt historisch erfolgreich, der Seitenstatus fordert aber einen weiteren Abgleich an.
 - Ist die Geocodierung deaktiviert oder nicht konfiguriert, startet keine fachliche Mutation. Einzelne Providerfehler werden im Jobergebnis gezählt; ein erneuter Lauf bleibt durch die Auswahl leerer Werte und das konditionale Update idempotent.
 - Ein `Newcms`-ähnlicher Direktzugriff auf Supabase-Funktionen, direkte DB-Connections oder mitportierte Runtime-Hooks ist kein zulässiger Alternativpfad.
 - Fehlt die migrierte ICU-Collation oder weicht ihr Vertrag ab, bleibt die Tenant-Migration beziehungsweise der Listenread fail-closed; eine lokale Browsersortierung ist kein Fallback.
@@ -787,8 +791,8 @@ Fehlerpfad:
 
 1. Nach dem lokalen Organisations-Commit reserviert die Runtime atomar eine zeitlich begrenzte Lease pro Instanz und Organisation. Ein paralleler oder wiederholter Request beobachtet den laufenden beziehungsweise fertigen Zustand.
 2. Fehlende Mainserver-Konfiguration oder persönliche Mainserver-Credentials des handelnden Administrators führen beim automatischen Versuch zu einem sicheren Skip; die Organisationserstellung bleibt HTTP `201`.
-3. Erst nach erfolgreichem Preflight wird ein deterministischer, zweckgebundener Keycloak-Account ohne Rollen, Gruppen oder Einladung erzeugt oder anhand von E-Mail, Username und den Attributen `instanceId`, `organizationId` und `accountPurpose` eindeutig wiederverwendet.
-4. Der OAuth-Bootstrap verwendet ausschließlich persönliche Credentials des Actors. Der unveränderte Mainserver-Benutzer-Endpunkt erhält das reale Keycloak-Subject und liefert Application-ID, Secret und die vertraglich garantierte `data_provider_id`.
+3. Erst nach erfolgreichem Preflight wird ein deterministischer, zweckgebundener Keycloak-Account ohne Studio-/Keycloak-Rollen, Gruppen oder Einladung erzeugt oder anhand von E-Mail, Username und den Attributen `instanceId`, `organizationId` und `accountPurpose` eindeutig wiederverwendet.
+4. Der OAuth-Bootstrap verwendet ausschließlich persönliche Credentials des Actors. Der unveränderte Mainserver-Benutzer-Endpunkt erhält das reale Keycloak-Subject und für persönliche wie organisatorische Accounts fest `role: "studio"`; der technische Account behält dabei leere Studio-/Keycloak-Rollen und Gruppen. Fehlt das Rollenfeld bei anderen Aufrufern, verwendet der Mainserver `restricted` als Defaultrolle.
 5. Studio persistiert die Organisations-Credentials verschlüsselt, bindet den DataProvider mit `create_response`-Evidenz und setzt den Zustand auf `ready`. Spätere Verifikation verwendet mit denselben Organisations-Credentials `/data_provider.json`.
 6. Lost Response, lokale Teilpersistenz oder Binding-Konflikt führen ohne Überschreiben und ohne nachträgliche Accountkompensation zu `reconciliation_required`. Ein sicherer Fehler vor dem Upstream-Aufruf führt zu `failed` oder beim automatischen Fehlen von Voraussetzungen zu `not_provisioned`.
 7. Der explizite Endpoint `POST /api/v1/iam/organizations/:organizationId/provision-mainserver` verlangt nur `iam.org.write` sowie einen Idempotency-Key und akzeptiert keine frei wählbaren technischen Accountattribute.
@@ -797,6 +801,8 @@ Fehlerpfad:
 
 - Hard Delete des zugeordneten Accounts ist während einer aktiven Lease blockiert. Außerhalb der Lease wird nur die Referenz gelöst; gültige Organisations-Credentials und DataProvider-Bindungen bleiben erhalten.
 - Audit- und Logfehler verändern keinen bereits bestätigten fachlichen Provisioning-Zustand. Secrets, Tokens und rohe Upstream-Antworten werden nie protokolliert.
+- Eine Reprovisionierung sendet `role: "studio"` erneut, verändert aber keine bestehende Mainserver-Rolle. Eine automatische Migration bestehender Nutzer findet nicht statt.
+- Cross-Tenant-Provisionierung wird mit HTTP `403`, eine ungültige Rolle mit HTTP `422` als sicherer, nicht wiederholbarer Provisioning-Fehler abgelehnt.
 
 ### Szenario 13: Benutzer wechselt aktiven Organisationskontext
 
@@ -1130,3 +1136,11 @@ Fehlerpfad:
 4. Das Overlay rendert Markdown ohne Raw HTML und bietet den kanonischen Website-Link an.
 5. Fehlende Konfiguration, unbekannte Inhalte und Upstream-Ausfälle enden in einem begrenzten
    Retry-Zustand; Route und Fachfunktion bleiben bedienbar.
+
+### Inhalt an einen neuen Inhaber übertragen
+
+1. Der Editor liest den aktuellen DataProvider frisch über den Mainserver-Detailpfad.
+2. Der Zielkatalog prüft Source-Scope und Transferpermission und liefert nur serverseitig verwendbare Principals.
+3. Der Transfer sperrt Instanz, Typ und Datensatz, liest die Quelle erneut und revalidiert Permission, Ziel, Credentials und Binding-Version.
+4. Das Journal wird vor dem Provider-Write um erwartetes Ziel und technische Transfermetadaten ergänzt.
+5. Eine bestätigte Zielzuordnung aktualisiert Projektion und UI. Bei verlorenem Response entscheiden Target- und Source-Re-Read; fehlende eindeutige Evidenz erzeugt `reconciliation_required`.

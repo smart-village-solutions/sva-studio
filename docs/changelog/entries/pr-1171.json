@@ -1,0 +1,4 @@
+{
+  "prNumber": 1171,
+  "body": "Die lokale technische Projektdokumentation ist jetzt nach klaren Verantwortungsbereichen geordnet.\n\n- Entwicklungsanleitungen, Betriebsrunbooks, technische Referenzen und Governance-Regeln liegen in ihren jeweils führenden Bereichen.\n- Der kanonische Studio-Rollout bleibt als einziger stabiler Leitfaden unter `docs/guides/` erhalten.\n- Bereichsindizes, Wiki-Publikation und automatische Dokumentationsprüfung verwenden dieselben finalen Pfade."
+}

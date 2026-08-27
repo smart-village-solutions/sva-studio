@@ -566,12 +566,12 @@ Referenzen:
 - `docs/development/review-agent-governance.md`
 - `docs/development/server-package-runtime-guards.md`
 - `docs/development/iam-schluesselmanagement-strategie.md`
-- `docs/guides/iam-governance-runbook.md`
-- `docs/guides/iam-governance-freigabematrix.md`
-- `docs/guides/iam-data-subject-rights-runbook.md`
-- `docs/guides/iam-authorization-api-contract.md`
-- `docs/guides/iam-service-api-dokumentation.md`
-- `docs/guides/swarm-deployment-runbook.md`
+- `docs/governance/iam-governance-runbook.md`
+- `docs/governance/iam-governance-freigabematrix.md`
+- `docs/operations/iam-data-subject-rights-runbook.md`
+- `docs/reference/iam-authorization-api-contract.md`
+- `docs/reference/iam-service-api-dokumentation.md`
+- `docs/operations/swarm-deployment-runbook.md`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
 - `apps/sva-studio-react/src/providers/theme-provider.tsx`
@@ -749,6 +749,14 @@ Der reguläre Promote-Migrations-One-shot wendet neben den Goose-Migrationen fü
 
 Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fachdatenbank wechselt der One-shot transaktionslokal in die jeweilige abgeleitete Owner-Rolle. Abweichende Registry-Namen, fehlende Secrets, SQL- oder Verifikationsfehler rollen die aktuelle Tenant-Transaktion zurück und stoppen den Rollout vor dem App-Deploy. Damit bleibt der Schema-Lebenszyklus an Image-Digest, Backup-Gate und Environment-Freigabe gebunden, ohne dem App-Runtime-Principal Clusterrechte zu geben.
 
+### Waste-Mainserver-Abgleichsstatus
+
+- Eine Singleton-Revision in der externen Waste-Tenant-Datenbank kennzeichnet relevante Änderungen an der Terminmaterialisierungsquelle. Statement-Trigger erhöhen sie transaktionsgebunden; der Runtime-Principal darf den Zustand lesen, aber nicht zurücksetzen.
+- Die Trigger-Allowlist umfasst ausschließlich Tabellen, deren Daten der bestehende Mainserver-Sync liest. PDF-, Reminder-, Consent-, Token-, Outbox- und sonstige betriebliche Änderungen erzeugen keinen falschen Abgleichsbedarf.
+- Der zentrale Jobstore bleibt die einzige Historie für Laufstatus und bestätigte Quellrevision. Es entstehen weder eine zweite Jobtabelle noch eine fachliche Mainserver-Kopie.
+- Die Ableitung arbeitet fail-closed: Nur identische Revision und identisches Jahresfenster gelten als synchronisiert. Legacy-Ergebnisse, Erreichbarkeitsfehler und rückläufige Revisionen werden nicht als `clean` ausgegeben.
+- Exakte Create-/Delete-Zahlen gehören zum echten Sync-Lauf. Der reine Seitenstatus führt keinen Dry-Run und keinen Mainserver-Aufruf aus.
+
 ### Partielle Mainserver-Snapshots
 
 - `pagination.total` bezeichnet weiterhin die lokal verfügbare Trefferzahl. Bei partiellen Snapshots erlaubt dieser Wert die Navigation zwischen bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl oder weitere, noch nicht materialisierte Seiten zu behaupten. `totalCount` existiert nur bei einem vollständigen Snapshot; `isTotalFinal` macht die Semantik explizit.
@@ -880,5 +888,16 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Maschinenlesbare API-Schemata sind gegenüber erläuternden Referenztexten führend. Kanonische ADRs sind gegenüber Legacy-Entscheidungsdokumenten führend.
 - `docs/reports/`, `docs/pr/`, `docs/staging/`, `docs/changelog/` und `docs/superpowers/` sind Evidenz oder Historie, keine aktuellen Handbücher.
 - `docs/user-documentation/` ist ein separater Integrations- und Synchronisationsbereich für die externe Anwenderdokumentation und wird nicht in die lokale technische Wissensbasis eingemischt.
-- Die Wiki-Publikation folgt der versionierten Positivliste. Ausgeschlossene, weiterhin referenzierte Nachweise werden über explizite Repository-Links erreicht.
+- Die Wiki-Publikation folgt der versionierten Positivliste. Markdown-Dateien werden im Wiki-Root unter deterministischen bereichspräfixierten Slugs gerendert; interne Links und Anker werden auf diese Slugs transformiert.
+- Home führt zuerst über konkrete Aufgaben, danach über kritische Einstiege und Bereiche. Die Sidebar bleibt auf kanonische Einstiege begrenzt; einzelne Unterseiten werden über Bereichsindizes erschlossen.
+- Nicht-Markdown-Dateien und nicht publizierte Repository-Ziele werden als Quellartefakte gekennzeichnet und absolut auf das Repository verlinkt. Bilder dürfen als Raw-Assets eingebettet werden, gelten aber nicht als Wiki-Seiten.
+- `pnpm check:docs` validiert die aktuelle Positivliste blockierend gegen relative Linkziele, Erreichbarkeit ab `docs/README.md`, ADR-Datei/Index-Parität, Slug-Kollisionen, transformierbare Wiki-Links und die erzeugten Einstiege. Historische sowie externe Bestände bleiben bewusst außerhalb dieses Gültigkeitsbereichs.
+- `docs/` bleibt die einzige redaktionelle Quelle. Der Wiki-Sync ersetzt seine abgeleitete Arbeitskopie vollständig und bricht vor dem Push ab, wenn Transformation oder Navigation inkonsistent sind.
 - Der Rolloutvertrag bleibt pfadstabil und ausschließlich unter `docs/guides/studio-rollout-process.md` normativ.
+
+### Inhaberschaft, Autorisierung und Audit
+
+- `content.transferOwnership` ist von normaler Metadatenbearbeitung getrennt und wird gegen den aktuellen Source-Scope geprüft.
+- Aktueller Inhaber ist der gegenwärtige Owner beziehungsweise Mainserver-DataProvider, niemals eine Rekonstruktion aus Audit oder Historie.
+- Transferaudits verwenden die Coverage `studio_mutations` und technische Principal-, Provider-, Operations- und Binding-Referenzen ohne E-Mail-Adressen oder Secrets.
+- Bestätigte Upstream-Erfolge werden durch lokale Folgefehler nicht als Rollback dargestellt.

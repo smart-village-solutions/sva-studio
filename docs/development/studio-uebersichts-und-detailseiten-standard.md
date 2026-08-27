@@ -66,6 +66,7 @@ Plugins sollen eigene Views bauen können, ohne eine eigene visuelle Sprache, ei
 - `@sva/core` bleibt framework-agnostisch und enthält keine React-, shadcn- oder Browser-UI-Abhängigkeiten.
 - `@sva/plugin-sdk` bleibt der Vertrag für Plugin-Metadaten, Registries, Admin-Ressourcen, Content-Type-Erweiterungen und Plugin-i18n.
 - `@sva/studio-ui-react` wird ein React-basiertes UI-Package für Templates, Formularbausteine, Zustände, Tabellen, Header und Studio-Spezialcontrols.
+- `@sva/studio-ui-react` darf framework-agnostische, UI-unabhängige Kernlogik aus `@sva/core` verwenden. Sicherheitsrelevante Policies wie die Rich-Text-HTML-Allowlist werden dort zentral besessen und über einen browser-sicheren Subpfad importiert; Node-basierte Implementierungen wie `sanitize-html` dürfen nicht in Client-Bundles gelangen.
 - `apps/sva-studio-react` konsumiert `@sva/studio-ui-react` und verdrahtet Shell, Routing, Server-Funktionen und Host-Bindings.
 - `@sva/plugin-*`-Packages dürfen für eigene Views `@sva/studio-ui-react` und `@sva/plugin-sdk` konsumieren, aber keine App-internen Komponenten importieren.
 
@@ -429,6 +430,10 @@ Alle Standard-Controls werden bevorzugt aus shadcn/ui komponiert. Dazu gehören 
 - Bewertungsfelder werden nur für echte Bewertungsdomänen eingesetzt und müssen Tastaturbedienung unterstützen.
 
 Spezialelemente wie Rich-Text-Editor, Datei-Upload, Medienverwaltung, Farbauswahl, Icon-Auswahl, Bewertung und Geo-Auswahl werden als Studio-Komponenten gekapselt. Sie verwenden shadcn/ui für Buttons, Dialoge, Popover, Menüs, Alerts, Badges und Formularzustände, dürfen aber domänenspezifische Logik oder externe Fachbibliotheken enthalten.
+
+Der gemeinsame Rich-Text-Editor nutzt im Browser DOMPurify und auf dem Server `sanitize-html`. Beide Adapter beziehen Tags und erlaubte URL-Schemata aus `@sva/core/rich-text-html-policy`; dadurch bleibt die Policy zentral, während Node-only-Abhängigkeiten nicht in den Browser-Build gelangen. Der Server-Sanitizer ist ausschließlich über `@sva/core/rich-text-html` verfügbar und wird nicht aus dem allgemeinen Core-Einstieg exportiert.
+
+TipTap bleibt die interne Bearbeitungs-Engine des gemeinsamen Rich-Text-Editors. Die Studio-Komponente stellt eine kompakte, gruppierte Werkzeugleiste sowie den Wechsel zwischen WYSIWYG- und HTML-Ansicht bereit. Der Wechsel erfolgt über einen rechts am Ende der Werkzeugleiste platzierten Code-Icon-Button; dessen aktiver Zustand kennzeichnet die HTML-Ansicht. Inhaltsstile werden direkt auf die TipTap-Editorfläche begrenzt, damit Überschriften, Listen, Zitate und Links im WYSIWYG-Modus sichtbar unterscheidbar sind, ohne die gespeicherte HTML-Struktur oder die Sanitizer-Policy zu verändern.
 
 #### Feldaufbau
 

@@ -62,6 +62,8 @@ export type AuthRoutePath =
   | '/api/v1/iam/contents'
   | '/api/v1/iam/contents/$contentId'
   | '/api/v1/iam/contents/$contentId/history'
+  | '/api/v1/iam/contents/$contentId/transfer-ownership'
+  | '/api/v1/iam/contents/$contentId/ownership-targets'
   | '/api/v1/iam/media'
   | '/api/v1/iam/media/register'
   | '/api/v1/iam/media/references'
@@ -138,6 +140,7 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/settings'
   | '/api/v1/waste-management/settings/holiday-sync'
   | '/api/v1/waste-management/settings/provisioning/retry'
+  | '/api/v1/waste-management/mainserver-sync-status'
   | '/api/v1/waste-management/tools/initialize'
   | '/api/v1/waste-management/tools/imports'
   | '/api/v1/waste-management/tools/imports/upload'
@@ -217,6 +220,8 @@ export const authRoutePaths = [
   '/api/v1/iam/contents',
   '/api/v1/iam/contents/$contentId',
   '/api/v1/iam/contents/$contentId/history',
+  '/api/v1/iam/contents/$contentId/transfer-ownership',
+  '/api/v1/iam/contents/$contentId/ownership-targets',
   '/api/v1/iam/media',
   '/api/v1/iam/media/register',
   '/api/v1/iam/media/references',
@@ -293,6 +298,7 @@ export const authRoutePaths = [
   '/api/v1/waste-management/settings',
   '/api/v1/waste-management/settings/holiday-sync',
   '/api/v1/waste-management/settings/provisioning/retry',
+  '/api/v1/waste-management/mainserver-sync-status',
   '/api/v1/waste-management/tools/initialize',
   '/api/v1/waste-management/tools/imports',
   '/api/v1/waste-management/tools/imports/upload',

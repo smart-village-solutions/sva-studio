@@ -37,54 +37,71 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 
 ### ADR-Liste (kanonischer Bestand unter `docs/adr/`)
 
-| #   | Titel                                                                          | Status | Entscheidungsdatum | Thema                             |
-| --- | ------------------------------------------------------------------------------ | ------ | ------------------ | --------------------------------- |
-| 000 | ADR Template                                                                   | 📋     | -                  | Dokumentation                     |
-| 009 | Keycloak als zentraler Identity Provider                                       | ✅     | 2026-02-27         | IAM / Auth                        |
-| 010 | Verschlüsselung IAM Core Data Layer                                            | ✅     | 2026-02-27         | Security / Data                   |
-| 011 | `instanceId` als kanonischer Mandanten-Scope                                   | ✅     | 2026-02-27         | IAM / Architektur                 |
-| 012 | Permission-Kompositionsmodell RBAC v1                                          | ✅     | 2026-02-27         | IAM / Authorization               |
-| 013 | RBAC-ABAC-Hybridmodell                                                         | ✅     | 2026-02-28         | IAM / Authorization               |
-| 014 | Postgres `NOTIFY` für Cache-Invalidierung                                      | ✅     | 2026-02-28         | Data / Runtime                    |
-| 015 | CSRF-Schutz-Strategie                                                          | ✅     | 2026-03-08         | Security                          |
-| 016 | IdP-Abstraktionsschicht                                                        | ✅     | 2026-03-08         | IAM / Integration                 |
-| 017 | Modulare IAM-Server-Bausteine                                                  | ✅     | 2026-03-08         | IAM / Qualität                    |
-| 018 | Auth-Routing-Error-Contract und Korrelation                                    | ✅     | 2026-03-09         | Auth / Observability              |
-| 019 | Swarm-/Traefik-Referenz-Betriebsprofil                                         | ✅     | 2026-03-12         | Deployment / Betrieb              |
-| 020 | Kanonischer Auth-Host und Multi-Host-Grenze                                    | ✅     | 2026-03-12         | Auth / Deployment                 |
-| 021 | Per-User-SVA-Mainserver-Delegation                                             | ✅     | 2026-03-14         | Integration / IAM                 |
-| 022 | IAM-Gruppen, Geo-Hierarchie und Permission-Caching                             | ✅     | 2026-03-17         | IAM / Authorization / Runtime     |
-| 023 | Führender Session-Lifecycle, Forced Reauth und Silent SSO                      | ✅     | 2026-03-26         | Auth / Session                    |
-| 024 | IAM-Gruppen als eigenständige, instanzgebundene Entität                        | ✅     | 2026-03-31         | IAM / Authorization               |
-| 025 | Prioritätsregel für Multi-Scope-IAM-Entscheidungen                             | ✅     | 2026-03-31         | IAM / Authorization               |
-| 026 | Redis als primärer Shared Permission Cache                                     | ✅     | 2026-03-31         | Runtime / IAM                     |
-| 027 | Rechtstext-Fail-Closed und blockierter Session-Zustand                         | ✅     | 2026-03-31         | Auth / Legal / IAM                |
-| 028 | IAM-Konfigurations-Export als dokumentierte Folgearbeit                        | ✅     | 2026-03-31         | IAM / Technical Debt              |
-| 029 | `goose` als OSS-Standard für SQL-Migrationen                                   | ✅     | 2026-04-01         | Data / Betrieb / Tooling          |
-| 034 | Plugin-SDK-Vertrag v1                                                          | ✅     | 2026-04-13         | Studio / Plugins / SDK            |
-| 035 | Routing-Observability über Diagnostics-Hook und Safe-Event-Vertrag             | ✅     | 2026-04-19         | Routing / Observability           |
-| 036 | Kanonischer IAM-Projektions- und Reconcile-Vertrag                             | ✅     | 2026-04-19         | IAM / Runtime / UI                |
-| 037 | Plugin-spezifische IAM-Rechte                                                  | ✅     | 2026-04-27         | Plugins / IAM / Authorization     |
-| 038 | Instanz-Modul-Zuordnung und fail-closed Modulaktivierung                       | ✅     | 2026-04-29         | Runtime / Plugins / IAM           |
-| 039 | Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag       | ✅     | 2026-04-29         | Media / Storage / Runtime         |
-| 040 | graphile-worker als Standard für Hintergrundprozesse                           | ✅     | 2026-05-09         | Runtime / Workflow / Betrieb      |
-| 041 | Plugin-Plattform v2 für externe Distribution und host-owned Runtime            | ✅     | 2026-05-10         | Plugins / Distribution / Runtime  |
-| 042 | Externe Schnittstellen als host-owned Registry                                 | ✅     | 2026-05-12         | Integration / Secrets / Runtime   |
-| 043 | Formular-Foundation mit react-hook-form und zodResolver                        | ✅     | 2026-05-22         | Frontend / Formulare / Governance |
-| 044 | Frontend-Test-Foundation mit MSW und selektivem fast-check                     | ✅     | 2026-05-22         | Frontend / Testing / Governance   |
-| 045 | Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation | ✅     | 2026-06-01         | Integration / IAM / Security      |
-| 046 | Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen                   | ✅     | 2026-07-12         | IAM / Authorization               |
-| 047 | Keycloak-Service-Accounts für die lokale MCP-Control-Plane                     | ✅     | 2026-07-13         | MCP / IAM / Security / Betrieb    |
-| 048 | Zentraler Backup-Agent mit gehärtetem HTTPS-Trigger                            | ✅     | 2026-07-19         | Backup / Security / Betrieb       |
-| 049 | Kanonischer Permission-Katalog und additiver Reconcile                         | ✅     | 2026-08-02         | IAM / Authorization / Betrieb     |
-| 050 | Zentraler scopegebundener UI-Zugriff                                           | ✅     | 2026-08-08         | UI / IAM / Authorization          |
-| 051 | Technische Accounts und Organisations-Mainserver-Provisioning                  | ✅     | 2026-08-11         | IAM / Integration / Recovery      |
+| #   | Titel                                                                                                                                                                         | Status | Entscheidungsdatum | Thema                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------ | --------------------------------- |
+| 000 | [ADR-Template](./ADR-000-template.md)                                                                                                                                         | 📋     | -                  | Dokumentation                     |
+| 001 | [Frontend Framework Selection](./ADR-001-frontend-framework-selection.md)                                                                                                     | ✅     | 2026-01-18         | Frontend / Routing                |
+| 002 | [Plugin Architecture Pattern](./ADR-002-plugin-architecture-pattern.md)                                                                                                       | ✅     | 2026-01-18         | Plugins / Architektur             |
+| 003 | [Design Token Architecture](./ADR-003-design-token-architecture.md)                                                                                                           | ✅     | 2026-01-18         | UI / Design-System                |
+| 004 | [Monitoring Stack – Loki, Grafana und Prometheus](./ADR-004-monitoring-stack-loki-grafana-prometheus.md)                                                                      | ✅     | 2026-02-05         | Monitoring / Betrieb              |
+| 005 | [Observability Module Ownership](./ADR-005-observability-module-ownership.md)                                                                                                 | 📋     | 2026-02-06         | Observability / Ownership         |
+| 006 | [Logging Pipeline Strategy](./ADR-006-logging-pipeline-strategy.md)                                                                                                           | ✅     | 2026-02-06         | Logging / Observability           |
+| 007 | [Label Schema und PII Policy](./ADR-007-label-schema-and-pii-policy.md)                                                                                                       | ✅     | 2026-02-06         | Logging / Datenschutz             |
+| 008 | [Codecov für Coverage-Reporting und PR-Transparenz](./ADR-008-codecov-coverage-reporting-and-gates.md)                                                                        | ✅     | 2026-02-18         | Testing / Governance              |
+| 009 | [Keycloak als zentraler Identity Provider](./ADR-009-keycloak-als-zentraler-identity-provider.md)                                                                             | ✅     | 2026-02-27         | IAM / Auth                        |
+| 010 | [Verschlüsselungsstrategie für IAM Core Data Layer](./ADR-010-verschluesselung-iam-core-data-layer.md)                                                                        | ✅     | 2026-02-27         | Security / Data                   |
+| 011 | [`instanceId` als kanonischer Mandanten-Scope](./ADR-011-instanceid-kanonischer-mandanten-scope.md)                                                                           | ✅     | 2026-02-27         | IAM / Architektur                 |
+| 012 | [Permission-Kompositionsmodell für RBAC v1](./ADR-012-permission-kompositionsmodell-rbac-v1.md)                                                                               | ✅     | 2026-02-27         | IAM / Authorization               |
+| 013 | [RBAC+ABAC-Hybridmodell für IAM-Authorize](./ADR-013-rbac-abac-hybridmodell.md)                                                                                               | ✅     | 2026-02-28         | IAM / Authorization               |
+| 014 | [Postgres NOTIFY für IAM-Cache-Invalidierung](./ADR-014-postgres-notify-cache-invalidierung.md)                                                                               | ✅     | 2026-02-28         | Data / Runtime                    |
+| 015 | [CSRF-Schutz-Strategie für IAM-v1](./ADR-015-csrf-schutz-strategie.md)                                                                                                        | ✅     | 2026-03-08         | Security                          |
+| 016 | [IdP-Abstraktionsschicht über `IdentityProviderPort`](./ADR-016-idp-abstraktionsschicht.md)                                                                                   | ✅     | 2026-03-08         | IAM / Integration                 |
+| 017 | [Modulare IAM-Server-Bausteine](./ADR-017-modulare-iam-server-bausteine.md)                                                                                                   | ✅     | 2026-03-08         | IAM / Qualität                    |
+| 018 | [Auth-Routing-Error-Contract und Header-basierte Korrelation](./ADR-018-auth-routing-error-contract-und-korrelation.md)                                                       | ✅     | 2026-03-09         | Auth / Observability              |
+| 019 | [Swarm-/Traefik-Referenz-Betriebsprofil](./ADR-019-swarm-traefik-referenz-betriebsprofil.md)                                                                                  | ✅     | 2026-03-12         | Deployment / Betrieb              |
+| 020 | [Kanonischer Auth-Host und Multi-Host-Grenze](./ADR-020-kanonischer-auth-host-multi-host-grenze.md)                                                                           | ✅     | 2026-03-12         | Auth / Deployment                 |
+| 021 | [Per-User-SVA-Mainserver-Delegation](./ADR-021-per-user-sva-mainserver-delegation.md)                                                                                         | ✅     | 2026-03-14         | Integration / IAM                 |
+| 022 | [IAM Groups, Geo-Hierarchie und erweitertes Permission-Caching (Pakete 3–5)](./ADR-022-iam-groups-geo-hierarchie-permission-caching.md)                                       | ✅     | 2026-03-17         | IAM / Authorization / Runtime     |
+| 023 | [Führender Session-Lifecycle, Forced Reauth und kontrolliertes Silent SSO](./ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md)                                       | ✅     | 2026-03-26         | Auth / Session                    |
+| 024 | [IAM-Gruppen als eigenständige, instanzgebundene Entität](./ADR-024-iam-groups-als-eigenstaendige-entitaet.md)                                                                | ✅     | 2026-03-31         | IAM / Authorization               |
+| 025 | [Prioritätsregel für Multi-Scope-IAM-Entscheidungen](./ADR-025-multi-scope-prioritaetsregel-fuer-iam.md)                                                                      | ✅     | 2026-03-31         | IAM / Authorization               |
+| 026 | [Redis als primärer Shared Permission Cache](./ADR-026-redis-als-primary-permission-cache.md)                                                                                 | ✅     | 2026-03-31         | Runtime / IAM                     |
+| 027 | [Rechtstext-Fail-Closed und blockierter Session-Zustand](./ADR-027-rechtstext-fail-closed-und-blockierte-session.md)                                                          | ✅     | 2026-03-31         | Auth / Legal / IAM                |
+| 028 | [IAM-Konfigurations-Export als dokumentierte Folgearbeit](./ADR-028-iam-konfigurations-export-als-folgearbeit.md)                                                             | ✅     | 2026-03-31         | IAM / Technical Debt              |
+| 029 | [`goose` als OSS-Standard für SQL-Migrationen](./ADR-029-goose-als-oss-standard-fuer-sql-migrationen.md)                                                                      | ✅     | 2026-04-01         | Data / Betrieb / Tooling          |
+| 030 | [Registry-basierte Instance-Freigabe und Provisioning](./ADR-030-registry-basierte-instance-freigabe-und-provisioning.md)                                                     | ✅     | 2026-04-02         | IAM / Plattform                   |
+| 031 | [Tenant-spezifisches Realm-Auth-Routing](./ADR-031-tenant-spezifisches-realm-auth-routing.md)                                                                                 | ✅     | 2026-04-02         | IAM / Auth                        |
+| 032 | [Plattform-Scope vs. Tenant-Instanz](./ADR-032-plattform-scope-vs-tenant-instanz.md)                                                                                          | ✅     | -                  | IAM / Plattform                   |
+| 033 | [Tenant-Login-Client vs. Tenant-Admin-Client](./ADR-033-tenant-login-client-vs-tenant-admin-client.md)                                                                        | ✅     | -                  | IAM / Auth                        |
+| 034 | [Plugin-SDK-Vertrag v1](./ADR-034-plugin-sdk-vertrag-v1.md)                                                                                                                   | ✅     | 2026-04-13         | Studio / Plugins / SDK            |
+| 035 | [Routing-Observability über Diagnostics-Hook und Safe-Event-Vertrag](./ADR-035-routing-observability-diagnostics-hook.md)                                                     | ✅     | 2026-04-19         | Routing / Observability           |
+| 036 | [Kanonischer IAM-Projektions- und Reconcile-Vertrag](./ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md)                                                          | ✅     | 2026-04-19         | IAM / Runtime / UI                |
+| 037 | [Plugin-spezifische IAM-Rechte](./ADR-037-plugin-spezifische-iam-rechte.md)                                                                                                   | ✅     | 2026-04-27         | Plugins / IAM / Authorization     |
+| 038 | [Instanz-Modul-Zuordnung und fail-closed Modulaktivierung](./ADR-038-instanz-modul-zuordnung-und-fail-closed-modulaktivierung.md)                                             | ✅     | 2026-04-29         | Runtime / Plugins / IAM           |
+| 039 | [Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag](./ADR-039-medienmanagement-host-capability-und-storage-vertrag.md)                                 | ✅     | 2026-04-29         | Media / Storage / Runtime         |
+| 040 | [graphile-worker als Standard für Hintergrundprozesse](./ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md)                                                    | ✅     | 2026-05-09         | Runtime / Workflow / Betrieb      |
+| 041 | [Plugin-Plattform v2 für externe Distribution und host-owned Runtime](./ADR-041-plugin-plattform-v2-fuer-externe-distribution.md)                                             | ✅     | 2026-05-10         | Plugins / Distribution / Runtime  |
+| 042 | [Externe Schnittstellen als host-owned Registry](./ADR-042-externe-schnittstellen-als-host-owned-registry.md)                                                                 | ✅     | 2026-05-12         | Integration / Secrets / Runtime   |
+| 043 | [Formular-Foundation mit react-hook-form und zodResolver](./ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md)                                               | ✅     | 2026-05-22         | Frontend / Formulare / Governance |
+| 044 | [Frontend-Test-Foundation mit MSW und selektivem fast-check](./ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)                                         | ✅     | 2026-05-22         | Frontend / Testing / Governance   |
+| 045 | [Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation](./ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation.md) | ✅     | 2026-06-01         | Integration / IAM / Security      |
+| 046 | [Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen](./ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md)                                       | ✅     | 2026-07-12         | IAM / Authorization               |
+| 047 | [Keycloak-Service-Accounts für die lokale MCP-Control-Plane](./ADR-047-keycloak-service-accounts-fuer-lokale-mcp-control-plane.md)                                            | ✅     | 2026-07-13         | MCP / IAM / Security / Betrieb    |
+| 048 | [Zentraler Backup-Agent mit gehärtetem HTTPS-Trigger](./ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)                                                      | ✅     | 2026-07-19         | Backup / Security / Betrieb       |
+| 049 | [Kanonischer Permission-Katalog und additiver Reconcile](./ADR-049-kanonischer-permission-katalog-und-additiver-reconcile.md)                                                 | ✅     | 2026-08-02         | IAM / Authorization / Betrieb     |
+| 050 | [Zentraler scopegebundener UI-Zugriff](./ADR-050-zentraler-scopegebundener-ui-zugriff.md)                                                                                     | ✅     | 2026-08-08         | UI / IAM / Authorization          |
+| 051 | [Technische Accounts und Organisations-Mainserver-Provisioning](./ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md)                                   | ✅     | 2026-08-11         | IAM / Integration / Recovery      |
+| 052 | [Create-Policy, Read-Scope und Bestandsprincipal trennen](./ADR-052-create-policy-read-scope-und-bestandsprincipal.md)                                                        | ✅     | 2026-08-13         | IAM / Content                     |
+| 053 | [Layout-Shell mit Skeleton-Bereichen](./ADR-053-layout-shell-skeleton-architecture.md)                                                                                        | ✅     | 2026-02-25         | Frontend / Layout                 |
+| 054 | [Kontrollierter Inhabertransfer für Inhalte](./ADR-054-kontrollierter-inhabertransfer-fuer-inhalte.md)                                                                        | ✅     | 2026-08-27         | IAM / Content / Mainserver        |
+| 055 | [Waste-Mainserver-Abgleichsstatus über Quellrevision](./ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)                                                      | ✅     | 2026-08-27         | Waste / Integration / Runtime     |
 
 ### Kanonischer Ablageort
 
 - Aktive ADRs liegen unter `docs/adr/`.
 - Verweise aus Architektur- und Guide-Dokumenten sollen auf `docs/adr/` zeigen.
-- `ADR-018-auth-routing-error-contract-und-korrelation.md` wurde aus dem Legacy-Ordner nach `docs/adr/` migriert und ist dort maßgeblich.
+- Die weiterhin gültigen einzigartigen Legacy-Entscheidungen ADR-001 bis ADR-008 sowie die Layout-Shell-Entscheidung wurden in diesen kanonischen Bestand übernommen. Wegen der bereits belegten Nummer 009 trägt die Layout-Shell hier die neue Nummer 053.
+- `ADR-018-auth-routing-error-contract-und-korrelation.md` wurde bereits aus dem Legacy-Ordner nach `docs/adr/` migriert und ist dort maßgeblich.
 - Dateien unter `docs/architecture/decisions/` sind historischer Altbestand einer älteren ADR-Serie mit überschneidenden Nummern und kein Ziel für neue ADRs.
 
 ---
@@ -290,7 +307,7 @@ Blockt: #ABC (ADR für State Management)
 
 ## Beispiel-ADR (komplett)
 
-Siehe [ADR-001-frontend-framework.md](./ADR-001-frontend-framework.md) (wird später erstellt)
+Ein möglicher Dateiname wäre `ADR-001-frontend-framework.md`; als Ausgangspunkt dient das [ADR-Template](./ADR-000-template.md).
 
 ---
 
@@ -374,7 +391,7 @@ Hast du Fragen zu ADRs?
 
 - **Discord:** #architecture-decisions
 - **GitHub:** Öffne Issue mit Label `adr`
-- **Docs:** Siehe [ARCHITECTURE.md](../ARCHITECTURE.md)
+- **Docs:** Siehe [Architekturübersicht](../architecture/README.md)
 
 ---
 

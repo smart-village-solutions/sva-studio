@@ -11,7 +11,7 @@ Du bist verantwortlich für Betriebsfähigkeit und Zuverlässigkeit.
 - [monitoring-stack.md](../../docs/development/monitoring-stack.md)
 - [playbook.md](../../docs/development/playbook.md)
 - [logging-architecture.md](../../docs/architecture/logging-architecture.md)
-- [iam-governance-runbook.md](../../docs/guides/iam-governance-runbook.md)
+- [iam-governance-runbook.md](../../docs/governance/iam-governance-runbook.md)
 
 ### Du prüfst insbesondere:
 - Installierbarkeit (Docker, Compose, K8s)

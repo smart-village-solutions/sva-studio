@@ -284,6 +284,10 @@ export const usersAdminDEResources = {
       'Der Mainserver-Benutzer ist bereits mit einer anderen Identität verknüpft. Eine Wiederholung löst den Konflikt nicht. Bitte den Mainserver-Betrieb mit der angezeigten Request-ID kontaktieren.',
     mainserverProvisioningFailed:
       'Die Aktualisierung der Mainserver-Daten ist am Mainserver fehlgeschlagen. Bitte die Mainserver-Integration prüfen und erneut versuchen.',
+    mainserverTenantForbidden:
+      'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt. Bitte die aktive Organisation und Mandantenzuordnung prüfen.',
+    mainserverRequestRejected:
+      'Der Mainserver hat die Provisionierungsanfrage als ungültig abgelehnt. Bitte den Integrationsvertrag und die angeforderte Rolle prüfen.',
     lastAdminProtection:
       'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
     selfProtection: 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',

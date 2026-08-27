@@ -155,6 +155,15 @@ const migrateAndGrant = async (pool: ProvisioningPool, names: WasteTenantDatabas
       `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${quoteIdentifier(names.publicAppRole)};`
     );
     await client.query(
+      `REVOKE ALL PRIVILEGES ON TABLE public.waste_mainserver_source_state FROM PUBLIC, ${quoteIdentifier(names.publicAppRole)};`
+    );
+    await client.query(
+      `REVOKE INSERT, UPDATE, DELETE ON TABLE public.waste_mainserver_source_state FROM ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `GRANT SELECT ON TABLE public.waste_mainserver_source_state TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
       `GRANT INSERT, UPDATE, DELETE ON TABLE
         public.waste_email_reminder_subscriptions,
         public.waste_email_reminder_subscription_items,

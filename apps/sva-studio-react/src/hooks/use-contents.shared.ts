@@ -8,7 +8,7 @@ export type UseContentDetailResult = {
   readonly isLoading: boolean;
   readonly error: import('../lib/iam-api').IamHttpError | null;
   readonly mutationError: import('../lib/iam-api').IamHttpError | null;
-  readonly refetch: () => Promise<void>;
+  readonly refetch: () => Promise<boolean>;
   readonly clearMutationError: () => void;
   readonly updateContent: (
     payload: import('../lib/iam-api').UpdateContentPayload

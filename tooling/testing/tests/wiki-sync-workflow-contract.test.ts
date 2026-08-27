@@ -39,15 +39,19 @@ const excludedPublicationPrefixes = [
 ] as const;
 
 describe('wiki sync workflow contract', () => {
-  it('builds the publication from one versioned positive manifest', () => {
+  it('builds the rendered publication from the versioned manifest', () => {
     expect(workflow).toContain(`- '${publicationManifestPath}'`);
-    expect(workflow).toMatch(
-      /mapfile -t publication_pathspecs \\\n+\s+< config\/documentation\/wiki-publication-paths\.txt/u
+    expect(workflow).toContain("if: github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain('"$GITHUB_REF" != "refs/heads/main"');
+    expect(workflow).toContain('uses: ./.github/actions/setup-pnpm-workspace');
+    expect(workflow).not.toContain('\n    env:\n      WIKI_SYNC_TOKEN:');
+    expect(workflow).toMatch(/- name: Clone wiki repository[\s\S]*?env:[\s\S]*?WIKI_SYNC_TOKEN:/u);
+    expect(workflow).toContain('run: pnpm check:docs');
+    expect(workflow).toContain(
+      'run: pnpm exec tsx scripts/ci/build-wiki-publication.ts --output wiki'
     );
-    expect(workflow).toContain('git ls-files -z -- "${publication_pathspecs[@]}"');
-    expect(workflow).toContain('rsync -aR --from0 --files-from="$publication_files"');
-    expect(workflow).toContain('rsync -a --delete "$publication_root/docs/" wiki/docs/');
-    expect(workflow).not.toContain('rsync -a --delete docs/ wiki/docs/');
+    expect(workflow).not.toContain('wiki/docs');
+    expect(workflow).not.toContain('rsync');
   });
 
   it('selects every declared pathspec and only current local documentation', () => {
@@ -70,11 +74,10 @@ describe('wiki sync workflow contract', () => {
     }
   });
 
-  it('uses the same canonical entrypoints in Wiki home and sidebar', () => {
-    expect(workflow).toContain('[Dokumentationsübersicht](docs/README.md)');
-    expect(workflow).toContain('[Architektur (arc42)](docs/architecture/README.md)');
-    expect(workflow).toContain('[Architekturentscheidungen (ADRs)](docs/adr/README.md)');
-    expect(workflow).not.toContain('docs/architecture/decisions/README.md');
+  it('does not inline raw entry pages in the workflow', () => {
+    expect(workflow).not.toContain('cat > wiki/Home.md');
+    expect(workflow).not.toContain('cat > wiki/_Sidebar.md');
+    expect(workflow).not.toContain('](docs/');
   });
 
   it('does not leave relative links to tracked documentation outside the publication', () => {

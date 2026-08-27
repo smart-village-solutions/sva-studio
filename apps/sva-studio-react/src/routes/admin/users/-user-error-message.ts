@@ -26,6 +26,8 @@ const staticErrorCodeMap: Record<string, () => string> = {
   mainserver_credentials_invalid: () => t('admin.users.errors.mainserverCredentialsInvalid'),
   mainserver_user_conflict: () => t('admin.users.errors.mainserverUserConflict'),
   mainserver_provisioning_failed: () => t('admin.users.errors.mainserverProvisioningFailed'),
+  mainserver_tenant_forbidden: () => t('admin.users.errors.mainserverTenantForbidden'),
+  mainserver_request_rejected: () => t('admin.users.errors.mainserverRequestRejected'),
   last_admin_protection: () => t('admin.users.errors.lastAdminProtection'),
   self_protection: () => t('admin.users.errors.selfProtection'),
   system_admin_delete_protection: () => t('admin.users.errors.systemAdminDeleteProtection'),

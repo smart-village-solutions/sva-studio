@@ -227,6 +227,7 @@ describe('provisionMainserverUserCredentials', () => {
           keycloak_id: 'kc-user-1',
           first_name: 'Alice',
           last_name: 'Example',
+          role: 'studio',
         }),
       })
     );
@@ -506,7 +507,7 @@ describe('provisionMainserverUserCredentials', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('provisions against the Mainserver endpoint even when the municipality id is not configured explicitly', async () => {
+  it('provisions a technical organization account with the studio role without an explicit municipality id', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       enabled: true,
       publicConfig: {
@@ -542,7 +543,10 @@ describe('provisionMainserverUserCredentials', () => {
       actor: createActor(),
       actorSubject: 'kc-admin-1',
       keycloakSubject: 'kc-user-1',
-      payload: createPayload(),
+      payload: {
+        ...createPayload(),
+        isTechnicalAccount: true,
+      },
       fetchImpl,
     });
 
@@ -560,6 +564,7 @@ describe('provisionMainserverUserCredentials', () => {
           keycloak_id: 'kc-user-1',
           first_name: 'Alice',
           last_name: 'Example',
+          role: 'studio',
         }),
       })
     );

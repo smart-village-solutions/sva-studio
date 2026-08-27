@@ -241,6 +241,32 @@ RETURNING ${columns};
     return result.rows[0] ? mapEntry(result.rows[0]) : undefined;
   });
 
+export const annotateMainserverMutationJournal = async (input: {
+  readonly instanceId: string;
+  readonly operationExternalId: string;
+  readonly expectedDataProviderId: string;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}): Promise<void> => {
+  await withInstanceScopedDb(input.instanceId, async (client) => {
+    await client.query(
+      `
+UPDATE iam.mainserver_mutation_journal
+SET
+  expected_data_provider_id = $3,
+  preimage = COALESCE(preimage, '{}'::jsonb) || $4::jsonb,
+  updated_at = NOW()
+WHERE instance_id = $1 AND operation_external_id = $2;
+      `,
+      [
+        input.instanceId,
+        required(input.operationExternalId, 'mainserver_operation_external_id_required'),
+        required(input.expectedDataProviderId, 'mainserver_expected_data_provider_id_required'),
+        JSON.stringify(input.metadata),
+      ]
+    );
+  });
+};
+
 export const loadMainserverMutationJournal = async (input: {
   readonly instanceId: string;
   readonly operationExternalId: string;

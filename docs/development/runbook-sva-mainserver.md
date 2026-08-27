@@ -114,6 +114,16 @@ Der Event-Editor importiert das POI-Plugin nicht direkt. Die Auswahl nutzt aussc
 
 Rollback erfolgt wie bei News über `iam.instance_integrations.enabled = false`. Events und POI fallen dann nicht auf lokale IAM-Contents zurück.
 
+## Kontrollierter Inhabertransfer
+
+Der eingecheckte GraphQL-Vertrag führt die optionale Variable `dataProviderId` für News, Events, POI, Touren und Generic Items. Studio übernimmt diese ID niemals aus einem Browser-Request. Der serverseitige Adapter liest den Datensatz frisch mit den Credentials des Quellprincipals, vergleicht den aktuellen DataProvider mit dem erwarteten Quellwert, sendet die intern aufgelöste Ziel-ID an die bestehende Resource-Mutation und akzeptiert den Vorgang nur, wenn die Antwort denselben Ziel-DataProvider bestätigt.
+
+Der Studio-Adapter ist derzeit für News, Events, POI und Root-GenericItems implementiert. Touren bleiben deaktiviert, weil der verifizierte Schema-Snapshot in `TourInput` kein `dataProviderId` anbietet und das Studio keinen redaktionellen Tour-Detailadapter besitzt. Surveys, Legacy-SurveyPolls und Batch-Importe unterstützen keinen Inhabertransfer. Normale Update-Routen ändern den DataProvider nicht.
+
+`content.transferOwnership` ist keine Default-Capability. Die Route bleibt fail-closed, bis ein Runtime-Preflight den Zielvertrag bestätigt und die Action explizit in `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` aufgenommen wurde. Eine erfolgreiche lokale Typprüfung ersetzt diesen Betriebsnachweis nicht.
+
+Die Migration `0087_iam_content_transfer_ownership_permission.sql` ergänzt ausschließlich Permission- und Rollenbestandsdaten. Tabellen, Spalten, Constraints, Indizes, RLS, Trigger und Datenbankfunktionen ändern sich nicht; deshalb bleibt der strukturelle Schema-Snapshot unverändert.
+
 ## Survey-Operationen
 
 Surveys folgen demselben Boundary-Muster wie News, Events und POI. Das Plugin erzeugt Exportdateien aus den JSON-Ergebnissen im Studio; der Mainserver liefert dafür den hostgeführten Survey-Vertrag.
@@ -343,7 +353,7 @@ Für DataProvider-gebundene Schreiboperationen gelten zusätzlich:
 - `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE=legacy_compatible|required` (Standard: `legacy_compatible`)
 - `SVA_MAINSERVER_CONFIRMED_CAPABILITIES=<Action-ID,...>` (Standard: leer)
 
-Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md) beschrieben.
+Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](./mainserver-data-provider-authoring.md) beschrieben.
 
 Der Wert wird in den getrackten Remote-Profilen für Dev, Staging und Production explizit geführt. Development und Staging sind nach erfolgreicher Dev-Abnahme auf `automatic` gesetzt; Production bleibt bis zur erfolgreichen Staging-Abnahme auf `shadow`. `automatic` darf erst nach erfolgreicher Identity-Verifikation der aktiven persönlichen und organisatorischen Credential-Versionen sowie ausgewerteten Shadow-Differenzen aktiviert werden. Im automatischen Modus erweitern fehlende Bindungen den Scope nicht.
 
@@ -368,7 +378,9 @@ POST /api/v1/iam/organizations/:organizationId/provision-mainserver
 Idempotency-Key: <eindeutiger Wert>
 ```
 
-Es genügt `iam.org.write`; zusätzliche Accountrechte sind nicht erforderlich. Der Request enthält keine Rollen, Gruppen, Einladungsoptionen oder technischen Accountattribute. Der Bootstrap verwendet ausschließlich die persönlichen Mainserver-Credentials des Actors und nie den aktiven Organisationskontext.
+Es genügt `iam.org.write`; zusätzliche Accountrechte sind nicht erforderlich. Der Request enthält keine frei wählbaren Studio-/Keycloak-Rollen, Gruppen, Einladungsoptionen oder technischen Accountattribute. Der technische Account behält deshalb leere Studio-/Keycloak-Rollen und Gruppen. Wie bei persönlichen Accounts sendet Studio an den Mainserver jedoch fest `role: "studio"`, damit neue persönliche und organisatorische Zugänge die erforderlichen Mainserver-Verwaltungsrechte erhalten. Fehlt `role` bei anderen Aufrufern, verwendet der Mainserver weiterhin seine Defaultrolle `restricted`. Der Bootstrap verwendet ausschließlich die persönlichen Mainserver-Credentials des Actors und nie den aktiven Organisationskontext.
+
+Bei einer Reprovisionierung sendet Studio `role: "studio"` erneut; der Mainserver bewahrt dabei die bestehende Rolle. Es erfolgt keine automatische Migration bereits vorhandener Nutzer. Cross-Tenant-Provisionierung wird vom Mainserver mit HTTP `403`, eine ungültige Rolle mit HTTP `422` abgelehnt; beide Antworten gelten als sichere, nicht wiederholbare Provisioning-Fehler und dürfen keine Secrets oder unkontrollierten Upstream-Details exponieren.
 
 Operativ relevante Zustände:
 

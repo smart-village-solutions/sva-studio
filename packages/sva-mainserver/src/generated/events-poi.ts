@@ -479,6 +479,7 @@ export const svaMainserverCreateEventDocument = `
   mutation SvaMainserverCreateEvent(
     $id: ID
     $forceCreate: Boolean
+    $dataProviderId: ID
     $pushNotification: Boolean
     $parentId: Int
     $keywords: String
@@ -508,6 +509,7 @@ export const svaMainserverCreateEventDocument = `
     createEventRecord(
       id: $id
       forceCreate: $forceCreate
+      dataProviderId: $dataProviderId
       pushNotification: $pushNotification
       parentId: $parentId
       keywords: $keywords
@@ -559,6 +561,7 @@ export const svaMainserverCreatePoiDocument = `
   mutation SvaMainserverCreatePoi(
     $id: ID
     $forceCreate: Boolean
+    $dataProviderId: ID
     $name: String!
     $externalId: String
     $description: String
@@ -583,6 +586,7 @@ export const svaMainserverCreatePoiDocument = `
     createPointOfInterest(
       id: $id
       forceCreate: $forceCreate
+      dataProviderId: $dataProviderId
       name: $name
       externalId: $externalId
       description: $description

@@ -66,9 +66,11 @@ const buildNewsMutationVariables = (input: {
   readonly news: SvaMainserverNewsInput;
   readonly newsId?: string;
   readonly forceCreate?: boolean;
+  readonly dataProviderId?: string;
 }) => ({
   ...(input.newsId ? { id: input.newsId } : {}),
   ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+  ...(input.dataProviderId ? { dataProviderId: input.dataProviderId } : {}),
   title: input.news.title,
   ...(input.news.pushNotification === undefined
     ? {}
@@ -138,6 +140,7 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
       readonly news: SvaMainserverNewsInput;
       readonly newsId?: string;
       readonly forceCreate?: boolean;
+      readonly dataProviderId?: string;
     },
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverNewsItem> => {

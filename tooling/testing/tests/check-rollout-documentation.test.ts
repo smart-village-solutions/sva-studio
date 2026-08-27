@@ -25,9 +25,9 @@ const requiredPaths = [
   'docs/architecture/07-deployment-view.md',
   'docs/architecture/08-cross-cutting-concepts.md',
   'docs/development/runtime-profile-betrieb.md',
-  'docs/guides/deployment-overview.md',
-  'docs/guides/swarm-deployment-guide.md',
-  'docs/guides/swarm-deployment-runbook.md',
+  'docs/operations/deployment-overview.md',
+  'docs/operations/swarm-deployment-guide.md',
+  'docs/operations/swarm-deployment-runbook.md',
   'openspec/project.md',
 ] as const;
 const validDocuments = (): RolloutDocument[] => [

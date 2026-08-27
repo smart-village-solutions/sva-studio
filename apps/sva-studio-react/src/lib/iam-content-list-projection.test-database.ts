@@ -3,6 +3,7 @@ import {
   type TestSyncState,
 } from './iam-content-list-projection.test-database-sync-state.js';
 import type { TestProjectionRow } from './iam-content-list-projection.test-database-types.js';
+import { removeTransferredProjectionRows } from './iam-content-list-projection.test-database-transfer.js';
 type TestQueryResult = { rows: unknown[]; rowCount: number };
 const readNullableString = (value: unknown): string | null =>
   typeof value === 'string' ? value : null;
@@ -242,13 +243,7 @@ const queryValue = (
   values: readonly unknown[] | undefined,
   index: number,
   fallback: unknown = ''
-): unknown => {
-  if (!values) {
-    return fallback;
-  }
-  const value = values[index];
-  return value ?? fallback;
-};
+): unknown => values?.[index] ?? fallback;
 
 const scopedCountQueryResult = (
   text: string,
@@ -283,6 +278,10 @@ const deleteProjectionQueryResult = (
 ): TestQueryResult | null => {
   if (!text.includes('DELETE FROM iam.content_list_projection')) {
     return null;
+  }
+  if (text.includes('projection_scope_key <> $5')) {
+    fixture.projectionRows = removeTransferredProjectionRows(fixture.projectionRows, values);
+    return { rows: [], rowCount: 0 };
   }
   const contentType = String(queryValue(values, 1));
   const projectionScopeKey = fixture.projectionScopeKeyColumnAvailable

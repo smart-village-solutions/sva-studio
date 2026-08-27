@@ -70,6 +70,7 @@ export const shellENResources = {
   },
   breadcrumbs: {
     ariaLabel: 'Breadcrumb navigation',
+    wasteCalendar: 'Waste calendar',
   },
   header: {
     navAriaLabel: 'Main navigation',

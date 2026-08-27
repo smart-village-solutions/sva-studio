@@ -91,6 +91,7 @@ WHERE organization.instance_id = $1
     OR organization.organization_key ILIKE $2 ESCAPE '\\')
   AND ($3::text IS NULL OR organization.organization_type = $3)
   AND ($4::boolean IS NULL OR organization.is_active = $4)
+  AND ($5::uuid IS NULL OR organization.id <> $5::uuid)
 `;
 
 const readString = (value: unknown): string | undefined => {
@@ -299,6 +300,7 @@ export const loadOrganizationList = async (
     readonly search?: string;
     readonly organizationType?: IamOrganizationType;
     readonly isActive?: boolean;
+    readonly excludeOrganizationId?: string;
     readonly sortBy: OrganizationListSortField;
     readonly sortDirection: OrganizationListSortDirection;
   }
@@ -310,6 +312,7 @@ export const loadOrganizationList = async (
     searchPattern,
     input.organizationType ?? null,
     input.isActive ?? null,
+    input.excludeOrganizationId ?? null,
   ] as const;
   const sortExpressionByField = {
     displayName: 'LOWER(organization.display_name) COLLATE "C"',
@@ -364,7 +367,7 @@ LEFT JOIN membership_counts
   ON membership_counts.organization_id = organization.id
 ${ORGANIZATION_LIST_FILTER_SQL}
 ORDER BY (${sortExpression} IS NULL) ASC, ${sortExpression} ${sortDirection}, organization.id ASC
-LIMIT $5::int OFFSET $6::int;
+LIMIT $6::int OFFSET $7::int;
 `,
     [...filterParams, input.pageSize, offset]
   );

@@ -15,22 +15,30 @@ How-to-Anleitungen gehören nach [Entwicklung](../development/README.md), ausfü
 ## Aktuelle Referenzeinstiege
 
 - [IAM API v1](../api/iam-v1.yaml)
-- [Monorepo-Struktur](../monorepo.md)
-- [Routing](../routing.md)
-- [Browser-Unterstützung](../BROWSER-SUPPORT.md)
+- [Monorepo-Struktur](./monorepo.md)
+- [Routing](./routing.md)
+- [Browser-Unterstützung](./browser-support.md)
 
-## Übergangsweise Referenzen unter `guides/`
+## Technische und fachliche Verträge
 
-- [Content-Management-Core-Vertrag](../guides/content-management-core-contract.md)
-- [IAM-Authorization-API-Vertrag](../guides/iam-authorization-api-contract.md)
-- [IAM-Authorization-Reason-Codes](../guides/iam-authorization-reason-codes.md)
-- [IAM-Service-API](../guides/iam-service-api-dokumentation.md)
-- [Public-Waste-API](../guides/public-waste-api.md)
-- [Waste-Datenaustausch](../guides/waste-data-exchange.md)
-- [Medienverwaltung](../guides/media-management.md)
-- [UI-Zugriff und Server-Enforcement](../guides/ui-access-server-enforcement.md)
+- [Komponenten-Mapping für die Account-UI](./account-ui-komponenten-mapping.md)
+- [Content-Management-Core-Vertrag](./content-management-core-contract.md)
+- [Inhaber von Inhalten übertragen](./content-ownership-transfer.md)
+- [Featured Projects](./featured-projects.md)
+- [IAM-Authorization-API-Vertrag](./iam-authorization-api-contract.md)
+- [IAM-Authorization-Reason-Codes](./iam-authorization-reason-codes.md)
+- [Direkte Nutzerrechte im IAM](./iam-direkte-nutzerrechte.md)
+- [IAM-Service-API](./iam-service-api-dokumentation.md)
+- [Instanz-Lebenszyklus und Navigation](./instance-lifecycle-navigation.md)
+- [Instanz-Modulverwaltung](./instance-module-management.md)
+- [Public-Waste-API](./public-waste-api.md)
+- [Waste-Datenaustausch](./waste-data-exchange.md)
+- [Medienverwaltung](./media-management.md)
+- [UI-Zugriff und Server-Enforcement](./ui-access-server-enforcement.md)
+- [Waste-Abholorte global sortieren und auswählen](./waste-management-abholorte-sortieren.md)
+- [Gültigkeitszeiträume von Waste-Touren](./waste-management-tour-gueltigkeit.md)
 
-Alle geplanten Zielpfade und Konsolidierungen sind im [Migrationsinventar](../guides/README.md) festgehalten.
+Das ergänzende Authorization-OpenAPI-Schema liegt unter [`docs/api/iam-authorization-openapi-3.0.yaml`](../api/iam-authorization-openapi-3.0.yaml). Alle finalen Zielpfade und Konsolidierungsentscheidungen sind im [Migrationsnachweis](../governance/dokumentationsmigration.md) festgehalten.
 
 ## Benachbarte Bereiche
 

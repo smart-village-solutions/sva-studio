@@ -168,6 +168,8 @@ describe('waste management job definitions', () => {
             'longestBatchDurationMs',
             'studioSnapshotCount',
             'mainserverSnapshotCount',
+            'sourceRevision',
+            'yearWindow',
           ],
         },
         errors: {

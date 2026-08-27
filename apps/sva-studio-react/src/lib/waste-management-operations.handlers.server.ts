@@ -255,6 +255,8 @@ export const createSyncMainserverOperation =
       longestBatchDurationMs: details.longestBatchDurationMs,
       studioSnapshotCount: details.studioSnapshotCount,
       mainserverSnapshotCount: details.mainserverSnapshotCount,
+      sourceRevision: details.sourceRevision,
+      yearWindow: details.yearWindow,
     });
   };
 

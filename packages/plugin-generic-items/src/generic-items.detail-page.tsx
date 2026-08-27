@@ -26,6 +26,7 @@ import {
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  ContentOwnershipSaveHint,
   hasStudioCreatedSaveFeedback,
   StudioDestructiveActionDialog,
   StudioDetailPageTemplate,
@@ -673,16 +674,19 @@ export function GenericItemsDetailPage({
         }
         primaryAction={
           canSave ? (
-            <StudioSaveButton
-              type="button"
-              status={saveFeedback.status}
-              onClick={() => void onSubmit()}
-              labels={{
-                idle: mode === 'create' ? pt('actions.create') : pt('actions.update'),
-                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-                saved: pt('actions.saved'),
-              }}
-            />
+            <div className="flex flex-col items-end gap-1">
+              <ContentOwnershipSaveHint />
+              <StudioSaveButton
+                type="button"
+                status={saveFeedback.status}
+                onClick={() => void onSubmit()}
+                labels={{
+                  idle: mode === 'create' ? pt('actions.create') : pt('actions.update'),
+                  saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+                  saved: pt('actions.saved'),
+                }}
+              />
+            </div>
           ) : undefined
         }
         actions={
@@ -770,9 +774,6 @@ export function GenericItemsDetailPage({
             label: pt(`principal.${actingPrincipalType}`),
           })}
           onChange={setActingPrincipalType}
-          dataProvider={mode === 'edit' ? loadedItem?.dataProvider : undefined}
-          dataProviderLabel={pt('principal.dataProvider')}
-          dataProviderUnavailableLabel={pt('principal.unavailable')}
         />
         {retryReferenceSync ? (
           <Button

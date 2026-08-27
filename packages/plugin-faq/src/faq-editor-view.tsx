@@ -1,4 +1,5 @@
 import {
+  ContentOwnershipSaveHint,
   MainserverPrincipalControl,
   StudioDetailPageTemplate,
   StudioFormSummary,
@@ -78,17 +79,20 @@ const FaqEditorPrimaryAction = ({
   'canSave' | 'deletePending' | 'formId' | 'mode' | 'pt' | 'saveStatus'
 >) =>
   canSave ? (
-    <StudioSaveButton
-      type="submit"
-      form={formId}
-      status={saveStatus}
-      disabled={deletePending}
-      labels={{
-        idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
-        saving: pt('actions.saving'),
-        saved: pt('actions.saved'),
-      }}
-    />
+    <div className="flex flex-col items-end gap-1">
+      <ContentOwnershipSaveHint />
+      <StudioSaveButton
+        type="submit"
+        form={formId}
+        status={saveStatus}
+        disabled={deletePending}
+        labels={{
+          idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+          saving: pt('actions.saving'),
+          saved: pt('actions.saved'),
+        }}
+      />
+    </div>
   ) : undefined;
 
 export const FaqEditorView = (props: FaqEditorViewProps) => (
@@ -128,11 +132,6 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
             label: props.pt(`principal.${props.actingPrincipalType}`),
           })}
           onChange={props.setActingPrincipalType}
-          dataProvider={
-            props.mode === 'edit' ? (props.loadedItem?.dataProvider ?? null) : undefined
-          }
-          dataProviderLabel={props.pt('principal.dataProvider')}
-          dataProviderUnavailableLabel={props.pt('principal.unavailable')}
         />
         <FaqEditorTabs
           activeTab={props.activeTab}

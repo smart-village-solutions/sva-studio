@@ -130,7 +130,7 @@ Das System SHALL manuelles Setup dokumentieren und erlauben, wenn Generator nich
 
 #### Scenario: Dokumentation von Generator vs. Manuell
 
-- **GIVEN** Dokumentation in docs/monorepo.md
+- **GIVEN** Dokumentation in docs/reference/monorepo.md
 - **WHEN** ein Entwickler konsultiert sie
 - **THEN** klare Guidance: Generator als Standard (~90%), Manuell nur wenn nötig (~10%)
 - **AND** Nachteile der manuellen Methode sind erklärt
@@ -142,7 +142,7 @@ Das System SHALL klare, wiederverwendbare Generator-Commands und Workflows dokum
 
 #### Scenario: Dokumentierte Generator-Commands
 
-- **GIVEN** Entwickler liest docs/monorepo.md
+- **GIVEN** Entwickler liest docs/reference/monorepo.md
 - **WHEN** er ein neues Package erstellen möchte
 - **THEN** findet er Copy-Paste-Ready Commands mit SVA-Defaults
 - **AND** Erklärungen für jeden Flag sind vorhanden

@@ -6,12 +6,13 @@ import { LegalTextDetailPage } from './-legal-text-detail-page';
 
 const useLegalTextsMock = vi.fn();
 const navigateMock = vi.fn();
+const accessState = vi.hoisted(() => ({ updateStatus: 'allowed' as 'allowed' | 'denied' }));
 
 vi.mock('../../../hooks/use-iam-resource-access', () => ({
   useIamResourceAccess: () => ({
     read: { status: 'allowed' },
     create: { status: 'allowed' },
-    update: { status: 'allowed' },
+    update: { status: accessState.updateStatus },
     delete: { status: 'allowed' },
   }),
   isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
@@ -35,16 +36,28 @@ vi.mock('../../../hooks/use-legal-texts', () => ({
   useLegalTexts: () => useLegalTextsMock(),
 }));
 
-vi.mock('../../../components/RichTextEditor', () => ({
-  RichTextEditor: ({
+vi.mock('./-legal-text-rich-text-editor', () => ({
+  LegalTextRichTextEditor: ({
     id,
     value,
     onChange,
+    disabled,
   }: {
     id: string;
     value: string;
     onChange: (value: string) => void;
-  }) => <textarea id={id} value={value} onChange={(event) => onChange(event.target.value)} />,
+    disabled?: boolean;
+  }) => (
+    <div data-testid="legal-text-rich-text-editor">
+      <button type="button">HTML</button>
+      <textarea
+        id={id}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  ),
 }));
 
 vi.mock('../../../components/ConfirmDialog', () => ({
@@ -114,9 +127,22 @@ describe('LegalTextDetailPage', () => {
   });
 
   beforeEach(() => {
+    accessState.updateStatus = 'allowed';
     useLegalTextsMock.mockReset();
     navigateMock.mockReset();
     navigateMock.mockResolvedValue(undefined);
+  });
+
+  it('keeps the HTML view toggle available for read-only legal texts', async () => {
+    accessState.updateStatus = 'denied';
+    useLegalTextsMock.mockReturnValue(createState());
+
+    render(<LegalTextDetailPage legalTextVersionId="legal-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'HTML' }).closest('fieldset')).toBeNull();
+    });
+    expect(screen.getByLabelText('Inhalt')).toHaveProperty('disabled', true);
   });
 
   it('loads form values from the selected legal text and saves updates', async () => {

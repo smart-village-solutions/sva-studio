@@ -1,0 +1,4 @@
+{
+  "prNumber": 1172,
+  "body": "Der Rich-Text-Editor lädt wieder zuverlässig im Browser.\n\n- Die Studio-Anmeldung bleibt nicht mehr bei „Sitzung wird geladen ...“ stehen.\n- Die HTML-Bereinigung verwendet im Browser eine dafür geeignete Bibliothek.\n- Die Sicherheitsregeln für erlaubte Formatierungen bleiben zwischen Browser und Server einheitlich."
+}

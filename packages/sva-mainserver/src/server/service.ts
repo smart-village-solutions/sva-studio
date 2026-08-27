@@ -21,6 +21,7 @@ import type {
   SvaMainserverListQuery,
   SvaMainserverNewsListInput,
   SvaMainserverNewsInput,
+  SvaMainserverOwnershipTransferInput,
   SvaMainserverPoiInput,
   SvaMainserverProjectionContentType,
   SvaMainserverStaticContentInput,
@@ -34,6 +35,7 @@ import {
   createCredentialProvider,
   createDefaultCredentialReader,
 } from './service-internals/credentials.js';
+import { createContentOwnershipTransferOperation } from './service-internals/content-ownership-transfer.js';
 import { createEventOperations } from './service-internals/event-operations.js';
 import {
   mergeEventUpdateWithCurrent,
@@ -256,6 +258,12 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const eventVisibilityOperations = createEventVisibilityOperations(executeGraphqlWithConfig);
   const genericItemOperations = createGenericItemOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
+  const transferContentOwnershipWithConfig = createContentOwnershipTransferOperation({
+    news: newsOperations,
+    event: eventOperations,
+    poi: poiOperations,
+    genericItem: genericItemOperations,
+  });
   const projectionListOperations = createProjectionListOperations(executeGraphqlWithConfig);
   const surveyOperations = createSurveyOperations(executeGraphqlWithConfig);
   const staticContentOperations = createStaticContentOperations(executeGraphqlWithConfig);
@@ -567,6 +575,11 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return poiOperations.destroyPoiWithConfig(input, config);
   };
 
+  const transferContentOwnership = async (input: SvaMainserverOwnershipTransferInput) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return transferContentOwnershipWithConfig(input, config);
+  };
+
   const createOrUpdateStaticContent = async (
     input: SvaMainserverConnectionInput & {
       readonly staticContent: SvaMainserverStaticContentInput;
@@ -755,6 +768,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     updateNews,
     updatePoi,
     updateSurvey,
+    transferContentOwnership,
   };
 };
 
@@ -906,6 +920,9 @@ export const updateSvaMainserverPoi = (
 export const deleteSvaMainserverPoi = (
   input: SvaMainserverConnectionInput & { readonly poiId: string }
 ) => getDefaultService().deletePoi(input);
+
+export const transferSvaMainserverContentOwnership = (input: SvaMainserverOwnershipTransferInput) =>
+  getDefaultService().transferContentOwnership(input);
 
 export const listSvaMainserverSurveys = (
   input: SvaMainserverConnectionInput & SvaMainserverSurveyListInput

@@ -1,5 +1,10 @@
 import type { ContentJsonValue } from '@sva/core';
-import { iamContentAuthorDisplayModes, iamContentStatuses, iamContentValidationStates } from '@sva/core';
+import {
+  iamContentAuthorDisplayModes,
+  iamContentStatuses,
+  iamContentValidationStates,
+} from '@sva/core';
+import { iamContentOwnerPrincipalTypes } from '@sva/core';
 import { z } from 'zod';
 
 import { resolveContentPublicationInvariant } from './content-publication-invariants.js';
@@ -128,8 +133,6 @@ export const createContentSchema = z
 export const updateContentSchema = z
   .object({
     organizationId: z.string().uuid().optional(),
-    ownerUserId: z.string().uuid().optional(),
-    ownerOrganizationId: z.string().uuid().optional(),
     authorDisplayMode: contentAuthorDisplayModeSchema.optional(),
     authorDisplayName: z.string().trim().min(1).max(200).optional(),
     title: z.string().trim().min(1).max(255).optional(),
@@ -144,3 +147,16 @@ export const updateContentSchema = z
   .superRefine(validatePublishedAtForStatus);
 
 export type UpdateContentSchemaInput = z.infer<typeof updateContentSchema>;
+
+export const transferContentOwnershipSchema = z
+  .object({
+    targetPrincipal: z
+      .object({
+        type: z.enum(iamContentOwnerPrincipalTypes),
+        id: z.string().uuid(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export type TransferContentOwnershipSchemaInput = z.infer<typeof transferContentOwnershipSchema>;

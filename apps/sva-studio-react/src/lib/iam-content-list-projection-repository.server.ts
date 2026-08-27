@@ -15,6 +15,7 @@ import {
   withProjectionSchemaModeRetry,
 } from './iam-content-list-projection-repository-schema.server.js';
 import { countProjectedRowsForScopeWithClient } from './iam-content-list-projection-repository-sync-state.server.js';
+import { deleteTransferredProjectionRowsFromOtherScopes } from './iam-content-list-projection-repository-transfer.server.js';
 import {
   legacyMainserverProjectionUpsertSql,
   scopedMainserverProjectionUpsertSql,
@@ -171,6 +172,7 @@ export const upsertSingleMainserverProjectionRow = async (
       return;
     }
     await upsertMainserverProjectionRows(client, target, projectionPayloadJson);
+    await deleteTransferredProjectionRowsFromOtherScopes(client, target, row);
     const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
     await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
   });

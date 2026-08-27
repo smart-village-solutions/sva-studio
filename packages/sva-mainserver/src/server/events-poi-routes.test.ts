@@ -450,6 +450,40 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('sanitizes event and POI rich-text descriptions before forwarding them', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+    state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
+    const unsafeDescription =
+      '<h2 onclick="alert(1)">Titel</h2><script>alert(1)</script><a href="javascript:alert(1)">Link</a>';
+
+    const eventResponse = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Veranstaltung', description: unsafeDescription }),
+      })
+    );
+    const poiResponse = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Ort', description: unsafeDescription }),
+      })
+    );
+
+    expect(eventResponse?.status).toBe(201);
+    expect(poiResponse?.status).toBe(201);
+    expect(state.createSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: expect.objectContaining({ description: '<h2>Titel</h2><a>Link</a>' }),
+      })
+    );
+    expect(state.createSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poi: expect.objectContaining({ description: '<h2>Titel</h2><a>Link</a>' }),
+      })
+    );
+  });
+
   it('updates events with normalized optional fields and nested relations', async () => {
     mockAuthorizedMutation();
     state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });

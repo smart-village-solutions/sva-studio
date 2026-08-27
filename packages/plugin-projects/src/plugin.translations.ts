@@ -1,5 +1,7 @@
 import type { PluginTranslations } from '@sva/plugin-sdk';
 
+import { projectRichTextTranslations } from './plugin.translations.rich-text.js';
+
 const de = {
   projects: {
     navigation: { title: 'Projekte' },
@@ -155,22 +157,7 @@ const de = {
       previous: 'Zurück',
       next: 'Weiter',
     },
-    richText: {
-      blockType: 'Absatzformat',
-      paragraph: 'Absatz',
-      heading2: 'Überschrift 2',
-      heading3: 'Überschrift 3',
-      heading4: 'Überschrift 4',
-      blockquote: 'Zitat',
-      bulletList: 'Aufzählung',
-      orderedList: 'Nummerierte Liste',
-      bold: 'Fett',
-      italic: 'Kursiv',
-      undo: 'Rückgängig',
-      redo: 'Wiederholen',
-      applyLink: 'Link einfügen',
-      linkInput: 'Link-Adresse',
-    },
+    richText: projectRichTextTranslations.de,
   },
 };
 
@@ -241,6 +228,7 @@ const en = {
       pickerTitle: 'Add media',
       moved: 'Image moved to position {{position}} of {{total}}.',
     },
+    richText: projectRichTextTranslations.en,
   },
 };
 

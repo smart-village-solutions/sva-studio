@@ -26,6 +26,6 @@ Eine einmal konfliktbehaftete persönliche Mainserver-DataProvider-Bindung bleib
 
 - Affected specs: `sva-mainserver-integration`, `iam-auditing`
 - Affected code: `packages/auth-runtime`, `packages/sva-mainserver`
-- Affected docs: `docs/development/studio-db-schema.md`, `docs/guides/mainserver-data-provider-authoring.md`, relevante arc42-Abschnitte
+- Affected docs: `docs/development/studio-db-schema.md`, `docs/development/mainserver-data-provider-authoring.md`, relevante arc42-Abschnitte
 - Affected arc42 sections: `06-runtime-view`, `08-cross-cutting-concepts`, `11-risks-and-technical-debt`
 - Database schema: keine neue Tabelle oder Spalte; vorhandene Statuswerte `conflict`, `historical` und `verified` werden verwendet

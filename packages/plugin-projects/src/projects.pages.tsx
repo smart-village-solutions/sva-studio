@@ -25,6 +25,8 @@ import {
   addStudioCreatedSaveFeedback,
   addStudioDestructiveNavigationFeedback,
   Button,
+  ContentOwnershipPanelSlot,
+  ContentOwnershipSaveHint,
   ContentMediaUsageBlock,
   contentMediaUsageToReference,
   contentMediaUsagesToLocalDrafts,
@@ -103,11 +105,16 @@ const richTextOptions = (pt: Translate) => [
 ];
 
 const richTextLabels = (pt: Translate) => ({
+  mode: pt('richText.mode'),
+  visualMode: pt('richText.visualMode'),
+  htmlMode: pt('richText.htmlMode'),
   blockType: pt('richText.blockType'),
   bulletList: pt('richText.bulletList'),
   orderedList: pt('richText.orderedList'),
   bold: pt('richText.bold'),
   italic: pt('richText.italic'),
+  underline: pt('richText.underline'),
+  clearFormatting: pt('richText.clearFormatting'),
   undo: pt('richText.undo'),
   redo: pt('richText.redo'),
   link: pt('richText.applyLink'),
@@ -653,6 +660,7 @@ function ProjectEditor({
       icon: 'basis',
       panel: (
         <div className="space-y-4">
+          {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
           <StudioField id="project-language" label={pt('fields.language')}>
             <Input
               id="project-language"
@@ -885,17 +893,20 @@ function ProjectEditor({
       }
       primaryAction={
         canSave ? (
-          <StudioSaveButton
-            type="submit"
-            form={formId}
-            status={saveFeedback.status}
-            disabled={Boolean(retryReferenceSync)}
-            labels={{
-              idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
-              saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-              saved: pt('actions.saved'),
-            }}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <ContentOwnershipSaveHint />
+            <StudioSaveButton
+              type="submit"
+              form={formId}
+              status={saveFeedback.status}
+              disabled={Boolean(retryReferenceSync)}
+              labels={{
+                idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+                saved: pt('actions.saved'),
+              }}
+            />
+          </div>
         ) : undefined
       }
     >
@@ -975,9 +986,6 @@ function ProjectEditor({
             label: pt(`principal.${actingPrincipalType}`),
           })}
           onChange={setActingPrincipalType}
-          dataProvider={mode === 'edit' ? item?.dataProvider : undefined}
-          dataProviderLabel={pt('principal.dataProvider')}
-          dataProviderUnavailableLabel={pt('principal.unavailable')}
         />
         <StudioDetailTabs
           ariaLabel={pt('tabs.ariaLabel')}

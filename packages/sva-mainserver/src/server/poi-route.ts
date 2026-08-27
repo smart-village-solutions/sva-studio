@@ -4,6 +4,7 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
+import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverPoiInput } from '../types.js';
@@ -90,40 +91,43 @@ const buildPoiInput = (input: {
   certificates: SvaMainserverPoiInput['certificates'] | undefined;
   accessibilityInformation: SvaMainserverPoiInput['accessibilityInformation'] | undefined;
   tags: readonly string[] | undefined;
-}): SvaMainserverPoiInput => ({
-  name: input.name,
-  ...(readString(input.body.description)
-    ? { description: readString(input.body.description) }
-    : {}),
-  ...(typeof input.body.mobileDescription === 'string'
-    ? { mobileDescription: input.body.mobileDescription.trim() }
-    : {}),
-  ...(typeof input.body.externalId === 'string'
-    ? { externalId: input.body.externalId.trim() }
-    : {}),
-  ...(typeof input.body.keywords === 'string' ? { keywords: input.body.keywords.trim() } : {}),
-  ...(readBoolean(input.body.active) !== undefined
-    ? { active: readBoolean(input.body.active) }
-    : {}),
-  ...(readString(input.body.categoryName)
-    ? { categoryName: readString(input.body.categoryName) }
-    : {}),
-  ...(input.body.payload !== undefined ? { payload: input.body.payload } : {}),
-  ...(input.categories ? { categories: input.categories } : {}),
-  ...(input.addresses ? { addresses: input.addresses } : {}),
-  ...(input.contact ? { contact: input.contact } : {}),
-  ...(input.priceInformations ? { priceInformations: input.priceInformations } : {}),
-  ...(input.openingHours ? { openingHours: input.openingHours } : {}),
-  ...(input.operatingCompany ? { operatingCompany: input.operatingCompany } : {}),
-  ...(input.webUrls ? { webUrls: input.webUrls } : {}),
-  ...(input.mediaContents ? { mediaContents: input.mediaContents } : {}),
-  ...(input.location ? { location: input.location } : {}),
-  ...(input.certificates ? { certificates: input.certificates } : {}),
-  ...(input.accessibilityInformation
-    ? { accessibilityInformation: input.accessibilityInformation }
-    : {}),
-  ...(input.tags ? { tags: input.tags } : {}),
-});
+}): SvaMainserverPoiInput => {
+  const description = readString(input.body.description);
+  const sanitizedDescription = description ? sanitizeRichTextHtml(description) : undefined;
+
+  return {
+    name: input.name,
+    ...(sanitizedDescription ? { description: sanitizedDescription } : {}),
+    ...(typeof input.body.mobileDescription === 'string'
+      ? { mobileDescription: input.body.mobileDescription.trim() }
+      : {}),
+    ...(typeof input.body.externalId === 'string'
+      ? { externalId: input.body.externalId.trim() }
+      : {}),
+    ...(typeof input.body.keywords === 'string' ? { keywords: input.body.keywords.trim() } : {}),
+    ...(readBoolean(input.body.active) !== undefined
+      ? { active: readBoolean(input.body.active) }
+      : {}),
+    ...(readString(input.body.categoryName)
+      ? { categoryName: readString(input.body.categoryName) }
+      : {}),
+    ...(input.body.payload !== undefined ? { payload: input.body.payload } : {}),
+    ...(input.categories ? { categories: input.categories } : {}),
+    ...(input.addresses ? { addresses: input.addresses } : {}),
+    ...(input.contact ? { contact: input.contact } : {}),
+    ...(input.priceInformations ? { priceInformations: input.priceInformations } : {}),
+    ...(input.openingHours ? { openingHours: input.openingHours } : {}),
+    ...(input.operatingCompany ? { operatingCompany: input.operatingCompany } : {}),
+    ...(input.webUrls ? { webUrls: input.webUrls } : {}),
+    ...(input.mediaContents ? { mediaContents: input.mediaContents } : {}),
+    ...(input.location ? { location: input.location } : {}),
+    ...(input.certificates ? { certificates: input.certificates } : {}),
+    ...(input.accessibilityInformation
+      ? { accessibilityInformation: input.accessibilityInformation }
+      : {}),
+    ...(input.tags ? { tags: input.tags } : {}),
+  };
+};
 
 const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | Response> => {
   const body = await parseJsonObjectBody(request, 'POI-Daten müssen als Objekt gesendet werden.');

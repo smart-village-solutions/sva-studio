@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { t } from '../../../i18n';
+import { setActiveLocale, t } from '../../../i18n';
 import { userErrorMessage } from './-user-error-message';
 
 describe('userErrorMessage', () => {
@@ -75,5 +75,32 @@ describe('userErrorMessage', () => {
         message: 'Timeout',
       } as never)
     ).toBe(t('admin.users.errors.mainserverProvisioningFailed'));
+  });
+
+  it.each([
+    {
+      code: 'mainserver_tenant_forbidden',
+      expected:
+        'The Mainserver rejected provisioning for this organization. Check the active organization and tenant assignment.',
+    },
+    {
+      code: 'mainserver_request_rejected',
+      expected:
+        'The Mainserver rejected the provisioning request as invalid. Check the integration contract and requested role.',
+    },
+  ])('localizes the bulk rejection code $code in English', ({ code, expected }) => {
+    setActiveLocale('en');
+    try {
+      expect(
+        userErrorMessage({
+          name: 'IamHttpError',
+          status: code === 'mainserver_tenant_forbidden' ? 403 : 422,
+          code,
+          message: 'Nicht lokalisierte Servermeldung',
+        } as never)
+      ).toBe(expected);
+    } finally {
+      setActiveLocale('de');
+    }
   });
 });

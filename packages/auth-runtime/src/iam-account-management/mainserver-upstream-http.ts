@@ -35,7 +35,12 @@ export const fetchMainserverUpstream = async (input: {
       });
     }
 
-    throw error;
+    throw new MainserverUserProvisioningError({
+      code: 'network_error',
+      message: 'Netzwerkfehler bei der Kommunikation mit dem SVA-Mainserver.',
+      statusCode: 503,
+      retryable: true,
+    });
   }
 };
 

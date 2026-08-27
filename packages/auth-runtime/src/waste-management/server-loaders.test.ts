@@ -135,6 +135,10 @@ const loggerMock = vi.hoisted(() => ({
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
+  getWasteMainserverSourceRevision: vi.fn(async () => ({
+    sourceRevision: '8',
+    changedAt: '2026-08-27T12:00:00.000Z',
+  })),
   listWasteFractions: vi.fn(async () => [{ id: 'fraction-1' }]),
   listWasteRegions: vi.fn(async () => [{ id: 'region-1' }]),
   listWasteCities: vi.fn(async () => [{ id: 'city-1' }]),
@@ -284,6 +288,50 @@ describe('waste-management server loaders', () => {
     vi.useRealTimers();
     poolFactoryInstances.length = 0;
     await wasteManagementServerLoaderInternals.resetWastePoolCache();
+  });
+
+  it('combines the tenant revision with the central mainserver sync jobs', async () => {
+    const currentYear = new Date().getUTCFullYear();
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 2,
+      rows: [
+        {
+          role: 'latest_attempt',
+          id: 'job-2',
+          status: 'running',
+          started_at: '2026-08-27T12:05:00.000Z',
+          finished_at: null,
+          progress: { completedSteps: 2, totalSteps: 6 },
+          source_revision: null,
+          year_window: null,
+        },
+        {
+          role: 'last_success',
+          id: 'job-1',
+          status: 'succeeded',
+          started_at: '2026-08-27T11:55:00.000Z',
+          finished_at: '2026-08-27T12:00:00.000Z',
+          progress: null,
+          source_revision: '7',
+          year_window: [currentYear, currentYear + 1],
+        },
+      ],
+    });
+
+    await expect(
+      wasteManagementOverviewLoaders.loadWasteMainserverSyncStatus('tenant-a')
+    ).resolves.toMatchObject({
+      sourceState: 'pending',
+      sourceChangedAt: '2026-08-27T12:00:00.000Z',
+      latestAttempt: { id: 'job-2', status: 'running' },
+      lastSuccessfulSync: { id: 'job-1', sourceRevision: '7' },
+    });
+
+    expect(instanceDbQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("result_payload -> 'plugin' ->> 'sourceRevision'"),
+      ['tenant-a']
+    );
+    expect(repositoryMocks.getWasteMainserverSourceRevision).toHaveBeenCalledOnce();
   });
 
   it('loads overviews and maps technical job history deterministically', async () => {

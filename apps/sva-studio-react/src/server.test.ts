@@ -454,7 +454,9 @@ describe('server transport', () => {
 
     expect(withRequestContextMock).toHaveBeenCalledTimes(1);
     expect(startFetch).toHaveBeenCalledTimes(1);
-    expect(createSdkLoggerMock).not.toHaveBeenCalled();
+    expect(createSdkLoggerMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ component: 'server-function-transport' })
+    );
     await expect(response.text()).resolves.toBe('plain');
   });
 

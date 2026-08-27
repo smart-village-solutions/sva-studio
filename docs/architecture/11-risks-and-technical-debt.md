@@ -48,8 +48,9 @@ Schulden auf IST-Basis.
 7. Dokumentationsdrift bei schnell wandelnden Architekturteilen
    - Impact: mittel
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: Bereichsindizes mit Autorität, Ownership und Pflege-Triggern verwenden; Architekturänderungen im selben PR in arc42 und ADRs fortschreiben; in PR 3 Links, Erreichbarkeit, ADR-Parität und Publikationsgrenzen automatisiert prüfen
-   - Verbleibende Schuld: `docs/guides/` enthält bis PR 4 weiterhin 60 unterschiedlich verantwortete Dokumente. Das vollständige Migrationsinventar begrenzt den Drift, ersetzt aber noch nicht die kontrollierte Verschiebung und Konsolidierung.
+   - Maßnahme: Bereichsindizes mit Autorität, Ownership und Pflege-Triggern verwenden; Architekturänderungen im selben PR in arc42 und ADRs fortschreiben; `pnpm check:docs` prüft Links, Erreichbarkeit, ADR-Parität, Wiki-Slugs, Linktransformation und Publikationsgrenzen blockierend
+   - Erledigter Migrationsschritt: Die 59 allgemeinen Dokumente aus `docs/guides/` und vier lose Root-Dokumente sind in die verantworteten Bereiche verschoben; der Migrationsnachweis hält Alt-/Neu-Pfade und Konsolidierungsentscheidungen fest.
+   - Publikationsmaßnahme: Das Wiki wird aus einer flachen, generierten Leseansicht aufgebaut. Aufgaben- und Bereichseinstiege bleiben kuratiert; verschachtelte Raw-Pfade und Slug-Kollisionen blockieren die Publikation.
    - Schutzgrenze: Der kanonische Studio-Rollout bleibt während und nach der Migration ausschließlich unter `docs/guides/studio-rollout-process.md`; externe Anwenderdokumentation und historische Nachweise bleiben außerhalb der aktuellen lokalen Wissensbasis.
 
 8. Globaler Pending-basierter Initial-Loading-Zustand in der Root-Shell
@@ -393,8 +394,8 @@ Referenzen:
 - `openspec/AGENTS.md`
 - `docs/development/testing-coverage.md`
 - `docs/development/complexity-quality-governance.md`
-- `docs/guides/iam-governance-runbook.md`
-- `docs/guides/iam-governance-freigabematrix.md`
+- `docs/governance/iam-governance-runbook.md`
+- `docs/governance/iam-governance-freigabematrix.md`
 
 ### Ergänzung 2026-03: IAM-UI und Keycloak-Sync
 

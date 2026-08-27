@@ -14,6 +14,7 @@ export const createPluginVitestConfig = (input: Readonly<{
   defineConfig({
     resolve: {
       alias: {
+        '@sva/core/rich-text-html-policy': resolve(currentDir, '../core/src/rich-text-html-policy.ts'),
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
         '@sva/plugin-sdk': resolve(currentDir, './src/index.ts'),
         '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),

@@ -66,6 +66,9 @@ const coreHandlerMocks = vi.hoisted(() => ({
     async () => new Response('delete-tour-assignment')
   ),
   getWasteManagementHistoryInternal: vi.fn(async () => new Response('get-history')),
+  getWasteManagementMainserverSyncStatusInternal: vi.fn(
+    async () => new Response('get-mainserver-sync-status')
+  ),
   getWasteManagementCollectionLocationsInternal: vi.fn(
     async () => new Response('get-collection-locations')
   ),
@@ -126,6 +129,7 @@ const coreHandlerMocks = vi.hoisted(() => ({
 }));
 
 const loaderMocks = vi.hoisted(() => ({
+  loadWasteMainserverSyncStatus: vi.fn(async () => null),
   loadMasterDataOverview: vi.fn(async () => null),
   loadMasterDataFractionsOverview: vi.fn(async () => null),
   loadMasterDataLocationsOverview: vi.fn(async () => null),
@@ -200,6 +204,7 @@ vi.mock('./core.js', () => ({
 
 vi.mock('./server-loaders.js', () => ({
   wasteManagementOverviewLoaders: {
+    loadWasteMainserverSyncStatus: loaderMocks.loadWasteMainserverSyncStatus,
     loadMasterDataOverview: loaderMocks.loadMasterDataOverview,
     loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
     loadMasterDataLocationsOverview: loaderMocks.loadMasterDataLocationsOverview,

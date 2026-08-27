@@ -59,7 +59,7 @@ Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung
 
 ### Ergänzung 2026-07: Lokale MCP-Control-Plane
 
-Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er darf Instanzen lesen, diagnostizieren und abhängig vom Action-Scope mutieren, besitzt aber keine direkte Datenbank- oder Keycloak-Admin-Anbindung. Keycloak stellt in den Root-Realms `studio-dev`, `studio-staging` und `sva-studio` getrennte Maschinenidentitäten bereit. Studio bleibt die einzige Autorisierungs-, Audit-, Idempotenz- und Fehlergrenze. Lokale Credential-Ablage und der Codex-Prozess liegen außerhalb des Studio-Deployments; ihr sicherer Betrieb ist im [MCP-Betriebsleitfaden](../guides/studio-instance-mcp-betrieb.md) beschrieben.
+Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er darf Instanzen lesen, diagnostizieren und abhängig vom Action-Scope mutieren, besitzt aber keine direkte Datenbank- oder Keycloak-Admin-Anbindung. Keycloak stellt in den Root-Realms `studio-dev`, `studio-staging` und `sva-studio` getrennte Maschinenidentitäten bereit. Studio bleibt die einzige Autorisierungs-, Audit-, Idempotenz- und Fehlergrenze. Lokale Credential-Ablage und der Codex-Prozess liegen außerhalb des Studio-Deployments; ihr sicherer Betrieb ist im [MCP-Betriebsleitfaden](../operations/studio-instance-mcp-betrieb.md) beschrieben.
 
 ### Verantwortungsgrenzen
 
@@ -76,6 +76,10 @@ Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er 
 - Keycloak bleibt autoritative Quelle für per-User hinterlegte Mainserver-Credentials. Die Studio-DB hält zusätzlich instanzbezogene Endpunktkonfiguration sowie verschlüsselte organisationsgebundene Credentials, Provisioning-Zustand und DataProvider-Bindung.
 - Organisations-Provisioning verwendet einen realen zweckgebundenen Keycloak-Account, bleibt aber nach dem lokalen Organisations-Commit ein fehlertoleranter Folgeprozess. Der unveränderte Mainserver-Benutzer-Endpunkt und der Mainserver selbst bleiben außerhalb der Repo-Ownership.
 - Externe Dienste werden angebunden, aber nicht hier implementiert
+
+### Ergänzung 2026-08: Kontrollierter Inhabertransfer
+
+Das Studio besitzt Auswahl, Autorisierung, Sperre, Journal, Audit und UX des Transfers. Der Mainserver bleibt Quelle des aktuellen DataProviders und führt den eigentlichen Provider-Write aus. Browser und Plugins senden nur einen typisierten Account- oder Organisations-Principal; DataProvider-IDs und Credentials bleiben an der serverseitigen Integrationsgrenze.
 
 Referenzen:
 

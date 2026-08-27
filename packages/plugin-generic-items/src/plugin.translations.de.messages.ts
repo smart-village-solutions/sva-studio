@@ -31,6 +31,9 @@ export const genericItemsTranslationsDeMessages = {
     },
   },
   richText: {
+    mode: 'Editoransicht',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
     blockType: 'Textformat',
     paragraph: 'Absatz',
     heading2: 'Überschrift 2',
@@ -40,6 +43,8 @@ export const genericItemsTranslationsDeMessages = {
     orderedList: 'Nummerierung',
     bold: 'Fett',
     italic: 'Kursiv',
+    underline: 'Unterstrichen',
+    clearFormatting: 'Formatierung entfernen',
     undo: 'Zurück',
     redo: 'Vorwärts',
     linkInput: 'Link-URL',

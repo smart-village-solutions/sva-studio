@@ -69,7 +69,7 @@ Verworfen, weil dann genau der unerwünschte Zustand von zwei kanonischen Persis
 
 ## Verwandte ADRs
 
-- [ADR-021](ADR-021-sva-mainserver-delegation.md)
+- [ADR-021](ADR-021-per-user-sva-mainserver-delegation.md)
 - [ADR-034](ADR-034-plugin-sdk-vertrag-v1.md)
 - [ADR-039](ADR-039-medienmanagement-host-capability-und-storage-vertrag.md)
 - [ADR-041](ADR-041-plugin-plattform-v2-fuer-externe-distribution.md)

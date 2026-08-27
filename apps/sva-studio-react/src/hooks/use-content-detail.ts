@@ -35,7 +35,7 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
       setHistory([]);
       setError(null);
       setIsLoading(false);
-      return;
+      return false;
     }
 
     logBrowserOperationStart(contentsLogger, 'content_detail_refetch_started', {
@@ -60,6 +60,7 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         content_id: contentId,
         history_count: historyResponse.data.length,
       });
+      return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 401) {
@@ -78,6 +79,7 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         operation: 'get_content_detail',
         content_id: contentId,
       });
+      return false;
     } finally {
       setIsLoading(false);
     }

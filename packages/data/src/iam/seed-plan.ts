@@ -98,6 +98,11 @@ const permissionIdFixtures = [
   ['40111111-1111-1111-1111-111111111128', 'content.restore', 'Restore content'],
   ['40111111-1111-1111-1111-111111111129', 'content.readHistory', 'Read content history'],
   ['40111111-1111-1111-1111-111111111130', 'content.delete', 'Delete content'],
+  [
+    '40111111-1111-1111-1111-111111111171',
+    'content.transferOwnership',
+    'Transfer content ownership',
+  ],
   ['40111111-1111-1111-1111-111111111143', 'media.read', 'Read media'],
   ['40111111-1111-1111-1111-111111111144', 'media.create', 'Create media'],
   ['40111111-1111-1111-1111-111111111145', 'media.update', 'Update media'],

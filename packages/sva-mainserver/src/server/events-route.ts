@@ -4,6 +4,7 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
+import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { createMutationWorkflow, createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
@@ -227,9 +228,12 @@ const buildEventInput = (
     readonly accessibilityInformation: SvaMainserverAccessibilityInformationInput | undefined;
   }
 ): SvaMainserverEventInput => {
+  const description = readString(body.description);
+  const sanitizedDescription = description ? sanitizeRichTextHtml(description) : undefined;
+
   return {
     title,
-    ...(readString(body.description) ? { description: readString(body.description) } : {}),
+    ...(sanitizedDescription ? { description: sanitizedDescription } : {}),
     ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
     ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
     ...(dates ? { dates } : {}),

@@ -6,7 +6,7 @@ Du bist verantwortlich für die Qualität der Logging-Implementierung und ihre D
 
 Lies vor dem Review:
 - `docs/development/observability-best-practices.md`
-- `docs/architecture/decisions/ADR-006-logging-pipeline-strategy.md`
+- `docs/adr/ADR-006-logging-pipeline-strategy.md`
 
 ## Projektkontext (verbindlich)
 

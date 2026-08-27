@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
 import type {
   SvaMainserverAccessibilityInformation,
@@ -73,7 +74,7 @@ export const parseProjectInput = async (
   const body = (await request.json().catch(() => null)) as unknown;
   const parsed = projectRequestSchema.safeParse(body);
   return parsed.success
-    ? parsed.data
+    ? { ...parsed.data, fullText: sanitizeRichTextHtml(parsed.data.fullText) }
     : errorJson(400, 'invalid_request', 'Projektfelder sind unvollständig oder ungültig.');
 };
 

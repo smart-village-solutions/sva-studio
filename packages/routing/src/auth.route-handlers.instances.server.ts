@@ -89,6 +89,12 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/contents/$contentId/history': {
     GET: routeHandler(authRuntimeRoutes.getContentHistoryHandler),
   },
+  '/api/v1/iam/contents/$contentId/transfer-ownership': {
+    POST: routeHandler(authRuntimeRoutes.transferContentOwnershipHandler),
+  },
+  '/api/v1/iam/contents/$contentId/ownership-targets': {
+    GET: routeHandler(authRuntimeRoutes.listContentOwnershipTargetsHandler),
+  },
   '/api/v1/iam/media': { GET: routeHandler(authRuntimeRoutes.listMediaHandler) },
   '/api/v1/iam/media/register': {
     POST: routeHandler(authRuntimeRoutes.registerBucketMediaHandler),

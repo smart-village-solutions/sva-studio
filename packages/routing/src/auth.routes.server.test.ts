@@ -171,6 +171,9 @@ const authServerMocks = vi.hoisted(() => {
       archiveInstance: vi.fn(async () => response('archiveInstanceHandler')),
     },
     wasteManagementHandlers: {
+      getMainserverSyncStatus: vi.fn(async () =>
+        response('getWasteManagementMainserverSyncStatusHandler')
+      ),
       getHistory: vi.fn(async () => response('getWasteManagementHistoryHandler')),
       getCollectionLocations: vi.fn(async () =>
         response('getWasteManagementCollectionLocationsHandler')
@@ -285,6 +288,12 @@ const authServerMocks = vi.hoisted(() => {
     updateContentHandler: vi.fn(async () => response('updateContentHandler')),
     deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
+    transferContentOwnershipHandler: vi.fn(async () =>
+      response('transferContentOwnershipHandler')
+    ),
+    listContentOwnershipTargetsHandler: vi.fn(async () =>
+      response('listContentOwnershipTargetsHandler')
+    ),
     listMediaHandler: vi.fn(async () => response('listMediaHandler')),
     registerBucketMediaHandler: vi.fn(async () => response('registerBucketMediaHandler')),
     listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
@@ -721,6 +730,9 @@ describe('auth.routes.server', () => {
     const mainserverSyncHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tools/mainserver-sync'
     );
+    const mainserverSyncStatusHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/mainserver-sync-status'
+    );
     const syncWasteTypesHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tools/sync-waste-types'
     );
@@ -768,6 +780,7 @@ describe('auth.routes.server', () => {
     expect(migrationsHandlers?.POST).toBeDefined();
     expect(importHandlers?.POST).toBeDefined();
     expect(seedHandlers?.POST).toBeDefined();
+    expect(mainserverSyncStatusHandlers?.GET).toBeDefined();
     expect(syncWasteTypesHandlers?.POST).toBeDefined();
     expect(resetHandlers?.POST).toBeDefined();
 
@@ -1037,6 +1050,11 @@ describe('auth.routes.server', () => {
         method: 'POST',
       }),
     });
+    await mainserverSyncStatusHandlers.GET?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/mainserver-sync-status'
+      ),
+    });
     await syncWasteTypesHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/sync-waste-types', {
         method: 'POST',
@@ -1105,6 +1123,7 @@ describe('auth.routes.server', () => {
     ).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMainserverSync).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getMainserverSyncStatus).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSyncWasteTypes).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startEnrichPostalCodes).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startReset).toHaveBeenCalled();
@@ -1174,6 +1193,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.updateContentHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteContentHandler).toHaveBeenCalled();
     expect(authServerMocks.getContentHistoryHandler).toHaveBeenCalled();
+    expect(authServerMocks.transferContentOwnershipHandler).toHaveBeenCalled();
+    expect(authServerMocks.listContentOwnershipTargetsHandler).toHaveBeenCalled();
     expect(authServerMocks.listMediaHandler).toHaveBeenCalled();
     expect(authServerMocks.initializeMediaUploadHandler).toHaveBeenCalled();
     expect(authServerMocks.getMediaHandler).toHaveBeenCalled();

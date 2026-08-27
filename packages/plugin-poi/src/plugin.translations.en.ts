@@ -83,7 +83,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     updatedAt: 'Updated',
   },
   richText: {
-    blockType: 'Text format',
+    mode: 'Editor view', visualMode: 'WYSIWYG', htmlMode: 'HTML', blockType: 'Text format',
     heading2: 'Heading 2',
     heading3: 'Heading 3',
     heading4: 'Heading 4',
@@ -93,6 +93,8 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     orderedList: 'Ordered list',
     bold: 'Bold',
     italic: 'Italic',
+    underline: 'Underline',
+    clearFormatting: 'Clear formatting',
     undo: 'Undo',
     redo: 'Redo',
     linkInput: 'Link URL',

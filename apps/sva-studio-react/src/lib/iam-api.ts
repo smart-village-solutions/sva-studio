@@ -7,6 +7,8 @@ import type {
   IamContentHistoryEntry,
   IamContentListItem,
   IamContentListQuery,
+  IamContentOwnershipTarget,
+  IamContentOwnershipTransferResult,
   IamDeletionContentStrategy,
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
@@ -39,6 +41,7 @@ import type {
   IamUserImportSyncReport,
   IamUserListItem,
   UpdateIamContentInput,
+  TransferIamContentOwnershipInput,
 } from '@sva/core';
 import type {
   AuthorizePerformanceRequest,
@@ -810,6 +813,37 @@ export const deleteContent = async (contentId: string): Promise<ApiItemResponse<
     method: 'DELETE',
     headers: IAM_HEADERS,
   });
+
+export const listContentOwnershipTargets = async (
+  contentId: string,
+  query: {
+    readonly type: 'account' | 'organization';
+    readonly page?: number;
+    readonly pageSize?: number;
+    readonly q?: string;
+  }
+): Promise<ApiListResponse<IamContentOwnershipTarget>> => {
+  const params = new URLSearchParams({
+    type: query.type,
+    page: String(query.page ?? 1),
+    pageSize: String(query.pageSize ?? 25),
+  });
+  if (query.q) {
+    params.set('q', query.q);
+  }
+  return requestJson<ApiListResponse<IamContentOwnershipTarget>>(
+    `/api/v1/iam/contents/${encodeURIComponent(contentId)}/ownership-targets?${params.toString()}`
+  );
+};
+
+export const transferContentOwnership = async (
+  contentId: string,
+  payload: TransferIamContentOwnershipInput
+): Promise<ApiItemResponse<IamContentOwnershipTransferResult>> =>
+  postJson<ApiItemResponse<IamContentOwnershipTransferResult>, TransferIamContentOwnershipInput>(
+    `/api/v1/iam/contents/${encodeURIComponent(contentId)}/transfer-ownership`,
+    payload
+  );
 
 export const listMedia = async (
   query: MediaListQuery = {}

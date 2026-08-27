@@ -27,7 +27,7 @@ Das Studio MUST jede produktive, anwenderseitig sichtbare Seitenroute entweder e
 
 ### Requirement: Der Seitenkatalog wird aus den kanonischen Routenquellen erzeugt
 
-Das Studio SHALL aus statischen UI-Routen, tatsächlich materialisierten Admin-Ressourcenrouten und freien Plugin-Routen einen deterministischen, maschinenlesbaren Seitenkatalog erzeugen. Eine app-lokale parallele URL-Mapping-Tabelle DARF NICHT die Quelle des Katalogs sein.
+Das Studio SHALL aus statischen UI-Routen, tatsächlich materialisierten Admin-Ressourcenrouten und freien Plugin-Routen einen deterministischen, maschinenlesbaren Seitenkatalog erzeugen. Eine app-lokale parallele URL-Mapping-Tabelle DARF NICHT die Quelle des Katalogs sein. Abweichungen zwischen dem eingecheckten Katalog und den kanonischen Routenquellen SHALL die CI sichtbar diagnostizieren, DÜRFEN aber den App-Build oder den Deploymentpfad NICHT blockieren.
 
 #### Scenario: Initiale Liste wird erzeugt
 
@@ -44,8 +44,9 @@ Das Studio SHALL aus statischen UI-Routen, tatsächlich materialisierten Admin-R
 #### Scenario: Katalog driftet von der Route-Registry
 
 - **WENN** der eingecheckte Katalog nicht deterministisch aus den aktuellen Routenquellen reproduziert werden kann
-- **DANN** schlägt der Studio-CI-Check fehl
-- **UND** nennt er fehlende Klassifizierungen oder kollidierende IDs beziehungsweise Pfade
+- **DANN** meldet eine eigenständige Studio-CI-Diagnose die Abweichung sichtbar
+- **UND** nennt sie fehlende Klassifizierungen oder kollidierende IDs beziehungsweise Pfade
+- **UND** blockiert die Abweichung weder den App-Build noch den Deploymentpfad
 
 ### Requirement: Das separate Hilfe-Repository synchronisiert Seiten ausschließlich additiv
 

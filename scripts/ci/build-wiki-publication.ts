@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -9,6 +10,8 @@ import { buildWikiPublication, type WikiPublication } from './wiki-publication';
 interface BuildWikiPublicationOptions {
   outputPath: string;
 }
+
+const EXPECTED_WIKI_REMOTE_PATH = '/smart-village-solutions/sva-studio.wiki.git';
 
 export const parseBuildWikiPublicationOptions = (
   args: readonly string[]
@@ -49,6 +52,34 @@ const assertSafeOutputDirectory = (outputDirectory: string): void => {
     throw new Error(
       `Bestehendes Wiki-Ausgabeverzeichnis ist kein Git-Checkout und wird nicht überschrieben: ${resolved}`
     );
+  }
+  if (entries.includes('.git')) {
+    let remoteUrl: string;
+    try {
+      remoteUrl = execFileSync('git', ['-C', resolved, 'config', '--get', 'remote.origin.url'], {
+        encoding: 'utf8',
+      }).trim();
+    } catch {
+      throw new Error(`Wiki-Ausgabeverzeichnis besitzt kein lesbares origin-Remote: ${resolved}`);
+    }
+
+    const normalizedRemoteUrl = remoteUrl.startsWith('git@github.com:')
+      ? `https://github.com/${remoteUrl.slice('git@github.com:'.length)}`
+      : remoteUrl;
+    let remote: URL;
+    try {
+      remote = new URL(normalizedRemoteUrl);
+    } catch {
+      throw new Error(`Wiki-Ausgabeverzeichnis besitzt kein gültiges origin-Remote: ${resolved}`);
+    }
+    if (
+      remote.hostname.toLowerCase() !== 'github.com' ||
+      remote.pathname.toLowerCase().replace(/\/$/u, '') !== EXPECTED_WIKI_REMOTE_PATH
+    ) {
+      throw new Error(
+        `Wiki-Ausgabeverzeichnis verweist nicht auf das erwartete SVA-Studio-Wiki: ${resolved}`
+      );
+    }
   }
 };
 

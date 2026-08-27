@@ -19,6 +19,7 @@ import {
 const DEFAULT_REPOSITORY_URL = 'https://github.com/smart-village-solutions/sva-studio';
 const DEFAULT_SOURCE_BRANCH = 'main';
 const SOURCE_ARTIFACT_LABEL = ' (Quellartefakt)';
+const RESERVED_WIKI_SLUGS = new Set(['home', '_sidebar']);
 
 const markdownProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkStringify, {
   bullet: '-',
@@ -238,6 +239,15 @@ const createSlugMap = (
       continue;
     }
     const slug = wikiSlugForPath(repositoryPath);
+    if (RESERVED_WIKI_SLUGS.has(slug.toLowerCase())) {
+      issues.push({
+        code: 'wiki-publication',
+        line: 1,
+        path: repositoryPath,
+        reason: `Wiki-Slug „${slug}“ ist für die generierte Navigation reserviert`,
+      });
+      continue;
+    }
     const collision = pathsBySlug.get(slug);
     if (collision) {
       issues.push({

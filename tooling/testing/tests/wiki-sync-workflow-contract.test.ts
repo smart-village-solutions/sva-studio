@@ -41,6 +41,8 @@ const excludedPublicationPrefixes = [
 describe('wiki sync workflow contract', () => {
   it('builds the rendered publication from the versioned manifest', () => {
     expect(workflow).toContain(`- '${publicationManifestPath}'`);
+    expect(workflow).toContain("if: github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain('"$GITHUB_REF" != "refs/heads/main"');
     expect(workflow).toContain('uses: ./.github/actions/setup-pnpm-workspace');
     expect(workflow).toContain('run: pnpm check:docs');
     expect(workflow).toContain(

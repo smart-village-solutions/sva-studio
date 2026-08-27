@@ -31,6 +31,14 @@ jobs:
       - name: Checkout source repository
         uses: actions/checkout@v7
 
+      - name: Require main source
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Die Wiki-Publikation darf nur vom Branch main gestartet werden." >&2
+            exit 1
+          fi
+
       - name: Setup pnpm workspace
         uses: ./.github/actions/setup-pnpm-workspace
 

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -97,6 +98,18 @@ describe('Wiki publication', () => {
     });
   });
 
+  it('rejects source pages that collide with generated Wiki navigation pages', () => {
+    const result = buildWikiPublication(createInput(new Map([['docs/Home.md', '# Home\n']])));
+
+    expect(result.publication).toBeUndefined();
+    expect(result.issues).toContainEqual({
+      code: 'wiki-publication',
+      line: 1,
+      path: 'docs/Home.md',
+      reason: 'Wiki-Slug „home“ ist für die generierte Navigation reserviert',
+    });
+  });
+
   it('reports relative targets that cannot be transformed', () => {
     const files = new Map([['docs/README.md', '# Dokumentation\n\n[Fehlt](./missing.md)\n']]);
 
@@ -132,7 +145,17 @@ describe('Wiki publication', () => {
   it('replaces a cloned Wiki working tree without keeping nested raw pages', () => {
     const rootDir = mkdtempSync(path.join(os.tmpdir(), 'wiki-publication-'));
     try {
-      mkdirSync(path.join(rootDir, '.git'));
+      execFileSync('git', ['init', '--quiet'], { cwd: rootDir });
+      execFileSync(
+        'git',
+        [
+          'remote',
+          'add',
+          'origin',
+          'https://x-access-token:test-token@github.com/smart-village-solutions/sva-studio.wiki.git',
+        ],
+        { cwd: rootDir }
+      );
       mkdirSync(path.join(rootDir, 'docs'));
       writeFileSync(path.join(rootDir, 'docs/README.md'), '# Raw\n');
       writeFileSync(path.join(rootDir, 'Home.md'), '# Alt\n');
@@ -150,6 +173,27 @@ describe('Wiki publication', () => {
       expect(existsSync(path.join(rootDir, 'docs'))).toBe(false);
       expect(readFileSync(path.join(rootDir, 'Home.md'), 'utf8')).toBe('# Neu\n');
       expect(readFileSync(path.join(rootDir, 'development.md'), 'utf8')).toBe('# Entwicklung\n');
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
+  it('refuses to delete files in a Git checkout other than the SVA Studio Wiki', () => {
+    const rootDir = mkdtempSync(path.join(os.tmpdir(), 'wiki-publication-'));
+    try {
+      execFileSync('git', ['init', '--quiet'], { cwd: rootDir });
+      execFileSync(
+        'git',
+        ['remote', 'add', 'origin', 'https://github.com/smart-village-solutions/sva-studio.git'],
+        { cwd: rootDir }
+      );
+      writeFileSync(path.join(rootDir, 'important.txt'), 'keep');
+      const publication: WikiPublication = { files: new Map(), slugs: new Map() };
+
+      expect(() => writeWikiPublication(publication, rootDir)).toThrow(
+        'verweist nicht auf das erwartete SVA-Studio-Wiki'
+      );
+      expect(readFileSync(path.join(rootDir, 'important.txt'), 'utf8')).toBe('keep');
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }

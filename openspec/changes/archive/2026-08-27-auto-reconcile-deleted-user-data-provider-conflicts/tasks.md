@@ -14,8 +14,8 @@
 
 ## 3. Verifikation
 
-- [ ] 3.1 Betroffene Unit- und Datenbankintegrationstests für `auth-runtime` und `sva-mainserver` ausführen.
-- [ ] 3.2 Betroffene Type-Tests und `pnpm check:server-runtime` ausführen.
+- [x] 3.1 Betroffene Unit- und Datenbankintegrationstests für `auth-runtime` und `sva-mainserver` ausführen.
+- [x] 3.2 Betroffene Type-Tests und `pnpm check:server-runtime` ausführen.
 - [x] 3.3 Den affected Scope vor einem gegebenenfalls breiteren PR-Gate messen und den kleinsten relevanten Gate-Pfad ausführen.
 
 ## 4. Dokumentation

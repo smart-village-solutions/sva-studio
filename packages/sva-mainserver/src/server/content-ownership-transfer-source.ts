@@ -60,8 +60,7 @@ type SourceResolution =
   | Readonly<{
       ok: true;
       principal: IamContentOwnerPrincipal;
-      connection: ResolvedMainserverOwnershipTarget['connection'];
-      dataProviderId: string;
+      target: ResolvedMainserverOwnershipTarget;
     }>
   | Readonly<{ ok: false; response: Response }>;
 
@@ -148,7 +147,6 @@ export const resolveAuthorizedTransferSource = async (input: {
   return {
     ok: true,
     principal: source.principal,
-    connection: sourceResolution.target.connection,
-    dataProviderId: sourceDataProviderId,
+    target: sourceResolution.target,
   };
 };

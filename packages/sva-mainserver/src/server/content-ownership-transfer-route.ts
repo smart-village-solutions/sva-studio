@@ -192,7 +192,7 @@ const executeLockedTransfer = async (input: {
   }
   const source = await resolveAuthorizedTransferSource(input);
   if (!source.ok) return source.response;
-  const sourceDataProviderId = source.dataProviderId;
+  const sourceDataProviderId = source.target.dataProviderId;
   const targetResolution = await resolveMainserverOwnershipTarget({
     instanceId: input.actor.instanceId,
     actorKeycloakSubject: input.actor.keycloakSubject,
@@ -244,12 +244,13 @@ const executeLockedTransfer = async (input: {
   };
   const failure = await executeWithCurrentTargetBinding({
     actor: input.actor,
+    source: source.target,
     target: targetResolution.target,
     ownershipTransfer,
     execute: () =>
       executeProviderTransfer({
         actor: input.actor,
-        sourceConnection: source.connection,
+        sourceConnection: source.target.connection,
         route: input.route,
         content: input.content,
         sourceDataProviderId,

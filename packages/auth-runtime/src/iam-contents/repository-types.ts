@@ -73,6 +73,7 @@ export type UpdateContentInput = {
   traceId?: string;
   mutationRef?: string;
   contentId: string;
+  expectedSourcePrincipal?: IamContentOwnerPrincipal | null;
   organizationId?: string;
   ownerUserId?: string;
   ownerOrganizationId?: string;
@@ -105,6 +106,7 @@ export type DeleteContentInput = {
   requestId?: string;
   traceId?: string;
   contentId: string;
+  expectedSourcePrincipal?: IamContentOwnerPrincipal | null;
   currentContent?: ContentRow;
 };
 

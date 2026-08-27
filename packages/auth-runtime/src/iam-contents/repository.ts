@@ -458,9 +458,23 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     ) {
       return input.contentId;
     }
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+      input.instanceId,
+      input.contentId,
+    ]);
     const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
     if (!current) {
       return undefined;
+    }
+    if ('expectedSourcePrincipal' in input) {
+      const sourcePrincipal = resolveCurrentOwnerPrincipal(current);
+      const expectedSourcePrincipal = input.expectedSourcePrincipal ?? undefined;
+      if (
+        sourcePrincipal?.type !== expectedSourcePrincipal?.type ||
+        sourcePrincipal?.id !== expectedSourcePrincipal?.id
+      ) {
+        throw new ContentOwnershipTransferError('ownership_source_changed');
+      }
     }
     const stateInput = hasAuthorDisplayAffectingChange(current, input)
       ? {
@@ -616,11 +630,23 @@ export const transferContentOwnership = async (
 
 export const deleteContent = async (input: DeleteContentInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const current =
-      input.currentContent ??
-      (await loadCurrentContentRow(client, input.instanceId, input.contentId));
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+      input.instanceId,
+      input.contentId,
+    ]);
+    const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
     if (!current) {
       return undefined;
+    }
+    if ('expectedSourcePrincipal' in input) {
+      const sourcePrincipal = resolveCurrentOwnerPrincipal(current);
+      const expectedSourcePrincipal = input.expectedSourcePrincipal ?? undefined;
+      if (
+        sourcePrincipal?.type !== expectedSourcePrincipal?.type ||
+        sourcePrincipal?.id !== expectedSourcePrincipal?.id
+      ) {
+        throw new ContentOwnershipTransferError('ownership_source_changed');
+      }
     }
     await emitContentDeletedActivity(client, input, current);
     await client.query(

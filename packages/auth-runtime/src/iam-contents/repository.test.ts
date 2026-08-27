@@ -761,7 +761,11 @@ describe('iam content repository', () => {
     await expect(deleteContent(createDeleteInput())).resolves.toBeUndefined();
 
     expect(state.emitContentDeletedActivityMock).not.toHaveBeenCalled();
-    expect(state.queryMock).not.toHaveBeenCalled();
+    expect(state.queryMock).toHaveBeenCalledOnce();
+    expect(state.queryMock).toHaveBeenCalledWith(expect.stringContaining('pg_advisory_xact_lock'), [
+      'instance-1',
+      'content-1',
+    ]);
   });
 
   it('transfers local ownership atomically without changing the visible author', async () => {
@@ -970,14 +974,19 @@ describe('iam content repository', () => {
     expect(state.emitContentOwnershipTransferredActivityMock).not.toHaveBeenCalled();
   });
 
-  it('deletes content with a provided current row without reloading it', async () => {
+  it('reloads the current row under lock before deleting content', async () => {
     const currentContent = createContentRow({ id: 'content-2', title: 'Zu loeschen' });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(currentContent);
 
     await expect(
       deleteContent(createDeleteInput({ contentId: 'content-2', currentContent }))
     ).resolves.toBe('content-2');
 
-    expect(state.loadCurrentContentRowMock).not.toHaveBeenCalled();
+    expect(state.loadCurrentContentRowMock).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.queryMock }),
+      'instance-1',
+      'content-2'
+    );
     expect(state.emitContentDeletedActivityMock).toHaveBeenCalledWith(
       { query: state.queryMock },
       expect.objectContaining({ contentId: 'content-2' }),
@@ -988,4 +997,33 @@ describe('iam content repository', () => {
       ['instance-1', 'content-2']
     );
   });
+
+  it.each(['update', 'delete'] as const)(
+    'rejects a stale authorized %s after ownership changed',
+    async (operation) => {
+      state.loadCurrentContentRowMock.mockResolvedValueOnce(
+        createContentRow({
+          owner_user_id: null,
+          owner_organization_id: '00000000-0000-4000-8000-000000000099',
+        })
+      );
+      const expectedSourcePrincipal = {
+        type: 'account' as const,
+        id: '00000000-0000-4000-8000-000000000010',
+      };
+
+      const mutation =
+        operation === 'update'
+          ? updateContent(createUpdateInput({ expectedSourcePrincipal }))
+          : deleteContent(createDeleteInput({ expectedSourcePrincipal }));
+
+      await expect(mutation).rejects.toEqual(
+        expect.objectContaining<Partial<InstanceType<typeof ContentOwnershipTransferError>>>({
+          code: 'ownership_source_changed',
+        })
+      );
+      expect(state.updateContentRowMock).not.toHaveBeenCalled();
+      expect(state.emitContentDeletedActivityMock).not.toHaveBeenCalled();
+    }
+  );
 });

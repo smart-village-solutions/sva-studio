@@ -515,6 +515,34 @@ describe('Mainserver content ownership route', () => {
     );
   });
 
+  it('returns the Mainserver source id after transferring a projected project', async () => {
+    state.loadExternalContentReference.mockResolvedValue({
+      sourceEntityId: 'project-source-1',
+    });
+    state.getGenericItem.mockResolvedValue({
+      id: 'project-source-1',
+      dataProvider: { id: 'provider-source' },
+      genericType: 'FeaturedProject',
+    });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/projects.project/project-local-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get('x-sva-mainserver-entity-id')).toBe('project-source-1');
+    await expect(response?.json()).resolves.toMatchObject({
+      data: { contentId: 'project-source-1' },
+    });
+  });
+
   it.each([
     [null, 400],
     [{ targetPrincipal: { type: 'service', id: target.principal.id } }, 400],

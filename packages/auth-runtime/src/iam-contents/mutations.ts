@@ -22,6 +22,7 @@ import {
 import type { ResolvedContentActor } from './request-context.js';
 import { authorizeContentAction, resolveContentAccess } from './request-context.js';
 import {
+  ContentOwnershipTransferError,
   createContent,
   deleteContent,
   loadContentById,
@@ -35,6 +36,7 @@ import {
   isContentStateValidationError,
 } from './repository-state-validation.js';
 import { updateContentSchema } from './schemas.js';
+import { resolveCurrentOwner, transferErrorResponse } from './ownership-transfer-mutation.js';
 
 export { transferContentOwnershipResponse } from './ownership-transfer-mutation.js';
 
@@ -197,6 +199,7 @@ export const updateContentResponse = async (
       traceId: actor.traceId,
       contentId,
       ...parsed.data,
+      expectedSourcePrincipal: resolveCurrentOwner(currentContent),
       ...(payloadValidation.payload === undefined ? {} : { payload: payloadValidation.payload }),
     });
     if (!updatedId) {
@@ -209,6 +212,8 @@ export const updateContentResponse = async (
       ? jsonResponse(200, asApiItem({ ...item, access }, actor.requestId))
       : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
   } catch (error) {
+    if (error instanceof ContentOwnershipTransferError)
+      return transferErrorResponse(error, actor.requestId);
     const validationResponse = createContentStateValidationResponse(error, actor.requestId);
     if (validationResponse) {
       return validationResponse;
@@ -270,6 +275,7 @@ export const deleteContentResponse = async (
       requestId: actor.requestId,
       traceId: actor.traceId,
       contentId,
+      expectedSourcePrincipal: resolveCurrentOwner(currentContent),
       currentContent: currentRow,
     });
 
@@ -277,6 +283,8 @@ export const deleteContentResponse = async (
       ? jsonResponse(200, asApiItem({ id: deletedId }, actor.requestId))
       : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
   } catch (error) {
+    if (error instanceof ContentOwnershipTransferError)
+      return transferErrorResponse(error, actor.requestId);
     logger.error('Content delete failed', {
       operation: 'content_delete',
       instance_id: actor.instanceId,

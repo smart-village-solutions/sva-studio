@@ -260,7 +260,7 @@ const executeLockedTransfer = async (input: {
   if (failure) return failure;
   const response = json({
     data: {
-      contentId: input.route.contentId,
+      contentId: input.content.id,
       contentType: input.route.contentType,
       sourceDataProviderId,
       targetPrincipal: input.principal,
@@ -273,7 +273,7 @@ const executeLockedTransfer = async (input: {
       bindingVersion: targetResolution.target.bindingVersion,
     },
   });
-  response.headers.set('x-sva-mainserver-entity-id', input.route.contentId);
+  response.headers.set('x-sva-mainserver-entity-id', input.content.id);
   return response;
 };
 

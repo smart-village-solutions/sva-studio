@@ -19,7 +19,7 @@ import { transferContentOwnershipSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
-const resolveCurrentOwner = (content: {
+export const resolveCurrentOwner = (content: {
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;
 }) => {
@@ -32,7 +32,7 @@ const resolveCurrentOwner = (content: {
   return undefined;
 };
 
-const transferErrorResponse = (
+export const transferErrorResponse = (
   error: ContentOwnershipTransferError,
   requestId?: string
 ): Response => {

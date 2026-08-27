@@ -1,0 +1,4 @@
+{
+  "prNumber": 1183,
+  "body": "Interne Absicherung des Abfallkalender-Abgleichs\n\n- Die erfolgreiche Abnahme auf Staging und der anschließende Production-Rollout sind nachvollziehbar dokumentiert.\n- Zusätzliche automatische Tests prüfen den revisionsbasierten Änderungsstand, konsistente Daten-Snapshots und alle sichtbaren Synchronisierungszustände."
+}

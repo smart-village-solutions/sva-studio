@@ -3,9 +3,7 @@
 ## Purpose
 
 This specification defines the host-owned, typed SVA Mainserver integration contract for News, Events, and POI so fachplugins consume Mainserver data and mutations without bypassing package boundaries, per-user delegation, or deterministic validation and error handling.
-
 ## Requirements
-
 ### Requirement: Typed News GraphQL Adapters
 
 The system SHALL expose typed, server-only SVA Mainserver adapters for News list, detail, create, update, and archive-or-delete operations.
@@ -1383,9 +1381,9 @@ Der Mainserver-Nachrichtenadapter MUST vorhandene Payload-Eigenschaften erhalten
 
 ### Requirement: Organisationszugänge verwenden den bestehenden Benutzer-Provisioning-Endpunkt
 
-Das System SHALL einen organisationsbezogenen Mainserver-Zugang über denselben bestehenden Benutzer-Provisioning-Endpunkt wie persönliche Studioaccounts erzeugen. Es SHALL dafür einen realen, der Organisation instanzgebunden zugeordneten Keycloak-Subject und deterministisch aus Organisation und Tenant abgeleitete Benutzerdaten verwenden. Den Bootstrap-Bearer-Token SHALL es ausschließlich aus persönlichen Mainserver-Credentials des handelnden Administrators laden und dabei keinen Organisations-Credential-Fallback verwenden. Der SVA Mainserver SHALL für diesen Change nicht erweitert oder geändert werden.
+Das System SHALL einen organisationsbezogenen Mainserver-Zugang über denselben bestehenden Benutzer-Provisioning-Endpunkt wie persönliche Studioaccounts erzeugen. Es SHALL dafür einen realen, der Organisation instanzgebunden zugeordneten Keycloak-Subject, deterministisch aus Organisation und Tenant abgeleitete Benutzerdaten und exakt `role: "studio"` verwenden. Den Bootstrap-Bearer-Token SHALL es ausschließlich aus persönlichen Mainserver-Credentials des handelnden Administrators laden und dabei keinen Organisations-Credential-Fallback verwenden. Die Mainserver-Initialrolle SHALL keine Studio-/Keycloak-Rolle oder frei wählbare Eigenschaft des Organisationsrequests sein.
 
-#### Scenario: Studio leitet die erforderlichen Benutzerdaten ab
+#### Scenario: Studio leitet die erforderlichen Benutzerdaten und die Initialrolle ab
 
 - **GIVEN** eine Organisation benötigt erstmals einen Mainserver-Zugang
 - **WHEN** Studio den Provisioning-Payload bildet
@@ -1393,6 +1391,8 @@ Das System SHALL einen organisationsbezogenen Mainserver-Zugang über denselben 
 - **AND** leitet es E-Mail und Username grundsätzlich als normalisierte Form `<org-name>.<tenant-name>@smart-village.app` ab
 - **AND** verwendet es Organisations- und Tenant-Anzeigenamen für die erforderlichen Namensfelder
 - **AND** ergänzt es bei einer Kollision einen stabilen Organisations-ID-Anteil
+- **AND** sendet es exakt `role: "studio"`
+- **AND** bleiben die Studio-/Keycloak-Rollen und Gruppen des technischen Accounts weiterhin leer
 
 #### Scenario: Wiederholung verwendet dieselbe technische Identität
 
@@ -1400,6 +1400,7 @@ Das System SHALL einen organisationsbezogenen Mainserver-Zugang über denselben 
 - **WHEN** Provisionierung oder Reprovisionierung erneut ausgeführt wird
 - **THEN** verwendet Studio denselben Keycloak-Subject und die persistierte E-Mail
 - **AND** erzeugt es keinen zweiten Account aufgrund später geänderter Anzeigenamen
+- **AND** verändert der Mainserver die bestehende Mainserver-Rolle nicht aufgrund des erneut gesendeten Rollenfeldes
 
 #### Scenario: Aktive Organisation beeinflusst den Bootstrap-Principal nicht
 
@@ -1855,3 +1856,105 @@ Das System MUST erfolgreiche routinemäßige GraphQL-Reads, Credential-Cache-Tre
 - **WHEN** eine autorisierte Mainserver-Mutation erfolgreich fachlichen Zustand ändert
 - **THEN** darf die verantwortliche Grenze genau ein strukturiertes `info`-Ergebnis mit sicheren Korrelationsfeldern emittieren
 - **AND** erzeugen interne Cache- und GraphQL-Schritte keine zusätzlichen `info`-Erfolge
+
+### Requirement: Studio provisioniert persönliche Mainserver-Nutzer mit der Initialrolle studio
+
+Das System SHALL bei jeder von Studio ausgelösten persönlichen Benutzer-Provisionierung über `POST /api/v2/user_provisionings` exakt `role: "studio"` senden. Die Rolle SHALL ausschließlich die initiale Mainserver-Rolle bei einer Neuanlage bestimmen. Studio SHALL dafür kein Keycloak-Präfix, kein Rollen-Mapping und keine lokale Spiegelung der Mainserver-Rolle einführen. Fehlt `role` bei anderen Mainserver-Aufrufern, SHALL der Mainserver weiterhin seine Defaultrolle `restricted` verwenden.
+
+#### Scenario: Persönlicher Studioaccount wird initial als studio angelegt
+
+- **GIVEN** Studio provisioniert einen neuen persönlichen Mainserver-Nutzer
+- **WHEN** Studio den Provisioning-Payload sendet
+- **THEN** enthält der Payload exakt `role: "studio"`
+- **AND** erhält der neue Mainserver-Nutzer die fachlichen API-/GraphQL-Verwaltungsrechte der Rolle `studio`
+- **AND** führt Studio kein zusätzliches Keycloak-Rollen-Mapping aus
+
+#### Scenario: Reprovisionierung bewahrt eine bestehende Rolle
+
+- **GIVEN** ein Mainserver-Nutzer existiert bereits mit einer bestehenden Mainserver-Rolle
+- **WHEN** Studio den Nutzer einzeln oder als Teil einer Bulk-Aktion erneut provisioniert
+- **THEN** darf der Mainserver die bestehende Rolle nicht aufgrund des erneut gesendeten Feldes verändern
+- **AND** aktualisiert Studio ausschließlich die zurückgegebenen Credentials und die dafür vorgesehenen Profildaten
+
+#### Scenario: Cross-Tenant-Provisionierung wird abgelehnt
+
+- **GIVEN** der für das Provisioning verwendete `studio`-Token gehört zu einer anderen Municipality als der Zielnutzer
+- **WHEN** Studio den Provisioning-Endpunkt aufruft
+- **THEN** lehnt der Mainserver die Anfrage mit HTTP `403` ab
+- **AND** behandelt Studio die Antwort als sicheren, nicht wiederholbaren Provisioning-Fehler
+- **AND** exponiert Studio keine Secrets, Tokens oder unkontrollierten Upstream-Details
+
+#### Scenario: Ungültige Mainserver-Rolle wird abgelehnt
+
+- **GIVEN** ein Provisioning-Aufrufer sendet `admin` oder eine unbekannte Rolle
+- **WHEN** der Mainserver den Provisioning-Payload validiert
+- **THEN** lehnt der Mainserver die Anfrage mit HTTP `422` ab
+- **AND** fällt Studio nicht stillschweigend auf `restricted` zurück
+
+#### Scenario: Bestehende Nutzer werden nicht automatisch migriert
+
+- **GIVEN** ein Mainserver-Nutzer existierte bereits vor Einführung der Rolle `studio`
+- **WHEN** Studio mit dem neuen Provisioning-Vertrag ausgeliefert wird
+- **THEN** startet Studio keine automatische Rollen- oder Nutzermigration
+- **AND** bleibt die bestehende Mainserver-Rolle unverändert, bis ein getrennt autorisierter Prozess sie ändert
+
+### Requirement: Endgültig gelöschte Benutzer blockieren keine eindeutige aktuelle DataProvider-Bindung
+
+Das System SHALL einen persönlichen DataProvider-Konflikt anlassbezogen im serverseitigen Identity-Guard automatisch auflösen dürfen, wenn die aktuelle Credential-Version durch den authentifizierten Identity-Endpunkt bestätigt ist und alle konkurrierenden aktuellen Bindungen ausschließlich zu endgültig gelöschten Benutzer-Accounts derselben Instanz gehören. Fehlt ein Account nach Hard Delete, SHALL zusätzlich ein erfolgreicher unveränderlicher `user.deleted`-Eintrag in `iam.activity_logs` den abgeschlossenen Löschvorgang belegen. Archivierte Activity-Logs SHALL nicht als Löschbeweis akzeptiert werden.
+
+Die Auflösung SHALL die konkurrierende Evidenz als `historical` erhalten, die exakte aktuelle Bindung atomar auf `verified` setzen und den noch nicht an den Mainserver gesendeten Mutationsrequest ohne zusätzlichen UI-Schritt fortsetzen. Sie SHALL keinen externen Credential-Widerruf behaupten. Jeder aktive, gesperrte, vorläufig gelöschte, organisatorische oder nicht eindeutig klassifizierbare konkurrierende Principal SHALL die automatische Auflösung fail-closed verhindern.
+
+#### Scenario: Einziger aktiver Benutzer setzt Mutation nach Selbstheilung fort
+
+- **GIVEN** zwei persönliche Bindungen derselben Instanz beanspruchen konfliktbehaftet denselben DataProvider
+- **AND** der konkurrierende Benutzer wurde endgültig gelöscht oder sein Fehlen ist durch einen erfolgreichen unveränderlichen `user.deleted`-Eintrag als abgeschlossener Hard Delete belegt
+- **AND** der aktuelle Benutzer ist aktiv und sein Identity-Endpunkt bestätigt DataProvider und Credential-Version
+- **WHEN** der aktuelle Benutzer eine Mainserver-Mutation auslöst
+- **THEN** historisiert Studio die konkurrierende Bindung und verifiziert die exakte aktuelle Bindung atomar
+- **AND** setzt es denselben Mutationsrequest ohne neuen UI-Schritt und ohne Wiederholung eines Provider-Writes fort
+
+#### Scenario: Reversibel inaktiver Konkurrent bleibt fail-closed
+
+- **GIVEN** eine konkurrierende Bindung gehört zu einem gesperrten oder nur vorläufig gelöschten Benutzer
+- **WHEN** der aktuelle Benutzer eine Mainserver-Mutation auslöst
+- **THEN** verändert Studio keine der konfliktbehafteten Bindungen
+- **AND** lehnt es die Mutation weiterhin mit `mainserver_data_provider_identity_conflict` ab
+
+#### Scenario: Organisationsbindung verhindert persönliche Selbstheilung
+
+- **GIVEN** eine konkurrierende aktuelle Bindung desselben DataProviders gehört zu einer Organisation
+- **WHEN** ein persönlicher Principal die automatische Auflösung auslösen würde
+- **THEN** historisiert Studio keine Bindung
+- **AND** bleibt der betroffene Scope fail-closed
+
+#### Scenario: Historische externe Credentials werden erneut aktiv beobachtet
+
+- **GIVEN** Studio hat die Bindung eines endgültig gelöschten Benutzers lokal als `historical` klassifiziert
+- **WHEN** dieselbe externe Credential-Version später erneut als aktuelle Principal-Evidenz auftritt
+- **THEN** behandelt Studio sie nicht allein aufgrund der früheren Historisierung als konfliktfrei
+- **AND** erzeugt die widersprechende aktive Beobachtung erneut einen fail-closed Konflikt
+
+### Requirement: Mainserver-Identitätskonflikte bleiben bis zur operativen Korrektur fail-closed
+
+Das System SHALL einen upstream gemeldeten `local_user_conflict` als dedizierten, nicht automatisch wiederholbaren `mainserver_user_conflict` mit Request-ID ausgeben. Studio SHALL weder die Mainserver-Subject-Bindung verändern noch den Konflikt automatisch erneut provisionieren. Für die operative Zuordnung SHALL dieselbe normalisierte E-Mail-Adresse innerhalb derselben Instanz als ausreichendes Identifikationsmerkmal gelten.
+
+#### Scenario: Mainserver meldet eine abweichende historische Subject-Bindung
+
+- **GIVEN** E-Mail und Ziel-Subject werden an die bestehende Mainserver-Provisionierung übergeben
+- **WHEN** der Mainserver `local_user_conflict` meldet
+- **THEN** antwortet Studio mit `mainserver_user_conflict` und der Request-ID
+- **AND** speichert Studio keine neuen persönlichen Credentials
+- **AND** startet Studio keinen automatischen Rebind oder erneuten Provisionierungsversuch
+
+#### Scenario: E-Mail-Abgleich ist nicht eindeutig
+
+- **WHEN** der Mainserver-Betrieb keine eindeutige Gleichheit der normalisierten E-Mail innerhalb derselben Instanz feststellt
+- **THEN** bleibt der Konflikt unverändert bestehen
+- **AND** erfolgt keine operative Subject-Änderung
+
+#### Scenario: Operative Korrektur ist nachgewiesen
+
+- **GIVEN** der Mainserver-Betrieb hat die lokale `User`-/`Member`-Zuordnung kontrolliert korrigiert
+- **WHEN** ein berechtigter Administrator die bestehende Reprovisionierung erneut ausführt
+- **THEN** verarbeitet Studio die unveränderte Mainserver-Provisioning-Antwort
+- **AND** persistiert erfolgreiche persönliche Credentials wie bisher ausschließlich serverseitig in Keycloak

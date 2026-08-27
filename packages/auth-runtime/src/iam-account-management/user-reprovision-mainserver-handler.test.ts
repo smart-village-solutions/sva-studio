@@ -339,6 +339,142 @@ describe('reprovisionMainserverUserInternal', () => {
     });
   });
 
+  it.each([
+    {
+      upstreamStatus: 403,
+      upstreamCode: 'forbidden',
+      expectedReasonCode: 'mainserver_tenant_forbidden',
+    },
+    {
+      upstreamStatus: 422,
+      upstreamCode: 'invalid_role',
+      expectedReasonCode: 'mainserver_request_rejected',
+    },
+  ])(
+    'preserves deterministic mainserver rejection status $upstreamStatus',
+    async ({ upstreamStatus, upstreamCode, expectedReasonCode }) => {
+      const provisioningError = new Error('Mainserver-Anfrage wurde abgelehnt.') as Error & {
+        code: string;
+        statusCode: number;
+      };
+      provisioningError.name = 'MainserverUserProvisioningError';
+      provisioningError.code = upstreamCode;
+      provisioningError.statusCode = upstreamStatus;
+      state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
+
+      const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+      const response = await reprovisionMainserverUserInternal(
+        new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+          method: 'POST',
+          body: '{}',
+        }),
+        {
+          sessionId: 'session-1',
+          activeOrganizationId: 'org-1',
+          user: {
+            id: 'kc-actor-1',
+            instanceId: 'instance-1',
+            roles: ['system_admin'],
+          },
+        }
+      );
+
+      expect(response.status).toBe(upstreamStatus);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: 'mainserver_provisioning_failed',
+          details: {
+            dependency: 'sva_mainserver',
+            reason_code: expectedReasonCode,
+          },
+          message:
+            upstreamStatus === 403
+              ? 'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt.'
+              : 'Der Mainserver hat die Provisionierungsanfrage als ungültig abgelehnt.',
+        },
+        requestId: 'req-1',
+      });
+    }
+  );
+
+  it.each([
+    { upstreamStatus: 403, expectedStatus: 409 },
+    { upstreamStatus: 422, expectedStatus: 422 },
+  ])(
+    'does not classify token endpoint status $upstreamStatus as a provisioning rejection',
+    async ({ upstreamStatus, expectedStatus }) => {
+      const provisioningError = new Error('Mainserver-Provisioning-Token konnte nicht geladen werden.') as Error & {
+        code: string;
+        statusCode: number;
+      };
+      provisioningError.name = 'MainserverUserProvisioningError';
+      provisioningError.code = 'token_request_failed';
+      provisioningError.statusCode = upstreamStatus;
+      state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
+
+      const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+      const response = await reprovisionMainserverUserInternal(
+        new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+          method: 'POST',
+          body: '{}',
+        }),
+        {
+          sessionId: 'session-1',
+          activeOrganizationId: 'org-1',
+          user: {
+            id: 'kc-actor-1',
+            instanceId: 'instance-1',
+            roles: ['system_admin'],
+          },
+        }
+      );
+
+      expect(response.status).toBe(expectedStatus);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: 'mainserver_provisioning_failed',
+          details: {
+            dependency: 'sva_mainserver',
+            reason_code: 'mainserver_upstream_failure',
+            upstream_error_code: 'token_request_failed',
+          },
+          message: 'Mainserver-Provisioning-Token konnte nicht geladen werden.',
+        },
+        requestId: 'req-1',
+      });
+    }
+  );
+
+  it.each([302, 400])('normalizes upstream status %s to a conflict response', async (upstreamStatus) => {
+    const provisioningError = new Error('Mainserver-Anfrage fehlgeschlagen.') as Error & {
+      code: string;
+      statusCode: number;
+    };
+    provisioningError.name = 'MainserverUserProvisioningError';
+    provisioningError.code = 'upstream_failure';
+    provisioningError.statusCode = upstreamStatus;
+    state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
+
+    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+    const response = await reprovisionMainserverUserInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(409);
+  });
+
   it('marks reserved idempotency keys as failed when target resolution throws before provisioning', async () => {
     state.resolveUserDetail.mockRejectedValueOnce(new Error('db exploded'));
     const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');

@@ -341,6 +341,103 @@ describe('organization Mainserver provisioning', () => {
     );
   });
 
+  it.each([
+    {
+      statusCode: 403,
+      upstreamCode: 'forbidden',
+      expectedCode: 'mainserver_tenant_forbidden',
+    },
+    {
+      statusCode: 422,
+      upstreamCode: 'invalid_role',
+      expectedCode: 'mainserver_request_rejected',
+    },
+  ])(
+    'records a deterministic Mainserver $statusCode rejection as failed instead of requiring reconciliation',
+    async ({ statusCode, upstreamCode, expectedCode }) => {
+      prepareNewProvisioningAccount();
+      const { MainserverUserProvisioningError } =
+        await import('../iam-account-management/mainserver-user-provisioning-error.js');
+      state.provisionMainserverUserCredentials.mockRejectedValue(
+        new MainserverUserProvisioningError({
+          code: upstreamCode,
+          message: 'Mainserver provisioning rejected',
+          statusCode,
+          retryable: false,
+        })
+      );
+
+      const { provisionOrganizationMainserver } =
+        await import('./organization-mainserver-provisioning.js');
+      await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
+        outcome: 'failed',
+        errorCode: expectedCode,
+      });
+      expect(state.updateOrganizationMainserverProvisioningState).toHaveBeenLastCalledWith(
+        state.client,
+        expect.objectContaining({
+          provisioningStatus: 'failed',
+          provisioningPhase: 'mainserver_request',
+          lastErrorCode: expectedCode,
+          releaseLease: true,
+        })
+      );
+    }
+  );
+
+  it.each([403, 422])(
+    'preserves token request failures with status %s instead of classifying them as provisioning rejections',
+    async (statusCode) => {
+      prepareNewProvisioningAccount();
+      const { MainserverUserProvisioningError } =
+        await import('../iam-account-management/mainserver-user-provisioning-error.js');
+      state.provisionMainserverUserCredentials.mockRejectedValue(
+        new MainserverUserProvisioningError({
+          code: 'token_request_failed',
+          message: 'Mainserver token request rejected',
+          statusCode,
+          retryable: false,
+        })
+      );
+
+      const { provisionOrganizationMainserver } =
+        await import('./organization-mainserver-provisioning.js');
+      await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
+        outcome: 'failed',
+        errorCode: 'token_request_failed',
+      });
+      expect(state.updateOrganizationMainserverProvisioningState).toHaveBeenLastCalledWith(
+        state.client,
+        expect.objectContaining({
+          provisioningStatus: 'failed',
+          provisioningPhase: 'mainserver_request',
+          lastErrorCode: 'token_request_failed',
+          releaseLease: true,
+        })
+      );
+    }
+  );
+
+  it.each([403, 422])(
+    'preserves data provider verification failures with status %s',
+    async (statusCode) => {
+      const { MainserverUserProvisioningError } =
+        await import('../iam-account-management/mainserver-user-provisioning-error.js');
+      const { toSafeProvisioningErrorCode } =
+        await import('./organization-mainserver-provisioning.shared.js');
+
+      expect(
+        toSafeProvisioningErrorCode(
+          new MainserverUserProvisioningError({
+            code: 'data_provider_verification_failed',
+            message: 'DataProvider identity could not be verified',
+            statusCode,
+          })
+        )
+      ).toBe('data_provider_verification_failed');
+    }
+  );
+
   it('compensates a newly created Keycloak account when local attachment fails before upstream', async () => {
     const provider = prepareNewProvisioningAccount();
     state.persistCreatedUser.mockRejectedValue(new Error('database unavailable'));
@@ -469,6 +566,11 @@ describe('organization Mainserver provisioning', () => {
       expect.objectContaining({
         actorSubject: 'kc-admin-1',
         keycloakSubject: 'kc-technical-1',
+        payload: expect.objectContaining({
+          isTechnicalAccount: true,
+          roleIds: [],
+          groupIds: [],
+        }),
       })
     );
     expect(state.writeActiveOrganizationProvisioningCredentials).toHaveBeenCalledWith(

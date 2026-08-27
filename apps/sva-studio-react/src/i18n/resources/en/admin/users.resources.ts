@@ -276,6 +276,10 @@ export const usersAdminENResources = {
       'The Mainserver reported a conflict for this user account. Check the existing Mainserver user.',
     mainserverProvisioningFailed:
       'Refreshing Mainserver data failed on the Mainserver side. Check the integration and try again.',
+    mainserverTenantForbidden:
+      'The Mainserver rejected provisioning for this organization. Check the active organization and tenant assignment.',
+    mainserverRequestRejected:
+      'The Mainserver rejected the provisioning request as invalid. Check the integration contract and requested role.',
     lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',
     selfProtection: 'The currently signed-in account cannot be deactivated this way.',
     systemAdminDeleteProtection:

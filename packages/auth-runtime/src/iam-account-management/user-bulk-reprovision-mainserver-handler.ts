@@ -56,6 +56,13 @@ const resolveBulkReprovisionIdentityProvider = (provider: unknown): BulkReprovis
 const mapMainserverProvisioningErrorToFailure = (
   error: MainserverUserProvisioningError
 ): BulkReprovisionFailure['code'] => {
+  if (error.statusCode === 403 && error.code !== 'token_request_failed') {
+    return 'mainserver_tenant_forbidden';
+  }
+  if (error.statusCode === 422 && error.code !== 'token_request_failed') {
+    return 'mainserver_request_rejected';
+  }
+
   switch (error.code) {
     case 'database_unavailable':
       return 'database_unavailable';
@@ -73,6 +80,18 @@ const mapMainserverProvisioningErrorToFailure = (
     default:
       return 'mainserver_provisioning_failed';
   }
+};
+
+const resolveMainserverProvisioningFailureMessage = (
+  error: MainserverUserProvisioningError
+): string => {
+  if (error.statusCode === 403 && error.code !== 'token_request_failed') {
+    return 'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt.';
+  }
+  if (error.statusCode === 422 && error.code !== 'token_request_failed') {
+    return 'Der Mainserver hat die Provisionierungsanfrage als ungültig abgelehnt.';
+  }
+  return error.message;
 };
 
 const emitBulkReprovisionSuccessAudit = async (input: {
@@ -199,7 +218,9 @@ const reprovisionSingleUser = async (input: {
         failure: {
           id: detail.id,
           code: mapMainserverProvisioningErrorToFailure(error as MainserverUserProvisioningError),
-          message: error.message,
+          message: resolveMainserverProvisioningFailureMessage(
+            error as MainserverUserProvisioningError
+          ),
         },
       };
     }

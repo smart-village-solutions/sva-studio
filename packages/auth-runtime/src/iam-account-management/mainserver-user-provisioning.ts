@@ -219,6 +219,7 @@ export const provisionMainserverUserCredentials = async (input: {
           keycloak_id: input.keycloakSubject,
           first_name: input.payload.firstName,
           last_name: input.payload.lastName,
+          role: 'studio',
         }),
       },
       timeoutMessage: 'Zeitüberschreitung beim Provisionieren des Mainserver-Benutzers.',

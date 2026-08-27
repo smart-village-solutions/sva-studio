@@ -62,8 +62,26 @@ const mapMainserverProvisioningErrorToApiError = (
     | 'mainserver_user_conflict'
     | 'mainserver_provisioning_failed';
   readonly details: Readonly<Record<string, unknown>>;
+  readonly message?: string;
   readonly status: number;
 } => {
+  if (error.statusCode === 403 && error.code !== 'token_request_failed') {
+    return {
+      code: 'mainserver_provisioning_failed',
+      details: { dependency: 'sva_mainserver', reason_code: 'mainserver_tenant_forbidden' },
+      message: 'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt.',
+      status: 403,
+    };
+  }
+  if (error.statusCode === 422 && error.code !== 'token_request_failed') {
+    return {
+      code: 'mainserver_provisioning_failed',
+      details: { dependency: 'sva_mainserver', reason_code: 'mainserver_request_rejected' },
+      message: 'Der Mainserver hat die Provisionierungsanfrage als ungültig abgelehnt.',
+      status: 422,
+    };
+  }
+
   switch (error.code) {
     case 'database_unavailable':
       return {
@@ -94,7 +112,7 @@ const mapMainserverProvisioningErrorToApiError = (
       return {
         code: 'mainserver_credentials_invalid',
         details: { dependency: 'sva_mainserver', reason_code: 'mainserver_token_unauthorized' },
-        status: error.statusCode,
+        status: 409,
       };
     case 'local_user_conflict':
       return {
@@ -118,10 +136,15 @@ const mapMainserverProvisioningErrorToApiError = (
 export const buildProvisioningErrorResponse = (requestId: string | undefined, error: unknown): Response => {
   if (error instanceof Error && error.name === 'MainserverUserProvisioningError') {
     const mappedError = mapMainserverProvisioningErrorToApiError(error as MainserverUserProvisioningError);
+    const responseStatus =
+      mappedError.details.reason_code === 'mainserver_tenant_forbidden' ||
+      mappedError.details.reason_code === 'mainserver_request_rejected'
+        ? mappedError.status
+        : Math.max(409, mappedError.status);
     return createApiError(
-      Math.max(409, mappedError.status),
+      responseStatus,
       mappedError.code,
-      error.message,
+      mappedError.message ?? error.message,
       requestId,
       mappedError.details
     );

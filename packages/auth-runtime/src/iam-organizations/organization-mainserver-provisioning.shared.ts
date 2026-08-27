@@ -7,6 +7,11 @@ import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management
 
 export const ORGANIZATION_PROVISIONING_LEASE_SECONDS = 300;
 
+const nonProvisioningRequestErrorCodes = new Set([
+  'data_provider_verification_failed',
+  'token_request_failed',
+]);
+
 export const organizationProvisioningLogger = createSdkLogger({
   component: 'iam-organization-mainserver-provisioning',
   level: 'info',
@@ -46,6 +51,13 @@ export const loadProvisioningOrganization = async (
 
 export const toSafeProvisioningErrorCode = (error: unknown): string => {
   if (error instanceof MainserverUserProvisioningError) {
+    const isProvisioningRequestFailure = !nonProvisioningRequestErrorCodes.has(error.code);
+    if (isProvisioningRequestFailure && error.statusCode === 403) {
+      return 'mainserver_tenant_forbidden';
+    }
+    if (isProvisioningRequestFailure && error.statusCode === 422) {
+      return 'mainserver_request_rejected';
+    }
     return error.code;
   }
   if (error instanceof Error) {

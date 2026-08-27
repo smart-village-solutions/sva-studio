@@ -368,7 +368,9 @@ POST /api/v1/iam/organizations/:organizationId/provision-mainserver
 Idempotency-Key: <eindeutiger Wert>
 ```
 
-Es genügt `iam.org.write`; zusätzliche Accountrechte sind nicht erforderlich. Der Request enthält keine Rollen, Gruppen, Einladungsoptionen oder technischen Accountattribute. Der Bootstrap verwendet ausschließlich die persönlichen Mainserver-Credentials des Actors und nie den aktiven Organisationskontext.
+Es genügt `iam.org.write`; zusätzliche Accountrechte sind nicht erforderlich. Der Request enthält keine frei wählbaren Studio-/Keycloak-Rollen, Gruppen, Einladungsoptionen oder technischen Accountattribute. Der technische Account behält deshalb leere Studio-/Keycloak-Rollen und Gruppen. Wie bei persönlichen Accounts sendet Studio an den Mainserver jedoch fest `role: "studio"`, damit neue persönliche und organisatorische Zugänge die erforderlichen Mainserver-Verwaltungsrechte erhalten. Fehlt `role` bei anderen Aufrufern, verwendet der Mainserver weiterhin seine Defaultrolle `restricted`. Der Bootstrap verwendet ausschließlich die persönlichen Mainserver-Credentials des Actors und nie den aktiven Organisationskontext.
+
+Bei einer Reprovisionierung sendet Studio `role: "studio"` erneut; der Mainserver bewahrt dabei die bestehende Rolle. Es erfolgt keine automatische Migration bereits vorhandener Nutzer. Cross-Tenant-Provisionierung wird vom Mainserver mit HTTP `403`, eine ungültige Rolle mit HTTP `422` abgelehnt; beide Antworten gelten als sichere, nicht wiederholbare Provisioning-Fehler und dürfen keine Secrets oder unkontrollierten Upstream-Details exponieren.
 
 Operativ relevante Zustände:
 

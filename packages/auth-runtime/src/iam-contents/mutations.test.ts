@@ -101,6 +101,7 @@ const {
   transferContentOwnershipResponse,
   updateContentResponse,
 } = await import('./mutations.js');
+const { ContentOwnershipTransferError } = await import('./repository.js');
 
 const actor = {
   instanceId: 'instance-1',
@@ -563,5 +564,53 @@ describe('content mutations', () => {
         },
       })
     );
+  });
+
+  it('handles ownership transfer validation, authorization and repository failures', async () => {
+    const request = () =>
+      new Request('https://studio.test/api/v1/iam/contents/content-1/transfer-ownership', {
+        method: 'POST',
+      });
+    const csrfResponse = new Response('csrf', { status: 403 });
+    state.validateCsrfMock.mockReturnValueOnce(csrfResponse);
+    expect(await transferContentOwnershipResponse(request(), actor)).toBe(csrfResponse);
+
+    state.readPathSegmentMock.mockReturnValueOnce('');
+    expect((await transferContentOwnershipResponse(request(), actor)).status).toBe(400);
+
+    state.parseRequestBodyMock.mockResolvedValueOnce({ ok: false, message: 'invalid body' });
+    expect((await transferContentOwnershipResponse(request(), actor)).status).toBe(400);
+
+    state.parseRequestBodyMock.mockResolvedValue({
+      ok: true,
+      data: {
+        targetPrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      },
+    });
+    state.loadContentByIdMock.mockResolvedValueOnce(undefined);
+    expect((await transferContentOwnershipResponse(request(), actor)).status).toBe(404);
+
+    const deniedResponse = new Response('denied', { status: 403 });
+    state.authorizeContentActionMock.mockResolvedValueOnce(deniedResponse);
+    expect(await transferContentOwnershipResponse(request(), actor)).toBe(deniedResponse);
+
+    state.authorizeContentActionMock.mockResolvedValue(null);
+    for (const [code, status] of [
+      ['content_not_found', 404],
+      ['ownership_target_not_found', 404],
+      ['ownership_target_inactive', 409],
+      ['ownership_target_unchanged', 409],
+    ] as const) {
+      state.transferContentOwnershipMock.mockRejectedValueOnce(
+        new ContentOwnershipTransferError(code)
+      );
+      expect((await transferContentOwnershipResponse(request(), actor)).status).toBe(status);
+    }
+
+    state.transferContentOwnershipMock.mockRejectedValueOnce(new Error('database down'));
+    expect((await transferContentOwnershipResponse(request(), actor)).status).toBe(503);
   });
 });

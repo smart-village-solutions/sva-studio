@@ -83,6 +83,14 @@ describe('generic-items-route-input sections', () => {
     ).toEqual([{ body: '<h2>Titel</h2><a>Link</a>' }]);
   });
 
+  it('preserves raw content blocks for plain-text contract validation', () => {
+    expect(
+      parseContentBlocks([{ body: '<script>alert(1)</script>' }], {
+        sanitizeRichText: false,
+      })
+    ).toEqual([{ body: '<script>alert(1)</script>' }]);
+  });
+
   it('rejects malformed content block payloads', async () => {
     await expectInvalidRequest(
       parseContentBlocks('invalid') as Response,

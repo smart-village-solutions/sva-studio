@@ -20,7 +20,8 @@ const parseContentBlockMediaContents = (
 };
 
 export const parseContentBlocks = (
-  value: unknown
+  value: unknown,
+  options: { sanitizeRichText?: boolean } = {}
 ): readonly SvaMainserverContentBlockInput[] | undefined | Response => {
   if (value === undefined || value === null) {
     return undefined;
@@ -41,12 +42,16 @@ export const parseContentBlocks = (
       return mediaContents;
     }
     const body = readString(block.body);
-    const sanitizedBody = body ? sanitizeRichTextHtml(body) : undefined;
+    const parsedBody = body
+      ? options.sanitizeRichText === false
+        ? body
+        : sanitizeRichTextHtml(body)
+      : undefined;
 
     const parsedBlock: SvaMainserverContentBlockInput = {
       ...(readString(block.title) ? { title: readString(block.title) } : {}),
       ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
-      ...(sanitizedBody ? { body: sanitizedBody } : {}),
+      ...(parsedBody ? { body: parsedBody } : {}),
       ...(mediaContents.length > 0 ? { mediaContents } : {}),
     };
 

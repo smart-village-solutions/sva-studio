@@ -30,6 +30,7 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p packages/studio-ui-react/tsconfig.lib.json --noEmit"
       }

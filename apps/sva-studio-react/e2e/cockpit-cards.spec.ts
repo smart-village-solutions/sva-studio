@@ -111,7 +111,11 @@ test('creates, updates and deletes a Kachel while preserving its server identity
         status: card && !deleted ? 200 : 404,
         contentType: 'application/json',
         headers: card && !deleted ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
-        body: JSON.stringify(card && !deleted ? { data: card } : { error: 'not_found' }),
+        body: JSON.stringify(
+          card && !deleted
+            ? { data: { ...card, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
+            : { error: 'not_found' }
+        ),
       });
     }
     if (isDetail && request.method() === 'PATCH') {

@@ -112,7 +112,11 @@ export const routeEvents = async (route: Route, events: EventRecord[]) => {
       status: item ? 200 : 404,
       contentType: 'application/json',
       headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
-      body: JSON.stringify(item ? { data: item } : { error: 'not_found' }),
+      body: JSON.stringify(
+        item
+          ? { data: { ...item, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
+          : { error: 'not_found' }
+      ),
     });
   if (method === 'PATCH' && item) {
     const body = request.postDataJSON() as Partial<EventRecord>;
@@ -187,7 +191,11 @@ export const routePoi = async (route: Route, pois: PoiRecord[]) => {
       status: item ? 200 : 404,
       contentType: 'application/json',
       headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
-      body: JSON.stringify(item ? { data: item } : { error: 'not_found' }),
+      body: JSON.stringify(
+        item
+          ? { data: { ...item, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
+          : { error: 'not_found' }
+      ),
     });
   if (method === 'PATCH' && item) {
     const body = request.postDataJSON() as Partial<PoiRecord>;

@@ -83,7 +83,11 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
         status: project && !deleted ? 200 : 404,
         contentType: 'application/json',
         headers: project && !deleted ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
-        body: JSON.stringify(project && !deleted ? { data: project } : { error: 'not_found' }),
+        body: JSON.stringify(
+          project && !deleted
+            ? { data: { ...project, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
+            : { error: 'not_found' }
+        ),
       });
     }
     if (path.endsWith('/project-1') && request.method() === 'PATCH') {
@@ -125,12 +129,8 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
   await page.locator('#project-description').fill('Projektbeschreibung');
   await page.getByRole('tab', { name: /Inhalt|projects\.tabs\.content/ }).click();
   await page.locator('#project-fullText').fill('Ausführlicher Projekttext');
-  await page
-    .getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ })
-    .click();
-  await page
-    .getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ })
-    .click();
+  await page.getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ }).click();
+  await page.getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ }).click();
   await page
     .getByLabel(/Bild-URL|projects\.fields\.imageUrl/)
     .nth(0)

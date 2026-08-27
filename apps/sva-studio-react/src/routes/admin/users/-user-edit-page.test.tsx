@@ -1428,7 +1428,7 @@ describe('UserEditPage', () => {
     ],
     [
       'mainserver_user_conflict',
-      'Der Mainserver meldet einen Konflikt für dieses Benutzerkonto. Bitte den vorhandenen Mainserver-Benutzer prüfen.',
+      'Der Mainserver-Benutzer ist bereits mit einer anderen Identität verknüpft. Eine Wiederholung löst den Konflikt nicht. Bitte den Mainserver-Betrieb mit der angezeigten Request-ID kontaktieren.',
     ],
     [
       'mainserver_provisioning_failed',

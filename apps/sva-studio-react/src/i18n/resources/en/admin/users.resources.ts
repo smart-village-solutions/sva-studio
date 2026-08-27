@@ -273,7 +273,7 @@ export const usersAdminENResources = {
     mainserverCredentialsInvalid:
       'The Mainserver rejected the stored credentials for this refresh. Check the Mainserver credentials.',
     mainserverUserConflict:
-      'The Mainserver reported a conflict for this user account. Check the existing Mainserver user.',
+      'The Mainserver user is already linked to a different identity. Retrying will not resolve the conflict. Contact the Mainserver operations team with the displayed request ID.',
     mainserverProvisioningFailed:
       'Refreshing Mainserver data failed on the Mainserver side. Check the integration and try again.',
     mainserverTenantForbidden:

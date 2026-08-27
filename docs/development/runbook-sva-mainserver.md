@@ -394,3 +394,54 @@ Operativ relevante Zustände:
 Bei `verification_required`, `reconciliation_required` oder `ready` verifiziert ein expliziter Retry zuerst die vorhandenen Organisations-Credentials über `/data_provider.json`. Stimmen die bereits am technischen Account gespeicherten Attribute exakt mit den verifizierten Credentials überein, entfällt der redundante Keycloak-Write; die Oberfläche bestätigt den aktuellen Stand. Eine bestehende DataProvider-Bindung wird bei Abweichung nie überschrieben. Während einer aktiven Lease ist der Hard Delete des zugeordneten Accounts blockiert; danach bleiben gültige Organisations-Credentials und Bindungen trotz gelöster Accountreferenz erhalten.
 
 Logs und Audit enthalten nur Instanz, Organisation, technische IDs, Trigger, Operationsreferenz, Phase, Ergebnis und sicheren Fehlercode. Application-Secret, Token und rohe Mainserver-Antworten dürfen dort nicht erscheinen.
+
+## Persönlichen Mainserver-Identitätskonflikt auflösen
+
+Ein `mainserver_user_conflict` bedeutet, dass der Mainserver die E-Mail-Adresse bereits unter einem anderen Keycloak-Subject führt. Eine unveränderte Reprovisionierung wiederholt dieselbe Anfrage und löst den Konflikt nicht. Studio führt keinen automatischen Rebind aus.
+
+### Eingangsdaten sichern
+
+Der Studio-Administrator übergibt dem Mainserver-Betrieb ausschließlich:
+
+- Studio-Instanz und Mainserver-Kommune;
+- Studio-Account-ID und betroffene E-Mail-Adresse;
+- Request-ID der fehlgeschlagenen Reprovisionierung;
+- Zeitpunkt mit Zeitzone.
+
+Application-ID, Application-Secret, Tokens und vollständige Upstream-Antworten gehören nicht in das Betriebsticket.
+
+### Zuordnung prüfen
+
+Der Mainserver-Betrieb prüft vor jeder Mutation:
+
+1. Innerhalb der Kommune existiert für die normalisierte E-Mail-Adresse genau ein lokaler `User` und genau ein `Member`.
+2. `User` und `Member` zeigen auf denselben historischen Keycloak-Subject.
+3. Der Ziel-Subject aus Studio existiert in derselben Keycloak-Instanz und verwendet dieselbe normalisierte E-Mail-Adresse.
+4. Kein anderer lokaler `User` oder `Member` der Kommune ist bereits mit dem Ziel-Subject verknüpft.
+5. Der bestehende DataProvider und seine Content-Ownership bleiben unverändert.
+
+Für den Vergleich wird die E-Mail-Adresse an allen drei Stellen getrimmt und ohne Beachtung der Groß-/Kleinschreibung verglichen. Sobald ein Datensatz fehlt, mehrfach vorkommt, die E-Mail abweicht oder der Ziel-Subject bereits anderweitig gebunden ist, endet der Ablauf ohne Mutation.
+
+### Passenden Mainserver-Pfad wählen
+
+Zeigt der historische Subject auf keinen vorhandenen Keycloak-Benutzer mehr, kann der vorhandene Mainserver-Keycloak-Sync die veraltete lokale Verknüpfung entfernen und den Benutzer anhand der E-Mail neu zuordnen. Dieser Sync verarbeitet alle Benutzer der Kommune. Er darf deshalb nur nach Prüfung der kommunalen Gesamtwirkung, in einem Wartungsfenster und mit Vorher-/Nachher-Auswertung seiner Ergebniszusammenfassung ausgeführt werden.
+
+Existiert der historische Keycloak-Benutzer noch, darf der kommunale Bulk-Sync nicht als Rebind verwendet werden. Nach dem erfolgreichen Prüfschritt setzt der Mainserver-Betrieb stattdessen ausschließlich den ermittelten `User` und `Member` innerhalb einer ActiveRecord-Transaktion auf den geprüften Ziel-Subject. Die Korrektur erfolgt über die Rails-Anwendungsschicht mit `update!`, nicht über direktes SQL. Alter und neuer Subject sowie die beiden lokalen Datensatz-IDs werden im geschützten Betriebsticket dokumentiert; E-Mail-Adresse und Credentials werden nicht in Logs ausgegeben.
+
+### Ablauf im Studio abschließen
+
+Nach bestätigter Mainserver-Korrektur:
+
+1. lädt der Studio-Administrator die Benutzer-Detailansicht neu;
+2. führt er **Mainserver-Daten reprovisionieren** genau einmal aus;
+3. prüft er die Erfolgsanzeige und notiert die neue Request-ID;
+4. verifiziert er einen lesenden Mainserver-Zugriff mit dem betroffenen Benutzer;
+5. bestätigt der Mainserver-Betrieb, dass `User` und `Member` auf den Ziel-Subject zeigen und der bisherige DataProvider unverändert ist.
+
+Erst diese Nachweise schließen den Konflikt. Ein HTTP-Erfolg ohne anschließenden Zugriffsnachweis reicht nicht aus.
+
+### Fehler und Rollback
+
+- Scheitert die Mainserver-Korrektur vor der erneuten Studio-Reprovisionierung, stellt der Mainserver-Betrieb die dokumentierten historischen `User`-/`Member`-Subjects innerhalb einer ActiveRecord-Transaktion wieder her.
+- Ist das Ergebnis der Studio-Reprovisionierung unklar, erfolgt kein blinder weiterer Versuch und kein sofortiger Rollback. Zuerst werden Studio- und Mainserver-Logs anhand der neuen Request-ID ausgewertet.
+- Wurden Credentials bereits in Keycloak geschrieben, entscheidet der Mainserver-Betrieb anhand des tatsächlichen `User`-/`Member`-/DataProvider-Zustands über die Nacharbeit. Secrets werden dabei weder kopiert noch in Diagnosedaten ausgegeben.

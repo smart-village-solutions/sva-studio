@@ -9,12 +9,14 @@ Geprüft werden ausschließlich die durch `config/documentation/wiki-publication
 Der Check validiert:
 
 - relative Datei- und Verzeichnisziele in aktueller Markdown-Dokumentation
-- Erreichbarkeit jeder aktuellen Markdown-Seite ab `docs/README.md`
+- Erreichbarkeit jeder aktuellen Markdown-Seite ab `docs/README.md` über den zuständigen Bereichs- oder Unterindex; ein Index unter `docs/<bereich>/` darf nur Ziele desselben Bereichs klassifizieren
 - Parität zwischen ADR-Dateien unter `docs/adr/` und `docs/adr/README.md`
 - Ausschluss historischer, evidenzbezogener und externer Pfade aus dem Wiki-Manifest
 - Wiki-Links gegen die aktuelle Publikationsmenge und den Ausschluss der Legacy-ADRs
 
 Links auf vorhandene Scripts, Workflows oder andere technische Repository-Dateien sind zulässig. Sie machen diese Ziele nicht zu publizierter Dokumentation. Ausgeschlossene Nachweise werden bei Bedarf über absolute Repository-Links referenziert.
+
+Jede Zeile des Publikationsmanifests ist genau ein Git-Pathspec. Leerzeilen, Kommentare und Rand-Whitespace sind verboten und werden sowohl vom Integritätsgate als auch vor der Wiki-Publikation abgewiesen.
 
 ## Lokal ausführen
 

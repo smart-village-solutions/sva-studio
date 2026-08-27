@@ -47,6 +47,20 @@ jobs:
 
           publication_root="$(mktemp -d "${RUNNER_TEMP}/wiki-publication.XXXXXX")"
           publication_files="${RUNNER_TEMP}/wiki-publication-files"
+          if ! awk '
+            {
+              trimmed = $0
+              sub(/^[[:space:]]+/, "", trimmed)
+              sub(/[[:space:]]+$/, "", trimmed)
+              if ($0 == "" || $0 != trimmed || $0 ~ /^#/) {
+                printf "Ungueltige Manifestzeile %d: Pathspec muss nicht leer und ohne Rand-Whitespace oder Kommentar sein.\n", NR > "/dev/stderr"
+                invalid = 1
+              }
+            }
+            END { exit invalid }
+          ' config/documentation/wiki-publication-paths.txt; then
+            exit 1
+          fi
           mapfile -t publication_pathspecs \
             < config/documentation/wiki-publication-paths.txt
 

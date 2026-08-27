@@ -1,10 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { formatDocumentationIssue } from './check-documentation';
+import { formatDocumentationIssue, loadDocumentationIntegrityInput } from './check-documentation';
 import {
   checkDocumentationIntegrity,
   type DocumentationIntegrityInput,
@@ -108,6 +110,28 @@ describe('documentation integrity', () => {
     );
   });
 
+  it('does not let an unrelated area index classify a page', () => {
+    const files = new Map(validFiles);
+    files.set(
+      'docs/README.md',
+      '# Dokumentation\n\n[Entwicklung](./development/README.md)\n\n[Betrieb](./operations/README.md)\n\n[ADRs](./adr/README.md)\n'
+    );
+    files.set('docs/operations/README.md', '# Betrieb\n\n[Details](../development/details.md)\n');
+    files.set('docs/development/details.md', '# Details\n');
+    const additionalPaths = ['docs/operations/README.md', 'docs/development/details.md'];
+    const publishedPaths = new Set([...createInput().publishedPaths, ...additionalPaths]);
+    const trackedPaths = new Set([...createInput().trackedPaths, ...additionalPaths]);
+
+    expect(
+      checkDocumentationIntegrity(createInput({ files, publishedPaths, trackedPaths }))
+    ).toContainEqual(
+      expect.objectContaining({
+        code: 'unreachable-page',
+        path: 'docs/development/details.md',
+      })
+    );
+  });
+
   it('reports ADR files missing from the canonical index', () => {
     const files = new Map(validFiles);
     files.set('docs/adr/README.md', '# ADRs\n');
@@ -137,6 +161,53 @@ describe('documentation integrity', () => {
       path: 'config/documentation/wiki-publication-paths.txt',
       reason: 'ausgeschlossener Pfad wird publiziert: docs/user-documentation/',
     });
+  });
+
+  it('rejects manifest syntax that the Wiki workflow cannot consume safely', () => {
+    const issues = checkDocumentationIntegrity(
+      createInput({
+        manifestEntries: ['docs/README.md', '', ' docs/development/**', '# docs/adr/**'],
+      })
+    );
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid-manifest', line: 2 }),
+        expect.objectContaining({ code: 'invalid-manifest', line: 3 }),
+        expect.objectContaining({ code: 'invalid-manifest', line: 4 }),
+      ])
+    );
+  });
+
+  it('turns an unstaged published-file deletion into a normal link finding', () => {
+    const rootDir = mkdtempSync(path.join(os.tmpdir(), 'documentation-integrity-'));
+    try {
+      mkdirSync(path.join(rootDir, 'config/documentation'), { recursive: true });
+      mkdirSync(path.join(rootDir, '.github/workflows'), { recursive: true });
+      mkdirSync(path.join(rootDir, 'docs'), { recursive: true });
+      writeFileSync(
+        path.join(rootDir, 'config/documentation/wiki-publication-paths.txt'),
+        ':(glob)docs/**\n'
+      );
+      writeFileSync(path.join(rootDir, '.github/workflows/wiki-sync.yml'), 'name: Wiki Sync\n');
+      writeFileSync(
+        path.join(rootDir, 'docs/README.md'),
+        '# Dokumentation\n\n[Setup](./setup.md)\n'
+      );
+      writeFileSync(path.join(rootDir, 'docs/setup.md'), '# Setup\n');
+      execFileSync('git', ['init', '--quiet'], { cwd: rootDir });
+      execFileSync('git', ['add', '.'], { cwd: rootDir });
+      rmSync(path.join(rootDir, 'docs/setup.md'));
+
+      expect(checkDocumentationIntegrity(loadDocumentationIntegrityInput(rootDir))).toContainEqual({
+        code: 'broken-link',
+        line: 3,
+        path: 'docs/README.md',
+        reason: 'relatives Linkziel fehlt: ./setup.md',
+      });
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
   });
 
   it('reports Wiki links to legacy ADRs and unpublished documentation', () => {

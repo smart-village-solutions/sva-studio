@@ -21,6 +21,18 @@ interface DocumentationGraph {
 const isDocumentationIndex = (repositoryPath: string): boolean =>
   repositoryPath === DOCUMENTATION_ENTRYPOINT || repositoryPath.endsWith('/README.md');
 
+const documentationArea = (repositoryPath: string): string | undefined =>
+  repositoryPath.match(/^docs\/([^/]+)\//u)?.[1];
+
+const isOwnedNavigationTarget = (sourcePath: string, targetPath: string): boolean => {
+  const targetArea = documentationArea(targetPath);
+  return (
+    sourcePath === DOCUMENTATION_ENTRYPOINT ||
+    targetArea === undefined ||
+    documentationArea(sourcePath) === targetArea
+  );
+};
+
 const inspectPublishedMarkdown = (input: DocumentationIntegrityInput): DocumentationGraph => {
   const issues: DocumentationIssue[] = [];
   const publishedMarkdown = new Set(
@@ -72,6 +84,7 @@ const inspectPublishedMarkdown = (input: DocumentationIntegrityInput): Documenta
       } else if (
         link.navigation &&
         isDocumentationIndex(sourcePath) &&
+        isOwnedNavigationTarget(sourcePath, target) &&
         publishedMarkdown.has(target)
       ) {
         reachableTargets.add(target);

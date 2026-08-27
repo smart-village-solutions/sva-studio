@@ -7,6 +7,16 @@ import {
 const checkManifest = (input: DocumentationIntegrityInput): DocumentationIssue[] => {
   const issues: DocumentationIssue[] = [];
   for (const [index, entry] of input.manifestEntries.entries()) {
+    if (entry === '' || entry !== entry.trim() || entry.startsWith('#')) {
+      issues.push({
+        code: 'invalid-manifest',
+        line: index + 1,
+        path: 'config/documentation/wiki-publication-paths.txt',
+        reason:
+          'Manifestzeile muss ein nicht leerer Pathspec ohne Rand-Whitespace oder Kommentar sein',
+      });
+      continue;
+    }
     const normalizedEntry = entry.replace(/^:\(glob\)/u, '');
     const excludedPrefix = EXCLUDED_PUBLICATION_PREFIXES.find((prefix) =>
       normalizedEntry.startsWith(prefix)

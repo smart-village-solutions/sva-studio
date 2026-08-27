@@ -27,15 +27,36 @@ const gitTrackedPaths = (rootDir: string, pathspecs: readonly string[] = []): st
     )
   );
 
+const gitDeletedPaths = (rootDir: string): ReadonlySet<string> =>
+  new Set(
+    splitNullTerminated(
+      execFileSync('git', ['ls-files', '-z', '--deleted'], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        maxBuffer: 16 * 1024 * 1024,
+      })
+    )
+  );
+
+const manifestLines = (content: string): string[] => content.replace(/\r?\n$/u, '').split(/\r?\n/u);
+
+const isValidManifestEntry = (entry: string): boolean =>
+  entry !== '' && entry === entry.trim() && !entry.startsWith('#');
+
 export const loadDocumentationIntegrityInput = (
   rootDir = process.cwd()
 ): DocumentationIntegrityInput => {
-  const manifestEntries = readFileSync(path.join(rootDir, MANIFEST_PATH), 'utf8')
-    .split('\n')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry !== '' && !entry.startsWith('#'));
-  const trackedPaths = new Set(gitTrackedPaths(rootDir));
-  const publishedPaths = new Set(gitTrackedPaths(rootDir, manifestEntries));
+  const manifestEntries = manifestLines(readFileSync(path.join(rootDir, MANIFEST_PATH), 'utf8'));
+  const validManifestEntries = manifestEntries.filter(isValidManifestEntry);
+  const deletedPaths = gitDeletedPaths(rootDir);
+  const trackedPaths = new Set(
+    gitTrackedPaths(rootDir).filter((repositoryPath) => !deletedPaths.has(repositoryPath))
+  );
+  const publishedPaths = new Set(
+    gitTrackedPaths(rootDir, validManifestEntries).filter(
+      (repositoryPath) => !deletedPaths.has(repositoryPath)
+    )
+  );
   const files = new Map<string, string>();
 
   for (const repositoryPath of publishedPaths) {

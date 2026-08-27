@@ -291,6 +291,7 @@ const config = defineConfig({
       '@sva/core/rich-text-html-policy': resolveAppPath(
         '../../packages/core/src/rich-text-html-policy.ts'
       ),
+      '@sva/core/rich-text-html': resolveAppPath('../../packages/core/src/rich-text-html.ts'),
       '@sva/core/security': resolveAppPath('../../packages/core/src/security/index.ts'),
       '@sva/core': resolveAppPath('../../packages/core/src/index.ts'),
       '@sva/waste-management-runtime': resolveAppPath(

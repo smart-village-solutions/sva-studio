@@ -1,4 +1,4 @@
-import { sanitizeRichTextHtml } from '@sva/core';
+import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import type { SvaMainserverContentBlockInput } from '../types.js';
 import { errorJson, isRecord, readString } from './content-route-core.js';
 import { parseMediaContents } from './content-route-parsers.js';

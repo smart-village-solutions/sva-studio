@@ -164,6 +164,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/core/rich-text-html-policy': fileURLToPath(
         new URL('../../packages/core/src/rich-text-html-policy.ts', import.meta.url)
       ),
+      '@sva/core/rich-text-html': fileURLToPath(
+        new URL('../../packages/core/src/rich-text-html.ts', import.meta.url)
+      ),
       '@sva/core/security': fileURLToPath(
         new URL('../../packages/core/src/security/index.ts', import.meta.url)
       ),

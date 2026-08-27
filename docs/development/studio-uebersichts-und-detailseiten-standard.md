@@ -431,7 +431,7 @@ Alle Standard-Controls werden bevorzugt aus shadcn/ui komponiert. Dazu gehören 
 
 Spezialelemente wie Rich-Text-Editor, Datei-Upload, Medienverwaltung, Farbauswahl, Icon-Auswahl, Bewertung und Geo-Auswahl werden als Studio-Komponenten gekapselt. Sie verwenden shadcn/ui für Buttons, Dialoge, Popover, Menüs, Alerts, Badges und Formularzustände, dürfen aber domänenspezifische Logik oder externe Fachbibliotheken enthalten.
 
-Der gemeinsame Rich-Text-Editor nutzt im Browser DOMPurify und auf dem Server `sanitize-html`. Beide Adapter beziehen Tags und erlaubte URL-Schemata aus `@sva/core/rich-text-html-policy`; dadurch bleibt die Policy zentral, während Node-only-Abhängigkeiten nicht in den Browser-Build gelangen.
+Der gemeinsame Rich-Text-Editor nutzt im Browser DOMPurify und auf dem Server `sanitize-html`. Beide Adapter beziehen Tags und erlaubte URL-Schemata aus `@sva/core/rich-text-html-policy`; dadurch bleibt die Policy zentral, während Node-only-Abhängigkeiten nicht in den Browser-Build gelangen. Der Server-Sanitizer ist ausschließlich über `@sva/core/rich-text-html` verfügbar und wird nicht aus dem allgemeinen Core-Einstieg exportiert.
 
 #### Feldaufbau
 

@@ -60,6 +60,10 @@ export default defineConfig({
         replacement: resolve(__dirname, './packages/core/src/rich-text-html-policy.ts'),
       },
       {
+        find: /^@sva\/core\/rich-text-html$/,
+        replacement: resolve(__dirname, './packages/core/src/rich-text-html.ts'),
+      },
+      {
         find: /^@sva\/core$/,
         replacement: resolve(__dirname, './packages/core/src/index.ts'),
       },

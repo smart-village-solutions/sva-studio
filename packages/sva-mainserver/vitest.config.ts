@@ -14,6 +14,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@sva/core/rich-text-html': resolve(__dirname, '../core/src/rich-text-html.ts'),
       '@sva/core/security': resolve(__dirname, '../core/src/security/index.ts'),
       '@sva/core': resolve(__dirname, '../core/src/index.ts'),
       '@sva/auth-runtime/server': resolve(__dirname, '../auth-runtime/src/server.ts'),

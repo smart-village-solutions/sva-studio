@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   dispatch: vi.fn(),
+  markReconciliationRequired: vi.fn(),
   readFollowUp: vi.fn(),
   refreshProjection: vi.fn(),
   resolveTarget: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  markMainserverMutationReconciliationRequired: state.markReconciliationRequired,
   resolveMainserverOwnershipTarget: state.resolveTarget,
 }));
 vi.mock('@sva/sva-mainserver/server', () => ({
@@ -29,6 +31,7 @@ import { dispatchMainserverContentOwnershipRequest } from './mainserver-content-
 describe('mainserver content ownership API projection follow-up', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.markReconciliationRequired.mockResolvedValue(undefined);
     state.readFollowUp.mockReturnValue({
       instanceId: 'instance-1',
       keycloakSubject: 'kc-actor',
@@ -117,5 +120,11 @@ describe('mainserver content ownership API projection follow-up', () => {
     );
 
     expect(response?.status).toBe(200);
+    expect(state.markReconciliationRequired).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      operationExternalId: 'operation-1',
+      completedStep: 'target_projection_refresh_failed',
+      lastErrorCode: 'content_transfer_projection_refresh_failed',
+    });
   });
 });

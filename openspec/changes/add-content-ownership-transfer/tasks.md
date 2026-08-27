@@ -15,7 +15,7 @@
 
 ## 2. Ziel-Principal-Auflösung
 
-- [x] 2.1 Einen serverseitigen, paginierten Zielkatalog für aktive Accounts und Organisationen derselben Instanz mit PII-minimiertem Anzeigemodell bereitstellen.
+- [x] 2.1 Einen serverseitigen, paginierten Zielkatalog für aktive Accounts und Organisationen derselben Instanz mit PII-minimiertem Anzeigemodell bereitstellen; Organisationen sind suchbar, Accounts werden in V1 ohne neue Suche über verschlüsselte PII paginiert.
 - [x] 2.2 Für Mainserver-Inhalte nur Ziele mit eindeutiger, konfliktfreier, aktueller DataProvider-Bindung und verwendbaren persönlichen beziehungsweise organisatorischen Credentials zulassen.
 - [x] 2.3 Ziel-Principal und Binding-Version unmittelbar vor der Mutation unter dem bestehenden DataProvider-Lock erneut prüfen.
 - [x] 2.4 Freie DataProvider-, Credential-, Account- oder Organisationswerte außerhalb des typisierten Ziel-Principal-Vertrags im Request-Schema ablehnen.
@@ -44,7 +44,7 @@
 - [x] 5.2 Den Inhaberbereich im Bearbeitungsmodus der vorhandenen Editoren für News, Events, POI, generische Inhalte, FAQ, Cockpit Cards, Featured Projects und Surveys genau einmal am Anfang des ersten fachlichen Tabs integrieren; im Create-Modus nur den getrennten Erstellungsprincipal zeigen.
 - [x] 5.3 Die einheitliche Anzeige auch für nicht transferfähige Typen bereitstellen und dort die fehlende Transferunterstützung verständlich kennzeichnen, ohne eine aktive Aktion anzubieten.
 - [x] 5.4 Einen dauerhaften Ownership-Hinweis im Inhaberbereich und eine kompakte Wiederholung an der Speichern-Aktion ergänzen: normales Speichern ändert den Inhaber nicht; Transferberechtigung und abweichender Mutationsprincipal werden verständlich erklärt.
-- [x] 5.5 Eine gemeinsame shadcn/ui-basierte Aktion „Inhalt übertragen“ mit serverseitig paginierter Zielsuche implementieren; persönliche Accounts und Organisationen klar gruppieren oder filtern und jeden Treffer textlich typisieren.
+- [x] 5.5 Eine gemeinsame shadcn/ui-basierte Aktion „Inhalt übertragen“ mit serverseitig paginierter Zielauswahl implementieren; persönliche Accounts und Organisationen klar filtern, Organisationen suchbar machen und jeden Treffer textlich typisieren, ohne für Accounts eine neue PII-Suchinfrastruktur oder für Mainserver-Kandidaten exakte Gesamtzahlen vorauszusetzen.
 - [x] 5.6 Aktuellen Inhaber sowie inaktive, gelöschte, konfliktbehaftete und credential-lose Ziele aus der Auswahl ausschließen; keine freie DataProvider-ID und standardmäßig keine E-Mail-Adresse darstellen.
 - [x] 5.7 Einen Prüfschritt „Aktueller Inhaber → Neuer Inhaber“ mit Typ, Name, Auswirkung auf die Autorenanzeige, möglichem Zugriffsverlust und expliziter Bestätigung umsetzen.
 - [x] 5.8 Die Aktion ausschließlich bei effektiver `content.transferOwnership`-Permission und positiver serverseitiger Typ-Capability aktivieren; V1-Plugins ohne pluginlokale Zielauflösung oder Transferlogik anbinden.

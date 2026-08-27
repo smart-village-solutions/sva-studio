@@ -603,6 +603,7 @@ describe('content mutations', () => {
       ['ownership_target_not_found', 404],
       ['ownership_target_inactive', 409],
       ['ownership_target_unchanged', 409],
+      ['ownership_source_changed', 409],
     ] as const) {
       state.transferContentOwnershipMock.mockRejectedValueOnce(
         new ContentOwnershipTransferError(code)

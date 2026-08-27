@@ -83,8 +83,11 @@ export const useContentOwnershipDialogState = (input: {
   const [confirmed, setConfirmed] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const latestRequest = React.useRef(0);
 
   const refreshTargets = React.useCallback(async () => {
+    const requestId = latestRequest.current + 1;
+    latestRequest.current = requestId;
     setLoading(true);
     resetTargetSelection(setSelected, setConfirmed);
     setError(null);
@@ -95,14 +98,16 @@ export const useContentOwnershipDialogState = (input: {
         pageSize: input.pageSize,
         ...(search.trim() ? { search: search.trim() } : {}),
       });
+      if (latestRequest.current !== requestId) return;
       setTargets(result.items);
       setTotal(result.total);
     } catch {
+      if (latestRequest.current !== requestId) return;
       setTargets([]);
       setTotal(0);
       setError(input.labels.loadError);
     } finally {
-      setLoading(false);
+      if (latestRequest.current === requestId) setLoading(false);
     }
   }, [input.labels.loadError, input.loadTargets, input.pageSize, page, search, targetType]);
 
@@ -121,6 +126,7 @@ export const useContentOwnershipDialogState = (input: {
     targetType,
     setTargetType: (value) => {
       setTargetTypeState(value);
+      setSearch('');
       setPage(1);
     },
     search,

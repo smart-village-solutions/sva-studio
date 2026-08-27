@@ -45,6 +45,7 @@ describe('dispatchSvaMainserverMutationCapabilitiesRequest', () => {
       expect.arrayContaining(['surveys.create', 'surveys.update'])
     );
     expect(body.data.enabledActions).not.toContain('surveys.delete');
+    expect(body.data.enabledActions).not.toContain('content.transferOwnership');
   });
 
   it('rejects unsupported methods', async () => {

@@ -97,15 +97,16 @@ Das System SHALL in der Bearbeitungsansicht dauerhaft erklären, dass normales S
 
 ### Requirement: Transferziel unterscheidet persönliche Accounts und Organisationen
 
-Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein.
+Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Organisationen SHALL über ihre Anzeige suchbar sein. Persönliche Accounts SHALL in V1 ohne zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder paginiert auswählbar sein. Eine exakte Gesamtzahl ist nicht erforderlich, sofern die Navigation keine verfügbaren Treffer ausblendet. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein.
 
 #### Scenario: Benutzer durchsucht mögliche Zielinhaber
 
 - **WHEN** ein berechtigter Benutzer die Zielauswahl für „Inhalt übertragen“ öffnet
 - **THEN** kann er zwischen „Persönliche Accounts“ und „Organisationen“ unterscheiden
+- **AND** kann er Organisationen suchen und persönliche Accounts seitenweise auswählen
 - **AND** bleibt der Principal-Typ im gewählten `targetPrincipal` erhalten
 - **AND** zeigt die Oberfläche keine technische DataProvider-ID
-- **AND** zeigt sie E-Mail-Adressen nur, wenn deren Darstellung separat autorisiert und fachlich erforderlich ist
+- **AND** zeigt sie keine E-Mail-Adresse
 
 #### Scenario: Benutzer bestätigt die Wirkung des Transfers
 

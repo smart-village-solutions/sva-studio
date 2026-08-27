@@ -4,6 +4,7 @@ import type {
   SvaMainserverOwnershipTransferContent,
   SvaMainserverProjectionContentType,
 } from '../types.js';
+import { PROJECTS_GENERIC_TYPE } from './projects-contract.js';
 import {
   getSvaMainserverEvent,
   getSvaMainserverGenericItem,
@@ -21,6 +22,9 @@ export type ContentOwnershipRouteMatch = Readonly<{
   contentId: string;
   operation: 'authorization' | 'targets' | 'transfer';
 }>;
+
+export type SupportedContentOwnershipRouteMatch = Omit<ContentOwnershipRouteMatch, 'contentType'> &
+  Readonly<{ contentType: SupportedOwnershipContentType }>;
 
 export type OwnershipTransferAudit = Readonly<{
   coverage: 'studio_mutations';
@@ -65,5 +69,24 @@ export const loadOwnershipItem = async (
       return getSvaMainserverPoi({ ...connection, poiId: content.id });
     case 'generic-item':
       return getSvaMainserverGenericItem({ ...connection, genericItemId: content.id });
+  }
+};
+
+export const matchesOwnershipContentType = (
+  contentType: SupportedOwnershipContentType,
+  item: Awaited<ReturnType<typeof loadOwnershipItem>>
+): boolean => {
+  if (item === undefined || !('genericType' in item)) return item !== undefined;
+  switch (contentType) {
+    case 'faq.faq':
+      return item.genericType === 'FAQ';
+    case 'cockpit-cards.cockpit-card':
+      return item.genericType === 'COCKPIT_CARD';
+    case 'projects.project':
+      return item.genericType === PROJECTS_GENERIC_TYPE;
+    case 'generic-items.generic-item':
+      return !['FAQ', 'COCKPIT_CARD', PROJECTS_GENERIC_TYPE].includes(item.genericType);
+    default:
+      return true;
   }
 };

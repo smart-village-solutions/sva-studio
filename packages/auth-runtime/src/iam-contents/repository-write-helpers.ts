@@ -246,8 +246,6 @@ export const updateContentRow = async (
   input: UpdateContentInput,
   next: {
     readonly organizationId: string | null;
-    readonly ownerUserId: string | null;
-    readonly ownerOrganizationId: string | null;
     readonly authorDisplayMode: ContentRow['author_display_mode'];
     readonly authorDisplayName: string;
     readonly title: string;
@@ -264,19 +262,17 @@ export const updateContentRow = async (
 UPDATE iam.contents
 SET
   organization_id = $3::uuid,
-  owner_user_id = $4::uuid,
-  owner_organization_id = $5::uuid,
-  author_display_mode = $6,
-  author_display_name = $7,
-  title = $8,
-  payload_json = $9::jsonb,
-  status = $10,
-  validation_state = $11,
-  published_at = COALESCE($12::timestamptz, CASE WHEN $10 = 'published' THEN NOW() ELSE NULL END),
-  publish_from = $13::timestamptz,
-  publish_until = $14::timestamptz,
+  author_display_mode = $4,
+  author_display_name = $5,
+  title = $6,
+  payload_json = $7::jsonb,
+  status = $8,
+  validation_state = $9,
+  published_at = COALESCE($10::timestamptz, CASE WHEN $8 = 'published' THEN NOW() ELSE NULL END),
+  publish_from = $11::timestamptz,
+  publish_until = $12::timestamptz,
   updated_at = NOW(),
-  updater_account_id = $15::uuid
+  updater_account_id = $13::uuid
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,
@@ -284,8 +280,6 @@ WHERE instance_id = $1
       input.instanceId,
       input.contentId,
       next.organizationId,
-      next.ownerUserId,
-      next.ownerOrganizationId,
       next.authorDisplayMode,
       next.authorDisplayName,
       next.title,

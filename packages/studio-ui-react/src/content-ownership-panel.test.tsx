@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -116,7 +116,9 @@ describe('ContentOwnershipPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
     expect(await screen.findByText('Laden fehlgeschlagen')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Suche starten' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Zieltyp' }), {
+      target: { value: 'organization' },
+    });
     expect(await screen.findByText('Zielperson')).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /Zielperson/u }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Übertragung bestätigen' }));
@@ -173,5 +175,54 @@ describe('ContentOwnershipPanel', () => {
         expect.objectContaining({ type: 'organization', page: 1, search: 'Stadt' })
       )
     );
+  });
+
+  it('ignores a stale target response after the target type changes', async () => {
+    const staleTarget = {
+      principal: { type: 'account' as const, id: '33333333-3333-4333-8333-333333333333' },
+      displayName: 'Veraltete Person',
+    };
+    const currentTarget = {
+      principal: {
+        type: 'organization' as const,
+        id: '22222222-2222-4222-8222-222222222222',
+      },
+      displayName: 'Aktuelle Organisation',
+    };
+    let resolveStale: ((value: { items: [typeof staleTarget]; total: number }) => void) | undefined;
+    const loadTargets = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ items: [typeof staleTarget]; total: number }>((resolve) => {
+            resolveStale = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ items: [currentTarget], total: 1 });
+
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    await waitFor(() => expect(loadTargets).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Zieltyp' }), {
+      target: { value: 'organization' },
+    });
+    expect(await screen.findByText('Aktuelle Organisation')).toBeTruthy();
+
+    await act(async () => {
+      resolveStale?.({ items: [staleTarget], total: 1 });
+    });
+
+    expect(screen.queryByText('Veraltete Person')).toBeNull();
+    expect(screen.getByText('Aktuelle Organisation')).toBeTruthy();
   });
 });

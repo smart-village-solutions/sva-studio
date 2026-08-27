@@ -7,7 +7,12 @@ import type {
   IamContentOwnershipTargetList,
   IamContentPrimitiveAction,
 } from '@sva/core';
-import { loadOrganizationList, resolveUsersWithPagination } from '@sva/iam-admin';
+import {
+  loadOrganizationById,
+  loadOrganizationList,
+  resolveUserDetail,
+  resolveUsersWithPagination,
+} from '@sva/iam-admin';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import {
@@ -43,6 +48,7 @@ import {
 
 export type ContentOwnershipTransferErrorCode =
   | 'content_not_found'
+  | 'ownership_source_changed'
   | 'ownership_target_inactive'
   | 'ownership_target_not_found'
   | 'ownership_target_unchanged';
@@ -339,42 +345,17 @@ export const loadContentDetail = async (
   const owner = resolveContentItemOwnerPrincipal(item);
   let ownerDisplayName: string | undefined;
   if (owner?.type === 'account') {
-    let page = 1;
-    let visited = 0;
-    do {
-      const result = await withInstanceScopedDb(instanceId, (client) =>
-        resolveUsersWithPagination(client, {
-          instanceId,
-          page,
-          pageSize: 50,
-          includeTechnicalAccounts: false,
-        })
-      );
-      ownerDisplayName = result.users.find((user) => user.id === owner.id)?.displayName;
-      visited += result.users.length;
-      if (ownerDisplayName || visited >= result.total || result.users.length === 0) break;
-      page += 1;
-    } while (true);
+    ownerDisplayName = (
+      await withInstanceScopedDb(instanceId, (client) =>
+        resolveUserDetail(client, { instanceId, userId: owner.id })
+      )
+    )?.displayName;
   } else if (owner?.type === 'organization') {
-    let page = 1;
-    let visited = 0;
-    do {
-      const result = await withInstanceScopedDb(instanceId, (client) =>
-        loadOrganizationList(client, {
-          instanceId,
-          page,
-          pageSize: 50,
-          sortBy: 'displayName',
-          sortDirection: 'asc',
-        })
-      );
-      ownerDisplayName = result.items.find(
-        (organization) => organization.id === owner.id
-      )?.displayName;
-      visited += result.items.length;
-      if (ownerDisplayName || visited >= result.total || result.items.length === 0) break;
-      page += 1;
-    } while (true);
+    ownerDisplayName = (
+      await withInstanceScopedDb(instanceId, (client) =>
+        loadOrganizationById(client, { instanceId, organizationId: owner.id })
+      )
+    )?.display_name;
   }
   return { ...item, history, ...(ownerDisplayName ? { ownerDisplayName } : {}) };
 };
@@ -396,6 +377,7 @@ export const loadContentOwnershipTargets = async (
         page: input.page,
         pageSize: input.pageSize,
         status: 'active',
+        activeLifecycleOnly: true,
         search: input.search,
         includeTechnicalAccounts: false,
         ...(input.currentOwner?.type === 'account'
@@ -503,8 +485,6 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     } = resolveNextContentState(current, stateInput);
     await updateContentRow(client, input, {
       organizationId: nextOrganizationId,
-      ownerUserId: nextOwnerUserId,
-      ownerOrganizationId: nextOwnerOrganizationId,
       authorDisplayMode: nextAuthorDisplayMode,
       authorDisplayName: nextAuthorDisplayName,
       title: nextTitle,
@@ -562,6 +542,12 @@ export const transferContentOwnership = async (
     }
 
     const sourcePrincipal = resolveCurrentOwnerPrincipal(current);
+    if (
+      sourcePrincipal?.type !== input.expectedSourcePrincipal?.type ||
+      sourcePrincipal?.id !== input.expectedSourcePrincipal?.id
+    ) {
+      throw new ContentOwnershipTransferError('ownership_source_changed');
+    }
     if (
       sourcePrincipal?.type === input.targetPrincipal.type &&
       sourcePrincipal.id === input.targetPrincipal.id

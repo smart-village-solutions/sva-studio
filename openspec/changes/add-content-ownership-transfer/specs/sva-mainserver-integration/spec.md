@@ -172,6 +172,7 @@ Das System SHALL einen Mainserver-Inhabertransfer nur für Content-Typen anbiete
 - **WHEN** NewsItem, EventRecord, PointOfInterest, Tour oder ein Root-GenericItem vertraglich geprüft wird
 - **AND** der Runtime-Preflight bestätigt den erwarteten Mainserver-Vertrag
 - **THEN** kann die serverseitige Capability-Matrix den Transfer freigeben
+- **AND** erfolgt die Freigabe explizit über `SVA_MAINSERVER_CONFIRMED_CAPABILITIES`, nicht als Default-Capability
 - **AND** verwendet die Mutation den typisierten `dataProviderId`-Vertrag
 - **AND** behauptet diese Backend-Capability allein keine bereits vorhandene Studio-Detailansicht für den Typ
 - **AND** aktiviert das Studio die Aktion nur für einen tatsächlich registrierten redaktionellen Adapter

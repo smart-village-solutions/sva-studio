@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContentStateValidationError } from './repository-state-validation.js';
-import type { ContentRow, CreateContentInput, DeleteContentInput, UpdateContentInput } from './repository-types.js';
+import type {
+  ContentRow,
+  CreateContentInput,
+  DeleteContentInput,
+  UpdateContentInput,
+} from './repository-types.js';
 
 const state = vi.hoisted(() => ({
   emitActivityLogMock: vi.fn(),
@@ -122,10 +127,10 @@ describe('iam content repository helpers', () => {
 
     await expect(loadCurrentContentRow(client, 'instance-1', 'content-1')).resolves.toBe(row);
 
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('WHERE content.instance_id = $1'), [
-      'instance-1',
-      'content-1',
-    ]);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE content.instance_id = $1'),
+      ['instance-1', 'content-1']
+    );
   });
 
   it('serializes mutation finalization and detects an existing history entry', async () => {
@@ -134,11 +139,13 @@ describe('iam content repository helpers', () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: 'history-1' }] });
 
-    await expect(isContentMutationFinalized(client, {
-      instanceId: 'instance-1',
-      contentId: 'content-1',
-      mutationRef: 'mutation-1',
-    })).resolves.toBe(true);
+    await expect(
+      isContentMutationFinalized(client, {
+        instanceId: 'instance-1',
+        contentId: 'content-1',
+        mutationRef: 'mutation-1',
+      })
+    ).resolves.toBe(true);
 
     expect(client.query).toHaveBeenNthCalledWith(
       1,
@@ -224,7 +231,9 @@ describe('iam content repository helpers', () => {
 
     client.query.mockResolvedValueOnce({ rows: [{}] });
 
-    await expect(insertContentRow(client, createCreateInput())).rejects.toThrow('content_create_failed');
+    await expect(insertContentRow(client, createCreateInput())).rejects.toThrow(
+      'content_create_failed'
+    );
   });
 
   it('uses the active organization display name as create author when available', async () => {
@@ -345,8 +354,6 @@ describe('iam content repository helpers', () => {
 
     await updateContentRow(client, createUpdateInput(), {
       organizationId: '00000000-0000-0000-0000-000000000002',
-      ownerUserId: '00000000-0000-0000-0000-000000000001',
-      ownerOrganizationId: '00000000-0000-0000-0000-000000000002',
       authorDisplayMode: 'organization',
       authorDisplayName: 'Stadt Musterhausen',
       title: 'Neuer Titel',
@@ -366,8 +373,7 @@ describe('iam content repository helpers', () => {
         'instance-1',
         'content-1',
         '00000000-0000-0000-0000-000000000002',
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000002',
+        'organization',
         'Stadt Musterhausen',
         'Neuer Titel',
         '{"body":"Neu"}',
@@ -379,6 +385,8 @@ describe('iam content repository helpers', () => {
         '00000000-0000-0000-0000-000000000001',
       ])
     );
+    expect(client.query.mock.calls[0]?.[0]).not.toContain('owner_user_id');
+    expect(client.query.mock.calls[0]?.[0]).not.toContain('owner_organization_id');
     expect(client.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('SET history_ref = $3, current_revision_ref = $3'),
@@ -389,7 +397,11 @@ describe('iam content repository helpers', () => {
   it('emits created and deleted audit activities with content action metadata', async () => {
     const client = createClient();
 
-    await emitContentCreatedActivity(client, createCreateInput({ status: 'published' }), 'content-1');
+    await emitContentCreatedActivity(
+      client,
+      createCreateInput({ status: 'published' }),
+      'content-1'
+    );
     await emitContentDeletedActivity(client, createDeleteInput(), createContentRow());
 
     expect(state.emitActivityLogMock).toHaveBeenNthCalledWith(
@@ -448,7 +460,9 @@ describe('iam content repository helpers', () => {
 
   it('emits updated audit activities for payload and metadata changes', async () => {
     const client = createClient();
-    state.resolveDomainCapabilityMock.mockReturnValueOnce(undefined).mockReturnValueOnce('content.manage');
+    state.resolveDomainCapabilityMock
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce('content.manage');
 
     await emitContentUpdatedActivity(client, createUpdateInput(), createContentRow(), {
       eventType: 'iam.content.updated',

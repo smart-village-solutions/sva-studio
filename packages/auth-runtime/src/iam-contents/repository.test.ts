@@ -21,6 +21,8 @@ const state = vi.hoisted(() => ({
   mapContentHistoryItemMock: vi.fn(),
   mapContentListItemMock: vi.fn(),
   loadOrganizationListMock: vi.fn(),
+  loadOrganizationByIdMock: vi.fn(),
+  resolveUserDetailMock: vi.fn(),
   resolveUsersWithPaginationMock: vi.fn(),
   queryMock: vi.fn(),
   resolveContentMutationMetadataMock: vi.fn(),
@@ -33,7 +35,9 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/iam-admin', () => ({
+  loadOrganizationById: (...args: unknown[]) => state.loadOrganizationByIdMock(...args),
   loadOrganizationList: (...args: unknown[]) => state.loadOrganizationListMock(...args),
+  resolveUserDetail: (...args: unknown[]) => state.resolveUserDetailMock(...args),
   resolveUsersWithPagination: (...args: unknown[]) => state.resolveUsersWithPaginationMock(...args),
 }));
 
@@ -112,6 +116,16 @@ const createContentRow = (overrides: Partial<ContentRow> = {}): ContentRow => ({
   last_audit_event_ref: null,
   ...overrides,
 });
+
+const resolveTestOwner = (row: ContentRow | undefined) => {
+  if (row?.owner_user_id && !row.owner_organization_id) {
+    return { type: 'account' as const, id: row.owner_user_id };
+  }
+  if (row?.owner_organization_id && !row.owner_user_id) {
+    return { type: 'organization' as const, id: row.owner_organization_id };
+  }
+  return undefined;
+};
 
 const createHistoryRow = (overrides: Partial<ContentHistoryRow> = {}): ContentHistoryRow => ({
   id: 'history-1',
@@ -441,32 +455,24 @@ describe('iam content repository', () => {
         })
       );
     state.queryMock.mockResolvedValue({ rows: [] });
-    state.resolveUsersWithPaginationMock
-      .mockResolvedValueOnce({ users: [{ id: 'other', displayName: 'Other' }], total: 2 })
-      .mockResolvedValueOnce({
-        users: [{ id: 'account-owner', displayName: 'Account Owner' }],
-        total: 2,
-      });
-    state.loadOrganizationListMock
-      .mockResolvedValueOnce({ items: [{ id: 'other', displayName: 'Other' }], total: 2 })
-      .mockResolvedValueOnce({
-        items: [{ id: 'organization-owner', displayName: 'Organization Owner' }],
-        total: 2,
-      });
+    state.resolveUserDetailMock.mockResolvedValueOnce({ displayName: 'Account Owner' });
+    state.loadOrganizationByIdMock.mockResolvedValueOnce({
+      display_name: 'Organization Owner',
+    });
 
     await expect(loadContentDetail('instance-1', 'content-account')).resolves.toMatchObject({
       ownerDisplayName: 'Account Owner',
     });
-    await expect(
-      loadContentDetail('instance-1', 'content-organization')
-    ).resolves.toMatchObject({ ownerDisplayName: 'Organization Owner' });
-    expect(state.resolveUsersWithPaginationMock).toHaveBeenLastCalledWith(
+    await expect(loadContentDetail('instance-1', 'content-organization')).resolves.toMatchObject({
+      ownerDisplayName: 'Organization Owner',
+    });
+    expect(state.resolveUserDetailMock).toHaveBeenCalledWith(
       { query: state.queryMock },
-      expect.objectContaining({ page: 2, includeTechnicalAccounts: false })
+      { instanceId: 'instance-1', userId: 'account-owner' }
     );
-    expect(state.loadOrganizationListMock).toHaveBeenLastCalledWith(
+    expect(state.loadOrganizationByIdMock).toHaveBeenCalledWith(
       { query: state.queryMock },
-      expect.objectContaining({ page: 2, sortBy: 'displayName' })
+      { instanceId: 'instance-1', organizationId: 'organization-owner' }
     );
   });
 
@@ -778,6 +784,10 @@ describe('iam content repository', () => {
         requestId: 'request-1',
         traceId: 'trace-1',
         contentId: 'content-1',
+        expectedSourcePrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000010',
+        },
         targetPrincipal: {
           type: 'organization',
           id: '00000000-0000-4000-8000-000000000020',
@@ -837,12 +847,7 @@ describe('iam content repository', () => {
 
   it.each([
     ['missing', undefined, { rows: [] }, 'content_not_found'],
-    [
-      'unchanged',
-      createContentRow(),
-      { rows: [] },
-      'ownership_target_unchanged',
-    ],
+    ['unchanged', createContentRow(), { rows: [] }, 'ownership_target_unchanged'],
     [
       'unknown target',
       createContentRow({ owner_user_id: null, owner_organization_id: null }),
@@ -857,9 +862,7 @@ describe('iam content repository', () => {
     ],
   ])('rejects a %s ownership transfer', async (_name, current, targetResult, expectedCode) => {
     state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
-    state.queryMock
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce(targetResult);
+    state.queryMock.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce(targetResult);
 
     const transfer = transferContentOwnership({
       instanceId: 'instance-1',
@@ -868,6 +871,7 @@ describe('iam content repository', () => {
       requestId: 'request-1',
       traceId: 'trace-1',
       contentId: 'content-1',
+      expectedSourcePrincipal: resolveTestOwner(current),
       targetPrincipal: {
         type: 'account',
         id: '00000000-0000-4000-8000-000000000010',
@@ -901,6 +905,10 @@ describe('iam content repository', () => {
         requestId: 'request-1',
         traceId: 'trace-1',
         contentId: 'content-1',
+        expectedSourcePrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
         targetPrincipal: {
           type: 'account',
           id: '00000000-0000-4000-8000-000000000030',
@@ -925,6 +933,41 @@ describe('iam content repository', () => {
         '00000000-0000-4000-8000-000000000001',
       ]
     );
+  });
+
+  it('rejects a transfer when ownership changed after authorization', async () => {
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(
+      createContentRow({
+        owner_user_id: null,
+        owner_organization_id: '00000000-0000-4000-8000-000000000099',
+      })
+    );
+    state.queryMock.mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      transferContentOwnership({
+        instanceId: 'instance-1',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        actorDisplayName: 'Actor',
+        requestId: 'request-1',
+        traceId: 'trace-1',
+        contentId: 'content-1',
+        expectedSourcePrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000010',
+        },
+        targetPrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      })
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<InstanceType<typeof ContentOwnershipTransferError>>>({
+        code: 'ownership_source_changed',
+      })
+    );
+    expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
+    expect(state.emitContentOwnershipTransferredActivityMock).not.toHaveBeenCalled();
   });
 
   it('deletes content with a provided current row without reloading it', async () => {

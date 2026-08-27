@@ -57,8 +57,44 @@ describe('resolveUsersWithPagination', () => {
       null,
       false,
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      false,
     ]);
     expect(executedQueries[0]).toContain('a.id <> $6::uuid');
     expect(executedQueries[1]).toContain('a.id <> $6::uuid');
+  });
+
+  it('can restrict ownership candidates to active lifecycle accounts', async () => {
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+        .mockResolvedValueOnce({ rows: [] }),
+    };
+
+    await resolveUsersWithPagination(client, {
+      instanceId: 'de-musterhausen',
+      page: 1,
+      pageSize: 10,
+      activeLifecycleOnly: true,
+    });
+
+    expect(client.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("a.deletion_lifecycle_state = 'active'"),
+      ['de-musterhausen', null, null, null, false, null, true]
+    );
+    expect(client.query.mock.calls[0]?.[0]).toContain('a.is_blocked = FALSE');
+    expect(client.query.mock.calls[0]?.[0]).toContain('a.soft_deleted_at IS NULL');
+    expect(client.query).toHaveBeenNthCalledWith(2, expect.any(String), [
+      'de-musterhausen',
+      null,
+      null,
+      null,
+      false,
+      null,
+      true,
+      10,
+      0,
+    ]);
   });
 });

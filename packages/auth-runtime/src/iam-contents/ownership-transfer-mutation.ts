@@ -19,6 +19,19 @@ import { transferContentOwnershipSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
+const resolveCurrentOwner = (content: {
+  readonly ownerUserId?: string;
+  readonly ownerOrganizationId?: string;
+}) => {
+  if (content.ownerUserId && !content.ownerOrganizationId) {
+    return { type: 'account' as const, id: content.ownerUserId };
+  }
+  if (content.ownerOrganizationId && !content.ownerUserId) {
+    return { type: 'organization' as const, id: content.ownerOrganizationId };
+  }
+  return undefined;
+};
+
 const transferErrorResponse = (
   error: ContentOwnershipTransferError,
   requestId?: string
@@ -32,6 +45,8 @@ const transferErrorResponse = (
       return createApiError(409, 'conflict', 'Zielinhaber ist nicht aktiv.', requestId);
     case 'ownership_target_unchanged':
       return createApiError(409, 'conflict', 'Der Zielinhaber ist bereits zugeordnet.', requestId);
+    case 'ownership_source_changed':
+      return createApiError(409, 'conflict', 'Der aktuelle Inhaber hat sich geändert.', requestId);
   }
 };
 
@@ -66,6 +81,7 @@ export const transferContentOwnershipResponse = async (
       requestId: actor.requestId,
       traceId: actor.traceId,
       contentId,
+      expectedSourcePrincipal: resolveCurrentOwner(currentContent),
       targetPrincipal: parsed.data.targetPrincipal,
     });
     return jsonResponse(200, asApiItem(result, actor.requestId));

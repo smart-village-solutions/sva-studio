@@ -386,6 +386,7 @@ export const ContentEditorPage = ({
     readonly tone: 'success' | 'error';
     readonly message: string;
   } | null>(null);
+  const [transferAuthorized, setTransferAuthorized] = React.useState(false);
 
   React.useEffect(() => {
     if (isDirty) {
@@ -593,9 +594,29 @@ export const ContentEditorPage = ({
     mode === 'edit' &&
     content?.contentType === GENERIC_CONTENT_TYPE &&
     !content.sourceDataProviderId;
-  const canTransferOwnership =
-    ownershipTransferSupported &&
-    contentAccessApi.permissionActions.includes('content.transferOwnership');
+  const canTransferOwnership = ownershipTransferSupported && transferAuthorized;
+  React.useEffect(() => {
+    if (
+      !contentId ||
+      !ownershipTransferSupported ||
+      !contentAccessApi.permissionActions.includes('content.transferOwnership')
+    ) {
+      setTransferAuthorized(false);
+      return;
+    }
+    let active = true;
+    void listContentOwnershipTargets(contentId, {
+      type: 'account',
+      page: 1,
+      pageSize: 1,
+    }).then(
+      () => active && setTransferAuthorized(true),
+      () => active && setTransferAuthorized(false)
+    );
+    return () => {
+      active = false;
+    };
+  }, [contentAccessApi.permissionActions, contentId, ownershipTransferSupported]);
   const loadOwnershipTargets = React.useCallback(
     async (input: {
       readonly type: 'account' | 'organization';
@@ -621,13 +642,14 @@ export const ContentEditorPage = ({
       try {
         await transferContentOwnership(contentId, { targetPrincipal: target.principal });
         setOwnershipFeedback({ tone: 'success', message: t('content.ownership.success') });
-        await detailApi.refetch();
+        const stillAccessible = await detailApi.refetch();
+        if (!stillAccessible) await navigate({ to: '/content' });
       } catch {
         setOwnershipFeedback({ tone: 'error', message: t('content.ownership.error') });
         throw new Error('content_transfer_ownership_failed');
       }
     },
-    [contentId, detailApi.refetch]
+    [contentId, detailApi.refetch, navigate]
   );
 
   const renderGeneralTabPanel = () => (

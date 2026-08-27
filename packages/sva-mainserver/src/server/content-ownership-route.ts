@@ -1,5 +1,6 @@
 import {
   listMainserverOwnershipTargets,
+  loadExternalContentReferenceByContentId,
   resolveActorInfo,
   resolveMainserverOwnershipSource,
   withAuthenticatedUser,
@@ -12,17 +13,21 @@ import type { SvaMainserverProjectionContentType } from '../types.js';
 import { errorJson, isResponse, json } from './content-route-core.js';
 import {
   loadOwnershipItem,
+  matchesOwnershipContentType,
   toOwnershipTransferContent,
   type ContentOwnershipRouteMatch,
+  type SupportedContentOwnershipRouteMatch,
 } from './content-ownership-route-contract.js';
 import { handleContentOwnershipTransfer } from './content-ownership-transfer-route.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
+import { isMainserverMutationCapabilityEnabled } from './mainserver-mutation-capabilities.js';
 import {
   resolveMainserverMutationActor,
   resolveMainserverResourceAccess,
   type MainserverMutationActor,
 } from './mutation-principal.js';
+import { projectSourceReferenceInput } from './projects-route-transport.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
 const logger = createSdkLogger({
@@ -121,11 +126,14 @@ const handleTargets = async (
 
 const handleAuthorizedTargets = async (
   request: Request,
-  route: ContentOwnershipRouteMatch,
+  route: SupportedContentOwnershipRouteMatch,
   actor: MainserverMutationActor,
   content: ReturnType<typeof toOwnershipTransferContent>
 ): Promise<Response> => {
   const current = await loadOwnershipItem(actor, content);
+  if (!matchesOwnershipContentType(route.contentType, current)) {
+    return errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.');
+  }
   const dataProviderId = current.dataProvider?.id?.trim();
   if (!dataProviderId)
     return errorJson(
@@ -175,13 +183,33 @@ const dispatchAuthenticated = async (
       'Dieser Inhaltstyp unterstützt noch keinen Transfer.'
     );
   }
+  if (!isMainserverMutationCapabilityEnabled('content.transferOwnership')) {
+    return errorJson(
+      409,
+      'content_transfer_type_unsupported',
+      'Der Mainserver-Vertrag für Inhaberübertragungen ist nicht bestätigt.'
+    );
+  }
+  const supportedRoute: SupportedContentOwnershipRouteMatch = {
+    ...route,
+    contentType: route.contentType,
+  };
   const actor = await resolveActor(request, ctx);
   if (isResponse(actor)) return actor;
-  const content = toOwnershipTransferContent(route.contentType, route.contentId);
+  const providerContentId =
+    supportedRoute.contentType === 'projects.project'
+      ? ((
+          await loadExternalContentReferenceByContentId({
+            ...projectSourceReferenceInput(actor.instanceId),
+            contentId: route.contentId,
+          }).catch(() => undefined)
+        )?.sourceEntityId ?? route.contentId)
+      : supportedRoute.contentId;
+  const content = toOwnershipTransferContent(supportedRoute.contentType, providerContentId);
   try {
-    return route.operation === 'transfer'
-      ? handleContentOwnershipTransfer(request, route, actor, content)
-      : handleAuthorizedTargets(request, route, actor, content);
+    return supportedRoute.operation === 'transfer'
+      ? handleContentOwnershipTransfer(request, supportedRoute, actor, content)
+      : handleAuthorizedTargets(request, supportedRoute, actor, content);
   } catch (error) {
     const context = getWorkspaceContext();
     logger.warn('Mainserver content ownership route failed', {

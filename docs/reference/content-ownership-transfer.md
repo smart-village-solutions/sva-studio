@@ -8,21 +8,23 @@ Normales Bearbeiten und Speichern ändert den Inhaber nicht. Auch ein abweichend
 
 ## Bedienung
 
-Im Bearbeitungsmodus steht der Bereich **Inhaber** am Anfang des ersten fachlichen Tabs. Er zeigt den aktuellen Inhaber und den dauerhaften Save-Hinweis. Nutzer mit wirksamem `content.transferOwnership` können **Inhalt übertragen** wählen, getrennt nach persönlichem Account und Organisation suchen und den Wechsel nach einer Auswirkungsprüfung ausdrücklich bestätigen.
+Im Bearbeitungsmodus steht der Bereich **Inhaber** am Anfang des ersten fachlichen Tabs. Er zeigt den aktuellen Inhaber und den dauerhaften Save-Hinweis. Nutzer mit wirksamem `content.transferOwnership` können **Inhalt übertragen** wählen, persönliche Accounts seitenweise auswählen, Organisationen suchen und den Wechsel nach einer Auswirkungsprüfung ausdrücklich bestätigen. Eine neue Suche über verschlüsselte Account-Namen oder E-Mail-Adressen ist nicht Bestandteil von V1.
 
 Die Zielauswahl enthält nur aktive Principals derselben Instanz. Für Mainserver-Inhalte werden zusätzlich eindeutige aktuelle DataProvider-Bindungen und verwendbare Credentials verlangt. DataProvider-IDs oder Credentials können nicht frei eingegeben werden.
+
+Mainserver-Transfers sind standardmäßig deaktiviert. Erst ein erfolgreicher Runtime-Preflight rechtfertigt die explizite Aufnahme von `content.transferOwnership` in `SVA_MAINSERVER_CONFIRMED_CAPABILITIES`.
 
 Nach Erfolg wird zuerst eine Bestätigung angezeigt und der Inhaber aktualisiert. Geht durch den Transfer der Detailzugriff verloren, führt das Studio kontrolliert in die Inhaltsübersicht zurück.
 
 ## Unterstützte Typen
 
-| Typ                                                 | Mainserver-Vertrag in `ee619d0e` | Anzeige im Studio | Transfer im Studio |
-| --------------------------------------------------- | ---------------------------------- | ----------------- | ------------------ |
-| News, Events, POI                                   | Bestätigt                          | Ja                | Ja                 |
-| Root-GenericItems, FAQ, Cockpit Cards, Featured Projects | Bestätigt                     | Ja                | Ja                 |
-| Touren                                              | Bestätigt                          | Kein Editor       | Nein               |
-| Surveys                                             | Nicht bestätigt                    | Ja                | Nein               |
-| Legacy SurveyPolls und Batch-Importe                | Ausgeschlossen                     | Nein              | Nein               |
+| Typ                                                      | Mainserver-Vertrag in `ee619d0e` | Anzeige im Studio | Transfer im Studio |
+| -------------------------------------------------------- | -------------------------------- | ----------------- | ------------------ |
+| News, Events, POI                                        | Bestätigt                        | Ja                | Ja                 |
+| Root-GenericItems, FAQ, Cockpit Cards, Featured Projects | Bestätigt                        | Ja                | Ja                 |
+| Touren                                                   | Bestätigt                        | Kein Editor       | Nein               |
+| Surveys                                                  | Nicht bestätigt                  | Ja                | Nein               |
+| Legacy SurveyPolls und Batch-Importe                     | Ausgeschlossen                   | Nein              | Nein               |
 
 Der Mainserver-Vertrag führt bei den fünf bestätigten Root-Typen die jeweils abhängigen Datensätze und `ExternalReference` innerhalb derselben Transaktion auf den Ziel-DataProvider nach. Für Touren ist der Upstream-Vertrag vorhanden; das Studio besitzt derzeit jedoch keinen redaktionellen Tour-Editor und aktiviert deshalb keinen ungenutzten Transferpfad.
 

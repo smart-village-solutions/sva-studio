@@ -94,6 +94,7 @@ export type TransferContentOwnershipInput = {
   requestId?: string;
   traceId?: string;
   contentId: string;
+  expectedSourcePrincipal?: IamContentOwnerPrincipal;
   targetPrincipal: IamContentOwnerPrincipal;
 };
 

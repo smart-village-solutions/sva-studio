@@ -34,24 +34,26 @@ const TargetFilters = ({ labels, state }: DialogPartProps) => (
         <option value="organization">{labels.organization}</option>
       </Select>
     </label>
-    <form
-      className="flex gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        state.setPage(1);
-        void state.refreshTargets();
-      }}
-    >
-      <Input
-        aria-label={labels.search}
-        value={state.search}
-        onChange={(event) => state.setSearch(event.target.value)}
-        disabled={state.pending}
-      />
-      <Button type="submit" variant="secondary" disabled={state.loading || state.pending}>
-        {labels.searchAction}
-      </Button>
-    </form>
+    {state.targetType === 'organization' ? (
+      <form
+        className="flex gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          state.setPage(1);
+          void state.refreshTargets();
+        }}
+      >
+        <Input
+          aria-label={labels.search}
+          value={state.search}
+          onChange={(event) => state.setSearch(event.target.value)}
+          disabled={state.pending}
+        />
+        <Button type="submit" variant="secondary" disabled={state.loading || state.pending}>
+          {labels.searchAction}
+        </Button>
+      </form>
+    ) : null}
   </>
 );
 
@@ -100,9 +102,7 @@ const TargetPagination = ({ labels, state }: DialogPartProps) => (
     >
       {labels.previousPage}
     </Button>
-    <span className="text-sm text-muted-foreground">
-      {state.page} / {state.totalPages}
-    </span>
+    <span className="text-sm text-muted-foreground">{state.page}</span>
     <Button
       type="button"
       variant="secondary"

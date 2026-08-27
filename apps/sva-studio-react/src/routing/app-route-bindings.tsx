@@ -466,11 +466,18 @@ const MainserverResourcePrincipalBoundary = ({
           },
         });
         try {
-          await requestMainserverJson({
+          const detail = await requestMainserverJson<{
+            readonly data: Readonly<{
+              dataProvider?: Readonly<{ id?: string; name?: string }> | null;
+            }>;
+          }>({
             url: resolveMainserverDetailUrl(contentType, contentId),
             init: { headers: createMainserverReadHeaders(actingPrincipalType) },
           });
-          setResolvedOwner(target);
+          const confirmedName =
+            detail.data.dataProvider?.name?.trim() || detail.data.dataProvider?.id?.trim();
+          if (!confirmedName) throw new Error('content_transfer_owner_missing');
+          setResolvedOwner({ principal: target.principal, displayName: confirmedName });
         } catch {
           await navigate({ to: '/content' });
         }

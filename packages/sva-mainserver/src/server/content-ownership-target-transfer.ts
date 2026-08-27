@@ -6,7 +6,7 @@ import {
 
 import { errorJson } from './content-route-core.js';
 import type { OwnershipTransferAudit } from './content-ownership-route-contract.js';
-import type { MainserverMutationActor } from './mutation-principal.js';
+import { finalizeMainserverMutation, type MainserverMutationActor } from './mutation-principal.js';
 
 export const executeWithCurrentTargetBinding = async (input: {
   readonly actor: MainserverMutationActor;
@@ -30,6 +30,14 @@ export const executeWithCurrentTargetBinding = async (input: {
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'content_transfer_target_binding_changed') {
+      await finalizeMainserverMutation({
+        actor: input.actor,
+        providerOutcome: 'failed',
+        reconciliationStatus: 'complete',
+        completedSteps: ['target_binding_rejected'],
+        lastErrorCode: 'content_transfer_target_binding_conflict',
+        ownershipTransfer: input.ownershipTransfer,
+      });
       return errorJson(
         409,
         'content_transfer_target_binding_conflict',

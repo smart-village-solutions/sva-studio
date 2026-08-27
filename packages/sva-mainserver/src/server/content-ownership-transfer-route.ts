@@ -1,4 +1,5 @@
 import {
+  hasUnresolvedMainserverOwnershipTransfer,
   resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
   validateCsrf,
@@ -12,8 +13,9 @@ import type { SvaMainserverOwnershipTransferContent } from '../types.js';
 import { errorJson, isRecord, isResponse, json } from './content-route-core.js';
 import {
   loadOwnershipItem,
-  type ContentOwnershipRouteMatch,
+  matchesOwnershipContentType,
   type OwnershipTransferAudit,
+  type SupportedContentOwnershipRouteMatch,
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
@@ -66,6 +68,7 @@ const targetErrorResponse = (
 
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
+  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
   target: ResolvedMainserverOwnershipTarget;
@@ -77,7 +80,7 @@ const verifyTransferResult = async (input: {
     // The source read below provides the second independent observation.
   }
   try {
-    const sourceItem = await loadOwnershipItem(input.actor, input.content);
+    const sourceItem = await loadOwnershipItem(input.sourceConnection, input.content);
     if (sourceItem.dataProvider?.id === input.sourceDataProviderId) return 'source';
   } catch {
     // Neither credential context produced conclusive evidence.
@@ -87,7 +90,8 @@ const verifyTransferResult = async (input: {
 
 const finalizeUnclearTransfer = async (input: {
   actor: MainserverMutationActor;
-  route: ContentOwnershipRouteMatch;
+  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
+  route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
   target: ResolvedMainserverOwnershipTarget;
@@ -162,7 +166,8 @@ const finalizeUnclearTransfer = async (input: {
 
 const executeProviderTransfer = async (input: {
   actor: MainserverMutationActor;
-  route: ContentOwnershipRouteMatch;
+  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
+  route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
   target: ResolvedMainserverOwnershipTarget;
@@ -170,11 +175,15 @@ const executeProviderTransfer = async (input: {
 }): Promise<Response | null> => {
   try {
     await transferSvaMainserverContentOwnership({
-      ...input.actor,
+      ...input.sourceConnection,
       content: input.content,
       expectedSourceDataProviderId: input.sourceDataProviderId,
       targetDataProviderId: input.target.dataProviderId,
     });
+  } catch (error) {
+    return finalizeUnclearTransfer({ ...input, error });
+  }
+  try {
     await finalizeMainserverMutation({
       actor: input.actor,
       providerOutcome: 'succeeded',
@@ -184,26 +193,43 @@ const executeProviderTransfer = async (input: {
       observedDataProviderId: input.target.dataProviderId,
       ownershipTransfer: input.ownershipTransfer,
     });
-    recordOwnershipTransferOutcome({
-      actor: input.actor,
-      contentType: input.route.contentType,
-      outcome: 'success',
-    });
-    return null;
-  } catch (error) {
-    return finalizeUnclearTransfer({ ...input, error });
+  } catch {
+    // The provider response already confirmed the target. The still-pending journal
+    // blocks another transfer until the local finalization can be reconciled.
   }
+  recordOwnershipTransferOutcome({
+    actor: input.actor,
+    contentType: input.route.contentType,
+    outcome: 'success',
+  });
+  return null;
 };
 
 const executeLockedTransfer = async (input: {
   actor: MainserverMutationActor;
-  route: ContentOwnershipRouteMatch;
+  route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   principal: IamContentOwnerPrincipal;
 }): Promise<Response> => {
-  const current = await loadOwnershipItem(input.actor, input.content);
-  const sourceDataProviderId = current.dataProvider?.id?.trim();
-  if (!sourceDataProviderId)
+  if (
+    await hasUnresolvedMainserverOwnershipTransfer({
+      instanceId: input.actor.instanceId,
+      contentType: input.route.contentType,
+      contentId: input.route.contentId,
+    })
+  ) {
+    return errorJson(
+      409,
+      'content_transfer_reconciliation_required',
+      'Ein früherer Transfer muss zuerst abgeglichen werden.'
+    );
+  }
+  const actorVisibleCurrent = await loadOwnershipItem(input.actor, input.content);
+  if (!matchesOwnershipContentType(input.route.contentType, actorVisibleCurrent)) {
+    return errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.');
+  }
+  const initialDataProviderId = actorVisibleCurrent.dataProvider?.id?.trim();
+  if (!initialDataProviderId)
     return errorJson(
       409,
       'content_transfer_source_changed',
@@ -211,13 +237,36 @@ const executeLockedTransfer = async (input: {
     );
   const source = await resolveMainserverOwnershipSource({
     instanceId: input.actor.instanceId,
-    dataProviderId: sourceDataProviderId,
+    dataProviderId: initialDataProviderId,
   });
   if (!source)
     return errorJson(
       409,
       'content_transfer_source_changed',
       'Die aktive Principal-Bindung ist nicht eindeutig.'
+    );
+  const sourceResolution = await resolveMainserverOwnershipTarget({
+    instanceId: input.actor.instanceId,
+    actorKeycloakSubject: input.actor.keycloakSubject,
+    principal: source.principal,
+  });
+  if (!sourceResolution.ok || sourceResolution.target.dataProviderId !== initialDataProviderId) {
+    return errorJson(
+      409,
+      'content_transfer_source_changed',
+      'Die Credentials des aktuellen Inhabers sind nicht eindeutig.'
+    );
+  }
+  const current = await loadOwnershipItem(sourceResolution.target.connection, input.content);
+  if (!matchesOwnershipContentType(input.route.contentType, current)) {
+    return errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.');
+  }
+  const sourceDataProviderId = current.dataProvider?.id?.trim();
+  if (!sourceDataProviderId || sourceDataProviderId !== initialDataProviderId)
+    return errorJson(
+      409,
+      'content_transfer_source_changed',
+      'Der aktuelle Inhaber ist nicht eindeutig.'
     );
   const authorization = await authorizeMainserverExistingContent({
     actor: input.actor,
@@ -247,9 +296,27 @@ const executeLockedTransfer = async (input: {
       outcome: 'rejected',
       errorCode: targetResolution.code,
     });
+    await finalizeMainserverMutation({
+      actor: input.actor,
+      providerOutcome: 'failed',
+      reconciliationStatus: 'complete',
+      completedSteps: ['target_validation_rejected'],
+      contentId: input.route.contentId,
+      observedDataProviderId: sourceDataProviderId,
+      lastErrorCode: targetResolution.code,
+    });
     return targetErrorResponse(targetResolution);
   }
   if (targetResolution.target.dataProviderId === sourceDataProviderId) {
+    await finalizeMainserverMutation({
+      actor: input.actor,
+      providerOutcome: 'failed',
+      reconciliationStatus: 'complete',
+      completedSteps: ['target_validation_rejected'],
+      contentId: input.route.contentId,
+      observedDataProviderId: sourceDataProviderId,
+      lastErrorCode: 'content_transfer_target_invalid',
+    });
     return errorJson(
       409,
       'content_transfer_target_invalid',
@@ -273,6 +340,7 @@ const executeLockedTransfer = async (input: {
     execute: () =>
       executeProviderTransfer({
         actor: input.actor,
+        sourceConnection: sourceResolution.target.connection,
         route: input.route,
         content: input.content,
         sourceDataProviderId,
@@ -302,7 +370,7 @@ const executeLockedTransfer = async (input: {
 
 export const handleContentOwnershipTransfer = async (
   request: Request,
-  route: ContentOwnershipRouteMatch,
+  route: SupportedContentOwnershipRouteMatch,
   actor: MainserverMutationActor,
   content: SvaMainserverOwnershipTransferContent
 ): Promise<Response> => {

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   annotateJournal: vi.fn(),
+  hasUnresolvedTransfer: vi.fn(),
+  loadExternalContentReference: vi.fn(),
   listTargets: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveSource: vi.fn(),
@@ -23,7 +25,9 @@ const state = vi.hoisted(() => ({
 vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/auth-runtime/server')>()),
   annotateMainserverMutationJournal: state.annotateJournal,
+  hasUnresolvedMainserverOwnershipTransfer: state.hasUnresolvedTransfer,
   listMainserverOwnershipTargets: state.listTargets,
+  loadExternalContentReferenceByContentId: state.loadExternalContentReference,
   resolveActorInfo: state.resolveActorInfo,
   resolveMainserverOwnershipSource: state.resolveSource,
   resolveMainserverOwnershipTarget: state.resolveTarget,
@@ -89,9 +93,32 @@ const target = {
   },
 };
 
+const sourceTarget = {
+  principal: { type: 'account' as const, id: '11111111-1111-4111-8111-111111111111' },
+  dataProviderId: 'provider-source',
+  dataProviderName: 'Quelle',
+  bindingId: 'binding-source',
+  bindingVersion: 'binding-source:2026-08-27T09:00:00.000Z',
+  connection: {
+    instanceId: 'instance-1',
+    keycloakSubject: 'kc-source',
+    actingPrincipalType: 'user' as const,
+    credentialFingerprint: 'c'.repeat(64),
+  },
+};
+
+const useTargetResolution = (result: unknown) => {
+  state.resolveTarget.mockImplementation(async ({ principal }: { principal: { id: string } }) =>
+    principal.id === sourceTarget.principal.id ? { ok: true, target: sourceTarget } : result
+  );
+};
+
 describe('Mainserver content ownership route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES = 'content.transferOwnership';
+    state.hasUnresolvedTransfer.mockResolvedValue(false);
+    state.loadExternalContentReference.mockResolvedValue(undefined);
     state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: 'instance-1' } });
     state.resolveMutationActor.mockResolvedValue(actor);
     state.resolveSource.mockResolvedValue({
@@ -115,7 +142,7 @@ describe('Mainserver content ownership route', () => {
       pageSize: 10,
       total: 1,
     });
-    state.resolveTarget.mockResolvedValue({ ok: true, target });
+    useTargetResolution({ ok: true, target });
     state.validateCsrf.mockReturnValue(null);
     state.withLock.mockImplementation(async ({ execute }: { execute: () => Promise<unknown> }) =>
       execute()
@@ -146,6 +173,22 @@ describe('Mainserver content ownership route', () => {
       )
     );
     expect(response?.status).toBe(405);
+  });
+
+  it('fails closed until ownership transfer is explicitly confirmed', async () => {
+    delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'content_transfer_type_unsupported',
+    });
+    expect(state.resolveMutationActor).not.toHaveBeenCalled();
   });
 
   it('lists only server-validated targets after source authorization', async () => {
@@ -207,6 +250,7 @@ describe('Mainserver content ownership route', () => {
     expect(response?.headers.get('x-sva-mainserver-entity-id')).toBe('news-1');
     expect(state.transfer).toHaveBeenCalledWith(
       expect.objectContaining({
+        keycloakSubject: 'kc-source',
         expectedSourceDataProviderId: 'provider-source',
         targetDataProviderId: 'provider-target',
       })
@@ -241,6 +285,45 @@ describe('Mainserver content ownership route', () => {
     );
   });
 
+  it('blocks a second write while an earlier transfer needs reconciliation', async () => {
+    state.hasUnresolvedTransfer.mockResolvedValueOnce(true);
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'content_transfer_reconciliation_required',
+    });
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
+
+  it('keeps provider success when journal finalization fails', async () => {
+    state.finalize.mockRejectedValueOnce(new Error('database unavailable'));
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.transfer).toHaveBeenCalledOnce();
+  });
+
   it('fails closed for unsupported surveys without resolving a mutation actor', async () => {
     const response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(
@@ -257,6 +340,7 @@ describe('Mainserver content ownership route', () => {
   it('marks an ambiguous provider outcome for reconciliation', async () => {
     state.transfer.mockRejectedValue(new Error('network'));
     state.getNews
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockRejectedValueOnce(new Error('target unavailable'))
       .mockRejectedValueOnce(new Error('source unavailable'));
@@ -374,7 +458,15 @@ describe('Mainserver content ownership route', () => {
     ['cockpit-cards.cockpit-card', 'card-1', 'getGenericItem'],
     ['projects.project', 'project-1', 'getGenericItem'],
   ] as const)('loads %s ownership through its Mainserver collection', async (type, id, getter) => {
-    state[getter].mockResolvedValueOnce({ id, dataProvider: { id: 'provider-source' } });
+    const genericType =
+      type === 'faq.faq'
+        ? 'FAQ'
+        : type === 'cockpit-cards.cockpit-card'
+          ? 'COCKPIT_CARD'
+          : type === 'projects.project'
+            ? 'FeaturedProject'
+            : 'INFO';
+    state[getter].mockResolvedValue({ id, dataProvider: { id: 'provider-source' }, genericType });
     const response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(
         `https://studio.test/api/v1/mainserver/content-ownership/${type}/${id}/authorization`
@@ -382,6 +474,45 @@ describe('Mainserver content ownership route', () => {
     );
     expect(response?.status).toBe(200);
     expect(state[getter]).toHaveBeenCalled();
+  });
+
+  it('rejects a generic item that belongs to a reserved subtype', async () => {
+    state.getGenericItem.mockResolvedValueOnce({
+      id: 'generic-1',
+      dataProvider: { id: 'provider-source' },
+      genericType: 'FAQ',
+    });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/generic-items.generic-item/generic-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(404);
+    expect(state.resolveResourceAccess).not.toHaveBeenCalled();
+  });
+
+  it('uses the Mainserver source id for projected projects', async () => {
+    state.loadExternalContentReference.mockResolvedValueOnce({
+      sourceEntityId: 'project-source-1',
+    });
+    state.getGenericItem.mockResolvedValueOnce({
+      id: 'project-source-1',
+      dataProvider: { id: 'provider-source' },
+      genericType: 'FeaturedProject',
+    });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/projects.project/project-local-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.getGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItemId: 'project-source-1' })
+    );
   });
 
   it.each([
@@ -442,7 +573,7 @@ describe('Mainserver content ownership route', () => {
     );
     expect(response).toBe(denied);
 
-    state.resolveTarget.mockResolvedValueOnce({
+    useTargetResolution({
       ok: true,
       target: { ...target, dataProviderId: 'provider-source' },
     });
@@ -462,7 +593,7 @@ describe('Mainserver content ownership route', () => {
     ['content_transfer_target_binding_conflict', 409],
     ['database_unavailable', 503],
   ] as const)('maps target resolution error %s', async (code, status) => {
-    state.resolveTarget.mockResolvedValueOnce({ ok: false, code });
+    useTargetResolution({ ok: false, code });
     const response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(
         'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
@@ -492,6 +623,7 @@ describe('Mainserver content ownership route', () => {
     state.transfer.mockRejectedValueOnce(new Error('network'));
     state.getNews
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-target' } });
 
     const response = await dispatchSvaMainserverContentOwnershipRequest(
@@ -512,6 +644,7 @@ describe('Mainserver content ownership route', () => {
     );
     state.getNews
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
+      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'other-provider' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } });
 
@@ -526,5 +659,4 @@ describe('Mainserver content ownership route', () => {
       expect.objectContaining({ completedSteps: ['source_reread_confirmed'] })
     );
   });
-
 });

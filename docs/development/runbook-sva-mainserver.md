@@ -120,6 +120,8 @@ Der eingecheckte GraphQL-Vertrag führt die optionale Variable `dataProviderId` 
 
 Der Studio-Adapter ist derzeit für News, Events, POI und Root-GenericItems implementiert. Touren bleiben deaktiviert, weil der verifizierte Schema-Snapshot in `TourInput` kein `dataProviderId` anbietet und das Studio keinen redaktionellen Tour-Detailadapter besitzt. Surveys, Legacy-SurveyPolls und Batch-Importe unterstützen keinen Inhabertransfer. Normale Update-Routen ändern den DataProvider nicht.
 
+`content.transferOwnership` ist keine Default-Capability. Die Route bleibt fail-closed, bis ein Runtime-Preflight den Zielvertrag bestätigt und die Action explizit in `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` aufgenommen wurde. Eine erfolgreiche lokale Typprüfung ersetzt diesen Betriebsnachweis nicht.
+
 Die Migration `0087_iam_content_transfer_ownership_permission.sql` ergänzt ausschließlich Permission- und Rollenbestandsdaten. Tabellen, Spalten, Constraints, Indizes, RLS, Trigger und Datenbankfunktionen ändern sich nicht; deshalb bleibt der strukturelle Schema-Snapshot unverändert.
 
 ## Survey-Operationen

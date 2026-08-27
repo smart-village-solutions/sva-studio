@@ -1,4 +1,7 @@
-import { resolveMainserverOwnershipTarget } from '@sva/auth-runtime/server';
+import {
+  markMainserverMutationReconciliationRequired,
+  resolveMainserverOwnershipTarget,
+} from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
 import {
   dispatchSvaMainserverContentOwnershipRequest,
@@ -51,6 +54,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
     await refreshProjectionAfterMainserverMutation(request, response, contentType);
   }
   if (response && contentType && isConfirmedTransfer) {
+    const followUp = readMainserverMutationFollowUpContext(request);
     try {
       const payload = (await response.clone().json()) as {
         readonly data?: Readonly<{
@@ -59,39 +63,48 @@ export const dispatchMainserverContentOwnershipRequest = async (
           targetDataProvider?: Readonly<{ name?: string }>;
         }>;
       };
-      const followUp = readMainserverMutationFollowUpContext(request);
       const principal = payload.data?.targetPrincipal;
       const contentId = payload.data?.contentId;
+      if (!followUp) throw new Error('content_transfer_follow_up_context_missing');
       if (
-        followUp &&
-        contentId &&
-        principal?.id &&
-        (principal.type === 'account' || principal.type === 'organization')
+        !contentId ||
+        !principal?.id ||
+        (principal.type !== 'account' && principal.type !== 'organization')
       ) {
+        throw new Error('content_transfer_response_invalid');
+      }
+      {
         const target = await resolveMainserverOwnershipTarget({
           instanceId: followUp.instanceId,
           actorKeycloakSubject: followUp.keycloakSubject,
           principal: { type: principal.type, id: principal.id },
         });
-        if (target.ok) {
-          await refreshProjectedContentsForMainserverMutation({
-            instanceId: followUp.instanceId,
-            keycloakSubject: target.target.connection.keycloakSubject,
-            actorAccountId: followUp.actorAccountId,
-            actorDisplayName: followUp.actorDisplayName,
-            ownershipPrincipal: { type: principal.type, id: principal.id },
-            mutationRef: followUp.operationExternalId,
-            contentType,
-            ...(principal.type === 'organization' ? { organizationId: principal.id } : {}),
-            actingPrincipalType: target.target.connection.actingPrincipalType,
-            credentialFingerprint: target.target.connection.credentialFingerprint,
-            authorizationMode: 'exact',
-            operation: 'update',
-            entityId: contentId,
-          });
-        }
+        if (!target.ok) throw new Error(target.code);
+        await refreshProjectedContentsForMainserverMutation({
+          instanceId: followUp.instanceId,
+          keycloakSubject: target.target.connection.keycloakSubject,
+          actorAccountId: followUp.actorAccountId,
+          actorDisplayName: followUp.actorDisplayName,
+          ownershipPrincipal: { type: principal.type, id: principal.id },
+          mutationRef: followUp.operationExternalId,
+          contentType,
+          ...(principal.type === 'organization' ? { organizationId: principal.id } : {}),
+          actingPrincipalType: target.target.connection.actingPrincipalType,
+          credentialFingerprint: target.target.connection.credentialFingerprint,
+          authorizationMode: 'exact',
+          operation: 'update',
+          entityId: contentId,
+        });
       }
     } catch (error) {
+      if (followUp) {
+        await markMainserverMutationReconciliationRequired({
+          instanceId: followUp.instanceId,
+          operationExternalId: followUp.operationExternalId,
+          completedStep: 'target_projection_refresh_failed',
+          lastErrorCode: 'content_transfer_projection_refresh_failed',
+        }).catch(() => undefined);
+      }
       logger.warn('Target projection refresh failed after confirmed ownership transfer', {
         operation: 'content_ownership_target_projection_refresh',
         content_type: contentType,

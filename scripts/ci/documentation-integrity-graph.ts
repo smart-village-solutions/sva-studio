@@ -28,8 +28,7 @@ const isOwnedNavigationTarget = (sourcePath: string, targetPath: string): boolea
   const targetArea = documentationArea(targetPath);
   return (
     sourcePath === DOCUMENTATION_ENTRYPOINT ||
-    targetArea === undefined ||
-    documentationArea(sourcePath) === targetArea
+    (targetArea !== undefined && documentationArea(sourcePath) === targetArea)
   );
 };
 
@@ -128,7 +127,7 @@ const checkAdrIndex = (
   const indexedAdrs = new Set<string>();
   for (const link of documentationGraph.parsedFiles.get(ADR_INDEX_PATH) ?? []) {
     const target = resolveLinkTarget(ADR_INDEX_PATH, link.url, input.trackedPaths);
-    if (target?.startsWith('docs/adr/ADR-') && target.endsWith('.md')) {
+    if (link.navigation && target?.startsWith('docs/adr/ADR-') && target.endsWith('.md')) {
       indexedAdrs.add(target);
     }
   }

@@ -132,9 +132,38 @@ describe('documentation integrity', () => {
     );
   });
 
+  it('requires root-level pages to be linked from the root index', () => {
+    const files = new Map(validFiles);
+    files.set(
+      'docs/development/README.md',
+      '# Entwicklung\n\n[Setup](./setup.md)\n\n[Routing](../routing.md)\n'
+    );
+    files.set('docs/routing.md', '# Routing\n');
+    const publishedPaths = new Set([...createInput().publishedPaths, 'docs/routing.md']);
+    const trackedPaths = new Set([...createInput().trackedPaths, 'docs/routing.md']);
+
+    expect(
+      checkDocumentationIntegrity(createInput({ files, publishedPaths, trackedPaths }))
+    ).toContainEqual(
+      expect.objectContaining({ code: 'unreachable-page', path: 'docs/routing.md' })
+    );
+  });
+
   it('reports ADR files missing from the canonical index', () => {
     const files = new Map(validFiles);
     files.set('docs/adr/README.md', '# ADRs\n');
+
+    expect(checkDocumentationIntegrity(createInput({ files }))).toContainEqual({
+      code: 'adr-index-mismatch',
+      line: 1,
+      path: 'docs/adr/README.md',
+      reason: 'ADR-Datei fehlt im kanonischen Index: docs/adr/ADR-001-test.md',
+    });
+  });
+
+  it('does not count an ADR image as a navigable index entry', () => {
+    const files = new Map(validFiles);
+    files.set('docs/adr/README.md', '# ADRs\n\n![ADR 001](./ADR-001-test.md)\n');
 
     expect(checkDocumentationIntegrity(createInput({ files }))).toContainEqual({
       code: 'adr-index-mismatch',
@@ -166,7 +195,13 @@ describe('documentation integrity', () => {
   it('rejects manifest syntax that the Wiki workflow cannot consume safely', () => {
     const issues = checkDocumentationIntegrity(
       createInput({
-        manifestEntries: ['docs/README.md', '', ' docs/development/**', '# docs/adr/**'],
+        manifestEntries: [
+          'docs/README.md',
+          '',
+          ' docs/development/**',
+          '# docs/adr/**',
+          'docs/adr/**\r',
+        ],
       })
     );
 
@@ -175,6 +210,7 @@ describe('documentation integrity', () => {
         expect.objectContaining({ code: 'invalid-manifest', line: 2 }),
         expect.objectContaining({ code: 'invalid-manifest', line: 3 }),
         expect.objectContaining({ code: 'invalid-manifest', line: 4 }),
+        expect.objectContaining({ code: 'invalid-manifest', line: 5 }),
       ])
     );
   });
@@ -234,6 +270,21 @@ describe('documentation integrity', () => {
     );
 
     expect(checkDocumentationIntegrity(createInput({ files }))).toEqual([]);
+  });
+
+  it('uses the first definition for duplicate Markdown references', () => {
+    const files = new Map(validFiles);
+    files.set(
+      'docs/development/README.md',
+      '# Entwicklung\n\n[Setup][setup]\n\n[setup]: ./missing.md\n[setup]: ./setup.md\n'
+    );
+
+    expect(checkDocumentationIntegrity(createInput({ files }))).toContainEqual({
+      code: 'broken-link',
+      line: 3,
+      path: 'docs/development/README.md',
+      reason: 'relatives Linkziel fehlt: ./missing.md',
+    });
   });
 
   it('accepts links to tracked repository code and published directories', () => {

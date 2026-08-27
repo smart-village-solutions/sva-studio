@@ -38,7 +38,10 @@ export const parseMarkdownLinks = (content: string): MarkdownLink[] => {
   const definitions = new Map<string, Definition>();
   const links: MarkdownLink[] = [];
   visit(tree, 'definition', (node: Definition) => {
-    definitions.set(node.identifier.toLowerCase(), node);
+    const identifier = node.identifier.toLowerCase();
+    if (!definitions.has(identifier)) {
+      definitions.set(identifier, node);
+    }
   });
   visit(tree, ['link', 'image', 'linkReference', 'imageReference'], (node) => {
     const positionedNode = node as Link | Image | LinkReference | ImageReference;

@@ -38,7 +38,7 @@ const gitDeletedPaths = (rootDir: string): ReadonlySet<string> =>
     )
   );
 
-const manifestLines = (content: string): string[] => content.replace(/\r?\n$/u, '').split(/\r?\n/u);
+const manifestLines = (content: string): string[] => content.replace(/\n$/u, '').split('\n');
 
 const isValidManifestEntry = (entry: string): boolean =>
   entry !== '' && entry === entry.trim() && !entry.startsWith('#');

@@ -245,6 +245,6 @@ eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht
 
 ### Ergänzung 2026-08: Lokale Dokumentationsarchitektur
 
-`docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität.
+`docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität. `pnpm check:docs` erzwingt relative Linkintegrität, Index-Erreichbarkeit, ADR-Parität und die Grenzen der Wiki-Publikation.
 
 Der gemischte Bereich `docs/guides/` wird anhand eines vollständigen Alt-/Neu-Pfad-Inventars kontrolliert abgebaut. Bis zur Migration bleiben die Altpfade gültig. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.

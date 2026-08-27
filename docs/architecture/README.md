@@ -5,20 +5,20 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 
 ## Arc42-Struktur
 
-| Abschnitt | Datei | Mindestinhalte | Pflege-Trigger |
-| --- | --- | --- | --- |
-| 1. Einführung und Ziele | `./01-introduction-and-goals.md` | Systemzweck, Stakeholder, Top-3 Architekturziele | Änderung von Produktzielen, Scope oder Zielgruppen |
-| 2. Randbedingungen | `./02-constraints.md` | Technische, organisatorische, regulatorische Constraints | Neue Vorgaben (Security, Compliance, Plattform, Budget) |
-| 3. Kontext und Scope | `./03-context-and-scope.md` | Systemkontext, externe Schnittstellen, fachliche Grenzen | Neue Integrationen, geänderte Verantwortungsgrenzen |
-| 4. Lösungsstrategie | `./04-solution-strategy.md` | Leitprinzipien, Architekturtreiber, strategische Entscheidungen | Neue Leitentscheidungen oder geänderte Zielarchitektur |
-| 5. Bausteinsicht | `./05-building-block-view.md` | Module/Packages, Verantwortlichkeiten, Abhängigkeiten | Neue Module, geänderte Modulgrenzen |
-| 6. Laufzeitsicht | `./06-runtime-view.md` | Wichtige Szenarien/Sequenzen, Request-Flows | Geänderte Flows, neue kritische Laufzeitszenarien |
-| 7. Verteilungssicht | `./07-deployment-view.md` | Deployment-Topologie, Umgebungen, Betriebsgrenzen | Neue Laufzeitumgebungen, Infra- oder Deployment-Änderungen |
-| 8. Querschnittliche Konzepte | `./08-cross-cutting-concepts.md` | Security, Logging, Observability, Fehlerbehandlung, i18n, A11y | Änderung cross-cutting Policies oder Patterns |
-| 9. Architekturentscheidungen | `./09-architecture-decisions.md` | Relevante ADR-Liste, Status und Verweise | Neue/aktualisierte ADRs |
-| 10. Qualitätsanforderungen | `./10-quality-requirements.md` | Qualitätsziele, Szenarien, Metriken | Neue Qualitätsziele oder geänderte Priorisierung |
-| 11. Risiken und technische Schulden | `./11-risks-and-technical-debt.md` | Architektur-Risiken, Schulden, Gegenmaßnahmen | Neue Risiken, geänderte Risikobewertung |
-| 12. Glossar | `./12-glossary.md` | Einheitliche Begriffe, Abkürzungen, Definitionen | Neue zentrale Begriffe oder uneinheitliche Terminologie |
+| Abschnitt                           | Datei                                                                    | Mindestinhalte                                                  | Pflege-Trigger                                             |
+| ----------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| 1. Einführung und Ziele             | [01 – Einführung und Ziele](./01-introduction-and-goals.md)              | Systemzweck, Stakeholder, Top-3 Architekturziele                | Änderung von Produktzielen, Scope oder Zielgruppen         |
+| 2. Randbedingungen                  | [02 – Randbedingungen](./02-constraints.md)                              | Technische, organisatorische, regulatorische Constraints        | Neue Vorgaben (Security, Compliance, Plattform, Budget)    |
+| 3. Kontext und Scope                | [03 – Kontext und Scope](./03-context-and-scope.md)                      | Systemkontext, externe Schnittstellen, fachliche Grenzen        | Neue Integrationen, geänderte Verantwortungsgrenzen        |
+| 4. Lösungsstrategie                 | [04 – Lösungsstrategie](./04-solution-strategy.md)                       | Leitprinzipien, Architekturtreiber, strategische Entscheidungen | Neue Leitentscheidungen oder geänderte Zielarchitektur     |
+| 5. Bausteinsicht                    | [05 – Bausteinsicht](./05-building-block-view.md)                        | Module/Packages, Verantwortlichkeiten, Abhängigkeiten           | Neue Module, geänderte Modulgrenzen                        |
+| 6. Laufzeitsicht                    | [06 – Laufzeitsicht](./06-runtime-view.md)                               | Wichtige Szenarien/Sequenzen, Request-Flows                     | Geänderte Flows, neue kritische Laufzeitszenarien          |
+| 7. Verteilungssicht                 | [07 – Verteilungssicht](./07-deployment-view.md)                         | Deployment-Topologie, Umgebungen, Betriebsgrenzen               | Neue Laufzeitumgebungen, Infra- oder Deployment-Änderungen |
+| 8. Querschnittliche Konzepte        | [08 – Querschnittliche Konzepte](./08-cross-cutting-concepts.md)         | Security, Logging, Observability, Fehlerbehandlung, i18n, A11y  | Änderung cross-cutting Policies oder Patterns              |
+| 9. Architekturentscheidungen        | [09 – Architekturentscheidungen](./09-architecture-decisions.md)         | Relevante ADR-Liste, Status und Verweise                        | Neue/aktualisierte ADRs                                    |
+| 10. Qualitätsanforderungen          | [10 – Qualitätsanforderungen](./10-quality-requirements.md)              | Qualitätsziele, Szenarien, Metriken                             | Neue Qualitätsziele oder geänderte Priorisierung           |
+| 11. Risiken und technische Schulden | [11 – Risiken und technische Schulden](./11-risks-and-technical-debt.md) | Architektur-Risiken, Schulden, Gegenmaßnahmen                   | Neue Risiken, geänderte Risikobewertung                    |
+| 12. Glossar                         | [12 – Glossar](./12-glossary.md)                                         | Einheitliche Begriffe, Abkürzungen, Definitionen                | Neue zentrale Begriffe oder uneinheitliche Terminologie    |
 
 Der einzige normative Bedienablauf für Studio-Rollouts nach Dev, Staging und Production ist der [kanonische Studio-Rollout](../guides/studio-rollout-process.md). Die arc42-Abschnitte erklären Architektur und Begründung, definieren aber keinen zweiten Operatorpfad.
 
@@ -35,17 +35,16 @@ Der einzige normative Bedienablauf für Studio-Rollouts nach Dev, Staging und Pr
 
 ## Bestehende Architekturdokumente
 
-- Routing: `./routing-architecture.md`
-- Kontextbezogene Anwenderdokumentation: `./contextual-user-documentation.md`
-- Logging und Observability: `./logging-architecture.md`
-- Technische Wandkarte: `./technical-wall-map.md`
-- Session-Analyse: `./session-management-analysis.md`
-- IAM-Service-Architektur: `./iam-service-architektur.md`
-- IAM-Datenklassifizierung: `./iam-datenklassifizierung.md`
-- Datenbankschema-Übersicht: `../development/studio-db-schema.md`
-- Datenbankschema-Snapshot (Soll-Stand): `../development/studio-db-schema-final.sql`
-- Package-Zielarchitektur: `./package-zielarchitektur.md`
-- Package-Gesamtübersicht: `./package-gesamtuebersicht.md`
-- Übersicht typischer Request-Flüsse: `./request-flow-szenarien.md`
-- Übersicht fachlicher Zuständigkeiten: `./fachliche-zustaendigkeiten.md`
-- ADRs: `../adr/README.md`
+- [Routing](./routing-architecture.md)
+- [Kontextbezogene Anwenderdokumentation](./contextual-user-documentation.md)
+- [Logging und Observability](./logging-architecture.md)
+- [Session-Analyse](./session-management-analysis.md)
+- [IAM-Service-Architektur](./iam-service-architektur.md)
+- [IAM-Datenklassifizierung](./iam-datenklassifizierung.md)
+- [Datenbankschema-Übersicht](../development/studio-db-schema.md)
+- [Datenbankschema-Snapshot (Soll-Stand)](../development/studio-db-schema-final.sql)
+- [Package-Zielarchitektur](./package-zielarchitektur.md)
+- [Package-Gesamtübersicht](./package-gesamtuebersicht.md)
+- [Übersicht typischer Request-Flüsse](./request-flow-szenarien.md)
+- [Übersicht fachlicher Zuständigkeiten](./fachliche-zustaendigkeiten.md)
+- [ADRs](../adr/README.md)

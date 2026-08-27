@@ -86,4 +86,4 @@ Verworfen, weil dies die öffentliche Boundary überlädt und Host-Ownership mit
 - [ADR-034](ADR-034-plugin-sdk-vertrag-v1.md)
 - [ADR-037](ADR-037-plugin-spezifische-iam-rechte.md)
 - [ADR-038](ADR-038-instanz-modul-zuordnung-und-fail-closed-modulaktivierung.md)
-- [ADR-040](ADR-040-graphile-workflows-als-standard-fuer-hintergrundprozesse.md)
+- [ADR-040](ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md)

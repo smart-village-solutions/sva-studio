@@ -54,6 +54,7 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 ## Qualität, Reviews und Werkzeuge
 
 - [Komplexitäts- und Qualitätsgovernance](./complexity-quality-governance.md)
+- [Dokumentations-Integritätsgate](./dokumentations-integritaetsgate.md)
 - [Fallow-Agent-Integration](./fallow-agent-integration.md)
 - [Fast-Check-Hotspots](./fast-check-hotspots.md)
 - [Improve-Agent-Integration](./improve-agent-integration.md)

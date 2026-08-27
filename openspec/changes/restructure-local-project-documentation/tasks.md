@@ -29,14 +29,14 @@
 
 ## 3. PR 3 – Automatischer Dokumentations-Gate
 
-- [ ] 3.1 Unified-/Remark-Abhängigkeiten nach Lizenz- und Versionsprüfung als explizite Root-Dev-Dependencies aufnehmen
-- [ ] 3.2 Einen framework-agnostischen, typsicheren Dokumentationsprüfkern für Links, Erreichbarkeit, ADR-Parität und Publikationsgrenzen implementieren
-- [ ] 3.3 Den CLI-Wrapper `scripts/ci/check-documentation.ts` mit Fehlerausgaben im Format `pfad:zeile: grund` ergänzen
-- [ ] 3.4 Vitest-Fixtures und Positiv-/Negativtests für relative Links, fehlende Ziele, nicht indexierte Seiten, ADR-Drift, Wiki-Legacy-Links und ausgeschlossene Publikationspfade ergänzen
-- [ ] 3.5 Alle aktuellen Linkfehler, fehlenden Bereichsverweise und ADR-Indexabweichungen beheben, die den neuen Gate blockieren
-- [ ] 3.6 `pnpm check:docs` definieren und blockierend in `test:ci` sowie Repository Hygiene verdrahten
-- [ ] 3.7 Scope und Reparaturhinweise des Gates in der Entwicklerdokumentation beschreiben; historische Bestände ausdrücklich ausnehmen
-- [ ] 3.8 Den fokussierten Vitest-Lauf, `pnpm check:docs`, Script-Typecheck, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` ausführen
+- [x] 3.1 Unified-/Remark-Abhängigkeiten nach Lizenz- und Versionsprüfung als explizite Root-Dev-Dependencies aufnehmen
+- [x] 3.2 Einen framework-agnostischen, typsicheren Dokumentationsprüfkern für Links, Erreichbarkeit, ADR-Parität und Publikationsgrenzen implementieren
+- [x] 3.3 Den CLI-Wrapper `scripts/ci/check-documentation.ts` mit Fehlerausgaben im Format `pfad:zeile: grund` ergänzen
+- [x] 3.4 Vitest-Fixtures und Positiv-/Negativtests für relative Links, fehlende Ziele, nicht indexierte Seiten, ADR-Drift, Wiki-Legacy-Links und ausgeschlossene Publikationspfade ergänzen
+- [x] 3.5 Alle aktuellen Linkfehler, fehlenden Bereichsverweise und ADR-Indexabweichungen beheben, die den neuen Gate blockieren
+- [x] 3.6 `pnpm check:docs` definieren und blockierend in `test:ci` sowie Repository Hygiene verdrahten
+- [x] 3.7 Scope und Reparaturhinweise des Gates in der Entwicklerdokumentation beschreiben; historische Bestände ausdrücklich ausnehmen
+- [x] 3.8 Den fokussierten Vitest-Lauf, `pnpm check:docs`, Script-Typecheck, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` ausführen
 - [ ] 3.9 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 2 eröffnen
 
 ## 4. PR 4 – Kontrollierte Inhaltsmigration

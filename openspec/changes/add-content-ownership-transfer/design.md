@@ -11,7 +11,7 @@ Der aktuelle Studio-Vertrag behandelt den Mainserver-DataProvider als unverände
 - Ziel-Principal, DataProvider-Bindung und Credentials ausschließlich serverseitig und fail-closed auflösen.
 - Den bestätigten Mainserver-Zustand als fachliche Wahrheit behandeln und lokale Projektion, Journal und Audit zuverlässig nachziehen.
 - Einen unklaren Transportausgang ohne doppelten oder erfundenen Transfer klären können.
-- Einen gemeinsamen UI-Vertrag für alle in V1 unterstützten Content-Typen bereitstellen.
+- Einen gemeinsamen UI-Vertrag für die aktuelle Inhaberanzeige bei möglichst allen Content-Typen und für die Transferaktion bei unterstützten Typen bereitstellen.
 
 ## Non-Goals
 
@@ -73,11 +73,49 @@ Lokale Folgefehler nach bestätigtem Provider-Erfolg ändern den fachlichen Erfo
 
 Bei lokalen Inhalten bleibt die Autorenanzeige trotz Ownership-Transfer stabil. Bei Mainserver-Inhalten ist der aktuelle DataProvider gleichzeitig fachlicher Inhaber und sichtbare Autorenidentität; ein bestätigter Transfer ändert daher beide gemeinsam. Die UI weist diese Wirkung vor der Bestätigung ausdrücklich aus.
 
+### Der aktuelle Datensatz bestimmt den angezeigten Inhaber
+
+Die Inhaberanzeige verwendet bei Mainserver-Inhalten ausschließlich den `dataProvider` des frisch gelesenen Datensatzes. Sie rekonstruiert den aktuellen Inhaber weder aus Audit-Ereignissen noch aus History, Actor, aktivem Organisationskontext, Credential-Quelle oder einer möglicherweise veralteten lokalen Owner-Projektion. Eine konfliktfreie Principal-Bindung ergänzt den DataProvider um die verständliche Einordnung „Persönlicher Account“ oder „Organisation“, begründet aber nicht den DataProvider selbst.
+
+Ist der DataProvider vorhanden, aber keinem Studio-Principal eindeutig zugeordnet, zeigt die Oberfläche weiterhin seinen verfügbaren Anzeigenamen und kennzeichnet die fehlende eindeutige Zuordnung. Sie erfindet keinen Inhaber. Die Transferaktion bleibt dann deaktiviert, solange die serverseitige Source-Autorisierung den aktuellen Inhaber nicht eindeutig und mit passendem Scope validieren kann.
+
+Bei lokalen Inhalten stammt der aktuelle Inhaber aus genau einem der beiden technischen Owner-Felder. Ein ownerloser lokaler Datensatz wird als „Kein Inhaber zugeordnet“ angezeigt und kann ausschließlich mit `content.transferOwnership` und Scope `all` zugewiesen werden.
+
+### Inhaberanzeige und Mutationsprincipal sind getrennte UI-Konzepte
+
+Die bestehende Auswahl „Bearbeiten als“ steuert den Mutationsprincipal und die Credential-Quelle. Sie ist keine Inhaberanzeige. Ein gemeinsamer `ContentOwnershipPanel`-Vertrag in `@sva/studio-ui-react` stellt dagegen ausschließlich aktuellen Inhaber, Inhabertyp, Transferfähigkeit und Ownership-Hinweise dar. Er verwendet vorhandene Detailkarten-, Feld- und shadcn/ui-Primitives und dupliziert keine pluginlokale Basis-UI.
+
+Der Inhaberbereich steht im Bearbeitungsmodus genau einmal und am Anfang des ersten fachlichen Tabs des jeweiligen Inhaltstyps, üblicherweise „Basis“. Das gilt einheitlich für die vorhandenen Editoren für News, Events, POI, generische Inhalte, FAQ, Cockpit Cards, Featured Projects und Surveys, auch wenn ein Typ noch keinen Transfer unterstützt. Im Erstellungsmodus gibt es noch keinen bisherigen Inhaber; dort bleibt nur die getrennte Auswahl des Erstellungsprincipals sichtbar. Künftige Content-Editoren, einschließlich einer möglichen Tour-Detailansicht, müssen denselben First-Tab-Slot verwenden.
+
+### Normales Speichern kommuniziert den unveränderten Inhaber
+
+Der Inhaberbereich erklärt dauerhaft und nicht blockierend, dass normale Inhaltsbearbeitung keinen neuen Inhaber erzeugt. Derselbe Sachverhalt wird kompakt in der Nähe der Speichern-Aktion wiederholt, damit er auch beim Speichern aus einem anderen Tab wahrnehmbar bleibt. Ein wiederkehrender Bestätigungsdialog bei jedem normalen Speichern ist nicht vorgesehen.
+
+- Ohne effektives Transferrecht lautet die Aussage sinngemäß: „Speichern ändert den Inhaber nicht. Du kannst den Datensatz bearbeiten, aber nicht übertragen.“
+- Mit effektivem Transferrecht verweist sie zusätzlich auf „Inhalt übertragen“ als getrennten Vorgang.
+- Weicht der Mutationsprincipal vom Inhaber ab, nennt die Oberfläche beide Rollen ausdrücklich: „Bearbeitung erfolgt als …; Inhaber bleibt …“.
+
+Diese Hinweise werden lokalisiert und aus Berechtigung, Capability und aktuellem Inhaberzustand abgeleitet; Plugins formulieren keine eigenen Varianten.
+
 ### Die UI verwendet eine gemeinsame bestätigungspflichtige Aktion
 
-Ein gemeinsamer Host-Baustein liefert Trigger, Zielsuche, Zielzusammenfassung, Bestätigung, Lade-/Fehlerzustände und Erfolgsfeedback. Plugins tragen nur Content-Typ und Transfer-Capability bei. Nicht autorisierte oder nicht unterstützte Inhalte zeigen keine aktive Transferaktion.
+Ein gemeinsamer Host-Baustein liefert Trigger, Zielsuche, Zielzusammenfassung, Bestätigung, Lade-/Fehlerzustände und Erfolgsfeedback. Plugins tragen nur Content-Typ, Content-Identität und den First-Tab-Slot bei. Permission und Transfer-Capability kommen vom Server. Nicht autorisierte Inhalte zeigen keine aktive Transferaktion und erklären im normalen Bearbeitungshinweis das fehlende Übertragungsrecht. Nicht unterstützte Inhalte zeigen den aktuellen Inhaber, aber statt einer aktiven Aktion den Hinweis „Übertragung für diesen Inhaltstyp noch nicht verfügbar“.
 
-Der Dialog nennt aktuellen und neuen Inhaber, weist auf möglichen Verlust des anschließenden Zugriffs hin und verlangt eine eindeutige Bestätigung. Fokusführung, Tastaturbedienung, Screenreader-Beschriftung und lokalisierte Meldungen folgen den vorhandenen shadcn/ui- und Action-Feedback-Verträgen.
+Die serverseitig paginierte Zielsuche trennt „Persönliche Accounts“ und „Organisationen“ durch einen expliziten Filter oder klar gruppierte Ergebnisbereiche. Jeder Treffer besitzt eine textliche Typkennzeichnung und einen Anzeigenamen; technische DataProvider-IDs werden nicht angezeigt und E-Mail-Adressen nur bei einer separat autorisierten, fachlich erforderlichen Darstellung. Der aktuelle Inhaber, inaktive, gelöschte, konfliktbehaftete oder credential-lose Principals sind nicht auswählbar.
+
+Vor der Mutation zeigt ein eigener Prüfschritt „Aktueller Inhaber → Neuer Inhaber“ mit Typ und Name. Bei Mainserver-Inhalten weist er darauf hin, dass damit auch die sichtbare Autorenidentität wechselt; bei lokalen Inhalten bleibt diese unverändert. Zusätzlich warnt er vor einem möglichen Verlust des anschließenden Zugriffs und verlangt eine eindeutige Bestätigung. Fokusführung, Tastaturbedienung, Screenreader-Beschriftung und lokalisierte Meldungen folgen den vorhandenen shadcn/ui- und Action-Feedback-Verträgen.
+
+Nach bestätigtem Erfolg zeigt die Oberfläche zuerst das Erfolgsfeedback und lädt anschließend den aktuellen Inhaber neu. Verliert der Actor dadurch den Detailzugriff, navigiert sie erst nach der Erfolgsmeldung in die Inhaltsliste; ein anschließender 403 oder 404 widerruft den Erfolg nicht.
+
+### Audit ist Nachweis der Studio-Vorgänge, keine vollständige Inhaberhistorie
+
+Das Audit erfasst jeden vom Studio angeforderten Transfer und kennzeichnet seine Abdeckung als `studio_mutations`. Da Inhalte und DataProvider außerhalb des Studios verändert werden können, darf die Oberfläche daraus keine vollständige Abfolge früherer Inhaber behaupten. Eine optionale History-Darstellung trägt deshalb den Hinweis, dass externe Änderungen fehlen können.
+
+Der aktuelle Inhaber wird nie aus dieser Historie rekonstruiert. Liefert ein späterer Fresh Read einen anderen DataProvider als die lokale Projektion oder das letzte Studio-Audit, ist der aktuelle DataProvider maßgeblich; Projektion und Reconciliation werden entsprechend nachgezogen, ohne ein nicht beobachtetes Transferereignis zu erfinden.
+
+### Einheitlichkeit wird zentral und durch Konformitätstests abgesichert
+
+Der gemeinsame Inhaberbaustein und eine serverseitige Capability-Matrix verhindern abweichende pluginlokale Semantik. Konformitätstests prüfen für jeden registrierten Content-Editor, dass die Inhaberanzeige im Bearbeitungsmodus genau einmal im ersten Tab erscheint, der Save-Hinweis vorhanden ist und die Transferaktion ausschließlich bei wirksamer Permission und positiver Capability aktiv ist. Für Typen ohne bestehenden Studio-Editor gilt der Vertrag ab Einführung ihrer Detailansicht; die Mainserver-Transferfähigkeit allein behauptet noch keine vorhandene UI.
 
 ## Error Contract
 
@@ -102,7 +140,7 @@ Antwort, Audit und Logs enthalten keine E-Mail-Adressen, Credential-Inhalte, Tok
 - Mainserver-Vertrag ist noch nicht auf dem Zielsystem verfügbar → Schema-/Capability-Preflight blockiert die Funktion vor Aktivierung.
 - Upstream-Erfolg bei verlorenem Response → Target-/Source-Re-Read und bestehendes Mutationsjournal verhindern erfundene Rollbacks und unkontrollierte Wiederholungen.
 - DataProvider-Bindung ändert sich parallel → DataProvider-Lock, Fresh Validation und erwartete Binding-Version blockieren stale Transfers.
-- Unterschiedliche Typverträge → zentrale Capability-Matrix und gezielte Contract-Tests statt optimistischer Freischaltung.
+- Unterschiedliche Typverträge oder Editorstrukturen → zentrale Capability-Matrix, gemeinsamer First-Tab-Vertrag und Konformitätstests statt pluginlokaler Sonderwege.
 
 ## Migration Plan
 

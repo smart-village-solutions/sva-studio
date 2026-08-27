@@ -4,6 +4,8 @@
 
 Das System SHALL erfolgreiche, abgelehnte und unklare Content-Inhabertransfers append-only und PII-minimiert auditieren. Der Nachweis SHALL den tatsächlich handelnden Account von Quell-Principal, Ziel-Principal, Credential-Quelle und fachlichem Content-Inhaber trennen.
 
+Die Auditspur SHALL ihre Abdeckung als `studio_mutations` kennzeichnen. Sie SHALL nicht als vollständige Inhaberhistorie dargestellt oder zur Rekonstruktion des aktuellen Inhabers verwendet werden, weil DataProvider und Inhalte außerhalb des Studios verändert werden können. Maßgeblich für den aktuellen Mainserver-Inhaber SHALL immer der DataProvider eines aktuellen Content-Reads sein.
+
 #### Scenario: Lokaler Inhalt wird erfolgreich übertragen
 
 - **GIVEN** ein autorisierter Benutzer überträgt einen lokalen Inhalt
@@ -39,3 +41,21 @@ Das System SHALL erfolgreiche, abgelehnte und unklare Content-Inhabertransfers a
 - **WHEN** der anschließende Reload 403 oder 404 liefert
 - **THEN** bleibt das Transfer-Audit erfolgreich
 - **AND** wird der erwartete Zugriffsverlust nicht als Provider- oder Transferfehler umklassifiziert
+
+#### Scenario: Externe Inhaberänderung fehlt im Studio-Audit
+
+- **GIVEN** der DataProvider eines Inhalts wurde außerhalb des Studios geändert
+- **AND** das Studio besitzt dafür kein eigenes Transferereignis
+- **WHEN** Audit oder optionale Inhaberhistorie angezeigt werden
+- **THEN** erfindet Studio kein Transferereignis
+- **AND** kennzeichnet es die Historie als möglicherweise unvollständig
+- **AND** zeigt die Content-Ansicht trotzdem den DataProvider des aktuellen Fresh Reads als aktuellen Inhaber
+
+#### Scenario: Audit und aktueller DataProvider widersprechen sich
+
+- **GIVEN** das letzte Studio-Audit nennt `dp-source` als Inhaber
+- **AND** ein aktueller Content-Read liefert `dp-target`
+- **WHEN** Studio den aktuellen Inhaber bestimmt
+- **THEN** verwendet es `dp-target`
+- **AND** startet es die vorgesehene Projektions-Reconciliation
+- **AND** schreibt es ohne beobachtete Studio-Mutation kein rückdatiertes Transfer-Audit

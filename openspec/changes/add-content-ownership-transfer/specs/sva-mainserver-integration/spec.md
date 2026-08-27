@@ -6,6 +6,8 @@ Das System SHALL Mainserver-Quellkontext, DataProvider, Credential-Kontext und e
 
 Credential-Kontext, aktive Abfrageorganisation, freie Autorenwerte, externe Organisationsfelder oder der aktuelle Actor SHALL keine konkurrierende Ownership begründen. Im Modus `credential_visible_compatibility` SHALL die Projektion keine erfundene Owner-Zuordnung persistieren.
 
+Der DataProvider eines aktuellen Content-Reads SHALL auch dann die Quelle der aktuellen Inhaberanzeige bleiben, wenn lokale Projektion, History oder Studio-Audit einen älteren oder keinen Inhaber enthalten. Außerhalb des Studios erfolgte Änderungen SHALL als aktueller Zustand übernommen werden, ohne daraus ein nicht beobachtetes Studio-Transferereignis zu erfinden.
+
 #### Scenario: Externe Organisation wird als Quellmetadatum projiziert
 
 - **GIVEN** ein Mainserver-Datensatz enthält eine externe Organisation oder einen DataProvider
@@ -45,6 +47,15 @@ Credential-Kontext, aktive Abfrageorganisation, freie Autorenwerte, externe Orga
 - **WHEN** Studio die Projektion aktualisiert
 - **THEN** bleibt die Ownership vom unveränderten Content-DataProvider abgeleitet
 - **AND** dokumentiert `credentialSource` getrennt den Mutationsprincipal
+
+#### Scenario: Externe DataProvider-Änderung wird als aktueller Inhaber sichtbar
+
+- **GIVEN** der Mainserver-DataProvider wurde außerhalb des Studios von `dp-source` auf `dp-target` geändert
+- **AND** Projektion oder Studio-Audit enthalten noch `dp-source`
+- **WHEN** Studio den Datensatz frisch liest und anzeigt
+- **THEN** zeigt es `dp-target` als aktuellen Inhaber und sichtbaren Autor
+- **AND** zieht es die rekonstruierbare Projektion über den Reconciliation-Pfad nach
+- **AND** behauptet es keine vollständige Inhaberhistorie
 
 #### Scenario: Bestätigter Transfer ändert die Projektion
 
@@ -162,6 +173,7 @@ Das System SHALL einen Mainserver-Inhabertransfer nur für Content-Typen anbiete
 - **AND** der Runtime-Preflight bestätigt den erwarteten Mainserver-Vertrag
 - **THEN** kann die serverseitige Capability-Matrix den Transfer freigeben
 - **AND** verwendet die Mutation den typisierten `dataProviderId`-Vertrag
+- **AND** behauptet diese Backend-Capability allein keine bereits vorhandene Studio-Detailansicht für den Typ
 
 #### Scenario: Abhängige Datensätze werden atomar mitgeführt
 
@@ -175,6 +187,7 @@ Das System SHALL einen Mainserver-Inhabertransfer nur für Content-Typen anbiete
 - **WHEN** ein Benutzer den Inhaber eines Survey, Legacy SurveyPoll oder eines anderen nicht bestätigten Typs übertragen will
 - **THEN** liefert die Capability-Matrix `unsupported`
 - **AND** zeigt die UI keine aktive Transferaktion
+- **AND** zeigt ein vorhandener Survey-Editor weiterhin den aktuellen Inhaber im ersten fachlichen Tab
 - **AND** sendet Studio keine optimistische oder generische GraphQL-Mutation
 
 #### Scenario: Mainserver-Schema besitzt den Transfervertrag nicht

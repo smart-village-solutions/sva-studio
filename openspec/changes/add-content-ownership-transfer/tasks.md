@@ -40,20 +40,28 @@
 
 ## 5. Gemeinsame Oberfläche
 
-- [ ] 5.1 Eine gemeinsame shadcn/ui-basierte Aktion „Inhalt übergeben“ mit Target-Suche, aktuellem/neuem Inhaber, Wirkungswarnung und expliziter Bestätigung implementieren.
-- [ ] 5.2 Die Aktion ausschließlich bei effektiver `content.transferOwnership`-Permission und positiver serverseitiger Typ-Capability anbieten.
-- [ ] 5.3 V1-Plugins über den gemeinsamen Host-Vertrag anbinden, ohne pluginlokale Zielauflösung oder Transferlogik zu duplizieren.
-- [ ] 5.4 Lokalisierte Erfolgs-, Denial-, Binding-, Credential-, Unsupported- und Reconciliation-Meldungen für Deutsch und Englisch ergänzen.
-- [ ] 5.5 Fokusführung, Tastaturbedienung, Screenreader-Namen, Lade-/Disabled-State und 44×44-Zielgrößen mit Unit-, Axe- und E2E-Tests absichern.
+- [ ] 5.1 Einen gemeinsamen `ContentOwnershipPanel`-Vertrag getrennt von „Bearbeiten als“ implementieren; bei Mainserver-Inhalten den aktuellen Inhaber ausschließlich aus dem frisch gelesenen Content-DataProvider ableiten.
+- [ ] 5.2 Den Inhaberbereich im Bearbeitungsmodus der vorhandenen Editoren für News, Events, POI, generische Inhalte, FAQ, Cockpit Cards, Featured Projects und Surveys genau einmal am Anfang des ersten fachlichen Tabs integrieren; im Create-Modus nur den getrennten Erstellungsprincipal zeigen.
+- [ ] 5.3 Die einheitliche Anzeige auch für nicht transferfähige Typen bereitstellen und dort die fehlende Transferunterstützung verständlich kennzeichnen, ohne eine aktive Aktion anzubieten.
+- [ ] 5.4 Einen dauerhaften Ownership-Hinweis im Inhaberbereich und eine kompakte Wiederholung an der Speichern-Aktion ergänzen: normales Speichern ändert den Inhaber nicht; Transferberechtigung und abweichender Mutationsprincipal werden verständlich erklärt.
+- [ ] 5.5 Eine gemeinsame shadcn/ui-basierte Aktion „Inhalt übertragen“ mit serverseitig paginierter Zielsuche implementieren; persönliche Accounts und Organisationen klar gruppieren oder filtern und jeden Treffer textlich typisieren.
+- [ ] 5.6 Aktuellen Inhaber sowie inaktive, gelöschte, konfliktbehaftete und credential-lose Ziele aus der Auswahl ausschließen; keine freie DataProvider-ID und standardmäßig keine E-Mail-Adresse darstellen.
+- [ ] 5.7 Einen Prüfschritt „Aktueller Inhaber → Neuer Inhaber“ mit Typ, Name, Auswirkung auf die Autorenanzeige, möglichem Zugriffsverlust und expliziter Bestätigung umsetzen.
+- [ ] 5.8 Die Aktion ausschließlich bei effektiver `content.transferOwnership`-Permission und positiver serverseitiger Typ-Capability aktivieren; V1-Plugins ohne pluginlokale Zielauflösung oder Transferlogik anbinden.
+- [ ] 5.9 Nach Erfolg zuerst bestätigendes Feedback zeigen, den aktuellen Inhaber neu laden und bei verlorenem Detailzugriff anschließend kontrolliert in die Inhaltsliste navigieren.
+- [ ] 5.10 Lokalisierte Erfolgs-, Denial-, Binding-, Credential-, Unsupported-, Ownership-Hinweis- und Reconciliation-Meldungen für Deutsch und Englisch ergänzen.
+- [ ] 5.11 Fokusführung, Tastaturbedienung, Screenreader-Namen, Lade-/Disabled-State und 44×44-Zielgrößen mit Unit-, Axe- und E2E-Tests absichern.
+- [ ] 5.12 Konformitätstests ergänzen, die je registriertem Content-Editor genau eine Inhaberanzeige im ersten Tab, den Save-Hinweis und die permission-/capability-gesteuerte Transferaktion nachweisen.
 
 ## 6. Audit, Observability und Dokumentation
 
-- [ ] 6.1 Append-only Audit für Actor, Action, Content-ID/-Typ, Source-/Target-Principal, alte/neue DataProvider-Referenz, Operationsreferenz, Binding-Version, Ergebnis und Reconciliation-Status ergänzen, ohne PII oder Secrets zu speichern.
+- [ ] 6.1 Append-only Audit für Actor, Action, Content-ID/-Typ, Source-/Target-Principal, alte/neue DataProvider-Referenz, Operationsreferenz, Binding-Version, Ergebnis und Reconciliation-Status ergänzen, ohne PII oder Secrets zu speichern; Coverage ausdrücklich als `studio_mutations` kennzeichnen.
 - [ ] 6.2 Strukturierte Metriken und Logs für Erfolg, Denial, Target-Validierung, Upstream-Rejection, Timeout und `reconciliation_required` ergänzen.
 - [ ] 6.3 Content-/IAM-Bedienungsdokumentation, Permission-Referenz und Mainserver-Runbook auf Deutsch aktualisieren.
 - [ ] 6.4 Eine ADR zum kontrollierten Content-Inhabertransfer erstellen und die arc42-Abschnitte 03, 04, 05, 06, 08 und 09 aktualisieren.
 - [ ] 6.5 Prüfen und dokumentieren, dass keine Studio-Datenbankschemaänderung erforderlich ist; falls die Implementierung doch Schemaänderungen benötigt, `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` im selben Änderungsblock fortschreiben.
 - [ ] 6.6 Nutzerverständlichen Studio-Changelog-Eintrag ergänzen.
+- [ ] 6.7 Dokumentieren und testen, dass der aktuelle Inhaber nie aus Audit oder History rekonstruiert wird und eine optionale Historienanzeige auf potenziell fehlende externe Änderungen hinweist.
 
 ## 7. Abnahme und Rollout
 

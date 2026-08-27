@@ -25,8 +25,107 @@ Das System MUST eine Erstellungs- und eine Bearbeitungsansicht für Inhalte bere
 - **GIVEN** ein Benutzer besitzt `content.transferOwnership` im passenden Scope für den aktuellen Inhalt
 - **AND** der Content-Typ unterstützt den Transfer
 - **WHEN** er die Detail- oder Bearbeitungsansicht öffnet
-- **THEN** bietet die Oberfläche eine getrennte Aktion „Inhalt übergeben“ an
+- **THEN** bietet die Oberfläche eine getrennte Aktion „Inhalt übertragen“ an
 - **AND** behandelt sie nicht als normales Formularfeld oder impliziten Speichereffekt
+
+## ADDED Requirements
+
+### Requirement: Bearbeitungsansichten zeigen den aktuellen Inhaber einheitlich im ersten Tab
+
+Das System SHALL im Bearbeitungsmodus jedes vorhandenen Content-Editors den aktuellen Inhaber genau einmal am Anfang des ersten fachlichen Tabs anzeigen. Die Inhaberanzeige SHALL von der Auswahl des Erstellungs- oder Mutationsprincipals getrennt sein und für transferfähige wie nicht transferfähige Inhaltstypen denselben gemeinsamen UI-Vertrag verwenden.
+
+Bei Mainserver-Inhalten SHALL der aktuelle Inhaber ausschließlich aus dem `dataProvider` des frisch gelesenen Datensatzes stammen. Audit, History, Actor, aktiver Organisationskontext, Credential-Quelle und lokale Owner-Projektion SHALL den angezeigten aktuellen Inhaber nicht überschreiben. Bei lokalen Inhalten SHALL genau eines der technischen Owner-Felder den aktuellen Inhaber bestimmen.
+
+#### Scenario: Mainserver-Inhalt zeigt DataProvider als aktuellen Inhaber
+
+- **GIVEN** ein bestehender Mainserver-Inhalt liefert im Fresh Read einen DataProvider
+- **WHEN** ein Benutzer den ersten fachlichen Tab der Bearbeitungsansicht öffnet
+- **THEN** zeigt der Inhaberbereich diesen DataProvider als aktuellen Inhaber an
+- **AND** zeigt er bei eindeutiger Principal-Bindung den Typ „Persönlicher Account“ oder „Organisation“ und den verständlichen Namen
+- **AND** bezeichnet er den DataProvider nicht als „ursprünglich“, wenn er den aktuellen Zustand darstellt
+
+#### Scenario: DataProvider besitzt keine eindeutige Principal-Bindung
+
+- **GIVEN** der Fresh Read liefert einen DataProvider ohne eindeutige aktuelle Studio-Principal-Bindung
+- **WHEN** die Bearbeitungsansicht den Inhaberbereich rendert
+- **THEN** zeigt sie den verfügbaren DataProvider-Namen als aktuellen Inhaber
+- **AND** kennzeichnet sie, dass keine eindeutige Zuordnung zu einem persönlichen Account oder einer Organisation vorliegt
+- **AND** erfindet sie keine Zuordnung aus Actor, Credential-Kontext, Projektion oder Audit
+
+#### Scenario: Inhaltstyp unterstützt noch keinen Transfer
+
+- **GIVEN** ein vorhandener Content-Editor ist laut serverseitiger Capability-Matrix nicht transferfähig
+- **WHEN** ein Benutzer seinen ersten fachlichen Tab öffnet
+- **THEN** zeigt die Oberfläche trotzdem den aktuellen Inhaber im gemeinsamen Inhaberbereich
+- **AND** zeigt sie keine aktive Transferaktion
+- **AND** erklärt sie, dass die Übertragung für diesen Inhaltstyp noch nicht verfügbar ist
+
+#### Scenario: Neuer Inhalt besitzt noch keinen bisherigen Inhaber
+
+- **WHEN** ein Benutzer die Erstellungsansicht eines Inhalts öffnet
+- **THEN** behauptet die Oberfläche keinen bisherigen Inhaber
+- **AND** zeigt sie die getrennte zulässige Auswahl des Erstellungsprincipals
+- **AND** bietet sie vor dem ersten erfolgreichen Speichern keinen Ownership-Transfer an
+
+### Requirement: Normales Speichern erklärt die unveränderte Ownership
+
+Das System SHALL in der Bearbeitungsansicht dauerhaft erklären, dass normales Speichern den aktuellen Inhaber nicht ändert. Der Hinweis SHALL im Inhaberbereich stehen und in kompakter Form in der Nähe der Speichern-Aktion wiederholt werden. Normales Speichern SHALL dafür keinen wiederkehrenden blockierenden Bestätigungsdialog öffnen.
+
+#### Scenario: Benutzer darf bearbeiten, aber nicht übertragen
+
+- **GIVEN** ein Benutzer darf den Inhalt bearbeiten
+- **AND** besitzt für ihn kein wirksames `content.transferOwnership`
+- **WHEN** er die Bearbeitungsansicht oder die Speichern-Aktion verwendet
+- **THEN** erklärt die Oberfläche, dass Speichern den Inhaber nicht ändert
+- **AND** erklärt sie, dass der Benutzer den Inhalt bearbeiten, aber nicht übertragen darf
+- **AND** zeigt sie keine aktive Transferaktion
+
+#### Scenario: Benutzer darf den Inhalt übertragen
+
+- **GIVEN** ein Benutzer darf den Inhalt bearbeiten und übertragen
+- **AND** der Inhaltstyp besitzt eine positive Transfer-Capability
+- **WHEN** er die Bearbeitungsansicht oder die Speichern-Aktion verwendet
+- **THEN** erklärt die Oberfläche, dass normales Speichern den Inhaber nicht ändert
+- **AND** verweist sie auf die getrennte Aktion „Inhalt übertragen“
+
+#### Scenario: Mutationsprincipal weicht vom Inhaber ab
+
+- **GIVEN** die normale Bearbeitung wird mit einem anderen zulässigen Principal als dem aktuellen Inhaber ausgeführt
+- **WHEN** die Bearbeitungsansicht den Ownership-Hinweis zeigt
+- **THEN** benennt sie verständlich den Mutationsprincipal und den unverändert bleibenden Inhaber
+- **AND** stellt sie die Bearbeitung nicht als implizite Übertragung dar
+
+### Requirement: Transferziel unterscheidet persönliche Accounts und Organisationen
+
+Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein.
+
+#### Scenario: Benutzer durchsucht mögliche Zielinhaber
+
+- **WHEN** ein berechtigter Benutzer die Zielauswahl für „Inhalt übertragen“ öffnet
+- **THEN** kann er zwischen „Persönliche Accounts“ und „Organisationen“ unterscheiden
+- **AND** bleibt der Principal-Typ im gewählten `targetPrincipal` erhalten
+- **AND** zeigt die Oberfläche keine technische DataProvider-ID
+- **AND** zeigt sie E-Mail-Adressen nur, wenn deren Darstellung separat autorisiert und fachlich erforderlich ist
+
+#### Scenario: Benutzer bestätigt die Wirkung des Transfers
+
+- **GIVEN** ein gültiger Ziel-Principal wurde ausgewählt
+- **WHEN** der Benutzer zum Bestätigungsschritt wechselt
+- **THEN** zeigt die Oberfläche aktuellen und neuen Inhaber mit Typ und Name als gerichteten Wechsel
+- **AND** erklärt sie die typabhängige Wirkung auf die sichtbare Autorenanzeige
+- **AND** warnt sie vor möglichem Verlust des anschließenden Zugriffs
+- **AND** führt sie die Mutation erst nach ausdrücklicher Bestätigung aus
+
+#### Scenario: Actor verliert nach erfolgreichem Transfer den Detailzugriff
+
+- **GIVEN** der Server hat den neuen Inhaber bestätigt
+- **AND** der Actor darf den Inhalt im Ziel-Scope nicht mehr lesen
+- **WHEN** die Oberfläche den Transfer abschließt
+- **THEN** zeigt sie zuerst eine eindeutige Erfolgsmeldung
+- **AND** navigiert sie anschließend kontrolliert in die Inhaltsliste
+- **AND** stellt sie den erwarteten Zugriffsverlust nicht als fehlgeschlagenen Transfer dar
+
+## MODIFIED Requirements
 
 ### Requirement: Ownership-Transfer autorisiert den aktuellen Inhalt
 

@@ -276,11 +276,6 @@ describe('Mainserver content ownership route', () => {
         target: expect.objectContaining({ bindingVersion: target.bindingVersion }),
       })
     );
-    expect(state.withTargetLock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        target: expect.objectContaining({ bindingVersion: sourceTarget.bindingVersion }),
-      })
-    );
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({
         providerOutcome: 'succeeded',
@@ -637,22 +632,6 @@ describe('Mainserver content ownership route', () => {
   });
 
   it('maps a changed target binding to a deterministic conflict', async () => {
-    state.withTargetLock.mockImplementationOnce(
-      async ({ execute }: { execute: () => Promise<unknown> }) => execute()
-    ).mockRejectedValueOnce(new Error('content_transfer_target_binding_changed'));
-    const response = await dispatchSvaMainserverContentOwnershipRequest(
-      new Request(
-        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
-        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
-      )
-    );
-    expect(response?.status).toBe(409);
-    await expect(response?.json()).resolves.toMatchObject({
-      error: 'content_transfer_target_binding_conflict',
-    });
-  });
-
-  it('maps a changed source binding to a deterministic conflict', async () => {
     state.withTargetLock.mockRejectedValueOnce(
       new Error('content_transfer_target_binding_changed')
     );
@@ -664,7 +643,7 @@ describe('Mainserver content ownership route', () => {
     );
     expect(response?.status).toBe(409);
     await expect(response?.json()).resolves.toMatchObject({
-      error: 'content_transfer_source_changed',
+      error: 'content_transfer_target_binding_conflict',
     });
   });
 

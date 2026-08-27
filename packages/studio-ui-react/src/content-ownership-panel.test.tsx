@@ -124,4 +124,54 @@ describe('ContentOwnershipPanel', () => {
 
     expect(await screen.findByText('Bindung ist nicht eindeutig')).toBeTruthy();
   });
+
+  it('refreshes targets when type, page and search change', async () => {
+    const loadTargets = vi.fn().mockResolvedValue({ items: [], total: 30 });
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    await waitFor(() => expect(loadTargets).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() =>
+      expect(loadTargets).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: 'account', page: 2 })
+      )
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    await waitFor(() =>
+      expect(loadTargets).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: 'account', page: 1 })
+      )
+    );
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Zieltyp' }), {
+      target: { value: 'organization' },
+    });
+    await waitFor(() =>
+      expect(loadTargets).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: 'organization', page: 1 })
+      )
+    );
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Suchen' }), {
+      target: { value: '  Stadt  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Suche starten' }));
+    await waitFor(() =>
+      expect(loadTargets).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: 'organization', page: 1, search: 'Stadt' })
+      )
+    );
+  });
 });

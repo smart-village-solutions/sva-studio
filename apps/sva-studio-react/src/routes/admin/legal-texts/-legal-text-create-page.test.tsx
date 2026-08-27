@@ -24,8 +24,8 @@ vi.mock('../../../hooks/use-legal-texts', () => ({
   useLegalTexts: () => useLegalTextsMock(),
 }));
 
-vi.mock('../../../components/RichTextEditor', () => ({
-  RichTextEditor: ({
+vi.mock('./-legal-text-rich-text-editor', () => ({
+  LegalTextRichTextEditor: ({
     id,
     value,
     onChange,

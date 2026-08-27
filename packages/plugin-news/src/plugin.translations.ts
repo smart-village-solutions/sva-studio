@@ -307,6 +307,9 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       'Entwurf, Sofort-Veröffentlichung und Zeitsteuerung werden in der vereinfachten Oberfläche zentral unter Einstellungen gepflegt.',
   },
   richText: {
+    mode: 'Editoransicht',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',
     heading4: 'Überschrift 4',
@@ -772,6 +775,9 @@ const newsTranslationsEn = createNewsLocaleTranslations({
       'Draft, immediate publication, and scheduling are maintained centrally in the simplified settings workflow.',
   },
   richText: {
+    mode: 'Editor view',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
     heading2: 'Heading 2',
     heading3: 'Heading 3',
     heading4: 'Heading 4',

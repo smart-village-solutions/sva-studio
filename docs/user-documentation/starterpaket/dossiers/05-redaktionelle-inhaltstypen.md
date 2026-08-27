@@ -126,8 +126,9 @@ haben können.
 - **Nutzerziel:** Eine Nachricht als Entwurf, sofort oder zeitgesteuert veröffentlichen.
 - **Produktfakten:** Tabs sind Basis, Inhalte und Einstellungen. Felder umfassen Überschrift,
   Kategorien, Schlagwörter, Einleitung, Richtext, Medien, Quelle, Veröffentlichungsmodus und
-  optional Push. Push kann global oder auf ausgewählte Abholorte begrenzt werden; die Nachricht
-  selbst bleibt dabei öffentlich sichtbar.
+  optional Push. Der Richtext lässt sich visuell oder als HTML bearbeiten; Links, Überschriften
+  und Listen stehen in der visuellen Ansicht bereit. Push kann global oder auf ausgewählte
+  Abholorte begrenzt werden; die Nachricht selbst bleibt dabei öffentlich sichtbar.
 - **Lebenszyklus:** Entwurf, sofort veröffentlichen oder zeitgesteuert; geplanter Zeitpunkt darf in
   Vergangenheit oder Zukunft liegen. Push wird beim Speichern einer veröffentlichten Nachricht
   ausgelöst und kann pro Nachricht nur einmal gesendet werden.

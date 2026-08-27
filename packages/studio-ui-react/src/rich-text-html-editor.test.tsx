@@ -120,7 +120,12 @@ const useEditorMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@tiptap/react', () => ({
   EditorContent: ({ editor }: { editor: typeof tiptapState.editor | null }) => (
-    <div id="mock-editor" role="textbox" aria-multiline="true" dangerouslySetInnerHTML={{ __html: editor?.getHTML() ?? '' }} />
+    <div
+      id="mock-editor"
+      role="textbox"
+      aria-multiline="true"
+      dangerouslySetInnerHTML={{ __html: editor?.getHTML() ?? '' }}
+    />
   ),
   useEditor: (...args: unknown[]) => useEditorMock(...args),
 }));
@@ -139,8 +144,7 @@ vi.mock('@tiptap/extension-link', () => ({
 
 const renderEditor = (props?: Partial<React.ComponentProps<typeof RichTextHtmlEditor>>) => {
   const onChange = vi.fn();
-
-  render(
+  const createEditor = (nextProps?: Partial<React.ComponentProps<typeof RichTextHtmlEditor>>) => (
     <RichTextHtmlEditor
       id="poi-description"
       value="<p>Initial</p>"
@@ -152,6 +156,9 @@ const renderEditor = (props?: Partial<React.ComponentProps<typeof RichTextHtmlEd
         { value: 'blockquote', label: 'Zitat' },
       ]}
       toolbarLabels={{
+        mode: 'Editoransicht',
+        visualMode: 'WYSIWYG',
+        htmlMode: 'HTML',
         blockType: 'Textformat',
         bulletList: 'UL',
         orderedList: 'OL',
@@ -162,11 +169,16 @@ const renderEditor = (props?: Partial<React.ComponentProps<typeof RichTextHtmlEd
         linkPrompt: 'Link-URL',
         link: 'Link setzen',
       }}
-      {...props}
+      {...nextProps}
     />
   );
+  const rendered = render(createEditor(props));
 
-  return { onChange };
+  return {
+    onChange,
+    rerenderEditor: (nextProps: Partial<React.ComponentProps<typeof RichTextHtmlEditor>>) =>
+      rendered.rerender(createEditor({ ...props, ...nextProps })),
+  };
 };
 
 describe('RichTextHtmlEditor', () => {
@@ -192,6 +204,42 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Vorwärts' })).toBeTruthy();
     expect(screen.getByRole('textbox')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Editoransicht' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'WYSIWYG' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'HTML' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('switches to an editable HTML source view and back to the normalized visual value', () => {
+    const { onChange, rerenderEditor } = renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+
+    const htmlSource = screen.getByRole('textbox', { name: 'HTML' });
+    expect(htmlSource).toHaveProperty('value', '<p>Initial</p>');
+    expect(screen.getByRole('button', { name: 'HTML' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('disabled', true);
+
+    fireEvent.change(htmlSource, { target: { value: '<h2>Geändert</h2>' } });
+    expect(onChange).toHaveBeenLastCalledWith('<h2>Geändert</h2>');
+
+    rerenderEditor({ value: '<h2>Geändert</h2>' });
+    fireEvent.click(screen.getByRole('button', { name: 'WYSIWYG' }));
+
+    expect(tiptapState.calls.setContent).toHaveBeenLastCalledWith('<h2>Geändert</h2>');
+    expect(screen.getByRole('button', { name: 'WYSIWYG' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+  });
+
+  it('keeps the source view labelled and read-only while the editor is disabled', () => {
+    renderEditor({ disabled: true });
+
+    fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+
+    const htmlSource = screen.getByRole('textbox', { name: 'HTML' });
+    expect(htmlSource).toHaveProperty('readOnly', true);
   });
 
   it('applies normalized https links through the toolbar', () => {
@@ -209,7 +257,9 @@ describe('RichTextHtmlEditor', () => {
   });
 
   it('runs the remaining toolbar actions and prevents focus loss on mouse down', () => {
-    tiptapState.editor.isActive.mockImplementation((name: string) => name === 'bold' || name === 'bulletList');
+    tiptapState.editor.isActive.mockImplementation(
+      (name: string) => name === 'bold' || name === 'bulletList'
+    );
 
     renderEditor();
 
@@ -255,21 +305,32 @@ describe('RichTextHtmlEditor', () => {
   it('switches paragraph, blockquote and heading formats through the block type select', () => {
     renderEditor();
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), { target: { value: 'paragraph' } });
-    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), { target: { value: 'blockquote' } });
-    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), { target: { value: 'heading-2' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), {
+      target: { value: 'paragraph' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), {
+      target: { value: 'blockquote' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Textformat' }), {
+      target: { value: 'heading-2' },
+    });
 
-    expect(tiptapState.actions).toEqual(expect.arrayContaining(['paragraph', 'blockquote', 'heading:2']));
+    expect(tiptapState.actions).toEqual(
+      expect.arrayContaining(['paragraph', 'blockquote', 'heading:2'])
+    );
   });
 
   it('reflects the active heading format in the block type select', () => {
-    tiptapState.editor.isActive.mockImplementation((name: string, attrs?: { level?: number }) =>
-      name === 'heading' && attrs?.level === 2
+    tiptapState.editor.isActive.mockImplementation(
+      (name: string, attrs?: { level?: number }) => name === 'heading' && attrs?.level === 2
     );
 
     renderEditor();
 
-    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('value', 'heading-2');
+    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty(
+      'value',
+      'heading-2'
+    );
   });
 
   it('reflects an active blockquote format in the block type select', () => {
@@ -277,7 +338,10 @@ describe('RichTextHtmlEditor', () => {
 
     renderEditor();
 
-    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty('value', 'blockquote');
+    expect(screen.getByRole('combobox', { name: 'Textformat' })).toHaveProperty(
+      'value',
+      'blockquote'
+    );
   });
 
   it('removes links when the prompt returns an empty value and ignores cancelled prompts', () => {
@@ -285,9 +349,7 @@ describe('RichTextHtmlEditor', () => {
     Object.defineProperty(window, 'prompt', {
       configurable: true,
       writable: true,
-      value: vi.fn()
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce(null),
+      value: vi.fn().mockReturnValueOnce('').mockReturnValueOnce(null),
     });
 
     renderEditor();

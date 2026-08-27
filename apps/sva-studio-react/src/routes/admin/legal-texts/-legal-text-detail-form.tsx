@@ -1,7 +1,6 @@
 import type { IamLegalTextListItem } from '@sva/core';
 import React from 'react';
 
-import { RichTextEditor } from '../../../components/RichTextEditor';
 import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
@@ -9,6 +8,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { t } from '../../../i18n';
 import { formatLegalTextDateTime, type LegalTextStatus } from './-legal-texts-shared';
+import { LegalTextRichTextEditor } from './-legal-text-rich-text-editor';
 
 export type LegalTextDetailFormValues = {
   name: string;
@@ -20,16 +20,6 @@ export type LegalTextDetailFormValues = {
   targetRoleIds: string;
   targetGroupIds: string;
 };
-
-const richTextEditorCommands = {
-  bold: t('admin.legalTexts.editor.bold'),
-  italic: t('admin.legalTexts.editor.italic'),
-  underline: t('admin.legalTexts.editor.underline'),
-  paragraph: t('admin.legalTexts.editor.paragraph'),
-  heading: t('admin.legalTexts.editor.heading'),
-  bulletList: t('admin.legalTexts.editor.bulletList'),
-  clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
-} as const;
 
 export const LegalTextDetailForm = ({
   canDelete,
@@ -169,14 +159,12 @@ export const LegalTextDetailForm = ({
           <Label id="legal-text-edit-content-label" htmlFor="legal-text-edit-content">
             {t('admin.legalTexts.fields.contentHtml')}
           </Label>
-          <RichTextEditor
+          <LegalTextRichTextEditor
             id="legal-text-edit-content"
             labelId="legal-text-edit-content-label"
             value={formValues.contentHtml}
             onChange={(contentHtml) => setFormValues((current) => ({ ...current, contentHtml }))}
-            placeholder={t('admin.legalTexts.fields.contentPlaceholder')}
-            readOnly={!canUpdate}
-            commands={richTextEditorCommands}
+            disabled={!canUpdate}
           />
         </div>
 

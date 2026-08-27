@@ -34,6 +34,9 @@ export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => 
           onChange={(nextValue) => setValue('content.description', nextValue, { shouldDirty: true })}
           blockTypeOptions={blockTypeOptions}
           toolbarLabels={{
+            mode: pt('richText.mode'),
+            visualMode: pt('richText.visualMode'),
+            htmlMode: pt('richText.htmlMode'),
             blockType: pt('richText.blockType'),
             bulletList: pt('richText.bulletList'),
             orderedList: pt('richText.orderedList'),

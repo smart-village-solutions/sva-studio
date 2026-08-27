@@ -58,9 +58,9 @@ function NewsContentTextSection({
     { value: 'blockquote' as const, label: pt('richText.blockquote') },
   ];
   const toolbarLabels = {
-    blockType: pt('richText.blockType'),
-    bulletList: pt('richText.bulletList'),
-    orderedList: pt('richText.orderedList'),
+    mode: pt('richText.mode'), visualMode: pt('richText.visualMode'),
+    htmlMode: pt('richText.htmlMode'), blockType: pt('richText.blockType'),
+    bulletList: pt('richText.bulletList'), orderedList: pt('richText.orderedList'),
     bold: pt('richText.bold'),
     italic: pt('richText.italic'),
     undo: pt('richText.undo'),

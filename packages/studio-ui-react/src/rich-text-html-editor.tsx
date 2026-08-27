@@ -6,9 +6,11 @@ import { Bold, Italic, Link2, List, ListOrdered, Redo2, Undo2 } from 'lucide-rea
 
 import { Button } from './button.js';
 import { Select } from './select.js';
+import { Textarea } from './textarea.js';
 import { cn } from './utils.js';
 
-export type RichTextBlockTypeValue = 'paragraph' | 'blockquote' | `heading-${1 | 2 | 3 | 4 | 5 | 6}`;
+export type RichTextBlockTypeValue =
+  'paragraph' | 'blockquote' | `heading-${1 | 2 | 3 | 4 | 5 | 6}`;
 
 export type RichTextBlockTypeOption = Readonly<{
   value: RichTextBlockTypeValue;
@@ -16,6 +18,9 @@ export type RichTextBlockTypeOption = Readonly<{
 }>;
 
 export type RichTextHtmlEditorToolbarLabels = Readonly<{
+  mode: string;
+  visualMode: React.ReactNode;
+  htmlMode: React.ReactNode;
   blockType: string;
   bulletList: React.ReactNode;
   orderedList: React.ReactNode;
@@ -37,12 +42,14 @@ export type RichTextHtmlEditorProps = Readonly<{
   describedBy?: string;
   ariaInvalid?: boolean;
   disabled?: boolean;
+  normalizeHtml?: (value: string) => string;
   className?: string;
 }>;
 
 const createEmptyHtml = () => '<p></p>';
 
-const normalizeEditorHtml = (value: string) => (value.trim().length > 0 ? value : createEmptyHtml());
+const normalizeEditorHtml = (value: string) =>
+  value.trim().length > 0 ? value : createEmptyHtml();
 
 const SAFE_LINK_PROTOCOLS = new Set(['http', 'https', 'mailto', 'tel']);
 
@@ -61,7 +68,9 @@ const normalizeLinkHref = (value: string) => {
 };
 
 const getHeadingLevel = (value: RichTextBlockTypeValue) =>
-  value.startsWith('heading-') ? (Number(value.replace('heading-', '')) as 1 | 2 | 3 | 4 | 5 | 6) : null;
+  value.startsWith('heading-')
+    ? (Number(value.replace('heading-', '')) as 1 | 2 | 3 | 4 | 5 | 6)
+    : null;
 
 type ToolbarButtonProps = Readonly<{
   active?: boolean;
@@ -71,7 +80,13 @@ type ToolbarButtonProps = Readonly<{
   onClick: () => void;
 }>;
 
-const ToolbarButton = ({ active = false, children, label, disabled = false, onClick }: ToolbarButtonProps) => (
+const ToolbarButton = ({
+  active = false,
+  children,
+  label,
+  disabled = false,
+  onClick,
+}: ToolbarButtonProps) => (
   <Button
     type="button"
     size="icon"
@@ -100,8 +115,10 @@ export const RichTextHtmlEditor = ({
   describedBy,
   ariaInvalid = false,
   disabled = false,
+  normalizeHtml,
   className,
 }: RichTextHtmlEditorProps) => {
+  const [mode, setMode] = React.useState<'visual' | 'html'>('visual');
   const headingLevels = React.useMemo(
     () =>
       blockTypeOptions
@@ -109,7 +126,10 @@ export const RichTextHtmlEditor = ({
         .filter((level): level is 1 | 2 | 3 | 4 | 5 | 6 => level !== null),
     [blockTypeOptions]
   );
-  const normalizedValue = React.useMemo(() => normalizeEditorHtml(value), [value]);
+  const normalizedValue = React.useMemo(
+    () => normalizeEditorHtml(normalizeHtml ? normalizeHtml(value) : value),
+    [normalizeHtml, value]
+  );
   const editor = useEditor({
     immediatelyRender: false,
     editable: disabled === false,
@@ -153,7 +173,8 @@ export const RichTextHtmlEditor = ({
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
-      onChange(currentEditor.getHTML());
+      const nextHtml = currentEditor.getHTML();
+      onChange(normalizeHtml ? normalizeHtml(nextHtml) : nextHtml);
     },
   });
 
@@ -194,10 +215,7 @@ export const RichTextHtmlEditor = ({
     }
 
     const currentHref = editor.getAttributes('link').href ?? '';
-    const nextHref = globalThis.window?.prompt(
-      toolbarLabels.linkPrompt,
-      currentHref
-    );
+    const nextHref = globalThis.window?.prompt(toolbarLabels.linkPrompt, currentHref);
 
     if (nextHref === null) {
       return;
@@ -212,12 +230,56 @@ export const RichTextHtmlEditor = ({
     editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
   }, [editor, toolbarLabels.linkPrompt]);
 
+  const showVisualMode = React.useCallback(() => {
+    if (!editor) {
+      return;
+    }
+
+    editor.commands.setContent(normalizedValue, {
+      emitUpdate: false,
+    });
+    const normalizedHtml = editor.getHTML();
+    if (normalizedHtml !== normalizedValue) {
+      onChange(normalizedHtml);
+    }
+    setMode('visual');
+  }, [editor, normalizedValue, onChange]);
+
+  const htmlModeLabelId = `${id}-html-mode-label`;
+  const formattingDisabled = !editor || disabled || mode === 'html';
+
   return (
     <div className={cn('overflow-hidden rounded-md border border-input bg-background', className)}>
       <div className="flex flex-wrap items-stretch border-b border-input">
+        <div
+          role="group"
+          aria-label={toolbarLabels.mode}
+          className="flex items-stretch border-r border-border"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === 'visual' ? 'secondary' : 'tertiary'}
+            aria-pressed={mode === 'visual'}
+            className="h-10 min-h-10 rounded-none border-0"
+            onClick={showVisualMode}
+          >
+            {toolbarLabels.visualMode}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === 'html' ? 'secondary' : 'tertiary'}
+            aria-pressed={mode === 'html'}
+            className="h-10 min-h-10 rounded-none border-0 border-l border-border"
+            onClick={() => setMode('html')}
+          >
+            {toolbarLabels.htmlMode}
+          </Button>
+        </div>
         <Select
           aria-label={toolbarLabels.blockType}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           className="h-10 w-auto min-w-40 rounded-none border-0 border-r border-border bg-background text-sm shadow-none focus-visible:ring-0"
           value={activeFormat}
           onChange={(event) => {
@@ -255,7 +317,7 @@ export const RichTextHtmlEditor = ({
         <ToolbarButton
           label={String(toolbarLabels.bulletList)}
           active={editor?.isActive('bulletList') ?? false}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
         >
           <List className="h-4 w-4" />
@@ -263,7 +325,7 @@ export const RichTextHtmlEditor = ({
         <ToolbarButton
           label={String(toolbarLabels.orderedList)}
           active={editor?.isActive('orderedList') ?? false}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
         >
           <ListOrdered className="h-4 w-4" />
@@ -271,7 +333,7 @@ export const RichTextHtmlEditor = ({
         <ToolbarButton
           label={String(toolbarLabels.link)}
           active={editor?.isActive('link') ?? false}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           onClick={applyLink}
         >
           <Link2 className="h-4 w-4" />
@@ -279,7 +341,7 @@ export const RichTextHtmlEditor = ({
         <ToolbarButton
           label={String(toolbarLabels.bold)}
           active={editor?.isActive('bold') ?? false}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           onClick={() => editor?.chain().focus().toggleBold().run()}
         >
           <Bold className="h-4 w-4" />
@@ -287,27 +349,52 @@ export const RichTextHtmlEditor = ({
         <ToolbarButton
           label={String(toolbarLabels.italic)}
           active={editor?.isActive('italic') ?? false}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           onClick={() => editor?.chain().focus().toggleItalic().run()}
         >
           <Italic className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           label={String(toolbarLabels.undo)}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           onClick={() => editor?.chain().focus().undo().run()}
         >
           <Undo2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           label={String(toolbarLabels.redo)}
-          disabled={!editor || disabled}
+          disabled={formattingDisabled}
           onClick={() => editor?.chain().focus().redo().run()}
         >
           <Redo2 className="h-4 w-4" />
         </ToolbarButton>
       </div>
-      <EditorContent editor={editor} />
+      <div hidden={mode === 'html'}>
+        <EditorContent editor={editor} />
+      </div>
+      {mode === 'html' ? (
+        <>
+          <span id={htmlModeLabelId} className="sr-only">
+            {toolbarLabels.htmlMode}
+          </span>
+          <Textarea
+            id={`${id}-html`}
+            aria-labelledby={labelId ? `${labelId} ${htmlModeLabelId}` : htmlModeLabelId}
+            aria-describedby={describedBy}
+            aria-invalid={ariaInvalid || undefined}
+            value={value}
+            readOnly={disabled}
+            spellCheck={false}
+            className="min-h-56 resize-y rounded-none border-0 font-mono text-sm focus-visible:ring-inset focus-visible:ring-offset-0"
+            onChange={(event) => onChange(event.currentTarget.value)}
+            onBlur={() => {
+              if (normalizedValue !== value) {
+                onChange(normalizedValue);
+              }
+            }}
+          />
+        </>
+      ) : null}
     </div>
   );
 };

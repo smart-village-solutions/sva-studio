@@ -31,6 +31,9 @@ export const genericItemsTranslationsDeMessages = {
     },
   },
   richText: {
+    mode: 'Editoransicht',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
     blockType: 'Textformat',
     paragraph: 'Absatz',
     heading2: 'Überschrift 2',

@@ -228,6 +228,9 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
   },
   richText: {
+    mode: 'Editoransicht',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',
     heading4: 'Überschrift 4',
@@ -603,6 +606,9 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     mediaPickerMetadataSaveError: 'The metadata could not be saved.',
   },
   richText: {
+    mode: 'Editor view',
+    visualMode: 'WYSIWYG',
+    htmlMode: 'HTML',
     heading2: 'Heading 2',
     heading3: 'Heading 3',
     heading4: 'Heading 4',

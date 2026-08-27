@@ -81,7 +81,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     updatedAt: 'Aktualisiert',
   },
   richText: {
-    blockType: 'Textformat',
+    mode: 'Editoransicht', visualMode: 'WYSIWYG', htmlMode: 'HTML', blockType: 'Textformat',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',
     heading4: 'Überschrift 4',

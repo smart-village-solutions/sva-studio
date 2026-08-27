@@ -14,24 +14,14 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
-import { RichTextEditor } from '../../../components/RichTextEditor';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { t } from '../../../i18n';
 import { parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
 import type { CreateLegalTextPayload, IamHttpError } from '../../../lib/iam-api';
 import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
+import { LegalTextRichTextEditor } from './-legal-text-rich-text-editor';
 
 type LegalTextStatus = 'draft' | 'valid' | 'archived';
-
-const richTextEditorCommands = {
-  bold: t('admin.legalTexts.editor.bold'),
-  italic: t('admin.legalTexts.editor.italic'),
-  underline: t('admin.legalTexts.editor.underline'),
-  paragraph: t('admin.legalTexts.editor.paragraph'),
-  heading: t('admin.legalTexts.editor.heading'),
-  bulletList: t('admin.legalTexts.editor.bulletList'),
-  clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
-} as const;
 
 const splitTargetIds = (value: string): string[] =>
   Array.from(
@@ -292,13 +282,11 @@ export const LegalTextCreatePage = () => {
             <Label id="legal-text-create-content-label" htmlFor="legal-text-create-content">
               {t('admin.legalTexts.fields.contentHtml')}
             </Label>
-            <RichTextEditor
+            <LegalTextRichTextEditor
               id="legal-text-create-content"
               labelId="legal-text-create-content-label"
               value={formValues.contentHtml}
               onChange={(contentHtml) => setFormValues((current) => ({ ...current, contentHtml }))}
-              placeholder={t('admin.legalTexts.fields.contentPlaceholder')}
-              commands={richTextEditorCommands}
             />
           </div>
 

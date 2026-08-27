@@ -73,8 +73,9 @@
 - **Route / Typ / Owner:** `/admin/legal-texts/new`, Anlegen, Host.
 - **Nutzerziel:** Eine neue sprach- und versionsbezogene Rechtstextfassung erstellen.
 - **Produktfakten:** Felder sind Name, Version, Sprache, Status, Veröffentlichungszeitpunkt,
-  Zielrollen, Zielgruppen und HTML-Inhalt. Ein eingeschränkter Richtext-Editor bietet Überschriften,
-  Absätze, Listen und Textformatierung.
+  Zielrollen, Zielgruppen und HTML-Inhalt. Der gemeinsame Richtext-Editor bietet Überschriften,
+  Absätze, Listen, Links und Textformatierung. Über den Umschalter kann derselbe Inhalt wahlweise
+  visuell oder als rohes HTML bearbeitet werden; beim Wechsel zurück wird das HTML bereinigt.
 - **Validierung:** Eine gültige Version benötigt ein Veröffentlichungsdatum in Europe/Berlin; eine
   bereits vorhandene Kombination erzeugt einen Konflikt.
 - **Leitfragen / Stichwörter:** Ist es eine neue Version oder Sprachvariante? Wer muss akzeptieren?
@@ -88,6 +89,7 @@
 - **Nutzerziel:** Inhalt und Metadaten einer konkreten Rechtstextversion aktualisieren.
 - **Produktfakten:** Bearbeitbar sind dieselben fachlichen Felder wie bei der Anlage. Löschen
   entfernt die Version dauerhaft; bereits dokumentierte Akzeptanzen bleiben unverändert bestehen.
+  Die visuelle und die HTML-Ansicht stehen auch beim Bearbeiten zur Verfügung.
 - **Leitfragen / Stichwörter:** Darf eine bereits gültige Fassung verändert werden oder ist eine
   neue Version nötig? Was bleibt nach dem Löschen nachweisbar? Rechtstext bearbeiten, Akzeptanz,
   Version löschen.

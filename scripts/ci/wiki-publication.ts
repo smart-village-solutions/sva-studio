@@ -19,7 +19,7 @@ import {
 const DEFAULT_REPOSITORY_URL = 'https://github.com/smart-village-solutions/sva-studio';
 const DEFAULT_SOURCE_BRANCH = 'main';
 const SOURCE_ARTIFACT_LABEL = ' (Quellartefakt)';
-const RESERVED_WIKI_SLUGS = new Set(['home', '_sidebar']);
+const RESERVED_WIKI_SLUGS = new Set(['home']);
 
 const markdownProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkStringify, {
   bullet: '-',

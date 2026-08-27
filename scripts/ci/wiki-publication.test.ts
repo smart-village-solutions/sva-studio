@@ -199,6 +199,25 @@ describe('Wiki publication', () => {
     }
   });
 
+  it('accepts the expected Wiki remote without an optional .git suffix', () => {
+    const rootDir = mkdtempSync(path.join(os.tmpdir(), 'wiki-publication-'));
+    try {
+      execFileSync('git', ['init', '--quiet'], { cwd: rootDir });
+      execFileSync(
+        'git',
+        ['remote', 'add', 'origin', 'https://github.com/smart-village-solutions/sva-studio.wiki'],
+        { cwd: rootDir }
+      );
+      writeFileSync(path.join(rootDir, 'old-page.md'), '# Alt\n');
+
+      writeWikiPublication({ files: new Map(), slugs: new Map() }, rootDir);
+
+      expect(existsSync(path.join(rootDir, 'old-page.md'))).toBe(false);
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
   it('refuses to overwrite a non-Wiki directory', () => {
     const rootDir = mkdtempSync(path.join(os.tmpdir(), 'wiki-publication-'));
     try {

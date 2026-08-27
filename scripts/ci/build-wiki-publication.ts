@@ -11,7 +11,7 @@ interface BuildWikiPublicationOptions {
   outputPath: string;
 }
 
-const EXPECTED_WIKI_REMOTE_PATH = '/smart-village-solutions/sva-studio.wiki.git';
+const EXPECTED_WIKI_REMOTE_PATH = '/smart-village-solutions/sva-studio.wiki';
 
 export const parseBuildWikiPublicationOptions = (
   args: readonly string[]
@@ -74,7 +74,10 @@ const assertSafeOutputDirectory = (outputDirectory: string): void => {
     }
     if (
       remote.hostname.toLowerCase() !== 'github.com' ||
-      remote.pathname.toLowerCase().replace(/\/$/u, '') !== EXPECTED_WIKI_REMOTE_PATH
+      remote.pathname
+        .toLowerCase()
+        .replace(/\/$/u, '')
+        .replace(/\.git$/u, '') !== EXPECTED_WIKI_REMOTE_PATH
     ) {
       throw new Error(
         `Wiki-Ausgabeverzeichnis verweist nicht auf das erwartete SVA-Studio-Wiki: ${resolved}`

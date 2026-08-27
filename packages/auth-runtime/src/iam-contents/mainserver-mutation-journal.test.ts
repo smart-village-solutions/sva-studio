@@ -4,10 +4,12 @@ import {
   annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
   finalizeMainserverMutationJournal,
-  hasUnresolvedMainserverOwnershipTransfer,
   loadMainserverMutationJournal,
-  markMainserverMutationReconciliationRequired,
 } from './mainserver-mutation-journal.js';
+import {
+  hasUnresolvedMainserverOwnershipTransfer,
+  markMainserverMutationReconciliationRequired,
+} from './mainserver-ownership-transfer-reconciliation.js';
 
 const state = vi.hoisted(() => ({ query: vi.fn(), withInstanceScopedDb: vi.fn() }));
 

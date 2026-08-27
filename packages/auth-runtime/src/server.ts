@@ -154,13 +154,15 @@ export {
   annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
   finalizeMainserverMutationJournal,
-  hasUnresolvedMainserverOwnershipTransfer,
   loadMainserverMutationJournal,
-  markMainserverMutationReconciliationRequired,
   type MainserverMutationJournalEntry,
   type MainserverMutationProviderOutcome,
   type MainserverMutationReconciliationStatus,
 } from './iam-contents/mainserver-mutation-journal.js';
+export {
+  hasUnresolvedMainserverOwnershipTransfer,
+  markMainserverMutationReconciliationRequired,
+} from './iam-contents/mainserver-ownership-transfer-reconciliation.js';
 export {
   loadMainserverAuthoringDiagnostics,
   type MainserverAuthoringDiagnostics,

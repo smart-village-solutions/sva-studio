@@ -84,7 +84,6 @@ export const useContentOwnershipDialogState = (input: {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const latestRequest = React.useRef(0);
-
   const refreshTargets = React.useCallback(async () => {
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
@@ -110,9 +109,7 @@ export const useContentOwnershipDialogState = (input: {
       if (latestRequest.current === requestId) setLoading(false);
     }
   }, [input.labels.loadError, input.loadTargets, input.pageSize, page, search, targetType]);
-
   useRefreshWhenOpen(input.open, refreshTargets);
-
   const submission = useTransferSubmission({
     selected,
     confirmed,
@@ -121,7 +118,6 @@ export const useContentOwnershipDialogState = (input: {
     ...(input.resolveTransferError ? { resolveTransferError: input.resolveTransferError } : {}),
     setError,
   });
-
   return {
     targetType,
     setTargetType: (value) => {

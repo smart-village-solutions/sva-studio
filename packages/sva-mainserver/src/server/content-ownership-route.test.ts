@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   authorize: vi.fn(),
   finalize: vi.fn(),
   resolveMutationActor: vi.fn(),
+  resolveResourceAccess: vi.fn(),
   getNews: vi.fn(),
   getEvent: vi.fn(),
   getPoi: vi.fn(),
@@ -31,11 +32,11 @@ vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   ),
   withMainserverContentOwnershipLock: state.withLock,
 }));
-vi.mock('./mutation-principal.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./mutation-principal.js')>()),
+vi.mock('./mutation-principal.js', () => ({
   authorizeMainserverExistingContent: state.authorize,
   finalizeMainserverMutation: state.finalize,
   resolveMainserverMutationActor: state.resolveMutationActor,
+  resolveMainserverResourceAccess: state.resolveResourceAccess,
 }));
 vi.mock('./service.js', () => ({
   getSvaMainserverNews: state.getNews,
@@ -86,6 +87,7 @@ describe('Mainserver content ownership route', () => {
     vi.clearAllMocks();
     state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: 'instance-1' } });
     state.resolveMutationActor.mockResolvedValue(actor);
+    state.resolveResourceAccess.mockResolvedValue({ 'content.transferOwnership': true });
     state.authorize.mockResolvedValue({ authorizationMode: 'exact' });
     state.getNews.mockResolvedValue({
       id: 'news-1',
@@ -140,9 +142,13 @@ describe('Mainserver content ownership route', () => {
       data: [{ displayName: 'Zielorganisation' }],
       pagination: { total: 1 },
     });
-    expect(state.authorize).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'content.transferOwnership', contentId: 'news-1' })
+    expect(state.resolveResourceAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actions: ['content.transferOwnership'],
+        contentId: 'news-1',
+      })
     );
+    expect(state.authorize).not.toHaveBeenCalled();
     expect(state.listTargets).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'organization', currentDataProviderId: 'provider-source' })
     );

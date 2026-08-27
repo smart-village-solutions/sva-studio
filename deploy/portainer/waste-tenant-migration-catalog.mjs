@@ -18,10 +18,7 @@ const mainserverRevisionTriggerSpecs = Object.freeze([
     ],
   ],
   ['waste_location_tour_links', ['location_id', 'tour_id']],
-  [
-    'waste_location_tour_pickup_dates',
-    ['location_id', 'tour_id', 'pickup_date', 'note'],
-  ],
+  ['waste_location_tour_pickup_dates', ['location_id', 'tour_id', 'pickup_date', 'note']],
   ['waste_tour_assignments', ['tour_id', 'pickup_date', 'note']],
   ['waste_tour_assignment_locations', ['assignment_id', 'collection_location_id']],
   [
@@ -84,8 +81,29 @@ export const wasteTenantMigrations = Object.freeze([
           RAISE EXCEPTION 'waste_migration_tour_date_shift_data_present';
         END IF;
       END $$;`,
-      'ALTER TABLE public.waste_tour_date_shifts ALTER COLUMN original_date TYPE DATE USING original_date::date;',
-      'ALTER TABLE public.waste_tour_date_shifts ALTER COLUMN actual_date TYPE DATE USING actual_date::date;',
+      `DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'waste_tour_date_shifts'
+            AND column_name = 'original_date'
+            AND data_type <> 'date'
+        ) THEN
+          EXECUTE 'ALTER TABLE public.waste_tour_date_shifts ALTER COLUMN original_date TYPE DATE USING original_date::date';
+        END IF;
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'waste_tour_date_shifts'
+            AND column_name = 'actual_date'
+            AND data_type <> 'date'
+        ) THEN
+          EXECUTE 'ALTER TABLE public.waste_tour_date_shifts ALTER COLUMN actual_date TYPE DATE USING actual_date::date';
+        END IF;
+      END $$;`,
       'CREATE UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_specific_origin ON public.waste_tour_date_shifts(tour_id, original_date) WHERE has_year;',
       'CREATE UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_annual_origin ON public.waste_tour_date_shifts(tour_id, (EXTRACT(MONTH FROM original_date)), (EXTRACT(DAY FROM original_date))) WHERE NOT has_year;',
     ]),

@@ -92,6 +92,7 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[1]?.statements.join('\n')).toContain(
       'ALTER COLUMN original_date TYPE DATE'
     );
+    expect(wasteTenantMigrations[1]?.statements.join('\n')).toContain("data_type <> 'date'");
     expect(wasteTenantMigrations[1]?.verification.sql).toContain('pg_get_indexdef');
     expect(wasteTenantMigrations[1]?.verification.sql).toContain('pg_get_expr');
     expect(wasteTenantMigrations[1]?.verification.sql).toContain('indnkeyatts = 3');
@@ -120,9 +121,7 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[3]?.statements.join('\n')).toContain(
       'SECURITY DEFINER SET search_path = pg_catalog'
     );
-    expect(wasteTenantMigrations[3]?.verification.sql).toContain(
-      'FROM pg_trigger AS trigger_row'
-    );
+    expect(wasteTenantMigrations[3]?.verification.sql).toContain('FROM pg_trigger AS trigger_row');
     expect(wasteTenantMigrations[3]?.verification.values).toEqual([28]);
   });
 

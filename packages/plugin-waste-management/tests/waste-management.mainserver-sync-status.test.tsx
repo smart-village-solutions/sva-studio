@@ -37,6 +37,28 @@ describe('WasteManagementMainserverSyncStatus', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('keeps a newer failed attempt actionable even when the last successful revision matches', () => {
+    render(
+      <WasteManagementMainserverSyncStatus
+        {...baseProps}
+        status={{
+          sourceState: 'clean',
+          expectedYearWindow: [2026, 2027],
+          lastSuccessfulSync: {
+            id: 'job-1',
+            status: 'succeeded',
+            sourceRevision: '7',
+            yearWindow: [2026, 2027],
+          },
+          latestAttempt: { id: 'job-2', status: 'failed' },
+        }}
+      />
+    );
+
+    expect(screen.getByText('page.syncStatus.failedTitle')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'page.syncStatus.startAction' })).toBeTruthy();
+  });
+
   it('keeps the highlighted action inside the pending status block', () => {
     render(
       <WasteManagementMainserverSyncStatus

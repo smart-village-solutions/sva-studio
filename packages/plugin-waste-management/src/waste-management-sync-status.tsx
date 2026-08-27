@@ -209,7 +209,8 @@ export const WasteManagementMainserverSyncStatus = (
       />
     );
   }
-  if (props.status.sourceState === 'clean') {
+  const latestAttemptFailed = props.status.latestAttempt?.status === 'failed';
+  if (props.status.sourceState === 'clean' && !latestAttemptFailed) {
     return <SyncStatusClean pt={props.pt} status={props.status} />;
   }
   return (

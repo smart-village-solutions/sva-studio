@@ -11,3 +11,5 @@ docs/routing.md
 :(glob)docs/development/**
 :(glob)docs/governance/**
 :(glob)docs/guides/**
+:(glob)docs/operations/**
+:(glob)docs/reference/**

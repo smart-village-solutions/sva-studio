@@ -157,7 +157,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 4. **CSS**: Design-System verwenden, keine inline-styles (außer dynamische Daten)
 5. **UI-Standard**: Neue UI mit `shadcn/ui` bauen; keine parallelen Basis-Komponenten ohne dokumentierte Architekturentscheidung
 6. **Accessibility**: WCAG 2.1 AA compliant
-7. **Docs**: Alle Änderungen müssen relevante Dokumentation aktualisieren (Code, Architektur, Guides)
+7. **Docs**: Alle Änderungen müssen die relevante aktuelle Dokumentation im zuständigen Bereich aktualisieren
 8. **Server-Package-Runtime**: Bei serverseitigen Workspace-Packages keine endungslosen relativen Runtime-Imports; `pnpm check:server-runtime` muss für entsprechende Änderungen grün bleiben
 9. **Action-IDs**: Autorisierbare Actions immer fully-qualified als `<namespace>.<actionName>` modellieren; keine neuen Kurzformen ohne Namespace, Plugins nur im eigenen Namespace
 10. **DB-Schema präsent halten**: Vor DB-/Migrationsänderungen `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` prüfen; nach jeder Schemaänderung den Snapshot und die Doku fortschreiben
@@ -166,7 +166,10 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 
 ### Docs Regeln
 
-- **Ordner**: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
+- **Einstieg**: `docs/README.md` und die Bereichsindizes unter `docs/{development,operations,reference,governance}/README.md` sind die Navigation der aktuellen lokalen Wissensbasis
+- **Aktuelle Dokumentation**: Neue Dokumente gehören nach Zweck in `docs/architecture/`, `docs/adr/`, `docs/development/`, `docs/operations/`, `docs/reference/`, `docs/api/` oder `docs/governance/`
+- **Übergangsbereich**: `docs/guides/` nimmt keine neuen allgemeinen Dokumente auf. Das Inventar `docs/guides/README.md` steuert die Migration; `docs/guides/studio-rollout-process.md` bleibt der stabile kanonische Rolloutpfad
+- **Nachweise und Historie**: Reports, Staging- und PR-Unterlagen bleiben in den dafür vorgesehenen, nicht normativen Bereichen
 - **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
 - **Sprache**: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
 - **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren

@@ -71,6 +71,15 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 - Store staging docs only in: `docs/staging/YYYY-MM/`
 - Store PR docs only in: `docs/pr/<number>/`
 - Store operational reports only in: `docs/reports/`
+- Store current documentation by ownership in:
+  - `docs/architecture/` or `docs/adr/` for architecture and decisions
+  - `docs/development/` for implementation, local setup, and testing
+  - `docs/operations/` for executable operational runbooks
+  - `docs/reference/` or `docs/api/` for stable contracts and schemas
+  - `docs/governance/` for process and approval rules
+- Register new current documents in the responsible area index and keep `docs/README.md` as the central entry point
+- Treat `docs/guides/` as a migration-only area. Do not add new general guides; maintain `docs/guides/README.md` until PR 4 completes the migration
+- Keep `docs/guides/studio-rollout-process.md` at its current path as the only normative regular Studio rollout procedure
 
 ### ❌ FORBIDDEN
 - New markdown files in repository root (except: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`)
@@ -79,6 +88,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
   - `docs/SECTION_7_VALIDATION_REPORT.md`
   - `docs/pr45-*.md`
   - `docs/pr-45-*.md`
+- New general documentation under `docs/guides/` outside the versioned migration inventory
 - Root-level debug scripts like:
   - `debug_test.ts`
   - `test_session_loading.ts`

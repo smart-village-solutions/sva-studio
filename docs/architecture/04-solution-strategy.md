@@ -25,6 +25,7 @@ Architekturprinzipien auf IST-Basis.
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Gemeinsame serverseitige Fachverträge mehrerer Apps liegen im owning Workspace-Package; direkte Quellimporte zwischen unterschiedlichen Verzeichnissen unter `apps/` sind nicht zulässig
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
+- Die lokale technische Dokumentation folgt denselben Ownership-Grenzen wie das System: Architektur, Entwicklung, Betrieb, Referenz und Governance besitzen klar benannte Einstiege und Pflege-Trigger. Zeitgebundene Nachweise und externe Anwenderdokumentation bleiben getrennt.
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
 - Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
@@ -241,3 +242,9 @@ Produktive Seiten deklarieren ihre stabile Dokumentations-ID direkt im kanonisch
 oder einen begründeten Ausschluss. Ein generierter Katalog verbindet diesen Vertrag mit einem
 eigenständig veröffentlichten Hilfe-Repository. Das Studio lädt stets dessen aktuellen Stand über
 eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht eingeführt.
+
+### Ergänzung 2026-08: Lokale Dokumentationsarchitektur
+
+`docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität.
+
+Der gemischte Bereich `docs/guides/` wird anhand eines vollständigen Alt-/Neu-Pfad-Inventars kontrolliert abgebaut. Bis zur Migration bleiben die Altpfade gültig. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.

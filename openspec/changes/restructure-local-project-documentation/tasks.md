@@ -18,14 +18,14 @@
 
 ## 2. PR 2 – Informationsarchitektur und Ownership
 
-- [ ] 2.1 Bereichsindizes für `development/`, `operations/`, `reference/` und `governance/` mit Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger anlegen
-- [ ] 2.2 `docs/guides/README.md` als vollständiges, befristetes Migrationsinventar mit Altpfad, Zielbereich, geplantem Zielpfad und Konsolidierungsbedarf erstellen
-- [ ] 2.3 `docs/README.md` und die Bereichsindizes gegenseitig konsistent und vollständig verlinken
-- [ ] 2.4 `AGENTS.md`, `DEVELOPMENT_RULES.md` und bei Bedarf `CONTRIBUTING.md` auf die neue Ablage- und Pflegelogik ausrichten
-- [ ] 2.5 Die arc42-Abschnitte 04, 08 und 11 um Dokumentationsstrategie, Pflegevertrag und verbleibende Legacy-Risiken ergänzen
-- [ ] 2.6 Sicherstellen, dass der kanonische Studio-Rollout ausschließlich in `docs/guides/studio-rollout-process.md` normativ und an diesem Pfad stabil bleibt
-- [ ] 2.7 `pnpm check:file-placement`, `pnpm check:rollout-docs`, OpenSpec strict und `git diff --check` ausführen
-- [ ] 2.8 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 1 eröffnen
+- [x] 2.1 Bereichsindizes für `development/`, `operations/`, `reference/` und `governance/` mit Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger anlegen
+- [x] 2.2 `docs/guides/README.md` als vollständiges, befristetes Migrationsinventar mit Altpfad, Zielbereich, geplantem Zielpfad und Konsolidierungsbedarf erstellen
+- [x] 2.3 `docs/README.md` und die Bereichsindizes gegenseitig konsistent und vollständig verlinken
+- [x] 2.4 `AGENTS.md`, `DEVELOPMENT_RULES.md` und bei Bedarf `CONTRIBUTING.md` auf die neue Ablage- und Pflegelogik ausrichten
+- [x] 2.5 Die arc42-Abschnitte 04, 08 und 11 um Dokumentationsstrategie, Pflegevertrag und verbleibende Legacy-Risiken ergänzen
+- [x] 2.6 Sicherstellen, dass der kanonische Studio-Rollout ausschließlich in `docs/guides/studio-rollout-process.md` normativ und an diesem Pfad stabil bleibt
+- [x] 2.7 `pnpm check:file-placement`, `pnpm check:rollout-docs`, OpenSpec strict und `git diff --check` ausführen
+- [x] 2.8 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 1 eröffnen
 
 ## 3. PR 3 – Automatischer Dokumentations-Gate
 

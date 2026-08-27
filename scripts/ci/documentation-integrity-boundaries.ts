@@ -47,7 +47,8 @@ const checkWikiLinks = (input: DocumentationIntegrityInput): DocumentationIssue[
   const issues: DocumentationIssue[] = [];
   const linkPattern = /\[[^\]]+\]\(([^)\s]+)(?:\s+[^)]*)?\)/gu;
   for (const match of input.wikiWorkflow.matchAll(linkPattern)) {
-    const target = match[1];
+    const rawTarget = match[1];
+    const target = rawTarget?.replace(/^\.\//u, '');
     if (!target?.startsWith('docs/')) {
       continue;
     }

@@ -250,7 +250,7 @@ describe('documentation integrity', () => {
     const issues = checkDocumentationIntegrity(
       createInput({
         wikiWorkflow:
-          '- [Legacy](docs/architecture/decisions/ADR-001.md)\n- [Intern](docs/reports/audit.md)\n',
+          '- [Legacy](./docs/architecture/decisions/ADR-001.md)\n- [Intern](./docs/reports/audit.md)\n',
       })
     );
 

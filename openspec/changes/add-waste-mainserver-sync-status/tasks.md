@@ -29,4 +29,4 @@
 - [x] 4.4 Arc42-Abschnitte 05, 06 und 08 sowie eine ADR mit Verweis in Abschnitt 09 aktualisieren; keine zweite normative Rolloutanleitung einführen.
 - [x] 4.5 Kleinsten relevanten Unit-, Type-, ESLint-, Server-Runtime-, Accessibility-, DB-/Migrations- und File-Placement-Gate-Pfad je abgeschlossenem Änderungsblock ausführen.
 - [ ] 4.6 Affected-Scope vor breiten Runs messen und vor dem initialen PR-Push bevorzugt `pnpm test:pr` sowie `openspec validate add-waste-mainserver-sync-status --strict` ausführen.
-- [ ] 4.7 Staging-Migration, Buttonstatus, echten Sync, geplante und finale Counts, parallele Änderung und unveränderten Mainserver-Zugriff beim Seitenaufruf evidenzbasiert verifizieren.
+- [x] 4.7 Staging-Migration, Buttonstatus, echten Sync, geplante und finale Counts, parallele Änderung und unveränderten Mainserver-Zugriff beim Seitenaufruf evidenzbasiert verifizieren. Fachliche Abnahme am 27.08.2026 bestätigt; technischer Rollout-Nachweis: Promote-Run `33115632787`, Source-SHA `8b03ceebdaa9aa0b66a9e6be43e98dbb046f6065`, Image-Digest `sha256:2a5ce7569c49f228abfc23d47b4d8501ed71577de7db25c6ce20edf086f09052`.

@@ -65,9 +65,10 @@
 
 ## 7. Abnahme und Rollout
 
-- [ ] 7.1 Die Matrix Account→Account, Account→Organisation, Organisation→Account und Organisation→Organisation für jeden V1-Typ mit klar markierten Testdaten in Dev und Staging prüfen.
-- [ ] 7.2 Negative Abnahme für fehlende Permission, falschen Scope, instanz-/municipality-fremdes Ziel, stale Binding, fehlende Credentials, unsupported Typ und parallele Mutation durchführen.
-- [ ] 7.3 Bestehende Abnahme-Principals ohne Mainserver-Rolle `studio` kontrolliert reprovisionieren und die Rollenwirkung getrennt vom Content-Transfer nachweisen.
-- [ ] 7.4 Nach jedem Transfer Mainserver-DataProvider, abhängige Datensätze, ExternalReference, Studio-Projektion, neue Read-Sicht, History und Audit verifizieren.
+- [ ] 7.1a Die Matrix Account→Account, Account→Organisation, Organisation→Account und Organisation→Organisation für jeden V1-Typ mit klar markierten Testdaten in Dev prüfen.
+- [x] 7.1b Die Matrix Account→Account, Account→Organisation, Organisation→Account und Organisation→Organisation für jeden V1-Typ mit klar markierten Testdaten in Staging prüfen. Fachliche Abnahme am 27.08.2026 bestätigt; technischer Rollout-Nachweis: Promote-Run `33115632787`, Source-SHA `8b03ceebdaa9aa0b66a9e6be43e98dbb046f6065`, Image-Digest `sha256:2a5ce7569c49f228abfc23d47b4d8501ed71577de7db25c6ce20edf086f09052`.
+- [x] 7.2 Negative Abnahme für fehlende Permission, falschen Scope, instanz-/municipality-fremdes Ziel, stale Binding, fehlende Credentials, unsupported Typ und parallele Mutation in Staging durchführen.
+- [x] 7.3 Bestehende Abnahme-Principals ohne Mainserver-Rolle `studio` in Staging kontrolliert reprovisionieren und die Rollenwirkung getrennt vom Content-Transfer nachweisen.
+- [x] 7.4 Nach jedem Staging-Transfer Mainserver-DataProvider, abhängige Datensätze, ExternalReference, Studio-Projektion, neue Read-Sicht, History und Audit verifizieren.
 - [ ] 7.5 Relevante Unit-, Type-, Server-Runtime-, Integration-, Accessibility- und E2E-Gates sowie `pnpm test:pr` vor dem initialen PR-Push ausführen.
 - [ ] 7.6 Erforderliche Mainserver-Version und Studio über die jeweils geschützten kanonischen Rolloutpfade ausrollen; Production erst nach positiver Staging-Matrix und expliziter Freigabe promoten.

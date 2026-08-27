@@ -64,13 +64,28 @@
 - [x] 5.6 Kollisions-, Link-, Anker-, Asset-, Raw-Redirect-, Home- und Sidebar-Vertrag mit fokussierten Vitest-Fixtures absichern
 - [x] 5.7 `pnpm check:docs` um die gerenderte Wiki-Publikationsgrenze erweitern und den Workflow vor dem Push gegen das erzeugte Ergebnis prüfen lassen
 - [x] 5.8 Fokussierte Tests, `pnpm check:docs`, Script-Typecheck, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` ausführen
-- [ ] 5.9 Den Korrektur-PR von aktuellem `origin/main` eröffnen, regulär reviewen und erst nach grünen terminalen Gates sowie geschlossenen Threads mergen
-- [ ] 5.10 Nach dem Merge Home, Aufgabenpfade, Bereichseinstiege und Stichproben gerenderter Seiten live prüfen; Markdown-Raw-Redirects müssen ausgeschlossen sein
+- [x] 5.9 Den Korrektur-PR von aktuellem `origin/main` eröffnen, regulär reviewen und erst nach grünen terminalen Gates sowie geschlossenen Threads mergen
+- [x] 5.10 Nach dem Merge Home, Aufgabenpfade, Bereichseinstiege und Stichproben gerenderter Seiten live prüfen; Markdown-Raw-Redirects müssen ausgeschlossen sein
 
 ## 6. Abschlussnachweis
 
-- [ ] 6.1 Für jeden der vier geplanten PRs und den Abschlusskorrektur-PR Merge-Commit, terminale CI, Review-Status und geschlossene Threads dokumentieren
-- [ ] 6.2 Auf dem finalen `main`-Stand `pnpm check:docs`, `pnpm check:file-placement` und `pnpm check:rollout-docs` erneut ausführen
-- [ ] 6.3 Den Wiki-Sync nach dem Korrektur-PR prüfen und nachweisen, dass nur die aktuelle freigegebene Wissensbasis als gerenderte Wiki-Seiten publiziert wurde
-- [ ] 6.4 Sicherstellen, dass Seitenkatalog, Starterpaket, Sync-Vertrag und externe Anwenderdokumentationsinhalte unverändert geblieben sind
-- [ ] 6.5 Die Checkliste erst nach vollständiger Evidenz aktualisieren und den Change anschließend separat archivieren
+- [x] 6.1 Für jeden der vier geplanten PRs und den Abschlusskorrektur-PR Merge-Commit, terminale CI, Review-Status und geschlossene Threads dokumentieren
+- [x] 6.2 Auf dem finalen `main`-Stand `pnpm check:docs`, `pnpm check:file-placement` und `pnpm check:rollout-docs` erneut ausführen
+- [x] 6.3 Den Wiki-Sync nach dem Korrektur-PR prüfen und nachweisen, dass nur die aktuelle freigegebene Wissensbasis als gerenderte Wiki-Seiten publiziert wurde
+- [x] 6.4 Sicherstellen, dass Seitenkatalog, Starterpaket, Sync-Vertrag und externe Anwenderdokumentationsinhalte unverändert geblieben sind
+- [x] 6.5 Die Checkliste erst nach vollständiger Evidenz aktualisieren und den Change anschließend separat archivieren
+
+### Abschlussnachweis vom 27. August 2026
+
+| Block | PR | Finaler Head | Merge-Commit | Terminale CI | Review-Threads |
+| --- | ---: | --- | --- | --- | --- |
+| PR 1 – Publikationsoberfläche | #1164 | `bd9e5b16e7b5` | `3772ffa949f3` | 19 erfolgreich, 1 übersprungen, 0 offen/fehlgeschlagen | 0 offen, 1 erledigt |
+| PR 2 – Informationsarchitektur | #1167 | `6000532ffa15` | `63827da218f6` | 16 erfolgreich, 1 übersprungen, 0 offen/fehlgeschlagen | 0 offen, 1 erledigt |
+| PR 3 – Dokumentations-Gate | #1169 | `7b25f693e11e` | `f07617a9ddc0` | 22 erfolgreich, 1 übersprungen, 0 offen/fehlgeschlagen | 0 offen, 9 erledigt |
+| PR 4 – Inhaltsmigration | #1171 | `8843885edaa2` | `2fd941e5d9c7` | 23 erfolgreich, 1 übersprungen, 0 offen/fehlgeschlagen | 0 offen, keine Threads |
+| Abschlusskorrektur – Wiki | #1173 | `09005db74522` | `fba3447e155f` | 22 erfolgreich, 1 übersprungen, 0 offen/fehlgeschlagen | 0 offen, 9 erledigt |
+
+- Der finale `main`-Stand `fba3447e155f` bestand `pnpm check:docs`, `pnpm check:file-placement`, `pnpm check:rollout-docs` und die strikte Change-Validierung.
+- Wiki-Sync-Lauf `33074480577` publizierte aus dem Merge-Commit erfolgreich den Wiki-Commit `9ac8eee22bc0`. Ein erneuter Build aus demselben `main`-Stand erzeugte 205 gerenderte Root-Seiten ohne Unterordner und ohne Diff zum live geklonten Wiki.
+- Home, alle Aufgabenpfade, alle sechs Bereichseinstiege sowie Stichproben aus Entwicklung, Review, Rollout, Incident Response, Security und Dokumentations-Gate lieferten HTTP 200 als gerenderte GitHub-Wiki-Seiten; keiner der geprüften Pfade leitete auf Raw-, Blob- oder `.md`-Darstellungen um.
+- Die Dateilisten aller fünf PRs enthalten keine Änderungen unter `docs/user-documentation/` und keine Änderungen am Seitenkatalog, Starterpaket, Anwenderdokumentations-Sync-Workflow oder dessen Vertragstest.

@@ -16,7 +16,7 @@ Du schuetzt die Codebasis vor Fehlern, Sicherheitsproblemen und Architekturerosi
 - `AGENTS.md`
 - `DEVELOPMENT_RULES.md`
 - `docs/architecture/README.md` (arc42 Einstiegspunkt)
-- `docs/architecture/decisions/` (ADR-Ablage fuer signifikante Architekturentscheidungen)
+- `docs/adr/` (kanonische ADR-Ablage fuer signifikante Architekturentscheidungen)
 - `openspec/AGENTS.md` (bei Proposals, Architektur-/Systemaenderungen, Breaking Changes)
 
 ### Operating Mode
@@ -106,7 +106,7 @@ Du schuetzt die Codebasis vor Fehlern, Sicherheitsproblemen und Architekturerosi
 - Bei Entwicklung nicht auf Fehlschlaegen weiterarbeiten; zuerst Fehler beheben
 
 ### ADR-Hinweis (verbindlich)
-- Bei signifikanten Architekturentscheidungen (neue Patterns, strukturelle Layer-Aenderungen, neue Querschnitts-Abhaengigkeiten) ADR unter `docs/architecture/decisions/` einfordern oder als fehlend markieren
+- Bei signifikanten Architekturentscheidungen (neue Patterns, strukturelle Layer-Aenderungen, neue Querschnitts-Abhaengigkeiten) ADR unter `docs/adr/` einfordern oder als fehlend markieren
 
 ### GitHub Issues erstellen
 

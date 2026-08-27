@@ -308,54 +308,78 @@ describe('WasteManagementPage shell', () => {
     expect(screen.queryByText('tools.sync.startError')).toBeNull();
   });
 
-  it('ignores an older polling response that finishes after a newer response', async () => {
+  it('waits for a polling response before scheduling the next status request', async () => {
     const activeStatus = {
       sourceState: 'pending' as const,
       expectedYearWindow: [2026, 2027] as const,
       activeJob: { id: 'job-sync-1', status: 'running' as const },
     };
-    const cleanStatus = {
-      sourceState: 'clean' as const,
-      expectedYearWindow: [2026, 2027] as const,
-    };
-    const olderPoll = createDeferred<typeof activeStatus>();
-    const newerPoll = createDeferred<typeof cleanStatus>();
-    let poll: (() => void) | undefined;
-    const setIntervalSpy = vi
-      .spyOn(window, 'setInterval')
+    const pendingPoll = createDeferred<typeof activeStatus>();
+    const scheduledPolls: Array<() => Promise<void>> = [];
+    const setTimeoutSpy = vi
+      .spyOn(window, 'setTimeout')
       .mockImplementation((handler: TimerHandler, timeout?: number) => {
-        if (timeout === 3_000) poll = handler as () => void;
-        return 1;
+        if (timeout === 3_000) scheduledPolls.push(handler as () => Promise<void>);
+        return scheduledPolls.length;
       });
-    const clearIntervalSpy = vi.spyOn(window, 'clearInterval').mockImplementation(() => undefined);
+    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout').mockImplementation(() => undefined);
     getWasteMainserverSyncStatusMock
       .mockResolvedValueOnce(activeStatus)
-      .mockImplementationOnce(() => olderPoll.promise)
-      .mockImplementationOnce(() => newerPoll.promise);
+      .mockImplementationOnce(() => pendingPoll.promise);
 
     try {
       render(<WasteManagementPage />);
       expect(await screen.findByText('page.syncStatus.runningTitle')).toBeTruthy();
+      await waitFor(() => expect(scheduledPolls).toHaveLength(1));
+
+      act(() => void scheduledPolls[0]?.());
+      expect(getWasteMainserverSyncStatusMock).toHaveBeenCalledTimes(2);
+      expect(scheduledPolls).toHaveLength(1);
+
+      await act(async () => {
+        pendingPoll.resolve(activeStatus);
+        await pendingPoll.promise;
+      });
+      await waitFor(() => expect(scheduledPolls).toHaveLength(2));
+    } finally {
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
+    }
+  });
+
+  it('polls a clean status so in-page data changes become actionable without a remount', async () => {
+    const cleanStatus = {
+      sourceState: 'clean' as const,
+      expectedYearWindow: [2026, 2027] as const,
+    };
+    const pendingStatus = {
+      sourceState: 'pending' as const,
+      expectedYearWindow: [2026, 2027] as const,
+    };
+    let poll: (() => Promise<void>) | undefined;
+    const setTimeoutSpy = vi
+      .spyOn(window, 'setTimeout')
+      .mockImplementation((handler: TimerHandler, timeout?: number) => {
+        if (timeout === 10_000) poll = handler as () => Promise<void>;
+        return 1;
+      });
+    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout').mockImplementation(() => undefined);
+    getWasteMainserverSyncStatusMock
+      .mockResolvedValueOnce(cleanStatus)
+      .mockResolvedValueOnce(pendingStatus);
+
+    try {
+      render(<WasteManagementPage />);
+      expect(await screen.findByText('page.syncStatus.cleanTitle')).toBeTruthy();
       await waitFor(() => expect(poll).toBeTypeOf('function'));
 
-      act(() => poll?.());
-      act(() => poll?.());
-      expect(getWasteMainserverSyncStatusMock).toHaveBeenCalledTimes(3);
       await act(async () => {
-        newerPoll.resolve(cleanStatus);
-        await newerPoll.promise;
+        await poll?.();
       });
-      await waitFor(() => expect(screen.getByText('page.syncStatus.cleanTitle')).toBeTruthy());
-
-      await act(async () => {
-        olderPoll.resolve(activeStatus);
-        await olderPoll.promise;
-      });
-      expect(screen.getByText('page.syncStatus.cleanTitle')).toBeTruthy();
-      expect(screen.queryByText('page.syncStatus.runningTitle')).toBeNull();
+      expect(await screen.findByText('page.syncStatus.pendingTitle')).toBeTruthy();
     } finally {
-      setIntervalSpy.mockRestore();
-      clearIntervalSpy.mockRestore();
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
     }
   });
 });

@@ -178,11 +178,30 @@ const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
     void refresh();
   }, [enabled, refresh]);
 
+  const pollingDelayMs = status?.activeJob ? 3_000 : 10_000;
+
   useEffect(() => {
-    if (!enabled || !status?.activeJob) return;
-    const intervalId = window.setInterval(() => void refresh(), 3_000);
-    return () => window.clearInterval(intervalId);
-  }, [enabled, refresh, status?.activeJob]);
+    if (!enabled) return;
+
+    let cancelled = false;
+    let timeoutId: number | undefined;
+    const scheduleRefresh = () => {
+      timeoutId = window.setTimeout(async () => {
+        await refresh();
+        if (!cancelled) {
+          scheduleRefresh();
+        }
+      }, pollingDelayMs);
+    };
+
+    scheduleRefresh();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [enabled, pollingDelayMs, refresh]);
 
   return { error, loading, refresh, status };
 };

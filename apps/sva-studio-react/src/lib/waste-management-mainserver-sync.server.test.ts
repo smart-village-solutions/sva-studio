@@ -146,7 +146,7 @@ const withWasteClientMock = vi.hoisted(() => vi.fn());
 
 const createWasteClientContext = (state: WasteSyncClientState) => ({
   client: {
-    query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+    query: vi.fn(async (_sql: string) => ({ rowCount: 0, rows: [] })),
     release: vi.fn(),
   },
   repository: {
@@ -231,6 +231,30 @@ describe('waste-management-mainserver-sync.server', () => {
     deleteSvaMainserverWastePickupTimesMock.mockResolvedValue(undefined);
     withWasteClientMock.mockReset();
     setDefaultWasteClientState(emptyWasteClientState());
+  });
+
+  it('loads source revision and materialization data in one repeatable-read snapshot', async () => {
+    const context = createWasteClientContext(emptyWasteClientState());
+    withWasteClientMock.mockImplementationOnce(
+      async (
+        _deps: unknown,
+        _instanceId: string,
+        work: (value: ReturnType<typeof createWasteClientContext>) => Promise<unknown>
+      ) => work(context)
+    );
+
+    const result = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps: { now: () => new Date('2026-01-15T00:00:00.000Z') },
+      syncInput: { operation: 'sync-mainserver' },
+    });
+
+    expect(context.client.query.mock.calls.map(([sql]) => sql)).toEqual([
+      'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;',
+      'COMMIT;',
+    ]);
+    expect(context.repository.getWasteMainserverSourceRevision).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ sourceRevision: '7', yearWindow: [2026, 2027] });
   });
 
   it('computes create and delete sets from normalized Studio and Mainserver rows', async () => {

@@ -37,6 +37,53 @@ describe('WasteManagementMainserverSyncStatus', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('exposes loading without an assertive alert and errors as an alert', () => {
+    const { rerender } = render(
+      <WasteManagementMainserverSyncStatus {...baseProps} loading status={null} />
+    );
+
+    expect(
+      screen.getByText('page.syncStatus.loadingTitle').closest('section')?.getAttribute('aria-busy')
+    ).toBe('true');
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    rerender(<WasteManagementMainserverSyncStatus {...baseProps} error status={null} />);
+    expect(screen.getByRole('alert').textContent).toContain('page.syncStatus.errorTitle');
+  });
+
+  it('renders unknown state fail-closed with a secondary retry action', () => {
+    render(
+      <WasteManagementMainserverSyncStatus
+        {...baseProps}
+        status={{ sourceState: 'unknown', expectedYearWindow: [2026, 2027] }}
+      />
+    );
+
+    expect(screen.getByText('page.syncStatus.unknownTitle')).toBeTruthy();
+    expect(screen.queryByText('page.syncStatus.finishChangesFirst')).toBeNull();
+    expect(
+      (screen.getByRole('button', {
+        name: 'page.syncStatus.startAction',
+      }) as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+
+  it('disables repeated starts while the synchronization request is pending', () => {
+    render(
+      <WasteManagementMainserverSyncStatus
+        {...baseProps}
+        starting
+        status={{ sourceState: 'pending', expectedYearWindow: [2026, 2027] }}
+      />
+    );
+
+    expect(
+      (screen.getByRole('button', {
+        name: 'page.syncStatus.startingAction',
+      }) as HTMLButtonElement).disabled
+    ).toBe(true);
+  });
+
   it('keeps a newer failed attempt actionable even when the last successful revision matches', () => {
     render(
       <WasteManagementMainserverSyncStatus

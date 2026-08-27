@@ -19,6 +19,8 @@ Der Ausgangsstand `641a9a2f2` zeigt insbesondere:
 
 - Eine Person findet von `docs/README.md` aus die maßgebliche aktuelle Quelle nach Rolle und Zweck.
 - Wiki und Repository verwenden dieselben kanonischen Einstiege.
+- Das Wiki führt primär über konkrete Aufgaben und erst danach über Dokumentationsbereiche zur richtigen Quelle.
+- Veröffentlichte Markdown-Dokumente werden als gerenderte Wiki-Seiten ausgeliefert und nicht auf Raw-Inhalte umgeleitet.
 - Historische, generierte und evidenzbezogene Artefakte bleiben bei Bedarf versioniert, dominieren aber weder Navigation noch Wiki-Suche.
 - Jede aktuelle Dokumentationsfläche besitzt einen klaren Zweck, eine bereichsbezogene Ownership und einen Pflege-Trigger.
 - Strukturelle Drift wird früh und mit einem lokal reproduzierbaren Check erkannt.
@@ -78,7 +80,62 @@ Die Bereichsindizes verlinken jede aktuelle Markdown-Seite ihres Bereichs direkt
 
 Der Wiki-Sync verwendet eine Positivliste für die aktuelle Wissensbasis. Die Positivliste liegt als versioniertes Manifest unter `config/documentation/wiki-publication-paths.txt`; der Workflow und der spätere Dokumentationscheck konsumieren denselben Vertrag. Der Workflow kopiert nicht mehr den vollständigen `docs/`-Baum. Während der Übergangsphase darf `docs/guides/` ausschließlich so lange publiziert werden, wie ein dortiger aktueller Inhalt bereits aus einem kanonischen Bereichsindex erreichbar und als noch nicht migriert gekennzeichnet ist. Mit PR 4 entfällt dieser Übergangspfad bis auf `docs/guides/studio-rollout-process.md`.
 
-Wiki-Home und Sidebar werden aus denselben kanonischen Einstiegen wie `docs/README.md` erzeugt oder durch Vertragstests gegen diese geprüft. Die Sidebar verweist ausschließlich auf `docs/adr/`, niemals auf `docs/architecture/decisions/`.
+Wiki-Home und Sidebar werden aus denselben kanonischen Einstiegen wie `docs/README.md` erzeugt oder durch Vertragstests gegen diese geprüft. Die Sidebar verweist ausschließlich auf den kanonischen ADR-Bestand, niemals auf `docs/architecture/decisions/`.
+
+### Live-Abnahme nach PR 4
+
+Die Abschlussprüfung hat gezeigt, dass GitHub Wiki verschachtelte Repository-Pfade nicht als normale Wiki-Seiten behandelt. Ein Aufruf wie `/wiki/docs/README.md` antwortet mit einer Weiterleitung auf `raw.githubusercontent.com/wiki/.../docs/README.md`. Das betrifft die publizierten Markdown-Dokumente ebenso wie YAML-, SQL- und Mermaid-Dateien. `Home.md` und `_Sidebar.md` im Wiki-Root werden dagegen regulär gerendert.
+
+Damit ist der bisherige Transportvertrag erfüllt, der Nutzbarkeits- und Renderingvertrag jedoch nicht. Task 6.3 kann erst abgeschlossen werden, wenn die veröffentlichte Wissensbasis über gerenderte Seiten erreichbar ist.
+
+### Aufgabenorientierter Wiki-Einstieg
+
+Die Wiki-Startseite beantwortet zuerst „Was möchtest du tun?“ und bietet direkte Pfade für:
+
+- Studio lokal einrichten
+- eine Änderung entwickeln und testen
+- einen PR vorbereiten oder prüfen
+- Studio nach Dev, Staging oder Production ausrollen
+- einen Fehler oder Incident untersuchen
+- Architektur und Entscheidungen verstehen
+- IAM, APIs oder Datenmodelle nachschlagen
+- Dokumentation erstellen oder pflegen
+
+Jeder Aufgabenpfad verweist auf höchstens einen kanonischen Leitfaden oder Bereichsindex. Darunter folgen getrennt:
+
+1. kritische Einstiege für Rollout, Incident Response, Security, Entwicklungsregeln, Architektur und ADRs
+2. die Bereiche Entwicklung, Betrieb, Architektur, ADRs, Referenz/API und Governance mit jeweils einer kurzen Zweckbeschreibung
+3. ein knapper Hinweis auf Wiki-Suche und Bereichsindizes als kuratierte Navigation
+
+Flüchtige Seitenzahlen und eine vollständige Liste aller publizierten Dokumente gehören nicht auf die Startseite.
+
+Die Sidebar bleibt auf Home, Aufgaben, die sechs Bereiche, Studio-Rollout und Incident Response begrenzt. Einzelne Unterseiten werden ausschließlich über Aufgabenpfade und Bereichsindizes erschlossen.
+
+### Gerenderte Wiki-Publikation
+
+`docs/` bleibt die einzige redaktionelle Quelle. Der Workflow erzeugt daraus eine abgeleitete Wiki-Publikation mit folgenden Regeln:
+
+1. Jede publizierte Markdown-Datei erhält einen deterministischen, global eindeutigen Slug im Wiki-Root. Der Pfad `docs/development/testing-strategy.md` wird beispielsweise zu `development--testing-strategy.md`.
+2. `README.md`-Dateien werden als Bereichseinstiege benannt, sodass Root- und Bereichsindizes nicht kollidieren.
+3. Relative Links zwischen publizierten Markdown-Dateien werden auf die Ziel-Slugs umgeschrieben. Anker bleiben erhalten.
+4. Links auf nicht publizierte Repository-Dateien werden als absolute Links auf die kanonische Datei im Studio-Repository ausgegeben.
+5. YAML-, SQL- und Mermaid-Dateien sind ausdrücklich gekennzeichnete Quellartefakte und verweisen auf die Repository- beziehungsweise Raw-Ansicht. Bilder dürfen als Assets direkt geladen werden, gelten aber nicht als Wiki-Seiten.
+6. Jede erzeugte Wiki-Seite enthält einen unaufdringlichen Herkunftshinweis mit Link zur kanonischen Quelldatei im Repository.
+7. Manuelle Änderungen im Wiki sind nicht kanonisch und dürfen beim nächsten Sync überschrieben werden.
+
+Die Transformation wird in einem framework-agnostischen, typsicheren Skript gekapselt. Der GitHub-Actions-Workflow orchestriert nur Checkout, Transformation, Verifikation und Push.
+
+### Fehler- und Kollisionsverhalten
+
+Die Publikation schlägt vor dem Wiki-Push fehl, wenn:
+
+- zwei Quelldateien denselben Slug erhalten
+- ein Link auf eine publizierte Markdown-Datei nicht transformiert werden kann
+- Home oder Sidebar ein nicht erzeugtes Wiki-Ziel referenzieren
+- eine normale Dokumentationsseite als Raw-Ziel ausgegeben würde
+- eine im Manifest enthaltene Markdown-Datei keine gerenderte Zielseite erzeugt
+
+Fehler nennen Quelldatei, Zeile und Ziel. Ein fehlgeschlagener Build verändert das Wiki nicht.
 
 ## Automated Integrity Contract
 
@@ -92,6 +149,10 @@ Der Check validiert mindestens:
 4. Wiki-Home, Sidebar und Sync-Konfiguration verweisen nur auf erlaubte aktuelle Einstiege
 5. ausgeschlossene Pfade werden nicht versehentlich in die Wiki-Publikationsfläche aufgenommen
 6. `docs/user-documentation/` bleibt als externer Integrationsbereich von der lokalen Inhaltsmigration getrennt
+7. Wiki-Slugs sind deterministisch und kollisionsfrei
+8. Links zwischen publizierten Markdown-Seiten werden auf gerenderte Wiki-Ziele transformiert
+9. Home und Sidebar verweisen ausschließlich auf erzeugte Wiki-Seiten
+10. nur ausdrücklich gekennzeichnete Quellartefakte dürfen Raw-Ziele verwenden
 
 Für korrektes Markdown-Parsing wird die bereits im Lockfile aufgelöste Unified-/Remark-Werkzeugfamilie als explizite Root-Dev-Dependency verwendet, statt einen eigenen unvollständigen Markdown-Linkparser zu pflegen. Der Checker selbst bleibt ein typsicheres TypeScript-Skript mit Vitest-Vertragstests und klaren Fehlern im Format `pfad:zeile: grund`.
 
@@ -177,6 +238,21 @@ Der Check läuft lokal, in `test:ci` und als blockierender Schritt in Repository
 5. Jeder PR erhält nach Vergabe seiner PR-Nummer den verpflichtenden Eintrag `docs/changelog/entries/pr-<nummer>.json`.
 6. Ein Merge oder die Umsetzung des Folge-PRs erfolgt nicht allein aufgrund eines lokalen grünen Checks; die normalen Review- und CI-Gates bleiben maßgeblich.
 
+### Abschlusskorrektur nach PR 4
+
+Die vier geplanten Delivery-Blöcke bleiben historisch und fachlich unverändert. Der in der Live-Abnahme gefundene Raw-Redirect wird in einem separaten Korrektur-PR behoben, weil der bestehende Wiki-Exit-Vertrag noch nicht erfüllt ist.
+
+Der Korrektur-PR umfasst ausschließlich:
+
+- die aufgabenorientierte Wiki-Startseite und kompakte Sidebar
+- die deterministische Wiki-Slug- und Linktransformation
+- die Kennzeichnung und Verlinkung nicht renderbarer Quellartefakte
+- fokussierte Vertrags- und Transformationstests
+- die Erweiterung von `pnpm check:docs` um die gerenderte Publikationsgrenze
+- den Live-Nachweis nach dem Merge
+
+Er verändert weder die kanonischen Dokumentpfade unter `docs/` noch die externe Anwenderdokumentation oder den Studio-Rolloutvertrag.
+
 Empfohlene Branches sind `docs/curate-documentation-publication`, `docs/establish-documentation-information-architecture`, `chore/add-documentation-integrity-gate` und `docs/migrate-local-documentation`. Die Namen sind nicht Teil des Runtime-Vertrags, machen aber Reihenfolge und Scope in GitHub nachvollziehbar.
 
 ## Alternatives Considered
@@ -189,6 +265,14 @@ Verworfen. Sie vermischt Publikationslogik, Navigation, Tooling und hunderte Lin
 
 Verworfen. Das Problem ist die Informationsarchitektur, nicht das Markdown-Rendering. Eine neue Plattform erhöht Abhängigkeiten und Ownership, ohne die Autoritäts- und Archivgrenzen automatisch zu lösen.
 
+### Verschachtelte Pfade unverändert ins GitHub Wiki kopieren
+
+Nach der Live-Abnahme verworfen. GitHub liefert diese Pfade als Raw-Inhalte aus; ein erfolgreicher Git-Push erzeugt deshalb noch keine nutzbare Wiki-Seite.
+
+### Vollständigen Seitenkatalog auf der Wiki-Startseite anzeigen
+
+Verworfen. Mehr als 200 gleichrangige Links verschieben das Orientierungsproblem nur auf die Startseite. Aufgabenpfade und Bereichsindizes reduzieren die Auswahl, ohne Inhalte zu verstecken.
+
 ### Nur einen besseren `docs/README.md` schreiben
 
 Verworfen. Ein einmalig guter Index driftet erneut, solange Wiki-Sync, Bereichsgrenzen, ADR-Parität und Linkintegrität nicht automatisiert abgesichert sind.
@@ -200,6 +284,9 @@ Verworfen. Ein einmalig guter Index driftet erneut, solange Wiki-Sync, Bereichsg
 - **Positivliste kann neue aktuelle Bereiche vergessen:** `check:docs` prüft Bereichsindex und Wiki-Publikationsvertrag gemeinsam.
 - **Vier PRs benötigen disziplinierte Reihenfolge:** Jeder PR besitzt klare Exit-Kriterien und wird erst nach Merge des Vorgängers gestartet.
 - **Neue Parser-Dev-Dependencies:** Es werden bestehende, bereits indirekt verwendete Standardbausteine explizit gemacht; Lizenz, Version und Lockfile-Diff werden im PR geprüft.
+- **Flache Slugs verlieren die sichtbare Ordnerhierarchie:** Aufgabenpfade, Bereichsindizes und der Herkunftshinweis bewahren den Kontext; deterministische Bereichspräfixe verhindern Namenskollisionen.
+- **Transformierte Links können vom Repository-Markdown abweichen:** Die Transformation bleibt rein abgeleitet und wird mit Fixtures für relative Links, Anker, Assets und nicht publizierte Ziele geprüft.
+- **GitHub-Wiki-Verhalten kann sich ändern:** Ein Live-Nachweis prüft nach dem Merge gerenderte Einstiege und verbietet Raw-Redirects für Markdown-Seiten.
 
 ## Validation Strategy
 
@@ -213,4 +300,4 @@ Verworfen. Ein einmalig guter Index driftet erneut, solange Wiki-Sync, Bereichsg
 
 ## Approval and Exit
 
-Die vier Folge-PRs dürfen erst nach Review und Freigabe dieses OpenSpec-Changes umgesetzt werden. Der Change ist erst abschlussfähig, wenn alle vier PRs gemergt sind, die finale Struktur auf `main` den Dokumentations-Gate besteht und die Wiki-Publikation nach dem letzten Merge ausschließlich die freigegebene aktuelle Wissensbasis enthält.
+Die vier geplanten Folge-PRs dürfen erst nach Review und Freigabe dieses OpenSpec-Changes umgesetzt werden. Der Change ist erst abschlussfähig, wenn diese vier PRs und der aus der Live-Abnahme abgeleitete Korrektur-PR gemergt sind, die finale Struktur auf `main` den Dokumentations-Gate besteht und die Wiki-Publikation ausschließlich die freigegebene aktuelle Wissensbasis als gerenderte, aufgabenorientiert navigierbare Seiten enthält.

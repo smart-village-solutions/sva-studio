@@ -54,10 +54,23 @@
 - [x] 4.11 `pnpm check:docs`, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` auf dem vollständigen Migrationsdiff ausführen
 - [x] 4.12 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 3 eröffnen
 
-## 5. Abschlussnachweis
+## 5. Abschlusskorrektur – gerenderte Wiki-Navigation
 
-- [ ] 5.1 Für jeden der vier PRs Merge-Commit, terminale CI, Review-Status und geschlossene Threads dokumentieren
-- [ ] 5.2 Auf dem finalen `main`-Stand `pnpm check:docs`, `pnpm check:file-placement` und `pnpm check:rollout-docs` erneut ausführen
-- [ ] 5.3 Den Wiki-Sync nach PR 4 prüfen und nachweisen, dass nur die aktuelle freigegebene Wissensbasis publiziert wurde
-- [ ] 5.4 Sicherstellen, dass Seitenkatalog, Starterpaket, Sync-Vertrag und externe Anwenderdokumentationsinhalte unverändert geblieben sind
-- [ ] 5.5 Die Checkliste erst nach vollständiger Evidenz aktualisieren und den Change anschließend separat archivieren
+- [x] 5.1 In der Live-Abnahme dokumentieren, dass verschachtelte Wiki-Pfade auf Raw-Inhalte umleiten und der bisherige Sync deshalb Task 6.3 noch nicht erfüllt
+- [x] 5.2 Das aufgabenorientierte Einstiegs-, Slug-, Linktransformations- und Quellartefakt-Design reviewen und ausdrücklich freigeben
+- [x] 5.3 Einen framework-agnostischen, typsicheren Publikationskern für deterministische Wiki-Slugs, Linktransformation und Herkunftshinweise implementieren
+- [x] 5.4 Wiki-Home nach Aufgaben, kritischen Einstiegen und Bereichen gliedern und die Sidebar auf kanonische Einstiege begrenzen
+- [x] 5.5 Nicht-Markdown-Ziele als Quellartefakte behandeln und Links auf nicht publizierte Repository-Dateien sicher auf kanonische Repository-Ziele abbilden
+- [x] 5.6 Kollisions-, Link-, Anker-, Asset-, Raw-Redirect-, Home- und Sidebar-Vertrag mit fokussierten Vitest-Fixtures absichern
+- [x] 5.7 `pnpm check:docs` um die gerenderte Wiki-Publikationsgrenze erweitern und den Workflow vor dem Push gegen das erzeugte Ergebnis prüfen lassen
+- [x] 5.8 Fokussierte Tests, `pnpm check:docs`, Script-Typecheck, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` ausführen
+- [ ] 5.9 Den Korrektur-PR von aktuellem `origin/main` eröffnen, regulär reviewen und erst nach grünen terminalen Gates sowie geschlossenen Threads mergen
+- [ ] 5.10 Nach dem Merge Home, Aufgabenpfade, Bereichseinstiege und Stichproben gerenderter Seiten live prüfen; Markdown-Raw-Redirects müssen ausgeschlossen sein
+
+## 6. Abschlussnachweis
+
+- [ ] 6.1 Für jeden der vier geplanten PRs und den Abschlusskorrektur-PR Merge-Commit, terminale CI, Review-Status und geschlossene Threads dokumentieren
+- [ ] 6.2 Auf dem finalen `main`-Stand `pnpm check:docs`, `pnpm check:file-placement` und `pnpm check:rollout-docs` erneut ausführen
+- [ ] 6.3 Den Wiki-Sync nach dem Korrektur-PR prüfen und nachweisen, dass nur die aktuelle freigegebene Wissensbasis als gerenderte Wiki-Seiten publiziert wurde
+- [ ] 6.4 Sicherstellen, dass Seitenkatalog, Starterpaket, Sync-Vertrag und externe Anwenderdokumentationsinhalte unverändert geblieben sind
+- [ ] 6.5 Die Checkliste erst nach vollständiger Evidenz aktualisieren und den Change anschließend separat archivieren

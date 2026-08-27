@@ -68,6 +68,44 @@ const checkWikiLinks = (input: DocumentationIntegrityInput): DocumentationIssue[
   return issues;
 };
 
+const checkWikiWorkflow = (input: DocumentationIntegrityInput): DocumentationIssue[] => {
+  if (!input.validateWikiNavigation) {
+    return [];
+  }
+  const issues: DocumentationIssue[] = [];
+  const requiredFragments = [
+    'uses: ./.github/actions/setup-pnpm-workspace',
+    'pnpm check:docs',
+    'pnpm exec tsx scripts/ci/build-wiki-publication.ts --output wiki',
+  ] as const;
+  for (const fragment of requiredFragments) {
+    if (!input.wikiWorkflow.includes(fragment)) {
+      issues.push({
+        code: 'wiki-publication',
+        line: 1,
+        path: '.github/workflows/wiki-sync.yml',
+        reason: `Wiki-Workflow verwendet den gerenderten Publikationspfad nicht: ${fragment}`,
+      });
+    }
+  }
+  for (const forbiddenFragment of ['wiki/docs', '](/docs/', '](docs/'] as const) {
+    const index = input.wikiWorkflow.indexOf(forbiddenFragment);
+    if (index >= 0) {
+      issues.push({
+        code: 'wiki-publication',
+        line: input.wikiWorkflow.slice(0, index).split('\n').length,
+        path: '.github/workflows/wiki-sync.yml',
+        reason: `Wiki-Workflow enthält verschachtelten Raw-Pfad: ${forbiddenFragment}`,
+      });
+    }
+  }
+  return issues;
+};
+
 export const checkDocumentationBoundaries = (
   input: DocumentationIntegrityInput
-): DocumentationIssue[] => [...checkManifest(input), ...checkWikiLinks(input)];
+): DocumentationIssue[] => [
+  ...checkManifest(input),
+  ...checkWikiLinks(input),
+  ...checkWikiWorkflow(input),
+];

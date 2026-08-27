@@ -279,6 +279,7 @@ describe('Mainserver content ownership route', () => {
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({
         providerOutcome: 'succeeded',
+        reconciliationStatus: 'reconciliation_required',
         observedDataProviderId: 'provider-target',
         ownershipTransfer: expect.objectContaining({ coverage: 'studio_mutations' }),
       })
@@ -662,7 +663,10 @@ describe('Mainserver content ownership route', () => {
     );
     expect(response?.status).toBe(200);
     expect(state.finalize).toHaveBeenCalledWith(
-      expect.objectContaining({ completedSteps: ['target_reread_confirmed'] })
+      expect.objectContaining({
+        completedSteps: ['target_reread_confirmed'],
+        reconciliationStatus: 'reconciliation_required',
+      })
     );
   });
 

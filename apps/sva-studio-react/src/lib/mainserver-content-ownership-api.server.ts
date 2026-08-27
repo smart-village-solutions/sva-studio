@@ -1,4 +1,5 @@
 import {
+  finalizeMainserverMutationJournal,
   markMainserverMutationReconciliationRequired,
   resolveMainserverOwnershipTarget,
 } from '@sva/auth-runtime/server';
@@ -95,6 +96,14 @@ export const dispatchMainserverContentOwnershipRequest = async (
           authorizationMode: 'exact',
           operation: 'update',
           entityId: contentId,
+        });
+        await finalizeMainserverMutationJournal({
+          instanceId: followUp.instanceId,
+          operationExternalId: followUp.operationExternalId,
+          providerOutcome: 'succeeded',
+          reconciliationStatus: 'complete',
+          completedSteps: ['target_projection_refreshed'],
+          contentId,
         });
       }
     } catch (error) {

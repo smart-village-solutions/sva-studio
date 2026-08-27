@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   dispatch: vi.fn(),
+  finalizeJournal: vi.fn(),
   markReconciliationRequired: vi.fn(),
   readFollowUp: vi.fn(),
   refreshProjection: vi.fn(),
@@ -9,6 +10,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  finalizeMainserverMutationJournal: state.finalizeJournal,
   markMainserverMutationReconciliationRequired: state.markReconciliationRequired,
   resolveMainserverOwnershipTarget: state.resolveTarget,
 }));
@@ -31,6 +33,7 @@ import { dispatchMainserverContentOwnershipRequest } from './mainserver-content-
 describe('mainserver content ownership API projection follow-up', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.finalizeJournal.mockResolvedValue(undefined);
     state.markReconciliationRequired.mockResolvedValue(undefined);
     state.readFollowUp.mockReturnValue({
       instanceId: 'instance-1',
@@ -93,6 +96,14 @@ describe('mainserver content ownership API projection follow-up', () => {
         operation: 'update',
       })
     );
+    expect(state.finalizeJournal).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      operationExternalId: 'operation-1',
+      providerOutcome: 'succeeded',
+      reconciliationStatus: 'complete',
+      completedSteps: ['target_projection_refreshed'],
+      contentId: 'news-1',
+    });
   });
 
   it('keeps the confirmed response successful when the local target projection fails', async () => {
@@ -111,6 +122,7 @@ describe('mainserver content ownership API projection follow-up', () => {
       )
     );
     state.refreshProjection.mockRejectedValueOnce(new Error('projection down'));
+    state.markReconciliationRequired.mockRejectedValueOnce(new Error('database down'));
 
     const response = await dispatchMainserverContentOwnershipRequest(
       new Request(

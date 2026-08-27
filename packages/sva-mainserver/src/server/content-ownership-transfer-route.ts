@@ -65,7 +65,7 @@ const finalizeUnclearTransfer = async (input: {
       await finalizeMainserverMutation({
         actor: input.actor,
         providerOutcome: 'succeeded',
-        reconciliationStatus: 'complete',
+        reconciliationStatus: 'reconciliation_required',
         completedSteps: ['target_reread_confirmed'],
         contentId: input.route.contentId,
         observedDataProviderId: input.target.dataProviderId,
@@ -153,7 +153,7 @@ const executeProviderTransfer = async (input: {
     await finalizeMainserverMutation({
       actor: input.actor,
       providerOutcome: 'succeeded',
-      reconciliationStatus: 'complete',
+      reconciliationStatus: 'reconciliation_required',
       completedSteps: ['provider_write', 'target_provider_confirmed'],
       contentId: input.route.contentId,
       observedDataProviderId: input.target.dataProviderId,

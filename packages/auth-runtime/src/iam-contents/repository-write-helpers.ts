@@ -220,7 +220,7 @@ RETURNING id;
       input.instanceId,
       input.contentType,
       input.organizationId ?? null,
-      input.actorAccountId,
+      input.organizationId ? null : input.actorAccountId,
       input.organizationId ?? null,
       input.title,
       input.publishedAt ?? null,

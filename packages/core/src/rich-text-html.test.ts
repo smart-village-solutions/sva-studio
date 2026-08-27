@@ -22,4 +22,10 @@ describe('sanitizeRichTextHtml', () => {
         '<a>Unsicher</a>'
     );
   });
+
+  it('keeps the code and strike markup enabled by StarterKit', () => {
+    expect(sanitizeRichTextHtml('<pre><code>const value = 1;</code></pre><p><s>Alt</s></p>')).toBe(
+      '<pre><code>const value = 1;</code></pre><p><s>Alt</s></p>'
+    );
+  });
 });

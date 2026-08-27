@@ -122,6 +122,23 @@ describe('projects contract', () => {
     );
   });
 
+  it('sanitizes project rich text before mapping it to a GenericItem', async () => {
+    const parsed = await parseProjectInput(
+      new Request('https://studio.test/api/v1/mainserver/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...project,
+          fullText:
+            '<h2 onclick="alert(1)">Titel</h2><script>alert(1)</script><a href="javascript:alert(1)">Link</a>',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(parsed).not.toBeInstanceOf(Response);
+    expect((parsed as typeof project).fullText).toBe('<h2>Titel</h2><a>Link</a>');
+  });
+
   it('defaults omitted optional language and text fields', async () => {
     const {
       language: _language,

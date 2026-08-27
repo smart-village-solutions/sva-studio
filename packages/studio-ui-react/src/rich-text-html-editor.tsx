@@ -139,6 +139,7 @@ export const RichTextHtmlEditor = ({
     [sanitizeAndNormalizeHtml, value]
   );
   const [htmlDraft, setHtmlDraft] = React.useState(normalizedValue);
+  const lastHtmlDraftEmission = React.useRef<string | null>(null);
   const editor = useEditor({
     immediatelyRender: false,
     editable: disabled === false,
@@ -199,6 +200,21 @@ export const RichTextHtmlEditor = ({
     }
   }, [editor, normalizedValue]);
 
+  React.useEffect(() => {
+    if (mode !== 'html') {
+      lastHtmlDraftEmission.current = null;
+      setHtmlDraft(normalizedValue);
+      return;
+    }
+
+    if (lastHtmlDraftEmission.current === normalizedValue) {
+      lastHtmlDraftEmission.current = null;
+      return;
+    }
+
+    setHtmlDraft(normalizedValue);
+  }, [mode, normalizedValue]);
+
   const activeFormat = React.useMemo(() => {
     if (!editor) {
       return 'paragraph';
@@ -257,6 +273,7 @@ export const RichTextHtmlEditor = ({
   }, [editor, htmlDraft, onChange, sanitizeAndNormalizeHtml, value]);
 
   const showHtmlMode = React.useCallback(() => {
+    lastHtmlDraftEmission.current = null;
     setHtmlDraft(normalizedValue);
     setMode('html');
   }, [normalizedValue]);
@@ -407,8 +424,10 @@ export const RichTextHtmlEditor = ({
             className="min-h-56 resize-y rounded-none border-0 font-mono text-sm focus-visible:ring-inset focus-visible:ring-offset-0"
             onChange={(event) => {
               const nextDraft = event.currentTarget.value;
+              const sanitizedDraft = sanitizeAndNormalizeHtml(nextDraft);
               setHtmlDraft(nextDraft);
-              onChange(sanitizeAndNormalizeHtml(nextDraft));
+              lastHtmlDraftEmission.current = sanitizedDraft;
+              onChange(sanitizedDraft);
             }}
             onBlur={() => {
               const sanitizedDraft = sanitizeAndNormalizeHtml(htmlDraft);

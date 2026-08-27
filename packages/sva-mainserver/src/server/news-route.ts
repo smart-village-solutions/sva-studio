@@ -393,10 +393,12 @@ const parseContentBlocks = (
       );
     }
     const body = readString(block.body);
+    const intro = readString(block.intro);
     const sanitizedBody = body ? sanitizeRichTextHtml(body) : undefined;
+    const sanitizedIntro = intro ? sanitizeRichTextHtml(intro) : undefined;
     blocks.push({
       ...(readString(block.title) ? { title: readString(block.title) } : {}),
-      ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
+      ...(sanitizedIntro ? { intro: sanitizedIntro } : {}),
       ...(sanitizedBody ? { body: sanitizedBody } : {}),
       ...(mediaContents.length > 0 ? { mediaContents } : {}),
     });

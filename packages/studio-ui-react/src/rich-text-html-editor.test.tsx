@@ -250,6 +250,33 @@ describe('RichTextHtmlEditor', () => {
     expect(htmlSource).toHaveProperty('value', '<h2>Titel</h2><a>Link</a>');
   });
 
+  it('reconciles external values in HTML mode without replacing the active raw draft acknowledgement', () => {
+    const { rerenderEditor } = renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+    const htmlSource = screen.getByRole('textbox', { name: 'HTML' });
+    const rawDraft = '<p onclick="alert(1)">Entwurf</p>';
+    fireEvent.change(htmlSource, { target: { value: rawDraft } });
+
+    rerenderEditor({ value: '<p>Entwurf</p>' });
+    expect(htmlSource).toHaveProperty('value', rawDraft);
+
+    rerenderEditor({ value: '<h2>Extern geladen</h2>' });
+    expect(htmlSource).toHaveProperty('value', '<h2>Extern geladen</h2>');
+  });
+
+  it('preserves the code and strike markup enabled by StarterKit', () => {
+    const { onChange } = renderEditor();
+    const starterKitHtml = '<pre><code>const value = 1;</code></pre><p><s>Alt</s></p>';
+
+    fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'HTML' }), {
+      target: { value: starterKitHtml },
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith(starterKitHtml);
+  });
+
   it('keeps the source view labelled and read-only while the editor is disabled', () => {
     renderEditor({ disabled: true });
 

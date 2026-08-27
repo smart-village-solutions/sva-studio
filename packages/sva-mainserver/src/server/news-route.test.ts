@@ -1075,6 +1075,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
           ...updateNewsInput,
           contentBlocks: [
             {
+              intro: '<p onclick="alert(1)">Intro</p><script>alert(1)</script>',
               body: '<p onclick="alert(1)">Text</p><script>alert(1)</script><a href="javascript:alert(1)">Link</a>',
             },
           ],
@@ -1086,7 +1087,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
       expect.objectContaining({
         news: expect.objectContaining({
-          contentBlocks: [{ body: '<p>Text</p><a>Link</a>' }],
+          contentBlocks: [{ intro: '<p>Intro</p>', body: '<p>Text</p><a>Link</a>' }],
         }),
       })
     );

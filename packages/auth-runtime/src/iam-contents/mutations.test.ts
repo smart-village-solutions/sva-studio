@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   reserveCreateIdempotencyMock: vi.fn(),
   resolveContentAccessMock: vi.fn(),
   updateContentMock: vi.fn(),
+  transferContentOwnershipMock: vi.fn(),
   validateContentTypePayloadMock: vi.fn(),
   validateCsrfMock: vi.fn(),
 }));
@@ -66,12 +67,18 @@ vi.mock('./request-context.js', () => ({
 }));
 
 vi.mock('./repository.js', () => ({
+  ContentOwnershipTransferError: class ContentOwnershipTransferError extends Error {
+    constructor(readonly code: string) {
+      super(code);
+    }
+  },
   createContent: (...args: unknown[]) => state.createContentMock(...args),
   deleteContent: (...args: unknown[]) => state.deleteContentMock(...args),
   loadContentById: (...args: unknown[]) => state.loadContentByIdMock(...args),
   loadContentDetail: (...args: unknown[]) => state.loadContentDetailMock(...args),
   loadContentRowById: (...args: unknown[]) => state.loadContentRowByIdMock(...args),
   updateContent: (...args: unknown[]) => state.updateContentMock(...args),
+  transferContentOwnership: (...args: unknown[]) => state.transferContentOwnershipMock(...args),
 }));
 
 vi.mock('./repository-mappers.js', () => ({
@@ -84,11 +91,16 @@ vi.mock('./repository-state-validation.js', () => ({
 }));
 
 vi.mock('./schemas.js', () => ({
+  transferContentOwnershipSchema: {},
   updateContentSchema: {},
 }));
 
-const { createContentResponse, deleteContentResponse, updateContentResponse } =
-  await import('./mutations.js');
+const {
+  createContentResponse,
+  deleteContentResponse,
+  transferContentOwnershipResponse,
+  updateContentResponse,
+} = await import('./mutations.js');
 
 const actor = {
   instanceId: 'instance-1',
@@ -166,6 +178,18 @@ describe('content mutations', () => {
     });
     state.validateContentTypePayloadMock.mockReturnValue({ ok: true, payload: { body: 'Text' } });
     state.updateContentMock.mockResolvedValue('content-1');
+    state.transferContentOwnershipMock.mockResolvedValue({
+      contentId: 'content-1',
+      sourcePrincipal: {
+        type: 'account',
+        id: '00000000-0000-4000-8000-000000000010',
+      },
+      targetPrincipal: {
+        type: 'organization',
+        id: '00000000-0000-4000-8000-000000000020',
+      },
+      authorDisplayName: 'Autor',
+    });
     state.loadContentRowByIdMock.mockResolvedValue({
       id: 'content-1',
       content_type: 'news.article',
@@ -488,5 +512,56 @@ describe('content mutations', () => {
     );
     expect(ok.status).toBe(200);
     expect(state.deleteContentMock).toHaveBeenCalled();
+  });
+
+  it('authorizes ownership transfer only against the current source content', async () => {
+    state.parseRequestBodyMock.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        targetPrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      },
+    });
+    state.loadContentByIdMock.mockResolvedValueOnce({
+      id: 'content-1',
+      contentType: 'generic',
+      organizationId: '00000000-0000-4000-8000-000000000030',
+      ownerUserId: '00000000-0000-4000-8000-000000000010',
+      status: 'draft',
+    });
+    state.authorizeContentActionMock.mockResolvedValueOnce(null);
+
+    const response = await transferContentOwnershipResponse(
+      new Request('https://studio.test/api/v1/iam/contents/content-1/transfer-ownership', {
+        method: 'POST',
+      }),
+      actor
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.authorizeContentActionMock).toHaveBeenCalledWith(
+      actor,
+      'content.transferOwnership',
+      {
+        contentId: 'content-1',
+        contentType: 'generic',
+        domainCapability: 'content.transfer_ownership',
+        organizationId: '00000000-0000-4000-8000-000000000030',
+        ownerUserId: '00000000-0000-4000-8000-000000000010',
+        ownerOrganizationId: undefined,
+      }
+    );
+    expect(state.transferContentOwnershipMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'instance-1',
+        contentId: 'content-1',
+        targetPrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      })
+    );
   });
 });

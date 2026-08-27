@@ -135,6 +135,14 @@ export {
   type RecordMainserverDataProviderObservationResult,
 } from './iam-contents/mainserver-data-provider-bindings.js';
 export {
+  listMainserverOwnershipTargets,
+  resolveMainserverOwnershipTarget,
+  withMainserverContentOwnershipLock,
+  type MainserverOwnershipTargetErrorCode,
+  type ResolvedMainserverOwnershipTarget,
+  type ResolveMainserverOwnershipTargetResult,
+} from './iam-contents/mainserver-content-ownership.js';
+export {
   reconcileDeletedUserDataProviderConflict,
   type DeletedUserDataProviderConflictReason,
   type ReconcileDeletedUserDataProviderConflictResult,

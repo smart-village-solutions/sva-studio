@@ -37,6 +37,7 @@ Content-Operationen verwenden keine groben Schreibrechte mehr. Kanonisch sind:
 - `content.restore`
 - `content.readHistory`
 - `content.manageRevisions`
+- `content.transferOwnership`
 - `content.delete`
 
 `content.write`, `content.update` und `content.moderate` sind keine Runtime-Aliase. Bestehende Rollen werden per Migration und Seed-Zuordnung auf die feineren Primitive übertragen.
@@ -45,7 +46,8 @@ Content-Operationen verwenden keine groben Schreibrechte mehr. Kanonisch sind:
 
 - Listen und Details prüfen `content.read`.
 - Create prüft `content.create` vor Persistenz.
-- Titel, Publikationsfenster, Owner, Organisation, sichtbare Autorenanzeige und Validation State prüfen `content.updateMetadata`.
+- Titel, Publikationsfenster, sichtbare Autorenanzeige und Validation State prüfen `content.updateMetadata`.
+- Die technische Inhaberschaft wird ausschließlich über den getrennten, bestätigungspflichtigen Transferpfad mit `content.transferOwnership` geändert. Ein normales Update akzeptiert weder Owner-Felder noch eine Mainserver-DataProvider-ID.
 - Payload-Änderungen prüfen `content.updatePayload`.
 - Statuswechsel prüfen zielabhängig `content.publish`, `content.archive`, `content.restore` oder `content.changeStatus`.
 - History-Lesen prüft `content.readHistory`.
@@ -78,7 +80,7 @@ Der Server liest diese Zuordnung aus einem kleinen Ownership-Modul des aktiviert
 
 ## Audit und History
 
-History darf Snapshot- und Diff-nahe Daten für Revisionen behalten. Audit-Events speichern dagegen nur stabile Core-Metadaten wie Content-ID, Content-Type, Action, Actor, Ergebnis sowie Request- und Trace-Korrelation. Ownership- und Autorenanzeige-Änderungen enthalten alte und neue Werte für `ownerUserId`, `ownerOrganizationId` und die sichtbare Autorenanzeige.
+History darf Snapshot- und Diff-nahe Daten für Revisionen behalten. Audit-Events speichern dagegen nur stabile Core-Metadaten wie Content-ID, Content-Type, Action, Actor, Ergebnis sowie Request- und Trace-Korrelation. Studio-ausgelöste Inhabertransfers erfassen Quell- und Ziel-Principal PII-arm und kennzeichnen ihre Abdeckung als `studio_mutations`. Das Audit ist keine vollständige Inhaberhistorie, weil externe Änderungen fehlen können; der aktuelle Datensatz bleibt maßgeblich. Änderungen der sichtbaren Autorenanzeige werden davon getrennt erfasst.
 
 Plugin-Payloads werden nicht als Audit-Rohdaten geschrieben. Payload-Änderungen erscheinen nur als Klassifikation wie `payload_created`, `payload_updated` oder `payload_unchanged`.
 

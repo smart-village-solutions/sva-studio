@@ -2,11 +2,17 @@ import {
   resolveIamContentDomainCapabilityForPrimitiveAction,
   type IamContentAuthorDisplayMode,
   type IamContentPrimitiveAction,
+  type IamContentOwnerPrincipal,
 } from '@sva/core';
 import { emitActivityLog, type withInstanceScopedDb } from '../iam-account-management/shared.js';
 import { resolveContentPublicationInvariant } from './content-publication-invariants.js';
 import { ContentStateValidationError } from './repository-state-validation.js';
-import type { ContentRow, CreateContentInput, DeleteContentInput, UpdateContentInput } from './repository-types.js';
+import type {
+  ContentRow,
+  CreateContentInput,
+  DeleteContentInput,
+  UpdateContentInput,
+} from './repository-types.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
@@ -122,9 +128,13 @@ export const resolveCreateAuthorDisplay = async (
   readonly authorDisplayName: string;
 }> => {
   const organization = input.organizationId
-    ? await loadOrganizationAuthorPolicy(client, { instanceId: input.instanceId, organizationId: input.organizationId })
+    ? await loadOrganizationAuthorPolicy(client, {
+        instanceId: input.instanceId,
+        organizationId: input.organizationId,
+      })
     : null;
-  const authorDisplayMode = input.authorDisplayMode ?? (input.organizationId ? 'organization' : 'user');
+  const authorDisplayMode =
+    input.authorDisplayMode ?? (input.organizationId ? 'organization' : 'user');
   assertAuthorDisplayPolicy(authorDisplayMode, organization);
 
   return {
@@ -147,7 +157,10 @@ export const resolveUpdateAuthorDisplay = async (
 }> => {
   const nextOrganizationId = input.organizationId ?? current.organization_id ?? null;
   const organization = nextOrganizationId
-    ? await loadOrganizationAuthorPolicy(client, { instanceId: input.instanceId, organizationId: nextOrganizationId })
+    ? await loadOrganizationAuthorPolicy(client, {
+        instanceId: input.instanceId,
+        organizationId: nextOrganizationId,
+      })
     : null;
   const authorDisplayMode = input.authorDisplayMode ?? current.author_display_mode;
   assertAuthorDisplayPolicy(authorDisplayMode, organization);
@@ -168,7 +181,10 @@ export const resolveUpdateAuthorDisplay = async (
   };
 };
 
-export const validatePublicationWindow = (input: { publishFrom?: string; publishUntil?: string }) => {
+export const validatePublicationWindow = (input: {
+  publishFrom?: string;
+  publishUntil?: string;
+}) => {
   if (
     resolveContentPublicationInvariant({
       publishFrom: input.publishFrom,
@@ -372,7 +388,8 @@ export const emitContentUpdatedActivity = (
   input: UpdateContentInput,
   current: ContentRow,
   event: {
-    readonly eventType: 'iam.content.created' | 'iam.content.status_changed' | 'iam.content.updated';
+    readonly eventType:
+      'iam.content.created' | 'iam.content.status_changed' | 'iam.content.updated';
     readonly action: IamContentPrimitiveAction;
     readonly changedFields: readonly string[];
     readonly nextStatus: string;
@@ -397,7 +414,50 @@ export const emitContentUpdatedActivity = (
       previous_status: current.status,
       next_status: event.nextStatus,
       field_changes: buildContentFieldChanges(current, event),
-      payload_change: event.changedFields.includes('payload') ? 'payload_updated' : 'payload_unchanged',
+      payload_change: event.changedFields.includes('payload')
+        ? 'payload_updated'
+        : 'payload_unchanged',
+    },
+    requestId: input.requestId,
+    traceId: input.traceId,
+  });
+
+export const emitContentOwnershipTransferredActivity = (
+  client: InstanceScopedClient,
+  input: {
+    readonly instanceId: string;
+    readonly actorAccountId: string;
+    readonly requestId?: string;
+    readonly traceId?: string;
+    readonly contentId: string;
+    readonly contentType: string;
+    readonly sourcePrincipal?: IamContentOwnerPrincipal;
+    readonly targetPrincipal: IamContentOwnerPrincipal;
+  }
+): Promise<void> =>
+  emitActivityLog(client, {
+    instanceId: input.instanceId,
+    accountId: input.actorAccountId,
+    eventType: 'iam.content.ownership_transferred',
+    result: 'success',
+    payload: {
+      content_id: input.contentId,
+      content_type: input.contentType,
+      ...buildContentActionAuditPayload('content.transferOwnership'),
+      coverage: 'studio_mutations',
+      ...(input.sourcePrincipal
+        ? {
+            source_principal: {
+              type: input.sourcePrincipal.type,
+              id: input.sourcePrincipal.id,
+            },
+          }
+        : {}),
+      target_principal: {
+        type: input.targetPrincipal.type,
+        id: input.targetPrincipal.id,
+      },
+      changed_fields: ['ownerUserId', 'ownerOrganizationId', 'organizationId'],
     },
     requestId: input.requestId,
     traceId: input.traceId,

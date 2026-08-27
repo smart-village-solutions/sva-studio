@@ -17,6 +17,7 @@ export const iamContentPrimitiveActions = [
   'content.create',
   'content.updateMetadata',
   'content.updatePayload',
+  'content.transferOwnership',
   'content.changeStatus',
   'content.publish',
   'content.archive',
@@ -29,6 +30,7 @@ export const iamContentDomainCapabilities = [
   'content.create',
   'content.update_metadata',
   'content.update_payload',
+  'content.transfer_ownership',
   'content.change_status',
   'content.publish',
   'content.archive',
@@ -117,6 +119,36 @@ export type IamContentHistoryEntry = {
   readonly coverage: 'studio_mutations';
 };
 
+export const iamContentOwnerPrincipalTypes = ['account', 'organization'] as const;
+export type IamContentOwnerPrincipalType = (typeof iamContentOwnerPrincipalTypes)[number];
+export type IamContentOwnerPrincipal = {
+  readonly type: IamContentOwnerPrincipalType;
+  readonly id: string;
+};
+
+export type TransferIamContentOwnershipInput = {
+  readonly targetPrincipal: IamContentOwnerPrincipal;
+};
+
+export type IamContentOwnershipTransferResult = {
+  readonly contentId: string;
+  readonly sourcePrincipal?: IamContentOwnerPrincipal;
+  readonly targetPrincipal: IamContentOwnerPrincipal;
+  readonly authorDisplayName: string;
+};
+
+export type IamContentOwnershipTarget = {
+  readonly principal: IamContentOwnerPrincipal;
+  readonly displayName: string;
+};
+
+export type IamContentOwnershipTargetList = {
+  readonly items: readonly IamContentOwnershipTarget[];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly total: number;
+};
+
 export const iamContentAuthorDisplayModes = ['organization', 'user'] as const;
 export type IamContentAuthorDisplayMode = (typeof iamContentAuthorDisplayModes)[number];
 const iamContentCredentialSources = ['organization', 'user'] as const;
@@ -186,8 +218,6 @@ export type CreateIamContentInput = {
 export type UpdateIamContentInput = Partial<
   CreateIamContentInput & {
     readonly organizationId: string;
-    readonly ownerUserId: string;
-    readonly ownerOrganizationId: string;
     readonly authorDisplayMode: IamContentAuthorDisplayMode;
     readonly authorDisplayName: string;
   }
@@ -310,6 +340,7 @@ export const iamContentCapabilityMappings = [
   { domainCapability: 'content.create', primitiveAction: 'content.create' },
   { domainCapability: 'content.update_metadata', primitiveAction: 'content.updateMetadata' },
   { domainCapability: 'content.update_payload', primitiveAction: 'content.updatePayload' },
+  { domainCapability: 'content.transfer_ownership', primitiveAction: 'content.transferOwnership' },
   { domainCapability: 'content.change_status', primitiveAction: 'content.changeStatus' },
   { domainCapability: 'content.publish', primitiveAction: 'content.publish' },
   { domainCapability: 'content.archive', primitiveAction: 'content.archive' },

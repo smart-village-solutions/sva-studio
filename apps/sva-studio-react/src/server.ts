@@ -39,6 +39,9 @@ let registerStudioPluginOperationHandlersPromise: Promise<
 let dispatchMainserverNewsRequestPromise: Promise<
   (typeof import('./lib/mainserver-news-api.server'))['dispatchMainserverNewsRequest']
 > | null = null;
+let dispatchMainserverContentOwnershipRequestPromise: Promise<
+  (typeof import('./lib/mainserver-content-ownership-api.server'))['dispatchMainserverContentOwnershipRequest']
+> | null = null;
 let dispatchMainserverEventsRequestPromise: Promise<
   (typeof import('./lib/mainserver-events-api.server'))['dispatchMainserverEventsRequest']
 > | null = null;
@@ -104,6 +107,13 @@ const getDispatchMainserverNewsRequest = async () => {
   );
   return dispatchMainserverNewsRequestPromise;
 };
+const getDispatchMainserverContentOwnershipRequest = async () => {
+  dispatchMainserverContentOwnershipRequestPromise ??=
+    import('./lib/mainserver-content-ownership-api.server').then(
+      (mod) => mod.dispatchMainserverContentOwnershipRequest
+    );
+  return dispatchMainserverContentOwnershipRequestPromise;
+};
 const getDispatchMainserverEventsRequest = async () => {
   dispatchMainserverEventsRequestPromise ??= import('./lib/mainserver-events-api.server').then(
     (mod) => mod.dispatchMainserverEventsRequest
@@ -160,6 +170,10 @@ const getDispatchUserDocumentationRequest = async () => {
   return dispatchUserDocumentationRequestPromise;
 };
 const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
+  {
+    label: 'mainserver content ownership',
+    getDispatcher: getDispatchMainserverContentOwnershipRequest,
+  },
   { label: 'mainserver news', getDispatcher: getDispatchMainserverNewsRequest },
   { label: 'mainserver events', getDispatcher: getDispatchMainserverEventsRequest },
   { label: 'mainserver poi', getDispatcher: getDispatchMainserverPoiRequest },

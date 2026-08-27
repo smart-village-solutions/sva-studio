@@ -58,6 +58,7 @@ export const corePermissionCatalog = [
   tenantPermission('content.create', 'Create content'),
   tenantPermission('content.updateMetadata', 'Update content metadata'),
   tenantPermission('content.updatePayload', 'Update content payload'),
+  tenantPermission('content.transferOwnership', 'Transfer content ownership'),
   tenantPermission('content.changeStatus', 'Change content status'),
   tenantPermission('content.publish', 'Publish content'),
   tenantPermission('content.archive', 'Archive content'),

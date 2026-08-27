@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { createContentSchema, updateContentSchema } from './schemas.js';
+import {
+  createContentSchema,
+  transferContentOwnershipSchema,
+  updateContentSchema,
+} from './schemas.js';
 
 describe('iam content schemas', () => {
   it('requires publishedAt when creating published content', () => {
@@ -74,12 +78,55 @@ describe('iam content schemas', () => {
   });
 
   it('accepts visible author changes on update', () => {
-    expect(updateContentSchema.safeParse({ authorDisplayName: 'Stadt Musterhausen' }).success).toBe(true);
+    expect(updateContentSchema.safeParse({ authorDisplayName: 'Stadt Musterhausen' }).success).toBe(
+      true
+    );
     expect(updateContentSchema.safeParse({ authorDisplayMode: 'organization' }).success).toBe(true);
     expect(updateContentSchema.safeParse({ authorDisplayMode: 'user' }).success).toBe(true);
     expect(updateContentSchema.safeParse({ authorDisplayMode: 'team' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ authorDisplayName: '' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ authorDisplayName: '  ' }).success).toBe(false);
+  });
+
+  it('rejects ownership changes on normal updates', () => {
+    expect(
+      updateContentSchema.safeParse({
+        ownerUserId: '00000000-0000-4000-8000-000000000001',
+      }).success
+    ).toBe(false);
+    expect(
+      updateContentSchema.safeParse({
+        ownerOrganizationId: '00000000-0000-4000-8000-000000000002',
+      }).success
+    ).toBe(false);
+  });
+
+  it('accepts only typed ownership transfer principals', () => {
+    expect(
+      transferContentOwnershipSchema.safeParse({
+        targetPrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000001',
+        },
+      }).success
+    ).toBe(true);
+    expect(
+      transferContentOwnershipSchema.safeParse({
+        targetPrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000002',
+          dataProviderId: 42,
+        },
+      }).success
+    ).toBe(false);
+    expect(
+      transferContentOwnershipSchema.safeParse({
+        targetPrincipal: {
+          type: 'dataProvider',
+          id: '00000000-0000-4000-8000-000000000003',
+        },
+      }).success
+    ).toBe(false);
   });
 
   it('accepts valid ISO timestamps with variable fractional precision', () => {
@@ -97,14 +144,24 @@ describe('iam content schemas', () => {
     expect(updateContentSchema.safeParse({ title: undefined }).success).toBe(false);
     expect(updateContentSchema.safeParse({ publishedAt: 'not-a-date' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25' }).success).toBe(false);
-    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T12:00:00' }).success).toBe(false);
-    expect(updateContentSchema.safeParse({ publishedAt: '2026-02-31T12:00:00Z' }).success).toBe(false);
-    expect(updateContentSchema.safeParse({ publishedAt: '2025-02-29T12:00:00Z' }).success).toBe(false);
-    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-31T12:00:00+02:00' }).success).toBe(false);
-    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T24:00:00Z' }).success).toBe(false);
-    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T12:00:00.1234567890Z' }).success).toBe(
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T12:00:00' }).success).toBe(
       false
     );
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-02-31T12:00:00Z' }).success).toBe(
+      false
+    );
+    expect(updateContentSchema.safeParse({ publishedAt: '2025-02-29T12:00:00Z' }).success).toBe(
+      false
+    );
+    expect(
+      updateContentSchema.safeParse({ publishedAt: '2026-04-31T12:00:00+02:00' }).success
+    ).toBe(false);
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T24:00:00Z' }).success).toBe(
+      false
+    );
+    expect(
+      updateContentSchema.safeParse({ publishedAt: '2026-04-25T12:00:00.1234567890Z' }).success
+    ).toBe(false);
   });
 
   it('rejects publication windows with identical start and end timestamps', () => {

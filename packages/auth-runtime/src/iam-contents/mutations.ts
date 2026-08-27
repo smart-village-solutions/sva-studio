@@ -21,10 +21,22 @@ import {
 } from './mutation-helpers.js';
 import type { ResolvedContentActor } from './request-context.js';
 import { authorizeContentAction, resolveContentAccess } from './request-context.js';
-import { createContent, deleteContent, loadContentById, loadContentDetail, loadContentRowById, updateContent } from './repository.js';
+import {
+  ContentOwnershipTransferError,
+  createContent,
+  deleteContent,
+  loadContentById,
+  loadContentDetail,
+  loadContentRowById,
+  transferContentOwnership,
+  updateContent,
+} from './repository.js';
 import { mapContentListItem } from './repository-mappers.js';
-import { ContentStateValidationError, isContentStateValidationError } from './repository-state-validation.js';
-import { updateContentSchema } from './schemas.js';
+import {
+  ContentStateValidationError,
+  isContentStateValidationError,
+} from './repository-state-validation.js';
+import { transferContentOwnershipSchema, updateContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
@@ -73,7 +85,11 @@ export const createContentResponse = async (
     organizationId: actor.activeOrganizationId,
   };
 
-  const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);
+  const replayOrConflict = await reserveCreateIdempotency(
+    actor,
+    prepared.idempotencyKey,
+    prepared.rawBody
+  );
   if (replayOrConflict) {
     return replayOrConflict;
   }
@@ -162,7 +178,12 @@ export const updateContentResponse = async (
     return createApiError(400, 'invalid_request', payloadValidation.message, actor.requestId);
   }
 
-  const authorizationError = await authorizeUpdateContentActions(actor, contentId, currentContent, parsed.data);
+  const authorizationError = await authorizeUpdateContentActions(
+    actor,
+    contentId,
+    currentContent,
+    parsed.data
+  );
   if (authorizationError) {
     return authorizationError;
   }
@@ -200,7 +221,12 @@ export const updateContentResponse = async (
       content_id: contentId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return createApiError(503, 'database_unavailable', 'Inhalt konnte nicht aktualisiert werden.', actor.requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Inhalt konnte nicht aktualisiert werden.',
+      actor.requestId
+    );
   }
 };
 
@@ -259,6 +285,100 @@ export const deleteContentResponse = async (
       content_id: contentId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return createApiError(503, 'database_unavailable', 'Inhalt konnte nicht gelöscht werden.', actor.requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Inhalt konnte nicht gelöscht werden.',
+      actor.requestId
+    );
+  }
+};
+
+export const transferContentOwnershipResponse = async (
+  request: Request,
+  actor: ResolvedContentActor['actor']
+): Promise<Response> => {
+  const csrfError = validateCsrf(request, actor.requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const contentId = readPathSegment(request, 4);
+  if (!contentId) {
+    return createApiError(400, 'invalid_request', 'Inhalts-ID fehlt.', actor.requestId);
+  }
+
+  const parsed = await parseRequestBody(request, transferContentOwnershipSchema);
+  if (!parsed.ok) {
+    return createApiError(400, 'invalid_request', parsed.message, actor.requestId);
+  }
+
+  const currentContent = await loadContentById(actor.instanceId, contentId);
+  if (!currentContent) {
+    return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
+  }
+
+  const authorizationError = await authorizeContentAction(actor, 'content.transferOwnership', {
+    contentId,
+    contentType: currentContent.contentType,
+    domainCapability: 'content.transfer_ownership',
+    organizationId: currentContent.organizationId,
+    ownerUserId: currentContent.ownerUserId,
+    ownerOrganizationId: currentContent.ownerOrganizationId,
+  });
+  if (authorizationError) {
+    return authorizationError;
+  }
+
+  try {
+    const result = await transferContentOwnership({
+      instanceId: actor.instanceId,
+      actorAccountId: actor.actorAccountId!,
+      actorDisplayName: actor.actorDisplayName,
+      requestId: actor.requestId,
+      traceId: actor.traceId,
+      contentId,
+      targetPrincipal: parsed.data.targetPrincipal,
+    });
+    return jsonResponse(200, asApiItem(result, actor.requestId));
+  } catch (error) {
+    if (error instanceof ContentOwnershipTransferError) {
+      switch (error.code) {
+        case 'content_not_found':
+          return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
+        case 'ownership_target_not_found':
+          return createApiError(
+            404,
+            'not_found',
+            'Zielinhaber wurde nicht gefunden.',
+            actor.requestId
+          );
+        case 'ownership_target_inactive':
+          return createApiError(409, 'conflict', 'Zielinhaber ist nicht aktiv.', actor.requestId);
+        case 'ownership_target_unchanged':
+          return createApiError(
+            409,
+            'conflict',
+            'Der Zielinhaber ist bereits zugeordnet.',
+            actor.requestId
+          );
+      }
+    }
+    logger.error('Content ownership transfer failed', {
+      operation: 'content_transfer_ownership',
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      content_id: contentId,
+      target_principal_type: parsed.data.targetPrincipal.type,
+      target_principal_id: parsed.data.targetPrincipal.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Inhalt konnte nicht übertragen werden.',
+      actor.requestId
+    );
   }
 };

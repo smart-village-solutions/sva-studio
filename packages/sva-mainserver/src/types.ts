@@ -48,6 +48,26 @@ export type SvaMainserverConnectionInput = {
   readonly credentialFingerprint?: string;
 };
 
+export type SvaMainserverOwnershipTransferContent =
+  | Readonly<{ type: 'news'; id: string }>
+  | Readonly<{ type: 'event'; id: string }>
+  | Readonly<{ type: 'poi'; id: string }>
+  | Readonly<{ type: 'generic-item'; id: string }>;
+
+export type SvaMainserverOwnershipTransferInput = SvaMainserverConnectionInput &
+  Readonly<{
+    content: SvaMainserverOwnershipTransferContent;
+    expectedSourceDataProviderId: string;
+    targetDataProviderId: string;
+  }>;
+
+export type SvaMainserverOwnershipTransferResult = Readonly<{
+  contentType: SvaMainserverOwnershipTransferContent['type'];
+  contentId: string;
+  sourceDataProviderId: string;
+  targetDataProviderId: string;
+}>;
+
 export type MainserverDataDeviation = Readonly<{
   fieldPath: string;
   fieldGroup: string;

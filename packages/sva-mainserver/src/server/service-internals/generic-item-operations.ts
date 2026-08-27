@@ -20,7 +20,11 @@ import {
 } from '../../generated/events-poi.js';
 
 import { mapGenericItem, mapOptionalGenericItem } from './generic-item-mappers.js';
-import { toSvaMainserverError, type GraphqlExecutor, type SvaMainserverListInput } from './shared.js';
+import {
+  toSvaMainserverError,
+  type GraphqlExecutor,
+  type SvaMainserverListInput,
+} from './shared.js';
 import { listVisibleRecordsWithConfig } from './visible-list.js';
 
 const includeTruthyField = <Key extends string, Value>(key: Key, value: Value) =>
@@ -33,9 +37,11 @@ const buildGenericItemMutationVariables = (input: {
   readonly genericItem: SvaMainserverGenericItemInput;
   readonly genericItemId?: string;
   readonly forceCreate?: boolean;
+  readonly dataProviderId?: string;
 }) => ({
   ...includeTruthyField('id', input.genericItemId),
   ...includeDefinedField('forceCreate', input.forceCreate),
+  ...includeTruthyField('dataProviderId', input.dataProviderId),
   title: input.genericItem.title,
   ...includeTruthyField('author', input.genericItem.author),
   ...includeTruthyField('keywords', input.genericItem.keywords),
@@ -98,6 +104,7 @@ export const createGenericItemOperations = (executeGraphqlWithConfig: GraphqlExe
       readonly genericItem: SvaMainserverGenericItemInput;
       readonly genericItemId?: string;
       readonly forceCreate?: boolean;
+      readonly dataProviderId?: string;
     },
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverGenericItem> => {

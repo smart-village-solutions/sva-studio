@@ -4,12 +4,15 @@ import {
   GENERIC_CONTENT_TYPE,
   withServerDeniedContentAccess,
   type IamContentAccessSummary,
+  type IamContentOwnerPrincipal,
+  type IamContentOwnershipTarget,
   type IamContentStatus,
 } from '@sva/core';
 import { FilePenLine, History } from 'lucide-react';
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  ContentOwnershipPanel,
   getStudioFormFieldProps,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
@@ -46,7 +49,13 @@ import {
   parseOptionalEditorDateTime,
   toDatetimeLocalValue,
 } from '../../lib/editor-date-time';
-import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
+import {
+  listContentOwnershipTargets,
+  transferContentOwnership,
+  type CreateContentPayload,
+  type IamHttpError,
+  type UpdateContentPayload,
+} from '../../lib/iam-api';
 import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 
 type ContentEditorPageProps = {
@@ -237,6 +246,19 @@ const resolveActiveAccess = ({
   return createAccess ?? toDeniedAccess(activeErrorCode);
 };
 
+const resolveLocalContentOwner = (content: {
+  readonly ownerUserId?: string;
+  readonly ownerOrganizationId?: string;
+}): IamContentOwnerPrincipal | undefined => {
+  if (content.ownerUserId && !content.ownerOrganizationId) {
+    return { type: 'account', id: content.ownerUserId };
+  }
+  if (content.ownerOrganizationId && !content.ownerUserId) {
+    return { type: 'organization', id: content.ownerOrganizationId };
+  }
+  return undefined;
+};
+
 const isEditorActionDisabled = ({
   mode,
   activeAccess,
@@ -360,6 +382,10 @@ export const ContentEditorPage = ({
     watch,
   } = form;
   const saveFeedback = useStudioSaveFeedback();
+  const [ownershipFeedback, setOwnershipFeedback] = React.useState<{
+    readonly tone: 'success' | 'error';
+    readonly message: string;
+  } | null>(null);
 
   React.useEffect(() => {
     if (isDirty) {
@@ -562,8 +588,89 @@ export const ContentEditorPage = ({
     [activeTab, onTabChange]
   );
 
+  const currentOwner = content ? resolveLocalContentOwner(content) : undefined;
+  const ownershipTransferSupported =
+    mode === 'edit' &&
+    content?.contentType === GENERIC_CONTENT_TYPE &&
+    !content.sourceDataProviderId;
+  const canTransferOwnership =
+    ownershipTransferSupported &&
+    contentAccessApi.permissionActions.includes('content.transferOwnership');
+  const loadOwnershipTargets = React.useCallback(
+    async (input: {
+      readonly type: 'account' | 'organization';
+      readonly page: number;
+      readonly pageSize: number;
+      readonly search?: string;
+    }) => {
+      if (!contentId) return { items: [], total: 0 };
+      const response = await listContentOwnershipTargets(contentId, {
+        type: input.type,
+        page: input.page,
+        pageSize: input.pageSize,
+        ...(input.search ? { q: input.search } : {}),
+      });
+      return { items: response.data, total: response.pagination?.total ?? response.data.length };
+    },
+    [contentId]
+  );
+  const submitOwnershipTransfer = React.useCallback(
+    async (target: IamContentOwnershipTarget) => {
+      if (!contentId) return;
+      setOwnershipFeedback(null);
+      try {
+        await transferContentOwnership(contentId, { targetPrincipal: target.principal });
+        setOwnershipFeedback({ tone: 'success', message: t('content.ownership.success') });
+        await detailApi.refetch();
+      } catch {
+        setOwnershipFeedback({ tone: 'error', message: t('content.ownership.error') });
+        throw new Error('content_transfer_ownership_failed');
+      }
+    },
+    [contentId, detailApi.refetch]
+  );
+
   const renderGeneralTabPanel = () => (
     <div className="space-y-5">
+      {mode === 'edit' && content ? (
+        <ContentOwnershipPanel
+          currentOwner={{
+            ...(currentOwner ? { principal: currentOwner } : {}),
+            displayName: currentOwner?.id ?? t('content.ownership.noOwner'),
+          }}
+          supported={ownershipTransferSupported}
+          canTransfer={canTransferOwnership}
+          labels={{
+            title: t('content.ownership.title'),
+            currentOwner: t('content.ownership.currentOwner'),
+            account: t('content.ownership.account'),
+            organization: t('content.ownership.organization'),
+            saveKeepsOwner: t('content.ownership.saveKeepsOwner'),
+            transferUnavailable: t('content.ownership.transferUnavailable'),
+            transferForbidden: t('content.ownership.transferForbidden'),
+            transferAction: t('content.ownership.transferAction'),
+            dialogTitle: t('content.ownership.dialogTitle'),
+            dialogDescription: t('content.ownership.dialogDescription'),
+            targetType: t('content.ownership.targetType'),
+            search: t('content.ownership.search'),
+            searchAction: t('content.ownership.searchAction'),
+            loading: t('content.ownership.loading'),
+            loadError: t('content.ownership.loadError'),
+            noTargets: t('content.ownership.noTargets'),
+            previousPage: t('content.ownership.previousPage'),
+            nextPage: t('content.ownership.nextPage'),
+            confirmation: t('content.ownership.confirmation'),
+            accessWarning: t('content.ownership.accessWarning'),
+            authorEffect: t('content.ownership.localAuthorEffect'),
+            cancel: t('content.ownership.cancel'),
+            confirm: t('content.ownership.confirm'),
+            transferring: t('content.ownership.transferring'),
+            transferError: t('content.ownership.error'),
+          }}
+          loadTargets={loadOwnershipTargets}
+          onTransfer={submitOwnershipTransfer}
+        />
+      ) : null}
       <form id={formId} className="space-y-4" onSubmit={submitForm} noValidate>
         <StudioFormSummaryErrors
           errors={summaryErrors}
@@ -632,17 +739,24 @@ export const ContentEditorPage = ({
           mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')
         }
         primaryAction={
-          <StudioSaveButton
-            type="submit"
-            form={formId}
-            status={saveFeedback.status}
-            disabled={submitDisabled}
-            labels={{
-              idle: primaryActionLabel,
-              saving: t('account.actions.saving'),
-              saved: t('account.actions.saved'),
-            }}
-          />
+          <div className="space-y-1 text-right">
+            <StudioSaveButton
+              type="submit"
+              form={formId}
+              status={saveFeedback.status}
+              disabled={submitDisabled}
+              labels={{
+                idle: primaryActionLabel,
+                saving: t('account.actions.saving'),
+                saved: t('account.actions.saved'),
+              }}
+            />
+            {mode === 'edit' ? (
+              <p className="max-w-xs text-xs text-muted-foreground">
+                {t('content.ownership.saveKeepsOwner')}
+              </p>
+            ) : null}
+          </div>
         }
       >
         {detailApi.error && mode === 'edit' ? (
@@ -658,6 +772,18 @@ export const ContentEditorPage = ({
             retryDisabled={saveFeedback.status === 'saving'}
             onRetry={() => void submitForm()}
           />
+        ) : null}
+
+        {ownershipFeedback ? (
+          <Alert
+            className={
+              ownershipFeedback.tone === 'error'
+                ? 'border-destructive/40 bg-destructive/5 text-destructive'
+                : 'border-primary/40 bg-primary/5 text-primary'
+            }
+          >
+            <AlertDescription>{ownershipFeedback.message}</AlertDescription>
+          </Alert>
         ) : null}
 
         {isReadOnly ? (

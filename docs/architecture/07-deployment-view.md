@@ -186,8 +186,8 @@ Referenzen:
 
 - `deploy/portainer/docker-compose.yml`
 - `deploy/portainer/entrypoint.sh`
-- `docs/guides/swarm-deployment-runbook.md`
-- `docs/guides/swarm-deployment-guide.md`
+- `docs/operations/swarm-deployment-runbook.md`
+- `docs/operations/swarm-deployment-guide.md`
 - `docs/adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `docs/adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 
@@ -252,8 +252,8 @@ Referenzen:
 - `compose.monitoring.yaml`
 - `deploy/portainer/docker-compose.yml` (Swarm-Referenzprofil)
 - `docs/development/postgres-setup.md`
-- `docs/guides/swarm-deployment-runbook.md`
-- `docs/guides/instance-registry-local-development.md`
+- `docs/operations/swarm-deployment-runbook.md`
+- `docs/development/instance-registry-local-development.md`
 - `packages/server-runtime/src/server/bootstrap.server.ts`
 
 ### Ergänzung 2026-03: IAM-Admin-Integration
@@ -288,7 +288,7 @@ Rollout-Reihenfolge:
 
 Der MCP-Prozess läuft lokal beim Operator und ist kein Dienst im Studio-Swarm. Jeder Root-Realm (`studio-dev`, `studio-staging`, `sva-studio`) hält einen eigenen Client `sva-studio-mcp` mit eigenem Secret und eigener Ziel-Audience. Secrets werden nur lokal per OS-Keychain oder nicht versionierter Konfiguration verteilt; Studio validiert JWTs über OIDC/JWKS und benötigt kein MCP-Client-Secret.
 
-Der Rollout erfolgt `studio-dev` → `studio-staging` → `sva-studio`. Pro Stufe werden Read-only-Smoke, kontrollierte Testmutation, Challenge-geschützte Testmutation, Audit und OTEL geprüft. Ein Environment-Kill-Switch bleibt bis zur Freigabe aus. Rollback deaktiviert zuerst den Kill-Switch und widerruft Client/Credential; ein App-Rollback verwendet den vorherigen freigegebenen Image-Digest. Details stehen im [MCP-Betriebsleitfaden](../guides/studio-instance-mcp-betrieb.md).
+Der Rollout erfolgt `studio-dev` → `studio-staging` → `sva-studio`. Pro Stufe werden Read-only-Smoke, kontrollierte Testmutation, Challenge-geschützte Testmutation, Audit und OTEL geprüft. Ein Environment-Kill-Switch bleibt bis zur Freigabe aus. Rollback deaktiviert zuerst den Kill-Switch und widerruft Client/Credential; ein App-Rollback verwendet den vorherigen freigegebenen Image-Digest. Details stehen im [MCP-Betriebsleitfaden](../operations/studio-instance-mcp-betrieb.md).
 
 ## Zentraler Backup-Agent im Swarm
 

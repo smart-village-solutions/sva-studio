@@ -2,7 +2,7 @@
 
 Dies ist der GitHub-Einstieg für verantwortungsvolle Meldungen von Sicherheitslücken in SVA Studio.
 
-Die kanonische Richtlinie liegt unter [`docs/guides/security-policy.md`](../docs/guides/security-policy.md).
+Die kanonische Richtlinie liegt unter [`docs/governance/security-policy.md`](../docs/governance/security-policy.md).
 
 ## Meldung von Schwachstellen
 
@@ -27,5 +27,5 @@ Bevorzugte Meldewege:
 
 ## Weitere Informationen
 
-- vollständige Richtlinie: [`docs/guides/security-policy.md`](../docs/guides/security-policy.md)
-- Incident-Kommunikation: [`docs/guides/incident-response.md`](../docs/guides/incident-response.md)
+- vollständige Richtlinie: [`docs/governance/security-policy.md`](../docs/governance/security-policy.md)
+- Incident-Kommunikation: [`docs/operations/incident-response.md`](../docs/operations/incident-response.md)

@@ -26,7 +26,7 @@ describe('promote-deploy-gates', () => {
   it('treats docs-only changes as safe for assert-none', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',
-      changedFiles: ['docs/guides/swarm-deployment-runbook.md'],
+      changedFiles: ['docs/operations/swarm-deployment-runbook.md'],
       migrationMode: 'assert-none',
     });
 
@@ -285,7 +285,7 @@ describe('promote-deploy-gates', () => {
       mode: 'auto',
     });
     const bootstrap = evaluateDeployGate({
-      changedFiles: ['docs/guides/swarm-deployment-runbook.md'],
+      changedFiles: ['docs/operations/swarm-deployment-runbook.md'],
       environment: 'dev',
       executorConfigured: true,
       kind: 'bootstrap',
@@ -314,7 +314,7 @@ describe('promote-deploy-gates', () => {
 
   it('rejects automatic mode outside Dev even when no job would be required', () => {
     const result = evaluateDeployGate({
-      changedFiles: ['docs/guides/swarm-deployment-runbook.md'],
+      changedFiles: ['docs/operations/swarm-deployment-runbook.md'],
       environment: 'staging',
       executorConfigured: true,
       kind: 'migration',

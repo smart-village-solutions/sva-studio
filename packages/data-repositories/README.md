@@ -105,5 +105,5 @@ Der Build läuft über `tsc -p packages/data-repositories/tsconfig.lib.json`. `c
 - [Package-Zielarchitektur](../../docs/architecture/package-zielarchitektur.md)
 - [Bausteinsicht (arc42 §5)](../../docs/architecture/05-building-block-view.md)
 - [Laufzeitsicht (arc42 §6)](../../docs/architecture/06-runtime-view.md)
-- [Monorepo-Übersicht](../../docs/monorepo.md)
+- [Monorepo-Übersicht](../../docs/reference/monorepo.md)
 - [README von `@sva/data`](../data/README.md)

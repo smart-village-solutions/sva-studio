@@ -103,8 +103,8 @@ Nur produktionsnahe Registry-Profile:
 - `authRealm`, `authClientId` und `tenantAdminClient.clientId` liegen pro Instanz in `iam.instances`
 - optional `authIssuerUrl`, wenn der Issuer nicht aus `KEYCLOAK_ADMIN_BASE_URL + /realms/<authRealm>` gebildet werden soll
 - `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` bleiben nur lokale Fallbacks für nicht-registry-gesteuerte Pfade
-- der operative Root-Host-Provisioning-Pfad ist unter `../guides/instance-keycloak-provisioning.md` dokumentiert
-- der tenant-spezifische Realm-Zielzustand selbst ist unter `../guides/keycloak-tenant-realm-bootstrap.md` dokumentiert
+- der operative Root-Host-Provisioning-Pfad ist unter `../operations/instance-keycloak-provisioning.md` dokumentiert
+- der tenant-spezifische Realm-Zielzustand selbst ist unter `../operations/keycloak-tenant-realm-bootstrap.md` dokumentiert
 
 Nur Builder:
 
@@ -167,9 +167,9 @@ pnpm env:up:local-keycloak
 -> pnpm env:reset:local-keycloak nur fuer echte Hard-Fail-Faelle
 ```
 
-Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
+Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `./lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 
-Für lokale Multi-Tenant-Hosttests ist `../guides/instance-registry-local-development.md` der kanonische Pfad. Offiziell unterstützt sind `studio.localhost` und `<instanceId>.studio.localhost`.
+Für lokale Multi-Tenant-Hosttests ist `./instance-registry-local-development.md` der kanonische Pfad. Offiziell unterstützt sind `studio.localhost` und `<instanceId>.studio.localhost`.
 
 ### Playwright- und PR-Gate-Läufe mit `local-keycloak`
 
@@ -473,7 +473,7 @@ Für den produktionsnahen `studio`-Betrieb gilt:
 - fehlgeschlagene oder manuell stabilisierte Deploys müssen zusätzlich als Review unter `docs/reports/` festgehalten werden
 - vor einer tieferen Fehlersuche immer zuerst `pnpm env:doctor:<profil>` ausführen; manuelles `psql` und Browser-Netzwerk sind nur Fallback
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben
-- für serverseitige Details, Secrets und Portainer-Bedienung bleibt `../guides/swarm-deployment-runbook.md` die Referenz
+- für serverseitige Details, Secrets und Portainer-Bedienung bleibt `../operations/swarm-deployment-runbook.md` die Referenz
 - `config/runtime/studio.local.vars` ist ausschließlich lokale Diagnose-/Recovery-Konfiguration und keine Quelle für GitHub-Environment-Secrets
 - Der Recovery-Pfad für `app 1/1`, aber externen `502`, lautet: Render-Compose prüfen, Live-Service-Spec prüfen, bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden berücksichtigen, bei Bedarf kontrollierten App-Reconcile ausführen und danach `status`, `smoke` und `precheck` wiederholen.
 

@@ -163,6 +163,6 @@ packages/plugin-surveys/
 ## Relevante Doku
 
 - [OpenSpec-Change](../../openspec/changes/add-plugin-surveys-content-plugin/proposal.md)
-- [Plugin-Guide](../../docs/guides/plugin-development.md)
-- [Content-Core-Vertrag](../../docs/guides/content-management-core-contract.md)
+- [Plugin-Guide](../../docs/development/plugin-development.md)
+- [Content-Core-Vertrag](../../docs/reference/content-management-core-contract.md)
 - [Runbook SVA Mainserver](../../docs/development/runbook-sva-mainserver.md)

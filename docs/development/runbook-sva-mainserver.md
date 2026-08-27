@@ -343,7 +343,7 @@ Für DataProvider-gebundene Schreiboperationen gelten zusätzlich:
 - `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE=legacy_compatible|required` (Standard: `legacy_compatible`)
 - `SVA_MAINSERVER_CONFIRMED_CAPABILITIES=<Action-ID,...>` (Standard: leer)
 
-Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md) beschrieben.
+Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](./mainserver-data-provider-authoring.md) beschrieben.
 
 Der Wert wird in den getrackten Remote-Profilen für Dev, Staging und Production explizit geführt. Development und Staging sind nach erfolgreicher Dev-Abnahme auf `automatic` gesetzt; Production bleibt bis zur erfolgreichen Staging-Abnahme auf `shadow`. `automatic` darf erst nach erfolgreicher Identity-Verifikation der aktiven persönlichen und organisatorischen Credential-Versionen sowie ausgewerteten Shadow-Differenzen aktiviert werden. Im automatischen Modus erweitern fehlende Bindungen den Scope nicht.
 

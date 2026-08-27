@@ -8,9 +8,9 @@ Fokus auf externe Systeme und Langzeitfähigkeit — keine UX- oder Security-Dis
 Lies vor dem Review:
 - `docs/architecture/03-context-and-scope.md`
 - `docs/architecture/04-solution-strategy.md`
-- `docs/guides/iam-authorization-api-contract.md`
-- `docs/guides/iam-authorization-openapi-3.0.yaml`
-- `docs/guides/iam-authorization-reason-codes.md`
+- `docs/reference/iam-authorization-api-contract.md`
+- `docs/api/iam-authorization-openapi-3.0.yaml`
+- `docs/reference/iam-authorization-reason-codes.md`
 
 ## Leitfrage
 
@@ -45,7 +45,7 @@ git diff main...HEAD --name-only | grep -E "openapi|\.yaml$|\.json$|api\.|contra
 pnpm check:openapi:iam
 
 # IAM-API-Contract ansehen
-cat docs/guides/iam-authorization-openapi-3.0.yaml | head -100
+cat docs/api/iam-authorization-openapi-3.0.yaml | head -100
 
 # Plugin-Exports prüfen
 grep -rn "export" packages/plugin-example/src/ --include="*.ts"

@@ -1,8 +1,8 @@
 docs/README.md
-docs/BROWSER-SUPPORT.md
-docs/monorepo.md
-docs/redis-setup.md
-docs/routing.md
+docs/reference/browser-support.md
+docs/reference/monorepo.md
+docs/development/redis-setup.md
+docs/reference/routing.md
 :(glob)docs/images/**
 :(glob)docs/adr/**
 :(glob)docs/api/**
@@ -10,6 +10,6 @@ docs/routing.md
 :(glob)docs/architecture/*.mmd
 :(glob)docs/development/**
 :(glob)docs/governance/**
-:(glob)docs/guides/**
+docs/guides/studio-rollout-process.md
 :(glob)docs/operations/**
 :(glob)docs/reference/**

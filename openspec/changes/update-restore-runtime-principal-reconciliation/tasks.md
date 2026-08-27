@@ -18,7 +18,7 @@
 ## 3. Dokumentation und Architektur
 
 - [x] 3.1 ADR-048 um die restore-spezifische ACL-Reconciliation und deren Trust-Boundary ergänzen.
-- [x] 3.2 `docs/guides/swarm-deployment-runbook.md` und `docs/guides/studio-rollout-process.md` aktualisieren.
+- [x] 3.2 `docs/operations/swarm-deployment-runbook.md` und `docs/guides/studio-rollout-process.md` aktualisieren.
 - [x] 3.3 `docs/architecture/06-runtime-view.md`, `07-deployment-view.md`, `08-cross-cutting-concepts.md` und `09-architecture-decisions.md` aktualisieren.
 - [x] 3.4 Prüfen und dokumentieren, dass keine Änderung am fachlichen DB-Schema-Snapshot erforderlich ist; bei abweichendem Befund `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` fortschreiben.
 

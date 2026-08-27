@@ -78,7 +78,7 @@ Kurzübersicht:
 
 Weitere Details:
 
-- Routing-Kurzinfo: [docs/routing.md](../../docs/routing.md)
+- Routing-Kurzinfo: [docs/reference/routing.md](../../docs/reference/routing.md)
 - Architektur: [docs/architecture/routing-architecture.md](../../docs/architecture/routing-architecture.md)
 
 ## Data Fetching

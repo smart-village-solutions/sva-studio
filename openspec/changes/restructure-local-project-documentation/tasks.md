@@ -19,7 +19,7 @@
 ## 2. PR 2 – Informationsarchitektur und Ownership
 
 - [x] 2.1 Bereichsindizes für `development/`, `operations/`, `reference/` und `governance/` mit Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger anlegen
-- [x] 2.2 `docs/guides/README.md` als vollständiges, befristetes Migrationsinventar mit Altpfad, Zielbereich, geplantem Zielpfad und Konsolidierungsbedarf erstellen
+- [x] 2.2 `docs/governance/dokumentationsmigration.md` als vollständiges, befristetes Migrationsinventar mit Altpfad, Zielbereich, geplantem Zielpfad und Konsolidierungsbedarf erstellen
 - [x] 2.3 `docs/README.md` und die Bereichsindizes gegenseitig konsistent und vollständig verlinken
 - [x] 2.4 `AGENTS.md`, `DEVELOPMENT_RULES.md` und bei Bedarf `CONTRIBUTING.md` auf die neue Ablage- und Pflegelogik ausrichten
 - [x] 2.5 Die arc42-Abschnitte 04, 08 und 11 um Dokumentationsstrategie, Pflegevertrag und verbleibende Legacy-Risiken ergänzen
@@ -41,18 +41,18 @@
 
 ## 4. PR 4 – Kontrollierte Inhaltsmigration
 
-- [ ] 4.1 Das vollständige PR-2-Migrationsinventar gegen den aktuellen `main`-Stand neu abgleichen und Drift vor Datei-Moves auflösen
-- [ ] 4.2 Aktuelle Runbooks und Betriebsanleitungen per `git mv` nach `docs/operations/` verschieben
-- [ ] 4.3 Entwickleranleitungen und lokale Setups per `git mv` nach `docs/development/` verschieben
-- [ ] 4.4 Technische Verträge und Nachschlagewerke per `git mv` nach `docs/reference/` beziehungsweise `docs/api/` verschieben
-- [ ] 4.5 Architekturbezogene Erklärungen in `docs/architecture/` konsolidieren und lose Root-Dokumente zielgerichtet einordnen
-- [ ] 4.6 Inhaltlich überlappende aktuelle Quellen vor dem Verschieben zusammenführen und die führende Quelle eindeutig benennen
-- [ ] 4.7 Referenzen in aktueller Dokumentation, Root-Guidance, aktiven OpenSpec-Changes, Scripts und Workflows auf die finalen Pfade aktualisieren
-- [ ] 4.8 Historische Artefakte nicht massenhaft umschreiben; verbleibende Altverweise und die Alt-/Neu-Pfadzuordnung im Migrationsnachweis festhalten
-- [ ] 4.9 `docs/guides/` als allgemeinen Ablageort auflösen, ausschließlich `studio-rollout-process.md` als verbindlichen Kompatibilitätsanker behalten und Wiki-Manifest sowie Indizes auf den finalen Zielbaum reduzieren
-- [ ] 4.10 Einzigartige weiterhin gültige Legacy-ADR-Aussagen in kanonische ADRs übernehmen und Legacy-Dateien aus aktueller Navigation und Validierung halten
-- [ ] 4.11 `pnpm check:docs`, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` auf dem vollständigen Migrationsdiff ausführen
-- [ ] 4.12 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 3 eröffnen
+- [x] 4.1 Das vollständige PR-2-Migrationsinventar gegen den aktuellen `main`-Stand neu abgleichen und Drift vor Datei-Moves auflösen
+- [x] 4.2 Aktuelle Runbooks und Betriebsanleitungen per `git mv` nach `docs/operations/` verschieben
+- [x] 4.3 Entwickleranleitungen und lokale Setups per `git mv` nach `docs/development/` verschieben
+- [x] 4.4 Technische Verträge und Nachschlagewerke per `git mv` nach `docs/reference/` beziehungsweise `docs/api/` verschieben
+- [x] 4.5 Architekturbezogene Erklärungen in `docs/architecture/` konsolidieren und lose Root-Dokumente zielgerichtet einordnen
+- [x] 4.6 Inhaltlich überlappende aktuelle Quellen vor dem Verschieben zusammenführen und die führende Quelle eindeutig benennen
+- [x] 4.7 Referenzen in aktueller Dokumentation, Root-Guidance, aktiven OpenSpec-Changes, Scripts und Workflows auf die finalen Pfade aktualisieren
+- [x] 4.8 Historische Artefakte nicht massenhaft umschreiben; verbleibende Altverweise und die Alt-/Neu-Pfadzuordnung im Migrationsnachweis festhalten
+- [x] 4.9 `docs/guides/` als allgemeinen Ablageort auflösen, ausschließlich `studio-rollout-process.md` als verbindlichen Kompatibilitätsanker behalten und Wiki-Manifest sowie Indizes auf den finalen Zielbaum reduzieren
+- [x] 4.10 Einzigartige weiterhin gültige Legacy-ADR-Aussagen in kanonische ADRs übernehmen und Legacy-Dateien aus aktueller Navigation und Validierung halten
+- [x] 4.11 `pnpm check:docs`, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` auf dem vollständigen Migrationsdiff ausführen
+- [x] 4.12 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 3 eröffnen
 
 ## 5. Abschlussnachweis
 

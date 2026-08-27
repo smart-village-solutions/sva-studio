@@ -125,7 +125,7 @@ Der Check läuft lokal, in `test:ci` und als blockierender Schritt in Repository
 
 - `docs/development/README.md`, `docs/operations/README.md`, `docs/reference/README.md` und `docs/governance/README.md` anlegen
 - Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger je Bereich dokumentieren
-- `docs/guides/README.md` als befristeten Migrationsindex mit vollständiger Zuordnung jedes aktuellen Guide-Dokuments zum Zielbereich anlegen
+- `docs/governance/dokumentationsmigration.md` als befristeten Migrationsindex mit vollständiger Zuordnung jedes aktuellen Guide-Dokuments zum Zielbereich anlegen
 - Dokumentationspflege in `AGENTS.md`, `DEVELOPMENT_RULES.md` und bei Bedarf `CONTRIBUTING.md` auf die Zielstruktur ausrichten
 - die betroffenen arc42-Abschnitte 04, 08 und 11 aktualisieren
 

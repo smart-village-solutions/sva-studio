@@ -101,13 +101,13 @@ Architekturprinzipien auf IST-Basis.
 
 Referenzen:
 
-- `./decisions/ADR-001-frontend-framework-selection.md`
-- `./decisions/ADR-002-plugin-architecture-pattern.md`
-- `./decisions/ADR-003-design-token-architecture.md`
-- `./decisions/ADR-004-monitoring-stack-loki-grafana-prometheus.md`
-- `./decisions/ADR-006-logging-pipeline-strategy.md`
-- `./decisions/ADR-007-label-schema-and-pii-policy.md`
-- `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`
+- `../adr/ADR-001-frontend-framework-selection.md`
+- `../adr/ADR-002-plugin-architecture-pattern.md`
+- `../adr/ADR-003-design-token-architecture.md`
+- `../adr/ADR-004-monitoring-stack-loki-grafana-prometheus.md`
+- `../adr/ADR-006-logging-pipeline-strategy.md`
+- `../adr/ADR-007-label-schema-and-pii-policy.md`
+- `../adr/ADR-008-codecov-coverage-reporting-and-gates.md`
 - `./iam-service-architektur.md`
 - `../adr/ADR-034-plugin-sdk-vertrag-v1.md`
 - `../adr/ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
@@ -247,4 +247,4 @@ eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht
 
 `docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität. `pnpm check:docs` erzwingt relative Linkintegrität, Index-Erreichbarkeit, ADR-Parität und die Grenzen der Wiki-Publikation.
 
-Der gemischte Bereich `docs/guides/` wird anhand eines vollständigen Alt-/Neu-Pfad-Inventars kontrolliert abgebaut. Bis zur Migration bleiben die Altpfade gültig. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.
+Der frühere gemischte Bereich `docs/guides/` wurde anhand eines vollständigen Alt-/Neu-Pfad-Nachweises kontrolliert abgebaut. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.

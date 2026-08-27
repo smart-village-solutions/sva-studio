@@ -41,7 +41,7 @@ Für SVA Studio ist der Haupttreiber, dass wir **strukturelle Leitplanken und Co
 - **Payoff:** Dafür bekommen wir schnellere CI/CD-Zyklen (affected), konsistentere Scaffolds und stärkere Governance.
 
 ## Praktische Leitlinien
-- Neue Packages folgen den Konventionen in docs/monorepo.md.
+- Neue Packages folgen den Konventionen in docs/reference/monorepo.md.
 - Targets sollten als Nx Targets definiert werden (statt ad-hoc npm scripts), damit affected/caching zuverlässig greifen.
 - Architektur-Grenzen (Core vs. Plugins) werden perspektivisch über Nx-Projektmetadaten (Tags) abgesichert.
 - Für Orientierung/Debugging im Workspace sind `nx graph` und Nx Console die bevorzugten Einstiege.

@@ -182,4 +182,4 @@ Historische Reports unter `docs/reports/`, zeitgebundene Staging-Unterlagen unte
 - Architektur: [`07-deployment-view.md`](../architecture/07-deployment-view.md)
 - Sicherheits- und Evidenzvertrag: [`08-cross-cutting-concepts.md`](../architecture/08-cross-cutting-concepts.md)
 - Backup-Entscheidung: [`ADR-048`](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
-- Infrastruktur, Diagnose und Restore: [`swarm-deployment-runbook.md`](./swarm-deployment-runbook.md)
+- Infrastruktur, Diagnose und Restore: [`swarm-deployment-runbook.md`](../operations/swarm-deployment-runbook.md)

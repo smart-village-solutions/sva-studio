@@ -138,14 +138,14 @@ describe('documentation integrity', () => {
       'docs/development/README.md',
       '# Entwicklung\n\n[Setup](./setup.md)\n\n[Routing](../routing.md)\n'
     );
-    files.set('docs/routing.md', '# Routing\n');
-    const publishedPaths = new Set([...createInput().publishedPaths, 'docs/routing.md']);
-    const trackedPaths = new Set([...createInput().trackedPaths, 'docs/routing.md']);
+    files.set('docs/reference/routing.md', '# Routing\n');
+    const publishedPaths = new Set([...createInput().publishedPaths, 'docs/reference/routing.md']);
+    const trackedPaths = new Set([...createInput().trackedPaths, 'docs/reference/routing.md']);
 
     expect(
       checkDocumentationIntegrity(createInput({ files, publishedPaths, trackedPaths }))
     ).toContainEqual(
-      expect.objectContaining({ code: 'unreachable-page', path: 'docs/routing.md' })
+      expect.objectContaining({ code: 'unreachable-page', path: 'docs/reference/routing.md' })
     );
   });
 

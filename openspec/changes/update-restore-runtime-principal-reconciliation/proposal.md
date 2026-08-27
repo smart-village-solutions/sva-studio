@@ -19,6 +19,6 @@ Der Production-Restore vom 1. August 2026 wurde erfolgreich gemeldet, obwohl der
 
 - Affected specs: `deployment-topology`
 - Affected code: zentraler Backup-/Restore-Agent, `.github/workflows/database-restore.yml`, Restore-Vertrags- und Evidenztypen unter `scripts/ci/`
-- Affected documentation: `docs/adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md`, `docs/guides/swarm-deployment-runbook.md`, `docs/guides/studio-rollout-process.md`
+- Affected documentation: `docs/adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md`, `docs/operations/swarm-deployment-runbook.md`, `docs/guides/studio-rollout-process.md`
 - Affected arc42 sections: `docs/architecture/06-runtime-view.md`, `docs/architecture/07-deployment-view.md`, `docs/architecture/08-cross-cutting-concepts.md`, `docs/architecture/09-architecture-decisions.md`
 - Security impact: Der bestehende Restore-Agent erhält keine allgemeine SQL-Schnittstelle und keine App-Zugangsdaten. Seine feste Restore-Verantwortung wird um eine eng begrenzte, idempotente ACL-Reconciliation erweitert.

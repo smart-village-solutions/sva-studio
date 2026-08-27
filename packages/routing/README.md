@@ -83,5 +83,5 @@ Die Kernlogik liegt in `app.routes.shared.ts` und den zugehörigen Guard-, Plugi
 - [Routing-Architektur](../../docs/architecture/routing-architecture.md)
 - [Bausteinsicht (arc42 §5)](../../docs/architecture/05-building-block-view.md)
 - [Laufzeitsicht (arc42 §6)](../../docs/architecture/06-runtime-view.md)
-- [Übersicht Routing](../../docs/routing.md)
+- [Übersicht Routing](../../docs/reference/routing.md)
 - [ADR-035: Routing Observability Diagnostics Hook](../../docs/adr/ADR-035-routing-observability-diagnostics-hook.md)

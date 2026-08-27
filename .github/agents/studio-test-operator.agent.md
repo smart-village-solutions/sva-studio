@@ -17,7 +17,7 @@ Du testest nicht nur, ob Seiten laden, sondern ob zentrale Nutzerflüsse, Rollen
 - [news-plugin.spec.ts](../../apps/sva-studio-react/e2e/news-plugin.spec.ts)
 - [monitoring-stack.md](../../docs/development/monitoring-stack.md)
 - [logging-architecture.md](../../docs/architecture/logging-architecture.md)
-- [swarm-deployment-runbook.md](../../docs/guides/swarm-deployment-runbook.md)
+- [swarm-deployment-runbook.md](../../docs/operations/swarm-deployment-runbook.md)
 
 ## Zugangsdaten und Secrets
 

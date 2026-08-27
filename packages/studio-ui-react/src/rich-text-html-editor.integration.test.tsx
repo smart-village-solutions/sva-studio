@@ -136,7 +136,7 @@ describe('RichTextHtmlEditor integration', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'HTML' }), {
       target: { value: '<h2 data-unsupported="true">Überschrift</h2>' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'WYSIWYG' }));
+    fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
 
     const editor = await screen.findByRole('textbox');
     await waitFor(() => expect(editor.querySelector('h2')?.textContent).toBe('Überschrift'));

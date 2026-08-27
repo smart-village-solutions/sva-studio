@@ -52,7 +52,7 @@
 - [x] 4.9 `docs/guides/` als allgemeinen Ablageort auflösen, ausschließlich `studio-rollout-process.md` als verbindlichen Kompatibilitätsanker behalten und Wiki-Manifest sowie Indizes auf den finalen Zielbaum reduzieren
 - [x] 4.10 Einzigartige weiterhin gültige Legacy-ADR-Aussagen in kanonische ADRs übernehmen und Legacy-Dateien aus aktueller Navigation und Validierung halten
 - [x] 4.11 `pnpm check:docs`, File Placement, Rollout-Doku-Check, OpenSpec strict und `git diff --check` auf dem vollständigen Migrationsdiff ausführen
-- [ ] 4.12 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 3 eröffnen
+- [x] 4.12 Nach Vergabe der PR-Nummer den Changelog-Eintrag ergänzen und die PR erst nach Merge von PR 3 eröffnen
 
 ## 5. Abschlussnachweis
 

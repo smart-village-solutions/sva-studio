@@ -199,11 +199,18 @@ const deleteStaleGenericItemSiblingProjection = async (
 const refreshGenericItemProjectionSnapshots = async (
   target: ContentProjectionSyncTarget
 ): Promise<void> => {
+  let hasIncompleteRefresh = false;
   for (const contentType of genericItemProjectionContentTypes) {
-    await triggerMainserverProjectionRefresh(
+    const result = await triggerMainserverProjectionRefresh(
       { ...target, contentType },
       { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' }
     );
+    if (result.status !== 'completed' && result.status !== 'already_running') {
+      hasIncompleteRefresh = true;
+    }
+  }
+  if (hasIncompleteRefresh) {
+    throw new Error('content_projection_refresh_incomplete');
   }
 };
 

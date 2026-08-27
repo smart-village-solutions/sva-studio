@@ -404,6 +404,23 @@ describe('GenericItem content projection mutations', () => {
     ]);
   });
 
+  it('rejects an incomplete snapshot fallback after a targeted generic item read fails', async () => {
+    state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('target read failed'));
+    state.listSvaMainserverGenericItems.mockRejectedValue(new Error('snapshot read failed'));
+
+    await expect(
+      refreshProjectedContentsForMainserverMutation({
+        contentType: 'generic-items.generic-item',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        organizationId: 'org-1',
+        operation: 'update',
+        entityId: 'generic-fallback-failure-1',
+      })
+    ).rejects.toThrow('content_projection_refresh_incomplete');
+  });
+
   it('removes only the targeted generic item projection row after delete mutations', async () => {
     fixture.projectionRows = [
       {

@@ -42,9 +42,15 @@ describe('generic-items-route-input sections', () => {
   });
 
   it('rejects malformed locations payloads', async () => {
-    await expectInvalidRequest(parseLocations('invalid') as Response, 'Orte müssen als Liste gesendet werden.');
+    await expectInvalidRequest(
+      parseLocations('invalid') as Response,
+      'Orte müssen als Liste gesendet werden.'
+    );
     await expectInvalidRequest(parseLocations([null]) as Response, 'Orte müssen Objekte sein.');
-    await expectInvalidRequest(parseLocations([{ geoLocation: { latitude: '52.5' } }]) as Response, 'Geo-Koordinaten sind ungültig.');
+    await expectInvalidRequest(
+      parseLocations([{ geoLocation: { latitude: '52.5' } }]) as Response,
+      'Geo-Koordinaten sind ungültig.'
+    );
   });
 
   it('parses content blocks with text-only and media-backed content', () => {
@@ -52,20 +58,40 @@ describe('generic-items-route-input sections', () => {
       parseContentBlocks([
         { title: ' Abschnitt ', intro: ' Intro ', body: '<p>Body</p>', mediaContents: null },
         {
-          mediaContents: [{ sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: ' Bild ' }],
+          mediaContents: [
+            { sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: ' Bild ' },
+          ],
         },
       ])
     ).toEqual([
       { title: 'Abschnitt', intro: 'Intro', body: '<p>Body</p>' },
       {
-        mediaContents: [{ sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: 'Bild' }],
+        mediaContents: [
+          { sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: 'Bild' },
+        ],
       },
     ]);
   });
 
+  it('sanitizes rich-text content blocks before forwarding them', () => {
+    expect(
+      parseContentBlocks([
+        {
+          body: '<h2 onclick="alert(1)">Titel</h2><script>alert(1)</script><a href="javascript:alert(1)">Link</a>',
+        },
+      ])
+    ).toEqual([{ body: '<h2>Titel</h2><a>Link</a>' }]);
+  });
+
   it('rejects malformed content block payloads', async () => {
-    await expectInvalidRequest(parseContentBlocks('invalid') as Response, 'ContentBlocks müssen als Liste gesendet werden.');
-    await expectInvalidRequest(parseContentBlocks([null]) as Response, 'ContentBlocks müssen Objekte sein.');
+    await expectInvalidRequest(
+      parseContentBlocks('invalid') as Response,
+      'ContentBlocks müssen als Liste gesendet werden.'
+    );
+    await expectInvalidRequest(
+      parseContentBlocks([null]) as Response,
+      'ContentBlocks müssen Objekte sein.'
+    );
     await expectInvalidRequest(
       parseContentBlocks([{ mediaContents: 'invalid' }]) as Response,
       'MediaContent muss als Liste gesendet werden.'
@@ -77,20 +103,34 @@ describe('generic-items-route-input sections', () => {
   });
 
   it('parses contact and accessibility lists while keeping empty objects out of the payload', () => {
-    expect(parseContactList([{ email: 'info@example.invalid' }, {}])).toEqual([{ email: 'info@example.invalid' }, {}]);
+    expect(parseContactList([{ email: 'info@example.invalid' }, {}])).toEqual([
+      { email: 'info@example.invalid' },
+      {},
+    ]);
     expect(
       parseAccessibilityInformations([
-        { description: ' Lesbar ', types: 'wheelchair', urls: [{ url: 'https://example.invalid/a11y' }] },
+        {
+          description: ' Lesbar ',
+          types: 'wheelchair',
+          urls: [{ url: 'https://example.invalid/a11y' }],
+        },
         {},
       ])
     ).toEqual([
-      { description: 'Lesbar', types: 'wheelchair', urls: [{ url: 'https://example.invalid/a11y' }] },
+      {
+        description: 'Lesbar',
+        types: 'wheelchair',
+        urls: [{ url: 'https://example.invalid/a11y' }],
+      },
       {},
     ]);
   });
 
   it('rejects malformed contact and accessibility list payloads', async () => {
-    await expectInvalidRequest(parseContactList('invalid') as Response, 'Kontakte müssen als Liste gesendet werden.');
+    await expectInvalidRequest(
+      parseContactList('invalid') as Response,
+      'Kontakte müssen als Liste gesendet werden.'
+    );
     await expectInvalidRequest(
       parseAccessibilityInformations('invalid') as Response,
       'Barrierefreiheitsinformationen müssen als Liste gesendet werden.'

@@ -5,6 +5,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import { Bold, Italic, Link2, List, ListOrdered, Redo2, Undo2 } from 'lucide-react';
 
 import { Button } from './button.js';
+import { sanitizeRichTextHtml } from './rich-text-html-sanitizer.js';
 import { Select } from './select.js';
 import { Textarea } from './textarea.js';
 import { cn } from './utils.js';
@@ -119,6 +120,13 @@ export const RichTextHtmlEditor = ({
   className,
 }: RichTextHtmlEditorProps) => {
   const [mode, setMode] = React.useState<'visual' | 'html'>('visual');
+  const sanitizeAndNormalizeHtml = React.useCallback(
+    (nextValue: string) =>
+      normalizeEditorHtml(
+        sanitizeRichTextHtml(normalizeHtml ? normalizeHtml(nextValue) : nextValue)
+      ),
+    [normalizeHtml]
+  );
   const headingLevels = React.useMemo(
     () =>
       blockTypeOptions
@@ -127,9 +135,10 @@ export const RichTextHtmlEditor = ({
     [blockTypeOptions]
   );
   const normalizedValue = React.useMemo(
-    () => normalizeEditorHtml(normalizeHtml ? normalizeHtml(value) : value),
-    [normalizeHtml, value]
+    () => sanitizeAndNormalizeHtml(value),
+    [sanitizeAndNormalizeHtml, value]
   );
+  const [htmlDraft, setHtmlDraft] = React.useState(normalizedValue);
   const editor = useEditor({
     immediatelyRender: false,
     editable: disabled === false,
@@ -174,7 +183,7 @@ export const RichTextHtmlEditor = ({
     },
     onUpdate: ({ editor: currentEditor }) => {
       const nextHtml = currentEditor.getHTML();
-      onChange(normalizeHtml ? normalizeHtml(nextHtml) : nextHtml);
+      onChange(sanitizeAndNormalizeHtml(nextHtml));
     },
   });
 
@@ -235,15 +244,22 @@ export const RichTextHtmlEditor = ({
       return;
     }
 
-    editor.commands.setContent(normalizedValue, {
+    const sanitizedDraft = sanitizeAndNormalizeHtml(htmlDraft);
+    editor.commands.setContent(sanitizedDraft, {
       emitUpdate: false,
     });
-    const normalizedHtml = editor.getHTML();
-    if (normalizedHtml !== normalizedValue) {
+    const normalizedHtml = sanitizeAndNormalizeHtml(editor.getHTML());
+    setHtmlDraft(normalizedHtml);
+    if (normalizedHtml !== value) {
       onChange(normalizedHtml);
     }
     setMode('visual');
-  }, [editor, normalizedValue, onChange]);
+  }, [editor, htmlDraft, onChange, sanitizeAndNormalizeHtml, value]);
+
+  const showHtmlMode = React.useCallback(() => {
+    setHtmlDraft(normalizedValue);
+    setMode('html');
+  }, [normalizedValue]);
 
   const htmlModeLabelId = `${id}-html-mode-label`;
   const formattingDisabled = !editor || disabled || mode === 'html';
@@ -272,7 +288,7 @@ export const RichTextHtmlEditor = ({
             variant={mode === 'html' ? 'secondary' : 'tertiary'}
             aria-pressed={mode === 'html'}
             className="h-10 min-h-10 rounded-none border-0 border-l border-border"
-            onClick={() => setMode('html')}
+            onClick={showHtmlMode}
           >
             {toolbarLabels.htmlMode}
           </Button>
@@ -382,14 +398,20 @@ export const RichTextHtmlEditor = ({
             aria-labelledby={labelId ? `${labelId} ${htmlModeLabelId}` : htmlModeLabelId}
             aria-describedby={describedBy}
             aria-invalid={ariaInvalid || undefined}
-            value={value}
+            value={htmlDraft}
             readOnly={disabled}
             spellCheck={false}
             className="min-h-56 resize-y rounded-none border-0 font-mono text-sm focus-visible:ring-inset focus-visible:ring-offset-0"
-            onChange={(event) => onChange(event.currentTarget.value)}
+            onChange={(event) => {
+              const nextDraft = event.currentTarget.value;
+              setHtmlDraft(nextDraft);
+              onChange(sanitizeAndNormalizeHtml(nextDraft));
+            }}
             onBlur={() => {
-              if (normalizedValue !== value) {
-                onChange(normalizedValue);
+              const sanitizedDraft = sanitizeAndNormalizeHtml(htmlDraft);
+              setHtmlDraft(sanitizedDraft);
+              if (sanitizedDraft !== value) {
+                onChange(sanitizedDraft);
               }
             }}
           />

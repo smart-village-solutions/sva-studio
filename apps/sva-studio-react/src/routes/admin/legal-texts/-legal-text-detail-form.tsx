@@ -154,28 +154,28 @@ export const LegalTextDetailForm = ({
             })}
           </p>
         </div>
-
-        <div className="space-y-2">
-          <Label id="legal-text-edit-content-label" htmlFor="legal-text-edit-content">
-            {t('admin.legalTexts.fields.contentHtml')}
-          </Label>
-          <LegalTextRichTextEditor
-            id="legal-text-edit-content"
-            labelId="legal-text-edit-content-label"
-            value={formValues.contentHtml}
-            onChange={(contentHtml) => setFormValues((current) => ({ ...current, contentHtml }))}
-            disabled={!canUpdate}
-          />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          {canDelete ? (
-            <Button type="button" variant="destructive" onClick={onDelete}>
-              {t('admin.legalTexts.actions.delete')}
-            </Button>
-          ) : null}
-        </div>
       </fieldset>
+
+      <div className="space-y-2">
+        <Label id="legal-text-edit-content-label" htmlFor="legal-text-edit-content">
+          {t('admin.legalTexts.fields.contentHtml')}
+        </Label>
+        <LegalTextRichTextEditor
+          id="legal-text-edit-content"
+          labelId="legal-text-edit-content-label"
+          value={formValues.contentHtml}
+          onChange={(contentHtml) => setFormValues((current) => ({ ...current, contentHtml }))}
+          disabled={!canUpdate}
+        />
+      </div>
+
+      <div className="flex justify-end gap-3">
+        {canDelete ? (
+          <Button type="button" variant="destructive" onClick={onDelete}>
+            {t('admin.legalTexts.actions.delete')}
+          </Button>
+        ) : null}
+      </div>
     </form>
   </Card>
 );

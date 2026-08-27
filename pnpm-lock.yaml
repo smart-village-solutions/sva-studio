@@ -546,7 +546,13 @@ importers:
       '@sva/iam-core':
         specifier: workspace:*
         version: link:../iam-core
+      sanitize-html:
+        specifier: ^2.17.6
+        version: 2.17.6
     devDependencies:
+      '@types/sanitize-html':
+        specifier: ^2.16.1
+        version: 2.16.1
       fast-check:
         specifier: ^3.23.2
         version: 3.23.2
@@ -1395,6 +1401,9 @@ importers:
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
+      sanitize-html:
+        specifier: ^2.17.6
+        version: 2.17.6
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.6.0
@@ -1408,6 +1417,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.4
         version: 19.2.4(@types/react@19.2.18)
+      '@types/sanitize-html':
+        specifier: ^2.16.1
+        version: 2.16.1
       '@vitest/coverage-v8':
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
@@ -14329,6 +14341,7 @@ snapshots:
   '@sva/core@file:packages/core':
     dependencies:
       '@sva/iam-core': file:packages/iam-core
+      sanitize-html: 2.17.6
 
   '@sva/data-repositories@file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))':
     dependencies:
@@ -14453,6 +14466,7 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
       react-hook-form: 7.80.0(react@19.2.8)
+      sanitize-html: 2.17.6
       tailwind-merge: 3.6.0
     transitivePeerDependencies:
       - '@floating-ui/dom'
@@ -15397,7 +15411,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.2.1(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   '@vitest/expect@4.1.10':
     dependencies:

@@ -233,6 +233,23 @@ describe('RichTextHtmlEditor', () => {
     );
   });
 
+  it('keeps raw source editable while only forwarding sanitized html', () => {
+    const { onChange } = renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+    const htmlSource = screen.getByRole('textbox', { name: 'HTML' });
+    const unsafeHtml =
+      '<h2 onclick="alert(1)">Titel</h2><script>alert(1)</script><a href="javascript:alert(1)">Link</a>';
+
+    fireEvent.change(htmlSource, { target: { value: unsafeHtml } });
+
+    expect(htmlSource).toHaveProperty('value', unsafeHtml);
+    expect(onChange).toHaveBeenLastCalledWith('<h2>Titel</h2><a>Link</a>');
+
+    fireEvent.blur(htmlSource);
+    expect(htmlSource).toHaveProperty('value', '<h2>Titel</h2><a>Link</a>');
+  });
+
   it('keeps the source view labelled and read-only while the editor is disabled', () => {
     renderEditor({ disabled: true });
 

@@ -32,15 +32,15 @@ Das Repository MUST aktuelle lokale Projektdokumentation von generierten, histor
 - **THEN** ist ausschließlich `docs/adr/` als kanonischer ADR-Bestand navigierbar
 - **AND** wird eine weiterhin gültige einzigartige Aussage vor Entfernung oder weiterer Historisierung in eine kanonische ADR übernommen
 
-### Requirement: Wiki veröffentlicht nur die freigegebene aktuelle Wissensbasis
+### Requirement: Wiki veröffentlicht eine gerenderte und aufgabenorientiert navigierbare Wissensbasis
 
-Der Wiki-Sync MUST eine versionierte, überprüfbare Positivliste aktueller lokaler Projektdokumentation verwenden und MUST denselben kanonischen Einstieg sowie dieselben ADR-Quellen wie das Repository anbieten. Workflow und Dokumentationscheck MUST denselben maschinenlesbaren Publikationsvertrag konsumieren. Der Sync MUST historische, generierte, PR-/Staging-bezogene und externe Anwenderdokumentationsbestände von der lokalen Wiki-Publikation ausschließen.
+Der Wiki-Sync MUST eine versionierte, überprüfbare Positivliste aktueller lokaler Projektdokumentation verwenden und MUST denselben kanonischen Einstieg sowie dieselben ADR-Quellen wie das Repository anbieten. Workflow und Dokumentationscheck MUST denselben maschinenlesbaren Publikationsvertrag konsumieren. Publizierte Markdown-Dokumente MUST als gerenderte Wiki-Seiten unter deterministischen, eindeutigen Slugs erreichbar sein. Der Sync MUST historische, generierte, PR-/Staging-bezogene und externe Anwenderdokumentationsbestände von der lokalen Wiki-Publikation ausschließen.
 
 #### Scenario: Wiki wird aus Studio-Main synchronisiert
 
 - **WHEN** ein Push nach `main` den Wiki-Sync ausführt
 - **THEN** veröffentlicht der Workflow ausschließlich freigegebene aktuelle Dokumentationsbereiche
-- **AND** verweisen Home und Sidebar auf `docs/README.md`, arc42 und `docs/adr/README.md`
+- **AND** verweisen Home und Sidebar über gerenderte Wiki-Slugs auf den Dokumentationseinstieg, arc42 und den kanonischen ADR-Index
 - **AND** werden `docs/changelog/`, `docs/reports/`, `docs/pr/`, `docs/staging/`, `docs/superpowers/`, `docs/user-documentation/` und `docs/architecture/decisions/` nicht als lokale Wissensbasis publiziert
 
 #### Scenario: Publikationsumfang wird geändert
@@ -48,6 +48,34 @@ Der Wiki-Sync MUST eine versionierte, überprüfbare Positivliste aktueller loka
 - **WHEN** ein aktueller Dokumentationsbereich zur Wiki-Publikation hinzugefügt oder daraus entfernt wird
 - **THEN** wird die Änderung im versionierten Publikationsmanifest vorgenommen
 - **AND** prüfen Workflow-Vertrag und `pnpm check:docs` dieselbe Manifestdatei
+
+#### Scenario: Teammitglied öffnet ein Wiki-Dokument
+
+- **WHEN** ein Teammitglied von Home, Sidebar, einem Aufgabenpfad oder einem Bereichsindex zu einem publizierten Markdown-Dokument navigiert
+- **THEN** wird das Ziel als gerenderte GitHub-Wiki-Seite angezeigt
+- **AND** erfolgt keine Weiterleitung auf `raw.githubusercontent.com`
+- **AND** verweist die Seite auf ihre kanonische Quelldatei im Studio-Repository
+
+#### Scenario: Teammitglied sucht den richtigen Einstieg
+
+- **WHEN** ein Teammitglied das Wiki ohne Kenntnis der Ordnerstruktur öffnet
+- **THEN** bietet Home zuerst konkrete Aufgabenpfade für Entwicklung, Review, Rollout, Incident, Architektur, Referenz und Dokumentationspflege an
+- **AND** sind kritische Einstiege und Bereichsindizes davon klar getrennt
+- **AND** bleibt die Sidebar auf kanonische Einstiege statt einzelne Unterseiten begrenzt
+
+#### Scenario: Publizierte Markdown-Dateien verlinken einander
+
+- **WHEN** eine publizierte Markdown-Datei relativ auf eine andere publizierte Markdown-Datei verweist
+- **THEN** transformiert der Publikationsprozess den Link auf den deterministischen Wiki-Slug des Ziels
+- **AND** bleibt ein vorhandener Anker erhalten
+- **AND** schlägt die Publikation bei einer Slug-Kollision oder einem nicht auflösbaren Ziel vor dem Wiki-Push fehl
+
+#### Scenario: Dokumentation verweist auf ein Quellartefakt
+
+- **WHEN** ein Dokument auf eine YAML-, SQL-, Mermaid- oder andere nicht als Wiki-Seite gerenderte Datei verweist
+- **THEN** kennzeichnet der Link das Ziel als Quellartefakt
+- **AND** darf er gezielt auf die Repository- oder Raw-Ansicht verweisen
+- **AND** behandelt die Navigation das Artefakt nicht als normale Wiki-Seite
 
 ### Requirement: Strukturelle Dokumentationsintegrität wird automatisiert geprüft
 

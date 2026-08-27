@@ -1,33 +1,34 @@
-# Change: Mainserver-Identitätskonflikte kontrolliert auflösen
+# Change: Mainserver-Identitätskonflikte gezielt auflösen
 
 ## Why
 
-Die persönliche Mainserver-Provisionierung beendet einen Konflikt, bei dem eine E-Mail im Mainserver bereits mit einem anderen Keycloak-Subject existiert, korrekt fail-closed mit `local_user_conflict`. System-Administratoren erhalten jedoch weder einen redigierten Prüfbefund noch einen kontrollierten Weg, eine bestätigte historische Identität zu übernehmen. Wiederholte Reprovisionierung kann diesen Konflikt nicht lösen.
+Die persönliche Mainserver-Provisionierung beendet einen Konflikt, bei dem eine E-Mail-Adresse im Mainserver bereits mit einem anderen Keycloak-Subject existiert, korrekt fail-closed mit `local_user_conflict`. Ein System-Admin kann den Befund heute jedoch weder redigiert prüfen noch die bestehende Mainserver-Identität kontrolliert an den aktuellen Studio-Account binden. Wiederholte Reprovisionierung löst den Konflikt nicht.
 
 ## What Changes
 
-- Neuer, von der normalen Benutzerverwaltung getrennter Reconcile-Pfad für persönliche Mainserver-Identitäten.
-- Read-only Konfliktprüfung mit minimierten Statusdaten und deterministischen Ergebnissen.
-- Zwei-Schritt-Freigabe: ein `system_admin` beantragt den Rebind, ein zweiter `system_admin` derselben Instanz bestätigt ihn. Antragsteller und Bestätiger müssen verschieden sein.
-- Rebind nur über einen expliziten, idempotenten Mainserver-Upstream-Vertrag; ohne diesen Vertrag bleibt der Vorgang in `reconciliation_required`.
-- Nach erfolgreichem Rebind werden ausschließlich serverseitig neue persönliche Credentials in Keycloak persistiert, die bestehende DataProvider-Bindung geprüft und der alte Credential-Zustand widerrufen, sofern der Upstream dies bestätigt.
-- PII-minimiertes Audit für Prüfung, Antrag, Bestätigung, Durchführung und Ergebnis; Secrets, Tokens und Rohantworten bleiben ausgeschlossen.
-- Neuer Status und erklärbare Aktionen in der Benutzer-Detailansicht.
+- Eine Read-only-Prüfung zeigt einem berechtigten `system_admin` den redigierten Konfliktbefund.
+- Die Übereinstimmung derselben normalisierten E-Mail-Adresse im Studio und Mainserver ist das ausreichende fachliche Identifikationsmerkmal für den Rebind.
+- Ein `system_admin` der betroffenen Instanz kann den Rebind nach Fresh Reauth und einer expliziten Wirkungsbestätigung direkt ausführen; eine zweite Freigabe ist nicht erforderlich.
+- Der Rebind verwendet einen dedizierten atomaren und idempotenten Mainserver-Vertrag, der die Bindung und persönlichen Credentials gemeinsam aktualisiert und nach einem unklaren Ergebnis abgefragt werden kann.
+- Studio persistiert neue persönliche Credentials ausschließlich serverseitig in Keycloak und verifiziert anschließend die bestehende DataProvider-Bindung.
+- Der Ablauf verwendet bestehende Provisioning-/Binding-Zustände und das vorhandene IAM-Audit. Es entsteht weder ein neues Reconciliation-Ledger noch eine allgemeine Approval-Engine.
+- Die Benutzer-Detailansicht erhält eine gezielte Prüf- und Reconcile-Aktion mit verständlichen Erfolgs- und Fehlerzuständen.
 
 ## Non-Goals
 
-- Keine automatische Verknüpfung anhand gleicher E-Mail-Adressen.
-- Keine Löschung, Zusammenführung oder Deaktivierung von Mainserver- oder Keycloak-Konten.
-- Keine Bulk-Reconciliation und kein Ersatz des bestehenden Bulk-Reprovision-Pfads.
+- Keine Verknüpfung bei abweichenden normalisierten E-Mail-Adressen.
+- Kein allgemeiner Account-Merge, keine Bulk-Reconciliation und keine Content-Ownership-Umschreibung.
+- Keine zweite administrative Freigabestufe und kein generischer Workflow für sicherheitskritische Aktionen.
 - Keine direkte Datenbankmanipulation im Mainserver oder Keycloak als Ersatz für den Upstream-Vertrag.
+- Keine neue fachliche Persistenz ausschließlich zur Abbildung des Reconcile-Ablaufs.
 
 ## Product Decision
 
-Dieser Vorschlag setzt für Production verpflichtende Vier-Augen-Freigabe voraus. Falls ein einzelner System-Admin genügen soll, muss die Policy vor Implementierungsfreigabe ausdrücklich geändert und die Risikobegründung im ADR dokumentiert werden.
+Die normalisierte E-Mail-Adresse ist für diesen begrenzten Konfliktfall das maßgebliche und ausreichende Identifikationsmerkmal. Ein berechtigter `system_admin` darf den Rebind nach Fresh Reauth und expliziter Bestätigung ohne Vier-Augen-Freigabe durchführen.
 
 ## Impact
 
 - Affected specs: `account-ui`, `iam-access-control`, `iam-auditing`, `sva-mainserver-integration`
-- Affected code: `apps/sva-studio-react`, `packages/iam-admin`, `packages/auth-runtime`, `packages/sva-mainserver`, `packages/routing`, gegebenenfalls `packages/data`
-- Affected arc42 sections: `04-solution-strategy`, `05-building-block-view`, `06-runtime-view`, `08-cross-cutting-concepts`, `09-architecture-decisions`, `11-risks-and-technical-debt`
-- New ADR: kontrollierte Übernahme historischer Mainserver-Identitäten
+- Affected code: `apps/sva-studio-react`, `packages/iam-admin`, `packages/auth-runtime`, `packages/sva-mainserver`, `packages/routing`
+- Affected docs: `docs/api/iam-v1.yaml`, IAM-Runbook und relevante arc42-Abschnitte 03, 05, 06, 08 und 09
+- New ADR: E-Mail-basierter, administrativer Mainserver-Identitätsrebind

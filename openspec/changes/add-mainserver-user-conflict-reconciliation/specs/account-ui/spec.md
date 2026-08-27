@@ -1,31 +1,25 @@
 ## ADDED Requirements
 
-### Requirement: Benutzer-Detailansicht macht Mainserver-Identitätskonflikte handhabbar
+### Requirement: Benutzer-Detailansicht löst bestätigte Mainserver-E-Mail-Konflikte gezielt auf
 
-Das System SHALL einem berechtigten `system_admin` in der Benutzer-Detailansicht einen redigierten Mainserver-Identitätskonfliktstatus, eine Read-only-Prüfaktion und den Status eines zugehörigen Reconciliation-Vorgangs anzeigen. Die Ansicht SHALL keine Credentials, Tokens, vollständigen Upstream-Antworten oder unmaskierten fremden Identitätsdaten anzeigen.
+Das System SHALL einem berechtigten `system_admin` in der Benutzer-Detailansicht einen redigierten Mainserver-Konfliktbefund und eine direkte Reconcile-Aktion anzeigen, wenn Studio und Mainserver dieselbe normalisierte E-Mail-Adresse bestätigen. Die Ansicht SHALL vor der Mutation Wirkung und Fresh-Reauth-Anforderung erklären und SHALL keine Credentials, Tokens, vollständigen Upstream-Antworten oder unmaskierten fremden Identitätsdaten anzeigen.
 
-#### Scenario: Konflikt wird geprüft
+#### Scenario: System-Admin prüft und löst bestätigten E-Mail-Konflikt auf
 
-- **WHEN** ein berechtigter `system_admin` eine Konfliktprüfung für einen Benutzer der aktiven Instanz ausführt
-- **THEN** zeigt die Detailansicht den redigierten Befund und den Status `inspection_ready`
-- **AND** bietet sie keinen automatischen Rebind an
+- **GIVEN** Studio und Mainserver bestätigen dieselbe normalisierte E-Mail-Adresse
+- **AND** der System-Admin besitzt eine gültige Fresh-Reauth-Evidenz
+- **WHEN** er die Wirkung bestätigt und die Reconcile-Aktion ausführt
+- **THEN** zeigt die Detailansicht den laufenden Zustand und anschließend das verifizierte Ergebnis
+- **AND** verlangt sie keine zweite administrative Freigabe
 
-#### Scenario: Unberechtigter Benutzer öffnet die Detailansicht
+#### Scenario: E-Mail-Adressen stimmen nicht überein
 
-- **WHEN** ein Benutzer ohne berechtigten `system_admin`-Kontext einen Konfliktstatus aufrufen möchte
-- **THEN** erhält er keine Konfliktdetails und keine Reconciliation-Aktionen
+- **WHEN** die Read-only-Prüfung keine Gleichheit der normalisierten E-Mail-Adressen bestätigt
+- **THEN** bietet die Detailansicht keinen Rebind an
+- **AND** erklärt sie den weiterhin bestehenden Konflikt ohne fremde Identitätsdaten offenzulegen
 
-### Requirement: Reconciliation-UI erzwingt getrennte Beantragung und Bestätigung
+#### Scenario: Fresh Reauth fehlt
 
-Das System SHALL Antrag und Bestätigung eines Mainserver-Identitätsrebinds getrennt darstellen und SHALL denselben Account nicht beide Schritte abschließen lassen.
-
-#### Scenario: Zweiter System-Admin bestätigt einen Antrag
-
-- **GIVEN** ein `system_admin` hat einen begründeten Antrag für einen unveränderten Konflikt gestellt
-- **WHEN** ein anderer `system_admin` derselben Instanz ihn bestätigt
-- **THEN** zeigt die UI die erwartete Wirkung und startet erst nach expliziter Bestätigung die Ausführung
-
-#### Scenario: Antragsteller versucht Selbstbestätigung
-
-- **WHEN** der antragstellende Account den eigenen Rebind bestätigen möchte
-- **THEN** blockiert die UI die Aktion und erklärt die Vier-Augen-Regel
+- **WHEN** ein berechtigter System-Admin die Reconcile-Aktion ohne gültige Fresh-Reauth-Evidenz ausführt
+- **THEN** fordert die UI eine serverseitig kontrollierte Re-Authentisierung an
+- **AND** startet sie keine Mainserver-Mutation

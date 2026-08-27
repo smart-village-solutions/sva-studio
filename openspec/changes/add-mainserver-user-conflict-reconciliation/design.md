@@ -1,79 +1,64 @@
 ## Context
 
-`POST /api/v2/user_provisionings` erzeugt persönliche Mainserver-Credentials für einen Keycloak-Subject. Antwortet der Mainserver mit `local_user_conflict`, darf Studio die vorhandene externe Identität nicht aus einer E-Mail-Gleichheit übernehmen. Der bestehende Reprovision-Flow wiederholt dieselbe Provisionierung und ist daher kein Konfliktlöser.
+`POST /api/v2/user_provisionings` erzeugt persönliche Mainserver-Credentials für einen Keycloak-Subject. Antwortet der Mainserver mit `local_user_conflict`, wiederholt der bestehende Reprovision-Pfad nur dieselbe Provisionierung und kann die historische Bindung nicht auflösen.
 
-Der Prozess verändert eine externe Identitätsbindung und persönliche Credentials. Er muss deshalb explizit, tenantlokal, idempotent, auditierbar und bei jedem unklaren Zwischenzustand fail-closed sein.
+Für diesen begrenzten Fall gilt dieselbe normalisierte E-Mail-Adresse im Studio und Mainserver als ausreichende fachliche Identität. Der Rebind bleibt dennoch eine sensitive Mutation: Er muss bewusst ausgelöst, atomar, idempotent, auditierbar und nach einem unklaren Upstream-Ergebnis sicher wiederholbar sein.
 
 ## Goals
 
-- Eine bestätigte historische Mainserver-Identität kontrolliert an den aktuellen Keycloak-Subject binden.
-- Alle Zustände vor der Mutation verständlich und ohne Geheimnisse diagnostizieren.
-- Teilfehler als `reconciliation_required` bewahren und sicher wiederaufnehmbar machen.
-- Die bestehende credential-versionierte DataProvider-Bindung weiterverwenden.
+- Einen bestätigten E-Mail-Konflikt durch einen berechtigten System-Admin direkt auflösen.
+- Neue persönliche Mainserver-Credentials sicher in den bestehenden Keycloak- und DataProvider-Ablauf übernehmen.
+- Vorhandene Autorisierungs-, Fresh-Reauth-, Audit- und Binding-Mechanismen wiederverwenden.
+- Den Implementierungs- und Betriebsumfang auf den konkreten Konfliktfall begrenzen.
 
 ## Non-Goals
 
-- Keine automatische Identitätsentscheidung.
-- Kein allgemeiner Account-Merge, kein Datenexport und keine Content-Ownership-Umschreibung.
-- Keine externe Mutation, falls der Mainserver keinen dedizierten Rebind-Vertrag bereitstellt.
+- Keine zusätzliche Identitätsprüfung neben der normalisierten E-Mail-Gleichheit.
+- Keine Vier-Augen-Freigabe, Approval-Engine oder neue Workflow-Persistenz.
+- Kein allgemeiner Account-Merge und keine automatische Auflösung abweichender E-Mail-Adressen.
+- Keine externe Mutation ohne dedizierten Mainserver-Rebind-Vertrag.
 
 ## Decisions
 
-### Separate Reconcile-Operation statt Reprovision
+### E-Mail-Gleichheit ist die fachliche Zuordnung
 
-Der neue Pfad erhält einen eigenen fully-qualified Action-Identifier `iam.reconcileMainserverUserConflict`. Er ist von normaler Benutzerbearbeitung und Bulk-Reprovision getrennt, damit Autorisierung, Audit und UI nicht als gewöhnliche Credential-Aktualisierung erscheinen.
+Die Read-only-Prüfung vergleicht die im Studio hinterlegte und die vom Mainserver redigiert bestätigte E-Mail-Adresse nach derselben vertraglich festgelegten Normalisierung. Nur bei Gleichheit wird die Reconcile-Aktion angeboten. Eine Abweichung bleibt `local_user_conflict` und kann über diesen Pfad nicht aufgelöst werden.
 
-### Reconciliation-Ledger
+### Direkte, geschützte Admin-Aktion
 
-Studio speichert einen tenantlokalen Reconciliation-Vorgang mit unveränderbarer Operationsreferenz, Zielaccount, redigiertem Konflikt-Fingerprint, Antrags- und Bestätigerreferenz, Status und Zeitstempeln. Keine E-Mail im Klartext, keine Credentials und keine Upstream-Rohantworten werden gespeichert.
+Der Pfad verwendet die fully-qualified Action `iam.reconcileMainserverUserConflict` und ist auf `system_admin` der Zielinstanz begrenzt. Vor der Mutation verlangt der Server eine gültige serverseitige Fresh-Reauth-Evidenz und eine explizite Wirkungsbestätigung. Antrag und zweite Freigabe entfallen.
 
-Zustände:
+### Kein eigenes Reconciliation-Ledger
 
-`detected` → `inspection_ready` → `requested` → `approved` → `executing` → `verified`
+Studio verwendet den bestehenden Provisioning-/Binding-Zustand, das vorhandene IAM-Audit und die bestehende Sperre für konkurrierende Benutzer-/DataProvider-Mutationen. UI-Lade- und Ergebniszustände sind keine neue fachliche Statusmaschine. Unklare oder lokal unvollständige Ergebnisse bleiben über den bestehenden Fehlerzustand als `reconciliation_required` sichtbar.
 
-Terminale beziehungsweise Nacharbeitszustände: `rejected`, `reconciliation_required`, `failed`.
+### Atomarer und wiederholbarer Mainserver-Vertrag
 
-Nur der Server darf Übergänge ausführen. Wiederholungen verwenden die unveränderbare Operationsreferenz. Ein bereits `verified` Vorgang ist ein No-op.
+Der Mainserver stellt einen dedizierten Rebind-Vertrag bereit. Er prüft die normalisierte E-Mail-Gleichheit erneut, bindet die historische Identität atomar an den Ziel-Subject, rotiert die persönlichen Credentials und invalidiert den alten Credential-Zustand. Eine aus Instanz, Zielaccount, Ziel-Subject und normalisierter E-Mail deterministisch abgeleitete Operationsreferenz macht Wiederholungen idempotent. Derselbe Vertrag oder ein zugehöriger Read-Endpunkt liefert nach Timeout das dauerhafte Ergebnis einschließlich eines geschützten Credential-Replays für die serverseitige Wiederherstellung.
 
-### Vier-Augen-Freigabe
-
-Ein `system_admin` derselben Instanz beantragt die Durchführung mit einer Begründung. Ein anderer `system_admin` bestätigt. Der Server erzwingt unterschiedliche Account-IDs, gültige Sitzung, Zielinstanz und weiterhin vorhandenen Konfliktbefund sowohl beim Antrag als auch unmittelbar vor der Mutation.
-
-### Upstream-Vertrag als harte Voraussetzung
-
-Vor jeder Studio-Implementierung wird ein Mainserver-Vertrag für Rebind, Credential-Ausstellung, Idempotency-Key, Credential-Widerruf und Read-after-write-Verifikation vereinbart und mit Contract-Tests abgesichert. Ein `POST /api/v2/user_provisionings`-Retry, direkte SQL-Änderung oder das Löschen des Altkontos sind keine zulässigen Alternativen.
-
-### Commit- und Kompensationsgrenzen
-
-Der Mainserver-Rebind und die Credential-Ausstellung müssen über die Operationsreferenz idempotent sein. Nach bestätigter Upstream-Antwort persistiert Studio die neuen Keycloak-Attribute, prüft die DataProvider-Bindung und widerruft erst danach alte Credentials, wenn der Mainserver dies sicher bestätigt. Schlägt Keycloak-Persistenz, Bindungsprüfung oder Widerruf fehl, wird kein Erfolg behauptet: Der Ledger bleibt `reconciliation_required` und enthält nur redigierte Diagnosecodes.
+Studio persistiert bestätigte Credentials in Keycloak und verifiziert anschließend die DataProvider-Bindung. Scheitert ein lokaler Folgeschritt, behauptet Studio keinen Erfolg und wiederholt bei der nächsten bewussten Reconcile-Aktion dieselbe Operationsreferenz, statt einen neuen Rebind zu erzeugen.
 
 ## Data Flow
 
-1. System-Admin startet eine Read-only-Prüfung.
-2. Server fragt den Mainserver nach einem redigierten Konfliktbefund und persistiert `inspection_ready`.
-3. Erster System-Admin stellt einen begründeten Antrag.
-4. Zweiter System-Admin bestätigt den unveränderten Antrag.
-5. Server sperrt den Ledger-Vorgang, prüft Befund und Berechtigungen erneut und ruft den idempotenten Mainserver-Rebind auf.
-6. Server persistiert neue Credentials in Keycloak und verifiziert Credential- und DataProvider-Zustand.
-7. Server finalisiert Audit und Ledger als `verified`; die UI führt einen authentifizierten Zugangstest aus.
+1. Persönliches Provisioning meldet `local_user_conflict`.
+2. Ein `system_admin` startet in der Benutzer-Detailansicht eine Read-only-Prüfung.
+3. Der Server bestätigt die normalisierte E-Mail-Gleichheit und liefert nur einen redigierten Befund.
+4. Der System-Admin bestätigt die Wirkung; der Server prüft Action, Instanz, CSRF, Fresh Reauth und den aktuellen Konflikt erneut.
+5. Studio sperrt den bestehenden Benutzer-/DataProvider-Pfad und ruft den atomaren Mainserver-Rebind mit der deterministischen Operationsreferenz auf.
+6. Studio persistiert die neuen Credentials in Keycloak, verifiziert die DataProvider-Bindung und schreibt das Audit-Ergebnis.
+7. Bei Timeout oder lokalem Teilfehler bleibt der Vorgang fail-closed und kann über dieselbe Aktion und Operationsreferenz wiederaufgenommen werden.
 
 ## Risks and Mitigations
 
-- Falsche Identitätsübernahme → keine automatische E-Mail-Verknüpfung, Vier-Augen-Freigabe, expliziter Upstream-Read.
-- Teilfehler nach Upstream-Erfolg → Ledger, idempotente Operationsreferenz, `reconciliation_required`.
-- Credential-Leak → write-only Credentials, redigierte Read-Models, kein Secret in Audit oder Logs.
-- Parallele Anträge → zeilenweise Sperre und ein aktiver Vorgang je Zielaccount/Instanz.
-- Unklare Ownership → DataProvider bleibt Quellmetadatum; der Rebind schreibt keine Content-Owner um.
+- Falsche oder gemeinsam genutzte E-Mail-Adresse → bewusste Produktentscheidung, redigierter Prüfbefund und explizite Wirkungsbestätigung.
+- Unklares Upstream-Ergebnis → deterministische Operationsreferenz, idempotenter Rebind und dauerhafte Ergebnisabfrage.
+- Lokaler Fehler nach Rebind → geschützter Credential-Replay, kein Erfolgsstatus und Wiederaufnahme über denselben Pfad.
+- Credential-Leak → Credentials bleiben write-only und erscheinen weder in UI, Audit noch Logs.
+- Parallele Mutation → bestehende Benutzer-/DataProvider-Sperre und atomare Upstream-Vorbedingung.
 
 ## Migration Plan
 
-1. Erst Upstream-Vertrag und Contract-Tests bereitstellen.
-2. Ledger-Migration inklusive RLS, Unique-Constraint für aktive Vorgänge und Schema-Snapshot ergänzen.
-3. Serverpfad, Audit und UI hinter dem neuen expliziten Action-Vertrag ausliefern.
-4. In Dev und Staging ausschließlich mit synthetischen Konfliktkonten nachweisen.
-5. Production über den kanonischen Promote-Pfad; erster realer Rebind nur nach expliziter Betriebsfreigabe.
-
-## Open Questions
-
-- Bestätigt der Product Owner die Vier-Augen-Freigabe als verbindliche Production-Policy?
-- Welchen dedizierten Rebind-/Widerrufsvertrag stellt der Mainserver bereit und welche Kompensationsgarantien enthält er?
+1. Mainserver-Rebind-, Ergebnisabfrage- und Credential-Replay-Vertrag vereinbaren und mit Contract-Tests absichern.
+2. Serverpfad, Audit und UI ohne neue Datenbanktabelle implementieren.
+3. In Dev und Staging mit synthetischen Konfliktkonten und Fehlerfällen nachweisen.
+4. Production über den kanonischen Promote-Pfad ausrollen; erster realer Rebind erfolgt nach dokumentierter Betriebsfreigabe.

@@ -12,6 +12,7 @@ export default mergeConfig(
   defineConfig({
     resolve: {
       alias: {
+        '@sva/core/rich-text-html-policy': resolve(currentDir, '../core/src/rich-text-html-policy.ts'),
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
         '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
         '@sva/studio-module-iam': resolve(currentDir, '../studio-module-iam/src/index.ts'),

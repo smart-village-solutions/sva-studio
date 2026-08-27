@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation, type WasteMainserverSyncStatusRecord } from '@sva/plugin-sdk';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
@@ -117,17 +117,20 @@ const useWasteManagementSyncAction = (pt: ReturnType<typeof usePluginTranslation
     setStatusMessage(null);
     setSyncRunning(true);
     try {
-      await startWasteManagementMainserverSync({});
+      try {
+        await startWasteManagementMainserverSync({});
+      } catch {
+        setStatusMessage({
+          kind: 'error',
+          text: pt('tools.sync.startError'),
+        });
+        return;
+      }
       setStatusMessage({
         kind: 'success',
         text: pt('tools.sync.startSuccess'),
       });
-      await onStarted();
-    } catch {
-      setStatusMessage({
-        kind: 'error',
-        text: pt('tools.sync.startError'),
-      });
+      await onStarted().catch(() => undefined);
     } finally {
       setSyncRunning(false);
     }
@@ -144,21 +147,31 @@ const useWasteManagementMainserverSyncStatus = (enabled: boolean) => {
   const [status, setStatus] = useState<WasteMainserverSyncStatusRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const latestRequestId = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
+    const requestId = ++latestRequestId.current;
     try {
       setError(false);
-      setStatus(await getWasteMainserverSyncStatus());
+      const nextStatus = await getWasteMainserverSyncStatus();
+      if (requestId === latestRequestId.current) {
+        setStatus(nextStatus);
+      }
     } catch {
-      setError(true);
+      if (requestId === latestRequestId.current) {
+        setError(true);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestId.current) {
+        setLoading(false);
+      }
     }
   }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {
+      latestRequestId.current += 1;
       setLoading(false);
       return;
     }

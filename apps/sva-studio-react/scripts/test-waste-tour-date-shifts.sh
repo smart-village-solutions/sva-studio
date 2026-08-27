@@ -34,13 +34,21 @@ docker compose up -d postgres
 
 echo "Waiting for Postgres readiness..."
 attempt=0
-until docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; do
+consecutive_ready_checks=0
+until [ "${consecutive_ready_checks}" -ge 2 ]; do
   attempt=$((attempt + 1))
-  if [ "${attempt}" -ge "${POSTGRES_WAIT_TIMEOUT_SECONDS}" ]; then
+  if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; then
+    consecutive_ready_checks=$((consecutive_ready_checks + 1))
+  else
+    consecutive_ready_checks=0
+  fi
+
+  if [ "${consecutive_ready_checks}" -lt 2 ] && [ "${attempt}" -ge "${POSTGRES_WAIT_TIMEOUT_SECONDS}" ]; then
     echo "Postgres did not become ready in time."
     docker compose logs postgres --tail=200 || true
     exit 1
   fi
+
   sleep 1
 done
 

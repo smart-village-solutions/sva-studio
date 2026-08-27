@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { StudioJobProgress } from '@sva/core';
+import { deriveWasteMainserverSyncStatus, type StudioJobProgress } from '@sva/core';
 
 type WasteSyncClientState = {
   readonly tours: readonly {
@@ -146,7 +146,7 @@ const withWasteClientMock = vi.hoisted(() => vi.fn());
 
 const createWasteClientContext = (state: WasteSyncClientState) => ({
   client: {
-    query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+    query: vi.fn(async (_sql: string) => ({ rowCount: 0, rows: [] })),
     release: vi.fn(),
   },
   repository: {
@@ -231,6 +231,72 @@ describe('waste-management-mainserver-sync.server', () => {
     deleteSvaMainserverWastePickupTimesMock.mockResolvedValue(undefined);
     withWasteClientMock.mockReset();
     setDefaultWasteClientState(emptyWasteClientState());
+  });
+
+  it('loads source revision and materialization data in one repeatable-read snapshot', async () => {
+    const context = createWasteClientContext(emptyWasteClientState());
+    withWasteClientMock.mockImplementationOnce(
+      async (
+        _deps: unknown,
+        _instanceId: string,
+        work: (value: ReturnType<typeof createWasteClientContext>) => Promise<unknown>
+      ) => work(context)
+    );
+
+    const result = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps: { now: () => new Date('2026-01-15T00:00:00.000Z') },
+      syncInput: { operation: 'sync-mainserver' },
+    });
+
+    expect(context.client.query.mock.calls.map(([sql]) => sql)).toEqual([
+      'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;',
+      'COMMIT;',
+    ]);
+    expect(context.repository.getWasteMainserverSourceRevision).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ sourceRevision: '7', yearWindow: [2026, 2027] });
+  });
+
+  it('keeps the completed sync pending when the source changes after its snapshot', async () => {
+    let currentSourceRevision = '7';
+    const context = createWasteClientContext(emptyWasteClientState());
+    context.repository.getWasteMainserverSourceRevision.mockImplementationOnce(async () => ({
+      sourceRevision: currentSourceRevision,
+      changedAt: '2026-01-14T12:00:00.000Z',
+    }));
+    withWasteClientMock.mockImplementationOnce(
+      async (
+        _deps: unknown,
+        _instanceId: string,
+        work: (value: ReturnType<typeof createWasteClientContext>) => Promise<unknown>
+      ) => work(context)
+    );
+    listSvaMainserverWasteSyncSnapshotMock.mockImplementationOnce(async () => {
+      currentSourceRevision = '8';
+      return { pickupTimes: [] };
+    });
+
+    const result = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps: { now: () => new Date('2026-01-15T00:00:00.000Z') },
+      syncInput: { operation: 'sync-mainserver' },
+    });
+
+    expect(result.sourceRevision).toBe('7');
+    expect(
+      deriveWasteMainserverSyncStatus({
+        currentYear: 2026,
+        jobsAvailable: true,
+        sourceRevision: { sourceRevision: currentSourceRevision },
+        lastSuccessfulSync: {
+          id: 'job-1',
+          status: 'succeeded',
+          finishedAt: '2026-01-15T00:01:00.000Z',
+          sourceRevision: result.sourceRevision,
+          yearWindow: result.yearWindow,
+        },
+      }).sourceState
+    ).toBe('pending');
   });
 
   it('computes create and delete sets from normalized Studio and Mainserver rows', async () => {
@@ -976,7 +1042,8 @@ describe('waste-management-mainserver-sync.server', () => {
           completedSteps: details.operationMode === 'create' ? 4 : 5,
           totalSteps: 6,
           currentStepKey: details.operationMode === 'create' ? 'create-batches' : 'delete-batches',
-          currentStepLabel: details.operationMode === 'create' ? 'Create-Batches 1/1' : 'Delete-Batches 1/1',
+          currentStepLabel:
+            details.operationMode === 'create' ? 'Create-Batches 1/1' : 'Delete-Batches 1/1',
           details,
         });
       },

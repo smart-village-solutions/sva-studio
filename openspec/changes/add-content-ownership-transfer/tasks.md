@@ -1,7 +1,8 @@
 ## 0. Vertrags- und Scope-Preflight
 
 - [x] 0.1 Die V1-Matrix für NewsItem, EventRecord, PointOfInterest, Tour und Root-GenericItem einschließlich abhängiger Datensätze gegen den aktuellen Mainserver-Vertrag und Mainserver-Commit `ee619d0e` dokumentieren.
-- [ ] 0.2 In Dev und Staging per Schema-/Contract-Preflight nachweisen, dass die fünf Resource-Mutationen `dataProviderId` akzeptieren und instanz-/municipality-fremde Ziele ablehnen; bei fehlendem Vertrag die Studio-Aktivierung blockieren.
+- [ ] 0.2a In Dev per Schema-/Contract-Preflight nachweisen, dass die fünf Resource-Mutationen `dataProviderId` akzeptieren und instanz-/municipality-fremde Ziele ablehnen; bei fehlendem Vertrag die Studio-Aktivierung blockieren.
+- [x] 0.2b In Staging per Schema-/Contract-Preflight nachweisen, dass die fünf Resource-Mutationen `dataProviderId` akzeptieren und instanz-/municipality-fremde Ziele ablehnen. Die vollständige positive und negative Staging-Abnahme wurde am 27.08.2026 bestätigt.
 - [x] 0.3 Surveys, Legacy SurveyPolls, Batch-Importe und nicht bestätigte Typen explizit als nicht unterstützt in derselben Capability-Matrix abbilden.
 - [x] 0.4 Überschneidungen mit `add-mainserver-user-conflict-reconciliation`, `auto-reconcile-deleted-user-data-provider-conflicts` und laufenden Principal-Reconciliation-Änderungen prüfen; keine Transfersemantik in diese Changes verschieben.
 
@@ -65,9 +66,11 @@
 
 ## 7. Abnahme und Rollout
 
-- [ ] 7.1 Die Matrix Account→Account, Account→Organisation, Organisation→Account und Organisation→Organisation für jeden V1-Typ mit klar markierten Testdaten in Dev und Staging prüfen.
-- [ ] 7.2 Negative Abnahme für fehlende Permission, falschen Scope, instanz-/municipality-fremdes Ziel, stale Binding, fehlende Credentials, unsupported Typ und parallele Mutation durchführen.
-- [ ] 7.3 Bestehende Abnahme-Principals ohne Mainserver-Rolle `studio` kontrolliert reprovisionieren und die Rollenwirkung getrennt vom Content-Transfer nachweisen.
-- [ ] 7.4 Nach jedem Transfer Mainserver-DataProvider, abhängige Datensätze, ExternalReference, Studio-Projektion, neue Read-Sicht, History und Audit verifizieren.
-- [ ] 7.5 Relevante Unit-, Type-, Server-Runtime-, Integration-, Accessibility- und E2E-Gates sowie `pnpm test:pr` vor dem initialen PR-Push ausführen.
-- [ ] 7.6 Erforderliche Mainserver-Version und Studio über die jeweils geschützten kanonischen Rolloutpfade ausrollen; Production erst nach positiver Staging-Matrix und expliziter Freigabe promoten.
+- [ ] 7.1a Die Matrix Account→Account, Account→Organisation, Organisation→Account und Organisation→Organisation für jeden V1-Typ mit klar markierten Testdaten in Dev prüfen.
+- [x] 7.1b Die Matrix Account→Account, Account→Organisation, Organisation→Account und Organisation→Organisation für jeden V1-Typ mit klar markierten Testdaten in Staging prüfen. Fachliche Abnahme am 27.08.2026 bestätigt; technischer Rollout-Nachweis: Promote-Run `33115632787`, Source-SHA `8b03ceebdaa9aa0b66a9e6be43e98dbb046f6065`, Image-Digest `sha256:2a5ce7569c49f228abfc23d47b4d8501ed71577de7db25c6ce20edf086f09052`.
+- [x] 7.2 Negative Abnahme für fehlende Permission, falschen Scope, instanz-/municipality-fremdes Ziel, stale Binding, fehlende Credentials, unsupported Typ und parallele Mutation in Staging durchführen.
+- [x] 7.3 Bestehende Abnahme-Principals ohne Mainserver-Rolle `studio` in Staging kontrolliert reprovisionieren und die Rollenwirkung getrennt vom Content-Transfer nachweisen.
+- [x] 7.4 Nach jedem Staging-Transfer Mainserver-DataProvider, abhängige Datensätze, ExternalReference, Studio-Projektion, neue Read-Sicht, History und Audit verifizieren.
+- [x] 7.5 Relevante Unit-, Type-, Server-Runtime-, Integration-, Accessibility- und E2E-Gates sowie `pnpm test:pr` vor dem initialen PR-Push ausführen. PR #1174 bestand die vollständigen GitHub-Gates einschließlich Unit, Types, Lint, A11y, Coverage, Complexity, Schema Diff und PR Integration; der kanonische Main-E2E-Nachweis für den ausgelieferten Release-SHA war ebenfalls grün.
+- [ ] 7.6a Die erforderliche Mainserver-Baseline `ee619d0e` über den geschützten kanonischen Mainserver-Rolloutpfad bis Production nachweisen.
+- [x] 7.6b Studio erst nach positiver Staging-Matrix und expliziter Freigabe über den geschützten kanonischen Rolloutpfad nach Production promoten. Promote-Run `33116757832` hat am 27.08.2026 Staging-Parität, Studio- und Waste-Backups, Migration, Bootstrap, Postconditions, Swarm-Konvergenz, Runtime-Smoke und Digest-Verifikation für Source-SHA `8b03ceebdaa9aa0b66a9e6be43e98dbb046f6065` und Image-Digest `sha256:2a5ce7569c49f228abfc23d47b4d8501ed71577de7db25c6ce20edf086f09052` erfolgreich abgeschlossen; `/health/live` und `/health/ready` waren anschließend bereit.

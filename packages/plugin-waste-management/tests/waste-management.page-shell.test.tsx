@@ -316,13 +316,16 @@ describe('WasteManagementPage shell', () => {
     };
     const pendingPoll = createDeferred<typeof activeStatus>();
     const scheduledPolls: Array<() => Promise<void>> = [];
+    const nativeSetTimeout = window.setTimeout.bind(window);
     const setTimeoutSpy = vi
       .spyOn(window, 'setTimeout')
       .mockImplementation((handler: TimerHandler, timeout?: number) => {
-        if (timeout === 3_000) scheduledPolls.push(handler as () => Promise<void>);
-        return scheduledPolls.length;
+        if (timeout === 3_000) {
+          scheduledPolls.push(handler as () => Promise<void>);
+          return 2_147_483_647;
+        }
+        return nativeSetTimeout(handler, timeout);
       });
-    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout').mockImplementation(() => undefined);
     getWasteMainserverSyncStatusMock
       .mockResolvedValueOnce(activeStatus)
       .mockImplementationOnce(() => pendingPoll.promise);
@@ -343,7 +346,6 @@ describe('WasteManagementPage shell', () => {
       await waitFor(() => expect(scheduledPolls).toHaveLength(2));
     } finally {
       setTimeoutSpy.mockRestore();
-      clearTimeoutSpy.mockRestore();
     }
   });
 
@@ -357,13 +359,16 @@ describe('WasteManagementPage shell', () => {
       expectedYearWindow: [2026, 2027] as const,
     };
     let poll: (() => Promise<void>) | undefined;
+    const nativeSetTimeout = window.setTimeout.bind(window);
     const setTimeoutSpy = vi
       .spyOn(window, 'setTimeout')
       .mockImplementation((handler: TimerHandler, timeout?: number) => {
-        if (timeout === 10_000) poll = handler as () => Promise<void>;
-        return 1;
+        if (timeout === 10_000) {
+          poll = handler as () => Promise<void>;
+          return 2_147_483_647;
+        }
+        return nativeSetTimeout(handler, timeout);
       });
-    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout').mockImplementation(() => undefined);
     getWasteMainserverSyncStatusMock
       .mockResolvedValueOnce(cleanStatus)
       .mockResolvedValueOnce(pendingStatus);
@@ -379,7 +384,6 @@ describe('WasteManagementPage shell', () => {
       expect(await screen.findByText('page.syncStatus.pendingTitle')).toBeTruthy();
     } finally {
       setTimeoutSpy.mockRestore();
-      clearTimeoutSpy.mockRestore();
     }
   });
 });

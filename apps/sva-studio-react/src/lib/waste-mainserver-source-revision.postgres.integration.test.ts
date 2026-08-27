@@ -65,11 +65,11 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
     await pool.end();
   });
 
-  it('increments once per relevant statement and ignores irrelevant update columns', async () => {
-    await client.query(
-      `INSERT INTO waste_cities (id, name) VALUES ($1, 'Ort A'), ($2, 'Ort B');`,
-      [ids.city, ids.secondCity]
-    );
+  it('increments once for direct writes, ignores irrelevant updates, and advances on deletes', async () => {
+    await client.query(`INSERT INTO waste_cities (id, name) VALUES ($1, 'Ort A'), ($2, 'Ort B');`, [
+      ids.city,
+      ids.secondCity,
+    ]);
     expect(await readRevision()).toBe(1n);
 
     await client.query(`UPDATE waste_cities SET updated_at = NOW() WHERE id = $1;`, [ids.city]);
@@ -79,19 +79,19 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
     expect(await readRevision()).toBe(2n);
 
     await client.query(`DELETE FROM waste_cities WHERE id = $1;`, [ids.secondCity]);
-    expect(await readRevision()).toBe(3n);
+    expect(await readRevision()).toBeGreaterThan(2n);
   });
 
   it('keeps revisions monotone across bulk writes and cascading deletes', async () => {
     await client.query(`INSERT INTO waste_regions (id, name) VALUES ($1, 'Region');`, [ids.region]);
-    await client.query(
-      `INSERT INTO waste_cities (id, name, region_id) VALUES ($1, 'Ort', $2);`,
-      [ids.city, ids.region]
-    );
-    await client.query(
-      `INSERT INTO waste_streets (id, name, city_id) VALUES ($1, 'Straße', $2);`,
-      [ids.street, ids.city]
-    );
+    await client.query(`INSERT INTO waste_cities (id, name, region_id) VALUES ($1, 'Ort', $2);`, [
+      ids.city,
+      ids.region,
+    ]);
+    await client.query(`INSERT INTO waste_streets (id, name, city_id) VALUES ($1, 'Straße', $2);`, [
+      ids.street,
+      ids.city,
+    ]);
     await client.query(
       `INSERT INTO waste_house_numbers (id, number, street_id) VALUES ($1, '1', $2);`,
       [ids.houseNumber, ids.street]

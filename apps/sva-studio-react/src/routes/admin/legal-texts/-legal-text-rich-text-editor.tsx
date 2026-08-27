@@ -33,6 +33,7 @@ export const LegalTextRichTextEditor = ({
     bold: t('admin.legalTexts.editor.bold'),
     italic: t('admin.legalTexts.editor.italic'),
     underline: t('admin.legalTexts.editor.underline'),
+    clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
     undo: t('admin.legalTexts.editor.undo'),
     redo: t('admin.legalTexts.editor.redo'),
     link: t('admin.legalTexts.editor.applyLink'),

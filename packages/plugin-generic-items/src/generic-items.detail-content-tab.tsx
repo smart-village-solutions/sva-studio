@@ -188,6 +188,7 @@ export const GenericItemsDetailContentTab = ({
                       bold: labels.richTextBold,
                       italic: labels.richTextItalic,
                       underline: labels.richTextUnderline,
+                      clearFormatting: labels.richTextClearFormatting,
                       undo: labels.richTextUndo,
                       redo: labels.richTextRedo,
                       link: labels.richTextApplyLink,

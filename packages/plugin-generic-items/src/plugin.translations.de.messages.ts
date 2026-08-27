@@ -44,6 +44,7 @@ export const genericItemsTranslationsDeMessages = {
     bold: 'Fett',
     italic: 'Kursiv',
     underline: 'Unterstrichen',
+    clearFormatting: 'Formatierung entfernen',
     undo: 'Zurück',
     redo: 'Vorwärts',
     linkInput: 'Link-URL',

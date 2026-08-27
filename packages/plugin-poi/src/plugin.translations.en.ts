@@ -94,6 +94,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     bold: 'Bold',
     italic: 'Italic',
     underline: 'Underline',
+    clearFormatting: 'Clear formatting',
     undo: 'Undo',
     redo: 'Redo',
     linkInput: 'Link URL',

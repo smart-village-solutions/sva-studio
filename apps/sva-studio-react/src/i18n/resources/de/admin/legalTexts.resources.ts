@@ -92,6 +92,7 @@ export const legalTextsAdminDEResources = {
     bold: 'Fett',
     italic: 'Kursiv',
     underline: 'Unterstrichen',
+    clearFormatting: 'Formatierung entfernen',
     paragraph: 'Absatz',
     heading2: 'Überschrift 2',
     heading3: 'Überschrift 3',

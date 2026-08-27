@@ -32,6 +32,7 @@ export const sanitizeRichTextHtml = (value: string): string =>
     allowedTags: [...allowedTags],
     allowedAttributes: {
       a: ['href', 'target', 'rel'],
+      ol: ['start'],
     },
     allowedSchemes: ['http', 'https', 'mailto', 'tel'],
     allowProtocolRelative: false,
@@ -45,5 +46,13 @@ export const sanitizeRichTextHtml = (value: string): string =>
             : {}),
         },
       }),
+      ol: (tagName, attributes) => {
+        const attribs: Record<string, string> = {};
+        const start = attributes.start;
+        if (start && /^-?\d+$/.test(start)) {
+          attribs.start = start;
+        }
+        return { tagName, attribs };
+      },
     },
   });

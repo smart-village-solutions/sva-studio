@@ -3,7 +3,17 @@ import { sanitizeRichTextHtml } from '@sva/core';
 import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { Bold, Italic, Link2, List, ListOrdered, Redo2, Underline, Undo2 } from 'lucide-react';
+import {
+  Bold,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Redo2,
+  RemoveFormatting,
+  Underline,
+  Undo2,
+} from 'lucide-react';
 
 import { Button } from './button.js';
 import { Select } from './select.js';
@@ -28,6 +38,7 @@ export type RichTextHtmlEditorToolbarLabels = Readonly<{
   bold: React.ReactNode;
   italic: React.ReactNode;
   underline: React.ReactNode;
+  clearFormatting: React.ReactNode;
   undo: React.ReactNode;
   redo: React.ReactNode;
   link: React.ReactNode;
@@ -398,6 +409,13 @@ export const RichTextHtmlEditor = ({
           onClick={() => editor?.chain().focus().toggleUnderline().run()}
         >
           <Underline className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          label={String(toolbarLabels.clearFormatting)}
+          disabled={formattingDisabled}
+          onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
+        >
+          <RemoveFormatting className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           label={String(toolbarLabels.undo)}

@@ -60,7 +60,7 @@ haben können.
 - **Produktfakten:** Der Anlegeumfang wird um Historie und Löschen ergänzt. Adresse kann geocodiert
   und ein Kartenpunkt rückwärts in eine Adresse übersetzt werden. Medienreferenzen können nach
   partiellem Fehler erneut gespeichert werden. Die Beschreibung bietet eine visuelle und eine
-  HTML-Ansicht.
+  HTML-Ansicht; die gemeinsame Werkzeugleiste kann gemischte Textformatierungen gezielt entfernen.
 - **Kontextabhängig:** Kartenfunktionen benötigen eine aktive Karten-/Geocoding-Schnittstelle;
   Credentials und DataProvider beeinflussen Schreibaktionen.
 - **Leitfragen / Stichwörter:** Wie korrigiert man eine Serie ohne falsche Termine? Welche Quelle hat

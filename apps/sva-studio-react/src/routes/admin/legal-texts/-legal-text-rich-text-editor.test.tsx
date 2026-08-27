@@ -20,6 +20,7 @@ describe('LegalTextRichTextEditor', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Unterstrichen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Formatierung entfernen' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
     const source = screen.getByRole('textbox', { name: 'HTML' });
     fireEvent.change(source, {

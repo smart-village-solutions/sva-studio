@@ -63,6 +63,7 @@ function NewsContentTextSection({
     bold: pt('richText.bold'),
     italic: pt('richText.italic'),
     underline: pt('richText.underline'),
+    clearFormatting: pt('richText.clearFormatting'),
     undo: pt('richText.undo'),
     redo: pt('richText.redo'),
     link: pt('richText.applyLink'),
@@ -70,7 +71,6 @@ function NewsContentTextSection({
   };
   const introLabelId = `${introField.id}-label`;
   const bodyLabelId = `${bodyField.id}-label`;
-
   return (
     <NewsDetailCard
       title={pt('cards.content.text.title')}

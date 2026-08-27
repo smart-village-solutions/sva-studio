@@ -174,6 +174,7 @@ export const genericItemsDetailLabelEntries = translationEntries([
   ['richTextBold', 'richText.bold'],
   ['richTextItalic', 'richText.italic'],
   ['richTextUnderline', 'richText.underline'],
+  ['richTextClearFormatting', 'richText.clearFormatting'],
   ['richTextUndo', 'richText.undo'],
   ['richTextRedo', 'richText.redo'],
   ['richTextApplyLink', 'richText.applyLink'],

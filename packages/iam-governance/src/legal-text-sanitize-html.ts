@@ -13,6 +13,13 @@ const normalizeAnchorAttributes = (attributes: sanitizeHtml.Attributes): sanitiz
   };
 };
 
+const normalizeOrderedListAttributes = (
+  attributes: sanitizeHtml.Attributes
+): sanitizeHtml.Attributes => {
+  const start = attributes.start;
+  return start && /^-?\d+$/.test(start) ? { start } : {};
+};
+
 const LEGAL_TEXT_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
     'a',
@@ -39,6 +46,7 @@ const LEGAL_TEXT_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
   ],
   allowedAttributes: {
     a: ['href', 'target', 'rel'],
+    ol: ['start'],
   },
   allowedSchemes: ['http', 'https', 'mailto'],
   allowedSchemesAppliedToAttributes: ['href'],
@@ -48,6 +56,10 @@ const LEGAL_TEXT_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
     a: (tagName, attributes) => ({
       tagName,
       attribs: normalizeAnchorAttributes(attributes),
+    }),
+    ol: (tagName, attributes) => ({
+      tagName,
+      attribs: normalizeOrderedListAttributes(attributes),
     }),
   },
 };

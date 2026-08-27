@@ -14,14 +14,18 @@ const labels = {
   bold: 'Fett',
   italic: 'Kursiv',
   underline: 'Unterstrichen',
+  clearFormatting: 'Formatierung entfernen',
   undo: 'Zurück',
   redo: 'Vorwärts',
   link: 'Link setzen',
   linkPrompt: 'Link-URL',
 } as const;
 
-function ControlledEditor({ onChange }: Readonly<{ onChange?: (value: string) => void }>) {
-  const [value, setValue] = React.useState('<p>Alpha Beta</p>');
+function ControlledEditor({
+  onChange,
+  initialValue = '<p>Alpha Beta</p>',
+}: Readonly<{ onChange?: (value: string) => void; initialValue?: string }>) {
+  const [value, setValue] = React.useState(initialValue);
 
   return (
     <RichTextHtmlEditor
@@ -42,7 +46,10 @@ function ControlledEditor({ onChange }: Readonly<{ onChange?: (value: string) =>
 
 const selectAlpha = async (editor: HTMLElement) => {
   editor.focus();
-  const textNode = editor.querySelector('p')?.firstChild;
+  const paragraph = editor.querySelector('p');
+  const textNode = paragraph
+    ? document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT).nextNode()
+    : null;
   if (!textNode) {
     throw new Error('Editor text node is missing');
   }
@@ -93,6 +100,19 @@ describe('RichTextHtmlEditor integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Unterstrichen' }));
 
     await waitFor(() => expect(editor.innerHTML).toContain('<u>Alpha</u>'));
+  });
+
+  it('removes mixed formatting from a real TipTap selection', async () => {
+    render(<ControlledEditor initialValue="<p><strong><em>Alpha</em></strong> Beta</p>" />);
+    const editor = await screen.findByRole('textbox');
+
+    await selectAlpha(editor);
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'Formatierung entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Formatierung entfernen' }));
+
+    await waitFor(() => expect(editor.innerHTML).toContain('<p>Alpha Beta</p>'));
+    expect(editor.innerHTML).not.toContain('<strong>');
+    expect(editor.innerHTML).not.toContain('<em>');
   });
 
   it('normalizes source HTML through the configured TipTap schema before returning to WYSIWYG', async () => {

@@ -1,7 +1,6 @@
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesDe } from './plugin.translations.de.messages.js';
 import { poiDeleteActionTranslationsDe } from './plugin.translations.de.delete-actions.js';
-
 const poiEditorTranslations = {
   createTitle: 'Ort anlegen',
   createDescription: 'Erstellen Sie einen neuen Ort.',
@@ -91,6 +90,7 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     bold: 'Fett',
     italic: 'Kursiv',
     underline: 'Unterstrichen',
+    clearFormatting: 'Formatierung entfernen',
     undo: 'Zurück',
     redo: 'Vorwärts',
     linkInput: 'Link-URL',

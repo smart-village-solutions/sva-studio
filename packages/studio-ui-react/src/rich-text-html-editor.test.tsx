@@ -169,6 +169,7 @@ const renderEditor = (props?: Partial<React.ComponentProps<typeof RichTextHtmlEd
         bold: 'Fett',
         italic: 'Kursiv',
         underline: 'Unterstrichen',
+        clearFormatting: 'Formatierung entfernen',
         undo: 'Zurück',
         redo: 'Vorwärts',
         linkPrompt: 'Link-URL',
@@ -207,6 +208,7 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('button', { name: 'Fett' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Kursiv' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Unterstrichen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Formatierung entfernen' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Vorwärts' })).toBeTruthy();
     expect(screen.getByRole('textbox')).toBeTruthy();

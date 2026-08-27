@@ -89,7 +89,8 @@
 - **Nutzerziel:** Inhalt und Metadaten einer konkreten Rechtstextversion aktualisieren.
 - **Produktfakten:** Bearbeitbar sind dieselben fachlichen Felder wie bei der Anlage. Löschen
   entfernt die Version dauerhaft; bereits dokumentierte Akzeptanzen bleiben unverändert bestehen.
-  Die visuelle und die HTML-Ansicht stehen auch beim Bearbeiten zur Verfügung.
+  Die visuelle und die HTML-Ansicht stehen auch beim Bearbeiten zur Verfügung. Markierte gemischte
+  Textformatierungen lassen sich über „Formatierung entfernen“ aufheben.
 - **Leitfragen / Stichwörter:** Darf eine bereits gültige Fassung verändert werden oder ist eine
   neue Version nötig? Was bleibt nach dem Löschen nachweisbar? Rechtstext bearbeiten, Akzeptanz,
   Version löschen.

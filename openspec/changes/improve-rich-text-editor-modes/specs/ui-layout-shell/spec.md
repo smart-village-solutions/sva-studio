@@ -10,6 +10,7 @@ Das Studio MUST für HTML-basierte Rich-Text-Felder einen gemeinsamen Editor ber
 - **WHEN** der Benutzer von WYSIWYG zu HTML wechselt, den Quelltext bearbeitet und zurückwechselt
 - **THEN** verwenden beide Ansichten denselben kontrollierten HTML-Wert
 - **AND** bleiben unterstützte Inhalte und Formatierungen erhalten
+- **AND** bleiben numerische Startwerte nummerierter Listen erhalten
 
 #### Scenario: Nicht unterstütztes HTML wird beim visuellen Wechsel normalisiert
 
@@ -41,3 +42,10 @@ Das Studio MUST Link- und Blockformatierungsbefehle des gemeinsamen Rich-Text-Ed
 - **WHEN** der Benutzer eine unterstützte Überschriftenebene wählt
 - **THEN** formatiert TipTap den betroffenen Block als diese Überschrift
 - **AND** übermittelt der Editor den aktualisierten HTML-Wert
+
+#### Scenario: Gemischte Formatierung wird entfernt
+
+- **GIVEN** markierter Text enthält unterschiedliche Inline-Formatierungen
+- **WHEN** der Benutzer die Aktion „Formatierung entfernen“ ausführt
+- **THEN** entfernt TipTap die Markierungen aus der aktuellen Auswahl
+- **AND** bleibt der Textinhalt erhalten

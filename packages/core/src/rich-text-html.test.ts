@@ -28,4 +28,10 @@ describe('sanitizeRichTextHtml', () => {
       '<pre><code>const value = 1;</code></pre><p><s>Alt</s></p>'
     );
   });
+
+  it('keeps numeric ordered-list start values and removes invalid values', () => {
+    expect(
+      sanitizeRichTextHtml('<ol start="3"><li>Drei</li></ol><ol start="alert(1)"><li>Eins</li></ol>')
+    ).toBe('<ol start="3"><li>Drei</li></ol><ol><li>Eins</li></ol>');
+  });
 });

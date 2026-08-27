@@ -43,6 +43,7 @@ export function PoiDetailDescriptionTab({ pt }: Readonly<{ pt: (key: string) => 
             bold: pt('richText.bold'),
             italic: pt('richText.italic'),
             underline: pt('richText.underline'),
+            clearFormatting: pt('richText.clearFormatting'),
             undo: pt('richText.undo'),
             redo: pt('richText.redo'),
             link: pt('richText.applyLink'),

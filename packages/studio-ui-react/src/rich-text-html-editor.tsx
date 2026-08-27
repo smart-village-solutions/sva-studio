@@ -265,7 +265,10 @@ export const RichTextHtmlEditor = ({
   const formattingDisabled = !editor || disabled || mode === 'html';
 
   return (
-    <div className={cn('overflow-hidden rounded-md border border-input bg-background', className)}>
+    <div
+      data-rich-text-editor-id={id}
+      className={cn('overflow-hidden rounded-md border border-input bg-background', className)}
+    >
       <div className="flex flex-wrap items-stretch border-b border-input">
         <div
           role="group"

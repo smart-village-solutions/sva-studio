@@ -1,0 +1,4 @@
+{
+  "prNumber": 1173,
+  "body": "Das technische SVA-Studio-Wiki erhält einen aufgabenorientierten Einstieg und zeigt publizierte Dokumente als gerenderte Wiki-Seiten.\n\n- Startseite und kompakte Sidebar führen direkt zu Einrichtung, Entwicklung, Betrieb, Architektur, Sicherheit und Tests.\n- Interne Querverweise, Anker und Bilder bleiben innerhalb der Wiki-Publikation nutzbar.\n- Nicht renderbare Quellartefakte sind gekennzeichnet und führen gezielt zum Repository."
+}

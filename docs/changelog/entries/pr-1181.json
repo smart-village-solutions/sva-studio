@@ -1,4 +1,4 @@
 {
   "prNumber": 1181,
-  "body": "Sechs bereits produktiv ausgelieferte Studio-Änderungen sind nun auch in der technischen Spezifikation abgeschlossen.\n\n- Die verbindlichen Spezifikationen enthalten jetzt die Anforderungen zu Mainserver-Rollen, Rich-Text-Bearbeitung, kontextueller Hilfe und Aktionsrückmeldungen.\n- Dieser dokumentarische Abschluss verändert keine Studio-Funktion und löst keinen Production-Rollout aus."
+  "body": "Sieben bereits produktiv ausgelieferte Studio-Änderungen sind nun auch in der technischen Spezifikation abgeschlossen.\n\n- Die verbindlichen Spezifikationen enthalten jetzt die Anforderungen zu Mainserver-Rollen, sicherer DataProvider-Selbstheilung, Rich-Text-Bearbeitung, kontextueller Hilfe und Aktionsrückmeldungen.\n- Dieser dokumentarische Abschluss verändert keine Studio-Funktion und löst keinen Production-Rollout aus."
 }

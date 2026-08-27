@@ -8,7 +8,7 @@ describe('LegalTextRichTextEditor', () => {
     cleanup();
   });
 
-  it('uses the shared editor modes and sanitizes raw HTML when source editing finishes', async () => {
+  it('uses the shared editor modes and sanitizes raw HTML while source editing', async () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <LegalTextRichTextEditor
@@ -24,13 +24,13 @@ describe('LegalTextRichTextEditor', () => {
     fireEvent.change(source, {
       target: { value: '<p>Neu</p><script>alert(1)</script>' },
     });
-    expect(onChange).toHaveBeenLastCalledWith('<p>Neu</p><script>alert(1)</script>');
+    expect(onChange).toHaveBeenLastCalledWith('<p>Neu</p>');
 
     rerender(
       <LegalTextRichTextEditor
         id="legal-content"
         labelId="legal-content-label"
-        value="<p>Neu</p><script>alert(1)</script>"
+        value="<p>Neu</p>"
         onChange={onChange}
       />
     );

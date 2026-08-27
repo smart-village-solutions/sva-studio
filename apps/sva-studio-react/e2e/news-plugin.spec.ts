@@ -142,17 +142,11 @@ test.describe('news plugin', () => {
     const bodyHtmlSource = bodyEditorContainer.getByRole('textbox', {
       name: /Inhalt HTML|Content HTML/,
     });
-    await expect
-      .poll(() =>
-        bodyHtmlSource.evaluate((input: HTMLTextAreaElement) => {
-          const template = document.createElement('template');
-          template.innerHTML = input.value;
-          const heading = template.content.querySelector('h2');
-          const link = heading?.querySelector('a');
-          return { headingText: heading?.textContent, href: link?.getAttribute('href') };
-        })
-      )
-      .toEqual({ headingText: 'Inhalt', href: 'https://example.com/news/body' });
+    const bodyHtml = await bodyHtmlSource.inputValue();
+    expect(bodyHtml).toContain('<h2>');
+    expect(bodyHtml).toContain('href="https://example.com/news/body"');
+    expect(bodyHtml).toContain('>Inhalt</a>');
+    expect(bodyHtml).toContain('</h2>');
     await bodyHtmlSource.fill('<h2>Inhalt <em>aktualisiert</em></h2>');
     await bodyEditorContainer.getByRole('button', { name: 'WYSIWYG' }).click();
     await expect(bodyEditor.locator('h2')).toContainText('Inhalt aktualisiert');

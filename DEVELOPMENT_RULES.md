@@ -1,4 +1,3 @@
-
 # Development Rules
 
 Development Regeln
@@ -18,6 +17,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 ## 1. Text & Data Management
 
 ### ✅ REQUIRED
+
 - **All UI texts** must be loaded from the database via the translation system
 - **All data** must be fetched from the database
 - Use language keys (e.g., `t('navigation.dashboard')`) for all displayed text
@@ -25,6 +25,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 - Translation keys must exist in **both German (de) and English (en)** in the active app translation resources
 
 ### ❌ FORBIDDEN - ZERO TOLERANCE
+
 - **Hardcoded text strings in components** (absolutely forbidden)
 - Inline text that is not using the translation system
 - Any user-facing text without proper translation
@@ -32,12 +33,14 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 - Mixing hardcoded text with translation keys
 
 **Why this is critical:**
+
 - Breaks internationalization for all users
 - Creates maintenance nightmares
 - Violates accessibility standards
 - Makes the app unprofessional
 
 **Example:**
+
 ```tsx
 // ❌ ABSOLUTELY WRONG - FORBIDDEN
 <h1>Dashboard</h1>
@@ -55,6 +58,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 ```
 
 **Enforcement:**
+
 - All PRs with hardcoded strings will be **rejected immediately**
 - Code reviews must check for hardcoded text
 - If you find hardcoded text, create a ticket and fix it **immediately**
@@ -64,6 +68,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 ## 1.1 Repository File Placement (Enforced)
 
 ### ✅ REQUIRED
+
 - Run `pnpm check:file-placement` before opening a PR
 - Store debug scripts only in:
   - `scripts/debug/auth/`
@@ -78,17 +83,18 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
   - `docs/reference/` or `docs/api/` for stable contracts and schemas
   - `docs/governance/` for process and approval rules
 - Register new current documents in the responsible area index and keep `docs/README.md` as the central entry point
-- Treat `docs/guides/` as a migration-only area. Do not add new general guides; maintain `docs/guides/README.md` until PR 4 completes the migration
+- Treat `docs/guides/` as the location of the canonical rollout compatibility anchor only. Add all other documentation to its responsible area; `docs/governance/dokumentationsmigration.md` records the completed migration
 - Keep `docs/guides/studio-rollout-process.md` at its current path as the only normative regular Studio rollout procedure
 
 ### ❌ FORBIDDEN
+
 - New markdown files in repository root (except: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`)
 - Legacy document paths such as:
   - `docs/STAGING-TODOS.md`
   - `docs/SECTION_7_VALIDATION_REPORT.md`
   - `docs/pr45-*.md`
   - `docs/pr-45-*.md`
-- New general documentation under `docs/guides/` outside the versioned migration inventory
+- New general documentation under `docs/guides/`
 - Root-level debug scripts like:
   - `debug_test.ts`
   - `test_session_loading.ts`
@@ -97,6 +103,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
   - `test-otlp-direct.ts`
 
 **Enforcement**
+
 - CI workflow `File Placement` blocks non-compliant changes.
 - Optional local pre-commit hook:
   1. `pnpm hooks:install`
@@ -107,6 +114,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 ## 1.2 Server-Package-Runtime und Node-ESM
 
 ### ✅ REQUIRED
+
 - Für Workspace-Packages, deren `dist/*.js` direkt von Node geladen wird, müssen relative Runtime-Imports und Re-Exports explizite Laufzeitendungen tragen, in der Regel `.js`.
 - Runtime-Imports auf andere Workspace-Packages müssen im jeweiligen `package.json` unter `dependencies` deklariert sein.
 - Vor PR und Push für Änderungen an serverseitigen Packages `pnpm check:server-runtime` ausführen; das Gate läuft zusätzlich in `pnpm test:types`.
@@ -114,22 +122,26 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 - Bei Änderungen an CI-/Workspace-Skripten unter `scripts/ci/` oder Root-TS-Skripten muss zusätzlich der Skript-Typecheck laufen: `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder ein Wrapper, der ihn sicher einschließt.
 
 ### ❌ FORBIDDEN
+
 - Relative Runtime-Imports wie `./server`, `../types` oder `export * from './foo'` in Node-ESM-relevanten Packages ohne Endung.
 - Verlassen auf transitive, Root- oder Alias-Auflösung für echte Runtime-Dependencies.
 - Annahme, dass `moduleResolution: "Bundler"` oder Vite/`tsx` automatisch garantiert, dass gebautes `dist/*.js` in Node korrekt läuft.
 
 **Warum diese Regel kritisch ist:**
+
 - TypeScript ist hier die Quellsprache, die Laufzeit ist dennoch Node mit ESM-Regeln.
 - `moduleResolution: "Bundler"` verdeckt Fehler, die erst in gebauten Packages auftreten.
 - Ohne Guard fallen Probleme oft erst spät im Dev-Server oder im produktionsnahen Laufzeitpfad auf.
 
 **Pflicht-Checks:**
+
 ```bash
 pnpm check:server-runtime
 pnpm test:types
 ```
 
 **Referenzdoku:**
+
 - `docs/development/server-package-runtime-guards.md`
 
 ---
@@ -137,6 +149,7 @@ pnpm test:types
 ## 1.2a Datenbankschema-Snapshot und Pflegepflicht
 
 ### ✅ REQUIRED
+
 - Das kanonische Soll-Datenbankschema des Repositories ist als Snapshot unter `docs/development/studio-db-schema-final.sql` präsent zu halten.
 - Die begleitende Übersicht und Einordnung liegt unter `docs/development/studio-db-schema.md`.
 - Vor Änderungen an Migrationen, DB-Strukturen, Tabellen, Constraints, Indizes, RLS-Policies, Triggern oder DB-Funktionen muss der bestehende Snapshot konsultiert werden.
@@ -145,16 +158,19 @@ pnpm test:types
 - PRs mit Datenbankschemaänderungen müssen explizit prüfen, ob die Schema-Dokumentation und der Snapshot mitgeändert wurden.
 
 ### ❌ FORBIDDEN
+
 - Datenbankschemaänderungen nur in Migrationen umzusetzen, ohne den Snapshot zu aktualisieren.
 - Neue Tabellen, Spalten, Constraints, RLS-Regeln, Trigger oder Funktionen einzuführen, ohne das bestehende Schema als Referenz zu prüfen.
 - Das DB-Schema ausschließlich implizit aus verstreuten Migrationsdateien ableiten zu müssen, obwohl der Snapshot angepasst werden müsste.
 
 **Warum diese Regel kritisch ist:**
+
 - Sie macht das vorhandene Schema an einer zentralen Stelle sichtbar.
 - Sie reduziert Fehlannahmen bei Erweiterungen und Refactorings.
 - Sie verhindert, dass das tatsächliche Soll-Schema mit jeder Migration schwerer rekonstruierbar wird.
 
 **Kanonische Referenzen:**
+
 - `docs/development/studio-db-schema-final.sql`
 - `docs/development/studio-db-schema.md`
 - `packages/data/migrations/*.sql`
@@ -164,6 +180,7 @@ pnpm test:types
 ## 1.3 Action-ID-Namensmodell und Namespace-Ownership
 
 ### ✅ REQUIRED
+
 - Alle autorisierbaren Action-IDs müssen langfristig das fully-qualified Format `<namespace>.<action>` verwenden.
 - Das gilt sowohl für Core-/interne Actions als auch für Plugin-Actions.
 - Neue Actions dürfen nicht als unqualifizierte Kurzformen wie `read`, `write`, `create`, `update` oder ähnliche freie Strings eingeführt werden.
@@ -172,17 +189,20 @@ pnpm test:types
 - Cross-Namespace-Verwendung darf nur über einen expliziten Bridge-, Alias- oder Migrationsvertrag eingeführt werden.
 
 ### ❌ FORBIDDEN
+
 - Neue autorisierbare Actions ohne Namespace einführen.
 - Kurzformen implizit auf einen Namespace umdeuten, z. B. `read -> content.read` oder `create -> news.create`.
 - Plugin-Actions in reservierten Core-Namespaces deklarieren.
 - Core- und Plugin-Actions mit unterschiedlichen Namenskonventionen weiterentwickeln.
 
 **Warum diese Regel kritisch ist:**
+
 - Sie verhindert Namespace-Kollisionen und implizite Sicherheitsannahmen.
 - Sie macht IAM-, Audit- und Routing-Entscheidungen deterministisch nachvollziehbar.
 - Sie hält das Modell für Core und Plugins konsistent, statt zwei konkurrierende Action-Systeme zu pflegen.
 
 **Zielbeispiele:**
+
 ```ts
 // ✅ Core / intern
 const readAction = 'content.read';
@@ -202,6 +222,7 @@ const invalidCreateAction = 'create';
 ## 1.4 Server-Orchestrierung und Routing-Verantwortung
 
 ### ✅ REQUIRED
+
 - Das aktuelle Architekturmodell darf beibehalten werden:
   - `@sva/routing` bleibt das kanonische Modell für UI-/TanStack-Routing.
   - Der App-Entry `apps/sva-studio-react/src/server.ts` darf app-spezifische Server-Orchestrierung, Vorab-Dispatch und Transport-Diagnostik bündeln.
@@ -216,12 +237,14 @@ const invalidCreateAction = 'create';
 - `createServerFn`-Wrapper bleiben grundsätzlich App-Adapter. Framework-agnostische Geschäftslogik gehört in Packages; die TanStack-Start-Bindung wird nur mit klarer Begründung in ein Package verschoben.
 
 ### ❌ FORBIDDEN
+
 - UI-Routing und HTTP-Dispatch begrifflich oder architektonisch unklar zu einem einzigen "kanonischen Routing-Modell" zu vermischen.
 - `server.ts` schrittweise zu einem Sammelpunkt für fachliche Sonderlogik auszubauen.
 - Framework-Kopplung in Domänenpackages einzuführen, nur um dünne App-Adapter-Dateien zu vermeiden.
 - Architektur-Refactorings ohne klaren Nutzen, messbare Reibung oder dokumentierte Zielsetzung anzustoßen.
 
 **Warum diese Regel wichtig ist:**
+
 - Sie schützt vor unnötigen Architekturumbauten ohne akuten Nutzen.
 - Sie hält die Trennung zwischen kanonischem UI-Routing und app-spezifischem Server-Transport klar.
 - Sie erlaubt pragmatische Weiterentwicklung, ohne `server.ts` unkontrolliert wachsen zu lassen.
@@ -231,6 +254,7 @@ const invalidCreateAction = 'create';
 ## 1.5 Ausnahme: Explizit angeordnete Schnelliterationsphase
 
 ### ✅ REQUIRED
+
 - Bei ausdrücklich angeordneter Schnelliterationsphase dürfen betroffene Unit-, Type-, Lint- und E2E-Tests für einzelne kleinteilige Änderungsblöcke vorübergehend zurückgestellt werden.
 - Diese Ausnahme gilt nur für schnelle Feedback-Schleifen während der Umsetzung und nicht für die lokale Freigabe eines initialen oder wesentlich scope-erweiternden Code-Pushs, eines neuen PRs oder eines Releases.
 - Die ausgesetzten Prüfungen müssen vor dem initialen beziehungsweise wesentlich scope-erweiternden Code-Push oder vor PR-Erstellung vollständig nachgezogen werden. Für kleine Folgefixes in einem bestehenden PR gilt stattdessen die differenzierte Push-Regel aus Abschnitt 5.2.
@@ -240,6 +264,7 @@ const invalidCreateAction = 'create';
 - Pro Änderungsblock ist der Umfang so klein wie möglich zu halten, damit die nachgezogene QS eindeutig bleibt.
 
 ### ❌ FORBIDDEN
+
 - Verwendung dieser Ausnahme für Änderungen mit Sicherheitsbezug
 - Verwendung dieser Ausnahme für Änderungen an Authentifizierung, Autorisierung oder Validierung
 - Verwendung dieser Ausnahme für Änderungen an Datenbank-Schema, Migrationen, RLS, Triggern oder DB-Funktionen
@@ -248,6 +273,7 @@ const invalidCreateAction = 'create';
 - Behauptung oder Implizierung eines grünen Teststands während einer aktiven Schnelliterationsphase
 
 **Weiterhin verbindlich:**
+
 - Vor einem initialen beziehungsweise wesentlich scope-erweiternden Code-Push, einem neuen PR oder einem Release gelten wieder alle regulären Gates; kleine Folgefixes in einem bestehenden PR folgen Abschnitt 5.2.
 - `pnpm check:server-runtime` bleibt für betroffene serverseitige Packages verpflichtend.
 - Dokumentationspflichten, Architekturpflichten und alle übrigen Non-Negotiable-Regeln bleiben unverändert bestehen.
@@ -257,6 +283,7 @@ const invalidCreateAction = 'create';
 ## 1.6 Plan-Checkboxen und Umsetzungsstand
 
 ### ✅ REQUIRED
+
 - Bei Plan-Dateien unter `docs/superpowers/plans/` müssen Checkboxen während der Umsetzung fortlaufend gepflegt werden.
 - Nach jedem abgeschlossenen Änderungsblock sind die zugehörigen Plan-Schritte im selben Arbeitszug auf `- [x]` zu setzen oder bei bewusst verworfenem Scope klar zu bereinigen.
 - Vor Commit, Push oder PR ist zu prüfen, ob der tatsächliche Umsetzungsstand und die Checkboxen im betroffenen Plan noch übereinstimmen.
@@ -264,12 +291,14 @@ const invalidCreateAction = 'create';
 - Vollständig abgeschlossene Pläne sind aus `docs/superpowers/plans/` nach `docs/superpowers/archived-plans/` zu verschieben.
 
 ### ❌ FORBIDDEN
+
 - Plan-Schritte umzusetzen, ohne den Checkbox-Stand im Plan nachzuführen.
 - Gemergte oder pushbereite Änderungen mit sichtbar veraltetem Plan-Status als „fertig“ zu behandeln.
 - Plan-Checkboxen nachträglich pauschal abzuhaken, wenn der tatsächliche Umsetzungsstand nicht belastbar geprüft wurde.
 - Vollständig abgeschlossene Pläne dauerhaft im aktiven Plan-Ordner zu belassen.
 
 **Warum diese Regel wichtig ist:**
+
 - Veraltete Plan-Checkboxen erzeugen falschen Backlog und machen Folgearbeit unnötig teuer.
 - Der Plan ist nicht nur Entwurf, sondern auch Ausführungs- und Statusartefakt.
 - Dokumentationsdrift bei Plänen ist genauso problematisch wie Drift bei Architektur- oder Schema-Dokumentation.
@@ -279,12 +308,14 @@ const invalidCreateAction = 'create';
 ## 2. Translation System
 
 ### Process for UI Texts
+
 1. Define language key in consistent format (e.g., `admin.users.title`)
 2. Add translations to database via `translations` table
 3. Load translations using `useTranslation()` hook from `react-i18next`
 4. Use `t()` function with the language key
 
 ### Translation Key Format
+
 - Use dot notation: `section.subsection.key`
 - Be descriptive and hierarchical
 - Example: `admin.dashboard.welcome`, `common.save`, `auth.login`
@@ -296,6 +327,7 @@ const invalidCreateAction = 'create';
   müssen als Kollisionsfehler behandelt werden.
 
 **Where translations are stored:**
+
 - Database table: `translations`
 - Workspace-specific translations override global ones
 - Fallback language: German (de)
@@ -305,6 +337,7 @@ const invalidCreateAction = 'create';
 ## 3. CSS & Styling
 
 ### ✅ REQUIRED
+
 - All styles must use the centralized design system
 - Neue UI-Komponenten und neue UI-Flächen müssen auf `shadcn/ui` basieren
 - Bevorzugt bestehende `shadcn/ui`-Primitives und -Patterns wiederverwenden, statt parallele UI-Grundbausteine einzuführen
@@ -313,6 +346,7 @@ const invalidCreateAction = 'create';
 - Use component variants defined in shadcn components
 
 ### ❌ FORBIDDEN
+
 - Neue Basis-Komponentenbibliotheken oder konkurrierende UI-Primitives ohne dokumentierte Architekturentscheidung einführen
 - Eigenständige UI-Grundbausteine für Buttons, Dialoge, Inputs, Selects, Tabs oder ähnliche Standardmuster bauen, wenn `shadcn/ui` dafür geeignet ist
 - Inline styles (e.g., `style={{ color: '#fff' }}`)
@@ -325,12 +359,14 @@ const invalidCreateAction = 'create';
 Inline styles are permitted ONLY when styling depends on dynamic data from the database (e.g., user-defined colors, positions).
 
 **Requirements for exceptions:**
+
 1. ✅ Must be for truly dynamic data that cannot be predefined
 2. ✅ Must be encapsulated in a reusable component
 3. ✅ Must be documented in the component
 4. ✅ Must use utility functions for color manipulation
 
 **Approved Use Case - Dynamic Label Colors:**
+
 ```tsx
 // ✅ CORRECT - Encapsulated in reusable component
 // See: src/components/ui/issue-label.tsx
@@ -343,12 +379,14 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 ```
 
 **Other Approved Exceptions:**
+
 - Drag-and-drop positioning (transform coordinates)
 - Dynamic animations calculated at runtime
 - Canvas/SVG positioning from database
 - User-customizable theme colors (must be encapsulated)
 
 **Example:**
+
 ```tsx
 // ❌ WRONG - Static styling with inline styles
 <div style={{ backgroundColor: '#2563eb' }}>Content</div>
@@ -362,12 +400,14 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 ```
 
 **Design System Files:**
+
 - `src/index.css` - CSS variables and global styles
 - `tailwind.config.ts` - Tailwind configuration with semantic tokens
 - Component variants in shadcn UI components
 - `src/components/ui/issue-label.tsx` - Encapsulated dynamic label component
 
 **UI-Standard ab sofort:**
+
 - `shadcn/ui` ist der verbindliche Standard für neue UI-Entwicklung.
 - Abweichungen sind nur mit dokumentierter Architekturentscheidung (ADR/gleichwertig) zulässig.
 
@@ -376,6 +416,7 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 ## 4. Accessibility (WCAG 2.1 AA)
 
 ### Requirements
+
 - All UI must be WCAG 2.1 Level AA compliant
 - Proper semantic HTML structure
 - Keyboard navigation support
@@ -386,6 +427,7 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 - Proper ARIA labels where needed
 
 **Key Points:**
+
 - Color contrast: minimum 4.5:1 for normal text, 3:1 for large text
 - All interactive elements must be keyboard accessible
 - Form inputs must have associated labels
@@ -400,17 +442,20 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Optimierungen, sondern Entwurfsanforderungen bei der Erstellung neuer oder wesentlich geänderter produktiver Dateien. Die nachfolgenden Coverage- und Komplexitäts-Gates dienen der Bestätigung dieses Anspruchs, nicht als primäre Stelle seiner erstmaligen Entdeckung.
 
 ### ✅ REQUIRED
+
 - Neue oder wesentlich erweiterte produktive Dateien sind von Anfang an so zu entwerfen, dass sie mit gezielten Tests gut abdeckbar bleiben und keine unnötige strukturelle Komplexität aufbauen.
 - Neue Logik ist bevorzugt in kleine, klar abgegrenzte Funktionen, Helper oder Module zu schneiden, wenn dies Verständlichkeit, Testbarkeit oder Wartbarkeit verbessert.
 - Wenn bereits während der Umsetzung absehbar ist, dass eine Datei nur mit hoher Komplexität oder mit schwacher Testabdeckung fertigstellbar wäre, muss vor Weiterarbeit refaktoriert, zerlegt oder der Zuschnitt der Änderung reduziert werden.
 - Coverage- und Komplexitäts-Gates sind bei der Implementierung als Zielbild mitzudenken, nicht erst beim späteren PR- oder CI-Lauf.
 
 ### ❌ FORBIDDEN
+
 - Neue produktive Dateien in einer Form anzulegen, bei der geringe Testbarkeit oder hohe Komplexität bereits während der Erstellung erkennbar in Kauf genommen werden.
 - Große Logikblöcke, viele Verzweigungen oder verdeckte Seiteneffekte ohne nachvollziehbare Zerlegung neu einzuführen.
 - Komplexität oder fehlende Testbarkeit erst dann zu adressieren, wenn `complexity-gate`, `coverage-gate` oder externe Quality Gates bereits rot sind.
 
 ### Gate-Anforderungen
+
 - Neue Features und Verhaltensänderungen müssen Unit-Tests erhalten.
 - Coverage darf pro Projekt und global nicht unter die Baseline bzw. definierte Floors fallen.
 - Kritische Module müssen ihre definierten Mindest-Floors in `tooling/testing/coverage-policy.json` erfüllen.
@@ -420,6 +465,7 @@ Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Opt
 - Coverage-Gate muss vor dem Merge erfolgreich sein.
 
 ### ❌ FORBIDDEN im Gate-Kontext
+
 - PRs mit neuer Funktionalität ohne zugehörige Tests.
 - Baseline-Updates ohne dokumentierte Team-Freigabe.
 - Exemptions als dauerhafte Umgehung des Coverage-Gates.
@@ -427,6 +473,7 @@ Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Opt
 - Absenkung von Coverage-Floors, nur weil ein kritischer Hotspot komplexer geworden ist.
 
 ### Process
+
 1. Tests parallel zur Feature-Implementierung schreiben.
 2. Lokal Coverage ausführen: `pnpm test:coverage`.
 3. Gate vor PR prüfen: `pnpm coverage-gate`.
@@ -434,12 +481,14 @@ Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Opt
 5. Bei Exemption oder Komplexitätsüberschreitung: Ticket erstellen bzw. referenzieren und Team-Genehmigung dokumentieren.
 
 ### Enforcement
+
 - PRs ohne angemessene Tests werden in Reviews abgelehnt.
 - Baseline- oder Policy-Änderungen brauchen eine explizite Begründung im PR.
 - Die PR-Checkliste muss Coverage-Nachweise enthalten: `docs/reports/PR_CHECKLIST.md`.
 - Die PR-Checkliste muss auch Komplexitäts-Nachweise und Ticketbezüge enthalten.
 
 **Example:**
+
 ```ts
 // WRONG: neue Feature-Logik ohne Testabdeckung
 export function calculateDiscount(price: number): number {
@@ -459,28 +508,33 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 ## 5.1 Externe Quality Gates (Codecov & Sonar)
 
 ### ✅ REQUIRED
+
 - SonarQube/SonarCloud-Analyse muss für PRs und vor Merge berücksichtigt werden; das Quality Gate darf nicht unbeachtet bleiben.
 - Codecov-Checks (`project`, `patch`) müssen in jedem PR aktiv geprüft und im Zweifel im PR-Text eingeordnet werden.
 - Interne Gates bleiben verbindlich: `pnpm coverage-gate` und `pnpm complexity-gate` sind die Freigabebasis im Repository.
 - Bei roten externen Checks (Codecov/Sonar) ist vor Merge eine dokumentierte Entscheidung im PR erforderlich (Ursache, Risiko, Folgemaßnahme).
 
 ### ❌ FORBIDDEN
+
 - Merge ohne Sichtung der Sonar- oder Codecov-Ergebnisse.
 - Ignorieren roter Quality-Gate-Checks ohne dokumentierte Begründung.
 
 ### Process
+
 1. Lokal die internen Gates ausführen (`pnpm test:coverage`, `pnpm coverage-gate`, `pnpm complexity-gate`).
 2. PR-Pipeline abwarten und Sonar- sowie Codecov-Status prüfen.
 3. Bei Befunden: Fix priorisieren oder begründete Ausnahme inkl. Ticket im PR dokumentieren.
 4. Merge erst nach nachvollziehbarer Bewertung aller Quality-Gates.
 
 ### Enforcement
+
 - PRs ohne dokumentierte Bewertung von Sonar/Codecov werden im Review zurückgestellt.
 - Wiederholte Verstöße gelten als Prozessabweichung und müssen in der Retro adressiert werden.
 
 ## 5.2 Shift-Left Test-Gates (verbindlich)
 
 ### ✅ REQUIRED
+
 - Neue Funktionalität und wesentliche Refactorings müssen während der Implementierung in kleinen Schritten getestet werden, nicht erst kurz vor PR-Erstellung.
 - Nach jedem abgeschlossenen neuen Codeblock oder einer wesentlichen Scope-Erweiterung sind mindestens die betroffenen Unit-Tests auszuführen.
 - Vor dem initialen Push eines neuen Codeblocks oder einer wesentlichen Erweiterung des PR-Scopes muss ein schneller lokaler Gate-Lauf für die betroffenen Projekte erfolgen.
@@ -497,6 +551,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Pull Requests starten keine vollständige App-E2E-Suite. Der vollständige Lauf erfolgt pro Push auf `main`; nur dessen erfolgreiche Head-SHA-gebundene Evidenz darf zusammen mit der getrennten OCI-Revisionsprüfung einen regulären Staging-Promote freigeben.
 
 ### ❌ FORBIDDEN
+
 - „Big-bang“-Validierung erst am Ende der Umsetzung.
 - Mehrere neue Codeblöcke oder wesentliche Scope-Erweiterungen ohne Zwischenlauf der betroffenen Tests zu stapeln.
 - Pushes, bei denen bekannte lokale Testfehler im tatsächlich geänderten oder fachlich betroffenen Pfad ignoriert werden.
@@ -504,32 +559,43 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Wiederherstellung von Pull-Request-erzeugten Nx-Caches in geschützten `main`-, Release- oder Deployment-Kontexten.
 
 ### Process
+
 1. Implementiere einen neuen Codeblock oder eine wesentliche Scope-Erweiterung als kleine, in sich geschlossene Änderung.
 2. Führe dafür zielgerichtete Tests aus (affected, Projekt oder Datei).
 3. Erst bei grünem Zwischenstand mit dem nächsten neuen Codeblock oder der nächsten wesentlichen Scope-Erweiterung weitermachen. Kleine Folgefixes in einem bestehenden PR folgen direkt Schritt 6.
 4. Prüfe vor einem lokalen affected-Unit-Run gegen `origin/main` den Scope:
-  - `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main`
+
+- `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main`
+
 5. Vor einem initialen Push mit neuem Code oder einer wesentlichen Scope-Erweiterung mindestens den kleinsten relevanten schnellen Gate-Lauf ausführen:
-  - bei kleinem affected-Scope: `pnpm nx affected --target=test:unit --base=origin/main`
-  - bei großem affected-Scope: gezielte Package-/Datei-Unit-Tests für den neuen Codeblock und transparente Notiz, dass der breite Lauf der CI oder einem separaten finalen Gate vorbehalten bleibt
-  - zusätzlich bei Bedarf ein gezielter Type-Gate-Pfad oder `pnpm nx affected --target=test:types --base=origin/main`, wenn der Scope handhabbar ist
+
+- bei kleinem affected-Scope: `pnpm nx affected --target=test:unit --base=origin/main`
+- bei großem affected-Scope: gezielte Package-/Datei-Unit-Tests für den neuen Codeblock und transparente Notiz, dass der breite Lauf der CI oder einem separaten finalen Gate vorbehalten bleibt
+- zusätzlich bei Bedarf ein gezielter Type-Gate-Pfad oder `pnpm nx affected --target=test:types --base=origin/main`, wenn der Scope handhabbar ist
+
 6. Bei einem kleinen Folgefix in einem bestehenden PR:
-  - keinen breiten lokalen `affected`- oder `test:pr`-Lauf allein wegen des Pushs starten
-  - einen schnellen gezielten Test nur ausführen, wenn er den unmittelbar geänderten Pfad sinnvoll absichert oder ein konkretes Fehlersignal reproduziert
-  - danach die GitHub-Gates des exakten neuen HEAD als führende Gesamtvalidierung auswerten
-  - spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen und Server-Runtime weiterhin ausführen
+
+- keinen breiten lokalen `affected`- oder `test:pr`-Lauf allein wegen des Pushs starten
+- einen schnellen gezielten Test nur ausführen, wenn er den unmittelbar geänderten Pfad sinnvoll absichert oder ein konkretes Fehlersignal reproduziert
+- danach die GitHub-Gates des exakten neuen HEAD als führende Gesamtvalidierung auswerten
+- spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen und Server-Runtime weiterhin ausführen
+
 7. Wenn die Änderung Skripte, CI-Wrapper oder Workspace-Tooling betrifft, zusätzlich den Skript-Typecheck ausführen:
-  - `pnpm exec tsc -p tsconfig.scripts.json --noEmit`
-  - oder den passenden Sammel-Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
+
+- `pnpm exec tsc -p tsconfig.scripts.json --noEmit`
+- oder den passenden Sammel-Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
+
 8. Vor der ersten PR-Erstellung und vor Merge beziehungsweise Release weiterhin die Qualitätsprüfung gemäß Abschnitt 5 und 5.1 sicherstellen; grüne GitHub-Gates dürfen dabei die breite lokale Wiederholung für kleine Folgefixes ersetzen.
 
 ### Enforcement
+
 - Reviews für neue Funktionalität oder wesentliche Scope-Erweiterungen können zurückgestellt werden, wenn kein angemessener lokaler oder GitHub-basierter Testnachweis erkennbar ist.
 - Wiederholte späte Test-Fails gelten als Prozessabweichung und müssen mit konkreter Gegenmaßnahme im PR dokumentiert werden.
 
 ## 5.2a Robuste Handler-Tests für Auth-, Session- und Permission-Logik (verbindlich)
 
 ### ✅ REQUIRED
+
 - Handler-Tests in auth-, session- oder permission-kritischen Modulen müssen vollständige, wiederverwendbare Test-Fixtures oder Builder verwenden, wenn dieselben Runtime-Dependencies in mehreren Dateien vorkommen.
 - Neue Pflicht-Dependencies in sicherheitsrelevanten Handlern müssen an einer gemeinsamen Test-Factory oder einem gemeinsamen Test-Builder nachgezogen werden, nicht nur in einzelnen Ad-hoc-Testobjekten.
 - Guard-Verhalten und Business-Verhalten sind in Tests klar zu trennen:
@@ -538,11 +604,13 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Bei Änderungen an Guard-, Session- oder Permission-Semantik ist vor Push mindestens der kleinste CI-nahe affected-Unit-Lauf für das betroffene Projekt auszuführen.
 
 ### ❌ FORBIDDEN
+
 - Wiederholte dateilokale `createDeps()`- oder Inline-Mock-Muster für dieselben sicherheitsrelevanten Handler-Abhängigkeiten, wenn dafür bereits gemeinsame Test-Fixtures existieren oder erforderlich sind.
 - Business-Flow-Tests implizit von fehlenden oder nur teilweise gemockten Auth-/Session-/Permission-Dependencies abhängig zu machen.
 - Guard-Änderungen ausschließlich mit Einzeldatei-Tests freizugeben, wenn das betroffene Projekt mehrere Handler- oder Branch-Tests über denselben Guard-Pfad besitzt.
 
 ### Ziel der Regel
+
 - Wiederkehrende CI-Ausfälle nach Guard- oder Session-Änderungen früh abfangen.
 - Fehlende Pflicht-Dependencies in Tests zentral statt verteilt pflegen.
 - Fail-Closed-Semantik absichtlich testen, statt sie nur indirekt über unerwartete `503`-Antworten zu entdecken.
@@ -550,6 +618,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 ## 5.3 Test-Dateiplatzierung und Ownership (verbindlich)
 
 ### ✅ REQUIRED
+
 - Neue modulnahe Unit-Tests in Workspace-Packages liegen standardmäßig kolokiert unter `packages/<projekt>/src/**/*.test.ts` oder `*.test.tsx`.
 - Neue modulnahe App-Tests liegen standardmäßig kolokiert unter `apps/<app>/src/**/*.test.ts` oder `*.test.tsx`.
 - Repository-interne Testdateien unter `apps/`, `packages/` und `scripts/` verwenden Vitest als einheitlichen Test-Runner.
@@ -560,6 +629,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Neue Tests sind so abzulegen, dass Ownership eindeutig beim betroffenen Nx-Projekt bleibt und projektbezogene Läufe wie `pnpm nx run <projekt>:test:unit` nachvollziehbar bleiben.
 
 ### ❌ FORBIDDEN
+
 - Normale Einzelmodul- oder Komponenten-Tests ohne Begründung aus `src/` in separate `tests/`-Ordner auszulagern.
 - Fachliche Paket- oder App-Tests in einen globalen Root-Ordner `tests/` zu verschieben.
 - Unit-, Integrations- und E2E-Tests innerhalb desselben Ordners semantisch zu vermischen.
@@ -567,6 +637,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Neue `node:test`-Imports, `node:assert`-basierte Standard-Testfragmente oder `node --test`-Aufrufe als regulären Workspace-Testpfad einzuführen.
 
 ### Process
+
 1. Prüfe zuerst die Testart: modulnaher Unit-Test, paketweite Integration, appweite Integration oder E2E.
 2. Lege modulnahe Tests direkt neben dem getesteten Code in `src/` ab.
 3. Verwende `packages/<projekt>/tests/` nur dann, wenn der Test bewusst Projektgrenzen innerhalb desselben Pakets zusammensetzt.
@@ -575,6 +646,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 6. Bestehende Altstruktur darf vorerst bestehen bleiben; bei neuen Tests gilt diese Regel als Standard.
 
 ### Enforcement
+
 - Reviews können neue Tests zurückweisen, wenn deren Ablage die Testart verschleiert oder Ownership zwischen Projekten unklar macht.
 - Strukturausnahmen sind im PR kurz zu begründen, insbesondere wenn ein neuer Test nicht dem Standardpfad für seine Testart folgt.
 
@@ -589,6 +661,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 #### Input Validation Rules
 
 ### ✅ REQUIRED
+
 - **All user inputs** must be validated client-side AND server-side
 - Use schema validation libraries (e.g., `zod`) for TypeScript
 - Implement length limits and character restrictions
@@ -597,6 +670,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - RLS policies must be in place for all Supabase tables
 
 ### ❌ FORBIDDEN
+
 - Passing unvalidated user input to external URLs
 - Using `dangerouslySetInnerHTML` with user-provided content
 - Logging sensitive data to console
@@ -604,23 +678,27 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Missing input validation on server-side
 
 **Example - Form Validation:**
+
 ```tsx
 import { z } from 'zod';
 
 // ✅ CORRECT - Define validation schema
 const contactSchema = z.object({
-  name: z.string()
+  name: z
+    .string()
     .trim()
-    .min(1, { message: "Name cannot be empty" })
-    .max(100, { message: "Name must be less than 100 characters" }),
-  email: z.string()
+    .min(1, { message: 'Name cannot be empty' })
+    .max(100, { message: 'Name must be less than 100 characters' }),
+  email: z
+    .string()
     .trim()
-    .email({ message: "Invalid email address" })
-    .max(255, { message: "Email must be less than 255 characters" }),
-  message: z.string()
+    .email({ message: 'Invalid email address' })
+    .max(255, { message: 'Email must be less than 255 characters' }),
+  message: z
+    .string()
     .trim()
-    .min(1, { message: "Message cannot be empty" })
-    .max(1000, { message: "Message must be less than 1000 characters" })
+    .min(1, { message: 'Message cannot be empty' })
+    .max(1000, { message: 'Message must be less than 1000 characters' }),
 });
 
 // Validate before processing
@@ -688,19 +766,23 @@ Before any implementation goes live, verify:
 ### Required Documentation
 
 #### A. Central Documentation
+
 - **This file** (`DEVELOPMENT_RULES.md`) - Non-negotiable rules
 - `README.md` - Project overview and setup
 - `IMPLEMENTATION.md` - Implementation details and architecture
 - `ICON_SYSTEM.md` - Icon usage guidelines
 
 #### B. File-Level Documentation
+
 Every file must include:
+
 1. **Header comment** with overview of file purpose
 2. **Function/Component descriptions** for complex logic
 3. **Type definitions** with clear descriptions
 4. **Usage examples** where helpful
 
 **Example:**
+
 ```tsx
 /**
  * AdminLayout Component
@@ -716,10 +798,11 @@ Every file must include:
  */
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   // Component implementation
-}
+};
 ```
 
 #### C. Continuous Documentation Updates
+
 - Update documentation when making changes to architecture
 - Keep implementation details current
 - Document breaking changes
@@ -728,6 +811,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 #### D. Architektur-Dokumentationssynchronität (arc42 / ADR)
 
 ### ✅ REQUIRED
+
 - Architekturrelevante Änderungen im Bereich IAM, Rollen-Sync, ABAC/RBAC oder Data-Subject-Rights MÜSSEN in den betroffenen arc42-Abschnitten dokumentiert werden, insbesondere in Abschnitt 04, 05, 06 und 08.
 - Jede Änderung an sicherheitskritischer oder domänenkritischer Logik MUSS mindestens eine Aktualisierung in `docs/architecture/05-building-block-view.md` oder `docs/architecture/08-cross-cutting-concepts.md` nach sich ziehen.
 - Neue oder geänderte IAM-Patterns MÜSSEN als ADR unter `docs/adr/` dokumentiert und in `docs/architecture/09-architecture-decisions.md` referenziert werden.
@@ -735,11 +819,13 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - OpenSpec-Changes mit Architekturwirkung MÜSSEN die betroffenen arc42-Abschnitte in `proposal.md` und `tasks.md` referenzieren.
 
 ### ❌ FORBIDDEN
+
 - Änderungen an IAM-, Rollen-, Policy- oder Data-Subject-Rights-Logik ohne passende Aktualisierung der Architektur-Doku.
 - Sicherheitskritische Logikänderungen nur im Code nachzuziehen und die Querschnitts- oder Bausteinsicht unverändert zu lassen.
 - Neue IAM-Patterns implizit im Code einzuführen, ohne ADR und ohne Referenz in Abschnitt 09.
 
 ### Enforcement
+
 - Reviews müssen PRs ablehnen, wenn architekturrelevante Änderungen nicht in arc42 und ADRs nachvollziehbar dokumentiert sind.
 - Die PR-Checkliste unter `docs/reports/PR_CHECKLIST.md` ist für diese Nachweise verbindlich.
 - Der `documentation.agent.md` und der `architecture.agent.md` prüfen diese Synchronität explizit.
@@ -749,6 +835,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 ## 7. Branching & PR Workflow
 
 ### ✅ REQUIRED
+
 - Create a dedicated branch for every change; never commit directly to main
 - Use branch prefixes that describe the change: `feature/`, `fix/`, `chore/`, `docs/`, `setup/`, `adr/`
 - Keep one topic per branch and keep branches/PRs small and focused
@@ -757,6 +844,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - Jeder PR MUSS einen verständlich formulierten Text für das Studio-Changelog enthalten. Der Eintrag ist unter `docs/changelog/entries/pr-<nummer>.json` anzulegen und vor dem Merge mit `pnpm check:studio-changelog` zu prüfen.
 
 ### Base Branch Decision Tree
+
 - Frage 1: Ist die geplante Änderung unabhängig von ungemergten Änderungen?
   - Ja -> neuen Branch von `main` erstellen
   - Nein -> neuen Branch von dem Branch erstellen, von dem die Änderung fachlich/technisch abhängt
@@ -765,6 +853,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   - Nein -> von `main` starten
 
 ### PR Target Rule (Invariant)
+
 - Invariante: Ein PR zeigt immer auf den Branch, von dem der eigene Branch abgeschnitten wurde.
 - Beispiele:
   - Basisbranch `main` -> PR-Target `main`
@@ -772,6 +861,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   - Basisbranch `fix/session-timeout` -> PR-Target `fix/session-timeout`
 
 ### Stacked Branch Workflow
+
 - Beispiel-Kette:
   - `feature/A` basiert auf `main`
   - `feature/B` basiert auf `feature/A`
@@ -788,6 +878,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   - Wenn ein Vorgänger-PR noch offen ist, bleiben nachfolgende PRs auf den direkten Vorgänger ausgerichtet
 
 ### ❌ FORBIDDEN
+
 - Mixing unrelated changes in one branch or PR
 - Force-pushing after review without explicit reviewer consent (except to fix CI/rebase conflicts)
 - Branch basiert auf `feature/*` oder `fix/*`, PR zeigt aber direkt auf `main` (falsches Review-Diff)
@@ -795,11 +886,13 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - Keine Synchronisierung mit dem Upstream-Branch nach Merge des Vorgängers (veraltete Diffs, unnötige Konflikte)
 
 ### Forbidden / Failure Modes (Warum)
+
 - Falsches PR-Target erzeugt verfälschte Diffs und Review-Rauschen.
 - Themenmix in Stacks macht Rückverfolgung, Testing und Rollback deutlich schwerer.
 - Fehlende Synchronisierung nach Upstream-Merge führt zu vermeidbaren Merge-Konflikten und CI-Instabilität.
 
 ### Operational Checklist vor Branch/PR
+
 - [ ] Ist klar, ob die Änderung unabhängig ist (`main`) oder abhängig (bestehender Branch)?
 - [ ] Wurde der neue Branch vom fachlich korrekten Basisbranch erstellt?
 - [ ] Entspricht das PR-Target exakt dem Basisbranch?
@@ -813,18 +906,21 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 ## 8 Monorepo Module Boundaries (Nx)
 
 ### ✅ REQUIRED
+
 - Projektgrenzen und Layering werden über `@nx/enforce-module-boundaries` technisch erzwungen.
 - Jede neue Library/App MUSS korrekte Nx-Tags (`scope:*`, `type:*`) im `project.json` haben.
 - Architektur-ändernde Imports müssen gegen die definierten `depConstraints` geprüft werden.
 
 ### Quelle der Regeln
-- Details und aktuelle Scope-Constraints: `docs/monorepo.md` (Abschnitt "Module Boundaries")
+
+- Details und aktuelle Scope-Constraints: `docs/reference/monorepo.md` (Abschnitt "Module Boundaries")
 
 ---
 
 ## 9. Logging & Observability
 
 ### ✅ REQUIRED
+
 - **Server-Code**: Server-Runtime-Logger verwenden (`createSdkLogger` aus `@sva/server-runtime`)
 - **Produktiver Browser-App-Code**: Runtime-sicheren Browser-Logger aus dem passenden Zielpackage verwenden; rohe `console.*`-Aufrufe vermeiden
 - **Strukturierte Logs**: Immer mit Context-Feldern (component, operation, error, etc.)
@@ -837,6 +933,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - **Auth-Modell**: `/auth/me` liefert nur den minimalen Auth-Kern; Name und E-Mail gehören in dedizierte Profil-/Sync-Flows
 
 ### ❌ FORBIDDEN
+
 - `console.log/info/warn/error` in Production-Server-Code
 - Session-IDs, Access-Tokens, Refresh-Tokens in Klartext
 - Logout- oder Redirect-URLs mit `id_token_hint`, `code`, `access_token` oder vergleichbaren Query-Parametern im Logging
@@ -844,7 +941,9 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - Logs ohne `component`-Label
 
 ### ✅ APPROVED - Frontend Dev-Only Logs
+
 Frontend darf `console.*` nutzen, aber:
+
 - Nur in Development
 - Mit strukturierten Feldern `{ component, endpoint, status, error }`
 - Keine PII, Tokens oder tokenhaltigen URLs
@@ -852,6 +951,7 @@ Frontend darf `console.*` nutzen, aber:
 - Tests, Dev-Capture-Implementierungen und Einweg-Skripte dürfen `console.*` weiterhin direkt nutzen
 
 **Backend-Beispiel:**
+
 ```typescript
 import { createSdkLogger } from '@sva/server-runtime';
 
@@ -878,28 +978,33 @@ logger.error('Auth failed', {
 ## 10. Translation Key Management
 
 ### Required Outcome
+
 - Neue Übersetzungsschlüssel müssen in den tatsächlich verwendeten Übersetzungsressourcen des betroffenen Apps oder Pakets ergänzt werden.
 - Für neue UI-Texte sind immer beide Zielsprachen zu pflegen.
 - Veraltete oder ungenutzte Schlüssel sollen bei passenden Änderungen mit bereinigt werden.
 
 ### Recommended Process
+
 1. Suche die tatsächliche Übersetzungsquelle des betroffenen Apps oder Pakets.
 2. Ergänze neue Schlüssel dort in `de` und `en`.
 3. Prüfe die Verwendung mit den betroffenen Unit- oder UI-Tests statt mit einem separaten Legacy-Skript.
 
 **Struktur- und Pflegekonventionen für Host-i18n-Ressourcen:**
+
 - Für die Host-Übersetzungen von `apps/sva-studio-react` gelten die konkrete Datei- und Formatter-Konventionen unter `apps/sva-studio-react/src/i18n/README.md`.
 - Dazu gehören insbesondere die Aufteilung pro Sprache und pro Feature/Namespace sowie die Nutzung von `pnpm i18n:format:resources` und `pnpm i18n:format:resources --check`.
 
 ### Best Practices
 
 ✅ **DO:**
+
 - Add translations immediately when creating new UI text
 - Use descriptive key names that reflect the content
 - Maintain parallel structure in `de` and `en` translations
 - Group related keys under common parent keys
 
 ❌ **DON'T:**
+
 - Use generic keys like `text1`, `label2`
 - Mix different naming conventions
 - Leave placeholder text in translations
@@ -910,34 +1015,36 @@ logger.error('Auth failed', {
 ## 12. Design System Architecture
 
 ### Color System (HSL-based)
+
 All colors must be defined as CSS variables in HSL format:
 
 ```css
 :root {
-  --primary: 221 83% 53%;        /* Main brand color */
-  --background: 0 0% 100%;        /* Page background */
-  --foreground: 222 47% 11%;      /* Main text color */
+  --primary: 221 83% 53%; /* Main brand color */
+  --background: 0 0% 100%; /* Page background */
+  --foreground: 222 47% 11%; /* Main text color */
   /* ... more semantic tokens */
 }
 
 .dark {
-  --primary: 210 40% 98%;         /* Inverted for dark mode */
-  --background: 222.2 84% 4.9%;   /* Dark background */
-  --foreground: 210 40% 98%;      /* Light text */
+  --primary: 210 40% 98%; /* Inverted for dark mode */
+  --background: 222.2 84% 4.9%; /* Dark background */
+  --foreground: 210 40% 98%; /* Light text */
   /* ... more dark mode tokens */
 }
 ```
 
 ### Using Colors in Components
+
 ```tsx
 // ✅ Use semantic tokens - automatically supports dark mode
-className="bg-primary text-primary-foreground"
-className="border-border hover:bg-accent"
-className="bg-background text-foreground"
+className = 'bg-primary text-primary-foreground';
+className = 'border-border hover:bg-accent';
+className = 'bg-background text-foreground';
 
 // ❌ Never use direct colors - breaks dark mode
-className="bg-blue-600 text-white"
-className="border-gray-300 hover:bg-gray-100"
+className = 'bg-blue-600 text-white';
+className = 'border-gray-300 hover:bg-gray-100';
 ```
 
 ### Dark Mode Support (Required)
@@ -950,18 +1057,19 @@ className="border-gray-300 hover:bg-gray-100"
 4. **Theme Aware**: Use `useTheme()` hook for conditional logic if needed
 
 ```tsx
-import { useTheme } from '@/contexts/ThemeContext'
+import { useTheme } from '@/contexts/ThemeContext';
 
 function MyComponent() {
-  const { resolvedTheme } = useTheme()
+  const { resolvedTheme } = useTheme();
 
   // Most components don't need this - semantic tokens handle it
   // Only use for special cases (charts, custom graphics, etc.)
-  const isDark = resolvedTheme === 'dark'
+  const isDark = resolvedTheme === 'dark';
 }
 ```
 
 **Theme System Files:**
+
 - `src/contexts/ThemeContext.tsx` - Theme management
 - `src/components/ui/theme-toggle.tsx` - Theme selector
 - `src/index.css` - Light and dark color definitions
@@ -978,6 +1086,7 @@ function MyComponent() {
 #### When to Update the Manual
 
 Update `src/lib/translations/manual.ts` when:
+
 - ✅ Adding new features or functionality
 - ✅ Changing existing workflows or UI flows
 - ✅ Modifying navigation or menu structures
@@ -1036,6 +1145,7 @@ Update `src/lib/translations/manual.ts` when:
 ## Enforcement
 
 These rules are enforced through:
+
 1. **Code review** - All PRs must follow these guidelines
 2. **AI assistance** - AI tools are instructed to follow these rules
 3. **Documentation** - This file serves as the source of truth
@@ -1047,6 +1157,7 @@ These rules are enforced through:
 ## Questions?
 
 If you're unsure about how to implement something following these rules:
+
 1. Check existing implementations in the codebase
 2. Review docs folder for architecture details
 3. Consult this document for the rules

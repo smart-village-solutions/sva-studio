@@ -40,6 +40,7 @@ Der einzige normative Bedienablauf für Studio-Rollouts nach Dev, Staging und Pr
 - [Logging und Observability](./logging-architecture.md)
 - [Session-Analyse](./session-management-analysis.md)
 - [IAM-Service-Architektur](./iam-service-architektur.md)
+- [IAM-Autorisierungsmodell: Zielbild](./iam-autorisierungsmodell-zielbild.md)
 - [IAM-Datenklassifizierung](./iam-datenklassifizierung.md)
 - [Datenbankschema-Übersicht](../development/studio-db-schema.md)
 - [Datenbankschema-Snapshot (Soll-Stand)](../development/studio-db-schema-final.sql)

@@ -4,7 +4,7 @@
 
 ## Architektur-Rolle
 
-Laut [Monorepo-Struktur](../../docs/monorepo.md) und [Package-Zielarchitektur](../../docs/architecture/package-zielarchitektur.md) ist `@sva/iam-governance` ein fachliches Domain-Package für Governance, Rechtstexte und DSR.
+Laut [Monorepo-Struktur](../../docs/reference/monorepo.md) und [Package-Zielarchitektur](../../docs/architecture/package-zielarchitektur.md) ist `@sva/iam-governance` ein fachliches Domain-Package für Governance, Rechtstexte und DSR.
 
 Die öffentliche Paketfassade in [src/index.ts](./src/index.ts) beschreibt die Rollen zusätzlich als `dsr`, `legal-texts`, `audit` und `governance-cases`.
 
@@ -82,9 +82,9 @@ Verfügbare Targets:
 
 ## Verwandte Dokumentation
 
-- [Monorepo-Struktur](../../docs/monorepo.md)
+- [Monorepo-Struktur](../../docs/reference/monorepo.md)
 - [Package-Zielarchitektur](../../docs/architecture/package-zielarchitektur.md)
 - [Runtime View](../../docs/architecture/06-runtime-view.md)
-- [IAM Governance Runbook](../../docs/guides/iam-governance-runbook.md)
-- [IAM Data Subject Rights Runbook](../../docs/guides/iam-data-subject-rights-runbook.md)
-- [IAM Authorization API Contract](../../docs/guides/iam-authorization-api-contract.md)
+- [IAM Governance Runbook](../../docs/governance/iam-governance-runbook.md)
+- [IAM Data Subject Rights Runbook](../../docs/operations/iam-data-subject-rights-runbook.md)
+- [IAM Authorization API Contract](../../docs/reference/iam-authorization-api-contract.md)

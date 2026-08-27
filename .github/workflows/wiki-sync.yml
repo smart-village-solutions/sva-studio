@@ -93,8 +93,8 @@ jobs:
           - [Dokumentationsübersicht](docs/README.md)
           - [Architekturübersicht (arc42)](docs/architecture/README.md)
           - [Architekturentscheidungen (ADRs)](docs/adr/README.md)
-          - [Monorepo-Struktur](docs/monorepo.md)
-          - [Routing](docs/routing.md)
+          - [Monorepo-Struktur](docs/reference/monorepo.md)
+          - [Routing](docs/reference/routing.md)
           - [Monitoring-Stack](docs/development/monitoring-stack.md)
           - [Testing und Coverage Governance](docs/development/testing-coverage.md)
           EOF
@@ -104,8 +104,8 @@ jobs:
           - [Dokumentationsübersicht](docs/README.md)
           - [Architektur (arc42)](docs/architecture/README.md)
           - [Architekturentscheidungen (ADRs)](docs/adr/README.md)
-          - [Monorepo](docs/monorepo.md)
-          - [Routing](docs/routing.md)
+          - [Monorepo](docs/reference/monorepo.md)
+          - [Routing](docs/reference/routing.md)
           - [Monitoring](docs/development/monitoring-stack.md)
           - [Testing/Coverage](docs/development/testing-coverage.md)
           EOF

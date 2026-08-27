@@ -11,6 +11,8 @@ Dieses Verzeichnis ist ein Archiv einer älteren ADR-Serie und nicht der kanonis
 
 ## Bereits migriert
 
+- Die weiterhin gültigen einzigartigen Entscheidungen ADR-001 bis ADR-008 liegen nun kanonisch unter `../../adr/`.
+- Die Layout-Shell-Entscheidung aus der kollidierenden Legacy-Nummer 009 liegt kanonisch als `../../adr/ADR-053-layout-shell-skeleton-architecture.md` vor. Die nahezu identische Legacy-Datei mit Nummer 008 bleibt nur als historischer Kontext erhalten.
 - `ADR-018-auth-routing-error-contract-und-korrelation.md` ist nach `../../adr/ADR-018-auth-routing-error-contract-und-korrelation.md` migriert.
 - Die gleichnamige Datei in diesem Verzeichnis bleibt nur als Legacy-Platzhalter bestehen, damit alte Referenzen nicht ins Leere laufen.
 

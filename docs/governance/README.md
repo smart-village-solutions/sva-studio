@@ -38,9 +38,18 @@ Betriebliche Schrittfolgen gehören nach [Betrieb](../operations/README.md); tec
 - [Preview-Plattformvergleich](./preview-platform-comparison.md)
 - [Preview-Security- und Compliance-Grenzen](./preview-security-compliance-guardrails.md)
 
-## Geplante Übernahmen aus `guides/`
+## Inhalt, Security und Compliance
 
-Datenschutz-, Security-, IAM-Governance- und Changelog-Regeln werden in PR 4 anhand des [vollständigen Migrationsinventars](../guides/README.md) hier eingeordnet oder mit führenden Quellen konsolidiert.
+- [Content-Guidelines](./content-guidelines.md)
+- [Evidence-Playbook Datenschutz und Compliance](./datenschutz-compliance-evidence-playbook.md)
+- [Prüfprotokolle Datenschutz und Compliance](./datenschutz-compliance-pruefprotokolle.md)
+- [TOM-Matrix Datenschutz und Compliance](./datenschutz-compliance-tom-matrix.md)
+- [Vorlage Datenschutz-/Governance-Tabletop](./datenschutz-governance-tabletop-template.md)
+- [IAM Governance Freigabematrix](./iam-governance-freigabematrix.md)
+- [IAM Governance Runbook](./iam-governance-runbook.md)
+- [Security Policy](./security-policy.md)
+- [Studio-Changelog-Workflow](./studio-changelog-workflow.md)
+- [Nachweis der Dokumentationsmigration](./dokumentationsmigration.md)
 
 ## Benachbarte Bereiche
 

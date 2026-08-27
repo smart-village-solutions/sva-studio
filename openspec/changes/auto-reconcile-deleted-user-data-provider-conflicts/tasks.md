@@ -21,5 +21,5 @@
 ## 4. Dokumentation
 
 - [x] 4.1 `docs/development/studio-db-schema.md` um die automatische Historisierung endgültig gelöschter Benutzerprincipals ergänzen; der SQL-Snapshot bleibt mangels Schemaänderung unverändert.
-- [x] 4.2 `docs/guides/mainserver-data-provider-authoring.md` um Trigger, Grenzen und Diagnose der Selbstheilung ergänzen.
+- [x] 4.2 `docs/development/mainserver-data-provider-authoring.md` um Trigger, Grenzen und Diagnose der Selbstheilung ergänzen.
 - [x] 4.3 Die relevanten arc42-Abschnitte `06-runtime-view`, `08-cross-cutting-concepts` und `11-risks-and-technical-debt` aktualisieren.

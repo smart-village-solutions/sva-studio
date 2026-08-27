@@ -168,7 +168,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 
 - **Einstieg**: `docs/README.md` und die Bereichsindizes unter `docs/{development,operations,reference,governance}/README.md` sind die Navigation der aktuellen lokalen Wissensbasis
 - **Aktuelle Dokumentation**: Neue Dokumente gehören nach Zweck in `docs/architecture/`, `docs/adr/`, `docs/development/`, `docs/operations/`, `docs/reference/`, `docs/api/` oder `docs/governance/`
-- **Übergangsbereich**: `docs/guides/` nimmt keine neuen allgemeinen Dokumente auf. Das Inventar `docs/guides/README.md` steuert die Migration; `docs/guides/studio-rollout-process.md` bleibt der stabile kanonische Rolloutpfad
+- **Kompatibilitätsanker**: `docs/guides/` enthält ausschließlich `studio-rollout-process.md`; neue allgemeine Dokumente gehören in den zuständigen Bereich. `docs/governance/dokumentationsmigration.md` weist die abgeschlossene Migration nach
 - **Nachweise und Historie**: Reports, Staging- und PR-Unterlagen bleiben in den dafür vorgesehenen, nicht normativen Bereichen
 - **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
 - **Sprache**: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)

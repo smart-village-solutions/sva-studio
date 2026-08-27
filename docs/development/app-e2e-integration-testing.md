@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt den reproduzierbaren Smoke-Test für die laufende App inklusive Docker-Service-Stack.
 
-> Für den separaten IAM-Abnahmenachweis mit realem Keycloak-Login, JIT-Provisioning und Organisations-Smokes siehe `../guides/iam-acceptance-runbook.md`.
+> Für den separaten IAM-Abnahmenachweis mit realem Keycloak-Login, JIT-Provisioning und Organisations-Smokes siehe `../operations/iam-acceptance-runbook.md`.
 
 ## Voraussetzungen
 

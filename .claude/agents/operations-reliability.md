@@ -10,7 +10,7 @@ Lies vor dem Review:
 - `docs/development/monitoring-stack.md`
 - `docs/development/playbook.md`
 - `docs/architecture/logging-architecture.md`
-- `docs/guides/iam-governance-runbook.md`
+- `docs/governance/iam-governance-runbook.md`
 
 ## Leitfrage
 

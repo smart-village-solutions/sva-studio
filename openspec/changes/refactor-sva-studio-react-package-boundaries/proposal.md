@@ -46,7 +46,7 @@ Die Review des laufenden Changes hat zusätzlich gezeigt, dass ein reiner Zuschn
   - `packages/iam-governance/src/**`
   - `packages/sva-mainserver/src/**`
   - `docs/architecture/**`
-  - relevante Entwicklerdokumentation unter `docs/development/**` und `docs/guides/**`
+  - relevante Entwickler- und Referenzdokumentation unter `docs/development/**` und `docs/reference/**`
 - Affected arc42 sections:
   - `docs/architecture/04-solution-strategy.md`
   - `docs/architecture/05-building-block-view.md`

@@ -40,6 +40,14 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | #   | Titel                                                                                                                                                                         | Status | Entscheidungsdatum | Thema                             |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------ | --------------------------------- |
 | 000 | [ADR-Template](./ADR-000-template.md)                                                                                                                                         | 📋     | -                  | Dokumentation                     |
+| 001 | [Frontend Framework Selection](./ADR-001-frontend-framework-selection.md)                                                                                                     | ✅     | 2026-01-18         | Frontend / Routing                |
+| 002 | [Plugin Architecture Pattern](./ADR-002-plugin-architecture-pattern.md)                                                                                                       | ✅     | 2026-01-18         | Plugins / Architektur             |
+| 003 | [Design Token Architecture](./ADR-003-design-token-architecture.md)                                                                                                           | ✅     | 2026-01-18         | UI / Design-System                |
+| 004 | [Monitoring Stack – Loki, Grafana und Prometheus](./ADR-004-monitoring-stack-loki-grafana-prometheus.md)                                                                      | ✅     | 2026-02-05         | Monitoring / Betrieb              |
+| 005 | [Observability Module Ownership](./ADR-005-observability-module-ownership.md)                                                                                                 | 📋     | 2026-02-06         | Observability / Ownership         |
+| 006 | [Logging Pipeline Strategy](./ADR-006-logging-pipeline-strategy.md)                                                                                                           | ✅     | 2026-02-06         | Logging / Observability           |
+| 007 | [Label Schema und PII Policy](./ADR-007-label-schema-and-pii-policy.md)                                                                                                       | ✅     | 2026-02-06         | Logging / Datenschutz             |
+| 008 | [Codecov für Coverage-Reporting und PR-Transparenz](./ADR-008-codecov-coverage-reporting-and-gates.md)                                                                        | ✅     | 2026-02-18         | Testing / Governance              |
 | 009 | [Keycloak als zentraler Identity Provider](./ADR-009-keycloak-als-zentraler-identity-provider.md)                                                                             | ✅     | 2026-02-27         | IAM / Auth                        |
 | 010 | [Verschlüsselungsstrategie für IAM Core Data Layer](./ADR-010-verschluesselung-iam-core-data-layer.md)                                                                        | ✅     | 2026-02-27         | Security / Data                   |
 | 011 | [`instanceId` als kanonischer Mandanten-Scope](./ADR-011-instanceid-kanonischer-mandanten-scope.md)                                                                           | ✅     | 2026-02-27         | IAM / Architektur                 |
@@ -84,12 +92,14 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 050 | [Zentraler scopegebundener UI-Zugriff](./ADR-050-zentraler-scopegebundener-ui-zugriff.md)                                                                                     | ✅     | 2026-08-08         | UI / IAM / Authorization          |
 | 051 | [Technische Accounts und Organisations-Mainserver-Provisioning](./ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md)                                   | ✅     | 2026-08-11         | IAM / Integration / Recovery      |
 | 052 | [Create-Policy, Read-Scope und Bestandsprincipal trennen](./ADR-052-create-policy-read-scope-und-bestandsprincipal.md)                                                        | ✅     | 2026-08-13         | IAM / Content                     |
+| 053 | [Layout-Shell mit Skeleton-Bereichen](./ADR-053-layout-shell-skeleton-architecture.md)                                                                                        | ✅     | 2026-02-25         | Frontend / Layout                 |
 
 ### Kanonischer Ablageort
 
 - Aktive ADRs liegen unter `docs/adr/`.
 - Verweise aus Architektur- und Guide-Dokumenten sollen auf `docs/adr/` zeigen.
-- `ADR-018-auth-routing-error-contract-und-korrelation.md` wurde aus dem Legacy-Ordner nach `docs/adr/` migriert und ist dort maßgeblich.
+- Die weiterhin gültigen einzigartigen Legacy-Entscheidungen ADR-001 bis ADR-008 sowie die Layout-Shell-Entscheidung wurden in diesen kanonischen Bestand übernommen. Wegen der bereits belegten Nummer 009 trägt die Layout-Shell hier die neue Nummer 053.
+- `ADR-018-auth-routing-error-contract-und-korrelation.md` wurde bereits aus dem Legacy-Ordner nach `docs/adr/` migriert und ist dort maßgeblich.
 - Dateien unter `docs/architecture/decisions/` sind historischer Altbestand einer älteren ADR-Serie mit überschneidenden Nummern und kein Ziel für neue ADRs.
 
 ---

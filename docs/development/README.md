@@ -17,7 +17,7 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 - [Entwicklungs-Playbook](./playbook.md)
 - [Runtime-Profile und Betriebsmodi](./runtime-profile-betrieb.md)
 - [PostgreSQL-Setup](./postgres-setup.md)
-- [Redis-Setup für lokale Entwicklung](../redis-setup.md)
+- [Redis-Setup für lokale Entwicklung](./redis-setup.md)
 - [Lokaler Dev-Auth-Modus](./lokaler-dev-auth-modus.md)
 - [Monitoring-Stack](./monitoring-stack.md)
 - [Observability Best Practices](./observability-best-practices.md)
@@ -65,11 +65,21 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 - [SonarCloud Security Hotspots](./sonarcloud-security-hotspots.md)
 - [Stagehand Admin Exploration](./stagehand-admin-exploration.md)
 
-## Geplante Übernahmen aus `guides/`
+## Migrierte Anleitungen und lokale Setups
 
-Das vollständige und bis PR 4 verbindliche Alt-/Neu-Pfad-Inventar steht im [Migrationsinventar](../guides/README.md). Bis zur tatsächlichen Verschiebung bleiben die dort genannten Altpfade gültig.
+- [Accessibility](./accessibility.md)
+- [i18n-Key-Konventionen für die Account-UI](./i18n-key-konventionen-account-ui.md)
+- [i18n-Abdeckung für Account- und Admin-UI](./iam-i18n-abdeckung.md)
+- [Lokale Entwicklung mit Instanz-Registry](./instance-registry-local-development.md)
+- [Keycloak-Login-Theme `sva-kern2`](./keycloak-login-theme-kern2.md)
+- [Keycloak-Theme `MQGB-Keycloak`](./keycloak-mqgb-theme.md)
+- [Lokale Instanz-Datenbank initialisieren](./lokale-instanz-db-initialisierung.md)
+- [Mainserver-DataProvider-Autorenschaft](./mainserver-data-provider-authoring.md)
+- [Migration auf namespaced Plugin-Action-IDs](./plugin-action-migration.md)
+- [Plugin-Entwicklung im Studio](./plugin-development.md)
+- [Redis-Setup für lokale Entwicklung](./redis-setup.md)
 
-Das [Redis-Setup für lokale Entwicklung](../redis-setup.md) liegt bis zur Bereinigung loser Dokumente in PR 4 noch direkt unter `docs/`, gehört inhaltlich aber bereits verbindlich zum Entwicklungsbereich.
+Die vollständige Alt-/Neu-Pfadzuordnung steht im [Migrationsnachweis](../governance/dokumentationsmigration.md).
 
 ## Benachbarte Bereiche
 

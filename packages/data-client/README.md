@@ -96,7 +96,7 @@ Das Projekt ist in Nx als Library `data-client` mit `sourceRoot` `packages/data-
 ## Verwandte Dokumentation
 
 - [`../data/README.md`](../data/README.md) beschreibt `@sva/data` als Kompatibilitäts-Barrel und verweist auf `@sva/data-client` als Zielpackage für client-sicheren HTTP-Zugriff.
-- [`../../docs/monorepo.md`](../../docs/monorepo.md) führt `data-client` als Nx-Library im Workspace.
+- [`../../docs/reference/monorepo.md`](../../docs/reference/monorepo.md) führt `data-client` als Nx-Library im Workspace.
 - [`../../docs/architecture/04-solution-strategy.md`](../../docs/architecture/04-solution-strategy.md) ordnet `@sva/data-client` dem Browser-Datenzugriff zu.
 - [`../../docs/architecture/05-building-block-view.md`](../../docs/architecture/05-building-block-view.md) beschreibt den Baustein `Data Client und Data Repositories`.
 - [`../../docs/architecture/package-zielarchitektur.md`](../../docs/architecture/package-zielarchitektur.md) dokumentiert die Zielgrenze von `@sva/data-client` innerhalb der Paketarchitektur.

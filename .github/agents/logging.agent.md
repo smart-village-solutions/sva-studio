@@ -8,7 +8,7 @@ Du bist verantwortlich fuer die Qualitaet der Logging-Implementierung und ihre D
 
 ### Grundlage
 - [observability-best-practices.md](../../docs/development/observability-best-practices.md)
-- [ADR-006-logging-pipeline-strategy.md](../../docs/architecture/decisions/ADR-006-logging-pipeline-strategy.md)
+- [ADR-006-logging-pipeline-strategy.md](../../docs/adr/ADR-006-logging-pipeline-strategy.md)
 
 ### Projektkontext (verbindlich)
 - Primaere Pipeline: OTEL SDK -> OTEL Collector -> Loki

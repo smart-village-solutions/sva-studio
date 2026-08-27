@@ -294,7 +294,7 @@ Die aktive Architektur- und Entwicklerdokumentation SHALL entfernte Sammelpackag
 
 #### Scenario: Teammitglied liest aktive Monorepo- und Architekturquellen nach der Entfernung
 
-- **WHEN** ein Teammitglied `docs/monorepo.md`, `package-zielarchitektur.md`, relevante arc42-Abschnitte oder Governance-Dokumente liest
+- **WHEN** ein Teammitglied `docs/reference/monorepo.md`, `package-zielarchitektur.md`, relevante arc42-Abschnitte oder Governance-Dokumente liest
 - **THEN** findet es keine aktiven Anweisungen mehr zu `packages/sdk`, `sdk:*` oder `@sva/sdk`
 - **AND** die Quellen beschreiben stattdessen `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/core` und `@sva/monitoring-client/logging` als Zielpfade
 

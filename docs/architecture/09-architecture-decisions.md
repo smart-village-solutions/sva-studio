@@ -571,4 +571,4 @@ Zuordnung:
 - Präzisiert wird, dass der Mainserver-DataProvider der unveränderliche ursprüngliche Inhaber ist, während der Actor und der explizit ausgewählte persönliche oder organisatorische Mutationsprincipal getrennt bleiben.
 - Bindungen entstehen ausschließlich aus stabiler Identity-Evidenz beziehungsweise der garantierten Organisations-Provisioning-Antwort. Namens-Mapping und administrative Zuordnung sind ausgeschlossen.
 - Die Einführung erfolgt additiv über einen versionierten V2-Transport sowie beobachtbare Shadow-, Automatic- und Compatibility-Modi. Diese Betriebszustände ändern keine fachliche Source-of-Truth-Entscheidung.
-- Der vollständige Betriebsvertrag steht im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md).
+- Der vollständige Betriebsvertrag steht im [Guide zur Mainserver-DataProvider-Autorenschaft](../development/mainserver-data-provider-authoring.md).

@@ -19,7 +19,7 @@ Zu Beginn jedes Rollouts vollständig lesen:
 - `docs/guides/studio-rollout-process.md`
 - `.github/workflows/build.yml`
 - `.github/workflows/promote.yml`
-- `docs/guides/swarm-deployment-runbook.md`
+- `docs/operations/swarm-deployment-runbook.md`
 - `docs/architecture/07-deployment-view.md`
 - `docs/architecture/08-cross-cutting-concepts.md`
 - `docs/adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md`

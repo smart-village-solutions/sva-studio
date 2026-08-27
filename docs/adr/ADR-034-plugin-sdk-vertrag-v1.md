@@ -82,6 +82,6 @@ Verworfen, weil dies die App zum faktischen Plugin-API-Owner gemacht hätte. Dam
 
 ## Verwandte ADRs
 
-- [Legacy-ADR-002 im Repository](https://github.com/smart-village-solutions/sva-studio/blob/main/docs/architecture/decisions/ADR-002-plugin-architecture-pattern.md)
+- [Legacy-ADR-002 im Repository](https://github.com/smart-village-solutions/sva-studio/blob/main/docs/adr/ADR-002-plugin-architecture-pattern.md)
 - [ADR-017](ADR-017-modulare-iam-server-bausteine.md)
 - [ADR-018](ADR-018-auth-routing-error-contract-und-korrelation.md)

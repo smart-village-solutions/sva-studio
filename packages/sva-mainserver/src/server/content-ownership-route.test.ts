@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   resolveTarget: vi.fn(),
   validateCsrf: vi.fn(),
   withLock: vi.fn(),
+  withTargetLock: vi.fn(),
   authorize: vi.fn(),
   finalize: vi.fn(),
   resolveMutationActor: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
     })
   ),
   withMainserverContentOwnershipLock: state.withLock,
+  withMainserverOwnershipTargetBindingLock: state.withTargetLock,
 }));
 vi.mock('./mutation-principal.js', () => ({
   authorizeMainserverExistingContent: state.authorize,
@@ -117,6 +119,9 @@ describe('Mainserver content ownership route', () => {
     state.withLock.mockImplementation(async ({ execute }: { execute: () => Promise<unknown> }) =>
       execute()
     );
+    state.withTargetLock.mockImplementation(
+      async ({ execute }: { execute: () => Promise<unknown> }) => execute()
+    );
     state.transfer.mockResolvedValue({
       contentType: 'news',
       contentId: 'news-1',
@@ -170,6 +175,21 @@ describe('Mainserver content ownership route', () => {
     );
   });
 
+  it('checks transfer authorization without resolving a target page', async () => {
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      data: { canTransfer: true },
+      currentOwner: { displayName: 'Quelle' },
+    });
+    expect(state.listTargets).not.toHaveBeenCalled();
+  });
+
   it('resolves the target server-side and confirms the provider before success', async () => {
     const response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(
@@ -205,6 +225,11 @@ describe('Mainserver content ownership route', () => {
     });
     expect(state.annotateJournal.mock.invocationCallOrder[0]).toBeLessThan(
       state.transfer.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+    expect(state.withTargetLock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({ bindingVersion: target.bindingVersion }),
+      })
     );
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({

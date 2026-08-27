@@ -27,6 +27,7 @@ import {
   resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
 } from './mainserver-content-ownership.js';
+import { withMainserverOwnershipTargetBindingLock } from './mainserver-ownership-target-binding-lock.js';
 
 const verifiedBinding = {
   id: 'binding-1',
@@ -231,7 +232,7 @@ describe('Mainserver ownership targets', () => {
     ).resolves.toEqual({ ok: false, code: 'content_transfer_target_binding_conflict' });
   });
 
-  it('filters unresolved targets and the current provider from a paginated result', async () => {
+  it('resolves only the requested candidate page and filters unusable targets', async () => {
     state.loadTargets.mockResolvedValue({
       items: [
         {
@@ -263,8 +264,48 @@ describe('Mainserver ownership targets', () => {
         type: 'account',
         page: 1,
         pageSize: 10,
+        currentOwner: {
+          type: 'account',
+          id: '11111111-1111-4111-8111-111111111111',
+        },
         currentDataProviderId: 'provider-target',
       })
-    ).resolves.toEqual({ items: [], page: 1, pageSize: 10, total: 0 });
+    ).resolves.toEqual({ items: [], page: 1, pageSize: 10, total: 2 });
+    expect(state.loadTargets).toHaveBeenCalledTimes(1);
+    expect(state.loadTargets).toHaveBeenCalledWith(
+      'instance-1',
+      expect.objectContaining({
+        page: 1,
+        pageSize: 10,
+        currentOwner: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
+      })
+    );
+  });
+
+  it('holds the target binding lock and rejects a changed binding version', async () => {
+    const execute = vi.fn(async () => 'transferred');
+    state.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
+      rows: [{ id: 'binding-1', last_observed_at: '2026-08-27T09:00:00.000Z' }],
+    });
+
+    await expect(
+      withMainserverOwnershipTargetBindingLock({
+        instanceId: 'instance-1',
+        target: {
+          principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
+          dataProviderId: 'provider-target',
+          bindingId: 'binding-1',
+          bindingVersion: 'binding-1:2026-08-27T08:00:00.000Z',
+          connection: {
+            instanceId: 'instance-1',
+            keycloakSubject: 'kc-target',
+            actingPrincipalType: 'user',
+            credentialFingerprint: 'a'.repeat(64),
+          },
+        },
+        execute,
+      })
+    ).rejects.toThrow('content_transfer_target_binding_changed');
+    expect(execute).not.toHaveBeenCalled();
   });
 });

@@ -144,6 +144,7 @@ export {
   type ResolvedMainserverOwnershipSource,
   type ResolveMainserverOwnershipTargetResult,
 } from './iam-contents/mainserver-content-ownership.js';
+export { withMainserverOwnershipTargetBindingLock } from './iam-contents/mainserver-ownership-target-binding-lock.js';
 export {
   reconcileDeletedUserDataProviderConflict,
   type DeletedUserDataProviderConflictReason,

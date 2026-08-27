@@ -41,6 +41,7 @@ type UserListInput = {
   role?: string;
   search?: string;
   includeTechnicalAccounts?: boolean;
+  excludeAccountId?: string;
 };
 
 const COUNT_USERS_QUERY = `
@@ -59,6 +60,7 @@ LEFT JOIN iam.roles r
  AND r.id = ar.role_id
 WHERE ($2::text IS NULL OR a.status = $2)
   AND ($5::boolean = TRUE OR a.is_technical_account = FALSE)
+  AND ($6::uuid IS NULL OR a.id <> $6::uuid)
   AND (
     $3::text IS NULL OR
     EXISTS (
@@ -126,6 +128,7 @@ LEFT JOIN iam.activity_logs al
  AND al.event_type = 'login'
 WHERE ($2::text IS NULL OR a.status = $2)
   AND ($5::boolean = TRUE OR a.is_technical_account = FALSE)
+  AND ($6::uuid IS NULL OR a.id <> $6::uuid)
   AND (
     $3::text IS NULL OR
     EXISTS (
@@ -149,7 +152,7 @@ WHERE ($2::text IS NULL OR a.status = $2)
   )
 GROUP BY a.id
 ORDER BY a.created_at DESC
-LIMIT $6 OFFSET $7;
+LIMIT $7 OFFSET $8;
 `;
 
 const toUserListParams = (input: UserListInput, offset: number) => [
@@ -158,6 +161,7 @@ const toUserListParams = (input: UserListInput, offset: number) => [
   input.role ?? null,
   input.search ?? null,
   input.includeTechnicalAccounts ?? false,
+  input.excludeAccountId ?? null,
   input.pageSize,
   offset,
 ];
@@ -189,6 +193,7 @@ export const resolveUsersWithPagination = async (
     input.role ?? null,
     input.search ?? null,
     input.includeTechnicalAccounts ?? false,
+    input.excludeAccountId ?? null,
   ];
   const totalResult = await client.query<{ total: number }>(COUNT_USERS_QUERY, baseParams);
   const rows = await client.query<UserListRow>(LIST_USERS_QUERY, toUserListParams(input, offset));

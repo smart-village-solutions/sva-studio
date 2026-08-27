@@ -1,5 +1,4 @@
 import {
-  annotateMainserverMutationJournal,
   resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
   validateCsrf,
@@ -17,6 +16,7 @@ import {
   type OwnershipTransferAudit,
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
+import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
@@ -266,19 +266,19 @@ const executeLockedTransfer = async (input: {
     targetDataProviderId: targetResolution.target.dataProviderId,
     targetBindingVersion: targetResolution.target.bindingVersion,
   };
-  await annotateMainserverMutationJournal({
-    instanceId: input.actor.instanceId,
-    operationExternalId: input.actor.operationExternalId,
-    expectedDataProviderId: targetResolution.target.dataProviderId,
-    metadata: ownershipTransfer,
-  });
-  const failure = await executeProviderTransfer({
+  const failure = await executeWithCurrentTargetBinding({
     actor: input.actor,
-    route: input.route,
-    content: input.content,
-    sourceDataProviderId,
     target: targetResolution.target,
     ownershipTransfer,
+    execute: () =>
+      executeProviderTransfer({
+        actor: input.actor,
+        route: input.route,
+        content: input.content,
+        sourceDataProviderId,
+        target: targetResolution.target,
+        ownershipTransfer,
+      }),
   });
   if (failure) return failure;
   const response = json({

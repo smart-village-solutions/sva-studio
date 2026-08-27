@@ -261,25 +261,18 @@ export const listMainserverOwnershipTargets = async (input: {
   readonly page: number;
   readonly pageSize: number;
   readonly search?: string;
+  readonly currentOwner?: IamContentOwnerPrincipal;
   readonly currentDataProviderId?: string;
 }): Promise<IamContentOwnershipTargetList> => {
-  const candidatePageSize = 50;
-  const allCandidates: IamContentOwnershipTarget[] = [];
-  let candidatePage = 1;
-  let candidateTotal = 0;
-  do {
-    const candidates = await loadContentOwnershipTargets(input.instanceId, {
-      type: input.type,
-      page: candidatePage,
-      pageSize: candidatePageSize,
-      ...(input.search ? { search: input.search } : {}),
-    });
-    allCandidates.push(...candidates.items);
-    candidateTotal = candidates.total;
-    candidatePage += 1;
-  } while (allCandidates.length < candidateTotal);
+  const candidates = await loadContentOwnershipTargets(input.instanceId, {
+    type: input.type,
+    page: input.page,
+    pageSize: input.pageSize,
+    ...(input.search ? { search: input.search } : {}),
+    ...(input.currentOwner ? { currentOwner: input.currentOwner } : {}),
+  });
   const resolved = await Promise.all(
-    allCandidates.map(async (candidate) => ({
+    candidates.items.map(async (candidate) => ({
       candidate,
       resolution: await resolveMainserverOwnershipTarget({
         instanceId: input.instanceId,
@@ -293,12 +286,11 @@ export const listMainserverOwnershipTargets = async (input: {
       ? [candidate]
       : []
   );
-  const start = (input.page - 1) * input.pageSize;
   return {
-    items: items.slice(start, start + input.pageSize),
+    items,
     page: input.page,
     pageSize: input.pageSize,
-    total: items.length,
+    total: candidates.total,
   };
 };
 

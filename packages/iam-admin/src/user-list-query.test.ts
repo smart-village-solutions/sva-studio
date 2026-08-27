@@ -40,6 +40,7 @@ describe('resolveUsersWithPagination', () => {
       page: 1,
       pageSize: 25,
       role: 'editor',
+      excludeAccountId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     });
 
     expect(executedQueries).toHaveLength(2);
@@ -55,6 +56,9 @@ describe('resolveUsersWithPagination', () => {
       'editor',
       null,
       false,
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     ]);
+    expect(executedQueries[0]).toContain('a.id <> $6::uuid');
+    expect(executedQueries[1]).toContain('a.id <> $6::uuid');
   });
 });

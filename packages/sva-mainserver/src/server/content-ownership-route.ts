@@ -59,7 +59,7 @@ const matchRoute = (request: Request): ContentOwnershipRouteMatch | null => {
   }
   return isProjectionContentType(contentType) &&
     contentId.length > 0 &&
-    (operation === 'targets' || operation === 'transfer')
+    (operation === 'authorization' || operation === 'targets' || operation === 'transfer')
     ? { contentType, contentId, operation }
     : null;
 };
@@ -105,6 +105,7 @@ const handleTargets = async (
     page,
     pageSize,
     ...(search ? { search } : {}),
+    currentOwner: source.principal,
     currentDataProviderId: source.dataProviderId,
   });
   return json({
@@ -150,7 +151,15 @@ const handleAuthorizedTargets = async (
     item: current,
   });
   return access['content.transferOwnership'] === true
-    ? handleTargets(request, route, actor, source)
+    ? route.operation === 'authorization'
+      ? json({
+          data: { canTransfer: true },
+          currentOwner: {
+            principal: source.principal,
+            displayName: source.dataProviderName ?? source.dataProviderId,
+          },
+        })
+      : handleTargets(request, route, actor, source)
     : errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
 };
 
@@ -196,7 +205,8 @@ export const dispatchSvaMainserverContentOwnershipRequest = async (
   const route = matchRoute(request);
   if (!route) return null;
   const methodAllowed =
-    (route.operation === 'targets' && request.method === 'GET') ||
+    ((route.operation === 'authorization' || route.operation === 'targets') &&
+      request.method === 'GET') ||
     (route.operation === 'transfer' && request.method === 'POST');
   if (!methodAllowed)
     return errorJson(405, 'method_not_allowed', 'HTTP-Methode wird nicht unterstützt.');

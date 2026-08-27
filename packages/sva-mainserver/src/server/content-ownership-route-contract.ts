@@ -19,7 +19,7 @@ export type SupportedOwnershipContentType = Exclude<
 export type ContentOwnershipRouteMatch = Readonly<{
   contentType: SvaMainserverProjectionContentType;
   contentId: string;
-  operation: 'targets' | 'transfer';
+  operation: 'authorization' | 'targets' | 'transfer';
 }>;
 
 export type OwnershipTransferAudit = Readonly<{

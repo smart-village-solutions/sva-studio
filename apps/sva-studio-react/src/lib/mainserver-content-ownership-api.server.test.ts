@@ -33,6 +33,7 @@ describe('mainserver content ownership API projection follow-up', () => {
       instanceId: 'instance-1',
       keycloakSubject: 'kc-actor',
       actorAccountId: '11111111-1111-4111-8111-111111111111',
+      actorDisplayName: 'Ausführende Person',
       operationExternalId: 'operation-1',
     });
     state.resolveTarget.mockResolvedValue({
@@ -78,6 +79,12 @@ describe('mainserver content ownership API projection follow-up', () => {
         contentType: 'news.article',
         entityId: 'news-1',
         organizationId: '22222222-2222-4222-8222-222222222222',
+        actorAccountId: '11111111-1111-4111-8111-111111111111',
+        actorDisplayName: 'Ausführende Person',
+        ownershipPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
         actingPrincipalType: 'organization',
         credentialFingerprint: 'a'.repeat(64),
         operation: 'update',

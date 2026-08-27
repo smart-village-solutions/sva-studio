@@ -265,7 +265,7 @@ const useMainserverResourcePrincipalControl = (
   contentType: string
 ): MainserverResourcePrincipalResolution => {
   const params = useParams({ strict: false });
-  const contentId = readStringParam(params.contentId, readStringParam(params.id));
+  const contentId = readStringParam(params.contentId, readStringParam(params.id)) || undefined;
   const [resolution, setResolution] = React.useState<MainserverResourcePrincipalResolution>({
     kind: 'loading',
   });
@@ -354,15 +354,17 @@ const MainserverResourcePrincipalBoundary = ({
   const [resolvedOwner, setResolvedOwner] = React.useState<IamContentOwnershipTarget | null>(null);
   const [transferAuthorized, setTransferAuthorized] = React.useState(false);
   React.useEffect(() => setResolvedOwner(null), [contentId, contentType]);
-  const transferSupported = contentType !== 'surveys.survey';
+  const transferSupported = contentId !== undefined && contentType !== 'surveys.survey';
   const transferCapabilityConfirmed = mutationCapabilities.enabledActions.includes(
     'content.transferOwnership'
   );
   const actingPrincipalType =
     resolution.kind === 'ready' ? resolution.control.value : ('user' as const);
-  const baseUrl = `/api/v1/mainserver/content-ownership/${encodeURIComponent(
-    contentType
-  )}/${encodeURIComponent(contentId)}`;
+  const baseUrl = contentId
+    ? `/api/v1/mainserver/content-ownership/${encodeURIComponent(
+        contentType
+      )}/${encodeURIComponent(contentId)}`
+    : undefined;
   const loadOwnershipTargets = React.useCallback(
     async ({
       type,
@@ -375,6 +377,7 @@ const MainserverResourcePrincipalBoundary = ({
       readonly pageSize: number;
       readonly search?: string;
     }) => {
+      if (!baseUrl) throw new Error('content_transfer_content_id_missing');
       const query = new URLSearchParams({ type, page: String(page), pageSize: String(pageSize) });
       if (search) query.set('q', search);
       const response = await requestMainserverJson<{
@@ -401,8 +404,18 @@ const MainserverResourcePrincipalBoundary = ({
       return;
     }
     let active = true;
-    void loadOwnershipTargets({ type: 'account', page: 1, pageSize: 1 }).then(
-      () => active && setTransferAuthorized(true),
+    void requestMainserverJson<{
+      readonly data: Readonly<{ canTransfer: boolean }>;
+      readonly currentOwner: IamContentOwnershipTarget;
+    }>({
+      url: `${baseUrl}/authorization`,
+      init: { headers: createMainserverReadHeaders(actingPrincipalType) },
+    }).then(
+      (response) => {
+        if (!active) return;
+        setResolvedOwner(response.currentOwner);
+        setTransferAuthorized(response.data.canTransfer);
+      },
       () => active && setTransferAuthorized(false)
     );
     return () => {
@@ -410,7 +423,8 @@ const MainserverResourcePrincipalBoundary = ({
     };
   }, [
     contentId,
-    loadOwnershipTargets,
+    actingPrincipalType,
+    baseUrl,
     resolution.kind,
     transferCapabilityConfirmed,
     transferSupported,
@@ -442,6 +456,7 @@ const MainserverResourcePrincipalBoundary = ({
       loadTargets={loadOwnershipTargets}
       resolveTransferError={resolveOwnershipTransferError}
       onTransfer={async (target) => {
+        if (!baseUrl || !contentId) throw new Error('content_transfer_content_id_missing');
         await requestMainserverJson({
           url: `${baseUrl}/transfer`,
           init: {
@@ -450,12 +465,12 @@ const MainserverResourcePrincipalBoundary = ({
             body: JSON.stringify({ targetPrincipal: target.principal }),
           },
         });
-        setResolvedOwner(target);
         try {
           await requestMainserverJson({
             url: resolveMainserverDetailUrl(contentType, contentId),
             init: { headers: createMainserverReadHeaders(actingPrincipalType) },
           });
+          setResolvedOwner(target);
         } catch {
           await navigate({ to: '/content' });
         }

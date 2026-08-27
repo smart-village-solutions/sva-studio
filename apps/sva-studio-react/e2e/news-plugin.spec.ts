@@ -121,6 +121,19 @@ test.describe('news plugin', () => {
       '**/api/v1/mainserver/content-ownership/news.article/news-1/**',
       async (route) => {
         const path = new URL(route.request().url()).pathname;
+        if (path.endsWith('/authorization')) {
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: { canTransfer: true },
+              currentOwner: {
+                principal: { type: 'organization', id: 'organization-source' },
+                displayName: ownershipTransferred ? 'Zielredaktion' : 'Redaktion Musterhausen',
+              },
+            }),
+          });
+        }
         if (path.endsWith('/targets')) {
           return route.fulfill({
             status: 200,

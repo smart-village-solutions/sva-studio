@@ -87,6 +87,7 @@ export type ContentProjectionSyncTarget = Readonly<{
   keycloakSubject: string;
   actorAccountId?: string;
   actorDisplayName?: string;
+  ownershipPrincipal?: Readonly<{ type: 'account' | 'organization'; id: string }>;
   mutationRef?: string;
   contentType: MainserverContentType;
   organizationId?: string;

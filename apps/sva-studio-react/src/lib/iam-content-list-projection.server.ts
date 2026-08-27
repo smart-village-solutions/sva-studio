@@ -82,6 +82,10 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
   readonly keycloakSubject: string;
   readonly actorAccountId?: string;
   readonly actorDisplayName?: string;
+  readonly ownershipPrincipal?: Readonly<{
+    type: 'account' | 'organization';
+    id: string;
+  }>;
   readonly mutationRef?: string;
   readonly contentType: MainserverContentType;
   readonly organizationId?: string;
@@ -98,6 +102,7 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     keycloakSubject: input.keycloakSubject,
     actorAccountId: input.actorAccountId,
     ...(input.actorDisplayName ? { actorDisplayName: input.actorDisplayName } : {}),
+    ...(input.ownershipPrincipal ? { ownershipPrincipal: input.ownershipPrincipal } : {}),
     ...(input.mutationRef ? { mutationRef: input.mutationRef } : {}),
     contentType: input.contentType,
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),

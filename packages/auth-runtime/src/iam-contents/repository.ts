@@ -398,27 +398,19 @@ export const loadContentOwnershipTargets = async (
         status: 'active',
         search: input.search,
         includeTechnicalAccounts: false,
+        ...(input.currentOwner?.type === 'account'
+          ? { excludeAccountId: input.currentOwner.id }
+          : {}),
       });
-      const items = result.users
-        .filter(
-          (user) => !(input.currentOwner?.type === 'account' && input.currentOwner.id === user.id)
-        )
-        .map((user) => ({
-          principal: { type: 'account' as const, id: user.id },
-          displayName: user.displayName,
-        }));
+      const items = result.users.map((user) => ({
+        principal: { type: 'account' as const, id: user.id },
+        displayName: user.displayName,
+      }));
       return {
         items,
         page: input.page,
         pageSize: input.pageSize,
-        total: Math.max(
-          0,
-          result.total -
-            (input.currentOwner?.type === 'account' &&
-            result.users.some((user) => user.id === input.currentOwner?.id)
-              ? 1
-              : 0)
-        ),
+        total: result.total,
       };
     }
 
@@ -428,32 +420,21 @@ export const loadContentOwnershipTargets = async (
       pageSize: input.pageSize,
       search: input.search,
       isActive: true,
+      ...(input.currentOwner?.type === 'organization'
+        ? { excludeOrganizationId: input.currentOwner.id }
+        : {}),
       sortBy: 'displayName',
       sortDirection: 'asc',
     });
-    const items = result.items
-      .filter(
-        (organization) =>
-          !(
-            input.currentOwner?.type === 'organization' && input.currentOwner.id === organization.id
-          )
-      )
-      .map((organization) => ({
-        principal: { type: 'organization' as const, id: organization.id },
-        displayName: organization.displayName,
-      }));
+    const items = result.items.map((organization) => ({
+      principal: { type: 'organization' as const, id: organization.id },
+      displayName: organization.displayName,
+    }));
     return {
       items,
       page: input.page,
       pageSize: input.pageSize,
-      total: Math.max(
-        0,
-        result.total -
-          (input.currentOwner?.type === 'organization' &&
-          result.items.some((organization) => organization.id === input.currentOwner?.id)
-            ? 1
-            : 0)
-      ),
+      total: result.total,
     };
   });
 

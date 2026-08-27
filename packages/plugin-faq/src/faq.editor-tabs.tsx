@@ -1,5 +1,6 @@
 import {
   Checkbox,
+  ContentOwnershipPanelSlot,
   getStudioFormFieldProps,
   Input,
   StudioDetailTabs,
@@ -127,7 +128,12 @@ export const FaqEditorTabs = ({
       title: pt('tabs.basis.title'),
       description: pt('tabs.basis.description'),
       icon: 'basis',
-      panel: <FaqBasisTab form={form} pt={pt} />,
+      panel: (
+        <div className="space-y-4">
+          {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
+          <FaqBasisTab form={form} pt={pt} />
+        </div>
+      ),
     },
     {
       id: 'content',

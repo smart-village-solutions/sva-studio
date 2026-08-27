@@ -1,5 +1,10 @@
 import { Link } from '@tanstack/react-router';
-import { Button, StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
+import {
+  Button,
+  ContentOwnershipSaveHint,
+  StudioSaveButton,
+  type StudioSaveStatus,
+} from '@sva/studio-ui-react';
 
 import { type SurveyEditorMode } from './surveys.editor.shared.js';
 
@@ -31,16 +36,19 @@ export function SurveyEditorPrimaryAction({
   saveStatus: StudioSaveStatus;
 }>) {
   return (
-    <StudioSaveButton
-      type="submit"
-      form={formId}
-      disabled={disabled}
-      status={saveStatus}
-      labels={{
-        idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
-        saving: pt('actions.saving'),
-        saved: pt('actions.saved'),
-      }}
-    />
+    <div className="flex flex-col items-end gap-1">
+      <ContentOwnershipSaveHint />
+      <StudioSaveButton
+        type="submit"
+        form={formId}
+        disabled={disabled}
+        status={saveStatus}
+        labels={{
+          idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+          saving: pt('actions.saving'),
+          saved: pt('actions.saved'),
+        }}
+      />
+    </div>
   );
 }

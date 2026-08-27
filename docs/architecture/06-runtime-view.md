@@ -1136,3 +1136,11 @@ Fehlerpfad:
 4. Das Overlay rendert Markdown ohne Raw HTML und bietet den kanonischen Website-Link an.
 5. Fehlende Konfiguration, unbekannte Inhalte und Upstream-Ausfälle enden in einem begrenzten
    Retry-Zustand; Route und Fachfunktion bleiben bedienbar.
+
+### Inhalt an einen neuen Inhaber übertragen
+
+1. Der Editor liest den aktuellen DataProvider frisch über den Mainserver-Detailpfad.
+2. Der Zielkatalog prüft Source-Scope und Transferpermission und liefert nur serverseitig verwendbare Principals.
+3. Der Transfer sperrt Instanz, Typ und Datensatz, liest die Quelle erneut und revalidiert Permission, Ziel, Credentials und Binding-Version.
+4. Das Journal wird vor dem Provider-Write um erwartetes Ziel und technische Transfermetadaten ergänzt.
+5. Eine bestätigte Zielzuordnung aktualisiert Projektion und UI. Bei verlorenem Response entscheiden Target- und Source-Re-Read; fehlende eindeutige Evidenz erzeugt `reconciliation_required`.

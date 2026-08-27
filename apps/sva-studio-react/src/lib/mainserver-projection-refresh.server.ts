@@ -45,7 +45,11 @@ const shouldRefreshProjectionForRequest = (request: Request, response: Response)
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 const parseMutationOperation = (request: Request): MainserverProjectionMutationOperation | null =>
+  new URL(request.url).pathname.includes('/mainserver/content-ownership/') &&
+  new URL(request.url).pathname.endsWith('/transfer') &&
   request.method === 'POST'
+    ? 'update'
+    : request.method === 'POST'
     ? 'create'
     : request.method === 'PUT' || request.method === 'PATCH'
       ? 'update'
@@ -61,6 +65,10 @@ const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
   }
 
   const collectionSegment = segments[mainserverIndex + 1];
+  if (collectionSegment === 'content-ownership') {
+    const entityIdSegment = segments[mainserverIndex + 3];
+    return entityIdSegment && entityIdSegment.length > 0 ? entityIdSegment : undefined;
+  }
   if (!collectionSegment || !mainserverCollectionSegments.has(collectionSegment)) {
     return undefined;
   }

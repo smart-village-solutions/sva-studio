@@ -13,12 +13,17 @@ const state = vi.hoisted(() => ({
   emitContentCreatedActivityMock: vi.fn(),
   emitContentDeletedActivityMock: vi.fn(),
   emitContentUpdatedActivityMock: vi.fn(),
+  emitContentOwnershipTransferredActivityMock: vi.fn(),
   insertContentHistoryMock: vi.fn(),
   isContentMutationFinalizedMock: vi.fn(),
   insertContentRowMock: vi.fn(),
   loadCurrentContentRowMock: vi.fn(),
   mapContentHistoryItemMock: vi.fn(),
   mapContentListItemMock: vi.fn(),
+  loadOrganizationListMock: vi.fn(),
+  loadOrganizationByIdMock: vi.fn(),
+  resolveUserDetailMock: vi.fn(),
+  resolveUsersWithPaginationMock: vi.fn(),
   queryMock: vi.fn(),
   resolveContentMutationMetadataMock: vi.fn(),
   resolveUpdateAuthorDisplayMock: vi.fn(),
@@ -29,6 +34,13 @@ const state = vi.hoisted(() => ({
   withInstanceScopedDbMock: vi.fn(),
 }));
 
+vi.mock('@sva/iam-admin', () => ({
+  loadOrganizationById: (...args: unknown[]) => state.loadOrganizationByIdMock(...args),
+  loadOrganizationList: (...args: unknown[]) => state.loadOrganizationListMock(...args),
+  resolveUserDetail: (...args: unknown[]) => state.resolveUserDetailMock(...args),
+  resolveUsersWithPagination: (...args: unknown[]) => state.resolveUsersWithPaginationMock(...args),
+}));
+
 vi.mock('../iam-account-management/shared.js', () => ({
   withInstanceScopedDb: (...args: unknown[]) => state.withInstanceScopedDbMock(...args),
 }));
@@ -37,7 +49,8 @@ vi.mock('./repository-shared.js', () => ({
   insertContentHistory: (...args: unknown[]) => state.insertContentHistoryMock(...args),
   isContentMutationFinalized: (...args: unknown[]) => state.isContentMutationFinalizedMock(...args),
   loadCurrentContentRow: (...args: unknown[]) => state.loadCurrentContentRowMock(...args),
-  resolveContentMutationMetadata: (...args: unknown[]) => state.resolveContentMutationMetadataMock(...args),
+  resolveContentMutationMetadata: (...args: unknown[]) =>
+    state.resolveContentMutationMetadataMock(...args),
 }));
 
 vi.mock('./repository-mappers.js', () => ({
@@ -53,6 +66,8 @@ vi.mock('./repository-write-helpers.js', () => ({
   emitContentCreatedActivity: (...args: unknown[]) => state.emitContentCreatedActivityMock(...args),
   emitContentDeletedActivity: (...args: unknown[]) => state.emitContentDeletedActivityMock(...args),
   emitContentUpdatedActivity: (...args: unknown[]) => state.emitContentUpdatedActivityMock(...args),
+  emitContentOwnershipTransferredActivity: (...args: unknown[]) =>
+    state.emitContentOwnershipTransferredActivityMock(...args),
   insertContentRow: (...args: unknown[]) => state.insertContentRowMock(...args),
   resolveUpdateAuthorDisplay: (...args: unknown[]) => state.resolveUpdateAuthorDisplayMock(...args),
   updateContentRevisionRefs: (...args: unknown[]) => state.updateContentRevisionRefsMock(...args),
@@ -61,6 +76,7 @@ vi.mock('./repository-write-helpers.js', () => ({
 }));
 
 const {
+  ContentOwnershipTransferError,
   createContent,
   deleteContent,
   loadContentById,
@@ -68,8 +84,10 @@ const {
   loadContentHistory,
   loadContentListItems,
   loadContentListScopes,
+  loadContentOwnershipTargets,
   loadContentRowById,
   updateContent,
+  transferContentOwnership,
 } = await import('./repository.js');
 
 const createContentRow = (overrides: Partial<ContentRow> = {}): ContentRow => ({
@@ -78,6 +96,8 @@ const createContentRow = (overrides: Partial<ContentRow> = {}): ContentRow => ({
   instance_id: 'instance-1',
   organization_id: null,
   owner_subject_id: null,
+  owner_user_id: '00000000-0000-4000-8000-000000000010',
+  owner_organization_id: null,
   title: 'Titel',
   published_at: null,
   publish_from: null,
@@ -96,6 +116,16 @@ const createContentRow = (overrides: Partial<ContentRow> = {}): ContentRow => ({
   last_audit_event_ref: null,
   ...overrides,
 });
+
+const resolveTestOwner = (row: ContentRow | undefined) => {
+  if (row?.owner_user_id && !row.owner_organization_id) {
+    return { type: 'account' as const, id: row.owner_user_id };
+  }
+  if (row?.owner_organization_id && !row.owner_user_id) {
+    return { type: 'organization' as const, id: row.owner_organization_id };
+  }
+  return undefined;
+};
 
 const createHistoryRow = (overrides: Partial<ContentHistoryRow> = {}): ContentHistoryRow => ({
   id: 'history-1',
@@ -145,16 +175,16 @@ const createDeleteInput = (overrides: Partial<DeleteContentInput> = {}): DeleteC
 });
 
 describe('iam content repository', () => {
-  const normalizedTitleSortColumn =
-    `LOWER(REGEXP_REPLACE(content.title COLLATE "unicode", '^[^[:alnum:]]+', '')) COLLATE "C"`;
+  const normalizedTitleSortColumn = `LOWER(REGEXP_REPLACE(content.title COLLATE "unicode", '^[^[:alnum:]]+', '')) COLLATE "C"`;
 
   beforeEach(() => {
     for (const mock of Object.values(state)) {
       mock.mockReset();
     }
 
-    state.withInstanceScopedDbMock.mockImplementation(async (_instanceId: string, work: (client: object) => Promise<unknown>) =>
-      work({ query: state.queryMock })
+    state.withInstanceScopedDbMock.mockImplementation(
+      async (_instanceId: string, work: (client: object) => Promise<unknown>) =>
+        work({ query: state.queryMock })
     );
     state.queryMock.mockResolvedValue({ rows: [] });
     state.loadCurrentContentRowMock.mockResolvedValue(createContentRow());
@@ -176,6 +206,7 @@ describe('iam content repository', () => {
     state.emitContentCreatedActivityMock.mockResolvedValue(undefined);
     state.emitContentDeletedActivityMock.mockResolvedValue(undefined);
     state.emitContentUpdatedActivityMock.mockResolvedValue(undefined);
+    state.emitContentOwnershipTransferredActivityMock.mockResolvedValue(undefined);
     state.updateContentRowMock.mockResolvedValue(undefined);
     state.resolveContentMutationMetadataMock.mockReturnValue({
       activityEventType: 'iam.content.updated',
@@ -201,6 +232,8 @@ describe('iam content repository', () => {
       nextTitle: 'Neuer Titel',
       nextValidationState: 'valid',
     });
+    state.resolveUsersWithPaginationMock.mockResolvedValue({ users: [], total: 0 });
+    state.loadOrganizationListMock.mockResolvedValue({ items: [], total: 0 });
   });
 
   it('loads content list items and maps database rows', async () => {
@@ -211,16 +244,20 @@ describe('iam content repository', () => {
       .mockResolvedValueOnce({ rows: [firstRow, secondRow] });
 
     await expect(
-      loadContentListItems('instance-1', {
-        page: 1,
-        pageSize: 25,
-        sortBy: 'updatedAt',
-        sortDirection: 'desc',
-      }, {
-        allowGlobal: true,
-        allowOwn: false,
-        allowedOrganizationIds: [],
-      })
+      loadContentListItems(
+        'instance-1',
+        {
+          page: 1,
+          pageSize: 25,
+          sortBy: 'updatedAt',
+          sortDirection: 'desc',
+        },
+        {
+          allowGlobal: true,
+          allowOwn: false,
+          allowedOrganizationIds: [],
+        }
+      )
     ).resolves.toEqual({
       items: [
         { id: 'content-1', title: 'Titel', status: 'draft' },
@@ -229,11 +266,12 @@ describe('iam content repository', () => {
       total: 2,
     });
 
-    expect(state.queryMock).toHaveBeenCalledWith(expect.stringContaining('ORDER BY (content.updated_at IS NULL) ASC, content.updated_at DESC, content.id ASC'), [
-      'instance-1',
-      25,
-      0,
-    ]);
+    expect(state.queryMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'ORDER BY (content.updated_at IS NULL) ASC, content.updated_at DESC, content.id ASC'
+      ),
+      ['instance-1', 25, 0]
+    );
   });
 
   it('adds search, scope and type filters to the list query', async () => {
@@ -241,21 +279,25 @@ describe('iam content repository', () => {
       .mockResolvedValueOnce({ rows: [{ total: 0 }] })
       .mockResolvedValueOnce({ rows: [] });
 
-    await loadContentListItems('instance-1', {
-      page: 2,
-      pageSize: 10,
-      q: 'news',
-      type: 'news.article',
-      visibleTypes: ['news.article', 'events.event-record'],
-      status: 'published',
-      sortBy: 'title',
-      sortDirection: 'asc',
-      }, {
+    await loadContentListItems(
+      'instance-1',
+      {
+        page: 2,
+        pageSize: 10,
+        q: 'news',
+        type: 'news.article',
+        visibleTypes: ['news.article', 'events.event-record'],
+        status: 'published',
+        sortBy: 'title',
+        sortDirection: 'asc',
+      },
+      {
         allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
         allowGlobal: false,
         allowOwn: true,
         actorAccountId: '00000000-0000-0000-0000-000000000001',
-      });
+      }
+    );
 
     expect(state.queryMock).toHaveBeenNthCalledWith(
       1,
@@ -323,7 +365,10 @@ describe('iam content repository', () => {
 
   it('loads distinct organization scopes for matching contents', async () => {
     state.queryMock.mockResolvedValueOnce({
-      rows: [{ organization_id: null }, { organization_id: '11111111-1111-4111-8111-111111111111' }],
+      rows: [
+        { organization_id: null },
+        { organization_id: '11111111-1111-4111-8111-111111111111' },
+      ],
     });
 
     await expect(
@@ -345,7 +390,9 @@ describe('iam content repository', () => {
   it('loads content rows by id and maps them for public reads', async () => {
     state.loadCurrentContentRowMock.mockResolvedValueOnce(createContentRow());
 
-    await expect(loadContentRowById('instance-1', 'content-1')).resolves.toEqual(createContentRow());
+    await expect(loadContentRowById('instance-1', 'content-1')).resolves.toEqual(
+      createContentRow()
+    );
     await expect(loadContentById('instance-1', 'content-1')).resolves.toEqual({
       id: 'content-1',
       title: 'Titel',
@@ -371,7 +418,9 @@ describe('iam content repository', () => {
     state.loadCurrentContentRowMock.mockResolvedValueOnce(undefined);
     await expect(loadContentDetail('instance-1', 'missing')).resolves.toBeUndefined();
 
-    state.loadCurrentContentRowMock.mockResolvedValueOnce(createContentRow({ id: 'content-2', title: 'Detail' }));
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(
+      createContentRow({ id: 'content-2', title: 'Detail' })
+    );
     state.queryMock.mockResolvedValueOnce({ rows: [createHistoryRow({ id: 'history-2' })] });
 
     await expect(loadContentDetail('instance-1', 'content-2')).resolves.toEqual({
@@ -380,6 +429,101 @@ describe('iam content repository', () => {
       status: 'draft',
       history: [{ id: 'history-2', action: 'updated', summary: 'Inhalt aktualisiert' }],
     });
+  });
+
+  it('resolves account and organization owner names across paginated detail lookups', async () => {
+    state.mapContentListItemMock
+      .mockReturnValueOnce({
+        id: 'content-account',
+        title: 'Account detail',
+        status: 'draft',
+        ownerUserId: 'account-owner',
+      })
+      .mockReturnValueOnce({
+        id: 'content-organization',
+        title: 'Organization detail',
+        status: 'draft',
+        ownerOrganizationId: 'organization-owner',
+      });
+    state.loadCurrentContentRowMock
+      .mockResolvedValueOnce(createContentRow({ id: 'content-account' }))
+      .mockResolvedValueOnce(
+        createContentRow({
+          id: 'content-organization',
+          owner_user_id: null,
+          owner_organization_id: 'organization-owner',
+        })
+      );
+    state.queryMock.mockResolvedValue({ rows: [] });
+    state.resolveUserDetailMock.mockResolvedValueOnce({ displayName: 'Account Owner' });
+    state.loadOrganizationByIdMock.mockResolvedValueOnce({
+      display_name: 'Organization Owner',
+    });
+
+    await expect(loadContentDetail('instance-1', 'content-account')).resolves.toMatchObject({
+      ownerDisplayName: 'Account Owner',
+    });
+    await expect(loadContentDetail('instance-1', 'content-organization')).resolves.toMatchObject({
+      ownerDisplayName: 'Organization Owner',
+    });
+    expect(state.resolveUserDetailMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      { instanceId: 'instance-1', userId: 'account-owner' }
+    );
+    expect(state.loadOrganizationByIdMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      { instanceId: 'instance-1', organizationId: 'organization-owner' }
+    );
+  });
+
+  it('lists paged ownership targets and excludes the matching current owner', async () => {
+    state.resolveUsersWithPaginationMock.mockResolvedValueOnce({
+      users: [{ id: 'account-target', displayName: 'Account Target' }],
+      total: 1,
+    });
+    state.loadOrganizationListMock.mockResolvedValueOnce({
+      items: [{ id: 'organization-target', displayName: 'Organization Target' }],
+      total: 1,
+    });
+
+    await expect(
+      loadContentOwnershipTargets('instance-1', {
+        type: 'account',
+        page: 2,
+        pageSize: 10,
+        search: 'target',
+        currentOwner: { type: 'account', id: 'account-owner' },
+      })
+    ).resolves.toEqual({
+      items: [
+        {
+          principal: { type: 'account', id: 'account-target' },
+          displayName: 'Account Target',
+        },
+      ],
+      page: 2,
+      pageSize: 10,
+      total: 1,
+    });
+    await expect(
+      loadContentOwnershipTargets('instance-1', {
+        type: 'organization',
+        page: 1,
+        pageSize: 20,
+        currentOwner: { type: 'organization', id: 'organization-owner' },
+      })
+    ).resolves.toMatchObject({
+      items: [{ principal: { type: 'organization', id: 'organization-target' } }],
+      total: 1,
+    });
+    expect(state.resolveUsersWithPaginationMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      expect.objectContaining({ excludeAccountId: 'account-owner', search: 'target' })
+    );
+    expect(state.loadOrganizationListMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      expect.objectContaining({ excludeOrganizationId: 'organization-owner', isActive: true })
+    );
   });
 
   it('creates content, persists history and emits the created activity', async () => {
@@ -405,7 +549,11 @@ describe('iam content repository', () => {
       'content-1',
       'history-1'
     );
-    expect(state.emitContentCreatedActivityMock).toHaveBeenCalledWith({ query: state.queryMock }, input, 'content-1');
+    expect(state.emitContentCreatedActivityMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      input,
+      'content-1'
+    );
   });
 
   it('stops create operations on publication validation errors before writing', async () => {
@@ -432,7 +580,9 @@ describe('iam content repository', () => {
     state.isContentMutationFinalizedMock.mockResolvedValueOnce(true);
 
     await expect(
-      updateContent(createUpdateInput({ mutationRef: 'mutation-1', title: 'Wird nicht erneut geschrieben' }))
+      updateContent(
+        createUpdateInput({ mutationRef: 'mutation-1', title: 'Wird nicht erneut geschrieben' })
+      )
     ).resolves.toBe('content-1');
 
     expect(state.isContentMutationFinalizedMock).toHaveBeenCalledWith(
@@ -463,7 +613,9 @@ describe('iam content repository', () => {
     });
     state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
 
-    await expect(updateContent(createUpdateInput({ title: 'Neuer Titel' }))).resolves.toBe('content-1');
+    await expect(updateContent(createUpdateInput({ title: 'Neuer Titel' }))).resolves.toBe(
+      'content-1'
+    );
 
     expect(state.resolveUpdateAuthorDisplayMock).not.toHaveBeenCalled();
     expect(state.resolveNextContentStateMock).toHaveBeenCalledWith(
@@ -483,7 +635,9 @@ describe('iam content repository', () => {
       authorDisplayName: 'Autorin',
     });
 
-    await expect(updateContent(createUpdateInput({ authorDisplayMode: 'user' }))).resolves.toBe('content-1');
+    await expect(updateContent(createUpdateInput({ authorDisplayMode: 'user' }))).resolves.toBe(
+      'content-1'
+    );
 
     expect(state.resolveUpdateAuthorDisplayMock).toHaveBeenCalledWith(
       { query: state.queryMock },
@@ -561,7 +715,8 @@ describe('iam content repository', () => {
         nextValidationState: 'valid',
       });
       state.resolveContentMutationMetadataMock.mockReturnValueOnce({
-        activityEventType: previousStatus === nextStatus ? 'iam.content.updated' : 'iam.content.status_changed',
+        activityEventType:
+          previousStatus === nextStatus ? 'iam.content.updated' : 'iam.content.status_changed',
         historyAction: previousStatus === nextStatus ? 'updated' : 'status_changed',
         historySummary: previousStatus === nextStatus ? 'Inhalt aktualisiert' : 'Status geändert',
       });
@@ -606,23 +761,269 @@ describe('iam content repository', () => {
     await expect(deleteContent(createDeleteInput())).resolves.toBeUndefined();
 
     expect(state.emitContentDeletedActivityMock).not.toHaveBeenCalled();
-    expect(state.queryMock).not.toHaveBeenCalled();
+    expect(state.queryMock).toHaveBeenCalledOnce();
+    expect(state.queryMock).toHaveBeenCalledWith(expect.stringContaining('pg_advisory_xact_lock'), [
+      'instance-1',
+      'content-1',
+    ]);
   });
 
-  it('deletes content with a provided current row without reloading it', async () => {
+  it('transfers local ownership atomically without changing the visible author', async () => {
+    const current = createContentRow({
+      owner_user_id: '00000000-0000-4000-8000-000000000010',
+      owner_organization_id: null,
+      author_display_name: 'Unveränderte Autorenanzeige',
+    });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+    state.queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ is_active: true }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      transferContentOwnership({
+        instanceId: 'instance-1',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        actorDisplayName: 'Actor',
+        requestId: 'request-1',
+        traceId: 'trace-1',
+        contentId: 'content-1',
+        expectedSourcePrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000010',
+        },
+        targetPrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      })
+    ).resolves.toEqual({
+      contentId: 'content-1',
+      sourcePrincipal: {
+        type: 'account',
+        id: '00000000-0000-4000-8000-000000000010',
+      },
+      targetPrincipal: {
+        type: 'organization',
+        id: '00000000-0000-4000-8000-000000000020',
+      },
+      authorDisplayName: 'Unveränderte Autorenanzeige',
+    });
+
+    expect(state.queryMock).toHaveBeenNthCalledWith(
+      1,
+      'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
+      ['instance-1', 'content-1']
+    );
+    expect(state.queryMock).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('owner_user_id = $4::uuid'),
+      [
+        'instance-1',
+        'content-1',
+        '00000000-0000-4000-8000-000000000020',
+        null,
+        '00000000-0000-4000-8000-000000000020',
+        '00000000-0000-4000-8000-000000000001',
+      ]
+    );
+    expect(state.insertContentHistoryMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      expect.objectContaining({
+        action: 'updated',
+        summary: 'Inhaber übertragen',
+        changedFields: ['ownerUserId', 'ownerOrganizationId', 'organizationId'],
+        snapshot: { body: 'Text' },
+      })
+    );
+    expect(state.emitContentOwnershipTransferredActivityMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      expect.objectContaining({
+        contentId: 'content-1',
+        sourcePrincipal: { type: 'account', id: '00000000-0000-4000-8000-000000000010' },
+        targetPrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      })
+    );
+  });
+
+  it.each([
+    ['missing', undefined, { rows: [] }, 'content_not_found'],
+    ['unchanged', createContentRow(), { rows: [] }, 'ownership_target_unchanged'],
+    [
+      'unknown target',
+      createContentRow({ owner_user_id: null, owner_organization_id: null }),
+      { rows: [] },
+      'ownership_target_not_found',
+    ],
+    [
+      'inactive target',
+      createContentRow({ owner_user_id: null, owner_organization_id: null }),
+      { rows: [{ is_active: false }] },
+      'ownership_target_inactive',
+    ],
+  ])('rejects a %s ownership transfer', async (_name, current, targetResult, expectedCode) => {
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(current);
+    state.queryMock.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce(targetResult);
+
+    const transfer = transferContentOwnership({
+      instanceId: 'instance-1',
+      actorAccountId: '00000000-0000-4000-8000-000000000001',
+      actorDisplayName: 'Actor',
+      requestId: 'request-1',
+      traceId: 'trace-1',
+      contentId: 'content-1',
+      expectedSourcePrincipal: resolveTestOwner(current),
+      targetPrincipal: {
+        type: 'account',
+        id: '00000000-0000-4000-8000-000000000010',
+      },
+    });
+
+    await expect(transfer).rejects.toEqual(
+      expect.objectContaining<Partial<InstanceType<typeof ContentOwnershipTransferError>>>({
+        code: expectedCode,
+      })
+    );
+  });
+
+  it('transfers ownership to an account when the current owner is an organization', async () => {
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(
+      createContentRow({
+        owner_user_id: null,
+        owner_organization_id: '00000000-0000-4000-8000-000000000020',
+      })
+    );
+    state.queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ is_active: true }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      transferContentOwnership({
+        instanceId: 'instance-1',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        actorDisplayName: 'Actor',
+        requestId: 'request-1',
+        traceId: 'trace-1',
+        contentId: 'content-1',
+        expectedSourcePrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+        targetPrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000030',
+        },
+      })
+    ).resolves.toMatchObject({
+      sourcePrincipal: {
+        type: 'organization',
+        id: '00000000-0000-4000-8000-000000000020',
+      },
+      targetPrincipal: { type: 'account', id: '00000000-0000-4000-8000-000000000030' },
+    });
+    expect(state.queryMock).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('owner_user_id = $4::uuid'),
+      [
+        'instance-1',
+        'content-1',
+        null,
+        '00000000-0000-4000-8000-000000000030',
+        null,
+        '00000000-0000-4000-8000-000000000001',
+      ]
+    );
+  });
+
+  it('rejects a transfer when ownership changed after authorization', async () => {
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(
+      createContentRow({
+        owner_user_id: null,
+        owner_organization_id: '00000000-0000-4000-8000-000000000099',
+      })
+    );
+    state.queryMock.mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      transferContentOwnership({
+        instanceId: 'instance-1',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        actorDisplayName: 'Actor',
+        requestId: 'request-1',
+        traceId: 'trace-1',
+        contentId: 'content-1',
+        expectedSourcePrincipal: {
+          type: 'account',
+          id: '00000000-0000-4000-8000-000000000010',
+        },
+        targetPrincipal: {
+          type: 'organization',
+          id: '00000000-0000-4000-8000-000000000020',
+        },
+      })
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<InstanceType<typeof ContentOwnershipTransferError>>>({
+        code: 'ownership_source_changed',
+      })
+    );
+    expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
+    expect(state.emitContentOwnershipTransferredActivityMock).not.toHaveBeenCalled();
+  });
+
+  it('reloads the current row under lock before deleting content', async () => {
     const currentContent = createContentRow({ id: 'content-2', title: 'Zu loeschen' });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(currentContent);
 
-    await expect(deleteContent(createDeleteInput({ contentId: 'content-2', currentContent }))).resolves.toBe('content-2');
+    await expect(
+      deleteContent(createDeleteInput({ contentId: 'content-2', currentContent }))
+    ).resolves.toBe('content-2');
 
-    expect(state.loadCurrentContentRowMock).not.toHaveBeenCalled();
+    expect(state.loadCurrentContentRowMock).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.queryMock }),
+      'instance-1',
+      'content-2'
+    );
     expect(state.emitContentDeletedActivityMock).toHaveBeenCalledWith(
       { query: state.queryMock },
       expect.objectContaining({ contentId: 'content-2' }),
       currentContent
     );
-    expect(state.queryMock).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.contents'), [
-      'instance-1',
-      'content-2',
-    ]);
+    expect(state.queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM iam.contents'),
+      ['instance-1', 'content-2']
+    );
   });
+
+  it.each(['update', 'delete'] as const)(
+    'rejects a stale authorized %s after ownership changed',
+    async (operation) => {
+      state.loadCurrentContentRowMock.mockResolvedValueOnce(
+        createContentRow({
+          owner_user_id: null,
+          owner_organization_id: '00000000-0000-4000-8000-000000000099',
+        })
+      );
+      const expectedSourcePrincipal = {
+        type: 'account' as const,
+        id: '00000000-0000-4000-8000-000000000010',
+      };
+
+      const mutation =
+        operation === 'update'
+          ? updateContent(createUpdateInput({ expectedSourcePrincipal }))
+          : deleteContent(createDeleteInput({ expectedSourcePrincipal }));
+
+      await expect(mutation).rejects.toEqual(
+        expect.objectContaining<Partial<InstanceType<typeof ContentOwnershipTransferError>>>({
+          code: 'ownership_source_changed',
+        })
+      );
+      expect(state.updateContentRowMock).not.toHaveBeenCalled();
+      expect(state.emitContentDeletedActivityMock).not.toHaveBeenCalled();
+    }
+  );
 });

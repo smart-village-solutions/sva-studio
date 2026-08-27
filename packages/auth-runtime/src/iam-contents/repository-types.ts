@@ -4,6 +4,7 @@ import type {
   IamContentAuthorDisplayMode,
   IamContentStatus,
   IamContentValidationState,
+  IamContentOwnerPrincipal,
 } from '@sva/core';
 
 export type ContentRow = {
@@ -72,6 +73,7 @@ export type UpdateContentInput = {
   traceId?: string;
   mutationRef?: string;
   contentId: string;
+  expectedSourcePrincipal?: IamContentOwnerPrincipal | null;
   organizationId?: string;
   ownerUserId?: string;
   ownerOrganizationId?: string;
@@ -86,6 +88,17 @@ export type UpdateContentInput = {
   publishUntil?: string;
 };
 
+export type TransferContentOwnershipInput = {
+  instanceId: string;
+  actorAccountId: string;
+  actorDisplayName: string;
+  requestId?: string;
+  traceId?: string;
+  contentId: string;
+  expectedSourcePrincipal?: IamContentOwnerPrincipal;
+  targetPrincipal: IamContentOwnerPrincipal;
+};
+
 export type DeleteContentInput = {
   instanceId: string;
   actorAccountId: string;
@@ -93,6 +106,7 @@ export type DeleteContentInput = {
   requestId?: string;
   traceId?: string;
   contentId: string;
+  expectedSourcePrincipal?: IamContentOwnerPrincipal | null;
   currentContent?: ContentRow;
 };
 

@@ -272,6 +272,7 @@ export const svaMainserverCreateNewsDocument = `
   mutation SvaMainserverCreateNews(
     $id: ID
     $forceCreate: Boolean
+    $dataProviderId: ID
     $title: String
     $pushNotification: Boolean
     $author: String
@@ -294,6 +295,7 @@ export const svaMainserverCreateNewsDocument = `
     createNewsItem(
       id: $id
       forceCreate: $forceCreate
+      dataProviderId: $dataProviderId
       title: $title
       pushNotification: $pushNotification
       author: $author

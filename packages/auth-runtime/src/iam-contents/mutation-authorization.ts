@@ -19,8 +19,6 @@ const metadataFields = [
   'publishFrom',
   'publishUntil',
   'organizationId',
-  'ownerUserId',
-  'ownerOrganizationId',
   'authorDisplayMode',
   'authorDisplayName',
   'validationState',
@@ -118,18 +116,8 @@ export const authorizeUpdateContentActions = async (
   }
 
   const destinationOrganizationId = data.organizationId ?? currentContent.organizationId;
-  const destinationOwnerOrganizationId =
-    data.ownerOrganizationId ?? currentContent.ownerOrganizationId;
-  const destinationOwnerUserId =
-    data.ownerUserId ??
-    (data.ownerOrganizationId !== undefined &&
-    destinationOwnerOrganizationId !== currentContent.ownerOrganizationId
-      ? undefined
-      : currentContent.ownerUserId);
   const hasProspectiveAuthorizationTargetChange =
-    destinationOrganizationId !== currentContent.organizationId ||
-    destinationOwnerUserId !== currentContent.ownerUserId ||
-    destinationOwnerOrganizationId !== currentContent.ownerOrganizationId;
+    destinationOrganizationId !== currentContent.organizationId;
 
   if (hasProspectiveAuthorizationTargetChange) {
     const destinationPermissions =
@@ -150,8 +138,8 @@ export const authorizeUpdateContentActions = async (
           contentType: currentContent.contentType,
           domainCapability: action.domainCapability,
           organizationId: destinationOrganizationId,
-          ownerUserId: destinationOwnerUserId,
-          ownerOrganizationId: destinationOwnerOrganizationId,
+          ownerUserId: currentContent.ownerUserId,
+          ownerOrganizationId: currentContent.ownerOrganizationId,
         },
         { permissions: destinationPermissions.permissions }
       );

@@ -1,4 +1,5 @@
 import {
+  ContentOwnershipPanelSlot,
   ContentMediaUsageBlock,
   StudioDetailTabs,
   type ContentMediaUsage,
@@ -55,12 +56,15 @@ const createGenericItemsDetailTabs = ({
     description: pt('tabs.basis.description'),
     icon: 'basis',
     panel: (
-      <GenericItemsDetailBasisTab
-        availableCategories={categoryOptions}
-        categoryOptionsError={categoryOptionsError}
-        categoryOptionsLoading={categoryOptionsLoading}
-        labels={labels}
-      />
+      <div className="space-y-4">
+        {contentId ? <ContentOwnershipPanelSlot /> : null}
+        <GenericItemsDetailBasisTab
+          availableCategories={categoryOptions}
+          categoryOptionsError={categoryOptionsError}
+          categoryOptionsLoading={categoryOptionsLoading}
+          labels={labels}
+        />
+      </div>
     ),
   },
   {

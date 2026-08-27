@@ -1,5 +1,17 @@
 export { Alert, AlertDescription, AlertTitle } from './alert.js';
 export {
+  ContentOwnershipPanel,
+  type ContentOwnershipPanelLabels,
+  type ContentOwnershipPanelOwner,
+  type ContentOwnershipPanelProps,
+} from './content-ownership-panel.js';
+export {
+  ContentOwnershipPanelSlot,
+  ContentOwnershipSaveHint,
+  ContentOwnershipSlotsProvider,
+  type ContentOwnershipSlots,
+} from './content-ownership-slots.js';
+export {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,

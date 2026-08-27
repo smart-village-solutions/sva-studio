@@ -149,6 +149,48 @@ export const contentDEResources = {
     resourceUnavailable:
       'Der Ressourcenprincipal konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
   },
+  ownership: {
+    title: 'Inhaber',
+    currentOwner: 'Aktueller Inhaber',
+    noOwner: 'Kein eindeutiger Inhaber zugeordnet',
+    account: 'Persönlicher Account',
+    organization: 'Organisation',
+    saveKeepsOwner: 'Normales Speichern ändert den Inhaber nicht.',
+    transferUnavailable: 'Die Übertragung ist für diesen Inhaltstyp noch nicht verfügbar.',
+    transferForbidden: 'Du kannst diesen Inhalt bearbeiten, aber nicht übertragen.',
+    transferAction: 'Inhalt übertragen',
+    dialogTitle: 'Inhalt übertragen',
+    dialogDescription:
+      'Wähle einen aktiven Zielinhaber derselben Instanz und prüfe die Auswirkung vor der Bestätigung.',
+    targetType: 'Art des Zielinhabers',
+    search: 'Zielinhaber suchen',
+    searchAction: 'Suchen',
+    loading: 'Zielinhaber werden geladen …',
+    loadError: 'Geeignete Zielinhaber konnten nicht geladen werden.',
+    noTargets: 'Keine geeigneten Zielinhaber gefunden.',
+    previousPage: 'Zurück',
+    nextPage: 'Weiter',
+    confirmation: 'Ich bestätige die Übertragung an den ausgewählten Inhaber.',
+    accessWarning: 'Nach der Übertragung kannst du den Zugriff auf diesen Inhalt verlieren.',
+    localAuthorEffect: 'Die sichtbare Autorenanzeige bleibt bei diesem lokalen Inhalt unverändert.',
+    mainserverAuthorEffect:
+      'Die DataProvider-Zuordnung des Inhalts wird geändert; eine getrennte Autorenangabe bleibt unverändert.',
+    cancel: 'Abbrechen',
+    confirm: 'Jetzt übertragen',
+    transferring: 'Wird übertragen …',
+    success: 'Der Inhalt wurde erfolgreich übertragen.',
+    error: 'Der Inhalt konnte nicht übertragen werden.',
+    permissionMissing: 'Dir fehlt die Berechtigung, diesen Inhalt zu übertragen.',
+    targetInvalid: 'Der ausgewählte Zielinhaber ist nicht mehr verfügbar.',
+    bindingInvalid:
+      'Die DataProvider-Zuordnung hat sich geändert oder ist nicht eindeutig. Bitte lade die Auswahl neu.',
+    credentialsMissing:
+      'Für den ausgewählten Zielinhaber sind keine verwendbaren Zugangsdaten hinterlegt.',
+    unsupported: 'Dieser Inhaltstyp unterstützt die Übertragung nicht.',
+    providerRejected: 'Der Mainserver hat die Übertragung abgelehnt.',
+    reconciliationRequired:
+      'Das Ergebnis der Übertragung ist nicht eindeutig. Bitte starte keinen weiteren Versuch und lasse den Vorgang prüfen.',
+  },
   access: {
     states: {
       editable: 'Bearbeitbar',

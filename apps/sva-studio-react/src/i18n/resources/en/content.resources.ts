@@ -145,6 +145,47 @@ export const contentENResources = {
     resourceUnavailable:
       'The resource principal could not be determined unambiguously. Write actions remain blocked.',
   },
+  ownership: {
+    title: 'Owner',
+    currentOwner: 'Current owner',
+    noOwner: 'No unambiguous owner assigned',
+    account: 'Personal account',
+    organization: 'Organization',
+    saveKeepsOwner: 'Normal saving does not change the owner.',
+    transferUnavailable: 'Ownership transfer is not yet available for this content type.',
+    transferForbidden: 'You can edit this content, but you cannot transfer it.',
+    transferAction: 'Transfer content',
+    dialogTitle: 'Transfer content',
+    dialogDescription:
+      'Choose an active target owner from this instance and review the effect before confirming.',
+    targetType: 'Target owner type',
+    search: 'Search target owners',
+    searchAction: 'Search',
+    loading: 'Loading target owners…',
+    loadError: 'Eligible target owners could not be loaded.',
+    noTargets: 'No eligible target owners found.',
+    previousPage: 'Previous',
+    nextPage: 'Next',
+    confirmation: 'I confirm the transfer to the selected owner.',
+    accessWarning: 'You may lose access to this content after the transfer.',
+    localAuthorEffect: 'The visible author attribution remains unchanged for this local content.',
+    mainserverAuthorEffect:
+      'The content DataProvider assignment changes; a separate author attribution remains unchanged.',
+    cancel: 'Cancel',
+    confirm: 'Transfer now',
+    transferring: 'Transferring…',
+    success: 'The content was transferred successfully.',
+    error: 'The content could not be transferred.',
+    permissionMissing: 'You do not have permission to transfer this content.',
+    targetInvalid: 'The selected target owner is no longer available.',
+    bindingInvalid:
+      'The DataProvider assignment changed or is ambiguous. Please reload the selection.',
+    credentialsMissing: 'No usable credentials are configured for the selected target owner.',
+    unsupported: 'This content type does not support ownership transfer.',
+    providerRejected: 'The Mainserver rejected the transfer.',
+    reconciliationRequired:
+      'The transfer result is ambiguous. Do not retry and have the operation reviewed.',
+  },
   access: {
     states: {
       editable: 'Editable',

@@ -21,10 +21,24 @@ import {
 } from './mutation-helpers.js';
 import type { ResolvedContentActor } from './request-context.js';
 import { authorizeContentAction, resolveContentAccess } from './request-context.js';
-import { createContent, deleteContent, loadContentById, loadContentDetail, loadContentRowById, updateContent } from './repository.js';
+import {
+  ContentOwnershipTransferError,
+  createContent,
+  deleteContent,
+  loadContentById,
+  loadContentDetail,
+  loadContentRowById,
+  updateContent,
+} from './repository.js';
 import { mapContentListItem } from './repository-mappers.js';
-import { ContentStateValidationError, isContentStateValidationError } from './repository-state-validation.js';
+import {
+  ContentStateValidationError,
+  isContentStateValidationError,
+} from './repository-state-validation.js';
 import { updateContentSchema } from './schemas.js';
+import { resolveCurrentOwner, transferErrorResponse } from './ownership-transfer-mutation.js';
+
+export { transferContentOwnershipResponse } from './ownership-transfer-mutation.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
@@ -73,7 +87,11 @@ export const createContentResponse = async (
     organizationId: actor.activeOrganizationId,
   };
 
-  const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);
+  const replayOrConflict = await reserveCreateIdempotency(
+    actor,
+    prepared.idempotencyKey,
+    prepared.rawBody
+  );
   if (replayOrConflict) {
     return replayOrConflict;
   }
@@ -162,7 +180,12 @@ export const updateContentResponse = async (
     return createApiError(400, 'invalid_request', payloadValidation.message, actor.requestId);
   }
 
-  const authorizationError = await authorizeUpdateContentActions(actor, contentId, currentContent, parsed.data);
+  const authorizationError = await authorizeUpdateContentActions(
+    actor,
+    contentId,
+    currentContent,
+    parsed.data
+  );
   if (authorizationError) {
     return authorizationError;
   }
@@ -176,6 +199,7 @@ export const updateContentResponse = async (
       traceId: actor.traceId,
       contentId,
       ...parsed.data,
+      expectedSourcePrincipal: resolveCurrentOwner(currentContent),
       ...(payloadValidation.payload === undefined ? {} : { payload: payloadValidation.payload }),
     });
     if (!updatedId) {
@@ -188,6 +212,8 @@ export const updateContentResponse = async (
       ? jsonResponse(200, asApiItem({ ...item, access }, actor.requestId))
       : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
   } catch (error) {
+    if (error instanceof ContentOwnershipTransferError)
+      return transferErrorResponse(error, actor.requestId);
     const validationResponse = createContentStateValidationResponse(error, actor.requestId);
     if (validationResponse) {
       return validationResponse;
@@ -200,7 +226,12 @@ export const updateContentResponse = async (
       content_id: contentId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return createApiError(503, 'database_unavailable', 'Inhalt konnte nicht aktualisiert werden.', actor.requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Inhalt konnte nicht aktualisiert werden.',
+      actor.requestId
+    );
   }
 };
 
@@ -244,6 +275,7 @@ export const deleteContentResponse = async (
       requestId: actor.requestId,
       traceId: actor.traceId,
       contentId,
+      expectedSourcePrincipal: resolveCurrentOwner(currentContent),
       currentContent: currentRow,
     });
 
@@ -251,6 +283,8 @@ export const deleteContentResponse = async (
       ? jsonResponse(200, asApiItem({ id: deletedId }, actor.requestId))
       : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
   } catch (error) {
+    if (error instanceof ContentOwnershipTransferError)
+      return transferErrorResponse(error, actor.requestId);
     logger.error('Content delete failed', {
       operation: 'content_delete',
       instance_id: actor.instanceId,
@@ -259,6 +293,11 @@ export const deleteContentResponse = async (
       content_id: contentId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return createApiError(503, 'database_unavailable', 'Inhalt konnte nicht gelöscht werden.', actor.requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Inhalt konnte nicht gelöscht werden.',
+      actor.requestId
+    );
   }
 };

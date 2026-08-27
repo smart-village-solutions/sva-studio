@@ -23,6 +23,7 @@ describe('content-management core contract', () => {
     expect(isIamContentValidationState('valid')).toBe(true);
     expect(isIamContentValidationState('unknown')).toBe(false);
     expect(isIamContentPrimitiveAction('content.updatePayload')).toBe(true);
+    expect(isIamContentPrimitiveAction('content.transferOwnership')).toBe(true);
     expect(isIamContentPrimitiveAction('content.write')).toBe(false);
     expect(isIamContentDomainCapability('content.publish')).toBe(true);
     expect(isIamContentDomainCapability('content.write')).toBe(false);
@@ -89,7 +90,12 @@ describe('content-management capability mapping', () => {
       domainCapability: 'content.update_payload',
       primitiveAction: 'content.updatePayload',
     });
-    expect(resolveIamContentDomainCapabilityForPrimitiveAction('content.updatePayload')).toBe('content.update_payload');
+    expect(resolveIamContentDomainCapabilityForPrimitiveAction('content.updatePayload')).toBe(
+      'content.update_payload'
+    );
+    expect(resolveIamContentDomainCapabilityForPrimitiveAction('content.transferOwnership')).toBe(
+      'content.transfer_ownership'
+    );
   });
 
   it('returns deterministic diagnostics for missing and invalid mappings', () => {
@@ -105,7 +111,9 @@ describe('content-management capability mapping', () => {
 
     expect(
       resolveIamContentCapabilityMapping('content.publish', [
-        ...iamContentCapabilityMappings.filter((mapping) => mapping.domainCapability !== 'content.publish'),
+        ...iamContentCapabilityMappings.filter(
+          (mapping) => mapping.domainCapability !== 'content.publish'
+        ),
         { domainCapability: 'content.publish', primitiveAction: 'content.write' },
       ])
     ).toEqual({

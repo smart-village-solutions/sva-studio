@@ -135,11 +135,23 @@ export {
   type RecordMainserverDataProviderObservationResult,
 } from './iam-contents/mainserver-data-provider-bindings.js';
 export {
+  listMainserverOwnershipTargets,
+  resolveMainserverOwnershipSource,
+  resolveMainserverOwnershipTarget,
+  withMainserverContentOwnershipLock,
+  type MainserverOwnershipTargetErrorCode,
+  type ResolvedMainserverOwnershipTarget,
+  type ResolvedMainserverOwnershipSource,
+  type ResolveMainserverOwnershipTargetResult,
+} from './iam-contents/mainserver-content-ownership.js';
+export { withMainserverOwnershipTargetBindingLock } from './iam-contents/mainserver-ownership-target-binding-lock.js';
+export {
   reconcileDeletedUserDataProviderConflict,
   type DeletedUserDataProviderConflictReason,
   type ReconcileDeletedUserDataProviderConflictResult,
 } from './iam-contents/mainserver-data-provider-conflict-reconciliation.js';
 export {
+  annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
@@ -147,6 +159,10 @@ export {
   type MainserverMutationProviderOutcome,
   type MainserverMutationReconciliationStatus,
 } from './iam-contents/mainserver-mutation-journal.js';
+export {
+  hasUnresolvedMainserverOwnershipTransfer,
+  markMainserverMutationReconciliationRequired,
+} from './iam-contents/mainserver-ownership-transfer-reconciliation.js';
 export {
   loadMainserverAuthoringDiagnostics,
   type MainserverAuthoringDiagnostics,

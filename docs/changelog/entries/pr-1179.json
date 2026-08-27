@@ -1,0 +1,4 @@
+{
+  "prNumber": 1179,
+  "body": "Eigentumsübertragungen bleiben auch bei vorübergehenden Datenbankfehlern sicher nachvollziehbar.\n\n- Ein Transfer wird erst nach erfolgreicher Aktualisierung der lokalen Inhaltsansicht vollständig abgeschlossen.\n- Inhalte einer Organisation werden auch bei älteren, uneindeutigen Datensätzen zuverlässig der Organisation zugeordnet."
+}

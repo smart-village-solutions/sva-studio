@@ -1,4 +1,4 @@
-# ADR-054: Waste-Mainserver-Abgleichsstatus über Quellrevision
+# ADR-055: Waste-Mainserver-Abgleichsstatus über Quellrevision
 
 **Datum:** 27. August 2026
 **Status:** ✅ Accepted

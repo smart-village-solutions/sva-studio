@@ -309,11 +309,7 @@ export const RichTextHtmlEditor = ({
         className
       )}
     >
-      <div
-        role="toolbar"
-        aria-label={toolbarLabels.mode}
-        className="flex flex-wrap items-center gap-1.5 border-b border-input bg-muted/40 p-1.5"
-      >
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-input bg-muted/40 p-1.5">
         <div
           role="group"
           aria-label={toolbarLabels.mode}

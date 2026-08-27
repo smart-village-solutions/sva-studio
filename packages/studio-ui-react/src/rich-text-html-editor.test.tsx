@@ -214,7 +214,6 @@ describe('RichTextHtmlEditor', () => {
     expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Vorwärts' })).toBeTruthy();
     expect(screen.getByRole('textbox')).toBeTruthy();
-    expect(screen.getByRole('toolbar', { name: 'Editoransicht' })).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Editoransicht' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fett' }).getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByRole('button', { name: 'Zurück' }).getAttribute('aria-pressed')).toBeNull();

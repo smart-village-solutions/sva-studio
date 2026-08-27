@@ -1,6 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { wasteTenantMigrations } from '../../../../deploy/portainer/waste-tenant-migration-catalog.mjs';
 import { applySchemaStatements } from './waste-management-operations.schema.js';
 
 const databaseUrl = process.env.WASTE_DATE_SHIFT_TEST_DATABASE_URL;
@@ -11,6 +12,14 @@ if (!databaseUrl) {
 const schemaName = 'waste_mainserver_revision_test';
 const pool = new Pool({ connectionString: databaseUrl, max: 1 });
 let client: PoolClient;
+let catalogMigrationSatisfied = false;
+
+const sourceRevisionMigration = wasteTenantMigrations.find(
+  ({ id }) => id === '20260827_01_add_mainserver_source_revision'
+);
+if (!sourceRevisionMigration) {
+  throw new Error('waste_mainserver_source_revision_migration_missing');
+}
 
 const ids = {
   region: '10000000-0000-4000-8000-000000000001',
@@ -37,6 +46,39 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
     client = await pool.connect();
     await client.query(`DROP SCHEMA IF EXISTS ${schemaName} CASCADE;`);
     for (const statement of applySchemaStatements(schemaName)) await client.query(statement);
+
+    for (const statement of applySchemaStatements('public')) await client.query(statement);
+    await client.query(`
+      DO $$
+      DECLARE trigger_record RECORD;
+      BEGIN
+        FOR trigger_record IN
+          SELECT namespace_row.nspname, table_row.relname, trigger_row.tgname
+          FROM pg_trigger AS trigger_row
+          INNER JOIN pg_class AS table_row ON table_row.oid = trigger_row.tgrelid
+          INNER JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+          WHERE namespace_row.nspname = 'public'
+            AND NOT trigger_row.tgisinternal
+            AND trigger_row.tgname LIKE 'sva_mainserver_revision_%'
+        LOOP
+          EXECUTE format(
+            'DROP TRIGGER %I ON %I.%I',
+            trigger_record.tgname,
+            trigger_record.nspname,
+            trigger_record.relname
+          );
+        END LOOP;
+      END $$;
+      DROP FUNCTION IF EXISTS public.sva_bump_waste_mainserver_source_revision();
+      DROP TABLE IF EXISTS public.waste_mainserver_source_state;
+    `);
+    for (const statement of sourceRevisionMigration.statements) await client.query(statement);
+    const verification = await client.query<{ satisfied: boolean }>(
+      sourceRevisionMigration.verification.sql,
+      [...sourceRevisionMigration.verification.values]
+    );
+    catalogMigrationSatisfied = verification.rows[0]?.satisfied === true;
+
     await client.query(`SET search_path TO ${schemaName}, public;`);
   }, 60_000);
 
@@ -63,6 +105,10 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
       client.release();
     }
     await pool.end();
+  });
+
+  it('applies and verifies the versioned source-revision migration against PostgreSQL', () => {
+    expect(catalogMigrationSatisfied).toBe(true);
   });
 
   it('increments once for direct writes, ignores irrelevant updates, and advances on deletes', async () => {
@@ -112,12 +158,60 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
     );
 
     const beforeCascade = await readRevision();
-    await client.query(`DELETE FROM waste_tours WHERE id = $1;`, [ids.tour]);
-    const afterCascade = await readRevision();
+    try {
+      await client.query(`
+        DO $$
+        DECLARE trigger_record RECORD;
+        BEGIN
+          FOR trigger_record IN
+            SELECT namespace_row.nspname, table_row.relname, trigger_row.tgname
+            FROM pg_trigger AS trigger_row
+            INNER JOIN pg_class AS table_row ON table_row.oid = trigger_row.tgrelid
+            INNER JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+            WHERE namespace_row.nspname = '${schemaName}'
+              AND NOT trigger_row.tgisinternal
+              AND trigger_row.tgname LIKE 'sva_mainserver_revision_%'
+              AND trigger_row.tgname <> 'sva_mainserver_revision_location_tour_links_change'
+          LOOP
+            EXECUTE format(
+              'ALTER TABLE %I.%I DISABLE TRIGGER %I',
+              trigger_record.nspname,
+              trigger_record.relname,
+              trigger_record.tgname
+            );
+          END LOOP;
+        END $$;
+      `);
 
-    expect(afterCascade).toBeGreaterThan(beforeCascade);
-    await expect(
-      client.query('SELECT id FROM waste_location_tour_links WHERE id = $1;', [ids.link])
-    ).resolves.toMatchObject({ rowCount: 0 });
+      await client.query(`DELETE FROM waste_tours WHERE id = $1;`, [ids.tour]);
+
+      expect(await readRevision()).toBe(beforeCascade + 1n);
+      await expect(
+        client.query('SELECT id FROM waste_location_tour_links WHERE id = $1;', [ids.link])
+      ).resolves.toMatchObject({ rowCount: 0 });
+    } finally {
+      await client.query(`
+        DO $$
+        DECLARE trigger_record RECORD;
+        BEGIN
+          FOR trigger_record IN
+            SELECT namespace_row.nspname, table_row.relname, trigger_row.tgname
+            FROM pg_trigger AS trigger_row
+            INNER JOIN pg_class AS table_row ON table_row.oid = trigger_row.tgrelid
+            INNER JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+            WHERE namespace_row.nspname = '${schemaName}'
+              AND NOT trigger_row.tgisinternal
+              AND trigger_row.tgname LIKE 'sva_mainserver_revision_%'
+          LOOP
+            EXECUTE format(
+              'ALTER TABLE %I.%I ENABLE TRIGGER %I',
+              trigger_record.nspname,
+              trigger_record.relname,
+              trigger_record.tgname
+            );
+          END LOOP;
+        END $$;
+      `);
+    }
   });
 });

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ContentOwnershipPanel,
@@ -31,6 +31,7 @@ const labels: ContentOwnershipPanelLabels = {
   cancel: 'Abbrechen',
   confirm: 'Jetzt übertragen',
   transferring: 'Wird übertragen',
+  success: 'Erfolgreich übertragen',
   transferError: 'Übertragung fehlgeschlagen',
 };
 
@@ -38,6 +39,8 @@ const currentOwner = {
   principal: { type: 'account' as const, id: '11111111-1111-4111-8111-111111111111' },
   displayName: 'Aktuelle Person',
 };
+
+afterEach(cleanup);
 
 describe('ContentOwnershipPanel', () => {
   it('shows the owner but no active transfer action for unsupported content', () => {
@@ -86,5 +89,39 @@ describe('ContentOwnershipPanel', () => {
     fireEvent.click(submit);
 
     await waitFor(() => expect(onTransfer).toHaveBeenCalledWith(target));
+    expect((await screen.findByRole('status')).textContent).toContain('Erfolgreich übertragen');
+  });
+
+  it('shows target loading failures and maps stable transfer errors', async () => {
+    const target = {
+      principal: { type: 'account' as const, id: '33333333-3333-4333-8333-333333333333' },
+      displayName: 'Zielperson',
+    };
+    const loadTargets = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({ items: [target], total: 1 });
+    const onTransfer = vi.fn().mockRejectedValue(new Error('binding conflict'));
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={onTransfer}
+        resolveTransferError={() => 'Bindung ist nicht eindeutig'}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    expect(await screen.findByText('Laden fehlgeschlagen')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Suche starten' }));
+    expect(await screen.findByText('Zielperson')).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /Zielperson/u }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Übertragung bestätigen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Jetzt übertragen' }));
+
+    expect(await screen.findByText('Bindung ist nicht eindeutig')).toBeTruthy();
   });
 });

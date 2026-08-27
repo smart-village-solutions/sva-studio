@@ -48,10 +48,10 @@ V1 aktiviert den Transfer nur für:
 - NewsItem,
 - EventRecord,
 - PointOfInterest,
-- Tour,
+- Tour im bestätigten Upstream-Vertrag; ohne vorhandenen redaktionellen Studio-Editor keine V1-Aktivierung,
 - Root-GenericItem einschließlich der vom Mainserver mitgeführten abhängigen GenericItems, TourStops und POI-Voucher.
 
-Fachplugins auf Basis eines Root-GenericItems verwenden denselben Host-Vertrag. Surveys, Legacy SurveyPolls, Batch-Importe und alle weiteren Typen bleiben deaktiviert, bis ihr vollständiger Transfer- und Abhängigkeitsvertrag separat bestätigt ist. Die UI leitet Verfügbarkeit aus derselben serverseitigen Capability-Matrix ab und führt keine eigene Typenliste.
+Fachplugins auf Basis eines Root-GenericItems verwenden denselben Host-Vertrag. Touren werden erst bei Einführung eines redaktionellen Studio-Editors an den bereits bestätigten Vertrag angebunden; dafür wird jetzt kein ungenutzter Adapter gepflegt. Surveys, Legacy SurveyPolls, Batch-Importe und alle weiteren Typen bleiben deaktiviert, bis ihr vollständiger Transfer- und Abhängigkeitsvertrag separat bestätigt ist. Die UI leitet Verfügbarkeit aus derselben serverseitigen Capability-Matrix ab und führt keine eigene Typenliste.
 
 ### Source-Principal führt aus, Target-Principal übernimmt
 

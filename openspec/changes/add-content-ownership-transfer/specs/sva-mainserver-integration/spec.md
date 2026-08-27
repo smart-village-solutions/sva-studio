@@ -169,11 +169,13 @@ Das System SHALL einen Mainserver-Inhabertransfer nur für Content-Typen anbiete
 
 #### Scenario: V1-Typ unterstützt Transfer
 
-- **WHEN** NewsItem, EventRecord, PointOfInterest, Tour oder ein Root-GenericItem übertragen werden soll
+- **WHEN** NewsItem, EventRecord, PointOfInterest, Tour oder ein Root-GenericItem vertraglich geprüft wird
 - **AND** der Runtime-Preflight bestätigt den erwarteten Mainserver-Vertrag
 - **THEN** kann die serverseitige Capability-Matrix den Transfer freigeben
 - **AND** verwendet die Mutation den typisierten `dataProviderId`-Vertrag
 - **AND** behauptet diese Backend-Capability allein keine bereits vorhandene Studio-Detailansicht für den Typ
+- **AND** aktiviert das Studio die Aktion nur für einen tatsächlich registrierten redaktionellen Adapter
+- **AND** bleibt Tour trotz bestätigtem Upstream-Vertrag ohne Aktion, solange kein redaktioneller Studio-Editor existiert
 
 #### Scenario: Abhängige Datensätze werden atomar mitgeführt
 

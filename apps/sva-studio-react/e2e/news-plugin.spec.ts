@@ -35,18 +35,41 @@ test.describe('news plugin', () => {
   }) => {
     const newsItems: NewsRecord[] = [];
     let createdBody: Record<string, unknown> | undefined;
+    let ownershipTransferred = false;
     await page.route('**/auth/me', async (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(authenticatedUser),
+        body: JSON.stringify({
+          ...authenticatedUser,
+          user: {
+            ...authenticatedUser.user,
+            permissionActions: [
+              ...authenticatedUser.user.permissionActions,
+              'content.transferOwnership',
+            ],
+          },
+        }),
       })
     );
     await page.route('**/iam/me/permissions?**', async (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(permissionPayload),
+        body: JSON.stringify({
+          ...permissionPayload,
+          permissions: [
+            ...permissionPayload.permissions,
+            { action: 'content.transferOwnership', resourceType: 'content' },
+          ],
+        }),
+      })
+    );
+    await page.route('**/api/v1/mainserver/mutation-capabilities', async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { enabledActions: ['content.transferOwnership'] } }),
       })
     );
     await page.route('**/api/v1/mainserver/news**', async (route) => {
@@ -81,6 +104,7 @@ test.describe('news plugin', () => {
           ? (body.contentBlocks as NewsRecord['contentBlocks'])
           : [],
         author: 'Editor One',
+        dataProvider: { id: 'provider-source', name: 'Redaktion Musterhausen' },
         createdAt: '2026-04-13T12:10:00.000Z',
         updatedAt: '2026-04-13T12:10:00.000Z',
       });
@@ -92,6 +116,42 @@ test.describe('news plugin', () => {
     });
     await page.route('**/api/v1/mainserver/news/**', async (route) =>
       fulfillContentRoute(route, newsItems)
+    );
+    await page.route(
+      '**/api/v1/mainserver/content-ownership/news.article/news-1/**',
+      async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        if (path.endsWith('/targets')) {
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: [
+                {
+                  principal: { type: 'account', id: 'account-target' },
+                  displayName: 'Zielredaktion',
+                },
+              ],
+              pagination: { page: 1, pageSize: 10, total: 1 },
+              currentOwner: {
+                principal: { type: 'organization', id: 'organization-source' },
+                displayName: ownershipTransferred ? 'Zielredaktion' : 'Redaktion Musterhausen',
+              },
+            }),
+          });
+        }
+        if (path.endsWith('/transfer') && route.request().method() === 'POST') {
+          ownershipTransferred = true;
+          const item = newsItems.find((entry) => entry.id === 'news-1');
+          if (item) item.dataProvider = { id: 'provider-target', name: 'Zielredaktion' };
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { status: 'transferred' } }),
+          });
+        }
+        return route.fallback();
+      }
     );
     await page.route('**/api/v1/mainserver/categories', async (route) => {
       await route.fulfill({
@@ -188,6 +248,16 @@ test.describe('news plugin', () => {
     expect(createdBody?.categories).toEqual([{ name: 'Allgemein' }, { name: 'Kultur' }]);
     await navigateClientSide(page, '/admin/news/news-1');
     await expectNewsEditorReady(page, 'edit');
+    await expect(page.getByRole('heading', { name: /Inhaber|Owner/ })).toHaveCount(1);
+    await expect(page.getByText('Redaktion Musterhausen').first()).toBeVisible();
+    await page.getByRole('button', { name: /Inhalt übertragen|Transfer content/ }).click();
+    await page.getByRole('radio', { name: /Zielredaktion/ }).check();
+    await page
+      .getByRole('checkbox', { name: /Ich bestätige die Übertragung|I confirm the transfer/i })
+      .check();
+    await page.getByRole('button', { name: /Jetzt übertragen|Transfer now/ }).click();
+    await expect.poll(() => ownershipTransferred).toBe(true);
+    await expect(page.getByText('Zielredaktion').first()).toBeVisible();
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('Erste News aktualisiert');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page

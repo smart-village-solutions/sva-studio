@@ -64,6 +64,19 @@ const resolveCurrentOwnerPrincipal = (row: ContentRow): IamContentOwnerPrincipal
   return undefined;
 };
 
+const resolveContentItemOwnerPrincipal = (item: {
+  readonly ownerUserId?: string;
+  readonly ownerOrganizationId?: string;
+}): IamContentOwnerPrincipal | undefined => {
+  if (item.ownerUserId && !item.ownerOrganizationId) {
+    return { type: 'account', id: item.ownerUserId };
+  }
+  if (item.ownerOrganizationId && !item.ownerUserId) {
+    return { type: 'organization', id: item.ownerOrganizationId };
+  }
+  return undefined;
+};
+
 const assertActiveOwnershipTarget = async (
   client: Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0],
   instanceId: string,
@@ -323,7 +336,47 @@ export const loadContentDetail = async (
   }
 
   const history = await loadContentHistory(instanceId, contentId);
-  return { ...item, history };
+  const owner = resolveContentItemOwnerPrincipal(item);
+  let ownerDisplayName: string | undefined;
+  if (owner?.type === 'account') {
+    let page = 1;
+    let visited = 0;
+    do {
+      const result = await withInstanceScopedDb(instanceId, (client) =>
+        resolveUsersWithPagination(client, {
+          instanceId,
+          page,
+          pageSize: 50,
+          includeTechnicalAccounts: false,
+        })
+      );
+      ownerDisplayName = result.users.find((user) => user.id === owner.id)?.displayName;
+      visited += result.users.length;
+      if (ownerDisplayName || visited >= result.total || result.users.length === 0) break;
+      page += 1;
+    } while (true);
+  } else if (owner?.type === 'organization') {
+    let page = 1;
+    let visited = 0;
+    do {
+      const result = await withInstanceScopedDb(instanceId, (client) =>
+        loadOrganizationList(client, {
+          instanceId,
+          page,
+          pageSize: 50,
+          sortBy: 'displayName',
+          sortDirection: 'asc',
+        })
+      );
+      ownerDisplayName = result.items.find(
+        (organization) => organization.id === owner.id
+      )?.displayName;
+      visited += result.items.length;
+      if (ownerDisplayName || visited >= result.total || result.items.length === 0) break;
+      page += 1;
+    } while (true);
+  }
+  return { ...item, history, ...(ownerDisplayName ? { ownerDisplayName } : {}) };
 };
 
 export const loadContentOwnershipTargets = async (

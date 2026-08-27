@@ -28,6 +28,12 @@ const routeState = vi.hoisted(() => ({
   organizationContextError: null as null | Error,
   enabledMainserverMutationActions: [] as string[],
   getContent: vi.fn(),
+  requestMainserverJson: vi.fn(),
+}));
+
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
+  requestMainserverJson: routeState.requestMainserverJson,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -462,6 +468,10 @@ describe('appRouteBindings', () => {
     routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
     routeState.getContent.mockReset();
+    routeState.requestMainserverJson.mockReset();
+    routeState.requestMainserverJson.mockResolvedValue({
+      data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
+    });
     routeState.getContent.mockResolvedValue({
       data: {
         credentialSource: 'user',

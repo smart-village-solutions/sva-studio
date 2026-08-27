@@ -1,4 +1,8 @@
-import type { IamContentOwnerPrincipal, IamContentOwnershipTargetList } from '@sva/core';
+import type {
+  IamContentOwnerPrincipal,
+  IamContentOwnershipTarget,
+  IamContentOwnershipTargetList,
+} from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import { readEffectiveSvaMainserverCredentialsWithStatus } from '../mainserver-effective-credentials.js';
@@ -29,6 +33,12 @@ export type ResolvedMainserverOwnershipTarget = Readonly<{
     actingPrincipalType: 'organization' | 'user';
     credentialFingerprint: string;
   }>;
+}>;
+
+export type ResolvedMainserverOwnershipSource = Readonly<{
+  principal: IamContentOwnerPrincipal;
+  dataProviderId: string;
+  dataProviderName?: string;
 }>;
 
 export type ResolveMainserverOwnershipTargetResult =
@@ -93,13 +103,70 @@ const classifyMissingBinding = async (input: {
         input.credentialFingerprint,
       ]
     );
-    return result.rows.some((row) => row.status === 'conflict')
+    return result.rows.length > 1 || result.rows.some((row) => row.status === 'conflict')
       ? 'content_transfer_target_binding_conflict'
       : 'content_transfer_target_binding_missing';
   });
 
 const toBindingVersion = (binding: MainserverDataProviderBinding): string =>
   `${binding.id}:${binding.lastObservedAt}`;
+
+export const resolveMainserverOwnershipSource = async (input: {
+  readonly instanceId: string;
+  readonly dataProviderId: string;
+}): Promise<ResolvedMainserverOwnershipSource | undefined> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const result = await client.query<{
+      principal_type: 'organization' | 'user';
+      principal_id: string;
+      data_provider_id: string;
+      data_provider_name: string | null;
+    }>(
+      `SELECT
+         binding.principal_type,
+         binding.principal_id::text,
+         binding.data_provider_id,
+         binding.data_provider_name
+       FROM iam.mainserver_data_provider_bindings binding
+       WHERE binding.instance_id = $1
+         AND binding.data_provider_id = $2
+         AND binding.status = 'verified'
+         AND (
+           (binding.principal_type = 'user' AND EXISTS (
+             SELECT 1
+             FROM iam.accounts account
+             WHERE account.instance_id = binding.instance_id
+               AND account.id = binding.principal_id
+               AND account.status = 'active'
+               AND account.is_blocked = FALSE
+               AND account.deletion_lifecycle_state = 'active'
+               AND account.soft_deleted_at IS NULL
+               AND account.permanently_deleted_at IS NULL
+           ))
+           OR
+           (binding.principal_type = 'organization' AND EXISTS (
+             SELECT 1
+             FROM iam.organizations organization
+             WHERE organization.instance_id = binding.instance_id
+               AND organization.id = binding.principal_id
+               AND organization.is_active = TRUE
+           ))
+         )
+       ORDER BY binding.last_observed_at DESC
+       LIMIT 2;`,
+      [input.instanceId, input.dataProviderId]
+    );
+    const row = result.rows.length === 1 ? result.rows[0] : undefined;
+    if (!row) return undefined;
+    return {
+      principal: {
+        type: row.principal_type === 'user' ? 'account' : 'organization',
+        id: row.principal_id,
+      },
+      dataProviderId: row.data_provider_id,
+      ...(row.data_provider_name ? { dataProviderName: row.data_provider_name } : {}),
+    };
+  });
 
 export const resolveMainserverOwnershipTarget = async (input: {
   readonly instanceId: string;
@@ -196,14 +263,23 @@ export const listMainserverOwnershipTargets = async (input: {
   readonly search?: string;
   readonly currentDataProviderId?: string;
 }): Promise<IamContentOwnershipTargetList> => {
-  const candidates = await loadContentOwnershipTargets(input.instanceId, {
-    type: input.type,
-    page: input.page,
-    pageSize: input.pageSize,
-    ...(input.search ? { search: input.search } : {}),
-  });
+  const candidatePageSize = 50;
+  const allCandidates: IamContentOwnershipTarget[] = [];
+  let candidatePage = 1;
+  let candidateTotal = 0;
+  do {
+    const candidates = await loadContentOwnershipTargets(input.instanceId, {
+      type: input.type,
+      page: candidatePage,
+      pageSize: candidatePageSize,
+      ...(input.search ? { search: input.search } : {}),
+    });
+    allCandidates.push(...candidates.items);
+    candidateTotal = candidates.total;
+    candidatePage += 1;
+  } while (allCandidates.length < candidateTotal);
   const resolved = await Promise.all(
-    candidates.items.map(async (candidate) => ({
+    allCandidates.map(async (candidate) => ({
       candidate,
       resolution: await resolveMainserverOwnershipTarget({
         instanceId: input.instanceId,
@@ -217,11 +293,12 @@ export const listMainserverOwnershipTargets = async (input: {
       ? [candidate]
       : []
   );
+  const start = (input.page - 1) * input.pageSize;
   return {
-    items,
-    page: candidates.page,
-    pageSize: candidates.pageSize,
-    total: candidates.total,
+    items: items.slice(start, start + input.pageSize),
+    page: input.page,
+    pageSize: input.pageSize,
+    total: items.length,
   };
 };
 

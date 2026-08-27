@@ -1,6 +1,10 @@
 import { formatDateTimeInEditorTimeZone, readFieldError } from '@sva/plugin-sdk';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
-import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
+import {
+  ContentOwnershipPanelSlot,
+  getStudioFormFieldProps,
+  StudioFormSummaryErrors,
+} from '@sva/studio-ui-react';
 import { Input, MainserverPrincipalControl, StudioField } from '@sva/studio-ui-react';
 
 import { NewsCategoryMultiselect } from './news.category-multiselect.js';
@@ -82,6 +86,7 @@ export function NewsDetailBasisTab({
 
   return (
     <div className="space-y-6">
+      {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
 
       <NewsDetailCard
@@ -145,9 +150,6 @@ export function NewsDetailBasisTab({
                 ]
           }
           onChange={onActingPrincipalTypeChange}
-          dataProvider={mode === 'edit' ? (loadedItem?.dataProvider ?? null) : undefined}
-          dataProviderLabel={pt('fields.dataProvider')}
-          dataProviderUnavailableLabel={pt('fields.dataProviderUnavailable')}
         />
 
         {mode === 'edit' ? (

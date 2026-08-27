@@ -4,7 +4,11 @@ import {
   type AppRouteBindings as BaseAppRouteBindings,
 } from '@sva/routing';
 import { normalizeOrganizationDetailTab } from '@sva/routing/route-search';
-import { resolveUserDisplayName, type IamOrganizationContextOption } from '@sva/core';
+import {
+  resolveUserDisplayName,
+  type IamContentOwnershipTarget,
+  type IamOrganizationContextOption,
+} from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
 import {
   CockpitCardsCreatePage,
@@ -19,7 +23,16 @@ import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '@sva/plugin-projects';
 import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
 import {
+  createMainserverMutationHeaders,
+  createMainserverReadHeaders,
+  MainserverApiError,
+  requestMainserverJson,
+} from '@sva/plugin-sdk';
+import {
+  ContentOwnershipPanel,
+  ContentOwnershipSlotsProvider,
   StudioLoadingState,
+  type ContentOwnershipPanelLabels,
   type MainserverPrincipalControlModel,
 } from '@sva/studio-ui-react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
@@ -176,7 +189,77 @@ const MainserverPrincipalBoundary = ({
 type MainserverResourcePrincipalResolution =
   | Readonly<{ kind: 'loading' }>
   | Readonly<{ kind: 'error' }>
-  | Readonly<{ kind: 'ready'; control: MainserverPrincipalControlModel }>;
+  | Readonly<{
+      kind: 'ready';
+      control: MainserverPrincipalControlModel;
+      owner: Readonly<{
+        displayName: string;
+      }>;
+    }>;
+
+const resolveMainserverDetailUrl = (contentType: string, contentId: string): string => {
+  const collection =
+    contentType === 'news.article'
+      ? 'news'
+      : contentType === 'events.event-record'
+        ? 'events'
+        : contentType === 'poi.point-of-interest'
+          ? 'poi'
+          : contentType === 'surveys.survey'
+            ? 'surveys'
+            : 'generic-items';
+  return `/api/v1/mainserver/${collection}/${encodeURIComponent(contentId)}`;
+};
+
+const resolveOwnershipTransferError = (error: unknown): string => {
+  if (!(error instanceof MainserverApiError)) return t('content.ownership.error');
+  const key =
+    error.code === 'content_transfer_permission_missing'
+      ? 'permissionMissing'
+      : error.code === 'content_transfer_target_invalid'
+        ? 'targetInvalid'
+        : error.code === 'content_transfer_target_credentials_missing'
+          ? 'credentialsMissing'
+          : error.code === 'content_transfer_type_unsupported'
+            ? 'unsupported'
+            : error.code === 'content_transfer_reconciliation_required'
+              ? 'reconciliationRequired'
+              : error.code === 'content_transfer_provider_rejected'
+                ? 'providerRejected'
+                : error.code.includes('binding') || error.code === 'content_transfer_source_changed'
+                  ? 'bindingInvalid'
+                  : 'error';
+  return t(`content.ownership.${key}`);
+};
+
+const ownershipPanelLabels = (): ContentOwnershipPanelLabels => ({
+  title: t('content.ownership.title'),
+  currentOwner: t('content.ownership.currentOwner'),
+  account: t('content.ownership.account'),
+  organization: t('content.ownership.organization'),
+  saveKeepsOwner: t('content.ownership.saveKeepsOwner'),
+  transferUnavailable: t('content.ownership.transferUnavailable'),
+  transferForbidden: t('content.ownership.transferForbidden'),
+  transferAction: t('content.ownership.transferAction'),
+  dialogTitle: t('content.ownership.dialogTitle'),
+  dialogDescription: t('content.ownership.dialogDescription'),
+  targetType: t('content.ownership.targetType'),
+  search: t('content.ownership.search'),
+  searchAction: t('content.ownership.searchAction'),
+  loading: t('content.ownership.loading'),
+  loadError: t('content.ownership.loadError'),
+  noTargets: t('content.ownership.noTargets'),
+  previousPage: t('content.ownership.previousPage'),
+  nextPage: t('content.ownership.nextPage'),
+  confirmation: t('content.ownership.confirmation'),
+  accessWarning: t('content.ownership.accessWarning'),
+  authorEffect: t('content.ownership.mainserverAuthorEffect'),
+  cancel: t('content.ownership.cancel'),
+  confirm: t('content.ownership.confirm'),
+  transferring: t('content.ownership.transferring'),
+  success: t('content.ownership.success'),
+  transferError: t('content.ownership.error'),
+});
 
 const useMainserverResourcePrincipalControl = (
   contentType: string
@@ -197,13 +280,29 @@ const useMainserverResourcePrincipalControl = (
     setResolution({ kind: 'loading' });
 
     void getContent(contentId, { contentType })
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (!active) {
           return;
         }
 
         const principal = data.credentialSource;
         if (principal !== 'organization' && principal !== 'user') {
+          setResolution({ kind: 'error' });
+          return;
+        }
+
+        const detail = await requestMainserverJson<{
+          readonly data: Readonly<{
+            dataProvider?: Readonly<{ id?: string; name?: string }> | null;
+          }>;
+        }>({
+          url: resolveMainserverDetailUrl(contentType, contentId),
+          init: { headers: createMainserverReadHeaders(principal) },
+        });
+        if (!active) return;
+        const currentDataProviderName =
+          detail.data.dataProvider?.name?.trim() || detail.data.dataProvider?.id?.trim();
+        if (!currentDataProviderName) {
           setResolution({ kind: 'error' });
           return;
         }
@@ -220,6 +319,9 @@ const useMainserverResourcePrincipalControl = (
                   ? 'content.principal.organization'
                   : 'content.principal.user'
               ),
+          },
+          owner: {
+            displayName: currentDataProviderName,
           },
         });
       })
@@ -245,10 +347,76 @@ const MainserverResourcePrincipalBoundary = ({
   contentType: string;
 }>) => {
   const resolution = useMainserverResourcePrincipalControl(contentType);
-  if (resolution.kind === 'loading') {
-    return (
-      <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>
+  const mutationCapabilities = useMainserverMutationCapabilities();
+  const navigate = useNavigate();
+  const params = useParams({ strict: false });
+  const contentId = readStringParam(params.contentId, readStringParam(params.id));
+  const [resolvedOwner, setResolvedOwner] = React.useState<IamContentOwnershipTarget | null>(null);
+  const [transferAuthorized, setTransferAuthorized] = React.useState(false);
+  React.useEffect(() => setResolvedOwner(null), [contentId, contentType]);
+  const transferSupported = contentType !== 'surveys.survey';
+  const transferCapabilityConfirmed = mutationCapabilities.enabledActions.includes(
+    'content.transferOwnership'
+  );
+  const actingPrincipalType =
+    resolution.kind === 'ready' ? resolution.control.value : ('user' as const);
+  const baseUrl = `/api/v1/mainserver/content-ownership/${encodeURIComponent(
+    contentType
+  )}/${encodeURIComponent(contentId)}`;
+  const loadOwnershipTargets = React.useCallback(
+    async ({
+      type,
+      page,
+      pageSize,
+      search,
+    }: {
+      readonly type: 'account' | 'organization';
+      readonly page: number;
+      readonly pageSize: number;
+      readonly search?: string;
+    }) => {
+      const query = new URLSearchParams({ type, page: String(page), pageSize: String(pageSize) });
+      if (search) query.set('q', search);
+      const response = await requestMainserverJson<{
+        readonly data: readonly IamContentOwnershipTarget[];
+        readonly pagination: Readonly<{ total: number }>;
+        readonly currentOwner: IamContentOwnershipTarget;
+      }>({
+        url: `${baseUrl}/targets?${query.toString()}`,
+        init: { headers: createMainserverReadHeaders(actingPrincipalType) },
+      });
+      setResolvedOwner(response.currentOwner);
+      return { items: response.data, total: response.pagination.total };
+    },
+    [actingPrincipalType, baseUrl]
+  );
+  React.useEffect(() => {
+    if (
+      resolution.kind !== 'ready' ||
+      !contentId ||
+      !transferSupported ||
+      !transferCapabilityConfirmed
+    ) {
+      setTransferAuthorized(false);
+      return;
+    }
+    let active = true;
+    void loadOwnershipTargets({ type: 'account', page: 1, pageSize: 1 }).then(
+      () => active && setTransferAuthorized(true),
+      () => active && setTransferAuthorized(false)
     );
+    return () => {
+      active = false;
+    };
+  }, [
+    contentId,
+    loadOwnershipTargets,
+    resolution.kind,
+    transferCapabilityConfirmed,
+    transferSupported,
+  ]);
+  if (resolution.kind === 'loading') {
+    return <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>;
   }
   if (resolution.kind === 'error') {
     return (
@@ -257,7 +425,51 @@ const MainserverResourcePrincipalBoundary = ({
       </Alert>
     );
   }
-  return <>{children(resolution.control)}</>;
+
+  const panel = (
+    <ContentOwnershipPanel
+      currentOwner={
+        resolvedOwner
+          ? {
+              principal: resolvedOwner.principal,
+              displayName: resolvedOwner.displayName,
+            }
+          : resolution.owner
+      }
+      supported={transferSupported && transferCapabilityConfirmed}
+      canTransfer={transferAuthorized}
+      labels={ownershipPanelLabels()}
+      loadTargets={loadOwnershipTargets}
+      resolveTransferError={resolveOwnershipTransferError}
+      onTransfer={async (target) => {
+        await requestMainserverJson({
+          url: `${baseUrl}/transfer`,
+          init: {
+            method: 'POST',
+            headers: createMainserverMutationHeaders(actingPrincipalType),
+            body: JSON.stringify({ targetPrincipal: target.principal }),
+          },
+        });
+        setResolvedOwner(target);
+        try {
+          await requestMainserverJson({
+            url: resolveMainserverDetailUrl(contentType, contentId),
+            init: { headers: createMainserverReadHeaders(actingPrincipalType) },
+          });
+        } catch {
+          await navigate({ to: '/content' });
+        }
+      }}
+    />
+  );
+  const saveHint = (
+    <p className="text-sm text-muted-foreground">{t('content.ownership.saveKeepsOwner')}</p>
+  );
+  return (
+    <ContentOwnershipSlotsProvider value={{ panel, saveHint }}>
+      {children(resolution.control)}
+    </ContentOwnershipSlotsProvider>
+  );
 };
 
 const AppPlaceholderRoutePage = () => (

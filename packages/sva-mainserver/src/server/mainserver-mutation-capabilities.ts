@@ -1,6 +1,7 @@
 const CONFIRMED_CAPABILITIES_ENV = 'SVA_MAINSERVER_CONFIRMED_CAPABILITIES';
 
 const defaultCapabilities = new Set([
+  'content.transferOwnership',
   'cockpit-cards.create',
   'cockpit-cards.delete',
   'cockpit-cards.update',

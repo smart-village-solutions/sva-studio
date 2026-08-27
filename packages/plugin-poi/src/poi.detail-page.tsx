@@ -30,6 +30,8 @@ import {
   addStudioCreatedSaveFeedback,
   addStudioDestructiveNavigationFeedback,
   Button,
+  ContentOwnershipPanelSlot,
+  ContentOwnershipSaveHint,
   contentMediaUsagesToLocalDrafts,
   createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
@@ -902,14 +904,17 @@ export function PoiDetailPage({
 
   const tabPanels = {
     basis: (
-      <PoiDetailBasisTab
-        availableCategories={categoryOptions}
-        categoryOptionsError={categoryOptionsError}
-        categoryOptionsLoading={categoryOptionsLoading}
-        loadedItem={loadedItem}
-        mode={mode}
-        pt={pt}
-      />
+      <div className="space-y-4">
+        {mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
+        <PoiDetailBasisTab
+          availableCategories={categoryOptions}
+          categoryOptionsError={categoryOptionsError}
+          categoryOptionsLoading={categoryOptionsLoading}
+          loadedItem={loadedItem}
+          mode={mode}
+          pt={pt}
+        />
+      </div>
     ),
     content: (
       <PoiDetailContentTab
@@ -967,16 +972,19 @@ export function PoiDetailPage({
         }
         primaryAction={
           canSave ? (
-            <StudioSaveButton
-              type="submit"
-              form={formId}
-              status={saveFeedback.status}
-              labels={{
-                idle: pt('actions.save'),
-                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-                saved: pt('actions.saved'),
-              }}
-            />
+            <div className="flex flex-col items-end gap-1">
+              <ContentOwnershipSaveHint />
+              <StudioSaveButton
+                type="submit"
+                form={formId}
+                status={saveFeedback.status}
+                labels={{
+                  idle: pt('actions.save'),
+                  saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
+                  saved: pt('actions.saved'),
+                }}
+              />
+            </div>
           ) : undefined
         }
         actions={
@@ -1067,9 +1075,6 @@ export function PoiDetailPage({
               label: pt(`principal.${actingPrincipalType}`),
             })}
             onChange={setActingPrincipalType}
-            dataProvider={mode === 'edit' ? loadedItem?.dataProvider : undefined}
-            dataProviderLabel={pt('principal.dataProvider')}
-            dataProviderUnavailableLabel={pt('principal.unavailable')}
           />
           <MainserverDeviationSummary
             deviations={deviations}

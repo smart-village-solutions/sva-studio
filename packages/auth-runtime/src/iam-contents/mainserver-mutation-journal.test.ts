@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
@@ -145,5 +146,29 @@ describe('Mainserver mutation journal', () => {
       resolverMode: 'shadow',
       shadowDifference: false,
     });
+  });
+
+  it('annotates the reserved operation with target provider and redacted transfer metadata', async () => {
+    state.query.mockResolvedValueOnce({ rows: [] });
+    const metadata = {
+      coverage: 'studio_mutations',
+      sourcePrincipalId: '11111111-1111-4111-8111-111111111111',
+      targetPrincipalId: '22222222-2222-4222-8222-222222222222',
+      targetBindingVersion: 'binding-1:2026-08-27T09:00:00.000Z',
+    };
+
+    await annotateMainserverMutationJournal({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'operation-1',
+      expectedDataProviderId: 'provider-target',
+      metadata,
+    });
+
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('preimage = COALESCE'), [
+      'de-musterhausen',
+      'operation-1',
+      'provider-target',
+      JSON.stringify(metadata),
+    ]);
   });
 });

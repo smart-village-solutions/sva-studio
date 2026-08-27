@@ -636,7 +636,8 @@ export const ContentEditorPage = ({
         <ContentOwnershipPanel
           currentOwner={{
             ...(currentOwner ? { principal: currentOwner } : {}),
-            displayName: currentOwner?.id ?? t('content.ownership.noOwner'),
+            displayName:
+              content?.ownerDisplayName ?? currentOwner?.id ?? t('content.ownership.noOwner'),
           }}
           supported={ownershipTransferSupported}
           canTransfer={canTransferOwnership}
@@ -665,6 +666,7 @@ export const ContentEditorPage = ({
             cancel: t('content.ownership.cancel'),
             confirm: t('content.ownership.confirm'),
             transferring: t('content.ownership.transferring'),
+            success: t('content.ownership.success'),
             transferError: t('content.ownership.error'),
           }}
           loadTargets={loadOwnershipTargets}

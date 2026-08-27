@@ -169,11 +169,22 @@ export const contentENResources = {
     confirmation: 'I confirm the transfer to the selected owner.',
     accessWarning: 'You may lose access to this content after the transfer.',
     localAuthorEffect: 'The visible author attribution remains unchanged for this local content.',
+    mainserverAuthorEffect:
+      'The content DataProvider assignment changes; a separate author attribution remains unchanged.',
     cancel: 'Cancel',
     confirm: 'Transfer now',
     transferring: 'Transferring…',
     success: 'The content was transferred successfully.',
     error: 'The content could not be transferred.',
+    permissionMissing: 'You do not have permission to transfer this content.',
+    targetInvalid: 'The selected target owner is no longer available.',
+    bindingInvalid:
+      'The DataProvider assignment changed or is ambiguous. Please reload the selection.',
+    credentialsMissing: 'No usable credentials are configured for the selected target owner.',
+    unsupported: 'This content type does not support ownership transfer.',
+    providerRejected: 'The Mainserver rejected the transfer.',
+    reconciliationRequired:
+      'The transfer result is ambiguous. Do not retry and have the operation reviewed.',
   },
   access: {
     states: {

@@ -18,6 +18,7 @@ import type {
   RouteDispatchDescriptor,
   ServerTransportComponent,
 } from './lib/server-entry-types';
+import { serverEntryRouteDispatchers } from './lib/server-entry-routes.server';
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
@@ -35,39 +36,6 @@ let dispatchAuthRouteRequestPromise: Promise<
 let ensureStudioJobWorkerStartedPromise: Promise<() => Promise<void>> | null = null;
 let registerStudioPluginOperationHandlersPromise: Promise<
   (typeof import('./lib/plugin-operation-runtime.server'))['registerStudioPluginOperationHandlers']
-> | null = null;
-let dispatchMainserverNewsRequestPromise: Promise<
-  (typeof import('./lib/mainserver-news-api.server'))['dispatchMainserverNewsRequest']
-> | null = null;
-let dispatchMainserverContentOwnershipRequestPromise: Promise<
-  (typeof import('./lib/mainserver-content-ownership-api.server'))['dispatchMainserverContentOwnershipRequest']
-> | null = null;
-let dispatchMainserverEventsRequestPromise: Promise<
-  (typeof import('./lib/mainserver-events-api.server'))['dispatchMainserverEventsRequest']
-> | null = null;
-let dispatchMainserverPoiRequestPromise: Promise<
-  (typeof import('./lib/mainserver-poi-api.server'))['dispatchMainserverPoiRequest']
-> | null = null;
-let dispatchMainserverSurveysRequestPromise: Promise<
-  (typeof import('./lib/mainserver-surveys-api.server'))['dispatchMainserverSurveysRequest']
-> | null = null;
-let dispatchMainserverGenericItemsRequestPromise: Promise<
-  (typeof import('./lib/mainserver-generic-items-api.server'))['dispatchMainserverGenericItemsRequest']
-> | null = null;
-let dispatchMainserverMetadataRequestPromise: Promise<
-  (typeof import('./lib/mainserver-metadata-api.server'))['dispatchMainserverMetadataRequest']
-> | null = null;
-let dispatchAggregatedContentListRequestPromise: Promise<
-  (typeof import('./lib/iam-content-list-api.server'))['dispatchAggregatedContentListRequest']
-> | null = null;
-let dispatchMapGeocodingRequestPromise: Promise<
-  (typeof import('./lib/map-geocoding-api.server'))['dispatchMapGeocodingRequest']
-> | null = null;
-let dispatchStudioChangelogRequestPromise: Promise<
-  (typeof import('./lib/studio-changelog-api.server'))['dispatchStudioChangelogRequest']
-> | null = null;
-let dispatchUserDocumentationRequestPromise: Promise<
-  (typeof import('./lib/user-documentation-api.server'))['dispatchUserDocumentationRequest']
 > | null = null;
 let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
@@ -101,91 +69,6 @@ const getRegisterStudioPluginOperationHandlers = async () => {
     );
   return registerStudioPluginOperationHandlersPromise;
 };
-const getDispatchMainserverNewsRequest = async () => {
-  dispatchMainserverNewsRequestPromise ??= import('./lib/mainserver-news-api.server').then(
-    (mod) => mod.dispatchMainserverNewsRequest
-  );
-  return dispatchMainserverNewsRequestPromise;
-};
-const getDispatchMainserverContentOwnershipRequest = async () => {
-  dispatchMainserverContentOwnershipRequestPromise ??=
-    import('./lib/mainserver-content-ownership-api.server').then(
-      (mod) => mod.dispatchMainserverContentOwnershipRequest
-    );
-  return dispatchMainserverContentOwnershipRequestPromise;
-};
-const getDispatchMainserverEventsRequest = async () => {
-  dispatchMainserverEventsRequestPromise ??= import('./lib/mainserver-events-api.server').then(
-    (mod) => mod.dispatchMainserverEventsRequest
-  );
-  return dispatchMainserverEventsRequestPromise;
-};
-const getDispatchMainserverPoiRequest = async () => {
-  dispatchMainserverPoiRequestPromise ??= import('./lib/mainserver-poi-api.server').then(
-    (mod) => mod.dispatchMainserverPoiRequest
-  );
-  return dispatchMainserverPoiRequestPromise;
-};
-const getDispatchMainserverSurveysRequest = async () => {
-  dispatchMainserverSurveysRequestPromise ??= import('./lib/mainserver-surveys-api.server').then(
-    (mod) => mod.dispatchMainserverSurveysRequest
-  );
-  return dispatchMainserverSurveysRequestPromise;
-};
-const getDispatchMainserverGenericItemsRequest = async () => {
-  dispatchMainserverGenericItemsRequestPromise ??=
-    import('./lib/mainserver-generic-items-api.server').then(
-      (mod) => mod.dispatchMainserverGenericItemsRequest
-    );
-  return dispatchMainserverGenericItemsRequestPromise;
-};
-const getDispatchMainserverMetadataRequest = async () => {
-  dispatchMainserverMetadataRequestPromise ??= import('./lib/mainserver-metadata-api.server').then(
-    (mod) => mod.dispatchMainserverMetadataRequest
-  );
-  return dispatchMainserverMetadataRequestPromise;
-};
-const getDispatchAggregatedContentListRequest = async () => {
-  dispatchAggregatedContentListRequestPromise ??= import('./lib/iam-content-list-api.server').then(
-    (mod) => mod.dispatchAggregatedContentListRequest
-  );
-  return dispatchAggregatedContentListRequestPromise;
-};
-const getDispatchMapGeocodingRequest = async () => {
-  dispatchMapGeocodingRequestPromise ??= import('./lib/map-geocoding-api.server').then(
-    (mod) => mod.dispatchMapGeocodingRequest
-  );
-  return dispatchMapGeocodingRequestPromise;
-};
-const getDispatchStudioChangelogRequest = async () => {
-  dispatchStudioChangelogRequestPromise ??= import('./lib/studio-changelog-api.server').then(
-    (mod) => mod.dispatchStudioChangelogRequest
-  );
-  return dispatchStudioChangelogRequestPromise;
-};
-const getDispatchUserDocumentationRequest = async () => {
-  dispatchUserDocumentationRequestPromise ??= import('./lib/user-documentation-api.server').then(
-    (mod) => mod.dispatchUserDocumentationRequest
-  );
-  return dispatchUserDocumentationRequestPromise;
-};
-const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
-  {
-    label: 'mainserver content ownership',
-    getDispatcher: getDispatchMainserverContentOwnershipRequest,
-  },
-  { label: 'mainserver news', getDispatcher: getDispatchMainserverNewsRequest },
-  { label: 'mainserver events', getDispatcher: getDispatchMainserverEventsRequest },
-  { label: 'mainserver poi', getDispatcher: getDispatchMainserverPoiRequest },
-  { label: 'mainserver surveys', getDispatcher: getDispatchMainserverSurveysRequest },
-  { label: 'mainserver generic items', getDispatcher: getDispatchMainserverGenericItemsRequest },
-  { label: 'mainserver metadata', getDispatcher: getDispatchMainserverMetadataRequest },
-  { label: 'aggregated content list', getDispatcher: getDispatchAggregatedContentListRequest },
-  { label: 'map geocoding', getDispatcher: getDispatchMapGeocodingRequest },
-  { label: 'studio changelog', getDispatcher: getDispatchStudioChangelogRequest },
-  { label: 'user documentation', getDispatcher: getDispatchUserDocumentationRequest },
-];
-
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
   if (devRuntimeRefreshEnabled) {
     pluginOperationHandlerRegistrationPromise ??= (async () => {

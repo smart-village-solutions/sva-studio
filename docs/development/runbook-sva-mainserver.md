@@ -118,7 +118,7 @@ Rollback erfolgt wie bei News über `iam.instance_integrations.enabled = false`.
 
 Der eingecheckte GraphQL-Vertrag führt die optionale Variable `dataProviderId` für News, Events, POI, Touren und Generic Items. Studio übernimmt diese ID niemals aus einem Browser-Request. Der serverseitige Adapter liest den Datensatz frisch mit den Credentials des Quellprincipals, vergleicht den aktuellen DataProvider mit dem erwarteten Quellwert, sendet die intern aufgelöste Ziel-ID an die bestehende Resource-Mutation und akzeptiert den Vorgang nur, wenn die Antwort denselben Ziel-DataProvider bestätigt.
 
-Der Studio-Adapter ist derzeit für News, Events, POI und Root-GenericItems implementiert. Touren bleiben trotz vorhandenem Upstream-Vertrag deaktiviert, solange das Studio keinen redaktionellen Tour-Detailadapter besitzt. Surveys, Legacy-SurveyPolls und Batch-Importe unterstützen keinen Inhabertransfer. Normale Update-Routen ändern den DataProvider nicht.
+Der Studio-Adapter ist derzeit für News, Events, POI und Root-GenericItems implementiert. Touren bleiben deaktiviert, weil der verifizierte Schema-Snapshot in `TourInput` kein `dataProviderId` anbietet und das Studio keinen redaktionellen Tour-Detailadapter besitzt. Surveys, Legacy-SurveyPolls und Batch-Importe unterstützen keinen Inhabertransfer. Normale Update-Routen ändern den DataProvider nicht.
 
 Die Migration `0087_iam_content_transfer_ownership_permission.sql` ergänzt ausschließlich Permission- und Rollenbestandsdaten. Tabellen, Spalten, Constraints, Indizes, RLS, Trigger und Datenbankfunktionen ändern sich nicht; deshalb bleibt der strukturelle Schema-Snapshot unverändert.
 

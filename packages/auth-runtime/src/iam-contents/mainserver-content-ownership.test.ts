@@ -24,6 +24,7 @@ vi.mock('./repository.js', () => ({
 
 import {
   listMainserverOwnershipTargets,
+  resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
 } from './mainserver-content-ownership.js';
 
@@ -71,6 +72,59 @@ describe('Mainserver ownership targets', () => {
         connection: { keycloakSubject: 'kc-target', actingPrincipalType: 'user' },
       },
     });
+  });
+
+  it('derives the current owner only from one verified active DataProvider binding', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [
+        {
+          principal_type: 'organization',
+          principal_id: '22222222-2222-4222-8222-222222222222',
+          data_provider_id: 'provider-source',
+          data_provider_name: 'Quellorganisation',
+        },
+      ],
+    });
+
+    await expect(
+      resolveMainserverOwnershipSource({
+        instanceId: 'instance-1',
+        dataProviderId: 'provider-source',
+      })
+    ).resolves.toEqual({
+      principal: {
+        type: 'organization',
+        id: '22222222-2222-4222-8222-222222222222',
+      },
+      dataProviderId: 'provider-source',
+      dataProviderName: 'Quellorganisation',
+    });
+  });
+
+  it('does not invent a source owner for ambiguous bindings', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [
+        {
+          principal_type: 'user',
+          principal_id: '11111111-1111-4111-8111-111111111111',
+          data_provider_id: 'provider-source',
+          data_provider_name: null,
+        },
+        {
+          principal_type: 'organization',
+          principal_id: '22222222-2222-4222-8222-222222222222',
+          data_provider_id: 'provider-source',
+          data_provider_name: null,
+        },
+      ],
+    });
+
+    await expect(
+      resolveMainserverOwnershipSource({
+        instanceId: 'instance-1',
+        dataProviderId: 'provider-source',
+      })
+    ).resolves.toBeUndefined();
   });
 
   it('uses organizational credentials without impersonating the target account', async () => {
@@ -121,6 +175,62 @@ describe('Mainserver ownership targets', () => {
     ).resolves.toEqual({ ok: false, code: 'content_transfer_target_binding_conflict' });
   });
 
+  it.each([
+    ['deleted', undefined],
+    ['blocked', { keycloak_subject: 'kc-target', is_active: false }],
+    ['instance foreign', undefined],
+  ])('rejects an %s account before resolving credentials', async (_caseName, row) => {
+    state.query.mockResolvedValueOnce({ rows: row ? [row] : [] });
+
+    await expect(
+      resolveMainserverOwnershipTarget({
+        instanceId: 'instance-1',
+        actorKeycloakSubject: 'kc-actor',
+        principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
+      })
+    ).resolves.toEqual({ ok: false, code: 'content_transfer_target_invalid' });
+    expect(state.readCredentials).not.toHaveBeenCalled();
+  });
+
+  it('rejects a target without usable credentials', async () => {
+    state.readCredentials.mockResolvedValueOnce({ status: 'missing_credentials' });
+
+    await expect(
+      resolveMainserverOwnershipTarget({
+        instanceId: 'instance-1',
+        actorKeycloakSubject: 'kc-actor',
+        principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
+      })
+    ).resolves.toEqual({ ok: false, code: 'content_transfer_target_credentials_missing' });
+  });
+
+  it('distinguishes a missing binding from duplicate current bindings', async () => {
+    state.loadBinding.mockResolvedValue(undefined);
+    state.query
+      .mockResolvedValueOnce({ rows: [{ keycloak_subject: 'kc-target', is_active: true }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      resolveMainserverOwnershipTarget({
+        instanceId: 'instance-1',
+        actorKeycloakSubject: 'kc-actor',
+        principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
+      })
+    ).resolves.toEqual({ ok: false, code: 'content_transfer_target_binding_missing' });
+
+    state.query
+      .mockResolvedValueOnce({ rows: [{ keycloak_subject: 'kc-target', is_active: true }] })
+      .mockResolvedValueOnce({ rows: [{ status: 'verified' }, { status: 'verified' }] });
+
+    await expect(
+      resolveMainserverOwnershipTarget({
+        instanceId: 'instance-1',
+        actorKeycloakSubject: 'kc-actor',
+        principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
+      })
+    ).resolves.toEqual({ ok: false, code: 'content_transfer_target_binding_conflict' });
+  });
+
   it('filters unresolved targets and the current provider from a paginated result', async () => {
     state.loadTargets.mockResolvedValue({
       items: [
@@ -155,6 +265,6 @@ describe('Mainserver ownership targets', () => {
         pageSize: 10,
         currentDataProviderId: 'provider-target',
       })
-    ).resolves.toEqual({ items: [], page: 1, pageSize: 10, total: 2 });
+    ).resolves.toEqual({ items: [], page: 1, pageSize: 10, total: 0 });
   });
 });

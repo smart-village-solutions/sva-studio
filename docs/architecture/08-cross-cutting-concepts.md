@@ -883,3 +883,10 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Die Wiki-Publikation folgt der versionierten Positivliste. Ausgeschlossene, weiterhin referenzierte Nachweise werden über explizite Repository-Links erreicht.
 - `pnpm check:docs` validiert die aktuelle Positivliste blockierend gegen relative Linkziele, Erreichbarkeit ab `docs/README.md`, ADR-Datei/Index-Parität und die Wiki-Einstiege. Historische sowie externe Bestände bleiben bewusst außerhalb dieses Gültigkeitsbereichs.
 - Der Rolloutvertrag bleibt pfadstabil und ausschließlich unter `docs/guides/studio-rollout-process.md` normativ.
+
+### Inhaberschaft, Autorisierung und Audit
+
+- `content.transferOwnership` ist von normaler Metadatenbearbeitung getrennt und wird gegen den aktuellen Source-Scope geprüft.
+- Aktueller Inhaber ist der gegenwärtige Owner beziehungsweise Mainserver-DataProvider, niemals eine Rekonstruktion aus Audit oder Historie.
+- Transferaudits verwenden die Coverage `studio_mutations` und technische Principal-, Provider-, Operations- und Binding-Referenzen ohne E-Mail-Adressen oder Secrets.
+- Bestätigte Upstream-Erfolge werden durch lokale Folgefehler nicht als Rollback dargestellt.

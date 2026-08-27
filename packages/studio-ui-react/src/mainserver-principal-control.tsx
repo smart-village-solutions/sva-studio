@@ -39,8 +39,8 @@ export type MainserverPrincipalControlProps = Readonly<{
   options: readonly MainserverPrincipalOption[];
   onChange: (value: MainserverPrincipalType) => void;
   dataProvider?: Readonly<{ id?: string; name?: string }> | null;
-  dataProviderLabel: string;
-  dataProviderUnavailableLabel: string;
+  dataProviderLabel?: string;
+  dataProviderUnavailableLabel?: string;
 }>;
 
 const resolveOptionLabel = (
@@ -82,7 +82,7 @@ export const MainserverPrincipalControl = ({
         )}
       </StudioField>
 
-      {dataProvider !== undefined ? (
+      {dataProvider !== undefined && dataProviderLabel && dataProviderUnavailableLabel ? (
         <dl className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm">
           <div className="space-y-1">
             <dt className="font-medium text-foreground">{dataProviderLabel}</dt>

@@ -568,7 +568,11 @@ Zuordnung:
 ### Fortschreibung 2026-08: DataProvider als Mainserver-Inhaber
 
 - ADR-021 bleibt für die serverseitige Mainserver-Integrationsgrenze maßgeblich. ADR-052 supersediert ADR-045 und trennt Create-Policy, IAM-Read-Scope und Bestandsprincipal; die Credential-, Secret- und Isolationsregeln bleiben erhalten.
-- Präzisiert wird, dass der Mainserver-DataProvider der unveränderliche ursprüngliche Inhaber ist, während der Actor und der explizit ausgewählte persönliche oder organisatorische Mutationsprincipal getrennt bleiben.
+- ADR-054 präzisiert die spätere Transfersemantik: Der Mainserver-DataProvider ist der aktuelle, aber über einen ausdrücklich autorisierten Transferpfad veränderbare Inhaber. Actor, Mutationsprincipal und Inhaber bleiben getrennt.
 - Bindungen entstehen ausschließlich aus stabiler Identity-Evidenz beziehungsweise der garantierten Organisations-Provisioning-Antwort. Namens-Mapping und administrative Zuordnung sind ausgeschlossen.
 - Die Einführung erfolgt additiv über einen versionierten V2-Transport sowie beobachtbare Shadow-, Automatic- und Compatibility-Modi. Diese Betriebszustände ändern keine fachliche Source-of-Truth-Entscheidung.
 - Der vollständige Betriebsvertrag steht im [Guide zur Mainserver-DataProvider-Autorenschaft](../development/mainserver-data-provider-authoring.md).
+
+Zuordnung:
+
+- Abschnitt 03/04/05/06/08/09: [ADR-054](../adr/ADR-054-kontrollierter-inhabertransfer-fuer-inhalte.md)

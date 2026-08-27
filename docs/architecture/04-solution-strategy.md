@@ -243,6 +243,10 @@ oder einen begründeten Ausschluss. Ein generierter Katalog verbindet diesen Ver
 eigenständig veröffentlichten Hilfe-Repository. Das Studio lädt stets dessen aktuellen Stand über
 eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht eingeführt.
 
+### Ergänzung 2026-08: Expliziter Inhabertransfer
+
+Inhaltsupdates und Inhaberwechsel sind getrennte Befehle. Ein gemeinsamer Editorvertrag zeigt den frisch gelesenen Inhaber und wiederholt am Save, dass Bearbeitung keine Übertragung auslöst. Der Transfer löst Ziel-Principal, Credentials und DataProvider-Binding serverseitig auf und revalidiert sie unter Lock.
+
 ### Ergänzung 2026-08: Lokale Dokumentationsarchitektur
 
 `docs/README.md` ist der zentrale Einstieg in die aktuelle lokale Wissensbasis. Die Bereichsindizes unter `docs/development/`, `docs/operations/`, `docs/reference/` und `docs/governance/` beschreiben jeweils Zweck, Zielgruppe, Autorität, Ownership und Pflege-Trigger. arc42 und die kanonischen ADRs behalten ihre eigene Architekturautorität. `pnpm check:docs` erzwingt relative Linkintegrität, Index-Erreichbarkeit, ADR-Parität und die Grenzen der Wiki-Publikation.

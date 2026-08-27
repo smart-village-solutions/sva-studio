@@ -136,10 +136,12 @@ export {
 } from './iam-contents/mainserver-data-provider-bindings.js';
 export {
   listMainserverOwnershipTargets,
+  resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
   withMainserverContentOwnershipLock,
   type MainserverOwnershipTargetErrorCode,
   type ResolvedMainserverOwnershipTarget,
+  type ResolvedMainserverOwnershipSource,
   type ResolveMainserverOwnershipTargetResult,
 } from './iam-contents/mainserver-content-ownership.js';
 export {
@@ -148,6 +150,7 @@ export {
   type ReconcileDeletedUserDataProviderConflictResult,
 } from './iam-contents/mainserver-data-provider-conflict-reconciliation.js';
 export {
+  annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,

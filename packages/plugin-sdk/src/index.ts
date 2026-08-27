@@ -9,7 +9,6 @@ export const pluginSdkPackageRoles = [
   'content-types',
   'plugin-i18n',
 ] as const satisfies readonly PluginSdkPackageRole[];
-
 export type {
   AdminResourceDefinition,
   AdminResourceBulkActionSelectionMode,
@@ -231,6 +230,7 @@ export {
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
   createMainserverMutationHeaders,
+  createMainserverReadHeaders,
   CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER,
   fetchIamContentHistory,
   buildMainserverListUrl,

@@ -173,11 +173,23 @@ export const contentDEResources = {
     confirmation: 'Ich bestätige die Übertragung an den ausgewählten Inhaber.',
     accessWarning: 'Nach der Übertragung kannst du den Zugriff auf diesen Inhalt verlieren.',
     localAuthorEffect: 'Die sichtbare Autorenanzeige bleibt bei diesem lokalen Inhalt unverändert.',
+    mainserverAuthorEffect:
+      'Die DataProvider-Zuordnung des Inhalts wird geändert; eine getrennte Autorenangabe bleibt unverändert.',
     cancel: 'Abbrechen',
     confirm: 'Jetzt übertragen',
     transferring: 'Wird übertragen …',
     success: 'Der Inhalt wurde erfolgreich übertragen.',
     error: 'Der Inhalt konnte nicht übertragen werden.',
+    permissionMissing: 'Dir fehlt die Berechtigung, diesen Inhalt zu übertragen.',
+    targetInvalid: 'Der ausgewählte Zielinhaber ist nicht mehr verfügbar.',
+    bindingInvalid:
+      'Die DataProvider-Zuordnung hat sich geändert oder ist nicht eindeutig. Bitte lade die Auswahl neu.',
+    credentialsMissing:
+      'Für den ausgewählten Zielinhaber sind keine verwendbaren Zugangsdaten hinterlegt.',
+    unsupported: 'Dieser Inhaltstyp unterstützt die Übertragung nicht.',
+    providerRejected: 'Der Mainserver hat die Übertragung abgelehnt.',
+    reconciliationRequired:
+      'Das Ergebnis der Übertragung ist nicht eindeutig. Bitte starte keinen weiteren Versuch und lasse den Vorgang prüfen.',
   },
   access: {
     states: {

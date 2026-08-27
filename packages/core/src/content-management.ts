@@ -163,6 +163,7 @@ export type IamContentListItem = {
   readonly organizationId?: string;
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;
+  readonly ownerDisplayName?: string;
   readonly title: string;
   readonly publishedAt?: string;
   readonly publishFrom?: string;

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  annotateJournal: vi.fn(),
   listTargets: vi.fn(),
   resolveActorInfo: vi.fn(),
+  resolveSource: vi.fn(),
   resolveTarget: vi.fn(),
   validateCsrf: vi.fn(),
   withLock: vi.fn(),
@@ -19,8 +21,10 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/auth-runtime/server')>()),
+  annotateMainserverMutationJournal: state.annotateJournal,
   listMainserverOwnershipTargets: state.listTargets,
   resolveActorInfo: state.resolveActorInfo,
+  resolveMainserverOwnershipSource: state.resolveSource,
   resolveMainserverOwnershipTarget: state.resolveTarget,
   validateCsrf: state.validateCsrf,
   withAuthenticatedUser: vi.fn(async (request: Request, callback: (ctx: unknown) => unknown) =>
@@ -87,6 +91,14 @@ describe('Mainserver content ownership route', () => {
     vi.clearAllMocks();
     state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: 'instance-1' } });
     state.resolveMutationActor.mockResolvedValue(actor);
+    state.resolveSource.mockResolvedValue({
+      principal: {
+        type: 'account',
+        id: '11111111-1111-4111-8111-111111111111',
+      },
+      dataProviderId: 'provider-source',
+      dataProviderName: 'Quelle',
+    });
     state.resolveResourceAccess.mockResolvedValue({ 'content.transferOwnership': true });
     state.authorize.mockResolvedValue({ authorizationMode: 'exact' });
     state.getNews.mockResolvedValue({
@@ -141,6 +153,10 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       data: [{ displayName: 'Zielorganisation' }],
       pagination: { total: 1 },
+      currentOwner: {
+        principal: { type: 'account' },
+        displayName: 'Quelle',
+      },
     });
     expect(state.resolveResourceAccess).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -174,10 +190,27 @@ describe('Mainserver content ownership route', () => {
         targetDataProviderId: 'provider-target',
       })
     );
+    expect(state.annotateJournal).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      operationExternalId: 'operation-1',
+      expectedDataProviderId: 'provider-target',
+      metadata: expect.objectContaining({
+        coverage: 'studio_mutations',
+        sourcePrincipalType: 'account',
+        targetPrincipalType: 'organization',
+        sourceDataProviderId: 'provider-source',
+        targetDataProviderId: 'provider-target',
+        targetBindingVersion: target.bindingVersion,
+      }),
+    });
+    expect(state.annotateJournal.mock.invocationCallOrder[0]).toBeLessThan(
+      state.transfer.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
     expect(state.finalize).toHaveBeenCalledWith(
       expect.objectContaining({
         providerOutcome: 'succeeded',
         observedDataProviderId: 'provider-target',
+        ownershipTransfer: expect.objectContaining({ coverage: 'studio_mutations' }),
       })
     );
   });

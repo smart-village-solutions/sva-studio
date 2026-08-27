@@ -27,6 +27,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@sva/core": ["../../packages/core/src/index.ts"],
+      "@sva/core/rich-text-html": ["../../packages/core/src/rich-text-html.ts"],
       "@sva/core/security": ["../../packages/core/src/security/index.ts"],
       "@sva/auth-runtime": ["../../packages/auth-runtime/src/index.ts"],
       "@sva/auth-runtime/routes": ["../../packages/auth-runtime/src/routes.ts"],

@@ -8,7 +8,6 @@ const poiEditorTranslations = {
   editTitle: 'Ort bearbeiten',
   editDescription: 'Aktualisieren oder löschen Sie den Ort.',
 };
-
 export const poiTranslationsDe = createPoiLocaleTranslations({
   navigation: { title: 'Orte' },
   list: { title: 'Orte', description: 'Orte aus dem Mainserver bearbeiten.' },

@@ -40,7 +40,6 @@ type NewsContentTextSectionProps = Readonly<{
   bodyField: ContentFieldBindings;
   setValue: ReturnType<typeof useFormContext<NewsDetailFormValues>>['setValue'];
 }>;
-
 function NewsContentTextSection({
   pt,
   title,

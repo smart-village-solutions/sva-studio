@@ -65,6 +65,49 @@ describe('documentation integrity', () => {
     });
   });
 
+  it('does not treat links from articles as area-index navigation', () => {
+    const files = new Map(validFiles);
+    files.set('docs/development/setup.md', '# Setup\n\n[Vertiefung](./details.md)\n');
+    files.set('docs/development/details.md', '# Details\n');
+    const publishedPaths = new Set([
+      ...createInput().publishedPaths,
+      'docs/development/details.md',
+    ]);
+    const trackedPaths = new Set([...createInput().trackedPaths, 'docs/development/details.md']);
+
+    expect(
+      checkDocumentationIntegrity(createInput({ files, publishedPaths, trackedPaths }))
+    ).toContainEqual({
+      code: 'unreachable-page',
+      line: 1,
+      path: 'docs/development/details.md',
+      reason: 'nicht von docs/README.md über Bereichsindizes erreichbar',
+    });
+  });
+
+  it('does not treat images as area-index navigation', () => {
+    const files = new Map(validFiles);
+    files.set(
+      'docs/development/README.md',
+      '# Entwicklung\n\n[Setup](./setup.md)\n\n![Vertiefung](./details.md)\n'
+    );
+    files.set('docs/development/details.md', '# Details\n');
+    const publishedPaths = new Set([
+      ...createInput().publishedPaths,
+      'docs/development/details.md',
+    ]);
+    const trackedPaths = new Set([...createInput().trackedPaths, 'docs/development/details.md']);
+
+    expect(
+      checkDocumentationIntegrity(createInput({ files, publishedPaths, trackedPaths }))
+    ).toContainEqual(
+      expect.objectContaining({
+        code: 'unreachable-page',
+        path: 'docs/development/details.md',
+      })
+    );
+  });
+
   it('reports ADR files missing from the canonical index', () => {
     const files = new Map(validFiles);
     files.set('docs/adr/README.md', '# ADRs\n');

@@ -18,6 +18,9 @@ interface DocumentationGraph {
   publishedMarkdown: ReadonlySet<string>;
 }
 
+const isDocumentationIndex = (repositoryPath: string): boolean =>
+  repositoryPath === DOCUMENTATION_ENTRYPOINT || repositoryPath.endsWith('/README.md');
+
 const inspectPublishedMarkdown = (input: DocumentationIntegrityInput): DocumentationGraph => {
   const issues: DocumentationIssue[] = [];
   const publishedMarkdown = new Set(
@@ -66,7 +69,11 @@ const inspectPublishedMarkdown = (input: DocumentationIntegrityInput): Documenta
           path: sourcePath,
           reason: `relatives Linkziel liegt außerhalb der aktuellen Wiki-Publikation: ${target}`,
         });
-      } else if (publishedMarkdown.has(target)) {
+      } else if (
+        link.navigation &&
+        isDocumentationIndex(sourcePath) &&
+        publishedMarkdown.has(target)
+      ) {
         reachableTargets.add(target);
       }
     }

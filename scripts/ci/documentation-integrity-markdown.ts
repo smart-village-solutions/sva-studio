@@ -7,6 +7,7 @@ import { visit } from 'unist-util-visit';
 
 export interface MarkdownLink {
   line: number;
+  navigation: boolean;
   url: string;
 }
 
@@ -43,12 +44,20 @@ export const parseMarkdownLinks = (content: string): MarkdownLink[] => {
     const positionedNode = node as Link | Image | LinkReference | ImageReference;
     const line = positionedNode.position?.start.line ?? 1;
     if (positionedNode.type === 'link' || positionedNode.type === 'image') {
-      links.push({ line, url: positionedNode.url });
+      links.push({
+        line,
+        navigation: positionedNode.type === 'link',
+        url: positionedNode.url,
+      });
       return;
     }
     const definition = definitions.get(positionedNode.identifier.toLowerCase());
     if (definition) {
-      links.push({ line, url: definition.url });
+      links.push({
+        line,
+        navigation: positionedNode.type === 'linkReference',
+        url: definition.url,
+      });
     }
   });
   return links;

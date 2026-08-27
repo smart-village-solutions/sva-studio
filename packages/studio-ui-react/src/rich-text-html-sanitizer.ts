@@ -5,7 +5,6 @@ import {
 } from '@sva/core/rich-text-html-policy';
 
 const SAFE_BLANK_TARGET_REL = 'noopener noreferrer';
-let browserPurifier: ReturnType<typeof DOMPurify> | undefined;
 
 const isAllowedHref = (value: string): boolean => {
   const trimmed = value.trim();
@@ -66,8 +65,7 @@ export const sanitizeRichTextEditorHtml = (value: string): string => {
     return value;
   }
 
-  browserPurifier ??= DOMPurify(window);
-  const sanitized = browserPurifier.sanitize(value, {
+  const sanitized = DOMPurify.sanitize(value, {
     ALLOWED_TAGS: [...RICH_TEXT_ALLOWED_TAGS],
     ALLOWED_ATTR: ['href', 'target', 'rel', 'start'],
     ALLOW_ARIA_ATTR: false,

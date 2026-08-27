@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { sanitizeRichTextEditorHtml } from './rich-text-html-sanitizer.js';
 
@@ -29,5 +29,31 @@ describe('sanitizeRichTextEditorHtml', () => {
         '<a href="mailto:test@example.org">Mail</a>' +
         '<ol start="3"><li>Drei</li></ol><ol><li>Eins</li></ol>'
     );
+  });
+
+  it('rejects ambiguous and unsupported links while keeping safe relative links', () => {
+    expect(
+      sanitizeRichTextEditorHtml(
+        '<a href="">Leer</a>' +
+          '<a href="//example.org/path">Protokollrelativ</a>' +
+          '<a href="/intern">Intern</a>' +
+          '<a href="ftp://example.org/file">FTP</a>' +
+          '<a href="https://[">Ungültig</a>'
+      )
+    ).toBe(
+      '<a>Leer</a><a>Protokollrelativ</a><a href="/intern">Intern</a>' +
+        '<a>FTP</a><a>Ungültig</a>'
+    );
+  });
+
+  it('defers sanitization when rendered without a browser document', () => {
+    const value = '<p>Serverseitiger Editorwert</p>';
+    vi.stubGlobal('document', undefined);
+
+    try {
+      expect(sanitizeRichTextEditorHtml(value)).toBe(value);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

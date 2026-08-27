@@ -31,7 +31,7 @@ const normalizeAllowedAttributes = (value: string): string => {
   for (const element of Array.from(template.content.querySelectorAll('*'))) {
     if (element.tagName.toLowerCase() === 'a') {
       const href = element.getAttribute('href');
-      if (href && !isAllowedHref(href)) {
+      if (href !== null && !isAllowedHref(href)) {
         element.removeAttribute('href');
       }
 

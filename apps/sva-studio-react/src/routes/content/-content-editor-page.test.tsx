@@ -316,7 +316,9 @@ describe('ContentEditorPage', () => {
     expect(
       screen.getAllByText('Normales Speichern ändert den Inhaber nicht.').length
     ).toBeGreaterThan(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Inhalt übertragen' })
+    );
     await waitFor(() => expect(screen.getByText('Neuer Account')).toBeTruthy());
     fireEvent.click(screen.getByRole('radio', { name: /Neuer Account/ }));
     fireEvent.click(
@@ -375,7 +377,9 @@ describe('ContentEditorPage', () => {
 
     render(<ContentEditorPage mode="edit" contentId="content-1" />);
     await waitFor(() => expect(screen.getByText('Bisherige Organisation')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Inhalt übertragen' })
+    );
     fireEvent.change(screen.getByRole('combobox', { name: 'Art des Zielinhabers' }), {
       target: { value: 'organization' },
     });

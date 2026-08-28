@@ -1,0 +1,171 @@
+name: CI Gate Topology Shadow (Main and Nightly)
+
+concurrency:
+  group: ci-gates-main-shadow-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: CI Shadow Main / Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm test:eslint
+
+  unit:
+    name: CI Shadow Main / Unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm test:unit
+
+  types:
+    name: CI Shadow Main / Types
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm test:types
+
+  coverage:
+    name: CI Shadow Main / Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      REDIS_URL: redis://127.0.0.1:6379
+      COVERAGE_GATE_REQUIRE_SUMMARIES: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - name: Start Redis
+        run: docker run -d --name sva-studio-redis-main-shadow -p 6379:6379 redis:7-alpine
+      - name: Wait for Redis readiness
+        run: |
+          set -euo pipefail
+          for i in {1..30}; do
+            if docker exec sva-studio-redis-main-shadow redis-cli -p 6379 ping | grep -q PONG; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Run full Coverage contract
+        run: |
+          pnpm test:coverage
+          pnpm coverage-gate
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f sva-studio-redis-main-shadow || true
+
+  complexity:
+    name: CI Shadow Main / Complexity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm complexity-gate
+
+  integration:
+    name: CI Shadow Main / Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run full Integration contract
+        env:
+          POSTGRES_PASSWORD: test-postgres-password
+          APP_DB_USER: sva_app
+          APP_DB_PASSWORD: test-app-password
+          REDIS_PASSWORD: test-redis-password
+          SVA_RUNTIME_PROFILE: studio
+        run: pnpm test:integration
+
+  file-placement:
+    name: CI Shadow Main / File Placement
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: |
+          pnpm check:file-placement
+          pnpm check:rollout-docs
+
+  a11y:
+    name: CI Shadow Main / A11y
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm test:a11y
+
+  documentation-integrity:
+    name: CI Shadow Main / Documentation Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm check:docs
+
+  documentation-catalog:
+    name: CI Shadow Main / Documentation Catalog (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - continue-on-error: true
+        run: pnpm nx run sva-studio-react:check:documentation-catalog
+
+  db-schema:
+    name: CI Shadow Main / DB Schema Snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts

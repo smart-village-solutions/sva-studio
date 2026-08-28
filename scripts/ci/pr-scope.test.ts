@@ -6,6 +6,7 @@ import {
   resolveChangedFiles,
   type PrScopeDecision,
 } from './pr-scope.ts';
+import { createPrScopeEvidence, parsePrScopeEvidence } from './pr-scope.cli.ts';
 
 const expectDecision = (decision: PrScopeDecision, expected: Partial<PrScopeDecision>): void => {
   expect(decision).toMatchObject(expected);
@@ -107,7 +108,41 @@ describe('pr-scope', () => {
       coverageMode: 'skip',
       integrationMode: 'skip',
       appBuildMode: 'skip',
+      documentationCatalogMode: 'skip',
+      dbSchemaMode: 'skip',
     });
+  });
+
+  it('keeps documentation catalog scope visible for its docs-owned snapshot', () => {
+    const decision = classifyPrScope(['docs/user-documentation/page-catalog.json']);
+
+    expectDecision(decision, {
+      codeRelevant: false,
+      qualityGateMode: 'skip',
+      documentationCatalogMode: 'full',
+      dbSchemaMode: 'skip',
+    });
+  });
+
+  it('keeps DB schema scope visible for migration and documentation changes', () => {
+    expectDecision(classifyPrScope(['packages/data/migrations/20260828_shadow.sql']), {
+      dbSchemaMode: 'full',
+    });
+    expectDecision(classifyPrScope(['docs/development/studio-db-schema.md']), {
+      codeRelevant: false,
+      dbSchemaMode: 'full',
+    });
+  });
+
+  it('creates and validates versioned Base-/Head-bound scope evidence', () => {
+    const decision = classifyPrScope(['packages/core/src/index.ts']);
+    const evidence = createPrScopeEvidence(decision, 'base-sha', 'head-sha');
+
+    expect(parsePrScopeEvidence(evidence, 'base-sha', 'head-sha')).toEqual(evidence);
+    expect(() => parsePrScopeEvidence(evidence, 'base-sha', 'other-head')).toThrow(/erwartet ist/u);
+    expect(() =>
+      parsePrScopeEvidence({ ...evidence, schemaVersion: 2 }, 'base-sha', 'head-sha')
+    ).toThrow(/Schema-Version/u);
   });
 
   it('escalates root tooling changes to full quality and coverage gates', () => {

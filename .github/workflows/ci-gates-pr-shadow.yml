@@ -47,12 +47,15 @@ jobs:
           --head ${{ github.event.pull_request.head.sha }}
           --github-output
           --evidence-path artifacts/ci-shadow/pr-scope.json
+          --legacy-evidence-path artifacts/ci-shadow/legacy-pr-scope.json
 
       - name: Upload canonical scope evidence
         uses: actions/upload-artifact@v7
         with:
           name: ci-gate-shadow-scope-${{ github.run_id }}
-          path: artifacts/ci-shadow/pr-scope.json
+          path: |
+            artifacts/ci-shadow/pr-scope.json
+            artifacts/ci-shadow/legacy-pr-scope.json
           if-no-files-found: error
           overwrite: true
           retention-days: 30
@@ -356,7 +359,7 @@ jobs:
 
   parity:
     name: CI Shadow / Parity
-    if: always() && needs.scope.result == 'success'
+    if: always()
     needs:
       - scope
       - lint
@@ -387,28 +390,54 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Download canonical scope evidence
+        id: scope-evidence
+        continue-on-error: true
         uses: actions/download-artifact@v8
         with:
           name: ci-gate-shadow-scope-${{ github.run_id }}
           path: artifacts/ci-shadow
-      - name: Read latest check runs for the exact PR head
+      - name: Wait for exact-head terminal checks and compare parity
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
         run: |
+          set -euo pipefail
           mkdir -p artifacts/ci-shadow
-          gh api \
-            -H 'Accept: application/vnd.github+json' \
-            "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
-            > artifacts/ci-shadow/check-runs.json
-      - name: Compare legacy and shadow gate results
-        run: >-
-          node scripts/ci/ci-gate-shadow-parity.ts
-          --checks artifacts/ci-shadow/check-runs.json
-          --scope artifacts/ci-shadow/pr-scope.json
-          --output artifacts/ci-shadow/parity.json
-          --base ${{ github.event.pull_request.base.sha }}
-          --head ${{ github.event.pull_request.head.sha }}
+          for attempt in {1..40}; do
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
+              > artifacts/ci-shadow/check-runs.json
+            set +e
+            node scripts/ci/ci-gate-shadow-parity.ts \
+              --checks artifacts/ci-shadow/check-runs.json \
+              --scope artifacts/ci-shadow/pr-scope.json \
+              --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \
+              --output artifacts/ci-shadow/parity.json \
+              --base "$BASE_SHA" \
+              --head "$HEAD_SHA" \
+              --scope-result "$SCOPE_RESULT"
+            parity_status=$?
+            set -e
+            if [ "$parity_status" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$parity_status" -eq 1 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
+          node scripts/ci/ci-gate-shadow-parity.ts \
+            --checks artifacts/ci-shadow/check-runs.json \
+            --scope artifacts/ci-shadow/pr-scope.json \
+            --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \
+            --output artifacts/ci-shadow/parity.json \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --scope-result "$SCOPE_RESULT" \
+            --fail-pending
       - name: Upload topology parity evidence
         if: always()
         uses: actions/upload-artifact@v7

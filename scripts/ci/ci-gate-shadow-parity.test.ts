@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createScopeFailureEvidence,
   evaluateCiGateShadowParity,
   gateMappings,
   type GitHubCheckRun,
@@ -40,6 +41,7 @@ describe('ci-gate-shadow-parity', () => {
     const result = evaluateCiGateShadowParity(
       allChecks(),
       scope,
+      scope,
       new Date('2026-08-28T11:00:00.000Z')
     );
 
@@ -55,7 +57,7 @@ describe('ci-gate-shadow-parity', () => {
         : entry
     );
 
-    const result = evaluateCiGateShadowParity(checks, scope);
+    const result = evaluateCiGateShadowParity(checks, scope, scope);
 
     expect(result.mismatches).toEqual([]);
     expect(result.gates.find((gate) => gate.gate === 'Types')).toMatchObject({
@@ -84,7 +86,7 @@ describe('ci-gate-shadow-parity', () => {
     ],
   ])('fails closed for %s check evidence', (_name, mutate) => {
     expect(
-      evaluateCiGateShadowParity(mutate(allChecks()), scope).mismatches.length
+      evaluateCiGateShadowParity(mutate(allChecks()), scope, scope).mismatches.length
     ).toBeGreaterThan(0);
   });
 
@@ -93,8 +95,37 @@ describe('ci-gate-shadow-parity', () => {
       entry.name === 'CI Shadow / Coverage Complete' ? { ...entry, conclusion: 'failure' } : entry
     );
 
-    expect(evaluateCiGateShadowParity(checks, scope).mismatches).toContain(
+    expect(evaluateCiGateShadowParity(checks, scope, scope).mismatches).toContain(
       'Coverage: Bestand=passed, Shadow=failed'
     );
+  });
+
+  it('fails closed when the centralized and legacy scope plans differ', () => {
+    const legacyScope = createPrScopeEvidence(classifyPrScope(['README.md']), 'base', headSha);
+
+    const result = evaluateCiGateShadowParity(allChecks(), scope, legacyScope);
+
+    expect(result.scopeMatches).toBe(false);
+    expect(result.hardMismatchCount).toBe(1);
+    expect(result.mismatches).toContain(
+      'PR-Scope: zentraler Shadow-Plan weicht vom Legacy-HEAD-Plan ab'
+    );
+  });
+
+  it('records missing scope evidence as a hard mismatch', () => {
+    const result = createScopeFailureEvidence(
+      'base',
+      headSha,
+      'Scope-Job endete mit failure',
+      new Date('2026-08-28T11:00:00.000Z')
+    );
+
+    expect(result).toMatchObject({
+      scopeMatches: false,
+      gates: [],
+      awaitingChecks: false,
+      hardMismatchCount: 1,
+    });
+    expect(result.mismatches[0]).toContain('Scope-Job endete mit failure');
   });
 });

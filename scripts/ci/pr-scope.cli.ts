@@ -10,6 +10,7 @@ interface PrScopeCliOptions {
   githubOutput: boolean;
   json: boolean;
   evidencePath: string | null;
+  legacyEvidencePath: string | null;
 }
 
 const parseCliOptions = (args: readonly string[]): PrScopeCliOptions => {
@@ -18,11 +19,17 @@ const parseCliOptions = (args: readonly string[]): PrScopeCliOptions => {
   let githubOutput = false;
   let json = false;
   let evidencePath: string | null = null;
+  let legacyEvidencePath: string | null = null;
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
 
-    if (argument === '--base' || argument === '--head' || argument === '--evidence-path') {
+    if (
+      argument === '--base' ||
+      argument === '--head' ||
+      argument === '--evidence-path' ||
+      argument === '--legacy-evidence-path'
+    ) {
       const value = args[index + 1];
       if (!value) {
         throw new Error(`Fehlender Wert für ${argument}`);
@@ -31,8 +38,10 @@ const parseCliOptions = (args: readonly string[]): PrScopeCliOptions => {
         base = value;
       } else if (argument === '--head') {
         head = value;
-      } else {
+      } else if (argument === '--evidence-path') {
         evidencePath = value;
+      } else {
+        legacyEvidencePath = value;
       }
       index += 1;
       continue;
@@ -48,7 +57,7 @@ const parseCliOptions = (args: readonly string[]): PrScopeCliOptions => {
     }
   }
 
-  return { base, head, githubOutput, json, evidencePath };
+  return { base, head, githubOutput, json, evidencePath, legacyEvidencePath };
 };
 
 const createGithubOutputLines = (
@@ -148,6 +157,17 @@ export const runPrScopeCli = (args: readonly string[]): number => {
   if (options.evidencePath) {
     fs.mkdirSync(path.dirname(options.evidencePath), { recursive: true });
     fs.writeFileSync(options.evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+  }
+
+  if (options.legacyEvidencePath) {
+    const legacyDecision = classifyPrScope(resolveChangedFiles(options.base, 'HEAD'));
+    const legacyEvidence = createPrScopeEvidence(legacyDecision, options.base, options.head);
+    fs.mkdirSync(path.dirname(options.legacyEvidencePath), { recursive: true });
+    fs.writeFileSync(
+      options.legacyEvidencePath,
+      `${JSON.stringify(legacyEvidence, null, 2)}\n`,
+      'utf8'
+    );
   }
 
   if (options.json || !options.githubOutput) {

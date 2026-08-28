@@ -40,6 +40,7 @@ describe('CI gate topology shadow workflows', () => {
     expect(prShadow).toContain('--base ${{ github.event.pull_request.base.sha }}');
     expect(prShadow).toContain('--head ${{ github.event.pull_request.head.sha }}');
     expect(prShadow).toContain('--evidence-path artifacts/ci-shadow/pr-scope.json');
+    expect(prShadow).toContain('--legacy-evidence-path artifacts/ci-shadow/legacy-pr-scope.json');
     expect(prShadow).toContain('documentation_catalog_mode:');
     expect(prShadow).toContain('db_schema_mode:');
   });
@@ -76,6 +77,12 @@ describe('CI gate topology shadow workflows', () => {
     expect(prShadow).toContain('name: CI Shadow / Parity');
     expect(prShadow).toContain('commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100');
     expect(prShadow).toContain('node scripts/ci/ci-gate-shadow-parity.ts');
+    expect(prShadow).toContain('--legacy-scope artifacts/ci-shadow/legacy-pr-scope.json');
+    expect(prShadow).toContain('--scope-result "$SCOPE_RESULT"');
+    expect(prShadow).toContain('for attempt in {1..40}; do');
+    expect(prShadow).toContain('--fail-pending');
+    expect(prShadow).toContain('if: always()\n    needs:');
+    expect(prShadow).toContain('continue-on-error: true');
     expect(prShadow).toContain('name: ci-gate-shadow-parity-${{ github.run_id }}');
     expect(prShadow).toContain('retention-days: 30');
   });

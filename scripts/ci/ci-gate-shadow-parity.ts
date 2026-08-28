@@ -39,10 +39,14 @@ export interface CiGateShadowParityEvidence {
   schemaVersion: 1;
   baseSha: string;
   headSha: string;
-  scopeSchemaVersion: 1;
+  scopeSchemaVersion: 1 | null;
+  legacyScopeSchemaVersion: 1 | null;
+  scopeMatches: boolean;
   evaluatedAt: string;
   gates: EvaluatedGate[];
   mismatches: string[];
+  awaitingChecks: boolean;
+  hardMismatchCount: number;
 }
 
 export const gateMappings: readonly GateMapping[] = [
@@ -126,22 +130,23 @@ const evaluateSide = (
   expectedNames: readonly string[],
   headSha: string,
   label: string,
-  mismatches: string[]
+  waitingMismatches: string[],
+  hardMismatches: string[]
 ): EvaluatedGateSide => {
   const accepted: GitHubCheckRun[] = [];
   for (const expectedName of expectedNames) {
     const namedChecks = allChecks.filter((check) => check.name === expectedName);
     if (namedChecks.length !== 1) {
-      mismatches.push(
+      const mismatch =
         namedChecks.length === 0
           ? `${label}: Check fehlt: ${expectedName}`
-          : `${label}: Check ist doppelt vorhanden: ${expectedName}`
-      );
+          : `${label}: Check ist doppelt vorhanden: ${expectedName}`;
+      (namedChecks.length === 0 ? waitingMismatches : hardMismatches).push(mismatch);
       continue;
     }
     const check = namedChecks[0];
     if (check.head_sha !== headSha) {
-      mismatches.push(
+      hardMismatches.push(
         `${label}: Check ${expectedName} gehört zu ${check.head_sha}, erwartet ist ${headSha}`
       );
       continue;
@@ -157,7 +162,7 @@ const evaluateSide = (
         ? 'failed'
         : 'passed';
   if (state === 'pending' && accepted.length === expectedNames.length) {
-    mismatches.push(`${label}: mindestens ein Check ist nicht terminal`);
+    waitingMismatches.push(`${label}: mindestens ein Check ist nicht terminal`);
   }
   return { checks: [...expectedNames], state, durationMs: durationMs(accepted) };
 };
@@ -165,27 +170,36 @@ const evaluateSide = (
 export const evaluateCiGateShadowParity = (
   checks: readonly GitHubCheckRun[],
   scopeEvidence: PrScopeEvidence,
+  legacyScopeEvidence: PrScopeEvidence,
   evaluatedAt = new Date()
 ): CiGateShadowParityEvidence => {
-  const mismatches: string[] = [];
+  const waitingMismatches: string[] = [];
+  const hardMismatches: string[] = [];
+  const scopeMatches =
+    JSON.stringify(scopeEvidence.decision) === JSON.stringify(legacyScopeEvidence.decision);
+  if (!scopeMatches) {
+    hardMismatches.push('PR-Scope: zentraler Shadow-Plan weicht vom Legacy-HEAD-Plan ab');
+  }
   const gates = gateMappings.map((mapping) => {
     const legacy = evaluateSide(
       checks,
       mapping.legacyChecks,
       scopeEvidence.headSha,
       `${mapping.gate}/Bestand`,
-      mismatches
+      waitingMismatches,
+      hardMismatches
     );
     const shadow = evaluateSide(
       checks,
       mapping.shadowChecks,
       scopeEvidence.headSha,
       `${mapping.gate}/Shadow`,
-      mismatches
+      waitingMismatches,
+      hardMismatches
     );
     const matches = legacy.state === shadow.state && legacy.state !== 'pending';
     if (!matches && legacy.state !== 'pending' && shadow.state !== 'pending') {
-      mismatches.push(`${mapping.gate}: Bestand=${legacy.state}, Shadow=${shadow.state}`);
+      hardMismatches.push(`${mapping.gate}: Bestand=${legacy.state}, Shadow=${shadow.state}`);
     }
     return { gate: mapping.gate, legacy, shadow, matches };
   });
@@ -195,18 +209,44 @@ export const evaluateCiGateShadowParity = (
     baseSha: scopeEvidence.baseSha,
     headSha: scopeEvidence.headSha,
     scopeSchemaVersion: scopeEvidence.schemaVersion,
+    legacyScopeSchemaVersion: legacyScopeEvidence.schemaVersion,
+    scopeMatches,
     evaluatedAt: evaluatedAt.toISOString(),
     gates,
-    mismatches,
+    mismatches: [...hardMismatches, ...waitingMismatches],
+    awaitingChecks: waitingMismatches.length > 0,
+    hardMismatchCount: hardMismatches.length,
   };
 };
+
+export const createScopeFailureEvidence = (
+  baseSha: string,
+  headSha: string,
+  reason: string,
+  evaluatedAt = new Date()
+): CiGateShadowParityEvidence => ({
+  schemaVersion: 1,
+  baseSha,
+  headSha,
+  scopeSchemaVersion: null,
+  legacyScopeSchemaVersion: null,
+  scopeMatches: false,
+  evaluatedAt: evaluatedAt.toISOString(),
+  gates: [],
+  mismatches: [`PR-Scope-Evidenz fehlt oder ist ungültig: ${reason}`],
+  awaitingChecks: false,
+  hardMismatchCount: 1,
+});
 
 interface CliOptions {
   checksPath: string;
   scopePath: string;
+  legacyScopePath: string;
   outputPath: string;
   baseSha: string;
   headSha: string;
+  scopeResult: string;
+  failPending: boolean;
 }
 
 const parseArguments = (args: readonly string[]): CliOptions => {
@@ -221,9 +261,12 @@ const parseArguments = (args: readonly string[]): CliOptions => {
   return {
     checksPath: read('--checks'),
     scopePath: read('--scope'),
+    legacyScopePath: read('--legacy-scope'),
     outputPath: read('--output'),
     baseSha: read('--base'),
     headSha: read('--head'),
+    scopeResult: read('--scope-result'),
+    failPending: args.includes('--fail-pending'),
   };
 };
 
@@ -239,9 +282,23 @@ const readChecks = (filePath: string): GitHubCheckRun[] => {
 
 export const runCiGateShadowParityCli = (args: readonly string[]): number => {
   const options = parseArguments(args);
-  const rawScope = JSON.parse(fs.readFileSync(options.scopePath, 'utf8')) as unknown;
-  const scope = parsePrScopeEvidence(rawScope, options.baseSha, options.headSha);
-  const result = evaluateCiGateShadowParity(readChecks(options.checksPath), scope);
+  let result: CiGateShadowParityEvidence;
+  try {
+    if (options.scopeResult !== 'success') {
+      throw new Error(`Scope-Job endete mit ${options.scopeResult}`);
+    }
+    const rawScope = JSON.parse(fs.readFileSync(options.scopePath, 'utf8')) as unknown;
+    const rawLegacyScope = JSON.parse(fs.readFileSync(options.legacyScopePath, 'utf8')) as unknown;
+    const scope = parsePrScopeEvidence(rawScope, options.baseSha, options.headSha);
+    const legacyScope = parsePrScopeEvidence(rawLegacyScope, options.baseSha, options.headSha);
+    result = evaluateCiGateShadowParity(readChecks(options.checksPath), scope, legacyScope);
+  } catch (error) {
+    result = createScopeFailureEvidence(
+      options.baseSha,
+      options.headSha,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
   fs.mkdirSync(path.dirname(options.outputPath), { recursive: true });
   fs.writeFileSync(options.outputPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
 
@@ -254,6 +311,7 @@ export const runCiGateShadowParityCli = (args: readonly string[]): number => {
         '',
         `- Head-SHA: \`${result.headSha}\``,
         `- Verglichene Gate-Verträge: ${result.gates.length}`,
+        `- Scope-Parität: ${result.scopeMatches ? 'identisch' : 'abweichend'}`,
         `- Abweichungen: ${result.mismatches.length}`,
         '',
       ].join('\n'),
@@ -265,7 +323,10 @@ export const runCiGateShadowParityCli = (args: readonly string[]): number => {
     for (const mismatch of result.mismatches) {
       console.error(mismatch);
     }
-    return 1;
+    if (result.hardMismatchCount > 0 || options.failPending) {
+      return 1;
+    }
+    return 2;
   }
   console.log(`CI-Shadow-Parität für ${result.headSha}: ${result.gates.length} Gates identisch.`);
   return 0;

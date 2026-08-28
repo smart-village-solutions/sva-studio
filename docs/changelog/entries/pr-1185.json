@@ -1,0 +1,4 @@
+{
+  "prNumber": 1185,
+  "body": "Die Datenübertragung im Studio verwendet eine sicher aktualisierte Serialisierungsbibliothek\n\n- Eine kritische Schwachstelle beim Verarbeiten speziell präparierter Daten ist geschlossen.\n- Die aktualisierte Version entspricht zugleich den Anforderungen der eingesetzten Routing- und Server-Komponenten.\n- Bestehende Studio-Funktionen und Datenformate bleiben unverändert nutzbar."
+}

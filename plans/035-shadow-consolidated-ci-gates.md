@@ -5,19 +5,19 @@
 > und Ruleset-Kontexte in diesem Plan noch nicht entfernen oder umbenennen.
 >
 > **Drift-Check (zuerst ausführen)**:
-> `git diff --stat 7bacf2bbb..HEAD -- .github/workflows .github/actions package.json nx.json scripts/ci openspec/changes/accelerate-pr-failure-feedback openspec/changes/refactor-ci-gate-orchestration docs/development/testing-coverage.md`
-> Bei relevantem Drift Plan 034 aktualisieren oder STOP.
+> `git diff --stat 6b1ae3ae..HEAD -- .github/workflows .github/actions package.json nx.json scripts/ci openspec/changes/refactor-ci-gate-orchestration docs/reports/ci-gate-ownership-baseline-2026-08.md docs/development/testing-coverage.md`
+> Bei relevantem Drift die freigegebene Baseline aktualisieren oder STOP.
 
 ## Status
 
 - **Priorität**: P1
 - **Aufwand**: L
 - **Risiko**: MED
-- **Status**: BLOCKED
-- **Abhängig von**: Plan 034 und genehmigtes OpenSpec; Accelerate-Tasks 0.5,
-  7.1, 7.4, 8.4 und 8.5 abgeschlossen
+- **Status**: TODO
+- **Abhängig von**: erfüllt; Plan 034 abgeschlossen, OpenSpec genehmigt und
+  Accelerate archiviert
 - **Kategorie**: tech-debt / dx
-- **Reconciled auf**: Commit `7bacf2bbb`, 2026-08-24
+- **Reconciled auf**: Commit `82308a492`, 2026-08-28
 
 ## Warum das wichtig ist
 
@@ -32,9 +32,9 @@ maschinenlesbare Parität, ohne Merge-Schutz oder Deployment zu beeinflussen.
 - Führende Scope-Logik: `scripts/ci/pr-scope.ts` und die Nx-basierten Planer
   `changed-project-plan.ts`, `affected-unit-plan.ts` und `coverage-plan.ts`.
 - Unit verwendet bereits direkte und verbleibende Phasen mit einem required
-  `Unit`-Aggregator. Coverage besitzt einen noch informativen
-  `Coverage Shadow`-Aggregator; dessen Aktivierung und Altpfad-Löschung bleiben
-  bis zum Abschluss von Accelerate-Task 7.4 außerhalb dieses Plans.
+  `Unit`-Aggregator. Coverage verwendet den internen Job `Coverage Complete`
+  und den stabilen required Aggregator `Coverage`; der Topologie-Shadow darf
+  diese fachlichen Phasen oder Aggregatoren nicht duplizieren.
 - `ci-feedback-aggregate.ts`, `coverage-shard-evidence.ts` und
   `validate-downloaded-coverage.ts` sind vorhandene Evidenzverträge. Der
   Topologie-Shadow darf keinen parallelen Unit-/Coverage-Aggregator einführen.
@@ -165,8 +165,8 @@ Shadow-Phase aktualisieren.
 
 ## STOP-Bedingungen
 
-- Proposal ist nicht genehmigt oder einer der Accelerate-Tasks 0.5, 7.1, 7.4,
-  8.4 oder 8.5 ist noch offen.
+- Das Live-Ruleset oder der aktuelle Workflowstand widerspricht der
+  freigegebenen Baseline beziehungsweise dem OpenSpec.
 - Ein Required-Check lässt sich nicht head-SHA-genau und fail-closed abbilden.
 - Shadow und Bestand unterscheiden sich in Scope oder Ergebnis ohne belegten
   Fehler im Altpfad.

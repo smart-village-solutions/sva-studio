@@ -1,5 +1,7 @@
 # Plan 034: CI-Gate-Konsolidierung als messbaren OpenSpec-Vertrag festlegen
 
+> **Archivstatus:** DONE
+
 > **Executor-Anweisung**: Dies ist ein reiner Analyse- und Proposal-Plan. Keine
 > produktive Workflow-, Script-, Ruleset- oder Deployment-Änderung durchführen.
 > Jeden Prüfschritt ausführen. Bei einer STOP-Bedingung nicht improvisieren.
@@ -13,9 +15,9 @@
 - **Priorität**: P1
 - **Aufwand**: M
 - **Risiko**: LOW
-- **Status**: IN PROGRESS
-- **Abhängig von**: Accelerate ist abgeschlossen; die menschliche Freigabe des
-  OpenSpec-Proposals steht noch aus
+- **Status**: DONE
+- **Abhängig von**: Accelerate abgeschlossen; OpenSpec-Proposal am 28. August
+  2026 menschlich freigegeben
 - **Kategorie**: tech-debt / dx
 - **Reconciled auf**: Commit `6b1ae3ae`, 2026-08-28
 
@@ -205,7 +207,7 @@ Danach STOP: Plan 035 darf erst nach ausdrücklicher Proposal-Freigabe starten.
 - [x] `pnpm exec openspec validate refactor-ci-gate-orchestration --strict` ist grün.
 - [x] `pnpm check:file-placement` und `git diff --check` sind grün.
 - [x] Keine produktive CI-Datei und kein GitHub-Ruleset wurde verändert.
-- [ ] Proposal wurde menschlich freigegeben, bevor Plan 035 startet.
+- [x] Proposal wurde menschlich freigegeben, bevor Plan 035 startet.
 
 ## STOP-Bedingungen
 

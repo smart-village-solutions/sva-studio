@@ -21,6 +21,7 @@ export default defineConfig({
       '../../scripts/ci/ci-feedback-evidence.test.ts',
       '../../scripts/ci/ci-command-runner.test.ts',
       '../../scripts/ci/ci-feedback-aggregate.test.ts',
+      '../../scripts/ci/ci-gate-shadow-parity.test.ts',
       '../../scripts/ci/coverage-shard-evidence.test.ts',
       '../../scripts/ci/validate-downloaded-coverage.test.ts',
       '../../scripts/ci/cleanup-e2e-webserver-conflicts.test.ts',

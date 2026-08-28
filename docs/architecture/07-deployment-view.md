@@ -41,6 +41,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Öffentliche Projektberichterstattung als statisches GitHub-Pages-Artefakt ohne Server-Runtime
 - Öffentliche Waste-Web-App als separates Vite-Frontend mit eigenem Playwright-Gate
 - Nx-/pnpm-basierte Build- und Test-Pipeline
+- Nicht blockierende CI-Shadow-Topologie für PR sowie Main/Nightly; sie misst Gate-Parität, besitzt aber weder Required- noch Deployment-Ownership
 - Separates IAM-Acceptance-Gate für Paket-1-/2-Abnahmen
 - Externe Plattform (GitHub Actions) für CI-Ausführung
 - Keycloak als zentraler OIDC Identity Provider
@@ -51,6 +52,8 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Loki/Prometheus als Storage, Grafana für Auswertung
 - `redis-exporter` als Prometheus-Scrape-Target für Redis-Infrastrukturmetriken
 - Plugin-Distributionsartefakte als eigener Betriebsgegenstand neben dem App-Image; sie werden über Manifest plus gebaute Artefakte aktiviert, nicht über Core-Codeänderungen
+
+Der PR-Shadow veröffentlicht einen einmal berechneten, versionierten Base-/Head-Scope und vergleicht seine terminalen Ergebnisse fail-closed mit den bestehenden Checks desselben Head-SHA. Der Main-/Nightly-Shadow führt die vollständigen nicht deploymentbezogenen Gates ohne PR-Cache und ohne zusätzlichen App-Build aus. `Build`, `App E2E` und `Promote` bleiben der unveränderte geschützte Releasepfad; Shadow-Artefakte können keine Release-Evidenz ersetzen.
 
 ### Öffentliche Projektberichterstattung über GitHub Pages
 

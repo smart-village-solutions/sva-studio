@@ -41,6 +41,18 @@ describe('waste master data repository', () => {
     ]);
   });
 
+  it('handles an unchanged or missing mainserver source state', async () => {
+    const unchangedExecutor = createExecutor([{ source_revision: '42', changed_at: null }]);
+    const missingExecutor = createExecutor();
+
+    await expect(
+      createWasteMasterDataRepository(unchangedExecutor.executor).getWasteMainserverSourceRevision()
+    ).resolves.toEqual({ sourceRevision: '42' });
+    await expect(
+      createWasteMasterDataRepository(missingExecutor.executor).getWasteMainserverSourceRevision()
+    ).resolves.toBeNull();
+  });
+
   it('lists tour assignments with normalized filters and maps their locations', async () => {
     const { executor, statements } = createExecutor([
       {

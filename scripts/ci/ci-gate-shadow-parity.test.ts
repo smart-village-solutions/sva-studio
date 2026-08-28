@@ -161,7 +161,7 @@ describe('ci-gate-shadow-parity', () => {
 
   it('reports a terminal result mismatch', () => {
     const checks = allChecks().map((entry) =>
-      entry.name === 'CI Shadow / Coverage Complete' ? { ...entry, conclusion: 'failure' } : entry
+      entry.name === 'CI Shadow / Coverage' ? { ...entry, conclusion: 'failure' } : entry
     );
 
     expect(evaluateCiGateShadowParity(checks, scope, scope).mismatches).toContain(

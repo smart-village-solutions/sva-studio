@@ -106,6 +106,15 @@ jobs:
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
           NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
         run: pnpm test:unit:affected --phase direct
+      - name: Upload direct Unit evidence
+        if: always() && needs.scope.outputs.code_relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-unit-direct-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-direct.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
 
   unit-remaining:
     name: CI Shadow / Unit Remaining
@@ -128,6 +137,64 @@ jobs:
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
           NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
         run: pnpm test:unit:affected --phase remaining
+      - name: Upload remaining Unit evidence
+        if: always() && needs.scope.outputs.code_relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-unit-remaining-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-remaining.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  unit:
+    name: CI Shadow / Unit
+    if: always()
+    needs:
+      - scope
+      - unit-direct
+      - unit-remaining
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Unit evidence validator
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+      - name: Setup aggregator Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Download Unit evidence
+        if: needs.scope.outputs.code_relevant == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ci-gate-shadow-unit-*-${{ github.run_id }}
+          path: artifacts/downloaded-unit-feedback
+          merge-multiple: true
+      - name: Aggregate shadow Unit status
+        env:
+          EVIDENCE_REQUIRED: ${{ needs.scope.outputs.code_relevant }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          DIRECT_RESULT: ${{ needs.unit-direct.result }}
+          REMAINING_RESULT: ${{ needs.unit-remaining.result }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = "success"
+          test "$DIRECT_RESULT" = "success"
+          test "$REMAINING_RESULT" = "success"
+          if [ "$EVIDENCE_REQUIRED" != "true" ]; then
+            exit 0
+          fi
+          node scripts/ci/ci-feedback-aggregate.ts \
+            --gate unit \
+            --head "$HEAD_SHA" \
+            --expected unit-direct,unit-remaining \
+            --evidence-dir artifacts/downloaded-unit-feedback
 
   types:
     name: CI Shadow / Types
@@ -198,6 +265,66 @@ jobs:
       - name: Stop Redis
         if: always() && needs.scope.outputs.coverage_mode != 'skip'
         run: docker rm -f sva-studio-redis-ci-shadow || true
+      - name: Upload Coverage evidence
+        if: always() && needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-coverage-${{ github.run_id }}
+          path: |
+            **/coverage/coverage-summary.json
+            **/coverage/lcov.info
+            artifacts/ci-feedback/coverage-coverage-complete.json
+            artifacts/ci-feedback/coverage-shards/*.json
+            tooling/testing/coverage-policy.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  coverage-aggregate:
+    name: CI Shadow / Coverage
+    if: always()
+    needs:
+      - scope
+      - coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Coverage evidence validators
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+      - name: Setup aggregator Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Download Coverage evidence
+        if: needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip'
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-gate-shadow-coverage-${{ github.run_id }}
+          path: artifacts/downloaded-coverage
+      - name: Aggregate shadow Coverage status
+        env:
+          EVIDENCE_REQUIRED: ${{ needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip' }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          COMPLETE_RESULT: ${{ needs.coverage.result }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = "success"
+          test "$COMPLETE_RESULT" = "success"
+          if [ "$EVIDENCE_REQUIRED" != "true" ]; then
+            exit 0
+          fi
+          node scripts/ci/ci-feedback-aggregate.ts \
+            --gate coverage \
+            --head "$HEAD_SHA" \
+            --expected coverage-complete \
+            --evidence-dir artifacts/downloaded-coverage
+          node scripts/ci/validate-downloaded-coverage.ts artifacts/downloaded-coverage "$HEAD_SHA"
 
   complexity:
     name: CI Shadow / Complexity
@@ -363,10 +490,9 @@ jobs:
     needs:
       - scope
       - lint
-      - unit-direct
-      - unit-remaining
+      - unit
       - types
-      - coverage
+      - coverage-aggregate
       - complexity
       - integration
       - file-placement

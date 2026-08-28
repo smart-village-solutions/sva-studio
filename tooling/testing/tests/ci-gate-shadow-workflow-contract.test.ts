@@ -67,6 +67,10 @@ describe('CI gate topology shadow workflows', () => {
     ]) {
       expect(prShadow).toContain(command);
     }
+    expect(prShadow).toContain('name: CI Shadow / Unit');
+    expect(prShadow).toContain('--expected unit-direct,unit-remaining');
+    expect(prShadow).toContain('name: CI Shadow / Coverage');
+    expect(prShadow).toContain('node scripts/ci/validate-downloaded-coverage.ts');
     for (const forbidden of ['quantum-cli', 'promote.yml', 'docker stack deploy', 'environment:']) {
       expect(prShadow).not.toContain(forbidden);
       expect(mainShadow).not.toContain(forbidden);

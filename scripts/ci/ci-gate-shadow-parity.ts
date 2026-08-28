@@ -50,7 +50,7 @@ export const gateMappings: readonly GateMapping[] = [
   {
     gate: 'Unit',
     legacyChecks: ['Unit'],
-    shadowChecks: ['CI Shadow / Unit Direct', 'CI Shadow / Unit Remaining'],
+    shadowChecks: ['CI Shadow / Unit'],
   },
   { gate: 'Types', legacyChecks: ['Types'], shadowChecks: ['CI Shadow / Types'] },
   {
@@ -71,7 +71,7 @@ export const gateMappings: readonly GateMapping[] = [
   {
     gate: 'Coverage',
     legacyChecks: ['Coverage'],
-    shadowChecks: ['CI Shadow / Coverage Complete'],
+    shadowChecks: ['CI Shadow / Coverage'],
   },
   { gate: 'A11y', legacyChecks: ['A11y'], shadowChecks: ['CI Shadow / A11y'] },
   {

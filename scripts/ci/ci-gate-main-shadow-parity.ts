@@ -43,11 +43,6 @@ export const mainGateMappings: readonly GateMapping[] = [
   },
   { gate: 'A11y', legacyChecks: ['A11y'], shadowChecks: ['CI Shadow Main / A11y'] },
   {
-    gate: 'App Build',
-    legacyChecks: ['App Build'],
-    shadowChecks: ['CI Shadow Main / App Build'],
-  },
-  {
     gate: 'Documentation Integrity',
     legacyChecks: ['Documentation Integrity'],
     shadowChecks: ['CI Shadow Main / Documentation Integrity'],

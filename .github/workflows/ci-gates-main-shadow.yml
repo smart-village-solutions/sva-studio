@@ -137,17 +137,6 @@ jobs:
       - uses: ./.github/actions/setup-pnpm-workspace
       - run: pnpm test:a11y
 
-  app-build:
-    name: CI Shadow Main / App Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          filter: tree:0
-      - uses: ./.github/actions/setup-pnpm-workspace
-      - run: pnpm nx run sva-studio-react:build
-
   documentation-integrity:
     name: CI Shadow Main / Documentation Integrity
     runs-on: ubuntu-latest
@@ -195,7 +184,6 @@ jobs:
       - integration
       - file-placement
       - a11y
-      - app-build
       - documentation-integrity
       - documentation-catalog
       - db-schema
@@ -222,13 +210,18 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/ci-shadow-main
           mkdir -p artifacts/ci-shadow-main/jobs
+          current_run_created_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
           for attempt in {1..40}; do
             gh api \
               -H 'Accept: application/vnd.github+json' \
               "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100" \
               > artifacts/ci-shadow-main/workflow-runs.json
-            comparison_started_at=$(jq -r '[.workflow_runs[].created_at] | min' artifacts/ci-shadow-main/workflow-runs.json)
-            for run_id in $(jq -r '.workflow_runs[].id' artifacts/ci-shadow-main/workflow-runs.json); do
+            jq --arg anchor "$current_run_created_at" \
+              '($anchor | fromdateiso8601) as $time | .workflow_runs |= map(select(((.created_at | fromdateiso8601) - $time | fabs) <= 900))' \
+              artifacts/ci-shadow-main/workflow-runs.json \
+              > artifacts/ci-shadow-main/workflow-runs.current.json
+            comparison_started_at=$(jq -r '[.workflow_runs[].created_at] | min' artifacts/ci-shadow-main/workflow-runs.current.json)
+            for run_id in $(jq -r '.workflow_runs[].id' artifacts/ci-shadow-main/workflow-runs.current.json); do
               gh api \
                 -H 'Accept: application/vnd.github+json' \
                 "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?filter=latest&per_page=100" \

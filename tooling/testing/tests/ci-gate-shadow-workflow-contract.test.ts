@@ -97,7 +97,7 @@ describe('CI gate topology shadow workflows', () => {
     expect(mainShadow).not.toContain('actions/cache');
     expect(mainShadow).not.toContain('test:unit:affected');
     expect(mainShadow).not.toContain('test:coverage:affected');
-    expect(mainShadow).toContain('pnpm nx run sva-studio-react:build');
+    expect(mainShadow).not.toContain('sva-studio-react:build');
     expect(mainShadow).toContain('pnpm test:unit');
     expect(mainShadow).toContain('pnpm test:coverage');
     expect(mainShadow).toContain('pnpm test:integration');
@@ -108,6 +108,8 @@ describe('CI gate topology shadow workflows', () => {
     expect(mainShadow).toContain(
       'actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100'
     );
+    expect(mainShadow).toContain('current_run_created_at=');
+    expect(mainShadow).toContain('fromdateiso8601) - $time | fabs) <= 900');
     expect(mainShadow).toContain('actions/runs/${run_id}/jobs?filter=latest&per_page=100');
     expect(mainShadow).toContain('node scripts/ci/ci-gate-main-shadow-parity.cli.ts');
     expect(mainShadow).toContain('--event "$EVENT_NAME"');

@@ -88,7 +88,7 @@ describe('ci-gate-shadow-parity', () => {
     );
 
     expect(result.eventName).toBe('push');
-    expect(result.gates).toHaveLength(12);
+    expect(result.gates).toHaveLength(11);
     expect(result.nonComparableGates).toEqual([]);
     expect(result.gates.every((gate) => gate.legacy.durationMs === 60_000)).toBe(true);
     expect(result.mismatches).toEqual([]);
@@ -115,7 +115,7 @@ describe('ci-gate-shadow-parity', () => {
       'Complexity',
       'Integration',
     ]);
-    expect(result.nonComparableGates).toHaveLength(9);
+    expect(result.nonComparableGates).toHaveLength(8);
     expect(result.mismatches).toEqual([]);
   });
 

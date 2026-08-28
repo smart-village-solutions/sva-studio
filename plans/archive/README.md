@@ -5,6 +5,17 @@ Planrunden. Aktive Pläne stehen ausschließlich im übergeordneten
 [`plans/README.md`](../README.md). Die Plan-IDs bleiben dauerhaft stabil und
 werden nicht neu vergeben.
 
+## CI-Gate-Konsolidierung
+
+| Plan                                          | Titel                                                 | Status |
+| --------------------------------------------- | ----------------------------------------------------- | ------ |
+| [034](./034-specify-ci-gate-consolidation.md) | CI-Konsolidierung als OpenSpec und Baseline festlegen | DONE   |
+
+Plan 034 wurde am 28. August 2026 nach aktueller Workflow-/Ruleset-Baseline,
+strikt validiertem OpenSpec `refactor-ci-gate-orchestration` und menschlicher
+Proposal-Freigabe abgeschlossen. Die produktive Shadow-Umsetzung bleibt im
+aktiven Plan 035 und wurde durch die Freigabe noch nicht begonnen.
+
 ## SonarCloud-Runde 1 – Live-Baseline und Ausführung
 
 Die SonarCloud-Runde wurde am 15. August 2026 auf dem live gefetchten

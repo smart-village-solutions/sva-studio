@@ -1,0 +1,578 @@
+name: CI Gate Topology Shadow (PR)
+
+concurrency:
+  group: ci-gates-pr-shadow-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  scope:
+    name: CI Shadow / Scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      code_relevant: ${{ steps.scope.outputs.code_relevant }}
+      quality_gate_mode: ${{ steps.scope.outputs.quality_gate_mode }}
+      coverage_mode: ${{ steps.scope.outputs.coverage_mode }}
+      integration_mode: ${{ steps.scope.outputs.integration_mode }}
+      a11y_mode: ${{ steps.scope.outputs.a11y_mode }}
+      runtime_verify_mode: ${{ steps.scope.outputs.runtime_verify_mode }}
+      app_build_mode: ${{ steps.scope.outputs.app_build_mode }}
+      documentation_catalog_mode: ${{ steps.scope.outputs.documentation_catalog_mode }}
+      db_schema_mode: ${{ steps.scope.outputs.db_schema_mode }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Determine canonical PR scope once
+        id: scope
+        run: >-
+          pnpm exec tsx scripts/ci/pr-scope.cli.ts
+          --base ${{ github.event.pull_request.base.sha }}
+          --head ${{ github.event.pull_request.head.sha }}
+          --github-output
+          --evidence-path artifacts/ci-shadow/pr-scope.json
+          --legacy-evidence-path artifacts/ci-shadow/legacy-pr-scope.json
+
+      - name: Upload canonical scope evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-scope-${{ github.run_id }}
+          path: |
+            artifacts/ci-shadow/pr-scope.json
+            artifacts/ci-shadow/legacy-pr-scope.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  lint:
+    name: CI Shadow / Lint
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run lint contract
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ needs.scope.outputs.quality_gate_mode }}" = 'full' ]; then
+            pnpm test:eslint
+          else
+            pnpm test:eslint:affected
+          fi
+
+  unit-direct:
+    name: CI Shadow / Unit Direct
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run direct Unit phase
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
+        run: pnpm test:unit:affected --phase direct
+      - name: Upload direct Unit evidence
+        if: always() && needs.scope.outputs.code_relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-unit-direct-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-direct.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  unit-remaining:
+    name: CI Shadow / Unit Remaining
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run remaining Unit phase
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
+        run: pnpm test:unit:affected --phase remaining
+      - name: Upload remaining Unit evidence
+        if: always() && needs.scope.outputs.code_relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-unit-remaining-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-remaining.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  unit:
+    name: CI Shadow / Unit
+    if: always()
+    needs:
+      - scope
+      - unit-direct
+      - unit-remaining
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Unit evidence validator
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+      - name: Setup aggregator Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Download Unit evidence
+        if: needs.scope.outputs.code_relevant == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ci-gate-shadow-unit-*-${{ github.run_id }}
+          path: artifacts/downloaded-unit-feedback
+          merge-multiple: true
+      - name: Aggregate shadow Unit status
+        env:
+          EVIDENCE_REQUIRED: ${{ needs.scope.outputs.code_relevant }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          DIRECT_RESULT: ${{ needs.unit-direct.result }}
+          REMAINING_RESULT: ${{ needs.unit-remaining.result }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = "success"
+          test "$DIRECT_RESULT" = "success"
+          test "$REMAINING_RESULT" = "success"
+          if [ "$EVIDENCE_REQUIRED" != "true" ]; then
+            exit 0
+          fi
+          node scripts/ci/ci-feedback-aggregate.ts \
+            --gate unit \
+            --head "$HEAD_SHA" \
+            --expected unit-direct,unit-remaining \
+            --evidence-dir artifacts/downloaded-unit-feedback
+
+  types:
+    name: CI Shadow / Types
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run Types contract
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ needs.scope.outputs.quality_gate_mode }}" = 'full' ]; then
+            pnpm test:types
+          else
+            pnpm test:types:affected
+          fi
+
+  coverage:
+    name: CI Shadow / Coverage Complete
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Start Redis
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        run: docker run -d --name sva-studio-redis-ci-shadow -p 6379:6379 redis:7-alpine
+      - name: Wait for Redis readiness
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        run: |
+          set -euo pipefail
+          for i in {1..30}; do
+            if docker exec sva-studio-redis-ci-shadow redis-cli -p 6379 ping | grep -q PONG; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Run Coverage contract
+        if: needs.scope.outputs.coverage_mode != 'skip'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_RUN_FULL: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
+          COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
+        run: |
+          pnpm test:coverage:affected
+          pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}
+          pnpm coverage-gate
+      - name: Stop Redis
+        if: always() && needs.scope.outputs.coverage_mode != 'skip'
+        run: docker rm -f sva-studio-redis-ci-shadow || true
+      - name: Upload Coverage evidence
+        if: always() && needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-coverage-${{ github.run_id }}
+          path: |
+            **/coverage/coverage-summary.json
+            **/coverage/lcov.info
+            artifacts/ci-feedback/coverage-coverage-complete.json
+            artifacts/ci-feedback/coverage-shards/*.json
+            tooling/testing/coverage-policy.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  coverage-aggregate:
+    name: CI Shadow / Coverage
+    if: always()
+    needs:
+      - scope
+      - coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Coverage evidence validators
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+      - name: Setup aggregator Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Download Coverage evidence
+        if: needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip'
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-gate-shadow-coverage-${{ github.run_id }}
+          path: artifacts/downloaded-coverage
+      - name: Aggregate shadow Coverage status
+        env:
+          EVIDENCE_REQUIRED: ${{ needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip' }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          COMPLETE_RESULT: ${{ needs.coverage.result }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = "success"
+          test "$COMPLETE_RESULT" = "success"
+          if [ "$EVIDENCE_REQUIRED" != "true" ]; then
+            exit 0
+          fi
+          node scripts/ci/ci-feedback-aggregate.ts \
+            --gate coverage \
+            --head "$HEAD_SHA" \
+            --expected coverage-complete \
+            --evidence-dir artifacts/downloaded-coverage
+          node scripts/ci/validate-downloaded-coverage.ts artifacts/downloaded-coverage "$HEAD_SHA"
+
+  complexity:
+    name: CI Shadow / Complexity
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run Complexity contract
+        if: needs.scope.outputs.quality_gate_mode != 'skip'
+        run: |
+          if [ "${{ needs.scope.outputs.quality_gate_mode }}" = 'full' ]; then
+            pnpm complexity-gate
+          else
+            pnpm complexity-gate --base ${{ github.event.pull_request.base.sha }}
+          fi
+
+  integration:
+    name: CI Shadow / PR Integration
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.integration_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run Integration contract
+        if: needs.scope.outputs.integration_mode != 'skip'
+        env:
+          POSTGRES_PASSWORD: test-postgres-password
+          APP_DB_USER: sva_app
+          APP_DB_PASSWORD: test-app-password
+          REDIS_PASSWORD: test-redis-password
+          SVA_RUNTIME_PROFILE: studio
+        run: |
+          if [ "${{ needs.scope.outputs.integration_mode }}" = 'full' ]; then
+            pnpm test:integration
+          else
+            pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}
+          fi
+
+  file-placement:
+    name: CI Shadow / File Placement
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run File Placement contract
+        run: |
+          pnpm check:file-placement
+          pnpm check:rollout-docs
+
+  a11y:
+    name: CI Shadow / A11y
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - name: Setup workspace
+        if: needs.scope.outputs.a11y_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run A11y contract
+        if: needs.scope.outputs.a11y_mode != 'skip'
+        run: pnpm test:a11y
+
+  app-build:
+    name: CI Shadow / App Build
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.app_build_mode != 'skip' || needs.scope.outputs.runtime_verify_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run App Build contract
+        if: needs.scope.outputs.app_build_mode != 'skip'
+        run: pnpm nx run sva-studio-react:build
+      - name: Run Runtime Artifact contract
+        if: needs.scope.outputs.runtime_verify_mode != 'skip'
+        run: pnpm verify:runtime-artifact
+
+  documentation-integrity:
+    name: CI Shadow / Documentation Integrity
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run Documentation Integrity contract
+        run: pnpm check:docs
+
+  documentation-catalog:
+    name: CI Shadow / Documentation Catalog (advisory)
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - name: Setup workspace
+        if: needs.scope.outputs.documentation_catalog_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Diagnose Documentation Catalog contract
+        if: needs.scope.outputs.documentation_catalog_mode != 'skip'
+        continue-on-error: true
+        run: pnpm nx run sva-studio-react:check:documentation-catalog
+
+  db-schema:
+    name: CI Shadow / DB Schema Snapshot
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+          fetch-depth: 0
+      - name: Setup workspace
+        if: needs.scope.outputs.db_schema_mode != 'skip'
+        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Run DB Schema Snapshot contract
+        if: needs.scope.outputs.db_schema_mode != 'skip'
+        run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts
+
+  parity:
+    name: CI Shadow / Parity
+    if: always()
+    needs:
+      - scope
+      - lint
+      - unit
+      - types
+      - coverage-aggregate
+      - complexity
+      - integration
+      - file-placement
+      - a11y
+      - app-build
+      - documentation-integrity
+      - documentation-catalog
+      - db-schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout parity validator
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+      - name: Setup repository Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Download canonical scope evidence
+        id: scope-evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-gate-shadow-scope-${{ github.run_id }}
+          path: artifacts/ci-shadow
+      - name: Wait for exact-head terminal checks and compare parity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ci-shadow
+          comparison_started_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
+          for attempt in {1..40}; do
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
+              > artifacts/ci-shadow/check-runs.json
+            set +e
+            node scripts/ci/ci-gate-shadow-parity.cli.ts \
+              --checks artifacts/ci-shadow/check-runs.json \
+              --scope artifacts/ci-shadow/pr-scope.json \
+              --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \
+              --output artifacts/ci-shadow/parity.json \
+              --base "$BASE_SHA" \
+              --head "$HEAD_SHA" \
+              --scope-result "$SCOPE_RESULT" \
+              --comparison-started-at "$comparison_started_at"
+            parity_status=$?
+            set -e
+            if [ "$parity_status" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$parity_status" -eq 1 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
+          node scripts/ci/ci-gate-shadow-parity.cli.ts \
+            --checks artifacts/ci-shadow/check-runs.json \
+            --scope artifacts/ci-shadow/pr-scope.json \
+            --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \
+            --output artifacts/ci-shadow/parity.json \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --scope-result "$SCOPE_RESULT" \
+            --comparison-started-at "$comparison_started_at" \
+            --fail-pending
+      - name: Upload topology parity evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-shadow-parity-${{ github.run_id }}
+          path: artifacts/ci-shadow/parity.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30

@@ -405,6 +405,13 @@ Referenzen:
 - Die Abnahme benötigt mindestens 20 repräsentative PR-Läufe; lokale Einzelmessungen sind noch kein Erfüllungsnachweis.
 - Die Auswertung vom 23. August 2026 umfasst 20 grüne PR-Head-SHAs. Die mediane terminale Zeit von `Unit` und `Coverage` sank gegenüber der 20-Run-Baseline von 505,5 auf 348 Sekunden. Der einzige direkt zuordenbare rote Unit-Lauf in diesem Fenster bestätigte den Fehler nach 172 Sekunden; zwei späte Coverage-Verstöße eines nur transitiv betroffenen Projekts sind transparent dokumentiert, zählen aber nicht als direkt verursachtes Fehlersignal.
 
+### Ergänzung 2026-08: Qualitätsziele für den CI-Topologie-Shadow
+
+- Jeder Shadow-Vergleich muss auf exakt ein Head-SHA und einen versionierten Base-/Head-Scope gebunden sein. Fehlende, doppelte, veraltete, nicht terminale oder fremd-SHA-gebundene Ergebnisse gelten als Abweichung.
+- Die sieben Required-Verträge sowie A11y, App Build, Documentation Integrity, Documentation Catalog und DB Schema Snapshot müssen im Vergleich sichtbar bleiben. Shadow-Namen dürfen keinen bestehenden Required-Kontext ersetzen.
+- Vor einem Cutover sind mindestens 20 repräsentative Live-Läufe mit null ungeklärter Scope-Unterabdeckung oder Ergebnisdrift erforderlich. Die mediane grüne Required-Zeit darf gegenüber der Ausgangsbasis um höchstens 30 Sekunden steigen.
+- Der aktuelle Implementierungsstand ist lokal und statisch validiert; die Live-Stichprobe steht bei `0/20`. Daraus folgt noch keine Cutover-Freigabe.
+
 ### Ergänzung 2026-08: Qualitätsziele der IAM-ABAC-Auswertung
 
 - Der bisherige Fallow-Hotspot `evaluateAbacRules` wird von Cyclomatic 55, Cognitive 41 und 130 Funktionszeilen auf Cyclomatic 9, Cognitive 4 und 27 Funktionszeilen reduziert.

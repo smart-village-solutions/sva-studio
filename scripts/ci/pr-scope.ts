@@ -11,6 +11,8 @@ export interface PrScopeDecision {
   a11yMode: GateMode;
   runtimeVerifyMode: GateMode;
   appBuildMode: GateMode;
+  documentationCatalogMode: GateMode;
+  dbSchemaMode: GateMode;
   escalationReasons: string[];
 }
 
@@ -113,6 +115,28 @@ const appBuildEscalationPatterns = [
   /^\.github\/workflows\//u,
 ];
 
+const documentationCatalogRelevantPatterns = [
+  /^apps\/sva-studio-react\/plugin-catalog\.json$/u,
+  /^apps\/sva-studio-react\/project\.json$/u,
+  /^apps\/sva-studio-react\/src\/lib\/plugin-catalog-loader\.ts$/u,
+  /^apps\/sva-studio-react\/src\/routing\/admin-resources\.ts$/u,
+  /^packages\/plugin-[^/]+\/plugin\.manifest\.json$/u,
+  /^packages\/plugin-[^/]+\/src\//u,
+  /^packages\/routing\/src\//u,
+  /^scripts\/ci\/generate-documentation-page-catalog\.ts$/u,
+  /^docs\/user-documentation\/page-catalog\.json$/u,
+  /^\.github\/workflows\/repository-hygiene\.yml$/u,
+];
+
+const dbSchemaRelevantPatterns = [
+  /^packages\/data\/migrations\//u,
+  /^docs\/development\/studio-db-schema-final\.sql$/u,
+  /^docs\/development\/studio-db-schema\.md$/u,
+  /^scripts\/ci\/check-db-schema-snapshot\.ts$/u,
+  /^scripts\/ops\/runtime\/db-schema-snapshot\.ts$/u,
+  /^\.github\/workflows\/repository-hygiene\.yml$/u,
+];
+
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>
   patterns.some((pattern) => pattern.test(filePath));
 
@@ -127,6 +151,16 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
   const escalationReasons = codeRelevantFiles.filter((file) =>
     matchesAnyPattern(file, qualityEscalationPatterns)
   );
+  const documentationCatalogMode: GateMode = normalizedFiles.some((file) =>
+    matchesAnyPattern(file, documentationCatalogRelevantPatterns)
+  )
+    ? 'full'
+    : 'skip';
+  const dbSchemaMode: GateMode = normalizedFiles.some((file) =>
+    matchesAnyPattern(file, dbSchemaRelevantPatterns)
+  )
+    ? 'full'
+    : 'skip';
 
   if (codeRelevantFiles.length === 0) {
     return {
@@ -138,6 +172,8 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
       a11yMode: 'skip',
       runtimeVerifyMode: 'skip',
       appBuildMode: 'skip',
+      documentationCatalogMode,
+      dbSchemaMode,
       escalationReasons: [],
     };
   }
@@ -188,6 +224,8 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
     a11yMode,
     runtimeVerifyMode,
     appBuildMode,
+    documentationCatalogMode,
+    dbSchemaMode,
     escalationReasons,
   };
 };
@@ -201,7 +239,7 @@ export const resolveChangedFiles = (
   ) => execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim()
 ): string[] => {
   const runDiff = (range: string): string =>
-    runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', range], {
+    runGitCommand(['diff', '--name-status', '--find-renames', '--diff-filter=ACDMR', range], {
       encoding: 'utf8',
     });
 
@@ -238,8 +276,15 @@ export const resolveChangedFiles = (
     return [];
   }
 
-  return output
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
+  return [
+    ...new Set(
+      output
+        .split('\n')
+        .flatMap((line) => {
+          const [, ...paths] = line.trim().split('\t');
+          return paths;
+        })
+        .filter(Boolean)
+    ),
+  ];
 };

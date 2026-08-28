@@ -236,6 +236,12 @@ Die Merge-Absicherung bleibt vollständig, wird aber nach erwarteter Reparaturwi
 
 Die öffentlichen Required-Check-Namen `Unit` und `Coverage` bleiben stabil. Parallele Fast-Feedback-, Rest- und Coverage-Teiljobs veröffentlichen versionierte Evidenz für exakt den PR-Head; ausschließlich finale Aggregatoren entscheiden fail-closed über Vollständigkeit, Disjunktheit und Ergebnis. Vollständiges App-E2E ist kein PR-Gate mehr: Ein automatischer Lauf pro `main`-Commit attestiert den Quellstand, während die OCI-Revision den davon getrennten Image-Nachweis liefert. Staging verlangt beide Verträge vor jeder Mutation.
 
+### Ergänzung 2026-08: Konsolidierte CI-Topologie im Shadow-Modus
+
+Zwei zusätzliche, nicht blockierende Workflows bilden die geplante Zieltopologie ab: ein PR-Shadow mit genau einer allgemeinen Scope-Entscheidung sowie ein vollständiger Main-/Nightly-Shadow ohne PR-Scope- oder PR-Cache-Übernahme. Der PR-Scope wird als versionierte, an Base- und Head-SHA gebundene Evidenz veröffentlicht. Alle Shadow-Jobs tragen eigene `CI Shadow / ...`-Namen; die sieben Required-Kontexte, das aktive Ruleset und die bestehenden Workflow-Entscheidungen bleiben unverändert.
+
+Der Shadow ist Migrationscode und noch kein Cutover-Nachweis. Zum Stand dieser Fortschreibung liegen `0/20` erforderlichen Live-Läufen vor. Erst eine Head-SHA-genaue Auswertung von mindestens 20 repräsentativen Läufen ohne ungeklärte Scope- oder Ergebnisabweichung darf Plan 036 und die atomare Umschaltung vorbereiten.
+
 ### Ergänzung 2026-08: Route-owned Anwenderdokumentation
 
 Produktive Seiten deklarieren ihre stabile Dokumentations-ID direkt im kanonischen Routenvertrag

@@ -603,6 +603,13 @@ Referenzen:
 - Restrisiko: Ein Browserfehler erreicht nach dem Merge zunächst `main` und das automatisch aktualisierte Dev. Maßnahme: Der kanonische vollständige Main-E2E-Lauf ist für exakt dieses Head-SHA vor jeder Staging-Mutation blockierend; Nightly, manuell und Fremd-SHA sind keine Release-Evidenz.
 - Restrisiko: In der 20-Run-Auswertung trat nur ein direkt zuordenbarer roter Unit-/Coverage-Fall auf. Die Zielwerte sind erfüllt, aber die rote Stichprobe bleibt dünn; die versionierte Laufzeitevidenz wird deshalb fortgeführt und nicht als einmalige Messung entfernt.
 
+### Fortschreibung 2026-08: CI-Topologie-Shadow
+
+- Risiko: Der temporäre Shadow verdoppelt Gate-Arbeit und Runner-Minuten. Maßnahme: nur bis zur repräsentativen `20/20`-Paritätsmessung betreiben und im atomaren Cutover zusammen mit den Alt-Orchestrierungen abbauen.
+- Risiko: Ein Shadow-Job könnte versehentlich als Required-Kontext oder Release-Evidenz interpretiert werden. Maßnahme: eindeutige `CI Shadow / ...`-Namen, keine Ruleset-Mutation und strikte Trennung von `Build`, `App E2E` und `Promote`.
+- Risiko: Statische Contract-Tests beweisen keine Live-Parität, Queue-Zeit oder GitHub-Semantik. Maßnahme: Stand `0/20` offen ausweisen; Plan 036 bleibt bis zu 20 Head-SHA-genauen Läufen ohne ungeklärte Abweichung gesperrt.
+- Restrisiko: Die Shadow-Implementierung ist zusätzliche temporäre Ownership. Sie darf nicht als dauerhafte zweite CI-Topologie bestehen bleiben.
+
 ### Fortschreibung 2026-08: IAM-ABAC-Entscheidungsbausteine
 
 - Das technische Risiko der monolithischen ABAC-Funktion ist durch fachliche Evaluatoren und die entfernten Complexity-Baseline-Einträge reduziert.

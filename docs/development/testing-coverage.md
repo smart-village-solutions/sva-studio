@@ -154,6 +154,10 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 
 Workflow: `.github/workflows/runtime-gates.yml`
 
+Die vorbereitete Zieltopologie läuft zusätzlich unter `.github/workflows/ci-gates-pr-shadow.yml` und `.github/workflows/ci-gates-main-shadow.yml`. Sie ist nicht blockierend und verändert weder die unten beschriebenen Required Checks noch das aktive Ruleset. Der PR-Shadow ruft `scripts/ci/pr-scope.cli.ts` genau einmal auf und verteilt dessen versionierte, Base-/Head-SHA-gebundene Evidenz an alle Shadow-Jobs. Main und Nightly führen die vollständigen nicht deploymentbezogenen Gates ohne PR-Scope, PR-Cache oder zusätzlichen App-Build aus.
+
+Der Job `CI Shadow / Parity` vergleicht die terminalen Bestands- und Shadow-Ergebnisse für exakt dasselbe Head-SHA. Fehlende, doppelte, nicht terminale oder fremd-SHA-gebundene Checks sind Abweichungen. Der aktuelle Stand `0/20` bezeichnet eine lokal contract-getestete Implementierung ohne Live-Paritätsnachweis; die Shadow-Ergebnisse dürfen weder Merge-Schutz noch Release-Evidenz ersetzen.
+
 - Pull Requests:
   - Required Check `Coverage`: für reguläre PRs bewusster No-op; Coverage-/CI-kritische Änderungen führen im internen Job `Coverage Complete` direkt geänderte Projekte zuerst aus, prüfen deren Paket-Floors und Baseline-Deltas sofort und validieren danach den übrigen Scope einschließlich globaler und New-Code-Gates
   - Der finale Job `Coverage` akzeptiert ausschließlich versionierte, Head-SHA-gebundene und disjunkte Projektartefakte; fehlende, doppelte, veraltete, überlappende oder manipulierte Reports stoppen fail-closed

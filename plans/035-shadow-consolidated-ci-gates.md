@@ -13,7 +13,7 @@
 - **Priorität**: P1
 - **Aufwand**: L
 - **Risiko**: MED
-- **Status**: TODO
+- **Status**: IN PROGRESS
 - **Abhängig von**: erfüllt; Plan 034 abgeschlossen, OpenSpec genehmigt und
   Accelerate archiviert
 - **Kategorie**: tech-debt / dx
@@ -156,12 +156,12 @@ Shadow-Phase aktualisieren.
 
 ## Done-Kriterien
 
-- [ ] Scope wird im neuen PR-Pfad genau einmal allgemein klassifiziert.
-- [ ] Shadow-Jobs sind nicht required und verändern keine bestehende Gate-Entscheidung.
-- [ ] Sieben Required-Verträge plus A11y/App-Build/DB-Snapshot sind charakterisiert.
+- [x] Scope wird im neuen PR-Pfad genau einmal allgemein klassifiziert.
+- [x] Shadow-Jobs sind nicht required und verändern keine bestehende Gate-Entscheidung.
+- [x] Sieben Required-Verträge plus A11y/App-Build/DB-Snapshot sind charakterisiert.
 - [ ] Mindestens 20 Läufe zeigen null ungeklärte Unterabdeckung oder Ergebnisdrift.
-- [ ] Script-Typen, Tooling-Unit, Tooling-Lint, OpenSpec und Placement sind grün.
-- [ ] Keine alte Workflowdatei, kein Ruleset und kein Releasepfad wurde entfernt/geändert.
+- [x] Script-Typen, Tooling-Unit, Tooling-Lint, OpenSpec und Placement sind grün.
+- [x] Keine alte Workflowdatei, kein Ruleset und kein Releasepfad wurde entfernt/geändert.
 
 ## STOP-Bedingungen
 

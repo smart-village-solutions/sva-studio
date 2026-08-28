@@ -7,10 +7,10 @@ vergeben.
 
 ## Ausführungsreihenfolge und Status
 
-| Plan                                                        | Titel                                              | Priorität | Aufwand | Abhängigkeit             | Status  |
-| ----------------------------------------------------------- | -------------------------------------------------- | --------: | ------: | ------------------------ | ------- |
-| [035](./035-shadow-consolidated-ci-gates.md)                | Konsolidierte Gates im Shadow-Modus beweisen       |        P1 |       L | 034 genehmigt            | TODO    |
-| [036](./036-cut-over-and-delete-legacy-ci-orchestration.md) | Cutover durchführen und Alt-Orchestrierung löschen |        P1 |       M | 035 mit 20-Läufe-Parität | BLOCKED |
+| Plan                                                        | Titel                                              | Priorität | Aufwand | Abhängigkeit             | Status      |
+| ----------------------------------------------------------- | -------------------------------------------------- | --------: | ------: | ------------------------ | ----------- |
+| [035](./035-shadow-consolidated-ci-gates.md)                | Konsolidierte Gates im Shadow-Modus beweisen       |        P1 |       L | 034 genehmigt            | IN PROGRESS |
+| [036](./036-cut-over-and-delete-legacy-ci-orchestration.md) | Cutover durchführen und Alt-Orchestrierung löschen |        P1 |       M | 035 mit 20-Läufe-Parität | BLOCKED     |
 
 Statuswerte: `TODO`, `IN PROGRESS`, `BLOCKED`. Terminale Statuswerte `DONE` und
 `REJECTED` werden zusammen mit der jeweiligen Plandatei archiviert.

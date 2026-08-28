@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { evaluateCiGateMainShadowParity, mainGateMappings } from './ci-gate-main-shadow-parity.ts';
 import {
   createScopeFailureEvidence,
   evaluateCiGateShadowParity,
@@ -48,6 +49,46 @@ describe('ci-gate-shadow-parity', () => {
     expect(result.mismatches).toEqual([]);
     expect(result.gates).toHaveLength(12);
     expect(result.gates.every((gate) => gate.matches)).toBe(true);
+  });
+
+  it('measures both PR sides from the same workflow start', () => {
+    const checks = allChecks().map((entry) =>
+      entry.name === 'Unit'
+        ? {
+            ...entry,
+            started_at: '2026-08-28T10:00:50.000Z',
+            completed_at: '2026-08-28T10:01:00.000Z',
+          }
+        : entry
+    );
+    const result = evaluateCiGateShadowParity(
+      checks,
+      scope,
+      scope,
+      new Date('2026-08-28T11:00:00.000Z'),
+      new Date('2026-08-28T10:00:00.000Z')
+    );
+    const unit = result.gates.find((gate) => gate.gate === 'Unit');
+
+    expect(unit?.legacy.durationMs).toBe(60_000);
+    expect(unit?.shadow.durationMs).toBe(60_000);
+  });
+
+  it('collects exact-head main and nightly parity evidence', () => {
+    const checks = mainGateMappings.flatMap((mapping) => [
+      ...mapping.legacyChecks.map((name) => check(name)),
+      ...mapping.shadowChecks.map((name) => check(name)),
+    ]);
+    const result = evaluateCiGateMainShadowParity(
+      checks,
+      headSha,
+      'schedule',
+      new Date('2026-08-28T11:00:00.000Z')
+    );
+
+    expect(result.eventName).toBe('schedule');
+    expect(result.gates).toHaveLength(12);
+    expect(result.mismatches).toEqual([]);
   });
 
   it('accepts equivalent terminal failures', () => {

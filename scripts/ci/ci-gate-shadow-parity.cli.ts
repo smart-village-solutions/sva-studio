@@ -17,6 +17,7 @@ interface CliOptions {
   baseSha: string;
   headSha: string;
   scopeResult: string;
+  comparisonStartedAt: string;
   failPending: boolean;
 }
 
@@ -37,6 +38,7 @@ const parseArguments = (args: readonly string[]): CliOptions => {
     baseSha: read('--base'),
     headSha: read('--head'),
     scopeResult: read('--scope-result'),
+    comparisonStartedAt: read('--comparison-started-at'),
     failPending: args.includes('--fail-pending'),
   };
 };
@@ -83,7 +85,13 @@ export const runCiGateShadowParityCli = (args: readonly string[]): number => {
     const rawLegacyScope = JSON.parse(fs.readFileSync(options.legacyScopePath, 'utf8')) as unknown;
     const scope = parsePrScopeEvidence(rawScope, options.baseSha, options.headSha);
     const legacyScope = parsePrScopeEvidence(rawLegacyScope, options.baseSha, options.headSha);
-    result = evaluateCiGateShadowParity(readChecks(options.checksPath), scope, legacyScope);
+    result = evaluateCiGateShadowParity(
+      readChecks(options.checksPath),
+      scope,
+      legacyScope,
+      new Date(),
+      new Date(options.comparisonStartedAt)
+    );
   } catch (error) {
     result = createScopeFailureEvidence(
       options.baseSha,

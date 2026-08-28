@@ -12,7 +12,7 @@ export interface GitHubCheckRun {
   details_url?: string | null;
 }
 
-interface GateMapping {
+export interface GateMapping {
   gate: string;
   legacyChecks: readonly string[];
   shadowChecks: readonly string[];
@@ -24,7 +24,7 @@ interface EvaluatedGateSide {
   durationMs: number | null;
 }
 
-interface EvaluatedGate {
+export interface EvaluatedGate {
   gate: string;
   legacy: EvaluatedGateSide;
   shadow: EvaluatedGateSide;
@@ -103,7 +103,10 @@ const conclusionState = (check: GitHubCheckRun): GateState => {
   return ['success', 'neutral', 'skipped'].includes(check.conclusion) ? 'passed' : 'failed';
 };
 
-const durationMs = (checks: readonly GitHubCheckRun[]): number | null => {
+const durationMs = (
+  checks: readonly GitHubCheckRun[],
+  comparisonStartedAt?: Date
+): number | null => {
   const starts = checks.flatMap((check) =>
     check.started_at ? [Date.parse(check.started_at)] : []
   );
@@ -118,7 +121,8 @@ const durationMs = (checks: readonly GitHubCheckRun[]): number | null => {
   ) {
     return null;
   }
-  return Math.max(...completions) - Math.min(...starts);
+  const start = comparisonStartedAt?.getTime() ?? Math.min(...starts);
+  return Math.max(...completions) - start;
 };
 
 const evaluateSide = (
@@ -127,7 +131,8 @@ const evaluateSide = (
   headSha: string,
   label: string,
   waitingMismatches: string[],
-  hardMismatches: string[]
+  hardMismatches: string[],
+  comparisonStartedAt?: Date
 ): EvaluatedGateSide => {
   const accepted: GitHubCheckRun[] = [];
   for (const expectedName of expectedNames) {
@@ -160,14 +165,53 @@ const evaluateSide = (
   if (state === 'pending' && accepted.length === expectedNames.length) {
     waitingMismatches.push(`${label}: mindestens ein Check ist nicht terminal`);
   }
-  return { checks: [...expectedNames], state, durationMs: durationMs(accepted) };
+  return {
+    checks: [...expectedNames],
+    state,
+    durationMs: durationMs(accepted, comparisonStartedAt),
+  };
 };
+
+export const evaluateMappings = (
+  checks: readonly GitHubCheckRun[],
+  mappings: readonly GateMapping[],
+  headSha: string,
+  waitingMismatches: string[],
+  hardMismatches: string[],
+  comparisonStartedAt?: Date
+): EvaluatedGate[] =>
+  mappings.map((mapping) => {
+    const legacy = evaluateSide(
+      checks,
+      mapping.legacyChecks,
+      headSha,
+      `${mapping.gate}/Bestand`,
+      waitingMismatches,
+      hardMismatches,
+      comparisonStartedAt
+    );
+    const shadow = evaluateSide(
+      checks,
+      mapping.shadowChecks,
+      headSha,
+      `${mapping.gate}/Shadow`,
+      waitingMismatches,
+      hardMismatches,
+      comparisonStartedAt
+    );
+    const matches = legacy.state === shadow.state && legacy.state !== 'pending';
+    if (!matches && legacy.state !== 'pending' && shadow.state !== 'pending') {
+      hardMismatches.push(`${mapping.gate}: Bestand=${legacy.state}, Shadow=${shadow.state}`);
+    }
+    return { gate: mapping.gate, legacy, shadow, matches };
+  });
 
 export const evaluateCiGateShadowParity = (
   checks: readonly GitHubCheckRun[],
   scopeEvidence: PrScopeEvidence,
   legacyScopeEvidence: PrScopeEvidence,
-  evaluatedAt = new Date()
+  evaluatedAt = new Date(),
+  comparisonStartedAt?: Date
 ): CiGateShadowParityEvidence => {
   const waitingMismatches: string[] = [];
   const hardMismatches: string[] = [];
@@ -176,29 +220,14 @@ export const evaluateCiGateShadowParity = (
   if (!scopeMatches) {
     hardMismatches.push('PR-Scope: zentraler Shadow-Plan weicht vom Legacy-HEAD-Plan ab');
   }
-  const gates = gateMappings.map((mapping) => {
-    const legacy = evaluateSide(
-      checks,
-      mapping.legacyChecks,
-      scopeEvidence.headSha,
-      `${mapping.gate}/Bestand`,
-      waitingMismatches,
-      hardMismatches
-    );
-    const shadow = evaluateSide(
-      checks,
-      mapping.shadowChecks,
-      scopeEvidence.headSha,
-      `${mapping.gate}/Shadow`,
-      waitingMismatches,
-      hardMismatches
-    );
-    const matches = legacy.state === shadow.state && legacy.state !== 'pending';
-    if (!matches && legacy.state !== 'pending' && shadow.state !== 'pending') {
-      hardMismatches.push(`${mapping.gate}: Bestand=${legacy.state}, Shadow=${shadow.state}`);
-    }
-    return { gate: mapping.gate, legacy, shadow, matches };
-  });
+  const gates = evaluateMappings(
+    checks,
+    gateMappings,
+    scopeEvidence.headSha,
+    waitingMismatches,
+    hardMismatches,
+    comparisonStartedAt
+  );
 
   return {
     schemaVersion: 1,

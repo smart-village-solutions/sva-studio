@@ -405,6 +405,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/ci-shadow
+          comparison_started_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
           for attempt in {1..40}; do
             gh api \
               -H 'Accept: application/vnd.github+json' \
@@ -418,7 +419,8 @@ jobs:
               --output artifacts/ci-shadow/parity.json \
               --base "$BASE_SHA" \
               --head "$HEAD_SHA" \
-              --scope-result "$SCOPE_RESULT"
+              --scope-result "$SCOPE_RESULT" \
+              --comparison-started-at "$comparison_started_at"
             parity_status=$?
             set -e
             if [ "$parity_status" -eq 0 ]; then
@@ -437,6 +439,7 @@ jobs:
             --base "$BASE_SHA" \
             --head "$HEAD_SHA" \
             --scope-result "$SCOPE_RESULT" \
+            --comparison-started-at "$comparison_started_at" \
             --fail-pending
       - name: Upload topology parity evidence
         if: always()

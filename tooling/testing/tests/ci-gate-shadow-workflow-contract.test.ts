@@ -79,6 +79,7 @@ describe('CI gate topology shadow workflows', () => {
     expect(prShadow).toContain('node scripts/ci/ci-gate-shadow-parity.cli.ts');
     expect(prShadow).toContain('--legacy-scope artifacts/ci-shadow/legacy-pr-scope.json');
     expect(prShadow).toContain('--scope-result "$SCOPE_RESULT"');
+    expect(prShadow).toContain('--comparison-started-at "$comparison_started_at"');
     expect(prShadow).toContain('for attempt in {1..40}; do');
     expect(prShadow).toContain('--fail-pending');
     expect(prShadow).toContain('if: always()\n    needs:');
@@ -87,7 +88,7 @@ describe('CI gate topology shadow workflows', () => {
     expect(prShadow).toContain('retention-days: 30');
   });
 
-  it('runs full Main and Nightly diagnostics without PR scope, PR cache, or app build', () => {
+  it('runs full Main and Nightly diagnostics without PR scope or PR cache', () => {
     expect(mainShadow).toContain('name: CI Gate Topology Shadow (Main and Nightly)');
     expect(mainShadow).toContain('push:\n    branches:\n      - main');
     expect(mainShadow).toContain("cron: '30 2 * * *'");
@@ -96,10 +97,20 @@ describe('CI gate topology shadow workflows', () => {
     expect(mainShadow).not.toContain('actions/cache');
     expect(mainShadow).not.toContain('test:unit:affected');
     expect(mainShadow).not.toContain('test:coverage:affected');
-    expect(mainShadow).not.toContain('sva-studio-react:build');
+    expect(mainShadow).toContain('pnpm nx run sva-studio-react:build');
     expect(mainShadow).toContain('pnpm test:unit');
     expect(mainShadow).toContain('pnpm test:coverage');
     expect(mainShadow).toContain('pnpm test:integration');
+  });
+
+  it('collects retained exact-head parity for Main and Nightly', () => {
+    expect(mainShadow).toContain('name: CI Shadow Main / Parity');
+    expect(mainShadow).toContain('commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100');
+    expect(mainShadow).toContain('node scripts/ci/ci-gate-main-shadow-parity.cli.ts');
+    expect(mainShadow).toContain('--event "$EVENT_NAME"');
+    expect(mainShadow).toContain('--fail-pending');
+    expect(mainShadow).toContain('name: ci-gate-main-shadow-parity-${{ github.run_id }}');
+    expect(mainShadow).toContain('retention-days: 30');
   });
 
   it('leaves legacy required and release workflows independently named', () => {

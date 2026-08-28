@@ -13,6 +13,8 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
+  checks: read
   contents: read
 
 jobs:
@@ -135,6 +137,17 @@ jobs:
       - uses: ./.github/actions/setup-pnpm-workspace
       - run: pnpm test:a11y
 
+  app-build:
+    name: CI Shadow Main / App Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          filter: tree:0
+      - uses: ./.github/actions/setup-pnpm-workspace
+      - run: pnpm nx run sva-studio-react:build
+
   documentation-integrity:
     name: CI Shadow Main / Documentation Integrity
     runs-on: ubuntu-latest
@@ -169,3 +182,74 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm-workspace
       - run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts
+
+  parity:
+    name: CI Shadow Main / Parity
+    if: always()
+    needs:
+      - lint
+      - unit
+      - types
+      - coverage
+      - complexity
+      - integration
+      - file-placement
+      - a11y
+      - app-build
+      - documentation-integrity
+      - documentation-catalog
+      - db-schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout parity validator
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .nvmrc
+            scripts/ci
+      - name: Setup repository Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Collect exact-head main or nightly parity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ci-shadow-main
+          for attempt in {1..40}; do
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
+              > artifacts/ci-shadow-main/check-runs.json
+            set +e
+            node scripts/ci/ci-gate-main-shadow-parity.cli.ts \
+              --checks artifacts/ci-shadow-main/check-runs.json \
+              --output artifacts/ci-shadow-main/parity.json \
+              --head "$HEAD_SHA" \
+              --event "$EVENT_NAME"
+            parity_status=$?
+            set -e
+            if [ "$parity_status" -eq 0 ]; then exit 0; fi
+            if [ "$parity_status" -eq 1 ]; then exit 1; fi
+            sleep 10
+          done
+          node scripts/ci/ci-gate-main-shadow-parity.cli.ts \
+            --checks artifacts/ci-shadow-main/check-runs.json \
+            --output artifacts/ci-shadow-main/parity.json \
+            --head "$HEAD_SHA" \
+            --event "$EVENT_NAME" \
+            --fail-pending
+      - name: Upload main and nightly parity evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-gate-main-shadow-parity-${{ github.run_id }}
+          path: artifacts/ci-shadow-main/parity.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30

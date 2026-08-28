@@ -11,6 +11,7 @@ export interface CiGateMainShadowParityEvidence {
   eventName: string;
   evaluatedAt: string;
   gates: EvaluatedGate[];
+  nonComparableGates: string[];
   mismatches: string[];
   awaitingChecks: boolean;
   hardMismatchCount: number;
@@ -63,20 +64,33 @@ export const mainGateMappings: readonly GateMapping[] = [
   },
 ];
 
+const nightlyComparableGates = new Set(['Coverage', 'Complexity', 'Integration']);
+
 export const evaluateCiGateMainShadowParity = (
   checks: readonly GitHubCheckRun[],
   headSha: string,
   eventName: string,
-  evaluatedAt = new Date()
+  evaluatedAt = new Date(),
+  comparisonStartedAt?: Date
 ): CiGateMainShadowParityEvidence => {
   const waitingMismatches: string[] = [];
   const hardMismatches: string[] = [];
+  const comparableMappings =
+    eventName === 'push'
+      ? mainGateMappings
+      : eventName === 'schedule'
+        ? mainGateMappings.filter((mapping) => nightlyComparableGates.has(mapping.gate))
+        : [];
+  const nonComparableGates = mainGateMappings
+    .filter((mapping) => !comparableMappings.includes(mapping))
+    .map((mapping) => mapping.gate);
   const gates = evaluateMappings(
     checks,
-    mainGateMappings,
+    comparableMappings,
     headSha,
     waitingMismatches,
-    hardMismatches
+    hardMismatches,
+    comparisonStartedAt
   );
   return {
     schemaVersion: 1,
@@ -84,6 +98,7 @@ export const evaluateCiGateMainShadowParity = (
     eventName,
     evaluatedAt: evaluatedAt.toISOString(),
     gates,
+    nonComparableGates,
     mismatches: [...hardMismatches, ...waitingMismatches],
     awaitingChecks: waitingMismatches.length > 0,
     hardMismatchCount: hardMismatches.length,

@@ -91,7 +91,7 @@ describe('CI gate topology shadow workflows', () => {
   it('runs full Main and Nightly diagnostics without PR scope or PR cache', () => {
     expect(mainShadow).toContain('name: CI Gate Topology Shadow (Main and Nightly)');
     expect(mainShadow).toContain('push:\n    branches:\n      - main');
-    expect(mainShadow).toContain("cron: '30 2 * * *'");
+    expect(mainShadow).toContain("cron: '0 2 * * *'");
     expect(mainShadow).not.toContain('pull_request:');
     expect(mainShadow).not.toContain('pr-scope');
     expect(mainShadow).not.toContain('actions/cache');
@@ -105,9 +105,13 @@ describe('CI gate topology shadow workflows', () => {
 
   it('collects retained exact-head parity for Main and Nightly', () => {
     expect(mainShadow).toContain('name: CI Shadow Main / Parity');
-    expect(mainShadow).toContain('commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100');
+    expect(mainShadow).toContain(
+      'actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100'
+    );
+    expect(mainShadow).toContain('actions/runs/${run_id}/jobs?filter=latest&per_page=100');
     expect(mainShadow).toContain('node scripts/ci/ci-gate-main-shadow-parity.cli.ts');
     expect(mainShadow).toContain('--event "$EVENT_NAME"');
+    expect(mainShadow).toContain('--comparison-started-at "$comparison_started_at"');
     expect(mainShadow).toContain('--fail-pending');
     expect(mainShadow).toContain('name: ci-gate-main-shadow-parity-${{ github.run_id }}');
     expect(mainShadow).toContain('retention-days: 30');

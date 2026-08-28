@@ -9,7 +9,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '30 2 * * *'
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -221,17 +221,30 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/ci-shadow-main
+          mkdir -p artifacts/ci-shadow-main/jobs
           for attempt in {1..40}; do
             gh api \
               -H 'Accept: application/vnd.github+json' \
-              "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
+              "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100" \
+              > artifacts/ci-shadow-main/workflow-runs.json
+            comparison_started_at=$(jq -r '[.workflow_runs[].created_at] | min' artifacts/ci-shadow-main/workflow-runs.json)
+            for run_id in $(jq -r '.workflow_runs[].id' artifacts/ci-shadow-main/workflow-runs.json); do
+              gh api \
+                -H 'Accept: application/vnd.github+json' \
+                "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?filter=latest&per_page=100" \
+                > "artifacts/ci-shadow-main/jobs/${run_id}.json"
+            done
+            jq -s \
+              '{check_runs: [.[].jobs[] | {name, head_sha, status, conclusion, started_at, completed_at, details_url: .html_url}]}' \
+              artifacts/ci-shadow-main/jobs/*.json \
               > artifacts/ci-shadow-main/check-runs.json
             set +e
             node scripts/ci/ci-gate-main-shadow-parity.cli.ts \
               --checks artifacts/ci-shadow-main/check-runs.json \
               --output artifacts/ci-shadow-main/parity.json \
               --head "$HEAD_SHA" \
-              --event "$EVENT_NAME"
+              --event "$EVENT_NAME" \
+              --comparison-started-at "$comparison_started_at"
             parity_status=$?
             set -e
             if [ "$parity_status" -eq 0 ]; then exit 0; fi
@@ -243,6 +256,7 @@ jobs:
             --output artifacts/ci-shadow-main/parity.json \
             --head "$HEAD_SHA" \
             --event "$EVENT_NAME" \
+            --comparison-started-at "$comparison_started_at" \
             --fail-pending
       - name: Upload main and nightly parity evidence
         if: always()

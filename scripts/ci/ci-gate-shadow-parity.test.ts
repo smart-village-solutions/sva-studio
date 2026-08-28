@@ -74,7 +74,7 @@ describe('ci-gate-shadow-parity', () => {
     expect(unit?.shadow.durationMs).toBe(60_000);
   });
 
-  it('collects exact-head main and nightly parity evidence', () => {
+  it('collects exact-head main parity evidence with a common start', () => {
     const checks = mainGateMappings.flatMap((mapping) => [
       ...mapping.legacyChecks.map((name) => check(name)),
       ...mapping.shadowChecks.map((name) => check(name)),
@@ -82,12 +82,40 @@ describe('ci-gate-shadow-parity', () => {
     const result = evaluateCiGateMainShadowParity(
       checks,
       headSha,
-      'schedule',
-      new Date('2026-08-28T11:00:00.000Z')
+      'push',
+      new Date('2026-08-28T11:00:00.000Z'),
+      new Date('2026-08-28T10:00:00.000Z')
     );
 
-    expect(result.eventName).toBe('schedule');
+    expect(result.eventName).toBe('push');
     expect(result.gates).toHaveLength(12);
+    expect(result.nonComparableGates).toEqual([]);
+    expect(result.gates.every((gate) => gate.legacy.durationMs === 60_000)).toBe(true);
+    expect(result.mismatches).toEqual([]);
+  });
+
+  it('marks gates without a scheduled legacy run as non-comparable', () => {
+    const scheduledMappings = mainGateMappings.filter((mapping) =>
+      ['Coverage', 'Complexity', 'Integration'].includes(mapping.gate)
+    );
+    const checks = scheduledMappings.flatMap((mapping) => [
+      ...mapping.legacyChecks.map((name) => check(name)),
+      ...mapping.shadowChecks.map((name) => check(name)),
+    ]);
+    const result = evaluateCiGateMainShadowParity(
+      checks,
+      headSha,
+      'schedule',
+      new Date('2026-08-28T11:00:00.000Z'),
+      new Date('2026-08-28T10:00:00.000Z')
+    );
+
+    expect(result.gates.map((gate) => gate.gate)).toEqual([
+      'Coverage',
+      'Complexity',
+      'Integration',
+    ]);
+    expect(result.nonComparableGates).toHaveLength(9);
     expect(result.mismatches).toEqual([]);
   });
 

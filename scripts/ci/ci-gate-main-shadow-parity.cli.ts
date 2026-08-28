@@ -33,7 +33,9 @@ export const runCiGateMainShadowParityCli = (args: readonly string[]): number =>
   const evidence = evaluateCiGateMainShadowParity(
     readChecks(readArgument(args, '--checks')),
     readArgument(args, '--head'),
-    readArgument(args, '--event')
+    readArgument(args, '--event'),
+    new Date(),
+    new Date(readArgument(args, '--comparison-started-at'))
   );
   writeEvidence(readArgument(args, '--output'), evidence);
   for (const mismatch of evidence.mismatches) console.error(mismatch);

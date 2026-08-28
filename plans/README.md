@@ -7,21 +7,20 @@ vergeben.
 
 ## Ausführungsreihenfolge und Status
 
-| Plan                                                        | Titel                                                 | Priorität | Aufwand | Abhängigkeit                       | Status  |
-| ----------------------------------------------------------- | ----------------------------------------------------- | --------: | ------: | ---------------------------------- | ------- |
-| [034](./034-specify-ci-gate-consolidation.md)               | CI-Konsolidierung als OpenSpec und Baseline festlegen |        P1 |       M | Accelerate-Resttasks abgeschlossen | BLOCKED |
-| [035](./035-shadow-consolidated-ci-gates.md)                | Konsolidierte Gates im Shadow-Modus beweisen          |        P1 |       L | 034 genehmigt                      | BLOCKED |
-| [036](./036-cut-over-and-delete-legacy-ci-orchestration.md) | Cutover durchführen und Alt-Orchestrierung löschen    |        P1 |       M | 035 mit 20-Läufe-Parität           | BLOCKED |
+| Plan                                                        | Titel                                                 | Priorität | Aufwand | Abhängigkeit                 | Status      |
+| ----------------------------------------------------------- | ----------------------------------------------------- | --------: | ------: | ---------------------------- | ----------- |
+| [034](./034-specify-ci-gate-consolidation.md)               | CI-Konsolidierung als OpenSpec und Baseline festlegen |        P1 |       M | Proposal-Freigabe ausstehend | IN PROGRESS |
+| [035](./035-shadow-consolidated-ci-gates.md)                | Konsolidierte Gates im Shadow-Modus beweisen          |        P1 |       L | 034 genehmigt                | BLOCKED     |
+| [036](./036-cut-over-and-delete-legacy-ci-orchestration.md) | Cutover durchführen und Alt-Orchestrierung löschen    |        P1 |       M | 035 mit 20-Läufe-Parität     | BLOCKED     |
 
 Statuswerte: `TODO`, `IN PROGRESS`, `BLOCKED`. Terminale Statuswerte `DONE` und
 `REJECTED` werden zusammen mit der jeweiligen Plandatei archiviert.
 
 ## Abhängigkeiten und Entscheidungstore
 
-- Plan 034 ist Proposal-only. Er darf keine produktive CI-Datei ändern und
-  bleibt bis zum fachlichen Abschluss der offenen Accelerate-Tasks 0.5, 7.1,
-  7.4, 8.4 und 8.5 blockiert. Danach endet er an der menschlichen
-  OpenSpec-Freigabe.
+- Plan 034 ist Proposal-only. Er darf keine produktive CI-Datei ändern. Die
+  Accelerate-Tasks 0.5, 7.1, 7.4, 8.4 und 8.5 sind abgeschlossen; der Plan
+  steht jetzt am menschlichen OpenSpec-Freigabetor.
 - Plan 035 führt die neue Topologie nur als nicht-blockierenden Shadow ein.
   Die bereits vorhandenen Unit-/Coverage-Planer, Evidenzformate und
   Aggregatoren werden wiederverwendet; eine ungeklärte Scope- oder

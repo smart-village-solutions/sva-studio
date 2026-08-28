@@ -5,7 +5,7 @@
 > Jeden Prüfschritt ausführen. Bei einer STOP-Bedingung nicht improvisieren.
 >
 > **Drift-Check (zuerst ausführen)**:
-> `git diff --stat 7bacf2bbb..HEAD -- .github/workflows package.json nx.json scripts/ci openspec/changes/accelerate-pr-failure-feedback docs/development/testing-coverage.md`
+> `git diff --stat 7bacf2bbb..HEAD -- .github/workflows package.json nx.json scripts/ci openspec/changes/archive/2026-08-25-accelerate-pr-failure-feedback docs/development/testing-coverage.md`
 > Bei Drift die Baseline neu erheben und alle Zahlen im Proposal aktualisieren.
 
 ## Status
@@ -13,10 +13,11 @@
 - **Priorität**: P1
 - **Aufwand**: M
 - **Risiko**: LOW
-- **Status**: BLOCKED
-- **Abhängig von**: die offenen Accelerate-Tasks 0.5, 7.1, 7.4, 8.4 und 8.5 müssen fachlich abgeschlossen sein
+- **Status**: IN PROGRESS
+- **Abhängig von**: Accelerate ist abgeschlossen; die menschliche Freigabe des
+  OpenSpec-Proposals steht noch aus
 - **Kategorie**: tech-debt / dx
-- **Reconciled auf**: Commit `7bacf2bbb`, 2026-08-24
+- **Reconciled auf**: Commit `6b1ae3ae`, 2026-08-28
 
 ## Warum das wichtig ist
 
@@ -30,22 +31,23 @@ erst in Plan 035.
 
 ## Aktueller Stand
 
-- Das am 24. August 2026 live gelesene GitHub-Ruleset `11600196` verlangt exakt
+- Das am 28. August 2026 erneut live gelesene GitHub-Ruleset `11600196` verlangt exakt
   die Kontexte `Lint`, `Unit`, `Types`, `Complexity`, `PR Integration`,
   `File Placement` und `Coverage`. Diese Namen sind ein unveränderlicher
   Migrationsvertrag.
-- PR #1130 hat `accelerate-pr-failure-feedback` nach `main` gemergt. Der Change
-  bleibt mit 40/45 Tasks aktiv: offen sind 0.5, 7.1, 7.4, 8.4 und 8.5.
+- `accelerate-pr-failure-feedback` wurde am 25. August 2026 nach vollständig
+  nachgewiesenen Tasks archiviert. Die früher offenen Tasks 0.5, 7.1, 7.4,
+  8.4 und 8.5 sind abgeschlossen; die Issues `#1154` und `#1155` bleiben
+  ausdrücklich nicht blockierende Nachweisverbesserungen.
 - `.github/workflows/quality-gates.yml` besitzt Lint, Unit Fast Feedback,
   Unit Complete, den required Unit-Aggregator, Types und A11y. Die fünf
   ausführenden Jobs wiederholen derzeit jeweils Relevanz-, Workspace- und
   `pr-scope.cli.ts`-Setup. Unit-Planung, Evidenz und Aggregation gehören bereits
   dem Accelerate-Change und sind keine neue Konsolidierungslogik.
-- `.github/workflows/runtime-gates.yml` besitzt Coverage, den noch
-  nicht-required Job `Coverage Shadow`, Complexity, PR Integration und den
-  Main-/Nightly-Job Integration. Die Coverage-Shadow-Parität und der spätere
-  stabile Aggregatorname sind noch Accelerate-Task 7.4; drei weitere Jobs
-  bestimmen den allgemeinen PR-Scope erneut.
+- `.github/workflows/runtime-gates.yml` besitzt den internen Job
+  `Coverage Complete`, den stabilen required Aggregator `Coverage`, Complexity,
+  PR Integration und den Main-/Nightly-Job Integration. Drei ausführende
+  PR-Jobs bestimmen den allgemeinen Scope erneut.
 - `.github/workflows/main-build.yml` führt den App-Build für PR und `main` aus,
   obwohl `.github/workflows/build.yml` auf `main` bereits den kanonischen
   Runtime-Artefakt-/Image-Vertrag besitzt.
@@ -53,15 +55,15 @@ erst in Plan 035.
   `File Placement` sowie den selektiven DB-Schema-Snapshot.
 - Die vier allgemeinen Orchestrierungsworkflows `quality-gates.yml`,
   `runtime-gates.yml`, `main-build.yml` und `repository-hygiene.yml` umfassen
-  zusammen 967 Zeilen. Sie enthalten neun Aufrufe von `pr-scope.cli.ts`, zehn
-  `dorny/paths-filter`-Schritte und zwölf Workspace-Setups.
+  zusammen 1.050 Zeilen. Sie enthalten neun Aufrufe von `pr-scope.cli.ts`, elf
+  `dorny/paths-filter`-Schritte und 14 vollständige Workspace-Setups.
 - `scripts/ci/pr-scope.ts`, `changed-project-plan.ts`,
   `affected-unit-gate.ts`, `affected-coverage-gate.ts`, `coverage-plan.ts`,
   `coverage-shard-evidence.ts` und `ci-feedback-aggregate.ts` bilden bereits
   den typsicheren Scope-, Phasen- und Evidenzvertrag. Sie bleiben führend und
   dürfen nicht durch YAML-Patterns oder einen zweiten Aggregator dupliziert
   werden.
-- `openspec/changes/accelerate-pr-failure-feedback/design.md:26-35` schließt
+- Der archivierte Accelerate-Change schließt
   eine vollständige Workflow-Neuordnung ausdrücklich aus. Die Konsolidierung
   ist daher ein eigener Folgechange und darf dessen noch offene Paritäts-,
   Aggregator- oder Messaufgaben nicht übernehmen oder verdecken.
@@ -108,15 +110,15 @@ erst in Plan 035.
 
 ### 1. Accelerate-Change als Voraussetzung auflösen
 
-`proposal.md`, `design.md`, `tasks.md`, aktuellen Git-Diff und Live-Status von
-`accelerate-pr-failure-feedback` vergleichen. Plan 034 bleibt blockiert, bis
-die Tasks 0.5, 7.1, 7.4, 8.4 und 8.5 vollständig nachgewiesen sind. Danach den
+`proposal.md`, `design.md`, `tasks.md`, aktuellen Git-Diff und Archivstatus von
+`accelerate-pr-failure-feedback` vergleichen. Die Tasks 0.5, 7.1, 7.4, 8.4
+und 8.5 sind vollständig nachgewiesen. Den
 finalen Accelerate-Vertrag als unveränderte Eingangsgrenze dokumentieren:
 Scope-Planer, Unit-/Coverage-Phasen, Evidenzvalidatoren, Aggregatoren und
 Messdaten werden wiederverwendet, nicht neu implementiert.
 
-**Verifizieren**:
-`pnpm exec openspec validate accelerate-pr-failure-feedback --strict` → Exit 0.
+**Verifizieren**: Archivierte Checkliste und Abschlussnachweise vollständig;
+aktueller OpenSpec-Bestand strikt valide.
 
 ### 2. Aktuelle Ownership- und Kostenbaseline schreiben
 
@@ -164,7 +166,8 @@ Messbare Ziele im Spec:
 - keine doppelte Ausführung desselben App-Build-/Gate-Vertrags für denselben
   Event-/SHA-Kontext;
 - mindestens 20 % weniger YAML-Zeilen in den vier abgelösten
-  Orchestrierungsworkflows zusammen;
+  Orchestrierungsworkflows zusammen; auf der aktuellen Baseline bedeutet das
+  höchstens 840 Zeilen;
 - nach Cutover keine Nettozunahme produktiver CI-Orchestrierungs-TS-Zeilen;
 - identische Scope- und Endergebnisse in einer repräsentativen Paritätsmatrix;
 - grüne PR-Laufzeit verschlechtert sich im Median um höchstens 30 Sekunden.
@@ -195,13 +198,13 @@ Danach STOP: Plan 035 darf erst nach ausdrücklicher Proposal-Freigabe starten.
 
 ## Done-Kriterien
 
-- [ ] Baseline enthält aktuelle Live-Ruleset-Kontexte und Workflow-Matrix.
-- [ ] Accelerate ist mit den Tasks 0.5, 7.1, 7.4, 8.4 und 8.5 fachlich
+- [x] Baseline enthält aktuelle Live-Ruleset-Kontexte und Workflow-Matrix.
+- [x] Accelerate ist mit den Tasks 0.5, 7.1, 7.4, 8.4 und 8.5 fachlich
       abgeschlossen und sein Scope ohne Doppelownership abgegrenzt.
-- [ ] OpenSpec definiert Zieltopologie, Migration, Löschbilanz und STOP-Grenzen.
-- [ ] `pnpm exec openspec validate refactor-ci-gate-orchestration --strict` ist grün.
-- [ ] `pnpm check:file-placement` und `git diff --check` sind grün.
-- [ ] Keine produktive CI-Datei und kein GitHub-Ruleset wurde verändert.
+- [x] OpenSpec definiert Zieltopologie, Migration, Löschbilanz und STOP-Grenzen.
+- [x] `pnpm exec openspec validate refactor-ci-gate-orchestration --strict` ist grün.
+- [x] `pnpm check:file-placement` und `git diff --check` sind grün.
+- [x] Keine produktive CI-Datei und kein GitHub-Ruleset wurde verändert.
 - [ ] Proposal wurde menschlich freigegeben, bevor Plan 035 startet.
 
 ## STOP-Bedingungen

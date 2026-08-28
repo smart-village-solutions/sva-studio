@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { classifyLegacyWorkflowScope } from './legacy-pr-scope.ts';
 import { classifyPrScope, resolveChangedFiles, type PrScopeDecision } from './pr-scope.ts';
 
 interface PrScopeCliOptions {
@@ -160,7 +161,9 @@ export const runPrScopeCli = (args: readonly string[]): number => {
   }
 
   if (options.legacyEvidencePath) {
-    const legacyDecision = classifyPrScope(resolveChangedFiles(options.base, 'HEAD'));
+    const legacyDecision = classifyLegacyWorkflowScope(
+      resolveChangedFiles(options.base, options.head)
+    );
     const legacyEvidence = createPrScopeEvidence(legacyDecision, options.base, options.head);
     fs.mkdirSync(path.dirname(options.legacyEvidencePath), { recursive: true });
     fs.writeFileSync(

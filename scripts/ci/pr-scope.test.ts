@@ -7,6 +7,7 @@ import {
   type PrScopeDecision,
 } from './pr-scope.ts';
 import { createPrScopeEvidence, parsePrScopeEvidence } from './pr-scope.cli.ts';
+import { classifyLegacyWorkflowScope } from './legacy-pr-scope.ts';
 
 const expectDecision = (decision: PrScopeDecision, expected: Partial<PrScopeDecision>): void => {
   expect(decision).toMatchObject(expected);
@@ -283,11 +284,49 @@ describe('pr-scope', () => {
 
   it('includes deleted files when resolving changed files', () => {
     const changedFiles = resolveChangedFiles('origin/main', 'HEAD', (args) => {
-      expect(args).toEqual(['diff', '--name-only', '--diff-filter=ACDMR', 'origin/main...HEAD']);
-      return 'packages/core/src/deleted.ts\n';
+      expect(args).toEqual([
+        'diff',
+        '--name-status',
+        '--find-renames',
+        '--diff-filter=ACDMR',
+        'origin/main...HEAD',
+      ]);
+      return 'D\tpackages/core/src/deleted.ts\n';
     });
 
     expect(changedFiles).toEqual(['packages/core/src/deleted.ts']);
+  });
+
+  it('preserves both paths of renamed files for scope classification', () => {
+    const changedFiles = resolveChangedFiles('origin/main', 'HEAD', () =>
+      [
+        'R100\tpackages/data/migrations/0042_old.sql\tdocs/archive/0042_old.sql',
+        'M\tpackages/core/src/index.ts',
+      ].join('\n')
+    );
+
+    expect(changedFiles).toEqual([
+      'packages/data/migrations/0042_old.sql',
+      'docs/archive/0042_old.sql',
+      'packages/core/src/index.ts',
+    ]);
+    expect(classifyPrScope(changedFiles).dbSchemaMode).toBe('full');
+  });
+
+  it('derives legacy workflow scope without using the centralized classifier', () => {
+    const fixtures = [
+      ['docs/development/testing-coverage.md'],
+      ['packages/core/src/index.ts'],
+      ['apps/sva-studio-react/src/routes/index.tsx'],
+      ['apps/sva-studio-react/src/server.ts'],
+      ['packages/data/migrations/0042_add_index.sql'],
+      ['scripts/ci/pr-scope.ts'],
+      ['pnpm-lock.yaml'],
+    ];
+
+    for (const files of fixtures) {
+      expect(classifyLegacyWorkflowScope(files)).toEqual(classifyPrScope(files));
+    }
   });
 
   it('falls back to two-dot diff when no merge base is available', () => {
@@ -297,14 +336,19 @@ describe('pr-scope', () => {
       invocationCount += 1;
       const diffRange = args.at(-1);
 
-      expect(args.slice(0, 3)).toEqual(['diff', '--name-only', '--diff-filter=ACDMR']);
+      expect(args.slice(0, 4)).toEqual([
+        'diff',
+        '--name-status',
+        '--find-renames',
+        '--diff-filter=ACDMR',
+      ]);
 
       if (diffRange === 'origin/main...HEAD') {
         throw new Error('fatal: origin/main...HEAD: no merge base');
       }
 
       expect(diffRange).toBe('origin/main..HEAD');
-      return 'packages/core/src/index.ts\napps/sva-studio-react/src/routes/index.tsx\n';
+      return 'M\tpackages/core/src/index.ts\nA\tapps/sva-studio-react/src/routes/index.tsx\n';
     });
 
     expect(invocationCount).toBe(2);
@@ -333,7 +377,7 @@ describe('pr-scope', () => {
           }
 
           expect(diffRange).toBe('origin/main...HEAD');
-          return 'apps/sva-studio-react/src/routes/index.tsx\n';
+          return 'M\tapps/sva-studio-react/src/routes/index.tsx\n';
         }
       );
 

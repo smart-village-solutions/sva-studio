@@ -239,7 +239,7 @@ export const resolveChangedFiles = (
   ) => execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim()
 ): string[] => {
   const runDiff = (range: string): string =>
-    runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', range], {
+    runGitCommand(['diff', '--name-status', '--find-renames', '--diff-filter=ACDMR', range], {
       encoding: 'utf8',
     });
 
@@ -276,8 +276,15 @@ export const resolveChangedFiles = (
     return [];
   }
 
-  return output
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
+  return [
+    ...new Set(
+      output
+        .split('\n')
+        .flatMap((line) => {
+          const [, ...paths] = line.trim().split('\t');
+          return paths;
+        })
+        .filter(Boolean)
+    ),
+  ];
 };

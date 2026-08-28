@@ -1,0 +1,4 @@
+{
+  "prNumber": 1184,
+  "body": "Die geplante Konsolidierung der CI-Gates kann jetzt ohne Änderung des Merge-Schutzes im Shadow-Modus gemessen werden.\n\n- Pull Requests verwenden im Shadow genau eine versionierte, an Base- und Head-SHA gebundene Scope-Entscheidung.\n- Ein getrennter Main- und Nightly-Shadow prüft die nicht deploymentbezogenen Gates vollständig, ohne PR-Cache oder zusätzlichen App-Build zu übernehmen.\n- Required Checks, Ruleset sowie Build-, E2E- und Promote-Pfade bleiben unverändert; ein Cutover setzt weiterhin mindestens 20 repräsentative Läufe ohne ungeklärte Abweichung voraus."
+}

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1186,
+  "body": "Die Qualitätssicherung für den Mainserver-Synchronisationsstatus wurde vervollständigt\n\n- Fehlende Zeitstempel und noch nicht vorhandene Synchronisationsstände werden nun ausdrücklich durch Tests abgedeckt.\n- Das Coverage-Gate erkennt dadurch weiterhin unbeabsichtigte Verschlechterungen zuverlässig."
+}

@@ -411,7 +411,7 @@ jobs:
               "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
               > artifacts/ci-shadow/check-runs.json
             set +e
-            node scripts/ci/ci-gate-shadow-parity.ts \
+            node scripts/ci/ci-gate-shadow-parity.cli.ts \
               --checks artifacts/ci-shadow/check-runs.json \
               --scope artifacts/ci-shadow/pr-scope.json \
               --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \
@@ -429,7 +429,7 @@ jobs:
             fi
             sleep 10
           done
-          node scripts/ci/ci-gate-shadow-parity.ts \
+          node scripts/ci/ci-gate-shadow-parity.cli.ts \
             --checks artifacts/ci-shadow/check-runs.json \
             --scope artifacts/ci-shadow/pr-scope.json \
             --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \

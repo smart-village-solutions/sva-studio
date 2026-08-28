@@ -76,7 +76,7 @@ describe('CI gate topology shadow workflows', () => {
   it('compares exact-head terminal checks and retains parity evidence', () => {
     expect(prShadow).toContain('name: CI Shadow / Parity');
     expect(prShadow).toContain('commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100');
-    expect(prShadow).toContain('node scripts/ci/ci-gate-shadow-parity.ts');
+    expect(prShadow).toContain('node scripts/ci/ci-gate-shadow-parity.cli.ts');
     expect(prShadow).toContain('--legacy-scope artifacts/ci-shadow/legacy-pr-scope.json');
     expect(prShadow).toContain('--scope-result "$SCOPE_RESULT"');
     expect(prShadow).toContain('for attempt in {1..40}; do');

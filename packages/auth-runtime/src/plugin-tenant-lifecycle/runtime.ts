@@ -47,6 +47,12 @@ const repository: Pick<
     ),
 };
 
+const blocksAutomaticLifecycleRetryWhileSuspended = (
+  lifecycle: NonNullable<Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>>
+): boolean =>
+  lifecycle.accessState === 'suspended' &&
+  (lifecycle.retryKind !== 'retryable' || lifecycle.desiredOperation !== 'reactivate');
+
 const resolveAutomaticProvisioningSchedule = (
   definition: PluginTenantLifecycleRegistryEntry,
   activation: TenantModuleActivationRecord,
@@ -62,10 +68,7 @@ const resolveAutomaticProvisioningSchedule = (
     return operation ? { operation, scheduledAt: now.toISOString() } : null;
   }
   if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return null;
-  if (
-    lifecycle.accessState === 'suspended' &&
-    !(lifecycle.retryKind === 'retryable' && lifecycle.desiredOperation === 'reactivate')
-  ) {
+  if (blocksAutomaticLifecycleRetryWhileSuspended(lifecycle)) {
     return null;
   }
   if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > now.getTime()) {

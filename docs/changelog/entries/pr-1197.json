@@ -1,0 +1,4 @@
+{
+  "prNumber": 1197,
+  "body": "Das Studio kann Plugins nun auf Root- und Mandantenebene einheitlich verwalten und den technischen Bereitstellungszustand eines Mandanten nachvollziehbar anzeigen.\n\n- Pflicht-Plugins, automatisch aktivierte Plugins und optionale Plugins folgen gemeinsamen Aktivierungsregeln.\n- Mandantenbezogene Plugin-Aufgaben für Bereitstellung, Abgleich und Bereitschaft verwenden einen gemeinsamen Lifecycle.\n- Das Waste-Management-Plugin nutzt diese Plattformfunktionen und meldet fehlende Voraussetzungen, bevor betroffene Bereiche geöffnet werden."
+}

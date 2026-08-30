@@ -13,6 +13,7 @@ const repositoryState = vi.hoisted(() => ({
 }));
 
 const pluginAccessState = vi.hoisted(() => ({
+  isEffectivelyActive: vi.fn(async () => true),
   isLifecycleJobType: vi.fn(() => false),
   readAccess: vi.fn(async () => ({ allowed: true as const, reason: 'ready' as const })),
 }));
@@ -29,6 +30,7 @@ vi.mock('./repository.js', () => ({
 }));
 
 vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
+  isConfiguredPluginTenantEffectivelyActive: pluginAccessState.isEffectivelyActive,
   isConfiguredPluginTenantLifecycleJobType: pluginAccessState.isLifecycleJobType,
   readConfiguredPluginTenantAccess: pluginAccessState.readAccess,
 }));
@@ -63,6 +65,7 @@ const baseJob = {
 describe('plugin operation runner task list', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pluginAccessState.isEffectivelyActive.mockResolvedValue(true);
     pluginAccessState.isLifecycleJobType.mockReturnValue(false);
     pluginAccessState.readAccess.mockResolvedValue({ allowed: true, reason: 'ready' });
     registerPluginOperationExecutionHandlers({});
@@ -282,7 +285,43 @@ describe('plugin operation runner task list', () => {
     } as never);
 
     expect(handler).toHaveBeenCalledOnce();
+    expect(pluginAccessState.isEffectivelyActive).toHaveBeenCalledWith('tenant-a', 'news');
     expect(pluginAccessState.readAccess).not.toHaveBeenCalled();
+  });
+
+  it('blocks a queued lifecycle job when the plugin became inactive', async () => {
+    const updateJobState = vi.fn(async () => null);
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        appendJobEvent: vi.fn(async () => null),
+      })
+    );
+    pluginAccessState.isLifecycleJobType.mockReturnValueOnce(true);
+    pluginAccessState.isEffectivelyActive.mockResolvedValueOnce(false);
+    const handler = vi.fn(async () => ({}));
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
+
+    await taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+      job: { attempts: 1, max_attempts: 5 },
+    } as never);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(updateJobState).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        status: 'failed',
+        errorPayload: expect.objectContaining({
+          category: 'permanent',
+          details: {
+            plugin: expect.objectContaining({ code: 'plugin_tenant_lifecycle_inactive' }),
+          },
+        }),
+      })
+    );
   });
 
   it('marks a job as retrying and rethrows while attempts remain', async () => {

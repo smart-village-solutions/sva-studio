@@ -60,7 +60,6 @@ const createDependencies = () => ({
       activeJobId: job.id,
     })),
     failUnclaimedLifecycle: vi.fn(async () => lifecycleRecord),
-    failLifecycle: vi.fn(async () => lifecycleRecord),
   },
   resolveJobRegistration: vi.fn(() => ({
     queueName: 'plugin-operations',
@@ -68,7 +67,7 @@ const createDependencies = () => ({
   })),
   createJob: vi.fn(async () => job),
   queueJob: vi.fn(async () => undefined),
-  markEnqueueFailed: vi.fn(async () => undefined),
+  persistEnqueueFailure: vi.fn(async () => undefined),
   markClaimConflict: vi.fn(async () => undefined),
 });
 
@@ -192,18 +191,12 @@ describe('plugin tenant lifecycle orchestrator', () => {
     await expect(
       createPluginTenantLifecycleOrchestrator(dependencies).start(input)
     ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.enqueueFailed}:speech:provision`);
-    expect(dependencies.markEnqueueFailed).toHaveBeenCalledWith({
+    expect(dependencies.persistEnqueueFailure).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      pluginId: 'speech',
       job,
+      generation: 3,
     });
-    expect(dependencies.repository.failLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        jobId: job.id,
-        generation: 3,
-        readinessStatus: 'blocked',
-        retryKind: 'retryable',
-      })
-    );
   });
 
   it('persists a retryable blocked state when job creation fails', async () => {
@@ -228,8 +221,7 @@ describe('plugin tenant lifecycle orchestrator', () => {
   it('logs secondary persistence failures after queueing fails', async () => {
     const dependencies = createDependencies();
     dependencies.queueJob.mockRejectedValue(new Error('queue unavailable'));
-    dependencies.markEnqueueFailed.mockRejectedValue(new TypeError('job update unavailable'));
-    dependencies.repository.failLifecycle.mockRejectedValue(new Error('lifecycle unavailable'));
+    dependencies.persistEnqueueFailure.mockRejectedValue(new TypeError('database unavailable'));
 
     await expect(
       createPluginTenantLifecycleOrchestrator(dependencies).start(input)
@@ -243,8 +235,7 @@ describe('plugin tenant lifecycle orchestrator', () => {
         instance_id: 'tenant-a',
         plugin_id: 'speech',
         job_id: job.id,
-        mark_enqueue_failed_error_type: 'TypeError',
-        fail_lifecycle_error_type: 'Error',
+        persistence_error_type: 'TypeError',
       })
     );
   });

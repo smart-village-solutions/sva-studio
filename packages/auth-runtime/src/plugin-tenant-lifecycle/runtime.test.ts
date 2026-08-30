@@ -9,7 +9,14 @@ const state = vi.hoisted(() => ({
   claimLifecycle: vi.fn(),
   failUnclaimedLifecycle: vi.fn(),
   failLifecycle: vi.fn(),
+  updateJobState: vi.fn(),
+  withStudioJobLifecycleRepositories: vi.fn(),
   getLifecycle: vi.fn(),
+  readinessChecks: [] as Array<{
+    checkId: string;
+    titleKey: string;
+    required: boolean;
+  }>,
   listModuleActivations: vi.fn(async () => [
     {
       moduleId: 'speech',
@@ -45,7 +52,7 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
           pluginId: 'speech',
           contractVersion: 1,
           operations: [{ operation: 'provision', jobTypeId: 'speech.provisionTenant' }],
-          readinessChecks: [],
+          readinessChecks: state.readinessChecks,
         },
       ],
     ]),
@@ -77,6 +84,7 @@ vi.mock('../plugin-operations/repository.js', () => ({
       failLifecycle: state.failLifecycle,
       getLifecycle: state.getLifecycle,
     }),
+  withStudioJobLifecycleRepositories: state.withStudioJobLifecycleRepositories,
 }));
 
 vi.mock('../plugin-operations/runner.js', () => ({
@@ -136,6 +144,15 @@ describe('configured plugin tenant lifecycle runtime', () => {
     });
     state.createStudioJob.mockResolvedValue(job);
     state.getLifecycle.mockResolvedValue(null);
+    state.readinessChecks = [];
+    state.updateJobState.mockResolvedValue(job);
+    state.failLifecycle.mockResolvedValue(lifecycleRecord);
+    state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
+      work({
+        studioJobs: { updateJobState: state.updateJobState },
+        tenantLifecycle: { failLifecycle: state.failLifecycle },
+      })
+    );
   });
 
   it('starts a declared active lifecycle operation through the shared job runtime', async () => {
@@ -209,6 +226,28 @@ describe('configured plugin tenant lifecycle runtime', () => {
     expect(state.createStudioJob).not.toHaveBeenCalled();
   });
 
+  it('re-provisions when persisted readiness no longer matches the current declaration', async () => {
+    state.readinessChecks = [
+      {
+        checkId: 'speech.current-contract',
+        titleKey: 'speech.readiness.currentContract',
+        required: true,
+      },
+    ];
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      readinessStatus: 'ready',
+      desiredGeneration: 3,
+      completedGeneration: 3,
+      readinessChecks: [],
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalled();
+  });
+
   it('provisions an effectively active optional lifecycle plugin', async () => {
     state.listModuleActivations.mockResolvedValueOnce([
       {
@@ -240,5 +279,42 @@ describe('configured plugin tenant lifecycle runtime', () => {
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
 
     expect(state.createStudioJob).not.toHaveBeenCalled();
+  });
+
+  it('persists job and lifecycle enqueue failure through one transaction', async () => {
+    state.queuePluginOperationJob.mockRejectedValueOnce(new Error('queue unavailable'));
+    const { startConfiguredPluginTenantLifecycle } = await import('./runtime.js');
+
+    await expect(
+      startConfiguredPluginTenantLifecycle({
+        instanceId: 'tenant-a',
+        pluginId: 'speech',
+        operation: 'provision',
+        scheduledAt: '2026-08-30T12:00:00.000Z',
+      })
+    ).rejects.toThrow('plugin_tenant_lifecycle_enqueue_failed:speech:provision');
+
+    expect(state.withStudioJobLifecycleRepositories).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.any(Function)
+    );
+    expect(state.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginId: 'speech',
+        jobId: job.id,
+        generation: 3,
+        retryKind: 'retryable',
+      })
+    );
+    expect(state.updateJobState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: job.id,
+        status: 'failed',
+        errorPayload: {
+          code: 'plugin_operation_enqueue_failed',
+          category: 'permanent',
+        },
+      })
+    );
   });
 });

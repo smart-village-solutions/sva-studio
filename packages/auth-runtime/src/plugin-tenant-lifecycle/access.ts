@@ -1,6 +1,7 @@
 import { evaluatePluginTenantAccess } from '@sva/plugin-sdk';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
+import { withRegistryRepository } from '../iam-instance-registry/repository.js';
 import { readConfiguredPluginTenantReadiness } from './read-model.js';
 
 export type ConfiguredPluginTenantAccessDecision =
@@ -19,6 +20,15 @@ export const readConfiguredPluginTenantAccess = async (
   );
   return evaluatePluginTenantAccess(readiness ?? null);
 };
+
+export const isConfiguredPluginTenantEffectivelyActive = async (
+  instanceId: string,
+  pluginId: string
+): Promise<boolean> =>
+  withRegistryRepository(async (repository) => {
+    const activation = await repository.getModuleActivationPolicy(instanceId, pluginId);
+    return activation?.effectiveActive === true;
+  });
 
 export const filterConfiguredPluginTenantAccessibleModules = async (
   instanceId: string,

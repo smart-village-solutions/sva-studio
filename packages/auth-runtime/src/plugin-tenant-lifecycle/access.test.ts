@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   registry: new Map<string, { operations: readonly { jobTypeId: string }[] }>(),
   readiness: vi.fn(),
+  getModuleActivationPolicy: vi.fn(),
 }));
 
 vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
@@ -11,9 +12,14 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
 vi.mock('./read-model.js', () => ({
   readConfiguredPluginTenantReadiness: state.readiness,
 }));
+vi.mock('../iam-instance-registry/repository.js', () => ({
+  withRegistryRepository: async (work: (repository: unknown) => Promise<unknown>) =>
+    work({ getModuleActivationPolicy: state.getModuleActivationPolicy }),
+}));
 
 import {
   filterConfiguredPluginTenantAccessibleModules,
+  isConfiguredPluginTenantEffectivelyActive,
   isConfiguredPluginTenantLifecycleJobType,
   readConfiguredPluginTenantAccess,
 } from './access.js';
@@ -22,6 +28,16 @@ describe('configured plugin tenant access', () => {
   beforeEach(() => {
     state.registry.clear();
     state.readiness.mockReset().mockResolvedValue([]);
+    state.getModuleActivationPolicy.mockReset().mockResolvedValue(null);
+  });
+
+  it('reads effective activation for lifecycle worker execution', async () => {
+    state.getModuleActivationPolicy.mockResolvedValueOnce({ effectiveActive: true });
+
+    await expect(isConfiguredPluginTenantEffectivelyActive('tenant-a', 'speech')).resolves.toBe(
+      true
+    );
+    expect(state.getModuleActivationPolicy).toHaveBeenCalledWith('tenant-a', 'speech');
   });
 
   it('keeps plugins without a lifecycle contract backward compatible', async () => {

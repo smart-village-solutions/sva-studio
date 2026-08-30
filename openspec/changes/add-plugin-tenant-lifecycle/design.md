@@ -58,8 +58,10 @@ akzeptiert, wenn Job-ID, Instanz, Plugin, Claim- und Sollgeneration weiterhin
 Stale- oder Konkurrenzkonflikt und kein wiederholbarer Schreibfehler; ein davor
 bereits erzeugter, aber unterlegener Job wird terminal markiert und nicht als
 verwaister Queue-Eintrag zurückgelassen.
-Terminale Fehler schreiben Studio-Job und Lifecycle-Ledger innerhalb derselben
-Tenant-DB-Transaktion, damit kein terminaler Job einen aktiven Claim zurücklässt.
+Terminale Fehler und Enqueue-Fehler nach einem erfolgreichen Claim schreiben
+Studio-Job und Lifecycle-Ledger innerhalb derselben Tenant-DB-Transaktion,
+damit kein terminaler oder nicht eingereihter Job einen aktiven Claim
+zurücklässt.
 
 Nach dem Commit einer Aktivierungsrichtlinie oder einer neuen Instanz plant der
 Host fehlende oder retryable `provision`-Läufe für alle in der Instanz effektiv
@@ -69,8 +71,9 @@ Lifecycle-Zustände bleiben bis zu einer expliziten Reaktivierung ausgeschlossen
 Der Post-Commit-Lauf
 ist vom bereits bestätigten Request entkoppelt; ein Queue- oder Datenbankfehler
 wird protokolliert und darf die committete Mutation nicht nachträglich als
-fehlgeschlagen melden. Aktive Jobs sowie aktuelle, nicht blockierende
-Readiness-Evidenz verhindern eine erneute Provisionierung. Der Fleet-Reconcile
+fehlgeschlagen melden. Aktive Jobs sowie zur aktuellen Check-Deklaration
+passende, nicht blockierende Readiness-Evidenz verhindern eine erneute
+Provisionierung; veraltete Evidenz löst dagegen einen neuen Lauf aus. Der Fleet-Reconcile
 läuft nach Handler-Registrierung im Hintergrund und blockiert keinen normalen
 Request mit fleetweiter Arbeit.
 

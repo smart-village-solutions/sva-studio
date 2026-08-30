@@ -35,7 +35,7 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
   ) => Promise<{ readonly effectiveActive: boolean } | null>;
   readonly repository: Pick<
     PluginTenantLifecycleRepository,
-    'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle' | 'failLifecycle'
+    'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle'
   >;
   readonly resolveJobRegistration: (
     jobTypeId: string
@@ -58,9 +58,11 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
     readonly maxAttempts: number;
     readonly executionLane?: 'default' | 'privileged';
   }) => Promise<void>;
-  readonly markEnqueueFailed: (input: {
+  readonly persistEnqueueFailure: (input: {
     readonly instanceId: string;
+    readonly pluginId: string;
     readonly job: StudioJobRecord;
+    readonly generation: number;
   }) => Promise<void>;
   readonly markClaimConflict: (input: {
     readonly instanceId: string;
@@ -134,19 +136,14 @@ const handleEnqueueFailure = async (
   job: StudioJobRecord,
   generation: number
 ): Promise<never> => {
-  const [markEnqueueFailedResult, failLifecycleResult] = await Promise.allSettled([
-    dependencies.markEnqueueFailed({ instanceId: input.instanceId, job }),
-    dependencies.repository.failLifecycle({
+  try {
+    await dependencies.persistEnqueueFailure({
       instanceId: input.instanceId,
       pluginId: input.pluginId,
-      jobId: job.id,
+      job,
       generation,
-      readinessStatus: 'blocked',
-      errorCode: pluginTenantLifecycleHostErrorCodes.enqueueFailed,
-      retryKind: 'retryable',
-    }),
-  ]);
-  if (markEnqueueFailedResult.status === 'rejected' || failLifecycleResult.status === 'rejected') {
+    });
+  } catch (persistenceError) {
     dependencies.logger.error(
       'Plugin-Tenant-Lifecycle konnte einen Enqueue-Fehler nicht vollständig persistieren',
       {
@@ -156,18 +153,8 @@ const handleEnqueueFailure = async (
         instance_id: input.instanceId,
         plugin_id: input.pluginId,
         job_id: job.id,
-        mark_enqueue_failed_error_type:
-          markEnqueueFailedResult.status === 'rejected'
-            ? markEnqueueFailedResult.reason instanceof Error
-              ? markEnqueueFailedResult.reason.name
-              : typeof markEnqueueFailedResult.reason
-            : undefined,
-        fail_lifecycle_error_type:
-          failLifecycleResult.status === 'rejected'
-            ? failLifecycleResult.reason instanceof Error
-              ? failLifecycleResult.reason.name
-              : typeof failLifecycleResult.reason
-            : undefined,
+        persistence_error_type:
+          persistenceError instanceof Error ? persistenceError.name : typeof persistenceError,
       }
     );
   }

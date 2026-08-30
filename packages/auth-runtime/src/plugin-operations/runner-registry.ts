@@ -9,6 +9,7 @@ import {
   pluginTenantLifecycleJobInputKey,
 } from '../plugin-tenant-lifecycle/job-correlation.js';
 import {
+  isConfiguredPluginTenantEffectivelyActive,
   isConfiguredPluginTenantLifecycleJobType,
   readConfiguredPluginTenantAccess,
 } from '../plugin-tenant-lifecycle/access.js';
@@ -74,14 +75,26 @@ const guardPluginTenantExecution = (
   handler: StudioJobExecutionRegistration['handler']
 ): StudioJobExecutionRegistration['handler'] => {
   const pluginId = job.pluginId;
-  if (
-    job.source !== 'plugin' ||
-    !pluginId ||
-    isConfiguredPluginTenantLifecycleJobType(pluginId, job.jobTypeId)
-  ) {
+  if (job.source !== 'plugin' || !pluginId) {
     return handler;
   }
+  const lifecycleJob = isConfiguredPluginTenantLifecycleJobType(pluginId, job.jobTypeId);
   return async (context) => {
+    if (lifecycleJob) {
+      const effectivelyActive = await isConfiguredPluginTenantEffectivelyActive(
+        job.instanceId,
+        pluginId
+      );
+      if (!effectivelyActive) {
+        throw Object.assign(new Error(`plugin_tenant_lifecycle_inactive:${pluginId}`), {
+          cause: {
+            category: 'permanent',
+            code: 'plugin_tenant_lifecycle_inactive',
+          },
+        });
+      }
+      return handler(context);
+    }
     const access = await readConfiguredPluginTenantAccess(job.instanceId, pluginId);
     if (!access.allowed) {
       throw Object.assign(new Error(`plugin_tenant_access_blocked:${pluginId}:${access.reason}`), {

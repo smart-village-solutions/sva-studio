@@ -1,16 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
+import type { TenantModuleActivationRecord } from '@sva/core';
 import type { PluginTenantLifecycleRepository } from '@sva/data-repositories';
+import {
+  createPluginTenantReadinessReadModel,
+  type PluginTenantLifecycleRegistryEntry,
+} from '@sva/plugin-sdk';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
 import { withRegistryRepository } from '../iam-instance-registry/repository.js';
+import { createStudioJob, markStudioJobEnqueueFailed } from '../plugin-operations/core.shared.js';
 import {
-  createStudioJob,
-  markPluginOperationEnqueueFailed,
-  markStudioJobEnqueueFailed,
-} from '../plugin-operations/core.shared.js';
-import { withPluginTenantLifecycleRepository } from '../plugin-operations/repository.js';
+  withPluginTenantLifecycleRepository,
+  withStudioJobLifecycleRepositories,
+} from '../plugin-operations/repository.js';
 import {
   getRegisteredPluginOperationExecutionRegistry,
   queuePluginOperationJob,
@@ -18,6 +22,7 @@ import {
 import { pluginTenantLifecycleJobInputKey } from './job-correlation.js';
 import {
   createPluginTenantLifecycleOrchestrator,
+  pluginTenantLifecycleHostErrorCodes,
   type StartPluginTenantLifecycleInput,
 } from './orchestrator.js';
 
@@ -25,7 +30,7 @@ const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'i
 
 const repository: Pick<
   PluginTenantLifecycleRepository,
-  'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle' | 'failLifecycle'
+  'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle'
 > = {
   requestLifecycle: (input) =>
     withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
@@ -39,27 +44,67 @@ const repository: Pick<
     withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
       tenantLifecycleRepository.failUnclaimedLifecycle(input)
     ),
-  failLifecycle: (input) =>
-    withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
-      tenantLifecycleRepository.failLifecycle(input)
-    ),
 };
 
 const needsAutomaticProvisioning = (
+  definition: PluginTenantLifecycleRegistryEntry,
+  activation: TenantModuleActivationRecord,
   lifecycle: Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>
 ): boolean => {
   if (!lifecycle) return true;
   if (lifecycle.accessState === 'suspended') return false;
   if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return false;
+  const readiness = createPluginTenantReadinessReadModel({
+    definition,
+    activation,
+    evidence: lifecycle,
+  });
   if (
-    lifecycle.accessState === 'active' &&
+    readiness?.evidenceState === 'valid' &&
     lifecycle.completedGeneration >= lifecycle.desiredGeneration &&
-    (lifecycle.readinessStatus === 'ready' || lifecycle.readinessStatus === 'degraded')
+    (readiness.status === 'ready' || readiness.status === 'degraded')
   ) {
     return false;
   }
   return true;
 };
+
+const persistLifecycleEnqueueFailure = async (input: {
+  readonly instanceId: string;
+  readonly pluginId: string;
+  readonly job: Awaited<ReturnType<typeof createStudioJob>>;
+  readonly generation: number;
+}): Promise<void> =>
+  withStudioJobLifecycleRepositories(input.instanceId, async ({ studioJobs, tenantLifecycle }) => {
+    const lifecycle = await tenantLifecycle.failLifecycle({
+      instanceId: input.instanceId,
+      pluginId: input.pluginId,
+      jobId: input.job.id,
+      generation: input.generation,
+      readinessStatus: 'blocked',
+      errorCode: pluginTenantLifecycleHostErrorCodes.enqueueFailed,
+      retryKind: 'retryable',
+    });
+    if (!lifecycle) {
+      throw new Error('plugin_tenant_lifecycle_enqueue_cleanup_conflict');
+    }
+    const job = await studioJobs.updateJobState({
+      jobId: input.job.id,
+      instanceId: input.instanceId,
+      status: 'failed',
+      attempts: input.job.attempts,
+      startedAt: input.job.startedAt,
+      finishedAt: new Date().toISOString(),
+      progress: input.job.progress,
+      errorPayload: {
+        code: 'plugin_operation_enqueue_failed',
+        category: 'permanent',
+      },
+    });
+    if (!job) {
+      throw new Error('plugin_operation_enqueue_cleanup_conflict');
+    }
+  });
 
 export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLifecycleInput) =>
   createPluginTenantLifecycleOrchestrator({
@@ -96,7 +141,7 @@ export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLif
         },
       }),
     queueJob: queuePluginOperationJob,
-    markEnqueueFailed: markPluginOperationEnqueueFailed,
+    persistEnqueueFailure: persistLifecycleEnqueueFailure,
     markClaimConflict: ({ instanceId, job }) =>
       markStudioJobEnqueueFailed({
         instanceId,
@@ -112,20 +157,24 @@ export const ensureConfiguredPluginTenantProvisioning = async (
   const activations = await withRegistryRepository((repository) =>
     repository.listModuleActivations(instanceId)
   );
-  const effectivePluginIds = new Set(
-    activations.filter(({ effectiveActive }) => effectiveActive).map(({ moduleId }) => moduleId)
+  const effectiveActivations = new Map(
+    activations
+      .filter(({ effectiveActive }) => effectiveActive)
+      .map((activation) => [activation.moduleId, activation])
   );
-  const provisioningPluginIds = [...lifecycleRegistry.values()].flatMap((definition) =>
-    effectivePluginIds.has(definition.pluginId) &&
-    definition.operations.some(({ operation }) => operation === 'provision')
-      ? [definition.pluginId]
-      : []
+  const provisioningDefinitions = [...lifecycleRegistry.values()].filter(
+    (definition) =>
+      effectiveActivations.has(definition.pluginId) &&
+      definition.operations.some(({ operation }) => operation === 'provision')
   );
-  for (const pluginId of provisioningPluginIds) {
+  for (const definition of provisioningDefinitions) {
+    const pluginId = definition.pluginId;
+    const activation = effectiveActivations.get(pluginId);
+    if (!activation) continue;
     const lifecycle = await withPluginTenantLifecycleRepository(instanceId, (resolvedRepository) =>
       resolvedRepository.getLifecycle(instanceId, pluginId)
     );
-    if (!needsAutomaticProvisioning(lifecycle)) continue;
+    if (!needsAutomaticProvisioning(definition, activation, lifecycle)) continue;
     try {
       await startConfiguredPluginTenantLifecycle({
         instanceId,

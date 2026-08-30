@@ -11,6 +11,12 @@ vi.mock('./job-lifecycle-orchestrator.js', () => ({
   createJobLifecycleOrchestrator: state.createJobLifecycleOrchestrator,
 }));
 
+vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
+  isConfiguredPluginTenantEffectivelyActive: vi.fn(async () => true),
+  isConfiguredPluginTenantLifecycleJobType: vi.fn(() => false),
+  readConfiguredPluginTenantAccess: vi.fn(async () => ({ allowed: true, reason: 'ready' })),
+}));
+
 vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
   readInstanceRegistryPluginActivationPolicies: () => new Map(),
   readInstanceRegistryPluginTenantLifecycleRegistry: () =>

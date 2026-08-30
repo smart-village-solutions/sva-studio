@@ -19,16 +19,16 @@
 
 ## 2. Kleine und zustandsarme Sections ersetzen
 
-- [ ] 2.1 Beschreibung und Medien in ein pluginlokales fachliches
+- [x] 2.1 Beschreibung und Medien in ein pluginlokales fachliches
       Section-Modul verschieben; RHF-Watch, Medienabbildung und bestehende
       Capability-Props dort besitzen
-- [ ] 2.2 Kontakte und Links in ein pluginlokales fachliches Section-Modul
+- [x] 2.2 Kontakte und Links in ein pluginlokales fachliches Section-Modul
       verschieben; ihre Field-Arrays, Defaults und Callbacks dort besitzen
-- [ ] 2.3 Preise in ein pluginlokales Section-Modul verschieben; Field-Array,
+- [x] 2.3 Preise in ein pluginlokales Section-Modul verschieben; Field-Array,
       Default und numerische Eingabeabbildung dort besitzen
-- [ ] 2.4 Nach jedem Block den ersetzten Inline-Code vollständig löschen und
+- [x] 2.4 Nach jedem Block den ersetzten Inline-Code vollständig löschen und
       den fokussierten Content-Tab-Test grün ausführen
-- [ ] 2.5 Produktive Netto-LOC und Fallow-Werte prüfen; bei positiver Bilanz
+- [x] 2.5 Produktive Netto-LOC und Fallow-Werte prüfen; bei positiver Bilanz
       STOP und Datei-/Prop-/Wrapper-Overhead reduzieren
 
 ## 3. Termine und Ortsdaten fachlich zerlegen

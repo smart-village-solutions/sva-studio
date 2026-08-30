@@ -1,47 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
-import {
-  Button,
-  Checkbox,
-  ContentMediaUsageBlock,
-  Input,
-  RichTextHtmlEditor,
-  StudioField,
-  StudioFieldGroup,
-  contentMediaUsagesToMainserver,
-  mainserverContentMediaToUsages,
-  type ContentMediaUsage,
-} from '@sva/studio-ui-react';
+import { Button, Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import {
   createDefaultAddress,
-  createDefaultContact,
   createDefaultDate,
   createDefaultOrganizer,
-  createDefaultPriceInformation,
-  createDefaultUrl,
   type EventsDetailFormValues,
 } from './events.detail-form.js';
+import {
+  EventsContactLinkSections,
+  EventsDescriptionMediaSections,
+  EventsPriceSection,
+} from './events.detail-content-secondary-sections.js';
 import { EventsDetailCard } from './events.detail-card.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
-type Translator = (key: string) => string;
-
-const EventCardSection = ({
-  title,
-  description,
-  actions,
-  children,
-}: Readonly<{
-  title: string;
-  description?: string;
-  actions?: React.ReactNode;
-  children: React.ReactNode;
-}>) => (
-  <EventsDetailCard title={title} description={description} actions={actions}>
-    {children}
-  </EventsDetailCard>
-);
 
 export function EventsDetailContentTab({
   dateEndInput,
@@ -50,30 +24,22 @@ export function EventsDetailContentTab({
   onAddManualMedia,
   onOpenMediaPicker,
   mediaUsages,
-  onChangeMediaUsages = () => undefined,
-  canSelectMedia = true,
-  canUploadMedia = true,
-  mediaEditingDisabled = false,
+  onChangeMediaUsages,
+  canSelectMedia,
+  canUploadMedia,
+  mediaEditingDisabled,
   onLoadAssetSnapshot,
   onDateEndInputChange,
   onDateStartInputChange,
   pt,
-}: Readonly<{
-  dateEndInput: string;
-  dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
-  dateStartInput: string;
-  onAddManualMedia: () => string;
-  onOpenMediaPicker: (mode: 'library' | 'upload') => void;
-  mediaUsages?: readonly ContentMediaUsage[];
-  onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
-  canSelectMedia?: boolean;
-  canUploadMedia?: boolean;
-  mediaEditingDisabled?: boolean;
-  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
-  onDateEndInputChange: (nextValue: string) => void;
-  onDateStartInputChange: (nextValue: string) => void;
-  pt: Translator;
-}>) {
+}: React.ComponentProps<typeof EventsDescriptionMediaSections> &
+  Readonly<{
+    dateEndInput: string;
+    dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
+    dateStartInput: string;
+    onDateEndInputChange: (nextValue: string) => void;
+    onDateStartInputChange: (nextValue: string) => void;
+  }>) {
   const {
     control,
     formState: { errors },
@@ -81,46 +47,17 @@ export function EventsDetailContentTab({
   } = useFormContext<EventsDetailFormValues>();
   const datesArray = useFieldArray({ control, name: 'content.dates' });
   const addressesArray = useFieldArray({ control, name: 'content.addresses' });
-  const contactsArray = useFieldArray({ control, name: 'content.contacts' });
-  const urlsArray = useFieldArray({ control, name: 'content.urls' });
-  const pricesArray = useFieldArray({ control, name: 'content.priceInformations' });
-
-  const description = useWatch({ control, name: 'content.description' }) ?? '';
   const dates = useWatch({ control, name: 'content.dates' }) ?? [];
   const addresses = useWatch({ control, name: 'content.addresses' }) ?? [];
-  const contacts = useWatch({ control, name: 'content.contacts' }) ?? [];
-  const urls = useWatch({ control, name: 'content.urls' }) ?? [];
-  const mediaContents = useWatch({ control, name: 'content.mediaContents' }) ?? [];
-  const resolvedMediaUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
-  const changeMediaUsages = (usages: readonly ContentMediaUsage[]) => {
-    onChangeMediaUsages(usages);
-    setValue(
-      'content.mediaContents',
-      contentMediaUsagesToMainserver(usages) as EventsDetailFormValues['content']['mediaContents'],
-      { shouldDirty: true }
-    );
-  };
   const organizer = useWatch({ control, name: 'content.organizer' }) ?? createDefaultOrganizer();
-  const prices = useWatch({ control, name: 'content.priceInformations' }) ?? [];
   const renderedDates = dates.length > 0 ? dates : [createDefaultDate()];
   const renderedAddresses = addresses.length > 0 ? addresses : [createDefaultAddress()];
-  const renderedContacts = contacts.length > 0 ? contacts : [createDefaultContact()];
-  const renderedUrls = urls.length > 0 ? urls : [createDefaultUrl()];
-  const renderedPrices = prices.length > 0 ? prices : [createDefaultPriceInformation()];
-  const descriptionLabelId = 'event-description-label';
   const addressGeoLocationErrors = errors.content?.addresses ?? [];
   const organizerGeoLocationErrors = errors.content?.organizer?.address?.geoLocation;
   const [isGeocodingEnabled, setIsGeocodingEnabled] = useState(true);
   const [isReverseGeocodingEnabled, setIsReverseGeocodingEnabled] = useState(true);
   const [isMapEnabled, setIsMapEnabled] = useState(true);
   const [mapStyleUrl, setMapStyleUrl] = useState('');
-  const blockTypeOptions = [
-    { value: 'paragraph' as const, label: pt('richText.paragraph') },
-    { value: 'heading-2' as const, label: pt('richText.heading2') },
-    { value: 'heading-3' as const, label: pt('richText.heading3') },
-    { value: 'heading-4' as const, label: pt('richText.heading4') },
-    { value: 'blockquote' as const, label: pt('richText.blockquote') },
-  ];
 
   useEffect(() => {
     let active = true;
@@ -150,104 +87,19 @@ export function EventsDetailContentTab({
 
   return (
     <div className="space-y-6">
-      <EventCardSection
-        title={pt('cards.content.descriptions.title')}
-        description={pt('cards.content.descriptions.description')}
-      >
-        <div className="space-y-1">
-          <label
-            id={descriptionLabelId}
-            htmlFor="event-description"
-            className="text-sm font-medium"
-          >
-            {pt('fields.description')}
-          </label>
-          <RichTextHtmlEditor
-            id="event-description"
-            labelId={descriptionLabelId}
-            value={description}
-            onChange={(nextValue) =>
-              setValue('content.description', nextValue, { shouldDirty: true })
-            }
-            blockTypeOptions={blockTypeOptions}
-            toolbarLabels={{
-              mode: pt('richText.mode'),
-              visualMode: pt('richText.visualMode'),
-              htmlMode: pt('richText.htmlMode'),
-              blockType: pt('richText.blockType'),
-              bulletList: pt('richText.bulletList'),
-              orderedList: pt('richText.orderedList'),
-              bold: pt('richText.bold'),
-              italic: pt('richText.italic'),
-              underline: pt('richText.underline'),
-              clearFormatting: pt('richText.clearFormatting'),
-              undo: pt('richText.undo'),
-              redo: pt('richText.redo'),
-              link: pt('richText.applyLink'),
-              linkPrompt: pt('richText.linkInput'),
-            }}
-          />
-        </div>
-      </EventCardSection>
+      <EventsDescriptionMediaSections
+        onAddManualMedia={onAddManualMedia}
+        onOpenMediaPicker={onOpenMediaPicker}
+        mediaUsages={mediaUsages}
+        onChangeMediaUsages={onChangeMediaUsages}
+        canSelectMedia={canSelectMedia}
+        canUploadMedia={canUploadMedia}
+        mediaEditingDisabled={mediaEditingDisabled}
+        onLoadAssetSnapshot={onLoadAssetSnapshot}
+        pt={pt}
+      />
 
-      <EventCardSection
-        title={pt('cards.content.media.title')}
-        description={pt('cards.content.media.description')}
-      >
-        <fieldset disabled={mediaEditingDisabled} aria-busy={mediaEditingDisabled}>
-          <ContentMediaUsageBlock
-            usages={resolvedMediaUsages}
-            onChange={changeMediaUsages}
-            onAddManual={onAddManualMedia}
-            onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-            onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
-            onLoadAssetSnapshot={onLoadAssetSnapshot}
-            showHeader={false}
-            supportedFields={{ altText: true, caption: true, credit: true, license: false }}
-            labels={{
-              title: pt('cards.content.media.title'),
-              description: pt('cards.content.media.description'),
-              empty: pt('cards.content.media.empty'),
-              actions: {
-                add: pt('messages.mediaPickerTitle'),
-                remove: pt('actions.removeImage'),
-                moveUp: pt('media.moveUp'),
-                moveDown: pt('media.moveDown'),
-                refreshMetadata: pt('media.refresh'),
-                cancel: pt('actions.cancel'),
-                apply: pt('media.apply'),
-              },
-              fields: {
-                url: pt('fields.mediaSourceUrl'),
-                altText: pt('fields.mediaSourceDescription'),
-                caption: pt('fields.mediaCaption'),
-                credit: pt('fields.mediaCopyright'),
-                license: pt('messages.mediaPickerLicense'),
-              },
-              states: {
-                linked: pt('media.linked'),
-                manual: pt('media.manual'),
-                synced: pt('media.synced'),
-                pending: pt('media.pending'),
-                missing: pt('media.missing'),
-                additional: pt('media.additional'),
-                unresolved: pt('media.unresolved'),
-                failed: pt('media.failed'),
-                previewUnavailable: pt('media.previewUnavailable'),
-              },
-              announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
-              refresh: {
-                title: pt('media.refreshTitle'),
-                description: pt('media.refreshDescription'),
-                assetValue: pt('media.assetValue'),
-                contentValue: pt('media.contentValue'),
-              },
-            }}
-          />
-        </fieldset>
-      </EventCardSection>
-
-      <EventCardSection
+      <EventsDetailCard
         title={pt('cards.content.dates.title')}
         description={pt('cards.content.dates.description')}
         actions={
@@ -398,9 +250,9 @@ export function EventsDetailContentTab({
             </StudioField>
           </div>
         ))}
-      </EventCardSection>
+      </EventsDetailCard>
 
-      <EventCardSection
+      <EventsDetailCard
         title={pt('cards.content.addresses.title')}
         description={pt('cards.content.addresses.description')}
         actions={
@@ -501,9 +353,9 @@ export function EventsDetailContentTab({
             />
           </div>
         ))}
-      </EventCardSection>
+      </EventsDetailCard>
 
-      <EventCardSection
+      <EventsDetailCard
         title={pt('cards.content.organizer.title')}
         description={pt('cards.content.organizer.description')}
       >
@@ -597,258 +449,10 @@ export function EventsDetailContentTab({
             setValue('content.organizer.address.zip', value, { shouldDirty: true })
           }
         />
-      </EventCardSection>
+      </EventsDetailCard>
 
-      <EventCardSection
-        title={pt('cards.content.contacts.title')}
-        description={pt('cards.content.contacts.description')}
-        actions={
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => contactsArray.append(createDefaultContact())}
-          >
-            {pt('actions.addContact')}
-          </Button>
-        }
-      >
-        {renderedContacts.map((contact, index) => (
-          <div
-            key={contactsArray.fields[index]?.id ?? `fallback-contact-${index}`}
-            className="space-y-4 rounded-xl border border-border/60 p-4"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-foreground">
-                {pt('cards.content.contacts.itemTitle')}
-              </p>
-              {contacts.length > 1 ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => contactsArray.remove(index)}
-                >
-                  {pt('actions.remove')}
-                </Button>
-              ) : null}
-            </div>
-            <StudioFieldGroup columns={2}>
-              <StudioField
-                id={index === 0 ? 'event-contact-first-name' : `event-contact-first-name-${index}`}
-                label={pt('fields.firstName')}
-              >
-                <Input
-                  id={
-                    index === 0 ? 'event-contact-first-name' : `event-contact-first-name-${index}`
-                  }
-                  value={contact.firstName ?? ''}
-                  onChange={(event) =>
-                    setValue(`content.contacts.${index}.firstName`, event.target.value, {
-                      shouldDirty: true,
-                    })
-                  }
-                />
-              </StudioField>
-              <StudioField
-                id={index === 0 ? 'event-contact-last-name' : `event-contact-last-name-${index}`}
-                label={pt('fields.lastName')}
-              >
-                <Input
-                  id={index === 0 ? 'event-contact-last-name' : `event-contact-last-name-${index}`}
-                  value={contact.lastName ?? ''}
-                  onChange={(event) =>
-                    setValue(`content.contacts.${index}.lastName`, event.target.value, {
-                      shouldDirty: true,
-                    })
-                  }
-                />
-              </StudioField>
-            </StudioFieldGroup>
-            <StudioFieldGroup columns={2}>
-              <StudioField
-                id={index === 0 ? 'event-contact-email' : `event-contact-email-${index}`}
-                label={pt('fields.email')}
-              >
-                <Input
-                  id={index === 0 ? 'event-contact-email' : `event-contact-email-${index}`}
-                  value={contact.email ?? ''}
-                  onChange={(event) =>
-                    setValue(`content.contacts.${index}.email`, event.target.value, {
-                      shouldDirty: true,
-                    })
-                  }
-                />
-              </StudioField>
-              <StudioField
-                id={index === 0 ? 'event-contact-phone' : `event-contact-phone-${index}`}
-                label={pt('fields.phone')}
-              >
-                <Input
-                  id={index === 0 ? 'event-contact-phone' : `event-contact-phone-${index}`}
-                  value={contact.phone ?? ''}
-                  onChange={(event) =>
-                    setValue(`content.contacts.${index}.phone`, event.target.value, {
-                      shouldDirty: true,
-                    })
-                  }
-                />
-              </StudioField>
-            </StudioFieldGroup>
-          </div>
-        ))}
-      </EventCardSection>
-
-      <EventCardSection
-        title={pt('cards.content.links.title')}
-        description={pt('cards.content.links.description')}
-        actions={
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => urlsArray.append(createDefaultUrl())}
-          >
-            {pt('actions.addLink')}
-          </Button>
-        }
-      >
-        {renderedUrls.map((url, index) => (
-          <div
-            key={urlsArray.fields[index]?.id ?? `fallback-url-${index}`}
-            className="space-y-4 rounded-xl border border-border/60 p-4"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-foreground">
-                {pt('cards.content.links.itemTitle')}
-              </p>
-              {urls.length > 1 ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => urlsArray.remove(index)}
-                >
-                  {pt('actions.remove')}
-                </Button>
-              ) : null}
-            </div>
-            <StudioFieldGroup columns={2}>
-              <StudioField
-                id={index === 0 ? 'event-url' : `event-url-${index}`}
-                label={pt('fields.url')}
-              >
-                <Input
-                  id={index === 0 ? 'event-url' : `event-url-${index}`}
-                  value={url.url}
-                  onChange={(event) =>
-                    setValue(`content.urls.${index}.url`, event.target.value, { shouldDirty: true })
-                  }
-                />
-              </StudioField>
-              <StudioField
-                id={index === 0 ? 'event-url-description' : `event-url-description-${index}`}
-                label={pt('fields.urlDescription')}
-              >
-                <Input
-                  id={index === 0 ? 'event-url-description' : `event-url-description-${index}`}
-                  value={url.description ?? ''}
-                  onChange={(event) =>
-                    setValue(`content.urls.${index}.description`, event.target.value, {
-                      shouldDirty: true,
-                    })
-                  }
-                />
-              </StudioField>
-            </StudioFieldGroup>
-          </div>
-        ))}
-      </EventCardSection>
-
-      <EventCardSection
-        title={pt('cards.content.prices.title')}
-        description={pt('cards.content.prices.description')}
-        actions={
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => pricesArray.append(createDefaultPriceInformation())}
-          >
-            {pt('actions.addPrice')}
-          </Button>
-        }
-      >
-        {renderedPrices.map((price, index) => (
-          <div
-            key={pricesArray.fields[index]?.id ?? `fallback-price-${index}`}
-            className="space-y-4 rounded-xl border border-border/60 p-4"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-foreground">
-                {pt('cards.content.prices.itemTitle')}
-              </p>
-              {prices.length > 1 ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => pricesArray.remove(index)}
-                >
-                  {pt('actions.remove')}
-                </Button>
-              ) : null}
-            </div>
-            <StudioFieldGroup columns={2}>
-              <StudioField
-                id={index === 0 ? 'event-price-category' : `event-price-category-${index}`}
-                label={pt('fields.priceCategory')}
-              >
-                <Input
-                  id={index === 0 ? 'event-price-category' : `event-price-category-${index}`}
-                  value={price.category ?? ''}
-                  onChange={(event) =>
-                    setValue(`content.priceInformations.${index}.category`, event.target.value, {
-                      shouldDirty: true,
-                    })
-                  }
-                />
-              </StudioField>
-              <StudioField
-                id={index === 0 ? 'event-price-amount' : `event-price-amount-${index}`}
-                label={pt('fields.priceAmount')}
-              >
-                <Input
-                  id={index === 0 ? 'event-price-amount' : `event-price-amount-${index}`}
-                  type="number"
-                  value={price.amount ?? ''}
-                  onChange={(event) =>
-                    setValue(
-                      `content.priceInformations.${index}.amount`,
-                      event.target.value.trim().length > 0 ? Number(event.target.value) : undefined,
-                      { shouldDirty: true }
-                    )
-                  }
-                />
-              </StudioField>
-            </StudioFieldGroup>
-            <StudioField
-              id={index === 0 ? 'event-price-description' : `event-price-description-${index}`}
-              label={pt('fields.priceDescription')}
-            >
-              <Input
-                id={index === 0 ? 'event-price-description' : `event-price-description-${index}`}
-                value={price.description ?? ''}
-                onChange={(event) =>
-                  setValue(`content.priceInformations.${index}.description`, event.target.value, {
-                    shouldDirty: true,
-                  })
-                }
-              />
-            </StudioField>
-          </div>
-        ))}
-      </EventCardSection>
+      <EventsContactLinkSections pt={pt} />
+      <EventsPriceSection pt={pt} />
     </div>
   );
 }

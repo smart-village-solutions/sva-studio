@@ -104,7 +104,9 @@ export type WasteEmailReminderRepository = Readonly<{
     readonly selection: WasteEmailReminderPendingSignupInput['selection'];
   }) => Promise<number>;
   listActiveSubscriptions: () => Promise<readonly WasteEmailReminderActiveSubscription[]>;
-  enqueueOutboxEntry: (input: WasteEmailReminderOutboxEntryInput) => Promise<'inserted' | 'duplicate'>;
+  enqueueOutboxEntry: (
+    input: WasteEmailReminderOutboxEntryInput
+  ) => Promise<'inserted' | 'refreshed' | 'duplicate'>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
     readonly limit: number;
@@ -158,6 +160,10 @@ type LeasedOutboxRow = Readonly<{
   dedupe_key: string;
   attempt_count: number;
   payload: MailDispatchPayload | string;
+}>;
+
+type EnqueuedOutboxRow = Readonly<{
+  id: string;
 }>;
 
 type UnsubscribeSubscriptionRow = Readonly<{
@@ -261,7 +267,14 @@ INSERT INTO waste_email_reminder_outbox (
   payload
 )
 VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::timestamptz, $7, 'pending', $8::jsonb)
-ON CONFLICT (dedupe_key) DO NOTHING;
+ON CONFLICT (dedupe_key) DO UPDATE
+SET transport_id = EXCLUDED.transport_id,
+    template_key = EXCLUDED.template_key,
+    send_at = EXCLUDED.send_at,
+    payload = EXCLUDED.payload,
+    updated_at = NOW()
+WHERE waste_email_reminder_outbox.status = 'pending'
+RETURNING id;
 `,
   values: [
     input.id,
@@ -517,8 +530,12 @@ export const createWasteEmailReminderRepository = (executor: SqlExecutor): Waste
     return [...subscriptions.values()];
   },
   async enqueueOutboxEntry(input) {
-    const result = await executor.execute(buildInsertGenericOutboxStatement(input));
-    return result.rowCount > 0 ? 'inserted' : 'duplicate';
+    const result = await executor.execute<EnqueuedOutboxRow>(
+      buildInsertGenericOutboxStatement(input)
+    );
+    const persistedId = result.rows[0]?.id;
+    if (!persistedId) return 'duplicate';
+    return persistedId === input.id ? 'inserted' : 'refreshed';
   },
   async leaseDueOutboxEntries(input) {
     const result = await executor.execute<LeasedOutboxRow>(buildLeaseDueOutboxEntriesStatement(input));

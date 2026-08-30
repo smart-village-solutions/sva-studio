@@ -1617,7 +1617,7 @@ describe('waste management operations runtime', () => {
     ).toBe(false);
   });
 
-  it('counts duplicate reminder outbox entries separately from inserted ones', async () => {
+  it('counts refreshed reminder outbox entries as existing rather than newly created', async () => {
     vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
       const actual =
         await importOriginal<
@@ -1639,7 +1639,7 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const enqueueOutboxEntry = vi.fn(async () => 'duplicate' as const);
+    const enqueueOutboxEntry = vi.fn(async () => 'refreshed' as const);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
         {

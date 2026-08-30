@@ -9,7 +9,9 @@ const createExecutor = () => {
   const statements: SqlStatement[] = [];
   const queuedResults: SqlExecutionResult[] = [];
   const executor: SqlExecutor = {
-    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+    async execute<TRow = Record<string, unknown>>(
+      statement: SqlStatement
+    ): Promise<SqlExecutionResult<TRow>> {
       statements.push(statement);
       const nextResult = queuedResults.shift();
       return (nextResult ?? {
@@ -192,6 +194,56 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain("WHERE s.status = 'active'");
   });
 
+  it('refreshes pending reminder outbox entries without replacing processed duplicates', async () => {
+    const { executor, statements, queuedResults } = createExecutor();
+    const repository = createWasteEmailReminderRepository(executor);
+    const input = {
+      id: '11111111-1111-4111-8111-111111111111',
+      subscriptionId: '22222222-2222-4222-8222-222222222222',
+      messageKind: 'reminder' as const,
+      transportId: 'mail-transport-1',
+      templateKey: 'waste.email-reminder.reminder',
+      sendAt: '2026-06-19T06:00:00.000Z',
+      dedupeKey: 'reminder:sub-1:fraction-1:bio:first:2026-06-20',
+      payload: {
+        orderId: 'dispatch-1',
+        transportId: 'mail-transport-1',
+        messageKind: 'transactional' as const,
+        templateKey: 'waste.email-reminder.reminder',
+        addresses: [{ kind: 'to' as const, email: 'person@example.org' }],
+        templatePayload: { hintText: 'Aktueller Hinweis' },
+        metadata: { module: 'waste-management' },
+      },
+    };
+
+    queuedResults.push(
+      {
+        rowCount: 1,
+        rows: [{ id: input.id }],
+      },
+      {
+        rowCount: 1,
+        rows: [{ id: '33333333-3333-4333-8333-333333333333' }],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      }
+    );
+
+    await expect(repository.enqueueOutboxEntry(input)).resolves.toBe('inserted');
+    await expect(repository.enqueueOutboxEntry(input)).resolves.toBe('refreshed');
+    await expect(repository.enqueueOutboxEntry(input)).resolves.toBe('duplicate');
+
+    expect(statements[0]?.text).toContain('ON CONFLICT (dedupe_key) DO UPDATE');
+    expect(statements[0]?.text).toContain('transport_id = EXCLUDED.transport_id');
+    expect(statements[0]?.text).toContain('template_key = EXCLUDED.template_key');
+    expect(statements[0]?.text).toContain('send_at = EXCLUDED.send_at');
+    expect(statements[0]?.text).toContain('payload = EXCLUDED.payload');
+    expect(statements[0]?.text).toContain("WHERE waste_email_reminder_outbox.status = 'pending'");
+    expect(statements[0]?.text).toContain('RETURNING id');
+  });
+
   it('leases and updates outbox entries for batch processing', async () => {
     const { executor, statements, queuedResults } = createExecutor();
     queuedResults.push({
@@ -249,7 +301,9 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain("status = 'processing'");
     expect(statements[0]?.text).toContain('leased_at');
     expect(statements[1]?.text).toContain("SET status = 'sent'");
-    expect(statements[2]?.text).toContain("CASE WHEN $4::timestamptz IS NULL THEN 'failed' ELSE 'pending' END");
+    expect(statements[2]?.text).toContain(
+      "CASE WHEN $4::timestamptz IS NULL THEN 'failed' ELSE 'pending' END"
+    );
   });
 
   it('activates a pending subscription for a valid DOI token hash', async () => {

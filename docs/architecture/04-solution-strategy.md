@@ -23,6 +23,7 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-Plattform v2 erweitert dieses Zielbild um Manifest-, Katalog-, Loader- und Runtime-Verträge, damit lokale Entwicklung und externe Distribution denselben hostvalidierten Snapshot-Pfad nutzen
 - Plugin-Manifeste deklarieren verpflichtend den Extension-Tier `feature`, `admin` oder `platform`. Nur freigegebene Admin-/Plattform-Tiers dürfen Plattformbeiträge für `instance_registry_admin` in den kanonischen Snapshot einbringen; Fachplugins bleiben tenantgebunden.
 - Der versionierte Manifestvertrag deklariert außerdem `optional`, `automatic` oder `required`; `iam.instance_modules` materialisiert die Richtlinie als einzigen effektiven Tenant-Aktivierungszustand und erhält manuelle Overrides für automatische Plugins.
+- Aktivierung und Fachbereitschaft bleiben getrennte Verträge. Für Plugins mit Tenant-Lifecycle gibt der Host Fachrouten und normale Plugin-Jobs erst bei valider, nicht blockierender Readiness frei; fehlende, ungültige, suspendierte oder blockierte Evidenz bleibt fail-closed.
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Gemeinsame serverseitige Fachverträge mehrerer Apps liegen im owning Workspace-Package; direkte Quellimporte zwischen unterschiedlichen Verzeichnissen unter `apps/` sind nicht zulässig
@@ -86,6 +87,7 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-Architektur: `ADR-002`
 - Plugin-SDK-Vertrag v1: `ADR-034`
 - Plugin-Plattform v2 für externe Distribution und host-owned Runtime: `ADR-041`
+- Generischer Plugin-Tenant-Lifecycle und fail-closed Fachzugriff: `ADR-057`
 - Design-Token-Architektur: `ADR-003`
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
@@ -115,6 +117,7 @@ Referenzen:
 - `./iam-service-architektur.md`
 - `../adr/ADR-034-plugin-sdk-vertrag-v1.md`
 - `../adr/ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
+- `../adr/ADR-057-generischer-plugin-tenant-lifecycle-und-readiness-gate.md`
 - `../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`

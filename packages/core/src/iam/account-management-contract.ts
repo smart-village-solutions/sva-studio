@@ -34,6 +34,7 @@ export type ApiErrorCode =
   | 'plugin_tenant_lifecycle_claim_conflict'
   | 'plugin_tenant_lifecycle_enqueue_failed'
   | 'plugin_tenant_lifecycle_start_failed'
+  | 'plugin_tenant_access_blocked'
   | 'invalid_source_year'
   | 'replacement_date_invalid'
   | 'batch_limit_exceeded'

@@ -524,6 +524,20 @@ Fehlerpfad:
 
 - fällt der Modul-Lookup im Session-Pfad aus, wird `assignedModules` fail-closed als leer behandelt.
 - fehlt die Zuweisung, blockiert das Routing die Plugin-Route vor dem Rendern.
+
+### Szenario 2i: Plugin-Fachzugriff folgt valider Tenant-Readiness
+
+1. Ein aktives Plugin mit Tenant-Lifecycle schreibt seine generationsgebundene Readiness-Evidenz über den hostgeführten Lifecycle-Job.
+2. Der Host validiert die Evidenz gegen die deklarierte Checkliste. Fehlende oder strukturell ungültige Evidenz, `pending`, `blocked` und `accessState = suspended` geben keinen Fachzugriff frei; valide `ready`- und `degraded`-Zustände sind zugelassen.
+3. `/auth/me` filtert lifecycle-verwaltete, nicht freigegebene Plugins aus der effektiven `assignedModules`-Liste. Routing und Sidebar verwenden dadurch weiterhin den bestehenden zentralen Modul- und Action-Vertrag.
+4. `POST /api/v1/plugin-operations/jobs` prüft dieselbe Hostentscheidung vor Idempotenzreservierung, Jobanlage und Queueing. Deklarierte Lifecycle-Jobtypen sind an diesem generischen Endpunkt unzulässig und können nur über den Lifecycle-Orchestrator gestartet werden.
+5. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
+
+Fehlerfälle:
+
+- Bei blockierter oder suspendierter Readiness antwortet der normale Plugin-Jobstart mit `409 plugin_tenant_access_blocked` und erzeugt weder Idempotenz- noch Jobzustand.
+- Fällt die Readiness-Auflösung im Sessionpfad aus, bleibt der Modulzugriff fail-closed.
+- Reparatur- und Readiness-Läufe umgehen das Gate nicht frei, sondern laufen ausschließlich generationsgebunden über den Host-Orchestrator.
 - direkte API-Aufrufe bleiben zusätzlich durch fehlende modulbezogene Permissions abgesichert.
 
 ### Szenario 2f: IAM-User- und Rollenverwaltung mit technischem Keycloak-Schnitt

@@ -22,6 +22,7 @@ import { resolveEffectivePermissions } from './iam-authorization/permission-stor
 import { filterTenantEffectivePermissions } from './iam-authorization/root-only-permissions.js';
 import { withInstanceScopedDb } from './iam-authorization/shared.js';
 import { withRegistryRepository } from './iam-instance-registry/repository.js';
+import { filterConfiguredPluginTenantAccessibleModules } from './plugin-tenant-lifecycle/access.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import {
   decodeLoginStateCookie,
@@ -969,8 +970,11 @@ const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Prom
   const instanceId = user.instanceId;
 
   try {
-    return Array.from(
+    const assignedModules = Array.from(
       await withRegistryRepository((repository) => repository.listAssignedModules(instanceId))
+    );
+    return Array.from(
+      await filterConfiguredPluginTenantAccessibleModules(instanceId, assignedModules)
     );
   } catch (error) {
     logger.error('Auth me assigned module lookup failed', {

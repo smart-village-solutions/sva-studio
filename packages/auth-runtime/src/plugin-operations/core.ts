@@ -10,6 +10,7 @@ import {
 import { withAuthenticatedUser } from '../middleware.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { validateCsrf } from '../shared/request-security.js';
+import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
 import {
   executeStartPluginOperationJob,
   reserveStartIdempotency,
@@ -97,6 +98,18 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
         return parsed;
       },
       execute: async ({ instanceId, actorAccountId, idempotencyKey, requestId, input }) => {
+        const pluginAccess = await readConfiguredPluginTenantAccess(
+          instanceId,
+          input.data.pluginId
+        );
+        if (!pluginAccess.allowed) {
+          return createApiError(
+            409,
+            'plugin_tenant_access_blocked',
+            'Der Plugin-Fachzugriff ist noch nicht betriebsbereit.',
+            requestId
+          );
+        }
         const replayOrConflictResponse = await reserveStartIdempotency({
           instanceId,
           actorAccountId,

@@ -1,9 +1,20 @@
-import { wasteManagementOperationsContract, type StudioPluginOperationStartRequest } from '@sva/core';
+import {
+  wasteManagementOperationsContract,
+  type StudioPluginOperationStartRequest,
+} from '@sva/core';
 
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
+import { isConfiguredPluginTenantLifecycleJobType } from '../plugin-tenant-lifecycle/access.js';
 import { createApiError, toPayloadHash } from '../shared/request-helpers.js';
-import { createJsonItemResponse, createPluginOperationJob, markPluginOperationEnqueueFailed } from './core.shared.js';
-import { getRegisteredPluginOperationExecutionRegistry, queuePluginOperationJob } from './runner.js';
+import {
+  createJsonItemResponse,
+  createPluginOperationJob,
+  markPluginOperationEnqueueFailed,
+} from './core.shared.js';
+import {
+  getRegisteredPluginOperationExecutionRegistry,
+  queuePluginOperationJob,
+} from './runner.js';
 
 export const startPluginOperationEndpoint = 'POST:/api/v1/plugin-operations/jobs';
 
@@ -30,9 +41,23 @@ export const validateStartRequestData = (
     );
   }
 
+  if (isConfiguredPluginTenantLifecycleJobType(data.pluginId, data.jobTypeId)) {
+    return createApiError(
+      400,
+      'invalid_request',
+      'Lifecycle-Jobs dürfen nur über den Host-Orchestrator gestartet werden.',
+      requestId
+    );
+  }
+
   const jobTypeNamespace = readPluginNamespace(data.jobTypeId);
   if (jobTypeNamespace !== data.pluginId) {
-    return createApiError(400, 'invalid_request', 'Jobtyp muss zum angegebenen Plugin-Namespace passen.', requestId);
+    return createApiError(
+      400,
+      'invalid_request',
+      'Jobtyp muss zum angegebenen Plugin-Namespace passen.',
+      requestId
+    );
   }
 
   if (data.importProfileId) {
@@ -144,7 +169,8 @@ export const executeStartPluginOperationJob = async (input: {
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
         executionLane:
-          input.data.jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+          input.data.jobTypeId ===
+          wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
             ? 'privileged'
             : 'default',
       });
@@ -162,11 +188,19 @@ export const executeStartPluginOperationJob = async (input: {
       );
     }
 
-    return completeStartIdempotencyResponse(responseContext, createJsonItemResponse(202, job, input.requestId));
+    return completeStartIdempotencyResponse(
+      responseContext,
+      createJsonItemResponse(202, job, input.requestId)
+    );
   } catch {
     return completeStartIdempotencyResponse(
       responseContext,
-      createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht angelegt werden.', input.requestId)
+      createApiError(
+        503,
+        'database_unavailable',
+        'Der Plugin-Job konnte nicht angelegt werden.',
+        input.requestId
+      )
     );
   }
 };

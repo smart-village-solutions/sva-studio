@@ -106,6 +106,33 @@ export type PluginTenantReadinessReadModel = {
   readonly updatedAt: string;
 };
 
+export type PluginTenantAccessDecision =
+  | Readonly<{ allowed: true; reason: 'ready' | 'degraded' }>
+  | Readonly<{
+      allowed: false;
+      reason: 'inactive' | 'suspended' | 'pending' | 'blocked' | 'evidence_invalid';
+    }>;
+
+export const evaluatePluginTenantAccess = (
+  readiness: PluginTenantReadinessReadModel | null
+): PluginTenantAccessDecision => {
+  if (!readiness) {
+    return { allowed: false, reason: 'inactive' };
+  }
+  if (readiness.accessState === 'suspended') {
+    return { allowed: false, reason: 'suspended' };
+  }
+  if (readiness.evidenceState !== 'valid') {
+    return {
+      allowed: false,
+      reason: readiness.evidenceState === 'invalid' ? 'evidence_invalid' : 'pending',
+    };
+  }
+  return readiness.status === 'ready' || readiness.status === 'degraded'
+    ? { allowed: true, reason: readiness.status }
+    : { allowed: false, reason: readiness.status };
+};
+
 const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
 
 const readPersistedCheck = (

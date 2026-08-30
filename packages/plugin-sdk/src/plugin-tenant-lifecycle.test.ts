@@ -5,6 +5,7 @@ import {
   createPluginRegistry,
   createPluginTenantReadinessReadModel,
   createPluginTenantReadinessSnapshot,
+  evaluatePluginTenantAccess,
   definePluginTenantLifecycle,
   definePluginTenantLifecycleError,
   type PluginDefinition,
@@ -60,6 +61,40 @@ const plugin: PluginDefinition = {
 };
 
 describe('plugin tenant lifecycle contracts', () => {
+  it('keeps tenant access closed until lifecycle evidence is valid and non-blocking', () => {
+    expect(evaluatePluginTenantAccess(null)).toEqual({ allowed: false, reason: 'inactive' });
+
+    const base = {
+      pluginId: 'speech',
+      activationPolicy: 'required' as const,
+      effectiveActive: true as const,
+      accessState: 'active' as const,
+      evidenceState: 'valid' as const,
+      desiredGeneration: 1,
+      completedGeneration: 1,
+      checks: [],
+      updatedAt: '2026-08-30T00:00:00.000Z',
+    };
+
+    expect(evaluatePluginTenantAccess({ ...base, status: 'ready' })).toEqual({
+      allowed: true,
+      reason: 'ready',
+    });
+    expect(evaluatePluginTenantAccess({ ...base, status: 'degraded' })).toEqual({
+      allowed: true,
+      reason: 'degraded',
+    });
+    expect(
+      evaluatePluginTenantAccess({ ...base, status: 'ready', evidenceState: 'invalid' })
+    ).toEqual({ allowed: false, reason: 'evidence_invalid' });
+    expect(
+      evaluatePluginTenantAccess({ ...base, status: 'ready', accessState: 'suspended' })
+    ).toEqual({ allowed: false, reason: 'suspended' });
+    expect(evaluatePluginTenantAccess({ ...base, status: 'blocked' })).toEqual({
+      allowed: false,
+      reason: 'blocked',
+    });
+  });
   it('normalizes and publishes lifecycle contributions in the build-time registry', () => {
     const registry = createBuildTimeRegistry({ plugins: [plugin] });
 

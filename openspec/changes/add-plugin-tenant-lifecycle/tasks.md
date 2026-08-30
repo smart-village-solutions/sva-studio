@@ -16,7 +16,7 @@
 
 - [x] 3.1 Generisches Plugin-Readiness-Read-Modell pro Instanz bereitstellen
 - [x] 3.2 Instanz-Cockpit um Pluginstatus und Reparaturaktionen erweitern
-- [ ] 3.3 Fail-closed Fachzugriff bei blockierter Pflicht-Readiness umsetzen
+- [x] 3.3 Fail-closed Fachzugriff bei blockierter Pflicht-Readiness umsetzen
 - [ ] 3.4 Accessibility-, i18n- und Deep-Link-Tests der generischen Anzeige ergänzen
 
 ## 4. Bestehenden Verbraucher migrieren
@@ -28,6 +28,6 @@
 ## 5. Dokumentation und Abnahme
 
 - [x] 5.1 Studio-Schema-Snapshot und Schema-Dokumentation bei Persistenzänderungen aktualisieren
-- [ ] 5.2 Betroffene arc42-Abschnitte und Lifecycle-ADR aktualisieren
+- [x] 5.2 Betroffene arc42-Abschnitte und Lifecycle-ADR aktualisieren
 - [ ] 5.3 Unit-, Type-, Server-Runtime-, Integrations-, Migrations- und E2E-Gates ausführen
-- [ ] 5.4 `openspec validate add-plugin-tenant-lifecycle --strict`, Dokumentations- und Platzierungschecks ausführen
+- [x] 5.4 `openspec validate add-plugin-tenant-lifecycle --strict`, Dokumentations- und Platzierungschecks ausführen

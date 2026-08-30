@@ -275,10 +275,12 @@ export type {
   PluginTenantReadinessReadModel,
   PluginTenantReadinessReadModelCheck,
   PluginTenantReadinessStatus,
+  PluginTenantAccessDecision,
 } from './plugin-tenant-lifecycle.js';
 export {
   createPluginTenantReadinessSnapshot,
   createPluginTenantReadinessReadModel,
+  evaluatePluginTenantAccess,
   createPluginTenantLifecycleRegistry,
   definePluginTenantLifecycle,
   definePluginTenantLifecycleError,

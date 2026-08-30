@@ -110,8 +110,8 @@ export const createPluginTenantLifecycleOrchestrator = (
       );
     }
     if (
-      operationDefinition.supportsCancellation === true &&
-      registration.supportsCancellation !== true
+      (operationDefinition.supportsCancellation === true) !==
+      (registration.supportsCancellation === true)
     ) {
       throw lifecycleError(
         pluginTenantLifecycleHostErrorCodes.cancellationMismatch,

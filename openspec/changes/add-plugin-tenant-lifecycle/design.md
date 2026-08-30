@@ -29,7 +29,17 @@ einer gemeinsamen, RLS-geschützten Datenbank.
 
 Ein Plugin kann Lifecycle-Fähigkeiten und zugehörige Jobtypen deklarieren. Der
 Host startet sie nur innerhalb eines validierten, aktiven Instanzkontexts und
-stellt Logger, Progress, Audit, Abbruchsignal und Korrelationsdaten bereit.
+stellt Logger, Progress, Abbruchsignal und Korrelationsdaten bereit. Der
+persistente Studio-Job und seine Job-Events bilden denselben Auditnachweis wie
+bei anderen Plugin-Operations; ein freier pluginseitiger Auditkanal gehört
+nicht zum Lifecycle-Vertrag.
+
+Eine Lifecycle-Operation ist genau dann abbrechbar, wenn sowohl ihr Beitrag als
+auch der registrierte Job-Handler `supportsCancellation` deklarieren. Eine
+Abweichung in beide Richtungen wird vor Sollgeneration und Jobanlage
+fail-closed abgelehnt. Fortschritt, Fehler, Retry, Korrelation und Abbruch
+werden nicht lifecycle-spezifisch dupliziert, sondern über den vorhandenen
+Plugin-Operations-Vertrag persistiert.
 
 ### Sollgeneration und Claim verhindern konkurrierende Läufe
 
@@ -90,5 +100,4 @@ Plugin.
 
 ## Open Questions
 
-- Welche Lifecycle-Operationen Abbruch unterstützen dürfen.
 - Maximale Zahl und Stabilitätsregeln für Readiness-Checks.

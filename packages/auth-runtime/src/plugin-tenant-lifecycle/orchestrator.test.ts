@@ -139,6 +139,21 @@ describe('plugin tenant lifecycle orchestrator', () => {
     expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
   });
 
+  it('rejects undeclared cancellation even when the registered handler supports it', async () => {
+    const dependencies = createDependencies();
+    dependencies.resolveJobRegistration.mockReturnValue({
+      queueName: 'plugin-operations',
+      supportsCancellation: true,
+    });
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(
+      `${pluginTenantLifecycleHostErrorCodes.cancellationMismatch}:speech:provision`
+    );
+    expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
+  });
+
   it('persists a retryable blocked state when queueing fails', async () => {
     const dependencies = createDependencies();
     dependencies.queueJob.mockRejectedValue(new Error('queue unavailable'));

@@ -361,9 +361,6 @@ type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
 };
 
 const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factories: TFactories) =>
-  // TanStack Router: createRootRoute() liefert einen konkreten Typ, der nicht
-  // direkt mit dem generischen RootRoute-Parameter der Factories kompatibel ist.
-  // Workaround bis TanStack Router dies nativ unterstützt.
   factories.map((factory) =>
     factory(rootRoute as unknown as RootRoute)
   ) as MaterializedRoutes<TFactories>;
@@ -374,7 +371,6 @@ export const createRuntimeRouteTree = <TFactories extends readonly AppRouteFacto
   return rootRoute.addChildren([...runtimeRoutes]);
 };
 
-// Create a new router instance
 export const getRouter = async () => {
   const runtimeRouteFactories = await getRuntimeRouteFactories();
   const routeTree = createRuntimeRouteTree(runtimeRouteFactories);

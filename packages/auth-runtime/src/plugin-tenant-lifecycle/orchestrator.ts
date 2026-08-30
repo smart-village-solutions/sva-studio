@@ -22,6 +22,7 @@ export const pluginTenantLifecycleHostErrorCodes = {
 
 type PluginTenantLifecycleJobRegistration = {
   readonly queueName: string;
+  readonly executionLane?: 'default' | 'privileged';
   readonly supportsCancellation?: boolean;
 };
 
@@ -55,6 +56,7 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
     readonly jobId: string;
     readonly queueName: string;
     readonly maxAttempts: number;
+    readonly executionLane?: 'default' | 'privileged';
   }) => Promise<void>;
   readonly markEnqueueFailed: (input: {
     readonly instanceId: string;
@@ -258,6 +260,7 @@ export const createPluginTenantLifecycleOrchestrator = (
         jobId: job.id,
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
+        executionLane: registration.executionLane ?? 'default',
       });
     } catch {
       return handleEnqueueFailure(dependencies, input, job, generation);

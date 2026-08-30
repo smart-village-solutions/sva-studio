@@ -71,7 +71,12 @@ vi.mock('../plugin-operations/runner.js', () => ({
     new Map([
       [
         'speech.provisionTenant',
-        { handler: vi.fn(), queueName: 'plugin-operations', supportsCancellation: false },
+        {
+          handler: vi.fn(),
+          queueName: 'plugin-operations',
+          executionLane: 'privileged',
+          supportsCancellation: false,
+        },
       ],
     ]),
   queuePluginOperationJob: state.queuePluginOperationJob,
@@ -156,6 +161,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
       jobId: job.id,
       queueName: 'plugin-operations',
       maxAttempts: 5,
+      executionLane: 'privileged',
     });
   });
 

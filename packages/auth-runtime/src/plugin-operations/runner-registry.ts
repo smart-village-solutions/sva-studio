@@ -38,6 +38,7 @@ const normalizePluginRegistration = (
     typeof value === 'function' ? value : value.handler
   ),
   queueName: typeof value === 'function' ? 'plugin-operations' : value.queueName,
+  executionLane: typeof value === 'function' ? 'default' : value.executionLane,
   supportsCancellation: typeof value === 'function' ? false : value.supportsCancellation,
 });
 
@@ -93,6 +94,7 @@ export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperation
         {
           handler: entry.handler as PluginOperationExecutionHandler,
           queueName: entry.queueName,
+          executionLane: entry.executionLane,
           supportsCancellation: entry.supportsCancellation,
         },
       ])

@@ -339,6 +339,10 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
         {
           handler,
           queueName: 'plugin-operations',
+          executionLane:
+            jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+              ? 'privileged'
+              : 'default',
           supportsCancellation: cancellablePluginJobTypeIds.has(jobTypeId),
         },
       ])

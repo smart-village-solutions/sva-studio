@@ -62,7 +62,10 @@ const createDependencies = () => ({
     failUnclaimedLifecycle: vi.fn(async () => lifecycleRecord),
     failLifecycle: vi.fn(async () => lifecycleRecord),
   },
-  resolveJobRegistration: vi.fn(() => ({ queueName: 'plugin-operations' })),
+  resolveJobRegistration: vi.fn(() => ({
+    queueName: 'plugin-operations',
+    executionLane: 'privileged' as const,
+  })),
   createJob: vi.fn(async () => job),
   queueJob: vi.fn(async () => undefined),
   markEnqueueFailed: vi.fn(async () => undefined),
@@ -96,7 +99,13 @@ describe('plugin tenant lifecycle orchestrator', () => {
     expect(dependencies.repository.claimLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({ jobId: job.id, generation: 3 })
     );
-    expect(dependencies.queueJob).toHaveBeenCalledOnce();
+    expect(dependencies.queueJob).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      jobId: job.id,
+      queueName: 'plugin-operations',
+      maxAttempts: 5,
+      executionLane: 'privileged',
+    });
   });
 
   it('rejects an inactive plugin before mutating lifecycle state', async () => {

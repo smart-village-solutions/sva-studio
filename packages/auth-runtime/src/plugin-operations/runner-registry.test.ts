@@ -40,6 +40,7 @@ describe('plugin operation runner registry', () => {
       'waste.sync': {
         handler: pluginHandler,
         queueName: 'custom-plugin-queue',
+        executionLane: 'privileged',
         supportsCancellation: true,
       },
     });
@@ -69,6 +70,7 @@ describe('plugin operation runner registry', () => {
             source: 'plugin',
             jobTypeId: 'waste.sync',
             queueName: 'custom-plugin-queue',
+            executionLane: 'privileged',
             supportsCancellation: true,
           }),
         ],
@@ -79,11 +81,13 @@ describe('plugin operation runner registry', () => {
     expect(pluginRegistry.get('waste.import')).toEqual({
       handler: expect.any(Function),
       queueName: 'plugin-operations',
+      executionLane: 'default',
       supportsCancellation: false,
     });
     expect(pluginRegistry.get('waste.sync')).toEqual({
       handler: expect.any(Function),
       queueName: 'custom-plugin-queue',
+      executionLane: 'privileged',
       supportsCancellation: true,
     });
   });

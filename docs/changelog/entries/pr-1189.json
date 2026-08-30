@@ -1,0 +1,4 @@
+{
+  "prNumber": 1189,
+  "body": "Ein verbindlicher Entwurf beschreibt ein geschütztes macOS-Widget für Studio-Nachrichten\n\n- Das bestehende Studio-Update-Log ist als erste Quelle eines allgemeinen, später erweiterbaren Nachrichtenfeeds vorgesehen.\n- Anmeldung, Gelesen-Stand, Datenschutz auf dem Sperrbildschirm und die Trennung vom Studio-Rollout sind vor der Umsetzung festgelegt.\n- Dieser Plan liefert noch keine Widget-Funktion aus; die Implementierung benötigt eine gesonderte Prüfung und Freigabe."
+}

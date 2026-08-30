@@ -8,6 +8,18 @@ import {
 } from '../src/waste-management.scheduling-content.js';
 
 const shiftsTableMock = vi.hoisted(() => vi.fn());
+const linkSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, search, to, ...props }: Record<string, unknown>) => {
+    linkSpy({ search, to, ...props });
+    return (
+      <a href={String(to)} {...props}>
+        {children as React.ReactNode}
+      </a>
+    );
+  },
+}));
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
@@ -132,6 +144,7 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
 afterEach(() => {
   cleanup();
   shiftsTableMock.mockReset();
+  linkSpy.mockReset();
 });
 
 describe('WasteSchedulingContent', () => {
@@ -173,6 +186,7 @@ describe('WasteSchedulingContent', () => {
 
     render(
       <WasteSchedulingContent
+        search={{ tab: 'scheduling' } as never}
         message={{ tone: 'info', text: 'shift message' } as never}
         schedulingEntries={
           [
@@ -261,6 +275,7 @@ describe('WasteSchedulingContent', () => {
 
     render(
       <WasteSchedulingContent
+        search={{ tab: 'scheduling' } as never}
         message={null}
         schedulingEntries={[]}
         tours={[{ id: 'tour-sm', name: 'Tour Nord' } as never]}
@@ -296,7 +311,12 @@ describe('WasteSchedulingContent', () => {
     );
 
     expect(screen.getByText('2026-07-01')).toBeTruthy();
-    expect(screen.getByText('Musterhausen / Mitte / Rathausplatz / alle Hausnummern')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Tour Nord' })).toBeTruthy();
+    expect(
+      screen.getByRole('link', {
+        name: 'Musterhausen / Mitte / Rathausplatz / alle Hausnummern',
+      })
+    ).toBeTruthy();
     expect(screen.getByText('Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'scheduling.assignments.actions.edit' }));

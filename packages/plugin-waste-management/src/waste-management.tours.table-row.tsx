@@ -1,6 +1,7 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioTableValueAction } from '@sva/studio-ui-react';
+import { Link } from '@tanstack/react-router';
 
 import type {
   WasteManagementMasterDataOverview,
@@ -20,18 +21,32 @@ import {
 } from './waste-management.tours.table-row.parts.js';
 import { WasteToursRowShiftCell } from './waste-management.tours.table-row-shift.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
 
 const WasteToursRowSummaryCell = ({
   tour,
+  search,
   onOpenEditDialog,
 }: {
   readonly tour: WasteTourRecord;
+  readonly search?: WasteManagementSearchParams;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
 }) => (
   <td className="w-[150px] px-3 py-3">
-    <StudioTableValueAction emphasis="primary" onClick={() => onOpenEditDialog(tour)}>
-      {tour.name}
-    </StudioTableValueAction>
+    {search ? (
+      <StudioTableValueAction emphasis="primary" asChild>
+        <Link
+          to="/plugins/waste-management"
+          search={toWasteTourEditSearch(search, tour.id)}
+        >
+          {tour.name}
+        </Link>
+      </StudioTableValueAction>
+    ) : (
+      <StudioTableValueAction emphasis="primary" onClick={() => onOpenEditDialog(tour)}>
+        {tour.name}
+      </StudioTableValueAction>
+    )}
   </td>
 );
 
@@ -126,11 +141,16 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
         selected={props.selected}
         onToggleSelectedTour={props.onToggleSelectedTour}
       />
-      <WasteToursRowSummaryCell tour={tour} onOpenEditDialog={props.onOpenEditDialog} />
+      <WasteToursRowSummaryCell
+        tour={tour}
+        search={props.search}
+        onOpenEditDialog={props.onOpenEditDialog}
+      />
       <WasteToursRowFractionCell
         tourId={tour.id}
         fractionNames={fractions.map((fraction) => fraction.name)}
         fractionIds={fractions.map((fraction) => fraction.id)}
+        search={props.search}
         onOpenEditFraction={props.onOpenEditFraction}
       />
       <td className="w-[132px] px-3 py-3 text-sm">{recurrenceLabel}</td>

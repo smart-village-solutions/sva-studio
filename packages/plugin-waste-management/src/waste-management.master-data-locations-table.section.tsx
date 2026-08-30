@@ -9,6 +9,7 @@ import {
 
 export const WasteMasterDataLocationsTableSection = ({
   collectionLocations,
+  search,
   allFilteredLocationsSelected,
   selectedLocationIds,
   maps,
@@ -20,6 +21,7 @@ export const WasteMasterDataLocationsTableSection = ({
   onOpenEditTour,
 }: {
   readonly collectionLocations: WasteMasterDataLocationsTableProps['collectionLocations'];
+  readonly search: WasteMasterDataLocationsTableProps['search'];
   readonly allFilteredLocationsSelected: WasteMasterDataLocationsTableProps['allFilteredLocationsSelected'];
   readonly selectedLocationIds: readonly string[];
   readonly maps: Parameters<typeof WasteMasterDataLocationsRow>[0]['maps'];
@@ -55,6 +57,7 @@ export const WasteMasterDataLocationsTableSection = ({
             <WasteMasterDataLocationsRow
               key={location.id}
               location={location}
+              search={search}
               maps={maps}
               selectedLocationIds={selectedLocationIds}
               onToggleLocation={onToggleLocation}

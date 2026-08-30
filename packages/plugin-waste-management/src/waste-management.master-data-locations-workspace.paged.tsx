@@ -15,6 +15,7 @@ export const WasteMasterDataPagedLocationsTable = ({
 }: Pick<
   WasteMasterDataLocationsWorkspaceProps,
   | 'regions'
+  | 'search'
   | 'cities'
   | 'streets'
   | 'houseNumbers'

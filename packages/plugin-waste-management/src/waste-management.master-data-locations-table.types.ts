@@ -9,8 +9,10 @@ import type {
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
 } from '@sva/plugin-sdk';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 export type WasteMasterDataLocationsTableProps = {
+  readonly search?: WasteManagementSearchParams;
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];

@@ -67,6 +67,7 @@ const useWasteManagementUiAccessMock = vi.fn(() => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
   useNavigate: () => navigateMock,
   useSearch: () => searchState,
 }));
@@ -95,7 +96,16 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly children: React.ReactNode;
     readonly className?: string;
   }) => <div className={className}>{children}</div>,
-  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Button: ({
+    asChild,
+    children,
+    ...props
+  }: React.ComponentProps<'button'> & { readonly asChild?: boolean }) =>
+    asChild && React.isValidElement(children) ? (
+      React.cloneElement(children as React.ReactElement<Record<string, unknown>>, props)
+    ) : (
+      <button {...props}>{children}</button>
+    ),
   StudioOverviewPageTemplate: ({
     title,
     description,

@@ -6,6 +6,7 @@ export const WasteMasterDataLocationsWorkspace = (props: WasteMasterDataLocation
   return (
     <div className="space-y-4">
       <WasteLocationFractionCoverageCheck
+        search={props.search}
         locations={props.auditCollectionLocations ?? props.collectionLocations}
         fractions={props.fractions ?? []}
         tours={props.availableTours}

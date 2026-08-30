@@ -93,6 +93,7 @@ export const WasteMasterDataLocationsHierarchySection = ({
 
 export const WasteMasterDataLocationsTableSection = ({
   regions,
+  search,
   cities,
   streets,
   houseNumbers,
@@ -131,6 +132,7 @@ export const WasteMasterDataLocationsTableSection = ({
 }: Pick<
   WasteMasterDataLocationsWorkspaceProps,
   | 'regions'
+  | 'search'
   | 'cities'
   | 'streets'
   | 'houseNumbers'
@@ -169,6 +171,7 @@ export const WasteMasterDataLocationsTableSection = ({
   readonly totalItems: number;
 }) => (
   <WasteMasterDataLocationsTable
+    search={search}
     regions={regions}
     cities={cities}
     streets={streets}

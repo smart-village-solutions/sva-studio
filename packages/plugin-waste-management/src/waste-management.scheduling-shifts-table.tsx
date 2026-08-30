@@ -3,13 +3,14 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioDataTable, type StudioBulkAction } from '@sva/studio-ui-react';
 
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 import { WasteSchedulingDeleteDialog } from './waste-management.scheduling-delete-dialog.js';
 import { WasteSchedulingRowsDeleteError } from './waste-management.scheduling-mutations.js';
 import {
   useSchedulingColumns,
   useSchedulingTableLabels,
-  WasteSchedulingRowActions,
 } from './waste-management.scheduling-shifts-table.parts.js';
+import { WasteSchedulingRowActions } from './waste-management.scheduling-row-actions.js';
 import {
   createPagedItems,
   usePagedRouteSync,
@@ -17,6 +18,7 @@ import {
 } from './waste-management.table-frame.js';
 
 type WasteSchedulingShiftsTableProps = {
+  readonly search?: WasteManagementSearchParams;
   readonly entries: readonly WasteSchedulingTableEntry[];
   readonly onOpenCreateShiftDialog: () => void;
   readonly onEditHolidayRule: (
@@ -39,6 +41,7 @@ type WasteSchedulingShiftsTableProps = {
 
 export const WasteSchedulingShiftsTable = ({
   entries,
+  search,
   onOpenCreateShiftDialog,
   onEditHolidayRule,
   onEditGlobalShiftDialog,
@@ -103,6 +106,7 @@ export const WasteSchedulingShiftsTable = ({
         rowActions={(row) => (
           <WasteSchedulingRowActions
             row={row}
+            search={search}
             onEditHolidayRule={onEditHolidayRule}
             onEditGlobalShiftDialog={onEditGlobalShiftDialog}
             onEditTourShiftDialog={onEditTourShiftDialog}

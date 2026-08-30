@@ -15,6 +15,7 @@ import { WasteTourExplicitAssignmentsList } from './waste-management.scheduling-
 import { WasteSchedulingShiftsTable } from './waste-management.scheduling-shifts-table.js';
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 const createAssignmentForm = (
   entry?: WasteTourAssignmentRecord
@@ -65,12 +66,11 @@ export const WasteSchedulingContent = ({
   tours,
   tourAssignments,
   assignmentLocationOptions,
+  search,
   onOpenCreateShiftDialog,
   onEditHolidayRule,
   onEditGlobalShiftDialog,
   onEditTourShiftDialog,
-  onOpenLinkedTour,
-  onOpenLinkedLocation,
   onDeleteSchedulingRows,
   onSaveTourAssignment,
   onDeleteTourAssignment,
@@ -86,12 +86,11 @@ export const WasteSchedulingContent = ({
   readonly tours: readonly WasteTourRecord[];
   readonly tourAssignments: readonly WasteTourAssignmentRecord[];
   readonly assignmentLocationOptions: readonly { readonly id: string; readonly label: string }[];
+  readonly search?: WasteManagementSearchParams;
   readonly onOpenCreateShiftDialog: () => void;
   readonly onEditHolidayRule: (rule: WasteHolidayRuleRecord) => void;
   readonly onEditGlobalShiftDialog: (shift: WasteGlobalDateShiftRecord) => void;
   readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
-  readonly onOpenLinkedTour?: (tourId: string) => void;
-  readonly onOpenLinkedLocation?: (collectionLocationId: string) => void;
   readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableEntry[]) => Promise<void>;
   readonly onSaveTourAssignment: (
     input: {
@@ -148,8 +147,7 @@ export const WasteSchedulingContent = ({
         entries={tourAssignments}
         tourLabels={tourLabels}
         locationLabels={locationLabels}
-        onOpenLinkedTour={onOpenLinkedTour}
-        onOpenLinkedLocation={onOpenLinkedLocation}
+        search={search}
         onCreate={() => {
           setDialogMode('create');
           setForm(createAssignmentForm());
@@ -180,6 +178,7 @@ export const WasteSchedulingContent = ({
       />
       <WasteSchedulingShiftsTable
         entries={schedulingEntries}
+        search={search}
         onOpenCreateShiftDialog={onOpenCreateShiftDialog}
         onEditHolidayRule={onEditHolidayRule}
         onEditGlobalShiftDialog={onEditGlobalShiftDialog}

@@ -17,9 +17,11 @@ import type { useFractionColumns } from './waste-management.master-data-fraction
 import type {
   WasteManagementFractionSortDirection,
   WasteManagementFractionSortField,
+  WasteManagementSearchParams,
 } from './search-params.js';
 
 type WasteMasterDataFractionsTableSectionProps = {
+  readonly search?: WasteManagementSearchParams;
   readonly fractions: readonly WasteFractionRecord[];
   readonly page: number;
   readonly pageSize: number;
@@ -53,11 +55,13 @@ type WasteMasterDataFractionsTableSectionProps = {
 
 const renderFractionRowActions = (
   fraction: WasteFractionRecord,
+  search: WasteManagementSearchParams | undefined,
   onOpenEditFraction: (fraction: WasteFractionRecord) => void,
   onRequestDeleteFraction: (fraction: WasteFractionRecord) => void
 ) => (
   <FractionRowActions
     fraction={fraction}
+    search={search}
     onOpenEditFraction={onOpenEditFraction}
     onRequestDeleteFraction={onRequestDeleteFraction}
   />
@@ -79,6 +83,7 @@ const resolveNextFractionSorting = (
 
 export const WasteMasterDataFractionsTableSection = ({
   fractions,
+  search,
   page,
   pageSize,
   pageCount,
@@ -104,7 +109,6 @@ export const WasteMasterDataFractionsTableSection = ({
   onPageSizeChange,
 }: WasteMasterDataFractionsTableSectionProps) => {
   const pt = usePluginTranslation('wasteManagement');
-
   return (
     <div className="[&>div]:rounded-none [&>div]:border-x-0">
       <StudioDataTable
@@ -142,7 +146,7 @@ export const WasteMasterDataFractionsTableSection = ({
           },
         }}
         rowActions={(fraction) =>
-          renderFractionRowActions(fraction, onOpenEditFraction, onRequestDeleteFraction)
+          renderFractionRowActions(fraction, search, onOpenEditFraction, onRequestDeleteFraction)
         }
       />
       <WastePanelTableBottomBar

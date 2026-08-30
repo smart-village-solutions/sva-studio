@@ -60,6 +60,7 @@ const WasteMasterDataFractionsListView = ({
   readonly search: WasteManagementSearchParams;
 }) => (
   <WasteMasterDataFractionsContent
+    search={search}
     fractions={controller.filteredFractions}
     fractionsSortBy={search.fractionsSortBy}
     fractionsSortDirection={search.fractionsSortDirection}

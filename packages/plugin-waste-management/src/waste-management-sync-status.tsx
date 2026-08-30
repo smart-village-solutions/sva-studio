@@ -1,5 +1,6 @@
 import type { WasteMainserverSyncStatusRecord } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
+import { Link } from '@tanstack/react-router';
 
 type PluginTranslation = (
   key: string,
@@ -45,7 +46,6 @@ type WasteManagementMainserverSyncStatusProps = Readonly<{
   canRunMainserverSync: boolean;
   error: boolean;
   loading: boolean;
-  onOpenJob: (jobId: string) => void;
   onStartSync: () => Promise<void>;
   pt: PluginTranslation;
   starting: boolean;
@@ -68,10 +68,9 @@ const SyncStatusError = ({ pt }: Pick<WasteManagementMainserverSyncStatusProps, 
 
 const SyncStatusRunning = ({
   canOpenJobDetails,
-  onOpenJob,
   pt,
   status,
-}: Pick<WasteManagementMainserverSyncStatusProps, 'canOpenJobDetails' | 'onOpenJob' | 'pt'> & {
+}: Pick<WasteManagementMainserverSyncStatusProps, 'canOpenJobDetails' | 'pt'> & {
   status: WasteMainserverSyncStatusRecord;
 }) => {
   const activeJob = status.activeJob;
@@ -100,8 +99,10 @@ const SyncStatusRunning = ({
           </p>
         </div>
         {canOpenJobDetails ? (
-          <Button type="button" variant="secondary" onClick={() => onOpenJob(activeJob.id)}>
-            {pt('page.syncStatus.openJob')}
+          <Button asChild variant="secondary">
+            <Link to="/monitoring/jobs/$jobId" params={{ jobId: activeJob.id }}>
+              {pt('page.syncStatus.openJob')}
+            </Link>
           </Button>
         ) : null}
       </div>
@@ -203,7 +204,6 @@ export const WasteManagementMainserverSyncStatus = (
     return (
       <SyncStatusRunning
         canOpenJobDetails={props.canOpenJobDetails}
-        onOpenJob={props.onOpenJob}
         pt={props.pt}
         status={props.status}
       />

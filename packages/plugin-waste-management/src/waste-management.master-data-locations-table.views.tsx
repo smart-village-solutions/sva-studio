@@ -19,12 +19,18 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { Button, Checkbox, Select, StudioEmptyState, cn } from '@sva/studio-ui-react';
+import { Link } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import type {
   WasteMasterDataLocationsTableMaps,
   WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.types.js';
+import type { WasteManagementSearchParams } from './search-params.js';
+import {
+  toWasteCollectionLocationEditSearch,
+  toWasteTourEditSearch,
+} from './waste-management.cross-link.navigation.js';
 
 type WasteLocationsCreateMenuProps = Readonly<{
   onOpenCreateRegion: () => void;
@@ -449,6 +455,7 @@ const resolveLocationRowProjection = (
 
 export const WasteMasterDataLocationsRow = ({
   location,
+  search,
   maps,
   selectedLocationIds,
   onToggleLocation,
@@ -458,6 +465,7 @@ export const WasteMasterDataLocationsRow = ({
   onOpenEditTour,
 }: {
   readonly location: WasteCollectionLocationRecord | WasteCollectionLocationListItem;
+  readonly search?: WasteManagementSearchParams;
   readonly maps: WasteMasterDataLocationsTableMaps;
   readonly selectedLocationIds: readonly string[];
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
@@ -506,7 +514,22 @@ export const WasteMasterDataLocationsRow = ({
         {linkedTours.length ? (
           <div className="space-y-1">
             {linkedTours.map((tour) =>
-              onOpenEditTour ? (
+              search ? (
+                <Button
+                  key={tour.id}
+                  asChild
+                  variant="tertiary"
+                  size="sm"
+                  className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  <Link
+                    to="/plugins/waste-management"
+                    search={toWasteTourEditSearch(search, tour.id)}
+                  >
+                    {tour.name}
+                  </Link>
+                </Button>
+              ) : onOpenEditTour ? (
                 <Button
                   key={tour.id}
                   type="button"
@@ -538,15 +561,24 @@ export const WasteMasterDataLocationsRow = ({
       <td className="px-3 py-3 align-top text-right">
         <div className="flex justify-end gap-1.5">
           <Button
-            type="button"
+            asChild={Boolean(search)}
             variant="tertiary"
             size="sm"
             className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
             aria-label={editLabel}
             tooltip={editLabel}
-            onClick={() => onOpenEditLocation(location)}
+            {...(!search ? { onClick: () => onOpenEditLocation(location) } : {})}
           >
-            <IconEdit aria-hidden="true" className="h-4 w-4" />
+            {search ? (
+              <Link
+                to="/plugins/waste-management"
+                search={toWasteCollectionLocationEditSearch(search, location.id)}
+              >
+                <IconEdit aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            ) : (
+              <IconEdit aria-hidden="true" className="h-4 w-4" />
+            )}
           </Button>
           <Button
             type="button"

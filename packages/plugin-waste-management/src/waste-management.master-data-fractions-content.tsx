@@ -62,6 +62,7 @@ const sortFractions = (
 
 export const WasteMasterDataFractionsContent = ({
   fractions,
+  search,
   fractionsSortBy,
   fractionsSortDirection,
   fractionsStatus,
@@ -146,6 +147,7 @@ export const WasteMasterDataFractionsContent = ({
       className="space-y-4"
     >
       <WasteMasterDataFractionsTableSection
+        search={search}
         fractions={pagedFractions.items}
         page={pagedFractions.safePage}
         pageSize={pageSize}

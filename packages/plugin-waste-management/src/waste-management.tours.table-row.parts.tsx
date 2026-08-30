@@ -7,6 +7,10 @@ import {
   StudioTableActionButton,
   StudioTableValueAction,
 } from '@sva/studio-ui-react';
+import { Link } from '@tanstack/react-router';
+
+import type { WasteManagementSearchParams } from './search-params.js';
+import { toWasteFractionEditSearch } from './waste-management.cross-link.navigation.js';
 
 export const formatTourDisplayDate = (value: string) => {
   const parsed = new Date(`${value}T00:00:00Z`);
@@ -41,11 +45,13 @@ export const WasteToursRowFractionCell = ({
   tourId,
   fractionNames,
   fractionIds,
+  search,
   onOpenEditFraction,
 }: {
   readonly tourId: string;
   readonly fractionNames: readonly string[];
   readonly fractionIds?: readonly string[];
+  readonly search?: WasteManagementSearchParams;
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
 }) => (
   <td className="w-[176px] px-3 py-3">
@@ -55,7 +61,16 @@ export const WasteToursRowFractionCell = ({
           const fractionId = fractionIds?.[index];
           return (
             <span key={`${tourId}-${fractionId ?? fractionName}`} className="text-sm">
-              {fractionId && onOpenEditFraction ? (
+              {fractionId && search ? (
+                <StudioTableValueAction asChild>
+                  <Link
+                    to="/plugins/waste-management"
+                    search={toWasteFractionEditSearch(search, fractionId)}
+                  >
+                    {fractionName}
+                  </Link>
+                </StudioTableValueAction>
+              ) : fractionId && onOpenEditFraction ? (
                 <StudioTableValueAction onClick={() => onOpenEditFraction(fractionId)}>
                   {fractionName}
                 </StudioTableValueAction>

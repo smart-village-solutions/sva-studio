@@ -2,9 +2,12 @@ import type { WasteCollectionLocationRecord, WasteFractionRecord } from '@sva/pl
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
 import { IconChecklist, IconEdit, IconRoute } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
 
 import type { WasteLocationFractionCoverageIssue } from './waste-management.location-fraction-coverage.js';
+import type { WasteManagementSearchParams } from './search-params.js';
+import { toWasteCollectionLocationEditSearch } from './waste-management.cross-link.navigation.js';
 
 export type CoverageResult = Readonly<{
   issues: readonly WasteLocationFractionCoverageIssue[];
@@ -92,11 +95,13 @@ const formatDate = (date: string): string => {
 const CoverageIssueItem = ({
   issue,
   location,
+  search,
   onEdit,
   getLocationLabel,
 }: Readonly<{
   issue: WasteLocationFractionCoverageIssue;
   location: WasteCollectionLocationRecord;
+  search?: WasteManagementSearchParams;
   onEdit: (location: WasteCollectionLocationRecord) => void;
   getLocationLabel: (location: WasteCollectionLocationRecord) => string;
 }>) => {
@@ -118,9 +123,26 @@ const CoverageIssueItem = ({
           </ul>
         ) : null}
       </div>
-      <Button type="button" variant="secondary" size="sm" onClick={() => onEdit(location)}>
-        <IconEdit aria-hidden="true" className="h-4 w-4" />
-        {pt('masterData.locationsWorkspace.coverage.edit')}
+      <Button
+        asChild={Boolean(search)}
+        variant="secondary"
+        size="sm"
+        {...(!search ? { onClick: () => onEdit(location) } : {})}
+      >
+        {search ? (
+          <Link
+            to="/plugins/waste-management"
+            search={toWasteCollectionLocationEditSearch(search, location.id)}
+          >
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
+            {pt('masterData.locationsWorkspace.coverage.edit')}
+          </Link>
+        ) : (
+          <>
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
+            {pt('masterData.locationsWorkspace.coverage.edit')}
+          </>
+        )}
       </Button>
     </li>
   );
@@ -131,6 +153,7 @@ const CoverageIssueSection = ({
   title,
   issues,
   locationsById,
+  search,
   onEdit,
   getLocationLabel,
 }: Readonly<{
@@ -138,6 +161,7 @@ const CoverageIssueSection = ({
   title: string;
   issues: readonly WasteLocationFractionCoverageIssue[];
   locationsById: ReadonlyMap<string, WasteCollectionLocationRecord>;
+  search?: WasteManagementSearchParams;
   onEdit: (location: WasteCollectionLocationRecord) => void;
   getLocationLabel: (location: WasteCollectionLocationRecord) => string;
 }>) =>
@@ -154,6 +178,7 @@ const CoverageIssueSection = ({
               key={issue.locationId}
               issue={issue}
               location={location}
+              search={search}
               onEdit={onEdit}
               getLocationLabel={getLocationLabel}
             />
@@ -166,12 +191,14 @@ const CoverageIssueSection = ({
 export const CoverageResults = ({
   result,
   locationsById,
+  search,
   onAssign,
   onEdit,
   getLocationLabel,
 }: Readonly<{
   result: CoverageResult;
   locationsById: ReadonlyMap<string, WasteCollectionLocationRecord>;
+  search?: WasteManagementSearchParams;
   onAssign: () => void;
   onEdit: (location: WasteCollectionLocationRecord) => void;
   getLocationLabel: (location: WasteCollectionLocationRecord) => string;
@@ -213,6 +240,7 @@ export const CoverageResults = ({
         title={pt('masterData.locationsWorkspace.coverage.missing')}
         issues={missing}
         locationsById={locationsById}
+        search={search}
         onEdit={onEdit}
         getLocationLabel={getLocationLabel}
       />
@@ -221,6 +249,7 @@ export const CoverageResults = ({
         title={pt('masterData.locationsWorkspace.coverage.incomplete')}
         issues={incomplete}
         locationsById={locationsById}
+        search={search}
         onEdit={onEdit}
         getLocationLabel={getLocationLabel}
       />

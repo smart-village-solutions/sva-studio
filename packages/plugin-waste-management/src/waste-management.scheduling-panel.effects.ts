@@ -43,42 +43,38 @@ const syncTourShiftRoute = (
   controller: WasteViewModel,
   navigate: ReturnType<typeof useNavigate>,
   search: WasteManagementSearchParams
-) => {
+): boolean => {
   const routeShift = controller.overview?.tourDateShifts.find(
     (shift) => shift.id === search.schedulingEntryId
   );
   if (!routeShift) {
     void navigateToSchedulingList(navigate, search);
-    return;
-  }
-  if (controller.tourShiftForm.id === routeShift.id) {
-    return;
+    return false;
   }
 
   controller.setDialogMode('edit');
   controller.setTourShiftForm(mapTourDateShiftToForm(routeShift));
   resetSchedulingEditState(controller);
+  return true;
 };
 
 const syncGlobalShiftRoute = (
   controller: WasteViewModel,
   navigate: ReturnType<typeof useNavigate>,
   search: WasteManagementSearchParams
-) => {
+): boolean => {
   const routeShift = controller.overview?.globalDateShifts.find(
     (shift) => shift.id === search.schedulingEntryId
   );
   if (!routeShift) {
     void navigateToSchedulingList(navigate, search);
-    return;
-  }
-  if (controller.globalShiftForm.id === routeShift.id) {
-    return;
+    return false;
   }
 
   controller.setGlobalDialogMode('edit');
   controller.setGlobalShiftForm(mapGlobalDateShiftToForm(routeShift));
   resetSchedulingEditState(controller);
+  return true;
 };
 
 export const useWasteSchedulingSuccessRedirect = ({
@@ -162,8 +158,11 @@ export const useWasteSchedulingEditRouteHydration = ({
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
+  const hydratedEntryKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (search.schedulingView !== 'edit') {
+      hydratedEntryKeyRef.current = null;
       return;
     }
 
@@ -176,24 +175,34 @@ export const useWasteSchedulingEditRouteHydration = ({
       return;
     }
 
+    const routeKey = `${search.schedulingEntryType}:${search.schedulingEntryId}`;
+    if (hydratedEntryKeyRef.current === routeKey) {
+      return;
+    }
+
     if (search.schedulingEntryType === 'holiday-rule') {
       const routeRule = controller.overview.holidayRules.find(
         (rule) => rule.id === search.schedulingEntryId
       );
       if (!routeRule) {
         void navigateToSchedulingList(navigate, search);
+        return;
       }
+      hydratedEntryKeyRef.current = routeKey;
       return;
     }
 
     if (search.schedulingEntryType === 'tour-shift') {
-      syncTourShiftRoute(controller, navigate, search);
+      if (syncTourShiftRoute(controller, navigate, search)) {
+        hydratedEntryKeyRef.current = routeKey;
+      }
       return;
     }
 
-    syncGlobalShiftRoute(controller, navigate, search);
+    if (syncGlobalShiftRoute(controller, navigate, search)) {
+      hydratedEntryKeyRef.current = routeKey;
+    }
   }, [
-    controller.globalShiftForm.id,
     controller.loading,
     controller.overview,
     controller.setDialogMode,
@@ -202,7 +211,6 @@ export const useWasteSchedulingEditRouteHydration = ({
     controller.setLastOutcome,
     controller.setMessage,
     controller.setTourShiftForm,
-    controller.tourShiftForm.id,
     navigate,
     search,
   ]);

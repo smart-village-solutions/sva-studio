@@ -2,13 +2,18 @@ import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
+import type { WasteManagementSearchParams } from './search-params.js';
+import { toWasteFractionEditSearch } from './waste-management.cross-link.navigation.js';
 
 export const FractionRowActions = ({
   fraction,
+  search,
   onOpenEditFraction,
   onRequestDeleteFraction,
 }: {
   readonly fraction: WasteFractionRecord;
+  readonly search?: WasteManagementSearchParams;
   readonly onOpenEditFraction: (fraction: WasteFractionRecord) => void;
   readonly onRequestDeleteFraction: (fraction: WasteFractionRecord) => void;
 }) => {
@@ -18,15 +23,24 @@ export const FractionRowActions = ({
   return (
     <>
       <Button
-        type="button"
+        asChild={Boolean(search)}
         variant="tertiary"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
         aria-label={editLabel}
         tooltip={editLabel}
-        onClick={() => onOpenEditFraction(fraction)}
+        {...(!search ? { onClick: () => onOpenEditFraction(fraction) } : {})}
       >
-        <IconEdit aria-hidden="true" className="h-4 w-4" />
+        {search ? (
+          <Link
+            to="/plugins/waste-management"
+            search={toWasteFractionEditSearch(search, fraction.id)}
+          >
+            <IconEdit aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        ) : (
+          <IconEdit aria-hidden="true" className="h-4 w-4" />
+        )}
       </Button>
       <Button
         type="button"

@@ -26,11 +26,21 @@ export const WasteMasterDataTabContent = ({
   useWasteMasterDataFractionSuccessRedirect({ controller, navigate, search });
   useWasteMasterDataFractionEditRouteHydration({ controller, navigate, search });
   useWasteMasterDataLocationSuccessRedirect({ controller, navigate, search });
-  useWasteMasterDataLocationEditRouteHydration({ controller, navigate, search });
+  const locationFormResetRevision = useWasteMasterDataLocationEditRouteHydration({
+    controller,
+    navigate,
+    search,
+  });
 
   if (tab === 'fractions') {
     return <WasteMasterDataFractionsTabView controller={controller} search={search} />;
   }
 
-  return <WasteMasterDataLocationsTabView controller={controller} search={search} />;
+  return (
+    <WasteMasterDataLocationsTabView
+      controller={controller}
+      search={search}
+      formResetRevision={locationFormResetRevision}
+    />
+  );
 };

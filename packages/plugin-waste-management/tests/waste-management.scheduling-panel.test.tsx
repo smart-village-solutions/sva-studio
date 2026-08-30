@@ -278,7 +278,7 @@ describe('WasteSchedulingPanel', () => {
         },
       ],
     };
-    controllerMock.tourShiftForm = { id: 'stale-tour-shift' };
+    controllerMock.tourShiftForm = { id: 'tour-shift-99' };
 
     render(
       <WasteSchedulingPanel
@@ -452,7 +452,7 @@ describe('WasteSchedulingPanel', () => {
       holidayRules: [],
       tourDateShifts: [],
     };
-    controllerMock.globalShiftForm = { id: 'stale-global-shift' };
+    controllerMock.globalShiftForm = { id: 'global-shift-7' };
 
     render(
       <WasteSchedulingPanel

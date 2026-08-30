@@ -2,10 +2,29 @@ import type { PluginTenantReadinessReadModel } from '@sva/plugin-sdk';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { setActiveLocale } from '../../../i18n';
 import { IamHttpError } from '../../../lib/iam-api';
 import { PluginReadinessCard } from './-instance-plugin-readiness-card';
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    params,
+    to,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    children: React.ReactNode;
+    params: { jobId: string };
+    to: string;
+  }) => (
+    <a href={to.replace('$jobId', params.jobId)} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 afterEach(() => {
+  setActiveLocale('de');
   cleanup();
 });
 
@@ -57,6 +76,48 @@ describe('PluginReadinessCard', () => {
     );
 
     expect(onRepair).toHaveBeenCalledWith('speech-flow', 'reconcile');
+  });
+
+  it('links an active lifecycle job through the existing monitoring route', () => {
+    render(
+      <PluginReadinessCard
+        plugins={[pluginFixture({ activeJobId: 'job-42' })]}
+        isLoading={false}
+        activeAction={null}
+        error={null}
+        onRepair={vi.fn()}
+      />
+    );
+
+    expect(
+      screen
+        .getByRole('link', { name: 'Aktiven Job für Plugin speech-flow öffnen' })
+        .getAttribute('href')
+    ).toBe('/monitoring/jobs/job-42');
+  });
+
+  it('renders the generic controls in English when English is active', () => {
+    setActiveLocale('en');
+
+    render(
+      <PluginReadinessCard
+        plugins={[pluginFixture({ activeJobId: 'job-42' })]}
+        isLoading={false}
+        activeAction={null}
+        error={null}
+        onRepair={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Plugin readiness' })).toBeTruthy();
+    expect(screen.getByText('Activation policy: Automatic')).toBeTruthy();
+    expect(screen.getAllByText('Blocked')).toHaveLength(2);
+    expect(
+      screen.getByRole('link', { name: 'Open active job for plugin speech-flow' })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Start repair for plugin speech-flow' })
+    ).toBeTruthy();
   });
 
   it('does not offer a repair for ready checks and keeps loading and errors accessible', () => {

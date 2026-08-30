@@ -4,6 +4,7 @@ import type {
   PluginTenantReadinessStatus,
 } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
+import { Link } from '@tanstack/react-router';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
@@ -61,9 +62,7 @@ export const PluginReadinessCard = ({
 }: PluginReadinessCardProps) => (
   <Card className="space-y-4 p-4">
     <div className="space-y-1">
-      <div className="font-medium text-foreground">
-        {t('admin.instances.pluginReadiness.title')}
-      </div>
+      <h2 className="font-medium text-foreground">{t('admin.instances.pluginReadiness.title')}</h2>
       <p className="text-sm text-muted-foreground">
         {t('admin.instances.pluginReadiness.subtitle')}
       </p>
@@ -128,8 +127,21 @@ export const PluginReadinessCard = ({
               ))}
             </ul>
 
-            {repairOperations.length > 0 ? (
+            {plugin.activeJobId || repairOperations.length > 0 ? (
               <div className="flex flex-wrap gap-2">
+                {plugin.activeJobId ? (
+                  <Button asChild variant="secondary" size="sm">
+                    <Link
+                      to="/monitoring/jobs/$jobId"
+                      params={{ jobId: plugin.activeJobId }}
+                      aria-label={t('admin.instances.pluginReadiness.activeJobAriaLabel', {
+                        pluginId: plugin.pluginId,
+                      })}
+                    >
+                      {t('admin.instances.pluginReadiness.activeJob')}
+                    </Link>
+                  </Button>
+                ) : null}
                 {repairOperations.map((operation) => {
                   const action = `${plugin.pluginId}:${operation}`;
                   return (

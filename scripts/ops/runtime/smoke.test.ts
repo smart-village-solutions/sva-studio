@@ -38,6 +38,7 @@ describe('smoke helpers', () => {
     const runner = vi.fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
       .mockResolvedValue([
         createProbe({
+          httpStatus: 404,
           message: 'Erwartet HTTP 200, erhalten 404.',
           name: 'public-home',
           status: 'error',
@@ -115,6 +116,7 @@ describe('smoke helpers', () => {
   ])('falls back to safe defaults for invalid external warmup settings', async (env) => {
     const wait = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
     const transientFailure = createProbe({
+      httpStatus: 404,
       message: 'Erwartet HTTP 200, erhalten 404.',
       name: 'public-home',
       status: 'error',
@@ -297,11 +299,13 @@ describe('smoke helpers', () => {
   it('retries only retryable external warmup failures', () => {
     const probes = [
       createProbe({
+        httpStatus: 404,
         message: 'Erwartet HTTP 200, erhalten 404.',
         name: 'public-home',
         status: 'error',
       }),
       createProbe({
+        httpStatus: 504,
         message: 'Unerwarteter Ready-Status 504.',
         name: 'public-ready',
         status: 'error',
@@ -337,7 +341,17 @@ describe('smoke helpers', () => {
   });
 
   it.each(['public-iam-context', 'public-iam-instances'])('retries a complete router gap for %s', (name) => {
-    expect(shouldRetryExternalSmoke([createProbe({ message: 'Unerwarteter Status 404.', name, status: 'error' })])).toBe(true);
+    expect(shouldRetryExternalSmoke([createProbe({ httpStatus: 404, message: 'Unerwarteter Status 404.', name, status: 'error' })])).toBe(true);
+  });
+
+  it.each(['public-iam-context', 'public-iam-instances'])('does not retry unexpected HTML content from %s', (name) => {
+    expect(shouldRetryExternalSmoke([createProbe({
+      details: { payload: '<html><body>Access denied</body></html>' },
+      httpStatus: 403,
+      message: 'Unerwarteter IAM-Status 403.',
+      name,
+      status: 'error',
+    })])).toBe(false);
   });
 
   it.each([
@@ -346,6 +360,7 @@ describe('smoke helpers', () => {
   ])('retries transient failures for %s', (name) => {
     expect(shouldRetryExternalSmoke([
       createProbe({
+        httpStatus: 503,
         message: 'Gateway antwortet während des Warmups mit 503.',
         name,
         status: 'error',

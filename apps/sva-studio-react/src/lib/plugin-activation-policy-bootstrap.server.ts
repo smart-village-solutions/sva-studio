@@ -1,5 +1,6 @@
 let configuredRevision: string | undefined;
 let reconciledRevision: string | undefined;
+let latestConfiguration: PluginActivationPolicyConfiguration | undefined;
 let configurationPromise: Promise<PluginActivationPolicyConfiguration> | undefined;
 let reconciliationPromise: Promise<void> | undefined;
 let reconciliationRetryRevision: string | undefined;
@@ -31,7 +32,9 @@ const configurePluginActivationPolicies =
       });
       configuredRevision = activationPolicies.revision;
     }
-    return { authRuntime, revision: activationPolicies.revision };
+    const configuration = { authRuntime, revision: activationPolicies.revision };
+    latestConfiguration = configuration;
+    return configuration;
   };
 
 const logReconcileFailure = async (
@@ -107,6 +110,10 @@ export const ensurePluginActivationPoliciesConfigured = async (): Promise<void> 
 };
 
 export const startPluginActivationPolicyFleetReconcileInBackground = (): void => {
+  if (latestConfiguration) {
+    startFleetReconcileInBackground(latestConfiguration);
+    return;
+  }
   void configurePluginActivationPolicies().then(startFleetReconcileInBackground);
 };
 
@@ -114,6 +121,7 @@ export const resetPluginActivationPolicyBootstrapForTests = (): void => {
   bootstrapGeneration += 1;
   configuredRevision = undefined;
   reconciledRevision = undefined;
+  latestConfiguration = undefined;
   configurationPromise = undefined;
   reconciliationPromise = undefined;
   reconciliationRetryRevision = undefined;

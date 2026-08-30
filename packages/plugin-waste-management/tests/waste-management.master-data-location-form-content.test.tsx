@@ -192,6 +192,53 @@ describe('WasteMasterDataLocationFormContent', () => {
     cleanup();
   });
 
+  it('resets retained RHF values when the same location is rehydrated for a new route entry', async () => {
+    const onSubmit = vi.fn();
+    const persistedForm = {
+      id: 'location-1',
+      regionId: 'region-1',
+      cityId: 'city-1',
+      streetId: '',
+      houseNumberId: '',
+      active: true,
+    };
+    const props = {
+      mode: 'edit' as const,
+      form: persistedForm,
+      regions: [{ id: 'region-1', name: 'Nord' }] as never,
+      cities: [
+        { id: 'city-1', name: 'Stadt 1', postalCode: '', regionId: 'region-1' },
+        { id: 'city-2', name: 'Stadt 2', postalCode: '', regionId: 'region-1' },
+      ] as never,
+      streets: [] as never,
+      houseNumbers: [] as never,
+      fractions: [] as never,
+      availableTours: [] as never,
+      locationTourLinks: [] as never,
+      saving: false,
+      onChange: vi.fn(),
+      onCancel: vi.fn(),
+      onSubmit,
+      onReloadAssignments: vi.fn(async () => undefined),
+    };
+    const view = render(
+      <WasteMasterDataLocationFormContent {...props} resetRevision={0} />
+    );
+
+    fireEvent.change(screen.getByLabelText('city'), { target: { value: 'city-2' } });
+    expect((screen.getByLabelText('city') as HTMLSelectElement).value).toBe('city-2');
+
+    view.rerender(
+      <WasteMasterDataLocationFormContent {...props} resetRevision={1} />
+    );
+    expect((screen.getByLabelText('city') as HTMLSelectElement).value).toBe('city-1');
+
+    fireEvent.submit(document.querySelector('#waste-location-form') as HTMLFormElement);
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ cityId: 'city-1' }))
+    );
+  });
+
   it('edits the postal code of the selected city together with the collection location', async () => {
     const onSubmit = vi.fn();
 

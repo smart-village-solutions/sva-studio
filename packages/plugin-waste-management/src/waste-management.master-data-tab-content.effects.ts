@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 
 import { wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
@@ -159,6 +159,7 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
   readonly search: WasteManagementSearchParams;
 }) => {
   const hydratedLocationIdRef = useRef<string | null>(null);
+  const [formResetRevision, setFormResetRevision] = useState(0);
 
   useEffect(() => {
     if (search.locationsView !== 'edit') {
@@ -210,6 +211,7 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
 
     controller.setLocationForm(wasteMasterDataFormMappers.collectionLocationToForm(routeLocation));
     hydratedLocationIdRef.current = routeLocation.id;
+    setFormResetRevision((current) => current + 1);
   }, [
     controller.overview,
     controller.setLastOutcome,
@@ -219,4 +221,6 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
     navigate,
     search,
   ]);
+
+  return formResetRevision;
 };

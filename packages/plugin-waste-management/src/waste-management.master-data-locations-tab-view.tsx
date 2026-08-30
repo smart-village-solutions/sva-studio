@@ -8,16 +8,19 @@ type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 type WasteMasterDataLocationsTabViewProps = {
   readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
+  readonly formResetRevision?: number;
 };
 
 const WasteMasterDataLocationFormView = ({
   controller,
   search,
+  formResetRevision,
   onCancel,
 }: WasteMasterDataLocationsTabViewProps & { readonly onCancel: () => void }) => (
   <WasteMasterDataLocationFormContent
     mode={search.locationsView === 'edit' ? 'edit' : 'create'}
     form={controller.locationForm}
+    resetRevision={search.locationsView === 'edit' ? formResetRevision : 0}
     regions={controller.overview?.regions ?? []}
     cities={controller.overview?.cities ?? []}
     streets={controller.overview?.streets ?? []}
@@ -42,6 +45,7 @@ const WasteMasterDataLocationFormView = ({
 export const WasteMasterDataLocationsTabView = ({
   controller,
   search,
+  formResetRevision,
 }: WasteMasterDataLocationsTabViewProps) => {
   const navigation = useWasteLocationsTabNavigation(controller, search);
 
@@ -50,6 +54,7 @@ export const WasteMasterDataLocationsTabView = ({
       <WasteMasterDataLocationFormView
         controller={controller}
         search={search}
+        formResetRevision={formResetRevision}
         onCancel={navigation.toList}
       />
     );

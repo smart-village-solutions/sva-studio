@@ -26,6 +26,7 @@ import { WastePendingSaveButton } from './waste-management.pending-save-button.j
 type WasteMasterDataLocationFormContentProps = {
   readonly mode: 'create' | 'edit';
   readonly form: CollectionLocationFormState;
+  readonly resetRevision?: number;
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];
@@ -74,6 +75,7 @@ const getCityPostalCodeUpdate = (
 export const WasteMasterDataLocationFormContent = ({
   mode,
   form,
+  resetRevision = 0,
   regions,
   cities,
   streets,
@@ -94,7 +96,7 @@ export const WasteMasterDataLocationFormContent = ({
       resolver: locationFormResolver,
     });
 
-  useResetOnFormContextChange(reset, form, `${mode}:${form.id}`);
+  useResetOnFormContextChange(reset, form, `${mode}:${form.id}:${resetRevision}`);
 
   React.useEffect(() => {
     register('id');

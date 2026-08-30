@@ -418,6 +418,21 @@ describe('meHandler', () => {
     );
   });
 
+  it('publishes the platform route scope for an invalid tenant host', async () => {
+    const { TenantAuthResolutionError } = await import('./runtime-errors.js');
+    mocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      new TenantAuthResolutionError({
+        host: 'unknown.example.org',
+        reason: 'tenant_host_invalid',
+      })
+    );
+
+    const response = await meHandler(new Request('https://unknown.example.org/auth/me'));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('platform');
+  });
+
   it('skips permission lookup and returns empty permissionActions when user has no instanceId', async () => {
     mockAuthenticatedSessionUserOnce({ id: 'kc-no-instance', roles: [] });
 

@@ -176,6 +176,57 @@ export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLif
       }),
   }).start(input);
 
+const automaticLifecycleRetryDelaysMs = [250, 1_000] as const;
+
+const waitForAutomaticLifecycleRetry = (delayMs: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, delayMs));
+
+const scheduleAutomaticLifecycleDefinition = async (input: {
+  readonly instanceId: string;
+  readonly definition: PluginTenantLifecycleRegistryEntry;
+  readonly activation: TenantModuleActivationRecord;
+  readonly attempt: number;
+}): Promise<boolean> => {
+  const pluginId = input.definition.pluginId;
+  const lifecycle = await withPluginTenantLifecycleRepository(
+    input.instanceId,
+    (resolvedRepository) => resolvedRepository.getLifecycle(input.instanceId, pluginId)
+  );
+  const schedule = resolveAutomaticProvisioningSchedule(
+    input.definition,
+    input.activation,
+    lifecycle
+  );
+  if (!schedule) return true;
+  try {
+    await startConfiguredPluginTenantLifecycle({
+      instanceId: input.instanceId,
+      pluginId,
+      operation: schedule.operation,
+      scheduledAt: schedule.scheduledAt,
+    });
+    return true;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith('plugin_tenant_lifecycle_request_conflict')
+    ) {
+      return true;
+    }
+    logger.error('plugin_tenant_lifecycle_schedule_plugin_failed', {
+      operation: 'plugin_tenant_lifecycle_schedule',
+      result: 'failed',
+      error_code: 'plugin_tenant_lifecycle_schedule_plugin_failed',
+      error_type: error instanceof Error ? error.name : typeof error,
+      instance_id: input.instanceId,
+      plugin_id: pluginId,
+      lifecycle_operation: schedule.operation,
+      retry_attempt: input.attempt,
+    });
+    return false;
+  }
+};
+
 export const ensureConfiguredPluginTenantProvisioning = async (
   instanceId: string
 ): Promise<void> => {
@@ -188,41 +239,28 @@ export const ensureConfiguredPluginTenantProvisioning = async (
       .filter(({ effectiveActive }) => effectiveActive)
       .map((activation) => [activation.moduleId, activation])
   );
-  const activeDefinitions = [...lifecycleRegistry.values()].filter((definition) =>
-    effectiveActivations.has(definition.pluginId)
-  );
-  for (const definition of activeDefinitions) {
-    const pluginId = definition.pluginId;
-    const activation = effectiveActivations.get(pluginId);
-    if (!activation) continue;
-    const lifecycle = await withPluginTenantLifecycleRepository(instanceId, (resolvedRepository) =>
-      resolvedRepository.getLifecycle(instanceId, pluginId)
-    );
-    const schedule = resolveAutomaticProvisioningSchedule(definition, activation, lifecycle);
-    if (!schedule) continue;
-    try {
-      await startConfiguredPluginTenantLifecycle({
+  let pendingDefinitions = [...lifecycleRegistry.values()].flatMap((definition) => {
+    const activation = effectiveActivations.get(definition.pluginId);
+    return activation ? [{ definition, activation }] : [];
+  });
+  for (
+    let attempt = 0;
+    pendingDefinitions.length > 0 && attempt <= automaticLifecycleRetryDelaysMs.length;
+    attempt += 1
+  ) {
+    const failedDefinitions: typeof pendingDefinitions = [];
+    for (const target of pendingDefinitions) {
+      const scheduled = await scheduleAutomaticLifecycleDefinition({
         instanceId,
-        pluginId,
-        operation: schedule.operation,
-        scheduledAt: schedule.scheduledAt,
+        ...target,
+        attempt,
       });
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith('plugin_tenant_lifecycle_request_conflict')
-      ) {
-        continue;
-      }
-      logger.error('plugin_tenant_lifecycle_schedule_plugin_failed', {
-        operation: 'plugin_tenant_lifecycle_schedule',
-        result: 'failed',
-        error_code: 'plugin_tenant_lifecycle_schedule_plugin_failed',
-        error_type: error instanceof Error ? error.name : typeof error,
-        instance_id: instanceId,
-        plugin_id: pluginId,
-        lifecycle_operation: schedule.operation,
-      });
+      if (!scheduled) failedDefinitions.push(target);
+    }
+    pendingDefinitions = failedDefinitions;
+    const retryDelayMs = automaticLifecycleRetryDelaysMs[attempt];
+    if (pendingDefinitions.length > 0 && retryDelayMs !== undefined) {
+      await waitForAutomaticLifecycleRetry(retryDelayMs);
     }
   }
 };

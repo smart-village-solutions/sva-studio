@@ -1458,7 +1458,12 @@ export const meHandler = async (request: Request): Promise<Response> => {
       authConfig = await resolveAuthConfigForRequest(request);
     } catch (error) {
       const response = createAuthDependencyErrorResponse(request, 'auth_me', error);
-      response.headers.set(PLUGIN_ROUTE_SCOPE_HEADER_NAME, 'tenant');
+      response.headers.set(
+        PLUGIN_ROUTE_SCOPE_HEADER_NAME,
+        error instanceof TenantAuthResolutionError && error.reason === 'tenant_host_invalid'
+          ? 'platform'
+          : 'tenant'
+      );
       return response;
     }
     const attachPluginRouteScope = (response: Response): Response => {

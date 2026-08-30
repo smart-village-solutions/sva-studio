@@ -436,15 +436,24 @@ describe('configured plugin tenant lifecycle runtime', () => {
 
     await expect(ensureConfiguredPluginTenantProvisioning('tenant-a')).resolves.toBeUndefined();
 
-    expect(state.createStudioJob).toHaveBeenCalledTimes(2);
+    expect(state.createStudioJob).toHaveBeenCalledTimes(3);
     expect(state.createStudioJob).toHaveBeenLastCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
-          pluginId: 'weather',
-          jobTypeId: 'weather.provisionTenant',
+          pluginId: 'speech',
+          jobTypeId: 'speech.provisionTenant',
         }),
       })
     );
+  });
+
+  it('bounds automatic retries for a persistently failing lifecycle start', async () => {
+    state.createStudioJob.mockRejectedValue(new Error('queue unavailable'));
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalledTimes(3);
   });
 
   it('does not auto-provision a suspended lifecycle', async () => {

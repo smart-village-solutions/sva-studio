@@ -33,20 +33,20 @@
 
 ## 3. Termine und Ortsdaten fachlich zerlegen
 
-- [ ] 3.1 Terminbereich einschließlich Datumseingaben, Zeitfeldern,
+- [x] 3.1 Terminbereich einschließlich Datumseingaben, Zeitfeldern,
       Beschreibungsmodus und Field-Array-Operationen in ein eigenes
       pluginlokales Modul verschieben
-- [ ] 3.2 Den bestehenden Map-/Geocoding-Config-Effekt in einen kleinen
+- [x] 3.2 Den bestehenden Map-/Geocoding-Config-Effekt in einen kleinen
       pluginlokalen Capability-Hook verschieben, ohne SDK-Client oder
       Location-Map-Lifecycle zu duplizieren
-- [ ] 3.3 Adress- und Veranstalterbereich gemeinsam fachlich gruppieren und
+- [x] 3.3 Adress- und Veranstalterbereich gemeinsam fachlich gruppieren und
       ihre RHF-Watches, Field-Array-Operationen, Geo-Fehlerpfade und Defaults
       dort besitzen
-- [ ] 3.4 Die ersetzten Inline-Callbacks und den alten Config-Effekt im selben
+- [x] 3.4 Die ersetzten Inline-Callbacks und den alten Config-Effekt im selben
       Block vollständig löschen; keine Wrapper oder alternative Renderpfade
       behalten
-- [ ] 3.5 Fokussierte Content-Tab- und Map-Tests grün ausführen
-- [ ] 3.6 Produktive Netto-LOC und Fallow-Werte prüfen; kein neuer kritischer
+- [x] 3.5 Fokussierte Content-Tab- und Map-Tests grün ausführen
+- [x] 3.6 Produktive Netto-LOC und Fallow-Werte prüfen; kein neuer kritischer
       Section-Hotspot ist zulässig
 
 ## 4. Root-Komponente und Vertragsgrenzen abschließen

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1187,
+  "body": "Der automatische Dev-Rollout bewertet kurze Umschaltphasen am externen Routing zuverlässiger.\n\n- Vorübergehende HTTP-403- und HTTP-404-Antworten bekannter Smoke-Prüfungen werden innerhalb des bestehenden begrenzten Warmup-Fensters erneut geprüft.\n- Bleibt die Anwendung danach nicht erreichbar, schlägt der Rollout weiterhin sicher fehl.\n- Falsche Realm-, Callback- oder Inhaltsverträge werden weiterhin sofort abgelehnt."
+}

@@ -25,7 +25,7 @@ Das System SHALL die Nachrichten-API versionieren und während des dokumentierte
 
 - **WENN** eine neue Studio-Serverversion ausgerollt wird
 - **UND** ein unterstützter nativer Client verwendet weiterhin die bestehende API-Version
-- **DANN** bleiben Summary, Liste und Gelesen-Mutation vertragskompatibel
+- **DANN** bleiben Summary, Liste, Gelesen-Mutation sowie Erzeugung und browserseitiger Konsum der Account-Übergabe vertragskompatibel
 
 #### Scenario: Inkompatibler Serververtrag ist vorgesehen
 

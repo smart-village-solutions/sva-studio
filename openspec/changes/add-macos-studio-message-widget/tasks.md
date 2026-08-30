@@ -13,6 +13,8 @@
 - [ ] 2.3 Repository- und Service-Logik für instanz-/accountgebundene Reads und idempotente Upserts implementieren, ohne Nachrichtentexte zu persistieren.
 - [ ] 2.4 Schema-Snapshot und Schema-Übersicht nach der Migration vollständig fortschreiben.
 - [ ] 2.5 PostgreSQL-16-Up/Down/Up-, RLS-, Tenant-Isolations-, Membership-Lösch- und Query-Plan-Tests ergänzen.
+- [ ] 2.6 Gelesen-Belege in vollständige DSR-Selbst-/Adminexporte aufnehmen und Exportautorisierung, Formate sowie Auditierung testen.
+- [ ] 2.7 Gemeinsame validierte Aufbewahrungsfrist für Feed-Sichtbarkeit und Gelesen-Belege mit 365-Tage-Default, Dry Run, expliziter Freigabe bei Verkürzung, Legal-Hold-Sperre und periodischer Bereinigung implementieren und testen.
 
 ## 3. Nachrichtenfeed und Studio-API
 
@@ -27,8 +29,8 @@
 - [ ] 4.1 Nativen öffentlichen OIDC-Client mit exakten Redirect-URIs, API-Audience und ausschließlich `studio.messages.read` sowie `studio.messages.read-state.update` in Registry und Keycloak-Vertrag modellieren; die vom Benutzer gewählte Studio-Instanz serverseitig validieren und in eine kurzlebige Login-Transaktion mit erlaubtem Realm/Issuer, Callback und API-Host auflösen.
 - [ ] 4.2 Authorization Code mit PKCE S256, externem Systembrowser, State/Nonce, integritätsgeschützter Instanz-/Issuer-/Callback-/API-Host-Bindung und verifiziertem Claimed-HTTPS-Callback implementieren; eingebettete Login-WebViews, Client-Secrets und frei übernommene Host-/Realmwerte ausschließen.
 - [ ] 4.3 Studio-Bearer-Prüfung für Signatur, Algorithmus, Issuer, Audience, Client, Zeitgrenzen, Scopes, Instanz, gebundenen API-Host und aktiven Account implementieren.
-- [ ] 4.4 Keychain-Sharing für Container-App und Widget Extension auf die minimal erforderliche Access Group begrenzen; Token aus Preferences, App-Group-Dateien, Logs und Telemetrie ausschließen; Refresh-Rotation per prozessübergreifender Sperre, erneutem Keychain-Read und Credential-Generation serialisieren.
-- [ ] 4.5 Logout, konkurrierende App-/Widget-Refreshes, Lock-Timeout, Refresh-Rotation, Widerruf, Forced Reauth, Kontosperre und Membership-Verlust fail-closed mit Tests abdecken.
+- [ ] 4.4 Keychain-Sharing für Container-App und Widget Extension auf die minimal erforderliche Access Group begrenzen; Token aus Preferences, App-Group-Dateien, Logs und Telemetrie ausschließen; Refresh-Rotation, Logout und Accountwechsel per gemeinsamer prozessübergreifender Sperre, erneutem Keychain-Read, Credential-Generation und Logout-Tombstone serialisieren.
+- [ ] 4.5 Logout, Accountwechsel, konkurrierende App-/Widget-Refreshes, Lock-Timeout, Refresh-Rotation, Tombstone, Widerruf, Forced Reauth, Kontosperre und Membership-Verlust fail-closed mit Tests abdecken.
 - [ ] 4.6 `pnpm check:server-runtime` früh für Änderungen an `packages/auth-runtime` und weiteren serverseitigen Packages ausführen.
 
 ## 5. Studio-Nachrichtenbereich
@@ -55,7 +57,7 @@
 
 - [ ] 7.1 Separaten Nx-/GitHub-Actions-Pfad für reproduzierbare native Build- und Testartefakte ergänzen, ohne den kanonischen Studio-Rollout zu verändern.
 - [ ] 7.2 Produktive Pilotveröffentlichung ohne Apple-Signatur, Notarisierungsnachweis, Checksummen und nachvollziehbare Quellrevision hart blockieren.
-- [ ] 7.3 Versionierungs- und Rückwärtskompatibilitätsvertrag zwischen Studio-API und nativem Client testen und dokumentieren; inkompatible Server-Promotion blockieren, bis alle betroffenen unterstützten Clientversionen migriert oder aus dem Supportfenster gefallen sind.
+- [ ] 7.3 Versionierungs- und Rückwärtskompatibilitätsvertrag zwischen Studio-API und nativem Client einschließlich Erzeugung und Konsum der Browser-Übergabe testen und dokumentieren; inkompatible Server-Promotion blockieren, bis alle betroffenen unterstützten Clientversionen migriert oder aus dem Supportfenster gefallen sind.
 - [ ] 7.4 Staging-Abnahme für servervalidierte Instanzauswahl, externen Browserlogin, State-/Issuer-/Callback-/API-Host-Bindung, Tokenrefresh, Logout/Widerruf, Account-Deaktivierung, Tenant-Konflikt und Widget-Timelines durchführen.
 - [ ] 7.5 Betriebsdokumentation klar vom normativen `docs/guides/studio-rollout-process.md` abgrenzen; keinen zweiten Studio-Deploypfad definieren.
 

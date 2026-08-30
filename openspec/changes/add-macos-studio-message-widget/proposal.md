@@ -9,6 +9,7 @@ Das Studio-Update-Log ist heute nur innerhalb der Web-Anwendung sichtbar. Nutzer
 - Ein allgemeiner, instanz- und accountgebundener Studio-Nachrichtenfeed aggregiert autorisierte Nachrichtenquellen. Das bestehende Update-Log wird als erste Quelle angebunden.
 - Neue versionierte Account-Endpunkte liefern eine reine Ungelesen-Zusammenfassung, begrenzte Nachrichtenlisten und idempotente Gelesen-Markierungen.
 - Der Gelesen-Stand wird serverseitig, instanzisoliert und ohne Kopie des Nachrichtentextes persistiert.
+- Gelesen-Belege werden in Betroffenenexporte aufgenommen und nach einer konfigurierbaren, mit der Feed-Sichtbarkeit abgestimmten Aufbewahrungsfrist gelöscht.
 - Ein nativer, öffentlicher macOS-OIDC-Client meldet Benutzer ausschließlich über den externen Systembrowser mit Authorization Code und PKCE an. Das Widget erhält nur die vollständig qualifizierten Rechte `studio.messages.read` und `studio.messages.read-state.update`.
 - Eine kleine native macOS-Begleit-App mit WidgetKit-Erweiterung stellt automatisch passende Inhalte dar: klein nur die Anzahl ungelesener Nachrichten, mittel drei und groß fünf Nachrichten.
 - Nachrichtentitel und -texte werden im gesperrten Zustand als sensibel behandelt; sichtbar bleibt nur eine neutrale Anzahl.
@@ -18,7 +19,7 @@ Das Studio-Update-Log ist heute nur innerhalb der Web-Anwendung sichtbar. Nutzer
 
 ## Impact
 
-- Affected specs: `studio-messaging` (neu), `iam-access-control`, `monorepo-structure`, `deployment-topology`
+- Affected specs: `studio-messaging` (neu), `iam-access-control`, `iam-data-subject-rights`, `monorepo-structure`, `deployment-topology`
 - Affected code: `apps/sva-studio-react`, `packages/auth-runtime`, IAM-Datenzugriff und Migrationen, Changelog-Artefaktgenerator, neue native App `apps/sva-studio-macos`, Nx-/CI-Konfiguration
 - Affected documentation: Nachrichtenfeed-/Widget-Bedienung, native Entwicklung und Distribution, Datenbankschema, IAM- und Architekturunterlagen
 - Affected arc42 sections:
@@ -30,7 +31,7 @@ Das Studio-Update-Log ist heute nur innerhalb der Web-Anwendung sichtbar. Nutzer
   - `docs/architecture/09-architecture-decisions.md`
   - `docs/architecture/10-quality-requirements.md`
   - `docs/architecture/11-risks-and-technical-debt.md`
-- Database impact: neue instanzisolierte Gelesen-Belege mit Membership-Fremdschlüssel; `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` müssen synchron fortgeschrieben werden
+- Database impact: neue instanzisolierte Gelesen-Belege mit Membership-Fremdschlüssel, DSR-Export und konfigurierbarer Aufbewahrungsfrist; `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` müssen synchron fortgeschrieben werden
 - Security impact: neuer nativer Public-Client, Bearer-Token-Prüfung, Keychain-Sharing, Audience-/Scope-Bindung, Token-Widerruf und redigierte Widget-Snapshots
 - Rollout impact: keine Änderung am kanonischen Studio-Deploypfad; produktive macOS-Artefakte benötigen zusätzlich Apple-Signierung und Notarisierung
 

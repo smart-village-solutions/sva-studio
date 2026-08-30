@@ -75,3 +75,11 @@ Das System MUST native Access- und Refresh-Credentials ausschließlich in einer 
 - **UND** liest jeder Prozess nach Sperrenerwerb Token und Credential-Generation erneut aus der Keychain
 - **UND** verwendet ein wartender Prozess das bereits rotierte Tokenpaar, ohne den zuvor gelesenen Refresh Token erneut zu senden
 - **UND** sendet das Widget bei Lock-Timeout oder unklarem Zustand keinen möglicherweise veralteten Refresh Token
+
+#### Scenario: Logout überschneidet sich mit einem Refresh
+
+- **WENN** Logout oder Accountwechsel beginnt, während App oder Widget ein Token erneuern
+- **DANN** verwenden Logout, Accountwechsel und Refresh dieselbe prozessübergreifende Sperre
+- **UND** widerruft Logout beziehungsweise Accountwechsel nach einem laufenden Refresh das dann aktuelle Tokenpaar
+- **UND** löscht die Operation die Credentials und schreibt vor Sperrenfreigabe eine monoton neuere Credential-Generation als Tombstone
+- **UND** darf ein späterer Refresher nach dem Tombstone keine alten Credentials speichern oder senden

@@ -22,6 +22,7 @@ const createServerFunctionRequestDiagnosticsMock = vi.fn();
 const readServerFunctionResponseBodyForDiagnosticsMock = vi.fn();
 const resolveServerFunctionBranchDecisionMock = vi.fn();
 const registerStudioPluginOperationHandlersMock = vi.fn();
+const ensurePluginActivationPoliciesConfiguredMock = vi.fn();
 
 vi.mock('@tanstack/react-start/server', () => ({
   createStartHandler: createStartHandlerMock,
@@ -96,8 +97,13 @@ vi.mock('./lib/plugin-operation-runtime.server', () => ({
   registerStudioPluginOperationHandlers: registerStudioPluginOperationHandlersMock,
 }));
 
+vi.mock('./lib/plugin-activation-policy-bootstrap.server', () => ({
+  ensurePluginActivationPoliciesConfigured: ensurePluginActivationPoliciesConfiguredMock,
+}));
+
 describe('server transport', () => {
   beforeEach(() => {
+    ensurePluginActivationPoliciesConfiguredMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReturnValue({ requestId: 'req-default' });
     runWithoutWorkspaceContextMock.mockImplementation((callback) => callback());
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
@@ -129,6 +135,7 @@ describe('server transport', () => {
     readServerFunctionResponseBodyForDiagnosticsMock.mockReset();
     resolveServerFunctionBranchDecisionMock.mockReset();
     registerStudioPluginOperationHandlersMock.mockReset();
+    ensurePluginActivationPoliciesConfiguredMock.mockReset();
   });
 
   it('bypasses auth requests before TanStack Start', async () => {

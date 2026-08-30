@@ -1140,7 +1140,25 @@ CREATE TABLE iam.instance_memberships (
 CREATE TABLE iam.instance_modules (
     instance_id text NOT NULL,
     module_id text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    activation_policy text DEFAULT 'optional'::text NOT NULL,
+    activation_origin text DEFAULT 'manual'::text NOT NULL,
+    effective_active boolean DEFAULT true NOT NULL,
+    manual_override text,
+    manifest_version integer DEFAULT 1 NOT NULL,
+    policy_revision text DEFAULT 'legacy'::text NOT NULL,
+    state_revision bigint DEFAULT 1 NOT NULL,
+    reconcile_id text,
+    reconciled_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text,
+    CONSTRAINT instance_modules_activation_origin_check CHECK ((activation_origin = ANY (ARRAY['manual'::text, 'policy_reconcile'::text, 'migration'::text]))),
+    CONSTRAINT instance_modules_activation_policy_check CHECK ((activation_policy = ANY (ARRAY['optional'::text, 'automatic'::text, 'required'::text]))),
+    CONSTRAINT instance_modules_manifest_version_check CHECK ((manifest_version > 0)),
+    CONSTRAINT instance_modules_manual_override_check CHECK (((manual_override IS NULL) OR (manual_override = ANY (ARRAY['enabled'::text, 'disabled'::text])))),
+    CONSTRAINT instance_modules_manual_override_state_check CHECK (((manual_override IS NULL) OR ((manual_override = 'enabled'::text) AND effective_active) OR ((manual_override = 'disabled'::text) AND (NOT effective_active)))),
+    CONSTRAINT instance_modules_required_policy_check CHECK (((activation_policy <> 'required'::text) OR (effective_active AND (manual_override IS NULL)))),
+    CONSTRAINT instance_modules_state_revision_check CHECK ((state_revision > 0))
 );
 
 
@@ -2989,6 +3007,13 @@ CREATE INDEX idx_instance_keycloak_provisioning_steps_run_created ON iam.instanc
 --
 
 CREATE INDEX idx_instance_modules_instance_created ON iam.instance_modules USING btree (instance_id, created_at DESC);
+
+
+--
+-- Name: instance_modules_active_instance_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX instance_modules_active_instance_idx ON iam.instance_modules USING btree (instance_id, module_id) WHERE effective_active;
 
 
 --

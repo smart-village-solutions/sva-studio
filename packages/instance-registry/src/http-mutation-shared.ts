@@ -2,7 +2,10 @@ import { createMutationWorkflow, createSdkLogger } from '@sva/server-runtime';
 import type { z } from 'zod';
 
 import { readDetailInstanceId } from './http-contracts.js';
-import { classifyInstanceMutationError, type InstanceMutationErrorCode } from './mutation-errors.js';
+import {
+  classifyInstanceMutationError,
+  type InstanceMutationErrorCode,
+} from './mutation-errors.js';
 import {
   buildInstanceRegistryFailureLog,
   type InstanceRegistryMutationErrorMapper,
@@ -45,7 +48,9 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
   readonly ensurePlatformAccess: (request: Request, ctx: TContext) => Response | null;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;
-  readonly withRegistryService: <T>(work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
+  readonly withRegistryService: <T>(
+    work: (service: InstanceRegistryService) => Promise<T>
+  ) => Promise<T>;
   readonly withScopedRegistryService: <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>
@@ -63,8 +68,7 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
 };
 
 type ParsedRequestBody<TData> =
-  | { readonly ok: true; readonly data: TData }
-  | { readonly ok: false; readonly message: string };
+  { readonly ok: true; readonly data: TData } | { readonly ok: false; readonly message: string };
 
 type ScopedRegistryMutationState<TContext> = {
   readonly request: Request;
@@ -103,39 +107,47 @@ const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
     'Für diese Instanz ist noch kein Tenant-Admin-Client-Secret hinterlegt.',
   tenant_auth_client_secret_missing:
     'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
-  idempotency_key_reuse:
-    'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
+  idempotency_key_reuse: 'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
   database_unavailable:
     'Die Instanzverwaltung konnte wegen eines Datenbank- oder Schemafehlers nicht abgeschlossen werden.',
-  encryption_not_configured:
-    'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
-  keycloak_unavailable:
-    'Keycloak konnte für diese Instanz nicht abgeglichen werden.',
+  encryption_not_configured: 'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
+  keycloak_unavailable: 'Keycloak konnte für diese Instanz nicht abgeglichen werden.',
+  plugin_activation_state_conflict:
+    'Der Plugin-Aktivierungszustand wurde gleichzeitig geändert. Bitte erneut versuchen.',
   internal_unclassified:
     'Die Instanzverwaltung konnte nicht abgeschlossen werden. Bitte die Request-ID für die Diagnose verwenden.',
 };
 
-export const createInstanceMutationErrorMapper = (
-  deps: Pick<InstanceRegistryMutationHttpDeps<unknown>, 'createApiError' | 'getRequestId'>
-): InstanceRegistryMutationErrorMapper => (error, context) => {
-  const classification = classifyInstanceMutationError(error);
-  logger.error('Instance registry mutation failed', buildInstanceRegistryFailureLog(error, {
-    operation: context?.operation ?? 'instance_registry_mutation',
-    requestId: context?.requestId ?? deps.getRequestId(),
-    instanceId: context?.instanceId,
-    runId: context?.runId,
-    intent: context?.intent,
-    stepKey: context?.stepKey,
-    dependency: context?.dependency,
-  }, classification));
-  return deps.createApiError(
-    classification.status,
-    classification.code,
-    mutationErrorMessages[classification.code],
-    deps.getRequestId(),
-    classification.details
-  );
-};
+export const createInstanceMutationErrorMapper =
+  (
+    deps: Pick<InstanceRegistryMutationHttpDeps<unknown>, 'createApiError' | 'getRequestId'>
+  ): InstanceRegistryMutationErrorMapper =>
+  (error, context) => {
+    const classification = classifyInstanceMutationError(error);
+    logger.error(
+      'Instance registry mutation failed',
+      buildInstanceRegistryFailureLog(
+        error,
+        {
+          operation: context?.operation ?? 'instance_registry_mutation',
+          requestId: context?.requestId ?? deps.getRequestId(),
+          instanceId: context?.instanceId,
+          runId: context?.runId,
+          intent: context?.intent,
+          stepKey: context?.stepKey,
+          dependency: context?.dependency,
+        },
+        classification
+      )
+    );
+    return deps.createApiError(
+      classification.status,
+      classification.code,
+      mutationErrorMessages[classification.code],
+      deps.getRequestId(),
+      classification.details
+    );
+  };
 
 export const withScopedRegistryMutation = <TContext, TResult>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
@@ -157,32 +169,38 @@ const executeScopedMutation = <TContext, TData, TResult>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
   options: ScopedRegistryMutationHandlerOptions<TContext, TData, TResult>,
   state: ScopedExecutionState<TContext, TData>
-): Promise<TResult | Response> => withScopedRegistryMutation(deps, state.instanceId, async (service) => {
-  if (options.criticalActionId) {
-    if (!deps.confirmCriticalMutation) {
-      return deps.createApiError(500, 'internal_error', 'Bestätigungsprüfung für kritische Aktion ist nicht verfügbar.', state.requestId);
+): Promise<TResult | Response> =>
+  withScopedRegistryMutation(deps, state.instanceId, async (service) => {
+    if (options.criticalActionId) {
+      if (!deps.confirmCriticalMutation) {
+        return deps.createApiError(
+          500,
+          'internal_error',
+          'Bestätigungsprüfung für kritische Aktion ist nicht verfügbar.',
+          state.requestId
+        );
+      }
+      const moduleId = options.resolveCriticalModuleId?.(state.input);
+      const confirmationError = await deps.confirmCriticalMutation({
+        service,
+        request: state.request,
+        context: state.context,
+        instanceId: state.instanceId,
+        actorId: state.actorId,
+        idempotencyKey: state.idempotencyKey,
+        actionId: options.criticalActionId,
+        ...(moduleId ? { moduleId } : {}),
+      });
+      if (confirmationError) return confirmationError;
     }
-    const moduleId = options.resolveCriticalModuleId?.(state.input);
-    const confirmationError = await deps.confirmCriticalMutation({
-      service,
-      request: state.request,
-      context: state.context,
+    return options.execute(service, {
       instanceId: state.instanceId,
+      payload: state.input,
       actorId: state.actorId,
       idempotencyKey: state.idempotencyKey,
-      actionId: options.criticalActionId,
-      ...(moduleId ? { moduleId } : {}),
+      requestId: state.requestId,
     });
-    if (confirmationError) return confirmationError;
-  }
-  return options.execute(service, {
-    instanceId: state.instanceId,
-    payload: state.input,
-    actorId: state.actorId,
-    idempotencyKey: state.idempotencyKey,
-    requestId: state.requestId,
   });
-});
 
 export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
@@ -218,20 +236,38 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
       deps.ensurePlatformAccess(request, context) ?? {},
     csrf: ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) =>
       deps.validateCsrf(request, requestId) ?? undefined,
-    idempotency: ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) => {
+    idempotency: ({
+      request,
+      requestId,
+    }: {
+      readonly request: Request;
+      readonly requestId?: string;
+    }) => {
       const idempotencyResult = deps.requireIdempotencyKey(request, requestId);
-      return 'error' in idempotencyResult ? idempotencyResult.error : { idempotencyKey: idempotencyResult.key };
+      return 'error' in idempotencyResult
+        ? idempotencyResult.error
+        : { idempotencyKey: idempotencyResult.key };
     },
-    parse: async ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) => {
+    parse: async ({
+      request,
+      requestId,
+    }: {
+      readonly request: Request;
+      readonly requestId?: string;
+    }) => {
       const parsed = await options.parse(request);
-      return parsed.ok ? parsed.data : deps.createApiError(400, 'invalid_request', parsed.message, requestId);
+      return parsed.ok
+        ? parsed.data
+        : deps.createApiError(400, 'invalid_request', parsed.message, requestId);
     },
-    execute: (state: ScopedExecutionState<TContext, TData>) => executeScopedMutation(deps, options, state),
-    mapError: (error, state) => options.mapMutationError(error, {
-      operation: options.operation,
-      requestId: state.requestId,
-      instanceId: state.instanceId,
-    }),
+    execute: (state: ScopedExecutionState<TContext, TData>) =>
+      executeScopedMutation(deps, options, state),
+    mapError: (error, state) =>
+      options.mapMutationError(error, {
+        operation: options.operation,
+        requestId: state.requestId,
+        instanceId: state.instanceId,
+      }),
     respond: (
       result: TResult | Response,
       state: {
@@ -243,14 +279,16 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
         readonly idempotencyKey: string;
       }
     ) =>
-      result instanceof Response ? result : options.respond(result, {
-        request: state.request,
-        context: state.context,
-        requestId: state.requestId,
-        actorId: state.actorId,
-        instanceId: state.instanceId,
-        idempotencyKey: state.idempotencyKey,
-      }),
+      result instanceof Response
+        ? result
+        : options.respond(result, {
+            request: state.request,
+            context: state.context,
+            requestId: state.requestId,
+            actorId: state.actorId,
+            instanceId: state.instanceId,
+            idempotencyKey: state.idempotencyKey,
+          }),
   });
 
   return (request: Request, context: TContext): Promise<Response> => workflow(request, context);
@@ -279,7 +317,10 @@ export const readInstanceIdOrError = <TContext>(
   request: Request
 ): string | Response => {
   const instanceId = readDetailInstanceId(request);
-  return instanceId ?? deps.createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', deps.getRequestId());
+  return (
+    instanceId ??
+    deps.createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', deps.getRequestId())
+  );
 };
 
 export const requireIdempotencyKeyOrError = <TContext>(

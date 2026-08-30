@@ -108,11 +108,6 @@ vi.mock('@sva/instance-registry/runtime-wiring', () => ({
   createInstanceRegistryRuntime: createInstanceRegistryRuntimeMock,
 }));
 
-vi.mock('@sva/studio-module-iam', () => ({
-  studioModuleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
-  studioModuleIamRegistry: studioModuleIamRegistryMock,
-}));
-
 vi.mock('../runtime-secrets.js', () => ({
   getIamDatabaseUrl: vi.fn(() => 'postgres://iam'),
 }));
@@ -147,7 +142,14 @@ vi.mock('../config.js', () => ({
 }));
 
 describe('iam instance registry repository wiring', () => {
-  it('injects a shared module iam registry into runtime and provisioning services', async () => {
+  it('injects the configured snapshot registry into runtime and provisioning services', async () => {
+    const { configureInstanceRegistryPluginRuntimeSnapshot } = await import(
+      './plugin-activation-policy-snapshot.js'
+    );
+    configureInstanceRegistryPluginRuntimeSnapshot({
+      activationPolicies: { revision: 'catalog-1', modules: [] },
+      moduleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
+    });
     await import('./repository.js');
 
     const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls[0]?.[0];

@@ -125,6 +125,40 @@ WHERE role_permission.instance_id = $1
   );
 };
 
+export const cleanupInactiveModulePermissions = async (
+  executor: SqlExecutor,
+  instanceId: string,
+  managedContracts: readonly InstanceModuleIamContractRecord[],
+  activeContracts: readonly InstanceModuleIamContractRecord[]
+): Promise<void> => {
+  const activeModuleIds = new Set(activeContracts.map((contract) => contract.moduleId));
+  const activePermissionIds = new Set(
+    activeContracts.flatMap((contract) => contract.permissionIds)
+  );
+  const inactivePermissionIds = [
+    ...new Set(
+      managedContracts
+        .filter((contract) => !activeModuleIds.has(contract.moduleId))
+        .flatMap((contract) => contract.permissionIds)
+        .filter((permissionId) => !activePermissionIds.has(permissionId))
+    ),
+  ].sort(compareAlphabetically);
+  if (inactivePermissionIds.length === 0) {
+    return;
+  }
+
+  await executor.execute(
+    statement(
+      `
+DELETE FROM iam.permissions
+WHERE instance_id = $1
+  AND permission_key = ANY($2::text[]);
+`,
+      [instanceId, inactivePermissionIds]
+    )
+  );
+};
+
 export const upsertProtectedRole = async (
   executor: SqlExecutor,
   instanceId: string,

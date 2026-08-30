@@ -39,7 +39,10 @@ const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
       headers: { 'Content-Type': 'application/json' },
     }),
   asApiItem: (value) => value,
-  parseRequestBody: vi.fn(async () => ({ ok: true, data: { rotateClientSecret: false, intent: 'provision' } })),
+  parseRequestBody: vi.fn(async () => ({
+    ok: true,
+    data: { rotateClientSecret: false, intent: 'provision' },
+  })),
   requireIdempotencyKey: vi.fn(() => ({ key: 'idem-1' })),
   ensurePlatformAccess: vi.fn(() => null),
   validateCsrf: vi.fn(() => null),
@@ -49,34 +52,64 @@ const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
     work({
       reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
       executeKeycloakProvisioning: vi.fn(async () => ({ id: 'run-1' })),
-      assignModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
-      bootstrapAdminStructure: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
-      revokeModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } })),
-      seedIamBaseline: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
+      assignModule: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: ['news'] },
+      })),
+      bootstrapAdminStructure: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: ['news'] },
+      })),
+      revokeModule: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: [] },
+      })),
+      seedIamBaseline: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: ['news'] },
+      })),
       probeTenantIamAccess: vi.fn(async () => ({
         access: { status: 'ready', summary: 'ok', source: 'access_probe' },
         overall: { status: 'unknown', summary: 'unknown', source: 'registry' },
         configuration: { status: 'unknown', summary: 'unknown', source: 'registry' },
         reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
       })),
-      changeStatus: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', status: 'active' } })),
+      changeStatus: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', status: 'active' },
+      })),
     } as never)
   ),
   withRegistryService: vi.fn(async (work) =>
     work({
       reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
       executeKeycloakProvisioning: vi.fn(async () => ({ id: 'run-1' })),
-      assignModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
-      bootstrapAdminStructure: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
-      revokeModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } })),
-      seedIamBaseline: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
+      assignModule: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: ['news'] },
+      })),
+      bootstrapAdminStructure: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: ['news'] },
+      })),
+      revokeModule: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: [] },
+      })),
+      seedIamBaseline: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', assignedModules: ['news'] },
+      })),
       probeTenantIamAccess: vi.fn(async () => ({
         access: { status: 'ready', summary: 'ok', source: 'access_probe' },
         overall: { status: 'unknown', summary: 'unknown', source: 'registry' },
         configuration: { status: 'unknown', summary: 'unknown', source: 'registry' },
         reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
       })),
-      changeStatus: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', status: 'active' } })),
+      changeStatus: vi.fn(async () => ({
+        ok: true,
+        instance: { instanceId: 'inst-1', status: 'active' },
+      })),
     } as never)
   ),
 });
@@ -104,11 +137,13 @@ describe('http mutation handlers', () => {
   it('logs safe mutation error diagnostics with the request correlation', async () => {
     const mapError = createInstanceMutationErrorMapper(deps);
 
-    mapError(Object.assign(new Error('duplicate value violates unique constraint'), {
-      code: '23505',
-      table: 'instances',
-      constraint: 'instances_pkey',
-    }));
+    mapError(
+      Object.assign(new Error('duplicate value violates unique constraint'), {
+        code: '23505',
+        table: 'instances',
+        constraint: 'instances_pkey',
+      })
+    );
 
     expect(logger.error).toHaveBeenCalledWith('Instance registry mutation failed', {
       operation: 'instance_registry_mutation',
@@ -125,7 +160,9 @@ describe('http mutation handlers', () => {
   });
 
   it('reconcileInstanceKeycloak validates guards before parsing the body', async () => {
-    vi.mocked(deps.ensurePlatformAccess).mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    vi.mocked(deps.ensurePlatformAccess).mockReturnValueOnce(
+      new Response('forbidden', { status: 403 })
+    );
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     const response = await handlers.reconcileInstanceKeycloak(
@@ -159,7 +196,9 @@ describe('http mutation handlers', () => {
     vi.mocked(deps.requireIdempotencyKey).mockReturnValue({ key: 'idem-keycloak-1' });
     vi.mocked(deps.withScopedRegistryService)
       .mockImplementationOnce(async (_instanceId, work) => work({ reconcileKeycloak } as never))
-      .mockImplementationOnce(async (_instanceId, work) => work({ executeKeycloakProvisioning } as never));
+      .mockImplementationOnce(async (_instanceId, work) =>
+        work({ executeKeycloakProvisioning } as never)
+      );
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     await handlers.reconcileInstanceKeycloak(
@@ -171,7 +210,9 @@ describe('http mutation handlers', () => {
       { userId: 'u-1' }
     );
 
-    expect(reconcileKeycloak).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'idem-keycloak-1' }));
+    expect(reconcileKeycloak).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'idem-keycloak-1' })
+    );
     expect(executeKeycloakProvisioning).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: 'idem-keycloak-1' })
     );
@@ -195,8 +236,18 @@ describe('http mutation handlers', () => {
 
   it('probeTenantIamAccess returns the updated tenant IAM status', async () => {
     const probeTenantIamAccess = vi.fn(async () => ({
-      access: { status: 'blocked', summary: '403', source: 'access_probe', requestId: 'req-probe-1' },
-      overall: { status: 'blocked', summary: 'blocked', source: 'access_probe', requestId: 'req-probe-1' },
+      access: {
+        status: 'blocked',
+        summary: '403',
+        source: 'access_probe',
+        requestId: 'req-probe-1',
+      },
+      overall: {
+        status: 'blocked',
+        summary: 'blocked',
+        source: 'access_probe',
+        requestId: 'req-probe-1',
+      },
       configuration: { status: 'ready', summary: 'ok', source: 'registry' },
       reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
     }));
@@ -209,7 +260,9 @@ describe('http mutation handlers', () => {
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     const response = await handlers.probeTenantIamAccess(
-      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', { method: 'POST' }),
+      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', {
+        method: 'POST',
+      }),
       { userId: 'u-1' }
     );
 
@@ -242,11 +295,15 @@ describe('http mutation handlers', () => {
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     const notFoundResponse = await handlers.probeTenantIamAccess(
-      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', { method: 'POST' }),
+      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', {
+        method: 'POST',
+      }),
       { userId: 'u-1' }
     );
     const errorResponse = await handlers.probeTenantIamAccess(
-      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', { method: 'POST' }),
+      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', {
+        method: 'POST',
+      }),
       { userId: 'u-1' }
     );
 
@@ -301,12 +358,17 @@ describe('http mutation handlers', () => {
 
     expect(idempotencyResponse.status).toBe(428);
     expect(missingInstanceResponse.status).toBe(400);
-    await expect(readBody(missingInstanceResponse)).resolves.toMatchObject({ code: 'invalid_instance_id' });
+    await expect(readBody(missingInstanceResponse)).resolves.toMatchObject({
+      code: 'invalid_instance_id',
+    });
     expect(deps.parseRequestBody).not.toHaveBeenCalled();
   });
 
   it('assignModule returns invalid_request for unknown modules', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'unknown' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleId: 'unknown' },
+    });
     vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         assignModule: vi.fn(async () => ({ ok: false, reason: 'unknown_module' })),
@@ -355,7 +417,10 @@ describe('http mutation handlers', () => {
   });
 
   it('assignModule does not require fresh reauthentication', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleId: 'news' },
+    });
     vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
@@ -369,7 +434,10 @@ describe('http mutation handlers', () => {
   });
 
   it('assignModule uses the scoped registry service and maps thrown database errors', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleId: 'news' },
+    });
     vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async () => {
       throw new Error('new row violates row-level security policy for table "permissions"');
     });
@@ -387,7 +455,10 @@ describe('http mutation handlers', () => {
   });
 
   it('revokeModule returns the refreshed instance detail on success', async () => {
-    const revokeModule = vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } }));
+    const revokeModule = vi.fn(async () => ({
+      ok: true,
+      instance: { instanceId: 'inst-1', assignedModules: [] },
+    }));
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
       ok: true,
       data: { moduleId: 'news', confirmation: 'REVOKE' },
@@ -427,15 +498,32 @@ describe('http mutation handlers', () => {
         return { ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } };
       }),
     };
-    Object.assign(deps, { confirmCriticalMutation: vi.fn(async ({ service: scopedService, actionId, moduleId }: { service: unknown; actionId: string; moduleId?: string }) => {
-      expect(scopedService).toBe(service);
-      expect(actionId).toBe('instance.module.revoke');
-      expect(moduleId).toBe('news');
-      calls.push('confirmation');
-      return null;
-    }) });
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news' } });
-    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) => work(service as never));
+    Object.assign(deps, {
+      confirmCriticalMutation: vi.fn(
+        async ({
+          service: scopedService,
+          actionId,
+          moduleId,
+        }: {
+          service: unknown;
+          actionId: string;
+          moduleId?: string;
+        }) => {
+          expect(scopedService).toBe(service);
+          expect(actionId).toBe('instance.module.revoke');
+          expect(moduleId).toBe('news');
+          calls.push('confirmation');
+          return null;
+        }
+      ),
+    });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleId: 'news' },
+    });
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
+      work(service as never)
+    );
 
     const response = await createInstanceRegistryMutationHttpHandlers(deps).revokeModule(
       new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
@@ -448,7 +536,10 @@ describe('http mutation handlers', () => {
 
   it('fails closed when a critical handler has no confirmation dependency', async () => {
     Object.assign(deps, { confirmCriticalMutation: undefined });
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news', confirmation: 'REVOKE' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleId: 'news', confirmation: 'REVOKE' },
+    });
     const response = await createInstanceRegistryMutationHttpHandlers(deps).revokeModule(
       new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
       { userId: 'service-1' }
@@ -458,7 +549,10 @@ describe('http mutation handlers', () => {
   });
 
   it('revokeModule maps not_found, unknown_module and conflict results', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleId: 'news', confirmation: 'REVOKE' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValue({
+      ok: true,
+      data: { moduleId: 'news', confirmation: 'REVOKE' },
+    });
     vi.mocked(deps.withScopedRegistryService)
       .mockImplementationOnce(async (_instanceId, work) =>
         work({
@@ -493,9 +587,36 @@ describe('http mutation handlers', () => {
     expect(notFoundResponse.status).toBe(404);
     await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
     expect(unknownModuleResponse.status).toBe(400);
-    await expect(readBody(unknownModuleResponse)).resolves.toMatchObject({ code: 'invalid_request' });
+    await expect(readBody(unknownModuleResponse)).resolves.toMatchObject({
+      code: 'invalid_request',
+    });
     expect(conflictResponse.status).toBe(409);
     await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
+  });
+
+  it('revokeModule exposes the stable required-plugin policy error', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValue({
+      ok: true,
+      data: { moduleId: 'news', confirmation: 'REVOKE' },
+    });
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
+      work({
+        revokeModule: vi.fn(async () => ({
+          ok: false,
+          reason: 'plugin_activation_required_cannot_disable',
+        })),
+      } as never)
+    );
+
+    const response = await createInstanceRegistryMutationHttpHandlers(deps).revokeModule(
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(409);
+    await expect(readBody(response)).resolves.toMatchObject({
+      code: 'plugin_activation_required_cannot_disable',
+    });
   });
 
   it('revokeModule does not require fresh reauthentication', async () => {
@@ -520,7 +641,10 @@ describe('http mutation handlers', () => {
       ok: true,
       instance: { instanceId: 'inst-1', assignedModules: ['news'] },
     }));
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['news'] } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleIds: ['news'] },
+    });
     vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         bootstrapAdminStructure,
@@ -557,7 +681,9 @@ describe('http mutation handlers', () => {
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     const response = await handlers.seedIamBaseline(
-      new Request('http://localhost/api/instances/inst-1/modules/seed-iam-baseline', { method: 'POST' }),
+      new Request('http://localhost/api/instances/inst-1/modules/seed-iam-baseline', {
+        method: 'POST',
+      }),
       { userId: 'u-1' }
     );
     const body = await readBody(response);
@@ -572,7 +698,9 @@ describe('http mutation handlers', () => {
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     const response = await handlers.seedIamBaseline(
-      new Request('http://localhost/api/instances/inst-1/modules/seed-iam-baseline', { method: 'POST' }),
+      new Request('http://localhost/api/instances/inst-1/modules/seed-iam-baseline', {
+        method: 'POST',
+      }),
       { userId: 'u-1' }
     );
 
@@ -581,7 +709,10 @@ describe('http mutation handlers', () => {
   });
 
   it('bootstrapAdminStructure returns invalid_request for unknown modules', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['unknown'] } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleIds: ['unknown'] },
+    });
     vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         bootstrapAdminStructure: vi.fn(async () => ({ ok: false, reason: 'unknown_module' })),
@@ -630,7 +761,10 @@ describe('http mutation handlers', () => {
   });
 
   it('bootstrapAdminStructure does not require fresh reauthentication', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['news'] } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleIds: ['news'] },
+    });
     vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
@@ -644,7 +778,10 @@ describe('http mutation handlers', () => {
   });
 
   it('mutateInstanceStatus rejects mismatched status payloads', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'archived' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { status: 'archived' },
+    });
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
     const response = await handlers.mutateInstanceStatus(
@@ -680,7 +817,10 @@ describe('http mutation handlers', () => {
   });
 
   it('mutateInstanceStatus returns the changed instance on success', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'suspended' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { status: 'suspended' },
+    });
     vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
       work({
         changeStatus: vi.fn(async () => ({
@@ -735,7 +875,10 @@ describe('http mutation handlers', () => {
   });
 
   it('mutateInstanceStatus does not require fresh reauthentication', async () => {
-    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'active' } });
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { status: 'active' },
+    });
     vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 

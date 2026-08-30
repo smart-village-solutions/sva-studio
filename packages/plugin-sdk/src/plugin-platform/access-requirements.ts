@@ -7,6 +7,7 @@
 import type { UiAccessRequirement, UiResourceCapability } from '@sva/iam-core';
 
 type TenantAccessRequirement = Extract<UiAccessRequirement, { kind: 'tenant' }>;
+type PlatformAccessRequirement = Extract<UiAccessRequirement, { kind: 'platform' }>;
 
 const resourceCapabilityFields = [
   'action',
@@ -41,6 +42,12 @@ const haveEqualTenantRequirements = (
   haveEqualValues(left.actions.values, right.actions.values) &&
   haveEqualResourceCapabilities(left.resourceCapability, right.resourceCapability);
 
+const haveEqualPlatformRequirements = (
+  left: PlatformAccessRequirement,
+  right: PlatformAccessRequirement
+): boolean =>
+  left.roles.mode === right.roles.mode && haveEqualValues(left.roles.values, right.roles.values);
+
 export const hasMatchingPluginAccessRequirement = (
   left: UiAccessRequirement | undefined,
   right: UiAccessRequirement | undefined
@@ -48,8 +55,11 @@ export const hasMatchingPluginAccessRequirement = (
   if (!left || !right) {
     return left === right;
   }
-  if (left.kind !== 'tenant' || right.kind !== 'tenant') {
-    return left.kind === right.kind;
+  if (left.kind === 'tenant' && right.kind === 'tenant') {
+    return haveEqualTenantRequirements(left, right);
   }
-  return haveEqualTenantRequirements(left, right);
+  if (left.kind === 'platform' && right.kind === 'platform') {
+    return haveEqualPlatformRequirements(left, right);
+  }
+  return left.kind === right.kind;
 };

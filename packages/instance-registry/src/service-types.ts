@@ -7,6 +7,7 @@ import type {
   IamTenantIamAxis,
   IamTenantIamStatus,
   WasteManagementDataSourceRecord,
+  TenantModuleActivationPolicySnapshot,
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
@@ -30,7 +31,11 @@ import type {
   KeycloakTenantStatus,
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
-import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import type {
+  KeycloakProvisioningInput,
+  KeycloakReadState,
+  TenantAdminBootstrap,
+} from './provisioning-auth-types.js';
 import type {
   ConsumeInstanceConfirmationChallengeInput,
   InstanceConfirmationChallenge,
@@ -86,18 +91,36 @@ export type InstanceRegistryService = {
     reason?: 'confirmation_required' | 'invalid_confirmation';
     requestId?: string;
   }): Promise<void>;
-  listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly IamInstanceListItem[]>;
+  listInstances(input?: {
+    search?: string;
+    status?: InstanceStatus;
+  }): Promise<readonly IamInstanceListItem[]>;
   getInstanceDetail(instanceId: string): Promise<IamInstanceDetail | null>;
-  createProvisioningRequest(input: CreateInstanceProvisioningInput): Promise<CreateInstanceProvisioningResult>;
+  createProvisioningRequest(
+    input: CreateInstanceProvisioningInput
+  ): Promise<CreateInstanceProvisioningResult>;
   updateInstance(input: UpdateInstanceInput): Promise<IamInstanceDetail | null>;
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
   getKeycloakStatus(instanceId: string): Promise<KeycloakTenantStatus | null>;
   getKeycloakPreflight(instanceId: string): Promise<KeycloakTenantPreflight | null>;
   planKeycloakProvisioning(instanceId: string): Promise<KeycloakTenantPlan | null>;
-  executeKeycloakProvisioning(input: ExecuteInstanceKeycloakProvisioningInput): Promise<KeycloakTenantProvisioningRun | null>;
+  executeKeycloakProvisioning(
+    input: ExecuteInstanceKeycloakProvisioningInput
+  ): Promise<KeycloakTenantProvisioningRun | null>;
   assignModule(input: AssignInstanceModuleInput): Promise<InstanceModuleMutationResult>;
-  bootstrapAdminStructure(input: BootstrapAdminStructureInput): Promise<InstanceModuleMutationResult>;
+  bootstrapAdminStructure(
+    input: BootstrapAdminStructureInput
+  ): Promise<InstanceModuleMutationResult>;
   revokeModule(input: RevokeInstanceModuleInput): Promise<InstanceModuleMutationResult>;
+  reconcileModuleActivationPolicies(input: {
+    instanceId: string;
+    actorId?: string;
+    requestId?: string;
+  }): Promise<{
+    changedModuleIds: readonly string[];
+    conflictModuleIds: readonly string[];
+    unchangedModuleIds: readonly string[];
+  }>;
   seedIamBaseline(input: SeedInstanceIamBaselineInput): Promise<InstanceModuleMutationResult>;
   probeTenantIamAccess(input: {
     instanceId: string;
@@ -105,7 +128,10 @@ export type InstanceRegistryService = {
     actorId?: string;
     requestId?: string;
   }): Promise<IamTenantIamStatus | null>;
-  getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<KeycloakTenantProvisioningRun | null>;
+  getKeycloakProvisioningRun(
+    instanceId: string,
+    runId: string
+  ): Promise<KeycloakTenantProvisioningRun | null>;
   hasKeycloakProvisioningRun(input: {
     instanceId: string;
     mutation: 'executeKeycloakProvisioning';
@@ -126,7 +152,10 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
-  readonly invalidatePermissionSnapshots?: (input: { instanceId: string; trigger: string }) => Promise<void>;
+  readonly invalidatePermissionSnapshots?: (input: {
+    instanceId: string;
+    trigger: string;
+  }) => Promise<void>;
   readonly syncTenantAdminBootstrapAccount?: (input: {
     instanceId: string;
     tenantAdminBootstrap?: TenantAdminBootstrap;
@@ -136,7 +165,9 @@ export type InstanceRegistryServiceDeps = {
   readonly protectSecret?: (value: string | undefined, aad: string) => string | null;
   readonly revealSecret?: (value: string | null | undefined, aad: string) => string | undefined;
   readonly waitForProvisionedSecretRead?: (delayMs: number) => Promise<void>;
-  readonly readKeycloakStateViaProvisioner?: (input: KeycloakProvisioningInput) => Promise<KeycloakReadState>;
+  readonly readKeycloakStateViaProvisioner?: (
+    input: KeycloakProvisioningInput
+  ) => Promise<KeycloakReadState>;
   readonly provisionInstanceAuth?: (input: {
     instanceId: string;
     primaryHostname: string;
@@ -156,12 +187,21 @@ export type InstanceRegistryServiceDeps = {
     reconcileAuthClient?: boolean;
     reconcileTenantAdminClient?: boolean;
   }) => Promise<void>;
-  readonly getKeycloakPreflight?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPreflight>;
-  readonly planKeycloakProvisioning?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPlan>;
-  readonly getKeycloakStatus?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantStatus>;
-  readonly loadWasteDataSourceRecord?: (instanceId: string) => Promise<WasteManagementDataSourceRecord | null>;
+  readonly getKeycloakPreflight?: (
+    input: KeycloakProvisioningContext
+  ) => Promise<KeycloakTenantPreflight>;
+  readonly planKeycloakProvisioning?: (
+    input: KeycloakProvisioningContext
+  ) => Promise<KeycloakTenantPlan>;
+  readonly getKeycloakStatus?: (
+    input: KeycloakProvisioningContext
+  ) => Promise<KeycloakTenantStatus>;
+  readonly loadWasteDataSourceRecord?: (
+    instanceId: string
+  ) => Promise<WasteManagementDataSourceRecord | null>;
   readonly saveWasteDataSourceRecord?: (record: WasteManagementDataSourceRecord) => Promise<void>;
   readonly moduleIamRegistry?: ReadonlyMap<string, InstanceModuleIamRegistryEntry>;
+  readonly readModuleActivationPolicySnapshot?: () => TenantModuleActivationPolicySnapshot;
   readonly probeTenantIamAccess?: (input: {
     instanceId: string;
     actorId?: string;

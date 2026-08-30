@@ -1,6 +1,4 @@
-import {
-  areAllInstanceKeycloakRequirementsSatisfied,
-} from '@sva/core';
+import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
 
 import type {
   InstanceStatus,
@@ -19,7 +17,9 @@ import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ChangeInstanceStatusInput } from './mutation-types.js';
 
 type InstanceRecord = Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number];
-type ProvisioningRun = Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>[number];
+type ProvisioningRun = Awaited<
+  ReturnType<InstanceRegistryRepository['listProvisioningRuns']>
+>[number];
 type AuditEvent = Awaited<ReturnType<InstanceRegistryRepository['listAuditEvents']>>[number];
 
 type TenantIamEvidence = Omit<IamTenantIamAxis, 'source'> & {
@@ -37,9 +37,15 @@ const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => ({
 
 const isConfigurationReady = (
   keycloakStatus: NonNullable<IamInstanceDetail['keycloakStatus']> | undefined
-): boolean => Boolean(keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus));
+): boolean =>
+  Boolean(keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus));
 
-const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = ['blocked', 'degraded', 'unknown', 'ready'];
+const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = [
+  'blocked',
+  'degraded',
+  'unknown',
+  'ready',
+];
 
 export const buildTenantIamStatus = (input: {
   keycloakStatus?: IamInstanceDetail['keycloakStatus'];
@@ -180,7 +186,9 @@ export const buildModuleIamStatus = (
       summary: 'IAM-Basis des Moduls ist deklarativ registriert.',
       source: 'registry' as const,
       permissionIds: contract.permissionIds,
-      systemRoleNames: (contract.systemRoles ?? contract.tenantBootstrapRoles ?? []).map((role) => role.roleName),
+      systemRoleNames: (contract.systemRoles ?? contract.tenantBootstrapRoles ?? []).map(
+        (role) => role.roleName
+      ),
     };
   });
 
@@ -203,6 +211,7 @@ export const buildInstanceDetail = (
   instance: Exclude<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>, null>,
   provisioningRuns: readonly ProvisioningRun[],
   auditEvents: readonly AuditEvent[],
+  moduleActivations: IamInstanceDetail['moduleActivations'],
   keycloakStatus?: KeycloakTenantStatus,
   keycloakPreflight?: IamInstanceKeycloakPreflight,
   keycloakPlan?: IamInstanceKeycloakPlan,
@@ -221,6 +230,7 @@ export const buildInstanceDetail = (
   ],
   provisioningRuns,
   auditEvents,
+  moduleActivations,
   keycloakStatus,
   keycloakPreflight,
   keycloakPlan,

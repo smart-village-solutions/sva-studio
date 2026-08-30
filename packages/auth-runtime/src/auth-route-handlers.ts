@@ -1,5 +1,6 @@
 import { serialize as serializeCookie } from 'cookie-es';
 import type { IamUserGroupAssignment } from '@sva/core';
+import { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/plugin-sdk';
 import {
   createSdkLogger,
   getWorkspaceContext,
@@ -1449,11 +1450,22 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
 export const meHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    const authConfig = await resolveAuthConfigForRequest(request);
+    const attachPluginRouteScope = (response: Response): Response => {
+      response.headers.set(
+        PLUGIN_ROUTE_SCOPE_HEADER_NAME,
+        authConfig.kind === 'instance' ? 'tenant' : 'platform'
+      );
+      return response;
+    };
+
     if (isActiveDevAuthRequest(request)) {
-      return new Response(JSON.stringify({ user: createMockSessionUser() }), {
-        status: 200,
-        headers: createAuthMeHeaders(),
-      });
+      return attachPluginRouteScope(
+        new Response(JSON.stringify({ user: createMockSessionUser() }), {
+          status: 200,
+          headers: createAuthMeHeaders(),
+        })
+      );
     }
 
     logger.info('Auth me request received', {
@@ -1466,26 +1478,35 @@ export const meHandler = async (request: Request): Promise<Response> => {
       ...buildLogContext(),
     });
 
-    return withAuthenticatedUser(request, async ({ user, sessionExpiresAt, sessionId }) => {
-      const resolution = await resolveAuthMeState(user);
+    const response = await withAuthenticatedUser(
+      request,
+      async ({ user, sessionExpiresAt, sessionId }) => {
+        const resolution = await resolveAuthMeState(user);
 
-      logger.debug('Auth check successful', {
-        endpoint: '/auth/me',
-        auth_state: 'authenticated',
-        operation: 'get_current_user',
-        roles_count: user.roles?.length ?? 0,
-        groups_count: resolution.groups.length,
-        permission_actions_count: resolution.permissionActions.length,
-        permission_status: resolution.permissionStatus,
-        ...buildLogContext(
-          user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined
-        ),
-      });
+        logger.debug('Auth check successful', {
+          endpoint: '/auth/me',
+          auth_state: 'authenticated',
+          operation: 'get_current_user',
+          roles_count: user.roles?.length ?? 0,
+          groups_count: resolution.groups.length,
+          permission_actions_count: resolution.permissionActions.length,
+          permission_status: resolution.permissionStatus,
+          ...buildLogContext(
+            user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined
+          ),
+        });
 
-      const response = createAuthMeResponse(user, resolution, sessionExpiresAt);
-      attachSessionCookie(response, getAuthConfig().sessionCookieName, sessionId, sessionExpiresAt);
-      return response;
-    });
+        const response = createAuthMeResponse(user, resolution, sessionExpiresAt);
+        attachSessionCookie(
+          response,
+          getAuthConfig().sessionCookieName,
+          sessionId,
+          sessionExpiresAt
+        );
+        return response;
+      }
+    );
+    return attachPluginRouteScope(response);
   });
 };
 

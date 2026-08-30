@@ -6,6 +6,7 @@ import {
   invalidateInstancePermissionSnapshots,
   requireModuleIamRegistry,
   resolveAssignedModuleContracts,
+  resolveManagedModuleContracts,
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
@@ -173,6 +174,7 @@ export const createAssignModuleHandler =
       permissionReconcile = await deps.repository.syncAssignedModuleIam({
         instanceId: input.instanceId,
         managedModuleIds: [...registry.keys()],
+        managedContracts: resolveManagedModuleContracts(deps),
         contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
       });
     } catch (error) {
@@ -247,6 +249,7 @@ export const createBootstrapAdminStructureHandler =
       modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
         instanceId: input.instanceId,
         managedModuleIds: [...registry.keys()],
+        managedContracts: resolveManagedModuleContracts(deps),
         contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
       });
     } catch (error) {
@@ -326,6 +329,14 @@ export const createRevokeModuleHandler =
       return { ok: false, reason: 'unknown_module' };
     }
 
+    const activationPolicy = await deps.repository.getModuleActivationPolicy(
+      input.instanceId,
+      input.moduleId
+    );
+    if (activationPolicy?.activationPolicy === 'required') {
+      return { ok: false, reason: 'plugin_activation_required_cannot_disable' };
+    }
+
     const removed = await deps.repository.revokeModule(input.instanceId, input.moduleId);
     if (!removed) {
       return { ok: false, reason: 'conflict' };
@@ -335,6 +346,7 @@ export const createRevokeModuleHandler =
     const permissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId: input.instanceId,
       managedModuleIds: [...registry.keys()],
+      managedContracts: resolveManagedModuleContracts(deps),
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
     await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_revoked');
@@ -372,6 +384,7 @@ export const createSeedIamBaselineHandler =
     const modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId: input.instanceId,
       managedModuleIds: [...registry.keys()],
+      managedContracts: resolveManagedModuleContracts(deps),
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
     const corePermissionReconcile = await syncProtectedSystemAdminPermissions(

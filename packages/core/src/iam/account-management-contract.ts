@@ -5,6 +5,7 @@ import type {
 } from '@sva/iam-core';
 import type { IamPermissionRuntimeScope } from './account-management.js';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
+import type { TenantModuleActivationRecord } from '../instances/module-activation.js';
 
 export type ApiErrorCode =
   | 'unauthorized'
@@ -23,6 +24,8 @@ export type ApiErrorCode =
   | 'idempotency_key_required'
   | 'idempotency_key_reuse'
   | 'idempotency_in_progress'
+  | 'plugin_activation_required_cannot_disable'
+  | 'plugin_activation_state_conflict'
   | 'invalid_source_year'
   | 'replacement_date_invalid'
   | 'batch_limit_exceeded'
@@ -728,6 +731,7 @@ export type IamInstanceDetail = IamInstanceListItem & {
   readonly keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[];
   readonly tenantIamStatus?: IamTenantIamStatus;
   readonly moduleIamStatus?: IamInstanceModuleIamStatus;
+  readonly moduleActivations: readonly TenantModuleActivationRecord[];
   readonly wasteManagementSettings?: WasteManagementSettingsRecord;
 };
 

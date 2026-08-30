@@ -63,6 +63,12 @@ const createRepository = (
     listInstances: vi.fn(async () => [baseInstance]),
     getInstanceById: vi.fn(async () => baseInstance),
     listAssignedModules: vi.fn(async () => baseInstance.assignedModules),
+    listModuleActivations: vi.fn(async () => []),
+    getModuleActivationPolicy: vi.fn(async () => ({
+      activationPolicy: 'optional' as const,
+      effectiveActive: true,
+      stateRevision: 1,
+    })),
     assignModule: vi.fn(async () => true),
     revokeModule: vi.fn(async () => true),
     requestWasteProvisioning: vi.fn(async () => ({
@@ -1634,6 +1640,32 @@ describe('instance registry service facade', () => {
         }),
       })
     );
+  });
+
+  it('rejects revocation of a persisted required plugin before changing IAM state', async () => {
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => ({
+        activationPolicy: 'required',
+        effectiveActive: true,
+        stateRevision: 3,
+      })),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).revokeModule({
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-required-revoke',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      reason: 'plugin_activation_required_cannot_disable',
+    });
+
+    expect(repository.revokeModule).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
   });
 
   it('disables waste provisioning on module revocation without deleting its state', async () => {

@@ -1,5 +1,12 @@
 # 11 Risiken und technische Schulden
 
+## Plugin-Snapshot und Aktivierungszustand können auseinanderlaufen
+
+- Risiko: Ein Deployment enthält einen neuen oder geänderten Plugin-Manifestvertrag, während bestehende Instanzen noch den vorherigen Richtlinienstand materialisiert haben. Ohne eindeutige Serialisierung könnten manuelle Aktivierungsänderung und Policy-Reconcile denselben Zustand widersprüchlich überschreiben.
+- Auswirkung: Routen und IAM-Grants könnten vorübergehend nicht zum gewünschten Plugin-Zustand passen; besonders ein Pflicht-Plugin könnte fälschlich deaktivierbar erscheinen.
+- Maßnahme: Der Host erzeugt einen revisionsgebundenen Aktivierungssnapshot, der Registry-Service reconciliiert ihn vor scoped Instanzoperationen und serialisiert alle Zustandsänderungen pro `(instance_id, module_id)` mit transaktionalen Advisory-Locks. Konflikte bleiben fail-closed und wiederholbar.
+- Restrisiko: Lazy Reconcile garantiert keine sofortige Flottenkonvergenz für inaktive Tenants. Ein späterer operativer Rollout- beziehungsweise Lifecycle-Change muss deshalb für `required`-Plugins einen kontrollierten vollständigen Reconcile und Readiness-Nachweis definieren.
+
 ## Zweck
 
 Dieser Abschnitt dokumentiert bekannte Architektur-Risiken und technische

@@ -1,3 +1,5 @@
+import type { TenantModuleActivationPolicy } from '@sva/core';
+
 export type PluginManifestCapability =
   | 'routing'
   | 'navigation'
@@ -9,8 +11,16 @@ export type PluginManifestCapability =
   | 'server'
   | 'integrations';
 
+export type PluginExtensionTier = 'feature' | 'admin' | 'platform';
+export type PluginTenantActivationPolicy = TenantModuleActivationPolicy;
+
+export const PLUGIN_ROUTE_SCOPE_HEADER_NAME = 'X-SVA-Plugin-Route-Scope';
+
 export type PluginManifest = {
   readonly pluginId: string;
+  readonly manifestVersion: 1;
+  readonly extensionTier: PluginExtensionTier;
+  readonly tenantActivationPolicy: PluginTenantActivationPolicy;
   readonly version: string;
   readonly sdkVersion: string;
   readonly hostCompatibility: {

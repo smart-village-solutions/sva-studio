@@ -42,6 +42,7 @@ const mocks = vi.hoisted(() => {
     hasActiveMockAuthSession: vi.fn(() => false),
     createMockSessionUser: vi.fn(),
     getAuthConfig: vi.fn(() => ({ sessionCookieName: 'sva_session' })),
+    resolveAuthConfigForRequest: vi.fn(),
     readCookieFromRequest: vi.fn(() => 'session-1'),
     appendSetCookie: vi.fn(),
   };
@@ -108,7 +109,7 @@ vi.mock('./mock-auth.js', () => ({
 
 vi.mock('./config.js', () => ({
   getAuthConfig: mocks.getAuthConfig,
-  resolveAuthConfigForRequest: vi.fn(),
+  resolveAuthConfigForRequest: mocks.resolveAuthConfigForRequest,
 }));
 
 vi.mock('./cookies.js', () => ({
@@ -193,6 +194,7 @@ describe('meHandler', () => {
 
     mocks.isMockAuthEnabled.mockReturnValue(false);
     mocks.hasActiveMockAuthSession.mockReturnValue(false);
+    mocks.resolveAuthConfigForRequest.mockResolvedValue(authConfigBase);
     mocks.createMockSessionUser.mockReturnValue({
       id: 'mock-user',
       instanceId: 'de-test',
@@ -290,6 +292,7 @@ describe('meHandler', () => {
     expect(response.headers.get('Content-Type')).toContain('application/json');
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(response.headers.get('Pragma')).toBe('no-cache');
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('platform');
 
     const payload = (await response.json()) as {
       user: {
@@ -376,6 +379,20 @@ describe('meHandler', () => {
       instanceId: 'de-test',
       roles: ['system_admin'],
     });
+  });
+
+  it('publishes the host-validated tenant route scope without requiring a session', async () => {
+    mocks.resolveAuthConfigForRequest.mockResolvedValueOnce({
+      ...authConfigBase,
+      kind: 'instance',
+      instanceId: 'de-test',
+    });
+    mocks.withAuthenticatedUser.mockResolvedValueOnce(new Response(null, { status: 401 }));
+
+    const response = await meHandler(new Request('https://de-test.example.org/auth/me'));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('tenant');
   });
 
   it('skips permission lookup and returns empty permissionActions when user has no instanceId', async () => {

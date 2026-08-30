@@ -12,6 +12,7 @@ import {
   invalidateHostWithLog,
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 
 export const createProvisioningRequestHandler =
@@ -37,31 +38,43 @@ export const createProvisioningRequestHandler =
 
     const normalizedParentDomain = normalizeHost(input.parentDomain);
     const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
-    const tenantAdminClient = input.tenantAdminClient ?? { clientId: DEFAULT_TENANT_ADMIN_CLIENT_ID };
-    const instance = await runInstanceRegistryStep('registry_insert', () => deps.repository.createInstance({
-      instanceId: input.instanceId,
-      displayName: input.displayName,
-      status: 'requested',
-      parentDomain: normalizedParentDomain,
-      primaryHostname,
-      realmMode: input.realmMode,
-      authRealm: input.authRealm,
-      authClientId: input.authClientId,
-      authIssuerUrl: input.authIssuerUrl,
-      authClientSecretCiphertext: encryptAuthClientSecret(deps, input.instanceId, input.authClientSecret),
-      tenantAdminClient: tenantAdminClient
-        ? {
-            clientId: tenantAdminClient.clientId,
-            secretCiphertext: encryptTenantAdminClientSecret(deps, input.instanceId, tenantAdminClient.secret),
-          }
-        : undefined,
-      tenantAdminBootstrap: input.tenantAdminBootstrap,
-      actorId: input.actorId,
-      requestId: input.requestId,
-      themeKey: input.themeKey,
-      featureFlags: input.featureFlags,
-      mainserverConfigRef: input.mainserverConfigRef,
-    }));
+    const tenantAdminClient = input.tenantAdminClient ?? {
+      clientId: DEFAULT_TENANT_ADMIN_CLIENT_ID,
+    };
+    const instance = await runInstanceRegistryStep('registry_insert', () =>
+      deps.repository.createInstance({
+        instanceId: input.instanceId,
+        displayName: input.displayName,
+        status: 'requested',
+        parentDomain: normalizedParentDomain,
+        primaryHostname,
+        realmMode: input.realmMode,
+        authRealm: input.authRealm,
+        authClientId: input.authClientId,
+        authIssuerUrl: input.authIssuerUrl,
+        authClientSecretCiphertext: encryptAuthClientSecret(
+          deps,
+          input.instanceId,
+          input.authClientSecret
+        ),
+        tenantAdminClient: tenantAdminClient
+          ? {
+              clientId: tenantAdminClient.clientId,
+              secretCiphertext: encryptTenantAdminClientSecret(
+                deps,
+                input.instanceId,
+                tenantAdminClient.secret
+              ),
+            }
+          : undefined,
+        tenantAdminBootstrap: input.tenantAdminBootstrap,
+        actorId: input.actorId,
+        requestId: input.requestId,
+        themeKey: input.themeKey,
+        featureFlags: input.featureFlags,
+        mainserverConfigRef: input.mainserverConfigRef,
+      })
+    );
     if (!instance) {
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
@@ -72,6 +85,11 @@ export const createProvisioningRequestHandler =
     }
 
     await createProvisioningArtifacts(deps.repository, instance, input);
+    await createReconcileModuleActivationPoliciesHandler(deps)({
+      instanceId: instance.instanceId,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
     try {
       invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
     } catch (error) {
@@ -83,7 +101,9 @@ export const createProvisioningRequestHandler =
       status: instance.status,
       request_id: input.requestId,
     });
-    return { ok: true, instance: toListItem(instance) };
+    const reconciledInstance =
+      (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
+    return { ok: true, instance: toListItem(reconciledInstance) };
   };
 
 export const createChangeStatusHandler =
@@ -152,12 +172,20 @@ export const createUpdateInstanceHandler =
       authRealm: input.authRealm,
       authClientId: input.authClientId,
       authIssuerUrl: input.authIssuerUrl,
-      authClientSecretCiphertext: encryptAuthClientSecret(deps, input.instanceId, input.authClientSecret),
+      authClientSecretCiphertext: encryptAuthClientSecret(
+        deps,
+        input.instanceId,
+        input.authClientSecret
+      ),
       keepExistingAuthClientSecret: !input.authClientSecret?.trim(),
       tenantAdminClient: input.tenantAdminClient
         ? {
             clientId: input.tenantAdminClient.clientId,
-            secretCiphertext: encryptTenantAdminClientSecret(deps, input.instanceId, input.tenantAdminClient.secret),
+            secretCiphertext: encryptTenantAdminClientSecret(
+              deps,
+              input.instanceId,
+              input.tenantAdminClient.secret
+            ),
           }
         : undefined,
       keepExistingTenantAdminClientSecret: !input.tenantAdminClient?.secret?.trim(),

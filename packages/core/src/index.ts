@@ -428,6 +428,21 @@ export {
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
 export {
+  canDisableTenantModule,
+  resolveTenantModuleEffectiveActivation,
+  tenantModuleActivationOrigins,
+  tenantModuleActivationPolicies,
+  tenantModuleManualOverrides,
+} from './instances/module-activation.js';
+export type {
+  TenantModuleActivationOrigin,
+  TenantModuleActivationPolicy,
+  TenantModuleActivationPolicyDescriptor,
+  TenantModuleActivationPolicySnapshot,
+  TenantModuleActivationRecord,
+  TenantModuleManualOverride,
+} from './instances/module-activation.js';
+export {
   areAllInstanceKeycloakRequirementsSatisfied,
   INSTANCE_KEYCLOAK_REQUIREMENTS,
   isInstanceKeycloakRequirementSatisfied,

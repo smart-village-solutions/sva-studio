@@ -5,12 +5,136 @@ import { createInstanceRegistryRepository } from './index.js';
 import { createQueuedExecutor } from './test-support.js';
 
 describe('instance registry repository module iam', () => {
+  it('reads the persisted activation policy and normalizes bigint revisions', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          activation_policy: 'required',
+          effective_active: true,
+          state_revision: '7',
+        },
+      ],
+      [],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getModuleActivationPolicy('tenant-a', 'ssf')).resolves.toEqual({
+      activationPolicy: 'required',
+      effectiveActive: true,
+      stateRevision: 7,
+    });
+    await expect(repository.getModuleActivationPolicy('tenant-a', 'missing')).resolves.toBeNull();
+  });
+
   it('returns false for idempotent module assignment and revocation writes', async () => {
-    const { executor } = createQueuedExecutor([[], []]);
+    const { executor } = createQueuedExecutor([
+      [{ acquired: true, changed: false }],
+      [{ acquired: true, changed: false }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.assignModule('tenant-a', 'news')).resolves.toBe(false);
     await expect(repository.revokeModule('tenant-a', 'news')).resolves.toBe(false);
+  });
+
+  it('persists manual enable and disable overrides without deleting activation policy state', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ acquired: true, changed: true }],
+      [{ acquired: true, changed: true }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.assignModule('tenant-a', 'news')).resolves.toBe(true);
+    await expect(repository.revokeModule('tenant-a', 'news')).resolves.toBe(true);
+
+    expect(statements[0]?.text).toContain("activation_origin = 'manual'");
+    expect(statements[0]?.text).toContain("SELECT $1, $2, 'manual', true, 'enabled'");
+    expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock');
+    expect(statements[0]?.text).toContain("manual_override = 'enabled'");
+    expect(statements[0]?.text).toContain("activation_policy <> 'required'");
+    expect(statements[1]?.text).toContain('UPDATE iam.instance_modules');
+    expect(statements[1]?.text).toContain('pg_try_advisory_xact_lock');
+    expect(statements[1]?.text).toContain("manual_override = 'disabled'");
+    expect(statements[1]?.text).toContain("activation_policy <> 'required'");
+    expect(statements[1]?.text).not.toContain('DELETE FROM iam.instance_modules');
+  });
+
+  it('reconciles activation policies deterministically and preserves non-required overrides', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ acquired: true, changed: true }],
+      [{ acquired: true, changed: false }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.reconcileModuleActivationPolicies({
+        instanceId: 'tenant-a',
+        policies: [
+          {
+            moduleId: 'news',
+            activationPolicy: 'automatic',
+            manifestVersion: 1,
+            policyRevision: 'catalog-7',
+          },
+          {
+            moduleId: 'events',
+            activationPolicy: 'required',
+            manifestVersion: 1,
+            policyRevision: 'catalog-7',
+          },
+        ],
+        reconcileId: 'reconcile-1',
+        actorId: 'system',
+      })
+    ).resolves.toEqual({
+      changedModuleIds: ['events'],
+      conflictModuleIds: [],
+      unchangedModuleIds: ['news'],
+    });
+
+    expect(statements.map((item) => item.values[1])).toEqual(['events', 'news']);
+    expect(statements[0]?.text).toContain("WHEN EXCLUDED.activation_policy = 'required' THEN true");
+    expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock');
+    expect(statements[0]?.text).toContain(
+      "WHEN iam.instance_modules.manual_override = 'disabled' THEN false"
+    );
+    expect(statements[0]?.text).toContain("WHEN EXCLUDED.activation_policy = 'required' THEN NULL");
+    expect(statements[0]?.text).toContain(
+      'policy_revision IS DISTINCT FROM EXCLUDED.policy_revision'
+    );
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'events',
+      'required',
+      1,
+      'catalog-7',
+      'reconcile-1',
+      'system',
+    ]);
+  });
+
+  it('reports a deterministic conflict when another transaction owns a module lock', async () => {
+    const { executor } = createQueuedExecutor([[{ acquired: false, changed: false }]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.reconcileModuleActivationPolicies({
+        instanceId: 'tenant-a',
+        policies: [
+          {
+            moduleId: 'events',
+            activationPolicy: 'automatic',
+            manifestVersion: 1,
+            policyRevision: 'catalog-7',
+          },
+        ],
+        reconcileId: 'reconcile-1',
+      })
+    ).resolves.toEqual({
+      changedModuleIds: [],
+      conflictModuleIds: ['events'],
+      unchangedModuleIds: [],
+    });
   });
 
   it('skips IAM cleanup work when no managed modules or role pairs are present', async () => {
@@ -34,23 +158,29 @@ describe('instance registry repository module iam', () => {
     expect(statements).toEqual([]);
   });
 
-  it('cleans up stale module grants but preserves materialized permission definitions', async () => {
-    const { executor, statements } = createQueuedExecutor([[]]);
+  it('hard-deletes inactive module grants and permission definitions', async () => {
+    const { executor, statements } = createQueuedExecutor([[], []]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(
       repository.syncAssignedModuleIam({
         instanceId: 'tenant-a',
         managedModuleIds: ['news'],
+        managedContracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.read'],
+            permissions: [{ key: 'news.read', description: 'Read news', resourceType: 'news' }],
+          },
+        ],
         contracts: [],
       })
     ).resolves.toMatchObject({ permissionsUnchanged: 0, grantsUnchanged: 0 });
 
-    expect(statements).toHaveLength(1);
+    expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain("role_permission.grant_origin_module_id IN ('news')");
-    expect(
-      statements.some((statement) => statement.text.includes('DELETE FROM iam.permissions'))
-    ).toBe(false);
+    expect(statements[1]?.text).toContain('DELETE FROM iam.permissions');
+    expect(statements[1]?.values).toEqual(['tenant-a', ['news.read']]);
   });
 
   it('does not revoke grants merely because an active module removed a catalog entry', async () => {
@@ -60,6 +190,13 @@ describe('instance registry repository module iam', () => {
     await repository.syncAssignedModuleIam({
       instanceId: 'tenant-a',
       managedModuleIds: ['news'],
+      managedContracts: [
+        {
+          moduleId: 'news',
+          permissionIds: ['news.read'],
+          permissions: [{ key: 'news.read', description: 'Read news', resourceType: 'news' }],
+        },
+      ],
       contracts: [{ moduleId: 'news', permissionIds: [], permissions: [] }],
     });
 

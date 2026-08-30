@@ -7,8 +7,18 @@ import type {
   InstanceRegistryRecord,
   InstanceRealmMode,
   InstanceStatus,
+  TenantModuleActivationRecord,
+  TenantModuleActivationPolicyDescriptor,
   WasteTenantProvisioningRecord,
 } from '@sva/core';
+
+export type TenantModuleActivationPolicyInput = TenantModuleActivationPolicyDescriptor;
+
+export type TenantModuleActivationReconcileResult = {
+  readonly changedModuleIds: readonly string[];
+  readonly conflictModuleIds: readonly string[];
+  readonly unchangedModuleIds: readonly string[];
+};
 
 export type CreateKeycloakProvisioningRunResult = {
   readonly run: InstanceKeycloakProvisioningRun;
@@ -129,12 +139,30 @@ export type InstanceRegistryRepository = {
   }) => Promise<readonly InstanceRegistryRecord[]>;
   readonly getInstanceById: (instanceId: string) => Promise<InstanceRegistryRecord | null>;
   readonly listAssignedModules: (instanceId: string) => Promise<readonly string[]>;
+  readonly listModuleActivations: (
+    instanceId: string
+  ) => Promise<readonly TenantModuleActivationRecord[]>;
+  readonly getModuleActivationPolicy: (
+    instanceId: string,
+    moduleId: string
+  ) => Promise<{
+    activationPolicy: TenantModuleActivationPolicyDescriptor['activationPolicy'];
+    effectiveActive: boolean;
+    stateRevision: number;
+  } | null>;
   readonly assignModule: (instanceId: string, moduleId: string) => Promise<boolean>;
   readonly revokeModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly reconcileModuleActivationPolicies: (input: {
+    instanceId: string;
+    policies: readonly TenantModuleActivationPolicyInput[];
+    reconcileId: string;
+    actorId?: string;
+  }) => Promise<TenantModuleActivationReconcileResult>;
   readonly bumpPermissionCacheInstanceRevision?: (instanceId: string) => Promise<number>;
   readonly syncAssignedModuleIam: (input: {
     instanceId: string;
     managedModuleIds: readonly string[];
+    managedContracts?: readonly InstanceModuleIamContractRecord[];
     contracts: readonly InstanceModuleIamContractRecord[];
   }) => Promise<PermissionCatalogReconcileResult | void>;
   readonly syncProtectedSystemRolePermissions: (input: {

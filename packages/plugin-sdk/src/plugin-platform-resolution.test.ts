@@ -21,6 +21,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/plugin-news',
       manifest: definePluginManifest({
         pluginId: 'news',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '^0.0.1' },
@@ -56,6 +59,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/plugin-news',
       manifest: definePluginManifest({
         pluginId: 'news',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: {
@@ -72,6 +78,9 @@ describe('plugin platform resolution', () => {
       sourceRef: '@vendor/plugin-weather',
       manifest: definePluginManifest({
         pluginId: 'weather',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '2.0.0',
         sdkVersion: '0.0.1',
         hostCompatibility: {
@@ -112,6 +121,9 @@ describe('plugin platform resolution', () => {
       sourceRef: '@sva/plugin-waste-management',
       manifest: definePluginManifest({
         pluginId: 'waste-management',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: {
@@ -150,6 +162,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/sdk-mismatch',
       manifest: definePluginManifest({
         pluginId: 'sdk-mismatch',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '9.9.9',
         hostCompatibility: { studioVersionRange: '^0.0.1' },
@@ -163,6 +178,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/missing-browser',
       manifest: definePluginManifest({
         pluginId: 'missing-browser',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '^0.0.1' },
@@ -176,6 +194,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/missing-module',
       manifest: definePluginManifest({
         pluginId: 'missing-module',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '^0.0.1' },
@@ -189,6 +210,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/mismatched-module',
       manifest: definePluginManifest({
         pluginId: 'catalog-plugin-id',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '^0.0.1' },
@@ -233,6 +257,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/wildcard',
       manifest: definePluginManifest({
         pluginId: 'wildcard',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '*' },
@@ -246,6 +273,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/exact',
       manifest: definePluginManifest({
         pluginId: 'exact',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '1.2.3' },
@@ -259,6 +289,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/caret-pre-1-0',
       manifest: definePluginManifest({
         pluginId: 'caret-pre-1-0',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '^0.2.0' },
@@ -298,6 +331,9 @@ describe('plugin platform resolution', () => {
       sourceRef: 'packages/caret-pre-0-0',
       manifest: definePluginManifest({
         pluginId: 'caret-pre-0-0',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '0.0.1',
         sdkVersion: '0.0.1',
         hostCompatibility: { studioVersionRange: '^0.0.1' },

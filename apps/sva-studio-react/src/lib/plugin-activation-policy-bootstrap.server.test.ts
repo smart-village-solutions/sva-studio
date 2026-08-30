@@ -1,0 +1,73 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const configureMock = vi.fn();
+const reconcileMock = vi.fn();
+const pluginModuleIamContract = {
+  moduleId: 'news',
+  namespace: 'news',
+  ownerPluginId: 'news',
+  permissionIds: ['news.read'],
+  systemRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
+};
+const hostModuleIamContract = {
+  moduleId: 'media',
+  namespace: 'media',
+  ownerPluginId: 'studio-core',
+  permissionIds: ['media.read'],
+  tenantBootstrapRoles: [],
+  rootSystemRoles: [],
+};
+const snapshot = {
+  revision: 'catalog-1',
+  modules: [
+    {
+      moduleId: 'news',
+      activationPolicy: 'optional' as const,
+      manifestVersion: 1,
+      policyRevision: 'news-1',
+    },
+  ],
+};
+
+vi.mock('./plugins', () => ({
+  studioHostModuleIamContracts: [hostModuleIamContract],
+  studioPluginSnapshot: {
+    tenantActivationPolicySnapshot: snapshot,
+    registry: { pluginModuleIamContracts: [pluginModuleIamContract] },
+  },
+}));
+
+vi.mock('@sva/auth-runtime/server', () => ({
+  configureInstanceRegistryPluginRuntimeSnapshot: configureMock,
+  reconcileConfiguredPluginActivationPoliciesForAllInstances: reconcileMock,
+}));
+
+import {
+  ensurePluginActivationPoliciesConfigured,
+  resetPluginActivationPolicyBootstrapForTests,
+} from './plugin-activation-policy-bootstrap.server';
+
+beforeEach(() => {
+  configureMock.mockReset();
+  reconcileMock.mockReset();
+  reconcileMock.mockResolvedValue({ status: 'ready' });
+  resetPluginActivationPolicyBootstrapForTests();
+});
+
+describe('plugin activation policy bootstrap', () => {
+  it('passes the canonical host snapshot to auth runtime once per revision', async () => {
+    await Promise.all([
+      ensurePluginActivationPoliciesConfigured(),
+      ensurePluginActivationPoliciesConfigured(),
+    ]);
+    await ensurePluginActivationPoliciesConfigured();
+
+    expect(configureMock).toHaveBeenCalledTimes(1);
+    expect(configureMock).toHaveBeenCalledWith({
+      activationPolicies: snapshot,
+      moduleIamContracts: [pluginModuleIamContract, hostModuleIamContract],
+    });
+    expect(reconcileMock).toHaveBeenCalledTimes(1);
+    expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' });
+  });
+});

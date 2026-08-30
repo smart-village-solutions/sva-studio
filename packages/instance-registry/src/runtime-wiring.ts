@@ -1,4 +1,9 @@
-import type { InstanceRegistryRepository, SqlExecutor, SqlExecutionResult, SqlStatement } from '@sva/data-repositories';
+import type {
+  InstanceRegistryRepository,
+  SqlExecutor,
+  SqlExecutionResult,
+  SqlStatement,
+} from '@sva/data-repositories';
 
 import { createInstanceRegistryService } from './service.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
@@ -23,7 +28,9 @@ export type InstanceRegistryRuntimeDeps = {
 };
 
 const createExecutor = (client: InstanceRegistryQueryClient): SqlExecutor => ({
-  execute: async <TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> => {
+  execute: async <TRow = Record<string, unknown>>(
+    statement: SqlStatement
+  ): Promise<SqlExecutionResult<TRow>> => {
     const result = await client.query<TRow>(statement.text, statement.values);
     return {
       rowCount: result.rowCount,
@@ -97,7 +104,11 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>
   ): Promise<T> =>
-    withScopedRegistryRepository(instanceId, (repository) => work(createService(repository, deps.serviceDeps)));
+    withScopedRegistryRepository(instanceId, async (repository) => {
+      const service = createService(repository, deps.serviceDeps);
+      await service.reconcileModuleActivationPolicies({ instanceId });
+      return work(service);
+    });
 
   const getProvisioningWorkerServiceDeps = (
     repository: InstanceRegistryRepository

@@ -232,6 +232,8 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 Kernidee:
 
 - Diese Tabellen modellieren die technische Betriebs- und Provisioning-Ebene pro Instanz.
+- `iam.instance_modules` ist die einzige persistente Wahrheit für Plugin-Zuordnung und Tenant-Aktivierung. Neben `optional`, `automatic` und `required` werden der wirksame Zustand, eine dauerhafte manuelle Übersteuerung, Manifest- und Policy-Revision sowie der letzte Reconcile-Nachweis gespeichert.
+- Bestehende Modulzuordnungen werden bei der Migration als manuell aktiviert übernommen. Automatisch aktivierte Plugins dürfen dauerhaft deaktiviert werden; bei Pflicht-Plugins erzwingen Datenbank-Constraints einen aktiven Zustand ohne manuelle Übersteuerung.
 - `iam.instance_waste_provisioning` hält ausschließlich Zustand, Generation, Datenbankname sowie Job- und Interface-Korrelation. Zugangsdaten und Waste-Fachdaten liegen dort nicht.
 - Der tenantgebundene Datenbankname ist der kanonische Inventarpfad für Backup und Restore; sowohl `ready` als auch `disabled` bleiben sicherungsrelevant.
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.

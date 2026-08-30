@@ -111,8 +111,16 @@ export type CreateInstanceProvisioningResult =
 
 export type ChangeInstanceStatusResult =
   | { readonly ok: true; readonly instance: IamInstanceListItem }
-  | { readonly ok: false; readonly reason: 'not_found' | 'invalid_transition'; readonly currentStatus?: InstanceStatus };
+  | {
+      readonly ok: false;
+      readonly reason: 'not_found' | 'invalid_transition';
+      readonly currentStatus?: InstanceStatus;
+    };
 
 export type InstanceModuleMutationResult =
   | { readonly ok: true; readonly instance: IamInstanceDetail }
-  | { readonly ok: false; readonly reason: 'not_found' | 'unknown_module' | 'conflict' };
+  | {
+      readonly ok: false;
+      readonly reason:
+        'not_found' | 'unknown_module' | 'conflict' | 'plugin_activation_required_cannot_disable';
+    };

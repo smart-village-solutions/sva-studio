@@ -189,6 +189,8 @@ export type {
   PluginPermissionRegistryEntry,
   PluginRouteDefinition,
   PluginRouteGuard,
+  PluginServerHandlerDefinition,
+  PluginServerHandlerRegistryEntry,
   PluginTranslations,
 } from './plugins.js';
 export {
@@ -198,6 +200,7 @@ export {
   createPluginModuleIamRegistry,
   createPluginPermissionRegistry,
   createPluginRegistry,
+  createPluginServerHandlerRegistry,
   definePluginActions,
   definePluginAuditEvents,
   definePluginModuleIamContract,
@@ -222,6 +225,7 @@ export type {
   PluginExecutionContextCapabilities,
   PluginExecutionLogger,
   PluginExecutionProgressReporter,
+  PluginExtensionTier,
   PluginIntegrationExecutionContext,
   PluginJobExecutionHandler,
   PluginJobExecutionResult,
@@ -230,10 +234,12 @@ export type {
   PluginJobProgressReporter,
   PluginManifest,
   PluginManifestCapability,
+  PluginTenantActivationPolicy,
   PluginRequestExecutionContext,
   PluginSnapshot,
 } from './plugin-platform-contracts.js';
 export {
+  PLUGIN_ROUTE_SCOPE_HEADER_NAME,
   createPluginSnapshot,
   definePluginCatalogEntry,
   definePluginExecutionContextCapabilities,

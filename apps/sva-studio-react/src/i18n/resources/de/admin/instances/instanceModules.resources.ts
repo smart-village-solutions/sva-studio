@@ -24,12 +24,31 @@ export const instanceModulesInstancesAdminDEResources = {
     table: {
       module: 'Modul',
       status: 'Status',
+      policy: 'Richtlinie',
+      origin: 'Herkunft',
+      override: 'Manuelle Vorgabe',
       description: 'Beschreibung',
     },
     status: {
       active: 'Aktiv',
       inactive: 'Deaktiviert',
     },
+    policy: {
+      optional: 'Optional',
+      automatic: 'Automatisch',
+      required: 'Pflicht',
+    },
+    origin: {
+      manual: 'Manuelle Änderung',
+      policyReconcile: 'Richtlinienabgleich',
+      migration: 'Bestandsmigration',
+    },
+    override: {
+      enabled: 'Aktiviert',
+      disabled: 'Deaktiviert',
+      none: 'Keine',
+    },
+    notMaterialized: 'Noch nicht materialisiert',
     descriptionFallback: 'Keine Modulbeschreibung hinterlegt.',
   },
   guidance: {

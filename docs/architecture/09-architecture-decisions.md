@@ -130,6 +130,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-052: Trennt Create-Policy, IAM-Read-Scope und ressourcenbezogenen Bestandsprincipal und übernimmt die weiterhin gültigen Credential-, Secret- und Isolationsregeln aus ADR-045 (Abschnitt 05, 06, 08, 09)
 - ADR-046: Root-only `instance_registry_admin`, geschütztes tenantseitiges `system_admin` und die Entfernung früherer Standardrollen aus dem Sollmodell bei gleichzeitiger Absicherung historischer Altbestände über Migrationspfade (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-050: Zentraler scopegebundener UI-Zugriff trennt Identität von Effective Access, diskriminiert Plattform-/Tenant-Scope, kombiniert Actions mit Modul-Gates und hält Ressourcen-Ownership an der Servergrenze (Abschnitt 04, 05, 06, 08, 09, 10, 11)
+- ADR-056: Verpflichtende Plugin-Extension-Tiers und fail-closed scopegebundene Beiträge begrenzen Root-Erweiterungen auf freigegebene Tiers und `instance_registry_admin` (Abschnitt 04, 05, 08, 09)
 
 ### Fortschreibung 2026-07: Survey-Content-Plugin ohne neue ADR
 

@@ -6,7 +6,10 @@ import {
   saveWasteDataSourceRecord,
 } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
-import { studioModuleIamRegistry } from '@sva/studio-module-iam';
+import {
+  readInstanceRegistryModuleIamRegistry,
+  readInstanceRegistryPluginActivationPolicies,
+} from './plugin-activation-policy-snapshot.js';
 
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';
@@ -27,17 +30,21 @@ import {
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 
-const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
-  getInstanceKeycloakPreflightViaProvisioner(input);
+const getWorkerKeycloakPreflight = async (
+  input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]
+) => getInstanceKeycloakPreflightViaProvisioner(input);
 
-const getWorkerKeycloakPlan = async (input: Parameters<typeof getInstanceKeycloakPlanViaProvisioner>[0]) =>
-  getInstanceKeycloakPlanViaProvisioner(input);
+const getWorkerKeycloakPlan = async (
+  input: Parameters<typeof getInstanceKeycloakPlanViaProvisioner>[0]
+) => getInstanceKeycloakPlanViaProvisioner(input);
 
-const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]) =>
-  getInstanceKeycloakStatusViaProvisioner(input);
+const getWorkerKeycloakStatus = async (
+  input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]
+) => getInstanceKeycloakStatusViaProvisioner(input);
 
-const getTenantAuditKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaTenantAdmin>[0]) =>
-  getInstanceKeycloakStatusViaTenantAdmin(input);
+const getTenantAuditKeycloakStatus = async (
+  input: Parameters<typeof getInstanceKeycloakStatusViaTenantAdmin>[0]
+) => getInstanceKeycloakStatusViaTenantAdmin(input);
 
 const probePasswordSetupEmailCapability = async (input: {
   instanceId: string;
@@ -59,7 +66,9 @@ const probePasswordSetupEmailCapability = async (input: {
   }
 
   const authConfig = await resolveAuthConfigForInstance(input.instanceId);
-  const targetClient = await input.identityProvider.provider.getOidcClientByClientId(authConfig.clientId);
+  const targetClient = await input.identityProvider.provider.getOidcClientByClientId(
+    authConfig.clientId
+  );
   if (!targetClient) {
     return {
       ok: false as const,
@@ -161,7 +170,10 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
-const invalidateInstancePermissionSnapshots = async (input: { instanceId: string; trigger: string }) => {
+const invalidateInstancePermissionSnapshots = async (input: {
+  instanceId: string;
+  trigger: string;
+}) => {
   const pool = resolvePool();
   if (!pool) {
     throw new Error('IAM database not configured');
@@ -184,7 +196,10 @@ const registryRuntime = createInstanceRegistryRuntime({
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
-    moduleIamRegistry: studioModuleIamRegistry,
+    get moduleIamRegistry() {
+      return readInstanceRegistryModuleIamRegistry();
+    },
+    readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     protectSecret: protectField,
     revealSecret: revealField,
     loadWasteDataSourceRecord,
@@ -195,7 +210,10 @@ const registryRuntime = createInstanceRegistryRuntime({
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
-    moduleIamRegistry: studioModuleIamRegistry,
+    get moduleIamRegistry() {
+      return readInstanceRegistryModuleIamRegistry();
+    },
+    readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     protectSecret: protectField,
     revealSecret: revealField,
     syncTenantAdminBootstrapAccount,

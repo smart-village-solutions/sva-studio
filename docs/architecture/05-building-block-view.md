@@ -60,6 +60,13 @@ Abhängigkeiten des aktuellen Systems.
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext, OTEL-Bootstrap und zentraler Resolver für External-Interface-Secrets und Statusprüfungen
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
    - Zielbild Plugin-Plattform v2: zusätzlich serialisierbarer Manifest-Vertrag, hostgeführter Katalog, Loader zur Snapshot-Materialisierung und host-owned Runtime-Boundaries für pluginseitige Server-, Job- und Integrationsbeiträge
+   - der Manifest-Vertrag führt den verpflichtenden Extension-Tier `feature`, `admin` oder `platform`; der Loader trägt ihn in die Registry-Preflight-Phase, bevor Route, Navigation oder Action veröffentlicht werden
+   - die Registry erlaubt Plattformbeiträge nur für freigegebene Tiers und die Rolle `instance_registry_admin`; tenantbezogene Plugin-Rechte bleiben vollständig namespaced und modulgebunden
+   - freie Plugin-Routen können einen namespaceten, rein deklarativen Server-Handler referenzieren; Pfad, Action und Access-Anforderung werden vor Veröffentlichung gemeinsam validiert, während die ausführbare Handler-Bindung host-owned bleibt
+   - der Build-time-Snapshot veröffentlicht getrennte Plattform-/Tenant-Sichten für Route und Navigation; `@sva/routing` materialisiert pro Host nur die passende Sicht
+   - `@sva/core` definiert die framework-unabhängige Aktivierungsauflösung; `@sva/data-repositories` materialisiert Policy, Override und Revision im vorhandenen Instanz-Modulsatz
+   - die Studio-App injiziert Aktivierungsrichtlinien und Plugin-IAM-Verträge atomar aus demselben validierten Snapshot in `@sva/auth-runtime`; nur hosteigene Module wie `media` werden zusätzlich ergänzt, ein zweiter statischer Plugin-IAM-Katalog ist keine Runtime-Quelle
+   - `@sva/auth-runtime` führt beim erstmaligen Übernehmen einer Snapshot-Revision einen kontrollierten Fleet-Reconcile über alle bestehenden Instanzen aus und veröffentlicht einen revisionsgebundenen Abschlussbericht mit betroffenen Instanz-IDs bei Teilfehlern
 6. Studio UI React (`packages/studio-ui-react`)
 
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views

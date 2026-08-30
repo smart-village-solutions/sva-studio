@@ -1,4 +1,17 @@
 export {
+  configureInstanceRegistryPluginActivationPolicies,
+  configureInstanceRegistryPluginRuntimeSnapshot,
+  readInstanceRegistryModuleIamRegistry,
+  readInstanceRegistryPluginActivationPolicies,
+  type InstanceRegistryModuleIamSnapshotEntry,
+} from './iam-instance-registry/plugin-activation-policy-snapshot.js';
+export {
+  readPluginActivationPolicyFleetReconcileReport,
+  reconcileConfiguredPluginActivationPoliciesForAllInstances,
+  type PluginActivationPolicyFleetReconcileFailure,
+  type PluginActivationPolicyFleetReconcileReport,
+} from './iam-instance-registry/plugin-activation-policy-reconcile.js';
+export {
   readEffectiveSvaMainserverCredentials,
   readEffectiveSvaMainserverCredentialsWithStatus,
 } from './mainserver-effective-credentials.js';

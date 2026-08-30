@@ -21,6 +21,8 @@ Architekturprinzipien auf IST-Basis.
 - Standardisierte technische Wiederverwendung zwischen CRUD-Content-Plugins wird im Plugin-SDK zentralisiert; es gibt keine direkten Plugin-zu-Plugin-Abhängigkeiten
 - Plugin-Vertrag v1: Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
 - Plugin-Plattform v2 erweitert dieses Zielbild um Manifest-, Katalog-, Loader- und Runtime-Verträge, damit lokale Entwicklung und externe Distribution denselben hostvalidierten Snapshot-Pfad nutzen
+- Plugin-Manifeste deklarieren verpflichtend den Extension-Tier `feature`, `admin` oder `platform`. Nur freigegebene Admin-/Plattform-Tiers dürfen Plattformbeiträge für `instance_registry_admin` in den kanonischen Snapshot einbringen; Fachplugins bleiben tenantgebunden.
+- Der versionierte Manifestvertrag deklariert außerdem `optional`, `automatic` oder `required`; `iam.instance_modules` materialisiert die Richtlinie als einzigen effektiven Tenant-Aktivierungszustand und erhält manuelle Overrides für automatische Plugins.
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Gemeinsame serverseitige Fachverträge mehrerer Apps liegen im owning Workspace-Package; direkte Quellimporte zwischen unterschiedlichen Verzeichnissen unter `apps/` sind nicht zulässig
@@ -32,6 +34,8 @@ Architekturprinzipien auf IST-Basis.
 - PostgreSQL-Revisionsvektoren sind die autoritative Gültigkeitsgrenze für L1 und Redis. `NOTIFY` beschleunigt Eviction, entscheidet aber nicht über Korrektheit.
 - Die Browser-UI trennt Identität und Session (`AuthProvider`) vom scopegebundenen Berechtigungszustand (`EffectiveAccessProvider`). Nicht aufgelöste, ladende oder fehlerhafte Access-Snapshots geben keine UI-Aktion frei.
 - Tenant-UI-Zugriff verlangt die vollständig qualifizierte Action und, wo ein Fachmodul existiert, zusätzlich dessen aktuelle Modulzuweisung. Plattformzugriff verwendet ausschließlich technische Plattformrollen.
+- Verknüpfte Plugin-Actions, Routen, Navigation und deklarative Server-Handler müssen Scope und vollständige Autorisierungsanforderung konsistent deklarieren; widersprüchliche Beiträge werden vor der Snapshot-Veröffentlichung fail-closed abgewiesen.
+- Die Router-Materialisierung wählt anhand der hostvalidierten Auth-Auflösung genau den Plattform- oder Tenant-Beitragsbaum. `/auth/me` übermittelt diese Auflösung auch ohne Session als nicht-sensiblen Scope-Header, damit Server und Browser denselben Baum erzeugen.
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung und wird als fachlicher String-Schlüssel geführt
 - `organizationId` bleibt im IAM ein optionaler Fachkontext innerhalb einer Instanz und bindet instanzweite Rechte nicht implizit an eine Organisation
 - Verwaltete IAM-Permissions klassifizieren ihre Laufzeitsemantik explizit über `runtimeScope = instance | record | organization_context`; `accessScope` bleibt auf datensatzbezogene Rollen-Zuordnungen begrenzt

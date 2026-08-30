@@ -13,6 +13,7 @@ import {
   logPluginWorkerBootstrapFailure,
   type PluginWorkerBootstrapLogger,
 } from './lib/plugin-worker-bootstrap-logging.server';
+import { ensurePluginActivationPoliciesConfigured } from './lib/plugin-activation-policy-bootstrap.server';
 import type {
   RequestContextSdk,
   RouteDispatchDescriptor,
@@ -178,6 +179,7 @@ const dispatchKnownServerEntryRoutes = async (
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
+  await ensurePluginActivationPoliciesConfigured();
   const sdk = await getSdk();
   sdk.runWithoutWorkspaceContext(startPluginOperationWorkerInBackground);
   return sdk.withRequestContext({ request, fallbackWorkspaceId: 'platform' }, async () => {

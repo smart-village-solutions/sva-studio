@@ -9,6 +9,15 @@
 5. Routing, Sidebar, Host-Seiten und Plugin-Session-Snapshot konsumieren dieselbe Generation. `unresolved`, `loading` und `error` sind fail-closed.
 6. Eine UI-Freigabe ersetzt niemals die serverseitige Action-, Instanz-, Organisations- oder Ressourcenprüfung.
 
+## Scopegebundene Plugin-Routenmaterialisierung
+
+1. Der Plugin-Loader validiert Tier, Namespace und vollständige Access-Anforderung von Route, Navigation, Action und referenziertem Server-Handler gemeinsam.
+2. Der Build-time-Snapshot veröffentlicht getrennte Plattform- und Tenant-Sichten; ein widersprüchlicher Plugin-Descriptor erzeugt keinen partiellen Eintrag.
+3. Serverseitig bestimmt `resolveAuthConfigForRequest` aus dem Request-Host den Scope des Routenbaums.
+4. `/auth/me` gibt dieselbe hostvalidierte Auflösung im Header `X-SVA-Plugin-Route-Scope` zurück, auch wenn keine Session besteht. Der Browser verwendet diesen Header für einen hydrierungsgleichen Routenbaum.
+5. Im Plattformbaum werden ausschließlich explizite Plattformbeiträge materialisiert. Im Tenant-Baum werden Plattformbeiträge nicht registriert; tenantbezogene Guards verlangen weiterhin den persistent aktiven Modulsatz und die namespaceten Actions.
+6. Ein fehlender oder ungültiger Scope-Nachweis materialisiert browserseitig fail-closed nur den Plattformbaum und verleiht keine Plattformberechtigung; jeder Route- und Serverzugriff prüft die deklarierte Autorisierung zusätzlich.
+
 ## Revisionsgebundener Permission-Cache
 
 1. Der Read-Pfad liest den aktuellen `instanceRevision`-/`userRevision`-Vektor aus PostgreSQL.
@@ -1057,9 +1066,27 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 2. Er selektiert aktive tenantweite Katalogdefinitionen und Beiträge der aktiven Module.
 3. Das Repository führt idempotente Upserts über `(instance_id, permission_key)` aus und ergänzt fehlende verwaltete `system_admin`-Grants.
 4. Die aufrufende scoped Runtime- oder CLI-Grenze besitzt die Datenbanktransaktion; das Repository öffnet und beendet keine verschachtelte Transaktion und behält dadurch den gesetzten Tenant-Kontext bis zum Abschluss der Operation.
-5. Katalogentfernung und explizite Grant-Ausnahmen wirken additiv: Bereits materialisierte Definitionen und Grants eines weiterhin aktiven Moduls bleiben bestehen. Bei echter Moduldeaktivierung entfernt das Repository ausschließlich eindeutig als `module_sync` markierte Grants des deaktivierten Moduls.
+5. Katalogentfernung und explizite Grant-Ausnahmen wirken für weiterhin aktive Module additiv: Bereits materialisierte Definitionen und Grants bleiben bestehen. Bei echter Moduldeaktivierung entfernt das Repository zuerst eindeutig als `module_sync` markierte Grants und danach die namespaced Permission-Definitionen des deaktivierten Moduls; kaskadierende Fremdgrants auf diese Definitionen werden dadurch ebenfalls entfernt. Core-Permissions und Verträge weiterhin aktiver Module bleiben erhalten.
 6. Der Service invalidiert den Tenant-Permission-Snapshot und persistiert Audit-Evidenz mit sicheren Reconcile-Zählern.
 7. Der kontrollierte Bootstrap eines Releases liest dieselbe kompilierte Katalogsicht aus dem Image und reconciliiert Core-Permissions sowie die Beiträge der in `iam.instance_modules` zugewiesenen Module für alle erlaubten Tenants. Er führt keine katalogbedingten Löschungen aus.
+
+### Plugin-Aktivierungsrichtlinien materialisieren
+
+1. Beim Serverstart materialisiert der hostvalidierte Plugin-Snapshot für jedes installierte Plugin genau eine tenantbezogene Richtlinie `optional`, `automatic` oder `required` samt Manifest- und Policy-Revision. Die Server-Runtime übernimmt diesen unveränderlichen Snapshot; sie führt keinen zweiten Plugin-Katalog.
+2. Beim erstmaligen Übernehmen einer Snapshot-Revision listet die Server-Runtime alle bestehenden Instanzen und führt denselben Reconcile je Instanz kontrolliert und idempotent aus. Erfolgreiche Instanzen persistieren Richtlinie, Revision und Reconcile-Evidenz; ein revisionsgebundener Abschlussbericht weist einzelne Teilfehler aus, ohne die übrigen Instanzen auszulassen.
+3. Vor einer späteren scoped Instanzoperation liest der Registry-Service den aktuellen Snapshot und reconciliiert die Einträge in `iam.instance_modules` erneut idempotent. Neue Instanzen durchlaufen denselben Handler unmittelbar nach ihrer Anlage.
+4. `optional` ist ohne manuellen Override inaktiv. `automatic` ist initial aktiv, respektiert aber dauerhaft `enabled` oder `disabled`. `required` ist immer aktiv, entfernt einen früheren Override und kann serverseitig nicht deaktiviert werden.
+5. Reconcile, manuelle Aktivierung und manuelle Deaktivierung versuchen innerhalb der umgebenden Tenant-Transaktion denselben PostgreSQL-Advisory-Lock für `(instance_id, module_id)`. Die sortierte Modulreihenfolge verhindert Lock-Reihenfolge-Drift; ein konkurrierender Verlierer wartet nicht, sondern rollt mit `plugin_activation_state_conflict` zurück.
+6. Nur geänderte Richtlinienzustände lösen den IAM-Abgleich, die Permission-Snapshot-Invalidierung und das Audit-Ereignis `instance_module_policy_reconciled` aus. Auditdetails enthalten Reconcile-ID, geänderte und unveränderte Modul-IDs sowie nicht-sensitive IAM-Zählwerte.
+7. Eine unveränderte Snapshot-Revision bleibt idempotent. Eine Deaktivierung entfernt weder Plugin-Fachdaten noch Audit-Historie; sie ändert ausschließlich den effektiven Instanz-Modulsatz und die daraus abgeleiteten verwalteten IAM-Grants.
+
+Fehlerpfad:
+
+- Ein nicht konfigurierter Host-Snapshot ist vor Abschluss des Server-Bootstraps ein leerer, fail-closed Reconcile und erzeugt keine vermeintliche Policy-Evidenz.
+- Kann die Instanzliste nicht geladen werden oder scheitert eine einzelne Instanz, erhält der Fleet-Bericht den Status `degraded`, den stabilen Code `plugin_activation_policy_reconcile_failed` und bei Einzelfehlern die betroffene Instanz-ID. Andere Instanzen werden weiterverarbeitet.
+- Ein Lock-Konflikt führt zu HTTP `409` mit stabilem Code `plugin_activation_state_conflict`; innerhalb der scoped Runtime-Transaktion bleiben vorherige Teiländerungen nicht bestehen.
+- Die Deaktivierung eines `required`-Plugins führt zu HTTP `409` mit `plugin_activation_required_cannot_disable` und verändert weder Zustand noch IAM.
+- Fehlt für ein effektiv aktives Plugin der hostvalidierte IAM-Vertrag, bricht der nachgelagerte IAM-Abgleich fail-closed ab.
 
 ### Szenario 4c: DataProvider-gebundene Mainserver-Mutation
 

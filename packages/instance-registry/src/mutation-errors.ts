@@ -9,6 +9,7 @@ export type InstanceMutationErrorCode =
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
+  | 'plugin_activation_state_conflict'
   | 'internal_unclassified';
 
 export type InstanceMutationErrorClassification = {
@@ -38,7 +39,9 @@ const inferBlockedDriftErrorCode = (driftSummary: string): BlockedDriftErrorCode
   return 'tenant_admin_client_not_configured';
 };
 
-export const classifyInstanceMutationError = (error: unknown): InstanceMutationErrorClassification => {
+export const classifyInstanceMutationError = (
+  error: unknown
+): InstanceMutationErrorClassification => {
   const message = error instanceof Error ? error.message : String(error);
   if (message.startsWith('registry_or_provisioning_drift_blocked:')) {
     const driftSummary = message.slice('registry_or_provisioning_drift_blocked:'.length).trim();
@@ -56,6 +59,12 @@ export const classifyInstanceMutationError = (error: unknown): InstanceMutationE
     return {
       status: 409,
       code: 'idempotency_key_reuse',
+    };
+  }
+  if (message.startsWith('plugin_activation_state_conflict:')) {
+    return {
+      status: 409,
+      code: 'plugin_activation_state_conflict',
     };
   }
   if (message.includes('tenant_admin_client_not_configured')) {

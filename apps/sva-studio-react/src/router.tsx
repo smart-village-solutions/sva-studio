@@ -2,6 +2,7 @@ import { studioAdminResources, studioPlugins } from './lib/plugins';
 import { createRouter, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
+import { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/plugin-sdk';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 
 import {
@@ -16,19 +17,57 @@ import { rootRoute } from './routes/__root';
 
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {
-    const mod = await import('@sva/routing/server');
+    const [{ getRequest }, authRuntime, mod] = await Promise.all([
+      import('@tanstack/react-start/server'),
+      import('@sva/auth-runtime/server'),
+      import('@sva/routing/server'),
+    ]);
+    let pluginScope: 'platform' | 'tenant' = 'platform';
+    try {
+      const authConfig = await authRuntime.resolveAuthConfigForRequest(getRequest());
+      pluginScope = authConfig.kind === 'instance' ? 'tenant' : 'platform';
+    } catch (error) {
+      if (!(
+        error instanceof Error &&
+        error.name === 'TenantAuthResolutionError' &&
+        'reason' in error &&
+        error.reason === 'tenant_host_invalid'
+      )) {
+        throw error;
+      }
+    }
     return mod.getServerRouteFactories({
       bindings: appRouteBindings,
       adminResources: studioAdminResources,
       plugins: studioPlugins,
+      pluginScope,
     });
   })
   .client(async () => {
     const mod = await import('@sva/routing');
+    let pluginScope: 'platform' | 'tenant' = 'platform';
+    try {
+      const response = await fetchWithRequestTimeout(
+        new URL('/auth/me', resolveBaseUrl()).toString(),
+        { credentials: 'include' },
+        { timeoutMs: 5_000 }
+      );
+      const declaredScope = response?.headers.get(PLUGIN_ROUTE_SCOPE_HEADER_NAME);
+      if (declaredScope === 'tenant' || declaredScope === 'platform') {
+        pluginScope = declaredScope;
+      } else {
+        const user = response?.ok ? readRouteGuardUser(await response.json()) : null;
+        pluginScope = user?.instanceId ? 'tenant' : 'platform';
+      }
+    } catch {
+      // Ohne bestätigte Tenant-Session bleibt die Router-Materialisierung fail-closed
+      // auf den Plattform-Scope begrenzt.
+    }
     return mod.getClientRouteFactories({
       bindings: appRouteBindings,
       adminResources: studioAdminResources,
       plugins: studioPlugins,
+      pluginScope,
     });
   });
 

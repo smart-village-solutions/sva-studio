@@ -509,6 +509,7 @@ test('postal-code enrichment jobs are unique per instance while active', () => {
 
 test('plugin activation policy migration preserves existing module assignments as manual enables', () => {
   const sql = readRepoFile('data/migrations/0088_iam_instance_module_activation_policy.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
   const upSql = sql.split('-- +goose Down')[0] ?? '';
 
   expect(upSql).toMatch(/ADD COLUMN activation_policy text NOT NULL DEFAULT 'optional'/);
@@ -519,6 +520,12 @@ test('plugin activation policy migration preserves existing module assignments a
   );
   assert.doesNotMatch(upSql, /DELETE FROM iam\.instance_modules/);
   assert.doesNotMatch(upSql, /TRUNCATE (?:TABLE )?iam\.instance_modules/);
+  for (const source of [upSql, schemaSnapshot]) {
+    expect(source).toMatch(
+      /manual_override = 'enabled'(?:::text)?\)?\s+AND \(?activation_policy = 'optional'/
+    );
+    expect(source).toMatch(/activation_origin = 'policy_reconcile'/);
+  }
 });
 
 test('organization type migration and schema snapshot support associations and institutions', () => {

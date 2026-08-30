@@ -72,7 +72,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0089_iam_instance_plugin_lifecycle.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins, `0089` den generischen generationsgebundenen Plugin-Tenant-Lifecycle.
+- Enthält strukturell den Repo-Sollstand bis `0089_iam_instance_plugin_lifecycle.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle.
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.

@@ -1156,7 +1156,7 @@ CREATE TABLE iam.instance_modules (
     CONSTRAINT instance_modules_activation_policy_check CHECK ((activation_policy = ANY (ARRAY['optional'::text, 'automatic'::text, 'required'::text]))),
     CONSTRAINT instance_modules_manifest_version_check CHECK ((manifest_version > 0)),
     CONSTRAINT instance_modules_manual_override_check CHECK (((manual_override IS NULL) OR (manual_override = ANY (ARRAY['enabled'::text, 'disabled'::text])))),
-    CONSTRAINT instance_modules_manual_override_state_check CHECK (((manual_override IS NULL) OR ((manual_override = 'enabled'::text) AND effective_active) OR ((manual_override = 'disabled'::text) AND (NOT effective_active)))),
+    CONSTRAINT instance_modules_manual_override_state_check CHECK (((manual_override IS NULL) OR ((manual_override = 'enabled'::text) AND effective_active) OR ((manual_override = 'enabled'::text) AND (activation_policy = 'optional'::text) AND (activation_origin = 'policy_reconcile'::text)) OR ((manual_override = 'disabled'::text) AND (NOT effective_active)))),
     CONSTRAINT instance_modules_required_policy_check CHECK (((activation_policy <> 'required'::text) OR (effective_active AND (manual_override IS NULL)))),
     CONSTRAINT instance_modules_state_revision_check CHECK ((state_revision > 0))
 );

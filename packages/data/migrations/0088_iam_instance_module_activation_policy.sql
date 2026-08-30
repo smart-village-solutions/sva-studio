@@ -32,6 +32,11 @@ ALTER TABLE iam.instance_modules
     CHECK (
       manual_override IS NULL
       OR (manual_override = 'enabled' AND effective_active)
+      OR (
+        manual_override = 'enabled'
+        AND activation_policy = 'optional'
+        AND activation_origin = 'policy_reconcile'
+      )
       OR (manual_override = 'disabled' AND NOT effective_active)
     ),
   ADD CONSTRAINT instance_modules_required_policy_check

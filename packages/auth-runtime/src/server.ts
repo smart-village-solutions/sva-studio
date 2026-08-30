@@ -79,6 +79,7 @@ export {
   pluginTenantLifecycleHostErrorCodes,
 } from './plugin-tenant-lifecycle/orchestrator.js';
 export { startConfiguredPluginTenantLifecycle } from './plugin-tenant-lifecycle/runtime.js';
+export { readConfiguredPluginTenantReadiness } from './plugin-tenant-lifecycle/read-model.js';
 export type {
   PluginTenantLifecycleOrchestratorDependencies,
   StartPluginTenantLifecycleInput,

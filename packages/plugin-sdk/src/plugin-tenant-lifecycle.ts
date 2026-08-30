@@ -1,3 +1,5 @@
+import type { TenantModuleActivationPolicy } from '@sva/core';
+
 import { assertPluginContributionAllowedKeys } from './guardrails.js';
 import {
   isReservedPluginNamespace,
@@ -65,7 +67,139 @@ export type PluginTenantReadinessSnapshot = {
   readonly updatedAt: string;
 };
 
+export type PluginTenantReadinessReadModelCheck = PluginTenantReadinessCheckDefinition &
+  PluginTenantReadinessCheckResult;
+
+export type PluginTenantLifecycleReadEvidence = {
+  readonly accessState: 'active' | 'suspended';
+  readonly readinessStatus: PluginTenantReadinessStatus;
+  readonly desiredOperation: PluginTenantLifecycleOperation;
+  readonly desiredGeneration: number;
+  readonly completedGeneration: number;
+  readonly activeJobId?: string;
+  readonly readinessRevision?: string;
+  readonly readinessChecks: readonly Readonly<Record<string, unknown>>[];
+  readonly errorCode?: string;
+  readonly retryKind?: 'terminal' | 'retryable';
+  readonly retryAfter?: string;
+  readonly updatedAt: string;
+};
+
+export type PluginTenantReadinessReadModel = {
+  readonly pluginId: string;
+  readonly activationPolicy: TenantModuleActivationPolicy;
+  readonly effectiveActive: true;
+  readonly accessState: PluginTenantLifecycleReadEvidence['accessState'];
+  readonly status: PluginTenantReadinessStatus;
+  readonly evidenceState: 'missing' | 'valid' | 'invalid';
+  readonly desiredOperation?: PluginTenantLifecycleOperation;
+  readonly desiredGeneration: number;
+  readonly completedGeneration: number;
+  readonly activeJobId?: string;
+  readonly revision?: string;
+  readonly checks: readonly PluginTenantReadinessReadModelCheck[];
+  readonly error?: {
+    readonly code: string;
+    readonly retryKind?: PluginTenantLifecycleReadEvidence['retryKind'];
+    readonly retryAfter?: string;
+  };
+  readonly updatedAt: string;
+};
+
 const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
+
+const readPersistedCheck = (
+  value: Readonly<Record<string, unknown>>
+): PluginTenantReadinessCheckResult | undefined => {
+  const { checkId, status, messageKey, details } = value;
+  if (
+    typeof checkId !== 'string' ||
+    typeof status !== 'string' ||
+    !readinessStatusSet.has(status) ||
+    (messageKey !== undefined && typeof messageKey !== 'string') ||
+    (details !== undefined &&
+      (typeof details !== 'object' || details === null || Array.isArray(details)))
+  ) {
+    return undefined;
+  }
+  return {
+    checkId,
+    status: status as PluginTenantReadinessStatus,
+    ...(messageKey === undefined ? {} : { messageKey }),
+    ...(details === undefined ? {} : { details: details as Readonly<Record<string, unknown>> }),
+  };
+};
+
+export const createPluginTenantReadinessReadModel = (input: {
+  readonly definition: PluginTenantLifecycleRegistryEntry;
+  readonly activation: {
+    readonly activationPolicy: TenantModuleActivationPolicy;
+    readonly effectiveActive: boolean;
+    readonly updatedAt: string;
+  };
+  readonly evidence?: PluginTenantLifecycleReadEvidence;
+}): PluginTenantReadinessReadModel | null => {
+  if (!input.activation.effectiveActive) {
+    return null;
+  }
+
+  const declaredCheckIds = new Set(input.definition.readinessChecks.map(({ checkId }) => checkId));
+  const rawChecks = input.evidence?.readinessChecks ?? [];
+  const parsedChecks = rawChecks.map(readPersistedCheck);
+  const validChecks = parsedChecks.filter((check): check is PluginTenantReadinessCheckResult =>
+    Boolean(check)
+  );
+  const persistedChecks = new Map(validChecks.map((check) => [check.checkId, check]));
+  const evidenceInvalid = Boolean(
+    input.evidence &&
+    (validChecks.length !== rawChecks.length ||
+      persistedChecks.size !== validChecks.length ||
+      validChecks.some(({ checkId }) => !declaredCheckIds.has(checkId)) ||
+      input.definition.readinessChecks.some(({ checkId }) => !persistedChecks.has(checkId)))
+  );
+  const evidenceState = input.evidence ? (evidenceInvalid ? 'invalid' : 'valid') : 'missing';
+  const invalidEvidenceStatus: PluginTenantReadinessStatus = input.definition.readinessChecks.some(
+    ({ checkId, required }) => required && !persistedChecks.has(checkId)
+  )
+    ? 'blocked'
+    : 'degraded';
+  const checks = input.definition.readinessChecks.map((definition) => ({
+    ...definition,
+    ...(persistedChecks.get(definition.checkId) ?? {
+      checkId: definition.checkId,
+      status: 'pending' as const,
+    }),
+  }));
+
+  return {
+    pluginId: input.definition.pluginId,
+    activationPolicy: input.activation.activationPolicy,
+    effectiveActive: true,
+    accessState: input.evidence?.accessState ?? 'active',
+    status: evidenceInvalid
+      ? invalidEvidenceStatus
+      : (input.evidence?.readinessStatus ?? 'pending'),
+    evidenceState,
+    ...(input.evidence ? { desiredOperation: input.evidence.desiredOperation } : {}),
+    desiredGeneration: input.evidence?.desiredGeneration ?? 0,
+    completedGeneration: input.evidence?.completedGeneration ?? 0,
+    ...(input.evidence?.activeJobId ? { activeJobId: input.evidence.activeJobId } : {}),
+    ...(input.evidence?.readinessRevision ? { revision: input.evidence.readinessRevision } : {}),
+    checks,
+    ...(evidenceInvalid
+      ? { error: { code: 'plugin_tenant_readiness_evidence_invalid' } }
+      : input.evidence?.errorCode
+        ? {
+            error: {
+              code: input.evidence.errorCode,
+              ...(input.evidence.retryKind ? { retryKind: input.evidence.retryKind } : {}),
+              ...(input.evidence.retryAfter ? { retryAfter: input.evidence.retryAfter } : {}),
+            },
+          }
+        : {}),
+    updatedAt: input.evidence?.updatedAt ?? input.activation.updatedAt,
+  };
+};
 
 export const createPluginTenantReadinessSnapshot = (input: {
   readonly definition: PluginTenantLifecycleDefinition;

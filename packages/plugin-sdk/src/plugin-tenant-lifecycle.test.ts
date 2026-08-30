@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createBuildTimeRegistry,
   createPluginRegistry,
+  createPluginTenantReadinessReadModel,
   createPluginTenantReadinessSnapshot,
   definePluginTenantLifecycle,
   definePluginTenantLifecycleError,
@@ -230,5 +231,128 @@ describe('plugin tenant lifecycle contracts', () => {
     ).toThrow(
       'plugin_tenant_readiness_check_result_namespace_mismatch:speech:waste:waste.databaseSchema'
     );
+  });
+
+  it('creates pending readiness for an active plugin without lifecycle evidence', () => {
+    expect(
+      createPluginTenantReadinessReadModel({
+        definition: { pluginId: 'speech', ...tenantLifecycle },
+        activation: {
+          activationPolicy: 'automatic',
+          effectiveActive: true,
+          updatedAt: '2026-08-30T12:00:00.000Z',
+        },
+      })
+    ).toEqual({
+      pluginId: 'speech',
+      activationPolicy: 'automatic',
+      effectiveActive: true,
+      accessState: 'active',
+      status: 'pending',
+      evidenceState: 'missing',
+      desiredGeneration: 0,
+      completedGeneration: 0,
+      checks: [
+        {
+          ...tenantLifecycle.readinessChecks[0],
+          status: 'pending',
+        },
+      ],
+      updatedAt: '2026-08-30T12:00:00.000Z',
+    });
+  });
+
+  it('merges declared checks with persisted evidence and stable repair metadata', () => {
+    const model = createPluginTenantReadinessReadModel({
+      definition: { pluginId: 'speech', ...tenantLifecycle },
+      activation: {
+        activationPolicy: 'required',
+        effectiveActive: true,
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      },
+      evidence: {
+        accessState: 'active',
+        readinessStatus: 'blocked',
+        desiredOperation: 'reconcile',
+        desiredGeneration: 4,
+        completedGeneration: 3,
+        activeJobId: 'job-4',
+        readinessRevision: 'schema:3',
+        readinessChecks: [
+          {
+            checkId: 'speech.databaseSchema',
+            status: 'blocked',
+            messageKey: 'speech.readiness.databaseSchemaBlocked',
+          },
+        ],
+        errorCode: 'speech.databaseUnavailable',
+        retryKind: 'retryable',
+        updatedAt: '2026-08-30T12:05:00.000Z',
+      },
+    });
+
+    expect(model).toMatchObject({
+      pluginId: 'speech',
+      activationPolicy: 'required',
+      status: 'blocked',
+      evidenceState: 'valid',
+      desiredOperation: 'reconcile',
+      desiredGeneration: 4,
+      completedGeneration: 3,
+      activeJobId: 'job-4',
+      revision: 'schema:3',
+      error: { code: 'speech.databaseUnavailable', retryKind: 'retryable' },
+      checks: [
+        {
+          checkId: 'speech.databaseSchema',
+          titleKey: 'speech.readiness.databaseSchema',
+          required: true,
+          repairOperation: 'reconcile',
+          status: 'blocked',
+          messageKey: 'speech.readiness.databaseSchemaBlocked',
+        },
+      ],
+    });
+  });
+
+  it('omits inactive plugins from the readiness read model', () => {
+    expect(
+      createPluginTenantReadinessReadModel({
+        definition: { pluginId: 'speech', ...tenantLifecycle },
+        activation: {
+          activationPolicy: 'optional',
+          effectiveActive: false,
+          updatedAt: '2026-08-30T12:00:00.000Z',
+        },
+      })
+    ).toBeNull();
+  });
+
+  it('blocks a persisted ready state when required check evidence is missing', () => {
+    expect(
+      createPluginTenantReadinessReadModel({
+        definition: { pluginId: 'speech', ...tenantLifecycle },
+        activation: {
+          activationPolicy: 'required',
+          effectiveActive: true,
+          updatedAt: '2026-08-30T12:00:00.000Z',
+        },
+        evidence: {
+          accessState: 'active',
+          readinessStatus: 'ready',
+          desiredOperation: 'readiness',
+          desiredGeneration: 3,
+          completedGeneration: 3,
+          readinessRevision: 'schema:3',
+          readinessChecks: [],
+          updatedAt: '2026-08-30T12:05:00.000Z',
+        },
+      })
+    ).toMatchObject({
+      status: 'blocked',
+      evidenceState: 'invalid',
+      error: { code: 'plugin_tenant_readiness_evidence_invalid' },
+      checks: [{ checkId: 'speech.databaseSchema', status: 'pending' }],
+    });
   });
 });

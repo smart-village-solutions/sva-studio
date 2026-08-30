@@ -19,7 +19,9 @@ const reduceReadinessStatus = (
       return declaredCheck.required ? 'blocked' : current === 'blocked' ? 'blocked' : 'degraded';
     }
     if (status === 'degraded' && current !== 'blocked') return 'degraded';
-    if (status === 'pending' && current === 'ready') return 'pending';
+    if (status === 'pending' && current === 'ready') {
+      return declaredCheck.required ? 'pending' : 'degraded';
+    }
     return current;
   }, 'ready');
 

@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   queuePluginOperationJob: vi.fn(async () => undefined),
   requestLifecycle: vi.fn(),
   claimLifecycle: vi.fn(),
+  failUnclaimedLifecycle: vi.fn(),
   failLifecycle: vi.fn(),
   getModuleActivationPolicy: vi.fn(async () => ({
     activationPolicy: 'automatic' as const,
@@ -47,6 +48,7 @@ vi.mock('../plugin-operations/repository.js', () => ({
     work({
       requestLifecycle: state.requestLifecycle,
       claimLifecycle: state.claimLifecycle,
+      failUnclaimedLifecycle: state.failUnclaimedLifecycle,
       failLifecycle: state.failLifecycle,
     }),
 }));

@@ -24,7 +24,7 @@ const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'i
 
 const repository: Pick<
   PluginTenantLifecycleRepository,
-  'requestLifecycle' | 'claimLifecycle' | 'failLifecycle'
+  'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle' | 'failLifecycle'
 > = {
   requestLifecycle: (input) =>
     withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
@@ -33,6 +33,10 @@ const repository: Pick<
   claimLifecycle: (input) =>
     withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
       tenantLifecycleRepository.claimLifecycle(input)
+    ),
+  failUnclaimedLifecycle: (input) =>
+    withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
+      tenantLifecycleRepository.failUnclaimedLifecycle(input)
     ),
   failLifecycle: (input) =>
     withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>

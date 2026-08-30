@@ -150,7 +150,7 @@ export const PluginReadinessCard = ({
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={activeAction !== null}
+                      disabled={activeAction !== null || Boolean(plugin.activeJobId)}
                       onClick={() => void onRepair(plugin.pluginId, operation)}
                       aria-label={t('admin.instances.pluginReadiness.repairAriaLabel', {
                         pluginId: plugin.pluginId,

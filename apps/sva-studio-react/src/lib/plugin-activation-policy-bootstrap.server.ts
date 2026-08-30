@@ -37,7 +37,9 @@ export const ensurePluginActivationPoliciesConfigured = async (): Promise<void> 
         }
       );
     }
-    configuredRevision = activationPolicies.revision;
+    if (reconcileReport.status === 'ready') {
+      configuredRevision = activationPolicies.revision;
+    }
   })().finally(() => {
     configurationPromise = undefined;
   });

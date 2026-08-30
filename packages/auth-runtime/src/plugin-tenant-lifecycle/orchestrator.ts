@@ -16,6 +16,7 @@ export const pluginTenantLifecycleHostErrorCodes = {
   handlerMissing: 'plugin_tenant_lifecycle_handler_missing',
   cancellationMismatch: 'plugin_tenant_lifecycle_cancellation_mismatch',
   claimConflict: 'plugin_tenant_lifecycle_claim_conflict',
+  jobCreationFailed: 'plugin_tenant_lifecycle_job_creation_failed',
   enqueueFailed: 'plugin_tenant_lifecycle_enqueue_failed',
 } as const;
 
@@ -33,7 +34,7 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
   ) => Promise<{ readonly effectiveActive: boolean } | null>;
   readonly repository: Pick<
     PluginTenantLifecycleRepository,
-    'requestLifecycle' | 'claimLifecycle' | 'failLifecycle'
+    'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle' | 'failLifecycle'
   >;
   readonly resolveJobRegistration: (
     jobTypeId: string
@@ -171,6 +172,46 @@ const handleEnqueueFailure = async (
   );
 };
 
+const createLifecycleJob = async (
+  dependencies: PluginTenantLifecycleOrchestratorDependencies,
+  input: StartPluginTenantLifecycleInput,
+  jobInput: Parameters<PluginTenantLifecycleOrchestratorDependencies['createJob']>[0]
+): Promise<StudioJobRecord> => {
+  try {
+    return await dependencies.createJob(jobInput);
+  } catch (error) {
+    try {
+      await dependencies.repository.failUnclaimedLifecycle({
+        instanceId: input.instanceId,
+        pluginId: input.pluginId,
+        generation: jobInput.generation,
+        readinessStatus: 'blocked',
+        errorCode: pluginTenantLifecycleHostErrorCodes.jobCreationFailed,
+        retryKind: 'retryable',
+      });
+    } catch (persistenceError) {
+      dependencies.logger.error(
+        'Plugin-Tenant-Lifecycle konnte einen Job-Erstellungsfehler nicht persistieren',
+        {
+          operation: 'plugin_tenant_lifecycle_job_creation_cleanup',
+          result: 'secondary_failure',
+          error_code: 'plugin_tenant_lifecycle_job_creation_cleanup_failed',
+          instance_id: input.instanceId,
+          plugin_id: input.pluginId,
+          job_creation_error_type: error instanceof Error ? error.name : typeof error,
+          persistence_error_type:
+            persistenceError instanceof Error ? persistenceError.name : typeof persistenceError,
+        }
+      );
+    }
+    throw lifecycleError(
+      pluginTenantLifecycleHostErrorCodes.jobCreationFailed,
+      input.pluginId,
+      input.operation
+    );
+  }
+};
+
 export const createPluginTenantLifecycleOrchestrator = (
   dependencies: PluginTenantLifecycleOrchestratorDependencies
 ) => ({
@@ -185,7 +226,7 @@ export const createPluginTenantLifecycleOrchestrator = (
       operation: input.operation,
     });
     const generation = requestedLifecycle.desiredGeneration;
-    const job = await dependencies.createJob({
+    const job = await createLifecycleJob(dependencies, input, {
       instanceId: input.instanceId,
       pluginId: input.pluginId,
       jobTypeId: operationDefinition.jobTypeId,

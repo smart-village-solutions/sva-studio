@@ -94,6 +94,13 @@ describe('PluginReadinessCard', () => {
         .getByRole('link', { name: 'Aktiven Job für Plugin speech-flow öffnen' })
         .getAttribute('href')
     ).toBe('/monitoring/jobs/job-42');
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Reparatur für Plugin speech-flow starten',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
   });
 
   it('renders the generic controls in English when English is active', () => {

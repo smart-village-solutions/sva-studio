@@ -43,6 +43,15 @@ export type PluginTenantLifecycleRepository = {
     readonly generation: number;
     readonly operation: PluginTenantLifecycleOperation;
   }) => Promise<PluginTenantLifecycleRecord | null>;
+  readonly failUnclaimedLifecycle: (input: {
+    readonly instanceId: string;
+    readonly pluginId: string;
+    readonly generation: number;
+    readonly readinessStatus: Extract<PluginTenantReadinessStatus, 'degraded' | 'blocked'>;
+    readonly errorCode: string;
+    readonly retryKind: PluginTenantLifecycleRetryKind;
+    readonly retryAfter?: string;
+  }) => Promise<PluginTenantLifecycleRecord | null>;
   readonly completeLifecycle: (input: {
     readonly instanceId: string;
     readonly pluginId: string;

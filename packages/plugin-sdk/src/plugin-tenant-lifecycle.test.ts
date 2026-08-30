@@ -239,6 +239,35 @@ describe('plugin tenant lifecycle contracts', () => {
     expect(snapshot.generation).toBe(3);
   });
 
+  it('keeps an optional pending check non-blocking', () => {
+    const snapshot = createPluginTenantReadinessSnapshot({
+      definition: {
+        ...tenantLifecycle,
+        readinessChecks: [
+          ...tenantLifecycle.readinessChecks,
+          {
+            checkId: 'speech.optionalTelemetry',
+            titleKey: 'speech.readiness.optionalTelemetry',
+            required: false,
+          },
+        ],
+      },
+      pluginId: 'speech',
+      instanceId: 'tenant-a',
+      generation: 3,
+      result: {
+        revision: 'schema:3',
+        checks: [
+          { checkId: 'speech.databaseSchema', status: 'ready' },
+          { checkId: 'speech.optionalTelemetry', status: 'pending' },
+        ],
+      },
+      updatedAt: '2026-08-30T12:00:00.000Z',
+    });
+
+    expect(snapshot.status).toBe('degraded');
+  });
+
   it('rejects incomplete and foreign readiness results', () => {
     expect(() =>
       createPluginTenantReadinessSnapshot({

@@ -59,6 +59,7 @@ const createDependencies = () => ({
       claimedGeneration: 3,
       activeJobId: job.id,
     })),
+    failUnclaimedLifecycle: vi.fn(async () => lifecycleRecord),
     failLifecycle: vi.fn(async () => lifecycleRecord),
   },
   resolveJobRegistration: vi.fn(() => ({ queueName: 'plugin-operations' })),
@@ -179,6 +180,25 @@ describe('plugin tenant lifecycle orchestrator', () => {
         retryKind: 'retryable',
       })
     );
+  });
+
+  it('persists a retryable blocked state when job creation fails', async () => {
+    const dependencies = createDependencies();
+    dependencies.createJob.mockRejectedValue(new Error('job database unavailable'));
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.jobCreationFailed}:speech:provision`);
+    expect(dependencies.repository.failUnclaimedLifecycle).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      generation: 3,
+      readinessStatus: 'blocked',
+      errorCode: pluginTenantLifecycleHostErrorCodes.jobCreationFailed,
+      retryKind: 'retryable',
+    });
+    expect(dependencies.repository.claimLifecycle).not.toHaveBeenCalled();
+    expect(dependencies.queueJob).not.toHaveBeenCalled();
   });
 
   it('logs secondary persistence failures after queueing fails', async () => {

@@ -99,6 +99,33 @@ describe('plugin tenant lifecycle repository', () => {
     ]);
   });
 
+  it('marks only the exact unclaimed generation retryable after job creation fails', async () => {
+    const { executor, statements } = createExecutor();
+    const repository = createPluginTenantLifecycleRepository(executor);
+
+    await repository.failUnclaimedLifecycle({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      generation: 2,
+      readinessStatus: 'blocked',
+      errorCode: 'plugin_tenant_lifecycle_job_creation_failed',
+      retryKind: 'retryable',
+    });
+
+    expect(statements[0]?.text).toContain('AND desired_generation = $3');
+    expect(statements[0]?.text).toContain('AND claimed_generation IS NULL');
+    expect(statements[0]?.text).toContain('AND active_job_id IS NULL');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'speech',
+      2,
+      'blocked',
+      'plugin_tenant_lifecycle_job_creation_failed',
+      'retryable',
+      null,
+    ]);
+  });
+
   it('fences completion by active job, claimed generation and current desired generation', async () => {
     const { executor, statements } = createExecutor([]);
     const repository = createPluginTenantLifecycleRepository(executor);

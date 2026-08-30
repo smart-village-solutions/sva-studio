@@ -4,9 +4,13 @@ const mocks = vi.hoisted(() => ({
   listInstances: vi.fn(),
   reconcileModuleActivationPolicies: vi.fn(),
   withRegistryService: vi.fn(),
+  withScopedRegistryService: vi.fn(),
 }));
 
-vi.mock('./repository.js', () => ({ withRegistryService: mocks.withRegistryService }));
+vi.mock('./repository.js', () => ({
+  withRegistryService: mocks.withRegistryService,
+  withScopedRegistryService: mocks.withScopedRegistryService,
+}));
 
 import {
   readPluginActivationPolicyFleetReconcileReport,
@@ -18,6 +22,7 @@ afterEach(() => {
   mocks.listInstances.mockReset();
   mocks.reconcileModuleActivationPolicies.mockReset();
   mocks.withRegistryService.mockReset();
+  mocks.withScopedRegistryService.mockReset();
   resetPluginActivationPolicyFleetReconcileReportForTests();
 });
 
@@ -28,6 +33,12 @@ const configureRegistryService = () => {
         listInstances: mocks.listInstances,
         reconcileModuleActivationPolicies: mocks.reconcileModuleActivationPolicies,
       })
+  );
+  mocks.withScopedRegistryService.mockImplementation(
+    async (instanceId: string, operation: (service: unknown) => Promise<unknown>) => {
+      await mocks.reconcileModuleActivationPolicies({ instanceId });
+      return operation({});
+    }
   );
 };
 
@@ -50,6 +61,16 @@ describe('plugin activation policy fleet reconcile', () => {
     expect(mocks.reconcileModuleActivationPolicies).toHaveBeenNthCalledWith(2, {
       instanceId: 'instance-b',
     });
+    expect(mocks.withScopedRegistryService).toHaveBeenNthCalledWith(
+      1,
+      'instance-a',
+      expect.any(Function)
+    );
+    expect(mocks.withScopedRegistryService).toHaveBeenNthCalledWith(
+      2,
+      'instance-b',
+      expect.any(Function)
+    );
     expect(report).toEqual(
       expect.objectContaining({
         revision: 'catalog-1',

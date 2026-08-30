@@ -109,6 +109,26 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     });
   });
 
+  it('maps job creation failures to a stable retryable service response', async () => {
+    state.startConfiguredPluginTenantLifecycle.mockRejectedValue(
+      new Error('plugin_tenant_lifecycle_job_creation_failed:speech:reconcile')
+    );
+    const { startPluginTenantLifecycleInternal } = await import('./http.js');
+    const response = await startPluginTenantLifecycleInternal(
+      new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pluginId: 'speech', operation: 'reconcile' }),
+      }),
+      context as never
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'plugin_tenant_lifecycle_job_creation_failed' },
+    });
+  });
+
   it('does not expose readiness for an unknown instance', async () => {
     state.getInstanceById.mockResolvedValue(null);
     const { getPluginTenantReadinessInternal } = await import('./http.js');

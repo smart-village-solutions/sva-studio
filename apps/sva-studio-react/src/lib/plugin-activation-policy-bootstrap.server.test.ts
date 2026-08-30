@@ -80,4 +80,29 @@ describe('plugin activation policy bootstrap', () => {
     expect(reconcileMock).toHaveBeenCalledTimes(1);
     expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' });
   });
+
+  it('retries a degraded fleet reconcile instead of caching the revision', async () => {
+    reconcileMock
+      .mockResolvedValueOnce({
+        status: 'degraded',
+        revision: 'catalog-1',
+        instanceCount: 1,
+        reconciledInstanceCount: 0,
+        failures: [
+          {
+            instanceId: 'tenant-a',
+            stage: 'reconcile_instance',
+            code: 'plugin_activation_policy_reconcile_failed',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ status: 'ready' });
+
+    await ensurePluginActivationPoliciesConfigured();
+    await ensurePluginActivationPoliciesConfigured();
+    await ensurePluginActivationPoliciesConfigured();
+
+    expect(configureMock).toHaveBeenCalledTimes(2);
+    expect(reconcileMock).toHaveBeenCalledTimes(2);
+  });
 });

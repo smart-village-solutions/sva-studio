@@ -61,6 +61,32 @@ RETURNING *;
       )
     );
 
+const createFailUnclaimedLifecycle =
+  (executor: SqlExecutor): PluginTenantLifecycleRepository['failUnclaimedLifecycle'] =>
+  (input) =>
+    readLifecycleRow(
+      executor,
+      lifecycleStatement(
+        `
+UPDATE iam.instance_plugin_lifecycle
+SET readiness_status = $4, error_code = $5, retry_kind = $6,
+    retry_after = $7::timestamptz, completed_at = NOW(), updated_at = NOW()
+WHERE instance_id = $1 AND plugin_id = $2 AND desired_generation = $3
+  AND claimed_generation IS NULL AND active_job_id IS NULL
+RETURNING *;
+`,
+        [
+          input.instanceId,
+          input.pluginId,
+          input.generation,
+          input.readinessStatus,
+          input.errorCode,
+          input.retryKind,
+          input.retryAfter ?? null,
+        ]
+      )
+    );
+
 const createCompleteLifecycle =
   (executor: SqlExecutor): PluginTenantLifecycleRepository['completeLifecycle'] =>
   (input) =>
@@ -141,6 +167,7 @@ export const createPluginTenantLifecycleRepository = (
       )
     ),
   claimLifecycle: createClaimLifecycle(executor),
+  failUnclaimedLifecycle: createFailUnclaimedLifecycle(executor),
   completeLifecycle: createCompleteLifecycle(executor),
   failLifecycle: createFailLifecycle(executor),
 });

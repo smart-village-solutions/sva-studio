@@ -1,4 +1,4 @@
-import { withRegistryService } from './repository.js';
+import { withRegistryService, withScopedRegistryService } from './repository.js';
 
 export type PluginActivationPolicyFleetReconcileFailure = Readonly<{
   instanceId?: string;
@@ -27,23 +27,20 @@ export const reconcileConfiguredPluginActivationPoliciesForAllInstances = async 
   const failures: PluginActivationPolicyFleetReconcileFailure[] = [];
 
   try {
-    await withRegistryService(async (service) => {
-      const instances = await service.listInstances();
-      instanceCount = instances.length;
-
-      for (const instance of instances) {
-        try {
-          await service.reconcileModuleActivationPolicies({ instanceId: instance.instanceId });
-          reconciledInstanceCount += 1;
-        } catch {
-          failures.push({
-            instanceId: instance.instanceId,
-            stage: 'reconcile_instance',
-            code: 'plugin_activation_policy_reconcile_failed',
-          });
-        }
+    const instances = await withRegistryService((service) => service.listInstances());
+    instanceCount = instances.length;
+    for (const instance of instances) {
+      try {
+        await withScopedRegistryService(instance.instanceId, async () => undefined);
+        reconciledInstanceCount += 1;
+      } catch {
+        failures.push({
+          instanceId: instance.instanceId,
+          stage: 'reconcile_instance',
+          code: 'plugin_activation_policy_reconcile_failed',
+        });
       }
-    });
+    }
   } catch {
     failures.push({
       stage: 'list_instances',

@@ -1,5 +1,7 @@
 import { InstanceModulesWorkspace } from '../modules/-instance-modules-workspace';
+import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { ModuleActivationTransparencyCard } from './-instance-detail-modules-section';
+import { PluginReadinessCard } from './-instance-plugin-readiness-card';
 
 import type { IamHttpError } from '../../../lib/iam-api';
 import type { SelectedInstance } from './-instances-shared-types';
@@ -25,19 +27,30 @@ export const InstanceDetailBetriebSection = ({
   onRevokeModule,
   onSeedIamBaseline,
   onBootstrapAdminStructure,
-}: InstanceDetailBetriebSectionProps) => (
-  <>
-    <InstanceModulesWorkspace
-      selectedInstance={selectedInstance}
-      statusLoading={statusLoading}
-      mutationError={mutationError}
-      emptyState=""
-      onAssignModule={onAssignModule}
-      onRevokeModule={onRevokeModule}
-      onSeedIamBaseline={onSeedIamBaseline}
-      onBootstrapAdminStructure={onBootstrapAdminStructure}
-      showBootstrapAction={false}
-    />
-    <ModuleActivationTransparencyCard selectedInstance={selectedInstance} />
-  </>
-);
+}: InstanceDetailBetriebSectionProps) => {
+  const pluginReadiness = usePluginTenantReadiness(selectedInstance.instanceId);
+
+  return (
+    <>
+      <InstanceModulesWorkspace
+        selectedInstance={selectedInstance}
+        statusLoading={statusLoading}
+        mutationError={mutationError}
+        emptyState=""
+        onAssignModule={onAssignModule}
+        onRevokeModule={onRevokeModule}
+        onSeedIamBaseline={onSeedIamBaseline}
+        onBootstrapAdminStructure={onBootstrapAdminStructure}
+        showBootstrapAction={false}
+      />
+      <ModuleActivationTransparencyCard selectedInstance={selectedInstance} />
+      <PluginReadinessCard
+        plugins={pluginReadiness.items}
+        isLoading={pluginReadiness.isLoading}
+        activeAction={pluginReadiness.activeAction}
+        error={pluginReadiness.error}
+        onRepair={pluginReadiness.startRepair}
+      />
+    </>
+  );
+};

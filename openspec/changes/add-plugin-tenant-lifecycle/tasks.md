@@ -15,7 +15,7 @@
 ## 3. Instanzverwaltung
 
 - [x] 3.1 Generisches Plugin-Readiness-Read-Modell pro Instanz bereitstellen
-- [ ] 3.2 Instanz-Cockpit um Pluginstatus und Reparaturaktionen erweitern
+- [x] 3.2 Instanz-Cockpit um Pluginstatus und Reparaturaktionen erweitern
 - [ ] 3.3 Fail-closed Fachzugriff bei blockierter Pflicht-Readiness umsetzen
 - [ ] 3.4 Accessibility-, i18n- und Deep-Link-Tests der generischen Anzeige ergänzen
 

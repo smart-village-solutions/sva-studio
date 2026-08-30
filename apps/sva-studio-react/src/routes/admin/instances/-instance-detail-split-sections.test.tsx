@@ -14,6 +14,17 @@ import type {
   OperationsSectionProps,
 } from './-instance-detail-view-shared';
 
+vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
+  usePluginTenantReadiness: () => ({
+    items: [],
+    isLoading: false,
+    activeAction: null,
+    error: null,
+    refresh: vi.fn(),
+    startRepair: vi.fn(),
+  }),
+}));
+
 const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
   mockStudioModuleIamContracts: [
     {

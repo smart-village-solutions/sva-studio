@@ -46,6 +46,10 @@ import {
   reconcileInstanceKeycloakInternal,
   rotateInstanceSecretInternal,
 } from './core-keycloak.js';
+import {
+  getPluginTenantReadinessInternal,
+  startPluginTenantLifecycleInternal,
+} from '../plugin-tenant-lifecycle/http.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
 
@@ -114,6 +118,14 @@ export const instanceRegistryHandlers = {
     withAuthenticatedRegistryHandler(request, 'instance.list', listInstancesInternal),
   getInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.read', getInstanceInternal),
+  getPluginTenantReadiness: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, 'instance.read', getPluginTenantReadinessInternal),
+  startPluginTenantLifecycle: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.reconcile',
+      startPluginTenantLifecycleInternal
+    ),
   createInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.create', createInstanceInternal),
   updateInstance: async (request: Request): Promise<Response> =>

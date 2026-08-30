@@ -87,6 +87,15 @@ vi.mock('./core-keycloak.js', () => ({
   rotateInstanceSecretInternal: vi.fn(async () => new Response('rotate', { status: 200 })),
 }));
 
+vi.mock('../plugin-tenant-lifecycle/http.js', () => ({
+  getPluginTenantReadinessInternal: vi.fn(
+    async () => new Response('plugin-readiness', { status: 200 })
+  ),
+  startPluginTenantLifecycleInternal: vi.fn(
+    async () => new Response('plugin-lifecycle', { status: 200 })
+  ),
+}));
+
 describe('iam-instance-registry/server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -166,9 +175,9 @@ describe('iam-instance-registry/server', () => {
       )
     );
 
-    expect(responses).toHaveLength(23);
+    expect(responses).toHaveLength(25);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(23);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(25);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

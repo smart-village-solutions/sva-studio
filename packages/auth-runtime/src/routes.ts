@@ -41,6 +41,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/instances'
   | '/api/v1/iam/instances/audit'
   | '/api/v1/iam/instances/$instanceId'
+  | '/api/v1/iam/instances/$instanceId/plugin-readiness'
   | '/api/v1/iam/instances/$instanceId/audit'
   | '/api/v1/iam/instances/$instanceId/keycloak/status'
   | '/api/v1/iam/instances/$instanceId/keycloak/preflight'
@@ -199,6 +200,7 @@ export const authRoutePaths = [
   '/api/v1/iam/instances',
   '/api/v1/iam/instances/audit',
   '/api/v1/iam/instances/$instanceId',
+  '/api/v1/iam/instances/$instanceId/plugin-readiness',
   '/api/v1/iam/instances/$instanceId/audit',
   '/api/v1/iam/instances/$instanceId/keycloak/status',
   '/api/v1/iam/instances/$instanceId/keycloak/preflight',

@@ -18,6 +18,17 @@ vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
 }));
 
+vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
+  usePluginTenantReadiness: () => ({
+    items: [],
+    isLoading: false,
+    activeAction: null,
+    error: null,
+    refresh: vi.fn(),
+    startRepair: vi.fn(),
+  }),
+}));
+
 const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
   mockStudioModuleIamContracts: [
     {
@@ -541,15 +552,23 @@ describe('InstanceDetailPage', () => {
 
     await activateTab('Betrieb');
 
-    expect(await screen.findByText('news')).toBeTruthy();
-    expect(screen.getByText('events')).toBeTruthy();
-    expect(screen.getByText('media')).toBeTruthy();
+    expect((await screen.findAllByText('news')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('events').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('media').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Modul entziehen' })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: 'Modul zuweisen' })).toHaveLength(1);
 
-    expect(screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')).toBeTruthy();
-    expect(screen.getByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.')).toBeTruthy();
-    expect(screen.getByText('Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.')).toBeTruthy();
+    expect(
+      screen.getAllByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        'Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.'
+      ).length
+    ).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
   });
 
@@ -945,7 +964,7 @@ describe('InstanceDetailPage', () => {
 
     await activateTab('Betrieb');
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
-    expect(screen.getByText('news')).toBeTruthy();
+    expect(screen.getAllByText('news').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));

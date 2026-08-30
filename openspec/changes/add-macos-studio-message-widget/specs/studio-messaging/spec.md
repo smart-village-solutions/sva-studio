@@ -2,13 +2,13 @@
 
 ### Requirement: Allgemeiner autorisierter Studio-Nachrichtenfeed
 
-Das System SHALL einen allgemeinen, versionierten Studio-Nachrichtenfeed bereitstellen, der typisierte Quellen ausschließlich im aktiven Instanz- und Accountkontext aggregiert. Der Feed MUST stabile Nachrichten-IDs, Quelle, Titel, begrenzten Kurztext, Priorität, Sensitivität, sicheres relatives Ziel und Gelesen-Status liefern.
+Das System SHALL einen allgemeinen, versionierten Studio-Nachrichtenfeed bereitstellen, der typisierte Quellen ausschließlich im aktiven Instanz- und Accountkontext aggregiert. Der Feed MUST providerübergreifend eindeutige, mit der Quelle namespacete Nachrichten-IDs, Quelle, Titel, begrenzten Kurztext, Priorität, Sensitivität, sicheres relatives Ziel und Gelesen-Status liefern. Deduplizierung, Metadaten-Lookup, Ziele und Gelesen-Belege MUST dieselbe vollständige ID verwenden.
 
 #### Scenario: Update-Log ist die erste Nachrichtenquelle
 
 - **WENN** ein aktiver Studio-Benutzer den Nachrichtenfeed lädt
 - **DANN** werden die aktuell ausgelieferten Update-Log-Einträge als Nachrichten der Quelle `studio-changelog` bereitgestellt
-- **UND** verwendet jeder Eintrag eine stabile ID aus seiner PR-Nummer
+- **UND** verwendet jeder Eintrag die stabile globale ID `studio-changelog:pr:<nummer>`
 - **UND** existiert keine zweite fachliche Changelog-Datenquelle
 
 #### Scenario: Nicht sichtbare Nachricht bleibt verborgen
@@ -16,6 +16,13 @@ Das System SHALL einen allgemeinen, versionierten Studio-Nachrichtenfeed bereits
 - **WENN** ein Provider eine Nachricht liefert, deren Audience nicht zum aktiven Instanz- und Accountkontext passt
 - **DANN** erscheint die Nachricht weder in der Liste noch im Ungelesen-Zähler
 - **UND** kann ein Client ihre Existenz nicht anhand differenzierter Fehler erkennen
+
+#### Scenario: Provider liefert eine kollidierende oder nicht namespacete ID
+
+- **WENN** eine Providerantwort nicht dem Schema `<provider-id>:<provider-local-id>` entspricht
+- **ODER** ihr Präfix nicht mit der angegebenen Quelle übereinstimmt
+- **DANN** verwirft die Feed-Orchestrierung den Eintrag fail-closed
+- **UND** entsteht weder eine Kollision im Feed noch im Gelesen-Stand
 
 ### Requirement: Getrennte Summary-, Listen- und Gelesen-Endpunkte
 
@@ -89,6 +96,8 @@ Das System MUST Gelesen-Belege über referenzielle Instanz-/Accountintegrität, 
 - **WENN** eine Account-Membership bei aktivem Legal Hold entzogen werden soll
 - **DANN** wird sie atomar als widerrufen markiert und nicht physisch gelöscht
 - **UND** schließen alle Autorisierungs- und Feed-Abfragen die widerrufene Membership sofort aus
+- **UND** werden bestehende Permission-, Rollen- und Session-Snapshots beziehungsweise Caches synchron invalidiert
+- **UND** lehnen auch Nicht-Nachrichten-Endpunkte jeden nachfolgenden Request dieser Membership ab
 - **UND** bleiben ihre Gelesen-Belege bis zur Aufhebung des Holds instanz- und accountgebunden erhalten
 - **UND** sind sie für normale Studio-Requests nicht mehr sichtbar
 - **UND** kann ausschließlich der autorisierte DSR-/Governance-Pfad darauf zugreifen

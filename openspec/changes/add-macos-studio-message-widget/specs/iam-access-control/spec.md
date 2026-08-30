@@ -52,6 +52,13 @@ Das System MUST vor jeder nativen Nachrichtenoperation Signatur, erlaubten Algor
 - **DANN** wird der Zugriff fail-closed abgelehnt
 - **UND** enthält die Antwort keinen enumerierenden Ablehnungsgrund
 
+#### Scenario: Membership wird unter Legal Hold widerrufen
+
+- **WENN** eine bestehende Membership einen gesetzten `revoked_at`-Zeitpunkt erhält
+- **DANN** werden ihre Permission-, Rollen- und Session-Snapshots beziehungsweise Caches synchron invalidiert
+- **UND** behandeln alle Membership-Joins, RLS-/Autorisierungspfade und Nicht-Nachrichten-Endpunkte sie als inaktiv
+- **UND** kann eine vor dem Widerruf ausgestellte Sitzung keinen weiteren Studio-Request autorisieren
+
 ### Requirement: Geschützter nativer Credential-Lifecycle
 
 Das System MUST native Access- und Refresh-Credentials ausschließlich in einer minimalen Keychain-Access-Group für Container-App und Widget Extension speichern. Refresh Tokens SHALL rotiert und bei Logout, sicherheitsbedingtem Forced Reauth oder Kontowiderruf unwirksam werden.

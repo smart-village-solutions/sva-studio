@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Neues ADR für den nativen Public-Client, externen Browser, PKCE, Claimed-HTTPS-Callback, Keychain-Grenze und die begrenzte Ausnahme von ADR-009 anlegen.
 - [ ] 1.2 `docs/architecture/03-context-and-scope.md`, `05-building-block-view.md`, `06-runtime-view.md`, `07-deployment-view.md`, `08-cross-cutting-concepts.md`, `09-architecture-decisions.md`, `10-quality-requirements.md` und `11-risks-and-technical-debt.md` gemäß Proposal aktualisieren.
-- [ ] 1.3 Frameworkunabhängigen, versionierten Nachrichten-, Provider- und API-Vertrag mit stabilen IDs, Priorität, Sensitivität, Ziel, optionalem Legacy-Zeitpunkt und dauerhaftem Metadaten-Lookup für jemals belegfähige IDs definieren.
+- [ ] 1.3 Frameworkunabhängigen, versionierten Nachrichten-, Provider- und API-Vertrag mit global namespaceten IDs im Schema `<provider-id>:<provider-local-id>`, Priorität, Sensitivität, Ziel, optionalem Legacy-Zeitpunkt und dauerhaftem Metadaten-Lookup für jemals belegfähige IDs definieren; `source` und ID-Präfix validieren sowie Deduplizierung, Ziele, Metadaten und Belege durchgängig mit derselben vollständigen ID schlüsseln.
 - [ ] 1.4 Bestehende Changelog-Einträge weiterhin akzeptieren, `publishedAt` für neue Einträge verpflichtend validieren, die beim Start ausgelieferten 20 Einträge mit belegten Zeitpunkten nachtragen und zusätzlich einen vollständigen Runtime-Metadatenindex aus stabiler ID und `publishedAt` unabhängig vom begrenzten Anzeige-Artefakt erzeugen.
 - [ ] 1.5 Entwickler- und Anwenderdokumentation für Nachrichtenbereich, native App, Datenschutzgrenzen und fehlende Echtzeitgarantie auf Deutsch ergänzen.
 
@@ -13,12 +13,13 @@
 - [ ] 2.3 Repository- und Service-Logik für instanz-/accountgebundene Reads und idempotente Upserts implementieren, ohne Nachrichtentexte zu persistieren.
 - [ ] 2.4 Schema-Snapshot und Schema-Übersicht nach der Migration vollständig fortschreiben.
 - [ ] 2.5 PostgreSQL-16-Up/Down/Up-, RLS-, Tenant-Isolations-, Membership-Lösch-, Soft-Revoke-, Legal-Hold- und Query-Plan-Tests ergänzen; belegen, dass Membership-Entzug Zugriff sofort sperrt, der bestehende `ON DELETE RESTRICT`-Vertrag gehaltene Memberships und Belege bewahrt und die physische Löschung nach Hold-Aufhebung nachholt.
-- [ ] 2.6 Gelesen-Belege in vollständige DSR-Selbst-/Adminexporte aufnehmen und Exportautorisierung, Formate sowie Auditierung testen.
-- [ ] 2.7 Gemeinsame validierte Aufbewahrungsfrist für Feed-Sichtbarkeit und Gelesen-Belege mit 365-Tage-Default, Dry Run, expliziter Freigabe bei Verkürzung, Legal-Hold-Sperre und periodischer Bereinigung implementieren; vor Beleglöschung die monotone Sichtbarkeitsgrenze fortschreiben, unauflösbare Nachrichtenzeitpunkte fail-closed behalten sowie Verlängerungen nach erfolgter Bereinigung testen.
+- [ ] 2.6 Sämtliche bestehenden Membership-Joins, RLS-/Autorisierungspfade und effektiven Session-Rollen workspaceweit auf `revoked_at IS NULL` umstellen; Permission-, Rollen- und Session-Snapshots beziehungsweise Caches beim Widerruf synchron invalidieren und mit aktiven Altsitzungen sowie repräsentativen Nicht-Nachrichten-Endpunkten regressionsprüfen.
+- [ ] 2.7 Gelesen-Belege in vollständige DSR-Selbst-/Adminexporte aufnehmen und Exportautorisierung, Formate sowie Auditierung testen.
+- [ ] 2.8 Gemeinsame validierte Aufbewahrungsfrist für Feed-Sichtbarkeit und Gelesen-Belege mit 365-Tage-Default, Dry Run, expliziter Freigabe bei Verkürzung, Legal-Hold-Sperre und periodischer Bereinigung implementieren; vor Beleglöschung die monotone Sichtbarkeitsgrenze fortschreiben, unauflösbare Nachrichtenzeitpunkte fail-closed behalten sowie Verlängerungen nach erfolgter Bereinigung testen.
 
 ## 3. Nachrichtenfeed und Studio-API
 
-- [ ] 3.1 Feed-Kernlogik mit Provider-Validierung, Deduplizierung, deterministischer Sortierung, Account-Sichtbarkeit und serverseitigem Limit implementieren.
+- [ ] 3.1 Feed-Kernlogik mit Provider-/ID-Namespace-Validierung, kollisionsfreier Deduplizierung anhand der vollständigen globalen ID, deterministischer Sortierung, Account-Sichtbarkeit und serverseitigem Limit implementieren.
 - [ ] 3.2 Bestehenden Studio-Changelog-Katalog als ersten Provider adaptieren und sicheren Klartextauszug für native Clients erzeugen.
 - [ ] 3.3 `GET /api/v1/account/messages/summary`, `GET /api/v1/account/messages`, `POST /api/v1/account/messages/read` und kurzlebige, einmalige, account-/instanzgebundene Browser-Übergaben für `{ kind: 'feed' }` oder `{ kind: 'message', messageId }` mit strikter Eingabevalidierung, stabilen Fehlercodes und privatem `no-store` bereitstellen; freie Pfade und URLs ausschließen.
 - [ ] 3.4 Browser-Session und native Bearer-Identität vor der Fachlogik in denselben instanzgebundenen Accountkontext überführen.

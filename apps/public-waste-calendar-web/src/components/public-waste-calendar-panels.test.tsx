@@ -130,6 +130,8 @@ describe('PublicWasteCalendarPanels', () => {
               fractionLabel: 'Bioabfall',
               tourDescription:
                 '<p><strong>Bereitstellung:</strong> am Vorabend.</p><script>window.alert("xss")</script>',
+              note:
+                '<p>Terminbezogener Hinweis.</p><a href="javascript:alert(1)">Unsicherer Link</a>',
             }),
             createPublicWasteCalendarEntryFixture({
               id: 'pickup-future',
@@ -152,6 +154,8 @@ describe('PublicWasteCalendarPanels', () => {
 
     expect(screen.queryByRole('button', { name: /Termin .* am \d{2}\.05\.2026/ })).toBeNull();
     expect(screen.getByText('Bereitstellung:').tagName).toBe('STRONG');
+    expect(screen.getByText('Terminbezogener Hinweis.')).toBeTruthy();
+    expect(screen.getByText('Unsicherer Link').getAttribute('href')).toBeNull();
     expect(container.querySelector('.pickup-description script')).toBeNull();
     expect(container.textContent).not.toContain('window.alert');
     expect(onActivateEntry).not.toHaveBeenCalled();

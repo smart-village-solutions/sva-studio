@@ -275,7 +275,11 @@ VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::timestamptz, $7, 'pending', $8::json
 ON CONFLICT (dedupe_key) DO UPDATE
 SET transport_id = EXCLUDED.transport_id,
     template_key = EXCLUDED.template_key,
-    send_at = EXCLUDED.send_at,
+    send_at = CASE
+      WHEN waste_email_reminder_outbox.attempt_count > 0
+        THEN GREATEST(waste_email_reminder_outbox.send_at, EXCLUDED.send_at)
+      ELSE EXCLUDED.send_at
+    END,
     payload = EXCLUDED.payload,
     updated_at = NOW()
 WHERE waste_email_reminder_outbox.status = 'pending'
@@ -300,7 +304,10 @@ const buildRefreshPendingOutboxStatement = (
 UPDATE waste_email_reminder_outbox
 SET transport_id = $4,
     template_key = $5,
-    send_at = $6::timestamptz,
+    send_at = CASE
+      WHEN attempt_count > 0 THEN GREATEST(send_at, $6::timestamptz)
+      ELSE $6::timestamptz
+    END,
     payload = $7::jsonb,
     updated_at = NOW()
 WHERE dedupe_key = $1

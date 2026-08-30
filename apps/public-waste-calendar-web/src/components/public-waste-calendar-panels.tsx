@@ -170,6 +170,9 @@ const renderListMonthGroups = (input: Readonly<{
                             html={entry.tourDescription}
                           />
                         ) : null}
+                        {entry.note ? (
+                          <PublicWasteRichText className="pickup-description" html={entry.note} />
+                        ) : null}
                       </div>
                     </div>
                   ))}

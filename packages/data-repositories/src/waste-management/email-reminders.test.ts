@@ -238,7 +238,8 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain('ON CONFLICT (dedupe_key) DO UPDATE');
     expect(statements[0]?.text).toContain('transport_id = EXCLUDED.transport_id');
     expect(statements[0]?.text).toContain('template_key = EXCLUDED.template_key');
-    expect(statements[0]?.text).toContain('send_at = EXCLUDED.send_at');
+    expect(statements[0]?.text).toContain('attempt_count > 0');
+    expect(statements[0]?.text).toContain('GREATEST(waste_email_reminder_outbox.send_at, EXCLUDED.send_at)');
     expect(statements[0]?.text).toContain('payload = EXCLUDED.payload');
     expect(statements[0]?.text).toContain("WHERE waste_email_reminder_outbox.status = 'pending'");
     expect(statements[0]?.text).toContain('RETURNING id');
@@ -276,6 +277,8 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain('UPDATE waste_email_reminder_outbox');
     expect(statements[0]?.text).not.toContain('INSERT INTO waste_email_reminder_outbox');
     expect(statements[0]?.text).toContain("AND status = 'pending'");
+    expect(statements[0]?.text).toContain('attempt_count > 0');
+    expect(statements[0]?.text).toContain('GREATEST(send_at, $6::timestamptz)');
     expect(statements[0]?.text).toContain('RETURNING id');
   });
 

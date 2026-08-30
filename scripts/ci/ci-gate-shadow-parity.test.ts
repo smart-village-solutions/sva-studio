@@ -94,6 +94,19 @@ describe('ci-gate-shadow-parity', () => {
     expect(result.mismatches).toEqual([]);
   });
 
+  it('ignores skipped helper jobs when a terminal main gate with the same name exists', () => {
+    const checks = mainGateMappings.flatMap((mapping) => [
+      ...mapping.legacyChecks.map((name) => check(name)),
+      ...mapping.shadowChecks.map((name) => check(name)),
+    ]);
+    checks.push(check('Unit', 'skipped'), check('Coverage', 'skipped'));
+
+    const result = evaluateCiGateMainShadowParity(checks, headSha, 'push');
+
+    expect(result.mismatches).toEqual([]);
+    expect(result.gates.every((gate) => gate.matches)).toBe(true);
+  });
+
   it('marks gates without a scheduled legacy run as non-comparable', () => {
     const scheduledMappings = mainGateMappings.filter((mapping) =>
       ['Coverage', 'Complexity', 'Integration'].includes(mapping.gate)

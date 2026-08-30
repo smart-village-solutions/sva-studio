@@ -136,7 +136,10 @@ const evaluateSide = (
 ): EvaluatedGateSide => {
   const accepted: GitHubCheckRun[] = [];
   for (const expectedName of expectedNames) {
-    const namedChecks = allChecks.filter((check) => check.name === expectedName);
+    const matchingChecks = allChecks.filter((check) => check.name === expectedName);
+    const namedChecks = matchingChecks.some((check) => check.conclusion !== 'skipped')
+      ? matchingChecks.filter((check) => check.conclusion !== 'skipped')
+      : matchingChecks;
     if (namedChecks.length !== 1) {
       const mismatch =
         namedChecks.length === 0

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1195,
+  "body": "Der Veranstaltungseditor ist intern übersichtlicher und leichter wartbar, ohne seine Bedienung oder gespeicherten Inhalte zu verändern.\n\n- Termine, Orte, Veranstalter, Beschreibung, Medien, Kontakte, Links und Preise behalten ihre bisherigen Eingabe- und Validierungsregeln.\n- Medienauswahl, Kartenfunktionen und Speichern verwenden weiterhin dieselben bestehenden Verträge."
+}

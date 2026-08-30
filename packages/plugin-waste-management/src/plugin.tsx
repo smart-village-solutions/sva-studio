@@ -1,6 +1,7 @@
 import {
   definePluginAuditEvents,
   definePluginPermissions,
+  wasteManagementOperationsContract,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
@@ -239,6 +240,20 @@ export const pluginWasteManagement: PluginDefinition = {
   auditEvents: wasteManagementAuditEventDefinitions,
   contentHistory: { mode: 'domain', reasonCode: 'domain_history' },
   jobTypes: createWasteManagementPluginJobTypes(),
+  tenantLifecycle: {
+    contractVersion: 1,
+    operations: [
+      {
+        operation: 'provision',
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+      },
+      {
+        operation: 'reconcile',
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+      },
+    ],
+    readinessChecks: [],
+  },
   importProfiles: createWasteManagementPluginImportProfiles(),
   exportProfiles: createWasteManagementPluginExportProfiles(),
   translations: wasteManagementPluginTranslations,

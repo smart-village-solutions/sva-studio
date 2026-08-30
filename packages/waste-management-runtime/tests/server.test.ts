@@ -20,6 +20,7 @@ const createContext = (input: {
   readonly jobTypeId: string;
   readonly inputPayload: Record<string, unknown>;
   readonly progress?: PluginJobHandlerContext['job']['progress'];
+  readonly tenantLifecycle?: PluginJobHandlerContext['tenantLifecycle'];
 }): PluginJobHandlerContext => ({
   kind: 'job',
   pluginId: 'waste-management',
@@ -62,6 +63,7 @@ const createContext = (input: {
   throwIfCancellationRequested: vi.fn(async () => undefined),
   requestId: 'req-1',
   actorAccountId: 'actor-1',
+  ...(input.tenantLifecycle ? { tenantLifecycle: input.tenantLifecycle } : {}),
 });
 
 describe('waste management runtime handlers', () => {
@@ -136,6 +138,47 @@ describe('waste management runtime handlers', () => {
       },
     });
   });
+
+  it.each(['provision', 'reconcile'] as const)(
+    'adapts the generic %s lifecycle operation to the existing Waste provisioner',
+    async (operation) => {
+      const provisionTenantDatabase = vi.fn(async () => ({
+        durationMs: 2,
+        details: {
+          databaseName: 'sva_waste_test',
+          interfaceId: 'waste-management:instance-1',
+          desiredGeneration: 7,
+        },
+      }));
+      const handlers = createWasteManagementPluginOperationExecutionHandlers(
+        createRuntime({ provisionTenantDatabase })
+      );
+      const context = createContext({
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+        inputPayload: {
+          studioTenantLifecycle: { operation, generation: 7 },
+        },
+        tenantLifecycle: { operation, generation: 7 },
+      });
+
+      const result =
+        await handlers[wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]?.(
+          context
+        );
+
+      expect(provisionTenantDatabase).toHaveBeenCalledWith(
+        'instance-1',
+        { operation: 'provision-tenant-database', desiredGeneration: 7 },
+        { jobId: 'job-1' }
+      );
+      expect(result).toMatchObject({
+        tenantLifecycle: {
+          revision: 'waste-tenant-database-v1',
+          checks: [],
+        },
+      });
+    }
+  );
 
   it('re-exports the canonical runtime handler map and alias from the helper module', () => {
     const runtime = createRuntime();

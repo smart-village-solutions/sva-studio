@@ -17,6 +17,54 @@ import { createImportDataHandler } from './runtime-import-handler.js';
 import { createOperationHandler } from './runtime-job-helpers.js';
 import type { WasteManagementOperationRuntime } from './runtime-types.js';
 
+const wasteTenantDatabaseRevision = 'waste-tenant-database-v1';
+
+const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationRuntime) => {
+  const executeProvisioning =
+    createOperationHandler<WasteManagementProvisionTenantDatabaseJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+      expectedOperation: 'provision-tenant-database',
+      phaseKey: 'waste-management.provision-database',
+      execute: (runtimeArg, instanceId, payload, _progressReporter, context) =>
+        runtimeArg.provisionTenantDatabase(instanceId, payload, {
+          jobId: context.jobId,
+        }),
+    })(runtime);
+
+  return async (context: Parameters<typeof executeProvisioning>[0]) => {
+    if (!context.tenantLifecycle) {
+      return executeProvisioning(context);
+    }
+    if (
+      context.tenantLifecycle.operation !== 'provision' &&
+      context.tenantLifecycle.operation !== 'reconcile'
+    ) {
+      throw new Error(
+        `unsupported_waste_tenant_lifecycle_operation:${context.tenantLifecycle.operation}`
+      );
+    }
+
+    const result = await executeProvisioning({
+      ...context,
+      job: {
+        ...context.job,
+        inputPayload: {
+          operation: 'provision-tenant-database',
+          desiredGeneration: context.tenantLifecycle.generation,
+        },
+      },
+    });
+
+    return {
+      ...result,
+      tenantLifecycle: {
+        revision: wasteTenantDatabaseRevision,
+        checks: [],
+      },
+    };
+  };
+};
+
 const createEnrichPostalCodesHandler = (runtime: WasteManagementOperationRuntime) =>
   createOperationHandler<WasteManagementEnrichPostalCodesJobInput>({
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
@@ -48,15 +96,7 @@ const createEmailReminderHandlers = (runtime: WasteManagementOperationRuntime) =
 
 export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOperationRuntime) => ({
   [wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]:
-    createOperationHandler<WasteManagementProvisionTenantDatabaseJobInput>({
-      jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
-      expectedOperation: 'provision-tenant-database',
-      phaseKey: 'waste-management.provision-database',
-      execute: (runtimeArg, instanceId, payload, _progressReporter, context) =>
-        runtimeArg.provisionTenantDatabase(instanceId, payload, {
-          jobId: context.jobId,
-        }),
-    })(runtime),
+    createProvisionTenantDatabaseHandler(runtime),
   [wasteManagementOperationsContract.jobTypeIds.initializeDataSource]:
     createOperationHandler<WasteManagementInitializeJobInput>({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,

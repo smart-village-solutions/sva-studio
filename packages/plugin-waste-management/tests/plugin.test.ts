@@ -293,6 +293,23 @@ describe('pluginWasteManagement contract', () => {
     expect(pluginWasteManagement.exportProfiles).toHaveLength(9);
   });
 
+  it('adapts provision and reconcile to the existing tenant database job', () => {
+    expect(pluginWasteManagement.tenantLifecycle).toEqual({
+      contractVersion: 1,
+      operations: [
+        {
+          operation: 'provision',
+          jobTypeId: 'waste-management.provision-tenant-database',
+        },
+        {
+          operation: 'reconcile',
+          jobTypeId: 'waste-management.provision-tenant-database',
+        },
+      ],
+      readinessChecks: [],
+    });
+  });
+
   it('registers the canonical waste audit events for settings, master data and technical tools', () => {
     expect(pluginWasteManagement.auditEvents).toEqual(wasteManagementAuditEventDefinitions);
     expect(

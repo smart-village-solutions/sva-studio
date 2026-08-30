@@ -24,10 +24,33 @@ describe('plugin operation runner internals', () => {
         kind: 'job',
         instanceId: 'tenant-a',
         pluginId: 'waste',
-        job: { id: 'job-2' },
+        job: { id: 'job-2', inputPayload: {} },
       } as never)
     ).resolves.toEqual({});
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ pluginId: 'waste' }));
+  });
+
+  it('exposes validated tenant lifecycle metadata to plugin handlers', async () => {
+    const handler = vi.fn(async () => undefined);
+    const adapted = adaptPluginOperationExecutionHandler(handler);
+
+    await adapted({
+      kind: 'job',
+      instanceId: 'tenant-a',
+      pluginId: 'waste-management',
+      job: {
+        id: 'job-3',
+        inputPayload: {
+          studioTenantLifecycle: { operation: 'reconcile', generation: 4 },
+        },
+      },
+    } as never);
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantLifecycle: { operation: 'reconcile', generation: 4 },
+      })
+    );
   });
 
   it('builds stable registry keys and task-list objects', async () => {

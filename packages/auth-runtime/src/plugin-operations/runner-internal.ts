@@ -7,6 +7,7 @@ import type {
   PluginOperationExecutionHandlerContext,
   StudioJobExecutionHandler,
 } from './types.js';
+import { readPluginTenantLifecycleJobMetadata } from '../plugin-tenant-lifecycle/job-correlation.js';
 
 export type StudioJobRunnerPayload = {
   readonly instanceId: string;
@@ -50,7 +51,13 @@ export const adaptPluginOperationExecutionHandler = (
       throw new Error('plugin_job_missing_plugin_id');
     }
 
-    return (await handler(context as PluginOperationExecutionHandlerContext)) ?? {};
+    const tenantLifecycle = readPluginTenantLifecycleJobMetadata(context.job);
+    return (
+      (await handler({
+        ...context,
+        ...(tenantLifecycle ? { tenantLifecycle } : {}),
+      } as PluginOperationExecutionHandlerContext)) ?? {}
+    );
   };
 };
 

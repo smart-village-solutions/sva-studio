@@ -1,5 +1,8 @@
 import type { StudioJobProgress, StudioJobRecord, StudioJobResult } from '@sva/core';
-import type { PluginTenantLifecycleExecutionResult } from '../plugin-tenant-lifecycle.js';
+import type {
+  PluginTenantLifecycleExecutionResult,
+  PluginTenantLifecycleOperation,
+} from '../plugin-tenant-lifecycle.js';
 
 export type PluginExecutionContextCapabilities = {
   readonly requestContext: boolean;
@@ -69,6 +72,10 @@ export type PluginJobExecutionResult = {
 
 export type PluginJobHandlerContext = Omit<PluginJobExecutionContext, 'progressReporter'> & {
   readonly job: StudioJobRecord;
+  readonly tenantLifecycle?: {
+    readonly operation: PluginTenantLifecycleOperation;
+    readonly generation: number;
+  };
   readonly progressReporter: PluginJobProgressReporter;
   readonly isCancellationRequested: () => Promise<boolean>;
   readonly throwIfCancellationRequested: () => Promise<void>;

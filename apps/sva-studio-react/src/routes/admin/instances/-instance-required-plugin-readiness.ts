@@ -15,14 +15,25 @@ export type RequiredPluginReadinessAssessment = {
 };
 
 export const evaluateRequiredPluginReadiness = (
-  plugins: readonly PluginTenantReadinessReadModel[]
+  plugins: readonly PluginTenantReadinessReadModel[],
+  loadState: { readonly isLoading: boolean; readonly hasError: boolean } = {
+    isLoading: false,
+    hasError: false,
+  }
 ): RequiredPluginReadinessAssessment | null => {
+  if (loadState.isLoading || loadState.hasError) {
+    return {
+      status: 'blocked',
+      summary: t('admin.instances.pluginReadiness.aggregate.unavailable'),
+      pluginIds: [],
+    };
+  }
   const requiredPlugins = plugins.filter(({ activationPolicy }) => activationPolicy === 'required');
   if (requiredPlugins.length === 0) return null;
 
-  const pluginIds = requiredPlugins.map(({ pluginId }) => pluginId).sort((left, right) =>
-    left.localeCompare(right, 'de')
-  );
+  const pluginIds = requiredPlugins
+    .map(({ pluginId }) => pluginId)
+    .sort((left, right) => left.localeCompare(right, 'de'));
   const status: IamTenantIamAxisStatus = requiredPlugins.some(
     (plugin) =>
       plugin.accessState === 'suspended' ||

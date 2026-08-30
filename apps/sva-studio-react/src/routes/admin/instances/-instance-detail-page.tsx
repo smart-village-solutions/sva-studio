@@ -130,7 +130,10 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     detailFormValues,
     selectedInstance
   );
-  const requiredPluginReadiness = evaluateRequiredPluginReadiness(pluginReadiness.items);
+  const requiredPluginReadiness = evaluateRequiredPluginReadiness(pluginReadiness.items, {
+    isLoading: pluginReadiness.isLoading,
+    hasError: Boolean(pluginReadiness.error),
+  });
   const configurationAssessment = selectedInstance
     ? includeRequiredPluginReadiness(
         evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError),

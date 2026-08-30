@@ -358,7 +358,7 @@ describe('plugin tenant lifecycle contracts', () => {
     expect(model).toMatchObject({
       pluginId: 'speech',
       activationPolicy: 'required',
-      status: 'blocked',
+      status: 'pending',
       evidenceState: 'valid',
       desiredOperation: 'reconcile',
       desiredGeneration: 4,
@@ -377,6 +377,31 @@ describe('plugin tenant lifecycle contracts', () => {
         },
       ],
     });
+  });
+
+  it('keeps access pending while a newer lifecycle generation is incomplete', () => {
+    const model = createPluginTenantReadinessReadModel({
+      definition: { pluginId: 'speech', ...tenantLifecycle },
+      activation: {
+        activationPolicy: 'required',
+        effectiveActive: true,
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      },
+      evidence: {
+        accessState: 'active',
+        readinessStatus: 'pending',
+        desiredOperation: 'reconcile',
+        desiredGeneration: 4,
+        completedGeneration: 3,
+        activeJobId: 'job-4',
+        readinessRevision: 'schema:3',
+        readinessChecks: [{ checkId: 'speech.databaseSchema', status: 'ready' }],
+        updatedAt: '2026-08-30T12:05:00.000Z',
+      },
+    });
+
+    expect(model).toMatchObject({ status: 'pending', evidenceState: 'valid' });
+    expect(evaluatePluginTenantAccess(model)).toEqual({ allowed: false, reason: 'pending' });
   });
 
   it('recomputes aggregate readiness when a persisted check becomes required', () => {

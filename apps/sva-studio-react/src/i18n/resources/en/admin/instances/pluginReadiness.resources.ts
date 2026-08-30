@@ -12,6 +12,7 @@ export const pluginReadinessInstancesAdminENResources = {
     blocked: 'Blocked',
   },
   aggregate: {
+    unavailable: 'The operational status of required plugins could not yet be confirmed.',
     ready: 'All required plugins are ready: {{plugins}}.',
     degraded: 'At least one required plugin is degraded: {{plugins}}.',
     blocked: 'At least one required plugin is not ready yet: {{plugins}}.',

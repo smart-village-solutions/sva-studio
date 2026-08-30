@@ -35,6 +35,20 @@ const completeConfiguration: InstanceConfigurationAssessment = {
 };
 
 describe('required plugin readiness aggregation', () => {
+  it.each([
+    [{ isLoading: true, hasError: false }, 'loading'],
+    [{ isLoading: false, hasError: true }, 'failed'],
+  ])('blocks aggregate readiness while the readiness read is %s', (loadState) => {
+    const readiness = evaluateRequiredPluginReadiness([], loadState);
+
+    expect(readiness).toMatchObject({ status: 'blocked', pluginIds: [] });
+    expect(includeRequiredPluginReadiness(completeConfiguration, readiness)).toMatchObject({
+      overallStatus: 'incomplete',
+      totalRequirements: 5,
+      blockingIssues: [{ key: 'required_plugin_readiness', severity: 'blocking' }],
+    });
+  });
+
   it('blocks aggregate readiness while a required plugin has no valid evidence', () => {
     const readiness = evaluateRequiredPluginReadiness([
       createPlugin({ status: 'pending', evidenceState: 'missing' }),

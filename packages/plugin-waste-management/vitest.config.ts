@@ -18,6 +18,10 @@ export default mergeConfig(
           currentDir,
           '../waste-management-contracts/src/job-definitions.ts'
         ),
+        '@sva/waste-management-contracts': resolve(
+          currentDir,
+          '../waste-management-contracts/src/index.ts'
+        ),
         '@sva/studio-module-iam': resolve(currentDir, '../studio-module-iam/src/index.ts'),
         '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),
       },

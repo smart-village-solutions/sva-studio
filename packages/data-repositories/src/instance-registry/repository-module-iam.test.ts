@@ -204,8 +204,8 @@ describe('instance registry repository module iam', () => {
     expect(statements).toEqual([]);
   });
 
-  it('hard-deletes inactive module grants and permission definitions', async () => {
-    const { executor, statements } = createQueuedExecutor([[], []]);
+  it('removes module-owned grants but preserves permission definitions and manual grants', async () => {
+    const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(
@@ -223,10 +223,10 @@ describe('instance registry repository module iam', () => {
       })
     ).resolves.toMatchObject({ permissionsUnchanged: 0, grantsUnchanged: 0 });
 
-    expect(statements).toHaveLength(2);
+    expect(statements).toHaveLength(1);
     expect(statements[0]?.text).toContain("role_permission.grant_origin_module_id IN ('news')");
-    expect(statements[1]?.text).toContain('DELETE FROM iam.permissions');
-    expect(statements[1]?.values).toEqual(['tenant-a', ['news.read']]);
+    expect(statements[0]?.text).toContain("role_permission.grant_origin_kind = 'module_sync'");
+    expect(statements[0]?.text).not.toContain('DELETE FROM iam.permissions');
   });
 
   it('does not revoke grants merely because an active module removed a catalog entry', async () => {

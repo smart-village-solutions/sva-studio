@@ -1063,6 +1063,29 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 
+  it('zeigt autorisierte Plattform-Plugin-Navigation ohne Tenant-Modulzuweisung', () => {
+    const accessRequirement = {
+      kind: 'platform',
+      roles: { mode: 'allOf', values: ['instance_registry_admin'] },
+    } as const;
+    studioPluginNavigationMock.items = [
+      {
+        id: 'news.platform',
+        to: '/plugins/news/platform',
+        titleKey: 'news.navigation.title',
+        section: 'system',
+        accessRequirement,
+      },
+    ];
+
+    renderSidebar({
+      user: createSidebarUser({ roles: ['instance_registry_admin'], assignedModules: [] }),
+    });
+
+    expect(decideAccessMock).toHaveBeenCalledWith(accessRequirement);
+    expect(screen.getByRole('link', { name: 'Nachrichten' })).toBeTruthy();
+  });
+
   it('blendet Plugin-Navigation ohne passende Payload-Update-Berechtigung aus', () => {
     studioPluginNavigationMock.items = [
       {

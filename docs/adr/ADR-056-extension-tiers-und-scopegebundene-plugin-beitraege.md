@@ -47,6 +47,15 @@ Root-Berechtigung verwenden.
 11. Aktivierungsrichtlinien und Plugin-IAM-Verträge werden atomar aus demselben
     Build-time-Snapshot in die Instanz-Runtime injiziert. Nur hosteigene Module
     dürfen außerhalb dieses Plugin-Snapshots ergänzt werden.
+12. Deklarative Server-Handler werden über den Manifest-`server`-Entry an
+    ausführbaren Code gebunden. Der Host verlangt vollständige, eindeutige
+    Handler-Abdeckung und prüft exakten Pfad, Methode, Authentifizierung,
+    Scope, Tenant-Aktivierung und Berechtigung, bevor er einen hosterzeugten
+    Execution-Context an Plugin-Code übergibt.
+13. Deaktivierung entfernt nur automatisch synchronisierte Modul-Grants.
+    Permission-Definitionen und manuelle Rollenzuweisungen bleiben erhalten,
+    werden aber für inaktive Module zentral aus den effektiven Berechtigungen
+    gefiltert.
 
 ## Begründung
 
@@ -70,14 +79,16 @@ Root-Berechtigung verwenden.
 - Root- und Tenant-Autorisierung bleiben technisch und diagnostisch getrennt.
 - Automatisch aktivierte Plugins können dauerhaft deaktiviert werden, ohne
   ihre Fachdaten oder den Reconcile-Nachweis zu löschen.
+- Manuelle Rollenbelegungen überleben eine Deaktivierung, ohne währenddessen
+  weiterhin Zugriff zu gewähren.
 
 ### Negativ
 
 - Alle bestehenden Manifeste benötigen explizite Tier-Metadaten.
 - Neue Plattformrollen oder Beitragstypen erfordern eine bewusste Erweiterung
   der Host-Allowlist und ihrer Tests.
-- Tier und Scope ersetzen keine serverseitige Autorisierung; jeder
-  Serverbeitrag benötigt weiterhin einen host-owned Execution-Context.
+- Der Host muss Server-Entry und Deskriptor-Snapshot beim Bootstrap vollständig
+  zusammenführen; ein fehlender Handler verhindert den Plugin-Server-Dispatch.
 
 ## Verworfene Alternativen
 

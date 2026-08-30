@@ -114,6 +114,11 @@ export {
   type PersistAuthAuditResult,
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
+export {
+  assertPluginServerHandlerCoverage,
+  createPluginServerHandlerDispatcher,
+  type PluginServerHandlerDispatcherDependencies,
+} from './plugin-server-handlers/dispatcher.js';
 export { ensureFeature, getFeatureFlags } from './iam-account-management/feature-flags.js';
 export { withInstanceScopedDb } from './iam-account-management/shared.js';
 export { resolveActorAccountId } from './iam-account-management/shared.js';

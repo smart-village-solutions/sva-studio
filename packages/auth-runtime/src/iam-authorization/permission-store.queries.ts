@@ -91,8 +91,12 @@ JOIN iam.role_permissions rp
 JOIN iam.permissions p
  ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
+LEFT JOIN iam.instance_modules permission_module
+ ON permission_module.instance_id = p.instance_id
+ AND permission_module.module_id = split_part(p.permission_key, '.', 1)
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
+  AND (permission_module.module_id IS NULL OR permission_module.effective_active = true)
   AND (
     (
       rp.access_scope IS NULL
@@ -127,12 +131,7 @@ WHERE a.keycloak_subject = $2
     )
   )
 `,
-    [
-      input.instanceId,
-      input.keycloakSubject,
-      input.organizationId,
-      SCOPE_SENSITIVE_PERMISSION_KEYS,
-    ]
+    [input.instanceId, input.keycloakSubject, input.organizationId, SCOPE_SENSITIVE_PERMISSION_KEYS]
   );
 
   return scopedQuery.rows;
@@ -163,8 +162,12 @@ JOIN iam.role_permissions rp
 JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
+LEFT JOIN iam.instance_modules permission_module
+  ON permission_module.instance_id = p.instance_id
+ AND permission_module.module_id = split_part(p.permission_key, '.', 1)
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
+  AND (permission_module.module_id IS NULL OR permission_module.effective_active = true)
 `,
     [input.instanceId, input.keycloakSubject, SCOPE_SENSITIVE_PERMISSION_KEYS]
   );

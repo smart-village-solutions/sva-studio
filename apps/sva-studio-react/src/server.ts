@@ -37,6 +37,9 @@ const loggerPromises = new Map<ServerTransportComponent, Promise<PluginWorkerBoo
 let dispatchAuthRouteRequestPromise: Promise<
   (typeof import('@sva/routing/server'))['dispatchAuthRouteRequest']
 > | null = null;
+let pluginServerHandlerDispatcherPromise: Promise<
+  (request: Request) => Promise<Response | null>
+> | null = null;
 let ensureStudioJobWorkerStartedPromise: Promise<() => Promise<void>> | null = null;
 let registerStudioPluginOperationHandlersPromise: Promise<
   (typeof import('./lib/plugin-operation-runtime.server'))['registerStudioPluginOperationHandlers']
@@ -53,6 +56,17 @@ const getDispatchAuthRouteRequest = async () => {
     (mod) => mod.dispatchAuthRouteRequest
   );
   return dispatchAuthRouteRequestPromise;
+};
+const getPluginServerHandlerDispatcher = async () => {
+  if (devRuntimeRefreshEnabled) {
+    return (
+      await import('./lib/plugin-server-runtime.server')
+    ).createStudioPluginServerHandlerDispatcher();
+  }
+  pluginServerHandlerDispatcherPromise ??= import('./lib/plugin-server-runtime.server').then(
+    (mod) => mod.createStudioPluginServerHandlerDispatcher()
+  );
+  return pluginServerHandlerDispatcherPromise;
 };
 const getEnsureStudioJobWorkerStarted = async () => {
   ensureStudioJobWorkerStartedPromise ??= import('@sva/auth-runtime/server').then((mod) =>
@@ -203,6 +217,17 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
 
     if (routedResponse) {
       return routedResponse;
+    }
+
+    if (new URL(request.url).pathname.startsWith('/api/v1/plugins/')) {
+      const dispatchPluginServerHandler = await getPluginServerHandlerDispatcher();
+      const pluginServerResponse = await dispatchPluginServerHandler(request);
+      if (pluginServerResponse) {
+        await logServerEntryDebug('Server entry plugin route dispatched', {
+          status: pluginServerResponse.status,
+        });
+        return pluginServerResponse;
+      }
     }
 
     if (studioJobWorkerEnabled) {

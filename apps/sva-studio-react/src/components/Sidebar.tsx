@@ -944,7 +944,7 @@ export default function Sidebar({
               contentAccessApi.isLoading
             )
       )
-      .map(({ item, resolvedTitleKey }) => ({
+      .map(({ item, resolvedTitleKey, resolvedAccessRequirement }) => ({
         kind: 'link' as const,
         id: `plugin-${item.id}`,
         to: item.to,
@@ -952,8 +952,11 @@ export default function Sidebar({
         icon: pluginIconBySection[item.section],
         section: item.section,
         moduleId: getStudioPluginNavigationModuleId(item),
+        accessScope: resolvedAccessRequirement?.kind,
       }))
-      .filter((item) => isModuleAssignedToUser(item.moduleId, user));
+      .filter(
+        (item) => item.accessScope === 'platform' || isModuleAssignedToUser(item.moduleId, user)
+      );
     const pluginDataManagementItems = pluginNavigationItems.filter(
       (item) => item.section === 'dataManagement'
     );

@@ -190,7 +190,10 @@ export type {
   PluginRouteDefinition,
   PluginRouteGuard,
   PluginServerHandlerDefinition,
+  PluginServerHandlerExecutionContext,
+  PluginServerHandlerModuleFactory,
   PluginServerHandlerRegistryEntry,
+  PluginServerExecutionHandler,
   PluginTranslations,
 } from './plugins.js';
 export {

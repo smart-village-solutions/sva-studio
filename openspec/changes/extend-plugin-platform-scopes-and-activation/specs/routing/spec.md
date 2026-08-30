@@ -24,3 +24,11 @@ Das System SHALL Plugin-Routen und ihre Navigation anhand eines hostvalidierten 
 - **WHEN** der Host beide Beiträge registriert
 - **THEN** müssen beide denselben validierten Plattform- oder Tenant-Scope verwenden
 - **AND** lehnt der Host eine widersprüchliche Registrierung vor dem Runtime-Dispatch ab
+
+#### Scenario: Serverbeitrag wird vollständig und hostautorisiert gebunden
+
+- **GIVEN** ein hostaktives Plugin deklariert einen Serverbeitrag und einen `server`-Entry
+- **WHEN** der Host die Server-Runtime startet
+- **THEN** muss genau ein ausführbarer Handler für jede deklarierte Handler-ID vorhanden sein
+- **AND** lehnt der Host fehlende oder unbekannte Handler fail-closed ab
+- **AND** prüft der Host exakten Pfad, Methode, Authentifizierung, Scope, Aktivierung und Berechtigung vor der Handler-Ausführung

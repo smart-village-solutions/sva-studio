@@ -34,13 +34,20 @@ const policyLabels = {
 
 const uniqueRepairOperations = (
   plugin: PluginTenantReadinessReadModel
-): readonly PluginTenantLifecycleOperation[] => [
-  ...new Set(
-    plugin.checks
-      .filter((check) => check.status !== 'ready')
-      .flatMap((check) => (check.repairOperation ? [check.repairOperation] : []))
-  ),
-];
+): readonly PluginTenantLifecycleOperation[] => {
+  const hasUnfinishedGeneration = plugin.completedGeneration < plugin.desiredGeneration;
+  const terminalFailure = plugin.error?.retryKind === 'terminal';
+  const repairableChecks =
+    !plugin.activeJobId &&
+    (terminalFailure || (plugin.status !== 'ready' && hasUnfinishedGeneration))
+      ? plugin.checks
+      : plugin.checks.filter((check) => check.status !== 'ready');
+  return [
+    ...new Set(
+      repairableChecks.flatMap((check) => (check.repairOperation ? [check.repairOperation] : []))
+    ),
+  ];
+};
 
 type PluginReadinessCardProps = {
   readonly plugins: readonly PluginTenantReadinessReadModel[];

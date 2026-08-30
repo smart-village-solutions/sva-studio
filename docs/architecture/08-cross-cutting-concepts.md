@@ -163,7 +163,14 @@ gleichzeitig beeinflussen.
 - Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen
 - Jedes Plugin-Manifest besitzt einen expliziten Extension-Tier. Fehlende oder unbekannte Tiers sowie Plattformbeiträge eines `feature`-Plugins werden vor der Snapshot-Materialisierung mit stabilen Validierungsfehlern abgewiesen.
 - Plattformbeiträge verwenden ausschließlich `instance_registry_admin` und dürfen keine Tenant-Guards oder `requiredAction` übernehmen. Verknüpfte Actions, Routen und Navigation müssen Scope, Modus und Rollenmenge exakt teilen.
+- Deklarative Serverbeiträge enthalten im Build-Snapshot keinen ausführbaren
+  Code. Der Host lädt ihre Bindungen ausschließlich aus dem Manifest-`server`-Entry,
+  verlangt eine vollständige ID-Abdeckung und führt sie erst nach exaktem
+  Pfad-/Methodenabgleich und hostseitiger Scope-Autorisierung aus.
 - Tenant-Aktivierung folgt ausschließlich dem persistierten Instanz-Modulsatz. `automatic` akzeptiert einen dauerhaften manuellen Override; `required` bleibt durch Service-Policy und Datenbank-Constraint aktiv. Policy-Reconcile-Updates tragen eine Manifest-, Policy- und Zustandsrevision.
+- Inaktive Module verlieren automatisch synchronisierte Grants; manuelle
+  Rollenzuweisungen bleiben gespeichert, sind aber bis zur Reaktivierung nicht
+  Teil der effektiven Permission-Auflösung.
 - Die phasenweise Registry-Erzeugung ordnet bestehende Outputs für Content, Admin, Audit und Routing, führt aber keine neuen Plugin-Beitragstypen oder Breaking-API ein
 - Standardisierte Content-Plugins registrieren ihre CRUD-Hauptflächen über `adminResources` mit optionalem `contentUi`-Spezialisierungsblock; `/admin/news`, `/admin/events` und `/admin/poi` sind host-owned Pfade mit pluginseitig beigestellten Fachflächen, nicht plugin-owned Routen
 - Dasselbe Pattern gilt jetzt auch für `/admin/surveys`: der Pfad bleibt host-owned, während `@sva/plugin-surveys` nur die fachlichen Listen-/Detail-/Editor-Bindings und UI-Bausteine beisteuert

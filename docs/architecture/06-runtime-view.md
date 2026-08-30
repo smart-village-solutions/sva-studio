@@ -541,6 +541,10 @@ Fehlerpfad:
 2. Der Host validiert die Evidenz gegen die deklarierte Checkliste. Fehlende oder strukturell ungültige Evidenz, `pending`, `blocked` und `accessState = suspended` geben keinen Fachzugriff frei; valide `ready`- und `degraded`-Zustände sind zugelassen.
 3. `/auth/me` filtert lifecycle-verwaltete, nicht freigegebene Plugins aus der effektiven `assignedModules`-Liste. Routing und Sidebar verwenden dadurch weiterhin den bestehenden zentralen Modul- und Action-Vertrag.
 4. `POST /api/v1/plugin-operations/jobs` und dedizierte Plugin-Serverrouten prüfen dieselbe Hostentscheidung vor Fachzugriff, Idempotenzreservierung, Jobanlage und Queueing. Unmittelbar vor der Handler-Ausführung prüft auch der Worker den aktuellen Tenant-Lifecycle-Zugriff erneut, damit ein nach dem Queueing blockiertes oder suspendiertes Plugin keinen Fachjob mehr ausführt. Deklarierte Lifecycle-Jobtypen sind am generischen Endpunkt unzulässig und können nur über den Lifecycle-Orchestrator gestartet werden; dieser Reparaturpfad bleibt auch bei blockiertem Fachzugriff erreichbar, prüft vor der Ausführung aber weiterhin die effektive Plugin-Aktivierung.
+   Dedizierte Plugin-Serverrouten werden aus dem Manifest-`server`-Entry geladen.
+   Der Dispatcher verlangt vollständige Handler-Abdeckung, gleicht Pfad und
+   Methode exakt ab und übergibt erst nach der hostseitigen Scope- und
+   Rechteprüfung einen hosterzeugten Execution-Context.
 5. Der Readiness-Aggregatstatus wird aus den aktuell deklarierten Checks und der aktuellen `required`-Kennzeichnung neu berechnet; gespeicherte Evidenz kann eine nachträglich verschärfte Check-Deklaration nicht freigeben.
 6. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
 7. Waste bildet `provision` und `reconcile` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; ein separater `readiness`-Job liest nur diesen Datensatz und das instanzgebundene verwaltete Interface.
@@ -552,6 +556,10 @@ Fehlerfälle:
 - Fällt die Readiness-Auflösung im Sessionpfad aus, bleibt der Modulzugriff fail-closed.
 - Reparatur- und Readiness-Läufe umgehen das Gate nicht frei, sondern laufen ausschließlich generationsgebunden über den Host-Orchestrator.
 - direkte API-Aufrufe bleiben zusätzlich durch fehlende modulbezogene Permissions abgesichert.
+- Permission-Definitionen und manuelle Rollenbelegungen eines deaktivierten
+  Moduls bleiben für eine spätere Reaktivierung erhalten, werden aber über
+  `iam.instance_modules.effective_active` aus der effektiven Permission-Menge
+  gefiltert.
 
 ### Szenario 2f: IAM-User- und Rollenverwaltung mit technischem Keycloak-Schnitt
 

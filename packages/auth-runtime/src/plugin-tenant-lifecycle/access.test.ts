@@ -48,6 +48,16 @@ describe('configured plugin tenant access', () => {
     expect(state.readiness).not.toHaveBeenCalled();
   });
 
+  it('denies an inactive plugin even after its lifecycle contract was removed', async () => {
+    state.getModuleActivationPolicy.mockResolvedValueOnce({ effectiveActive: false });
+
+    await expect(readConfiguredPluginTenantAccess('tenant-a', 'news')).resolves.toEqual({
+      allowed: false,
+      reason: 'inactive',
+    });
+    expect(state.readiness).not.toHaveBeenCalled();
+  });
+
   it('removes blocked and missing managed plugins while retaining unmanaged modules', async () => {
     state.registry.set('speech', {
       operations: [{ jobTypeId: 'speech.readiness' }],

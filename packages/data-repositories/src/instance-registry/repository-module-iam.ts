@@ -7,7 +7,6 @@ import { createModuleActivationRepository } from './repository-module-activation
 import {
   buildManagedPermissions,
   buildRolePermissionPairs,
-  cleanupInactiveModulePermissions,
   cleanupModuleRolePermissions,
   insertModuleRolePermission,
   insertProtectedRolePermission,
@@ -85,7 +84,6 @@ const createSyncAssignedModuleIam =
       managedModuleIds,
       contracts.map((contract) => contract.moduleId)
     );
-    await cleanupInactiveModulePermissions(executor, instanceId, managedContracts, contracts);
     return result;
   };
 

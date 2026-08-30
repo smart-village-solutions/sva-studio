@@ -82,9 +82,27 @@ Manifest-Vertragsfehler verwenden
 
 ### Deaktivierung ist keine Datenlöschung
 
-Deaktivierung entfernt tenantbezogene Beiträge und Modul-IAM, erhält aber
-Fachdaten und Audit. Die Entfernung einer Distribution bleibt eine getrennte
-Deployment-Operation.
+Deaktivierung entfernt tenantbezogene Beiträge und automatisch synchronisierte
+Modul-IAM-Zuweisungen, erhält aber Fachdaten, Permission-Definitionen, manuelle
+Rollenzuweisungen und Audit. Die zentrale Permission-Auflösung filtert Actions
+inaktiver Module, sodass erhaltene manuelle Zuweisungen erst nach einer
+erneuten Aktivierung wieder wirksam werden. Die Entfernung einer Distribution
+bleibt eine getrennte Deployment-Operation.
+
+### Serverbeiträge werden ausschließlich serverseitig gebunden
+
+Der Build-Snapshot enthält für Serverbeiträge nur validierte Deskriptoren mit
+Handler-ID, Methode, Pfad und vollständiger Autorisierungsanforderung.
+Ausführbarer Code wird ausschließlich aus dem `server`-Entry des Manifests
+geladen und exportiert eine Zuordnung von Handler-IDs zu Funktionen.
+
+Der Host verlangt eine vollständige bijektive Bindung: Für jeden Deskriptor
+muss genau ein Handler existieren; unbekannte Handler sind ebenfalls ein
+Bootstrap-Fehler. Der Dispatcher gleicht Pfad und Methode exakt ab,
+authentifiziert den Request und prüft danach entweder Root-Host plus
+Plattformrolle oder aktive Tenant-Zuordnung plus namespaced Permissions. Erst
+danach erhält der Handler einen hosterzeugten Execution-Context. Plugins können
+weder Scope noch Actor oder Autorisierungsentscheidung selbst festlegen.
 
 ## Risks / Trade-offs
 
@@ -106,5 +124,4 @@ Deployment-Operation.
 
 ## Open Questions
 
-- Wie der serverseitige Host den validierten Build-Snapshot ohne zweiten
-  statischen Plugin-Katalog in den Instanz-Reconcile injiziert.
+Keine für den beschlossenen Scope.

@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const createStartHandlerMock = vi.fn();
 const createSdkLoggerMock = vi.fn();
 const dispatchAuthRouteRequestMock = vi.fn();
+const dispatchPluginServerHandlerMock = vi.fn();
+const createStudioPluginServerHandlerDispatcherMock = vi.fn();
 const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
@@ -98,6 +100,10 @@ vi.mock('./lib/plugin-operation-runtime.server', () => ({
   registerStudioPluginOperationHandlers: registerStudioPluginOperationHandlersMock,
 }));
 
+vi.mock('./lib/plugin-server-runtime.server', () => ({
+  createStudioPluginServerHandlerDispatcher: createStudioPluginServerHandlerDispatcherMock,
+}));
+
 vi.mock('./lib/plugin-activation-policy-bootstrap.server', () => ({
   ensurePluginActivationPoliciesConfigured: ensurePluginActivationPoliciesConfiguredMock,
   startPluginActivationPolicyFleetReconcileInBackground:
@@ -110,6 +116,10 @@ describe('server transport', () => {
     getWorkspaceContextMock.mockReturnValue({ requestId: 'req-default' });
     runWithoutWorkspaceContextMock.mockImplementation((callback) => callback());
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
+    dispatchPluginServerHandlerMock.mockResolvedValue(null);
+    createStudioPluginServerHandlerDispatcherMock.mockResolvedValue(
+      dispatchPluginServerHandlerMock
+    );
   });
 
   afterEach(() => {
@@ -118,6 +128,8 @@ describe('server transport', () => {
     createStartHandlerMock.mockReset();
     createSdkLoggerMock.mockReset();
     dispatchAuthRouteRequestMock.mockReset();
+    dispatchPluginServerHandlerMock.mockReset();
+    createStudioPluginServerHandlerDispatcherMock.mockReset();
     dispatchMainserverNewsRequestMock.mockReset();
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();
@@ -171,6 +183,24 @@ describe('server transport', () => {
     expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('auth');
+  });
+
+  it('dispatches declared plugin server routes before auth and TanStack Start', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const pluginResponse = new Response('plugin', { status: 200 });
+    const startFetch = vi.fn().mockResolvedValue(new Response('start'));
+    createStartHandlerMock.mockReturnValue(startFetch);
+    dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+
+    const mod = await import('./server');
+    const request = new Request('http://localhost:3000/api/v1/plugins/news/items');
+    const response = await mod.default.fetch(request);
+
+    expect(createStudioPluginServerHandlerDispatcherMock).toHaveBeenCalledTimes(1);
+    expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    expect(response).toBe(pluginResponse);
   });
 
   it('bypasses mainserver news requests before auth routing', async () => {

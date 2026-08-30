@@ -12,6 +12,12 @@ export const readConfiguredPluginTenantAccess = async (
   instanceId: string,
   pluginId: string
 ): Promise<ConfiguredPluginTenantAccessDecision> => {
+  const activation = await withRegistryRepository((repository) =>
+    repository.getModuleActivationPolicy(instanceId, pluginId)
+  );
+  if (activation?.effectiveActive === false) {
+    return evaluatePluginTenantAccess(null);
+  }
   if (!readInstanceRegistryPluginTenantLifecycleRegistry().has(pluginId)) {
     return { allowed: true, reason: 'not_managed' };
   }

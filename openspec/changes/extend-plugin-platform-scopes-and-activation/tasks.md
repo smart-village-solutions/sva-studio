@@ -10,6 +10,8 @@
 - [x] 2.2 Extension-Tier-, Namespace-, Scope- und Cross-Contribution-Validierung fail-closed implementieren
 - [x] 2.3 Snapshot-Materialisierung und Routing für getrennte Root-/Tenant-Bäume erweitern
 - [x] 2.4 Unit- und Integrationstests für erlaubte und abgelehnte Scope-Kombinationen ergänzen
+- [x] 2.5 Serverseitige Handler-Bindung mit exaktem Pfad-/Methoden-Dispatch und hosteigener Autorisierung implementieren
+- [x] 2.6 Vollständige Handler-Abdeckung beim Bootstrap fail-closed validieren
 
 ## 3. Aktivierungsrichtlinien implementieren
 
@@ -18,6 +20,7 @@
 - [x] 3.3 Richtlinien-Reconcile für neue und bestehende Instanzen concurrency-sicher implementieren
 - [x] 3.4 Persistente Deaktivierung von `automatic` und Deaktivierungsverbot für `required` umsetzen
 - [x] 3.5 Migration bestehender Plugins und Erhalt vorhandener Modulzuweisungen testen
+- [x] 3.6 Berechtigungen inaktiver oder entfernter Module zentral aus der effektiven Permission-Auflösung filtern
 
 ## 4. UI, Audit und Dokumentation
 

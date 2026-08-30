@@ -172,4 +172,37 @@ describe('PluginReadinessCard', () => {
     expect(screen.getByRole('status').textContent).toContain('Plugin-Status wird geladen');
     expect(screen.getByRole('alert').textContent).toContain('Dienst nicht verfügbar');
   });
+
+  it('offers repair after a terminal failure even when the last checks were ready', () => {
+    const onRepair = vi.fn().mockResolvedValue(undefined);
+    render(
+      <PluginReadinessCard
+        plugins={[
+          pluginFixture({
+            status: 'blocked',
+            error: { code: 'reconcile_failed', retryKind: 'terminal' },
+            activeJobId: undefined,
+            checks: [
+              {
+                checkId: 'configuration',
+                titleKey: 'plugins.speechFlow.readiness.configuration',
+                required: true,
+                repairOperation: 'reconcile',
+                status: 'ready',
+              },
+            ],
+          }),
+        ]}
+        isLoading={false}
+        activeAction={null}
+        error={null}
+        onRepair={onRepair}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reparatur für Plugin speech-flow starten' })
+    );
+    expect(onRepair).toHaveBeenCalledWith('speech-flow', 'reconcile');
+  });
 });

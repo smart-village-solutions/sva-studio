@@ -68,7 +68,7 @@ const createDependencies = () => ({
   createJob: vi.fn(async () => job),
   queueJob: vi.fn(async () => undefined),
   persistEnqueueFailure: vi.fn(async () => undefined),
-  markClaimConflict: vi.fn(async () => undefined),
+  markUnclaimedJobFailed: vi.fn(async () => undefined),
 });
 
 const input = {
@@ -137,9 +137,27 @@ describe('plugin tenant lifecycle orchestrator', () => {
     await expect(
       createPluginTenantLifecycleOrchestrator(dependencies).start(input)
     ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.claimConflict}:speech:provision`);
-    expect(dependencies.markClaimConflict).toHaveBeenCalledWith({
+    expect(dependencies.markUnclaimedJobFailed).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       job,
+      errorCode: pluginTenantLifecycleHostErrorCodes.claimConflict,
+    });
+    expect(dependencies.queueJob).not.toHaveBeenCalled();
+  });
+
+  it('marks an already-created job terminal when lifecycle claiming throws', async () => {
+    const dependencies = createDependencies();
+    dependencies.repository.claimLifecycle.mockRejectedValueOnce(
+      new Error('lifecycle database unavailable')
+    );
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.claimFailed}:speech:provision`);
+    expect(dependencies.markUnclaimedJobFailed).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      job,
+      errorCode: pluginTenantLifecycleHostErrorCodes.claimFailed,
     });
     expect(dependencies.queueJob).not.toHaveBeenCalled();
   });

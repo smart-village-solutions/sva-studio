@@ -124,19 +124,29 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
 }): void => {
   const activationPolicies = copySnapshot(input.activationPolicies);
   const moduleIamRegistry = copyModuleIamRegistry(input.moduleIamContracts);
+  const activationPolicyByModuleId = new Map(
+    activationPolicies.modules.map((module) => [module.moduleId, module] as const)
+  );
   const tenantLifecycleRegistry = new Map(
-    input.tenantLifecycles.map((lifecycle) => [
-      lifecycle.pluginId,
-      Object.freeze({
-        ...lifecycle,
-        operations: Object.freeze(
-          lifecycle.operations.map((operation) => Object.freeze({ ...operation }))
-        ),
-        readinessChecks: Object.freeze(
-          lifecycle.readinessChecks.map((check) => Object.freeze({ ...check }))
-        ),
-      }),
-    ])
+    input.tenantLifecycles.map((lifecycle) => {
+      const activationPolicy = activationPolicyByModuleId.get(lifecycle.pluginId);
+      if (!activationPolicy) {
+        throw new Error(`plugin_tenant_lifecycle_activation_policy_missing:${lifecycle.pluginId}`);
+      }
+      return [
+        lifecycle.pluginId,
+        Object.freeze({
+          ...lifecycle,
+          contractRevision: `${activationPolicy.policyRevision}:${lifecycle.contractVersion}`,
+          operations: Object.freeze(
+            lifecycle.operations.map((operation) => Object.freeze({ ...operation }))
+          ),
+          readinessChecks: Object.freeze(
+            lifecycle.readinessChecks.map((check) => Object.freeze({ ...check }))
+          ),
+        }),
+      ] as const;
+    })
   );
   if (tenantLifecycleRegistry.size !== input.tenantLifecycles.length) {
     throw new Error('plugin_tenant_lifecycle_duplicate_plugin');

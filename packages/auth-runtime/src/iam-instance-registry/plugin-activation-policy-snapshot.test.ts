@@ -116,6 +116,7 @@ describe('instance registry plugin activation policy snapshot', () => {
     expect(Object.isFrozen(readInstanceRegistryModuleIamRegistry().get('ssf'))).toBe(true);
     expect(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')).toEqual({
       pluginId: 'ssf',
+      contractRevision: 'ssf-1:1',
       contractVersion: 1,
       operations: [{ operation: 'provision', jobTypeId: 'ssf.provisionTenant' }],
       readinessChecks: [],

@@ -50,6 +50,7 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
         'speech',
         {
           pluginId: 'speech',
+          contractRevision: '1.0.0:1',
           contractVersion: 1,
           operations: [{ operation: 'provision', jobTypeId: 'speech.provisionTenant' }],
           readinessChecks: state.readinessChecks,
@@ -219,12 +220,28 @@ describe('configured plugin tenant lifecycle runtime', () => {
       readinessStatus: 'ready',
       desiredGeneration: 3,
       completedGeneration: 3,
+      readinessRevision: JSON.stringify(['1.0.0:1', 'schema:3']),
     });
     const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
 
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
 
     expect(state.createStudioJob).not.toHaveBeenCalled();
+  });
+
+  it('re-provisions when readiness evidence belongs to an older plugin contract', async () => {
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      readinessStatus: 'ready',
+      desiredGeneration: 3,
+      completedGeneration: 3,
+      readinessRevision: JSON.stringify(['0.9.0:1', 'schema:3']),
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalled();
   });
 
   it('durably schedules automatic provisioning for the declared retry deadline', async () => {

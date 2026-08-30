@@ -379,6 +379,51 @@ describe('plugin tenant lifecycle contracts', () => {
     });
   });
 
+  it('binds readiness evidence to the current plugin lifecycle contract', () => {
+    const definition = {
+      pluginId: 'speech',
+      contractRevision: 'manifest-v2:1',
+      ...tenantLifecycle,
+    };
+    const snapshot = createPluginTenantReadinessSnapshot({
+      definition,
+      pluginId: 'speech',
+      instanceId: 'tenant-a',
+      generation: 3,
+      result: {
+        revision: 'schema:3',
+        checks: [{ checkId: 'speech.databaseSchema', status: 'ready' }],
+      },
+      updatedAt: '2026-08-30T12:05:00.000Z',
+    });
+
+    expect(snapshot.revision).toBe(JSON.stringify(['manifest-v2:1', 'schema:3']));
+    const staleModel = createPluginTenantReadinessReadModel({
+      definition,
+      activation: {
+        activationPolicy: 'required',
+        effectiveActive: true,
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      },
+      evidence: {
+        accessState: 'active',
+        readinessStatus: 'ready',
+        desiredOperation: 'provision',
+        desiredGeneration: 3,
+        completedGeneration: 3,
+        readinessRevision: JSON.stringify(['manifest-v1:1', 'schema:3']),
+        readinessChecks: snapshot.checks,
+        updatedAt: snapshot.updatedAt,
+      },
+    });
+
+    expect(staleModel).toMatchObject({ evidenceState: 'invalid' });
+    expect(evaluatePluginTenantAccess(staleModel)).toEqual({
+      allowed: false,
+      reason: 'evidence_invalid',
+    });
+  });
+
   it('keeps access pending while a newer lifecycle generation is incomplete', () => {
     const model = createPluginTenantReadinessReadModel({
       definition: { pluginId: 'speech', ...tenantLifecycle },

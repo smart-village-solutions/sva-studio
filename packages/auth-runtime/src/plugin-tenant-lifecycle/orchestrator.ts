@@ -16,6 +16,7 @@ export const pluginTenantLifecycleHostErrorCodes = {
   handlerMissing: 'plugin_tenant_lifecycle_handler_missing',
   cancellationMismatch: 'plugin_tenant_lifecycle_cancellation_mismatch',
   claimConflict: 'plugin_tenant_lifecycle_claim_conflict',
+  claimFailed: 'plugin_tenant_lifecycle_claim_failed',
   jobCreationFailed: 'plugin_tenant_lifecycle_job_creation_failed',
   enqueueFailed: 'plugin_tenant_lifecycle_enqueue_failed',
 } as const;
@@ -65,9 +66,10 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
     readonly job: StudioJobRecord;
     readonly generation: number;
   }) => Promise<void>;
-  readonly markClaimConflict: (input: {
+  readonly markUnclaimedJobFailed: (input: {
     readonly instanceId: string;
     readonly job: StudioJobRecord;
+    readonly errorCode: string;
   }) => Promise<void>;
 };
 
@@ -206,6 +208,31 @@ const createLifecycleJob = async (
   }
 };
 
+const terminalizeUnclaimedJob = async (
+  dependencies: PluginTenantLifecycleOrchestratorDependencies,
+  input: StartPluginTenantLifecycleInput,
+  job: StudioJobRecord,
+  errorCode: string
+): Promise<void> => {
+  try {
+    await dependencies.markUnclaimedJobFailed({ instanceId: input.instanceId, job, errorCode });
+  } catch (persistenceError) {
+    dependencies.logger.error(
+      'Plugin-Tenant-Lifecycle konnte einen nicht beanspruchten Job nicht terminalisieren',
+      {
+        operation: 'plugin_tenant_lifecycle_claim_cleanup',
+        result: 'secondary_failure',
+        error_code: 'plugin_tenant_lifecycle_claim_cleanup_failed',
+        instance_id: input.instanceId,
+        plugin_id: input.pluginId,
+        job_id: job.id,
+        persistence_error_type:
+          persistenceError instanceof Error ? persistenceError.name : typeof persistenceError,
+      }
+    );
+  }
+};
+
 export const createPluginTenantLifecycleOrchestrator = (
   dependencies: PluginTenantLifecycleOrchestratorDependencies
 ) => ({
@@ -231,15 +258,35 @@ export const createPluginTenantLifecycleOrchestrator = (
       requestId: input.requestId,
       scheduledAt: input.scheduledAt,
     });
-    const claimedLifecycle = await dependencies.repository.claimLifecycle({
-      instanceId: input.instanceId,
-      pluginId: input.pluginId,
-      jobId: job.id,
-      generation,
-      operation: input.operation,
-    });
+    let claimedLifecycle;
+    try {
+      claimedLifecycle = await dependencies.repository.claimLifecycle({
+        instanceId: input.instanceId,
+        pluginId: input.pluginId,
+        jobId: job.id,
+        generation,
+        operation: input.operation,
+      });
+    } catch {
+      await terminalizeUnclaimedJob(
+        dependencies,
+        input,
+        job,
+        pluginTenantLifecycleHostErrorCodes.claimFailed
+      );
+      throw lifecycleError(
+        pluginTenantLifecycleHostErrorCodes.claimFailed,
+        input.pluginId,
+        input.operation
+      );
+    }
     if (!claimedLifecycle) {
-      await dependencies.markClaimConflict({ instanceId: input.instanceId, job });
+      await terminalizeUnclaimedJob(
+        dependencies,
+        input,
+        job,
+        pluginTenantLifecycleHostErrorCodes.claimConflict
+      );
       throw lifecycleError(
         pluginTenantLifecycleHostErrorCodes.claimConflict,
         input.pluginId,

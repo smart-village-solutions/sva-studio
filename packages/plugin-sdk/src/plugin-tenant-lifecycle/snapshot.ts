@@ -1,5 +1,6 @@
 import { normalizePluginIdentifier, normalizePluginNamespace } from '../plugin-identifiers.js';
 import { assertOwnedNamespacedIdentifier } from './identifiers.js';
+import { encodePluginTenantReadinessRevision } from './revision.js';
 import type {
   PluginTenantLifecycleDefinition,
   PluginTenantLifecycleExecutionResult,
@@ -26,7 +27,7 @@ export const reducePluginTenantReadinessStatus = (
   }, 'ready');
 
 export const createPluginTenantReadinessSnapshot = (input: {
-  readonly definition: PluginTenantLifecycleDefinition;
+  readonly definition: PluginTenantLifecycleDefinition & { readonly contractRevision?: string };
   readonly pluginId: string;
   readonly instanceId: string;
   readonly generation: number;
@@ -71,7 +72,9 @@ export const createPluginTenantReadinessSnapshot = (input: {
     pluginId: pluginNamespace,
     instanceId: input.instanceId,
     generation: input.generation,
-    revision,
+    revision: input.definition.contractRevision
+      ? encodePluginTenantReadinessRevision(input.definition.contractRevision, revision)
+      : revision,
     status: reducePluginTenantReadinessStatus(input.definition, checks),
     checks,
     updatedAt: input.updatedAt,

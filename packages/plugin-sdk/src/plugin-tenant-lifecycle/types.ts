@@ -31,6 +31,7 @@ export type PluginTenantLifecycleDefinition = {
 
 export type PluginTenantLifecycleRegistryEntry = PluginTenantLifecycleDefinition & {
   readonly pluginId: string;
+  readonly contractRevision?: string;
 };
 
 export type PluginTenantReadinessStatus = 'pending' | 'ready' | 'degraded' | 'blocked';

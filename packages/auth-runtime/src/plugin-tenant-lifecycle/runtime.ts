@@ -146,11 +146,11 @@ export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLif
       }),
     queueJob: queuePluginOperationJob,
     persistEnqueueFailure: persistLifecycleEnqueueFailure,
-    markClaimConflict: ({ instanceId, job }) =>
+    markUnclaimedJobFailed: ({ instanceId, job, errorCode }) =>
       markStudioJobEnqueueFailed({
         instanceId,
         job,
-        errorCode: 'plugin_tenant_lifecycle_claim_conflict',
+        errorCode,
       }),
   }).start(input);
 

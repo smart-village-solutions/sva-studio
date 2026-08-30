@@ -8,6 +8,7 @@ import type {
   PluginTenantReadinessStatus,
 } from './types.js';
 import { reducePluginTenantReadinessStatus } from './snapshot.js';
+import { parsePluginTenantReadinessRevision } from './revision.js';
 
 const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
 
@@ -52,6 +53,7 @@ type ParsedEvidence = {
   readonly evidenceState: PluginTenantReadinessReadModel['evidenceState'];
   readonly status: PluginTenantReadinessStatus;
   readonly checks: PluginTenantReadinessReadModel['checks'];
+  readonly readinessRevision?: string;
 };
 
 const parseEvidence = (
@@ -65,9 +67,14 @@ const parseEvidence = (
     Boolean(check)
   );
   const persistedChecks = new Map(validChecks.map((check) => [check.checkId, check]));
+  const revision = parsePluginTenantReadinessRevision({
+    contractRevision: definition.contractRevision,
+    persistedRevision: evidence?.readinessRevision,
+  });
   const evidenceInvalid = Boolean(
     evidence &&
-    (validChecks.length !== rawChecks.length ||
+    (!revision.current ||
+      validChecks.length !== rawChecks.length ||
       persistedChecks.size !== validChecks.length ||
       validChecks.some(({ checkId }) => !declaredCheckIds.has(checkId)) ||
       definition.readinessChecks.some(({ checkId }) => !persistedChecks.has(checkId)))
@@ -96,6 +103,7 @@ const parseEvidence = (
         status: 'pending' as const,
       }),
     })),
+    ...(revision.readinessRevision ? { readinessRevision: revision.readinessRevision } : {}),
   };
 };
 
@@ -135,7 +143,7 @@ export const createPluginTenantReadinessReadModel = (input: {
     desiredGeneration: input.evidence?.desiredGeneration ?? 0,
     completedGeneration: input.evidence?.completedGeneration ?? 0,
     ...(input.evidence?.activeJobId ? { activeJobId: input.evidence.activeJobId } : {}),
-    ...(input.evidence?.readinessRevision ? { revision: input.evidence.readinessRevision } : {}),
+    ...(parsed.readinessRevision ? { revision: parsed.readinessRevision } : {}),
     checks: parsed.checks,
     ...(error ? { error } : {}),
     updatedAt: input.evidence?.updatedAt ?? input.activation.updatedAt,

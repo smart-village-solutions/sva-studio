@@ -847,3 +847,9 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 - `@sva/auth-runtime` besitzt lokalen atomaren Transfer, Zielkatalog, Mainserver-Zielauflösung, Lock und Journalanreicherung.
 - `@sva/sva-mainserver` besitzt typspezifische Pre-Reads, Provider-Write, Ergebnisvalidierung und Reconciliation.
 - `@sva/studio-ui-react` besitzt das gemeinsame Inhaberpanel sowie Editor- und Save-Slots; Plugins enthalten keine eigene Zielauflösung.
+
+### Ergänzung 2026-08: gemeinsame Editor-Primitiven
+
+- `@sva/plugin-sdk` besitzt List-Search-Normalisierung, Map-/Geocoding-Client und den schmalen öffentlichen Subpath `content-media`.
+- `@sva/studio-ui-react` besitzt den Map-Lifecycle, Media-Picker-Konfiguration sowie den Media-Reference-Sync-Controller und seine Retry-Aktion.
+- Plugins besitzen weiterhin Payload, Mutation, Navigation, Übersetzung und bundlelokales Laden der MapLibre-Runtime.

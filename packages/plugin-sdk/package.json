@@ -18,6 +18,10 @@
     "./route-documentation": {
       "types": "./dist/route-documentation.d.ts",
       "default": "./dist/route-documentation.js"
+    },
+    "./content-media": {
+      "types": "./dist/content-media-contracts-public-api.d.ts",
+      "default": "./dist/content-media-contracts-public-api.js"
     }
   },
   "dependencies": {

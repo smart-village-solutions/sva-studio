@@ -1,5 +1,11 @@
 import * as React from 'react';
-import type { MapGeocodingFeature } from '@sva/plugin-sdk';
+import {
+  geocodeHostMapAddress,
+  getHostMapGeocodingConfig,
+  reverseGeocodeHostCoordinates,
+  type MapGeocodingFeature,
+} from '@sva/plugin-sdk';
+import { parseStudioCoordinate } from '@sva/studio-ui-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
 import type { PoiDetailFormValues } from './poi.detail-form.js';
@@ -11,12 +17,6 @@ import {
   type PoiOperatorTextFieldPath,
   type PoiOperatorWebUrlUpdate,
 } from './poi.detail-operator-shared.js';
-import { parseCoordinate } from './poi.location-map.shared.js';
-import {
-  geocodeMapAddress,
-  getMapGeocodingConfig,
-  reverseMapCoordinates,
-} from './poi.map-geocoding-client.js';
 import { resolvePoiMapGeocodingMessageKey } from './poi.map-geocoding-messages.js';
 
 type Translate = (key: string) => string;
@@ -29,7 +29,7 @@ const usePoiOperatorMapConfig = () => {
 
   React.useEffect(() => {
     let active = true;
-    void getMapGeocodingConfig()
+    void getHostMapGeocodingConfig()
       .then((config) => {
         if (!active) return;
         setGeocodingEnabled(config.geocodeEnabled);
@@ -147,8 +147,8 @@ const usePoiOperatorGeocoding = ({
   const [error, setError] = React.useState<string | null>(null);
   const [geocoding, setGeocoding] = React.useState(false);
   const [reverseGeocoding, setReverseGeocoding] = React.useState(false);
-  const latitude = parseCoordinate(values.latitude);
-  const longitude = parseCoordinate(values.longitude);
+  const latitude = parseStudioCoordinate(values.latitude);
+  const longitude = parseStudioCoordinate(values.longitude);
   const addressValues = {
     locationName: values.locationName,
     street: values.street,
@@ -167,7 +167,7 @@ const usePoiOperatorGeocoding = ({
     setError(null);
     try {
       applySearchResult(
-        await geocodeMapAddress({ address: createPoiOperatorGeocodingAddress(addressValues) })
+        await geocodeHostMapAddress({ address: createPoiOperatorGeocodingAddress(addressValues) })
       );
       setMapError(null);
     } catch (cause) {
@@ -185,7 +185,9 @@ const usePoiOperatorGeocoding = ({
     setReverseGeocoding(true);
     setError(null);
     try {
-      applyReverseGeocodeResult(await reverseMapCoordinates({ latitude, longitude }));
+      applyReverseGeocodeResult(
+        await reverseGeocodeHostCoordinates({ coordinates: { latitude, longitude } })
+      );
       setMapError(null);
     } catch (cause) {
       setError(pt(resolvePoiMapGeocodingMessageKey(cause)));

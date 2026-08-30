@@ -1,12 +1,22 @@
 import * as React from 'react';
-import type { MapGeocodingFeature } from '@sva/plugin-sdk';
-import { Alert, AlertDescription, Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import {
+  geocodeHostMapAddress,
+  reverseGeocodeHostCoordinates,
+  type MapGeocodingFeature,
+} from '@sva/plugin-sdk';
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Input,
+  parseStudioCoordinate,
+  StudioField,
+  StudioFieldGroup,
+} from '@sva/studio-ui-react';
 
 import { PoiDetailSectionCard } from './poi.detail-section-card.js';
 import { PoiLocationMap } from './poi.location-map.js';
 import { resolvePoiMapGeocodingMessageKey } from './poi.map-geocoding-messages.js';
-import { geocodeMapAddress, reverseMapCoordinates } from './poi.map-geocoding-client.js';
-import { parseCoordinate } from './poi.location-map.shared.js';
 
 type PoiDetailLocationSectionProps = Readonly<{
   pt: (key: string) => string;
@@ -65,8 +75,8 @@ export function PoiDetailLocationSection({
     street.trim().length > 0 ||
     zip.trim().length > 0 ||
     city.trim().length > 0;
-  const parsedLatitude = parseCoordinate(latitude);
-  const parsedLongitude = parseCoordinate(longitude);
+  const parsedLatitude = parseStudioCoordinate(latitude);
+  const parsedLongitude = parseStudioCoordinate(longitude);
   const hasReverseGeocodingInput = parsedLatitude !== null && parsedLongitude !== null;
 
   const handleGeocode = React.useCallback(async () => {
@@ -86,7 +96,7 @@ export function PoiDetailLocationSection({
     setIsGeocoding(true);
     setGeocodingError(null);
     try {
-      const result = await geocodeMapAddress({ address });
+      const result = await geocodeHostMapAddress({ address });
       onApplyResult(result);
       onMapError(null);
     } catch (error) {
@@ -94,7 +104,17 @@ export function PoiDetailLocationSection({
     } finally {
       setIsGeocoding(false);
     }
-  }, [city, geocodingEnabled, hasGeocodingInput, locationName, onApplyResult, onMapError, pt, street, zip]);
+  }, [
+    city,
+    geocodingEnabled,
+    hasGeocodingInput,
+    locationName,
+    onApplyResult,
+    onMapError,
+    pt,
+    street,
+    zip,
+  ]);
 
   const handleReverseGeocode = React.useCallback(async () => {
     if (!reverseGeocodingEnabled || parsedLatitude === null || parsedLongitude === null) {
@@ -105,9 +125,8 @@ export function PoiDetailLocationSection({
     setIsReverseGeocoding(true);
     setGeocodingError(null);
     try {
-      const result = await reverseMapCoordinates({
-        latitude: parsedLatitude,
-        longitude: parsedLongitude,
+      const result = await reverseGeocodeHostCoordinates({
+        coordinates: { latitude: parsedLatitude, longitude: parsedLongitude },
       });
       onApplyReverseGeocodeResult(result);
       onMapError(null);
@@ -116,28 +135,55 @@ export function PoiDetailLocationSection({
     } finally {
       setIsReverseGeocoding(false);
     }
-  }, [onApplyReverseGeocodeResult, onMapError, parsedLatitude, parsedLongitude, pt, reverseGeocodingEnabled]);
+  }, [
+    onApplyReverseGeocodeResult,
+    onMapError,
+    parsedLatitude,
+    parsedLongitude,
+    pt,
+    reverseGeocodingEnabled,
+  ]);
 
   return (
-    <PoiDetailSectionCard title={pt('cards.location.address.title')} description={pt('cards.location.address.description')}>
+    <PoiDetailSectionCard
+      title={pt('cards.location.address.title')}
+      description={pt('cards.location.address.description')}
+    >
       <StudioFieldGroup columns={2}>
         <StudioField id="poi-location-name" label={pt('fields.locationName')}>
-          <Input id="poi-location-name" value={locationName} onChange={(event) => onLocationNameChange(event.target.value)} />
+          <Input
+            id="poi-location-name"
+            value={locationName}
+            onChange={(event) => onLocationNameChange(event.target.value)}
+          />
         </StudioField>
         <StudioField id="poi-street" label={pt('fields.street')}>
-          <Input id="poi-street" value={street} onChange={(event) => onStreetChange(event.target.value)} />
+          <Input
+            id="poi-street"
+            value={street}
+            onChange={(event) => onStreetChange(event.target.value)}
+          />
         </StudioField>
         <StudioField id="poi-zip" label={pt('fields.zip')}>
           <Input id="poi-zip" value={zip} onChange={(event) => onZipChange(event.target.value)} />
         </StudioField>
         <StudioField id="poi-city" label={pt('fields.city')}>
-          <Input id="poi-city" value={city} onChange={(event) => onCityChange(event.target.value)} />
+          <Input
+            id="poi-city"
+            value={city}
+            onChange={(event) => onCityChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
 
       {hasGeocodingInput || hasReverseGeocodingInput ? (
         <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="secondary" onClick={() => void handleGeocode()} disabled={isGeocoding}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleGeocode()}
+            disabled={isGeocoding}
+          >
             {isGeocoding ? pt('actions.geocodingAddress') : pt('actions.geocodeAddress')}
           </Button>
           <Button
@@ -146,7 +192,9 @@ export function PoiDetailLocationSection({
             onClick={() => void handleReverseGeocode()}
             disabled={isReverseGeocoding || !hasReverseGeocodingInput}
           >
-            {isReverseGeocoding ? pt('actions.reverseGeocodingAddress') : pt('actions.reverseGeocodeAddress')}
+            {isReverseGeocoding
+              ? pt('actions.reverseGeocodingAddress')
+              : pt('actions.reverseGeocodeAddress')}
           </Button>
         </div>
       ) : null}
@@ -163,7 +211,9 @@ export function PoiDetailLocationSection({
           latitude={latitude}
           longitude={longitude}
           onCoordinatesChange={onCoordinatesChange}
-          onError={(message) => onMapError(message === 'map_error' ? pt('messages.locationMapError') : null)}
+          onError={(message) =>
+            onMapError(message === 'map_error' ? pt('messages.locationMapError') : null)
+          }
         />
       ) : (
         <Alert>
@@ -179,10 +229,18 @@ export function PoiDetailLocationSection({
 
       <StudioFieldGroup columns={2}>
         <StudioField id="poi-latitude" label={pt('fields.latitude')}>
-          <Input id="poi-latitude" value={latitude} onChange={(event) => onLatitudeChange(event.target.value)} />
+          <Input
+            id="poi-latitude"
+            value={latitude}
+            onChange={(event) => onLatitudeChange(event.target.value)}
+          />
         </StudioField>
         <StudioField id="poi-longitude" label={pt('fields.longitude')}>
-          <Input id="poi-longitude" value={longitude} onChange={(event) => onLongitudeChange(event.target.value)} />
+          <Input
+            id="poi-longitude"
+            value={longitude}
+            onChange={(event) => onLongitudeChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
     </PoiDetailSectionCard>

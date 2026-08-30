@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { normalizeListSearch, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   StudioEmptyState,
@@ -11,7 +11,6 @@ import {
 
 import { listGenericItems } from './generic-items.api.js';
 import { GenericItemsDetailPage } from './generic-items.detail-page.js';
-import { normalizeListSearch } from './list-pagination.js';
 import type { GenericItemListResult } from './generic-items.api-types.js';
 import { GenericItemsDataTable, GenericItemsPagination } from './generic-items.pages.parts.js';
 

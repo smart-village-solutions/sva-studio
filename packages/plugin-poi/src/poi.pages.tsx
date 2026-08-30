@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { normalizeListSearch, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   StudioDataTable,
@@ -12,7 +12,6 @@ import {
 
 import { listPoi } from './poi.api.js';
 import { PoiDetailPage } from './poi.detail-page.js';
-import { normalizeListSearch } from './list-pagination.js';
 import type { PoiContentItem, PoiListResult } from './poi.types.js';
 
 type ListSearchState = Record<string, unknown>;

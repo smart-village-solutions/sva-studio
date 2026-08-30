@@ -616,3 +616,9 @@ Referenzen:
 - Restrisiko: Die feste Reihenfolge der Regeln ist fachlich relevant und kann bei späteren Erweiterungen versehentlich verändert werden. Maßnahme: Reihenfolge in der Orchestrierung sichtbar halten und jede neue Regel mit kombinatorischen Characterization-Tests gegen benachbarte Regeln absichern.
 - Restrisiko: Ein Zeitfenster ohne explizite `currentTime` verwendet weiterhin die aktuelle UTC-Uhrzeit. Maßnahme: Vertrag unverändert lassen und Tests sowie Diagnosepfade mit expliziter Referenzzeit ausführen.
 - Restrisiko: Force-Deny liefert im bestehenden Vertrag keine Permission-Provenance. Maßnahme: Ist-Verhalten explizit testen; eine fachliche Erweiterung nur als separaten IAM-Vertragschange durchführen.
+
+### Fortschreibung 2026-08: gemeinsame Editor-Primitiven
+
+- Restrisiko: Die MapLibre-Runtime-Loader bleiben dreifach bundlelokal. Maßnahme: bewusst beibehalten, solange eine Konsolidierung die Map-Dependency in `studio-ui-react` ziehen würde; die eigentliche Lifecycle-Logik ist bereits gemeinsam.
+- Restrisiko: Der Media-Reference-Controller abstrahiert keine fachliche Navigation. Maßnahme: Navigation bleibt als expliziter Consumer-Callback und wird besonders für bereits angelegte News- und Project-Inhalte getestet.
+- Risiko: Ein breiter SDK-Import könnte eine zyklische Ownership erzeugen. Maßnahme: `workspace:*` nur für den Subpath `@sva/plugin-sdk/content-media`; ESLint verbietet Root- und Fremd-Subpath-Imports in `studio-ui-react`.

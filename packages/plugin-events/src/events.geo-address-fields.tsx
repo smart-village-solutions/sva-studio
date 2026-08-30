@@ -1,10 +1,17 @@
 import * as React from 'react';
-import { Alert, AlertDescription, Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { geocodeHostMapAddress, reverseGeocodeHostCoordinates } from '@sva/plugin-sdk';
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Input,
+  parseStudioCoordinate,
+  StudioField,
+  StudioFieldGroup,
+} from '@sva/studio-ui-react';
 
 import { EventsLocationMap } from './events.location-map.js';
 import { resolveEventsMapGeocodingMessageKey } from './events.map-geocoding-messages.js';
-import { geocodeMapAddress, reverseMapCoordinates } from './events.map-geocoding-client.js';
-import { parseCoordinate } from './events.location-map.shared.js';
 
 type Translator = (key: string) => string;
 
@@ -68,9 +75,12 @@ export function EventsGeoAddressFields({
   const [isGeocoding, setIsGeocoding] = React.useState(false);
   const [isReverseGeocoding, setIsReverseGeocoding] = React.useState(false);
   const hasGeocodingInput =
-    addition.trim().length > 0 || street.trim().length > 0 || zip.trim().length > 0 || city.trim().length > 0;
-  const parsedLatitude = parseCoordinate(latitude);
-  const parsedLongitude = parseCoordinate(longitude);
+    addition.trim().length > 0 ||
+    street.trim().length > 0 ||
+    zip.trim().length > 0 ||
+    city.trim().length > 0;
+  const parsedLatitude = parseStudioCoordinate(latitude);
+  const parsedLongitude = parseStudioCoordinate(longitude);
   const hasReverseGeocodingInput = parsedLatitude !== null && parsedLongitude !== null;
   const geoLocationError = latitudeError ?? longitudeError;
 
@@ -91,7 +101,7 @@ export function EventsGeoAddressFields({
     setIsGeocoding(true);
     setGeocodingError(null);
     try {
-      const result = await geocodeMapAddress({ address });
+      const result = await geocodeHostMapAddress({ address });
       onCoordinatesChange({
         latitude: String(result.coordinates.latitude),
         longitude: String(result.coordinates.longitude),
@@ -113,9 +123,8 @@ export function EventsGeoAddressFields({
     setIsReverseGeocoding(true);
     setGeocodingError(null);
     try {
-      const result = await reverseMapCoordinates({
-        latitude: parsedLatitude,
-        longitude: parsedLongitude,
+      const result = await reverseGeocodeHostCoordinates({
+        coordinates: { latitude: parsedLatitude, longitude: parsedLongitude },
       });
       onStreetChange([result.street, result.houseNumber].filter(Boolean).join(' '));
       onZipChange(result.postalCode ?? '');
@@ -126,16 +135,32 @@ export function EventsGeoAddressFields({
     } finally {
       setIsReverseGeocoding(false);
     }
-  }, [onCityChange, onStreetChange, onZipChange, parsedLatitude, parsedLongitude, pt, reverseGeocodingEnabled]);
+  }, [
+    onCityChange,
+    onStreetChange,
+    onZipChange,
+    parsedLatitude,
+    parsedLongitude,
+    pt,
+    reverseGeocodingEnabled,
+  ]);
 
   return (
     <div className="space-y-4">
       <StudioFieldGroup columns={2}>
         <StudioField id={additionId} label={pt('fields.addressAddition')}>
-          <Input id={additionId} value={addition} onChange={(event) => onAdditionChange(event.target.value)} />
+          <Input
+            id={additionId}
+            value={addition}
+            onChange={(event) => onAdditionChange(event.target.value)}
+          />
         </StudioField>
         <StudioField id={streetId} label={pt('fields.street')}>
-          <Input id={streetId} value={street} onChange={(event) => onStreetChange(event.target.value)} />
+          <Input
+            id={streetId}
+            value={street}
+            onChange={(event) => onStreetChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
       <StudioFieldGroup columns={2}>
@@ -149,7 +174,12 @@ export function EventsGeoAddressFields({
 
       {hasGeocodingInput || hasReverseGeocodingInput ? (
         <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="secondary" onClick={() => void handleGeocode()} disabled={isGeocoding}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleGeocode()}
+            disabled={isGeocoding}
+          >
             {isGeocoding ? pt('actions.geocodingAddress') : pt('actions.geocodeAddress')}
           </Button>
           <Button
@@ -158,7 +188,9 @@ export function EventsGeoAddressFields({
             onClick={() => void handleReverseGeocode()}
             disabled={isReverseGeocoding || !hasReverseGeocodingInput}
           >
-            {isReverseGeocoding ? pt('actions.reverseGeocodingAddress') : pt('actions.reverseGeocodeAddress')}
+            {isReverseGeocoding
+              ? pt('actions.reverseGeocodingAddress')
+              : pt('actions.reverseGeocodeAddress')}
           </Button>
         </div>
       ) : null}
@@ -175,7 +207,9 @@ export function EventsGeoAddressFields({
           latitude={latitude}
           longitude={longitude}
           onCoordinatesChange={onCoordinatesChange}
-          onError={(message) => setMapError(message === 'map_error' ? pt('messages.locationMapError') : null)}
+          onError={(message) =>
+            setMapError(message === 'map_error' ? pt('messages.locationMapError') : null)
+          }
         />
       ) : (
         <Alert>
@@ -190,7 +224,12 @@ export function EventsGeoAddressFields({
       ) : null}
 
       <StudioFieldGroup columns={2}>
-        <StudioField id={latitudeId} label={pt('fields.latitude')} error={geoLocationError} errorId={`${latitudeId}-error`}>
+        <StudioField
+          id={latitudeId}
+          label={pt('fields.latitude')}
+          error={geoLocationError}
+          errorId={`${latitudeId}-error`}
+        >
           <Input
             id={latitudeId}
             aria-describedby={geoLocationError ? `${latitudeId}-error` : undefined}
@@ -199,7 +238,12 @@ export function EventsGeoAddressFields({
             onChange={(event) => onLatitudeChange(event.target.value)}
           />
         </StudioField>
-        <StudioField id={longitudeId} label={pt('fields.longitude')} error={geoLocationError} errorId={`${longitudeId}-error`}>
+        <StudioField
+          id={longitudeId}
+          label={pt('fields.longitude')}
+          error={geoLocationError}
+          errorId={`${longitudeId}-error`}
+        >
           <Input
             id={longitudeId}
             aria-describedby={geoLocationError ? `${longitudeId}-error` : undefined}

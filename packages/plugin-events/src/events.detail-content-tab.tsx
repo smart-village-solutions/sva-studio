@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
 import {
   Button,
   Checkbox,
@@ -24,7 +25,6 @@ import {
 } from './events.detail-form.js';
 import { EventsDetailCard } from './events.detail-card.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
-import { getMapGeocodingConfig } from './events.map-geocoding-client.js';
 type Translator = (key: string) => string;
 
 const EventCardSection = ({
@@ -124,7 +124,7 @@ export function EventsDetailContentTab({
 
   useEffect(() => {
     let active = true;
-    void getMapGeocodingConfig()
+    void getHostMapGeocodingConfig()
       .then((config) => {
         if (!active) {
           return;

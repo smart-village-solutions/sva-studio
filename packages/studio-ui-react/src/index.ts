@@ -231,6 +231,8 @@ export {
   type StudioMediaPickerReviewSource,
   type StudioMediaPickerUploadPhase,
 } from './studio-media-picker-overlay.js';
+export * from './studio-media-picker-config.js';
+export * from './studio-media-reference-sync.js';
 export { Textarea } from './textarea.js';
 export {
   StudioDetailCard,
@@ -238,6 +240,7 @@ export {
   type StudioDetailCardProps,
   type StudioPaginationProps,
 } from './studio-content-editor-primitives.js';
+export * from './studio-location-map.js';
 export { cn } from './utils.js';
 export {
   StudioContentHistory,

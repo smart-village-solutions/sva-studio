@@ -6,31 +6,31 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 
 ### Nx-Projekte
 
-| Projekt                      | Typ     | Pfad                                   | Zweck                                                                           |
-| ---------------------------- | ------- | -------------------------------------- | ------------------------------------------------------------------------------- |
-| `sva-studio-react`           | App     | `apps/sva-studio-react/`               | TanStack-Start-Frontend                                                         |
-| `auth-runtime`               | Library | `packages/auth-runtime/`               | Authentifizierung, Session, OIDC, Runtime-Routen und Auth-Middleware            |
-| `core`                       | Library | `packages/core/`                       | Framework-agnostische Kernlogik                                                 |
-| `data`                       | Library | `packages/data/`                       | Datenzugriff, Migrationen, Seeds                                                |
-| `data-client`                | Library | `packages/data-client/`                | Client-sicherer HTTP-/Schema-Client                                             |
-| `data-repositories`          | Library | `packages/data-repositories/`          | Serverseitige Repositories und DB-nahe Operationen                              |
-| `iam-admin`                  | Library | `packages/iam-admin/`                  | Benutzer-, Rollen-, Gruppen- und Organisationsverwaltung                        |
-| `iam-core`                   | Library | `packages/iam-core/`                   | Zentrale Autorisierungsverträge und Permission-Entscheidungen                   |
-| `iam-governance`             | Library | `packages/iam-governance/`             | Governance, Rechtstexte und Data-Subject-Rights                                 |
-| `instance-registry`          | Library | `packages/instance-registry/`          | Instanzverwaltung und Keycloak-Provisioning                                     |
-| `media`                      | Library | `packages/media/`                      | Hostseitiger Medienvertrag und Referenz-Capability                              |
-| `monitoring-client`          | Library | `packages/monitoring-client/`          | Logging, Metriken, OTel-Anbindung                                               |
-| `plugin-events`              | Library | `packages/plugin-events/`              | Produktives Events-Plugin für CMS-Erweiterungspunkte                            |
-| `plugin-news`                | Library | `packages/plugin-news/`                | Produktives News-Plugin für CMS-Erweiterungspunkte                              |
-| `plugin-poi`                 | Library | `packages/plugin-poi/`                 | Produktives POI-Plugin für CMS-Erweiterungspunkte                               |
-| `plugin-sdk`                 | Library | `packages/plugin-sdk/`                 | Kanonische Plugin-/Host-Boundary für Metadaten, Registries und Admin-Ressourcen |
-| `routing`                    | Library | `packages/routing/`                    | Typsichere Routing-Factories und Route-Definitionen                             |
-| `server-runtime`             | Library | `packages/server-runtime/`             | Kanonische Server-Runtime-Boundary für Logging, Kontext und Fehlerantworten     |
-| `studio-ui-react`            | Library | `packages/studio-ui-react/`            | Öffentliche React/UI-Basis für Host-Seiten und Plugin-Custom-Views              |
-| `sva-mainserver`             | Library | `packages/sva-mainserver/`             | Serverseitige Integration des externen SVA-Mainservers                          |
-| `waste-management-contracts` | Library | `packages/waste-management-contracts/` | Gemeinsame Waste-Job-, Importprofil- und Abmeldetokenverträge                   |
-| `waste-management-runtime`   | Library | `packages/waste-management-runtime/`   | Host-owned Runtime-Adapter für Waste-Management-Plugin-Jobs                     |
-| `tooling-testing`            | Library | `tooling/testing/`                     | Interne Test-Huelle fuer CI-, Coverage- und Ops-nahe Skriptpruefungen           |
+| Projekt                      | Typ     | Pfad                                   | Zweck                                                                                       |
+| ---------------------------- | ------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `sva-studio-react`           | App     | `apps/sva-studio-react/`               | TanStack-Start-Frontend                                                                     |
+| `auth-runtime`               | Library | `packages/auth-runtime/`               | Authentifizierung, Session, OIDC, Runtime-Routen und Auth-Middleware                        |
+| `core`                       | Library | `packages/core/`                       | Framework-agnostische Kernlogik                                                             |
+| `data`                       | Library | `packages/data/`                       | Datenzugriff, Migrationen, Seeds                                                            |
+| `data-client`                | Library | `packages/data-client/`                | Client-sicherer HTTP-/Schema-Client                                                         |
+| `data-repositories`          | Library | `packages/data-repositories/`          | Serverseitige Repositories und DB-nahe Operationen                                          |
+| `iam-admin`                  | Library | `packages/iam-admin/`                  | Benutzer-, Rollen-, Gruppen- und Organisationsverwaltung                                    |
+| `iam-core`                   | Library | `packages/iam-core/`                   | Zentrale Autorisierungsverträge und Permission-Entscheidungen                               |
+| `iam-governance`             | Library | `packages/iam-governance/`             | Governance, Rechtstexte und Data-Subject-Rights                                             |
+| `instance-registry`          | Library | `packages/instance-registry/`          | Instanzverwaltung und Keycloak-Provisioning                                                 |
+| `media`                      | Library | `packages/media/`                      | Hostseitiger Medienvertrag und Referenz-Capability                                          |
+| `monitoring-client`          | Library | `packages/monitoring-client/`          | Logging, Metriken, OTel-Anbindung                                                           |
+| `plugin-events`              | Library | `packages/plugin-events/`              | Produktives Events-Plugin für CMS-Erweiterungspunkte                                        |
+| `plugin-news`                | Library | `packages/plugin-news/`                | Produktives News-Plugin für CMS-Erweiterungspunkte                                          |
+| `plugin-poi`                 | Library | `packages/plugin-poi/`                 | Produktives POI-Plugin für CMS-Erweiterungspunkte                                           |
+| `plugin-sdk`                 | Library | `packages/plugin-sdk/`                 | Frameworkfreie Plugin-/Host-Verträge einschließlich Pagination, Geocoding und Content-Media |
+| `routing`                    | Library | `packages/routing/`                    | Typsichere Routing-Factories und Route-Definitionen                                         |
+| `server-runtime`             | Library | `packages/server-runtime/`             | Kanonische Server-Runtime-Boundary für Logging, Kontext und Fehlerantworten                 |
+| `studio-ui-react`            | Library | `packages/studio-ui-react/`            | React/UI-Basis einschließlich gemeinsamer Map-, Media-Picker- und Retry-Orchestrierung      |
+| `sva-mainserver`             | Library | `packages/sva-mainserver/`             | Serverseitige Integration des externen SVA-Mainservers                                      |
+| `waste-management-contracts` | Library | `packages/waste-management-contracts/` | Gemeinsame Waste-Job-, Importprofil- und Abmeldetokenverträge                               |
+| `waste-management-runtime`   | Library | `packages/waste-management-runtime/`   | Host-owned Runtime-Adapter für Waste-Management-Plugin-Jobs                                 |
+| `tooling-testing`            | Library | `tooling/testing/`                     | Interne Test-Huelle fuer CI-, Coverage- und Ops-nahe Skriptpruefungen                       |
 
 ## Ordner
 
@@ -42,6 +42,16 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 ## Package-Konventionen und Entscheidungsregeln
 
 Wir unterscheiden Packages nach Rolle und Wiederverwendbarkeit.
+
+### Editor-Primitiven und erlaubte SDK-Richtung
+
+Frameworkfreie Normalisierung und Clientverträge gehören nach
+`@sva/plugin-sdk`; React-Zustand und Darstellung gehören nach
+`@sva/studio-ui-react`; Payloads, Navigation und fachliche Texte bleiben im
+Plugin. `@sva/studio-ui-react` darf ausschließlich den schmalen Subpath
+`@sva/plugin-sdk/content-media` importieren. Der SDK-Root und andere
+SDK-Subpaths sind dort per ESLint gesperrt. Dadurch entsteht keine allgemeine
+Rückkopplung zwischen SDK und UI.
 
 ### 1) Platform Packages (strategisch)
 

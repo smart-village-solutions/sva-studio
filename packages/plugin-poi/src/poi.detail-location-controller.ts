@@ -1,10 +1,13 @@
 import * as React from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
-import type { MapGeocodingFeature } from '@sva/plugin-sdk';
+import { getHostMapGeocodingConfig, type MapGeocodingFeature } from '@sva/plugin-sdk';
 
 import type { PoiDetailFormValues } from './poi.detail-form.js';
-import { getCurrentAddress, getCurrentLocation, joinStreetParts } from './poi.detail-location-shared.js';
-import { getMapGeocodingConfig } from './poi.map-geocoding-client.js';
+import {
+  getCurrentAddress,
+  getCurrentLocation,
+  joinStreetParts,
+} from './poi.detail-location-shared.js';
 
 export const usePoiDetailLocationController = () => {
   const { control, setValue } = useFormContext<PoiDetailFormValues>();
@@ -21,7 +24,7 @@ export const usePoiDetailLocationController = () => {
 
   React.useEffect(() => {
     let active = true;
-    void getMapGeocodingConfig()
+    void getHostMapGeocodingConfig()
       .then((config) => {
         if (!active) {
           return;
@@ -49,7 +52,7 @@ export const usePoiDetailLocationController = () => {
       setValue(`content.location.geoLocation.${axis}`, value, { shouldDirty: true });
       setMapError(null);
     },
-    [setValue],
+    [setValue]
   );
 
   const applySearchResult = React.useCallback(
@@ -62,17 +65,19 @@ export const usePoiDetailLocationController = () => {
       setValue('content.location.geoLocation.longitude', longitude, { shouldDirty: true });
       setMapError(null);
     },
-    [setValue],
+    [setValue]
   );
 
   const applyReverseGeocodeResult = React.useCallback(
     (result: MapGeocodingFeature) => {
-      setValue('content.addresses.0.street', joinStreetParts(result.street, result.houseNumber), { shouldDirty: true });
+      setValue('content.addresses.0.street', joinStreetParts(result.street, result.houseNumber), {
+        shouldDirty: true,
+      });
       setValue('content.addresses.0.zip', result.postalCode ?? '', { shouldDirty: true });
       setValue('content.addresses.0.city', result.city ?? '', { shouldDirty: true });
       setMapError(null);
     },
-    [setValue],
+    [setValue]
   );
 
   return {

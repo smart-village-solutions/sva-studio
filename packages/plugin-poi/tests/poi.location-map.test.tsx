@@ -1,19 +1,23 @@
 import { render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  studioLocationMapDefaultCenter,
+  studioLocationMapDefaultZoom,
+  studioLocationMapFocusedZoom,
+} from '@sva/studio-ui-react';
 
 import { PoiLocationMap } from '../src/poi.location-map.js';
-import {
-  defaultPoiMapCenter,
-  defaultPoiMapZoom,
-  focusedPoiMapZoom,
-} from '../src/poi.location-map.shared.js';
 
 const maplibreState = vi.hoisted(() => ({
   clickHandler: null as null | ((event: { lngLat: { lng: number; lat: number } }) => void),
   errorHandler: null as null | ((event?: unknown) => void),
   markerDragHandler: null as null | (() => void),
   markerLngLat: { lng: 0, lat: 0 },
-  constructorOptions: null as null | { center: [number, number]; zoom: number; attributionControl?: false | Record<string, unknown> },
+  constructorOptions: null as null | {
+    center: [number, number];
+    zoom: number;
+    attributionControl?: false | Record<string, unknown>;
+  },
   mapConstructorCalls: 0,
   setCenter: vi.fn(),
   setZoom: vi.fn(),
@@ -48,7 +52,9 @@ vi.mock('maplibre-gl', () => {
 
     public on(event: string, handler: (...args: never[]) => void) {
       if (event === 'click') {
-        maplibreState.clickHandler = handler as (event: { lngLat: { lng: number; lat: number } }) => void;
+        maplibreState.clickHandler = handler as (event: {
+          lngLat: { lng: number; lat: number };
+        }) => void;
       }
       if (event === 'error') {
         maplibreState.errorHandler = handler as () => void;
@@ -115,7 +121,7 @@ describe('PoiLocationMap', () => {
         styleUrl="https://tiles.example/style.json"
         onCoordinatesChange={onCoordinatesChange}
         onError={() => undefined}
-      />,
+      />
     );
 
     await waitFor(() => {
@@ -130,9 +136,9 @@ describe('PoiLocationMap', () => {
     });
     expect(maplibreState.constructorOptions).toEqual(
       expect.objectContaining({
-        center: [defaultPoiMapCenter.longitude, defaultPoiMapCenter.latitude],
-        zoom: defaultPoiMapZoom,
-      }),
+        center: [studioLocationMapDefaultCenter.longitude, studioLocationMapDefaultCenter.latitude],
+        zoom: studioLocationMapDefaultZoom,
+      })
     );
   });
 
@@ -146,7 +152,7 @@ describe('PoiLocationMap', () => {
         longitude="11.500000"
         onCoordinatesChange={onCoordinatesChange}
         onError={() => undefined}
-      />,
+      />
     );
 
     await waitFor(() => {
@@ -162,11 +168,11 @@ describe('PoiLocationMap', () => {
     expect(maplibreState.constructorOptions).toEqual(
       expect.objectContaining({
         center: [11.5, 48.1],
-        zoom: focusedPoiMapZoom,
-      }),
+        zoom: studioLocationMapFocusedZoom,
+      })
     );
     expect(maplibreState.setCenter).toHaveBeenCalledWith([11.5, 48.1]);
-    expect(maplibreState.setZoom).toHaveBeenCalledWith(focusedPoiMapZoom);
+    expect(maplibreState.setZoom).toHaveBeenCalledWith(studioLocationMapFocusedZoom);
   });
 
   it('does not disable map attribution for provider compliance', async () => {
@@ -175,7 +181,7 @@ describe('PoiLocationMap', () => {
         styleUrl="https://tiles.example/style.json"
         onCoordinatesChange={() => undefined}
         onError={() => undefined}
-      />,
+      />
     );
 
     await waitFor(() => {
@@ -195,7 +201,7 @@ describe('PoiLocationMap', () => {
         longitude="11.500000"
         onCoordinatesChange={() => undefined}
         onError={onError}
-      />,
+      />
     );
 
     await waitFor(() => {
@@ -222,7 +228,7 @@ describe('PoiLocationMap', () => {
         longitude="11.500000"
         onCoordinatesChange={() => undefined}
         onError={() => undefined}
-      />,
+      />
     );
 
     await waitFor(() => {
@@ -236,7 +242,7 @@ describe('PoiLocationMap', () => {
         longitude="11.600000"
         onCoordinatesChange={() => undefined}
         onError={() => undefined}
-      />,
+      />
     );
 
     await waitFor(() => {
@@ -244,6 +250,6 @@ describe('PoiLocationMap', () => {
     });
 
     expect(maplibreState.setCenter).toHaveBeenCalledWith([11.6, 48.2]);
-    expect(maplibreState.setZoom).toHaveBeenCalledWith(focusedPoiMapZoom);
+    expect(maplibreState.setZoom).toHaveBeenCalledWith(studioLocationMapFocusedZoom);
   });
 });

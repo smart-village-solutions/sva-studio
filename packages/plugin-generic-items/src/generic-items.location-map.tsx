@@ -1,7 +1,10 @@
 import * as React from 'react';
+import { useStudioLocationMap } from '@sva/studio-ui-react';
 
-import { useGenericItemsLocationMap } from './generic-items.location-map.hook.js';
-import { loadGenericItemsLocationMapRuntime, type GenericItemsMapLibreModule } from './generic-items.location-map.runtime.js';
+import {
+  loadGenericItemsLocationMapRuntime,
+  type GenericItemsMapLibreModule,
+} from './generic-items.location-map.runtime.js';
 
 export function GenericItemsLocationMap({
   styleUrl,
@@ -40,7 +43,7 @@ export function GenericItemsLocationMap({
     };
   }, [onError]);
 
-  const { containerRef } = useGenericItemsLocationMap({
+  const { containerRef } = useStudioLocationMap({
     runtime,
     styleUrl,
     latitude,
@@ -49,5 +52,10 @@ export function GenericItemsLocationMap({
     onError,
   });
 
-  return <div ref={containerRef} className="min-h-[320px] w-full overflow-hidden rounded-xl border border-border/70" />;
+  return (
+    <div
+      ref={containerRef}
+      className="min-h-[320px] w-full overflow-hidden rounded-xl border border-border/70"
+    />
+  );
 }

@@ -162,7 +162,7 @@ export default [
             },
             {
               sourceTag: 'scope:studio-ui-react',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:studio-ui-react'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk', 'scope:studio-ui-react'],
             },
             {
               sourceTag: 'scope:routing',
@@ -319,6 +319,28 @@ export default [
             {
               group: ['@sva/sdk/*'],
               message: 'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk-Subpaths importieren.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/studio-ui-react/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/plugin-sdk',
+              message: 'Studio UI darf nur den schmalen Content-Media-Vertrag des Plugin-SDK importieren.',
+            },
+          ],
+          patterns: [
+            {
+              regex: '^@sva/plugin-sdk/(?!content-media$).+',
+              message: 'Studio UI darf nur @sva/plugin-sdk/content-media importieren.',
             },
           ],
         },

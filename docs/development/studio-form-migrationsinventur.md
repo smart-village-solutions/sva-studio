@@ -59,3 +59,31 @@ Grundlage: Reale Codeinspektion der im Plan `docs/superpowers/plans/2026-05-21-s
 - Datumslogik mit DST-/Europe-Berlin-Bezug liegt derzeit in manuellen Parsern (`groups`, `legal-texts`, `content`) und sollte in wiederverwendbare RHF-Resolver-Regeln überführt werden.
 - Einige Flows führen pro Submit mehrere Mutationen aus (`groups` Detail, `plugin-poi` mit Host-Media, `instances` Create + Bootstrap als Folgeaktion). Diese Pfade brauchen für die Migration priorisiert MSW-basierte HTTP-Tests statt reinem Hook-Mocking.
 - Gute fast-check-Kandidaten bleiben die konkret benannten Mapper/Validatoren/Sortierfunktionen je Zeile; visuelle Dialoghüllen ohne eigene Logik sind keine primären Kandidaten.
+
+## Fortschreibung 2026-08-30: gemeinsame Editor-Primitiven
+
+Der bereits gelieferte Stand umfasst `StudioDetailCard`, `StudioPagination`,
+`StudioDetailTabs`, Formular-Bridge, Save-Feedback, Media-Picker und
+`saveContentWithHostMediaReferences`. Der aktuelle Refactoring-Slice baut
+ausschließlich die danach verbliebenen Parallelpfade ab.
+
+| Clone-Familie                  | Ausgangslage und Fallow-Fingerprints                                                                              | Gemeinsamer Besitzer                                                                                 | Consumer nach der Migration                                                     | Verbleibender fachlicher Unterschied                                                                                                               |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| List-Search-Normalisierung     | fünf lokale Dateien; `dup:e8ff6dcc`                                                                               | `@sva/plugin-sdk`                                                                                    | Events, Generic Items, POI und Projects; die ungenutzte News-Kopie ist gelöscht | keiner                                                                                                                                             |
+| Map-/Geocoding-Lifecycle       | drei lokale Client-Bridges und neun Hook-/Effects-/Shared-Dateien; `dup:2a61a9ec`, `dup:1e2236db`, `dup:7a93eca0` | Client und Config-Cache: `@sva/plugin-sdk`; React-Lifecycle: `@sva/studio-ui-react`                  | Events, Generic Items und POI                                                   | Die drei bundlelokalen MapLibre-Runtime-/CSS-Loader bleiben bestehen, weil ihre Verlagerung eine Map-Dependency in die gemeinsame UI ziehen würde. |
+| Media-Picker-Konfiguration     | vier lokale Label-/Feedback-Blöcke; `dup:0d62f1bd`                                                                | `@sva/studio-ui-react`                                                                               | Events, Generic Items, News und POI                                             | POI benennt das Titelfeld fachlich als `fields.name`.                                                                                              |
+| Media-Save und Reference-Retry | sechs lokale Retry-Zustände und Statusabbildungen; `dup:ec8131b5`, `dup:378bd117`, `dup:6c623e91`, `dup:4a4d3882` | Verträge: `@sva/plugin-sdk/content-media`; React-Controller und Retry-Aktion: `@sva/studio-ui-react` | Events, Generic Items, News, POI, Projects und Cockpit Cards                    | Payload, Mutation, Texte und Navigation bleiben im jeweiligen Plugin.                                                                              |
+
+Die produktive Bilanz beträgt 1.108 hinzugefügte und 1.644 entfernte
+TypeScript-/TSX-Zeilen, also netto −536 Zeilen. Sie umfasst 16 gelöschte lokale
+Produktionsdateien. Tests sind separat bilanziert: 445 hinzugefügte und 457
+entfernte Zeilen, netto −12. Dokumentation und OpenSpec sind nicht in diesen
+Werten enthalten.
+
+Fallow sank im vollständigen Workspace von 27.706 auf 26.781 duplizierte
+Zeilen und von 7,5667 % auf 7,3240 %. Alle neun erfassten Fingerprints sind
+verschwunden. Die Package-Richtung bleibt einseitig: frameworkfreie Verträge
+liegen im SDK, React-Orchestrierung in der Studio-UI und Fachlogik in den
+Plugins. Die einzige neue Abhängigkeit ist
+`@sva/studio-ui-react` → `@sva/plugin-sdk/content-media`; ein ESLint-Guard
+verbietet dem UI-Package den SDK-Root und alle anderen SDK-Subpaths.

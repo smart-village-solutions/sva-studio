@@ -2,7 +2,6 @@ import * as React from 'react';
 import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
   contentMediaSavePhaseMessageKey,
   fromDatetimeLocalValue,
   getHostMediaAsset,
@@ -36,10 +35,11 @@ import {
   contentMediaUsagesToMainserver,
   createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
+  createStudioMediaPickerLabels,
   isPersistableContentMediaUrl,
   mainserverContentMediaToUsages,
-  revokeContentMediaUsageObjectUrls,
   resolveContentMediaUsageDrafts,
+  resolveStudioMediaPickerFeedback,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
   Select,
@@ -54,13 +54,12 @@ import {
   type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
-  type StudioMediaPickerErrorCode,
-  type StudioMediaPickerOverlayLabels,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   useStudioMediaPickerOverlay,
+  useStudioMediaReferenceSync,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 
@@ -232,79 +231,6 @@ const toNewsMediaPickerDetail = (
   };
 };
 
-const createNewsMediaPickerLabels = (pt: PluginTranslator): StudioMediaPickerOverlayLabels => ({
-  title: pt('messages.mediaPickerTitle'),
-  description: pt('messages.mediaPickerDescription'),
-  modes: {
-    library: pt('messages.mediaPickerLibraryAction'),
-    upload: pt('actions.uploadMedia'),
-    manual: pt('messages.mediaPickerLinkAction'),
-    review: pt('messages.mediaPickerReviewMode'),
-  },
-  library: {
-    searchLabel: pt('fields.imageSearch'),
-    empty: pt('messages.imagePickerEmpty'),
-    select: pt('actions.selectImage'),
-  },
-  upload: {
-    regionLabel: pt('messages.mediaPickerUploadRegionLabel'),
-    title: pt('messages.mediaPickerUploadTitle'),
-    description: pt('messages.mediaPickerUploadDescription'),
-    browseAction: pt('messages.mediaPickerSelectFile'),
-    supportLabel: pt('messages.mediaPickerUploadSupportLabel'),
-  },
-  review: {
-    title: pt('messages.mediaPickerReviewTitle'),
-    description: pt('messages.mediaPickerReviewDescription'),
-  },
-  fields: {
-    title: pt('fields.title'),
-    altText: pt('messages.mediaPickerAltText'),
-    description: pt('fields.description'),
-    copyright: pt('fields.mediaCopyright'),
-    license: pt('messages.mediaPickerLicense'),
-  },
-  actions: {
-    cancel: pt('actions.back'),
-    backToLibrary: pt('messages.mediaPickerBackToLibrary'),
-    backToUpload: pt('messages.mediaPickerBackToUpload'),
-    openMediaManagement: pt('messages.mediaPickerOpenMediaManagement'),
-    useMedia: pt('messages.mediaPickerUseMedia'),
-  },
-});
-
-const resolveNewsMediaPickerFeedback = (
-  pt: PluginTranslator,
-  errorCode: StudioMediaPickerErrorCode | null,
-  uploadPhase: Parameters<typeof uploadPhaseMessageKey>[0]
-) => {
-  if (errorCode === 'unsupported_upload_type') {
-    return { message: pt('messages.mediaUploadUnsupportedType'), tone: 'error' as const };
-  }
-  if (errorCode === 'upload_failed') {
-    return { message: pt('messages.mediaUploadError'), tone: 'error' as const };
-  }
-  if (errorCode === 'asset_load_failed') {
-    return { message: pt('messages.mediaPickerAssetLoadError'), tone: 'error' as const };
-  }
-  if (errorCode === 'asset_unavailable') {
-    return { message: pt('messages.mediaUploadUnavailableUrl'), tone: 'error' as const };
-  }
-  if (errorCode === 'metadata_save_failed') {
-    return { message: pt('messages.mediaPickerMetadataSaveError'), tone: 'error' as const };
-  }
-
-  const phaseKey = uploadPhaseMessageKey(uploadPhase);
-  if (!phaseKey) {
-    return { message: null, tone: 'default' as const };
-  }
-
-  return {
-    message: pt(phaseKey),
-    tone: uploadPhase === 'success' ? ('success' as const) : ('default' as const),
-  };
-};
-
 const isDirtyFieldTree = (
   value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
 ): value is FieldNamesMarkedBoolean<NewsDetailFormValues> => Boolean(value);
@@ -424,9 +350,7 @@ export const NewsDetailPage = ({
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
-    null
-  );
+  const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
   const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
   const methods = useForm<NewsDetailFormValues>({
     defaultValues: createDefaultNewsDetailFormValues(),
@@ -509,7 +433,7 @@ export const NewsDetailPage = ({
       return [];
     }
   }, []);
-  const mediaPickerLabels = React.useMemo(() => createNewsMediaPickerLabels(pt), [pt]);
+  const mediaPickerLabels = React.useMemo(() => createStudioMediaPickerLabels(pt), [pt]);
 
   const isAssetSelectable = React.useCallback(
     (asset: NewsMediaPickerAsset) => {
@@ -656,7 +580,7 @@ export const NewsDetailPage = ({
     return usage.uiId;
   }, [mediaUsages, methods]);
   const mediaPickerFeedback = React.useMemo(
-    () => resolveNewsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
+    () => resolveStudioMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
@@ -870,7 +794,7 @@ export const NewsDetailPage = ({
       ) {
         return;
       }
-      if (retryReferenceSync) {
+      if (mediaReferenceSync.hasPendingRetry) {
         setStatusMessage({
           source: 'reference',
           text: pt('messages.mediaReferencePartialFailure'),
@@ -923,19 +847,10 @@ export const NewsDetailPage = ({
                 setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
           : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-        const saved = result.saved;
-        const savedMediaUsages = result.resolutions?.length
-          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
-          : mediaUsages;
-        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
-        if (result.status === 'reference_failed') {
-          setRetryReferenceSync(() => result.retryReferenceSync);
+        const handledResult = mediaReferenceSync.consumeSaveResult(result);
+        const saved = handledResult.saved;
+        if (handledResult.referenceFailed) {
           setRetryCreatedContentId(mode === 'create' ? saved.id : null);
-          setMediaUsages(
-            savedMediaUsages.map((usage) =>
-              usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
-            )
-          );
           setStatusMessage({
             source: 'reference',
             text: pt('messages.mediaReferencePartialFailure'),
@@ -961,12 +876,6 @@ export const NewsDetailPage = ({
 
         const nextValues = mapNewsItemToDetailFormValues(saved);
         reset(nextValues);
-        setMediaUsages(
-          savedMediaUsages.map((usage) =>
-            usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-          )
-        );
-        setRetryReferenceSync(null);
         setRetryCreatedContentId(null);
         setLoadedItem(saved);
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
@@ -1166,7 +1075,7 @@ export const NewsDetailPage = ({
             <StudioSaveButton
               type="submit"
               form={formId}
-              disabled={Boolean(retryReferenceSync)}
+              disabled={mediaReferenceSync.hasPendingRetry}
               status={saveFeedback.status}
               labels={{
                 idle: pt('actions.save'),
@@ -1289,17 +1198,11 @@ export const NewsDetailPage = ({
                           () => saveFeedback.markFailed(operationId)
                         );
                       }
-                    : retryReferenceSync
+                    : mediaReferenceSync.hasPendingRetry
                       ? () => {
                           const operationId = saveFeedback.beginSaving();
-                          void retryReferenceSync().then(
+                          void mediaReferenceSync.retryReferenceSync().then(
                             () => {
-                              setRetryReferenceSync(null);
-                              setMediaUsages((current) =>
-                                current.map((usage) =>
-                                  usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-                                )
-                              );
                               setStatusMessage(null);
                               saveFeedback.markSaved(operationId);
                               if (retryCreatedContentId) {

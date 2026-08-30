@@ -14,12 +14,12 @@ import {
 } from '@sva/studio-ui-react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import * as React from 'react';
+import { getHostMapGeocodingConfig } from '@sva/plugin-sdk';
 
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 import { genericItemMediaUsagesToFormValues } from './generic-items.content-media-adapter.js';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import { GenericItemsGeoAddressFields } from './generic-items.geo-address-fields.js';
-import { getMapGeocodingConfig } from './generic-items.map-geocoding-client.js';
 import { GenericItemsGeoLocationFields } from './generic-items.geo-location-fields.js';
 
 export const GenericItemsDetailContentTab = ({
@@ -66,11 +66,7 @@ export const GenericItemsDetailContentTab = ({
   const resolvedMediaUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
   const changeMediaUsages = (usages: readonly ContentMediaUsage[]) => {
     onChangeMediaUsages(usages);
-    setValue(
-      'mediaContents',
-      genericItemMediaUsagesToFormValues(usages),
-      { shouldDirty: true }
-    );
+    setValue('mediaContents', genericItemMediaUsagesToFormValues(usages), { shouldDirty: true });
   };
   const locations = useWatch({ control, name: 'locations' }) ?? [];
   const accessibilityInformations = useWatch({ control, name: 'accessibilityInformations' }) ?? [];
@@ -83,7 +79,7 @@ export const GenericItemsDetailContentTab = ({
   React.useEffect(() => {
     let active = true;
 
-    void getMapGeocodingConfig()
+    void getHostMapGeocodingConfig()
       .then((config) => {
         if (!active) {
           return;
@@ -120,7 +116,9 @@ export const GenericItemsDetailContentTab = ({
               type="button"
               size="sm"
               variant="secondary"
-              onClick={() => contentBlocksArray.append({ title: '', intro: '', body: '', mediaContents: [] })}
+              onClick={() =>
+                contentBlocksArray.append({ title: '', intro: '', body: '', mediaContents: [] })
+              }
             >
               {labels.addContentBlock}
             </Button>
@@ -136,7 +134,12 @@ export const GenericItemsDetailContentTab = ({
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-medium text-foreground">{labels.contentBlockItem}</p>
                   {contentBlocks.length > 1 ? (
-                    <Button type="button" size="sm" variant="secondary" onClick={() => contentBlocksArray.remove(index)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => contentBlocksArray.remove(index)}
+                    >
                       {labels.remove}
                     </Button>
                   ) : null}
@@ -164,14 +167,20 @@ export const GenericItemsDetailContentTab = ({
                   />
                 </StudioField>
                 <div className="space-y-1">
-                  <label id={bodyLabelId} htmlFor={`generic-item-content-block-body-${index}`} className="text-sm font-medium">
+                  <label
+                    id={bodyLabelId}
+                    htmlFor={`generic-item-content-block-body-${index}`}
+                    className="text-sm font-medium"
+                  >
                     {labels.body}
                   </label>
                   <RichTextHtmlEditor
                     id={`generic-item-content-block-body-${index}`}
                     labelId={bodyLabelId}
                     value={contentBlock.body}
-                    onChange={(nextValue) => setValue(`contentBlocks.${index}.body`, nextValue, { shouldDirty: true })}
+                    onChange={(nextValue) =>
+                      setValue(`contentBlocks.${index}.body`, nextValue, { shouldDirty: true })
+                    }
                     blockTypeOptions={[
                       { value: 'paragraph', label: labels.richTextParagraph },
                       { value: 'heading-2', label: labels.richTextHeading2 },
@@ -202,7 +211,10 @@ export const GenericItemsDetailContentTab = ({
         </div>
       </GenericItemsDetailCard>
 
-      <GenericItemsDetailCard title={labels.relationsTitle} description={labels.relationsDescription}>
+      <GenericItemsDetailCard
+        title={labels.relationsTitle}
+        description={labels.relationsDescription}
+      >
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
@@ -236,7 +248,12 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.addressItem}</p>
                 {addresses.length > 1 ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => addressesArray.remove(index)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => addressesArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -245,7 +262,9 @@ export const GenericItemsDetailContentTab = ({
                 <Input
                   id={`generic-item-address-kind-${index}`}
                   value={address.kind}
-                  onChange={(event) => setValue(`addresses.${index}.kind`, event.target.value, { shouldDirty: true })}
+                  onChange={(event) =>
+                    setValue(`addresses.${index}.kind`, event.target.value, { shouldDirty: true })
+                  }
                 />
               </StudioField>
               <GenericItemsGeoAddressFields
@@ -266,8 +285,12 @@ export const GenericItemsDetailContentTab = ({
                 streetId={`generic-item-address-street-${index}`}
                 zip={address.zip}
                 zipId={`generic-item-address-zip-${index}`}
-                onAdditionChange={(value) => setValue(`addresses.${index}.addition`, value, { shouldDirty: true })}
-                onCityChange={(value) => setValue(`addresses.${index}.city`, value, { shouldDirty: true })}
+                onAdditionChange={(value) =>
+                  setValue(`addresses.${index}.addition`, value, { shouldDirty: true })
+                }
+                onCityChange={(value) =>
+                  setValue(`addresses.${index}.city`, value, { shouldDirty: true })
+                }
                 onCoordinatesChange={(coordinates) => {
                   setValue(`addresses.${index}.latitude`, coordinates.latitude, {
                     shouldDirty: true,
@@ -276,10 +299,18 @@ export const GenericItemsDetailContentTab = ({
                     shouldDirty: true,
                   });
                 }}
-                onLatitudeChange={(value) => setValue(`addresses.${index}.latitude`, value, { shouldDirty: true })}
-                onLongitudeChange={(value) => setValue(`addresses.${index}.longitude`, value, { shouldDirty: true })}
-                onStreetChange={(value) => setValue(`addresses.${index}.street`, value, { shouldDirty: true })}
-                onZipChange={(value) => setValue(`addresses.${index}.zip`, value, { shouldDirty: true })}
+                onLatitudeChange={(value) =>
+                  setValue(`addresses.${index}.latitude`, value, { shouldDirty: true })
+                }
+                onLongitudeChange={(value) =>
+                  setValue(`addresses.${index}.longitude`, value, { shouldDirty: true })
+                }
+                onStreetChange={(value) =>
+                  setValue(`addresses.${index}.street`, value, { shouldDirty: true })
+                }
+                onZipChange={(value) =>
+                  setValue(`addresses.${index}.zip`, value, { shouldDirty: true })
+                }
               />
             </div>
           ))}
@@ -316,13 +347,21 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.contactItem}</p>
                 {contacts.length > 1 ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => contactsArray.remove(index)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => contactsArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : null}
               </div>
               <StudioFieldGroup columns={2}>
-                <StudioField id={`generic-item-contact-first-name-${index}`} label={labels.firstName}>
+                <StudioField
+                  id={`generic-item-contact-first-name-${index}`}
+                  label={labels.firstName}
+                >
                   <Input
                     id={`generic-item-contact-first-name-${index}`}
                     value={contact.firstName}
@@ -350,14 +389,18 @@ export const GenericItemsDetailContentTab = ({
                   <Input
                     id={`generic-item-contact-email-${index}`}
                     value={contact.email}
-                    onChange={(event) => setValue(`contacts.${index}.email`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`contacts.${index}.email`, event.target.value, { shouldDirty: true })
+                    }
                   />
                 </StudioField>
                 <StudioField id={`generic-item-contact-phone-${index}`} label={labels.phone}>
                   <Input
                     id={`generic-item-contact-phone-${index}`}
                     value={contact.phone}
-                    onChange={(event) => setValue(`contacts.${index}.phone`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`contacts.${index}.phone`, event.target.value, { shouldDirty: true })
+                    }
                   />
                 </StudioField>
               </StudioFieldGroup>
@@ -397,7 +440,12 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.locationItem}</p>
                 {locations.length > 1 ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => locationsArray.remove(index)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => locationsArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -422,11 +470,21 @@ export const GenericItemsDetailContentTab = ({
                 longitude={location.longitude}
                 longitudeId={`generic-item-location-longitude-${index}`}
                 reverseGeocodingEnabled={isReverseGeocodingEnabled}
-                onNameChange={(value) => setValue(`locations.${index}.name`, value, { shouldDirty: true })}
-                onDepartmentChange={(value) => setValue(`locations.${index}.department`, value, { shouldDirty: true })}
-                onDistrictChange={(value) => setValue(`locations.${index}.district`, value, { shouldDirty: true })}
-                onRegionNameChange={(value) => setValue(`locations.${index}.regionName`, value, { shouldDirty: true })}
-                onStateChange={(value) => setValue(`locations.${index}.state`, value, { shouldDirty: true })}
+                onNameChange={(value) =>
+                  setValue(`locations.${index}.name`, value, { shouldDirty: true })
+                }
+                onDepartmentChange={(value) =>
+                  setValue(`locations.${index}.department`, value, { shouldDirty: true })
+                }
+                onDistrictChange={(value) =>
+                  setValue(`locations.${index}.district`, value, { shouldDirty: true })
+                }
+                onRegionNameChange={(value) =>
+                  setValue(`locations.${index}.regionName`, value, { shouldDirty: true })
+                }
+                onStateChange={(value) =>
+                  setValue(`locations.${index}.state`, value, { shouldDirty: true })
+                }
                 onCoordinatesChange={(coordinates) => {
                   setValue(`locations.${index}.latitude`, coordinates.latitude, {
                     shouldDirty: true,
@@ -435,15 +493,22 @@ export const GenericItemsDetailContentTab = ({
                     shouldDirty: true,
                   });
                 }}
-                onLatitudeChange={(value) => setValue(`locations.${index}.latitude`, value, { shouldDirty: true })}
-                onLongitudeChange={(value) => setValue(`locations.${index}.longitude`, value, { shouldDirty: true })}
+                onLatitudeChange={(value) =>
+                  setValue(`locations.${index}.latitude`, value, { shouldDirty: true })
+                }
+                onLongitudeChange={(value) =>
+                  setValue(`locations.${index}.longitude`, value, { shouldDirty: true })
+                }
               />
             </div>
           ))}
         </div>
       </GenericItemsDetailCard>
 
-      <GenericItemsDetailCard title={labels.linksMediaTitle} description={labels.linksMediaDescription}>
+      <GenericItemsDetailCard
+        title={labels.linksMediaTitle}
+        description={labels.linksMediaDescription}
+      >
         <div className="space-y-5">
           <ContentMediaUsageBlock
             disabled={mediaEditingDisabled}
@@ -456,7 +521,10 @@ export const GenericItemsDetailContentTab = ({
             supportedFields={{ altText: true, caption: true, credit: true, license: false }}
             showHeader={false}
             renderAdditionalFields={({ usage, update }) => (
-              <StudioField id={`generic-item-media-${usage.uiId}-content-type`} label={labels.mediaContentType}>
+              <StudioField
+                id={`generic-item-media-${usage.uiId}-content-type`}
+                label={labels.mediaContentType}
+              >
                 <Select
                   id={`generic-item-media-${usage.uiId}-content-type`}
                   value={String(usage.additionalData?.contentType ?? '')}
@@ -525,7 +593,12 @@ export const GenericItemsDetailContentTab = ({
               <p className="text-sm font-medium text-foreground">{labels.webUrls}</p>
               <p className="text-sm text-muted-foreground">{labels.webUrlsHelp}</p>
             </div>
-            <Button type="button" size="sm" variant="secondary" onClick={() => webUrlsArray.append({ url: '', description: '' })}>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => webUrlsArray.append({ url: '', description: '' })}
+            >
               {labels.addLink}
             </Button>
           </div>
@@ -537,7 +610,12 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.linkItem}</p>
                 {webUrls.length > 1 ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => webUrlsArray.remove(index)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => webUrlsArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -547,10 +625,15 @@ export const GenericItemsDetailContentTab = ({
                   <Input
                     id={`generic-item-web-url-${index}`}
                     value={webUrl.url}
-                    onChange={(event) => setValue(`webUrls.${index}.url`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`webUrls.${index}.url`, event.target.value, { shouldDirty: true })
+                    }
                   />
                 </StudioField>
-                <StudioField id={`generic-item-web-url-description-${index}`} label={labels.urlDescription}>
+                <StudioField
+                  id={`generic-item-web-url-description-${index}`}
+                  label={labels.urlDescription}
+                >
                   <Input
                     id={`generic-item-web-url-description-${index}`}
                     value={webUrl.description}
@@ -567,12 +650,19 @@ export const GenericItemsDetailContentTab = ({
         </div>
       </GenericItemsDetailCard>
 
-      <GenericItemsDetailCard title={labels.secondaryTitle} description={labels.secondaryDescription}>
+      <GenericItemsDetailCard
+        title={labels.secondaryTitle}
+        description={labels.secondaryDescription}
+      >
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">{labels.accessibilityInformations}</p>
-              <p className="text-sm text-muted-foreground">{labels.accessibilityInformationsHelp}</p>
+              <p className="text-sm font-medium text-foreground">
+                {labels.accessibilityInformations}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {labels.accessibilityInformationsHelp}
+              </p>
             </div>
             <Button
               type="button"
@@ -591,18 +681,31 @@ export const GenericItemsDetailContentTab = ({
           </div>
           {accessibilityInformations.map((accessibilityInformation, index) => (
             <div
-              key={accessibilityInformationsArray.fields[index]?.id ?? `fallback-accessibility-information-${index}`}
+              key={
+                accessibilityInformationsArray.fields[index]?.id ??
+                `fallback-accessibility-information-${index}`
+              }
               className="space-y-4 rounded-xl border border-border/60 p-4"
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">{labels.accessibilityInformationItem}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {labels.accessibilityInformationItem}
+                </p>
                 {accessibilityInformations.length > 1 ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => accessibilityInformationsArray.remove(index)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => accessibilityInformationsArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : null}
               </div>
-              <StudioField id={`generic-item-accessibility-description-${index}`} label={labels.description}>
+              <StudioField
+                id={`generic-item-accessibility-description-${index}`}
+                label={labels.description}
+              >
                 <Textarea
                   id={`generic-item-accessibility-description-${index}`}
                   value={accessibilityInformation.description}
@@ -613,7 +716,10 @@ export const GenericItemsDetailContentTab = ({
                   }
                 />
               </StudioField>
-              <StudioField id={`generic-item-accessibility-types-${index}`} label={labels.accessibilityTypes}>
+              <StudioField
+                id={`generic-item-accessibility-types-${index}`}
+                label={labels.accessibilityTypes}
+              >
                 <Input
                   id={`generic-item-accessibility-types-${index}`}
                   value={accessibilityInformation.types}
@@ -659,7 +765,9 @@ export const GenericItemsDetailContentTab = ({
                           onClick={() =>
                             setValue(
                               `accessibilityInformations.${index}.urls`,
-                              (accessibilityInformation.urls ?? []).filter((_, currentIndex) => currentIndex !== urlIndex),
+                              (accessibilityInformation.urls ?? []).filter(
+                                (_, currentIndex) => currentIndex !== urlIndex
+                              ),
                               { shouldDirty: true }
                             )
                           }
@@ -669,25 +777,39 @@ export const GenericItemsDetailContentTab = ({
                       ) : null}
                     </div>
                     <StudioFieldGroup columns={2}>
-                      <StudioField id={`generic-item-accessibility-url-${index}-${urlIndex}`} label={labels.url}>
+                      <StudioField
+                        id={`generic-item-accessibility-url-${index}-${urlIndex}`}
+                        label={labels.url}
+                      >
                         <Input
                           id={`generic-item-accessibility-url-${index}-${urlIndex}`}
                           value={webUrl.url}
                           onChange={(event) =>
-                            setValue(`accessibilityInformations.${index}.urls.${urlIndex}.url`, event.target.value, {
-                              shouldDirty: true,
-                            })
+                            setValue(
+                              `accessibilityInformations.${index}.urls.${urlIndex}.url`,
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                              }
+                            )
                           }
                         />
                       </StudioField>
-                      <StudioField id={`generic-item-accessibility-url-description-${index}-${urlIndex}`} label={labels.urlDescription}>
+                      <StudioField
+                        id={`generic-item-accessibility-url-description-${index}-${urlIndex}`}
+                        label={labels.urlDescription}
+                      >
                         <Input
                           id={`generic-item-accessibility-url-description-${index}-${urlIndex}`}
                           value={webUrl.description}
                           onChange={(event) =>
-                            setValue(`accessibilityInformations.${index}.urls.${urlIndex}.description`, event.target.value, {
-                              shouldDirty: true,
-                            })
+                            setValue(
+                              `accessibilityInformations.${index}.urls.${urlIndex}.description`,
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                              }
+                            )
                           }
                         />
                       </StudioField>
@@ -730,13 +852,20 @@ export const GenericItemsDetailContentTab = ({
           </div>
           {priceInformations.map((priceInformation, index) => (
             <div
-              key={priceInformationsArray.fields[index]?.id ?? `fallback-price-information-${index}`}
+              key={
+                priceInformationsArray.fields[index]?.id ?? `fallback-price-information-${index}`
+              }
               className="space-y-4 rounded-xl border border-border/60 p-4"
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.priceInformationItem}</p>
                 {priceInformations.length > 1 ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => priceInformationsArray.remove(index)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => priceInformationsArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -753,7 +882,10 @@ export const GenericItemsDetailContentTab = ({
                     }
                   />
                 </StudioField>
-                <StudioField id={`generic-item-price-category-${index}`} label={labels.priceCategory}>
+                <StudioField
+                  id={`generic-item-price-category-${index}`}
+                  label={labels.priceCategory}
+                >
                   <Input
                     id={`generic-item-price-category-${index}`}
                     value={priceInformation.category}
@@ -783,9 +915,13 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-price-group-${index}`}
                     checked={priceInformation.groupPrice}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.groupPrice`, event.currentTarget.checked, {
-                        shouldDirty: true,
-                      })
+                      setValue(
+                        `priceInformations.${index}.groupPrice`,
+                        event.currentTarget.checked,
+                        {
+                          shouldDirty: true,
+                        }
+                      )
                     }
                   />
                 </StudioField>
@@ -817,7 +953,10 @@ export const GenericItemsDetailContentTab = ({
                 </StudioField>
               </StudioFieldGroup>
               <StudioFieldGroup columns={2}>
-                <StudioField id={`generic-item-price-min-adults-${index}`} label={labels.minAdultCount}>
+                <StudioField
+                  id={`generic-item-price-min-adults-${index}`}
+                  label={labels.minAdultCount}
+                >
                   <Input
                     id={`generic-item-price-min-adults-${index}`}
                     type="number"
@@ -829,7 +968,10 @@ export const GenericItemsDetailContentTab = ({
                     }
                   />
                 </StudioField>
-                <StudioField id={`generic-item-price-max-adults-${index}`} label={labels.maxAdultCount}>
+                <StudioField
+                  id={`generic-item-price-max-adults-${index}`}
+                  label={labels.maxAdultCount}
+                >
                   <Input
                     id={`generic-item-price-max-adults-${index}`}
                     type="number"
@@ -843,7 +985,10 @@ export const GenericItemsDetailContentTab = ({
                 </StudioField>
               </StudioFieldGroup>
               <StudioFieldGroup columns={2}>
-                <StudioField id={`generic-item-price-min-children-${index}`} label={labels.minChildrenCount}>
+                <StudioField
+                  id={`generic-item-price-min-children-${index}`}
+                  label={labels.minChildrenCount}
+                >
                   <Input
                     id={`generic-item-price-min-children-${index}`}
                     type="number"
@@ -855,7 +1000,10 @@ export const GenericItemsDetailContentTab = ({
                     }
                   />
                 </StudioField>
-                <StudioField id={`generic-item-price-max-children-${index}`} label={labels.maxChildrenCount}>
+                <StudioField
+                  id={`generic-item-price-max-children-${index}`}
+                  label={labels.maxChildrenCount}
+                >
                   <Input
                     id={`generic-item-price-max-children-${index}`}
                     type="number"
@@ -868,7 +1016,10 @@ export const GenericItemsDetailContentTab = ({
                   />
                 </StudioField>
               </StudioFieldGroup>
-              <StudioField id={`generic-item-price-description-${index}`} label={labels.priceDescription}>
+              <StudioField
+                id={`generic-item-price-description-${index}`}
+                label={labels.priceDescription}
+              >
                 <Input
                   id={`generic-item-price-description-${index}`}
                   value={priceInformation.description}
@@ -918,7 +1069,12 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between bg-muted px-4 py-3 text-card-foreground">
                 <h4 className="text-base font-semibold">{labels.openingHourItem}</h4>
                 {openingHours.length > 1 ? (
-                  <Button type="button" variant="secondary" size="sm" onClick={() => openingHoursArray.remove(index)}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openingHoursArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : (
@@ -927,7 +1083,10 @@ export const GenericItemsDetailContentTab = ({
               </div>
               <div className="space-y-4 p-4">
                 <StudioFieldGroup columns={2}>
-                  <StudioField id={`generic-item-opening-date-from-${index}`} label={labels.dateFrom}>
+                  <StudioField
+                    id={`generic-item-opening-date-from-${index}`}
+                    label={labels.dateFrom}
+                  >
                     <Input
                       id={`generic-item-opening-date-from-${index}`}
                       type="date"
@@ -953,7 +1112,10 @@ export const GenericItemsDetailContentTab = ({
                   </StudioField>
                 </StudioFieldGroup>
                 <StudioFieldGroup columns={2}>
-                  <StudioField id={`generic-item-opening-time-from-${index}`} label={labels.timeFrom}>
+                  <StudioField
+                    id={`generic-item-opening-time-from-${index}`}
+                    label={labels.timeFrom}
+                  >
                     <Input
                       id={`generic-item-opening-time-from-${index}`}
                       type="time"
@@ -979,7 +1141,10 @@ export const GenericItemsDetailContentTab = ({
                   </StudioField>
                 </StudioFieldGroup>
                 <StudioFieldGroup columns={2}>
-                  <StudioField id={`generic-item-opening-description-${index}`} label={labels.description}>
+                  <StudioField
+                    id={`generic-item-opening-description-${index}`}
+                    label={labels.description}
+                  >
                     <Input
                       id={`generic-item-opening-description-${index}`}
                       value={openingHour.description}
@@ -1059,7 +1224,12 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.dateItem}</p>
                 {dates.length > 1 ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => datesArray.remove(index)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => datesArray.remove(index)}
+                  >
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -1082,7 +1252,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-date-end-${index}`}
                     type="datetime-local"
                     value={date.dateEnd}
-                    onChange={(event) => setValue(`dates.${index}.dateEnd`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`dates.${index}.dateEnd`, event.target.value, { shouldDirty: true })
+                    }
                   />
                 </StudioField>
               </StudioFieldGroup>
@@ -1104,7 +1276,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-time-end-${index}`}
                     type="time"
                     value={date.timeEnd}
-                    onChange={(event) => setValue(`dates.${index}.timeEnd`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`dates.${index}.timeEnd`, event.target.value, { shouldDirty: true })
+                    }
                   />
                 </StudioField>
               </StudioFieldGroup>
@@ -1113,10 +1287,15 @@ export const GenericItemsDetailContentTab = ({
                   <Input
                     id={`generic-item-weekday-${index}`}
                     value={date.weekday}
-                    onChange={(event) => setValue(`dates.${index}.weekday`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`dates.${index}.weekday`, event.target.value, { shouldDirty: true })
+                    }
                   />
                 </StudioField>
-                <StudioField id={`generic-item-time-description-${index}`} label={labels.timeDescription}>
+                <StudioField
+                  id={`generic-item-time-description-${index}`}
+                  label={labels.timeDescription}
+                >
                   <Input
                     id={`generic-item-time-description-${index}`}
                     value={date.timeDescription}
@@ -1128,7 +1307,10 @@ export const GenericItemsDetailContentTab = ({
                   />
                 </StudioField>
               </StudioFieldGroup>
-              <StudioField id={`generic-item-use-only-time-description-${index}`} label={labels.useOnlyTimeDescription}>
+              <StudioField
+                id={`generic-item-use-only-time-description-${index}`}
+                label={labels.useOnlyTimeDescription}
+              >
                 <Checkbox
                   id={`generic-item-use-only-time-description-${index}`}
                   checked={date.useOnlyTimeDescription}

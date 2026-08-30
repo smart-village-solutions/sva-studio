@@ -39,6 +39,13 @@ Das System SHALL die Anzahl ungelesener Nachrichten ohne Nachrichtentexte, begre
 - **DANN** verhindern die Response-Header gemeinschaftliche oder persistente HTTP-Caches
 - **UND** enthalten Fehler weder Token noch Nachrichtentexte
 
+#### Scenario: Cookie-authentifizierte Mutation wird gesendet
+
+- **WENN** ein Browser eine Gelesen-Mutation oder Browser-Übergabe über seine `httpOnly`-Session anfordert
+- **DANN** validiert der Endpunkt den bestehenden CSRF-Nachweis und erlaubten Origin vor der Mutation
+- **UND** wird ein fehlender oder ungültiger Nachweis fail-closed abgelehnt
+- **UND** verwendet ein nativer Bearer-Request ausschließlich seine Tokenbindung und fällt nicht auf eine beigefügte Cookie-Session zurück
+
 ### Requirement: Serverseitiger Gelesen-Stand
 
 Das System SHALL den Gelesen-Stand pro Instanz, Account und stabiler Nachrichten-ID serverseitig und idempotent persistieren, ohne Nachrichteninhalt zu duplizieren.
@@ -125,7 +132,7 @@ Das System SHALL Widget-Interaktionen ausschließlich über die Container-App un
 #### Scenario: Kleines Widget wird aktiviert
 
 - **WENN** ein Benutzer das kleine Widget aktiviert
-- **DANN** fordert die Container-App mit der nativen Sitzung eine accountgebundene Browser-Übergabe für den Studio-Nachrichtenbereich an
+- **DANN** fordert die Container-App mit der nativen Sitzung eine accountgebundene Browser-Übergabe für das fest allowlist-validierte Ziel `{ kind: 'feed' }` an
 - **UND** öffnet das System den Bereich nur unter einer passenden Browseridentität
 
 #### Scenario: Nachricht wird aktiviert
@@ -150,7 +157,7 @@ Das System SHALL Widget-Interaktionen ausschließlich über die Container-App un
 
 #### Scenario: Unsicheres Ziel wird geliefert
 
-- **WENN** ein Provider ein externes, absolutes oder protokollfremdes Ziel liefert
+- **WENN** ein Provider oder Client ein freies, externes, absolutes oder protokollfremdes Ziel liefert
 - **DANN** verwirft die Feed-Grenze das Ziel beziehungsweise die Nachricht fail-closed
 
 ### Requirement: Widget ist kein garantierter Alarmkanal

@@ -20,9 +20,9 @@
 
 - [ ] 3.1 Feed-Kernlogik mit Provider-Validierung, Deduplizierung, deterministischer Sortierung, Account-Sichtbarkeit und serverseitigem Limit implementieren.
 - [ ] 3.2 Bestehenden Studio-Changelog-Katalog als ersten Provider adaptieren und sicheren Klartextauszug für native Clients erzeugen.
-- [ ] 3.3 `GET /api/v1/account/messages/summary`, `GET /api/v1/account/messages`, `POST /api/v1/account/messages/read` und kurzlebige, einmalige, account-/instanzgebundene Browser-Übergaben mit strikter Eingabevalidierung, stabilen Fehlercodes und privatem `no-store` bereitstellen.
+- [ ] 3.3 `GET /api/v1/account/messages/summary`, `GET /api/v1/account/messages`, `POST /api/v1/account/messages/read` und kurzlebige, einmalige, account-/instanzgebundene Browser-Übergaben für `{ kind: 'feed' }` oder `{ kind: 'message', messageId }` mit strikter Eingabevalidierung, stabilen Fehlercodes und privatem `no-store` bereitstellen; freie Pfade und URLs ausschließen.
 - [ ] 3.4 Browser-Session und native Bearer-Identität vor der Fachlogik in denselben instanzgebundenen Accountkontext überführen.
-- [ ] 3.5 API-, Unit- und Integrationstests für Limits, Sichtbarkeit, Scopes, Gelesen-Status, Fehlerfälle und Log-Redaktion ergänzen.
+- [ ] 3.5 API-, Unit- und Integrationstests für Limits, Sichtbarkeit, Scopes, Gelesen-Status, Feed-/Nachrichtenübergaben, Cookie-CSRF/Origin, reine Bearer-Bindung, mehrdeutige Credentials, Fehlerfälle und Log-Redaktion ergänzen.
 
 ## 4. Native Authentifizierung
 

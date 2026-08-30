@@ -31,7 +31,7 @@ Das Studio-Update-Log ist heute nur innerhalb der Web-Anwendung sichtbar. Nutzer
   - `docs/architecture/09-architecture-decisions.md`
   - `docs/architecture/10-quality-requirements.md`
   - `docs/architecture/11-risks-and-technical-debt.md`
-- Database impact: neue instanzisolierte Gelesen-Belege mit Membership-Fremdschlüssel, DSR-Export und konfigurierbarer Aufbewahrungsfrist; `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` müssen synchron fortgeschrieben werden
+- Database impact: neue instanzisolierte Gelesen-Belege mit referenzieller Instanz-/Accountintegrität, Legal-Hold-fähigem Membership-Cleanup, DSR-Export und konfigurierbarer Aufbewahrungsfrist; `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` müssen synchron fortgeschrieben werden
 - Security impact: neuer nativer Public-Client, Bearer-Token-Prüfung, Keychain-Sharing, Audience-/Scope-Bindung, Token-Widerruf und redigierte Widget-Snapshots
 - Rollout impact: keine Änderung am kanonischen Studio-Deploypfad; produktive macOS-Artefakte benötigen zusätzlich Apple-Signierung und Notarisierung
 

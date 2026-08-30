@@ -69,7 +69,7 @@ Das System SHALL den Gelesen-Stand pro Instanz, Account und stabiler Nachrichten
 
 ### Requirement: Instanzisolierte Gelesen-Belege
 
-Das System MUST Gelesen-Belege über einen zusammengesetzten Membership-Fremdschlüssel, erzwungene RLS und serverseitig gebundenen Accountkontext isolieren. Die Persistenz MUST auf ID, Instanz, Account und Gelesen-Zeitpunkt begrenzt bleiben.
+Das System MUST Gelesen-Belege über referenzielle Instanz-/Accountintegrität, erzwungene RLS und serverseitig gebundenen Accountkontext isolieren. Membership-Cleanup MUST den bestehenden Legal-Hold-Vertrag einhalten. Die Persistenz MUST auf ID, Instanz, Account und Gelesen-Zeitpunkt begrenzt bleiben.
 
 #### Scenario: Tenantübergreifender Zugriff wird durch Datenbankgrenze verhindert
 
@@ -80,8 +80,17 @@ Das System MUST Gelesen-Belege über einen zusammengesetzten Membership-Fremdsch
 #### Scenario: Membership wird entfernt
 
 - **WENN** eine Account-Membership gelöscht wird
-- **DANN** werden ihre Gelesen-Belege für diese Instanz über den Fremdschlüsselvertrag entfernt
+- **DANN** endet der normale Feed- und Belegzugriff für diese Instanz sofort
+- **UND** entfernt der Governance-Workflow die Gelesen-Belege nur ohne aktiven Legal Hold
 - **UND** bleiben Belege anderer Instanzen unverändert
+
+#### Scenario: Membership wird unter Legal Hold entfernt
+
+- **WENN** eine Account-Membership bei aktivem Legal Hold gelöscht wird
+- **DANN** bleiben ihre Gelesen-Belege bis zur Aufhebung des Holds instanz- und accountgebunden erhalten
+- **UND** sind sie für normale Studio-Requests nicht mehr sichtbar
+- **UND** kann ausschließlich der autorisierte DSR-/Governance-Pfad darauf zugreifen
+- **UND** wird die vorgemerkte Löschung nach Aufhebung des Holds nachgeholt
 
 ### Requirement: Automatische Widget-Darstellung nach Größe
 
@@ -124,6 +133,13 @@ Das System MUST Titel und Nachrichtentexte als privacy-sensitive behandeln und i
 - **WENN** der Benutzer sich in der nativen Begleit-App abmeldet
 - **DANN** werden native Credentials und abgeleitete lokale Zustände gelöscht
 - **UND** werden alle Widget-Timelines zur Neuladung aufgefordert
+
+#### Scenario: Benutzer wechselt den nativen Account
+
+- **WENN** die Begleit-App von Account A zu Account B wechselt
+- **DANN** löscht sie vor Aktivierung von Account B Credentials und abgeleitete Zustände von Account A
+- **UND** veröffentlicht sie eine neutrale Timeline und fordert `reloadAllTimelines` an
+- **UND** lädt sie Inhalte von Account B erst nach diesem Reset
 
 ### Requirement: Sichere und accountgebundene Widget-Deep-Links
 

@@ -73,7 +73,7 @@ Eine neue Tabelle `iam.account_message_receipts` speichert nur:
 - `message_id text`
 - `read_at timestamptz`
 
-Der zusammengesetzte Primärschlüssel ist `(instance_id, account_id, message_id)`. Ein zusammengesetzter Fremdschlüssel auf `iam.instance_memberships(instance_id, account_id)` löscht Belege beim Entfernen der Membership. `message_id` erhält eine sinnvolle Längen- und Nichtleer-Constraint. Die Tabelle speichert keine Titel, Texte, Token oder Audience-Daten.
+Der zusammengesetzte Primärschlüssel ist `(instance_id, account_id, message_id)`. Fremdschlüssel sichern die referenzielle Integrität zu den maßgeblichen Instanz- und Accountdatensätzen, lösen bei einer Membership-Entfernung aber kein unbedingtes Cascade aus. `message_id` erhält eine sinnvolle Längen- und Nichtleer-Constraint. Die Tabelle speichert keine Titel, Texte, Token oder Audience-Daten.
 
 RLS wird aktiviert und erzwungen. Die Policy bindet alle Lese- und Schreiboperationen an `iam.current_instance_id()`. Der Anwendungsdienst bindet zusätzlich immer die aufgelöste `account_id`; Clientwerte dürfen weder Account noch Instanz wählen. Ein idempotentes Upsert setzt `read_at` nur für aktuell sichtbare Nachrichten.
 
@@ -81,7 +81,9 @@ Der Primärschlüssel deckt die führende Abfrage nach Instanz, Account und Nach
 
 `message_id` und `read_at` sind accountbezogene Aktivitätsdaten. Selbst- und Administrator-Exporte der Betroffenenrechtslogik führen deshalb die Gelesen-Belege mit Instanz, Nachrichten-ID und Gelesen-Zeitpunkt vollständig im maschinenlesbaren Export auf. Die Exportautorisierung und Auditierung bleiben unverändert; Nachrichtentexte werden weiterhin nicht in den Belegen gespeichert.
 
-Eine validierte, konfigurierbare Aufbewahrungsfrist begrenzt Gelesen-Belege standardmäßig auf 365 Tage. Der Nachrichtenfeed darf keine Nachricht ausliefern, deren belegter `publishedAt` außerhalb derselben Frist liegt; dadurch kann die periodische Bereinigung Belege anhand von `read_at` löschen, ohne eine noch sichtbare Nachricht wieder ungelesen erscheinen zu lassen. Der Wert gilt für Feed und Belege gemeinsam, Änderungen werden wie andere DSR-Löschfristen auditiert und eine Verringerung wirkt erst nach erfolgreichem Dry Run und expliziter Freigabe. Legacy-Einträge ohne belegten Zeitpunkt sind nur dann Teil des neuen Feeds, wenn sie vor Einführung der Frist mit einem belegten `publishedAt` nachgetragen wurden. Membership- und Account-Löschung entfernen Belege weiterhin unabhängig von der Frist; ein aktiver Legal Hold blockiert die periodische Löschung entsprechend dem bestehenden DSR-Vertrag.
+Eine validierte, konfigurierbare Aufbewahrungsfrist begrenzt Gelesen-Belege standardmäßig auf 365 Tage. Der Nachrichtenfeed darf keine Nachricht ausliefern, deren belegter `publishedAt` außerhalb derselben Frist liegt; dadurch kann die periodische Bereinigung Belege anhand von `read_at` löschen, ohne eine noch sichtbare Nachricht wieder ungelesen erscheinen zu lassen. Der Wert gilt für Feed und Belege gemeinsam, Änderungen werden wie andere DSR-Löschfristen auditiert und eine Verringerung wirkt erst nach erfolgreichem Dry Run und expliziter Freigabe. Legacy-Einträge ohne belegten Zeitpunkt sind nur dann Teil des neuen Feeds, wenn sie vor Einführung der Frist mit einem belegten `publishedAt` nachgetragen wurden.
+
+Membership-Entzug beendet Feed- und Belegzugriff sofort. Die zugehörigen Belege werden im selben Governance-Workflow nur dann gelöscht, wenn kein aktiver Legal Hold greift. Unter Legal Hold bleiben sie instanz- und accountgebunden, für normale Studio-Requests unsichtbar und ausschließlich für autorisierte DSR-/Governance-Prozesse zugänglich, bis der Hold aufgehoben und die ausstehende Löschung nachgeholt wird. Die endgültige Accountlöschung folgt derselben bestehenden Legal-Hold-Sperre. Damit kann weder ein FK-Cascade noch eine periodische Bereinigung gehaltene Belege umgehen.
 
 ### 4. Native Anmeldung bleibt standardisiert und least-privilege
 
@@ -115,7 +117,7 @@ Diese Entscheidung ist eine bewusst begrenzte native Ausnahme vom Browser-BFF au
 
 Die Anzahl ist nicht benutzerkonfigurierbar. Leere, ladende, offline-, fehler- und abgelaufene Auth-Zustände erhalten eigene zugängliche Darstellungen. Das Widget zeigt keine endlose Ladeanzeige und unterscheidet nach außen keine sensitiven Auth-Fehlerdetails.
 
-Alle Titel und Texte werden als privacy-sensitive markiert. Im gesperrten oder vom Betriebssystem redigierten Zustand bleibt ausschließlich eine Form wie „3 neue Studio-Nachrichten“ sichtbar. Das Widget führt keinen eigenen persistenten Nachrichten-Cache. Nach einem Auth-Fehler ersetzt die nächste Timeline den Inhalt durch „Anmeldung erforderlich“; beim Logout leert die App Keychain-Zugriff, lokale abgeleitete Zustände und fordert eine Neuladung aller Widget-Timelines an.
+Alle Titel und Texte werden als privacy-sensitive markiert. Im gesperrten oder vom Betriebssystem redigierten Zustand bleibt ausschließlich eine Form wie „3 neue Studio-Nachrichten“ sichtbar. Das Widget führt keinen eigenen persistenten Nachrichten-Cache. Nach einem Auth-Fehler ersetzt die nächste Timeline den Inhalt durch „Anmeldung erforderlich“. Beim Logout und vor Aktivierung eines anderen Accounts leert die App Keychain-Zugriff sowie alle lokalen abgeleiteten Zustände, veröffentlicht zunächst eine neutrale Timeline und fordert `reloadAllTimelines` an. Erst danach dürfen Credentials des neuen Accounts aktiviert und neue Inhalte geladen werden; dadurch kann keine Timeline des vorherigen Accounts unter der neuen Identität sichtbar bleiben.
 
 Widget-Timeline-Aktualisierungen markieren keine Nachricht als gelesen.
 

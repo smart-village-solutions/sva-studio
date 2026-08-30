@@ -9,10 +9,10 @@
 ## 2. Persistenz und Gelesen-Stand
 
 - [ ] 2.1 Vor der Migration `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` gegen den tatsächlichen IAM-Schemavertrag prüfen.
-- [ ] 2.2 Idempotente Goose-Migration für `iam.account_message_receipts` mit zusammengesetztem Primärschlüssel, Membership-Fremdschlüssel, Constraints sowie aktivierter und erzwungener RLS hinzufügen.
+- [ ] 2.2 Idempotente Goose-Migration für `iam.account_message_receipts` mit zusammengesetztem Primärschlüssel, referenzieller Instanz-/Accountintegrität ohne unbedingtes Membership-Cascade, Constraints sowie aktivierter und erzwungener RLS hinzufügen.
 - [ ] 2.3 Repository- und Service-Logik für instanz-/accountgebundene Reads und idempotente Upserts implementieren, ohne Nachrichtentexte zu persistieren.
 - [ ] 2.4 Schema-Snapshot und Schema-Übersicht nach der Migration vollständig fortschreiben.
-- [ ] 2.5 PostgreSQL-16-Up/Down/Up-, RLS-, Tenant-Isolations-, Membership-Lösch- und Query-Plan-Tests ergänzen.
+- [ ] 2.5 PostgreSQL-16-Up/Down/Up-, RLS-, Tenant-Isolations-, Membership-Lösch-, Legal-Hold- und Query-Plan-Tests ergänzen; belegen, dass Membership-Entzug Zugriff sofort sperrt, gehaltene Belege bewahrt und die Löschung nach Hold-Aufhebung nachholt.
 - [ ] 2.6 Gelesen-Belege in vollständige DSR-Selbst-/Adminexporte aufnehmen und Exportautorisierung, Formate sowie Auditierung testen.
 - [ ] 2.7 Gemeinsame validierte Aufbewahrungsfrist für Feed-Sichtbarkeit und Gelesen-Belege mit 365-Tage-Default, Dry Run, expliziter Freigabe bei Verkürzung, Legal-Hold-Sperre und periodischer Bereinigung implementieren und testen.
 
@@ -49,7 +49,7 @@
 - [ ] 6.4 Mittleres Widget mit höchstens drei und großes Widget mit höchstens fünf automatisch gewählten Nachrichten implementieren.
 - [ ] 6.5 Privacy-Redaktion für Titel und Texte, neutrale Sperrzustandsanzeige sowie Lade-, Leer-, Offline-, Fehler- und Reauth-Zustände implementieren.
 - [ ] 6.6 Widget-Reads frei von Gelesen-Mutationen halten; Widget-Interaktionen über die Container-App und frisch angeforderte account-/instanzgebundene Browser-Übergaben auf Nachrichtenbereich und Einzelnachricht führen.
-- [ ] 6.7 Logout löscht Keychain-Credentials und abgeleitete lokale Zustände und fordert eine Neuladung aller Widget-Timelines an.
+- [ ] 6.7 Logout und Accountwechsel löschen Keychain-Credentials sowie abgeleitete lokale Zustände, veröffentlichen vor neuer Accountaktivierung eine neutrale Timeline und fordern `reloadAllTimelines` an.
 - [ ] 6.8 Native Unit-, UI-, Snapshot-, VoiceOver-, Dynamic-Type-, Kontrast- und Redaktionsprüfungen für alle Widget-Größen ergänzen.
 - [ ] 6.9 Die begrenzte XCTest-/Xcode-Toolchain-Ausnahme von der Vitest-Standardregel in der aktuellen Testdokumentation festhalten, ohne TypeScript-Testpfade zu verändern.
 

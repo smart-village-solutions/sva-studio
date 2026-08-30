@@ -1092,7 +1092,7 @@ describe('UserEditPage', () => {
     });
   });
 
-  it('blocks an invalid email through the shared resolver and focuses its summary target', async () => {
+  it('opens the owning tab and focuses an invalid email from submit and summary selection', async () => {
     const save = vi.fn();
     useUserMock.mockReturnValue({
       user: baseUser,
@@ -1116,17 +1116,33 @@ describe('UserEditPage', () => {
     render(<UserEditPage userId="user-1" />);
 
     fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'invalid' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[0]!);
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(save).not.toHaveBeenCalled();
       expect(screen.getByRole('alert').textContent).toContain(
         'Bitte eine gültige E-Mail-Adresse eingeben.'
       );
+      expect(
+        screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')
+      ).toBe('true');
+      expect(document.activeElement).toBe(screen.getByLabelText('E-Mail'));
     });
 
-    expect(document.activeElement).toBe(screen.getByLabelText('E-Mail'));
     expect(screen.getByLabelText('E-Mail').getAttribute('aria-invalid')).toBe('true');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Bitte eine gültige E-Mail-Adresse eingeben.' })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')
+      ).toBe('true');
+      expect(document.activeElement).toBe(screen.getByLabelText('E-Mail'));
+    });
   });
 
   it('saves user edits and resends the password setup email through HTTP', async () => {

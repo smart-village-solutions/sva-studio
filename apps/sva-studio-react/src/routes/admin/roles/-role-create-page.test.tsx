@@ -106,6 +106,8 @@ describe('RoleCreatePage', () => {
   it('shows resolver-driven errors and blocks an empty display name', async () => {
     render(<RoleCreatePage />);
 
+    expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).required).toBe(true);
+
     fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
 
     await waitFor(() => {

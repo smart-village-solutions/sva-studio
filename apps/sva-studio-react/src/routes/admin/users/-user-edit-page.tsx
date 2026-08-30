@@ -117,6 +117,7 @@ export const UserEditPage = ({
   const canUpdateUser = isIamAccessAllowed(access.update);
   const {
     activeTab,
+    activateFormFieldTab,
     closeUnsavedDialog,
     confirmPendingTab,
     effectivePermissionTrace,
@@ -397,6 +398,7 @@ export const UserEditPage = ({
           <StudioFormSummaryErrors
             errors={summaryErrors}
             title={t('account.messages.validationSummary')}
+            onSelectError={({ field }) => activateFormFieldTab(field)}
           />
           <section
             id="user-edit-panel-personal"

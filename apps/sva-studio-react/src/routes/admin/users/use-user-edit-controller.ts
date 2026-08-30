@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type SubmitErrorHandler } from 'react-hook-form';
 
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
@@ -26,6 +26,7 @@ const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
     resolver: zodResolver(schema as never),
     defaultValues: toUserFormValues(user),
     reValidateMode: 'onChange',
+    shouldFocusError: false,
   });
   const formValues = form.watch();
   const hasUnsavedChanges = form.formState.isDirty;
@@ -222,6 +223,24 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     activeTab,
     userId
   );
+  const activateFormFieldTab = React.useCallback(
+    (field: string) => {
+      setActiveTab(field === 'user-notes' || field === 'notes' ? 'management' : 'personal');
+    },
+    [setActiveTab]
+  );
+  const focusInvalidFormField = React.useCallback<SubmitErrorHandler<UserFormValues>>(
+    (errors) => {
+      const field = errors.email ? 'email' : errors.notes ? 'notes' : null;
+      if (!field) {
+        return;
+      }
+
+      activateFormFieldTab(field);
+      globalThis.setTimeout(() => form.setFocus(field), 0);
+    },
+    [activateFormFieldTab, form]
+  );
   const {
     isSaving,
     isSendingPasswordSetupEmail,
@@ -233,7 +252,7 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     passwordSetupEmailSuccess,
     saveStatus,
     showSaved,
-  } = useUserSaveActions(userApi, form, hasUnsavedChanges);
+  } = useUserSaveActions(userApi, form, hasUnsavedChanges, focusInvalidFormField);
   const { effective: effectivePermissionTrace, inactive: inactivePermissionTrace } = React.useMemo(
     () => splitPermissionTrace(userApi.user?.permissionTrace),
     [userApi.user?.permissionTrace]
@@ -287,6 +306,7 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
 
   return {
     activeTab,
+    activateFormFieldTab,
     closeUnsavedDialog,
     confirmPendingTab,
     effectivePermissionTrace,

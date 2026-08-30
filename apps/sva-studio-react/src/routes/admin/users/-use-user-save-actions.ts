@@ -1,6 +1,6 @@
 import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 import React from 'react';
-import type { UseFormReturn } from 'react-hook-form';
+import type { SubmitErrorHandler, UseFormReturn } from 'react-hook-form';
 
 import { useUser } from '../../../hooks/use-user';
 import { toUserFormValues, toUserUpdatePayload, type UserFormValues } from './user-edit-model';
@@ -8,7 +8,8 @@ import { toUserFormValues, toUserUpdatePayload, type UserFormValues } from './us
 export const useUserSaveActions = (
   userApi: ReturnType<typeof useUser>,
   form: UseFormReturn<UserFormValues>,
-  hasUnsavedChanges: boolean
+  hasUnsavedChanges: boolean,
+  onInvalid?: SubmitErrorHandler<UserFormValues>
 ) => {
   const saveFeedback = useStudioSaveFeedback();
   const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
@@ -39,8 +40,12 @@ export const useUserSaveActions = (
     [form, saveFeedback, userApi]
   );
   const onSave = React.useMemo(
-    () => form.handleSubmit(saveUser, () => saveFeedback.reset()),
-    [form, saveFeedback, saveUser]
+    () =>
+      form.handleSubmit(saveUser, (errors, event) => {
+        saveFeedback.reset();
+        onInvalid?.(errors, event);
+      }),
+    [form, onInvalid, saveFeedback, saveUser]
   );
 
   const onSendPasswordSetupEmail = React.useCallback(async () => {

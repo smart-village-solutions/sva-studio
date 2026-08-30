@@ -121,6 +121,7 @@ export const RoleCreatePage = () => {
               {...register('displayName', {
                 onChange: () => setMutationError(null),
               })}
+              required
             />
           </StudioField>
           <StudioField

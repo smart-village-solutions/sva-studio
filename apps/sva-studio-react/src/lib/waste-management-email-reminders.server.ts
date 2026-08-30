@@ -26,6 +26,13 @@ const DEFAULT_OUTBOX_RETRY_DELAY_MINUTES = 15;
 const DEFAULT_OUTBOX_MAX_ATTEMPTS = 5;
 const DEFAULT_OUTBOX_BATCH_SIZE = 25;
 
+const countOverdueReminderRefresh = (refreshed: boolean): Readonly<{
+  duplicateOutboxCount: number;
+  skippedPickupCount: number;
+}> => refreshed
+  ? { duplicateOutboxCount: 1, skippedPickupCount: 0 }
+  : { duplicateOutboxCount: 0, skippedPickupCount: 1 };
+
 export const createMaterializeEmailRemindersOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['materializeEmailReminders'] => async (instanceId, input) => {
@@ -157,11 +164,9 @@ export const createMaterializeEmailRemindersOperation = (
           };
           if (new Date(sendAt).getTime() < referenceTime.getTime()) {
             const refreshed = await reminderRepository.refreshPendingOutboxEntry(outboxEntry);
-            if (refreshed) {
-              duplicateOutboxCount += 1;
-            } else {
-              skippedPickupCount += 1;
-            }
+            const refreshCounts = countOverdueReminderRefresh(refreshed);
+            duplicateOutboxCount += refreshCounts.duplicateOutboxCount;
+            skippedPickupCount += refreshCounts.skippedPickupCount;
             continue;
           }
           const lookaheadBoundary = addDaysUtc(referenceTime, reminderConfig.materializationLookaheadDays);

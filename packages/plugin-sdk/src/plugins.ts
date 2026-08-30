@@ -256,6 +256,7 @@ export type PluginServerHandlerExecutionContext = Readonly<{
   pluginId: string;
   handlerId: string;
   scope: 'platform' | 'tenant';
+  activeOrganizationId?: string;
   actor: Readonly<{
     id: string;
     roles: readonly string[];

@@ -10,6 +10,7 @@ import { resolveEffectivePermissions } from '../iam-authorization/permission-sto
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
 import { resolveEffectiveRequestHost } from '../request-hosts.js';
 import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
+import { validateCsrf } from '../shared/request-security.js';
 
 type EffectivePermissionsResolution = Awaited<ReturnType<typeof resolveEffectivePermissions>>;
 
@@ -20,8 +21,12 @@ export type PluginServerHandlerDispatcherDependencies = Readonly<{
   resolvePermissions?: (input: {
     readonly instanceId: string;
     readonly keycloakSubject: string;
+    readonly organizationId?: string;
   }) => Promise<EffectivePermissionsResolution>;
+  validateCsrf?: typeof validateCsrf;
 }>;
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 const normalizePath = (path: string): string => {
   const trimmed = path.trim();
@@ -98,6 +103,7 @@ const authorizeTenantHandler = async (input: {
   const resolved = await input.resolvePermissions({
     instanceId,
     keycloakSubject: input.context.user.id,
+    organizationId: input.context.activeOrganizationId,
   });
   if (!resolved.ok) {
     return createError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.');
@@ -136,6 +142,7 @@ export const createPluginServerHandlerDispatcher = (input: {
     ((request: Request) => isCanonicalAuthHost(resolveEffectiveRequestHost(request)));
   const readTenantAccess = input.dependencies?.readTenantAccess ?? readConfiguredPluginTenantAccess;
   const resolvePermissions = input.dependencies?.resolvePermissions ?? resolveEffectivePermissions;
+  const validateRequestCsrf = input.dependencies?.validateCsrf ?? validateCsrf;
   const descriptors = [...input.descriptors.values()];
 
   return async (request) => {
@@ -160,6 +167,11 @@ export const createPluginServerHandlerDispatcher = (input: {
     }
 
     return authenticate(request, async (context) => {
+      if (MUTATING_METHODS.has(descriptor.method)) {
+        const csrfError = validateRequestCsrf(request, getWorkspaceContext().requestId);
+        if (csrfError) return csrfError;
+      }
+
       const requirement = descriptor.accessRequirement;
       if (requirement.kind === 'platform') {
         if (
@@ -193,6 +205,9 @@ export const createPluginServerHandlerDispatcher = (input: {
         pluginId: descriptor.ownerPluginId,
         handlerId: descriptor.id,
         scope: requirement.kind,
+        ...(context.activeOrganizationId
+          ? { activeOrganizationId: context.activeOrganizationId }
+          : {}),
         actor: {
           id: context.user.id,
           roles: context.user.roles,

@@ -39,9 +39,12 @@ const platformDescriptor = (): PluginServerHandlerRegistryEntry => ({
   },
 });
 
-const authenticateAs = (user: { id: string; roles: string[]; instanceId?: string }) =>
+const authenticateAs = (
+  user: { id: string; roles: string[]; instanceId?: string },
+  activeOrganizationId?: string
+) =>
   vi.fn(async (_request: Request, handler: (context: never) => Promise<Response> | Response) =>
-    handler({ sessionId: 'session-1', user } as never)
+    handler({ sessionId: 'session-1', user, activeOrganizationId } as never)
   );
 
 describe('plugin server handler dispatcher', () => {
@@ -100,16 +103,20 @@ describe('plugin server handler dispatcher', () => {
   it('authorizes tenant activation and permissions before invoking the handler', async () => {
     const descriptor = tenantDescriptor();
     const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('ok'));
+    const resolvePermissions = vi.fn().mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'news.read', resourceType: 'news' }],
+    });
     const dispatch = createPluginServerHandlerDispatcher({
       descriptors: new Map([[descriptor.id, descriptor]]),
       handlers: { [descriptor.id]: handler },
       dependencies: {
-        authenticate: authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' }),
+        authenticate: authenticateAs(
+          { id: 'user-1', roles: [], instanceId: 'tenant-a' },
+          'organization-a'
+        ),
         readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
-        resolvePermissions: vi.fn().mockResolvedValue({
-          ok: true,
-          permissions: [{ action: 'news.read', resourceType: 'news' }],
-        }),
+        resolvePermissions,
       },
     });
 
@@ -120,9 +127,38 @@ describe('plugin server handler dispatcher', () => {
         pluginId: 'news',
         handlerId: 'news.list',
         scope: 'tenant',
+        activeOrganizationId: 'organization-a',
         actor: expect.objectContaining({ id: 'user-1', instanceId: 'tenant-a' }),
       })
     );
+    expect(resolvePermissions).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+      organizationId: 'organization-a',
+    });
+  });
+
+  it('rejects mutating handlers when central CSRF validation fails', async () => {
+    const descriptor = { ...tenantDescriptor(), id: 'news.create', method: 'POST' as const };
+    const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('unexpected'));
+    const validateCsrf = vi.fn(() => new Response(null, { status: 403 }));
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' }),
+        validateCsrf,
+      },
+    });
+
+    const request = new Request('https://tenant.test/api/v1/plugins/news/items', {
+      method: 'POST',
+    });
+    const response = await dispatch(request);
+
+    expect(response?.status).toBe(403);
+    expect(validateCsrf).toHaveBeenCalledWith(request, 'request-1');
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('denies inactive tenant and non-root platform requests before execution', async () => {

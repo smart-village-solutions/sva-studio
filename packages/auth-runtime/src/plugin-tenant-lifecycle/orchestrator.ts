@@ -4,6 +4,7 @@ import type {
   PluginTenantLifecycleRepository,
 } from '@sva/data-repositories';
 import type {
+  PluginExecutionLogger,
   PluginTenantLifecycleOperation,
   PluginTenantLifecycleRegistryEntry,
 } from '@sva/plugin-sdk';
@@ -24,6 +25,7 @@ type PluginTenantLifecycleJobRegistration = {
 };
 
 export type PluginTenantLifecycleOrchestratorDependencies = {
+  readonly logger: PluginExecutionLogger;
   readonly lifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>;
   readonly resolveActivation: (
     instanceId: string,
@@ -125,7 +127,7 @@ const handleEnqueueFailure = async (
   job: StudioJobRecord,
   generation: number
 ): Promise<never> => {
-  await Promise.allSettled([
+  const [markEnqueueFailedResult, failLifecycleResult] = await Promise.allSettled([
     dependencies.markEnqueueFailed({ instanceId: input.instanceId, job }),
     dependencies.repository.failLifecycle({
       instanceId: input.instanceId,
@@ -137,6 +139,31 @@ const handleEnqueueFailure = async (
       retryKind: 'retryable',
     }),
   ]);
+  if (markEnqueueFailedResult.status === 'rejected' || failLifecycleResult.status === 'rejected') {
+    dependencies.logger.error(
+      'Plugin-Tenant-Lifecycle konnte einen Enqueue-Fehler nicht vollständig persistieren',
+      {
+        operation: 'plugin_tenant_lifecycle_enqueue_cleanup',
+        result: 'secondary_failure',
+        error_code: 'plugin_tenant_lifecycle_enqueue_cleanup_failed',
+        instance_id: input.instanceId,
+        plugin_id: input.pluginId,
+        job_id: job.id,
+        mark_enqueue_failed_error_type:
+          markEnqueueFailedResult.status === 'rejected'
+            ? markEnqueueFailedResult.reason instanceof Error
+              ? markEnqueueFailedResult.reason.name
+              : typeof markEnqueueFailedResult.reason
+            : undefined,
+        fail_lifecycle_error_type:
+          failLifecycleResult.status === 'rejected'
+            ? failLifecycleResult.reason instanceof Error
+              ? failLifecycleResult.reason.name
+              : typeof failLifecycleResult.reason
+            : undefined,
+      }
+    );
+  }
   throw lifecycleError(
     pluginTenantLifecycleHostErrorCodes.enqueueFailed,
     input.pluginId,

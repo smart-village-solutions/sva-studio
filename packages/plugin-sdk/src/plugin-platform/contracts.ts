@@ -1,6 +1,8 @@
 import type { TenantModuleActivationPolicy } from '@sva/core';
 export { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/core';
 
+export const PLUGIN_PLATFORM_ADMIN_ROLE = 'instance_registry_admin';
+
 export type PluginManifestCapability =
   | 'routing'
   | 'navigation'

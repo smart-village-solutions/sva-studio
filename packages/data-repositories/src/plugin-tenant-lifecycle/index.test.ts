@@ -36,7 +36,7 @@ const createExecutor = (rows: readonly (typeof row)[] = [row]) => {
 };
 
 describe('plugin tenant lifecycle repository', () => {
-  it('increments the desired generation and clears an older claim on every request', async () => {
+  it('increments the desired generation only when no lifecycle job is in flight', async () => {
     const { executor, statements } = createExecutor();
     const repository = createPluginTenantLifecycleRepository(executor);
 
@@ -53,6 +53,25 @@ describe('plugin tenant lifecycle repository', () => {
     );
     expect(statements[0]?.text).toContain('claimed_generation = NULL');
     expect(statements[0]?.text).toContain('active_job_id = NULL');
+    expect(statements[0]?.text).toContain(
+      'WHERE iam.instance_plugin_lifecycle.active_job_id IS NULL'
+    );
+    expect(statements[0]?.text).toContain(
+      'AND iam.instance_plugin_lifecycle.claimed_generation IS NULL'
+    );
+  });
+
+  it('rejects a concurrent request while a lifecycle job is in flight', async () => {
+    const { executor } = createExecutor([]);
+    const repository = createPluginTenantLifecycleRepository(executor);
+
+    await expect(
+      repository.requestLifecycle({
+        instanceId: 'tenant-a',
+        pluginId: 'speech',
+        operation: 'reconcile',
+      })
+    ).rejects.toThrow('plugin_tenant_lifecycle_request_conflict');
   });
 
   it('claims only the exact desired operation and generation', async () => {

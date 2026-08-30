@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { PluginTenantLifecycleRepository } from '@sva/data-repositories';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
 import { withRegistryRepository } from '../iam-instance-registry/repository.js';
@@ -18,6 +19,8 @@ import {
   createPluginTenantLifecycleOrchestrator,
   type StartPluginTenantLifecycleInput,
 } from './orchestrator.js';
+
+const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'info' });
 
 const repository: Pick<
   PluginTenantLifecycleRepository,
@@ -39,6 +42,7 @@ const repository: Pick<
 
 export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLifecycleInput) =>
   createPluginTenantLifecycleOrchestrator({
+    logger,
     lifecycleRegistry: readInstanceRegistryPluginTenantLifecycleRegistry(),
     resolveActivation: (instanceId, pluginId) =>
       withRegistryRepository((instanceRegistryRepository) =>

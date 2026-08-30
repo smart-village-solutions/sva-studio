@@ -244,6 +244,7 @@ export {
   definePluginImportProfiles,
   definePluginJobTypes,
   definePluginManifest,
+  PLUGIN_PLATFORM_ADMIN_ROLE,
   PLUGIN_ROUTE_SCOPE_HEADER_NAME,
   defineMediaPickerDefinition,
   compactOptionalString,

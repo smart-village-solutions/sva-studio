@@ -239,6 +239,7 @@ export type {
   PluginSnapshot,
 } from './plugin-platform-contracts.js';
 export {
+  PLUGIN_PLATFORM_ADMIN_ROLE,
   PLUGIN_ROUTE_SCOPE_HEADER_NAME,
   createPluginSnapshot,
   definePluginCatalogEntry,

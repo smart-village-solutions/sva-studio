@@ -44,6 +44,12 @@ const job = {
 };
 
 const createDependencies = () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
   lifecycleRegistry: new Map([['speech', lifecycleDefinition]]),
   resolveActivation: vi.fn(async () => ({ effectiveActive: true })),
   repository: {
@@ -171,6 +177,30 @@ describe('plugin tenant lifecycle orchestrator', () => {
         generation: 3,
         readinessStatus: 'blocked',
         retryKind: 'retryable',
+      })
+    );
+  });
+
+  it('logs secondary persistence failures after queueing fails', async () => {
+    const dependencies = createDependencies();
+    dependencies.queueJob.mockRejectedValue(new Error('queue unavailable'));
+    dependencies.markEnqueueFailed.mockRejectedValue(new TypeError('job update unavailable'));
+    dependencies.repository.failLifecycle.mockRejectedValue(new Error('lifecycle unavailable'));
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.enqueueFailed}:speech:provision`);
+    expect(dependencies.logger.error).toHaveBeenCalledWith(
+      'Plugin-Tenant-Lifecycle konnte einen Enqueue-Fehler nicht vollständig persistieren',
+      expect.objectContaining({
+        operation: 'plugin_tenant_lifecycle_enqueue_cleanup',
+        result: 'secondary_failure',
+        error_code: 'plugin_tenant_lifecycle_enqueue_cleanup_failed',
+        instance_id: 'tenant-a',
+        plugin_id: 'speech',
+        job_id: job.id,
+        mark_enqueue_failed_error_type: 'TypeError',
+        fail_lifecycle_error_type: 'Error',
       })
     );
   });

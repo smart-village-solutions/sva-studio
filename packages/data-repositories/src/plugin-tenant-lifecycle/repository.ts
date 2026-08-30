@@ -32,12 +32,14 @@ SET access_state = CASE
     started_at = NULL,
     completed_at = NULL,
     updated_at = NOW()
+WHERE iam.instance_plugin_lifecycle.active_job_id IS NULL
+  AND iam.instance_plugin_lifecycle.claimed_generation IS NULL
 RETURNING *;
 `,
         [input.instanceId, input.pluginId, input.operation]
       )
     );
-    if (!record) throw new Error('plugin_tenant_lifecycle_request_not_persisted');
+    if (!record) throw new Error('plugin_tenant_lifecycle_request_conflict');
     return record;
   };
 

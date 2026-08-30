@@ -27,7 +27,10 @@ import {
 import type { PluginTenantLifecycleDefinition } from './plugin-tenant-lifecycle.js';
 import { definePluginTenantLifecycle } from './plugin-tenant-lifecycle.js';
 import { hasMatchingPluginAccessRequirement } from './plugin-platform/access-requirements.js';
-import type { PluginExtensionTier } from './plugin-platform/contracts.js';
+import {
+  PLUGIN_PLATFORM_ADMIN_ROLE,
+  type PluginExtensionTier,
+} from './plugin-platform/contracts.js';
 import {
   assertPluginActionDefinitionAllowedKeys,
   buildPluginActionRegistry,
@@ -451,7 +454,7 @@ const assertPluginAccessRequirement = (
       throw new Error(`plugin_platform_access_roles_missing:${pluginNamespace}:${source}`);
     }
     for (const role of requirement.roles.values) {
-      if (role !== 'instance_registry_admin') {
+      if (role !== PLUGIN_PLATFORM_ADMIN_ROLE) {
         throw new Error(`plugin_platform_access_role_invalid:${pluginNamespace}:${source}:${role}`);
       }
     }

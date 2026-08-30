@@ -9,12 +9,12 @@
 ## 2. Persistenz und Gelesen-Stand
 
 - [ ] 2.1 Vor der Migration `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` gegen den tatsächlichen IAM-Schemavertrag prüfen.
-- [ ] 2.2 Idempotente Goose-Migration für `iam.account_message_receipts` mit zusammengesetztem Primärschlüssel, referenzieller Instanz-/Accountintegrität ohne unbedingtes Membership-Cascade, Constraints sowie aktivierter und erzwungener RLS hinzufügen.
+- [ ] 2.2 Idempotente Goose-Migration für `iam.account_message_receipts` mit zusammengesetztem Primärschlüssel, referenzieller Instanz-/Accountintegrität ohne unbedingtes Membership-Cascade, Constraints sowie aktivierter und erzwungener RLS hinzufügen; `iam.instance_memberships.revoked_at` und die persistierte, pro Instanz monotone Feed-Sichtbarkeitsgrenze einschließlich Snapshot-/Schema-Dokumentation im selben Migrationsplan berücksichtigen.
 - [ ] 2.3 Repository- und Service-Logik für instanz-/accountgebundene Reads und idempotente Upserts implementieren, ohne Nachrichtentexte zu persistieren.
 - [ ] 2.4 Schema-Snapshot und Schema-Übersicht nach der Migration vollständig fortschreiben.
-- [ ] 2.5 PostgreSQL-16-Up/Down/Up-, RLS-, Tenant-Isolations-, Membership-Lösch-, Legal-Hold- und Query-Plan-Tests ergänzen; belegen, dass Membership-Entzug Zugriff sofort sperrt, gehaltene Belege bewahrt und die Löschung nach Hold-Aufhebung nachholt.
+- [ ] 2.5 PostgreSQL-16-Up/Down/Up-, RLS-, Tenant-Isolations-, Membership-Lösch-, Soft-Revoke-, Legal-Hold- und Query-Plan-Tests ergänzen; belegen, dass Membership-Entzug Zugriff sofort sperrt, der bestehende `ON DELETE RESTRICT`-Vertrag gehaltene Memberships und Belege bewahrt und die physische Löschung nach Hold-Aufhebung nachholt.
 - [ ] 2.6 Gelesen-Belege in vollständige DSR-Selbst-/Adminexporte aufnehmen und Exportautorisierung, Formate sowie Auditierung testen.
-- [ ] 2.7 Gemeinsame validierte Aufbewahrungsfrist für Feed-Sichtbarkeit und Gelesen-Belege mit 365-Tage-Default, Dry Run, expliziter Freigabe bei Verkürzung, Legal-Hold-Sperre und periodischer Bereinigung implementieren und testen.
+- [ ] 2.7 Gemeinsame validierte Aufbewahrungsfrist für Feed-Sichtbarkeit und Gelesen-Belege mit 365-Tage-Default, Dry Run, expliziter Freigabe bei Verkürzung, Legal-Hold-Sperre und periodischer Bereinigung implementieren; vor Beleglöschung die monotone Sichtbarkeitsgrenze fortschreiben, unauflösbare Nachrichtenzeitpunkte fail-closed behalten sowie Verlängerungen nach erfolgter Bereinigung testen.
 
 ## 3. Nachrichtenfeed und Studio-API
 

@@ -69,7 +69,7 @@ Das System SHALL den Gelesen-Stand pro Instanz, Account und stabiler Nachrichten
 
 ### Requirement: Instanzisolierte Gelesen-Belege
 
-Das System MUST Gelesen-Belege über referenzielle Instanz-/Accountintegrität, erzwungene RLS und serverseitig gebundenen Accountkontext isolieren. Membership-Cleanup MUST den bestehenden Legal-Hold-Vertrag einhalten. Die Persistenz MUST auf ID, Instanz, Account und Gelesen-Zeitpunkt begrenzt bleiben.
+Das System MUST Gelesen-Belege über referenzielle Instanz-/Accountintegrität, erzwungene RLS und serverseitig gebundenen Accountkontext isolieren. Membership-Cleanup MUST den bestehenden Legal-Hold-Vertrag einhalten. Eine unter Legal Hold stehende Membership MUST deshalb zuerst dauerhaft für normale Autorisierung widerrufen und erst nach Aufhebung des Holds physisch gelöscht werden. Die Persistenz MUST auf ID, Instanz, Account und Gelesen-Zeitpunkt begrenzt bleiben.
 
 #### Scenario: Tenantübergreifender Zugriff wird durch Datenbankgrenze verhindert
 
@@ -84,13 +84,22 @@ Das System MUST Gelesen-Belege über referenzielle Instanz-/Accountintegrität, 
 - **UND** entfernt der Governance-Workflow die Gelesen-Belege nur ohne aktiven Legal Hold
 - **UND** bleiben Belege anderer Instanzen unverändert
 
-#### Scenario: Membership wird unter Legal Hold entfernt
+#### Scenario: Membership wird unter Legal Hold entzogen
 
-- **WENN** eine Account-Membership bei aktivem Legal Hold gelöscht wird
-- **DANN** bleiben ihre Gelesen-Belege bis zur Aufhebung des Holds instanz- und accountgebunden erhalten
+- **WENN** eine Account-Membership bei aktivem Legal Hold entzogen werden soll
+- **DANN** wird sie atomar als widerrufen markiert und nicht physisch gelöscht
+- **UND** schließen alle Autorisierungs- und Feed-Abfragen die widerrufene Membership sofort aus
+- **UND** bleiben ihre Gelesen-Belege bis zur Aufhebung des Holds instanz- und accountgebunden erhalten
 - **UND** sind sie für normale Studio-Requests nicht mehr sichtbar
 - **UND** kann ausschließlich der autorisierte DSR-/Governance-Pfad darauf zugreifen
-- **UND** wird die vorgemerkte Löschung nach Aufhebung des Holds nachgeholt
+- **UND** werden die vorgemerkte physische Membership- und Beleglöschung nach Aufhebung des Holds nachgeholt
+
+#### Scenario: Aufbewahrungsfrist wird nach einer Bereinigung verlängert
+
+- **WENN** Belege bereits bereinigt wurden
+- **UND** ein Administrator die gemeinsame Aufbewahrungsfrist anschließend verlängert
+- **DANN** bleibt die bei der Bereinigung persistierte Sichtbarkeitsgrenze monoton erhalten
+- **UND** werden zuvor ausgeblendete Nachrichten nicht erneut ohne Gelesen-Beleg sichtbar
 
 ### Requirement: Automatische Widget-Darstellung nach Größe
 

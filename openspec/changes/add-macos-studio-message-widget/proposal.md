@@ -9,7 +9,7 @@ Das Studio-Update-Log ist heute nur innerhalb der Web-Anwendung sichtbar. Nutzer
 - Ein allgemeiner, instanz- und accountgebundener Studio-Nachrichtenfeed aggregiert autorisierte Nachrichtenquellen. Das bestehende Update-Log wird als erste Quelle angebunden.
 - Neue versionierte Account-Endpunkte liefern eine reine Ungelesen-Zusammenfassung, begrenzte Nachrichtenlisten und idempotente Gelesen-Markierungen.
 - Der Gelesen-Stand wird serverseitig, instanzisoliert und ohne Kopie des Nachrichtentextes persistiert.
-- Gelesen-Belege werden in Betroffenenexporte aufgenommen und nach einer konfigurierbaren, mit der Feed-Sichtbarkeit abgestimmten Aufbewahrungsfrist gelöscht.
+- Gelesen-Belege werden in Betroffenenexporte aufgenommen und nach einer konfigurierbaren, mit der Feed-Sichtbarkeit sowie einer monotonen Sichtbarkeitsgrenze abgestimmten Aufbewahrungsfrist gelöscht.
 - Ein nativer, öffentlicher macOS-OIDC-Client meldet Benutzer ausschließlich über den externen Systembrowser mit Authorization Code und PKCE an. Das Widget erhält nur die vollständig qualifizierten Rechte `studio.messages.read` und `studio.messages.read-state.update`.
 - Eine kleine native macOS-Begleit-App mit WidgetKit-Erweiterung stellt automatisch passende Inhalte dar: klein nur die Anzahl ungelesener Nachrichten, mittel drei und groß fünf Nachrichten.
 - Nachrichtentitel und -texte werden im gesperrten Zustand als sensibel behandelt; sichtbar bleibt nur eine neutrale Anzahl.
@@ -31,7 +31,7 @@ Das Studio-Update-Log ist heute nur innerhalb der Web-Anwendung sichtbar. Nutzer
   - `docs/architecture/09-architecture-decisions.md`
   - `docs/architecture/10-quality-requirements.md`
   - `docs/architecture/11-risks-and-technical-debt.md`
-- Database impact: neue instanzisolierte Gelesen-Belege mit referenzieller Instanz-/Accountintegrität, Legal-Hold-fähigem Membership-Cleanup, DSR-Export und konfigurierbarer Aufbewahrungsfrist; `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` müssen synchron fortgeschrieben werden
+- Database impact: neue instanzisolierte Gelesen-Belege mit referenzieller Instanz-/Accountintegrität, Legal-Hold-fähigem Membership-Soft-Revoke, DSR-Export, konfigurierbarer Aufbewahrungsfrist und persistierter monotoner Sichtbarkeitsgrenze; `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` müssen synchron fortgeschrieben werden
 - Security impact: neuer nativer Public-Client, Bearer-Token-Prüfung, Keychain-Sharing, Audience-/Scope-Bindung, Token-Widerruf und redigierte Widget-Snapshots
 - Rollout impact: keine Änderung am kanonischen Studio-Deploypfad; produktive macOS-Artefakte benötigen zusätzlich Apple-Signierung und Notarisierung
 

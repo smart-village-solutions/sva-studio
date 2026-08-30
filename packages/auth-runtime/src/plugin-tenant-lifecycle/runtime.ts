@@ -4,6 +4,7 @@ import type { TenantModuleActivationRecord } from '@sva/core';
 import type { PluginTenantLifecycleRepository } from '@sva/data-repositories';
 import {
   createPluginTenantReadinessReadModel,
+  type PluginTenantLifecycleOperation,
   type PluginTenantLifecycleRegistryEntry,
 } from '@sva/plugin-sdk';
 import { createSdkLogger } from '@sva/server-runtime';
@@ -50,13 +51,24 @@ const resolveAutomaticProvisioningSchedule = (
   definition: PluginTenantLifecycleRegistryEntry,
   activation: TenantModuleActivationRecord,
   lifecycle: Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>
-): string | null => {
+): Readonly<{ operation: PluginTenantLifecycleOperation; scheduledAt: string }> | null => {
   const now = new Date();
-  if (!lifecycle) return now.toISOString();
+  const hasOperation = (operation: PluginTenantLifecycleOperation): boolean =>
+    definition.operations.some((candidate) => candidate.operation === operation);
+  if (!lifecycle) {
+    return hasOperation('provision')
+      ? { operation: 'provision', scheduledAt: now.toISOString() }
+      : null;
+  }
   if (lifecycle.accessState === 'suspended') return null;
   if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return null;
   if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > now.getTime()) {
-    return lifecycle.retryAfter;
+    return null;
+  }
+  if (lifecycle.retryKind === 'retryable') {
+    return hasOperation(lifecycle.desiredOperation)
+      ? { operation: lifecycle.desiredOperation, scheduledAt: now.toISOString() }
+      : null;
   }
   const readiness = createPluginTenantReadinessReadModel({
     definition,
@@ -70,7 +82,9 @@ const resolveAutomaticProvisioningSchedule = (
   ) {
     return null;
   }
-  return now.toISOString();
+  return hasOperation('provision')
+    ? { operation: 'provision', scheduledAt: now.toISOString() }
+    : null;
 };
 
 const persistLifecycleEnqueueFailure = async (input: {
@@ -166,26 +180,24 @@ export const ensureConfiguredPluginTenantProvisioning = async (
       .filter(({ effectiveActive }) => effectiveActive)
       .map((activation) => [activation.moduleId, activation])
   );
-  const provisioningDefinitions = [...lifecycleRegistry.values()].filter(
-    (definition) =>
-      effectiveActivations.has(definition.pluginId) &&
-      definition.operations.some(({ operation }) => operation === 'provision')
+  const activeDefinitions = [...lifecycleRegistry.values()].filter((definition) =>
+    effectiveActivations.has(definition.pluginId)
   );
-  for (const definition of provisioningDefinitions) {
+  for (const definition of activeDefinitions) {
     const pluginId = definition.pluginId;
     const activation = effectiveActivations.get(pluginId);
     if (!activation) continue;
     const lifecycle = await withPluginTenantLifecycleRepository(instanceId, (resolvedRepository) =>
       resolvedRepository.getLifecycle(instanceId, pluginId)
     );
-    const scheduledAt = resolveAutomaticProvisioningSchedule(definition, activation, lifecycle);
-    if (!scheduledAt) continue;
+    const schedule = resolveAutomaticProvisioningSchedule(definition, activation, lifecycle);
+    if (!schedule) continue;
     try {
       await startConfiguredPluginTenantLifecycle({
         instanceId,
         pluginId,
-        operation: 'provision',
-        scheduledAt,
+        operation: schedule.operation,
+        scheduledAt: schedule.scheduledAt,
       });
     } catch (error) {
       if (

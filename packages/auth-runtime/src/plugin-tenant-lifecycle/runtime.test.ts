@@ -17,6 +17,10 @@ const state = vi.hoisted(() => ({
     titleKey: string;
     required: boolean;
   }>,
+  operations: [{ operation: 'provision' as const, jobTypeId: 'speech.provisionTenant' }] as Array<{
+    operation: 'provision' | 'reconcile' | 'suspend' | 'reactivate' | 'readiness';
+    jobTypeId: string;
+  }>,
   listModuleActivations: vi.fn(async () => [
     {
       moduleId: 'speech',
@@ -52,7 +56,7 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
           pluginId: 'speech',
           contractRevision: '1.0.0:1',
           contractVersion: 1,
-          operations: [{ operation: 'provision', jobTypeId: 'speech.provisionTenant' }],
+          operations: state.operations,
           readinessChecks: state.readinessChecks,
         },
       ],
@@ -93,6 +97,15 @@ vi.mock('../plugin-operations/runner.js', () => ({
     new Map([
       [
         'speech.provisionTenant',
+        {
+          handler: vi.fn(),
+          queueName: 'plugin-operations',
+          executionLane: 'privileged',
+          supportsCancellation: false,
+        },
+      ],
+      [
+        'speech.checkTenantReadiness',
         {
           handler: vi.fn(),
           queueName: 'plugin-operations',
@@ -146,6 +159,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
     state.createStudioJob.mockResolvedValue(job);
     state.getLifecycle.mockResolvedValue(null);
     state.readinessChecks = [];
+    state.operations = [{ operation: 'provision' as const, jobTypeId: 'speech.provisionTenant' }];
     state.updateJobState.mockResolvedValue(job);
     state.failLifecycle.mockResolvedValue(lifecycleRecord);
     state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
@@ -244,7 +258,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
     expect(state.createStudioJob).toHaveBeenCalled();
   });
 
-  it('durably schedules automatic provisioning for the declared retry deadline', async () => {
+  it('keeps degraded access without creating a pending generation before the retry deadline', async () => {
     state.getLifecycle.mockResolvedValue({
       ...lifecycleRecord,
       retryKind: 'retryable',
@@ -254,15 +268,37 @@ describe('configured plugin tenant lifecycle runtime', () => {
 
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
 
+    expect(state.requestLifecycle).not.toHaveBeenCalled();
+    expect(state.createStudioJob).not.toHaveBeenCalled();
+    expect(state.queuePluginOperationJob).not.toHaveBeenCalled();
+  });
+
+  it('retries the persisted lifecycle operation after its deadline', async () => {
+    state.operations = [
+      { operation: 'provision', jobTypeId: 'speech.provisionTenant' },
+      { operation: 'readiness', jobTypeId: 'speech.checkTenantReadiness' },
+    ];
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      desiredOperation: 'readiness',
+      readinessStatus: 'degraded',
+      retryKind: 'retryable',
+      retryAfter: '2020-08-30T12:05:00.000Z',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
     expect(state.createStudioJob).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
-          scheduledAt: '2999-08-30T12:05:00.000Z',
+          jobTypeId: 'speech.checkTenantReadiness',
+          idempotencyKey: 'speech:tenant-lifecycle:readiness:3',
+          inputPayload: {
+            studioTenantLifecycle: { operation: 'readiness', generation: 3 },
+          },
         }),
       })
-    );
-    expect(state.queuePluginOperationJob).toHaveBeenCalledWith(
-      expect.objectContaining({ runAt: new Date('2999-08-30T12:05:00.000Z') })
     );
   });
 

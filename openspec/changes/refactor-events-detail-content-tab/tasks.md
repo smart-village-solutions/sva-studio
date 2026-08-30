@@ -51,16 +51,16 @@
 
 ## 4. Root-Komponente und Vertragsgrenzen abschließen
 
-- [ ] 4.1 `EventsDetailContentTab` auf äußere Props, einmalige gemeinsame
+- [x] 4.1 `EventsDetailContentTab` auf äußere Props, einmalige gemeinsame
       Capability-Ableitungen und die explizite Section-Komposition reduzieren
-- [ ] 4.2 Mit `rg` nach den alten Inline-Blöcken, duplizierten Field-Array-
+- [x] 4.2 Mit `rg` nach den alten Inline-Blöcken, duplizierten Field-Array-
       Ownern, Config-Effekten und parallelen Content-Tab-Pfaden suchen und alle
       unbegründeten Treffer entfernen
-- [ ] 4.3 Sicherstellen, dass keine neuen öffentlichen Exporte, Dependencies,
+- [x] 4.3 Sicherstellen, dass keine neuen öffentlichen Exporte, Dependencies,
       Suppressionen, Grenzwerte oder Shared-Primitives hinzugekommen sind
-- [ ] 4.4 `EventsDetailContentTab` auf höchstens 20 zyklomatische, 15 kognitive
+- [x] 4.4 `EventsDetailContentTab` auf höchstens 20 zyklomatische, 15 kognitive
       und 250 Funktionszeilen reduzieren; keine neue Section darf kritisch sein
-- [ ] 4.5 Die produktive Gesamtbilanz gegen `origin/main` ausweisen; Additionen
+- [x] 4.5 Die produktive Gesamtbilanz gegen `origin/main` ausweisen; Additionen
       dürfen Löschungen nicht übersteigen
 
 ## 5. Dokumentation und Gates

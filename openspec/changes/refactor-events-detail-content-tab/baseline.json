@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "capturedOn": "2026-08-30",
+  "baselineRef": "f3a953dddbbc31109cc64d1420323451aa84e3b0",
+  "scope": {
+    "workspace": "@sva/plugin-events",
+    "productionFile": "packages/plugin-events/src/events.detail-content-tab.tsx",
+    "productionFileSha256": "0c67a28ecbf87291f559509b390bcaa86aea4f85dd3f6a2a77a99c4c654c7033",
+    "productionFileLines": 854,
+    "rootSymbol": "EventsDetailContentTab"
+  },
+  "fallow": {
+    "version": "3.10.0",
+    "schemaVersion": 7,
+    "coverageSource": "estimated",
+    "thresholds": {
+      "maxCyclomatic": 20,
+      "maxCognitive": 15,
+      "maxCrap": 30,
+      "maxUnitSize": 60
+    },
+    "targetFindings": [
+      {
+        "name": "EventsDetailContentTab",
+        "line": 46,
+        "cyclomatic": 41,
+        "cognitive": 57,
+        "lineCount": 809,
+        "reactHookCount": 19,
+        "reactPropCount": 14,
+        "crap": 46.7,
+        "severity": "critical"
+      },
+      {
+        "name": "<arrow>",
+        "responsibility": "dates repeater callback",
+        "line": 264,
+        "cyclomatic": 25,
+        "cognitive": 23,
+        "lineCount": 137,
+        "crap": 160,
+        "severity": "critical"
+      },
+      {
+        "name": "<arrow>",
+        "responsibility": "addresses repeater callback",
+        "line": 417,
+        "cyclomatic": 22,
+        "cognitive": 16,
+        "lineCount": 87,
+        "crap": 126.5,
+        "severity": "critical"
+      },
+      {
+        "name": "<arrow>",
+        "responsibility": "contacts repeater callback",
+        "line": 616,
+        "cyclomatic": 16,
+        "cognitive": 14,
+        "lineCount": 84,
+        "crap": 71.3,
+        "severity": "high"
+      },
+      {
+        "name": "<arrow>",
+        "responsibility": "prices repeater callback",
+        "line": 782,
+        "cyclomatic": 13,
+        "cognitive": 11,
+        "lineCount": 69,
+        "crap": 49.5,
+        "severity": "moderate"
+      }
+    ]
+  },
+  "characterization": {
+    "testFile": "packages/plugin-events/tests/events.detail-content-tab.test.tsx",
+    "baselineTestFileSha256": "c7c7573dd695c17419e763532d74ea2b5ed0ed75594907dec7afee820a84e5f1",
+    "focusedTestsAfterBlock": 11,
+    "areas": {
+      "description": ["rich-text value propagation"],
+      "media": ["upload picker routing", "usage change callback", "RHF media mapping"],
+      "dates": [
+        "first-date callbacks",
+        "secondary-date direct updates",
+        "add",
+        "remove",
+        "fallback",
+        "date and time input types",
+        "aria-invalid"
+      ],
+      "addresses": [
+        "direct edits",
+        "add",
+        "remove",
+        "fallback",
+        "geocode",
+        "map update",
+        "error states"
+      ],
+      "organizer": ["direct edits", "reverse geocode", "error states"],
+      "contacts": ["direct edits", "secondary entry edits", "add", "remove"],
+      "links": ["direct edits", "secondary entry edits", "add", "remove", "fallback"],
+      "prices": ["number mapping", "empty number mapping", "secondary entry edits", "add", "remove"]
+    },
+    "commands": [
+      "pnpm nx run plugin-events:test:unit --testFiles=tests/events.detail-content-tab.test.tsx",
+      "pnpm exec vitest run tests/events.detail-content-tab.test.tsx --config vitest.config.ts --reporter=verbose"
+    ],
+    "result": "passed"
+  },
+  "foundationBoundary": {
+    "formOwnerChanged": false,
+    "resolverChanged": false,
+    "validationChanged": false,
+    "submitChanged": false,
+    "persistenceChanged": false,
+    "httpBehaviorChanged": false,
+    "mswMigrationRequired": false,
+    "fastCheckMigrationRequired": false
+  }
+}

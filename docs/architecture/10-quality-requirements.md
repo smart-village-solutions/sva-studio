@@ -433,3 +433,11 @@ Referenzen:
 - Map-Tests belegen Initialisierung, Marker, Click, Drag, Viewport, Fehler und Cleanup ohne eine MapLibre-Dependency in der Studio-UI.
 - Reference-Retry wiederholt keine Content-Mutation; ein fehlgeschlagener Retry bleibt sichtbar und ein erfolgreicher Retry setzt verknüpfte Medien auf `synced`.
 - Die produktive TypeScript-/TSX-Bilanz des Changes muss netto höchstens null bleiben und die erfassten Fallow-Fingerprints müssen verschwinden.
+
+#### Abschlussnachweis für den Events-Inhaltseditor
+
+- `EventsDetailContentTab` ist von 809 auf 14 Funktionszeilen und von 41/57 auf 1/1 zyklomatische/kognitive Komplexität reduziert.
+- Termine, Ortsdaten, Veranstalter, Beschreibung/Medien sowie die drei Repeater-Familien besitzen jeweils einen sichtbaren plugininternen Owner; der Root-Tab enthält keine parallele Inline-Implementierung mehr.
+- Die produktive Zielstruktur umfasst 848 statt 854 TypeScript-/TSX-Zeilen, also netto −6 Zeilen. Alle sechs Zieldateien bleiben unter 260 Dateizeilen und alle neuen Funktionen unter 80 Funktionszeilen. Der Refactor hat weder einen neuen öffentlichen Export noch eine Dependency oder Shared-Abstraktion eingeführt.
+- Characterization-Tests sichern alle acht Editorbereiche sowie Hinzufügen, Entfernen, Reihenfolge, leere Defaults, bedingte Felder, Medien- und Geocoding-Verträge. Unit-, Type-, Lint-, Boundary-, Fallow- und OpenSpec-Nachweise bilden den verbindlichen Abschluss.
+- Der pfadsensitive Fallow-New-only-Audit meldet drei in neue Section-Dateien verschobene Bestandsblöcke formal als eingeführt. Der direkte Produktionsvergleich weist jedoch neun Events-bezogene Clone-Gruppen in der Baseline und drei im Zielstand aus; workspaceweit sinken die Clone-Gruppen von 680 auf 678 und die duplizierten Zeilen von 26.870 auf 26.756. Neue kritische Komplexität, neuer Dead Code und neue Boundary-Verletzungen liegen nicht vor.

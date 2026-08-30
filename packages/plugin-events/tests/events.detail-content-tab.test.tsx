@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -101,6 +101,7 @@ const pt = (key: string) =>
     'cards.content.descriptions.description': 'Beschreibung des Events',
     'cards.content.media.title': 'Medien',
     'cards.content.media.description': 'Medien des Events',
+    'cards.content.media.empty': 'Noch keine Medien',
     'cards.content.dates.title': 'Termine',
     'cards.content.dates.description': 'Datumsangaben',
     'cards.content.dates.itemTitle': 'Termin',
@@ -143,6 +144,8 @@ const pt = (key: string) =>
     'fields.urlDescription': 'Link-Beschreibung',
     'fields.mediaCaption': 'Bildunterschrift',
     'fields.mediaCopyright': 'Copyright',
+    'fields.mediaSourceDescription': 'Alternativtext',
+    'fields.mediaSourceUrl': 'Medien-URL',
     'fields.mediaContentType': 'Medientyp',
     'fields.mediaWidth': 'Breite',
     'fields.mediaHeight': 'Höhe',
@@ -168,6 +171,7 @@ const pt = (key: string) =>
     'actions.reverseGeocodeAddress': 'Adresse ermitteln',
     'actions.reverseGeocodingAddress': 'Adresse wird ermittelt',
     'actions.remove': 'Entfernen',
+    'messages.mediaPickerTitle': 'Medium hinzufügen',
     'messages.locationGeocodeError': 'Geo-Koordinaten konnten nicht ermittelt werden.',
     'messages.locationGeocodeDisabled':
       'Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.',
@@ -205,13 +209,19 @@ const pt = (key: string) =>
 function renderTab(
   defaultValues?: Partial<EventsDetailFormValues>,
   options?: {
+    readonly canSelectMedia?: boolean;
+    readonly canUploadMedia?: boolean;
     readonly dateEndInput?: string;
     readonly dateInputsInvalid?: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
     readonly dateStartInput?: string;
+    readonly mediaEditingDisabled?: boolean;
   }
 ) {
+  const onAddManualMedia = vi.fn(() => 'manual-media');
+  const onChangeMediaUsages = vi.fn();
   const onDateStartInputChange = vi.fn();
   const onDateEndInputChange = vi.fn();
+  const onOpenMediaPicker = vi.fn();
   let getCurrentValues: (() => EventsDetailFormValues) | undefined;
 
   const Wrapper = () => {
@@ -226,15 +236,17 @@ function renderTab(
     return (
       <FormProvider {...methods}>
         <EventsDetailContentTab
+          canSelectMedia={options?.canSelectMedia}
+          canUploadMedia={options?.canUploadMedia}
           dateEndInput={options?.dateEndInput ?? ''}
           dateInputsInvalid={options?.dateInputsInvalid ?? { dateStart: false, dateEnd: false }}
           dateStartInput={options?.dateStartInput ?? ''}
-          mediaAssets={[]}
+          mediaEditingDisabled={options?.mediaEditingDisabled}
+          onAddManualMedia={onAddManualMedia}
+          onChangeMediaUsages={onChangeMediaUsages}
           onDateEndInputChange={onDateEndInputChange}
           onDateStartInputChange={onDateStartInputChange}
-          onUploadFile={async () => {
-            throw new Error('upload_not_used_in_test');
-          }}
+          onOpenMediaPicker={onOpenMediaPicker}
           pt={pt}
         />
       </FormProvider>
@@ -245,8 +257,11 @@ function renderTab(
 
   return {
     ...view,
+    onAddManualMedia,
+    onChangeMediaUsages,
     onDateEndInputChange,
     onDateStartInputChange,
+    onOpenMediaPicker,
     getValues: () => getCurrentValues?.() as EventsDetailFormValues,
   };
 }
@@ -270,9 +285,12 @@ describe('EventsDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), {
       target: { value: 'Marktplatz 1' },
     });
-    fireEvent.change(screen.getByLabelText('Ortsbezeichnung', { selector: '#event-address-name' }), {
-      target: { value: 'Rathaus' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Ortsbezeichnung', { selector: '#event-address-name' }),
+      {
+        target: { value: 'Rathaus' },
+      }
+    );
     fireEvent.change(
       screen.getByLabelText('Breitengrad', { selector: '#event-address-latitude' }),
       { target: { value: '51.4800' } }
@@ -384,11 +402,48 @@ describe('EventsDetailContentTab', () => {
     });
   });
 
-  it('adds repeated entries for dates, contacts, links, and prices', async () => {
-    renderTab();
+  it('routes media selection and keeps media field edits in the RHF content model', async () => {
+    const { getValues, onChangeMediaUsages, onOpenMediaPicker } = renderTab({
+      content: {
+        ...createDefaultEventsDetailFormValues().content,
+        mediaContents: [
+          {
+            sourceUrl: {
+              url: 'https://example.test/event.jpg',
+              description: 'Titelmotiv',
+            },
+            captionText: 'Alte Bildunterschrift',
+            copyright: 'Stadt',
+          },
+        ],
+      },
+    });
+    await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    expect(onOpenMediaPicker).toHaveBeenCalledWith('upload');
+
+    fireEvent.change(screen.getByLabelText('Bildunterschrift'), {
+      target: { value: 'Neue Bildunterschrift' },
+    });
+
+    expect(onChangeMediaUsages).toHaveBeenCalledOnce();
+    expect(getValues().content.mediaContents?.[0]).toMatchObject({
+      captionText: 'Neue Bildunterschrift',
+      copyright: 'Stadt',
+      sourceUrl: {
+        url: 'https://example.test/event.jpg',
+        description: 'Titelmotiv',
+      },
+    });
+  });
+
+  it('adds repeated entries for dates, addresses, contacts, links, and prices', async () => {
+    const { getValues } = renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Termin hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ort hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Kontakt hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Link hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Preis hinzufügen' }));
@@ -397,6 +452,11 @@ describe('EventsDetailContentTab', () => {
     expect(screen.getAllByText('Kontakt').length).toBeGreaterThan(1);
     expect(screen.getAllByText('Link').length).toBeGreaterThan(1);
     expect(screen.getAllByText('Preis').length).toBeGreaterThan(1);
+    expect(getValues().content.dates).toHaveLength(2);
+    expect(getValues().content.addresses).toHaveLength(2);
+    expect(getValues().content.contacts).toHaveLength(2);
+    expect(getValues().content.urls).toHaveLength(2);
+    expect(getValues().content.priceInformations).toHaveLength(2);
   });
 
   it('edits and removes repeated optional entries without using first-date callbacks', async () => {
@@ -475,11 +535,25 @@ describe('EventsDetailContentTab', () => {
     });
     expect(getValues().content.priceInformations?.[1]?.amount).toBeUndefined();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Entfernen' })[0] as HTMLButtonElement);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Entfernen' })[0] as HTMLButtonElement);
+    for (const sectionTitle of [
+      'Termine',
+      'Veranstaltungsort',
+      'Ansprechpartner',
+      'Links',
+      'Preise',
+    ]) {
+      const section = screen.getByRole('heading', { name: sectionTitle }).closest('section');
+      if (!section) throw new Error(`section_not_found:${sectionTitle}`);
+      fireEvent.click(
+        within(section).getAllByRole('button', { name: 'Entfernen' })[1] as HTMLButtonElement
+      );
+    }
 
     expect(getValues().content.dates).toHaveLength(1);
     expect(getValues().content.addresses).toHaveLength(1);
+    expect(getValues().content.contacts).toHaveLength(1);
+    expect(getValues().content.urls).toHaveLength(1);
+    expect(getValues().content.priceInformations).toHaveLength(1);
   }, 10_000);
 
   it('marks invalid first date inputs for assistive technology', async () => {

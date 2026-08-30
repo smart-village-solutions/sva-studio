@@ -8,6 +8,23 @@ Das Studio kombiniert TanStack Router/Start, Zod, Nx und eine pluginfähige Reac
 
 Die Einführung neuer npm-Pakete ist in diesem Repository bewusst architekturwirksam und muss daher als normativer Standard beschrieben werden, nicht nur als Implementierungsdetail.
 
+## Reconciliation vom 30. August 2026
+
+Die Foundation-Einführung ist teilweise umgesetzt, obwohl die Checkliste vor
+der Reconciliation noch 0/18 auswies. Bereits vorhanden sind die beiden ADRs,
+Governance und Inventur, die Studio-Form-Bridge, das gemeinsame MSW-Setup, die
+benötigten Dependencies sowie erste RHF-/Resolver-, MSW- und fast-check-
+Referenzen. Die reconciliierte Aufgabenliste ist für den tatsächlichen Stand
+führend.
+
+Die verbleibende Arbeit wird nicht als globale Sperre für jeden bestehenden
+RHF-Editor interpretiert. Ein interner Strukturrefactor darf parallel erfolgen,
+wenn er weder den äußeren `useForm`-Owner noch Resolver, Validierung, Submit,
+Persistenz oder HTTP-nahe Tests grundlegend überarbeitet. Er muss diese
+Abgrenzung in Inventur und Arbeitskontext dokumentieren. Sobald einer dieser
+Verträge erweitert oder ersetzt wird, gilt der vollständige Foundation-
+Standard für den betroffenen Flow.
+
 ## Goals / Non-Goals
 
 - Goals:

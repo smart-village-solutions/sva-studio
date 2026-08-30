@@ -17,6 +17,32 @@ Zusätzlich fehlen für kritische Kernlogik systematische generative Tests sowie
 - Der konkrete Referenzscope wird dort ebenfalls explizit normiert: `/admin/users`, `/admin/roles` und der Host-Content-Flow als Referenzimplementierungen; `/account` nur unter der Default-Regel.
 - Die betroffenen Spezifikationen präzisieren Architektur-, UI- und Testmuster für Host und Plugins als verbindliche Repo-Vorgabe.
 
+## Reconciled Implementation State
+
+Der Change wurde am 30. August 2026 gegen `origin/main` reconciliert. Die
+Aufgabenliste stand formal bei 0/18, obwohl wesentliche Foundations bereits
+produktiv vorhanden sind:
+
+- ADR 043 und ADR 044 sind akzeptiert.
+- Formularinventur und Foundation-Governance existieren.
+- `@sva/studio-ui-react` stellt die Form-Bridge für Feldfehler und
+  Summary-Fokus bereit.
+- `tooling/testing` stellt das gemeinsame MSW-Setup einschließlich Node- und
+  Browser-Einstieg, Handlern und Reset bereit.
+- User-Create und Host-Content verwenden RHF mit `zodResolver` und besitzen
+  MSW-basierte Referenztests.
+- `admin-resource-search-params` und
+  `waste-management-location-tour-pickup-date-import` besitzen erste
+  `fast-check`-Properties.
+
+Offen bleiben insbesondere die vollständige Inventur aller Plugin-Formulare,
+die restlichen Admin-Referenzmigrationen einschließlich Rollen und User-Edit,
+die vollständige Ablösung direkter HTTP-Stubs im Referenzscope sowie die
+Properties für `route-search` und `input-readers`. Diese Restarbeiten sind ein
+eigenständiger Foundation-Scope und kein pauschales Vorab-Gate für interne,
+verhaltensneutrale Komponentenrefactors, die ihren äußeren Formular-,
+Validierungs-, Submit- und HTTP-Vertrag unverändert lassen.
+
 ## Impact
 
 - Affected specs: `monorepo-structure`, `account-ui`, `content-management`, `review-governance`

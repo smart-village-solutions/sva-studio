@@ -60,6 +60,16 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
           readinessChecks: state.readinessChecks,
         },
       ],
+      [
+        'weather',
+        {
+          pluginId: 'weather',
+          contractRevision: '1.0.0:1',
+          contractVersion: 1,
+          operations: [{ operation: 'provision', jobTypeId: 'weather.provisionTenant' }],
+          readinessChecks: [],
+        },
+      ],
     ]),
 }));
 
@@ -106,6 +116,15 @@ vi.mock('../plugin-operations/runner.js', () => ({
       ],
       [
         'speech.checkTenantReadiness',
+        {
+          handler: vi.fn(),
+          queueName: 'plugin-operations',
+          executionLane: 'privileged',
+          supportsCancellation: false,
+        },
+      ],
+      [
+        'weather.provisionTenant',
         {
           handler: vi.fn(),
           queueName: 'plugin-operations',
@@ -340,6 +359,37 @@ describe('configured plugin tenant lifecycle runtime', () => {
     expect(state.createStudioJob).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({ jobTypeId: 'speech.provisionTenant' }),
+      })
+    );
+  });
+
+  it('continues scheduling later plugins when one lifecycle start fails', async () => {
+    state.listModuleActivations.mockResolvedValueOnce([
+      {
+        moduleId: 'speech',
+        activationPolicy: 'automatic',
+        effectiveActive: true,
+        stateRevision: 1,
+      },
+      {
+        moduleId: 'weather',
+        activationPolicy: 'required',
+        effectiveActive: true,
+        stateRevision: 1,
+      },
+    ]);
+    state.createStudioJob.mockRejectedValueOnce(new Error('speech queue unavailable'));
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await expect(ensureConfiguredPluginTenantProvisioning('tenant-a')).resolves.toBeUndefined();
+
+    expect(state.createStudioJob).toHaveBeenCalledTimes(2);
+    expect(state.createStudioJob).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          pluginId: 'weather',
+          jobTypeId: 'weather.provisionTenant',
+        }),
       })
     );
   });

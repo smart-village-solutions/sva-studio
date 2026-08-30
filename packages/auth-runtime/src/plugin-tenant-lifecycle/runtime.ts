@@ -206,7 +206,15 @@ export const ensureConfiguredPluginTenantProvisioning = async (
       ) {
         continue;
       }
-      throw error;
+      logger.error('plugin_tenant_lifecycle_schedule_plugin_failed', {
+        operation: 'plugin_tenant_lifecycle_schedule',
+        result: 'failed',
+        error_code: 'plugin_tenant_lifecycle_schedule_plugin_failed',
+        error_type: error instanceof Error ? error.name : typeof error,
+        instance_id: instanceId,
+        plugin_id: pluginId,
+        lifecycle_operation: schedule.operation,
+      });
     }
   }
 };

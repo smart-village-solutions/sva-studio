@@ -22,18 +22,23 @@ const getRuntimeRouteFactories = createIsomorphicFn()
       import('@sva/auth-runtime/server'),
       import('@sva/routing/server'),
     ]);
+    const request = getRequest();
     let pluginScope: 'platform' | 'tenant' = 'platform';
-    try {
-      const authConfig = await authRuntime.resolveAuthConfigForRequest(getRequest());
-      pluginScope = authConfig.kind === 'instance' ? 'tenant' : 'platform';
-    } catch (error) {
-      if (!(
-        error instanceof Error &&
-        error.name === 'TenantAuthResolutionError' &&
-        'reason' in error &&
-        error.reason === 'tenant_host_invalid'
-      )) {
-        throw error;
+    if (isDevAuthAvailable() && hasActiveDevAuthSessionCookie(request.headers.get('cookie'))) {
+      pluginScope = 'tenant';
+    } else {
+      try {
+        const authConfig = await authRuntime.resolveAuthConfigForRequest(request);
+        pluginScope = authConfig.kind === 'instance' ? 'tenant' : 'platform';
+      } catch (error) {
+        if (!(
+          error instanceof Error &&
+          error.name === 'TenantAuthResolutionError' &&
+          'reason' in error &&
+          error.reason === 'tenant_host_invalid'
+        )) {
+          throw error;
+        }
       }
     }
     return mod.getServerRouteFactories({

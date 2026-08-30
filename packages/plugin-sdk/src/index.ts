@@ -1,13 +1,8 @@
 export const pluginSdkVersion = '0.0.1';
-export type PluginSdkPackageRole =
-  'plugin-contracts' | 'plugin-platform' | 'admin-resources' | 'content-types' | 'plugin-i18n';
-export const pluginSdkPackageRoles = [
-  'plugin-contracts',
-  'plugin-platform',
-  'admin-resources',
-  'content-types',
-  'plugin-i18n',
-] as const satisfies readonly PluginSdkPackageRole[];
+// prettier-ignore
+export type PluginSdkPackageRole = 'plugin-contracts' | 'plugin-platform' | 'admin-resources' | 'content-types' | 'plugin-i18n';
+// prettier-ignore
+export const pluginSdkPackageRoles = ['plugin-contracts', 'plugin-platform', 'admin-resources', 'content-types', 'plugin-i18n'] as const satisfies readonly PluginSdkPackageRole[];
 export type {
   AdminResourceDefinition,
   AdminResourceBulkActionSelectionMode,
@@ -92,21 +87,6 @@ export type {
   PluginJobProgressReporter,
   PluginJobTypeDefinition,
   PluginJobTypeRegistryEntry,
-  PluginTenantLifecycleDefinition,
-  PluginTenantLifecycleError,
-  PluginTenantLifecycleExecutionResult,
-  PluginTenantLifecycleReadEvidence,
-  PluginTenantLifecycleOperation,
-  PluginTenantLifecycleOperationDefinition,
-  PluginTenantLifecycleRegistryEntry,
-  PluginTenantLifecycleRetry,
-  PluginTenantReadinessCheckDefinition,
-  PluginTenantReadinessCheckResult,
-  PluginTenantReadinessSnapshot,
-  PluginTenantReadinessReadModel,
-  PluginTenantReadinessReadModelCheck,
-  PluginTenantReadinessStatus,
-  PluginTenantAccessDecision,
   PluginManifest,
   PluginManifestCapability,
   PluginTenantActivationPolicy,
@@ -230,10 +210,6 @@ export {
   createPluginSnapshot,
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
-  createPluginTenantLifecycleRegistry,
-  createPluginTenantReadinessSnapshot,
-  createPluginTenantReadinessReadModel,
-  evaluatePluginTenantAccess,
   createPluginModuleIamRegistry,
   createPluginPermissionRegistry,
   createPluginRegistry,
@@ -267,12 +243,8 @@ export {
   definePluginExecutionContextCapabilities,
   definePluginImportProfiles,
   definePluginJobTypes,
-  definePluginTenantLifecycle,
-  definePluginTenantLifecycleError,
   definePluginManifest,
   PLUGIN_ROUTE_SCOPE_HEADER_NAME,
-  mergePluginTenantLifecycles,
-  pluginTenantLifecycleOperations,
   defineMediaPickerDefinition,
   compactOptionalString,
   contentMediaUploadPhaseMessageKey,
@@ -340,9 +312,7 @@ export {
   wasteManagementMasterDataContract,
   wasteManagementOperationsContract,
 } from './public-api.js';
+export * from './plugin-tenant-lifecycle.js';
 export * from './data-exchange-public-api.js';
-export {
-  hasContentLifecycleAccess,
-  resolveContentLifecycleAction,
-  resolveContentVisibilityAction,
-} from './standard-content-access.js';
+// prettier-ignore
+export { hasContentLifecycleAccess, resolveContentLifecycleAction, resolveContentVisibilityAction } from './standard-content-access.js';

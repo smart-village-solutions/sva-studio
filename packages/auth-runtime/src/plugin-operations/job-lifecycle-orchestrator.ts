@@ -166,118 +166,96 @@ const persistExecutionFailure = async (input: {
   return { finalFailure, errorPayload };
 };
 
-export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
-  run: async ({ instanceId, jobId, attempts, maxAttempts }: RunInput): Promise<void> => {
-    const repository = await deps.loadRepository(instanceId);
-    const job = await repository.getJobById(instanceId, jobId);
-    if (!job) {
-      deps.logger.warn('Plugin-Operations-Jobdatensatz zur Worker-Ausführung nicht gefunden', {
-        operation: 'plugin_operation_job_missing',
-        job_id: jobId,
-        instance_id: instanceId,
-      });
-      return;
-    }
-
-    const startedAt = (deps.now ?? (() => new Date().toISOString()))();
-    const workerId = (deps.createWorkerId ?? defaultCreateWorkerId)(job);
-    const eventWriter = createJobEventWriter({
-      appendJobEvent: repository.appendJobEvent,
-    });
-    const { handlerContext, dispose, getLatestProgress } = await createHandlerContext(
-      deps,
-      repository,
-      eventWriter,
-      job,
-      attempts,
-      workerId
-    );
-    const stateWriter = createOrchestratorStateWriter(deps, repository, eventWriter);
-
-    try {
-      await stateWriter.markRunning({
+const runPersistedJob = async (
+  deps: OrchestratorDeps,
+  repository: RepositoryPort,
+  job: StudioJobRecord,
+  input: Pick<RunInput, 'attempts' | 'maxAttempts'>
+): Promise<void> => {
+  const { attempts, maxAttempts } = input;
+  const startedAt = (deps.now ?? (() => new Date().toISOString()))();
+  const workerId = (deps.createWorkerId ?? defaultCreateWorkerId)(job);
+  const eventWriter = createJobEventWriter({ appendJobEvent: repository.appendJobEvent });
+  const { handlerContext, dispose, getLatestProgress } = await createHandlerContext(
+    deps,
+    repository,
+    eventWriter,
+    job,
+    attempts,
+    workerId
+  );
+  const stateWriter = createOrchestratorStateWriter(deps, repository, eventWriter);
+  try {
+    await stateWriter.markRunning({ job, attempts, startedAt, workerId });
+    const handler = deps.resolveHandler(job);
+    if (!handler) {
+      const errorPayload = createMissingHandlerPayload(job);
+      await stateWriter.markMissingHandler({
         job,
         attempts,
-        startedAt,
-        workerId,
-      });
-
-      const handler = deps.resolveHandler(job);
-      if (!handler) {
-        const errorPayload = createMissingHandlerPayload(job);
-        await stateWriter.markMissingHandler({
-          job,
-          attempts,
-          startedAt,
-          workerId,
-          progress: getLatestProgress(),
-          errorPayload,
-        });
-        await deps.onExecutionTerminal?.({
-          job,
-          error: errorPayload,
-          reason: 'missing_handler',
-        });
-        return;
-      }
-
-      const result = await handler({
-        job,
-        ...handlerContext,
-      });
-      await deps.onExecutionSucceeded?.({ job, result });
-      await stateWriter.markSucceeded({
-        job,
-        attempts,
-        startedAt,
-        workerId,
-        result,
-      });
-    } catch (error) {
-      if (isPluginOperationCancellationError(error)) {
-        const errorPayload: StudioJobError = {
-          code: 'plugin_operation_cancelled',
-          category: 'permanent',
-          message: error.message,
-        };
-        await stateWriter.markCancelled({
-          job,
-          attempts,
-          startedAt,
-          workerId,
-          message: error.message,
-          progress: getLatestProgress(),
-          cancelRequestedAt: error.cancelRequestedAt,
-        });
-        await deps.onExecutionTerminal?.({
-          job,
-          error: errorPayload,
-          reason: 'cancelled',
-        });
-        return;
-      }
-
-      const failure = await persistExecutionFailure({
-        deps,
-        stateWriter,
-        job,
-        error,
-        attempts,
-        maxAttempts,
         startedAt,
         workerId,
         progress: getLatestProgress(),
+        errorPayload,
       });
-      if (!failure.finalFailure) {
-        throw error;
-      }
-      await deps.onExecutionTerminal?.({
-        job,
-        error: failure.errorPayload,
-        reason: 'failed',
-      });
-    } finally {
-      dispose();
+      await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'missing_handler' });
+      return;
     }
-  },
+    const result = await handler({ job, ...handlerContext });
+    await deps.onExecutionSucceeded?.({ job, result });
+    await stateWriter.markSucceeded({ job, attempts, startedAt, workerId, result });
+  } catch (error) {
+    if (isPluginOperationCancellationError(error)) {
+      const errorPayload: StudioJobError = {
+        code: 'plugin_operation_cancelled',
+        category: 'permanent',
+        message: error.message,
+      };
+      await stateWriter.markCancelled({
+        job,
+        attempts,
+        startedAt,
+        workerId,
+        message: error.message,
+        progress: getLatestProgress(),
+        cancelRequestedAt: error.cancelRequestedAt,
+      });
+      await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'cancelled' });
+      return;
+    }
+    const failure = await persistExecutionFailure({
+      deps,
+      stateWriter,
+      job,
+      error,
+      attempts,
+      maxAttempts,
+      startedAt,
+      workerId,
+      progress: getLatestProgress(),
+    });
+    if (!failure.finalFailure) throw error;
+    await deps.onExecutionTerminal?.({ job, error: failure.errorPayload, reason: 'failed' });
+  } finally {
+    dispose();
+  }
+};
+
+const runJobLifecycle = async (deps: OrchestratorDeps, input: RunInput): Promise<void> => {
+  const { instanceId, jobId } = input;
+  const repository = await deps.loadRepository(instanceId);
+  const job = await repository.getJobById(instanceId, jobId);
+  if (!job) {
+    deps.logger.warn('Plugin-Operations-Jobdatensatz zur Worker-Ausführung nicht gefunden', {
+      operation: 'plugin_operation_job_missing',
+      job_id: jobId,
+      instance_id: instanceId,
+    });
+    return;
+  }
+  await runPersistedJob(deps, repository, job, input);
+};
+
+export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
+  run: (input: RunInput): Promise<void> => runJobLifecycle(deps, input),
 });

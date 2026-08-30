@@ -19,7 +19,6 @@ export {
   DEFAULT_INSTANCE_INTEGRATION_CACHE_TTL_MS,
   createMediaRepository,
   createStudioJobRepository,
-  createPluginTenantLifecycleRepository,
   createWasteDataSourceRepository,
   createWasteEmailReminderRepository,
   createWasteMasterDataRepository,
@@ -32,6 +31,7 @@ export {
   wasteDataSourceStatements,
   wasteMasterDataStatements,
 } from './public-api.js';
+export { createPluginTenantLifecycleRepository } from './plugin-tenant-lifecycle/index.js';
 
 export type {
   ExternalInterfaceRepository,
@@ -56,12 +56,6 @@ export type {
   MediaStorageQuotaCheck,
   MediaStorageQuotaRecord,
   StudioJobRepository,
-  PluginTenantAccessState,
-  PluginTenantLifecycleOperation,
-  PluginTenantLifecycleRecord,
-  PluginTenantLifecycleRepository,
-  PluginTenantLifecycleRetryKind,
-  PluginTenantReadinessStatus,
   MediaUploadSessionRecord,
   MediaUsageImpact,
   MediaVariantRecord,
@@ -85,6 +79,14 @@ export type {
   WasteDataSourceRepository,
   WasteMasterDataRepository,
 } from './public-api.js';
+export type {
+  PluginTenantAccessState,
+  PluginTenantLifecycleOperation,
+  PluginTenantLifecycleRecord,
+  PluginTenantLifecycleRepository,
+  PluginTenantLifecycleRetryKind,
+  PluginTenantReadinessStatus,
+} from './plugin-tenant-lifecycle/index.js';
 
 export type {
   ExternalInterfaceConnectionCheckRecord,

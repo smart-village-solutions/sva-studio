@@ -22,15 +22,65 @@ export default defineConfig({
       '@sva/iam-admin/encryption': resolve(__dirname, '../iam-admin/src/encryption.ts'),
       '@sva/iam-admin': resolve(__dirname, '../iam-admin/src/index.ts'),
       '@sva/iam-core': resolve(__dirname, '../iam-core/src/index.ts'),
-      '@sva/iam-governance/dsr-export-payload': resolve(__dirname, '../iam-governance/src/dsr-export-payload.ts'),
+      '@sva/iam-governance/dsr-export-payload': resolve(
+        __dirname,
+        '../iam-governance/src/dsr-export-payload.ts'
+      ),
       '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),
       '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
-      '@sva/instance-registry/http-contracts': resolve(__dirname, '../instance-registry/src/http-contracts.ts'),
+      '@sva/instance-registry/http-contracts': resolve(
+        __dirname,
+        '../instance-registry/src/http-contracts.ts'
+      ),
+      '@sva/instance-registry/http-guards': resolve(
+        __dirname,
+        '../instance-registry/src/http-guards.ts'
+      ),
+      '@sva/instance-registry/http-instance-handlers': resolve(
+        __dirname,
+        '../instance-registry/src/http-instance-handlers.ts'
+      ),
+      '@sva/instance-registry/http-mutation-handlers': resolve(
+        __dirname,
+        '../instance-registry/src/http-mutation-handlers.ts'
+      ),
+      '@sva/instance-registry/provisioning-auth': resolve(
+        __dirname,
+        '../instance-registry/src/provisioning-auth.ts'
+      ),
+      '@sva/instance-registry/provisioning-auth-state': resolve(
+        __dirname,
+        '../instance-registry/src/provisioning-auth-state.ts'
+      ),
+      '@sva/instance-registry/provisioning-worker': resolve(
+        __dirname,
+        '../instance-registry/src/provisioning-worker.ts'
+      ),
+      '@sva/instance-registry/runtime-wiring': resolve(
+        __dirname,
+        '../instance-registry/src/runtime-wiring.ts'
+      ),
+      '@sva/instance-registry/service-keycloak': resolve(
+        __dirname,
+        '../instance-registry/src/service-keycloak.ts'
+      ),
+      '@sva/instance-registry/service-keycloak-execution': resolve(
+        __dirname,
+        '../instance-registry/src/service-keycloak-execution.ts'
+      ),
+      '@sva/instance-registry/service-keycloak-execution-shared': resolve(
+        __dirname,
+        '../instance-registry/src/service-keycloak-execution-shared.ts'
+      ),
+      '@sva/instance-registry/service-types': resolve(
+        __dirname,
+        '../instance-registry/src/service-types.ts'
+      ),
       '@sva/instance-registry': resolve(__dirname, '../instance-registry/src/index.ts'),
       '@sva/media': resolve(__dirname, '../media/src/index.ts'),
       '@sva/monitoring-client/logger-provider.server': resolve(
         __dirname,
-        '../monitoring-client/src/logger-provider.server.ts',
+        '../monitoring-client/src/logger-provider.server.ts'
       ),
       '@sva/monitoring-client/server': resolve(__dirname, '../monitoring-client/src/server.ts'),
       '@sva/monitoring-client/logging': resolve(__dirname, '../monitoring-client/src/logging.ts'),

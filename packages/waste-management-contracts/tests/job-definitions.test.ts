@@ -10,6 +10,7 @@ describe('waste management contracts job definitions', () => {
   it('exposes every job type declared by the Waste operations contract', () => {
     expect(createWasteManagementPluginJobTypes().map(({ jobTypeId }) => jobTypeId)).toEqual([
       'waste-management.provision-tenant-database',
+      'waste-management.tenant-readiness',
       'waste-management.initialize-data-source',
       'waste-management.apply-migrations',
       'waste-management.import-data',

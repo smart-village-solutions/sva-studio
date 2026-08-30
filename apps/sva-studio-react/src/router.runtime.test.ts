@@ -148,6 +148,9 @@ describe('router runtime helpers', () => {
     routerMocks.fetchWithRequestTimeoutSpy.mockReset();
     routerMocks.getClientRouteFactoriesSpy.mockClear();
     routerMocks.getRequestSpy.mockClear();
+    routerMocks.getRequestSpy.mockReturnValue(
+      new Request('https://studio.example.org/admin/users')
+    );
     routerMocks.getServerRouteFactoriesSpy.mockClear();
     routerMocks.routeFactorySpy.mockClear();
     routerMocks.resolveAuthConfigForRequest.mockClear();
@@ -561,6 +564,23 @@ describe('router runtime helpers', () => {
       expect.objectContaining({
         __router: true,
       })
+    );
+  });
+
+  it('materializes tenant routes for a server-readable dev-auth session', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+    routerMocks.getRequestSpy.mockReturnValueOnce({
+      url: 'https://studio.example.org/plugins/waste-management',
+      headers: new Headers({ cookie: 'sva_dev_auth=1' }),
+    } as Request);
+    const { getRouter } = await import('./router');
+
+    routerMocks.executionMode.current = 'server';
+    await getRouter();
+
+    expect(routerMocks.resolveAuthConfigForRequest).not.toHaveBeenCalled();
+    expect(routerMocks.getServerRouteFactoriesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
     );
   });
 

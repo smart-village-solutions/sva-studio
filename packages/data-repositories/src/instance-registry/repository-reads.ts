@@ -4,6 +4,7 @@ import type { TenantModuleActivationRecord } from '@sva/core';
 import type { InstanceRegistryRepository } from './repository-contract.js';
 import { buildInstanceSelectColumns } from './repository-instance-select.js';
 import { mapInstance } from './repository-mappers.js';
+import type { ModuleActivationRow } from './repository-module-activation-statements.js';
 import { queryRows, statement } from './repository-shared.js';
 import type { InstanceListRow } from './repository-types.js';
 
@@ -85,22 +86,7 @@ const listModuleActivations = async (
   executor: SqlExecutor,
   instanceId: string
 ): Promise<readonly TenantModuleActivationRecord[]> => {
-  const rows = await queryRows<{
-    instance_id: string;
-    module_id: string;
-    activation_policy: TenantModuleActivationRecord['activationPolicy'];
-    activation_origin: TenantModuleActivationRecord['activationOrigin'];
-    effective_active: boolean;
-    manual_override: TenantModuleActivationRecord['manualOverride'] | null;
-    manifest_version: number;
-    policy_revision: string;
-    state_revision: number | string;
-    reconcile_id: string | null;
-    reconciled_at: string | null;
-    created_at: string;
-    updated_at: string;
-    updated_by: string | null;
-  }>(
+  const rows = await queryRows<ModuleActivationRow>(
     executor,
     statement(
       `

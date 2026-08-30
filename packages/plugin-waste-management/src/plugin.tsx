@@ -10,8 +10,8 @@ import {
   createWasteManagementPluginImportProfiles,
   createWasteManagementPluginJobTypes,
 } from './waste-management.job-definitions.js';
-import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 import { wasteManagementPluginTranslations } from './plugin.translations.js';
+import { wasteManagementTenantLifecycle } from './plugin.tenant-lifecycle.js';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
 import { wasteManagementModuleIam } from './waste-management.module-iam.js';
 import { WasteManagementPage } from './waste-management.page.js';
@@ -241,37 +241,7 @@ export const pluginWasteManagement: PluginDefinition = {
   auditEvents: wasteManagementAuditEventDefinitions,
   contentHistory: { mode: 'domain', reasonCode: 'domain_history' },
   jobTypes: createWasteManagementPluginJobTypes(),
-  tenantLifecycle: {
-    contractVersion: 1,
-    operations: [
-      {
-        operation: 'provision',
-        jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
-      },
-      {
-        operation: 'reconcile',
-        jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
-      },
-      {
-        operation: 'readiness',
-        jobTypeId: wasteManagementOperationsContract.jobTypeIds.tenantReadiness,
-      },
-    ],
-    readinessChecks: [
-      {
-        checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.provisioning,
-        titleKey: 'wasteManagement.readiness.provisioning',
-        required: true,
-        repairOperation: 'reconcile',
-      },
-      {
-        checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.managedInterface,
-        titleKey: 'wasteManagement.readiness.managedInterface',
-        required: true,
-        repairOperation: 'reconcile',
-      },
-    ],
-  },
+  tenantLifecycle: wasteManagementTenantLifecycle,
   importProfiles: createWasteManagementPluginImportProfiles(),
   exportProfiles: createWasteManagementPluginExportProfiles(),
   translations: wasteManagementPluginTranslations,

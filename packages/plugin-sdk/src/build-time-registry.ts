@@ -33,26 +33,14 @@ import type { ContentTypeDefinition, RegisteredStudioContentType } from './conte
 import { collectRegisteredStudioContentTypes } from './content-types.js';
 import { createMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.js';
 import {
-  createPluginExportProfileRegistry,
-  createPluginImportProfileRegistry,
-  createPluginJobTypeRegistry,
-  mergePluginExportProfiles,
-  mergePluginImportProfiles,
-  mergePluginJobTypes,
-} from './plugin-operations.js';
+  runOperationsPhase,
+  type OperationsPhaseOutput,
+} from './build-time-registry-operations.js';
 import type { PluginTenantLifecycleRegistryEntry } from './plugin-tenant-lifecycle.js';
-import {
-  createPluginTenantLifecycleRegistry,
-  mergePluginTenantLifecycles,
-} from './plugin-tenant-lifecycle.js';
 import type { PluginExtensionTier } from './plugin-platform/contracts.js';
 import type {
   PluginExternalInterfaceTypeDefinition,
   PluginExternalInterfaceTypeRegistryEntry,
-} from './external-interfaces.js';
-import {
-  createPluginExternalInterfaceTypeRegistry,
-  mergePluginExternalInterfaceTypes,
 } from './external-interfaces.js';
 import type {
   PluginExportProfileDefinition,
@@ -146,22 +134,6 @@ type PermissionPhaseOutput = {
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
 };
 
-type OperationsPhaseOutput = {
-  readonly jobTypes: readonly PluginJobTypeDefinition[];
-  readonly importProfiles: readonly PluginImportProfileDefinition[];
-  readonly exportProfiles: readonly PluginExportProfileDefinition[];
-  readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
-  readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
-  readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
-  readonly pluginExportProfileRegistry: ReadonlyMap<string, PluginExportProfileRegistryEntry>;
-  readonly pluginTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>;
-  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
-    string,
-    PluginExternalInterfaceTypeRegistryEntry
-  >;
-  readonly tenantLifecycles: readonly PluginTenantLifecycleRegistryEntry[];
-};
-
 const validateAdminResourceContentTypes = (
   adminResources: readonly AdminResourceDefinition[],
   contentTypes: readonly ContentTypeDefinition[]
@@ -227,19 +199,6 @@ const runPermissionPhase = (plugins: readonly PluginDefinition[]): PermissionPha
   pluginPermissionRegistry: createPluginPermissionRegistry(plugins),
   pluginModuleIamContracts: mergePluginModuleIamContracts(plugins),
   pluginModuleIamRegistry: createPluginModuleIamRegistry(plugins),
-});
-
-const runOperationsPhase = (plugins: readonly PluginDefinition[]): OperationsPhaseOutput => ({
-  jobTypes: mergePluginJobTypes(plugins),
-  importProfiles: mergePluginImportProfiles(plugins),
-  exportProfiles: mergePluginExportProfiles(plugins),
-  externalInterfaceTypes: mergePluginExternalInterfaceTypes(plugins),
-  pluginJobTypeRegistry: createPluginJobTypeRegistry(plugins),
-  pluginImportProfileRegistry: createPluginImportProfileRegistry(plugins),
-  pluginExportProfileRegistry: createPluginExportProfileRegistry(plugins),
-  pluginTenantLifecycleRegistry: createPluginTenantLifecycleRegistry(plugins),
-  pluginExternalInterfaceTypeRegistry: createPluginExternalInterfaceTypeRegistry(plugins),
-  tenantLifecycles: mergePluginTenantLifecycles(plugins),
 });
 
 const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => {

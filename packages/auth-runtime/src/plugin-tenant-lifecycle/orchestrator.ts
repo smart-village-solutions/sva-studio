@@ -76,50 +76,82 @@ export type StartPluginTenantLifecycleResult = {
 const lifecycleError = (code: string, pluginId: string, operation?: string): Error =>
   new Error([code, pluginId, operation].filter(Boolean).join(':'));
 
+const resolveLifecycleOperation = async (
+  dependencies: PluginTenantLifecycleOrchestratorDependencies,
+  input: StartPluginTenantLifecycleInput
+) => {
+  const lifecycle = dependencies.lifecycleRegistry.get(input.pluginId);
+  if (!lifecycle) {
+    throw lifecycleError(pluginTenantLifecycleHostErrorCodes.notDeclared, input.pluginId);
+  }
+  const activation = await dependencies.resolveActivation(input.instanceId, input.pluginId);
+  if (!activation?.effectiveActive) {
+    throw lifecycleError(pluginTenantLifecycleHostErrorCodes.inactive, input.pluginId);
+  }
+  const operationDefinition = lifecycle.operations.find(
+    ({ operation }) => operation === input.operation
+  );
+  if (!operationDefinition) {
+    throw lifecycleError(
+      pluginTenantLifecycleHostErrorCodes.operationNotDeclared,
+      input.pluginId,
+      input.operation
+    );
+  }
+  const registration = dependencies.resolveJobRegistration(operationDefinition.jobTypeId);
+  if (!registration) {
+    throw lifecycleError(
+      pluginTenantLifecycleHostErrorCodes.handlerMissing,
+      input.pluginId,
+      input.operation
+    );
+  }
+  if (
+    (operationDefinition.supportsCancellation === true) !==
+    (registration.supportsCancellation === true)
+  ) {
+    throw lifecycleError(
+      pluginTenantLifecycleHostErrorCodes.cancellationMismatch,
+      input.pluginId,
+      input.operation
+    );
+  }
+  return { operationDefinition, registration };
+};
+
+const handleEnqueueFailure = async (
+  dependencies: PluginTenantLifecycleOrchestratorDependencies,
+  input: StartPluginTenantLifecycleInput,
+  job: StudioJobRecord,
+  generation: number
+): Promise<never> => {
+  await Promise.allSettled([
+    dependencies.markEnqueueFailed({ instanceId: input.instanceId, job }),
+    dependencies.repository.failLifecycle({
+      instanceId: input.instanceId,
+      pluginId: input.pluginId,
+      jobId: job.id,
+      generation,
+      readinessStatus: 'blocked',
+      errorCode: pluginTenantLifecycleHostErrorCodes.enqueueFailed,
+      retryKind: 'retryable',
+    }),
+  ]);
+  throw lifecycleError(
+    pluginTenantLifecycleHostErrorCodes.enqueueFailed,
+    input.pluginId,
+    input.operation
+  );
+};
+
 export const createPluginTenantLifecycleOrchestrator = (
   dependencies: PluginTenantLifecycleOrchestratorDependencies
 ) => ({
   async start(input: StartPluginTenantLifecycleInput): Promise<StartPluginTenantLifecycleResult> {
-    const lifecycle = dependencies.lifecycleRegistry.get(input.pluginId);
-    if (!lifecycle) {
-      throw lifecycleError(pluginTenantLifecycleHostErrorCodes.notDeclared, input.pluginId);
-    }
-
-    const activation = await dependencies.resolveActivation(input.instanceId, input.pluginId);
-    if (!activation?.effectiveActive) {
-      throw lifecycleError(pluginTenantLifecycleHostErrorCodes.inactive, input.pluginId);
-    }
-
-    const operationDefinition = lifecycle.operations.find(
-      ({ operation }) => operation === input.operation
+    const { operationDefinition, registration } = await resolveLifecycleOperation(
+      dependencies,
+      input
     );
-    if (!operationDefinition) {
-      throw lifecycleError(
-        pluginTenantLifecycleHostErrorCodes.operationNotDeclared,
-        input.pluginId,
-        input.operation
-      );
-    }
-
-    const registration = dependencies.resolveJobRegistration(operationDefinition.jobTypeId);
-    if (!registration) {
-      throw lifecycleError(
-        pluginTenantLifecycleHostErrorCodes.handlerMissing,
-        input.pluginId,
-        input.operation
-      );
-    }
-    if (
-      (operationDefinition.supportsCancellation === true) !==
-      (registration.supportsCancellation === true)
-    ) {
-      throw lifecycleError(
-        pluginTenantLifecycleHostErrorCodes.cancellationMismatch,
-        input.pluginId,
-        input.operation
-      );
-    }
-
     const requestedLifecycle = await dependencies.repository.requestLifecycle({
       instanceId: input.instanceId,
       pluginId: input.pluginId,
@@ -160,23 +192,7 @@ export const createPluginTenantLifecycleOrchestrator = (
         maxAttempts: job.maxAttempts,
       });
     } catch {
-      await Promise.allSettled([
-        dependencies.markEnqueueFailed({ instanceId: input.instanceId, job }),
-        dependencies.repository.failLifecycle({
-          instanceId: input.instanceId,
-          pluginId: input.pluginId,
-          jobId: job.id,
-          generation,
-          readinessStatus: 'blocked',
-          errorCode: pluginTenantLifecycleHostErrorCodes.enqueueFailed,
-          retryKind: 'retryable',
-        }),
-      ]);
-      throw lifecycleError(
-        pluginTenantLifecycleHostErrorCodes.enqueueFailed,
-        input.pluginId,
-        input.operation
-      );
+      return handleEnqueueFailure(dependencies, input, job, generation);
     }
 
     return { lifecycle: claimedLifecycle, job };

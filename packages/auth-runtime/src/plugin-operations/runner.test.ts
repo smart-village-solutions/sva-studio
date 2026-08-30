@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const repositoryState = vi.hoisted(() => ({
   withStudioJobRepository: vi.fn(),
+  withPluginTenantLifecycleRepository: vi.fn(),
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock('@sva/server-runtime', async (importOriginal) => ({
 
 vi.mock('./repository.js', () => ({
   withStudioJobRepository: repositoryState.withStudioJobRepository,
+  withPluginTenantLifecycleRepository: repositoryState.withPluginTenantLifecycleRepository,
 }));
 
 import {

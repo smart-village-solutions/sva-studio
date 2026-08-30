@@ -260,33 +260,7 @@ export type {
   PluginJobTypeDefinition,
   PluginJobTypeRegistryEntry,
 } from './plugin-operations.js';
-export type {
-  PluginTenantLifecycleDefinition,
-  PluginTenantLifecycleError,
-  PluginTenantLifecycleExecutionResult,
-  PluginTenantLifecycleReadEvidence,
-  PluginTenantLifecycleOperation,
-  PluginTenantLifecycleOperationDefinition,
-  PluginTenantLifecycleRegistryEntry,
-  PluginTenantLifecycleRetry,
-  PluginTenantReadinessCheckDefinition,
-  PluginTenantReadinessCheckResult,
-  PluginTenantReadinessSnapshot,
-  PluginTenantReadinessReadModel,
-  PluginTenantReadinessReadModelCheck,
-  PluginTenantReadinessStatus,
-  PluginTenantAccessDecision,
-} from './plugin-tenant-lifecycle.js';
-export {
-  createPluginTenantReadinessSnapshot,
-  createPluginTenantReadinessReadModel,
-  evaluatePluginTenantAccess,
-  createPluginTenantLifecycleRegistry,
-  definePluginTenantLifecycle,
-  definePluginTenantLifecycleError,
-  mergePluginTenantLifecycles,
-  pluginTenantLifecycleOperations,
-} from './plugin-tenant-lifecycle.js';
+export * from './plugin-tenant-lifecycle.js';
 export {
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
@@ -328,13 +302,8 @@ export {
   createStandardContentTypeDefinition,
   resolveStandardContentAccessCapabilities,
 } from './standard-content-plugin.js';
-export type {
-  EffectiveAccessSnapshot,
-  UiAccessDecision,
-  UiAccessRequirement,
-  UiAccessScope,
-  UiResourceCapability,
-} from '@sva/iam-core';
+// prettier-ignore
+export type { EffectiveAccessSnapshot, UiAccessDecision, UiAccessRequirement, UiAccessScope, UiResourceCapability } from '@sva/iam-core';
 export type * from './plugin-translations.js';
 export {
   registerPluginTranslationResolver,

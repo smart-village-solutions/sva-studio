@@ -65,8 +65,7 @@ const getRuntimeRouteFactories = createIsomorphicFn()
         pluginScope = user?.instanceId ? 'tenant' : 'platform';
       }
     } catch {
-      // Ohne bestätigte Tenant-Session bleibt die Router-Materialisierung fail-closed
-      // auf den Plattform-Scope begrenzt.
+      // Ohne bestätigte Tenant-Session bleibt die Router-Materialisierung fail-closed auf den Plattform-Scope begrenzt.
     }
     return mod.getClientRouteFactories({
       bindings: appRouteBindings,

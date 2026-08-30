@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   createJobLifecycleOrchestrator: vi.fn(),
+  withPluginTenantLifecycleRepository: vi.fn(),
   withStudioJobRepository: vi.fn(),
 }));
 
@@ -10,6 +11,7 @@ vi.mock('./job-lifecycle-orchestrator.js', () => ({
 }));
 
 vi.mock('./repository.js', () => ({
+  withPluginTenantLifecycleRepository: state.withPluginTenantLifecycleRepository,
   withStudioJobRepository: state.withStudioJobRepository,
 }));
 
@@ -124,6 +126,8 @@ describe('plugin operation runner registry', () => {
       expect.objectContaining({
         resolveHandler: expect.any(Function),
         loadRepository: expect.any(Function),
+        onExecutionSucceeded: expect.any(Function),
+        onExecutionTerminal: expect.any(Function),
       })
     );
     const [{ resolveHandler, loadRepository }] =

@@ -7,9 +7,9 @@
 ## 2. Host-Orchestrierung
 
 - [x] 2.1 Lifecycle-Beiträge in den hostvalidierten Plugin-Snapshot aufnehmen
-- [ ] 2.2 Provision, Reconcile, Suspend und Reactivate über Plugin-Operations verdrahten
-- [ ] 2.3 Atomaren Claim und Schutz gegen veraltete Jobabschlüsse implementieren
-- [ ] 2.4 Aktivierungsstatus, Jobstatus und Plugin-Readiness korrelieren
+- [x] 2.2 Provision, Reconcile, Suspend und Reactivate über Plugin-Operations verdrahten
+- [x] 2.3 Atomaren Claim und Schutz gegen veraltete Jobabschlüsse implementieren
+- [x] 2.4 Aktivierungsstatus, Jobstatus und Plugin-Readiness korrelieren
 - [ ] 2.5 Audit-, Logging-, Progress- und Cancellation-Verträge integrieren
 
 ## 3. Instanzverwaltung

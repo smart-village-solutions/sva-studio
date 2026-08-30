@@ -50,6 +50,11 @@ export type PluginTenantReadinessCheckResult = {
   readonly details?: Readonly<Record<string, unknown>>;
 };
 
+export type PluginTenantLifecycleExecutionResult = {
+  readonly revision: string;
+  readonly checks: readonly PluginTenantReadinessCheckResult[];
+};
+
 export type PluginTenantReadinessSnapshot = {
   readonly pluginId: string;
   readonly instanceId: string;
@@ -58,6 +63,85 @@ export type PluginTenantReadinessSnapshot = {
   readonly status: PluginTenantReadinessStatus;
   readonly checks: readonly PluginTenantReadinessCheckResult[];
   readonly updatedAt: string;
+};
+
+const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
+
+export const createPluginTenantReadinessSnapshot = (input: {
+  readonly definition: PluginTenantLifecycleDefinition;
+  readonly pluginId: string;
+  readonly instanceId: string;
+  readonly generation: number;
+  readonly result: PluginTenantLifecycleExecutionResult;
+  readonly updatedAt: string;
+}): PluginTenantReadinessSnapshot => {
+  const pluginNamespace = normalizePluginNamespace(input.pluginId);
+  const revision = normalizePluginIdentifier(input.result.revision);
+  if (revision.length === 0 || !Number.isSafeInteger(input.generation) || input.generation < 1) {
+    throw new Error(`invalid_plugin_tenant_readiness_result:${pluginNamespace}`);
+  }
+
+  const definitionsByCheckId = new Map(
+    input.definition.readinessChecks.map((definition) => [definition.checkId, definition])
+  );
+  const seenCheckIds = new Set<string>();
+  const checks = input.result.checks.map((check) => {
+    const checkId = assertOwnedNamespacedIdentifier(
+      pluginNamespace,
+      check.checkId,
+      'invalid_plugin_tenant_readiness_check_result',
+      'plugin_tenant_readiness_check_result_namespace_mismatch'
+    );
+    if (!definitionsByCheckId.has(checkId)) {
+      throw new Error(`unknown_plugin_tenant_readiness_check_result:${checkId}`);
+    }
+    if (seenCheckIds.has(checkId)) {
+      throw new Error(`duplicate_plugin_tenant_readiness_check_result:${checkId}`);
+    }
+    if (!readinessStatusSet.has(check.status)) {
+      throw new Error(`invalid_plugin_tenant_readiness_check_result:${checkId}`);
+    }
+    seenCheckIds.add(checkId);
+    return { ...check, checkId };
+  });
+
+  const missingCheck = input.definition.readinessChecks.find(
+    ({ checkId }) => !seenCheckIds.has(checkId)
+  );
+  if (missingCheck) {
+    throw new Error(`missing_plugin_tenant_readiness_check_result:${missingCheck.checkId}`);
+  }
+
+  const status = input.definition.readinessChecks.reduce<PluginTenantReadinessStatus>(
+    (currentStatus, definition) => {
+      const checkStatus = checks.find(({ checkId }) => checkId === definition.checkId)?.status;
+      if (checkStatus === 'blocked') {
+        return definition.required
+          ? 'blocked'
+          : currentStatus === 'blocked'
+            ? 'blocked'
+            : 'degraded';
+      }
+      if (checkStatus === 'degraded' && currentStatus !== 'blocked') {
+        return 'degraded';
+      }
+      if (checkStatus === 'pending' && currentStatus === 'ready') {
+        return 'pending';
+      }
+      return currentStatus;
+    },
+    'ready'
+  );
+
+  return {
+    pluginId: pluginNamespace,
+    instanceId: input.instanceId,
+    generation: input.generation,
+    revision,
+    status,
+    checks,
+    updatedAt: input.updatedAt,
+  };
 };
 
 export type PluginTenantLifecycleRetry =

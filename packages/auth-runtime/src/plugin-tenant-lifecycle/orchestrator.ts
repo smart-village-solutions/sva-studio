@@ -13,12 +13,14 @@ export const pluginTenantLifecycleHostErrorCodes = {
   inactive: 'plugin_tenant_lifecycle_inactive',
   operationNotDeclared: 'plugin_tenant_lifecycle_operation_not_declared',
   handlerMissing: 'plugin_tenant_lifecycle_handler_missing',
+  cancellationMismatch: 'plugin_tenant_lifecycle_cancellation_mismatch',
   claimConflict: 'plugin_tenant_lifecycle_claim_conflict',
   enqueueFailed: 'plugin_tenant_lifecycle_enqueue_failed',
 } as const;
 
 type PluginTenantLifecycleJobRegistration = {
   readonly queueName: string;
+  readonly supportsCancellation?: boolean;
 };
 
 export type PluginTenantLifecycleOrchestratorDependencies = {
@@ -103,6 +105,16 @@ export const createPluginTenantLifecycleOrchestrator = (
     if (!registration) {
       throw lifecycleError(
         pluginTenantLifecycleHostErrorCodes.handlerMissing,
+        input.pluginId,
+        input.operation
+      );
+    }
+    if (
+      operationDefinition.supportsCancellation === true &&
+      registration.supportsCancellation !== true
+    ) {
+      throw lifecycleError(
+        pluginTenantLifecycleHostErrorCodes.cancellationMismatch,
         input.pluginId,
         input.operation
       );

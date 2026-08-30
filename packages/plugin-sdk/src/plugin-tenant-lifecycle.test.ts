@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createBuildTimeRegistry,
   createPluginRegistry,
+  createPluginTenantReadinessSnapshot,
   definePluginTenantLifecycle,
   definePluginTenantLifecycleError,
   type PluginDefinition,
@@ -169,6 +170,65 @@ describe('plugin tenant lifecycle contracts', () => {
       })
     ).toThrow(
       'plugin_tenant_lifecycle_error_namespace_mismatch:speech:waste:waste.databaseUnavailable'
+    );
+  });
+
+  it('derives readiness fail-closed from declared required and optional checks', () => {
+    const snapshot = createPluginTenantReadinessSnapshot({
+      definition: {
+        ...tenantLifecycle,
+        readinessChecks: [
+          ...tenantLifecycle.readinessChecks,
+          {
+            checkId: 'speech.optionalTelemetry',
+            titleKey: 'speech.readiness.optionalTelemetry',
+            required: false,
+          },
+        ],
+      },
+      pluginId: 'speech',
+      instanceId: 'tenant-a',
+      generation: 3,
+      result: {
+        revision: 'schema:3',
+        checks: [
+          { checkId: 'speech.databaseSchema', status: 'ready' },
+          { checkId: 'speech.optionalTelemetry', status: 'blocked' },
+        ],
+      },
+      updatedAt: '2026-08-30T12:00:00.000Z',
+    });
+
+    expect(snapshot.status).toBe('degraded');
+    expect(snapshot.generation).toBe(3);
+  });
+
+  it('rejects incomplete and foreign readiness results', () => {
+    expect(() =>
+      createPluginTenantReadinessSnapshot({
+        definition: tenantLifecycle,
+        pluginId: 'speech',
+        instanceId: 'tenant-a',
+        generation: 3,
+        result: { revision: 'schema:3', checks: [] },
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      })
+    ).toThrow('missing_plugin_tenant_readiness_check_result:speech.databaseSchema');
+
+    expect(() =>
+      createPluginTenantReadinessSnapshot({
+        definition: tenantLifecycle,
+        pluginId: 'speech',
+        instanceId: 'tenant-a',
+        generation: 3,
+        result: {
+          revision: 'schema:3',
+          checks: [{ checkId: 'waste.databaseSchema', status: 'ready' }],
+        },
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      })
+    ).toThrow(
+      'plugin_tenant_readiness_check_result_namespace_mismatch:speech:waste:waste.databaseSchema'
     );
   });
 });

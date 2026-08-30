@@ -1,5 +1,7 @@
 import {
+  createPluginTenantLifecycleRepository,
   createStudioJobRepository,
+  type PluginTenantLifecycleRepository,
   type SqlExecutionResult,
   type SqlExecutor,
   type SqlStatement,
@@ -17,6 +19,9 @@ type WithResolvedInstanceDb = <T>(
 ) => Promise<T>;
 
 type StudioJobRepositoryFactory = (executor: SqlExecutor) => StudioJobRepository;
+type PluginTenantLifecycleRepositoryFactory = (
+  executor: SqlExecutor
+) => PluginTenantLifecycleRepository;
 
 type StudioJobRepositoryRuntimeDeps = {
   readonly resolvePool: () => Pool | null;
@@ -25,7 +30,9 @@ type StudioJobRepositoryRuntimeDeps = {
 };
 
 const createSqlExecutor = (client: QueryClient): SqlExecutor => ({
-  async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+  async execute<TRow = Record<string, unknown>>(
+    statement: SqlStatement
+  ): Promise<SqlExecutionResult<TRow>> {
     const result = await client.query<TRow>(statement.text, statement.values);
     return {
       rowCount: result.rowCount,
@@ -34,9 +41,15 @@ const createSqlExecutor = (client: QueryClient): SqlExecutor => ({
   },
 });
 
-export const createWithStudioJobRepository = (deps: StudioJobRepositoryRuntimeDeps) =>
-  async <T>(instanceId: string, work: (repository: StudioJobRepository) => Promise<T>): Promise<T> =>
-    deps.withDb(deps.resolvePool, instanceId, async (client) => work(deps.createRepository(createSqlExecutor(client))));
+export const createWithStudioJobRepository =
+  (deps: StudioJobRepositoryRuntimeDeps) =>
+  async <T>(
+    instanceId: string,
+    work: (repository: StudioJobRepository) => Promise<T>
+  ): Promise<T> =>
+    deps.withDb(deps.resolvePool, instanceId, async (client) =>
+      work(deps.createRepository(createSqlExecutor(client)))
+    );
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
@@ -44,4 +57,24 @@ export const withStudioJobRepository = createWithStudioJobRepository({
   resolvePool,
   withDb: withResolvedInstanceDb,
   createRepository: createStudioJobRepository,
+});
+
+export const createWithPluginTenantLifecycleRepository =
+  (deps: {
+    readonly resolvePool: () => Pool | null;
+    readonly withDb: WithResolvedInstanceDb;
+    readonly createRepository: PluginTenantLifecycleRepositoryFactory;
+  }) =>
+  async <T>(
+    instanceId: string,
+    work: (repository: PluginTenantLifecycleRepository) => Promise<T>
+  ): Promise<T> =>
+    deps.withDb(deps.resolvePool, instanceId, async (client) =>
+      work(deps.createRepository(createSqlExecutor(client)))
+    );
+
+export const withPluginTenantLifecycleRepository = createWithPluginTenantLifecycleRepository({
+  resolvePool,
+  withDb: withResolvedInstanceDb,
+  createRepository: createPluginTenantLifecycleRepository,
 });

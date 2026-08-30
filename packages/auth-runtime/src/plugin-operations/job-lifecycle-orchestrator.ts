@@ -1,4 +1,4 @@
-import type { StudioJobRecord } from '@sva/core';
+import type { StudioJobError, StudioJobRecord } from '@sva/core';
 import type { StudioJobExecutionHandler, StudioJobExecutionHandlerContext } from './types.js';
 
 import { isPluginOperationCancellationError } from './job-cancellation.js';
@@ -42,6 +42,15 @@ type OrchestratorDeps = {
   ) => StudioJobExecutionHandler | undefined;
   readonly createWorkerId?: (job: { readonly instanceId: string; readonly id: string }) => string;
   readonly now?: () => string;
+  readonly onExecutionSucceeded?: (input: {
+    readonly job: StudioJobRecord;
+    readonly result: Awaited<ReturnType<StudioJobExecutionHandler>>;
+  }) => Promise<void>;
+  readonly onExecutionTerminal?: (input: {
+    readonly job: StudioJobRecord;
+    readonly error: StudioJobError;
+    readonly reason: 'failed' | 'missing_handler' | 'cancelled';
+  }) => Promise<void>;
 };
 
 type RunInput = {
@@ -121,7 +130,7 @@ const persistExecutionFailure = async (input: {
   readonly startedAt: string;
   readonly workerId: string;
   readonly progress: StudioJobRecord['progress'];
-}): Promise<boolean> => {
+}): Promise<{ readonly finalFailure: boolean; readonly errorPayload: StudioJobError }> => {
   const errorPayload = createExecutionErrorPayload(
     input.job,
     input.error,
@@ -154,7 +163,7 @@ const persistExecutionFailure = async (input: {
     });
     throw persistenceError;
   }
-  return finalFailure;
+  return { finalFailure, errorPayload };
 };
 
 export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
@@ -195,13 +204,19 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
 
       const handler = deps.resolveHandler(job);
       if (!handler) {
+        const errorPayload = createMissingHandlerPayload(job);
         await stateWriter.markMissingHandler({
           job,
           attempts,
           startedAt,
           workerId,
           progress: getLatestProgress(),
-          errorPayload: createMissingHandlerPayload(job),
+          errorPayload,
+        });
+        await deps.onExecutionTerminal?.({
+          job,
+          error: errorPayload,
+          reason: 'missing_handler',
         });
         return;
       }
@@ -210,6 +225,7 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         job,
         ...handlerContext,
       });
+      await deps.onExecutionSucceeded?.({ job, result });
       await stateWriter.markSucceeded({
         job,
         attempts,
@@ -219,6 +235,11 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
       });
     } catch (error) {
       if (isPluginOperationCancellationError(error)) {
+        const errorPayload: StudioJobError = {
+          code: 'plugin_operation_cancelled',
+          category: 'permanent',
+          message: error.message,
+        };
         await stateWriter.markCancelled({
           job,
           attempts,
@@ -228,10 +249,15 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
           progress: getLatestProgress(),
           cancelRequestedAt: error.cancelRequestedAt,
         });
+        await deps.onExecutionTerminal?.({
+          job,
+          error: errorPayload,
+          reason: 'cancelled',
+        });
         return;
       }
 
-      const finalFailure = await persistExecutionFailure({
+      const failure = await persistExecutionFailure({
         deps,
         stateWriter,
         job,
@@ -242,9 +268,14 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         workerId,
         progress: getLatestProgress(),
       });
-      if (!finalFailure) {
+      if (!failure.finalFailure) {
         throw error;
       }
+      await deps.onExecutionTerminal?.({
+        job,
+        error: failure.errorPayload,
+        reason: 'failed',
+      });
     } finally {
       dispose();
     }

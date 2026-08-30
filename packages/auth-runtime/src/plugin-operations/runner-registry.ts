@@ -2,8 +2,10 @@ import * as graphileWorker from 'graphile-worker';
 
 import { createSdkLogger } from '@sva/server-runtime';
 
+import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
+import { createPluginTenantLifecycleJobCorrelation } from '../plugin-tenant-lifecycle/job-correlation.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
-import { withStudioJobRepository } from './repository.js';
+import { withPluginTenantLifecycleRepository, withStudioJobRepository } from './repository.js';
 import type { PluginOperationExecutionHandler } from './types.js';
 import type {
   PluginOperationExecutionRegistration,
@@ -102,6 +104,10 @@ export const createStudioJobTaskList = (
 ): graphileWorker.TaskList =>
   toStudioJobTaskList(async (payload, helpers) => {
     const { instanceId, jobId } = payload as StudioJobRunnerPayload;
+    const lifecycleCorrelation = createPluginTenantLifecycleJobCorrelation({
+      lifecycleRegistry: readInstanceRegistryPluginTenantLifecycleRegistry(),
+      withRepository: withPluginTenantLifecycleRepository,
+    });
     await createJobLifecycleOrchestrator({
       logger,
       loadRepository: async (tenantInstanceId) => ({
@@ -123,6 +129,8 @@ export const createStudioJobTaskList = (
           ),
       }),
       resolveHandler: (job) => getHandlers().get(toRegistryKey(job.source, job.jobTypeId))?.handler,
+      onExecutionSucceeded: lifecycleCorrelation.complete,
+      onExecutionTerminal: lifecycleCorrelation.fail,
     }).run({
       instanceId,
       jobId,

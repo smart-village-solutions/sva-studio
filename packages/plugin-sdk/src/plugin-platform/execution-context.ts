@@ -1,4 +1,5 @@
 import type { StudioJobProgress, StudioJobRecord, StudioJobResult } from '@sva/core';
+import type { PluginTenantLifecycleExecutionResult } from '../plugin-tenant-lifecycle.js';
 
 export type PluginExecutionContextCapabilities = {
   readonly requestContext: boolean;
@@ -63,6 +64,7 @@ export type PluginJobExecutionContext = PluginExecutionBaseContext & {
 export type PluginJobExecutionResult = {
   readonly progress?: StudioJobProgress;
   readonly resultPayload?: StudioJobResult;
+  readonly tenantLifecycle?: PluginTenantLifecycleExecutionResult;
 };
 
 export type PluginJobHandlerContext = Omit<PluginJobExecutionContext, 'progressReporter'> & {

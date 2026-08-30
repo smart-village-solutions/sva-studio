@@ -263,6 +263,7 @@ export type {
 export type {
   PluginTenantLifecycleDefinition,
   PluginTenantLifecycleError,
+  PluginTenantLifecycleExecutionResult,
   PluginTenantLifecycleOperation,
   PluginTenantLifecycleOperationDefinition,
   PluginTenantLifecycleRegistryEntry,
@@ -273,6 +274,7 @@ export type {
   PluginTenantReadinessStatus,
 } from './plugin-tenant-lifecycle.js';
 export {
+  createPluginTenantReadinessSnapshot,
   createPluginTenantLifecycleRegistry,
   definePluginTenantLifecycle,
   definePluginTenantLifecycleError,

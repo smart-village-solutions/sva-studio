@@ -113,6 +113,32 @@ describe('plugin tenant lifecycle orchestrator', () => {
     expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
   });
 
+  it('rejects lifecycle cancellation when the registered handler cannot honour it', async () => {
+    const dependencies = createDependencies();
+    dependencies.lifecycleRegistry = new Map([
+      [
+        'speech',
+        {
+          ...lifecycleDefinition,
+          operations: [
+            {
+              operation: 'provision' as const,
+              jobTypeId: 'speech.provisionTenant',
+              supportsCancellation: true,
+            },
+          ],
+        },
+      ],
+    ]);
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(
+      `${pluginTenantLifecycleHostErrorCodes.cancellationMismatch}:speech:provision`
+    );
+    expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
+  });
+
   it('persists a retryable blocked state when queueing fails', async () => {
     const dependencies = createDependencies();
     dependencies.queueJob.mockRejectedValue(new Error('queue unavailable'));

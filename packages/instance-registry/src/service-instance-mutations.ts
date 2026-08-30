@@ -28,6 +28,19 @@ export const createProvisioningRequestHandler =
       deps.repository.getInstanceById(input.instanceId)
     );
     if (existing) {
+      const provisioningRuns = await deps.repository.listProvisioningRuns(input.instanceId);
+      const isIdempotentRetry = provisioningRuns.some(
+        (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
+      );
+      if (isIdempotentRetry) {
+        await createReconcileModuleActivationPoliciesHandler(deps)({
+          instanceId: existing.instanceId,
+          actorId: input.actorId,
+          requestId: input.requestId,
+        });
+        invalidateHostWithLog(deps.invalidateHost, existing.primaryHostname, existing.instanceId);
+        return { ok: true, instance: toListItem(existing) };
+      }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
         instance_id: input.instanceId,

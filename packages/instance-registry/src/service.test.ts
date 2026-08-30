@@ -480,9 +480,57 @@ describe('instance registry service facade', () => {
         realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'studio-client',
-        idempotencyKey: 'idem-1',
+        idempotencyKey: 'other-request',
       })
     ).resolves.toEqual({ ok: false, reason: 'already_exists' });
+    expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
+  it('resumes policy reconciliation for an idempotent create retry', async () => {
+    const reconcileModuleActivationPolicies = vi.fn(async () => ({
+      changedModuleIds: [],
+      conflictModuleIds: [],
+      unchangedModuleIds: ['news'],
+    }));
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+      reconcileModuleActivationPolicies,
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'catalog-1',
+          modules: [
+            {
+              moduleId: 'news',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: 'news-1',
+            },
+          ],
+        }),
+      })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', reconcileId: 'catalog-1' })
+    );
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 

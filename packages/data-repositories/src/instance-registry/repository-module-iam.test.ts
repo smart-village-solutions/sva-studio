@@ -147,9 +147,10 @@ describe('instance registry repository module iam', () => {
       unchangedModuleIds: ['events'],
     });
 
-    expect(statements[1]?.text).toContain("policy_revision <> 'legacy'");
+    expect(statements[1]?.text).not.toContain("policy_revision <> 'legacy'");
     expect(statements[1]?.text).toContain("activation_policy = 'optional'");
     expect(statements[1]?.text).toContain('effective_active = false');
+    expect(statements[1]?.text).not.toContain('manual_override = NULL');
     expect(statements[1]?.values).toEqual([
       'tenant-a',
       JSON.stringify({ events: true }),

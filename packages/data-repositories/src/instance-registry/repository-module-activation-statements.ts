@@ -103,7 +103,6 @@ WITH candidates AS MATERIALIZED (
   SELECT module_id
   FROM iam.instance_modules
   WHERE instance_id = $1
-    AND policy_revision <> 'legacy'
     AND NOT ($2::jsonb ? module_id)
 ),
 module_locks AS MATERIALIZED (
@@ -117,7 +116,7 @@ module_locks AS MATERIALIZED (
 mutation AS (
   UPDATE iam.instance_modules AS instance_modules
   SET activation_policy = 'optional', activation_origin = 'policy_reconcile',
-    effective_active = false, manual_override = NULL,
+    effective_active = false,
     state_revision = instance_modules.state_revision + 1,
     reconcile_id = $3, reconciled_at = now(), updated_at = now(), updated_by = $4
   FROM module_locks
@@ -126,7 +125,6 @@ mutation AS (
     AND module_locks.acquired
     AND (instance_modules.activation_policy IS DISTINCT FROM 'optional'
       OR instance_modules.effective_active
-      OR instance_modules.manual_override IS NOT NULL
       OR instance_modules.reconcile_id IS DISTINCT FROM $3)
   RETURNING instance_modules.module_id
 )

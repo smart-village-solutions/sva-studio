@@ -1,7 +1,10 @@
 import * as React from 'react';
+import { useStudioLocationMap } from '@sva/studio-ui-react';
 
-import { useEventLocationMap } from './events.location-map.hook.js';
-import { loadEventLocationMapRuntime, type EventMapLibreModule } from './events.location-map.runtime.js';
+import {
+  loadEventLocationMapRuntime,
+  type EventMapLibreModule,
+} from './events.location-map.runtime.js';
 
 export function EventsLocationMap({
   styleUrl,
@@ -40,7 +43,7 @@ export function EventsLocationMap({
     };
   }, [onError]);
 
-  const { containerRef } = useEventLocationMap({
+  const { containerRef } = useStudioLocationMap({
     runtime,
     styleUrl,
     latitude,
@@ -49,5 +52,10 @@ export function EventsLocationMap({
     onError,
   });
 
-  return <div ref={containerRef} className="min-h-[320px] w-full overflow-hidden rounded-xl border border-border/70" />;
+  return (
+    <div
+      ref={containerRef}
+      className="min-h-[320px] w-full overflow-hidden rounded-xl border border-border/70"
+    />
+  );
 }

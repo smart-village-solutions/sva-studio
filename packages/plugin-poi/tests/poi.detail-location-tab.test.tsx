@@ -3,7 +3,10 @@ import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { FormProvider, useForm } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createDefaultPoiDetailFormValues, type PoiDetailFormValues } from '../src/poi.detail-form.js';
+import {
+  createDefaultPoiDetailFormValues,
+  type PoiDetailFormValues,
+} from '../src/poi.detail-form.js';
 import { PoiDetailLocationTab } from '../src/poi.detail-location-tab.js';
 
 const testTranslations: Record<string, string> = {
@@ -63,13 +66,19 @@ const geocodingState = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('../src/poi.map-geocoding-client.js', () => ({
-  getMapGeocodingConfig: () => geocodingState.getConfig(),
-  geocodeMapAddress: (input: {
-    address: { query?: string; street?: string; zip?: string; city?: string; country?: string };
-  }) => geocodingState.geocodeAddress(input),
-  reverseMapCoordinates: (input: { latitude: number; longitude: number }) => geocodingState.reverseCoordinates(input),
-}));
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+    getHostMapGeocodingConfig: () => geocodingState.getConfig(),
+    geocodeHostMapAddress: (input: {
+      address: { query?: string; street?: string; zip?: string; city?: string; country?: string };
+    }) => geocodingState.geocodeAddress(input),
+    reverseGeocodeHostCoordinates: (input: {
+      coordinates: { latitude: number; longitude: number };
+    }) => geocodingState.reverseCoordinates(input.coordinates),
+  };
+});
 
 vi.mock('../src/poi.location-map.js', () => ({
   PoiLocationMap: ({
@@ -80,7 +89,10 @@ vi.mock('../src/poi.location-map.js', () => ({
     onError: (message: string | null) => void;
   }) => (
     <div>
-      <button type="button" onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}>
+      <button
+        type="button"
+        onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}
+      >
         Kartenpunkt setzen
       </button>
       <button type="button" onClick={() => onError('map_error')}>
@@ -187,7 +199,9 @@ describe('PoiDetailLocationTab', () => {
       expect(geocodingState.getConfig).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText('Ortsbezeichnung'), { target: { value: 'Bleibt gleich' } });
+    fireEvent.change(screen.getByLabelText('Ortsbezeichnung'), {
+      target: { value: 'Bleibt gleich' },
+    });
     fireEvent.change(screen.getByLabelText('Straße'), { target: { value: 'Alte Straße 1' } });
     fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '11111' } });
     fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Altstadt' } });
@@ -197,7 +211,9 @@ describe('PoiDetailLocationTab', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Adresse ermitteln' }));
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Ortsbezeichnung') as HTMLInputElement).value).toBe('Bleibt gleich');
+      expect((screen.getByLabelText('Ortsbezeichnung') as HTMLInputElement).value).toBe(
+        'Bleibt gleich'
+      );
       expect((screen.getByLabelText('Straße') as HTMLInputElement).value).toBe('Neue Straße 5');
       expect((screen.getByLabelText('PLZ') as HTMLInputElement).value).toBe('54321');
       expect((screen.getByLabelText('Ort') as HTMLInputElement).value).toBe('Neustadt');

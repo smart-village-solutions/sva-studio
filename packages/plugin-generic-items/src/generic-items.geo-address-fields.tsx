@@ -1,10 +1,12 @@
 import * as React from 'react';
-import { Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { geocodeHostMapAddress, reverseGeocodeHostCoordinates } from '@sva/plugin-sdk';
+import { Input, parseStudioCoordinate, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { useGenericItemsGeocodingHandlers } from './generic-items.geo-field-handlers.js';
-import { GenericItemsGeoMapSection, useGenericItemsGeoFieldState } from './generic-items.geo-fields.shared.js';
-import { parseCoordinate } from './generic-items.location-map.shared.js';
-import { geocodeMapAddress, reverseMapCoordinates } from './generic-items.map-geocoding-client.js';
+import {
+  GenericItemsGeoMapSection,
+  useGenericItemsGeoFieldState,
+} from './generic-items.geo-fields.shared.js';
 
 type Translator = (key: string) => string;
 
@@ -64,14 +66,17 @@ export function GenericItemsGeoAddressFields({
   onZipChange: (value: string) => void;
 }>) {
   const hasGeocodingInput =
-    addition.trim().length > 0 || street.trim().length > 0 || zip.trim().length > 0 || city.trim().length > 0;
-  const parsedLatitude = parseCoordinate(latitude);
-  const parsedLongitude = parseCoordinate(longitude);
+    addition.trim().length > 0 ||
+    street.trim().length > 0 ||
+    zip.trim().length > 0 ||
+    city.trim().length > 0;
+  const parsedLatitude = parseStudioCoordinate(latitude);
+  const parsedLongitude = parseStudioCoordinate(longitude);
   const hasReverseGeocodingInput = parsedLatitude !== null && parsedLongitude !== null;
   const geoState = useGenericItemsGeoFieldState({
     geocodingEnabled,
     geocodeAddress: async () => {
-      const result = await geocodeMapAddress({
+      const result = await geocodeHostMapAddress({
         address: {
           query: addition.trim() || undefined,
           street: street.trim() || undefined,
@@ -89,9 +94,11 @@ export function GenericItemsGeoAddressFields({
     hasReverseGeocodingInput,
     pt,
     reverseGeocodeAddress: async () => {
-      const result = await reverseMapCoordinates({
-        latitude: parsedLatitude as number,
-        longitude: parsedLongitude as number,
+      const result = await reverseGeocodeHostCoordinates({
+        coordinates: {
+          latitude: parsedLatitude as number,
+          longitude: parsedLongitude as number,
+        },
       });
       onStreetChange([result.street, result.houseNumber].filter(Boolean).join(' '));
       onZipChange(result.postalCode ?? '');
@@ -100,16 +107,27 @@ export function GenericItemsGeoAddressFields({
     reverseGeocodingEnabled,
   });
 
-  const { handleGeocode, handleReverseGeocode } = useGenericItemsGeocodingHandlers({ geoState, pt });
+  const { handleGeocode, handleReverseGeocode } = useGenericItemsGeocodingHandlers({
+    geoState,
+    pt,
+  });
 
   return (
     <div className="space-y-4">
       <StudioFieldGroup columns={2}>
         <StudioField id={additionId} label={pt('fields.addressAddition')}>
-          <Input id={additionId} value={addition} onChange={(event) => onAdditionChange(event.target.value)} />
+          <Input
+            id={additionId}
+            value={addition}
+            onChange={(event) => onAdditionChange(event.target.value)}
+          />
         </StudioField>
         <StudioField id={streetId} label={pt('fields.street')}>
-          <Input id={streetId} value={street} onChange={(event) => onStreetChange(event.target.value)} />
+          <Input
+            id={streetId}
+            value={street}
+            onChange={(event) => onStreetChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
       <StudioFieldGroup columns={2}>

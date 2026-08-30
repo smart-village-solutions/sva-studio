@@ -32,7 +32,6 @@ import {
   Input,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
-  revokeContentMediaUsageObjectUrls,
   Select,
   ContentMediaUsageBlock,
   contentMediaUsageToReference,
@@ -52,12 +51,14 @@ import {
   StudioFormSummaryErrors,
   StudioLoadingState,
   StudioMediaPickerOverlay,
+  StudioMediaReferenceRetryAction,
   StudioOverviewPageTemplate,
   StudioPagination,
   StudioSaveButton,
   Textarea,
   toContentMediaAssetSnapshot,
   useStudioMediaPickerOverlay,
+  useStudioMediaReferenceSync,
   useStudioSaveFeedback,
   resolveMainserverPrincipalOptions,
   resolveContentMediaUsageDrafts,
@@ -307,9 +308,7 @@ function Editor({
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
-    null
-  );
+  const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -605,27 +604,12 @@ function Editor({
                 setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
           : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-        const savedMediaUsages = result.resolutions?.length
-          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
-          : mediaUsages;
-        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
-        if (result.status === 'reference_failed') {
-          setRetryReferenceSync(() => result.retryReferenceSync);
-          setMediaUsages(
-            savedMediaUsages.map((usage) =>
-              usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
-            )
-          );
+        const handledResult = mediaReferenceSync.consumeSaveResult(result);
+        if (handledResult.referenceFailed) {
           setMutationError(pt('messages.mediaReferencePartialFailure'));
           saveFeedback.markFailed(operationId);
           return;
         }
-        setRetryReferenceSync(null);
-        setMediaUsages(
-          savedMediaUsages.map((usage) =>
-            usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-          )
-        );
         saveFeedback.markSaved(operationId);
         if (mode === 'create')
           await navigate({
@@ -963,28 +947,12 @@ function Editor({
             {mutationError}
           </p>
         ) : null}
-        {retryReferenceSync ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() =>
-              void retryReferenceSync().then(
-                () => {
-                  setRetryReferenceSync(null);
-                  setMediaUsages((current) =>
-                    current.map((usage) =>
-                      usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-                    )
-                  );
-                  setMutationError(null);
-                },
-                () => setMutationError(pt('messages.mediaReferencePartialFailure'))
-              )
-            }
-          >
-            {pt('actions.retryMediaReferences')}
-          </Button>
-        ) : null}
+        <StudioMediaReferenceRetryAction
+          controller={mediaReferenceSync}
+          label={pt('actions.retryMediaReferences')}
+          onSuccess={() => setMutationError(null)}
+          onFailure={() => setMutationError(pt('messages.mediaReferencePartialFailure'))}
+        />
         <StudioFormSummaryErrors
           errors={summaryErrors}
           title={pt('validation.summaryTitle')}

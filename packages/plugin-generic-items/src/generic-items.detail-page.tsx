@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import {
-  contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
   contentMediaSavePhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
@@ -35,26 +34,27 @@ import {
   StudioLoadingState,
   StudioPersistentActionResult,
   StudioMediaPickerOverlay,
+  StudioMediaReferenceRetryAction,
   StudioSaveButton,
   contentMediaUsageToReference,
   contentMediaUsagesToLocalDrafts,
   createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
+  createStudioMediaPickerLabels,
   isPersistableContentMediaUrl,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
-  revokeContentMediaUsageObjectUrls,
   resolveMainserverPrincipalOptions,
   resolveContentMediaUsageDrafts,
+  resolveStudioMediaPickerFeedback,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
-  type StudioMediaPickerErrorCode,
-  type StudioMediaPickerOverlayLabels,
   useStudioMediaPickerOverlay,
+  useStudioMediaReferenceSync,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
@@ -167,81 +167,6 @@ const toGenericItemsMediaPickerDetail = (
   };
 };
 
-const createGenericItemsMediaPickerLabels = (
-  pt: ReturnType<typeof usePluginTranslation>
-): StudioMediaPickerOverlayLabels => ({
-  title: pt('messages.mediaPickerTitle'),
-  description: pt('messages.mediaPickerDescription'),
-  modes: {
-    library: pt('messages.mediaPickerLibraryAction'),
-    upload: pt('actions.uploadMedia'),
-    manual: pt('messages.mediaPickerLinkAction'),
-    review: pt('messages.mediaPickerReviewMode'),
-  },
-  library: {
-    searchLabel: pt('fields.imageSearch'),
-    empty: pt('messages.imagePickerEmpty'),
-    select: pt('actions.selectImage'),
-  },
-  upload: {
-    regionLabel: pt('messages.mediaPickerUploadRegionLabel'),
-    title: pt('messages.mediaPickerUploadTitle'),
-    description: pt('messages.mediaPickerUploadDescription'),
-    browseAction: pt('messages.mediaPickerSelectFile'),
-    supportLabel: pt('messages.mediaPickerUploadSupportLabel'),
-  },
-  review: {
-    title: pt('messages.mediaPickerReviewTitle'),
-    description: pt('messages.mediaPickerReviewDescription'),
-  },
-  fields: {
-    title: pt('fields.title'),
-    altText: pt('messages.mediaPickerAltText'),
-    description: pt('fields.description'),
-    copyright: pt('fields.mediaCopyright'),
-    license: pt('messages.mediaPickerLicense'),
-  },
-  actions: {
-    cancel: pt('actions.back'),
-    backToLibrary: pt('messages.mediaPickerBackToLibrary'),
-    backToUpload: pt('messages.mediaPickerBackToUpload'),
-    openMediaManagement: pt('messages.mediaPickerOpenMediaManagement'),
-    useMedia: pt('messages.mediaPickerUseMedia'),
-  },
-});
-
-const resolveGenericItemsMediaPickerFeedback = (
-  pt: ReturnType<typeof usePluginTranslation>,
-  errorCode: StudioMediaPickerErrorCode | null,
-  uploadPhase: Parameters<typeof uploadPhaseMessageKey>[0]
-) => {
-  if (errorCode === 'unsupported_upload_type') {
-    return { message: pt('messages.mediaUploadUnsupportedType'), tone: 'error' as const };
-  }
-  if (errorCode === 'upload_failed') {
-    return { message: pt('messages.mediaUploadError'), tone: 'error' as const };
-  }
-  if (errorCode === 'asset_load_failed') {
-    return { message: pt('messages.mediaPickerAssetLoadError'), tone: 'error' as const };
-  }
-  if (errorCode === 'asset_unavailable') {
-    return { message: pt('messages.mediaUploadUnavailableUrl'), tone: 'error' as const };
-  }
-  if (errorCode === 'metadata_save_failed') {
-    return { message: pt('messages.mediaPickerMetadataSaveError'), tone: 'error' as const };
-  }
-
-  const phaseKey = uploadPhaseMessageKey(uploadPhase);
-  if (!phaseKey) {
-    return { message: null, tone: 'default' as const };
-  }
-
-  return {
-    message: pt(phaseKey),
-    tone: uploadPhase === 'success' ? ('success' as const) : ('default' as const),
-  };
-};
-
 const DetailPageActions = ({
   canDelete,
   disableActions,
@@ -287,7 +212,7 @@ export function GenericItemsDetailPage({
   const navigate = useNavigate();
   const location = useLocation();
   const labels = React.useMemo(() => createGenericItemsDetailLabels(pt), [pt]);
-  const mediaPickerLabels = React.useMemo(() => createGenericItemsMediaPickerLabels(pt), [pt]);
+  const mediaPickerLabels = React.useMemo(() => createStudioMediaPickerLabels(pt), [pt]);
   const methods = useForm<GenericItemsDetailFormValues>({
     resolver: zodResolver(genericItemsDetailFormSchema),
     defaultValues: createDefaultGenericItemsDetailFormValues(),
@@ -317,9 +242,7 @@ export function GenericItemsDetailPage({
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
-    null
-  );
+  const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -575,8 +498,7 @@ export function GenericItemsDetailPage({
   }, [mediaUsages, methods]);
 
   const mediaPickerFeedback = React.useMemo(
-    () =>
-      resolveGenericItemsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
+    () => resolveStudioMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
@@ -624,26 +546,12 @@ export function GenericItemsDetailPage({
                 setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
           : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-        const savedMediaUsages = result.resolutions?.length
-          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
-          : mediaUsages;
-        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
-        if (result.status === 'reference_failed') {
-          setRetryReferenceSync(() => result.retryReferenceSync);
-          setMediaUsages(
-            savedMediaUsages.map((usage) =>
-              usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
-            )
-          );
+        const handledResult = mediaReferenceSync.consumeSaveResult(result);
+        if (handledResult.referenceFailed) {
           setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
           saveFeedback.markFailed(operationId);
           return;
         }
-        setMediaUsages(
-          savedMediaUsages.map((usage) =>
-            usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-          )
-        );
         setStatus(null);
         saveFeedback.markSaved(operationId);
         if (mode === 'create')
@@ -775,29 +683,16 @@ export function GenericItemsDetailPage({
           })}
           onChange={setActingPrincipalType}
         />
-        {retryReferenceSync ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() =>
-              void retryReferenceSync().then(
-                () => {
-                  setRetryReferenceSync(null);
-                  setMediaUsages((current) =>
-                    current.map((usage) =>
-                      usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-                    )
-                  );
-                  setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
-                },
-                () =>
-                  setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
-              )
-            }
-          >
-            {pt('actions.retryMediaReferences')}
-          </Button>
-        ) : null}
+        <StudioMediaReferenceRetryAction
+          controller={mediaReferenceSync}
+          label={pt('actions.retryMediaReferences')}
+          onSuccess={() =>
+            setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
+          }
+          onFailure={() =>
+            setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
+          }
+        />
         <GenericItemsDetailTabs
           activeTab={activeTab}
           categoryOptions={categoryOptions}

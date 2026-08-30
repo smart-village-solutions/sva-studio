@@ -87,6 +87,16 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    getHostMapGeocodingConfig: vi.fn(async () => ({
+      provider: 'geoapify' as const,
+      styleUrl: 'https://tileserver.example/style.json',
+      autocompleteEnabled: true,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+    })),
+    geocodeHostMapAddress: vi.fn(),
+    reverseGeocodeHostCoordinates: vi.fn(),
     listHostMediaAssets: vi.fn(async () => []),
     listHostMediaReferencesByTarget: vi.fn(async () => []),
     replaceHostMediaReferences: vi.fn(async () => []),
@@ -147,19 +157,6 @@ vi.mock('@tanstack/react-router', () => ({
   useParams: () => paramsMock(),
   useSearch: () => ({ page: 1, pageSize: 25 }),
   useLocation: () => ({ state: {} }),
-}));
-
-vi.mock('../src/poi.map-geocoding-client.js', () => ({
-  getMapGeocodingConfig: vi.fn(async () => ({
-    provider: 'geoapify' as const,
-    styleUrl: 'https://tileserver.example/style.json',
-    autocompleteEnabled: true,
-    geocodeEnabled: true,
-    reverseGeocodeEnabled: true,
-    killSwitchEnabled: false,
-  })),
-  suggestMapAddresses: vi.fn(),
-  reverseMapCoordinates: vi.fn(),
 }));
 
 const navigateMock = vi.fn();

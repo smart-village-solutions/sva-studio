@@ -11,22 +11,21 @@ import type {
 } from './map-geocoding.js';
 
 const MAP_GEOCODING_BASE_PATH = '/api/v1/iam/map-geocoding';
+let hostMapGeocodingConfigPromise: Promise<MapGeocodingRuntimeConfig> | null = null;
 const MAP_GEOCODING_CLIENT_TIMEOUT_MS = 30_000;
 
 export class MapGeocodingClientError extends Error {
   public constructor(
     public readonly code: string,
-    message = code,
+    message = code
   ) {
     super(message);
     this.name = 'MapGeocodingClientError';
   }
 }
 
-const errorFactory: MainserverErrorFactory<MapGeocodingClientError> = (
-  code,
-  message,
-) => new MapGeocodingClientError(code, message);
+const errorFactory: MainserverErrorFactory<MapGeocodingClientError> = (code, message) =>
+  new MapGeocodingClientError(code, message);
 
 const MAP_GEOCODING_DEBUG_FLAG = 'sva:debug:map-geocoding';
 
@@ -42,7 +41,11 @@ const isMapGeocodingDebugEnabled = (): boolean => {
   return typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 };
 
-const logMapGeocodingDebug = (level: 'info' | 'warn', event: string, meta: Record<string, unknown>): void => {
+const logMapGeocodingDebug = (
+  level: 'info' | 'warn',
+  event: string,
+  meta: Record<string, unknown>
+): void => {
   if (!isMapGeocodingDebugEnabled()) {
     return;
   }
@@ -59,7 +62,9 @@ const summarizeAddressInput = (address: MapGeocodingAddressInput): Record<string
   has_country: Boolean(address.country?.trim()),
 });
 
-const summarizeCoordinatesInput = (coordinates: MapGeocodingCoordinates): Record<string, unknown> => ({
+const summarizeCoordinatesInput = (
+  coordinates: MapGeocodingCoordinates
+): Record<string, unknown> => ({
   has_coordinates: Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude),
 });
 
@@ -67,9 +72,11 @@ const summarizeFeature = (feature: MapGeocodingFeature): Record<string, unknown>
   source: feature.source,
   label_present: feature.label.trim().length > 0,
   street_present: typeof feature.street === 'string' && feature.street.trim().length > 0,
-  postal_code_present: typeof feature.postalCode === 'string' && feature.postalCode.trim().length > 0,
+  postal_code_present:
+    typeof feature.postalCode === 'string' && feature.postalCode.trim().length > 0,
   city_present: typeof feature.city === 'string' && feature.city.trim().length > 0,
-  country_code_present: typeof feature.countryCode === 'string' && feature.countryCode.trim().length > 0,
+  country_code_present:
+    typeof feature.countryCode === 'string' && feature.countryCode.trim().length > 0,
 });
 
 const logMapGeocodingStart = (operation: string, meta: Record<string, unknown>): void => {
@@ -82,7 +89,7 @@ const logMapGeocodingStart = (operation: string, meta: Record<string, unknown>):
 const logMapGeocodingSuccess = (
   operation: string,
   responseMeta: MainserverResponseMeta | null,
-  meta: Record<string, unknown>,
+  meta: Record<string, unknown>
 ): void => {
   logMapGeocodingDebug('info', 'client request completed', {
     operation,
@@ -101,9 +108,12 @@ const logMapGeocodingSuccess = (
 const logMapGeocodingFailure = (
   operation: string,
   error: unknown,
-  responseMeta: MainserverResponseMeta | null,
+  responseMeta: MainserverResponseMeta | null
 ): void => {
-  const candidate = error && typeof error === 'object' ? (error as { code?: unknown; message?: unknown }) : undefined;
+  const candidate =
+    error && typeof error === 'object'
+      ? (error as { code?: unknown; message?: unknown })
+      : undefined;
   logMapGeocodingDebug('warn', 'client request failed', {
     operation,
     ...(responseMeta
@@ -124,7 +134,7 @@ const logMapGeocodingFailure = (
   });
 };
 
-export const getHostMapGeocodingConfig = async (input?: {
+const loadHostMapGeocodingConfig = async (input?: {
   readonly fetch?: typeof fetch;
 }): Promise<MapGeocodingRuntimeConfig> => {
   let responseMeta: MainserverResponseMeta | null = null;
@@ -153,6 +163,24 @@ export const getHostMapGeocodingConfig = async (input?: {
   }
 };
 
+export const resetHostMapGeocodingConfigCache = (): void => {
+  hostMapGeocodingConfigPromise = null;
+};
+
+export const getHostMapGeocodingConfig = (input?: {
+  readonly fetch?: typeof fetch;
+}): Promise<MapGeocodingRuntimeConfig> => {
+  if (input?.fetch) {
+    return loadHostMapGeocodingConfig(input);
+  }
+
+  hostMapGeocodingConfigPromise ??= loadHostMapGeocodingConfig().catch((error: unknown) => {
+    hostMapGeocodingConfigPromise = null;
+    throw error;
+  });
+  return hostMapGeocodingConfigPromise;
+};
+
 export const suggestHostMapAddresses = async (input: {
   readonly query: string;
   readonly fetch?: typeof fetch;
@@ -162,7 +190,10 @@ export const suggestHostMapAddresses = async (input: {
     query_present: input.query.trim().length > 0,
   });
   try {
-    const result = await requestMainserverJson<readonly MapGeocodingFeature[], MapGeocodingClientError>({
+    const result = await requestMainserverJson<
+      readonly MapGeocodingFeature[],
+      MapGeocodingClientError
+    >({
       url: `${MAP_GEOCODING_BASE_PATH}/suggest`,
       fetch: input.fetch,
       errorFactory,
@@ -170,15 +201,15 @@ export const suggestHostMapAddresses = async (input: {
       onResponse: (meta) => {
         responseMeta = meta;
       },
-    init: {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
+      init: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ query: input.query }),
       },
-      body: JSON.stringify({ query: input.query }),
-    },
-  });
+    });
     logMapGeocodingSuccess('suggest', responseMeta, {
       result_count: result.length,
       first_result_source: result[0]?.source,
@@ -205,15 +236,15 @@ export const geocodeHostMapAddress = async (input: {
       onResponse: (meta) => {
         responseMeta = meta;
       },
-    init: {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
+      init: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify(input.address),
       },
-      body: JSON.stringify(input.address),
-    },
-  });
+    });
     logMapGeocodingSuccess('geocode', responseMeta, summarizeFeature(result));
     return result;
   } catch (error) {
@@ -237,15 +268,15 @@ export const reverseGeocodeHostCoordinates = async (input: {
       onResponse: (meta) => {
         responseMeta = meta;
       },
-    init: {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
+      init: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify(input.coordinates),
       },
-      body: JSON.stringify(input.coordinates),
-    },
-  });
+    });
     logMapGeocodingSuccess('reverse_geocode', responseMeta, summarizeFeature(result));
     return result;
   } catch (error) {

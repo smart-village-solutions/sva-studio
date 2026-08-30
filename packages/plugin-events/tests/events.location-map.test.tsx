@@ -13,8 +13,8 @@ vi.mock('../src/events.location-map.runtime.js', () => ({
   loadEventLocationMapRuntime: state.loadRuntime,
 }));
 
-vi.mock('../src/events.location-map.hook.js', () => ({
-  useEventLocationMap: state.useLocationMap,
+vi.mock('@sva/studio-ui-react', () => ({
+  useStudioLocationMap: state.useLocationMap,
 }));
 
 import { EventsLocationMap } from '../src/events.location-map.js';

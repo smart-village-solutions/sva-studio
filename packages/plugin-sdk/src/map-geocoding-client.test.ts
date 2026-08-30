@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   MapGeocodingClientError,
   geocodeHostMapAddress,
   getHostMapGeocodingConfig,
+  resetHostMapGeocodingConfigCache,
   reverseGeocodeHostCoordinates,
   suggestHostMapAddresses,
 } from './map-geocoding-client.js';
@@ -28,6 +29,37 @@ const reverseFeature: MapGeocodingFeature = {
 };
 
 describe('map geocoding client', () => {
+  beforeEach(() => {
+    resetHostMapGeocodingConfigCache();
+  });
+
+  it('deduplicates concurrent config reads and retries after a failed read', async () => {
+    const config = {
+      provider: 'geoapify' as const,
+      styleUrl: 'https://tiles.example/styles/basic',
+      autocompleteEnabled: true,
+      geocodeEnabled: true,
+      reverseGeocodeEnabled: true,
+      killSwitchEnabled: false,
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new Error('temporary'))
+      .mockResolvedValue(new Response(JSON.stringify(config), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getHostMapGeocodingConfig()).rejects.toThrow('temporary');
+    const [first, second] = await Promise.all([
+      getHostMapGeocodingConfig(),
+      getHostMapGeocodingConfig(),
+    ]);
+
+    expect(first).toEqual(config);
+    expect(second).toEqual(config);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
+  });
+
   it('logs request and response metadata in debug mode without exposing raw address data', async () => {
     const originalLocalStorage = globalThis.localStorage;
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
@@ -39,11 +71,12 @@ describe('map geocoding client', () => {
       },
     });
 
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify(geocodeFeature), {
-        status: 200,
-        headers: { 'content-type': 'application/json; charset=utf-8' },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify(geocodeFeature), {
+          status: 200,
+          headers: { 'content-type': 'application/json; charset=utf-8' },
+        })
     );
 
     try {
@@ -51,7 +84,7 @@ describe('map geocoding client', () => {
         geocodeHostMapAddress({
           fetch: fetchMock as never,
           address: { street: 'Musterstraße 1', city: 'Musterstadt' },
-        }),
+        })
       ).resolves.toEqual(geocodeFeature);
 
       expect(infoSpy).toHaveBeenCalledWith(
@@ -61,7 +94,7 @@ describe('map geocoding client', () => {
           operation: 'geocode',
           has_street: true,
           has_city: true,
-        }),
+        })
       );
       expect(infoSpy).toHaveBeenCalledWith(
         '[map-geocoding]',
@@ -72,7 +105,7 @@ describe('map geocoding client', () => {
           content_type: 'application/json; charset=utf-8',
           source: 'geoapify',
           label_present: true,
-        }),
+        })
       );
     } finally {
       infoSpy.mockRestore();
@@ -84,23 +117,22 @@ describe('map geocoding client', () => {
   });
 
   it('loads the public host config over the stable iam route', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          provider: 'geoapify',
-          styleUrl: 'https://tiles.example/styles/basic',
-          autocompleteEnabled: true,
-          geocodeEnabled: true,
-          reverseGeocodeEnabled: false,
-          killSwitchEnabled: false,
-        }),
-        { status: 200 },
-      ),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            provider: 'geoapify',
+            styleUrl: 'https://tiles.example/styles/basic',
+            autocompleteEnabled: true,
+            geocodeEnabled: true,
+            reverseGeocodeEnabled: false,
+            killSwitchEnabled: false,
+          }),
+          { status: 200 }
+        )
     );
 
-    await expect(
-      getHostMapGeocodingConfig({ fetch: fetchMock as never }),
-    ).resolves.toEqual({
+    await expect(getHostMapGeocodingConfig({ fetch: fetchMock as never })).resolves.toEqual({
       provider: 'geoapify',
       styleUrl: 'https://tiles.example/styles/basic',
       autocompleteEnabled: true,
@@ -110,7 +142,7 @@ describe('map geocoding client', () => {
     });
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/iam/map-geocoding/config',
-      expect.objectContaining({ credentials: 'include' }),
+      expect.objectContaining({ credentials: 'include' })
     );
   });
 
@@ -135,19 +167,19 @@ describe('map geocoding client', () => {
     });
 
     await expect(
-      suggestHostMapAddresses({ fetch: fetchMock as never, query: 'Musterstraße' }),
+      suggestHostMapAddresses({ fetch: fetchMock as never, query: 'Musterstraße' })
     ).resolves.toEqual([suggestFeature]);
     await expect(
       geocodeHostMapAddress({
         fetch: fetchMock as never,
         address: { street: 'Musterstraße', city: 'Musterstadt' },
-      }),
+      })
     ).resolves.toEqual(geocodeFeature);
     await expect(
       reverseGeocodeHostCoordinates({
         fetch: fetchMock as never,
         coordinates: { latitude: 52.5, longitude: 13.4 },
-      }),
+      })
     ).resolves.toEqual(reverseFeature);
   });
 
@@ -165,7 +197,7 @@ describe('map geocoding client', () => {
         geocodeHostMapAddress({
           fetch: fetchMock as never,
           address: { street: 'Musterstraße', city: 'Musterstadt' },
-        }),
+        })
       ).resolves.toEqual(geocodeFeature);
 
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
@@ -175,18 +207,19 @@ describe('map geocoding client', () => {
   });
 
   it('surfaces deterministic route errors as typed map geocoding client errors', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          error: { code: 'disabled', message: 'disabled' },
-          message: 'disabled',
-        }),
-        { status: 503 },
-      ),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { code: 'disabled', message: 'disabled' },
+            message: 'disabled',
+          }),
+          { status: 503 }
+        )
     );
 
     await expect(
-      suggestHostMapAddresses({ fetch: fetchMock as never, query: 'leer' }),
+      suggestHostMapAddresses({ fetch: fetchMock as never, query: 'leer' })
     ).rejects.toEqual(new MapGeocodingClientError('disabled', 'disabled'));
   });
 
@@ -201,16 +234,17 @@ describe('map geocoding client', () => {
       },
     });
 
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          error: { code: 'rate_limited', message: 'Too many requests' },
-        }),
-        {
-          status: 429,
-          headers: { 'content-type': 'application/json' },
-        },
-      ),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { code: 'rate_limited', message: 'Too many requests' },
+          }),
+          {
+            status: 429,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
     );
 
     try {
@@ -218,7 +252,7 @@ describe('map geocoding client', () => {
         reverseGeocodeHostCoordinates({
           fetch: fetchMock as never,
           coordinates: { latitude: Number.NaN, longitude: 13.4 },
-        }),
+        })
       ).rejects.toEqual(new MapGeocodingClientError('rate_limited', 'Too many requests'));
 
       expect(warnSpy).toHaveBeenCalledWith(
@@ -230,7 +264,7 @@ describe('map geocoding client', () => {
           content_type: 'application/json',
           error_code: 'rate_limited',
           error_message: 'Too many requests',
-        }),
+        })
       );
     } finally {
       warnSpy.mockRestore();

@@ -1,10 +1,12 @@
 import * as React from 'react';
-import { Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { geocodeHostMapAddress, reverseGeocodeHostCoordinates } from '@sva/plugin-sdk';
+import { Input, parseStudioCoordinate, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { useGenericItemsGeocodingHandlers } from './generic-items.geo-field-handlers.js';
-import { GenericItemsGeoMapSection, useGenericItemsGeoFieldState } from './generic-items.geo-fields.shared.js';
-import { parseCoordinate } from './generic-items.location-map.shared.js';
-import { geocodeMapAddress, reverseMapCoordinates } from './generic-items.map-geocoding-client.js';
+import {
+  GenericItemsGeoMapSection,
+  useGenericItemsGeoFieldState,
+} from './generic-items.geo-fields.shared.js';
 
 type Translator = (key: string) => string;
 
@@ -71,13 +73,13 @@ export function GenericItemsGeoLocationFields({
     district.trim().length > 0 ||
     regionName.trim().length > 0 ||
     state.trim().length > 0;
-  const parsedLatitude = parseCoordinate(latitude);
-  const parsedLongitude = parseCoordinate(longitude);
+  const parsedLatitude = parseStudioCoordinate(latitude);
+  const parsedLongitude = parseStudioCoordinate(longitude);
   const hasReverseGeocodingInput = parsedLatitude !== null && parsedLongitude !== null;
   const geoState = useGenericItemsGeoFieldState({
     geocodingEnabled,
     geocodeAddress: async () => {
-      const result = await geocodeMapAddress({
+      const result = await geocodeHostMapAddress({
         address: {
           query: name.trim() || undefined,
           street: department.trim() || district.trim() || undefined,
@@ -100,9 +102,11 @@ export function GenericItemsGeoLocationFields({
     hasReverseGeocodingInput,
     pt,
     reverseGeocodeAddress: async () => {
-      const result = await reverseMapCoordinates({
-        latitude: parsedLatitude as number,
-        longitude: parsedLongitude as number,
+      const result = await reverseGeocodeHostCoordinates({
+        coordinates: {
+          latitude: parsedLatitude as number,
+          longitude: parsedLongitude as number,
+        },
       });
       onNameChange(result.label ?? '');
       onRegionNameChange(result.city ?? '');
@@ -111,7 +115,10 @@ export function GenericItemsGeoLocationFields({
     reverseGeocodingEnabled,
   });
 
-  const { handleGeocode, handleReverseGeocode } = useGenericItemsGeocodingHandlers({ geoState, pt });
+  const { handleGeocode, handleReverseGeocode } = useGenericItemsGeocodingHandlers({
+    geoState,
+    pt,
+  });
 
   return (
     <div className="space-y-4">
@@ -120,20 +127,36 @@ export function GenericItemsGeoLocationFields({
           <Input id={nameId} value={name} onChange={(event) => onNameChange(event.target.value)} />
         </StudioField>
         <StudioField id={departmentId} label={pt('fields.department')}>
-          <Input id={departmentId} value={department} onChange={(event) => onDepartmentChange(event.target.value)} />
+          <Input
+            id={departmentId}
+            value={department}
+            onChange={(event) => onDepartmentChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
       <StudioFieldGroup columns={2}>
         <StudioField id={districtId} label={pt('fields.district')}>
-          <Input id={districtId} value={district} onChange={(event) => onDistrictChange(event.target.value)} />
+          <Input
+            id={districtId}
+            value={district}
+            onChange={(event) => onDistrictChange(event.target.value)}
+          />
         </StudioField>
         <StudioField id={regionNameId} label={pt('fields.regionName')}>
-          <Input id={regionNameId} value={regionName} onChange={(event) => onRegionNameChange(event.target.value)} />
+          <Input
+            id={regionNameId}
+            value={regionName}
+            onChange={(event) => onRegionNameChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
       <StudioFieldGroup columns={2}>
         <StudioField id={stateId} label={pt('fields.state')}>
-          <Input id={stateId} value={state} onChange={(event) => onStateChange(event.target.value)} />
+          <Input
+            id={stateId}
+            value={state}
+            onChange={(event) => onStateChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
       <GenericItemsGeoMapSection

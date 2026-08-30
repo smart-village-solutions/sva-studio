@@ -35,12 +35,17 @@ const geocodingState = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('../src/events.map-geocoding-client.js', () => ({
-  getMapGeocodingConfig: () => geocodingState.getConfig(),
-  geocodeMapAddress: (input: { address: unknown }) => geocodingState.geocodeAddress(input),
-  reverseMapCoordinates: (input: { latitude: number; longitude: number }) =>
-    geocodingState.reverseCoordinates(input),
-}));
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+    getHostMapGeocodingConfig: () => geocodingState.getConfig(),
+    geocodeHostMapAddress: (input: { address: unknown }) => geocodingState.geocodeAddress(input),
+    reverseGeocodeHostCoordinates: (input: {
+      coordinates: { latitude: number; longitude: number };
+    }) => geocodingState.reverseCoordinates(input.coordinates),
+  };
+});
 
 vi.mock('../src/events.location-map.js', () => ({
   EventsLocationMap: ({
@@ -265,6 +270,13 @@ describe('EventsDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Straße', { selector: '#event-street' }), {
       target: { value: 'Marktplatz 1' },
     });
+    fireEvent.change(screen.getByLabelText('Ortsbezeichnung', { selector: '#event-address-name' }), {
+      target: { value: 'Rathaus' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('Breitengrad', { selector: '#event-address-latitude' }),
+      { target: { value: '51.4800' } }
+    );
     fireEvent.change(screen.getByLabelText('Ort', { selector: '#event-city' }), {
       target: { value: 'Musterstadt' },
     });
@@ -288,8 +300,10 @@ describe('EventsDetailContentTab', () => {
     expect(getValues().content.description).toBe('<p>Eventbeschreibung</p>');
     expect(getValues().content.dates?.[0]).toMatchObject({ timeStart: '10:15', timeEnd: '12:30' });
     expect(getValues().content.addresses?.[0]).toMatchObject({
+      addition: 'Rathaus',
       street: 'Marktplatz 1',
       city: 'Musterstadt',
+      geoLocation: { latitude: '51.4800' },
     });
     expect(getValues().content.contacts?.[0]).toMatchObject({
       firstName: 'Erika',

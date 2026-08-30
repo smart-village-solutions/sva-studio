@@ -1,6 +1,6 @@
 import * as React from 'react';
+import { useStudioLocationMap } from '@sva/studio-ui-react';
 
-import { usePoiLocationMap } from './poi.location-map.hook.js';
 import { loadPoiLocationMapRuntime, type PoiMapLibreModule } from './poi.location-map.runtime.js';
 
 export function PoiLocationMap({
@@ -40,7 +40,7 @@ export function PoiLocationMap({
     };
   }, [onError]);
 
-  const { containerRef } = usePoiLocationMap({
+  const { containerRef } = useStudioLocationMap({
     runtime,
     styleUrl,
     latitude,
@@ -49,5 +49,10 @@ export function PoiLocationMap({
     onError,
   });
 
-  return <div ref={containerRef} className="min-h-[320px] w-full overflow-hidden rounded-xl border border-border/70" />;
+  return (
+    <div
+      ref={containerRef}
+      className="min-h-[320px] w-full overflow-hidden rounded-xl border border-border/70"
+    />
+  );
 }

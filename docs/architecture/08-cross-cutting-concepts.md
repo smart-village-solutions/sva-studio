@@ -904,3 +904,9 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Aktueller Inhaber ist der gegenwärtige Owner beziehungsweise Mainserver-DataProvider, niemals eine Rekonstruktion aus Audit oder Historie.
 - Transferaudits verwenden die Coverage `studio_mutations` und technische Principal-, Provider-, Operations- und Binding-Referenzen ohne E-Mail-Adressen oder Secrets.
 - Bestätigte Upstream-Erfolge werden durch lokale Folgefehler nicht als Rollback dargestellt.
+
+### Gemeinsame Editor-Orchestrierung
+
+- Frameworkfreie Verträge bleiben vom React-Lifecycle getrennt. Die einzige neue Richtung ist `@sva/studio-ui-react` zu `@sva/plugin-sdk/content-media`.
+- Ein partieller Medienreferenzfehler speichert den bereits angelegten Inhalt nicht erneut. Der gemeinsame Controller hält ausschließlich den idempotenten Reference-Retry und räumt aufgelöste lokale Objekt-URLs auf.
+- Map-Konfiguration wird für den globalen Host-Fetch dedupliziert; ein fehlgeschlagener Read wird nicht dauerhaft gecacht. MapLibre-Runtime und CSS bleiben bundlelokal.

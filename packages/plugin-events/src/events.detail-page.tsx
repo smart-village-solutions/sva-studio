@@ -2,7 +2,6 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
-  contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
   contentMediaSavePhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
@@ -35,6 +34,7 @@ import {
   contentMediaUsageToReference,
   contentMediaUsagesToLocalDrafts,
   contentMediaUsagesToMainserver,
+  createStudioMediaPickerLabels,
   createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
   hasStudioCreatedSaveFeedback,
@@ -43,8 +43,8 @@ import {
   MainserverDeviationSummary,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
-  revokeContentMediaUsageObjectUrls,
   resolveContentMediaUsageDrafts,
+  resolveStudioMediaPickerFeedback,
   resolveMainserverPrincipalOptions,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
@@ -57,11 +57,11 @@ import {
   StudioLoadingState,
   StudioPersistentActionResult,
   StudioMediaPickerOverlay,
+  StudioMediaReferenceRetryAction,
   StudioSaveButton,
+  useStudioMediaReferenceSync,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
-  type StudioMediaPickerErrorCode,
-  type StudioMediaPickerOverlayLabels,
   Tabs,
   TabsContent,
   TabsList,
@@ -229,81 +229,6 @@ const toEventsMediaPickerDetail = (
   };
 };
 
-const createEventsMediaPickerLabels = (
-  pt: ReturnType<typeof usePluginTranslation>
-): StudioMediaPickerOverlayLabels => ({
-  title: pt('messages.mediaPickerTitle'),
-  description: pt('messages.mediaPickerDescription'),
-  modes: {
-    library: pt('messages.mediaPickerLibraryAction'),
-    upload: pt('actions.uploadMedia'),
-    manual: pt('messages.mediaPickerLinkAction'),
-    review: pt('messages.mediaPickerReviewMode'),
-  },
-  library: {
-    searchLabel: pt('fields.imageSearch'),
-    empty: pt('messages.imagePickerEmpty'),
-    select: pt('actions.selectImage'),
-  },
-  upload: {
-    regionLabel: pt('messages.mediaPickerUploadRegionLabel'),
-    title: pt('messages.mediaPickerUploadTitle'),
-    description: pt('messages.mediaPickerUploadDescription'),
-    browseAction: pt('messages.mediaPickerSelectFile'),
-    supportLabel: pt('messages.mediaPickerUploadSupportLabel'),
-  },
-  review: {
-    title: pt('messages.mediaPickerReviewTitle'),
-    description: pt('messages.mediaPickerReviewDescription'),
-  },
-  fields: {
-    title: pt('fields.title'),
-    altText: pt('messages.mediaPickerAltText'),
-    description: pt('fields.description'),
-    copyright: pt('fields.mediaCopyright'),
-    license: pt('messages.mediaPickerLicense'),
-  },
-  actions: {
-    cancel: pt('actions.back'),
-    backToLibrary: pt('messages.mediaPickerBackToLibrary'),
-    backToUpload: pt('messages.mediaPickerBackToUpload'),
-    openMediaManagement: pt('messages.mediaPickerOpenMediaManagement'),
-    useMedia: pt('messages.mediaPickerUseMedia'),
-  },
-});
-
-const resolveEventsMediaPickerFeedback = (
-  pt: ReturnType<typeof usePluginTranslation>,
-  errorCode: StudioMediaPickerErrorCode | null,
-  uploadPhase: Parameters<typeof uploadPhaseMessageKey>[0]
-) => {
-  if (errorCode === 'unsupported_upload_type') {
-    return { message: pt('messages.mediaUploadUnsupportedType'), tone: 'error' as const };
-  }
-  if (errorCode === 'upload_failed') {
-    return { message: pt('messages.mediaUploadError'), tone: 'error' as const };
-  }
-  if (errorCode === 'asset_load_failed') {
-    return { message: pt('messages.mediaPickerAssetLoadError'), tone: 'error' as const };
-  }
-  if (errorCode === 'asset_unavailable') {
-    return { message: pt('messages.mediaUploadUnavailableUrl'), tone: 'error' as const };
-  }
-  if (errorCode === 'metadata_save_failed') {
-    return { message: pt('messages.mediaPickerMetadataSaveError'), tone: 'error' as const };
-  }
-
-  const phaseKey = uploadPhaseMessageKey(uploadPhase);
-  if (!phaseKey) {
-    return { message: null, tone: 'default' as const };
-  }
-
-  return {
-    message: pt(phaseKey),
-    tone: uploadPhase === 'success' ? ('success' as const) : ('default' as const),
-  };
-};
-
 export function EventsDetailPage({
   mode,
   contentId,
@@ -344,9 +269,7 @@ export function EventsDetailPage({
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
-    null
-  );
+  const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
   React.useEffect(() => {
     if (methods.formState.isDirty) {
       saveFeedback.markDirty();
@@ -412,7 +335,7 @@ export function EventsDetailPage({
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
-  const mediaPickerLabels = React.useMemo(() => createEventsMediaPickerLabels(pt), [pt]);
+  const mediaPickerLabels = React.useMemo(() => createStudioMediaPickerLabels(pt), [pt]);
   const deviationFieldLabels: Readonly<Record<string, string>> = {
     title: pt('fields.title'),
     description: pt('fields.description'),
@@ -615,7 +538,7 @@ export function EventsDetailPage({
     return usage.uiId;
   }, [mediaUsages, methods]);
   const mediaPickerFeedback = React.useMemo(
-    () => resolveEventsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
+    () => resolveStudioMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
@@ -908,28 +831,13 @@ export function EventsDetailPage({
             onPhaseChange: (phase) => setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
           })
         : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-      const saved = result.saved;
-      const savedMediaUsages = result.resolutions?.length
-        ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
-        : mediaUsages;
-      if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
-      if (result.status === 'reference_failed') {
-        setRetryReferenceSync(() => result.retryReferenceSync);
-        setMediaUsages(
-          savedMediaUsages.map((usage) =>
-            usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
-          )
-        );
+      const handledResult = mediaReferenceSync.consumeSaveResult(result);
+      const saved = handledResult.saved;
+      if (handledResult.referenceFailed) {
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
         saveFeedback.markFailed(operationId);
         return;
       }
-      setRetryReferenceSync(null);
-      setMediaUsages(
-        savedMediaUsages.map((usage) =>
-          usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-        )
-      );
       setStatus(null);
       saveFeedback.markSaved(operationId);
       if (mode === 'create') {
@@ -1113,29 +1021,16 @@ export function EventsDetailPage({
               pt('messages.degradedField', { field: deviationFieldLabels[field] ?? field })
             }
           />
-          {retryReferenceSync ? (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                void retryReferenceSync().then(
-                  () => {
-                    setRetryReferenceSync(null);
-                    setMediaUsages((current) =>
-                      current.map((usage) =>
-                        usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-                      )
-                    );
-                    setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
-                  },
-                  () =>
-                    setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
-                )
-              }
-            >
-              {pt('actions.retryMediaReferences')}
-            </Button>
-          ) : null}
+          <StudioMediaReferenceRetryAction
+            controller={mediaReferenceSync}
+            label={pt('actions.retryMediaReferences')}
+            onSuccess={() =>
+              setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
+            }
+            onFailure={() =>
+              setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
+            }
+          />
           <Tabs
             value={activeTab}
             onValueChange={(value) => handleTabChange(value as EventsDetailTabId)}

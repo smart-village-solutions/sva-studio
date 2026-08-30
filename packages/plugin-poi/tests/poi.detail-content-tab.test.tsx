@@ -134,7 +134,10 @@ const pt = (key: string) =>
     'messages.locationGeocodeError': 'Geo-Koordinaten nicht verfügbar.',
   })[key] ?? key;
 
-function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
+function renderTab(
+  defaultValues?: Partial<PoiDetailFormValues>,
+  options: Readonly<{ useDefaultMediaChange?: boolean }> = {}
+) {
   const Wrapper = () => {
     const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
     const addManualMedia = () => {
@@ -173,7 +176,7 @@ function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
       <FormProvider {...methods}>
         <PoiDetailContentTab
           mediaUsages={mediaUsages}
-          onChangeMediaUsages={setMediaUsages}
+          {...(options.useDefaultMediaChange ? {} : { onChangeMediaUsages: setMediaUsages })}
           onAddManualMedia={addManualMedia}
           onOpenMediaPicker={addManualMedia}
           pt={pt}
@@ -238,5 +241,16 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getByRole('option', { name: 'Logo' })).toHaveProperty('value', 'logo');
     expect(screen.getByRole('option', { name: 'Anhang' })).toHaveProperty('value', 'attachment');
     expect(screen.getByRole('option', { name: 'Nicht festgelegt' })).toHaveProperty('value', '');
+  });
+
+  it('keeps the optional media change callback safe when omitted', () => {
+    renderTab(undefined, { useDefaultMediaChange: true });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Medienbeschriftung'), {
+      target: { value: 'Neue Beschriftung' },
+    });
+
+    expect(screen.getByLabelText('Medienbeschriftung')).toBeTruthy();
   });
 });

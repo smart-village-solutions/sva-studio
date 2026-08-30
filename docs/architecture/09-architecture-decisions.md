@@ -578,3 +578,15 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 03/04/05/06/08/09: [ADR-054](../adr/ADR-054-kontrollierter-inhabertransfer-fuer-inhalte.md)
+
+### Fortschreibung 2026-08: Ownership gemeinsamer Editor-Primitiven
+
+Der Change `refactor-shared-editor-primitives` konkretisiert die bestehende
+Package-Strategie ohne neue generische Framework-Schicht: reine Clientverträge
+liegen im Plugin-SDK, React-Orchestrierung in der Studio-UI und Fachlogik in
+den Plugins. Die erlaubte UI-zu-SDK-Richtung ist auf den Subpath
+`content-media` begrenzt und wird statisch geprüft.
+
+Zuordnung:
+
+- Abschnitt 05/08/09/10/11: OpenSpec-Change `refactor-shared-editor-primitives`

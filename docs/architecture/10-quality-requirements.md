@@ -426,3 +426,10 @@ Referenzen:
 - ZIP-Tests prüfen Manifest, Profilanzahl, SHA-256, paketinterne Referenzen, gemeinsame Transaktion und Rollback. JSON bleibt auf ein Profil, Pakete bleiben auf neun Profile begrenzt.
 - Downloadtests belegen Actor-, Instanz- und Rechtebindung sowie Ablauf-, Größen- und Prüfsummenprüfung. Artefakte laufen nach 24 Stunden ab und werden mit `private, no-store` ausgeliefert.
 - Bestehende CSV-/XLSX-Spezialimporte sind kein Ersatz für die kanonischen JSON-Roundtrip-Gates und dürfen nicht als vollständiger Fachdatenexport angeboten werden.
+
+### Qualitätsziele für gemeinsame Editor-Primitiven
+
+- Pagination wahrt Defaultwert, erlaubte Seitengrößen, positive Seiten und maximalen Offset.
+- Map-Tests belegen Initialisierung, Marker, Click, Drag, Viewport, Fehler und Cleanup ohne eine MapLibre-Dependency in der Studio-UI.
+- Reference-Retry wiederholt keine Content-Mutation; ein fehlgeschlagener Retry bleibt sichtbar und ein erfolgreicher Retry setzt verknüpfte Medien auf `synced`.
+- Die produktive TypeScript-/TSX-Bilanz des Changes muss netto höchstens null bleiben und die erfassten Fallow-Fingerprints müssen verschwinden.

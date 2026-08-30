@@ -10,6 +10,7 @@ import {
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   hasContentLifecycleAccess,
+  normalizeListSearch,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
   resolveContentLifecycleAction,
@@ -37,7 +38,6 @@ import {
   isPersistableContentMediaUrl,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
-  revokeContentMediaUsageObjectUrls,
   resolveMainserverPrincipalOptions,
   resolveContentMediaUsageDrafts,
   RichTextHtmlEditor,
@@ -54,9 +54,11 @@ import {
   StudioFormSummaryErrors,
   StudioLoadingState,
   StudioMediaPickerOverlay,
+  StudioMediaReferenceRetryAction,
   StudioOverviewPageTemplate,
   StudioPagination,
   StudioSaveButton,
+  useStudioMediaReferenceSync,
   Textarea,
   type StudioDetailTabDefinition,
   type ContentMediaUsage,
@@ -345,9 +347,7 @@ function ProjectEditor({
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const mediaAssetsRef = React.useRef(mediaAssets);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
-    null
-  );
+  const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
   const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const loadedContentIdRef = React.useRef<string | undefined>(undefined);
@@ -540,7 +540,7 @@ function ProjectEditor({
   const save = form.handleSubmit(
     async (values) => {
       if (!canSave) return;
-      if (retryReferenceSync) {
+      if (mediaReferenceSync.hasPendingRetry) {
         setMutationError(pt('messages.mediaReferencePartialFailure'));
         return;
       }
@@ -585,32 +585,15 @@ function ProjectEditor({
                 setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
           : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-        const savedMediaUsages = result.resolutions?.length
-          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
-          : mediaUsages;
-        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
-        if (result.status === 'reference_failed') {
-          setRetryReferenceSync(() => result.retryReferenceSync);
+        const handledResult = mediaReferenceSync.consumeSaveResult(result);
+        if (handledResult.referenceFailed) {
           setRetryCreatedContentId(mode === 'create' ? result.saved.id : null);
-          setMediaUsages(
-            savedMediaUsages.map((usage) =>
-              usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
-            )
-          );
           setMutationError(pt('messages.mediaReferencePartialFailure'));
           saveFeedback.markFailed(operationId);
           return;
         }
-        setRetryReferenceSync(null);
         setRetryCreatedContentId(null);
         saveFeedback.markSaved(operationId);
-        if (requiresReferenceSync) {
-          setMediaUsages(
-            savedMediaUsages.map((usage) =>
-              usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-            )
-          );
-        }
         if (mode === 'create') {
           const created = result.saved;
           await navigate({
@@ -899,7 +882,7 @@ function ProjectEditor({
               type="submit"
               form={formId}
               status={saveFeedback.status}
-              disabled={Boolean(retryReferenceSync)}
+              disabled={mediaReferenceSync.hasPendingRetry}
               labels={{
                 idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
                 saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
@@ -946,35 +929,21 @@ function ProjectEditor({
             {mutationError}
           </p>
         ) : null}
-        {retryReferenceSync ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              void retryReferenceSync().then(
-                () => {
-                  setRetryReferenceSync(null);
-                  setRetryCreatedContentId(null);
-                  setMutationError(undefined);
-                  setMediaUsages((current) =>
-                    current.map((usage) =>
-                      usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-                    )
-                  );
-                  if (retryCreatedContentId) {
-                    void navigate({
-                      to: '/admin/projects/$id',
-                      params: { id: retryCreatedContentId },
-                    });
-                  }
-                },
-                () => setMutationError(pt('messages.mediaReferencePartialFailure'))
-              );
-            }}
-          >
-            {pt('actions.retryMediaReferences')}
-          </Button>
-        ) : null}
+        <StudioMediaReferenceRetryAction
+          controller={mediaReferenceSync}
+          label={pt('actions.retryMediaReferences')}
+          onSuccess={() => {
+            setRetryCreatedContentId(null);
+            setMutationError(undefined);
+            if (retryCreatedContentId) {
+              void navigate({
+                to: '/admin/projects/$id',
+                params: { id: retryCreatedContentId },
+              });
+            }
+          }}
+          onFailure={() => setMutationError(pt('messages.mediaReferencePartialFailure'))}
+        />
         <StudioFormSummaryErrors errors={summaryErrors} title={pt('validation.summary')} />
         <MainserverPrincipalControl
           id="projects-acting-principal"
@@ -1019,8 +988,7 @@ export function ProjectsListPage() {
   const pt = usePluginTranslation('projects');
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { page?: number; pageSize?: number };
-  const page = Number.isInteger(search.page) && (search.page ?? 0) > 0 ? (search.page ?? 1) : 1;
-  const pageSize = search.pageSize === 50 || search.pageSize === 100 ? search.pageSize : 25;
+  const { page, pageSize } = normalizeListSearch(search);
   const [items, setItems] = React.useState<readonly ProjectContentItem[]>([]);
   const [state, setState] = React.useState<'loading' | 'error' | 'ready'>('loading');
   const [hasNextPage, setHasNextPage] = React.useState(false);

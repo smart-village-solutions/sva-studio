@@ -73,14 +73,19 @@ const geocodingState = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('../src/poi.map-geocoding-client.js', () => ({
-  getMapGeocodingConfig: () => geocodingState.getConfig(),
-  geocodeMapAddress: (input: {
-    address: { query?: string; street?: string; zip?: string; city?: string; country?: string };
-  }) => geocodingState.geocodeAddress(input),
-  reverseMapCoordinates: (input: { latitude: number; longitude: number }) =>
-    geocodingState.reverseCoordinates(input),
-}));
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+    getHostMapGeocodingConfig: () => geocodingState.getConfig(),
+    geocodeHostMapAddress: (input: {
+      address: { query?: string; street?: string; zip?: string; city?: string; country?: string };
+    }) => geocodingState.geocodeAddress(input),
+    reverseGeocodeHostCoordinates: (input: {
+      coordinates: { latitude: number; longitude: number };
+    }) => geocodingState.reverseCoordinates(input.coordinates),
+  };
+});
 
 vi.mock('../src/poi.location-map.js', () => ({
   PoiLocationMap: ({

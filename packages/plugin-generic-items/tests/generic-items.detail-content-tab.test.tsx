@@ -36,11 +36,17 @@ const geocodingState = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('../src/generic-items.map-geocoding-client.js', () => ({
-  getMapGeocodingConfig: () => geocodingState.getConfig(),
-  geocodeMapAddress: (input: { address: unknown }) => geocodingState.geocodeAddress(input),
-  reverseMapCoordinates: (input: { latitude: number; longitude: number }) => geocodingState.reverseCoordinates(input),
-}));
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+    getHostMapGeocodingConfig: () => geocodingState.getConfig(),
+    geocodeHostMapAddress: (input: { address: unknown }) => geocodingState.geocodeAddress(input),
+    reverseGeocodeHostCoordinates: (input: {
+      coordinates: { latitude: number; longitude: number };
+    }) => geocodingState.reverseCoordinates(input.coordinates),
+  };
+});
 
 vi.mock('../src/generic-items.location-map.js', () => ({
   GenericItemsLocationMap: ({
@@ -48,14 +54,18 @@ vi.mock('../src/generic-items.location-map.js', () => ({
   }: {
     onCoordinatesChange: (coordinates: { latitude: string; longitude: string }) => void;
   }) => (
-    <button type="button" onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}>
+    <button
+      type="button"
+      onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}
+    >
       Kartenpunkt setzen
     </button>
   ),
 }));
 
 vi.mock('@sva/studio-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  const actual =
+    await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
   return {
     ...actual,
     RichTextHtmlEditor: ({
@@ -68,7 +78,14 @@ vi.mock('@sva/studio-ui-react', async () => {
       value: string;
       onChange: (nextValue: string) => void;
       labelId?: string;
-    }) => <textarea id={id} aria-labelledby={labelId} value={value} onChange={(event) => onChange(event.target.value)} />,
+    }) => (
+      <textarea
+        id={id}
+        aria-labelledby={labelId}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    ),
   };
 });
 
@@ -204,7 +221,8 @@ const labels: Record<string, string> = {
   'actions.geocodingAddress': 'Geo-Koordinaten werden ermittelt',
   'actions.reverseGeocodeAddress': 'Adresse ermitteln',
   'actions.reverseGeocodingAddress': 'Adresse wird ermittelt',
-  'messages.locationGeocodeDisabled': 'Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.',
+  'messages.locationGeocodeDisabled':
+    'Geo-Koordinaten sind für diese Instanz derzeit nicht verfügbar.',
   'messages.locationGeocodeEmpty': 'Keine Koordinaten gefunden.',
   'messages.locationGeocodeRateLimited': 'Geocoding-Limit erreicht.',
   'messages.locationGeocodeTimeout': 'Geocoding hat zu lange gedauert.',
@@ -270,7 +288,9 @@ describe('GenericItemsDetailContentTab', () => {
   it('updates structured accessibility and price information rows', async () => {
     const { getValues } = renderTab();
 
-    fireEvent.change(screen.getByLabelText('Barrierefreiheits-Typen'), { target: { value: 'wheelchair' } });
+    fireEvent.change(screen.getByLabelText('Barrierefreiheits-Typen'), {
+      target: { value: 'wheelchair' },
+    });
     fireEvent.change(screen.getAllByLabelText('URL')[1] as HTMLInputElement, {
       target: { value: 'https://example.org/barrierefreiheit' },
     });
@@ -310,7 +330,10 @@ describe('GenericItemsDetailContentTab', () => {
     fireEvent.click(mapButtons[0]!);
 
     await waitFor(() => {
-      expect(getValues().addresses[0]).toMatchObject({ latitude: '50.123456', longitude: '8.654321' });
+      expect(getValues().addresses[0]).toMatchObject({
+        latitude: '50.123456',
+        longitude: '8.654321',
+      });
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Adresse ermitteln' }));
@@ -332,7 +355,9 @@ describe('GenericItemsDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Bezirk'), { target: { value: 'Innenstadt' } });
     fireEvent.change(screen.getByLabelText('Region'), { target: { value: 'Bochum' } });
 
-    const geocodeButtons = await screen.findAllByRole('button', { name: 'Geo-Koordinaten ermitteln' });
+    const geocodeButtons = await screen.findAllByRole('button', {
+      name: 'Geo-Koordinaten ermitteln',
+    });
     fireEvent.click(geocodeButtons[0]!);
 
     await waitFor(() => {
@@ -343,7 +368,10 @@ describe('GenericItemsDetailContentTab', () => {
     fireEvent.click(mapButtons[1]!);
 
     await waitFor(() => {
-      expect(getValues().locations[0]).toMatchObject({ latitude: '50.123456', longitude: '8.654321' });
+      expect(getValues().locations[0]).toMatchObject({
+        latitude: '50.123456',
+        longitude: '8.654321',
+      });
     });
 
     const reverseButtons = await screen.findAllByRole('button', { name: 'Adresse ermitteln' });

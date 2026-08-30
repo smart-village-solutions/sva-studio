@@ -83,15 +83,16 @@ export const useWasteToursEditRouteHydration = ({
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
+  const hydratedTourIdRef = useRef<string | null>(null);
   const latestSearchRef = useLatestRef(search);
   const latestControllerRef = useLatestRef({
     setDialogMode: controller.setDialogMode,
     setTourForm: controller.setTourForm,
     setSelectedTour: controller.setSelectedTour,
   });
-
   useEffect(() => {
     if (search.toursView !== 'edit') {
+      hydratedTourIdRef.current = null;
       return;
     }
 
@@ -133,19 +134,19 @@ export const useWasteToursEditRouteHydration = ({
     latestController.setDialogMode('edit');
     latestController.setSelectedTour(routeTour);
 
-    if (controller.tourForm.id === routeTour.id) {
+    if (hydratedTourIdRef.current === routeTour.id) {
       return;
     }
 
     latestController.setTourForm(
       mapTourWithPickupDatesToForm(routeTour, controller.schedulingOverview?.locationTourPickupDates ?? [])
     );
+    hydratedTourIdRef.current = routeTour.id;
     controller.setLastOutcome(null);
   }, [
     controller.overview,
     controller.schedulingOverview,
     controller.setLastOutcome,
-    controller.tourForm.id,
     latestControllerRef,
     latestSearchRef,
     navigate,

@@ -191,7 +191,7 @@ describe('WasteToursPanel', () => {
     expect(controllerMock.setTourForm).not.toHaveBeenCalled();
   });
 
-  it('keeps the edit mode explicit even when the form already targets the route tour id', () => {
+  it('rehydrates the edit form when the retained form already targets the route tour id', () => {
     controllerMock.lastOutcome = null;
     controllerMock.overview = {
       tours: [
@@ -229,7 +229,9 @@ describe('WasteToursPanel', () => {
     );
 
     expect(controllerMock.setDialogMode).toHaveBeenCalledWith('edit');
-    expect(controllerMock.setTourForm).not.toHaveBeenCalled();
+    expect(controllerMock.setTourForm).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'tour-99', name: 'Tour 99' })
+    );
   });
 
   it('navigates back to the list when the route tour id no longer exists', () => {

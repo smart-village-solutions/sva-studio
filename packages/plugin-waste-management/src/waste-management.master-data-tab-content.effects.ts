@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 
 import { wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
@@ -49,8 +49,11 @@ export const useWasteMasterDataFractionEditRouteHydration = ({
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
+  const hydratedFractionIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (search.fractionsView !== 'edit') {
+      hydratedFractionIdRef.current = null;
       return;
     }
 
@@ -89,13 +92,13 @@ export const useWasteMasterDataFractionEditRouteHydration = ({
     controller.setMessage(null);
     controller.setLastOutcome(null);
 
-    if (controller.fractionForm.id === routeFraction.id) {
+    if (hydratedFractionIdRef.current === routeFraction.id) {
       return;
     }
 
     controller.setFractionForm(wasteMasterDataFormMappers.fractionToForm(routeFraction));
+    hydratedFractionIdRef.current = routeFraction.id;
   }, [
-    controller.fractionForm.id,
     controller.overview,
     controller.setDialogMode,
     controller.setFractionForm,
@@ -155,8 +158,11 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
+  const hydratedLocationIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (search.locationsView !== 'edit') {
+      hydratedLocationIdRef.current = null;
       return;
     }
 
@@ -198,13 +204,13 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
     controller.setMessage(null);
     controller.setLastOutcome(null);
 
-    if (controller.locationForm?.id === routeLocation.id) {
+    if (hydratedLocationIdRef.current === routeLocation.id) {
       return;
     }
 
     controller.setLocationForm(wasteMasterDataFormMappers.collectionLocationToForm(routeLocation));
+    hydratedLocationIdRef.current = routeLocation.id;
   }, [
-    controller.locationForm?.id,
     controller.overview,
     controller.setLastOutcome,
     controller.setLocationDialogMode,

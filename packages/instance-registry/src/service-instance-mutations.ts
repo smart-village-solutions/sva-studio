@@ -15,6 +15,14 @@ import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './ser
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 
+const isIdempotentCreateRetry = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CreateInstanceProvisioningInput
+): Promise<boolean> =>
+  (await deps.repository.listProvisioningRuns(input.instanceId)).some(
+    (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
+  );
+
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
@@ -28,11 +36,7 @@ export const createProvisioningRequestHandler =
       deps.repository.getInstanceById(input.instanceId)
     );
     if (existing) {
-      const provisioningRuns = await deps.repository.listProvisioningRuns(input.instanceId);
-      const isIdempotentRetry = provisioningRuns.some(
-        (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
-      );
-      if (isIdempotentRetry) {
+      if (await isIdempotentCreateRetry(deps, input)) {
         await createReconcileModuleActivationPoliciesHandler(deps)({
           instanceId: existing.instanceId,
           actorId: input.actorId,

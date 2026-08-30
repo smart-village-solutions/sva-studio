@@ -1,0 +1,4 @@
+{
+  "prNumber": 1190,
+  "body": "Die Redaktionsoberflächen für Inhalte verwenden jetzt gemeinsame technische Grundlagen.\n\n- Seitennavigation, Karten und Geocoding sowie die Medienauswahl verhalten sich in den unterstützten Inhaltsarten konsistenter.\n- Eine fehlgeschlagene Medienverknüpfung kann erneut versucht werden, ohne den eigentlichen Inhalt noch einmal zu speichern.\n- Mehrfach vorhandene Implementierungen wurden entfernt und die gemeinsamen Abläufe durch zusätzliche Tests abgesichert."
+}

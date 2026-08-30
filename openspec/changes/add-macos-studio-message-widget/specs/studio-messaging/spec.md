@@ -101,6 +101,12 @@ Das System MUST Gelesen-Belege über referenzielle Instanz-/Accountintegrität, 
 - **DANN** bleibt die bei der Bereinigung persistierte Sichtbarkeitsgrenze monoton erhalten
 - **UND** werden zuvor ausgeblendete Nachrichten nicht erneut ohne Gelesen-Beleg sichtbar
 
+#### Scenario: Nachricht rotiert aus dem sichtbaren Katalog
+
+- **WENN** eine Nachricht wegen neuerer Einträge nicht mehr im begrenzten Anzeige-Katalog enthalten ist
+- **DANN** bleibt ihre stabile ID mit `publishedAt` im vollständigen Runtime-Metadatenindex auflösbar
+- **UND** kann die periodische Bereinigung ihren Beleg fristgerecht verarbeiten
+
 ### Requirement: Automatische Widget-Darstellung nach Größe
 
 Das System SHALL die Widget-Inhalte automatisch an die Widget-Familie anpassen und keine manuelle Nachrichtenanzahl verlangen.

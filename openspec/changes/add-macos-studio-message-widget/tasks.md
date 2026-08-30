@@ -2,8 +2,8 @@
 
 - [ ] 1.1 Neues ADR für den nativen Public-Client, externen Browser, PKCE, Claimed-HTTPS-Callback, Keychain-Grenze und die begrenzte Ausnahme von ADR-009 anlegen.
 - [ ] 1.2 `docs/architecture/03-context-and-scope.md`, `05-building-block-view.md`, `06-runtime-view.md`, `07-deployment-view.md`, `08-cross-cutting-concepts.md`, `09-architecture-decisions.md`, `10-quality-requirements.md` und `11-risks-and-technical-debt.md` gemäß Proposal aktualisieren.
-- [ ] 1.3 Frameworkunabhängigen, versionierten Nachrichten-, Provider- und API-Vertrag mit stabilen IDs, Priorität, Sensitivität, Ziel und optionalem Legacy-Zeitpunkt definieren.
-- [ ] 1.4 Bestehende Changelog-Einträge weiterhin akzeptieren, `publishedAt` für neue Einträge verpflichtend validieren und die beim Start ausgelieferten 20 Einträge mit belegten Zeitpunkten nachtragen.
+- [ ] 1.3 Frameworkunabhängigen, versionierten Nachrichten-, Provider- und API-Vertrag mit stabilen IDs, Priorität, Sensitivität, Ziel, optionalem Legacy-Zeitpunkt und dauerhaftem Metadaten-Lookup für jemals belegfähige IDs definieren.
+- [ ] 1.4 Bestehende Changelog-Einträge weiterhin akzeptieren, `publishedAt` für neue Einträge verpflichtend validieren, die beim Start ausgelieferten 20 Einträge mit belegten Zeitpunkten nachtragen und zusätzlich einen vollständigen Runtime-Metadatenindex aus stabiler ID und `publishedAt` unabhängig vom begrenzten Anzeige-Artefakt erzeugen.
 - [ ] 1.5 Entwickler- und Anwenderdokumentation für Nachrichtenbereich, native App, Datenschutzgrenzen und fehlende Echtzeitgarantie auf Deutsch ergänzen.
 
 ## 2. Persistenz und Gelesen-Stand
@@ -22,11 +22,11 @@
 - [ ] 3.2 Bestehenden Studio-Changelog-Katalog als ersten Provider adaptieren und sicheren Klartextauszug für native Clients erzeugen.
 - [ ] 3.3 `GET /api/v1/account/messages/summary`, `GET /api/v1/account/messages`, `POST /api/v1/account/messages/read` und kurzlebige, einmalige, account-/instanzgebundene Browser-Übergaben für `{ kind: 'feed' }` oder `{ kind: 'message', messageId }` mit strikter Eingabevalidierung, stabilen Fehlercodes und privatem `no-store` bereitstellen; freie Pfade und URLs ausschließen.
 - [ ] 3.4 Browser-Session und native Bearer-Identität vor der Fachlogik in denselben instanzgebundenen Accountkontext überführen.
-- [ ] 3.5 API-, Unit- und Integrationstests für Limits, Sichtbarkeit, Scopes, Gelesen-Status, Feed-/Nachrichtenübergaben, Cookie-CSRF/Origin, reine Bearer-Bindung, mehrdeutige Credentials, Fehlerfälle und Log-Redaktion ergänzen.
+- [ ] 3.5 API-, Unit- und Integrationstests für Limits, Sichtbarkeit, vollständigen Metadaten-Lookup nach Katalogrotation, Scopes, browserexklusive Gelesen-Mutation, Feed-/Nachrichtenübergaben, Cookie-CSRF/Origin, reine Bearer-Bindung, mehrdeutige Credentials, Fehlerfälle und Log-Redaktion ergänzen.
 
 ## 4. Native Authentifizierung
 
-- [ ] 4.1 Nativen öffentlichen OIDC-Client mit exakten Redirect-URIs, API-Audience und ausschließlich `studio.messages.read` sowie `studio.messages.read-state.update` in Registry und Keycloak-Vertrag modellieren; die vom Benutzer gewählte Studio-Instanz serverseitig validieren und in eine kurzlebige Login-Transaktion mit erlaubtem Realm/Issuer, Callback und API-Host auflösen.
+- [ ] 4.1 Nativen öffentlichen OIDC-Client mit exakten Redirect-URIs, API-Audience und ausschließlich `studio.messages.read` in Registry und Keycloak-Vertrag modellieren; die vom Benutzer gewählte Studio-Instanz serverseitig validieren und in eine kurzlebige Login-Transaktion mit erlaubtem Realm/Issuer, Callback und API-Host auflösen; native Bearer-Identitäten am Gelesen-Mutationsendpunkt explizit ablehnen.
 - [ ] 4.2 Authorization Code mit PKCE S256, externem Systembrowser, State/Nonce, integritätsgeschützter Instanz-/Issuer-/Callback-/API-Host-Bindung und verifiziertem Claimed-HTTPS-Callback implementieren; eingebettete Login-WebViews, Client-Secrets und frei übernommene Host-/Realmwerte ausschließen.
 - [ ] 4.3 Studio-Bearer-Prüfung für Signatur, Algorithmus, Issuer, Audience, Client, Zeitgrenzen, Scopes, Instanz, gebundenen API-Host und aktiven Account implementieren.
 - [ ] 4.4 Keychain-Sharing für Container-App und Widget Extension auf die minimal erforderliche Access Group begrenzen; Token aus Preferences, App-Group-Dateien, Logs und Telemetrie ausschließen; Refresh-Rotation, Logout und Accountwechsel per gemeinsamer prozessübergreifender Sperre, erneutem Keychain-Read, Credential-Generation und Logout-Tombstone serialisieren.

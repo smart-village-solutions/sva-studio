@@ -10,7 +10,7 @@ Das Studio-Update-Log ist heute nur innerhalb der Web-Anwendung sichtbar. Nutzer
 - Neue versionierte Account-Endpunkte liefern eine reine Ungelesen-Zusammenfassung, begrenzte Nachrichtenlisten und idempotente Gelesen-Markierungen.
 - Der Gelesen-Stand wird serverseitig, instanzisoliert und ohne Kopie des Nachrichtentextes persistiert.
 - Gelesen-Belege werden in Betroffenenexporte aufgenommen und nach einer konfigurierbaren, mit der Feed-Sichtbarkeit sowie einer monotonen Sichtbarkeitsgrenze abgestimmten Aufbewahrungsfrist gelöscht.
-- Ein nativer, öffentlicher macOS-OIDC-Client meldet Benutzer ausschließlich über den externen Systembrowser mit Authorization Code und PKCE an. Das Widget erhält nur die vollständig qualifizierten Rechte `studio.messages.read` und `studio.messages.read-state.update`.
+- Ein nativer, öffentlicher macOS-OIDC-Client meldet Benutzer ausschließlich über den externen Systembrowser mit Authorization Code und PKCE an. Container-App und Widget teilen ausschließlich das read-only Recht `studio.messages.read`; Gelesen-Mutationen bleiben der erfolgreich darstellenden Browser-Session vorbehalten.
 - Eine kleine native macOS-Begleit-App mit WidgetKit-Erweiterung stellt automatisch passende Inhalte dar: klein nur die Anzahl ungelesener Nachrichten, mittel drei und groß fünf Nachrichten.
 - Nachrichtentitel und -texte werden im gesperrten Zustand als sensibel behandelt; sichtbar bleibt nur eine neutrale Anzahl.
 - Widget-Interaktionen öffnen den neuen Studio-Nachrichtenbereich oder eine konkrete Nachricht über sichere Deep Links.

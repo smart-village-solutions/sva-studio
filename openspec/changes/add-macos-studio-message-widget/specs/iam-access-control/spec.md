@@ -2,7 +2,7 @@
 
 ### Requirement: Least-Privilege-Authentifizierung für den nativen Studio-Nachrichtenclient
 
-Das System SHALL einen öffentlichen nativen OIDC-Client ohne Client-Secret bereitstellen, der Authorization Code mit PKCE S256 ausschließlich im externen Systembrowser verwendet und nur die vollständig qualifizierten Rechte `studio.messages.read` und `studio.messages.read-state.update` erhalten kann.
+Das System SHALL einen öffentlichen nativen OIDC-Client ohne Client-Secret bereitstellen, der Authorization Code mit PKCE S256 ausschließlich im externen Systembrowser verwendet und nur das vollständig qualifizierte Recht `studio.messages.read` erhalten kann. Die von Container-App und Widget Extension geteilten Credentials MUST read-only bleiben.
 
 #### Scenario: Native Anmeldung ist erfolgreich
 
@@ -26,8 +26,14 @@ Das System SHALL einen öffentlichen nativen OIDC-Client ohne Client-Secret bere
 
 #### Scenario: Scope-Eskalation wird versucht
 
-- **WENN** ein natives Token andere Studio-Rechte als `studio.messages.read` oder `studio.messages.read-state.update` anfordert oder präsentiert
+- **WENN** ein natives Token andere Studio-Rechte als `studio.messages.read` anfordert oder präsentiert
 - **DANN** wird die Anfrage fail-closed abgelehnt
+
+#### Scenario: Native Gelesen-Mutation wird versucht
+
+- **WENN** Container-App oder Widget Extension mit einer nativen Bearer-Identität den Gelesen-Stand verändern will
+- **DANN** lehnt die API die Mutation fail-closed ab
+- **UND** bleibt die Gelesen-Markierung der erfolgreich dargestellten Browser-Session vorbehalten
 
 ### Requirement: Vollständige Bearer- und Accountprüfung für native Nachrichtenrequests
 

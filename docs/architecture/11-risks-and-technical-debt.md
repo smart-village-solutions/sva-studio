@@ -625,7 +625,7 @@ Referenzen:
 
 #### Abgebaut: monolithischer Events-Inhaltseditor
 
-- Die kritische Root-Komponente ist auf explizite plugininterne Section-Owner reduziert; der ersetzte Inline-Code und seine parallelen Callback-Owner wurden vollständig entfernt. Die produktive Bilanz ist mit netto −11 Zeilen negativ, sodass der Change keine zusätzliche strukturelle Ownership hinterlässt.
+- Die kritische Root-Komponente ist auf explizite plugininterne Section-Owner reduziert; der ersetzte Inline-Code und seine parallelen Callback-Owner wurden vollständig entfernt. Die produktive Bilanz ist mit netto −6 Zeilen negativ; alle neuen Dateien und Funktionen unterschreiten die verbindlichen Größenlimits, sodass der Change keine zusätzliche strukturelle Ownership hinterlässt.
 - Die Komplexität der Root-Funktion sank von 41/57 zyklomatisch/kognitiv und 809 Funktionszeilen auf 1/1 und 14 Funktionszeilen. Characterization-Tests bewahren dabei die bestehenden Formular-, Medien-, Map-, Validierungs- und Submit-Verträge.
 - Restrisiko: `EventsDetailPage` besitzt weiterhin den äußeren manuellen Validierungs- und Persistenz-Lifecycle. Dessen mögliche Resolver- oder HTTP-Test-Migration ist ein eigener fachlicher Change und darf nicht mit einer erneuten UI-Gesamtabstraktion vermischt werden.
 - Verbleibende Schuld: Große Editor-Controller anderer Plugins sind durch diesen Events-spezifischen Schnitt nicht automatisch bereinigt. Weitere Migrationen müssen dieselbe Löschbilanz, nachgewiesene Mehrfachnutzung und pluginnahe Fachlogik einhalten.

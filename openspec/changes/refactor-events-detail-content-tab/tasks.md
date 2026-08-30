@@ -85,3 +85,6 @@
 - [x] 5.7 Den Change nur abschließen, wenn alter Inline-Code vollständig
       entfernt, produktive Netto-LOC höchstens null und alle Success Criteria
       nachweislich erfüllt sind
+- [x] 5.8 Den finalen PR-Complexity-Gate ohne neue Baseline-Einträge erfüllen;
+      alle neuen Produktionsdateien bleiben unter 260 Dateizeilen und alle
+      neuen Funktionen unter 80 Funktionszeilen

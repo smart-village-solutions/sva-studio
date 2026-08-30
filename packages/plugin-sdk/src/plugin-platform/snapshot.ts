@@ -47,6 +47,12 @@ const resolveLoadedPluginDefinition = (
       `plugin_snapshot_catalog_plugin_mismatch:${normalizedCatalogEntry.pluginId}:${normalizedPluginId}`
     );
   }
+  if (
+    (loadedPlugin.plugin.serverHandlers?.length ?? 0) > 0 &&
+    !normalizedCatalogEntry.manifest.entryPoints.server
+  ) {
+    throw new Error(`plugin_snapshot_server_handlers_missing_server_entry:${normalizedPluginId}`);
+  }
 
   return loadedPlugin.plugin;
 };

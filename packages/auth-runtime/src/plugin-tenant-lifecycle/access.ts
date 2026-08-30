@@ -15,7 +15,7 @@ export const readConfiguredPluginTenantAccess = async (
   const activation = await withRegistryRepository((repository) =>
     repository.getModuleActivationPolicy(instanceId, pluginId)
   );
-  if (activation?.effectiveActive === false) {
+  if (activation?.effectiveActive !== true) {
     return evaluatePluginTenantAccess(null);
   }
   if (!readInstanceRegistryPluginTenantLifecycleRegistry().has(pluginId)) {

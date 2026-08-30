@@ -339,6 +339,48 @@ describe('plugin platform contracts', () => {
     expect(snapshot.registry.plugins.map((plugin) => plugin.id)).toEqual(['news']);
   });
 
+  it('rejects declared server handlers without a server entry point', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '1.0.0',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^2.0.0' },
+      entryPoints: { browser: './dist/browser.js' },
+    });
+    const workspaceEntry = definePluginCatalogEntry({
+      pluginId: 'news',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/plugin-news',
+      manifest,
+    });
+
+    expect(() =>
+      createPluginSnapshot({
+        catalog: [workspaceEntry],
+        loadedPlugins: [
+          {
+            catalogEntry: workspaceEntry,
+            plugin: {
+              ...createTestPlugin(),
+              serverHandlers: [
+                {
+                  id: 'news.list',
+                  method: 'GET',
+                  path: '/api/v1/plugins/news/list',
+                  actionId: 'news.read',
+                },
+              ],
+            },
+          },
+        ],
+      })
+    ).toThrow('plugin_snapshot_server_handlers_missing_server_entry:news');
+  });
+
   it('passes the manifest extension tier into snapshot contribution validation', () => {
     const manifest = definePluginManifest({
       pluginId: 'news',

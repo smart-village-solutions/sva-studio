@@ -395,6 +395,29 @@ describe('meHandler', () => {
     expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('tenant');
   });
 
+  it('maps tenant auth resolution failures and publishes the tenant route scope', async () => {
+    const { TenantAuthResolutionError } = await import('./runtime-errors.js');
+    mocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      new TenantAuthResolutionError({
+        host: 'de-test.example.org',
+        reason: 'registry_unavailable',
+      })
+    );
+
+    const response = await meHandler(new Request('https://de-test.example.org/auth/me'));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('tenant');
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Auth route failed during tenant auth resolution',
+      expect.objectContaining({
+        operation: 'auth_me',
+        reason_code: 'scope_resolution_failed',
+        tenant_host: 'de-test.example.org',
+      })
+    );
+  });
+
   it('skips permission lookup and returns empty permissionActions when user has no instanceId', async () => {
     mockAuthenticatedSessionUserOnce({ id: 'kc-no-instance', roles: [] });
 

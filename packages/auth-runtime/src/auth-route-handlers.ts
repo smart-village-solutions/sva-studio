@@ -115,7 +115,7 @@ const summarizeRequestUrl = (
 
 const createAuthDependencyErrorResponse = (
   request: Request,
-  operation: 'auth_callback' | 'auth_login' | 'auth_logout',
+  operation: 'auth_callback' | 'auth_login' | 'auth_logout' | 'auth_me',
   error: unknown
 ): Response => {
   const requestId = getWorkspaceContext().requestId;
@@ -1453,7 +1453,14 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
 export const meHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    const authConfig = await resolveAuthConfigForRequest(request);
+    let authConfig;
+    try {
+      authConfig = await resolveAuthConfigForRequest(request);
+    } catch (error) {
+      const response = createAuthDependencyErrorResponse(request, 'auth_me', error);
+      response.headers.set(PLUGIN_ROUTE_SCOPE_HEADER_NAME, 'tenant');
+      return response;
+    }
     const attachPluginRouteScope = (response: Response): Response => {
       response.headers.set(
         PLUGIN_ROUTE_SCOPE_HEADER_NAME,

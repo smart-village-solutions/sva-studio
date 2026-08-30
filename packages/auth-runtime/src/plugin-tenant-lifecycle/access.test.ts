@@ -40,10 +40,20 @@ describe('configured plugin tenant access', () => {
     expect(state.getModuleActivationPolicy).toHaveBeenCalledWith('tenant-a', 'speech');
   });
 
-  it('keeps plugins without a lifecycle contract backward compatible', async () => {
+  it('keeps active plugins without a lifecycle contract backward compatible', async () => {
+    state.getModuleActivationPolicy.mockResolvedValueOnce({ effectiveActive: true });
+
     await expect(readConfiguredPluginTenantAccess('tenant-a', 'news')).resolves.toEqual({
       allowed: true,
       reason: 'not_managed',
+    });
+    expect(state.readiness).not.toHaveBeenCalled();
+  });
+
+  it('denies access when tenant activation evidence is missing', async () => {
+    await expect(readConfiguredPluginTenantAccess('tenant-a', 'news')).resolves.toEqual({
+      allowed: false,
+      reason: 'inactive',
     });
     expect(state.readiness).not.toHaveBeenCalled();
   });

@@ -136,18 +136,9 @@ export const createMaterializeEmailRemindersOperation = (
           const pickupDateValue = parseIsoDateUtc(pickupDate);
           const sendAtDate = addDaysUtc(pickupDateValue, -slot.defaultLeadDays);
           const sendAt = createUtcIsoAtHour(sendAtDate, DEFAULT_REMINDER_SEND_HOUR_UTC);
-          if (new Date(sendAt).getTime() < referenceTime.getTime()) {
-            skippedPickupCount += 1;
-            continue;
-          }
-          const lookaheadBoundary = addDaysUtc(referenceTime, reminderConfig.materializationLookaheadDays);
-          if (new Date(sendAt).getTime() > lookaheadBoundary.getTime()) {
-            continue;
-          }
-          const result = await reminderRepository.enqueueOutboxEntry({
-            id: randomUUID(),
+          const outboxEntry = {
             subscriptionId: subscription.id,
-            messageKind: 'reminder',
+            messageKind: 'reminder' as const,
             transportId: reminderConfig.transportId,
             templateKey: 'waste.email-reminder.reminder',
             sendAt,
@@ -163,6 +154,23 @@ export const createMaterializeEmailRemindersOperation = (
               unsubscribeTokenHash: subscription.unsubscribeTokenHash,
               unsubscribeTokenSecret: unsubscribeSigningSecret,
             }),
+          };
+          if (new Date(sendAt).getTime() < referenceTime.getTime()) {
+            const refreshed = await reminderRepository.refreshPendingOutboxEntry(outboxEntry);
+            if (refreshed) {
+              duplicateOutboxCount += 1;
+            } else {
+              skippedPickupCount += 1;
+            }
+            continue;
+          }
+          const lookaheadBoundary = addDaysUtc(referenceTime, reminderConfig.materializationLookaheadDays);
+          if (new Date(sendAt).getTime() > lookaheadBoundary.getTime()) {
+            continue;
+          }
+          const result = await reminderRepository.enqueueOutboxEntry({
+            id: randomUUID(),
+            ...outboxEntry,
           });
           if (result === 'inserted') {
             createdOutboxCount += 1;

@@ -86,6 +86,8 @@ export type WasteEmailReminderOutboxEntryInput = Readonly<{
   payload: MailDispatchPayload;
 }>;
 
+export type WasteEmailReminderOutboxRefreshInput = Omit<WasteEmailReminderOutboxEntryInput, 'id'>;
+
 export type WasteEmailReminderOutboxLease = Readonly<{
   id: string;
   subscriptionId: string;
@@ -107,6 +109,9 @@ export type WasteEmailReminderRepository = Readonly<{
   enqueueOutboxEntry: (
     input: WasteEmailReminderOutboxEntryInput
   ) => Promise<'inserted' | 'refreshed' | 'duplicate'>;
+  refreshPendingOutboxEntry: (
+    input: WasteEmailReminderOutboxRefreshInput
+  ) => Promise<boolean>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
     readonly limit: number;
@@ -284,6 +289,33 @@ RETURNING id;
     input.templateKey,
     input.sendAt,
     input.dedupeKey,
+    JSON.stringify(input.payload),
+  ],
+});
+
+const buildRefreshPendingOutboxStatement = (
+  input: WasteEmailReminderOutboxRefreshInput
+): SqlStatement => ({
+  text: `
+UPDATE waste_email_reminder_outbox
+SET transport_id = $4,
+    template_key = $5,
+    send_at = $6::timestamptz,
+    payload = $7::jsonb,
+    updated_at = NOW()
+WHERE dedupe_key = $1
+  AND subscription_id = $2::uuid
+  AND message_kind = $3
+  AND status = 'pending'
+RETURNING id;
+`,
+  values: [
+    input.dedupeKey,
+    input.subscriptionId,
+    input.messageKind,
+    input.transportId,
+    input.templateKey,
+    input.sendAt,
     JSON.stringify(input.payload),
   ],
 });
@@ -536,6 +568,12 @@ export const createWasteEmailReminderRepository = (executor: SqlExecutor): Waste
     const persistedId = result.rows[0]?.id;
     if (!persistedId) return 'duplicate';
     return persistedId === input.id ? 'inserted' : 'refreshed';
+  },
+  async refreshPendingOutboxEntry(input) {
+    const result = await executor.execute<EnqueuedOutboxRow>(
+      buildRefreshPendingOutboxStatement(input)
+    );
+    return result.rows.length > 0;
   },
   async leaseDueOutboxEntries(input) {
     const result = await executor.execute<LeasedOutboxRow>(buildLeaseDueOutboxEntriesStatement(input));

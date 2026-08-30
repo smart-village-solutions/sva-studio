@@ -244,6 +244,41 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain('RETURNING id');
   });
 
+  it('refreshes an existing pending outbox entry without inserting an overdue reminder', async () => {
+    const { executor, statements, queuedResults } = createExecutor();
+    const repository = createWasteEmailReminderRepository(executor);
+    const input = {
+      subscriptionId: '22222222-2222-4222-8222-222222222222',
+      messageKind: 'reminder' as const,
+      transportId: 'mail-transport-1',
+      templateKey: 'waste.email-reminder.reminder',
+      sendAt: '2026-06-14T06:00:00.000Z',
+      dedupeKey: 'reminder:sub-1:fraction-1:bio:first:2026-06-15',
+      payload: {
+        orderId: 'dispatch-1',
+        transportId: 'mail-transport-1',
+        messageKind: 'transactional' as const,
+        templateKey: 'waste.email-reminder.reminder',
+        addresses: [{ kind: 'to' as const, email: 'person@example.org' }],
+        templatePayload: { hintText: 'Aktualisierter Hinweis' },
+        metadata: { module: 'waste-management' },
+      },
+    };
+
+    queuedResults.push(
+      { rowCount: 1, rows: [{ id: 'existing-outbox-id' }] },
+      { rowCount: 0, rows: [] }
+    );
+
+    await expect(repository.refreshPendingOutboxEntry(input)).resolves.toBe(true);
+    await expect(repository.refreshPendingOutboxEntry(input)).resolves.toBe(false);
+
+    expect(statements[0]?.text).toContain('UPDATE waste_email_reminder_outbox');
+    expect(statements[0]?.text).not.toContain('INSERT INTO waste_email_reminder_outbox');
+    expect(statements[0]?.text).toContain("AND status = 'pending'");
+    expect(statements[0]?.text).toContain('RETURNING id');
+  });
+
   it('leases and updates outbox entries for batch processing', async () => {
     const { executor, statements, queuedResults } = createExecutor();
     queuedResults.push({

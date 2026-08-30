@@ -100,6 +100,7 @@ export {
   studioJobRuntimeContract,
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
+export { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from './plugin-platform-contract.js';
 export {
   externalInterfaceContract,
   mailDispatchContract,

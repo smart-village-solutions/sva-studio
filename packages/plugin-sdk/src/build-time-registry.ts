@@ -40,6 +40,11 @@ import {
   mergePluginImportProfiles,
   mergePluginJobTypes,
 } from './plugin-operations.js';
+import type { PluginTenantLifecycleRegistryEntry } from './plugin-tenant-lifecycle.js';
+import {
+  createPluginTenantLifecycleRegistry,
+  mergePluginTenantLifecycles,
+} from './plugin-tenant-lifecycle.js';
 import type { PluginExtensionTier } from './plugin-platform/contracts.js';
 import type {
   PluginExternalInterfaceTypeDefinition,
@@ -75,6 +80,7 @@ export type BuildTimeRegistry = {
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
   readonly pluginExportProfileRegistry: ReadonlyMap<string, PluginExportProfileRegistryEntry>;
+  readonly pluginTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>;
   readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
     string,
     PluginExternalInterfaceTypeRegistryEntry
@@ -84,6 +90,7 @@ export type BuildTimeRegistry = {
   readonly jobTypes: readonly PluginJobTypeDefinition[];
   readonly importProfiles: readonly PluginImportProfileDefinition[];
   readonly exportProfiles: readonly PluginExportProfileDefinition[];
+  readonly tenantLifecycles: readonly PluginTenantLifecycleRegistryEntry[];
   readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
   readonly routes: readonly PluginRouteDefinition[];
   readonly platformRoutes: readonly PluginRouteDefinition[];
@@ -147,10 +154,12 @@ type OperationsPhaseOutput = {
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
   readonly pluginExportProfileRegistry: ReadonlyMap<string, PluginExportProfileRegistryEntry>;
+  readonly pluginTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>;
   readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
     string,
     PluginExternalInterfaceTypeRegistryEntry
   >;
+  readonly tenantLifecycles: readonly PluginTenantLifecycleRegistryEntry[];
 };
 
 const validateAdminResourceContentTypes = (
@@ -228,7 +237,9 @@ const runOperationsPhase = (plugins: readonly PluginDefinition[]): OperationsPha
   pluginJobTypeRegistry: createPluginJobTypeRegistry(plugins),
   pluginImportProfileRegistry: createPluginImportProfileRegistry(plugins),
   pluginExportProfileRegistry: createPluginExportProfileRegistry(plugins),
+  pluginTenantLifecycleRegistry: createPluginTenantLifecycleRegistry(plugins),
   pluginExternalInterfaceTypeRegistry: createPluginExternalInterfaceTypeRegistry(plugins),
+  tenantLifecycles: mergePluginTenantLifecycles(plugins),
 });
 
 const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => {
@@ -273,12 +284,14 @@ const publishBuildTimeRegistry = ({
   pluginJobTypeRegistry: operations.pluginJobTypeRegistry,
   pluginImportProfileRegistry: operations.pluginImportProfileRegistry,
   pluginExportProfileRegistry: operations.pluginExportProfileRegistry,
+  pluginTenantLifecycleRegistry: operations.pluginTenantLifecycleRegistry,
   pluginExternalInterfaceTypeRegistry: operations.pluginExternalInterfaceTypeRegistry,
   pluginPermissions: permissions.pluginPermissions,
   pluginModuleIamContracts: permissions.pluginModuleIamContracts,
   jobTypes: operations.jobTypes,
   importProfiles: operations.importProfiles,
   exportProfiles: operations.exportProfiles,
+  tenantLifecycles: operations.tenantLifecycles,
   externalInterfaceTypes: operations.externalInterfaceTypes,
   routes: routing.routes,
   platformRoutes: routing.platformRoutes,

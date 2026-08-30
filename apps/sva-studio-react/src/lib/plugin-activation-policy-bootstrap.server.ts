@@ -12,6 +12,7 @@ export const ensurePluginActivationPoliciesConfigured = async (): Promise<void> 
     }
     authRuntime.configureInstanceRegistryPluginRuntimeSnapshot({
       activationPolicies,
+      tenantLifecycles: studioPluginSnapshot.registry.tenantLifecycles,
       moduleIamContracts: [
         ...studioPluginSnapshot.registry.pluginModuleIamContracts,
         ...studioHostModuleIamContracts,

@@ -24,6 +24,8 @@ import {
   definePluginImportProfiles,
   definePluginJobTypes,
 } from './plugin-operations.js';
+import type { PluginTenantLifecycleDefinition } from './plugin-tenant-lifecycle.js';
+import { definePluginTenantLifecycle } from './plugin-tenant-lifecycle.js';
 import { hasMatchingPluginAccessRequirement } from './plugin-platform/access-requirements.js';
 import type { PluginExtensionTier } from './plugin-platform/contracts.js';
 import {
@@ -139,6 +141,7 @@ export type PluginDefinition = {
   readonly importProfiles?: readonly PluginImportProfileDefinition[];
   readonly exportProfiles?: readonly PluginExportProfileDefinition[];
   readonly externalInterfaceTypes?: readonly PluginExternalInterfaceTypeDefinition[];
+  readonly tenantLifecycle?: PluginTenantLifecycleDefinition;
   readonly contentHistory?: PluginContentHistoryContract;
   readonly translations?: PluginTranslations;
 };
@@ -167,6 +170,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'importProfiles',
   'exportProfiles',
   'externalInterfaceTypes',
+  'tenantLifecycle',
   'contentHistory',
   'translations',
 ] as const);
@@ -1193,7 +1197,7 @@ const normalizePluginRegistryOperations = ({
   pluginNamespace,
 }: PluginRegistryValidationContext): Pick<
   PluginDefinition,
-  'jobTypes' | 'importProfiles' | 'exportProfiles' | 'externalInterfaceTypes'
+  'jobTypes' | 'importProfiles' | 'exportProfiles' | 'externalInterfaceTypes' | 'tenantLifecycle'
 > => ({
   jobTypes: plugin.jobTypes
     ? definePluginJobTypes(pluginNamespace, plugin.jobTypes)
@@ -1207,6 +1211,9 @@ const normalizePluginRegistryOperations = ({
   externalInterfaceTypes: plugin.externalInterfaceTypes
     ? definePluginExternalInterfaceTypes(pluginNamespace, plugin.externalInterfaceTypes)
     : plugin.externalInterfaceTypes,
+  tenantLifecycle: plugin.tenantLifecycle
+    ? definePluginTenantLifecycle(pluginNamespace, plugin.tenantLifecycle, plugin.jobTypes ?? [])
+    : plugin.tenantLifecycle,
 });
 
 export const createPluginRegistry = (

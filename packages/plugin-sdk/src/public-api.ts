@@ -260,6 +260,25 @@ export type {
   PluginJobTypeDefinition,
   PluginJobTypeRegistryEntry,
 } from './plugin-operations.js';
+export type {
+  PluginTenantLifecycleDefinition,
+  PluginTenantLifecycleError,
+  PluginTenantLifecycleOperation,
+  PluginTenantLifecycleOperationDefinition,
+  PluginTenantLifecycleRegistryEntry,
+  PluginTenantLifecycleRetry,
+  PluginTenantReadinessCheckDefinition,
+  PluginTenantReadinessCheckResult,
+  PluginTenantReadinessSnapshot,
+  PluginTenantReadinessStatus,
+} from './plugin-tenant-lifecycle.js';
+export {
+  createPluginTenantLifecycleRegistry,
+  definePluginTenantLifecycle,
+  definePluginTenantLifecycleError,
+  mergePluginTenantLifecycles,
+  pluginTenantLifecycleOperations,
+} from './plugin-tenant-lifecycle.js';
 export {
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,

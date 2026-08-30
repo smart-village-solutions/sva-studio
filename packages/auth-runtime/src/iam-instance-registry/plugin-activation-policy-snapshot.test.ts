@@ -5,6 +5,7 @@ import {
   configureInstanceRegistryPluginRuntimeSnapshot,
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginTenantLifecycleRegistry,
   resetInstanceRegistryPluginActivationPoliciesForTests,
 } from './plugin-activation-policy-snapshot.js';
 
@@ -94,6 +95,14 @@ describe('instance registry plugin activation policy snapshot', () => {
           systemRoles: [{ roleName: 'system_admin', permissionIds }],
         },
       ],
+      tenantLifecycles: [
+        {
+          pluginId: 'ssf',
+          contractVersion: 1,
+          operations: [{ operation: 'provision', jobTypeId: 'ssf.provisionTenant' }],
+          readinessChecks: [],
+        },
+      ],
     });
 
     permissionIds.push('ssf.update');
@@ -105,12 +114,22 @@ describe('instance registry plugin activation policy snapshot', () => {
       systemRoles: [{ roleName: 'system_admin', permissionIds: ['ssf.read'] }],
     });
     expect(Object.isFrozen(readInstanceRegistryModuleIamRegistry().get('ssf'))).toBe(true);
+    expect(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')).toEqual({
+      pluginId: 'ssf',
+      contractVersion: 1,
+      operations: [{ operation: 'provision', jobTypeId: 'ssf.provisionTenant' }],
+      readinessChecks: [],
+    });
+    expect(Object.isFrozen(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf'))).toBe(
+      true
+    );
   });
 
   it('rejects duplicate module IAM contracts without replacing the current snapshot', () => {
     expect(() =>
       configureInstanceRegistryPluginRuntimeSnapshot({
         activationPolicies: { revision: 'invalid', modules: [] },
+        tenantLifecycles: [],
         moduleIamContracts: [
           { moduleId: 'ssf', permissionIds: [], systemRoles: [] },
           { moduleId: 'ssf', permissionIds: [], systemRoles: [] },

@@ -143,12 +143,12 @@ vi.mock('../config.js', () => ({
 
 describe('iam instance registry repository wiring', () => {
   it('injects the configured snapshot registry into runtime and provisioning services', async () => {
-    const { configureInstanceRegistryPluginRuntimeSnapshot } = await import(
-      './plugin-activation-policy-snapshot.js'
-    );
+    const { configureInstanceRegistryPluginRuntimeSnapshot } =
+      await import('./plugin-activation-policy-snapshot.js');
     configureInstanceRegistryPluginRuntimeSnapshot({
       activationPolicies: { revision: 'catalog-1', modules: [] },
       moduleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
+      tenantLifecycles: [],
     });
     await import('./repository.js');
 

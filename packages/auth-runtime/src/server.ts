@@ -3,6 +3,7 @@ export {
   configureInstanceRegistryPluginRuntimeSnapshot,
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginTenantLifecycleRegistry,
   type InstanceRegistryModuleIamSnapshotEntry,
 } from './iam-instance-registry/plugin-activation-policy-snapshot.js';
 export {
@@ -73,6 +74,15 @@ export {
   registerPluginOperationExecutionHandlers,
   stopPluginOperationWorker,
 } from './plugin-operations/runner.js';
+export {
+  createPluginTenantLifecycleOrchestrator,
+  pluginTenantLifecycleHostErrorCodes,
+} from './plugin-tenant-lifecycle/orchestrator.js';
+export type {
+  PluginTenantLifecycleOrchestratorDependencies,
+  StartPluginTenantLifecycleInput,
+  StartPluginTenantLifecycleResult,
+} from './plugin-tenant-lifecycle/orchestrator.js';
 export {
   createAndQueueDsrExportStudioJob,
   dsrExportStudioJobRegistration,

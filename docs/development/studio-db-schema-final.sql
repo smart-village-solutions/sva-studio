@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict a6pcZv047R1ijqVkcXgaInH7kse8w6qcOb4bkLKvZ47wVFMhVUR2FqDOhwnl3BG
+\restrict oHs9UBegRDgXQbjmjYbb6OA5qhrEK0RiMSJnnuK8ooaosxyWZuOqH8Hi7su2sor
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -1163,6 +1163,42 @@ CREATE TABLE iam.instance_modules (
 
 
 --
+-- Name: instance_plugin_lifecycle; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_plugin_lifecycle (
+    instance_id text NOT NULL,
+    plugin_id text NOT NULL,
+    access_state text DEFAULT 'active'::text NOT NULL,
+    readiness_status text DEFAULT 'pending'::text NOT NULL,
+    desired_operation text DEFAULT 'provision'::text NOT NULL,
+    desired_generation bigint DEFAULT 1 NOT NULL,
+    completed_generation bigint DEFAULT 0 NOT NULL,
+    claimed_generation bigint,
+    active_job_id uuid,
+    readiness_revision text,
+    readiness_checks jsonb DEFAULT '[]'::jsonb NOT NULL,
+    error_code text,
+    retry_kind text,
+    retry_after timestamp with time zone,
+    requested_at timestamp with time zone DEFAULT now() NOT NULL,
+    started_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT instance_plugin_lifecycle_access_state_chk CHECK ((access_state = ANY (ARRAY['active'::text, 'suspended'::text]))),
+    CONSTRAINT instance_plugin_lifecycle_claim_chk CHECK (((active_job_id IS NULL) = (claimed_generation IS NULL))),
+    CONSTRAINT instance_plugin_lifecycle_generation_chk CHECK (((desired_generation >= 1) AND (completed_generation >= 0) AND (completed_generation <= desired_generation) AND ((claimed_generation IS NULL) OR ((claimed_generation >= 1) AND (claimed_generation <= desired_generation))))),
+    CONSTRAINT instance_plugin_lifecycle_operation_chk CHECK ((desired_operation = ANY (ARRAY['provision'::text, 'reconcile'::text, 'suspend'::text, 'reactivate'::text, 'readiness'::text]))),
+    CONSTRAINT instance_plugin_lifecycle_plugin_id_chk CHECK ((plugin_id ~ '^[a-z][a-z0-9-]{1,30}$'::text)),
+    CONSTRAINT instance_plugin_lifecycle_readiness_checks_chk CHECK ((jsonb_typeof(readiness_checks) = 'array'::text)),
+    CONSTRAINT instance_plugin_lifecycle_readiness_status_chk CHECK ((readiness_status = ANY (ARRAY['pending'::text, 'ready'::text, 'degraded'::text, 'blocked'::text]))),
+    CONSTRAINT instance_plugin_lifecycle_retry_chk CHECK ((((retry_kind IS NULL) AND (retry_after IS NULL)) OR ((retry_kind = 'terminal'::text) AND (retry_after IS NULL)) OR (retry_kind = 'retryable'::text)))
+);
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: instance_provisioning_runs; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -2294,6 +2330,14 @@ ALTER TABLE ONLY iam.instance_modules
 
 
 --
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle
+    ADD CONSTRAINT instance_plugin_lifecycle_pkey PRIMARY KEY (instance_id, plugin_id);
+
+
+--
 -- Name: instance_provisioning_runs instance_provisioning_runs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3010,10 +3054,17 @@ CREATE INDEX idx_instance_modules_instance_created ON iam.instance_modules USING
 
 
 --
--- Name: instance_modules_active_instance_idx; Type: INDEX; Schema: iam; Owner: -
+-- Name: idx_instance_plugin_lifecycle_active_job; Type: INDEX; Schema: iam; Owner: -
 --
 
-CREATE INDEX instance_modules_active_instance_idx ON iam.instance_modules USING btree (instance_id, module_id) WHERE effective_active;
+CREATE UNIQUE INDEX idx_instance_plugin_lifecycle_active_job ON iam.instance_plugin_lifecycle USING btree (active_job_id) WHERE (active_job_id IS NOT NULL);
+
+
+--
+-- Name: idx_instance_plugin_lifecycle_status_updated_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_plugin_lifecycle_status_updated_at ON iam.instance_plugin_lifecycle USING btree (readiness_status, updated_at DESC);
 
 
 --
@@ -3301,6 +3352,13 @@ CREATE INDEX idx_studio_jobs_instance_status_updated_at ON iam.studio_jobs USING
 --
 
 CREATE INDEX idx_studio_jobs_parent_job_id ON iam.studio_jobs USING btree (parent_job_id);
+
+
+--
+-- Name: instance_modules_active_instance_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX instance_modules_active_instance_idx ON iam.instance_modules USING btree (instance_id, module_id) WHERE effective_active;
 
 
 --
@@ -4028,6 +4086,22 @@ ALTER TABLE ONLY iam.instance_modules
 
 
 --
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle
+    ADD CONSTRAINT instance_plugin_lifecycle_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle
+    ADD CONSTRAINT instance_plugin_lifecycle_job_fk FOREIGN KEY (active_job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id);
+
+
+--
 -- Name: instance_provisioning_runs instance_provisioning_runs_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4660,6 +4734,19 @@ CREATE POLICY instance_memberships_isolation_policy ON iam.instance_memberships 
 
 
 --
+-- Name: instance_plugin_lifecycle; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_plugin_lifecycle ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_plugin_lifecycle_isolation_policy ON iam.instance_plugin_lifecycle USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
 -- Name: instance_waste_data_sources; Type: ROW SECURITY; Schema: iam; Owner: -
 --
 
@@ -4856,4 +4943,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict a6pcZv047R1ijqVkcXgaInH7kse8w6qcOb4bkLKvZ47wVFMhVUR2FqDOhwnl3BG
+\unrestrict oHs9UBegRDgXQbjmjYbb6OA5qhrEK0RiMSJnnuK8ooaosxyWZuOqH8Hi7su2sor

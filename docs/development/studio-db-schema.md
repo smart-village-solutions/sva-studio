@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-07`
+- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-30`
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -38,7 +38,7 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0082_iam_waste_postal_code_enrichment_active_job_unique.sql`
+- Repo-Migrationen vorhanden bis: `0089_iam_instance_plugin_lifecycle.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0077`:
 
@@ -72,7 +72,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0079_iam_organization_mainserver_provisioning.sql`; `0077` ergänzt automatische DataProvider-Bindungen, Mutation-Journal und die readiness-gesteuerte Projektionsautorisierung, `0078` die monotonen instanz- und benutzerbezogenen Permission-Cache-Revisionen und `0079` technische Accounts sowie das Organisations-Provisioning
+- Enthält strukturell den Repo-Sollstand bis `0089_iam_instance_plugin_lifecycle.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins, `0089` den generischen generationsgebundenen Plugin-Tenant-Lifecycle.
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -222,6 +222,7 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 - `iam.instance_waste_data_sources`
 - `iam.instance_waste_provisioning`
 - `iam.instance_modules`
+- `iam.instance_plugin_lifecycle`
 - `iam.instance_hostnames`
 - `iam.instance_provisioning_runs`
 - `iam.instance_audit_events`
@@ -234,6 +235,9 @@ Kernidee:
 - Diese Tabellen modellieren die technische Betriebs- und Provisioning-Ebene pro Instanz.
 - `iam.instance_modules` ist die einzige persistente Wahrheit für Plugin-Zuordnung und Tenant-Aktivierung. Neben `optional`, `automatic` und `required` werden der wirksame Zustand, eine dauerhafte manuelle Übersteuerung, Manifest- und Policy-Revision sowie der letzte Reconcile-Nachweis gespeichert.
 - Bestehende Modulzuordnungen werden bei der Migration als manuell aktiviert übernommen. Automatisch aktivierte Plugins dürfen dauerhaft deaktiviert werden; bei Pflicht-Plugins erzwingen Datenbank-Constraints einen aktiven Zustand ohne manuelle Übersteuerung.
+- `iam.instance_plugin_lifecycle` hält pro Instanz und Plugin ausschließlich den generischen Sollzustand: reversible Zugriffssperre, Lifecycle-Operation, Soll-, Claim- und Abschlussgeneration, aktiver Studio-Job sowie Readiness-, Fehler- und Retry-Evidenz. Plugin-Fachschema, Migrationen, Repositories und Secrets werden dort nicht gespeichert.
+- Ein Claim bindet genau einen Studio-Job an die aktuelle Sollgeneration. Abschluss- und Fehler-Updates müssen Job, Instanz, Plugin und Generation vergleichen; ein älterer Lauf kann dadurch die Evidenz einer neueren Sollgeneration nicht überschreiben.
+- `readiness_checks` ist ein JSON-Array namespaced Plugin-Prüfungen. Der Host aggregiert daraus nur `pending`, `ready`, `degraded` oder `blocked`; die fachliche Diagnose bleibt unter Plugin-Ownership.
 - `iam.instance_waste_provisioning` hält ausschließlich Zustand, Generation, Datenbankname sowie Job- und Interface-Korrelation. Zugangsdaten und Waste-Fachdaten liegen dort nicht.
 - Der tenantgebundene Datenbankname ist der kanonische Inventarpfad für Backup und Restore; sowohl `ready` als auch `disabled` bleiben sicherungsrelevant.
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.

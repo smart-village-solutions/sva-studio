@@ -28,12 +28,21 @@ const snapshot = {
     },
   ],
 };
+const tenantLifecycle = {
+  pluginId: 'news',
+  contractVersion: 1 as const,
+  operations: [],
+  readinessChecks: [],
+};
 
 vi.mock('./plugins', () => ({
   studioHostModuleIamContracts: [hostModuleIamContract],
   studioPluginSnapshot: {
     tenantActivationPolicySnapshot: snapshot,
-    registry: { pluginModuleIamContracts: [pluginModuleIamContract] },
+    registry: {
+      pluginModuleIamContracts: [pluginModuleIamContract],
+      tenantLifecycles: [tenantLifecycle],
+    },
   },
 }));
 
@@ -66,6 +75,7 @@ describe('plugin activation policy bootstrap', () => {
     expect(configureMock).toHaveBeenCalledWith({
       activationPolicies: snapshot,
       moduleIamContracts: [pluginModuleIamContract, hostModuleIamContract],
+      tenantLifecycles: [tenantLifecycle],
     });
     expect(reconcileMock).toHaveBeenCalledTimes(1);
     expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' });

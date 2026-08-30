@@ -37,6 +37,21 @@ Jede Aktivierungs- oder Reparaturmutation erhöht eine Sollgeneration. Ein
 Lifecycle-Job claimt Plugin, Instanz und Generation atomar. Veraltete Jobs
 dürfen keinen neueren Zustand überschreiben.
 
+Der Host persistiert diesen Vertrag in `iam.instance_plugin_lifecycle` mit
+`desired_generation`, `claimed_generation`, `completed_generation` und
+`active_job_id`. Eine neue Mutation erhöht `desired_generation` und löst einen
+älteren Claim. Der anschließend erzeugte Studio-Job darf nur die exakt aktuelle
+Operation und Generation claimen. Abschluss und Fehler werden ausschließlich
+akzeptiert, wenn Job-ID, Instanz, Plugin, Claim- und Sollgeneration weiterhin
+übereinstimmen. Eine leere Update-Rückgabe ist damit ein deterministischer
+Stale- oder Konkurrenzkonflikt und kein wiederholbarer Schreibfehler.
+
+Idempotenz bleibt zweistufig: Der Host verhindert doppelte Jobanlage über den
+vorhandenen Studio-Job-Idempotenzvertrag; der Plugin-Handler reconciliiert die
+Fachartefakte für die übergebene Sollgeneration. Das Lifecycle-Ledger enthält
+keine pluginfachlichen Ressourcen und ersetzt keine plugin-eigene
+Migrationshistorie.
+
 ### Readiness ist ein gemeinsamer Ergebnisvertrag
 
 Plugins melden `pending`, `ready`, `degraded` oder `blocked` sowie namespaced
@@ -75,6 +90,5 @@ Plugin.
 
 ## Open Questions
 
-- Exakte Generation-/Claim-Persistenz im Studio-Schema.
 - Welche Lifecycle-Operationen Abbruch unterstützen dürfen.
 - Maximale Zahl und Stabilitätsregeln für Readiness-Checks.

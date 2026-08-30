@@ -1,6 +1,5 @@
 import { serialize as serializeCookie } from 'cookie-es';
-import type { IamUserGroupAssignment } from '@sva/core';
-import { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/plugin-sdk';
+import { PLUGIN_ROUTE_SCOPE_HEADER_NAME, type IamUserGroupAssignment } from '@sva/core';
 import {
   createSdkLogger,
   getWorkspaceContext,

@@ -1,4 +1,5 @@
 import type { TenantModuleActivationPolicySnapshot } from '@sva/core';
+import type { PluginTenantLifecycleRegistryEntry } from '@sva/plugin-sdk';
 
 export type InstanceRegistryModuleIamSnapshotEntry = Readonly<{
   moduleId: string;
@@ -25,6 +26,8 @@ const emptySnapshot: TenantModuleActivationPolicySnapshot = Object.freeze({
 
 let configuredSnapshot = emptySnapshot;
 let configuredModuleIamRegistry: ReadonlyMap<string, InstanceRegistryModuleIamSnapshotEntry> =
+  new Map();
+let configuredTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry> =
   new Map();
 
 const copySnapshot = (
@@ -117,12 +120,31 @@ const copyModuleIamRegistry = (
 export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
   activationPolicies: TenantModuleActivationPolicySnapshot;
   moduleIamContracts: readonly InstanceRegistryModuleIamSnapshotEntry[];
+  tenantLifecycles: readonly PluginTenantLifecycleRegistryEntry[];
 }): void => {
   const activationPolicies = copySnapshot(input.activationPolicies);
   const moduleIamRegistry = copyModuleIamRegistry(input.moduleIamContracts);
+  const tenantLifecycleRegistry = new Map(
+    input.tenantLifecycles.map((lifecycle) => [
+      lifecycle.pluginId,
+      Object.freeze({
+        ...lifecycle,
+        operations: Object.freeze(
+          lifecycle.operations.map((operation) => Object.freeze({ ...operation }))
+        ),
+        readinessChecks: Object.freeze(
+          lifecycle.readinessChecks.map((check) => Object.freeze({ ...check }))
+        ),
+      }),
+    ])
+  );
+  if (tenantLifecycleRegistry.size !== input.tenantLifecycles.length) {
+    throw new Error('plugin_tenant_lifecycle_duplicate_plugin');
+  }
 
   configuredSnapshot = activationPolicies;
   configuredModuleIamRegistry = moduleIamRegistry;
+  configuredTenantLifecycleRegistry = tenantLifecycleRegistry;
 };
 
 export const readInstanceRegistryPluginActivationPolicies =
@@ -133,7 +155,13 @@ export const readInstanceRegistryModuleIamRegistry = (): ReadonlyMap<
   InstanceRegistryModuleIamSnapshotEntry
 > => configuredModuleIamRegistry;
 
+export const readInstanceRegistryPluginTenantLifecycleRegistry = (): ReadonlyMap<
+  string,
+  PluginTenantLifecycleRegistryEntry
+> => configuredTenantLifecycleRegistry;
+
 export const resetInstanceRegistryPluginActivationPoliciesForTests = (): void => {
   configuredSnapshot = emptySnapshot;
   configuredModuleIamRegistry = new Map();
+  configuredTenantLifecycleRegistry = new Map();
 };

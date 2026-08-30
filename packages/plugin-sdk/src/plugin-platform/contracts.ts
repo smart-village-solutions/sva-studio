@@ -1,4 +1,5 @@
 import type { TenantModuleActivationPolicy } from '@sva/core';
+export { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/core';
 
 export type PluginManifestCapability =
   | 'routing'
@@ -13,8 +14,6 @@ export type PluginManifestCapability =
 
 export type PluginExtensionTier = 'feature' | 'admin' | 'platform';
 export type PluginTenantActivationPolicy = TenantModuleActivationPolicy;
-
-export const PLUGIN_ROUTE_SCOPE_HEADER_NAME = 'X-SVA-Plugin-Route-Scope';
 
 export type PluginManifest = {
   readonly pluginId: string;

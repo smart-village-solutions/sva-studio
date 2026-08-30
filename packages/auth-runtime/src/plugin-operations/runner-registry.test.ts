@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   createJobLifecycleOrchestrator: vi.fn(),
   withPluginTenantLifecycleRepository: vi.fn(),
+  withStudioJobLifecycleRepositories: vi.fn(),
   withStudioJobRepository: vi.fn(),
 }));
 
@@ -10,8 +11,29 @@ vi.mock('./job-lifecycle-orchestrator.js', () => ({
   createJobLifecycleOrchestrator: state.createJobLifecycleOrchestrator,
 }));
 
+vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
+  readInstanceRegistryPluginTenantLifecycleRegistry: () =>
+    new Map([
+      [
+        'waste-management',
+        {
+          pluginId: 'waste-management',
+          contractVersion: 1,
+          operations: [
+            {
+              operation: 'provision',
+              jobTypeId: 'waste-management.provision-tenant-database',
+            },
+          ],
+          readinessChecks: [],
+        },
+      ],
+    ]),
+}));
+
 vi.mock('./repository.js', () => ({
   withPluginTenantLifecycleRepository: state.withPluginTenantLifecycleRepository,
+  withStudioJobLifecycleRepositories: state.withStudioJobLifecycleRepositories,
   withStudioJobRepository: state.withStudioJobRepository,
 }));
 
@@ -131,7 +153,6 @@ describe('plugin operation runner registry', () => {
         resolveHandler: expect.any(Function),
         loadRepository: expect.any(Function),
         onExecutionSucceeded: expect.any(Function),
-        onExecutionTerminal: expect.any(Function),
       })
     );
     const [{ resolveHandler, loadRepository }] =
@@ -146,5 +167,73 @@ describe('plugin operation runner registry', () => {
       attempts: 2,
       maxAttempts: 5,
     });
+  });
+
+  it('persists lifecycle and job terminal state through one repository transaction', async () => {
+    const registry = await import('./runner-registry.js');
+    const run = vi.fn(async () => undefined);
+    const updateJobState = vi.fn(async () => undefined);
+    const failLifecycle = vi.fn(async () => undefined);
+    const lifecycleJob = {
+      id: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+      instanceId: 'tenant-a',
+      source: 'plugin',
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.provision-tenant-database',
+      queueName: 'plugin-operations',
+      status: 'running',
+      inputPayload: {
+        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+      },
+      attempts: 5,
+      maxAttempts: 5,
+      idempotencyKey: 'waste-management:tenant-lifecycle:provision:3',
+      scheduledAt: '2026-08-30T12:00:00.000Z',
+      createdAt: '2026-08-30T12:00:00.000Z',
+      updatedAt: '2026-08-30T12:00:00.000Z',
+    };
+    state.createJobLifecycleOrchestrator.mockReturnValue({ run });
+    state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => lifecycleJob),
+        updateJobState: vi.fn(async () => undefined),
+      })
+    );
+    state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
+      work({
+        studioJobs: { updateJobState },
+        tenantLifecycle: { failLifecycle },
+      })
+    );
+
+    const taskList = registry.createStudioJobTaskList(() => new Map());
+    await taskList[registry.studioJobTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: lifecycleJob.id },
+      { job: { attempts: 5, max_attempts: 5 } } as never
+    );
+    const [{ loadRepository }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+    const repository = await loadRepository('tenant-a');
+    await repository.getJobById('tenant-a', lifecycleJob.id);
+    const terminalInput = {
+      jobId: lifecycleJob.id,
+      instanceId: 'tenant-a',
+      status: 'failed' as const,
+      attempts: 5,
+      errorPayload: { code: 'provision_failed', category: 'permanent' as const },
+    };
+    await repository.updateJobState(terminalInput);
+
+    expect(failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: lifecycleJob.id,
+        generation: 3,
+        errorCode: 'provision_failed',
+      })
+    );
+    expect(updateJobState).toHaveBeenCalledWith(terminalInput);
+    expect(state.withStudioJobLifecycleRepositories).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.any(Function)
+    );
   });
 });

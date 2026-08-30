@@ -134,4 +134,21 @@ describe('runtime wiring', () => {
       changedModuleIds: [],
     });
   });
+
+  it('does not reject a committed scoped mutation when its activation follow-up fails', async () => {
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => createClient() }),
+      createRepository: () => ({}) as InstanceRegistryRepository,
+      serviceDeps: {
+        invalidateHost: vi.fn(),
+      },
+      afterModuleActivationPolicyReconcile: vi.fn(async () => {
+        throw new Error('queue unavailable');
+      }),
+    });
+
+    await expect(
+      runtime.withScopedRegistryService('tenant-a', async () => 'committed')
+    ).resolves.toBe('committed');
+  });
 });

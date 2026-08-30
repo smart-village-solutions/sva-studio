@@ -4,9 +4,12 @@ import type {
   SqlExecutionResult,
   SqlStatement,
 } from '@sva/data-repositories';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { createInstanceRegistryService } from './service.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+
+const logger = createSdkLogger({ component: 'iam-instance-registry-runtime', level: 'info' });
 
 export type InstanceRegistryQueryClient = {
   query<TRow = Record<string, unknown>>(
@@ -28,7 +31,7 @@ export type InstanceRegistryRuntimeDeps = {
   readonly afterModuleActivationPolicyReconcile?: (input: {
     readonly instanceId: string;
     readonly changedModuleIds: readonly string[];
-  }) => Promise<void>;
+  }) => void | Promise<void>;
 };
 
 const createExecutor = (client: InstanceRegistryQueryClient): SqlExecutor => ({
@@ -42,6 +45,30 @@ const createExecutor = (client: InstanceRegistryQueryClient): SqlExecutor => ({
     };
   },
 });
+
+const logActivationPolicyFollowUpError = (error: unknown, instanceId: string): void => {
+  logger.error('instance_registry_activation_follow_up_failed', {
+    operation: 'instance_registry_activation_follow_up',
+    result: 'failed',
+    error_code: 'activation_follow_up_failed',
+    error_type: error instanceof Error ? error.name : typeof error,
+    instance_id: instanceId,
+  });
+};
+
+const runActivationPolicyFollowUp = (
+  deps: InstanceRegistryRuntimeDeps,
+  input: { readonly instanceId: string; readonly changedModuleIds: readonly string[] }
+): void => {
+  try {
+    const followUp = deps.afterModuleActivationPolicyReconcile?.(input);
+    if (followUp) {
+      void followUp.catch((error) => logActivationPolicyFollowUpError(error, input.instanceId));
+    }
+  } catch (error) {
+    logActivationPolicyFollowUpError(error, input.instanceId);
+  }
+};
 
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
   const withScopedClient = async <T>(
@@ -106,7 +133,7 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
       const reconcileResult = await service.reconcileModuleActivationPolicies({ instanceId });
       return { reconcileResult, result: await work(service) };
     });
-    await deps.afterModuleActivationPolicyReconcile?.({
+    runActivationPolicyFollowUp(deps, {
       instanceId,
       changedModuleIds: scopedResult.reconcileResult.changedModuleIds,
     });

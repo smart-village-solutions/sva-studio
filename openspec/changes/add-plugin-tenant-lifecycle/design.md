@@ -56,10 +56,15 @@ Operation und Generation claimen. Abschluss und Fehler werden ausschließlich
 akzeptiert, wenn Job-ID, Instanz, Plugin, Claim- und Sollgeneration weiterhin
 übereinstimmen. Eine leere Update-Rückgabe ist damit ein deterministischer
 Stale- oder Konkurrenzkonflikt und kein wiederholbarer Schreibfehler.
+Terminale Fehler schreiben Studio-Job und Lifecycle-Ledger innerhalb derselben
+Tenant-DB-Transaktion, damit kein terminaler Job einen aktiven Claim zurücklässt.
 
-Nach dem Commit einer Aktivierungsrichtlinie startet der Host fehlende oder
-retryable `provision`-Läufe für `automatic`- und `required`-Plugins über denselben
-Lifecycle-Orchestrator. Aktive Jobs sowie aktuelle, nicht blockierende
+Nach dem Commit einer Aktivierungsrichtlinie oder einer neuen Instanz plant der
+Host fehlende oder retryable `provision`-Läufe für `automatic`- und
+`required`-Plugins über denselben Lifecycle-Orchestrator. Der Post-Commit-Lauf
+ist vom bereits bestätigten Request entkoppelt; ein Queue- oder Datenbankfehler
+wird protokolliert und darf die committete Mutation nicht nachträglich als
+fehlgeschlagen melden. Aktive Jobs sowie aktuelle, nicht blockierende
 Readiness-Evidenz verhindern eine erneute Provisionierung. Der Fleet-Reconcile
 läuft nach Handler-Registrierung im Hintergrund und blockiert keinen normalen
 Request mit fleetweiter Arbeit.

@@ -34,6 +34,7 @@ const state = vi.hoisted(() => {
     revokeInstanceModuleMutation: vi.fn(async () => new Response('revoke')),
     seedInstanceIamBaselineMutation: vi.fn(async () => new Response('seed')),
     parseRegistryRequestBody: vi.fn(),
+    scheduleConfiguredPluginTenantProvisioning: vi.fn(),
     withRegistryService: vi.fn(),
   };
 });
@@ -85,6 +86,7 @@ vi.mock('./request-parsing.js', () => ({
 }));
 
 vi.mock('./repository.js', () => ({
+  scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
   withRegistryService: state.withRegistryService,
 }));
 
@@ -116,6 +118,8 @@ describe('iam-instance-registry core handlers', () => {
       primaryHostname: 'tenant.example.test',
       actorId: 'actor-1',
     });
+
+    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith('instance-1');
 
     const logger = state.createSdkLogger.mock.results[0]?.value;
     expect(logger.info).toHaveBeenCalledWith(

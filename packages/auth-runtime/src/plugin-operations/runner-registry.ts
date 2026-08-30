@@ -1,11 +1,19 @@
 import * as graphileWorker from 'graphile-worker';
 
+import type { StudioJobRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
-import { createPluginTenantLifecycleJobCorrelation } from '../plugin-tenant-lifecycle/job-correlation.js';
+import {
+  createPluginTenantLifecycleJobCorrelation,
+  pluginTenantLifecycleJobInputKey,
+} from '../plugin-tenant-lifecycle/job-correlation.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
-import { withPluginTenantLifecycleRepository, withStudioJobRepository } from './repository.js';
+import {
+  withPluginTenantLifecycleRepository,
+  withStudioJobLifecycleRepositories,
+  withStudioJobRepository,
+} from './repository.js';
 import type { PluginOperationExecutionHandler } from './types.js';
 import type {
   PluginOperationExecutionRegistration,
@@ -112,27 +120,55 @@ export const createStudioJobTaskList = (
     });
     await createJobLifecycleOrchestrator({
       logger,
-      loadRepository: async (tenantInstanceId) => ({
-        getJobById: (repositoryInstanceId, repositoryJobId) =>
-          withStudioJobRepository(tenantInstanceId, (repository) =>
-            repository.getJobById(repositoryInstanceId, repositoryJobId)
-          ),
-        updateJobState: (input) =>
-          withStudioJobRepository(tenantInstanceId, (repository) =>
-            repository.updateJobState(input)
-          ),
-        updateJobProgress: (input) =>
-          withStudioJobRepository(tenantInstanceId, (repository) =>
-            repository.updateJobProgress(input)
-          ),
-        appendJobEvent: (input) =>
-          withStudioJobRepository(tenantInstanceId, (repository) =>
-            repository.appendJobEvent(input)
-          ),
-      }),
+      loadRepository: async (tenantInstanceId) => {
+        let loadedJob: StudioJobRecord | null = null;
+        return {
+          getJobById: (repositoryInstanceId, repositoryJobId) =>
+            withStudioJobRepository(tenantInstanceId, async (repository) => {
+              loadedJob = await repository.getJobById(repositoryInstanceId, repositoryJobId);
+              return loadedJob;
+            }),
+          updateJobState: (input) => {
+            const isTerminalLifecycleUpdate =
+              (input.status === 'failed' || input.status === 'cancelled') &&
+              loadedJob?.inputPayload[pluginTenantLifecycleJobInputKey] !== undefined;
+            if (!isTerminalLifecycleUpdate || !loadedJob) {
+              return withStudioJobRepository(tenantInstanceId, (repository) =>
+                repository.updateJobState(input)
+              );
+            }
+            const lifecycleJob = loadedJob;
+            return withStudioJobLifecycleRepositories(
+              tenantInstanceId,
+              async ({ studioJobs, tenantLifecycle }) => {
+                const transactionCorrelation = createPluginTenantLifecycleJobCorrelation({
+                  lifecycleRegistry: readInstanceRegistryPluginTenantLifecycleRegistry(),
+                  withRepository: async (_instanceId, work) => work(tenantLifecycle),
+                });
+                await transactionCorrelation.fail({
+                  job: lifecycleJob,
+                  error: input.errorPayload ?? {
+                    code: 'plugin_operation_cancelled',
+                    category: 'permanent',
+                  },
+                  reason: input.status === 'cancelled' ? 'cancelled' : 'failed',
+                });
+                return studioJobs.updateJobState(input);
+              }
+            );
+          },
+          updateJobProgress: (input) =>
+            withStudioJobRepository(tenantInstanceId, (repository) =>
+              repository.updateJobProgress(input)
+            ),
+          appendJobEvent: (input) =>
+            withStudioJobRepository(tenantInstanceId, (repository) =>
+              repository.appendJobEvent(input)
+            ),
+        };
+      },
       resolveHandler: (job) => getHandlers().get(toRegistryKey(job.source, job.jobTypeId))?.handler,
       onExecutionSucceeded: lifecycleCorrelation.complete,
-      onExecutionTerminal: lifecycleCorrelation.fail,
     }).run({
       instanceId,
       jobId,

@@ -99,9 +99,10 @@ Fehlerpfad:
 1. Der kurze Server-Bootstrap übernimmt Aktivierungsrichtlinien, IAM-Verträge und Tenant-Lifecycles atomar aus demselben Plugin-Snapshot, blockiert den ersten Request aber nicht mit Fleet-Arbeit.
 2. Nach Registrierung der Plugin-Operations-Handler startet die Runtime den revisionsgebundenen Fleet-Reconcile im Hintergrund.
 3. Jede Instanz materialisiert Richtlinie, IAM-Grants und Audit innerhalb ihrer scoped Transaktion.
-4. Erst nach erfolgreichem Commit prüft ein hostgeführter Post-Commit-Hook `automatic`- und `required`-Plugins mit deklarierter `provision`-Operation.
-5. Fehlt Lifecycle-Evidenz oder ist ein früherer Lauf retryable gescheitert, startet der Hook dieselbe generische Lifecycle-Orchestrierung wie eine manuelle Reparatur. Aktive Jobs, terminale Fehler und bereits aktuelle `ready`- oder `degraded`-Evidenz erzeugen keinen zweiten Lauf.
-6. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
+4. Erst nach erfolgreichem Commit prüft ein hostgeführter, vom Request entkoppelter Post-Commit-Hook `automatic`- und `required`-Plugins mit deklarierter `provision`-Operation. Dieselbe Prüfung wird nach einer neuen Instanzanlage explizit eingeplant.
+5. Fehlt Lifecycle-Evidenz oder ist ein früherer Lauf retryable gescheitert, startet der Hook dieselbe generische Lifecycle-Orchestrierung wie eine manuelle Reparatur. Queue- oder Datenbankfehler werden protokolliert, verändern aber nicht die Antwort einer bereits committeten Registry-Mutation. Aktive Jobs, terminale Fehler und bereits aktuelle `ready`- oder `degraded`-Evidenz erzeugen keinen zweiten Lauf.
+6. Terminale Worker-Fehler schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
+7. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
 
 ### Self-Service-Datenexport über Host-Worker
 

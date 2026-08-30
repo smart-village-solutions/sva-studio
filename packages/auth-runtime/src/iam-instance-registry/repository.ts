@@ -6,6 +6,7 @@ import {
   saveWasteDataSourceRecord,
 } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
+import { createSdkLogger } from '@sva/server-runtime';
 import {
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
@@ -29,6 +30,27 @@ import {
 } from '../iam-account-management/shared-runtime.js';
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
+
+const pluginTenantLifecycleLogger = createSdkLogger({
+  component: 'plugin-tenant-lifecycle-scheduler',
+  level: 'info',
+});
+
+export const scheduleConfiguredPluginTenantProvisioning = (instanceId: string): void => {
+  void import('../plugin-tenant-lifecycle/runtime.js')
+    .then(({ ensureConfiguredPluginTenantProvisioning }) =>
+      ensureConfiguredPluginTenantProvisioning(instanceId)
+    )
+    .catch((error) => {
+      pluginTenantLifecycleLogger.error('plugin_tenant_lifecycle_schedule_failed', {
+        operation: 'plugin_tenant_lifecycle_schedule',
+        result: 'failed',
+        error_code: 'plugin_tenant_lifecycle_schedule_failed',
+        error_type: error instanceof Error ? error.name : typeof error,
+        instance_id: instanceId,
+      });
+    });
+};
 
 const getWorkerKeycloakPreflight = async (
   input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]
@@ -207,11 +229,8 @@ const registryRuntime = createInstanceRegistryRuntime({
     getKeycloakStatus: getTenantAuditKeycloakStatus,
     probeTenantIamAccess,
   },
-  afterModuleActivationPolicyReconcile: async ({ instanceId }) => {
-    const { ensureConfiguredPluginTenantProvisioning } =
-      await import('../plugin-tenant-lifecycle/runtime.js');
-    await ensureConfiguredPluginTenantProvisioning(instanceId);
-  },
+  afterModuleActivationPolicyReconcile: ({ instanceId }) =>
+    scheduleConfiguredPluginTenantProvisioning(instanceId),
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,

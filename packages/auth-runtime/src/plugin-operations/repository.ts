@@ -78,3 +78,18 @@ export const withPluginTenantLifecycleRepository = createWithPluginTenantLifecyc
   withDb: withResolvedInstanceDb,
   createRepository: createPluginTenantLifecycleRepository,
 });
+
+export const withStudioJobLifecycleRepositories = async <T>(
+  instanceId: string,
+  work: (repositories: {
+    readonly studioJobs: StudioJobRepository;
+    readonly tenantLifecycle: PluginTenantLifecycleRepository;
+  }) => Promise<T>
+): Promise<T> =>
+  withResolvedInstanceDb(resolvePool, instanceId, async (client) => {
+    const executor = createSqlExecutor(client);
+    return work({
+      studioJobs: createStudioJobRepository(executor),
+      tenantLifecycle: createPluginTenantLifecycleRepository(executor),
+    });
+  });

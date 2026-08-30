@@ -10,7 +10,8 @@ const retryableExternalWarmupProbeNames = new Set([
   'public-iam-context',
   'public-iam-instances',
 ]);
-const retryableExternalWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'];
+const retryableExternalWarmupHttpStatuses = new Set([403, 404, 502, 503, 504]);
+const retryableExternalTransportSignals = ['timeout', 'timed out', 'gateway'];
 const retryableInternalWarmupStates = ['pending', 'preparing', 'starting', 'assigned', 'accepted', 'new', 'ready', 'shutdown'];
 
 export const deriveInternalVerifyMaxAttempts = (input: { readonly retryDelayMs: number; readonly warmupWindowMs: number }) => {
@@ -72,11 +73,21 @@ export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[
   const failingProbes = probes.filter((probe) => probe.status === 'error');
   return failingProbes.length > 0 && failingProbes.every((probe) => {
     const isIngressProbe = probe.name.startsWith('public-ingress-https-') || probe.name.startsWith('public-ingress-login-');
+    const isIamContentProbe = probe.name === 'public-iam-context' || probe.name === 'public-iam-instances';
     const hasRetryableName = retryableExternalWarmupProbeNames.has(probe.name)
       || probe.name.startsWith('public-auth-login-')
       || isIngressProbe;
-    const hasRetryableSignal = retryableExternalWarmupSignals.some((signal) => probe.message.toLowerCase().includes(signal));
-    return hasRetryableName && (hasRetryableSignal || (isIngressProbe && probe.httpStatus === undefined));
+    const payload = probe.details?.payload;
+    const hasBlockingIamContentMismatch = isIamContentProbe
+      && typeof payload === 'string'
+      && payload.toLowerCase().includes('<html');
+    const hasRetryableHttpStatus = probe.httpStatus !== undefined
+      && retryableExternalWarmupHttpStatuses.has(probe.httpStatus);
+    const hasRetryableTransportSignal = probe.httpStatus === undefined
+      && retryableExternalTransportSignals.some((signal) => probe.message.toLowerCase().includes(signal));
+    return hasRetryableName
+      && !hasBlockingIamContentMismatch
+      && (hasRetryableHttpStatus || hasRetryableTransportSignal || (isIngressProbe && probe.httpStatus === undefined));
   });
 };
 

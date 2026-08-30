@@ -104,11 +104,13 @@ describe('shouldRetryExternalSmoke', () => {
   it('retries only retryable warmup probe failures', () => {
     const probes = [
       createProbe({
+        httpStatus: 404,
         message: 'Erwartet HTTP 200, erhalten 404.',
         name: 'public-home',
         status: 'error',
       }),
       createProbe({
+        httpStatus: 504,
         message: 'Unerwarteter Ready-Status 504.',
         name: 'public-ready',
         status: 'error',
@@ -756,6 +758,7 @@ describe('runExternalSmokeWithWarmup', () => {
       .fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
       .mockResolvedValueOnce([
         createProbe({
+          httpStatus: 404,
           message: 'Erwartet HTTP 200, erhalten 404.',
           name: 'public-home',
           status: 'error',
@@ -814,6 +817,7 @@ describe('waitForRemoteSmokeWarmup', () => {
       .fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
       .mockResolvedValueOnce([
         createProbe({
+          httpStatus: 404,
           message: 'Erwartet HTTP 200, erhalten 404.',
           name: 'public-live',
           status: 'error',
@@ -867,6 +871,7 @@ describe('waitForRemoteSmokeWarmup', () => {
       .fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
       .mockResolvedValueOnce([
         createProbe({
+          httpStatus: 404,
           message: 'Erwartet HTTP 200, erhalten 404.',
           name: 'public-live',
           status: 'error',

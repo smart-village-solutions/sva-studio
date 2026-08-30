@@ -1,8 +1,7 @@
-export const pluginSdkVersion = '0.0.1';
 // prettier-ignore
-export type PluginSdkPackageRole = 'plugin-contracts' | 'plugin-platform' | 'admin-resources' | 'content-types' | 'plugin-i18n';
+export { pluginSdkPackageRoles, pluginSdkVersion, type PluginSdkPackageRole } from './sdk-metadata.js';
 // prettier-ignore
-export const pluginSdkPackageRoles = ['plugin-contracts', 'plugin-platform', 'admin-resources', 'content-types', 'plugin-i18n'] as const satisfies readonly PluginSdkPackageRole[];
+export type { PluginServerHandlerExecutionContext, PluginServerHandlerModuleFactory, PluginServerExecutionHandler } from './plugins.js';
 export type {
   AdminResourceDefinition,
   AdminResourceBulkActionSelectionMode,
@@ -103,10 +102,7 @@ export type {
   PluginRouteDefinition,
   PluginRouteGuard,
   PluginServerHandlerDefinition,
-  PluginServerHandlerExecutionContext,
-  PluginServerHandlerModuleFactory,
   PluginServerHandlerRegistryEntry,
-  PluginServerExecutionHandler,
   PluginRequestExecutionContext,
   PluginSnapshot,
   ResolvedPluginCatalog,

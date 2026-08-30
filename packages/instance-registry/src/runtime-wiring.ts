@@ -52,7 +52,6 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     if (!pool) {
       throw new Error('IAM database not configured');
     }
-
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -67,7 +66,6 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
       client.release();
     }
   };
-
   const withRegistryRepository = async <T>(
     work: (repository: InstanceRegistryRepository) => Promise<T>
   ): Promise<T> => {
@@ -75,7 +73,6 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     if (!pool) {
       throw new Error('IAM database not configured');
     }
-
     const client = await pool.connect();
     try {
       return await work(deps.createRepository(createExecutor(client)));
@@ -83,13 +80,11 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
       client.release();
     }
   };
-
   const withScopedRegistryRepository = async <T>(
     instanceId: string,
     work: (repository: InstanceRegistryRepository) => Promise<T>
   ): Promise<T> =>
     withScopedClient(instanceId, (client) => work(deps.createRepository(createExecutor(client))));
-
   const createService = (
     repository: InstanceRegistryRepository,
     serviceDeps: Omit<InstanceRegistryServiceDeps, 'repository'>
@@ -98,12 +93,10 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
       repository,
       ...serviceDeps,
     });
-
   const withRegistryService = async <T>(
     work: (service: InstanceRegistryService) => Promise<T>
   ): Promise<T> =>
     withRegistryRepository((repository) => work(createService(repository, deps.serviceDeps)));
-
   const withScopedRegistryService = async <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>
@@ -119,26 +112,22 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     });
     return scopedResult.result;
   };
-
   const getProvisioningWorkerServiceDeps = (
     repository: InstanceRegistryRepository
   ): InstanceRegistryServiceDeps => ({
     repository,
     ...(deps.provisioningWorkerServiceDeps ?? deps.serviceDeps),
   });
-
   const withRegistryProvisioningWorkerService = async <T>(
     work: (service: InstanceRegistryService) => Promise<T>
   ): Promise<T> =>
     withRegistryRepository((repository) =>
       work(createInstanceRegistryService(getProvisioningWorkerServiceDeps(repository)))
     );
-
   const withRegistryProvisioningWorkerDeps = async <T>(
     work: (serviceDeps: InstanceRegistryServiceDeps) => Promise<T>
   ): Promise<T> =>
     withRegistryRepository((repository) => work(getProvisioningWorkerServiceDeps(repository)));
-
   return {
     withRegistryRepository,
     withScopedRegistryRepository,

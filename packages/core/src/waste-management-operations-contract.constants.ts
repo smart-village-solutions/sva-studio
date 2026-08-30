@@ -2,6 +2,7 @@ import { wasteManagementDataProfileIds } from './waste-management-data-exchange.
 
 const wasteManagementJobTypeIds = {
   provisionTenantDatabase: 'waste-management.provision-tenant-database',
+  tenantReadiness: 'waste-management.tenant-readiness',
   initializeDataSource: 'waste-management.initialize-data-source',
   applyMigrations: 'waste-management.apply-migrations',
   importData: 'waste-management.import-data',

@@ -10,6 +10,7 @@ import {
   createWasteManagementPluginImportProfiles,
   createWasteManagementPluginJobTypes,
 } from './waste-management.job-definitions.js';
+import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 import { wasteManagementPluginTranslations } from './plugin.translations.js';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
 import { wasteManagementModuleIam } from './waste-management.module-iam.js';
@@ -251,8 +252,25 @@ export const pluginWasteManagement: PluginDefinition = {
         operation: 'reconcile',
         jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
       },
+      {
+        operation: 'readiness',
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.tenantReadiness,
+      },
     ],
-    readinessChecks: [],
+    readinessChecks: [
+      {
+        checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.provisioning,
+        titleKey: 'wasteManagement.readiness.provisioning',
+        required: true,
+        repairOperation: 'reconcile',
+      },
+      {
+        checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.managedInterface,
+        titleKey: 'wasteManagement.readiness.managedInterface',
+        required: true,
+        repairOperation: 'reconcile',
+      },
+    ],
   },
   importProfiles: createWasteManagementPluginImportProfiles(),
   exportProfiles: createWasteManagementPluginExportProfiles(),

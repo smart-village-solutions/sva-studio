@@ -201,6 +201,7 @@ describe('pluginWasteManagement contract', () => {
     });
     expect(pluginWasteManagement.jobTypes?.map((jobType) => jobType.jobTypeId)).toEqual([
       'waste-management.provision-tenant-database',
+      'waste-management.tenant-readiness',
       'waste-management.initialize-data-source',
       'waste-management.apply-migrations',
       'waste-management.import-data',
@@ -305,8 +306,25 @@ describe('pluginWasteManagement contract', () => {
           operation: 'reconcile',
           jobTypeId: 'waste-management.provision-tenant-database',
         },
+        {
+          operation: 'readiness',
+          jobTypeId: 'waste-management.tenant-readiness',
+        },
       ],
-      readinessChecks: [],
+      readinessChecks: [
+        {
+          checkId: 'waste-management.tenant-provisioning',
+          titleKey: 'wasteManagement.readiness.provisioning',
+          required: true,
+          repairOperation: 'reconcile',
+        },
+        {
+          checkId: 'waste-management.tenant-database-interface',
+          titleKey: 'wasteManagement.readiness.managedInterface',
+          required: true,
+          repairOperation: 'reconcile',
+        },
+      ],
     });
   });
 

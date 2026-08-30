@@ -159,6 +159,7 @@ Abhängigkeiten des aktuellen Systems.
 - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
 - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
 - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
+- deklariert `provision`, `reconcile` und `readiness` über den generischen Tenant-Lifecycle; `@sva/waste-management-runtime` adaptiert Provision und Reconcile auf den bestehenden Datenbank-Provisioner und prüft Readiness getrennt über den bestehenden Provisionierungsdatensatz und das pluginverwaltete PostgreSQL-Interface
 - stößt nach erfolgreichen Fraktionsmutationen asynchron den dedizierten Job `waste-management.sync-waste-types` an und degradiert reine Mainserver-Sync-Fehler bewusst zu einem Retry-Hinweis im Fraktionskontext
 - zeigt den Stand des separaten Terminabgleichs zum SVA Mainserver revisionsbasiert direkt unter dem ruhigen Seitenheader; der Lesepfad kombiniert die tenantlokale Waste-Quellrevision mit dem bestehenden zentralen Jobstore und führt weder Dry-Run noch Mainserver-Abfrage aus
 - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
@@ -206,6 +207,7 @@ Abhängigkeiten des aktuellen Systems.
 - Tourverschiebungen überschreiten die Repository-Grenze als ISO-Kalenderdaten; PostgreSQL persistiert sie als `DATE` und erzwingt ihre Eindeutigkeit über partielle Indizes
 - jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird
 - Modulzuweisung und erneute Aktivierung enqueueen den namespaced Provisionierungsjob im vorhandenen Plugin-Operations-Pfad; nur die privilegierte Lane im vorhandenen Provisioner-Service darf Datenbanken und Rollen anlegen
+- der Lifecycle-Adapter führt Host- und bestehende Waste-Sollgeneration getrennt: Der Host claimt den generischen Lifecycle, während der Adapter den vorhandenen Waste-Provisionierungsdatensatz idempotent vorbereitet und dessen Generation an den unveränderten Provisioner übergibt
 - `@sva/data` bleibt dabei ausdrücklich ohne neue primäre Waste-SQL- oder Orchestrierungs-Ownership
 - die Host-Fassade erzeugt keine persistenten Waste-PDF-Artefakte mehr; PDF-Exporte werden ad hoc in der öffentlichen Web-App ausgelöst
 

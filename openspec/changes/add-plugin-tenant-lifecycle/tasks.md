@@ -23,7 +23,7 @@
 
 - [x] 4.1 Waste-Provisionierungsjob über einen Lifecycle-Adapter registrieren
 - [x] 4.2 Waste-Datenbanktopologie und Fachmigrationen unverändert plugin-owned lassen
-- [ ] 4.3 Regressionstests für Claim, Reconcile, Readiness und Fehlerzustände ergänzen
+- [x] 4.3 Regressionstests für Claim, Reconcile, Readiness und Fehlerzustände ergänzen
 
 ## 5. Dokumentation und Abnahme
 

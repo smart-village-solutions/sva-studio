@@ -8,6 +8,7 @@ describe('waste-management-operations-contract', () => {
     expect(wasteManagementOperationsContract.queueName).toBe('plugin-operations');
     expect(wasteManagementOperationsContract.jobTypeIds).toEqual({
       provisionTenantDatabase: 'waste-management.provision-tenant-database',
+      tenantReadiness: 'waste-management.tenant-readiness',
       initializeDataSource: 'waste-management.initialize-data-source',
       applyMigrations: 'waste-management.apply-migrations',
       importData: 'waste-management.import-data',

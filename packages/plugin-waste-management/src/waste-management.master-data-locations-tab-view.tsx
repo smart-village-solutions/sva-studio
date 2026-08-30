@@ -57,6 +57,7 @@ export const WasteMasterDataLocationsTabView = ({
 
   return (
     <WasteMasterDataLocationsWorkspace
+      search={search}
       fractions={controller.overview?.fractions ?? []}
       auditCollectionLocations={controller.overview?.collectionLocations ?? []}
       regions={controller.filteredRegions}

@@ -257,8 +257,6 @@ describe('waste-management scheduling low coverage views', () => {
     const onCreate = vi.fn();
     const onEdit = vi.fn();
     const onDelete = vi.fn(async () => undefined);
-    const onOpenLinkedTour = vi.fn();
-    const onOpenLinkedLocation = vi.fn();
 
     render(
       <WasteTourExplicitAssignmentsList
@@ -295,15 +293,11 @@ describe('waste-management scheduling low coverage views', () => {
         onCreate={onCreate}
         onEdit={onEdit}
         onDelete={onDelete}
-        onOpenLinkedTour={onOpenLinkedTour}
-        onOpenLinkedLocation={onOpenLinkedLocation}
       />
     );
 
     const rows = screen.getAllByRole('row');
     expect(rows[1]?.textContent).toContain('Albertplatz');
-    fireEvent.click(screen.getByRole('button', { name: 'Tour A' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Albertplatz' }));
     fireEvent.click(
       screen.getByRole('button', { name: 'scheduling.assignments.actions.openCreate' })
     );
@@ -315,8 +309,6 @@ describe('waste-management scheduling low coverage views', () => {
     );
 
     expect(onCreate).toHaveBeenCalledTimes(1);
-    expect(onOpenLinkedTour).toHaveBeenCalledWith('tour-1');
-    expect(onOpenLinkedLocation).toHaveBeenCalledWith('location-1');
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'pickup-1' }));
     fireEvent.click(
       screen.getByRole('button', { name: 'scheduling.assignments.actions.confirmDelete' })

@@ -238,7 +238,6 @@ export const WasteManagementPage = () => {
           canRunMainserverSync={uiAccess.canRunMainserverSync}
           error={syncStatus.error}
           loading={syncStatus.loading}
-          onOpenJob={(jobId) => void navigate({ to: '/monitoring/jobs/$jobId', params: { jobId } })}
           onStartSync={() => startSync(syncStatus.refresh)}
           pt={pt}
           starting={syncRunning}

@@ -7,6 +7,19 @@ import {
   WasteMasterDataLocationsTableToolbar,
 } from '../src/waste-management.master-data-locations-table.views.js';
 
+const linkSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, search, to, ...props }: Record<string, unknown>) => {
+    linkSpy({ search, to, ...props });
+    return (
+      <a href={String(to)} {...props}>
+        {children as React.ReactNode}
+      </a>
+    );
+  },
+}));
+
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${JSON.stringify(values)}` : key,
@@ -14,6 +27,7 @@ vi.mock('@sva/plugin-sdk', () => ({
 
 afterEach(() => {
   cleanup();
+  linkSpy.mockReset();
 });
 describe('waste-management master-data location table views', () => {
   it('opens the create menu, reacts to outside interactions, and forwards filter controls', async () => {
@@ -149,6 +163,7 @@ describe('waste-management master-data location table views', () => {
       <table>
         <tbody>
           <WasteMasterDataLocationsRow
+            search={{ tab: 'locations' } as never}
             location={{
               id: 'location-1',
               regionId: undefined,
@@ -187,9 +202,9 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('masterData.locationsWorkspace.table.noTours')).toBeTruthy();
     expect(screen.getByText('common.inactive')).toBeTruthy();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.edit' })
-    );
+    expect(
+      screen.getByRole('link', { name: 'masterData.collectionLocations.actions.edit' })
+    ).toBeTruthy();
     fireEvent.click(
       screen.getByRole('button', { name: 'masterData.collectionLocations.actions.copy' })
     );
@@ -197,7 +212,7 @@ describe('waste-management master-data location table views', () => {
       screen.getByRole('button', { name: 'masterData.collectionLocations.actions.delete' })
     );
 
-    expect(onOpenEditLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
+    expect(onOpenEditLocation).not.toHaveBeenCalled();
     expect(onCopyLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
     expect(onDeleteLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
   });
@@ -208,6 +223,7 @@ describe('waste-management master-data location table views', () => {
       <table>
         <tbody>
           <WasteMasterDataLocationsRow
+            search={{ tab: 'locations' } as never}
             location={{
               id: 'location-1',
               regionId: 'region-1',
@@ -244,8 +260,8 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('Stadt')).toBeTruthy();
     expect(screen.getByText('Straße')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Tour Nord' }));
-    expect(onOpenEditTour).toHaveBeenCalledWith('tour-1');
+    expect(screen.getByRole('link', { name: 'Tour Nord' })).toBeTruthy();
+    expect(onOpenEditTour).not.toHaveBeenCalled();
   });
 
   it('renders address and tour names from the paginated server projection', () => {

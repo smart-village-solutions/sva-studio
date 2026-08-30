@@ -71,6 +71,7 @@ const WasteMasterDataLocationsTableContent = ({
           onTourFilterChange={props.onTourFilterChange}
         />
         <WasteMasterDataLocationsTableSection
+          search={props.search}
           collectionLocations={props.collectionLocations}
           allFilteredLocationsSelected={props.allFilteredLocationsSelected}
           maps={maps}

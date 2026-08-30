@@ -3,9 +3,21 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveTourAssignmentItemsMock = vi.hoisted(() => vi.fn());
+const linkSpy = vi.hoisted(() => vi.fn());
 
 import { WasteToursContent } from '../src/waste-management.tours.content.js';
 import { WasteToursDeleteDialogs } from '../src/waste-management.tours-delete-dialogs.js';
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, search, to, ...props }: Record<string, unknown>) => {
+    linkSpy({ search, to, ...props });
+    return (
+      <a href={String(to)} {...props}>
+        {children as React.ReactNode}
+      </a>
+    );
+  },
+}));
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
@@ -366,6 +378,7 @@ describe('WasteToursContent', () => {
 
   beforeEach(() => {
     resolveTourAssignmentItemsMock.mockReset();
+    linkSpy.mockReset();
   });
 
   afterEach(() => {
@@ -471,11 +484,11 @@ describe('WasteToursContent', () => {
     expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence none' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.locations none' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
-    expect(screen.getByText('Restmüll Nord')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Restmüll Nord' })).toBeTruthy();
     expect(screen.queryByText('Wöchentliche Abholung')).toBeNull();
     expect(screen.getByText('recurrence:weekly')).toBeTruthy();
-    expect(screen.getByText('Restmüll')).toBeTruthy();
-    expect(screen.getByText('Biomüll')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Restmüll' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Biomüll' })).toBeTruthy();
     expect(screen.getByText('tours.actions.createShiftShort')).toBeTruthy();
     expect(
       screen.getByRole('link', {
@@ -486,8 +499,26 @@ describe('WasteToursContent', () => {
     expect(screen.queryByText('tours.meta.count:1')).toBeNull();
     expect(screen.getByTestId('status-badge')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Restmüll' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Restmüll Nord' }));
+    expect(linkSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/plugins/waste-management',
+        search: expect.objectContaining({
+          tab: 'tours',
+          toursView: 'edit',
+          tourId: 'tour-1',
+        }),
+      })
+    );
+    expect(linkSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/plugins/waste-management',
+        search: expect.objectContaining({
+          tab: 'fractions',
+          fractionsView: 'edit',
+          wasteFractionId: 'fraction-1',
+        }),
+      })
+    );
     expect(screen.queryByRole('button', { name: 'tours.actions.edit' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.duplicate' }));
     expect(screen.queryByRole('button', { name: 'tours.actions.openAssignments' })).toBeNull();
@@ -504,10 +535,10 @@ describe('WasteToursContent', () => {
     expect(statusButton.className).toContain('min-w-11');
     fireEvent.click(statusButton);
 
-    expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
+    expect(onOpenEditDialog).not.toHaveBeenCalled();
     expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCalendar).toHaveBeenCalledWith(tour);
-    expect(onOpenEditFraction).toHaveBeenCalledWith('fraction-1');
+    expect(onOpenEditFraction).not.toHaveBeenCalled();
     expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
     expect(onOpenCreateAssignmentsDialog).not.toHaveBeenCalled();
     expect(screen.getByText('tours.statusDialog.deactivateTitle')).toBeTruthy();

@@ -4,6 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementMainserverSyncStatus } from '../src/waste-management-sync-status.js';
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, ...props }: Record<string, unknown>) => (
+    <a href={String(to)} {...props}>
+      {children as React.ReactNode}
+    </a>
+  ),
+}));
+
 const pt = (key: string, options?: Readonly<Record<string, string | number>>) =>
   options ? `${key}:${JSON.stringify(options)}` : key;
 
@@ -12,7 +20,6 @@ const baseProps = {
   canRunMainserverSync: true,
   error: false,
   loading: false,
-  onOpenJob: vi.fn(),
   onStartSync: vi.fn(async () => undefined),
   pt,
   starting: false,
@@ -20,7 +27,6 @@ const baseProps = {
 
 describe('WasteManagementMainserverSyncStatus', () => {
   beforeEach(() => {
-    baseProps.onOpenJob.mockClear();
     baseProps.onStartSync.mockClear();
   });
   afterEach(cleanup);
@@ -146,8 +152,7 @@ describe('WasteManagementMainserverSyncStatus', () => {
         'page.syncStatus.runningCreateCountOther:{"count":42} page.syncStatus.runningDeleteCountOther:{"count":3}'
       )
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'page.syncStatus.openJob' }));
-    expect(baseProps.onOpenJob).toHaveBeenCalledWith('job-1');
+    expect(screen.getByRole('link', { name: 'page.syncStatus.openJob' })).toBeTruthy();
   });
 
   it('explains pending work without exposing an action to read-only users', () => {

@@ -14,8 +14,10 @@ import {
   type CoverageResult,
 } from './waste-management.location-fraction-coverage-check.parts.js';
 import { checkLocationFractionCoverage } from './waste-management.location-fraction-coverage.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 type CoverageCheckProps = Readonly<{
+  search?: WasteManagementSearchParams;
   locations: readonly WasteCollectionLocationRecord[];
   fractions: readonly WasteFractionRecord[];
   tours: readonly WasteTourRecord[];
@@ -103,6 +105,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       {result ? (
         <CoverageResults
           result={result}
+          search={props.search}
           locationsById={locationsById}
           onAssign={assignIssues}
           onEdit={props.onOpenEditLocation}

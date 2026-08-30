@@ -189,4 +189,61 @@ describe('plugin tenant lifecycle job correlation', () => {
       })
     );
   });
+
+  it('preserves a validated plugin retry classification and deadline', async () => {
+    const { dependencies, repository } = createDependencies();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: {
+        code: 'plugin_operation_execution_failed',
+        category: 'permanent',
+        details: {
+          plugin: {
+            code: 'speech.databaseUnavailable',
+            messageKey: 'speech.errors.databaseUnavailable',
+            retry: { kind: 'retryable', retryAfterMs: 5_000 },
+          },
+        },
+      },
+      reason: 'failed',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readinessStatus: 'degraded',
+        errorCode: 'speech.databaseUnavailable',
+        retryKind: 'retryable',
+        retryAfter: '2026-08-30T12:05:05.000Z',
+      })
+    );
+  });
+
+  it('fails closed when plugin lifecycle error metadata is invalid', async () => {
+    const { dependencies, repository } = createDependencies();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: {
+        code: 'plugin_operation_execution_failed',
+        category: 'permanent',
+        details: {
+          plugin: {
+            code: 'foreign.databaseUnavailable',
+            messageKey: 'speech.errors.databaseUnavailable',
+            retry: { kind: 'retryable' },
+          },
+        },
+      },
+      reason: 'failed',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readinessStatus: 'blocked',
+        errorCode: 'plugin_operation_execution_failed',
+        retryKind: 'terminal',
+      })
+    );
+  });
 });

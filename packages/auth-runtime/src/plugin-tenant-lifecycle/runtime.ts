@@ -54,6 +54,7 @@ const needsAutomaticProvisioning = (
   if (!lifecycle) return true;
   if (lifecycle.accessState === 'suspended') return false;
   if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return false;
+  if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > Date.now()) return false;
   const readiness = createPluginTenantReadinessReadModel({
     definition,
     activation,

@@ -584,6 +584,19 @@ describe('router runtime helpers', () => {
     );
   });
 
+  it('materializes tenant routes for a client-readable dev-auth session', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+    cookieState = 'sva_dev_auth=1';
+    const { getRouter } = await import('./router');
+
+    await getRouter();
+
+    expect(routerMocks.fetchWithRequestTimeoutSpy).not.toHaveBeenCalled();
+    expect(routerMocks.getClientRouteFactoriesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
+    );
+  });
+
   it('uses platform routes for invalid non-tenant hosts without hiding other auth failures', async () => {
     const { getRouter } = await import('./router');
 

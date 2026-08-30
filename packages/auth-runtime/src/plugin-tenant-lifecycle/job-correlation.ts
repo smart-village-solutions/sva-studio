@@ -2,8 +2,10 @@ import type { StudioJobError, StudioJobRecord } from '@sva/core';
 import type { PluginTenantLifecycleRepository } from '@sva/data-repositories';
 import {
   createPluginTenantReadinessSnapshot,
+  definePluginTenantLifecycleError,
   pluginTenantLifecycleOperations,
   type PluginJobExecutionResult,
+  type PluginTenantLifecycleError,
   type PluginTenantLifecycleOperation,
   type PluginTenantLifecycleRegistryEntry,
 } from '@sva/plugin-sdk';
@@ -88,6 +90,54 @@ const resolveLifecycleContext = (
   return { definition, metadata, pluginId: job.pluginId };
 };
 
+const resolveLifecycleFailure = (
+  dependencies: Pick<CorrelationDependencies, 'now'>,
+  pluginId: string,
+  error: StudioJobError,
+  reason: 'failed' | 'missing_handler' | 'cancelled'
+): {
+  readonly readinessStatus: 'degraded' | 'blocked';
+  readonly errorCode: string;
+  readonly retryKind: 'terminal' | 'retryable';
+  readonly retryAfter?: string;
+} => {
+  if (reason !== 'failed') {
+    return {
+      readinessStatus: reason === 'cancelled' ? 'degraded' : 'blocked',
+      errorCode: error.code,
+      retryKind: 'terminal',
+    };
+  }
+
+  const pluginError = error.details?.plugin;
+  if (!pluginError) {
+    return { readinessStatus: 'blocked', errorCode: error.code, retryKind: 'terminal' };
+  }
+
+  try {
+    const lifecycleError = definePluginTenantLifecycleError(
+      pluginId,
+      pluginError as PluginTenantLifecycleError
+    );
+    const retryAfterMs =
+      lifecycleError.retry.kind === 'retryable' ? lifecycleError.retry.retryAfterMs : undefined;
+    const retryAfter =
+      retryAfterMs === undefined
+        ? undefined
+        : new Date(
+            Date.parse((dependencies.now ?? (() => new Date().toISOString()))()) + retryAfterMs
+          ).toISOString();
+    return {
+      readinessStatus: lifecycleError.retry.kind === 'retryable' ? 'degraded' : 'blocked',
+      errorCode: lifecycleError.code,
+      retryKind: lifecycleError.retry.kind,
+      ...(retryAfter ? { retryAfter } : {}),
+    };
+  } catch {
+    return { readinessStatus: 'blocked', errorCode: error.code, retryKind: 'terminal' };
+  }
+};
+
 export const createPluginTenantLifecycleJobCorrelation = (
   dependencies: CorrelationDependencies
 ) => ({
@@ -148,15 +198,19 @@ export const createPluginTenantLifecycleJobCorrelation = (
     if (!context) {
       return;
     }
+    const failure = resolveLifecycleFailure(
+      dependencies,
+      context.pluginId,
+      input.error,
+      input.reason
+    );
     await dependencies.withRepository(input.job.instanceId, (repository) =>
       repository.failLifecycle({
         instanceId: input.job.instanceId,
         pluginId: context.pluginId,
         jobId: input.job.id,
         generation: context.metadata.generation,
-        readinessStatus: input.reason === 'cancelled' ? 'degraded' : 'blocked',
-        errorCode: input.error.code,
-        retryKind: 'terminal',
+        ...failure,
       })
     );
   },

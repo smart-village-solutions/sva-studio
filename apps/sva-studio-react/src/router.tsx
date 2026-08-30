@@ -51,21 +51,25 @@ const getRuntimeRouteFactories = createIsomorphicFn()
   .client(async () => {
     const mod = await import('@sva/routing');
     let pluginScope: 'platform' | 'tenant' = 'platform';
-    try {
-      const response = await fetchWithRequestTimeout(
-        new URL('/auth/me', resolveBaseUrl()).toString(),
-        { credentials: 'include' },
-        { timeoutMs: 5_000 }
-      );
-      const declaredScope = response?.headers.get(PLUGIN_ROUTE_SCOPE_HEADER_NAME);
-      if (declaredScope === 'tenant' || declaredScope === 'platform') {
-        pluginScope = declaredScope;
-      } else {
-        const user = response?.ok ? readRouteGuardUser(await response.json()) : null;
-        pluginScope = user?.instanceId ? 'tenant' : 'platform';
+    if (isDevAuthAvailable() && hasActiveDevAuthSession()) {
+      pluginScope = 'tenant';
+    } else {
+      try {
+        const response = await fetchWithRequestTimeout(
+          new URL('/auth/me', resolveBaseUrl()).toString(),
+          { credentials: 'include' },
+          { timeoutMs: 5_000 }
+        );
+        const declaredScope = response?.headers.get(PLUGIN_ROUTE_SCOPE_HEADER_NAME);
+        if (declaredScope === 'tenant' || declaredScope === 'platform') {
+          pluginScope = declaredScope;
+        } else {
+          const user = response?.ok ? readRouteGuardUser(await response.json()) : null;
+          pluginScope = user?.instanceId ? 'tenant' : 'platform';
+        }
+      } catch {
+        // Ohne bestätigte Tenant-Session bleibt die Router-Materialisierung fail-closed auf den Plattform-Scope begrenzt.
       }
-    } catch {
-      // Ohne bestätigte Tenant-Session bleibt die Router-Materialisierung fail-closed auf den Plattform-Scope begrenzt.
     }
     return mod.getClientRouteFactories({
       bindings: appRouteBindings,

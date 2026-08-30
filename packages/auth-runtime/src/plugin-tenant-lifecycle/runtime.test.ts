@@ -226,6 +226,19 @@ describe('configured plugin tenant lifecycle runtime', () => {
     expect(state.createStudioJob).not.toHaveBeenCalled();
   });
 
+  it('does not retry automatic provisioning before the declared retry deadline', async () => {
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      retryKind: 'retryable',
+      retryAfter: '2999-08-30T12:05:00.000Z',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).not.toHaveBeenCalled();
+  });
+
   it('re-provisions when persisted readiness no longer matches the current declaration', async () => {
     state.readinessChecks = [
       {

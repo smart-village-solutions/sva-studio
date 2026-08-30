@@ -115,6 +115,9 @@ export const usersAdminENResources = {
     groupsLabel: 'Group assignment',
     notesLabel: 'Notes',
     notesCounter: '{{count}} / 2000 characters',
+    validation: {
+      notesTooLong: 'Notes must not exceed 2000 characters.',
+    },
     effectivePermissionsTitle: 'Currently effective permissions',
     effectivePermissionsHint:
       'This list shows the permissions currently resolved for the user from role and group assignments.',

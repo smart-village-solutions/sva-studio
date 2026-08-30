@@ -105,6 +105,7 @@ export const rolesAdminENResources = {
     descriptionLabel: 'Description',
     levelLabel: 'Role level',
     errors: {
+      displayNameRequired: 'Enter a display name.',
       invalidRoleKey:
         'The role key must be 3 to 64 characters long and contain only lowercase letters, digits, and underscores.',
       invalidRequest: 'The role creation request contains invalid or incomplete data.',

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1196,
+  "body": "Formulare und zugehörige Tests verhalten sich in weiteren Bereichen des Studios konsistenter.\n\n- Das Bearbeiten von Benutzern und das Anlegen von Rollen verwenden jetzt die gemeinsamen Formular-, Validierungs- und Fehlermuster.\n- Fehlerhafte Eingaben werden direkt am Feld und in einer fokussierbaren Zusammenfassung verständlich angezeigt.\n- Die zugrunde liegenden HTTP-, Routing- und Eingabelese-Pfade sind durch zusätzliche robuste Tests abgesichert."
+}

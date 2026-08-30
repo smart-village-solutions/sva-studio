@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,6 +11,49 @@ import {
 } from './input-readers.js';
 
 describe('input readers', () => {
+  it('keeps string trimming and empty-value fallback stable', () => {
+    fc.assert(
+      fc.property(fc.string(), (value) => {
+        const normalized = value.trim();
+
+        expect(readString(value)).toBe(normalized.length > 0 ? normalized : undefined);
+      })
+    );
+  });
+
+  it('preserves finite number boundaries and permissive numeric-string parsing', () => {
+    fc.assert(
+      fc.property(fc.double({ noNaN: true, noDefaultInfinity: true }), (value) => {
+        const numericString = `  ${String(value)}  `;
+
+        expect(readNumber(value)).toBe(value);
+        expect(readNumberLike(value)).toBe(value);
+        expect(readNumberLike(numericString)).toBe(Number(numericString));
+      })
+    );
+  });
+
+  it('preserves booleans and object records while rejecting incompatible types', () => {
+    fc.assert(
+      fc.property(
+        fc.boolean(),
+        fc.dictionary(fc.string(), fc.anything()),
+        fc.array(fc.anything()),
+        (booleanValue, objectValue, arrayValue) => {
+          expect(readBoolean(booleanValue)).toBe(booleanValue);
+          expect(readObject(objectValue)).toBe(objectValue);
+          expect(readObject(arrayValue)).toBeUndefined();
+        }
+      )
+    );
+
+    fc.assert(
+      fc.property(fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)), (value) => {
+        expect(readObject(value)).toBeUndefined();
+      })
+    );
+  });
+
   it('normalizes primitive request values safely', () => {
     expect(readString(' value ')).toBe('value');
     expect(readString('   ')).toBeUndefined();

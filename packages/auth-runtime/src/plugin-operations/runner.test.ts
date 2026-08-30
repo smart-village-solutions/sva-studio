@@ -267,12 +267,28 @@ describe('plugin operation runner task list', () => {
   });
 
   it('keeps lifecycle repair jobs executable while tenant access is blocked', async () => {
+    const lifecycleJob = {
+      ...baseJob,
+      inputPayload: {
+        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+      },
+    };
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
-        getJobById: vi.fn(async () => baseJob),
+        getJobById: vi.fn(async () => lifecycleJob),
         updateJobState: vi.fn(async () => null),
         appendJobEvent: vi.fn(async () => null),
       })
+    );
+    repositoryState.withPluginTenantLifecycleRepository.mockImplementation(
+      async (_instanceId, work) =>
+        work({
+          getLifecycle: vi.fn(async () => ({
+            activeJobId: lifecycleJob.id,
+            claimedGeneration: 3,
+            desiredOperation: 'provision',
+          })),
+        })
     );
     pluginAccessState.isLifecycleJobType.mockReturnValueOnce(true);
     const handler = vi.fn(async () => ({}));

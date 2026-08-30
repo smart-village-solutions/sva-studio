@@ -124,6 +124,15 @@ vi.mock('../plugin-operations/runner.js', () => ({
         },
       ],
       [
+        'speech.reactivateTenant',
+        {
+          handler: vi.fn(),
+          queueName: 'plugin-operations',
+          executionLane: 'privileged',
+          supportsCancellation: false,
+        },
+      ],
+      [
         'weather.provisionTenant',
         {
           handler: vi.fn(),
@@ -334,6 +343,31 @@ describe('configured plugin tenant lifecycle runtime', () => {
           idempotencyKey: 'speech:tenant-lifecycle:readiness:3',
           inputPayload: {
             studioTenantLifecycle: { operation: 'readiness', generation: 3 },
+          },
+        }),
+      })
+    );
+  });
+
+  it('retries reactivation while the lifecycle remains suspended', async () => {
+    state.operations = [{ operation: 'reactivate', jobTypeId: 'speech.reactivateTenant' }];
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      accessState: 'suspended',
+      desiredOperation: 'reactivate',
+      retryKind: 'retryable',
+      retryAfter: '2020-08-30T12:05:00.000Z',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          jobTypeId: 'speech.reactivateTenant',
+          inputPayload: {
+            studioTenantLifecycle: { operation: 'reactivate', generation: 3 },
           },
         }),
       })

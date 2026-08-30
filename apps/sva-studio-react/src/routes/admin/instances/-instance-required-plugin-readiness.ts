@@ -19,22 +19,33 @@ export const evaluateRequiredPluginReadiness = (
   loadState: {
     readonly isLoading: boolean;
     readonly hasError: boolean;
-    readonly hasRequiredPlugins: boolean;
+    readonly requiredPluginIds: readonly string[];
   } = {
     isLoading: false,
     hasError: false,
-    hasRequiredPlugins: false,
+    requiredPluginIds: [],
   }
 ): RequiredPluginReadinessAssessment | null => {
+  const expectedPluginIds = [...new Set(loadState.requiredPluginIds)].sort((left, right) =>
+    left.localeCompare(right, 'de')
+  );
   if (loadState.isLoading || loadState.hasError) {
-    if (!loadState.hasRequiredPlugins) return null;
+    if (expectedPluginIds.length === 0) return null;
     return {
       status: 'blocked',
       summary: t('admin.instances.pluginReadiness.aggregate.unavailable'),
-      pluginIds: [],
+      pluginIds: expectedPluginIds,
     };
   }
   const requiredPlugins = plugins.filter(({ activationPolicy }) => activationPolicy === 'required');
+  const returnedPluginIds = new Set(requiredPlugins.map(({ pluginId }) => pluginId));
+  if (expectedPluginIds.some((pluginId) => !returnedPluginIds.has(pluginId))) {
+    return {
+      status: 'blocked',
+      summary: t('admin.instances.pluginReadiness.aggregate.unavailable'),
+      pluginIds: expectedPluginIds,
+    };
+  }
   if (requiredPlugins.length === 0) return null;
 
   const pluginIds = requiredPlugins

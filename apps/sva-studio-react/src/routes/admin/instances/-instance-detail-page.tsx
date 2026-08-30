@@ -134,11 +134,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const requiredPluginReadiness = evaluateRequiredPluginReadiness(pluginReadiness.items, {
     isLoading: pluginReadiness.isLoading,
     hasError: Boolean(pluginReadiness.error),
-    hasRequiredPlugins: studioPluginSnapshot.registry.tenantLifecycles.some((lifecycle) =>
+    requiredPluginIds: studioPluginSnapshot.registry.tenantLifecycles.flatMap((lifecycle) =>
       studioPluginSnapshot.tenantActivationPolicySnapshot.modules.some(
-        (module) =>
-          module.moduleId === lifecycle.pluginId && module.activationPolicy === 'required'
+        (module) => module.moduleId === lifecycle.pluginId && module.activationPolicy === 'required'
       )
+        ? [lifecycle.pluginId]
+        : []
     ),
   });
   const configurationAssessment = selectedInstance

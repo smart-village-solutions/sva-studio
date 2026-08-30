@@ -41,10 +41,10 @@ describe('required plugin readiness aggregation', () => {
   ])('blocks aggregate readiness while the readiness read is %s', (loadState) => {
     const readiness = evaluateRequiredPluginReadiness([], {
       ...loadState,
-      hasRequiredPlugins: true,
+      requiredPluginIds: ['speech-flow'],
     });
 
-    expect(readiness).toMatchObject({ status: 'blocked', pluginIds: [] });
+    expect(readiness).toMatchObject({ status: 'blocked', pluginIds: ['speech-flow'] });
     expect(includeRequiredPluginReadiness(completeConfiguration, readiness)).toMatchObject({
       overallStatus: 'incomplete',
       totalRequirements: 5,
@@ -53,15 +53,45 @@ describe('required plugin readiness aggregation', () => {
   });
 
   it.each([
-    { isLoading: true, hasError: false, hasRequiredPlugins: false },
-    { isLoading: false, hasError: true, hasRequiredPlugins: false },
-  ])('does not add readiness requirements when the catalog has no required plugins', (loadState) => {
-    const readiness = evaluateRequiredPluginReadiness([], loadState);
+    { isLoading: true, hasError: false, requiredPluginIds: [] },
+    { isLoading: false, hasError: true, requiredPluginIds: [] },
+  ])(
+    'does not add readiness requirements when the catalog has no required plugins',
+    (loadState) => {
+      const readiness = evaluateRequiredPluginReadiness([], loadState);
 
-    expect(readiness).toBeNull();
-    expect(includeRequiredPluginReadiness(completeConfiguration, readiness)).toEqual(
-      completeConfiguration
-    );
+      expect(readiness).toBeNull();
+      expect(includeRequiredPluginReadiness(completeConfiguration, readiness)).toEqual(
+        completeConfiguration
+      );
+    }
+  );
+
+  it('blocks aggregate readiness when an expected required plugin is absent from the response', () => {
+    const readiness = evaluateRequiredPluginReadiness([], {
+      isLoading: false,
+      hasError: false,
+      requiredPluginIds: ['speech-flow'],
+    });
+
+    expect(readiness).toMatchObject({ status: 'blocked', pluginIds: ['speech-flow'] });
+    expect(includeRequiredPluginReadiness(completeConfiguration, readiness)).toMatchObject({
+      overallStatus: 'incomplete',
+      totalRequirements: 5,
+    });
+  });
+
+  it('blocks aggregate readiness when only part of the required catalog is returned', () => {
+    const readiness = evaluateRequiredPluginReadiness([createPlugin()], {
+      isLoading: false,
+      hasError: false,
+      requiredPluginIds: ['speech-flow', 'waste-management'],
+    });
+
+    expect(readiness).toMatchObject({
+      status: 'blocked',
+      pluginIds: ['speech-flow', 'waste-management'],
+    });
   });
 
   it('blocks aggregate readiness while a required plugin has no valid evidence', () => {

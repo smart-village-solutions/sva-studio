@@ -61,8 +61,13 @@ const resolveAutomaticProvisioningSchedule = (
     const operation = resolveInitialOperation();
     return operation ? { operation, scheduledAt: now.toISOString() } : null;
   }
-  if (lifecycle.accessState === 'suspended') return null;
   if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return null;
+  if (
+    lifecycle.accessState === 'suspended' &&
+    !(lifecycle.retryKind === 'retryable' && lifecycle.desiredOperation === 'reactivate')
+  ) {
+    return null;
+  }
   if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > now.getTime()) {
     return null;
   }

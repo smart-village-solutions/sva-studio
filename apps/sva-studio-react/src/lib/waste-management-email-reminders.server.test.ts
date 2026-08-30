@@ -623,6 +623,7 @@ describe('waste management operations runtime', () => {
         {
           id: 'tour-1',
           name: 'Biotour',
+          description: '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
           wasteFractionIds: ['fraction-bio'],
           recurrence: null,
           firstDate: undefined,
@@ -649,7 +650,7 @@ describe('waste management operations runtime', () => {
           tourId: 'tour-1',
           pickupDate: '2026-06-16',
           locationIds: ['location-1'],
-          note: undefined,
+          note: '<ul><li>Zufahrt freihalten</li></ul><script>alert(1)</script>',
         },
       ]),
       listWasteTourDateShifts: vi.fn(async () => []),
@@ -699,6 +700,17 @@ describe('waste management operations runtime', () => {
     });
 
     expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(enqueueOutboxEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          templatePayload: expect.objectContaining({
+            hintText: ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join(
+              '\n'
+            ),
+          }),
+        }),
+      })
+    );
     expect(result.details).toMatchObject({
       operation: 'materialize-email-reminders',
       mode: 'executed',
@@ -821,8 +833,9 @@ describe('waste management operations runtime', () => {
     });
   });
 
-  it('does not enqueue reminder outbox entries whose send time is already in the past', async () => {
+  it('refreshes an existing pending reminder whose send time is already in the past without enqueuing a new one', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const refreshPendingOutboxEntry = vi.fn(async () => true);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
         {
@@ -836,6 +849,7 @@ describe('waste management operations runtime', () => {
         },
       ]),
       enqueueOutboxEntry,
+      refreshPendingOutboxEntry,
     };
     const repository = createRepositoryMock({
       listWasteFractions: vi.fn(async () => [
@@ -921,11 +935,19 @@ describe('waste management operations runtime', () => {
     });
 
     expect(enqueueOutboxEntry).not.toHaveBeenCalled();
+    expect(refreshPendingOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(refreshPendingOutboxEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sendAt: '2026-06-09T06:00:00.000Z',
+        dedupeKey: 'reminder:subscription-1:fraction-bio:bio:first:2026-06-10',
+      })
+    );
     expect(result.details).toMatchObject({
       operation: 'materialize-email-reminders',
       mode: 'executed',
       createdOutboxCount: 0,
-      duplicateOutboxCount: 0,
+      duplicateOutboxCount: 1,
+      skippedPickupCount: 0,
     });
   });
 
@@ -1605,7 +1627,7 @@ describe('waste management operations runtime', () => {
     ).toBe(false);
   });
 
-  it('counts duplicate reminder outbox entries separately from inserted ones', async () => {
+  it('refreshes future and overdue pending reminders without creating a past-due entry', async () => {
     vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
       const actual =
         await importOriginal<
@@ -1623,11 +1645,21 @@ describe('waste management operations runtime', () => {
             createdAt: '1970-01-01T00:00:00.000Z',
             updatedAt: '1970-01-01T00:00:00.000Z',
           },
+          {
+            id: 'materialized-overdue',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            pickupDate: '2026-06-15',
+            note: '<p>Geänderter Termin-Hinweis</p>',
+            createdAt: '1970-01-01T00:00:00.000Z',
+            updatedAt: '1970-01-01T00:00:00.000Z',
+          },
         ]),
       };
     });
 
-    const enqueueOutboxEntry = vi.fn(async () => 'duplicate' as const);
+    const enqueueOutboxEntry = vi.fn(async () => 'refreshed' as const);
+    const refreshPendingOutboxEntry = vi.fn(async () => true);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
         {
@@ -1643,6 +1675,7 @@ describe('waste management operations runtime', () => {
         },
       ]),
       enqueueOutboxEntry,
+      refreshPendingOutboxEntry,
     };
     const repository = createRepositoryMock({
       listWasteFractions: vi.fn(async () => [
@@ -1726,11 +1759,23 @@ describe('waste management operations runtime', () => {
     });
 
     expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(refreshPendingOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(refreshPendingOutboxEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sendAt: '2026-06-14T06:00:00.000Z',
+        payload: expect.objectContaining({
+          templatePayload: expect.objectContaining({
+            hintText: 'Geänderter Termin-Hinweis',
+          }),
+        }),
+      })
+    );
     expect(result.details).toMatchObject({
       operation: 'materialize-email-reminders',
       mode: 'executed',
       createdOutboxCount: 0,
-      duplicateOutboxCount: 1,
+      duplicateOutboxCount: 2,
+      skippedPickupCount: 0,
     });
   });
 

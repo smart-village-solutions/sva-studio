@@ -86,6 +86,8 @@ export type WasteEmailReminderOutboxEntryInput = Readonly<{
   payload: MailDispatchPayload;
 }>;
 
+export type WasteEmailReminderOutboxRefreshInput = Omit<WasteEmailReminderOutboxEntryInput, 'id'>;
+
 export type WasteEmailReminderOutboxLease = Readonly<{
   id: string;
   subscriptionId: string;
@@ -104,7 +106,12 @@ export type WasteEmailReminderRepository = Readonly<{
     readonly selection: WasteEmailReminderPendingSignupInput['selection'];
   }) => Promise<number>;
   listActiveSubscriptions: () => Promise<readonly WasteEmailReminderActiveSubscription[]>;
-  enqueueOutboxEntry: (input: WasteEmailReminderOutboxEntryInput) => Promise<'inserted' | 'duplicate'>;
+  enqueueOutboxEntry: (
+    input: WasteEmailReminderOutboxEntryInput
+  ) => Promise<'inserted' | 'refreshed' | 'duplicate'>;
+  refreshPendingOutboxEntry: (
+    input: WasteEmailReminderOutboxRefreshInput
+  ) => Promise<boolean>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
     readonly limit: number;
@@ -158,6 +165,10 @@ type LeasedOutboxRow = Readonly<{
   dedupe_key: string;
   attempt_count: number;
   payload: MailDispatchPayload | string;
+}>;
+
+type EnqueuedOutboxRow = Readonly<{
+  id: string;
 }>;
 
 type UnsubscribeSubscriptionRow = Readonly<{
@@ -261,7 +272,18 @@ INSERT INTO waste_email_reminder_outbox (
   payload
 )
 VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::timestamptz, $7, 'pending', $8::jsonb)
-ON CONFLICT (dedupe_key) DO NOTHING;
+ON CONFLICT (dedupe_key) DO UPDATE
+SET transport_id = EXCLUDED.transport_id,
+    template_key = EXCLUDED.template_key,
+    send_at = CASE
+      WHEN waste_email_reminder_outbox.attempt_count > 0
+        THEN GREATEST(waste_email_reminder_outbox.send_at, EXCLUDED.send_at)
+      ELSE EXCLUDED.send_at
+    END,
+    payload = EXCLUDED.payload,
+    updated_at = NOW()
+WHERE waste_email_reminder_outbox.status = 'pending'
+RETURNING id;
 `,
   values: [
     input.id,
@@ -271,6 +293,36 @@ ON CONFLICT (dedupe_key) DO NOTHING;
     input.templateKey,
     input.sendAt,
     input.dedupeKey,
+    JSON.stringify(input.payload),
+  ],
+});
+
+const buildRefreshPendingOutboxStatement = (
+  input: WasteEmailReminderOutboxRefreshInput
+): SqlStatement => ({
+  text: `
+UPDATE waste_email_reminder_outbox
+SET transport_id = $4,
+    template_key = $5,
+    send_at = CASE
+      WHEN attempt_count > 0 THEN GREATEST(send_at, $6::timestamptz)
+      ELSE $6::timestamptz
+    END,
+    payload = $7::jsonb,
+    updated_at = NOW()
+WHERE dedupe_key = $1
+  AND subscription_id = $2::uuid
+  AND message_kind = $3
+  AND status = 'pending'
+RETURNING id;
+`,
+  values: [
+    input.dedupeKey,
+    input.subscriptionId,
+    input.messageKind,
+    input.transportId,
+    input.templateKey,
+    input.sendAt,
     JSON.stringify(input.payload),
   ],
 });
@@ -517,8 +569,18 @@ export const createWasteEmailReminderRepository = (executor: SqlExecutor): Waste
     return [...subscriptions.values()];
   },
   async enqueueOutboxEntry(input) {
-    const result = await executor.execute(buildInsertGenericOutboxStatement(input));
-    return result.rowCount > 0 ? 'inserted' : 'duplicate';
+    const result = await executor.execute<EnqueuedOutboxRow>(
+      buildInsertGenericOutboxStatement(input)
+    );
+    const persistedId = result.rows[0]?.id;
+    if (!persistedId) return 'duplicate';
+    return persistedId === input.id ? 'inserted' : 'refreshed';
+  },
+  async refreshPendingOutboxEntry(input) {
+    const result = await executor.execute<EnqueuedOutboxRow>(
+      buildRefreshPendingOutboxStatement(input)
+    );
+    return result.rows.length > 0;
   },
   async leaseDueOutboxEntries(input) {
     const result = await executor.execute<LeasedOutboxRow>(buildLeaseDueOutboxEntriesStatement(input));

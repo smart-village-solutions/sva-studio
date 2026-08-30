@@ -6,6 +6,7 @@ type WasteSyncClientState = {
   readonly tours: readonly {
     id: string;
     name: string;
+    description?: string;
     wasteFractionIds: readonly string[];
     recurrence: string;
     customDates: readonly { date: string }[];
@@ -621,6 +622,7 @@ describe('waste-management-mainserver-sync.server', () => {
         {
           id: 'tour-1',
           name: 'Rundtour',
+          description: '<p>Behälter am Vorabend <strong>bereitstellen</strong>.</p>',
           wasteFractionIds: ['fraction-1'],
           recurrence: 'on-demand',
           customDates: [],
@@ -709,12 +711,22 @@ describe('waste-management-mainserver-sync.server', () => {
       expect.arrayContaining([
         expect.objectContaining({
           pickupDate: '2026-02-03',
-          note: 'Schnee-Ersatztermin',
+          note: '<div><p>Behälter am Vorabend <strong>bereitstellen</strong>.</p></div><div>Schnee-Ersatztermin</div>',
           wasteType: 'Restmüll',
           street: 'Hauptstraße',
           city: 'Musterhausen',
         }),
       ])
+    );
+    expect(createSvaMainserverWastePickupTimesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            pickupDate: '2026-02-03',
+            note: '<div><p>Behälter am Vorabend <strong>bereitstellen</strong>.</p></div><div>Schnee-Ersatztermin</div>',
+          }),
+        ]),
+      })
     );
   });
 

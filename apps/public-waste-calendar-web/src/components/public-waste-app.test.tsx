@@ -701,6 +701,8 @@ describe('PublicWasteApp', () => {
       }),
     });
 
+    expect(screen.queryByRole('button', { name: 'Termin Bioabfall am 19.05.2026' })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Jahr' }));
     fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 19.05.2026' }));
 
     const dialog = screen.getByRole('dialog');

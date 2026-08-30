@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -62,5 +64,28 @@ describe('PublicWasteEventDialog', () => {
     );
 
     expect(screen.getAllByText('Identischer Hinweis')).toHaveLength(2);
+  });
+
+  it('renders sanitized hint HTML instead of escaped source text', () => {
+    const { container } = render(
+      <PublicWasteEventDialog
+        entry={{
+          id: 'pickup-3',
+          date: '2026-05-21',
+          fractionId: 'paper',
+          fractionLabel: 'Papier',
+          tourDescription: '<p><strong>Behälter</strong> bitte bereitstellen.</p>',
+          note: '<a href="javascript:alert(1)" onclick="alert(1)">Weitere Hinweise</a><script>alert(2)</script>',
+        }}
+        onClose={() => undefined}
+      />
+    );
+
+    expect(screen.getByText('Behälter').tagName).toBe('STRONG');
+    expect(screen.getByText('Weitere Hinweise').tagName).toBe('A');
+    expect(screen.getByText('Weitere Hinweise').getAttribute('href')).toBeNull();
+    expect(container.querySelector('.dialog-section script')).toBeNull();
+    expect(container.textContent).not.toContain('<strong>');
+    expect(container.textContent).not.toContain('alert(2)');
   });
 });

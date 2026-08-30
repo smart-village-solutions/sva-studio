@@ -2,6 +2,7 @@ import React from 'react';
 
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
 import { formatDateOnlyGerman } from '../lib/public-waste-date-utils.js';
+import { PublicWasteRichText } from './public-waste-rich-text.js';
 
 type PublicWasteEventDialogProps = Readonly<{
   entry: PublicWasteCalendarEntry | null;
@@ -117,9 +118,7 @@ export function PublicWasteEventDialog(props: PublicWasteEventDialogProps) {
         <div className="dialog-section">
           <p className="dialog-section-label">Hinweis</p>
           {hints.map((hint, index) => (
-            <p key={`${index}:${hint}`} className="body-copy">
-              {hint}
-            </p>
+            <PublicWasteRichText key={`${index}:${hint}`} className="body-copy rich-text" html={hint} />
           ))}
         </div>
       </div>

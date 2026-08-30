@@ -169,11 +169,12 @@ describe('public waste endpoints', () => {
             date: '2026-05-19',
             fractionId: 'bio',
             fractionLabel: 'Bioabfall',
-            fractionDescription: 'Küchen- und Gartenabfälle ohne Kunststoffbeutel.',
+            fractionDescription:
+              '<p>Küchen- &amp; Gartenabfälle <strong>ohne Kunststoffbeutel</strong>.</p>',
             fractionShortLabel: 'BIO',
             tourName: 'Tour Nord',
-            tourDescription: 'Behälter am Straßenrand bereitstellen.',
-            note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
+            tourDescription: '<p>Behälter am Straßenrand bereitstellen.</p>',
+            note: '<p>Bitte Tonne ab 6 Uhr bereitstellen.</p><script>alert("xss")</script>',
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
@@ -195,11 +196,14 @@ describe('public waste endpoints', () => {
     );
     const pdfText = Buffer.from(await response.arrayBuffer()).toString('latin1');
     expect(pdfText).toContain('Abfallkalender 2026');
-    expect(pdfText).toContain('Küchen- und Gartenabfälle ohne Kunststoffbeutel.');
+    expect(pdfText).toContain('Küchen- & Gartenabfälle ohne Kunststoffbeutel.');
     expect(pdfText).toContain('Tour: Tour Nord');
     expect(pdfText).toContain('Behälter am Straßenrand bereitstellen.');
     expect(pdfText).toContain('19.05. Tour: Tour Nord');
     expect(pdfText).toContain('Bitte Tonne ab 6 Uhr bereitstellen.');
+    expect(pdfText).not.toContain('<p>');
+    expect(pdfText).not.toContain('&amp;');
+    expect(pdfText).not.toContain('alert');
     expect(pdfText).toContain('Abfallberatung 03395 / 1234');
     expect(pdfText).toContain('/Subtype /Image');
     expect(loadBrandingImage).toHaveBeenCalledWith({
@@ -356,9 +360,10 @@ describe('public waste endpoints', () => {
             date: '2026-05-19',
             fractionId: 'bio',
             fractionLabel: 'Bioabfall',
-            fractionDescription: 'Bioabfall aus Küche und Garten.',
-            tourDescription: 'Regelabfuhr für die Innenstadt.',
-            note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
+            fractionDescription: '<p>Bioabfall aus Küche &amp; Garten.</p>',
+            tourDescription: '<p><strong>Regelabfuhr</strong> für die Innenstadt.</p>',
+            note:
+              '<p>Bitte Tonne ab 6 Uhr bereitstellen.</p><ul><li>Keine Säcke</li></ul><p><a href="https://example.org/hinweise">Mehr Infos</a></p><script>alert(1)</script>',
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
@@ -373,8 +378,11 @@ describe('public waste endpoints', () => {
     const body = await response.text();
     expect(body).toContain('DESCRIPTION:Abholort: Musterstadt\\, Hauptstraße 1');
     expect(body).toContain(
-      'DESCRIPTION:Fraktion: Bioabfall aus Küche und Garten.\\nTour: Regelabfuhr für die Innenstadt.\\nHinweis: Bitte Tonne ab 6 Uhr bereitstellen.'
+      'DESCRIPTION:Fraktion: Bioabfall aus Küche & Garten.\\nTour: Regelabfuhr für die Innenstadt.\\nHinweis: Bitte Tonne ab 6 Uhr bereitstellen.\\n\\n- Keine Säcke\\n\\nMehr Infos [https://example.org/hinweise]'
     );
+    expect(body).not.toContain('<p>');
+    expect(body).not.toContain('<script>');
+    expect(body).not.toContain('alert(1)');
   });
 
   it('keeps the public default iCal as an all-fractions feed without calendar alarms', async () => {
@@ -419,8 +427,8 @@ describe('public waste endpoints', () => {
             date: '2026-05-19',
             fractionId: 'bio',
             fractionLabel: 'Bioabfall',
-            fractionDescription: 'Bereitstellung am Vorabend.',
-            tourDescription: 'Bereitstellung am Vorabend.',
+            fractionDescription: '<p>Bereitstellung am Vorabend.</p>',
+            tourDescription: '<strong>Bereitstellung am Vorabend.</strong>',
             note: 'Bereitstellung am Vorabend.',
           },
         ]),

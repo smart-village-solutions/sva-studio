@@ -1112,4 +1112,137 @@ describe('waste-management-mainserver-sync.materialization', () => {
       }),
     ]);
   });
+
+  it('combines sanitized tour and pickup notes for the mainserver with the tour note first', () => {
+    const rows = buildStudioRowsFromMaterialization({
+      pickupDates: [
+        {
+          id: 'materialized-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-01-05',
+          note: '<p onclick="alert(1)">Individuell <a href="javascript:alert(1)">Link</a></p><script>alert(1)</script>',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tours: [
+        buildTour({
+          description: '<p>Allgemein <strong>bereitstellen</strong>.</p>',
+        }),
+      ],
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111',
+          active: true,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locations: [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterhausen',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        note: '<div><p>Allgemein <strong>bereitstellen</strong>.</p></div><div><p>Individuell <a>Link</a></p></div>',
+        key: expect.stringContaining(
+          '::<div><p>allgemein <strong>bereitstellen</strong>.</p></div><div><p>individuell <a>link</a></p></div>'
+        ),
+      }),
+    ]);
+  });
+
+  it('includes semantically identical tour and pickup notes only once', () => {
+    const rows = buildStudioRowsFromMaterialization({
+      pickupDates: [
+        {
+          id: 'materialized-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-01-05',
+          note: '<strong>Bereitstellung am Vorabend.</strong>',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tours: [buildTour({ description: '<p>Bereitstellung am Vorabend.</p>' })],
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111',
+          active: true,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locations: [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterhausen',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(rows).toEqual([
+      expect.objectContaining({ note: '<p>Bereitstellung am Vorabend.</p>' }),
+    ]);
+  });
 });

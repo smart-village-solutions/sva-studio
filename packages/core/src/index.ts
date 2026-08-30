@@ -31,6 +31,7 @@ export type {
   PermissionRequirementMode,
 } from './iam/permission-denial.js';
 export { isPlausibleEmailAddress } from './email-address.js';
+export { convertRichTextHtmlToPlainText } from './rich-text-plain-text.js';
 export {
   iamContentAccessReasonCodes,
   iamContentListSortDirections,

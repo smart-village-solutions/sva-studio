@@ -1,0 +1,4 @@
+{
+  "prNumber": 1191,
+  "body": "Die nicht blockierende CI-Shadow-Auswertung wartet auch bei längerer Runner-Auslastung zuverlässig auf reguläre Bestandsprüfungen.\n\n- Das begrenzte Wartefenster beginnt beim tatsächlichen Start des Parity-Sammlers und wird nicht mehr durch vorherige Runner-Wartezeit verkürzt.\n- Der gemeinsame Workflow-Start bleibt die einheitliche Zeitbasis für Run-Zuordnung und Laufzeitvergleich.\n- Nach Ablauf des Wartefensters bleiben nicht terminale, fehlende, doppelte oder abweichende Prüfungen weiterhin fail-closed."
+}

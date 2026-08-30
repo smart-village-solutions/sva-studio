@@ -31,11 +31,18 @@ describe('route search normalization properties', () => {
     fc.assert(
       fc.property(fc.anything(), (value) => {
         fc.pre(!iamTabs.includes(value as (typeof iamTabs)[number]));
-        fc.pre(!roleTabs.includes(value as (typeof roleTabs)[number]));
-        fc.pre(!organizationTabs.includes(value as (typeof organizationTabs)[number]));
-
         expect(normalizeIamTab(value)).toBe('rights');
+      })
+    );
+    fc.assert(
+      fc.property(fc.anything(), (value) => {
+        fc.pre(!roleTabs.includes(value as (typeof roleTabs)[number]));
         expect(normalizeRoleDetailTab(value)).toBe('general');
+      })
+    );
+    fc.assert(
+      fc.property(fc.anything(), (value) => {
+        fc.pre(!organizationTabs.includes(value as (typeof organizationTabs)[number]));
         expect(normalizeOrganizationDetailTab(value)).toBe('organization');
       })
     );

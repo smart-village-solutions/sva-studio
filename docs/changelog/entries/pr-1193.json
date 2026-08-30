@@ -1,0 +1,4 @@
+{
+  "prNumber": 1193,
+  "body": "Hinweise zu Abholterminen werden in allen Ausgabekanälen lesbar und passend zum jeweiligen Format dargestellt.\n\n- Die öffentliche Webansicht stellt formatierte Hinweise sicher dar; Listentermine öffnen keinen inhaltsleeren Dialog mehr.\n- PDF, E-Mail und Kalenderdateien enthalten bereinigten Klartext statt sichtbarer HTML-Auszeichnung.\n- Die Smart Village App erhält Tour- und individuelle Terminhinweise gemeinsam als bereinigte, formatierte Notiz."
+}

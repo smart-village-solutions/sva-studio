@@ -13,7 +13,10 @@ import {
   logPluginWorkerBootstrapFailure,
   type PluginWorkerBootstrapLogger,
 } from './lib/plugin-worker-bootstrap-logging.server';
-import { ensurePluginActivationPoliciesConfigured } from './lib/plugin-activation-policy-bootstrap.server';
+import {
+  ensurePluginActivationPoliciesConfigured,
+  startPluginActivationPolicyFleetReconcileInBackground,
+} from './lib/plugin-activation-policy-bootstrap.server';
 import type {
   RequestContextSdk,
   RouteDispatchDescriptor,
@@ -98,10 +101,6 @@ const reportPluginWorkerBootstrapFailure = async (error: unknown): Promise<void>
   logPluginWorkerBootstrapFailure(await getLogger('server-entry-transport'), error);
 
 const startPluginOperationWorkerInBackground = (): void => {
-  if (!studioJobWorkerEnabled) {
-    return;
-  }
-
   if (pluginOperationWorkerBootstrapPromise) {
     if (devRuntimeRefreshEnabled) {
       void ensurePluginOperationHandlersRegistered().catch((error) =>
@@ -115,6 +114,8 @@ const startPluginOperationWorkerInBackground = (): void => {
   pluginOperationWorkerBootstrapPromise = (async () => {
     try {
       await ensurePluginOperationHandlersRegistered();
+      startPluginActivationPolicyFleetReconcileInBackground();
+      if (!studioJobWorkerEnabled) return;
       const startWorker = await getEnsureStudioJobWorkerStarted();
       await startWorker();
     } catch (error) {

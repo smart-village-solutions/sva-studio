@@ -41,4 +41,37 @@ describe('usePluginTenantReadiness', () => {
     expect(api.getInstancePluginReadiness).toHaveBeenCalledTimes(2);
     expect(result.current.activeAction).toBeNull();
   });
+
+  it('discards a repair completion after the selected instance changes', async () => {
+    let completeRepair: (() => void) | undefined;
+    api.startInstancePluginLifecycle.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeRepair = () => resolve({ data: {}, meta: {} });
+        })
+    );
+    api.getInstancePluginReadiness
+      .mockResolvedValueOnce({ data: [{ pluginId: 'tenant-a-plugin' }], meta: {} })
+      .mockResolvedValueOnce({ data: [{ pluginId: 'tenant-b-plugin' }], meta: {} });
+    const { result, rerender } = renderHook(
+      ({ instanceId }) => usePluginTenantReadiness(instanceId),
+      { initialProps: { instanceId: 'tenant-a' } }
+    );
+    await waitFor(() => expect(result.current.items[0]?.pluginId).toBe('tenant-a-plugin'));
+
+    let repairPromise: Promise<void> | undefined;
+    act(() => {
+      repairPromise = result.current.startRepair('speech-flow', 'reconcile');
+    });
+    rerender({ instanceId: 'tenant-b' });
+    await waitFor(() => expect(result.current.items[0]?.pluginId).toBe('tenant-b-plugin'));
+
+    await act(async () => {
+      completeRepair?.();
+      await repairPromise;
+    });
+
+    expect(result.current.items[0]?.pluginId).toBe('tenant-b-plugin');
+    expect(api.getInstancePluginReadiness).toHaveBeenCalledTimes(2);
+  });
 });

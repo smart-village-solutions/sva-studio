@@ -94,6 +94,15 @@ Fehlerpfad:
 - Fehlt das migrierte Graphile-Schema oder der dedizierte Worker-Zugang, startet die Runtime fail-closed; sie versucht keine privilegierte Selbstreparatur.
 - Bei aktivierter Worker-Lane umfasst die HTTP-Readiness den tatsächlichen Worker-Zustand. Startfehler und unerwartete Abbrüche setzen `jobWorker` mit stabilem Reason-Code auf `not_ready` und werden als Fehlerereignis protokolliert; eine bewusst deaktivierte Lane bleibt readiness-neutral.
 
+### Automatische Plugin-Aktivierung und Tenant-Provisionierung
+
+1. Der kurze Server-Bootstrap übernimmt Aktivierungsrichtlinien, IAM-Verträge und Tenant-Lifecycles atomar aus demselben Plugin-Snapshot, blockiert den ersten Request aber nicht mit Fleet-Arbeit.
+2. Nach Registrierung der Plugin-Operations-Handler startet die Runtime den revisionsgebundenen Fleet-Reconcile im Hintergrund.
+3. Jede Instanz materialisiert Richtlinie, IAM-Grants und Audit innerhalb ihrer scoped Transaktion.
+4. Erst nach erfolgreichem Commit prüft ein hostgeführter Post-Commit-Hook `automatic`- und `required`-Plugins mit deklarierter `provision`-Operation.
+5. Fehlt Lifecycle-Evidenz oder ist ein früherer Lauf retryable gescheitert, startet der Hook dieselbe generische Lifecycle-Orchestrierung wie eine manuelle Reparatur. Aktive Jobs, terminale Fehler und bereits aktuelle `ready`- oder `degraded`-Evidenz erzeugen keinen zweiten Lauf.
+6. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
+
 ### Self-Service-Datenexport über Host-Worker
 
 1. Ein authentifizierter Benutzer ruft `POST /iam/me/data-export` für das eigene Konto auf.

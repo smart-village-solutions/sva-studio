@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   claimLifecycle: vi.fn(),
   failUnclaimedLifecycle: vi.fn(),
   failLifecycle: vi.fn(),
+  getLifecycle: vi.fn(),
   getModuleActivationPolicy: vi.fn(async () => ({
     activationPolicy: 'automatic' as const,
     effectiveActive: true,
@@ -16,6 +17,17 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
+  readInstanceRegistryPluginActivationPolicies: () => ({
+    revision: 'catalog-1',
+    modules: [
+      {
+        moduleId: 'speech',
+        activationPolicy: 'automatic',
+        manifestVersion: 1,
+        policyRevision: 'speech-1',
+      },
+    ],
+  }),
   readInstanceRegistryPluginTenantLifecycleRegistry: () =>
     new Map([
       [
@@ -50,6 +62,7 @@ vi.mock('../plugin-operations/repository.js', () => ({
       claimLifecycle: state.claimLifecycle,
       failUnclaimedLifecycle: state.failUnclaimedLifecycle,
       failLifecycle: state.failLifecycle,
+      getLifecycle: state.getLifecycle,
     }),
 }));
 
@@ -104,6 +117,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
       activeJobId: job.id,
     });
     state.createStudioJob.mockResolvedValue(job);
+    state.getLifecycle.mockResolvedValue(null);
   });
 
   it('starts a declared active lifecycle operation through the shared job runtime', async () => {
@@ -143,5 +157,36 @@ describe('configured plugin tenant lifecycle runtime', () => {
       queueName: 'plugin-operations',
       maxAttempts: 5,
     });
+  });
+
+  it('starts missing provisioning for an automatically activated lifecycle plugin', async () => {
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.getLifecycle).toHaveBeenCalledWith('tenant-a', 'speech');
+    expect(state.createStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        create: expect.objectContaining({
+          pluginId: 'speech',
+          jobTypeId: 'speech.provisionTenant',
+        }),
+      })
+    );
+  });
+
+  it('does not repeat automatic provisioning with current readiness evidence', async () => {
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      readinessStatus: 'ready',
+      desiredGeneration: 3,
+      completedGeneration: 3,
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).not.toHaveBeenCalled();
   });
 });

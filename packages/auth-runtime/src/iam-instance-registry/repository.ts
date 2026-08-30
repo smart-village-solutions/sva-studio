@@ -207,6 +207,11 @@ const registryRuntime = createInstanceRegistryRuntime({
     getKeycloakStatus: getTenantAuditKeycloakStatus,
     probeTenantIamAccess,
   },
+  afterModuleActivationPolicyReconcile: async ({ instanceId }) => {
+    const { ensureConfiguredPluginTenantProvisioning } =
+      await import('../plugin-tenant-lifecycle/runtime.js');
+    await ensureConfiguredPluginTenantProvisioning(instanceId);
+  },
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,

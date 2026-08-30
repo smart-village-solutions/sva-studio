@@ -17,6 +17,8 @@ export const usePluginTenantReadiness = (instanceId: string) => {
   const [activeAction, setActiveAction] = React.useState<string | null>(null);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const requestSequence = React.useRef(0);
+  const currentInstanceId = React.useRef(instanceId);
+  currentInstanceId.current = instanceId;
 
   const refresh = React.useCallback(async () => {
     const sequence = ++requestSequence.current;
@@ -24,15 +26,15 @@ export const usePluginTenantReadiness = (instanceId: string) => {
     setError(null);
     try {
       const response = await getInstancePluginReadiness(instanceId);
-      if (sequence === requestSequence.current) {
+      if (sequence === requestSequence.current && currentInstanceId.current === instanceId) {
         setItems(response.data);
       }
     } catch (cause) {
-      if (sequence === requestSequence.current) {
+      if (sequence === requestSequence.current && currentInstanceId.current === instanceId) {
         setError(asIamError(cause));
       }
     } finally {
-      if (sequence === requestSequence.current) {
+      if (sequence === requestSequence.current && currentInstanceId.current === instanceId) {
         setIsLoading(false);
       }
     }
@@ -53,11 +55,17 @@ export const usePluginTenantReadiness = (instanceId: string) => {
       setError(null);
       try {
         await startInstancePluginLifecycle(instanceId, pluginId, operation);
-        await refresh();
+        if (currentInstanceId.current === instanceId) {
+          await refresh();
+        }
       } catch (cause) {
-        setError(asIamError(cause));
+        if (currentInstanceId.current === instanceId) {
+          setError(asIamError(cause));
+        }
       } finally {
-        setActiveAction(null);
+        if (currentInstanceId.current === instanceId) {
+          setActiveAction(null);
+        }
       }
     },
     [instanceId, refresh]

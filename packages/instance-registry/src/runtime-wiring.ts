@@ -25,6 +25,10 @@ export type InstanceRegistryRuntimeDeps = {
   readonly createRepository: (executor: SqlExecutor) => InstanceRegistryRepository;
   readonly serviceDeps: Omit<InstanceRegistryServiceDeps, 'repository'>;
   readonly provisioningWorkerServiceDeps?: Omit<InstanceRegistryServiceDeps, 'repository'>;
+  readonly afterModuleActivationPolicyReconcile?: (input: {
+    readonly instanceId: string;
+    readonly changedModuleIds: readonly string[];
+  }) => Promise<void>;
 };
 
 const createExecutor = (client: InstanceRegistryQueryClient): SqlExecutor => ({
@@ -103,12 +107,18 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
   const withScopedRegistryService = async <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>
-  ): Promise<T> =>
-    withScopedRegistryRepository(instanceId, async (repository) => {
+  ): Promise<T> => {
+    const scopedResult = await withScopedRegistryRepository(instanceId, async (repository) => {
       const service = createService(repository, deps.serviceDeps);
-      await service.reconcileModuleActivationPolicies({ instanceId });
-      return work(service);
+      const reconcileResult = await service.reconcileModuleActivationPolicies({ instanceId });
+      return { reconcileResult, result: await work(service) };
     });
+    await deps.afterModuleActivationPolicyReconcile?.({
+      instanceId,
+      changedModuleIds: scopedResult.reconcileResult.changedModuleIds,
+    });
+    return scopedResult.result;
+  };
 
   const getProvisioningWorkerServiceDeps = (
     repository: InstanceRegistryRepository

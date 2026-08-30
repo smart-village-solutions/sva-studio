@@ -68,7 +68,8 @@ Abhängigkeiten des aktuellen Systems.
    - der Build-time-Snapshot veröffentlicht getrennte Plattform-/Tenant-Sichten für Route und Navigation; `@sva/routing` materialisiert pro Host nur die passende Sicht
    - `@sva/core` definiert die framework-unabhängige Aktivierungsauflösung; `@sva/data-repositories` materialisiert Policy, Override und Revision im vorhandenen Instanz-Modulsatz
    - die Studio-App injiziert Aktivierungsrichtlinien und Plugin-IAM-Verträge atomar aus demselben validierten Snapshot in `@sva/auth-runtime`; nur hosteigene Module wie `media` werden zusätzlich ergänzt, ein zweiter statischer Plugin-IAM-Katalog ist keine Runtime-Quelle
-   - `@sva/auth-runtime` führt beim erstmaligen Übernehmen einer Snapshot-Revision einen kontrollierten Fleet-Reconcile über alle bestehenden Instanzen aus und veröffentlicht einen revisionsgebundenen Abschlussbericht mit betroffenen Instanz-IDs bei Teilfehlern
+   - `@sva/auth-runtime` konfiguriert eine neue Snapshot-Revision im kurzen Bootstrap-Pfad und startet den kontrollierten Fleet-Reconcile erst nach Registrierung der Plugin-Operations-Handler im Hintergrund; Teilfehler werden revisionsgebunden berichtet und bei einem späteren Bootstrap erneut versucht
+   - der scoped Instance-Registry-Runtime meldet erfolgreich committete Aktivierungs-Reconciles über einen Post-Commit-Hook; `@sva/auth-runtime` startet darüber fehlende oder retryable `provision`-Läufe automatisch für `automatic`- und `required`-Plugins mit Tenant-Lifecycle, ohne fertige Readiness-Evidenz erneut zu provisionieren
 6. Studio UI React (`packages/studio-ui-react`)
 
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views

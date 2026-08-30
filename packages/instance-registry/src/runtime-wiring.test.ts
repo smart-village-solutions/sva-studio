@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository, SqlExecutor } from '@sva/data-repositories';
 
-import { createInstanceRegistryRuntime, type InstanceRegistryQueryClient } from './runtime-wiring.js';
+import {
+  createInstanceRegistryRuntime,
+  type InstanceRegistryQueryClient,
+} from './runtime-wiring.js';
 
 const createClient = (): InstanceRegistryQueryClient => ({
   query: vi.fn(async () => ({ rowCount: 1, rows: [{ id: 'row-1' }] })),
@@ -43,7 +46,9 @@ describe('runtime wiring', () => {
       },
     });
 
-    await expect(runtime.withRegistryRepository(async () => null)).rejects.toThrow('IAM database not configured');
+    await expect(runtime.withRegistryRepository(async () => null)).rejects.toThrow(
+      'IAM database not configured'
+    );
   });
 
   it('uses dedicated provisioning worker service dependencies when supplied', async () => {
@@ -60,7 +65,9 @@ describe('runtime wiring', () => {
       },
     });
 
-    const deps = await runtime.withRegistryProvisioningWorkerDeps(async (resolvedDeps) => resolvedDeps);
+    const deps = await runtime.withRegistryProvisioningWorkerDeps(
+      async (resolvedDeps) => resolvedDeps
+    );
 
     expect(deps.repository).toBe(repository);
     expect(deps.protectSecret?.('secret', 'aad')).toBe('secret');
@@ -81,16 +88,50 @@ describe('runtime wiring', () => {
       },
     });
 
-    const result = await runtime.withScopedRegistryRepository('tenant-a', async (resolvedRepository) => {
-      await capturedExecutor?.execute({ text: 'select 1', values: ['demo'] });
-      return resolvedRepository;
-    });
+    const result = await runtime.withScopedRegistryRepository(
+      'tenant-a',
+      async (resolvedRepository) => {
+        await capturedExecutor?.execute({ text: 'select 1', values: ['demo'] });
+        return resolvedRepository;
+      }
+    );
 
     expect(result).toBe(repository);
     expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(client.query).toHaveBeenNthCalledWith(2, 'SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']);
+    expect(client.query).toHaveBeenNthCalledWith(2, 'SELECT set_config($1, $2, true);', [
+      'app.instance_id',
+      'tenant-a',
+    ]);
     expect(client.query).toHaveBeenNthCalledWith(3, 'select 1', ['demo']);
     expect(client.query).toHaveBeenNthCalledWith(4, 'COMMIT');
     expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('runs activation follow-up only after the scoped transaction commits', async () => {
+    const events: string[] = [];
+    const client = createClient();
+    vi.mocked(client.query).mockImplementation(async (text) => {
+      events.push(text);
+      return { rowCount: 1, rows: [{ id: 'row-1' }] };
+    });
+    const afterModuleActivationPolicyReconcile = vi.fn(async () => {
+      events.push('follow-up');
+    });
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository: () => ({}) as InstanceRegistryRepository,
+      serviceDeps: {
+        invalidateHost: vi.fn(),
+      },
+      afterModuleActivationPolicyReconcile,
+    });
+
+    await runtime.withScopedRegistryService('tenant-a', async () => 'done');
+
+    expect(events.indexOf('follow-up')).toBeGreaterThan(events.indexOf('COMMIT'));
+    expect(afterModuleActivationPolicyReconcile).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      changedModuleIds: [],
+    });
   });
 });

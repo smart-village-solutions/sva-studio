@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const configureMock = vi.fn();
 const reconcileMock = vi.fn();
+const loggerWarnMock = vi.fn();
+const loggerErrorMock = vi.fn();
 const pluginModuleIamContract = {
   moduleId: 'news',
   namespace: 'news',
@@ -51,14 +53,21 @@ vi.mock('@sva/auth-runtime/server', () => ({
   reconcileConfiguredPluginActivationPoliciesForAllInstances: reconcileMock,
 }));
 
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => ({ warn: loggerWarnMock, error: loggerErrorMock }),
+}));
+
 import {
   ensurePluginActivationPoliciesConfigured,
   resetPluginActivationPolicyBootstrapForTests,
+  startPluginActivationPolicyFleetReconcileInBackground,
 } from './plugin-activation-policy-bootstrap.server';
 
 beforeEach(() => {
   configureMock.mockReset();
   reconcileMock.mockReset();
+  loggerWarnMock.mockReset();
+  loggerErrorMock.mockReset();
   reconcileMock.mockResolvedValue({ status: 'ready' });
   resetPluginActivationPolicyBootstrapForTests();
 });
@@ -70,6 +79,7 @@ describe('plugin activation policy bootstrap', () => {
       ensurePluginActivationPoliciesConfigured(),
     ]);
     await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
 
     expect(configureMock).toHaveBeenCalledTimes(1);
     expect(configureMock).toHaveBeenCalledWith({
@@ -77,7 +87,7 @@ describe('plugin activation policy bootstrap', () => {
       moduleIamContracts: [pluginModuleIamContract, hostModuleIamContract],
       tenantLifecycles: [tenantLifecycle],
     });
-    expect(reconcileMock).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(1));
     expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' });
   });
 
@@ -99,10 +109,36 @@ describe('plugin activation policy bootstrap', () => {
       .mockResolvedValueOnce({ status: 'ready' });
 
     await ensurePluginActivationPoliciesConfigured();
-    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledOnce());
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
     await ensurePluginActivationPoliciesConfigured();
 
-    expect(configureMock).toHaveBeenCalledTimes(2);
+    expect(configureMock).toHaveBeenCalledTimes(1);
     expect(reconcileMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not block configuration on the fleet-wide reconcile', async () => {
+    let completeReconcile: ((value: { status: 'ready' }) => void) | undefined;
+    let reconcileCompleted = false;
+    reconcileMock.mockImplementationOnce(() =>
+      new Promise<{ status: 'ready' }>((resolve) => {
+        completeReconcile = resolve;
+      }).then((report) => {
+        reconcileCompleted = true;
+        return report;
+      })
+    );
+
+    await ensurePluginActivationPoliciesConfigured();
+
+    expect(configureMock).toHaveBeenCalledOnce();
+    expect(reconcileMock).not.toHaveBeenCalled();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledOnce());
+    expect(reconcileCompleted).toBe(false);
+    completeReconcile?.({ status: 'ready' });
+    await vi.waitFor(() => expect(reconcileCompleted).toBe(true));
   });
 });

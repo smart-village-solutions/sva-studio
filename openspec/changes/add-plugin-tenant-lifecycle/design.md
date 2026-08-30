@@ -49,12 +49,20 @@ dürfen keinen neueren Zustand überschreiben.
 
 Der Host persistiert diesen Vertrag in `iam.instance_plugin_lifecycle` mit
 `desired_generation`, `claimed_generation`, `completed_generation` und
-`active_job_id`. Eine neue Mutation erhöht `desired_generation` und löst einen
-älteren Claim. Der anschließend erzeugte Studio-Job darf nur die exakt aktuelle
+`active_job_id`. Eine neue Mutation erhöht `desired_generation` nur, wenn kein
+älterer Claim oder aktiver Job existiert; konkurrierende Starts werden stabil
+abgelehnt. Der anschließend erzeugte Studio-Job darf nur die exakt aktuelle
 Operation und Generation claimen. Abschluss und Fehler werden ausschließlich
 akzeptiert, wenn Job-ID, Instanz, Plugin, Claim- und Sollgeneration weiterhin
 übereinstimmen. Eine leere Update-Rückgabe ist damit ein deterministischer
 Stale- oder Konkurrenzkonflikt und kein wiederholbarer Schreibfehler.
+
+Nach dem Commit einer Aktivierungsrichtlinie startet der Host fehlende oder
+retryable `provision`-Läufe für `automatic`- und `required`-Plugins über denselben
+Lifecycle-Orchestrator. Aktive Jobs sowie aktuelle, nicht blockierende
+Readiness-Evidenz verhindern eine erneute Provisionierung. Der Fleet-Reconcile
+läuft nach Handler-Registrierung im Hintergrund und blockiert keinen normalen
+Request mit fleetweiter Arbeit.
 
 Idempotenz bleibt zweistufig: Der Host verhindert doppelte Jobanlage über den
 vorhandenen Studio-Job-Idempotenzvertrag; der Plugin-Handler reconciliiert die

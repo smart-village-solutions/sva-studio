@@ -135,9 +135,11 @@ Bestandsjob. Ein von einer eventgebundenen Hilfsjob-Definition zusätzlich
 veröffentlichter `skipped`-Check mit demselben Anzeigenamen ist kein zweiter
 Gate-Lauf und wird neben einem echten Check ignoriert. Zwei echte Checks
 bleiben dagegen eine fail-closed Abweichung. Noch laufende Bestandschecks
-werden bis zu einer absoluten Deadline gepollt, die vom gemeinsamen
-Workflow-Start und den maximalen Joblaufzeiten abgeleitet ist; erst danach
-wird fehlende Terminalität als Fehler gewertet.
+werden bis zu einer absoluten, begrenzten Deadline gepollt, die beim
+tatsächlichen Start des Paritäts-Sammlers beginnt; erst danach wird fehlende
+Terminalität als Fehler gewertet. Der gemeinsame Workflow-Start bleibt davon
+getrennt die Zeitbasis für Run-Zuordnung und vergleichbare Laufzeitmessung,
+damit Runner-Wartezeit das Polling-Budget nicht verkürzt.
 
 ### Decision 6: Ownership-Gewinn ist quantitativ
 

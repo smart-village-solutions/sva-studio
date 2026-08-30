@@ -210,7 +210,8 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/ci-shadow-main
           current_run_created_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
-          comparison_deadline_epoch=''
+          parity_poll_started_epoch=$(date -u +%s)
+          comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))
           while true; do
             gh api \
               -H 'Accept: application/vnd.github+json' \
@@ -221,9 +222,6 @@ jobs:
               artifacts/ci-shadow-main/workflow-runs.json \
               > artifacts/ci-shadow-main/workflow-runs.current.json
             comparison_started_at=$(jq -r '[.workflow_runs[].created_at] | min' artifacts/ci-shadow-main/workflow-runs.current.json)
-            if [ -z "$comparison_deadline_epoch" ]; then
-              comparison_deadline_epoch=$(node -e 'process.stdout.write(String(Math.floor((Date.parse(process.argv[1]) + 32 * 60_000) / 1000)))' "$comparison_started_at")
-            fi
             rm -rf artifacts/ci-shadow-main/jobs
             mkdir -p artifacts/ci-shadow-main/jobs
             for run_id in $(jq -r '.workflow_runs[].id' artifacts/ci-shadow-main/workflow-runs.current.json); do

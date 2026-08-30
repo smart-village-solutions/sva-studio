@@ -121,7 +121,9 @@ describe('CI gate topology shadow workflows', () => {
     expect(mainShadow).toContain('--event "$EVENT_NAME"');
     expect(mainShadow).toContain('--comparison-started-at "$comparison_started_at"');
     expect(parityJob).toContain('timeout-minutes: 35');
-    expect(parityJob).toContain('comparison_deadline_epoch=');
+    expect(parityJob).toContain('parity_poll_started_epoch=$(date -u +%s)');
+    expect(parityJob).toContain('comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))');
+    expect(parityJob).not.toContain('Date.parse(process.argv[1]) + 32 * 60_000');
     expect(parityJob).toContain('while true; do');
     expect(parityJob).not.toContain('for attempt in {1..40}; do');
     expect(parityJob).toContain('rm -rf artifacts/ci-shadow-main/jobs');

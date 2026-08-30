@@ -2,7 +2,11 @@ let configuredRevision: string | undefined;
 let reconciledRevision: string | undefined;
 let configurationPromise: Promise<PluginActivationPolicyConfiguration> | undefined;
 let reconciliationPromise: Promise<void> | undefined;
+let reconciliationRetryRevision: string | undefined;
+let reconciliationRetryAfterMs = 0;
 let bootstrapGeneration = 0;
+
+const fleetReconcileRetryDelayMs = 60_000;
 
 type AuthRuntime = typeof import('@sva/auth-runtime/server');
 type PluginActivationPolicyConfiguration = Readonly<{
@@ -44,6 +48,7 @@ const startFleetReconcileInBackground = ({
   revision,
 }: PluginActivationPolicyConfiguration): void => {
   if (reconciledRevision === revision || reconciliationPromise) return;
+  if (reconciliationRetryRevision === revision && Date.now() < reconciliationRetryAfterMs) return;
   const generation = bootstrapGeneration;
   reconciliationPromise = (async () => {
     try {
@@ -51,8 +56,16 @@ const startFleetReconcileInBackground = ({
         revision,
       });
       if (report.status === 'ready') {
-        if (generation === bootstrapGeneration) reconciledRevision = revision;
+        if (generation === bootstrapGeneration) {
+          reconciledRevision = revision;
+          reconciliationRetryRevision = undefined;
+          reconciliationRetryAfterMs = 0;
+        }
         return;
+      }
+      if (generation === bootstrapGeneration) {
+        reconciliationRetryRevision = revision;
+        reconciliationRetryAfterMs = Date.now() + fleetReconcileRetryDelayMs;
       }
       await logReconcileFailure(
         'warn',
@@ -68,6 +81,10 @@ const startFleetReconcileInBackground = ({
         }
       );
     } catch (error) {
+      if (generation === bootstrapGeneration) {
+        reconciliationRetryRevision = revision;
+        reconciliationRetryAfterMs = Date.now() + fleetReconcileRetryDelayMs;
+      }
       await logReconcileFailure(
         'error',
         'Plugin activation policy fleet reconcile failed unexpectedly',
@@ -99,4 +116,6 @@ export const resetPluginActivationPolicyBootstrapForTests = (): void => {
   reconciledRevision = undefined;
   configurationPromise = undefined;
   reconciliationPromise = undefined;
+  reconciliationRetryRevision = undefined;
+  reconciliationRetryAfterMs = 0;
 };

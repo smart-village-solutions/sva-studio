@@ -8,6 +8,7 @@ import { scheduleConfiguredPluginTenantProvisioning } from '../iam-instance-regi
 import {
   createPluginTenantLifecycleJobCorrelation,
   pluginTenantLifecycleJobInputKey,
+  readPluginTenantLifecycleJobMetadata,
 } from '../plugin-tenant-lifecycle/job-correlation.js';
 import {
   isConfiguredPluginTenantEffectivelyActive,
@@ -16,13 +17,11 @@ import {
 } from '../plugin-tenant-lifecycle/access.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import {
+  withPluginTenantLifecycleRepository,
   withStudioJobLifecycleRepositories,
   withStudioJobRepository,
 } from './repository.js';
-import type {
-  PluginOperationExecutionHandler,
-  PluginOperationExecutionResult,
-} from './types.js';
+import type { PluginOperationExecutionHandler, PluginOperationExecutionResult } from './types.js';
 import type {
   PluginOperationExecutionRegistration,
   PluginOperationExecutionRegistry,
@@ -74,7 +73,7 @@ const replaceRegistrationsBySource = (
 };
 
 const guardPluginTenantExecution = (
-  job: Pick<StudioJobRecord, 'source' | 'jobTypeId' | 'pluginId' | 'instanceId'>,
+  job: StudioJobRecord,
   handler: StudioJobExecutionRegistration['handler']
 ): StudioJobExecutionRegistration['handler'] => {
   const pluginId = job.pluginId;
@@ -95,6 +94,26 @@ const guardPluginTenantExecution = (
             code: 'plugin_tenant_lifecycle_inactive',
           },
         });
+      }
+      const metadata = readPluginTenantLifecycleJobMetadata(job);
+      const lifecycle = await withPluginTenantLifecycleRepository(job.instanceId, (repository) =>
+        repository.getLifecycle(job.instanceId, pluginId)
+      );
+      if (
+        !metadata ||
+        lifecycle?.activeJobId !== job.id ||
+        lifecycle.claimedGeneration !== metadata.generation ||
+        lifecycle.desiredOperation !== metadata.operation
+      ) {
+        throw Object.assign(
+          new Error(`plugin_tenant_lifecycle_claim_stale:${pluginId}:${job.id}`),
+          {
+            cause: {
+              category: 'permanent',
+              code: 'plugin_tenant_lifecycle_claim_stale',
+            },
+          }
+        );
       }
       return handler(context);
     }

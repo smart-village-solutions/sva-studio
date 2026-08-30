@@ -247,6 +247,25 @@ describe('configured plugin tenant lifecycle runtime', () => {
     );
   });
 
+  it('starts readiness when an active lifecycle plugin has no provision operation', async () => {
+    state.operations = [{ operation: 'readiness', jobTypeId: 'speech.checkTenantReadiness' }];
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          pluginId: 'speech',
+          jobTypeId: 'speech.checkTenantReadiness',
+          inputPayload: {
+            studioTenantLifecycle: { operation: 'readiness', generation: 3 },
+          },
+        }),
+      })
+    );
+  });
+
   it('does not repeat automatic provisioning with current readiness evidence', async () => {
     state.getLifecycle.mockResolvedValue({
       ...lifecycleRecord,

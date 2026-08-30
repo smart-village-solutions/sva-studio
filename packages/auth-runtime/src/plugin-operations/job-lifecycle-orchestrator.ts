@@ -37,9 +37,7 @@ type RepositoryPort = {
 type OrchestratorDeps = {
   readonly logger: PluginOperationLogger;
   readonly loadRepository: (instanceId: string) => Promise<RepositoryPort>;
-  readonly resolveHandler: (
-    job: Pick<StudioJobRecord, 'source' | 'jobTypeId' | 'pluginId' | 'instanceId'>
-  ) => StudioJobExecutionHandler | undefined;
+  readonly resolveHandler: (job: StudioJobRecord) => StudioJobExecutionHandler | undefined;
   readonly createWorkerId?: (job: { readonly instanceId: string; readonly id: string }) => string;
   readonly now?: () => string;
   readonly onExecutionSucceeded?: (input: {
@@ -257,6 +255,9 @@ const runJobLifecycle = async (deps: OrchestratorDeps, input: RunInput): Promise
       job_id: jobId,
       instance_id: instanceId,
     });
+    return;
+  }
+  if (job.status === 'succeeded' || job.status === 'failed' || job.status === 'cancelled') {
     return;
   }
   await runPersistedJob(deps, repository, job, input);

@@ -55,10 +55,11 @@ const resolveAutomaticProvisioningSchedule = (
   const now = new Date();
   const hasOperation = (operation: PluginTenantLifecycleOperation): boolean =>
     definition.operations.some((candidate) => candidate.operation === operation);
+  const resolveInitialOperation = (): PluginTenantLifecycleOperation | null =>
+    hasOperation('provision') ? 'provision' : hasOperation('readiness') ? 'readiness' : null;
   if (!lifecycle) {
-    return hasOperation('provision')
-      ? { operation: 'provision', scheduledAt: now.toISOString() }
-      : null;
+    const operation = resolveInitialOperation();
+    return operation ? { operation, scheduledAt: now.toISOString() } : null;
   }
   if (lifecycle.accessState === 'suspended') return null;
   if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return null;
@@ -82,9 +83,8 @@ const resolveAutomaticProvisioningSchedule = (
   ) {
     return null;
   }
-  return hasOperation('provision')
-    ? { operation: 'provision', scheduledAt: now.toISOString() }
-    : null;
+  const operation = resolveInitialOperation();
+  return operation ? { operation, scheduledAt: now.toISOString() } : null;
 };
 
 const persistLifecycleEnqueueFailure = async (input: {

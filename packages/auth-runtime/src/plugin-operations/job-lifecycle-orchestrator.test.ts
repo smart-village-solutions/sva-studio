@@ -22,6 +22,37 @@ const job: StudioJobRecord = {
 };
 
 describe('job lifecycle orchestrator', () => {
+  it('ignores redelivery of an already terminal job', async () => {
+    const terminalJob = { ...job, status: 'succeeded' as const };
+    const updateJobState = vi.fn(async () => terminalJob);
+    const handler = vi.fn(async () => ({ resultPayload: { ok: true } }));
+    const orchestrator = createJobLifecycleOrchestrator({
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      loadRepository: async () => ({
+        getJobById: vi.fn(async () => terminalJob),
+        updateJobState,
+        updateJobProgress: vi.fn(async () => terminalJob),
+        appendJobEvent: vi.fn(async () => undefined),
+      }),
+      resolveHandler: () => handler,
+    });
+
+    await orchestrator.run({
+      instanceId: terminalJob.instanceId,
+      jobId: terminalJob.id,
+      attempts: 2,
+      maxAttempts: 5,
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(updateJobState).not.toHaveBeenCalled();
+  });
+
   it('does not rerun a handler when the successful job state was committed before an uncertain return', async () => {
     const updateJobState = vi.fn(async (input: { readonly status: string }) => {
       if (input.status === 'succeeded') {
@@ -62,9 +93,7 @@ describe('job lifecycle orchestrator', () => {
     ).resolves.toBeUndefined();
 
     expect(handler).toHaveBeenCalledOnce();
-    expect(updateJobState).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'succeeded' })
-    );
+    expect(updateJobState).toHaveBeenCalledWith(expect.objectContaining({ status: 'succeeded' }));
     expect(getJobById).toHaveBeenCalledTimes(2);
   });
 });

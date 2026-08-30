@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
   withStudioJobLifecycleRepositories: vi.fn(),
   withStudioJobRepository: vi.fn(),
   scheduleConfiguredPluginTenantProvisioning: vi.fn(),
+  isConfiguredPluginTenantLifecycleJobType: vi.fn(() => false),
+  getLifecycle: vi.fn(),
 }));
 
 vi.mock('./job-lifecycle-orchestrator.js', () => ({
@@ -14,7 +16,7 @@ vi.mock('./job-lifecycle-orchestrator.js', () => ({
 
 vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
   isConfiguredPluginTenantEffectivelyActive: vi.fn(async () => true),
-  isConfiguredPluginTenantLifecycleJobType: vi.fn(() => false),
+  isConfiguredPluginTenantLifecycleJobType: state.isConfiguredPluginTenantLifecycleJobType,
   readConfiguredPluginTenantAccess: vi.fn(async () => ({ allowed: true, reason: 'ready' })),
 }));
 
@@ -53,6 +55,58 @@ describe('plugin operation runner registry', () => {
   beforeEach(async () => {
     vi.resetModules();
     vi.clearAllMocks();
+    state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(false);
+    state.getLifecycle.mockResolvedValue(null);
+  });
+
+  it('rejects a lifecycle handler when its persisted claim no longer matches the job', async () => {
+    const registry = await import('./runner-registry.js');
+    const run = vi.fn(async () => undefined);
+    const handler = vi.fn(async () => ({}));
+    state.createJobLifecycleOrchestrator.mockReturnValue({ run });
+    state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(true);
+    state.withPluginTenantLifecycleRepository.mockImplementation(async (_instanceId, work) =>
+      work({ getLifecycle: state.getLifecycle })
+    );
+    state.getLifecycle.mockResolvedValue({
+      activeJobId: 'newer-job',
+      claimedGeneration: 4,
+      desiredOperation: 'provision',
+    });
+    const lifecycleJob = {
+      id: 'stale-job',
+      instanceId: 'tenant-a',
+      source: 'plugin' as const,
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.provision-tenant-database',
+      inputPayload: {
+        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+      },
+    };
+    const taskList = registry.createStudioJobTaskList(
+      () =>
+        new Map([
+          [
+            'plugin:waste-management.provision-tenant-database',
+            {
+              source: 'plugin' as const,
+              jobTypeId: 'waste-management.provision-tenant-database',
+              handler,
+              queueName: 'plugin-operations',
+            },
+          ],
+        ])
+    );
+    await taskList[registry.studioJobTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: 'stale-job' },
+      { job: { attempts: 1, max_attempts: 5 } } as never
+    );
+    const [{ resolveHandler }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+
+    await expect(resolveHandler(lifecycleJob)?.({ job: lifecycleJob })).rejects.toThrow(
+      'plugin_tenant_lifecycle_claim_stale'
+    );
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('registers host and plugin handlers separately and exposes plugin registrations in plugin shape', async () => {

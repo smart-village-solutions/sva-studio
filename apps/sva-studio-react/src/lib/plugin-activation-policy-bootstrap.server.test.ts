@@ -91,7 +91,8 @@ describe('plugin activation policy bootstrap', () => {
     expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' });
   });
 
-  it('retries a degraded fleet reconcile instead of caching the revision', async () => {
+  it('backs off a degraded fleet reconcile before retrying the revision', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
     reconcileMock
       .mockResolvedValueOnce({
         status: 'degraded',
@@ -111,6 +112,10 @@ describe('plugin activation policy bootstrap', () => {
     await ensurePluginActivationPoliciesConfigured();
     startPluginActivationPolicyFleetReconcileInBackground();
     await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledOnce());
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await Promise.resolve();
+    expect(reconcileMock).toHaveBeenCalledTimes(1);
+    now.mockReturnValue(61_000);
     startPluginActivationPolicyFleetReconcileInBackground();
     await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
     await ensurePluginActivationPoliciesConfigured();

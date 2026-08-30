@@ -37,7 +37,7 @@ export const createProvisioningRequestHandler =
     );
     if (existing) {
       if (await isIdempotentCreateRetry(deps, input)) {
-        await createReconcileModuleActivationPoliciesHandler(deps)({
+        await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
           instanceId: existing.instanceId,
           actorId: input.actorId,
           requestId: input.requestId,

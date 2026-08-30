@@ -781,6 +781,7 @@ const assertPluginRegistryServerHandlers = ({
   pluginNamespace,
   extensionTier,
 }: PluginRegistryValidationContext): void => {
+  const supportedMethods = new Set<string>(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
   const handlerIds = new Set<string>();
   const pathPrefix = `/api/v1/plugins/${pluginNamespace}`;
   for (const handler of plugin.serverHandlers ?? []) {
@@ -802,6 +803,11 @@ const assertPluginRegistryServerHandlers = ({
     const normalizedPath = trimTrailingSlashes(handler.path.trim());
     if (normalizedPath !== pathPrefix && !normalizedPath.startsWith(`${pathPrefix}/`)) {
       throw new Error(`plugin_server_handler_path_invalid:${pluginNamespace}:${handlerId}`);
+    }
+    if (!supportedMethods.has(handler.method)) {
+      throw new Error(
+        `plugin_server_handler_method_invalid:${pluginNamespace}:${handlerId}:${String(handler.method)}`
+      );
     }
     assertPluginAccessRequirement(
       plugin,

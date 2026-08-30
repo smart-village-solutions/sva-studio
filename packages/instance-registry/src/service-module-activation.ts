@@ -14,7 +14,8 @@ const emptyResult = {
 
 export const createReconcileModuleActivationPoliciesHandler =
   (
-    deps: InstanceRegistryServiceDeps
+    deps: InstanceRegistryServiceDeps,
+    options: Readonly<{ forceIamSync?: boolean }> = {}
   ): InstanceRegistryService['reconcileModuleActivationPolicies'] =>
   async ({ instanceId, actorId, requestId }) => {
     const snapshot = deps.readModuleActivationPolicySnapshot?.();
@@ -31,7 +32,7 @@ export const createReconcileModuleActivationPoliciesHandler =
     if (result.conflictModuleIds.length > 0) {
       throw new Error(`plugin_activation_state_conflict:${result.conflictModuleIds.join(',')}`);
     }
-    if (result.changedModuleIds.length === 0) {
+    if (result.changedModuleIds.length === 0 && !options.forceIamSync) {
       return result;
     }
 

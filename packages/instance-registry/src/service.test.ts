@@ -531,6 +531,9 @@ describe('instance registry service facade', () => {
     expect(reconcileModuleActivationPolicies).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'demo', reconcileId: 'catalog-1' })
     );
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo' })
+    );
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 

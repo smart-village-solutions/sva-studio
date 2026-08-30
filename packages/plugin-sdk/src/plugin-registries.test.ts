@@ -506,6 +506,30 @@ describe('plugin registries', () => {
       });
     });
 
+    it('rejects unsupported server handler methods at runtime', () => {
+      const plugin = pluginWithLinkedRequirements(platformRequirement());
+
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              ...plugin,
+              serverHandlers: [
+                {
+                  id: 'news.load-instances',
+                  path: '/api/v1/plugins/news/instances',
+                  method: 'post' as 'POST',
+                  actionId: 'news.open',
+                  accessRequirement: platformRequirement(),
+                },
+              ],
+            },
+          ],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow('plugin_server_handler_method_invalid:news:news.load-instances:post');
+    });
+
     it('rejects cross-scope route and server handler links before publication', () => {
       const platform = platformRequirement();
       const plugin = pluginWithLinkedRequirements(platform);

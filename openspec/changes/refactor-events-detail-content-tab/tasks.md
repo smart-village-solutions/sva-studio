@@ -65,23 +65,23 @@
 
 ## 5. Dokumentation und Gates
 
-- [ ] 5.1 `docs/development/studio-form-migrationsinventur.md` um den
+- [x] 5.1 `docs/development/studio-form-migrationsinventur.md` um den
       plugininternen Events-Schnitt, die führenden Owner und die Löschbilanz
       ergänzen
-- [ ] 5.2 arc42 `10-quality-requirements` und
+- [x] 5.2 arc42 `10-quality-requirements` und
       `11-risks-and-technical-debt` auf den tatsächlichen Abschlussnachweis
       aktualisieren
-- [ ] 5.3 `pnpm nx run plugin-events:test:unit` und
+- [x] 5.3 `pnpm nx run plugin-events:test:unit` und
       `pnpm nx run plugin-events:test:types` erfolgreich ausführen
-- [ ] 5.4 Den verfügbaren betroffenen Lint-Target sowie
+- [x] 5.4 Den verfügbaren betroffenen Lint-Target sowie
       `pnpm check:plugin-ui-boundary`,
       `pnpm check:plugin-architecture-boundary` und
       `pnpm check:file-placement` erfolgreich ausführen
-- [ ] 5.5 Fallow Health für `@sva/plugin-events` und den New-only-Audit gegen
+- [x] 5.5 Fallow Health für `@sva/plugin-events` und den New-only-Audit gegen
       `origin/main` ausführen; keine neue kritische Komplexität, Duplikation,
       Dead-Code- oder Boundary-Schuld akzeptieren
-- [ ] 5.6 `pnpm exec openspec validate refactor-events-detail-content-tab --strict`
+- [x] 5.6 `pnpm exec openspec validate refactor-events-detail-content-tab --strict`
       und `git diff --check` erfolgreich ausführen
-- [ ] 5.7 Den Change nur abschließen, wenn alter Inline-Code vollständig
+- [x] 5.7 Den Change nur abschließen, wenn alter Inline-Code vollständig
       entfernt, produktive Netto-LOC höchstens null und alle Success Criteria
       nachweislich erfüllt sind

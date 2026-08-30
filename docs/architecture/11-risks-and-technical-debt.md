@@ -622,3 +622,10 @@ Referenzen:
 - Restrisiko: Die MapLibre-Runtime-Loader bleiben dreifach bundlelokal. Maßnahme: bewusst beibehalten, solange eine Konsolidierung die Map-Dependency in `studio-ui-react` ziehen würde; die eigentliche Lifecycle-Logik ist bereits gemeinsam.
 - Restrisiko: Der Media-Reference-Controller abstrahiert keine fachliche Navigation. Maßnahme: Navigation bleibt als expliziter Consumer-Callback und wird besonders für bereits angelegte News- und Project-Inhalte getestet.
 - Risiko: Ein breiter SDK-Import könnte eine zyklische Ownership erzeugen. Maßnahme: `workspace:*` nur für den Subpath `@sva/plugin-sdk/content-media`; ESLint verbietet Root- und Fremd-Subpath-Imports in `studio-ui-react`.
+
+#### Abgebaut: monolithischer Events-Inhaltseditor
+
+- Die kritische Root-Komponente ist auf explizite plugininterne Section-Owner reduziert; der ersetzte Inline-Code und seine parallelen Callback-Owner wurden vollständig entfernt. Die produktive Bilanz ist mit netto −11 Zeilen negativ, sodass der Change keine zusätzliche strukturelle Ownership hinterlässt.
+- Die Komplexität der Root-Funktion sank von 41/57 zyklomatisch/kognitiv und 809 Funktionszeilen auf 1/1 und 14 Funktionszeilen. Characterization-Tests bewahren dabei die bestehenden Formular-, Medien-, Map-, Validierungs- und Submit-Verträge.
+- Restrisiko: `EventsDetailPage` besitzt weiterhin den äußeren manuellen Validierungs- und Persistenz-Lifecycle. Dessen mögliche Resolver- oder HTTP-Test-Migration ist ein eigener fachlicher Change und darf nicht mit einer erneuten UI-Gesamtabstraktion vermischt werden.
+- Verbleibende Schuld: Große Editor-Controller anderer Plugins sind durch diesen Events-spezifischen Schnitt nicht automatisch bereinigt. Weitere Migrationen müssen dieselbe Löschbilanz, nachgewiesene Mehrfachnutzung und pluginnahe Fachlogik einhalten.

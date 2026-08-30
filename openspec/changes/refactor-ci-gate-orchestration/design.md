@@ -130,6 +130,15 @@ die neue Topologie um. Erst nach erfolgreicher Veröffentlichung aller
 Required-Kontexte für den exakten Cutover-Head werden die vier Altworkflows
 gelöscht. Eine ungeklärte Scope- oder Ergebnisabweichung stoppt den Cutover.
 
+Die Main-/Nightly-Parität bewertet pro Gate genau den tatsächlich laufenden
+Bestandsjob. Ein von einer eventgebundenen Hilfsjob-Definition zusätzlich
+veröffentlichter `skipped`-Check mit demselben Anzeigenamen ist kein zweiter
+Gate-Lauf und wird neben einem echten Check ignoriert. Zwei echte Checks
+bleiben dagegen eine fail-closed Abweichung. Noch laufende Bestandschecks
+werden bis zu einer absoluten Deadline gepollt, die vom gemeinsamen
+Workflow-Start und den maximalen Joblaufzeiten abgeleitet ist; erst danach
+wird fehlende Terminalität als Fehler gewertet.
+
 ### Decision 6: Ownership-Gewinn ist quantitativ
 
 Die Summe der produktiven YAML-Zeilen, die die vier heutigen Workflows ersetzt,

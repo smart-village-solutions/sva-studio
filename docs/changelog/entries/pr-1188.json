@@ -1,0 +1,4 @@
+{
+  "prNumber": 1188,
+  "body": "Die nicht blockierende CI-Shadow-Auswertung unterscheidet zuverlässiger zwischen laufenden, übersprungenen und tatsächlich doppelten Prüfungen.\n\n- Übersprungene technische Hilfsjobs erzeugen neben einem echten Gate kein falsches Duplikat mehr.\n- Noch laufende Bestandsprüfungen erhalten ein an den gemeinsamen Workflow-Start gebundenes Wartefenster.\n- Echte Ergebnisabweichungen, fehlende Checks und tatsächlich doppelte Gate-Läufe bleiben weiterhin sichtbar und schlagen sicher fehl."
+}

@@ -842,7 +842,7 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - `Unit` und `Coverage` bleiben stabile finale Required Checks. Ihre Aggregatoren akzeptieren ausschließlich vollständige, disjunkte, versionierte und Head-SHA-gebundene Teilresultate.
 - Pull Requests führen kein vollständiges App-E2E aus. Automatische `main`-Läufe sammeln ohne deterministischen Retry alle Fehler; Nightly und manuelle Läufe bleiben reine Diagnose und können Staging nicht freigeben.
 - Während der CI-Topologie-Migration erzeugt ausschließlich `pr-scope` einmal pro PR-Head eine Scope-Evidenz mit Schema-Version, Base-SHA, Head-SHA, normalisierter Dateiliste, Gate-Modi und Fallback-Gründen. Die nicht blockierenden Shadow-Jobs konsumieren diese Entscheidung; sie führen keine zweite allgemeine Pfadpolicy.
-- Der Shadow-Paritätsvergleich ist fail-closed: fehlende, doppelte, nicht terminale oder an ein fremdes Head-SHA gebundene Checks gelten als Abweichung. Die Evidenz enthält Status und Laufzeiten, aber keine Secrets, Environment-Dumps oder Testinhalte.
+- Der Shadow-Paritätsvergleich ist fail-closed: fehlende, tatsächlich doppelt laufende, nach der gemeinsamen Workflow-Deadline nicht terminale oder an ein fremdes Head-SHA gebundene Checks gelten als Abweichung. Eventbedingt zusätzlich veröffentlichte `skipped`-Hilfsjobs mit demselben Anzeigenamen zählen neben einem echten Gate-Job nicht als zweiter Lauf. Die Evidenz enthält Status und Laufzeiten, aber keine Secrets, Environment-Dumps oder Testinhalte.
 - Main und Nightly übernehmen weder PR-Scope noch PR-Cache. App-Build, Main-E2E und Promote bleiben außerhalb der Shadow-Topologie und behalten ihre bestehende Release-Ownership.
 
 ### Fail-closed Reihenfolge der ABAC-Regeln

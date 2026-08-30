@@ -108,6 +108,8 @@ describe('CI gate topology shadow workflows', () => {
   });
 
   it('collects retained exact-head parity for Main and Nightly', () => {
+    const parityJob = mainShadow.slice(mainShadow.indexOf('  parity:'));
+
     expect(mainShadow).toContain('name: CI Shadow Main / Parity');
     expect(mainShadow).toContain(
       'actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100'
@@ -118,6 +120,11 @@ describe('CI gate topology shadow workflows', () => {
     expect(mainShadow).toContain('node scripts/ci/ci-gate-main-shadow-parity.cli.ts');
     expect(mainShadow).toContain('--event "$EVENT_NAME"');
     expect(mainShadow).toContain('--comparison-started-at "$comparison_started_at"');
+    expect(parityJob).toContain('timeout-minutes: 35');
+    expect(parityJob).toContain('comparison_deadline_epoch=');
+    expect(parityJob).toContain('while true; do');
+    expect(parityJob).not.toContain('for attempt in {1..40}; do');
+    expect(parityJob).toContain('rm -rf artifacts/ci-shadow-main/jobs');
     expect(mainShadow).toContain('--fail-pending');
     expect(mainShadow).toContain('name: ci-gate-main-shadow-parity-${{ github.run_id }}');
     expect(mainShadow).toContain('retention-days: 30');

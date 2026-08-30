@@ -188,7 +188,7 @@ jobs:
       - documentation-catalog
       - db-schema
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 35
     steps:
       - name: Checkout parity validator
         uses: actions/checkout@v7
@@ -209,9 +209,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/ci-shadow-main
-          mkdir -p artifacts/ci-shadow-main/jobs
           current_run_created_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
-          for attempt in {1..40}; do
+          comparison_deadline_epoch=''
+          while true; do
             gh api \
               -H 'Accept: application/vnd.github+json' \
               "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100" \
@@ -221,6 +221,11 @@ jobs:
               artifacts/ci-shadow-main/workflow-runs.json \
               > artifacts/ci-shadow-main/workflow-runs.current.json
             comparison_started_at=$(jq -r '[.workflow_runs[].created_at] | min' artifacts/ci-shadow-main/workflow-runs.current.json)
+            if [ -z "$comparison_deadline_epoch" ]; then
+              comparison_deadline_epoch=$(node -e 'process.stdout.write(String(Math.floor((Date.parse(process.argv[1]) + 32 * 60_000) / 1000)))' "$comparison_started_at")
+            fi
+            rm -rf artifacts/ci-shadow-main/jobs
+            mkdir -p artifacts/ci-shadow-main/jobs
             for run_id in $(jq -r '.workflow_runs[].id' artifacts/ci-shadow-main/workflow-runs.current.json); do
               gh api \
                 -H 'Accept: application/vnd.github+json' \
@@ -242,6 +247,7 @@ jobs:
             set -e
             if [ "$parity_status" -eq 0 ]; then exit 0; fi
             if [ "$parity_status" -eq 1 ]; then exit 1; fi
+            if [ "$(date -u +%s)" -ge "$comparison_deadline_epoch" ]; then break; fi
             sleep 10
           done
           node scripts/ci/ci-gate-main-shadow-parity.cli.ts \

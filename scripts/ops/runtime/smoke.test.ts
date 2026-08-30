@@ -311,6 +311,31 @@ describe('smoke helpers', () => {
     expect(shouldRetryExternalSmoke(probes)).toBe(true);
   });
 
+  it('retries mixed 403 and 404 responses during the post-deploy ingress warmup', () => {
+    const probes = [
+      createProbe({
+        httpStatus: 403,
+        message: 'Erwartet HTTP 200, erhalten 403.',
+        name: 'public-home',
+        status: 'error',
+      }),
+      createProbe({
+        httpStatus: 403,
+        message: 'Erwartet HTTP 200, erhalten 403.',
+        name: 'public-live',
+        status: 'error',
+      }),
+      createProbe({
+        httpStatus: 404,
+        message: 'Unerwarteter Ready-Status 404.',
+        name: 'public-ready',
+        status: 'error',
+      }),
+    ];
+
+    expect(shouldRetryExternalSmoke(probes)).toBe(true);
+  });
+
   it.each(['public-iam-context', 'public-iam-instances'])('retries a complete router gap for %s', (name) => {
     expect(shouldRetryExternalSmoke([createProbe({ message: 'Unerwarteter Status 404.', name, status: 'error' })])).toBe(true);
   });

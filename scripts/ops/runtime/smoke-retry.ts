@@ -10,7 +10,7 @@ const retryableExternalWarmupProbeNames = new Set([
   'public-iam-context',
   'public-iam-instances',
 ]);
-const retryableExternalWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'];
+const retryableExternalWarmupSignals = ['403', '404', '502', '503', '504', 'timeout', 'timed out', 'gateway'];
 const retryableInternalWarmupStates = ['pending', 'preparing', 'starting', 'assigned', 'accepted', 'new', 'ready', 'shutdown'];
 
 export const deriveInternalVerifyMaxAttempts = (input: { readonly retryDelayMs: number; readonly warmupWindowMs: number }) => {

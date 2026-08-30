@@ -2,6 +2,7 @@ import type { SqlExecutor } from '../iam/repositories/types.js';
 import type { InstanceRegistryRepository } from './repository-contract.js';
 import {
   assignModuleSql,
+  deactivateOmittedModuleActivationPoliciesSql,
   getModuleActivationPolicySql,
   reconcileModuleActivationPolicySql,
   revokeModuleSql,
@@ -53,7 +54,27 @@ const createReconcileModuleActivationPolicies =
       if (!outcome?.acquired) conflictModuleIds.push(policy.moduleId);
       else (outcome.changed ? changedModuleIds : unchangedModuleIds).push(policy.moduleId);
     }
-    return { changedModuleIds, conflictModuleIds, unchangedModuleIds };
+    const activePolicyIds = Object.fromEntries(
+      orderedPolicies.map(({ moduleId }) => [moduleId, true] as const)
+    );
+    const omittedRows = await queryRows<MutationOutcome & { module_id: string }>(
+      executor,
+      statement(deactivateOmittedModuleActivationPoliciesSql, [
+        input.instanceId,
+        JSON.stringify(activePolicyIds),
+        input.reconcileId,
+        input.actorId ?? null,
+      ])
+    );
+    for (const outcome of omittedRows) {
+      if (!outcome.acquired) conflictModuleIds.push(outcome.module_id);
+      else (outcome.changed ? changedModuleIds : unchangedModuleIds).push(outcome.module_id);
+    }
+    return {
+      changedModuleIds: changedModuleIds.sort(compareAlphabetically),
+      conflictModuleIds: conflictModuleIds.sort(compareAlphabetically),
+      unchangedModuleIds: unchangedModuleIds.sort(compareAlphabetically),
+    };
   };
 
 export const createModuleActivationRepository = (

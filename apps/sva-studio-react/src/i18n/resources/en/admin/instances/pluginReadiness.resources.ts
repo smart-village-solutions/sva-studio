@@ -11,6 +11,11 @@ export const pluginReadinessInstancesAdminENResources = {
     degraded: 'Degraded',
     blocked: 'Blocked',
   },
+  aggregate: {
+    ready: 'All required plugins are ready: {{plugins}}.',
+    degraded: 'At least one required plugin is degraded: {{plugins}}.',
+    blocked: 'At least one required plugin is not ready yet: {{plugins}}.',
+  },
   policy: {
     label: 'Activation policy: {{policy}}',
     optional: 'Optional',

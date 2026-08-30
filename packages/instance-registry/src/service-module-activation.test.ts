@@ -152,4 +152,31 @@ describe('instance module activation policy reconcile', () => {
 
     expect(repository.reconcileModuleActivationPolicies).not.toHaveBeenCalled();
   });
+
+  it('reconciles a configured empty catalog so removed plugins are deactivated', async () => {
+    const { deps, repository } = createDeps();
+    deps.moduleIamRegistry = new Map();
+    vi.mocked(repository.listAssignedModules).mockResolvedValueOnce([]);
+    deps.readModuleActivationPolicySnapshot = () => ({
+      revision: 'plugin-catalog:empty',
+      modules: [],
+    });
+
+    await createInstanceRegistryService(deps).reconcileModuleActivationPolicies({
+      instanceId: 'tenant-a',
+    });
+
+    expect(repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      policies: [],
+      reconcileId: 'plugin-catalog:empty',
+      actorId: undefined,
+    });
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      managedModuleIds: ['events'],
+      managedContracts: [],
+      contracts: [],
+    });
+  });
 });

@@ -2,13 +2,12 @@ import type { IamHttpError } from '../../../lib/iam-api';
 import type { DetailWorkflowAction, InstanceDetailCockpitModel } from './-instances-shared-types';
 
 import { evaluateInstanceConfiguration } from './-instance-detail-configuration';
-import {
-  buildCockpitState,
-  getDetailActionLabel,
-} from './-instance-detail-cockpit-helpers';
+import { buildCockpitState, getDetailActionLabel } from './-instance-detail-cockpit-helpers';
 import { getEffectiveTenantIamStatus } from './-instance-detail-tenant-iam';
 import { getSetupWorkflowSteps } from './-instance-detail-workflow';
 import type { IamInstanceDetail } from './-instance-detail-shared';
+import type { InstanceConfigurationAssessment } from './-instances-shared-types';
+import type { RequiredPluginReadinessAssessment } from './-instance-required-plugin-readiness';
 
 const ORDERED_SECONDARY_ACTIONS: readonly DetailWorkflowAction[] = [
   'probeTenantIamAccess',
@@ -40,18 +39,30 @@ const selectPrimaryAction = (
     return 'reconcileKeycloak';
   }
 
-  return workflowActions.find((action) => action !== 'check_preflight') ?? workflowActions[0] ?? 'check_preflight';
+  return (
+    workflowActions.find((action) => action !== 'check_preflight') ??
+    workflowActions[0] ??
+    'check_preflight'
+  );
 };
 
 export const buildInstanceDetailCockpitModel = (
   instance: IamInstanceDetail,
-  mutationError: IamHttpError | null
+  mutationError: IamHttpError | null,
+  configurationAssessmentOverride?: InstanceConfigurationAssessment,
+  requiredPluginReadiness: RequiredPluginReadinessAssessment | null = null
 ): InstanceDetailCockpitModel => {
-  const configurationAssessment = evaluateInstanceConfiguration(instance, mutationError);
+  const configurationAssessment =
+    configurationAssessmentOverride ?? evaluateInstanceConfiguration(instance, mutationError);
   const workflowSteps = getSetupWorkflowSteps(instance, mutationError);
   const workflowActions = workflowSteps.flatMap((step) => (step.action ? [step.action] : []));
   const primaryActionKey = selectPrimaryAction(instance, workflowActions);
-  const cockpitState = buildCockpitState(instance, configurationAssessment, mutationError);
+  const cockpitState = buildCockpitState(
+    instance,
+    configurationAssessment,
+    mutationError,
+    requiredPluginReadiness
+  );
 
   return {
     ...cockpitState,
@@ -59,9 +70,11 @@ export const buildInstanceDetailCockpitModel = (
       action: primaryActionKey,
       label: getDetailActionLabel(primaryActionKey),
     },
-    secondaryActions: ORDERED_SECONDARY_ACTIONS.filter((action) => action !== primaryActionKey).map((action) => ({
-      action,
-      label: getDetailActionLabel(action),
-    })),
+    secondaryActions: ORDERED_SECONDARY_ACTIONS.filter((action) => action !== primaryActionKey).map(
+      (action) => ({
+        action,
+        label: getDetailActionLabel(action),
+      })
+    ),
   };
 };

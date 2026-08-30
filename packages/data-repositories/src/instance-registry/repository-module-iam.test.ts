@@ -63,6 +63,7 @@ describe('instance registry repository module iam', () => {
     const { executor, statements } = createQueuedExecutor([
       [{ acquired: true, changed: true }],
       [{ acquired: true, changed: false }],
+      [],
     ]);
     const repository = createInstanceRegistryRepository(executor);
 
@@ -92,7 +93,7 @@ describe('instance registry repository module iam', () => {
       unchangedModuleIds: ['news'],
     });
 
-    expect(statements.map((item) => item.values[1])).toEqual(['events', 'news']);
+    expect(statements.slice(0, 2).map((item) => item.values[1])).toEqual(['events', 'news']);
     expect(statements[0]?.text).toContain("WHEN EXCLUDED.activation_policy = 'required' THEN true");
     expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock');
     expect(statements[0]?.text).toContain(
@@ -111,10 +112,54 @@ describe('instance registry repository module iam', () => {
       'reconcile-1',
       'system',
     ]);
+    expect(statements[2]?.values).toEqual([
+      'tenant-a',
+      JSON.stringify({ events: true, news: true }),
+      'reconcile-1',
+      'system',
+    ]);
+  });
+
+  it('deactivates policy-managed modules omitted from the current plugin snapshot', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ acquired: true, changed: false }],
+      [{ module_id: 'retired-plugin', acquired: true, changed: true }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.reconcileModuleActivationPolicies({
+        instanceId: 'tenant-a',
+        policies: [
+          {
+            moduleId: 'events',
+            activationPolicy: 'automatic',
+            manifestVersion: 1,
+            policyRevision: 'events-1',
+          },
+        ],
+        reconcileId: 'catalog-8',
+        actorId: 'system',
+      })
+    ).resolves.toEqual({
+      changedModuleIds: ['retired-plugin'],
+      conflictModuleIds: [],
+      unchangedModuleIds: ['events'],
+    });
+
+    expect(statements[1]?.text).toContain("policy_revision <> 'legacy'");
+    expect(statements[1]?.text).toContain("activation_policy = 'optional'");
+    expect(statements[1]?.text).toContain('effective_active = false');
+    expect(statements[1]?.values).toEqual([
+      'tenant-a',
+      JSON.stringify({ events: true }),
+      'catalog-8',
+      'system',
+    ]);
   });
 
   it('reports a deterministic conflict when another transaction owns a module lock', async () => {
-    const { executor } = createQueuedExecutor([[{ acquired: false, changed: false }]]);
+    const { executor } = createQueuedExecutor([[{ acquired: false, changed: false }], []]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(

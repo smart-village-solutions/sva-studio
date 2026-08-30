@@ -117,12 +117,25 @@ describe('instance detail split module exports', () => {
       mutationError: null,
       operationsModel,
       primaryAction,
+      requiredPluginReadiness: {
+        status: 'blocked',
+        summary: 'Pflicht-Plugin speech-flow ist noch nicht betriebsbereit.',
+        pluginIds: ['speech-flow'],
+      },
     });
 
     expect(doctorModel.checks.some((check) => check.status === 'ready')).toBe(true);
-    expect(doctorModel.checks.some((check) => check.status === 'blocked' || check.status === 'degraded')).toBe(true);
+    expect(
+      doctorModel.checks.some((check) => check.status === 'blocked' || check.status === 'degraded')
+    ).toBe(true);
     expect(doctorModel.recommendedAction.label.length).toBeGreaterThan(0);
     expect(doctorModel.validationState).toBe('blocked');
+    expect(doctorModel.checks).toContainEqual(
+      expect.objectContaining({
+        key: 'required-plugin-readiness',
+        status: 'blocked',
+      })
+    );
     expect(doctorModel.warning?.title).toBe('Doctor erkennt aktuell Handlungsbedarf.');
   });
 });

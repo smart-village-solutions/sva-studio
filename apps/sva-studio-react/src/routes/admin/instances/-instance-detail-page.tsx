@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
+import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import {
@@ -34,6 +35,10 @@ import {
 } from './-instance-detail-models';
 import { getErrorMessage } from './-instance-error-messages';
 import { createDetailForm } from './-instance-form-models';
+import {
+  evaluateRequiredPluginReadiness,
+  includeRequiredPluginReadiness,
+} from './-instance-required-plugin-readiness';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
@@ -104,6 +109,7 @@ const InstanceRuntimeEvidence = ({
 
 export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const instancesApi = useInstances();
+  const pluginReadiness = usePluginTenantReadiness(instanceId);
   const { loadInstance, isLoading, detailLoading, statusLoading } = instancesApi;
   const [detailFormValues, setDetailFormValues] = React.useState<ReturnType<
     typeof createDetailForm
@@ -124,8 +130,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     detailFormValues,
     selectedInstance
   );
+  const requiredPluginReadiness = evaluateRequiredPluginReadiness(pluginReadiness.items);
   const configurationAssessment = selectedInstance
-    ? evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError)
+    ? includeRequiredPluginReadiness(
+        evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError),
+        requiredPluginReadiness
+      )
     : null;
   const operationsModel = readOperationsModel(selectedInstance, instancesApi.mutationError);
   const historyModel =
@@ -141,6 +151,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           mutationError: instancesApi.mutationError,
           operationsModel,
           primaryAction,
+          requiredPluginReadiness,
         })
       : null;
   const missingWorkerEnvName = readMissingWorkerEnvName(selectedInstance);
@@ -463,6 +474,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 selectedInstance={selectedInstance}
                 statusLoading={instancesApi.statusLoading}
                 mutationError={instancesApi.mutationError}
+                pluginReadiness={pluginReadiness}
                 onAssignModule={instancesApi.assignModule}
                 onRevokeModule={instancesApi.revokeModule}
                 onSeedIamBaseline={instancesApi.seedIamBaseline}

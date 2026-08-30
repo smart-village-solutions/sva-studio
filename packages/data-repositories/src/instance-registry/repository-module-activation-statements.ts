@@ -97,6 +97,45 @@ RETURNING 1
 )
 SELECT acquired, EXISTS (SELECT 1 FROM mutation) AS changed FROM module_lock;
 `;
+
+export const deactivateOmittedModuleActivationPoliciesSql = `
+WITH candidates AS MATERIALIZED (
+  SELECT module_id
+  FROM iam.instance_modules
+  WHERE instance_id = $1
+    AND policy_revision <> 'legacy'
+    AND NOT ($2::jsonb ? module_id)
+),
+module_locks AS MATERIALIZED (
+  SELECT module_id,
+    pg_try_advisory_xact_lock(
+      hashtextextended(json_build_array($1::text, module_id)::text, 0)
+    ) AS acquired
+  FROM candidates
+  ORDER BY module_id
+),
+mutation AS (
+  UPDATE iam.instance_modules AS instance_modules
+  SET activation_policy = 'optional', activation_origin = 'policy_reconcile',
+    effective_active = false, manual_override = NULL,
+    state_revision = instance_modules.state_revision + 1,
+    reconcile_id = $3, reconciled_at = now(), updated_at = now(), updated_by = $4
+  FROM module_locks
+  WHERE instance_modules.instance_id = $1
+    AND instance_modules.module_id = module_locks.module_id
+    AND module_locks.acquired
+    AND (instance_modules.activation_policy IS DISTINCT FROM 'optional'
+      OR instance_modules.effective_active
+      OR instance_modules.manual_override IS NOT NULL
+      OR instance_modules.reconcile_id IS DISTINCT FROM $3)
+  RETURNING instance_modules.module_id
+)
+SELECT module_locks.module_id, module_locks.acquired,
+  mutation.module_id IS NOT NULL AS changed
+FROM module_locks
+LEFT JOIN mutation USING (module_id)
+ORDER BY module_locks.module_id;
+`;
 import type { TenantModuleActivationRecord } from '@sva/core';
 
 export type ModuleActivationRow = {

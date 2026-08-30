@@ -619,6 +619,14 @@ describe('instance detail split sections', () => {
           tenantSecretUserInputRequired={true}
           mutationError={null}
           statusLoading={false}
+          pluginReadiness={{
+            items: [],
+            isLoading: false,
+            activeAction: null,
+            error: null,
+            refresh: vi.fn(),
+            startRepair: vi.fn(),
+          }}
           setActiveWorkspaceTab={setActiveWorkspaceTab}
           setDetailFormValues={
             setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']

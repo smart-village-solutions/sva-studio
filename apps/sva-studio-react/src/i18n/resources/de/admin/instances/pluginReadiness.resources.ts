@@ -11,6 +11,11 @@ export const pluginReadinessInstancesAdminDEResources = {
     degraded: 'Eingeschränkt',
     blocked: 'Blockiert',
   },
+  aggregate: {
+    ready: 'Alle Pflicht-Plugins sind betriebsbereit: {{plugins}}.',
+    degraded: 'Mindestens ein Pflicht-Plugin ist nur eingeschränkt betriebsbereit: {{plugins}}.',
+    blocked: 'Mindestens ein Pflicht-Plugin ist noch nicht betriebsbereit: {{plugins}}.',
+  },
   policy: {
     label: 'Aktivierungsrichtlinie: {{policy}}',
     optional: 'Optional',

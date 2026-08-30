@@ -366,6 +366,15 @@ describe('plugin platform contracts', () => {
     ).not.toThrow();
   });
 
+  it('gives an intentionally empty plugin catalog a reconcilable revision', () => {
+    expect(
+      createPluginSnapshot({ catalog: [], loadedPlugins: [] }).tenantActivationPolicySnapshot
+    ).toEqual({
+      revision: 'plugin-catalog:empty',
+      modules: [],
+    });
+  });
+
   it('defines host-owned execution context capabilities for plugin handlers', () => {
     expect(
       definePluginExecutionContextCapabilities({

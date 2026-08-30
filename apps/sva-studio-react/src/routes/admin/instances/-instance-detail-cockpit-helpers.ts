@@ -17,6 +17,7 @@ import {
   type IamInstanceDetail,
   type IamTenantIamAxisStatus,
 } from './-instance-detail-shared';
+import type { RequiredPluginReadinessAssessment } from './-instance-required-plugin-readiness';
 
 type CockpitState = Pick<
   InstanceDetailCockpitModel,
@@ -100,7 +101,9 @@ const mapProvisioningRunStatusToCockpitStatus = (
   }
 };
 
-const mapInstanceStatusToCockpitStatus = (status: IamInstanceDetail['status']): IamTenantIamAxisStatus => {
+const mapInstanceStatusToCockpitStatus = (
+  status: IamInstanceDetail['status']
+): IamTenantIamAxisStatus => {
   switch (status) {
     case 'active':
       return 'ready';
@@ -160,18 +163,27 @@ const buildTenantIamAnomalies = (
       summary: tenantIamStatus?.reconcile.summary ?? '',
       status: tenantIamStatus?.reconcile.status ?? 'unknown',
       sourceLabel: getCockpitSourceLabel(tenantIamStatus?.reconcile.source ?? 'registry'),
-      ...(tenantIamStatus?.reconcile.checkedAt ? { checkedAt: tenantIamStatus.reconcile.checkedAt } : {}),
-      ...(tenantIamStatus?.reconcile.requestId ? { requestId: tenantIamStatus.reconcile.requestId } : {}),
+      ...(tenantIamStatus?.reconcile.checkedAt
+        ? { checkedAt: tenantIamStatus.reconcile.checkedAt }
+        : {}),
+      ...(tenantIamStatus?.reconcile.requestId
+        ? { requestId: tenantIamStatus.reconcile.requestId }
+        : {}),
     });
   }
 
-  if (configurationAssessment.overallStatus === 'degraded' || configurationAssessment.overallStatus === 'incomplete') {
+  if (
+    configurationAssessment.overallStatus === 'degraded' ||
+    configurationAssessment.overallStatus === 'incomplete'
+  ) {
     anomalies.push({
       key: 'configuration',
       title: t(TENANT_IAM_AXIS_LABELS.configuration),
       summary: configurationAssessment.body,
       status: mapConfigurationStatusToCockpitStatus(configurationAssessment.overallStatus),
-      sourceLabel: getCockpitSourceLabel(instance.keycloakStatus ? 'keycloak_status_snapshot' : 'registry'),
+      sourceLabel: getCockpitSourceLabel(
+        instance.keycloakStatus ? 'keycloak_status_snapshot' : 'registry'
+      ),
     });
   }
 
@@ -190,7 +202,9 @@ const buildProvisioningAnomaly = (instance: IamInstanceDetail): CockpitAnomalyIt
     summary: latestRun.driftSummary,
     status: mapProvisioningRunStatusToCockpitStatus(latestRun),
     sourceLabel: getCockpitSourceLabel('keycloak_provisioning_run'),
-    ...(readProvisioningRunTimestamp(latestRun) ? { checkedAt: readProvisioningRunTimestamp(latestRun) } : {}),
+    ...(readProvisioningRunTimestamp(latestRun)
+      ? { checkedAt: readProvisioningRunTimestamp(latestRun) }
+      : {}),
     ...(latestRun.requestId ? { requestId: latestRun.requestId } : {}),
   };
 };
@@ -208,7 +222,9 @@ const readOverallTitle = (status: IamTenantIamAxisStatus) => {
   }
 };
 
-const buildDominantEvidence = (instance: IamInstanceDetail): InstanceDetailCockpitModel['dominantEvidence'] => {
+const buildDominantEvidence = (
+  instance: IamInstanceDetail
+): InstanceDetailCockpitModel['dominantEvidence'] => {
   const tenantIamStatus = getEffectiveTenantIamStatus(instance);
   const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
 
@@ -254,7 +270,8 @@ const buildDominantEvidence = (instance: IamInstanceDetail): InstanceDetailCockp
 export const buildCockpitState = (
   instance: IamInstanceDetail,
   configurationAssessment: InstanceConfigurationAssessment,
-  mutationError: IamHttpError | null
+  mutationError: IamHttpError | null,
+  requiredPluginReadiness: RequiredPluginReadinessAssessment | null = null
 ): CockpitState => {
   const tenantIamStatus = getEffectiveTenantIamStatus(instance);
   const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
@@ -267,6 +284,15 @@ export const buildCockpitState = (
   if (mutationAnomaly) {
     anomalyQueue.push(mutationAnomaly);
   }
+  if (requiredPluginReadiness && requiredPluginReadiness.status !== 'ready') {
+    anomalyQueue.unshift({
+      key: 'required-plugin-readiness',
+      title: t('admin.instances.pluginReadiness.title'),
+      summary: requiredPluginReadiness.summary,
+      status: requiredPluginReadiness.status,
+      sourceLabel: t('admin.instances.pluginReadiness.title'),
+    });
+  }
 
   const overallStatus =
     COCKPIT_STATUS_PRECEDENCE.find((candidate) =>
@@ -276,6 +302,7 @@ export const buildCockpitState = (
         mapProvisioningRunStatusToCockpitStatus(latestRun),
         mapInstanceStatusToCockpitStatus(instance.status),
         mutationAnomaly?.status ?? 'ready',
+        requiredPluginReadiness?.status ?? 'ready',
       ].includes(candidate)
     ) ?? 'unknown';
 
@@ -285,6 +312,8 @@ export const buildCockpitState = (
     overallStatus,
     overallTitle: readOverallTitle(overallStatus),
     overallSummary:
-      anomalyQueue[0]?.summary ?? tenantIamStatus?.overall.summary ?? getStatusGuidance(instance).body,
+      anomalyQueue[0]?.summary ??
+      tenantIamStatus?.overall.summary ??
+      getStatusGuidance(instance).body,
   };
 };

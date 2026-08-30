@@ -76,12 +76,15 @@ const buildTenantActivationPolicySnapshot = (
     .sort((left, right) => left.moduleId.localeCompare(right.moduleId, 'de'));
 
   return {
-    revision: modules
-      .map(
-        ({ moduleId, activationPolicy, manifestVersion, policyRevision }) =>
-          `${moduleId}:${activationPolicy}:${manifestVersion}:${policyRevision}`
-      )
-      .join('|'),
+    revision:
+      modules.length === 0
+        ? 'plugin-catalog:empty'
+        : modules
+            .map(
+              ({ moduleId, activationPolicy, manifestVersion, policyRevision }) =>
+                `${moduleId}:${activationPolicy}:${manifestVersion}:${policyRevision}`
+            )
+            .join('|'),
     modules,
   };
 };

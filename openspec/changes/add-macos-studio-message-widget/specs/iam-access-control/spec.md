@@ -6,10 +6,18 @@ Das System SHALL einen öffentlichen nativen OIDC-Client ohne Client-Secret bere
 
 #### Scenario: Native Anmeldung ist erfolgreich
 
-- **WENN** ein aktiver Benutzer die Anmeldung aus der macOS-Begleit-App startet
-- **DANN** läuft die Authentifizierung über den externen Systembrowser und den erlaubten Keycloak-Realm
-- **UND** werden State, Nonce, PKCE-Verifier, Issuer und ein exakt erlaubter Claimed-HTTPS-Callback validiert
+- **WENN** ein aktiver Benutzer eine Studio-Instanz auswählt und die Anmeldung aus der macOS-Begleit-App startet
+- **DANN** validiert der kanonische Auth-Host die Auswahl gegen die serverseitige Instanz-/Tenant-Registry
+- **UND** bindet eine kurzlebige, integritätsgeschützte Login-Transaktion Instanz, erlaubten Realm/Issuer, Callback und API-Host
+- **UND** läuft die Authentifizierung über den externen Systembrowser und ausschließlich den gebundenen Keycloak-Realm
+- **UND** werden Login-Transaktion, State, Nonce, PKCE-Verifier, Issuer und der exakt erlaubte Claimed-HTTPS-Callback validiert
 - **UND** enthält der native Client kein Client-Secret
+
+#### Scenario: Instanzbindung wird manipuliert
+
+- **WENN** Authorization Request, Callback, Token oder API-Request von der servervalidierten Instanz-, Issuer-, Callback- oder API-Host-Bindung abweichen
+- **DANN** wird die Anmeldung beziehungsweise Nachrichtenoperation fail-closed abgelehnt
+- **UND** übernimmt der Client keine freien Realm-, Issuer-, Redirect- oder API-Host-Werte
 
 #### Scenario: Eingebetteter Login wird versucht
 
@@ -23,7 +31,7 @@ Das System SHALL einen öffentlichen nativen OIDC-Client ohne Client-Secret bere
 
 ### Requirement: Vollständige Bearer- und Accountprüfung für native Nachrichtenrequests
 
-Das System MUST vor jeder nativen Nachrichtenoperation Signatur, erlaubten Algorithmus, Issuer, Audience, autorisierten Client, Zeitgrenzen, Scopes, Instanzbindung und aktiven lokalen Account prüfen. Die resultierende Identität SHALL denselben fachlichen Accountkontext verwenden wie eine browserseitige Studio-Sitzung.
+Das System MUST vor jeder nativen Nachrichtenoperation Signatur, erlaubten Algorithmus, Issuer, Audience, autorisierten Client, Zeitgrenzen, Scopes, Instanzbindung, gebundenen API-Host und aktiven lokalen Account prüfen. Die resultierende Identität SHALL denselben fachlichen Accountkontext verwenden wie eine browserseitige Studio-Sitzung.
 
 #### Scenario: Gültiges natives Token wird aufgelöst
 

@@ -84,16 +84,19 @@ Die macOS-App ist ein öffentlicher OIDC-Client ohne Client-Secret. Sie verwende
 
 - Authorization Code Flow mit PKCE S256,
 - den externen, vom Betriebssystem verwalteten Browser,
+- eine servervalidierte Auswahl der Studio-Instanz vor Beginn des Authorization Requests,
 - einen verifizierten Claimed-HTTPS-Callback auf dem kanonischen Auth-Host,
 - exakte Redirect-URI-Allowlisting ohne Wildcards,
-- `state`, `nonce`, Issuer- und Callback-Bindung,
+- `state`, `nonce` sowie eine Integritätsbindung von Instanz, Realm/Issuer, Callback und API-Host,
 - kurzlebige Access Tokens und rotierende Refresh Tokens,
 - die Audience der Studio-Account-API,
 - ausschließlich `studio.messages.read` und `studio.messages.read-state.update`.
 
 Access- und Refresh-Token werden ausschließlich in einer minimalen Keychain-Access-Group gespeichert, die Container-App und Widget Extension teilen. Sie werden nie in `UserDefaults`, App-Group-Dateien, Logs, Crash-Metadaten oder Telemetrie geschrieben. Die Anwendung zeigt keine Keycloak-Seite in einem kontrollierbaren eingebetteten WebView.
 
-Die Studio-API prüft Signatur, erlaubten Algorithmus, Issuer, Audience, autorisierten Client, Ablauf, Not-before, Scopes und den instanzgebundenen Accountzustand. Unbekannte, blockierte, deaktivierte, gelöschte oder tenantfremde Identitäten bleiben fail-closed. Logout entfernt lokale Credentials und widerruft die native Sitzung beziehungsweise Refresh Tokens. Bestehende Forced-Reauth- und Kontosperrpfade müssen native Sitzungen ebenfalls unwirksam machen.
+Die vom Benutzer gewählte Studio-Instanz ist kein vertrauenswürdiger Realm- oder Hostparameter. Der kanonische Auth-Host löst sie ausschließlich über die serverseitige Instanz-/Tenant-Registry auf und erzeugt eine kurzlebige, integritätsgeschützte Login-Transaktion. Deren Instanz, erlaubter Realm/Issuer, Callback und API-Host werden in den Authorization Request und `state` gebunden. Der Callback akzeptiert nur exakt diese Transaktion; die App validiert State, Nonce und Issuer und sendet das resultierende Token ausschließlich an den zuvor servervalidierten API-Host. Freie Redirect-, Issuer-, Realm- oder API-Host-Werte aus App-, Callback- oder Token-Daten werden nicht übernommen.
+
+Die Studio-API prüft Signatur, erlaubten Algorithmus, Issuer, Audience, autorisierten Client, Ablauf, Not-before, Scopes sowie die Übereinstimmung von Tokeninstanz, angefragtem API-Host und aktivem Accountzustand. Unbekannte, blockierte, deaktivierte, gelöschte oder tenantfremde Identitäten bleiben fail-closed. Logout entfernt lokale Credentials und widerruft die native Sitzung beziehungsweise Refresh Tokens. Bestehende Forced-Reauth- und Kontosperrpfade müssen native Sitzungen ebenfalls unwirksam machen.
 
 Diese Entscheidung ist eine bewusst begrenzte native Ausnahme vom Browser-BFF aus ADR-009 und wird in einem neuen ADR dokumentiert. Browser erhalten weiterhin keine OIDC-Tokens.
 
@@ -125,17 +128,17 @@ Die App enthält keine Kopie der React-Oberfläche und keine serverseitigen Stud
 
 Der kanonische GitHub-Actions-Pfad `Build` → Dev → Staging → Production bleibt ausschließlich für die Studio-Serveranwendung maßgeblich. Native Builds erzeugen separat versionierte, prüfsummengebundene macOS-Artefakte. Produktive Pilotartefakte müssen mit einer freigegebenen Apple-Identität signiert und notarisiert sein; fehlen Credentials oder Notarisierungsnachweis, darf kein produktives Artefakt veröffentlicht werden.
 
-Backend und native App verwenden eine versionierte, rückwärtskompatible API. Ein Server-Rollout darf einen unterstützten nativen Client nicht ohne expliziten Breaking-Change unbrauchbar machen. App-Store-, MDM- und automatische Updateverteilung bleiben Folgeentscheidungen.
+Backend und native App verwenden eine versionierte, rückwärtskompatible API. Solange eine betroffene native Clientversion innerhalb des dokumentierten Supportfensters liegt und noch nicht migriert wurde, muss der Server ihren Vertrag weiter bedienen. Ein inkompatibler Serververtrag darf erst promotet werden, wenn alle betroffenen Clientversionen nachweislich migriert wurden oder nicht mehr unterstützt werden; ein beschriebener Breaking-Change allein hebt diese Sperre nicht auf. App-Store-, MDM- und automatische Updateverteilung bleiben Folgeentscheidungen.
 
 ## Runtime Flows
 
 ### Anmeldung
 
-1. Die Container-App startet den OIDC-Flow im externen Systembrowser und erzeugt `state`, `nonce` sowie PKCE-Verifier.
-2. Der kanonische Auth-Host löst den Tenant-/Realm-Kontext auf und leitet zum erlaubten Keycloak-Realm.
-3. Der verifizierte HTTPS-Callback kehrt zur App zurück.
-4. Die App tauscht den Code mit dem PKCE-Verifier aus und validiert State, Nonce und Issuer.
-5. Credentials werden in der geteilten Keychain-Gruppe gespeichert; WidgetKit lädt eine neue Timeline.
+1. Der Benutzer wählt seine Studio-Instanz; der kanonische Auth-Host validiert sie gegen die serverseitige Registry und liefert eine kurzlebige Login-Transaktion mit gebundener Instanz, erlaubtem Realm/Issuer, Callback und API-Host.
+2. Die Container-App startet mit dieser Transaktion den OIDC-Flow im externen Systembrowser und erzeugt `state`, `nonce` sowie PKCE-Verifier.
+3. Der Auth-Host leitet ausschließlich zum gebundenen Keycloak-Realm; der verifizierte HTTPS-Callback kehrt zur App zurück.
+4. Die App prüft Login-Transaktion, State, Nonce und Issuer, tauscht den Code mit dem PKCE-Verifier aus und akzeptiert keine abweichende Instanz oder API-Origin.
+5. Credentials und die validierte API-Bindung werden in der geteilten Keychain-Gruppe gespeichert; WidgetKit lädt eine neue Timeline.
 
 ### Widget-Aktualisierung
 
@@ -179,5 +182,5 @@ Der Rollback deaktiviert zuerst den nativen Client und widerruft Refresh Tokens.
 - Web-Tests für Nachrichtenbereich, Gelesen-Zeitpunkt, Deep Links, i18n, Tastaturbedienung und WCAG.
 - Native Unit-Tests für DTO-Validierung, Keychain-Abstraktion, Tokenzustände, Größenabbildung und Fehlerdarstellung.
 - Native UI-/Snapshot-Prüfungen für kleine, mittlere und große Widgets einschließlich Dynamic Type, hoher Kontrast, VoiceOver und redigiertem Zustand.
-- Integrationsprüfung des externen Browserlogins, Logout/Widerruf, Account-Deaktivierung und Realm-/Instanzkonflikten gegen Staging.
+- Integrationsprüfung der servervalidierten Instanzauswahl, des externen Browserlogins, der State-/Issuer-/Callback-/API-Host-Bindung, von Logout/Widerruf, Account-Deaktivierung und Realm-/Instanzkonflikten gegen Staging.
 - Release-Gate für Signatur, Notarisierung, Checksummen und rückwärtskompatiblen API-Vertrag.

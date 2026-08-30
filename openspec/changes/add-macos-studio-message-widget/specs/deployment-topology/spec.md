@@ -26,4 +26,9 @@ Das System SHALL die Nachrichten-API versionieren und während des dokumentierte
 - **WENN** eine neue Studio-Serverversion ausgerollt wird
 - **UND** ein unterstützter nativer Client verwendet weiterhin die bestehende API-Version
 - **DANN** bleiben Summary, Liste und Gelesen-Mutation vertragskompatibel
-- **ODER** eine absichtliche Inkompatibilität wird als eigener Breaking-Change mit Migration und Client-Rollout spezifiziert
+
+#### Scenario: Inkompatibler Serververtrag ist vorgesehen
+
+- **WENN** eine absichtliche Inkompatibilität als eigener Breaking-Change mit Migration und Client-Rollout spezifiziert wird
+- **DANN** bleibt die Server-Promotion blockiert, solange eine betroffene Clientversion noch unterstützt und nicht nachweislich migriert ist
+- **UND** darf der inkompatible Vertrag erst promotet werden, wenn alle betroffenen Clientversionen migriert wurden oder außerhalb des dokumentierten Supportfensters liegen

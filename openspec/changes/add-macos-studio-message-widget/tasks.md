@@ -24,9 +24,9 @@
 
 ## 4. Native Authentifizierung
 
-- [ ] 4.1 Nativen öffentlichen OIDC-Client mit exakten Redirect-URIs, API-Audience und ausschließlich `studio.messages.read` sowie `studio.messages.read-state.update` in Registry und Keycloak-Vertrag modellieren.
-- [ ] 4.2 Authorization Code mit PKCE S256, externem Systembrowser, State/Nonce und verifiziertem Claimed-HTTPS-Callback implementieren; eingebettete Login-WebViews und Client-Secrets ausschließen.
-- [ ] 4.3 Studio-Bearer-Prüfung für Signatur, Algorithmus, Issuer, Audience, Client, Zeitgrenzen, Scopes, Instanz und aktiven Account implementieren.
+- [ ] 4.1 Nativen öffentlichen OIDC-Client mit exakten Redirect-URIs, API-Audience und ausschließlich `studio.messages.read` sowie `studio.messages.read-state.update` in Registry und Keycloak-Vertrag modellieren; die vom Benutzer gewählte Studio-Instanz serverseitig validieren und in eine kurzlebige Login-Transaktion mit erlaubtem Realm/Issuer, Callback und API-Host auflösen.
+- [ ] 4.2 Authorization Code mit PKCE S256, externem Systembrowser, State/Nonce, integritätsgeschützter Instanz-/Issuer-/Callback-/API-Host-Bindung und verifiziertem Claimed-HTTPS-Callback implementieren; eingebettete Login-WebViews, Client-Secrets und frei übernommene Host-/Realmwerte ausschließen.
+- [ ] 4.3 Studio-Bearer-Prüfung für Signatur, Algorithmus, Issuer, Audience, Client, Zeitgrenzen, Scopes, Instanz, gebundenen API-Host und aktiven Account implementieren.
 - [ ] 4.4 Keychain-Sharing für Container-App und Widget Extension auf die minimal erforderliche Access Group begrenzen; Token aus Preferences, App-Group-Dateien, Logs und Telemetrie ausschließen.
 - [ ] 4.5 Logout, Refresh-Rotation, Widerruf, Forced Reauth, Kontosperre und Membership-Verlust fail-closed mit Tests abdecken.
 - [ ] 4.6 `pnpm check:server-runtime` früh für Änderungen an `packages/auth-runtime` und weiteren serverseitigen Packages ausführen.
@@ -55,8 +55,8 @@
 
 - [ ] 7.1 Separaten Nx-/GitHub-Actions-Pfad für reproduzierbare native Build- und Testartefakte ergänzen, ohne den kanonischen Studio-Rollout zu verändern.
 - [ ] 7.2 Produktive Pilotveröffentlichung ohne Apple-Signatur, Notarisierungsnachweis, Checksummen und nachvollziehbare Quellrevision hart blockieren.
-- [ ] 7.3 Versionierungs- und Rückwärtskompatibilitätsvertrag zwischen Studio-API und nativem Client testen und dokumentieren.
-- [ ] 7.4 Staging-Abnahme für externen Browserlogin, Tokenrefresh, Logout/Widerruf, Account-Deaktivierung, Tenant-Konflikt und Widget-Timelines durchführen.
+- [ ] 7.3 Versionierungs- und Rückwärtskompatibilitätsvertrag zwischen Studio-API und nativem Client testen und dokumentieren; inkompatible Server-Promotion blockieren, bis alle betroffenen unterstützten Clientversionen migriert oder aus dem Supportfenster gefallen sind.
+- [ ] 7.4 Staging-Abnahme für servervalidierte Instanzauswahl, externen Browserlogin, State-/Issuer-/Callback-/API-Host-Bindung, Tokenrefresh, Logout/Widerruf, Account-Deaktivierung, Tenant-Konflikt und Widget-Timelines durchführen.
 - [ ] 7.5 Betriebsdokumentation klar vom normativen `docs/guides/studio-rollout-process.md` abgrenzen; keinen zweiten Studio-Deploypfad definieren.
 
 ## 8. Abschluss-Gates

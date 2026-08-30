@@ -6,6 +6,7 @@ import { Card } from '../../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
+import { studioPluginSnapshot } from '../../../lib/plugins';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import {
@@ -133,6 +134,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const requiredPluginReadiness = evaluateRequiredPluginReadiness(pluginReadiness.items, {
     isLoading: pluginReadiness.isLoading,
     hasError: Boolean(pluginReadiness.error),
+    hasRequiredPlugins: studioPluginSnapshot.registry.tenantLifecycles.some((lifecycle) =>
+      studioPluginSnapshot.tenantActivationPolicySnapshot.modules.some(
+        (module) =>
+          module.moduleId === lifecycle.pluginId && module.activationPolicy === 'required'
+      )
+    ),
   });
   const configurationAssessment = selectedInstance
     ? includeRequiredPluginReadiness(

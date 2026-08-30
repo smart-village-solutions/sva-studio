@@ -65,6 +65,7 @@ export const getPluginRouteFactories = (
         const accessRequirementCoversModule =
           routeDefinition.accessRequirement?.kind === 'tenant' &&
           routeDefinition.accessRequirement.moduleId === requiredModuleId;
+        const isPlatformRoute = routeDefinition.accessRequirement?.kind === 'platform';
 
         assertPluginRoutePathAllowed(pluginNamespace, contributionId, routeDefinition.path);
 
@@ -94,7 +95,7 @@ export const getPluginRouteFactories = (
                 await guard?.(userContext.options);
               }
 
-              if (!requiredModuleId || accessRequirementCoversModule) {
+              if (!requiredModuleId || accessRequirementCoversModule || isPlatformRoute) {
                 return;
               }
 

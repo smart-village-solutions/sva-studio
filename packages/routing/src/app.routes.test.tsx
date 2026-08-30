@@ -844,6 +844,46 @@ describe('app.routes', () => {
     expect(materializePaths('tenant')).toEqual(['/plugins/scope-demo/tenant']);
   });
 
+  it('does not require tenant module assignments for authorized platform plugin routes', async () => {
+    const [routeFactory] = getPluginRouteFactories([
+      {
+        id: 'scope-demo',
+        displayName: 'Scope demo',
+        moduleIam: {
+          moduleId: 'scope-demo',
+          permissionIds: [],
+          systemRoles: [],
+        },
+        routes: [
+          {
+            id: 'scope-demo.platform',
+            path: '/plugins/scope-demo/platform',
+            accessRequirement: {
+              kind: 'platform',
+              roles: { mode: 'allOf', values: ['instance_registry_admin'] },
+            },
+            component: () => 'platform',
+          },
+        ],
+      },
+    ]);
+    const route = routeFactory?.({ id: 'root' } as never);
+
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              roles: ['instance_registry_admin'],
+              permissionActions: [],
+            }),
+          },
+        },
+        location: { href: '/plugins/scope-demo/platform' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
   it.each([
     {
       name: 'empty action sets',

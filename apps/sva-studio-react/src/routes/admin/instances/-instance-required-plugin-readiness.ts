@@ -16,12 +16,18 @@ export type RequiredPluginReadinessAssessment = {
 
 export const evaluateRequiredPluginReadiness = (
   plugins: readonly PluginTenantReadinessReadModel[],
-  loadState: { readonly isLoading: boolean; readonly hasError: boolean } = {
+  loadState: {
+    readonly isLoading: boolean;
+    readonly hasError: boolean;
+    readonly hasRequiredPlugins: boolean;
+  } = {
     isLoading: false,
     hasError: false,
+    hasRequiredPlugins: false,
   }
 ): RequiredPluginReadinessAssessment | null => {
   if (loadState.isLoading || loadState.hasError) {
+    if (!loadState.hasRequiredPlugins) return null;
     return {
       status: 'blocked',
       summary: t('admin.instances.pluginReadiness.aggregate.unavailable'),

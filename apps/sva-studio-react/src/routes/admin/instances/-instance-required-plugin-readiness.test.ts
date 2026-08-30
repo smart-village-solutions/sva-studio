@@ -39,7 +39,10 @@ describe('required plugin readiness aggregation', () => {
     [{ isLoading: true, hasError: false }, 'loading'],
     [{ isLoading: false, hasError: true }, 'failed'],
   ])('blocks aggregate readiness while the readiness read is %s', (loadState) => {
-    const readiness = evaluateRequiredPluginReadiness([], loadState);
+    const readiness = evaluateRequiredPluginReadiness([], {
+      ...loadState,
+      hasRequiredPlugins: true,
+    });
 
     expect(readiness).toMatchObject({ status: 'blocked', pluginIds: [] });
     expect(includeRequiredPluginReadiness(completeConfiguration, readiness)).toMatchObject({
@@ -47,6 +50,18 @@ describe('required plugin readiness aggregation', () => {
       totalRequirements: 5,
       blockingIssues: [{ key: 'required_plugin_readiness', severity: 'blocking' }],
     });
+  });
+
+  it.each([
+    { isLoading: true, hasError: false, hasRequiredPlugins: false },
+    { isLoading: false, hasError: true, hasRequiredPlugins: false },
+  ])('does not add readiness requirements when the catalog has no required plugins', (loadState) => {
+    const readiness = evaluateRequiredPluginReadiness([], loadState);
+
+    expect(readiness).toBeNull();
+    expect(includeRequiredPluginReadiness(completeConfiguration, readiness)).toEqual(
+      completeConfiguration
+    );
   });
 
   it('blocks aggregate readiness while a required plugin has no valid evidence', () => {

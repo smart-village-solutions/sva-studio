@@ -29,8 +29,11 @@ import type {
   StudioJobExecutionRegistry,
   StudioJobRunnerPayload,
 } from './runner-internal.js';
+
+export { pluginTenantLifecycleRetryTaskIdentifier } from './runner-internal.js';
 import {
   adaptPluginOperationExecutionHandler,
+  pluginTenantLifecycleRetryTaskIdentifier,
   toRegistryKey,
   toStudioJobTaskList,
 } from './runner-internal.js';
@@ -177,8 +180,8 @@ export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperation
 export const createStudioJobTaskList = (
   getHandlers: () => StudioJobExecutionRegistry,
   taskIdentifier = studioJobTaskIdentifier
-): graphileWorker.TaskList =>
-  toStudioJobTaskList(async (payload, helpers) => {
+): graphileWorker.TaskList => ({
+  ...toStudioJobTaskList(async (payload, helpers) => {
     const { instanceId, jobId } = payload as StudioJobRunnerPayload;
     let successfulResult: PluginOperationExecutionResult | void;
     await createJobLifecycleOrchestrator({
@@ -203,6 +206,7 @@ export const createStudioJobTaskList = (
               );
             }
             const lifecycleJob = loadedJob;
+            let lifecycleRetryAfter: string | undefined;
             const updatedJob = await withStudioJobLifecycleRepositories(
               tenantInstanceId,
               async ({ studioJobs, tenantLifecycle }) => {
@@ -216,7 +220,7 @@ export const createStudioJobTaskList = (
                     result: successfulResult,
                   });
                 } else {
-                  await transactionCorrelation.fail({
+                  const failedLifecycle = await transactionCorrelation.fail({
                     job: lifecycleJob,
                     error: input.errorPayload ?? {
                       code: 'plugin_operation_cancelled',
@@ -224,12 +228,16 @@ export const createStudioJobTaskList = (
                     },
                     reason: input.status === 'cancelled' ? 'cancelled' : 'failed',
                   });
+                  lifecycleRetryAfter =
+                    failedLifecycle?.retryKind === 'retryable'
+                      ? failedLifecycle.retryAfter
+                      : undefined;
                 }
                 return studioJobs.updateJobState(input);
               }
             );
             if (input.status !== 'succeeded') {
-              scheduleConfiguredPluginTenantProvisioning(tenantInstanceId);
+              scheduleConfiguredPluginTenantProvisioning(tenantInstanceId, lifecycleRetryAfter);
             }
             return updatedJob;
           },
@@ -256,7 +264,15 @@ export const createStudioJobTaskList = (
       attempts: helpers.job.attempts,
       maxAttempts: helpers.job.max_attempts,
     });
-  }, taskIdentifier);
+  }, taskIdentifier),
+  [pluginTenantLifecycleRetryTaskIdentifier]: async (payload) => {
+    const instanceId = (payload as { readonly instanceId?: unknown }).instanceId;
+    if (typeof instanceId !== 'string' || instanceId.length === 0) {
+      throw new Error('plugin_tenant_lifecycle_retry_payload_invalid');
+    }
+    scheduleConfiguredPluginTenantProvisioning(instanceId);
+  },
+});
 
 export const createPluginOperationTaskList = (
   getHandlers: () => PluginOperationExecutionRegistry

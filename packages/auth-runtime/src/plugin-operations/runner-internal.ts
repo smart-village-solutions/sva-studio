@@ -14,6 +14,8 @@ export type StudioJobRunnerPayload = {
   readonly jobId: string;
 };
 
+export const pluginTenantLifecycleRetryTaskIdentifier = 'plugin_tenant_lifecycle_retry';
+
 export type StudioJobExecutionRegistration = {
   readonly source: StudioJobSource;
   readonly jobTypeId: string;

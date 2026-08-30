@@ -82,8 +82,9 @@ const parseEvidence = (
   const missingRequiredCheck = definition.readinessChecks.some(
     ({ checkId, required }) => required && !persistedChecks.has(checkId)
   );
-  const lifecyclePending = Boolean(
-    evidence && (evidence.activeJobId || evidence.completedGeneration < evidence.desiredGeneration)
+  const lifecyclePending = Boolean(evidence?.activeJobId);
+  const lifecycleIncomplete = Boolean(
+    evidence && evidence.completedGeneration < evidence.desiredGeneration
   );
   return {
     evidenceState: evidence ? (evidenceInvalid ? 'invalid' : 'valid') : 'missing',
@@ -94,7 +95,9 @@ const parseEvidence = (
       : evidence
         ? lifecyclePending
           ? 'pending'
-          : reducePluginTenantReadinessStatus(definition, validChecks)
+          : lifecycleIncomplete
+            ? evidence.readinessStatus
+            : reducePluginTenantReadinessStatus(definition, validChecks)
         : 'pending',
     checks: definition.readinessChecks.map((checkDefinition) => ({
       ...checkDefinition,

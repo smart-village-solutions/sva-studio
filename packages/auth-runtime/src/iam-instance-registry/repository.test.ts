@@ -13,6 +13,8 @@ const resolveIdentityProviderForInstanceMock = vi.fn();
 const resolveAuthConfigForInstanceMock = vi.fn();
 const getInstanceKeycloakStatusViaTenantAdminMock = vi.fn();
 const getInstanceKeycloakStatusViaProvisionerMock = vi.fn();
+const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
+const queuePluginTenantLifecycleRetryMock = vi.fn(async () => undefined);
 const studioModuleIamRegistryMock = new Map([
   [
     'news',
@@ -141,7 +143,30 @@ vi.mock('../config.js', () => ({
   resolveAuthConfigForInstance: (...args: unknown[]) => resolveAuthConfigForInstanceMock(...args),
 }));
 
+vi.mock('../plugin-tenant-lifecycle/runtime.js', () => ({
+  ensureConfiguredPluginTenantProvisioning: ensureConfiguredPluginTenantProvisioningMock,
+}));
+
+vi.mock('../plugin-operations/runner-worker.js', () => ({
+  queuePluginTenantLifecycleRetry: queuePluginTenantLifecycleRetryMock,
+}));
+
 describe('iam instance registry repository wiring', () => {
+  it('uses a durable delayed worker job for a future lifecycle retry deadline', async () => {
+    const { scheduleConfiguredPluginTenantProvisioning } = await import('./repository.js');
+    const runAt = '2999-08-30T12:10:00.000Z';
+
+    scheduleConfiguredPluginTenantProvisioning('tenant-a', runAt);
+
+    await vi.waitFor(() => {
+      expect(queuePluginTenantLifecycleRetryMock).toHaveBeenCalledWith({
+        instanceId: 'tenant-a',
+        runAt: new Date(runAt),
+      });
+    });
+    expect(ensureConfiguredPluginTenantProvisioningMock).not.toHaveBeenCalled();
+  });
+
   it('injects the configured snapshot registry into runtime and provisioning services', async () => {
     const { configureInstanceRegistryPluginRuntimeSnapshot } =
       await import('./plugin-activation-policy-snapshot.js');

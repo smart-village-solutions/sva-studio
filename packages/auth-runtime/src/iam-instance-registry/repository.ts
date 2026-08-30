@@ -36,20 +36,28 @@ const pluginTenantLifecycleLogger = createSdkLogger({
   level: 'info',
 });
 
-export const scheduleConfiguredPluginTenantProvisioning = (instanceId: string): void => {
-  void import('../plugin-tenant-lifecycle/runtime.js')
-    .then(({ ensureConfiguredPluginTenantProvisioning }) =>
-      ensureConfiguredPluginTenantProvisioning(instanceId)
-    )
-    .catch((error) => {
-      pluginTenantLifecycleLogger.error('plugin_tenant_lifecycle_schedule_failed', {
-        operation: 'plugin_tenant_lifecycle_schedule',
-        result: 'failed',
-        error_code: 'plugin_tenant_lifecycle_schedule_failed',
-        error_type: error instanceof Error ? error.name : typeof error,
-        instance_id: instanceId,
-      });
+export const scheduleConfiguredPluginTenantProvisioning = (
+  instanceId: string,
+  runAt?: string
+): void => {
+  const futureRunAt = runAt && Date.parse(runAt) > Date.now() ? new Date(runAt) : undefined;
+  const scheduled = futureRunAt
+    ? import('../plugin-operations/runner-worker.js').then(({ queuePluginTenantLifecycleRetry }) =>
+        queuePluginTenantLifecycleRetry({ instanceId, runAt: futureRunAt })
+      )
+    : import('../plugin-tenant-lifecycle/runtime.js').then(
+        ({ ensureConfiguredPluginTenantProvisioning }) =>
+          ensureConfiguredPluginTenantProvisioning(instanceId)
+      );
+  void scheduled.catch((error) => {
+    pluginTenantLifecycleLogger.error('plugin_tenant_lifecycle_schedule_failed', {
+      operation: 'plugin_tenant_lifecycle_schedule',
+      result: 'failed',
+      error_code: 'plugin_tenant_lifecycle_schedule_failed',
+      error_type: error instanceof Error ? error.name : typeof error,
+      instance_id: instanceId,
     });
+  });
 };
 
 const getWorkerKeycloakPreflight = async (

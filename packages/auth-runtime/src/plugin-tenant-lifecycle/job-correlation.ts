@@ -207,7 +207,7 @@ export const createPluginTenantLifecycleJobCorrelation = (
     readonly job: StudioJobRecord;
     readonly error: StudioJobError;
     readonly reason: 'failed' | 'missing_handler' | 'cancelled';
-  }): Promise<void> {
+  }): Promise<Awaited<ReturnType<PluginTenantLifecycleRepository['failLifecycle']>> | undefined> {
     const context = resolveLifecycleFailureContext(input.job);
     if (!context) {
       return;
@@ -218,7 +218,7 @@ export const createPluginTenantLifecycleJobCorrelation = (
       input.error,
       input.reason
     );
-    await dependencies.withRepository(input.job.instanceId, (repository) =>
+    return dependencies.withRepository(input.job.instanceId, (repository) =>
       repository.failLifecycle({
         instanceId: input.job.instanceId,
         pluginId: context.pluginId,

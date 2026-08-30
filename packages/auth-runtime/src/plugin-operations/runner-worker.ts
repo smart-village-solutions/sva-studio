@@ -5,6 +5,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { resolvePool, resolveStudioJobWorkerPool } from '../db.js';
 import type { QueueStudioJobInput } from './runner-internal.js';
+import { pluginTenantLifecycleRetryTaskIdentifier } from './runner-internal.js';
 import {
   createStudioJobTaskList,
   getRegisteredStudioJobExecutionRegistry,
@@ -151,9 +152,13 @@ export const ensureStudioJobWorkerStarted = async (): Promise<void> => {
           if (runner === null || runner === startedRunner) runnerHealth = health;
         },
         () =>
-          retireFatalWorker(startedRunner, 'studio_job_worker_fatal_shutdown_failed', (failedRunner) => {
-            if (runner === failedRunner) runner = null;
-          })
+          retireFatalWorker(
+            startedRunner,
+            'studio_job_worker_fatal_shutdown_failed',
+            (failedRunner) => {
+              if (runner === failedRunner) runner = null;
+            }
+          )
       ),
       'studio_job_worker_runtime_failed',
       () => {
@@ -275,6 +280,33 @@ export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> 
 };
 
 export const queuePluginOperationJob = queueStudioJob;
+
+export const queuePluginTenantLifecycleRetry = async (input: {
+  readonly instanceId: string;
+  readonly runAt: Date;
+}): Promise<void> => {
+  const pool = resolvePool();
+  if (!pool) throw new Error('studio_job_queue_database_unavailable');
+
+  await pool.query(
+    `SELECT graphile_worker.sva_enqueue_job(
+      identifier => $1::text,
+      payload => $2::json,
+      queue_name => $3::text,
+      max_attempts => $4::int,
+      job_key => $5::text,
+      run_at => $6::timestamptz
+    )`,
+    [
+      pluginTenantLifecycleRetryTaskIdentifier,
+      JSON.stringify({ instanceId: input.instanceId }),
+      'plugin-tenant-lifecycle',
+      5,
+      `plugin-tenant-lifecycle-retry:${input.instanceId}`,
+      input.runAt,
+    ]
+  );
+};
 
 export const stopStudioJobWorker = async (): Promise<void> => {
   if (!runner) {

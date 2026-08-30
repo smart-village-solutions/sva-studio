@@ -235,6 +235,18 @@ describe('plugin operation runner registry', () => {
     });
   });
 
+  it('runs the durable lifecycle retry task through automatic provisioning', async () => {
+    const registry = await import('./runner-registry.js');
+    const taskList = registry.createStudioJobTaskList(() => new Map());
+
+    await taskList[registry.pluginTenantLifecycleRetryTaskIdentifier]?.(
+      { instanceId: 'tenant-a' },
+      {} as never
+    );
+
+    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith('tenant-a');
+  });
+
   it('persists lifecycle and successful job state through one repository transaction', async () => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);
@@ -303,11 +315,13 @@ describe('plugin operation runner registry', () => {
     );
   });
 
-  it('persists lifecycle and job terminal state through one repository transaction', async () => {
+  it('persists lifecycle failure and schedules its durable retry deadline', async () => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);
     const updateJobState = vi.fn(async () => undefined);
-    const failLifecycle = vi.fn(async () => undefined);
+    const failLifecycle = vi.fn(
+      async (input: { readonly retryKind: 'retryable'; readonly retryAfter?: string }) => input
+    );
     const lifecycleJob = {
       id: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
       instanceId: 'tenant-a',
@@ -353,7 +367,17 @@ describe('plugin operation runner registry', () => {
       instanceId: 'tenant-a',
       status: 'failed' as const,
       attempts: 5,
-      errorPayload: { code: 'provision_failed', category: 'permanent' as const },
+      errorPayload: {
+        code: 'provision_failed',
+        category: 'transient' as const,
+        details: {
+          plugin: {
+            code: 'waste-management.databaseUnavailable',
+            messageKey: 'waste-management.errors.databaseUnavailable',
+            retry: { kind: 'retryable' as const, retryAfterMs: 600_000 },
+          },
+        },
+      },
     };
     await repository.updateJobState(terminalInput);
 
@@ -361,7 +385,7 @@ describe('plugin operation runner registry', () => {
       expect.objectContaining({
         jobId: lifecycleJob.id,
         generation: 3,
-        errorCode: 'provision_failed',
+        errorCode: 'waste-management.databaseUnavailable',
       })
     );
     expect(updateJobState).toHaveBeenCalledWith(terminalInput);
@@ -369,6 +393,11 @@ describe('plugin operation runner registry', () => {
       'tenant-a',
       expect.any(Function)
     );
-    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith('tenant-a');
+    const persistedRetryAfter = failLifecycle.mock.calls[0]?.[0].retryAfter;
+    expect(persistedRetryAfter).toEqual(expect.any(String));
+    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith(
+      'tenant-a',
+      persistedRetryAfter
+    );
   });
 });

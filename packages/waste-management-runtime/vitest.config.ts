@@ -14,6 +14,10 @@ export default defineConfig({
         currentDir,
         '../waste-management-contracts/src/job-definitions.ts'
       ),
+      '@sva/waste-management-contracts': resolve(
+        currentDir,
+        '../waste-management-contracts/src/index.ts'
+      ),
     },
   },
   test: {

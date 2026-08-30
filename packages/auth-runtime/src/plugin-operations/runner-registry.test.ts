@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   withPluginTenantLifecycleRepository: vi.fn(),
   withStudioJobLifecycleRepositories: vi.fn(),
   withStudioJobRepository: vi.fn(),
+  scheduleConfiguredPluginTenantProvisioning: vi.fn(),
 }));
 
 vi.mock('./job-lifecycle-orchestrator.js', () => ({
@@ -42,6 +43,10 @@ vi.mock('./repository.js', () => ({
   withPluginTenantLifecycleRepository: state.withPluginTenantLifecycleRepository,
   withStudioJobLifecycleRepositories: state.withStudioJobLifecycleRepositories,
   withStudioJobRepository: state.withStudioJobRepository,
+}));
+
+vi.mock('../iam-instance-registry/repository.js', () => ({
+  scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
 }));
 
 describe('plugin operation runner registry', () => {
@@ -176,6 +181,74 @@ describe('plugin operation runner registry', () => {
     });
   });
 
+  it('persists lifecycle and successful job state through one repository transaction', async () => {
+    const registry = await import('./runner-registry.js');
+    const run = vi.fn(async () => undefined);
+    const updateJobState = vi.fn(async () => ({ status: 'succeeded' }));
+    const completeLifecycle = vi.fn(async () => ({ completedGeneration: 3 }));
+    const lifecycleJob = {
+      id: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+      instanceId: 'tenant-a',
+      source: 'plugin',
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.provision-tenant-database',
+      queueName: 'plugin-operations',
+      status: 'running',
+      inputPayload: { studioTenantLifecycle: { operation: 'provision', generation: 3 } },
+      attempts: 1,
+      maxAttempts: 5,
+      idempotencyKey: 'waste-management:tenant-lifecycle:provision:3',
+      scheduledAt: '2026-08-30T12:00:00.000Z',
+      createdAt: '2026-08-30T12:00:00.000Z',
+      updatedAt: '2026-08-30T12:00:00.000Z',
+    };
+    state.createJobLifecycleOrchestrator.mockReturnValue({ run });
+    state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({ getJobById: vi.fn(async () => lifecycleJob) })
+    );
+    state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
+      work({
+        studioJobs: { updateJobState },
+        tenantLifecycle: { completeLifecycle, getLifecycle: vi.fn() },
+      })
+    );
+
+    const taskList = registry.createStudioJobTaskList(() => new Map());
+    await taskList[registry.studioJobTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: lifecycleJob.id },
+      { job: { attempts: 1, max_attempts: 5 } } as never
+    );
+    const [{ loadRepository, onExecutionSucceeded }] =
+      state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+    const repository = await loadRepository('tenant-a');
+    await repository.getJobById('tenant-a', lifecycleJob.id);
+    await onExecutionSucceeded({
+      job: lifecycleJob,
+      result: {
+        tenantLifecycle: {
+          revision: 'waste-db-v3',
+          checks: [],
+        },
+      },
+    });
+    const succeededInput = {
+      jobId: lifecycleJob.id,
+      instanceId: 'tenant-a',
+      status: 'succeeded' as const,
+      attempts: 1,
+    };
+    await repository.updateJobState(succeededInput);
+
+    expect(completeLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: lifecycleJob.id, generation: 3 })
+    );
+    expect(updateJobState).toHaveBeenCalledWith(succeededInput);
+    expect(state.withStudioJobLifecycleRepositories).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.any(Function)
+    );
+  });
+
   it('persists lifecycle and job terminal state through one repository transaction', async () => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);
@@ -242,5 +315,6 @@ describe('plugin operation runner registry', () => {
       'tenant-a',
       expect.any(Function)
     );
+    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith('tenant-a');
   });
 });

@@ -192,6 +192,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
       queueName: 'plugin-operations',
       maxAttempts: 5,
       executionLane: 'privileged',
+      runAt: new Date('2026-08-30T12:00:00.000Z'),
     });
   });
 
@@ -226,7 +227,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
     expect(state.createStudioJob).not.toHaveBeenCalled();
   });
 
-  it('does not retry automatic provisioning before the declared retry deadline', async () => {
+  it('durably schedules automatic provisioning for the declared retry deadline', async () => {
     state.getLifecycle.mockResolvedValue({
       ...lifecycleRecord,
       retryKind: 'retryable',
@@ -236,7 +237,16 @@ describe('configured plugin tenant lifecycle runtime', () => {
 
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
 
-    expect(state.createStudioJob).not.toHaveBeenCalled();
+    expect(state.createStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          scheduledAt: '2999-08-30T12:05:00.000Z',
+        }),
+      })
+    );
+    expect(state.queuePluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({ runAt: new Date('2999-08-30T12:05:00.000Z') })
+    );
   });
 
   it('re-provisions when persisted readiness no longer matches the current declaration', async () => {

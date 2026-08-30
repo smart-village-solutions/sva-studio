@@ -4,6 +4,7 @@ import type { StudioJobRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
+import { scheduleConfiguredPluginTenantProvisioning } from '../iam-instance-registry/repository.js';
 import {
   createPluginTenantLifecycleJobCorrelation,
   pluginTenantLifecycleJobInputKey,
@@ -15,11 +16,13 @@ import {
 } from '../plugin-tenant-lifecycle/access.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import {
-  withPluginTenantLifecycleRepository,
   withStudioJobLifecycleRepositories,
   withStudioJobRepository,
 } from './repository.js';
-import type { PluginOperationExecutionHandler } from './types.js';
+import type {
+  PluginOperationExecutionHandler,
+  PluginOperationExecutionResult,
+} from './types.js';
 import type {
   PluginOperationExecutionRegistration,
   PluginOperationExecutionRegistry,
@@ -158,10 +161,7 @@ export const createStudioJobTaskList = (
 ): graphileWorker.TaskList =>
   toStudioJobTaskList(async (payload, helpers) => {
     const { instanceId, jobId } = payload as StudioJobRunnerPayload;
-    const lifecycleCorrelation = createPluginTenantLifecycleJobCorrelation({
-      lifecycleRegistry: readInstanceRegistryPluginTenantLifecycleRegistry(),
-      withRepository: withPluginTenantLifecycleRepository,
-    });
+    let successfulResult: PluginOperationExecutionResult | void;
     await createJobLifecycleOrchestrator({
       logger,
       loadRepository: async (tenantInstanceId) => {
@@ -172,34 +172,47 @@ export const createStudioJobTaskList = (
               loadedJob = await repository.getJobById(repositoryInstanceId, repositoryJobId);
               return loadedJob;
             }),
-          updateJobState: (input) => {
-            const isTerminalLifecycleUpdate =
-              (input.status === 'failed' || input.status === 'cancelled') &&
+          updateJobState: async (input) => {
+            const isLifecycleCompletion =
+              (input.status === 'succeeded' ||
+                input.status === 'failed' ||
+                input.status === 'cancelled') &&
               loadedJob?.inputPayload[pluginTenantLifecycleJobInputKey] !== undefined;
-            if (!isTerminalLifecycleUpdate || !loadedJob) {
+            if (!isLifecycleCompletion || !loadedJob) {
               return withStudioJobRepository(tenantInstanceId, (repository) =>
                 repository.updateJobState(input)
               );
             }
             const lifecycleJob = loadedJob;
-            return withStudioJobLifecycleRepositories(
+            const updatedJob = await withStudioJobLifecycleRepositories(
               tenantInstanceId,
               async ({ studioJobs, tenantLifecycle }) => {
                 const transactionCorrelation = createPluginTenantLifecycleJobCorrelation({
                   lifecycleRegistry: readInstanceRegistryPluginTenantLifecycleRegistry(),
                   withRepository: async (_instanceId, work) => work(tenantLifecycle),
                 });
-                await transactionCorrelation.fail({
-                  job: lifecycleJob,
-                  error: input.errorPayload ?? {
-                    code: 'plugin_operation_cancelled',
-                    category: 'permanent',
-                  },
-                  reason: input.status === 'cancelled' ? 'cancelled' : 'failed',
-                });
+                if (input.status === 'succeeded') {
+                  await transactionCorrelation.complete({
+                    job: lifecycleJob,
+                    result: successfulResult,
+                  });
+                } else {
+                  await transactionCorrelation.fail({
+                    job: lifecycleJob,
+                    error: input.errorPayload ?? {
+                      code: 'plugin_operation_cancelled',
+                      category: 'permanent',
+                    },
+                    reason: input.status === 'cancelled' ? 'cancelled' : 'failed',
+                  });
+                }
                 return studioJobs.updateJobState(input);
               }
             );
+            if (input.status !== 'succeeded') {
+              scheduleConfiguredPluginTenantProvisioning(tenantInstanceId);
+            }
+            return updatedJob;
           },
           updateJobProgress: (input) =>
             withStudioJobRepository(tenantInstanceId, (repository) =>
@@ -215,7 +228,9 @@ export const createStudioJobTaskList = (
         const handler = getHandlers().get(toRegistryKey(job.source, job.jobTypeId))?.handler;
         return handler ? guardPluginTenantExecution(job, handler) : undefined;
       },
-      onExecutionSucceeded: lifecycleCorrelation.complete,
+      onExecutionSucceeded: async ({ result }) => {
+        successfulResult = result;
+      },
     }).run({
       instanceId,
       jobId,

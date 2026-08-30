@@ -203,7 +203,13 @@ const runPersistedJob = async (
     }
     const result = await handler({ job, ...handlerContext });
     await deps.onExecutionSucceeded?.({ job, result });
-    await stateWriter.markSucceeded({ job, attempts, startedAt, workerId, result });
+    try {
+      await stateWriter.markSucceeded({ job, attempts, startedAt, workerId, result });
+    } catch (error) {
+      const persistedJob = await repository.getJobById(job.instanceId, job.id);
+      if (persistedJob?.status === 'succeeded') return;
+      throw error;
+    }
   } catch (error) {
     if (isPluginOperationCancellationError(error)) {
       const errorPayload: StudioJobError = {

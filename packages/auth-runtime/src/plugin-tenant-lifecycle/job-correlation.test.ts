@@ -190,6 +190,25 @@ describe('plugin tenant lifecycle job correlation', () => {
     );
   });
 
+  it('clears a terminal lifecycle claim after its live contract was removed', async () => {
+    const { dependencies, repository } = createDependencies();
+    dependencies.lifecycleRegistry = new Map();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: { code: 'plugin_operation_handler_missing', category: 'permanent' },
+      reason: 'missing_handler',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginId: 'speech',
+        jobId: job.id,
+        generation: 3,
+      })
+    );
+  });
+
   it('preserves a validated plugin retry classification and deadline', async () => {
     const { dependencies, repository } = createDependencies();
 

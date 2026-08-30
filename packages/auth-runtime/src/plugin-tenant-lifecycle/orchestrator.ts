@@ -57,6 +57,7 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
     readonly queueName: string;
     readonly maxAttempts: number;
     readonly executionLane?: 'default' | 'privileged';
+    readonly runAt?: Date;
   }) => Promise<void>;
   readonly persistEnqueueFailure: (input: {
     readonly instanceId: string;
@@ -253,6 +254,7 @@ export const createPluginTenantLifecycleOrchestrator = (
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
         executionLane: registration.executionLane ?? 'default',
+        runAt: new Date(input.scheduledAt),
       });
     } catch {
       return handleEnqueueFailure(dependencies, input, job, generation);

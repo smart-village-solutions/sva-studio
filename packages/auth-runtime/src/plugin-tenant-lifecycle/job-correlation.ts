@@ -90,6 +90,20 @@ const resolveLifecycleContext = (
   return { definition, metadata, pluginId: job.pluginId };
 };
 
+const resolveLifecycleFailureContext = (job: StudioJobRecord) => {
+  let metadata: PluginTenantLifecycleJobMetadata | null;
+  try {
+    metadata = readPluginTenantLifecycleJobMetadata(job);
+  } catch {
+    throw permanentLifecycleError('plugin_tenant_lifecycle_job_metadata_invalid', job);
+  }
+  if (!metadata) return null;
+  if (job.source !== 'plugin' || !job.pluginId) {
+    throw permanentLifecycleError('plugin_tenant_lifecycle_job_identity_invalid', job);
+  }
+  return { metadata, pluginId: job.pluginId };
+};
+
 const resolveLifecycleFailure = (
   dependencies: Pick<CorrelationDependencies, 'now'>,
   pluginId: string,
@@ -194,7 +208,7 @@ export const createPluginTenantLifecycleJobCorrelation = (
     readonly error: StudioJobError;
     readonly reason: 'failed' | 'missing_handler' | 'cancelled';
   }): Promise<void> {
-    const context = resolveLifecycleContext(dependencies, input.job);
+    const context = resolveLifecycleFailureContext(input.job);
     if (!context) {
       return;
     }

@@ -105,6 +105,7 @@ describe('plugin tenant lifecycle orchestrator', () => {
       queueName: 'plugin-operations',
       maxAttempts: 5,
       executionLane: 'privileged',
+      runAt: new Date('2026-08-30T12:00:00.000Z'),
     });
   });
 

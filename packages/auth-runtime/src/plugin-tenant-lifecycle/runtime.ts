@@ -46,15 +46,18 @@ const repository: Pick<
     ),
 };
 
-const needsAutomaticProvisioning = (
+const resolveAutomaticProvisioningSchedule = (
   definition: PluginTenantLifecycleRegistryEntry,
   activation: TenantModuleActivationRecord,
   lifecycle: Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>
-): boolean => {
-  if (!lifecycle) return true;
-  if (lifecycle.accessState === 'suspended') return false;
-  if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return false;
-  if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > Date.now()) return false;
+): string | null => {
+  const now = new Date();
+  if (!lifecycle) return now.toISOString();
+  if (lifecycle.accessState === 'suspended') return null;
+  if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return null;
+  if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > now.getTime()) {
+    return lifecycle.retryAfter;
+  }
   const readiness = createPluginTenantReadinessReadModel({
     definition,
     activation,
@@ -65,9 +68,9 @@ const needsAutomaticProvisioning = (
     lifecycle.completedGeneration >= lifecycle.desiredGeneration &&
     (readiness.status === 'ready' || readiness.status === 'degraded')
   ) {
-    return false;
+    return null;
   }
-  return true;
+  return now.toISOString();
 };
 
 const persistLifecycleEnqueueFailure = async (input: {
@@ -175,13 +178,14 @@ export const ensureConfiguredPluginTenantProvisioning = async (
     const lifecycle = await withPluginTenantLifecycleRepository(instanceId, (resolvedRepository) =>
       resolvedRepository.getLifecycle(instanceId, pluginId)
     );
-    if (!needsAutomaticProvisioning(definition, activation, lifecycle)) continue;
+    const scheduledAt = resolveAutomaticProvisioningSchedule(definition, activation, lifecycle);
+    if (!scheduledAt) continue;
     try {
       await startConfiguredPluginTenantLifecycle({
         instanceId,
         pluginId,
         operation: 'provision',
-        scheduledAt: new Date().toISOString(),
+        scheduledAt,
       });
     } catch (error) {
       if (

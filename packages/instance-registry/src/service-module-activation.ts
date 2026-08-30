@@ -23,9 +23,11 @@ export const createReconcileModuleActivationPoliciesHandler =
       return emptyResult;
     }
 
+    const registry = requireModuleIamRegistry(deps);
     const result = await deps.repository.reconcileModuleActivationPolicies({
       instanceId,
       policies: snapshot.modules,
+      preservedModuleIds: [...registry.keys()],
       reconcileId: snapshot.revision,
       actorId,
     });
@@ -37,7 +39,6 @@ export const createReconcileModuleActivationPoliciesHandler =
     }
 
     const assignedModuleIds = await deps.repository.listAssignedModules(instanceId);
-    const registry = requireModuleIamRegistry(deps);
     const managedModuleIds = [...new Set([...registry.keys(), ...result.changedModuleIds])];
     const permissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId,

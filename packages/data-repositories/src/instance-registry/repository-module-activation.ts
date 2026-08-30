@@ -55,7 +55,14 @@ const createReconcileModuleActivationPolicies =
       else (outcome.changed ? changedModuleIds : unchangedModuleIds).push(policy.moduleId);
     }
     const activePolicyIds = Object.fromEntries(
-      orderedPolicies.map(({ moduleId }) => [moduleId, true] as const)
+      [
+        ...new Set([
+          ...orderedPolicies.map(({ moduleId }) => moduleId),
+          ...input.preservedModuleIds,
+        ]),
+      ]
+        .sort(compareAlphabetically)
+        .map((moduleId) => [moduleId, true] as const)
     );
     const omittedRows = await queryRows<MutationOutcome & { module_id: string }>(
       executor,

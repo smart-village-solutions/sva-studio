@@ -82,6 +82,7 @@ describe('instance module activation policy reconcile', () => {
           policyRevision: 'events-1',
         },
       ],
+      preservedModuleIds: ['events'],
       reconcileId: 'catalog-1',
       actorId: 'system',
     });
@@ -169,6 +170,7 @@ describe('instance module activation policy reconcile', () => {
     expect(repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       policies: [],
+      preservedModuleIds: [],
       reconcileId: 'plugin-catalog:empty',
       actorId: undefined,
     });

@@ -84,6 +84,7 @@ describe('instance registry repository module iam', () => {
             policyRevision: 'catalog-7',
           },
         ],
+        preservedModuleIds: ['media'],
         reconcileId: 'reconcile-1',
         actorId: 'system',
       })
@@ -114,13 +115,13 @@ describe('instance registry repository module iam', () => {
     ]);
     expect(statements[2]?.values).toEqual([
       'tenant-a',
-      JSON.stringify({ events: true, news: true }),
+      JSON.stringify({ events: true, media: true, news: true }),
       'reconcile-1',
       'system',
     ]);
   });
 
-  it('deactivates policy-managed modules omitted from the current plugin snapshot', async () => {
+  it('deactivates omitted plugin modules while preserving registered host modules', async () => {
     const { executor, statements } = createQueuedExecutor([
       [{ acquired: true, changed: false }],
       [{ module_id: 'retired-plugin', acquired: true, changed: true }],
@@ -138,6 +139,7 @@ describe('instance registry repository module iam', () => {
             policyRevision: 'events-1',
           },
         ],
+        preservedModuleIds: ['media'],
         reconcileId: 'catalog-8',
         actorId: 'system',
       })
@@ -153,7 +155,7 @@ describe('instance registry repository module iam', () => {
     expect(statements[1]?.text).not.toContain('manual_override = NULL');
     expect(statements[1]?.values).toEqual([
       'tenant-a',
-      JSON.stringify({ events: true }),
+      JSON.stringify({ events: true, media: true }),
       'catalog-8',
       'system',
     ]);
@@ -174,6 +176,7 @@ describe('instance registry repository module iam', () => {
             policyRevision: 'catalog-7',
           },
         ],
+        preservedModuleIds: [],
         reconcileId: 'reconcile-1',
       })
     ).resolves.toEqual({

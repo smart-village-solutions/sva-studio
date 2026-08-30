@@ -155,6 +155,7 @@ export type InstanceRegistryRepository = {
   readonly reconcileModuleActivationPolicies: (input: {
     instanceId: string;
     policies: readonly TenantModuleActivationPolicyInput[];
+    preservedModuleIds: readonly string[];
     reconcileId: string;
     actorId?: string;
   }) => Promise<TenantModuleActivationReconcileResult>;

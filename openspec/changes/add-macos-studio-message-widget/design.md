@@ -60,6 +60,7 @@ Die versionierte Account-API stellt bereit:
 - `GET /api/v1/account/messages/summary` liefert ausschließlich `unreadCount` und den Aktualisierungszeitpunkt. Das kleine Widget lädt dadurch keine Nachrichtentexte.
 - `GET /api/v1/account/messages?limit=<n>` liefert höchstens das serverseitige Maximum von 20 sichtbaren Nachrichten. Für das Widget werden ausschließlich `3` und `5` verwendet.
 - `POST /api/v1/account/messages/read` akzeptiert eine begrenzte Liste stabiler Nachrichten-IDs und markiert nur Nachrichten, die für den aktuellen Account weiterhin sichtbar sind.
+- `POST /api/v1/account/messages/handoffs` erzeugt für eine weiterhin sichtbare Nachrichten-ID eine kurzlebige, einmalig verwendbare Browser-Übergabe, die serverseitig an Instanz, Account und relatives Ziel gebunden ist.
 
 Alle Antworten mit accountbezogenen Daten setzen einen privaten `no-store`-Cachevertrag. Fehler verwenden stabile Codes und enthalten weder Token noch Nachrichteninhalte. Der Browser kann dieselben Endpunkte über die bestehende `httpOnly`-Session nutzen; der native Client verwendet Bearer-Token. Beide Transportarten werden vor der fachlichen Feed-Logik in denselben instanzgebundenen Identity-Kontext überführt.
 
@@ -94,6 +95,8 @@ Die macOS-App ist ein öffentlicher OIDC-Client ohne Client-Secret. Sie verwende
 
 Access- und Refresh-Token werden ausschließlich in einer minimalen Keychain-Access-Group gespeichert, die Container-App und Widget Extension teilen. Sie werden nie in `UserDefaults`, App-Group-Dateien, Logs, Crash-Metadaten oder Telemetrie geschrieben. Die Anwendung zeigt keine Keycloak-Seite in einem kontrollierbaren eingebetteten WebView.
 
+Container-App und Widget Extension koordinieren Refresh-Rotation über eine betriebssystemgestützte, pro App Group prozessübergreifende Sperre mit begrenzter Wartezeit. Nach Erwerb der Sperre liest jeder Prozess Token und Credential-Generation erneut aus der Keychain. Ist dort bereits ein neueres gültiges Access Token vorhanden, verwendet er dieses und sendet den zuvor gelesenen Refresh Token nicht. Andernfalls führt ausschließlich der Sperreninhaber den Refresh aus und ersetzt Tokenpaar und Generation gemeinsam, bevor er die Sperre freigibt. Lockdatei und Koordinationsmetadaten enthalten keine Credentials. Bei Lock-Timeout oder unklarem Zustand sendet das Widget keinen möglicherweise alten Refresh Token, sondern zeigt einen neutralen Fehlerzustand; ein tatsächlich rotierter, aber vor der lokalen Speicherung verlorener Token führt fail-closed zur erneuten Anmeldung.
+
 Die vom Benutzer gewählte Studio-Instanz ist kein vertrauenswürdiger Realm- oder Hostparameter. Der kanonische Auth-Host löst sie ausschließlich über die serverseitige Instanz-/Tenant-Registry auf und erzeugt eine kurzlebige, integritätsgeschützte Login-Transaktion. Deren Instanz, erlaubter Realm/Issuer, Callback und API-Host werden in den Authorization Request und `state` gebunden. Der Callback akzeptiert nur exakt diese Transaktion; die App validiert State, Nonce und Issuer und sendet das resultierende Token ausschließlich an den zuvor servervalidierten API-Host. Freie Redirect-, Issuer-, Realm- oder API-Host-Werte aus App-, Callback- oder Token-Daten werden nicht übernommen.
 
 Die Studio-API prüft Signatur, erlaubten Algorithmus, Issuer, Audience, autorisierten Client, Ablauf, Not-before, Scopes sowie die Übereinstimmung von Tokeninstanz, angefragtem API-Host und aktivem Accountzustand. Unbekannte, blockierte, deaktivierte, gelöschte oder tenantfremde Identitäten bleiben fail-closed. Logout entfernt lokale Credentials und widerruft die native Sitzung beziehungsweise Refresh Tokens. Bestehende Forced-Reauth- und Kontosperrpfade müssen native Sitzungen ebenfalls unwirksam machen.
@@ -116,7 +119,9 @@ Widget-Timeline-Aktualisierungen markieren keine Nachricht als gelesen.
 
 Ein neuer Studio-Nachrichtenbereich zeigt dieselben autorisierten Feed-Einträge. Nach erfolgreichem Laden und Darstellen markiert er die dargestellten IDs idempotent als gelesen. Ein Deep Link auf eine einzelne Nachricht markiert nur diese Nachricht, nachdem das Ziel erfolgreich dargestellt wurde.
 
-Das kleine Widget öffnet den Nachrichtenbereich. Ein Eintrag im mittleren oder großen Widget öffnet die konkrete Nachricht. Deep Links verwenden ausschließlich serverseitig ausgegebene, relative und allowlist-validierte Studio-Ziele. Externe oder protokollfremde Ziele werden verworfen.
+Das kleine Widget öffnet den Nachrichtenbereich. Ein Eintrag im mittleren oder großen Widget öffnet die konkrete Nachricht. Widget-Interaktionen führen zuerst in die Container-App. Diese fordert mit ihrer nativen Accountidentität eine kurzlebige, einmalig verwendbare Browser-Übergabe für das allowlist-validierte relative Ziel an und öffnet erst dann den externen Browser. Die Übergabe enthält im URL keine lesbare Account-, Instanz- oder Nachrichteninformation und ist serverseitig an genau eine Instanz, einen Account und ein Ziel gebunden.
+
+Der Studio-Nachrichtenbereich konsumiert die Übergabe erst, wenn die Browser-Session exakt zu gebundener Instanz und gebundenem Account passt. Bei fehlender oder abweichender Browseridentität verlangt er eine passende Anmeldung beziehungsweise einen Accountwechsel; bis dahin werden weder Nachrichteninhalt dargestellt noch Gelesen-Belege verändert. Externe oder protokollfremde Ziele, abgelaufene, wiederverwendete oder nicht passende Übergaben werden fail-closed verworfen.
 
 ### 7. Die native App ist ein eigener Nx-orchestrierter Workspace-Baustein
 
@@ -149,10 +154,11 @@ Backend und native App verwenden eine versionierte, rückwärtskompatible API. S
 
 ### Nachricht öffnen
 
-1. WidgetKit öffnet einen allowlist-validierten Studio-Deep-Link.
-2. Das Studio authentifiziert den Benutzer über seinen normalen Browser-/PWA-Flow.
-3. Nach erfolgreicher Darstellung markiert der Nachrichtenbereich die sichtbaren IDs als gelesen.
-4. Die native App beziehungsweise das Widget aktualisiert den Zähler beim nächsten Timeline-Reload.
+1. WidgetKit öffnet einen internen, allowlist-validierten App-Link mit der stabilen Nachrichten-ID beziehungsweise dem Nachrichtenbereich als Ziel.
+2. Die Container-App fordert mit ihrer nativen Sitzung eine kurzlebige, einmalige und an Instanz, Account sowie relatives Ziel gebundene Browser-Übergabe an.
+3. Das Studio authentifiziert den Benutzer über seinen normalen Browser-/PWA-Flow und konsumiert die Übergabe nur bei exakter Übereinstimmung von Browser- und nativer Identität.
+4. Bei einer abweichenden Browseridentität werden vor passender Anmeldung weder Inhalt dargestellt noch Gelesen-Belege verändert.
+5. Nach erfolgreicher Darstellung markiert der Nachrichtenbereich die sichtbaren IDs als gelesen; App beziehungsweise Widget aktualisieren den Zähler beim nächsten Timeline-Reload.
 
 ## Risks / Trade-offs
 
@@ -180,7 +186,7 @@ Der Rollback deaktiviert zuerst den nativen Client und widerruft Refresh Tokens.
 - API-Tests für Cookie- und Bearer-Identitäten, Audience/Issuer/Scope, Instanzisolation, deaktivierte Accounts, Eingabegrenzen, `no-store` und stabile Fehlercodes.
 - PostgreSQL-16-Migrationstest Up/Down/Up sowie RLS-, Membership-FK-, Upsert- und Query-Plan-Nachweise.
 - Web-Tests für Nachrichtenbereich, Gelesen-Zeitpunkt, Deep Links, i18n, Tastaturbedienung und WCAG.
-- Native Unit-Tests für DTO-Validierung, Keychain-Abstraktion, Tokenzustände, Größenabbildung und Fehlerdarstellung.
+- Native Unit-Tests für DTO-Validierung, Keychain-Abstraktion, prozessübergreifende Refresh-Serialisierung, Credential-Generationen, Tokenzustände, Größenabbildung und Fehlerdarstellung.
 - Native UI-/Snapshot-Prüfungen für kleine, mittlere und große Widgets einschließlich Dynamic Type, hoher Kontrast, VoiceOver und redigiertem Zustand.
-- Integrationsprüfung der servervalidierten Instanzauswahl, des externen Browserlogins, der State-/Issuer-/Callback-/API-Host-Bindung, von Logout/Widerruf, Account-Deaktivierung und Realm-/Instanzkonflikten gegen Staging.
+- Integrationsprüfung der servervalidierten Instanzauswahl, des externen Browserlogins, der State-/Issuer-/Callback-/API-Host-Bindung, konkurrierender App-/Widget-Refreshes, accountgebundener Browser-Übergaben, von Logout/Widerruf, Account-Deaktivierung und Realm-/Instanzkonflikten gegen Staging.
 - Release-Gate für Signatur, Notarisierung, Checksummen und rückwärtskompatiblen API-Vertrag.

@@ -18,7 +18,7 @@
 
 - [ ] 3.1 Feed-Kernlogik mit Provider-Validierung, Deduplizierung, deterministischer Sortierung, Account-Sichtbarkeit und serverseitigem Limit implementieren.
 - [ ] 3.2 Bestehenden Studio-Changelog-Katalog als ersten Provider adaptieren und sicheren Klartextauszug für native Clients erzeugen.
-- [ ] 3.3 `GET /api/v1/account/messages/summary`, `GET /api/v1/account/messages` und `POST /api/v1/account/messages/read` mit strikter Eingabevalidierung, stabilen Fehlercodes und privatem `no-store` bereitstellen.
+- [ ] 3.3 `GET /api/v1/account/messages/summary`, `GET /api/v1/account/messages`, `POST /api/v1/account/messages/read` und kurzlebige, einmalige, account-/instanzgebundene Browser-Übergaben mit strikter Eingabevalidierung, stabilen Fehlercodes und privatem `no-store` bereitstellen.
 - [ ] 3.4 Browser-Session und native Bearer-Identität vor der Fachlogik in denselben instanzgebundenen Accountkontext überführen.
 - [ ] 3.5 API-, Unit- und Integrationstests für Limits, Sichtbarkeit, Scopes, Gelesen-Status, Fehlerfälle und Log-Redaktion ergänzen.
 
@@ -27,15 +27,15 @@
 - [ ] 4.1 Nativen öffentlichen OIDC-Client mit exakten Redirect-URIs, API-Audience und ausschließlich `studio.messages.read` sowie `studio.messages.read-state.update` in Registry und Keycloak-Vertrag modellieren; die vom Benutzer gewählte Studio-Instanz serverseitig validieren und in eine kurzlebige Login-Transaktion mit erlaubtem Realm/Issuer, Callback und API-Host auflösen.
 - [ ] 4.2 Authorization Code mit PKCE S256, externem Systembrowser, State/Nonce, integritätsgeschützter Instanz-/Issuer-/Callback-/API-Host-Bindung und verifiziertem Claimed-HTTPS-Callback implementieren; eingebettete Login-WebViews, Client-Secrets und frei übernommene Host-/Realmwerte ausschließen.
 - [ ] 4.3 Studio-Bearer-Prüfung für Signatur, Algorithmus, Issuer, Audience, Client, Zeitgrenzen, Scopes, Instanz, gebundenen API-Host und aktiven Account implementieren.
-- [ ] 4.4 Keychain-Sharing für Container-App und Widget Extension auf die minimal erforderliche Access Group begrenzen; Token aus Preferences, App-Group-Dateien, Logs und Telemetrie ausschließen.
-- [ ] 4.5 Logout, Refresh-Rotation, Widerruf, Forced Reauth, Kontosperre und Membership-Verlust fail-closed mit Tests abdecken.
+- [ ] 4.4 Keychain-Sharing für Container-App und Widget Extension auf die minimal erforderliche Access Group begrenzen; Token aus Preferences, App-Group-Dateien, Logs und Telemetrie ausschließen; Refresh-Rotation per prozessübergreifender Sperre, erneutem Keychain-Read und Credential-Generation serialisieren.
+- [ ] 4.5 Logout, konkurrierende App-/Widget-Refreshes, Lock-Timeout, Refresh-Rotation, Widerruf, Forced Reauth, Kontosperre und Membership-Verlust fail-closed mit Tests abdecken.
 - [ ] 4.6 `pnpm check:server-runtime` früh für Änderungen an `packages/auth-runtime` und weiteren serverseitigen Packages ausführen.
 
 ## 5. Studio-Nachrichtenbereich
 
 - [ ] 5.1 Typsichere Route für den Studio-Nachrichtenbereich mit vorhandenen shadcn/ui-/Design-System-Primitiven ergänzen.
-- [ ] 5.2 Dargestellte Nachrichten erst nach erfolgreichem Laden markieren; Deep Links auf einzelne Nachrichten markieren nur das erfolgreich dargestellte Ziel.
-- [ ] 5.3 Relative Nachrichtenziele serverseitig allowlisten und externe beziehungsweise protokollfremde Links ablehnen.
+- [ ] 5.2 Dargestellte Nachrichten erst nach erfolgreichem Laden markieren; Browser-Übergaben nur bei exakter Übereinstimmung von nativer und Browseridentität konsumieren und vor einem nötigen Accountwechsel weder Inhalt darstellen noch Gelesen-Belege verändern.
+- [ ] 5.3 Relative Nachrichtenziele serverseitig allowlisten, kurzlebige einmalige Browser-Übergaben an Instanz, Account und Ziel binden und externe beziehungsweise protokollfremde Links ablehnen.
 - [ ] 5.4 Deutsche und englische Übersetzungen, Tastaturbedienung, Fokusführung, semantische Überschriften und zugängliche Lade-/Leer-/Fehlerzustände ergänzen.
 - [ ] 5.5 Gezielte Unit-, Route-, A11y- und E2E-Tests für Liste, Zähler, Markierung und Deep Links ergänzen.
 
@@ -46,7 +46,7 @@
 - [ ] 6.3 Kleines Widget als reinen Ungelesen-Zähler ohne Abruf von Nachrichtentexten implementieren.
 - [ ] 6.4 Mittleres Widget mit höchstens drei und großes Widget mit höchstens fünf automatisch gewählten Nachrichten implementieren.
 - [ ] 6.5 Privacy-Redaktion für Titel und Texte, neutrale Sperrzustandsanzeige sowie Lade-, Leer-, Offline-, Fehler- und Reauth-Zustände implementieren.
-- [ ] 6.6 Widget-Reads frei von Gelesen-Mutationen halten; Deep Links auf Nachrichtenbereich und Einzelnachricht implementieren.
+- [ ] 6.6 Widget-Reads frei von Gelesen-Mutationen halten; Widget-Interaktionen über die Container-App und frisch angeforderte account-/instanzgebundene Browser-Übergaben auf Nachrichtenbereich und Einzelnachricht führen.
 - [ ] 6.7 Logout löscht Keychain-Credentials und abgeleitete lokale Zustände und fordert eine Neuladung aller Widget-Timelines an.
 - [ ] 6.8 Native Unit-, UI-, Snapshot-, VoiceOver-, Dynamic-Type-, Kontrast- und Redaktionsprüfungen für alle Widget-Größen ergänzen.
 - [ ] 6.9 Die begrenzte XCTest-/Xcode-Toolchain-Ausnahme von der Vitest-Standardregel in der aktuellen Testdokumentation festhalten, ohne TypeScript-Testpfade zu verändern.

@@ -118,20 +118,35 @@ Das System MUST Titel und Nachrichtentexte als privacy-sensitive behandeln und i
 - **DANN** werden native Credentials und abgeleitete lokale Zustände gelöscht
 - **UND** werden alle Widget-Timelines zur Neuladung aufgefordert
 
-### Requirement: Sichere Widget-Deep-Links
+### Requirement: Sichere und accountgebundene Widget-Deep-Links
 
-Das System SHALL Widget-Interaktionen ausschließlich auf allowlist-validierte Studio-Ziele führen. Das kleine Widget SHALL den Nachrichtenbereich öffnen; Listenzeilen SHALL die konkrete Nachricht öffnen.
+Das System SHALL Widget-Interaktionen ausschließlich über die Container-App und eine kurzlebige, einmalig verwendbare Browser-Übergabe auf allowlist-validierte Studio-Ziele führen. Die Übergabe MUST serverseitig an die native Instanz, den nativen Account und das relative Ziel gebunden sein. Das kleine Widget SHALL den Nachrichtenbereich öffnen; Listenzeilen SHALL die konkrete Nachricht öffnen.
 
 #### Scenario: Kleines Widget wird aktiviert
 
 - **WENN** ein Benutzer das kleine Widget aktiviert
-- **DANN** öffnet das System den authentifizierten Studio-Nachrichtenbereich
+- **DANN** fordert die Container-App mit der nativen Sitzung eine accountgebundene Browser-Übergabe für den Studio-Nachrichtenbereich an
+- **UND** öffnet das System den Bereich nur unter einer passenden Browseridentität
 
 #### Scenario: Nachricht wird aktiviert
 
 - **WENN** ein Benutzer eine sichtbare Nachricht im mittleren oder großen Widget aktiviert
-- **DANN** öffnet das System das zugehörige relative Studio-Ziel
+- **DANN** fordert die Container-App mit der nativen Sitzung eine accountgebundene Browser-Übergabe für das zugehörige relative Studio-Ziel an
+- **UND** konsumiert das Studio die Übergabe höchstens einmal und nur unter einer passenden Browseridentität
 - **UND** wird die Nachricht erst nach erfolgreicher Darstellung als gelesen markiert
+
+#### Scenario: Browser verwendet einen anderen Account
+
+- **WENN** die aktive Browser-Session nicht zu Instanz und Account der nativen Browser-Übergabe passt
+- **DANN** verlangt das Studio eine passende Anmeldung beziehungsweise einen Accountwechsel
+- **UND** stellt es vorher keinen Nachrichteninhalt dar
+- **UND** verändert es vorher keinen Gelesen-Stand
+
+#### Scenario: Browser-Übergabe ist ungültig
+
+- **WENN** eine Browser-Übergabe abgelaufen, bereits verwendet oder nicht passend ist
+- **DANN** wird sie fail-closed abgelehnt
+- **UND** enthält die Ablehnung keine lesbaren Account-, Instanz- oder Nachrichteninformationen
 
 #### Scenario: Unsicheres Ziel wird geliefert
 

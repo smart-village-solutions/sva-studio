@@ -67,3 +67,11 @@ Das System MUST native Access- und Refresh-Credentials ausschließlich in einer 
 - **WENN** ein bereits rotiertes oder widerrufenes Refresh Token erneut verwendet wird
 - **DANN** wird der Refresh fail-closed abgelehnt
 - **UND** wird ein redigiertes Security-Ereignis ohne Tokenwert erfasst
+
+#### Scenario: App und Widget erneuern gleichzeitig
+
+- **WENN** Container-App und Widget Extension auf demselben Gerät gleichzeitig ein ablaufendes Access Token erneuern wollen
+- **DANN** serialisiert eine prozessübergreifende Sperre genau einen Refresh
+- **UND** liest jeder Prozess nach Sperrenerwerb Token und Credential-Generation erneut aus der Keychain
+- **UND** verwendet ein wartender Prozess das bereits rotierte Tokenpaar, ohne den zuvor gelesenen Refresh Token erneut zu senden
+- **UND** sendet das Widget bei Lock-Timeout oder unklarem Zustand keinen möglicherweise veralteten Refresh Token

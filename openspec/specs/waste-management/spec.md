@@ -1171,7 +1171,48 @@ Das System SHALL DOI-Versandnachrichten aus der Waste-Konfiguration, dem normali
 
 - **WHEN** der Versandauftrag keinen DOI-Template-Key besitzt
 - **THEN** verwendet das System weiterhin die bestehende Reminder-Komposition
-- **AND** das DOI-Refactoring verändert weder Reminder-Text noch Reminder-Envelope
+- **AND** das DOI-Refactoring verändert den Reminder-Envelope nicht
+
+### Requirement: Erinnerungsmails geben Termin-Hinweise als Klartext aus
+
+Das System SHALL E-Mail-Erinnerungen weiterhin ausschließlich als Nur-Text-Nachrichten versenden und vorhandene Rich-Text-Hinweise des jeweiligen Termins sicher in lesbaren Klartext umwandeln.
+
+#### Scenario: Rich-Text-Hinweise werden dem Termin als Klartext zugeordnet
+
+- **WHEN** eine E-Mail-Erinnerung für einen Termin mit Tour- oder individuellem Termin-Hinweis erzeugt wird
+- **THEN** erscheint der Hinweis direkt unter dem zugehörigen Termin
+- **AND** Absätze und Listen bleiben im Nur-Text-Inhalt sinnvoll strukturiert
+- **AND** sichere Linkziele bleiben als ausgeschriebene URL erhalten
+- **AND** mehrfach identische Hinweise erscheinen nur einmal
+
+#### Scenario: Ausführbarer HTML-Inhalt gelangt nicht in die Erinnerungsmail
+
+- **WHEN** ein Termin-Hinweis Skripte, Ereignisattribute oder unsichere Linkziele enthält
+- **THEN** entfernt das System diese Inhalte vor der Klartextkonvertierung
+- **AND** die Versandnachricht enthält keinen HTML-Body
+
+### Requirement: Mainserver-Sync überträgt Tour- und Termin-Hinweise als bereinigtes HTML
+
+Das System SHALL den Hinweis einer Waste-Tour und den individuellen Hinweis eines materialisierten Abholtermins gemeinsam im Feld `pickUpTime.note` an den SVA Mainserver übertragen. Die App-fähige HTML-Struktur SHALL erhalten bleiben, ausführbare oder unsichere Inhalte SHALL vor der Übertragung entfernt werden.
+
+#### Scenario: Tour- und Termin-Hinweis werden in stabiler Reihenfolge kombiniert
+
+- **WHEN** ein materialisierter Abholtermin einen Tour-Hinweis und einen davon verschiedenen individuellen Termin-Hinweis besitzt
+- **THEN** enthält `pickUpTime.note` zuerst den bereinigten Tour-Hinweis und danach den bereinigten individuellen Termin-Hinweis
+- **AND** beide Hinweise bleiben als getrennte HTML-Blöcke erkennbar
+- **AND** der kombinierte Wert fließt vor der Änderungsprüfung in den deterministischen Sync-Key ein
+
+#### Scenario: Identische Hinweise werden nicht doppelt übertragen
+
+- **WHEN** Tour- und Termin-Hinweis nach der sicheren Klartextnormalisierung denselben semantischen Inhalt besitzen
+- **THEN** enthält `pickUpTime.note` diesen Inhalt nur einmal
+- **AND** der Tour-Hinweis besitzt als erster Hinweis Vorrang
+
+#### Scenario: Einzelner Hinweis behält seine bereinigte HTML-Struktur
+
+- **WHEN** nur ein nicht leerer Tour- oder Termin-Hinweis vorhanden ist
+- **THEN** überträgt das System dessen bereinigtes HTML ohne einen zusätzlichen Kombinations-Wrapper
+- **AND** Skripte, Ereignisattribute und unsichere Linkziele gelangen nicht zum SVA Mainserver
 
 ### Requirement: Öffentliche Reminder-Konfiguration wird kanonisch und fail-closed normalisiert
 

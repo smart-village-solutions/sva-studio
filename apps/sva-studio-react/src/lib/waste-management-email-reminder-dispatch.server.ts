@@ -1,9 +1,10 @@
-import type {
-  MailDispatchPayload,
-  MailTransportConfig,
-  WasteCollectionLocationRecord,
-  WasteFractionRecord,
-  WasteManagementEmailReminderConfig,
+import {
+  convertRichTextHtmlToPlainText,
+  type MailDispatchPayload,
+  type MailTransportConfig,
+  type WasteCollectionLocationRecord,
+  type WasteFractionRecord,
+  type WasteManagementEmailReminderConfig,
 } from '@sva/core';
 import type { MailDispatchMessage, MailDispatchMessageAddress } from '@sva/mail-runtime';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
@@ -106,6 +107,7 @@ export const buildReminderDispatchPayload = (input: {
   readonly locationLabel: string;
   readonly fraction: WasteFractionRecord;
   readonly pickupDate: string;
+  readonly hints?: readonly string[];
   readonly unsubscribeTokenHash: string;
   readonly unsubscribeTokenSecret: string;
 }): MailDispatchPayload => {
@@ -121,6 +123,13 @@ export const buildReminderDispatchPayload = (input: {
     pickupDate: pickupDateLabel,
     unsubscribeUrl,
   } as const;
+  const hintText = Array.from(
+    new Set(
+      (input.hints ?? [])
+        .map((hint) => convertRichTextHtmlToPlainText(hint))
+        .filter((hint) => hint.length > 0)
+    )
+  ).join('\n\n');
 
   return {
     orderId: input.subscriptionId,
@@ -145,6 +154,7 @@ export const buildReminderDispatchPayload = (input: {
       locationLabel: input.locationLabel,
       pickupDate: pickupDateLabel,
       fractionName: input.fraction.name,
+      ...(hintText ? { hintText } : {}),
       privacyPolicyUrl: input.config.privacyPolicyUrl,
       imprintUrl: input.config.imprintUrl,
       ...(input.config.serviceLabel ? { serviceLabel: input.config.serviceLabel } : {}),
@@ -345,13 +355,23 @@ const buildReminderDispatchMessage = (input: {
   const bulletLine = normalizeMailTextLine(templatePayload.fractionName)
     ? `- ${templatePayload.fractionName}${normalizeMailTextLine(templatePayload.pickupDate) ? ` (${templatePayload.pickupDate})` : ''}`
     : undefined;
+  const hintText = normalizeMailTextLine(templatePayload.hintText);
+  const appointmentSection = [
+    bulletLine,
+    hintText
+      ?.split('\n')
+      .map((line) => (line ? `  ${line}` : ''))
+      .join('\n'),
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join('\n');
   const serviceLabel = normalizeMailTextLine(
     templatePayload.serviceLabel ?? input.config.serviceLabel
   );
   const text = joinMailTextSections([
     templatePayload.introText,
     templatePayload.listIntroText,
-    bulletLine,
+    appointmentSection,
     templatePayload.outroText,
     templatePayload.reasonText,
     `${templatePayload.unsubscribeLabel}: ${templatePayload.unsubscribeUrl}`,

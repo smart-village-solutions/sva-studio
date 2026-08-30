@@ -259,12 +259,20 @@ describe('waste email reminder dispatch helpers', () => {
         updatedAt: '',
       },
       pickupDate: '2026-06-16',
+      hints: [
+        '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
+        '<ul><li>Zufahrt freihalten</li></ul><script>alert(1)</script>',
+        '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
+      ],
       unsubscribeTokenHash: 'sha256:unsubscribe',
       unsubscribeTokenSecret: 'secret',
     });
 
     expect(payload.addresses).toEqual([{ kind: 'to', email: 'max@example.org' }]);
     expect(payload.templatePayload).not.toHaveProperty('serviceLabel');
+    expect(payload.templatePayload.hintText).toBe(
+      ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n'),
+    );
     expect(payload.templatePayload.unsubscribeUrl).toContain(
       'https://demo.abfallkalender.example/erinnerungen/abmelden?token=',
     );
@@ -283,6 +291,7 @@ describe('waste email reminder dispatch helpers', () => {
         templatePayload: {
           ...createReminderPayload().templatePayload,
           serviceLabel: 'Payload Service',
+          hintText: 'Behälter am Vorabend bereitstellen.\n\n- Zufahrt freihalten',
         },
       }),
     });
@@ -300,7 +309,12 @@ describe('waste email reminder dispatch helpers', () => {
       text: [
         'Nicht vergessen',
         'Liste',
-        '- Papier (Di., 16.06.)',
+        [
+          '- Papier (Di., 16.06.)',
+          '  Behälter am Vorabend bereitstellen.',
+          '',
+          '  - Zufahrt freihalten',
+        ].join('\n'),
         'Gruss',
         'Grund',
         'Abmelden: https://example.org/unsubscribe',

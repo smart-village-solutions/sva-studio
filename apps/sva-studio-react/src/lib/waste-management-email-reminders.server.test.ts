@@ -623,6 +623,7 @@ describe('waste management operations runtime', () => {
         {
           id: 'tour-1',
           name: 'Biotour',
+          description: '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
           wasteFractionIds: ['fraction-bio'],
           recurrence: null,
           firstDate: undefined,
@@ -649,7 +650,7 @@ describe('waste management operations runtime', () => {
           tourId: 'tour-1',
           pickupDate: '2026-06-16',
           locationIds: ['location-1'],
-          note: undefined,
+          note: '<ul><li>Zufahrt freihalten</li></ul><script>alert(1)</script>',
         },
       ]),
       listWasteTourDateShifts: vi.fn(async () => []),
@@ -699,6 +700,17 @@ describe('waste management operations runtime', () => {
     });
 
     expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(enqueueOutboxEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          templatePayload: expect.objectContaining({
+            hintText: ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join(
+              '\n'
+            ),
+          }),
+        }),
+      })
+    );
     expect(result.details).toMatchObject({
       operation: 'materialize-email-reminders',
       mode: 'executed',

@@ -3,6 +3,7 @@ import type {
   WasteOutputLegendHint,
   WasteOutputPickupEntry,
 } from './waste-management-output.types.js';
+import { convertRichTextHtmlToPlainText } from './rich-text-plain-text.js';
 import {
   buildHolidayMap,
   formatIsoDate,
@@ -35,7 +36,11 @@ type WasteCalendarPdfLegendRow =
 
 const MAX_LEGEND_ROWS = 8;
 
-const normalizeLegendText = (value: string): string => value.trim().replace(/\s+/gu, ' ');
+const normalizeLegendText = (value: string): string =>
+  convertRichTextHtmlToPlainText(value, {
+    includeLinkUrls: false,
+    unorderedListItemPrefix: '* ',
+  }).replace(/\s+/gu, ' ');
 
 type WasteCalendarPdfDay = Readonly<{
   isoDate: string;

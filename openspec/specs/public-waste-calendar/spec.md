@@ -99,6 +99,18 @@ Das System SHALL für einen vollständig aufgelösten Standort drei komplementä
 - **AND** sie kann je nach Datenlage auch vergangene Termine bis zum Anfang des Vorjahres enthalten
 - **AND** vergangene Termine erscheinen mit einer eigenen Überschrift erst nach dem Block der künftigen Termine
 
+#### Scenario: Terminliste bleibt ohne Detailaktion
+
+- **WHEN** die Terminliste dargestellt wird
+- **THEN** erscheinen ihre Termine als statische Listeneinträge ohne Link oder Schaltfläche
+- **AND** die Aktivierung eines Listeneintrags öffnet kein Detail-Modal
+
+#### Scenario: Hinweise werden als bereinigtes Rich Text dargestellt
+
+- **WHEN** ein sichtbarer Listenhinweis oder ein Hinweis im Detail-Modal HTML-Auszeichnung enthält
+- **THEN** interpretiert die App die erlaubte Rich-Text-Auszeichnung
+- **AND** entfernt Skripte, Ereignisattribute und unsichere Linkziele vor der Darstellung
+
 #### Scenario: Monats- und Jahresansicht haben ein begrenztes Navigationsfenster
 
 - **WHEN** Benutzerinnen oder Benutzer den Monats- oder Jahreskalender verwenden
@@ -151,6 +163,13 @@ Das System SHALL globale PDF-, iCal- und Erinnerungsaktionen aus demselben final
 - **THEN** können sie den Export für die aktuell aktiven Fraktionen direkt auslösen, ohne zuvor Reminder-Slots auswählen zu müssen
 - **AND** die App übernimmt verfügbare kalenderfähige Standard-Reminder automatisch
 - **AND** der serverseitig erzeugte iCal-Feed bleibt konsistent zu den in der App sichtbaren Kalenderdaten
+
+#### Scenario: iCal-Beschreibungen enthalten Hinweise als bereinigten Klartext
+
+- **WHEN** Fraktions-, Tour- oder Termin-Hinweise HTML-Auszeichnung enthalten
+- **THEN** wandelt der iCal-Export die Hinweise vor der Deduplizierung in strukturierten Klartext um
+- **AND** bleiben Absätze, Listen sowie sichere Linkziele in der Terminbeschreibung lesbar
+- **AND** enthält das `DESCRIPTION`-Feld weder HTML-Tags noch Skriptinhalt oder unsichere Linkziele
 
 #### Scenario: Gemischte Fraktionsauswahl ohne gemeinsame Reminder-Fähigkeit bleibt fail-closed
 
@@ -475,6 +494,13 @@ Das System SHALL die Legende des PDF-Abfallkalenders direkt unterhalb des Kalend
 - **WHEN** eine im PDF sichtbare Fraktion eine Beschreibung besitzt
 - **THEN** zeigt ihre Legendenzeile Farbbox, Kürzel und den Text `<Bezeichnung> - <Beschreibung>` ohne feste Beschreibungsspalte
 - **AND** die Beschreibung verwendet den verbleibenden Platz bis zum rechten Seitenrand
+
+#### Scenario: Beschreibung enthält HTML-Auszeichnung
+
+- **WHEN** eine Fraktionsbeschreibung oder ein kontextbezogener Hinweis HTML-Auszeichnung enthält
+- **THEN** wandelt die PDF-Ausgabe Absätze, Zeilenumbrüche und Listen in lesbaren Klartext um
+- **AND** enthält die PDF-Legende weder HTML-Tags noch Skriptinhalt oder angehängte Linkziele
+- **AND** werden HTML-Entities als die zugehörigen Klartextzeichen dargestellt
 
 #### Scenario: Sichtbare Tour oder einzelner Termin besitzt einen Hinweis
 

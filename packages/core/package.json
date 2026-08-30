@@ -30,9 +30,11 @@
   },
   "dependencies": {
     "@sva/iam-core": "workspace:*",
+    "html-to-text": "^10.0.1",
     "sanitize-html": "^2.17.6"
   },
   "devDependencies": {
+    "@types/html-to-text": "^9.0.4",
     "@types/sanitize-html": "^2.16.1",
     "fast-check": "^3.23.2",
     "vitest": "^4.1.10"

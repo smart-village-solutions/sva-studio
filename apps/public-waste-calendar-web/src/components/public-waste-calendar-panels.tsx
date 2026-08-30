@@ -3,6 +3,7 @@ import React from 'react';
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
 import { formatDateOnlyGerman } from '../lib/public-waste-date-utils.js';
 import type { FilteredPublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
+import { PublicWasteRichText } from './public-waste-rich-text.js';
 
 const monthYearFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' });
 const monthFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long' });
@@ -137,7 +138,6 @@ const renderPickupEntryButton = (
 const renderListMonthGroups = (input: Readonly<{
   entries: readonly PublicWasteCalendarEntry[];
   headingIdPrefix: string;
-  onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
 }>) =>
   groupEntriesByMonth(input.entries).map(([monthKey, monthEntries]) => (
     <section
@@ -159,23 +159,20 @@ const renderListMonthGroups = (input: Readonly<{
                   <span className="pickup-day">{date.slice(8, 10)}</span>
                 </div>
                 <div className="pickup-entry-group">
-                  {dayEntries.map((entry) =>
-                    renderPickupEntryButton(entry, {
-                      className: 'pickup-button',
-                      onActivateEntry: input.onActivateEntry,
-                      children: (
-                        <>
-                          {renderPickupDot(entry)}
-                          <span className="pickup-copy">
-                            <strong className="pickup-label">{entry.fractionLabel}</strong>
-                            {entry.tourDescription ? (
-                              <span className="pickup-description">{entry.tourDescription}</span>
-                            ) : null}
-                          </span>
-                        </>
-                      ),
-                    })
-                  )}
+                  {dayEntries.map((entry) => (
+                    <div key={entry.id} className="pickup-entry">
+                      {renderPickupDot(entry)}
+                      <div className="pickup-copy">
+                        <strong className="pickup-label">{entry.fractionLabel}</strong>
+                        {entry.tourDescription ? (
+                          <PublicWasteRichText
+                            className="pickup-description"
+                            html={entry.tourDescription}
+                          />
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </li>
@@ -407,7 +404,6 @@ export function PublicWasteCalendarPanels(props: Readonly<{
           {renderListMonthGroups({
             entries: upcomingEntries,
             headingIdPrefix: 'upcoming-month',
-            onActivateEntry: props.onActivateEntry,
           })}
           {pastEntries.length > 0 ? (
             <section className="pickup-past-group" aria-labelledby="past-pickups-heading">
@@ -417,7 +413,6 @@ export function PublicWasteCalendarPanels(props: Readonly<{
               {renderListMonthGroups({
                 entries: pastEntries,
                 headingIdPrefix: 'past-month',
-                onActivateEntry: props.onActivateEntry,
               })}
             </section>
           ) : null}

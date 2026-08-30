@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -108,8 +110,9 @@ describe('PublicWasteCalendarPanels', () => {
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Jahr' }));
   });
 
-  it('renders upcoming entries before a separate past section in the list view', () => {
-    render(
+  it('renders upcoming entries as static content before a separate past section', () => {
+    const onActivateEntry = vi.fn();
+    const { container } = render(
       <PublicWasteCalendarPanels
         model={createFilteredPublicWasteCalendarModelFixture({
           nextPickupDate: '2026-05-19',
@@ -125,6 +128,8 @@ describe('PublicWasteCalendarPanels', () => {
               id: 'pickup-next',
               date: '2026-05-19',
               fractionLabel: 'Bioabfall',
+              tourDescription:
+                '<p><strong>Bereitstellung:</strong> am Vorabend.</p><script>window.alert("xss")</script>',
             }),
             createPublicWasteCalendarEntryFixture({
               id: 'pickup-future',
@@ -141,16 +146,15 @@ describe('PublicWasteCalendarPanels', () => {
             { id: 'paper', label: 'Papier', color: '#0000FF' },
           ],
         })}
-        onActivateEntry={vi.fn()}
+        onActivateEntry={onActivateEntry}
       />
     );
 
-    const buttons = screen.getAllByRole('button', { name: /Termin .* am \d{2}\.05\.2026/ });
-    expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
-      'Termin Bioabfall am 19.05.2026',
-      'Termin Papier am 21.05.2026',
-      'Termin Restmüll am 12.05.2026',
-    ]);
+    expect(screen.queryByRole('button', { name: /Termin .* am \d{2}\.05\.2026/ })).toBeNull();
+    expect(screen.getByText('Bereitstellung:').tagName).toBe('STRONG');
+    expect(container.querySelector('.pickup-description script')).toBeNull();
+    expect(container.textContent).not.toContain('window.alert');
+    expect(onActivateEntry).not.toHaveBeenCalled();
     expect(screen.getByRole('heading', { name: 'Vergangene Termine' })).toBeTruthy();
   });
 

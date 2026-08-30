@@ -140,7 +140,8 @@ test('resolves a location, restores it from cookie, and exposes accessible expor
   await expect(calendarExportAction).toHaveCSS('box-shadow', 'none');
   await expect(page.getByRole('link', { name: 'Kalender exportieren' })).toBeVisible();
 
-  const pickupButton = page.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' });
+  await page.getByRole('tab', { name: 'Jahr' }).click();
+  const pickupButton = page.getByRole('button', { name: 'Termin Bioabfall am 19.05.2026' });
   await pickupButton.click();
 
   await expect(page.getByRole('dialog')).toBeVisible();

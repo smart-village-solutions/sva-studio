@@ -974,6 +974,7 @@ body {
   padding-top: 0.15rem;
 }
 
+.pickup-entry,
 .pickup-button {
   width: fit-content;
   display: flex;
@@ -985,6 +986,9 @@ body {
   color: inherit;
   font: inherit;
   text-align: left;
+}
+
+.pickup-button {
   cursor: pointer;
 }
 
@@ -1011,6 +1015,16 @@ body {
   color: rgb(96 96 96);
   font-size: 0.95rem;
   line-height: 1.45;
+}
+
+.pickup-description > :first-child,
+.rich-text > :first-child {
+  margin-top: 0;
+}
+
+.pickup-description > :last-child,
+.rich-text > :last-child {
+  margin-bottom: 0;
 }
 
 .notice-banner {

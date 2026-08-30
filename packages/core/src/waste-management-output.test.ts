@@ -355,6 +355,49 @@ describe('waste-management output pdf', () => {
     expect(pdfText).not.toContain('1 0 0 1 238.00');
   });
 
+  it('converts HTML descriptions to plain text before building the PDF legend', () => {
+    const document = buildWasteCalendarPdfDocument({
+      year: 2026,
+      locationLabel: 'Bärensprung',
+      pickups: [
+        {
+          date: '2026-01-14',
+          fractions: [
+            {
+              id: 'bio',
+              label: 'Biogut',
+              description:
+                '<p>Bitte <strong>Tonne &amp; Deckel</strong> bereitstellen.</p>' +
+                '<ul><li>Keine Säcke</li><li>Keine Asche</li></ul>',
+              color: '#55AA33',
+            },
+          ],
+        },
+      ],
+      legendHints: [
+        {
+          id: 'tour-bio',
+          label: 'Tour: Bio',
+          description:
+            '<p>Mehr unter <a href="https://example.org">Hinweise</a>.</p>' +
+            '<script>alert("xss")</script>',
+        },
+      ],
+    });
+
+    expect(document.pages[0]?.legend).toContainEqual(
+      expect.objectContaining({
+        kind: 'fraction',
+        description: 'Bitte Tonne & Deckel bereitstellen. * Keine Säcke * Keine Asche',
+      })
+    );
+    expect(document.pages[0]?.legend).toContainEqual({
+      kind: 'hint',
+      label: 'Tour: Bio',
+      description: 'Mehr unter Hinweise.',
+    });
+  });
+
   it('truncates long single-line legend descriptions with three dots', () => {
     const longDescription =
       'Dieser sehr lange Hinweis soll ausschließlich in einer einzigen Legendenzeile stehen und darf den rechten Seitenrand auf keinen Fall überschreiten, auch wenn noch viele weitere Wörter folgen. Deshalb enthält dieser Test bewusst zusätzlichen Text, der garantiert nicht mehr vollständig auf die Seite passt.';

@@ -1,5 +1,6 @@
 import {
   buildWasteCalendarPdfDocument,
+  convertRichTextHtmlToPlainText,
   renderWasteCalendarPdf,
   type WasteManagementEmailReminderConfig,
   type WasteCalendarPdfBrandingImage,
@@ -54,7 +55,7 @@ const readRequiredYear = (url: URL): number => {
 const normalizeDateForIcal = (value: string): string => value.replaceAll('-', '');
 
 const normalizeEventDescriptionPart = (value: string | undefined | null): string | null => {
-  const normalized = value?.trim();
+  const normalized = value ? convertRichTextHtmlToPlainText(value) : '';
   return normalized ? normalized : null;
 };
 

@@ -6,7 +6,8 @@ import type {
   WasteStreetRecord,
   WasteTourRecord,
 } from '@sva/core';
-import { buildWasteStreetKey } from '@sva/core';
+import { buildWasteStreetKey, convertRichTextHtmlToPlainText } from '@sva/core';
+import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
 import type { MaterializedLocationTourPickupDateRecord } from './waste-management-mainserver-sync.materialization.js';
 import { buildWasteSyncKey } from './waste-management-mainserver-sync.rows.js';
@@ -30,6 +31,30 @@ type StudioRowMaterializationInput = Readonly<{
   cities: readonly WasteCityRecord[];
   streets: readonly WasteStreetRecord[];
 }>;
+
+const buildPickupNoteHtml = (
+  tourDescription: string | null | undefined,
+  pickupNote: string | null | undefined
+): string | undefined => {
+  const semanticContents = new Set<string>();
+  const fragments = [tourDescription, pickupNote].flatMap((value) => {
+    if (!value?.trim()) return [];
+
+    const sanitizedHtml = sanitizeRichTextHtml(value).trim();
+    const semanticContent = convertRichTextHtmlToPlainText(sanitizedHtml)
+      .replace(/\s+/gu, ' ')
+      .trim();
+    if (!semanticContent || semanticContents.has(semanticContent)) return [];
+
+    semanticContents.add(semanticContent);
+    return [sanitizedHtml];
+  });
+
+  if (fragments.length === 0) return undefined;
+  if (fragments.length === 1) return fragments[0];
+
+  return fragments.map((fragment) => `<div>${fragment}</div>`).join('');
+};
 
 export const buildStudioRowsFromMaterialization = (
   input: StudioRowMaterializationInput
@@ -67,6 +92,7 @@ export const buildStudioRowsFromMaterialization = (
     return tour.wasteFractionIds.flatMap((fractionId) => {
       const wasteType = fractionById.get(fractionId)?.name?.trim();
       if (!wasteType) return [];
+      const note = buildPickupNoteHtml(tour.description, pickupDate.note);
 
       return [{
         pickupDate: pickupDate.pickupDate,
@@ -74,14 +100,14 @@ export const buildStudioRowsFromMaterialization = (
         street,
         ...(zip ? { zip } : {}),
         city,
-        note: pickupDate.note ?? undefined,
+        ...(note ? { note } : {}),
         key: buildWasteSyncKey({
           pickupDate: pickupDate.pickupDate,
           wasteType,
           street,
           zip,
           city,
-          note: pickupDate.note ?? undefined,
+          note,
         }),
       }];
     });

@@ -79,7 +79,10 @@ export const createMaterializeEmailRemindersOperation = (
       nextYear: currentYear + 1,
     });
 
-    const pickupDateByLocationFraction = new Map<string, string[]>();
+    const pickupsByLocationFraction = new Map<
+      string,
+      Array<Readonly<{ pickupDate: string; hints: readonly string[] }>>
+    >();
     const fractionById = new Map(fractions.map((fraction) => [fraction.id, fraction] as const));
     const tourById = new Map(tours.map((tour) => [tour.id, tour] as const));
     for (const entry of materializedPickupDates) {
@@ -89,9 +92,14 @@ export const createMaterializeEmailRemindersOperation = (
       }
       for (const fractionId of tour.wasteFractionIds) {
         const key = `${entry.locationId}::${fractionId}`;
-        const values = pickupDateByLocationFraction.get(key) ?? [];
-        values.push(entry.pickupDate);
-        pickupDateByLocationFraction.set(key, values);
+        const values = pickupsByLocationFraction.get(key) ?? [];
+        values.push({
+          pickupDate: entry.pickupDate,
+          hints: [tour.description, entry.note].filter(
+            (hint): hint is string => typeof hint === 'string' && hint.trim().length > 0
+          ),
+        });
+        pickupsByLocationFraction.set(key, values);
       }
     }
 
@@ -113,14 +121,18 @@ export const createMaterializeEmailRemindersOperation = (
           continue;
         }
 
-        const reminderDates = new Set<string>();
+        const reminderHintsByDate = new Map<string, Set<string>>();
         for (const location of matchingLocations) {
-          for (const pickupDate of pickupDateByLocationFraction.get(`${location.id}::${fraction.id}`) ?? []) {
-            reminderDates.add(pickupDate);
+          for (const pickup of pickupsByLocationFraction.get(`${location.id}::${fraction.id}`) ?? []) {
+            const hints = reminderHintsByDate.get(pickup.pickupDate) ?? new Set<string>();
+            for (const hint of pickup.hints) {
+              hints.add(hint.trim());
+            }
+            reminderHintsByDate.set(pickup.pickupDate, hints);
           }
         }
 
-        for (const pickupDate of reminderDates) {
+        for (const [pickupDate, hints] of reminderHintsByDate) {
           const pickupDateValue = parseIsoDateUtc(pickupDate);
           const sendAtDate = addDaysUtc(pickupDateValue, -slot.defaultLeadDays);
           const sendAt = createUtcIsoAtHour(sendAtDate, DEFAULT_REMINDER_SEND_HOUR_UTC);
@@ -147,6 +159,7 @@ export const createMaterializeEmailRemindersOperation = (
               locationLabel: subscription.locationLabel,
               fraction,
               pickupDate,
+              hints: [...hints],
               unsubscribeTokenHash: subscription.unsubscribeTokenHash,
               unsubscribeTokenSecret: unsubscribeSigningSecret,
             }),

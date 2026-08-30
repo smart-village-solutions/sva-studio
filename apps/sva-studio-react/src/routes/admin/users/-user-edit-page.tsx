@@ -2,13 +2,17 @@ import * as React from 'react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import {
   Button,
+  getStudioFormFieldProps,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
+  StudioField,
   StudioFormActionBar,
+  StudioFormSummaryErrors,
   StudioPageTitle,
   StudioPersistentFormError,
   StudioSaveButton,
 } from '@sva/studio-ui-react';
+import { Controller } from 'react-hook-form';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -116,6 +120,7 @@ export const UserEditPage = ({
     closeUnsavedDialog,
     confirmPendingTab,
     effectivePermissionTrace,
+    form,
     organizationAssignment,
     organizationMembershipDrafts,
     organizationSearchValue,
@@ -146,7 +151,6 @@ export const UserEditPage = ({
     selectOrganizationAssignment,
     selectableGroups,
     selectableRoles,
-    setFormValues,
     setOrganizationAssignment,
     setOrganizationSearchValue,
     selectedAssignableOrganization,
@@ -156,6 +160,21 @@ export const UserEditPage = ({
     updateOrganizationMembershipDraft,
     userApi,
   } = useUserEditController({ userId });
+  const {
+    control,
+    formState: { errors },
+    register,
+    setValue,
+  } = form;
+  const emailField = getStudioFormFieldProps({ id: 'user-email', error: errors.email });
+  const notesField = getStudioFormFieldProps({
+    id: 'user-notes',
+    error: errors.notes,
+    hasDescription: true,
+  });
+  const summaryErrors = [emailField.summaryError, notesField.summaryError].filter(
+    (error): error is NonNullable<typeof error> => error !== undefined
+  );
   const initialSaveFeedbackShownRef = React.useRef(false);
   React.useEffect(() => {
     if (
@@ -372,8 +391,13 @@ export const UserEditPage = ({
         className="space-y-4"
         aria-readonly={!canUpdateUser}
         onSubmit={canUpdateUser ? onSave : (event) => event.preventDefault()}
+        noValidate
       >
         <fieldset className="contents" disabled={!canUpdateUser}>
+          <StudioFormSummaryErrors
+            errors={summaryErrors}
+            title={t('account.messages.validationSummary')}
+          />
           <section
             id="user-edit-panel-personal"
             role="tabpanel"
@@ -392,54 +416,22 @@ export const UserEditPage = ({
             </div>
             <div className="grid gap-2 text-sm text-foreground">
               <Label htmlFor="user-first-name">{t('account.fields.firstName')}</Label>
-              <Input
-                id="user-first-name"
-                value={formValues.firstName}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, firstName: event.target.value }))
-                }
-              />
+              <Input {...register('firstName')} id="user-first-name" />
             </div>
             <div className="grid gap-2 text-sm text-foreground">
               <Label htmlFor="user-last-name">{t('account.fields.lastName')}</Label>
-              <Input
-                id="user-last-name"
-                value={formValues.lastName}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, lastName: event.target.value }))
-                }
-              />
+              <Input {...register('lastName')} id="user-last-name" />
             </div>
             <div className="grid gap-2 text-sm text-foreground">
               <Label htmlFor="user-display-name">{t('account.fields.displayName')}</Label>
-              <Input
-                id="user-display-name"
-                value={formValues.displayName}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, displayName: event.target.value }))
-                }
-              />
+              <Input {...register('displayName')} id="user-display-name" />
             </div>
-            <div className="grid gap-2 text-sm text-foreground">
-              <Label htmlFor="user-email">{t('account.fields.email')}</Label>
-              <Input
-                id="user-email"
-                type="email"
-                value={formValues.email}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, email: event.target.value }))
-                }
-              />
-            </div>
+            <StudioField {...emailField} label={t('account.fields.email')}>
+              <Input {...register('email')} type="email" />
+            </StudioField>
             <div className="grid gap-2 text-sm text-foreground md:col-span-2">
               <Label htmlFor="user-phone">{t('account.fields.phone')}</Label>
-              <Input
-                id="user-phone"
-                value={formValues.phone}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, phone: event.target.value }))
-                }
-              />
+              <Input {...register('phone')} id="user-phone" />
             </div>
           </section>
 
@@ -452,31 +444,28 @@ export const UserEditPage = ({
           >
             <div className="grid gap-2 text-sm text-foreground">
               <Label htmlFor="user-status">{t('account.fields.status')}</Label>
-              <Select
-                id="user-status"
-                value={formValues.status}
-                onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    status: event.target.value as 'active' | 'inactive' | 'pending',
-                  }))
-                }
-                className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
-              >
-                <option value="active">{t('account.status.active')}</option>
-                <option value="inactive">{t('account.status.inactive')}</option>
-                <option value="pending">{t('account.status.pending')}</option>
-              </Select>
+              <Controller
+                control={control}
+                name="status"
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    id="user-status"
+                    className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
+                  >
+                    <option value="active">{t('account.status.active')}</option>
+                    <option value="inactive">{t('account.status.inactive')}</option>
+                    <option value="pending">{t('account.status.pending')}</option>
+                  </Select>
+                )}
+              />
             </div>
             <div className="flex items-start gap-3 rounded-md border border-border bg-background px-3 py-3 text-sm text-foreground">
               <Checkbox
                 id="user-is-technical-account"
                 checked={formValues.isTechnicalAccount}
                 onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    isTechnicalAccount: event.target.checked,
-                  }))
+                  setValue('isTechnicalAccount', event.target.checked, { shouldDirty: true })
                 }
               />
               <Label htmlFor="user-is-technical-account" className="cursor-pointer">
@@ -497,26 +486,11 @@ export const UserEditPage = ({
             ) : null}
             <div className="grid gap-2 text-sm text-foreground">
               <Label htmlFor="user-language">{t('account.fields.language')}</Label>
-              <Input
-                id="user-language"
-                value={formValues.preferredLanguage}
-                onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    preferredLanguage: event.target.value,
-                  }))
-                }
-              />
+              <Input {...register('preferredLanguage')} id="user-language" />
             </div>
             <div className="grid gap-2 text-sm text-foreground">
               <Label htmlFor="user-timezone">{t('account.fields.timezone')}</Label>
-              <Input
-                id="user-timezone"
-                value={formValues.timezone}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, timezone: event.target.value }))
-                }
-              />
+              <Input {...register('timezone')} id="user-timezone" />
             </div>
             <fieldset className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
               <legend>{t('admin.users.edit.rolesLabel')}</legend>
@@ -532,12 +506,13 @@ export const UserEditPage = ({
                         type="checkbox"
                         checked={selected}
                         onChange={(event) => {
-                          setFormValues((current) => ({
-                            ...current,
-                            roleIds: event.target.checked
-                              ? appendUnique(current.roleIds, role.id)
-                              : current.roleIds.filter((entry) => entry !== role.id),
-                          }));
+                          setValue(
+                            'roleIds',
+                            event.target.checked
+                              ? appendUnique(formValues.roleIds, role.id)
+                              : formValues.roleIds.filter((entry) => entry !== role.id),
+                            { shouldDirty: true }
+                          );
                         }}
                       />
                       <span>{role.roleName}</span>
@@ -564,12 +539,13 @@ export const UserEditPage = ({
                         type="checkbox"
                         checked={selected}
                         onChange={(event) => {
-                          setFormValues((current) => ({
-                            ...current,
-                            groupIds: event.target.checked
-                              ? appendUnique(current.groupIds, group.id)
-                              : current.groupIds.filter((entry) => entry !== group.id),
-                          }));
+                          setValue(
+                            'groupIds',
+                            event.target.checked
+                              ? appendUnique(formValues.groupIds, group.id)
+                              : formValues.groupIds.filter((entry) => entry !== group.id),
+                            { shouldDirty: true }
+                          );
                         }}
                       />
                       <span className="flex flex-col gap-1">
@@ -595,33 +571,18 @@ export const UserEditPage = ({
               <Label htmlFor="user-mainserver-app-id">
                 {t('admin.users.edit.mainserverApplicationIdLabel')}
               </Label>
-              <Input
-                id="user-mainserver-app-id"
-                value={formValues.mainserverUserApplicationId}
-                onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    mainserverUserApplicationId: event.target.value,
-                  }))
-                }
-              />
+              <Input {...register('mainserverUserApplicationId')} id="user-mainserver-app-id" />
             </div>
             <div className="grid gap-2 text-sm text-foreground md:col-span-2">
               <Label htmlFor="user-mainserver-app-secret">
                 {t('admin.users.edit.mainserverApplicationSecretLabel')}
               </Label>
               <Input
+                {...register('mainserverUserApplicationSecret')}
                 id="user-mainserver-app-secret"
                 type="password"
                 autoComplete="new-password"
-                value={formValues.mainserverUserApplicationSecret}
                 placeholder={t('admin.users.edit.mainserverApplicationSecretPlaceholder')}
-                onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    mainserverUserApplicationSecret: event.target.value,
-                  }))
-                }
               />
               <span className="text-xs text-muted-foreground">
                 {formValues.mainserverUserApplicationSecretSet
@@ -632,20 +593,14 @@ export const UserEditPage = ({
                 {t('admin.users.edit.mainserverApplicationSecretHint')}
               </span>
             </div>
-            <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-              <Label htmlFor="user-notes">{t('admin.users.edit.notesLabel')}</Label>
-              <Textarea
-                id="user-notes"
-                value={formValues.notes}
-                maxLength={2000}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, notes: event.target.value }))
-                }
-              />
-              <span className="text-xs text-muted-foreground">
-                {t('admin.users.edit.notesCounter', { count: formValues.notes.length })}
-              </span>
-            </div>
+            <StudioField
+              {...notesField}
+              className="md:col-span-2"
+              label={t('admin.users.edit.notesLabel')}
+              description={t('admin.users.edit.notesCounter', { count: formValues.notes.length })}
+            >
+              <Textarea {...register('notes')} maxLength={2000} />
+            </StudioField>
           </section>
 
           <section

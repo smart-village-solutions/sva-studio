@@ -1,4 +1,6 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
+import { useForm } from 'react-hook-form';
 
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
@@ -7,7 +9,7 @@ import { getUserTimeline } from '../../../lib/iam-api';
 import {
   USER_EDIT_TABS,
   buildGroupMembershipById,
-  hasUserFormChanges,
+  createUserEditSchema,
   splitPermissionTrace,
   toUserFormValues,
   type UserEditTabKey,
@@ -19,20 +21,22 @@ import { useUserSaveActions } from './-use-user-save-actions';
 type UserEditControllerOptions = { readonly userId: string };
 
 const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
-  const [formValues, setFormValues] = React.useState<UserFormValues>(() => toUserFormValues(user));
-  const baselineFormValues = React.useMemo(() => toUserFormValues(user), [user]);
-  const hasUnsavedChanges = React.useMemo(
-    () => hasUserFormChanges(baselineFormValues, formValues),
-    [baselineFormValues, formValues]
-  );
+  const schema = React.useMemo(() => createUserEditSchema(), []);
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(schema as never),
+    defaultValues: toUserFormValues(user),
+    reValidateMode: 'onChange',
+  });
+  const formValues = form.watch();
+  const hasUnsavedChanges = form.formState.isDirty;
 
   React.useEffect(() => {
     if (!user) {
       return;
     }
 
-    setFormValues(toUserFormValues(user));
-  }, [user]);
+    form.reset(toUserFormValues(user));
+  }, [form, user]);
 
   React.useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -51,9 +55,9 @@ const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
   }, [hasUnsavedChanges]);
 
   return {
+    form,
     formValues,
     hasUnsavedChanges,
-    setFormValues,
   };
 };
 
@@ -203,7 +207,7 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     [groupsApi.groups]
   );
 
-  const { formValues, hasUnsavedChanges, setFormValues } = useUserEditFormState(userApi.user);
+  const { form, formValues, hasUnsavedChanges } = useUserEditFormState(userApi.user);
   const {
     activeTab,
     onTabIntent,
@@ -229,7 +233,7 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     passwordSetupEmailSuccess,
     saveStatus,
     showSaved,
-  } = useUserSaveActions(userApi, formValues, setFormValues, hasUnsavedChanges);
+  } = useUserSaveActions(userApi, form, hasUnsavedChanges);
   const { effective: effectivePermissionTrace, inactive: inactivePermissionTrace } = React.useMemo(
     () => splitPermissionTrace(userApi.user?.permissionTrace),
     [userApi.user?.permissionTrace]
@@ -259,8 +263,8 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
   });
 
   const resetFormValues = React.useCallback(() => {
-    setFormValues(toUserFormValues(userApi.user));
-  }, [setFormValues, userApi.user]);
+    form.reset(toUserFormValues(userApi.user));
+  }, [form, userApi.user]);
 
   const retryUserLoad = React.useCallback(() => {
     userApi.clearMutationError();
@@ -278,14 +282,15 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     }
     setUnsavedDialogOpen(false);
     setPendingTab(null);
-    setFormValues(toUserFormValues(userApi.user));
-  }, [pendingTab, setActiveTab, setFormValues, setPendingTab, setUnsavedDialogOpen, userApi.user]);
+    form.reset(toUserFormValues(userApi.user));
+  }, [form, pendingTab, setActiveTab, setPendingTab, setUnsavedDialogOpen, userApi.user]);
 
   return {
     activeTab,
     closeUnsavedDialog,
     confirmPendingTab,
     effectivePermissionTrace,
+    form,
     formValues,
     groupMembershipById,
     groupsApi,
@@ -319,7 +324,6 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     selectOrganizationAssignment,
     selectableGroups,
     selectableRoles,
-    setFormValues,
     setOrganizationAssignment,
     setOrganizationSearchValue,
     selectedAssignableOrganization,

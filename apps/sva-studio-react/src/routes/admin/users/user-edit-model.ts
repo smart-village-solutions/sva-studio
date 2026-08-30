@@ -1,4 +1,5 @@
 import type { IamUserDetail, IamUserPermissionTraceItem } from '@sva/core';
+import { z } from 'zod';
 
 import { t } from '../../../i18n';
 import { pickInitials } from '../../../lib/display-name';
@@ -27,6 +28,27 @@ export type UserFormValues = {
   mainserverUserApplicationSecretSet: boolean;
   isTechnicalAccount: boolean;
 };
+
+export const createUserEditSchema = () =>
+  z.object({
+    firstName: z.string(),
+    lastName: z.string(),
+    displayName: z.string(),
+    email: z.string().email(t('account.validation.emailInvalid')).or(z.literal('')),
+    phone: z.string(),
+    position: z.string(),
+    department: z.string(),
+    status: z.enum(['active', 'inactive', 'pending']),
+    preferredLanguage: z.string(),
+    timezone: z.string(),
+    notes: z.string().max(2000, t('admin.users.edit.validation.notesTooLong')),
+    roleIds: z.array(z.string()),
+    groupIds: z.array(z.string()),
+    mainserverUserApplicationId: z.string(),
+    mainserverUserApplicationSecret: z.string(),
+    mainserverUserApplicationSecretSet: z.boolean(),
+    isTechnicalAccount: z.boolean(),
+  });
 
 export const USER_EDIT_TABS: ReadonlyArray<{
   key: UserEditTabKey;

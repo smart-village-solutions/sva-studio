@@ -25,6 +25,42 @@ Abgrenzung in Inventur und Arbeitskontext dokumentieren. Sobald einer dieser
 Verträge erweitert oder ersetzt wird, gilt der vollständige Foundation-
 Standard für den betroffenen Flow.
 
+## Vereinbarter Abschluss-Scope
+
+Der Change wird mit einem engen Referenzschnitt abgeschlossen. Dieser Schnitt
+belegt die Foundations, ohne daraus eine vollständige Migration aller stabilen
+Legacy-Flows abzuleiten:
+
+- Die Formularinventur erfasst alle produktiven Host- und Plugin-Bereiche über
+  den jeweils führenden Formular-Owner. Untergeordnete Hilfsdialoge oder Wrapper
+  benötigen nur dann einen eigenen Eintrag, wenn sie selbst Form-State,
+  Validierung oder Submit verantworten.
+- Der offene Rollen-Pilot umfasst ausschließlich das Anlegen einer Rolle unter
+  `/admin/roles`. Eine Migration der Rollen-Detailansicht oder weiterer
+  Rollenverwaltung ist nicht Teil dieses Changes.
+- Beim offenen Benutzer-Pilot wird das primäre Feldmodell der Edit-Ansicht auf
+  `react-hook-form` mit `zodResolver` umgestellt. Organisationszuordnung,
+  Timeline, Berechtigungslisten und andere eigenständige Server-State- oder
+  Spezial-Subflows bleiben außerhalb dieses Feldmodells. Dirty-State,
+  Reset-Verhalten, Secret-Behandlung und Abbruch beim Tabwechsel müssen
+  unverändert erhalten bleiben.
+- Der MSW-Nachweis umfasst HTTP-nahe Referenztests für User Create, User Edit
+  (Speichern und erneutes Versenden), Role Create und Host Content. Unveränderte
+  direkte Fetch- oder Client-Mocks außerhalb dieser Referenznachweise müssen in
+  diesem Change nicht global umgeschrieben werden; für neue oder grundlegend
+  überarbeitete HTTP-nahe Tests bleibt MSW verbindlich.
+- Die noch offenen `fast-check`-Nachweise sind auf die dokumentierten
+  Invarianten von `packages/routing/src/route-search.ts` und
+  `packages/core/src/input-readers.ts` begrenzt.
+- Jeder Implementierungsblock wird mit den kleinsten relevanten Unit- und
+  Type-Gates abgeschlossen. Der Change endet erst nach vollständiger Inventur,
+  überprüfter Governance, grüner strikter OpenSpec-Validierung und den
+  einschlägigen Abschlussgates.
+
+Nicht Teil dieses Abschlusses sind eine IAM-weite Testmigration, zusätzliche
+Formular-Piloten oder fachliche Änderungen an den genannten Admin- und
+Content-Flows.
+
 ## Goals / Non-Goals
 
 - Goals:

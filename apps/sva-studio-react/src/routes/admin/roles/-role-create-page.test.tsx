@@ -1,11 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RoleCreatePage } from './-role-create-page';
 
 const navigateMock = vi.fn();
 const createRoleMock = vi.fn();
+const useRealRoleApi = vi.hoisted(() => ({ current: false }));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -25,7 +27,8 @@ vi.mock('../../../lib/iam-api', async () => {
     await vi.importActual<typeof import('../../../lib/iam-api')>('../../../lib/iam-api');
   return {
     ...actual,
-    createRole: (...args: Parameters<typeof actual.createRole>) => createRoleMock(...args),
+    createRole: (...args: Parameters<typeof actual.createRole>) =>
+      useRealRoleApi.current ? actual.createRole(...args) : createRoleMock(...args),
   };
 });
 
@@ -37,14 +40,19 @@ describe('RoleCreatePage', () => {
   beforeEach(() => {
     createRoleMock.mockReset();
     navigateMock.mockReset();
+    useRealRoleApi.current = false;
   });
 
-  it('creates a role and navigates to the detail page', async () => {
-    createRoleMock.mockResolvedValue({
-      data: {
-        id: 'role-new',
-      },
-    });
+  it('creates a role through HTTP and navigates to the detail page', async () => {
+    useRealRoleApi.current = true;
+    let createPayload: unknown;
+
+    studioMswServer.use(
+      http.post('/api/v1/iam/roles', async ({ request }) => {
+        createPayload = await request.json();
+        return HttpResponse.json({ data: { id: 'role-new' } });
+      })
+    );
 
     render(<RoleCreatePage />);
 
@@ -57,7 +65,7 @@ describe('RoleCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
 
     await waitFor(() => {
-      expect(createRoleMock).toHaveBeenCalledWith({
+      expect(createPayload).toEqual({
         displayName: 'Team Lead',
         description: 'Verantwortlich für Teamkoordination',
         permissionIds: [],
@@ -71,14 +79,12 @@ describe('RoleCreatePage', () => {
     });
   });
 
-  it('renders mutation errors and stays on the page', async () => {
-    const { IamHttpError } = await import('../../../lib/iam-api');
-    createRoleMock.mockRejectedValue(
-      new IamHttpError({
-        status: 409,
-        code: 'conflict',
-        message: 'conflict',
-      })
+  it('renders HTTP mutation errors and stays on the page', async () => {
+    useRealRoleApi.current = true;
+    studioMswServer.use(
+      http.post('/api/v1/iam/roles', () =>
+        HttpResponse.json({ error: { code: 'conflict', message: 'conflict' } }, { status: 409 })
+      )
     );
 
     render(<RoleCreatePage />);
@@ -95,6 +101,20 @@ describe('RoleCreatePage', () => {
     });
 
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('shows resolver-driven errors and blocks an empty display name', async () => {
+    render(<RoleCreatePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
+
+    await waitFor(() => {
+      expect(createRoleMock).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert').textContent).toContain('Bitte einen Anzeigenamen angeben.');
+    });
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Anzeigename'));
+    expect(screen.getByLabelText('Anzeigename').getAttribute('aria-invalid')).toBe('true');
   });
 
   it('hides technical key and role level inputs from the normal creation form', () => {

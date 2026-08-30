@@ -14,19 +14,19 @@ Dieses Dokument definiert den verbindlichen Governance-Rahmen für die Studio-Fo
 
 ## Referenzscope dieses Changes
 
-Der repo-weite Default-Standard gilt fuer alle neuen oder grundlegend ueberarbeiteten Formular- und Frontend-Test-Flows im Scope dieser Governance. Der initiale Referenzscope aus OpenSpec ist enger:
+Der repo-weite Default-Standard gilt für alle neuen oder grundlegend überarbeiteten Formular- und Frontend-Test-Flows im Scope dieser Governance. Der initiale Referenzscope aus OpenSpec ist enger:
 
-- Referenzimplementierungen fuer diese Foundation sind `/admin/users`, `/admin/roles` und die Host-Content-Flows unter `/admin/content`.
-- `/account` faellt ebenfalls unter den repo-weiten Default-Standard, ist fuer diesen Change aber kein initialer Referenzpilot.
+- Referenzimplementierungen für diese Foundation sind `/admin/users`, `/admin/roles` und die Host-Content-Flows unter `/admin/content`.
+- `/account` fällt ebenfalls unter den repo-weiten Default-Standard, ist für diesen Change aber kein initialer Referenzpilot.
 - Weitere Host- und Plugin-Flows bleiben vom Standard erfasst, auch wenn sie nicht Teil des ersten Referenzpiloten sind.
 
 ## Verbindlicher Standardpfad
 
-| Bereich | Verbindlicher Standard | Pflicht ab wann | Dokumentierte Ausnahmen |
-| --- | --- | --- | --- |
-| Formular-Flow | `react-hook-form` mit `zodResolver` | für neue oder grundlegend überarbeitete Formular-Flows mit Eingabe-, Validierungs- oder Submit-Verantwortung | unveränderte Legacy-Flows, nicht-formularzentrierte Spezialeditoren, eng begründete Sonderfälle |
-| HTTP-naher Frontend-Test | `msw` | für neue oder grundlegend überarbeitete Frontend-Tests, die Lade-, Fehler-, Retry-, Response- oder Mutationsverhalten über HTTP prüfen | rein lokale Logik ohne HTTP, unveränderte Legacy-Tests, eng begründete Spezialfälle |
-| Kritische Kernlogik | selektives `fast-check` | wenn ein Review für eine geänderte kritische framework-agnostische Logik Invarianten oder große Eingaberäume feststellt | nur mit dokumentierter Begründung pro Hotspot |
+| Bereich                  | Verbindlicher Standard              | Pflicht ab wann                                                                                                                        | Dokumentierte Ausnahmen                                                                         |
+| ------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Formular-Flow            | `react-hook-form` mit `zodResolver` | für neue oder grundlegend überarbeitete Formular-Flows mit Eingabe-, Validierungs- oder Submit-Verantwortung                           | unveränderte Legacy-Flows, nicht-formularzentrierte Spezialeditoren, eng begründete Sonderfälle |
+| HTTP-naher Frontend-Test | `msw`                               | für neue oder grundlegend überarbeitete Frontend-Tests, die Lade-, Fehler-, Retry-, Response- oder Mutationsverhalten über HTTP prüfen | rein lokale Logik ohne HTTP, unveränderte Legacy-Tests, eng begründete Spezialfälle             |
+| Kritische Kernlogik      | selektives `fast-check`             | wenn ein Review für eine geänderte kritische framework-agnostische Logik Invarianten oder große Eingaberäume feststellt                | nur mit dokumentierter Begründung pro Hotspot                                                   |
 
 ## RHF-Pflicht
 
@@ -128,3 +128,27 @@ Die Foundations gelten nur dann als reviewbar eingeführt, wenn alle folgenden P
 - Die beiden zugehörigen ADRs sind im kanonischen ADR-Pfad dokumentiert.
 - arc42-Abschnitte 05, 08, 09 und 10 referenzieren den Standardpfad.
 - Ausnahmen sind in Governance-Artefakt, Formularinventur und PR-/Arbeitskontext explizit dokumentiert und nicht stillschweigend im Code versteckt.
+
+## Exit-Nachweis des initialen Changes
+
+Der Abschluss des OpenSpec-Changes wird anhand folgender konkreter Referenzen
+bewertet:
+
+- Formularpfad: User Create, das primäre User-Edit-Feldmodell, Role Create und
+  Host Content verwenden RHF mit Zod-Resolver und den gemeinsamen
+  Feld-/Fehlerprimitiven.
+- HTTP-Pfad: User Create, User Edit Save/Resend, Role Create Success/Conflict
+  und Host Content besitzen MSW-Referenztests. Unveränderte Legacy-Tests mit
+  direkten Client- oder Fetch-Mocks sind keine verdeckte Ausnahme und müssen
+  für diesen initialen Referenznachweis nicht global umgeschrieben werden.
+- Property-Pfad: `route-search`, `admin-resource-search-params`,
+  `waste-management-location-tour-pickup-date-import` und `input-readers`
+  besitzen gezielte `fast-check`-Properties für ihre dokumentierten
+  Invarianten.
+- Inventurpfad: Alle produktiven Host-Formularbereiche sowie die führenden
+  Formular-Owner von Cockpit Cards, Events, FAQ, Generic Items, News, POI,
+  Projects, Surveys und Waste Management sind eingeordnet.
+- Spezialabgrenzung: Organisationsmitgliedschaften, Timeline und
+  Berechtigungsansicht von User Edit bleiben eigenständiger Server-State;
+  Rollen-Detailansicht und Rechtekatalog bleiben außerhalb des Role-Create-
+  Piloten.

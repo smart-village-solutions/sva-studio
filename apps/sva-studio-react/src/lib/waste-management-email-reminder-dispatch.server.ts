@@ -1,5 +1,4 @@
 import {
-  convertRichTextHtmlToPlainText,
   type MailDispatchPayload,
   type MailTransportConfig,
   type WasteCollectionLocationRecord,
@@ -8,6 +7,8 @@ import {
 } from '@sva/core';
 import type { MailDispatchMessage, MailDispatchMessageAddress } from '@sva/mail-runtime';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
+
+import { buildReminderHintText } from './waste-management-email-reminder-hints.js';
 
 const templatePlaceholderPattern = /\{\{\s*([a-zA-Z0-9]+)\s*\}\}/g;
 
@@ -123,13 +124,7 @@ export const buildReminderDispatchPayload = (input: {
     pickupDate: pickupDateLabel,
     unsubscribeUrl,
   } as const;
-  const hintText = Array.from(
-    new Set(
-      (input.hints ?? [])
-        .map((hint) => convertRichTextHtmlToPlainText(hint))
-        .filter((hint) => hint.length > 0)
-    )
-  ).join('\n\n');
+  const hintText = buildReminderHintText(input.hints);
 
   return {
     orderId: input.subscriptionId,

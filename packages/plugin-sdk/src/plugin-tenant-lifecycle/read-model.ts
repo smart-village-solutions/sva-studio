@@ -7,6 +7,7 @@ import type {
   PluginTenantReadinessReadModel,
   PluginTenantReadinessStatus,
 } from './types.js';
+import { reducePluginTenantReadinessStatus } from './snapshot.js';
 
 const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
 
@@ -80,7 +81,9 @@ const parseEvidence = (
       ? missingRequiredCheck
         ? 'blocked'
         : 'degraded'
-      : (evidence?.readinessStatus ?? 'pending'),
+      : evidence
+        ? reducePluginTenantReadinessStatus(definition, validChecks)
+        : 'pending',
     checks: definition.readinessChecks.map((checkDefinition) => ({
       ...checkDefinition,
       ...(persistedChecks.get(checkDefinition.checkId) ?? {

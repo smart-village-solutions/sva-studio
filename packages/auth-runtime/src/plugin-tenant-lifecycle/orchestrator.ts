@@ -62,6 +62,10 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
     readonly instanceId: string;
     readonly job: StudioJobRecord;
   }) => Promise<void>;
+  readonly markClaimConflict: (input: {
+    readonly instanceId: string;
+    readonly job: StudioJobRecord;
+  }) => Promise<void>;
 };
 
 export type StartPluginTenantLifecycleInput = {
@@ -247,6 +251,7 @@ export const createPluginTenantLifecycleOrchestrator = (
       operation: input.operation,
     });
     if (!claimedLifecycle) {
+      await dependencies.markClaimConflict({ instanceId: input.instanceId, job });
       throw lifecycleError(
         pluginTenantLifecycleHostErrorCodes.claimConflict,
         input.pluginId,

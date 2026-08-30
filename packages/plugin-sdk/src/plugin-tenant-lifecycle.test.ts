@@ -379,6 +379,39 @@ describe('plugin tenant lifecycle contracts', () => {
     });
   });
 
+  it('recomputes aggregate readiness when a persisted check becomes required', () => {
+    const model = createPluginTenantReadinessReadModel({
+      definition: {
+        pluginId: 'speech',
+        ...tenantLifecycle,
+        readinessChecks: [
+          {
+            ...tenantLifecycle.readinessChecks[0],
+            required: true,
+          },
+        ],
+      },
+      activation: {
+        activationPolicy: 'required',
+        effectiveActive: true,
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      },
+      evidence: {
+        accessState: 'active',
+        readinessStatus: 'degraded',
+        desiredOperation: 'readiness',
+        desiredGeneration: 3,
+        completedGeneration: 3,
+        readinessRevision: 'schema:3',
+        readinessChecks: [{ checkId: 'speech.databaseSchema', status: 'blocked' }],
+        updatedAt: '2026-08-30T12:05:00.000Z',
+      },
+    });
+
+    expect(model).toMatchObject({ status: 'blocked', evidenceState: 'valid' });
+    expect(evaluatePluginTenantAccess(model)).toEqual({ allowed: false, reason: 'blocked' });
+  });
+
   it('omits inactive plugins from the readiness read model', () => {
     expect(
       createPluginTenantReadinessReadModel({

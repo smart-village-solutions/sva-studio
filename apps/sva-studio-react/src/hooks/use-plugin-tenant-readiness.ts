@@ -42,6 +42,7 @@ export const usePluginTenantReadiness = (instanceId: string) => {
 
   React.useEffect(() => {
     setItems([]);
+    setActiveAction(null);
     void refresh();
     return () => {
       requestSequence.current += 1;

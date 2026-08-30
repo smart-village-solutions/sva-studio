@@ -11,6 +11,7 @@ import { withRegistryRepository } from '../iam-instance-registry/repository.js';
 import {
   createStudioJob,
   markPluginOperationEnqueueFailed,
+  markStudioJobEnqueueFailed,
 } from '../plugin-operations/core.shared.js';
 import { withPluginTenantLifecycleRepository } from '../plugin-operations/repository.js';
 import {
@@ -98,6 +99,12 @@ export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLif
       }),
     queueJob: queuePluginOperationJob,
     markEnqueueFailed: markPluginOperationEnqueueFailed,
+    markClaimConflict: ({ instanceId, job }) =>
+      markStudioJobEnqueueFailed({
+        instanceId,
+        job,
+        errorCode: 'plugin_tenant_lifecycle_claim_conflict',
+      }),
   }).start(input);
 
 export const ensureConfiguredPluginTenantProvisioning = async (

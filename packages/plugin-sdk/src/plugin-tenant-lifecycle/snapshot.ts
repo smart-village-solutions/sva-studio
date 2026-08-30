@@ -9,7 +9,7 @@ import type {
 
 const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
 
-const reduceReadinessStatus = (
+export const reducePluginTenantReadinessStatus = (
   definition: PluginTenantLifecycleDefinition,
   checks: PluginTenantLifecycleExecutionResult['checks']
 ): PluginTenantReadinessStatus =>
@@ -72,7 +72,7 @@ export const createPluginTenantReadinessSnapshot = (input: {
     instanceId: input.instanceId,
     generation: input.generation,
     revision,
-    status: reduceReadinessStatus(input.definition, checks),
+    status: reducePluginTenantReadinessStatus(input.definition, checks),
     checks,
     updatedAt: input.updatedAt,
   };

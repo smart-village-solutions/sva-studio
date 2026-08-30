@@ -55,7 +55,9 @@ abgelehnt. Der anschließend erzeugte Studio-Job darf nur die exakt aktuelle
 Operation und Generation claimen. Abschluss und Fehler werden ausschließlich
 akzeptiert, wenn Job-ID, Instanz, Plugin, Claim- und Sollgeneration weiterhin
 übereinstimmen. Eine leere Update-Rückgabe ist damit ein deterministischer
-Stale- oder Konkurrenzkonflikt und kein wiederholbarer Schreibfehler.
+Stale- oder Konkurrenzkonflikt und kein wiederholbarer Schreibfehler; ein davor
+bereits erzeugter, aber unterlegener Job wird terminal markiert und nicht als
+verwaister Queue-Eintrag zurückgelassen.
 Terminale Fehler schreiben Studio-Job und Lifecycle-Ledger innerhalb derselben
 Tenant-DB-Transaktion, damit kein terminaler Job einen aktiven Claim zurücklässt.
 
@@ -78,7 +80,9 @@ Migrationshistorie.
 ### Readiness ist ein gemeinsamer Ergebnisvertrag
 
 Plugins melden `pending`, `ready`, `degraded` oder `blocked` sowie namespaced
-Checks. Der Host aggregiert nur Status und Handlungsmöglichkeiten; Texte und
+Checks. Der Host berechnet den Aggregatstatus bei jedem Lesen gegen die aktuell
+deklarierten Checks und deren aktuelle `required`-Kennzeichnung neu; ein alter
+Aggregatwert darf eine verschärfte Deklaration nicht umgehen. Texte und
 fachliche Diagnose bleiben beim Plugin.
 
 ### Aktivierung und Fachbereitschaft sind getrennt

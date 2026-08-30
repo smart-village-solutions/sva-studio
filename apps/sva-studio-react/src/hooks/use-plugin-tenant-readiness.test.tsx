@@ -63,8 +63,10 @@ describe('usePluginTenantReadiness', () => {
     act(() => {
       repairPromise = result.current.startRepair('speech-flow', 'reconcile');
     });
+    expect(result.current.activeAction).toBe('speech-flow:reconcile');
     rerender({ instanceId: 'tenant-b' });
     await waitFor(() => expect(result.current.items[0]?.pluginId).toBe('tenant-b-plugin'));
+    expect(result.current.activeAction).toBeNull();
 
     await act(async () => {
       completeRepair?.();

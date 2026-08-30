@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   createStudioJob: vi.fn(),
   markPluginOperationEnqueueFailed: vi.fn(async () => undefined),
+  markStudioJobEnqueueFailed: vi.fn(async () => undefined),
   queuePluginOperationJob: vi.fn(async () => undefined),
   requestLifecycle: vi.fn(),
   claimLifecycle: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock('../iam-instance-registry/repository.js', () => ({
 vi.mock('../plugin-operations/core.shared.js', () => ({
   createStudioJob: state.createStudioJob,
   markPluginOperationEnqueueFailed: state.markPluginOperationEnqueueFailed,
+  markStudioJobEnqueueFailed: state.markStudioJobEnqueueFailed,
 }));
 
 vi.mock('../plugin-operations/repository.js', () => ({

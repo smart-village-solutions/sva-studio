@@ -10,6 +10,11 @@ const dataRepositoryMocks = vi.hoisted(() => ({
   saveExternalInterfaceRecord: vi.fn(),
 }));
 
+const authMocks = vi.hoisted(() => ({
+  readConfiguredPluginTenantAccess: vi.fn(),
+  withAuthenticatedUser: vi.fn(),
+}));
+
 vi.mock('@sva/data-repositories/server', () => ({
   listExternalInterfaceRecords: dataRepositoryMocks.listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord: dataRepositoryMocks.loadDefaultExternalInterfaceRecord,
@@ -39,10 +44,17 @@ vi.mock('../log-context.js', () => ({
 }));
 
 vi.mock('../middleware.js', () => ({
-  withAuthenticatedUser: vi.fn(),
+  withAuthenticatedUser: authMocks.withAuthenticatedUser,
 }));
 
-import { sharedWasteManagementDeps } from './server-context.js';
+vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
+  readConfiguredPluginTenantAccess: authMocks.readConfiguredPluginTenantAccess,
+}));
+
+import {
+  sharedWasteManagementDeps,
+  withAuthenticatedWasteManagementHandler,
+} from './server-context.js';
 
 describe('sharedWasteManagementDeps', () => {
   it('exposes the default interface loader for waste settings write operations', () => {
@@ -61,5 +73,47 @@ describe('sharedWasteManagementDeps', () => {
     expect(sharedWasteManagementDeps.failWasteTenantProvisioningRequest).toBe(
       dataRepositoryMocks.failWasteTenantProvisioningRequest
     );
+  });
+
+  it('blocks dedicated waste handlers when tenant lifecycle access is not ready', async () => {
+    authMocks.withAuthenticatedUser.mockImplementationOnce(async (_request, work) =>
+      work({ user: { id: 'user-1', instanceId: 'tenant-a' } })
+    );
+    authMocks.readConfiguredPluginTenantAccess.mockResolvedValueOnce({
+      allowed: false,
+      reason: 'blocked',
+    });
+    const handler = vi.fn(async () => new Response('handled'));
+
+    const response = await withAuthenticatedWasteManagementHandler(
+      new Request('https://studio.example/api/v1/waste-management/settings'),
+      handler
+    );
+
+    expect(response.status).toBe(409);
+    expect(handler).not.toHaveBeenCalled();
+    expect(authMocks.readConfiguredPluginTenantAccess).toHaveBeenCalledWith(
+      'tenant-a',
+      'waste-management'
+    );
+  });
+
+  it('dispatches dedicated waste handlers when tenant lifecycle access is ready', async () => {
+    authMocks.withAuthenticatedUser.mockImplementationOnce(async (_request, work) =>
+      work({ user: { id: 'user-1', instanceId: 'tenant-a' } })
+    );
+    authMocks.readConfiguredPluginTenantAccess.mockResolvedValueOnce({
+      allowed: true,
+      reason: 'ready',
+    });
+    const handler = vi.fn(async () => new Response('handled'));
+
+    const response = await withAuthenticatedWasteManagementHandler(
+      new Request('https://studio.example/api/v1/waste-management/settings'),
+      handler
+    );
+
+    expect(await response.text()).toBe('handled');
+    expect(handler).toHaveBeenCalledOnce();
   });
 });

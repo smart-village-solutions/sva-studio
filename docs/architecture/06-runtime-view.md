@@ -540,10 +540,11 @@ Fehlerpfad:
 1. Ein aktives Plugin mit Tenant-Lifecycle schreibt seine generationsgebundene Readiness-Evidenz über den hostgeführten Lifecycle-Job.
 2. Der Host validiert die Evidenz gegen die deklarierte Checkliste. Fehlende oder strukturell ungültige Evidenz, `pending`, `blocked` und `accessState = suspended` geben keinen Fachzugriff frei; valide `ready`- und `degraded`-Zustände sind zugelassen.
 3. `/auth/me` filtert lifecycle-verwaltete, nicht freigegebene Plugins aus der effektiven `assignedModules`-Liste. Routing und Sidebar verwenden dadurch weiterhin den bestehenden zentralen Modul- und Action-Vertrag.
-4. `POST /api/v1/plugin-operations/jobs` prüft dieselbe Hostentscheidung vor Idempotenzreservierung, Jobanlage und Queueing. Deklarierte Lifecycle-Jobtypen sind an diesem generischen Endpunkt unzulässig und können nur über den Lifecycle-Orchestrator gestartet werden.
-5. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
-6. Waste bildet `provision` und `reconcile` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; ein separater `readiness`-Job liest nur diesen Datensatz und das instanzgebundene verwaltete Interface.
-7. Waste meldet die beiden Pflichtprüfungen `waste-management.tenant-provisioning` und `waste-management.tenant-database-interface`. Eine fehlende, unvollständige oder fremd besessene Evidenz ist `blocked`; `reconcile` bleibt die deklarierte Reparaturaktion.
+4. `POST /api/v1/plugin-operations/jobs` und dedizierte Plugin-Serverrouten prüfen dieselbe Hostentscheidung vor Fachzugriff, Idempotenzreservierung, Jobanlage und Queueing. Deklarierte Lifecycle-Jobtypen sind am generischen Endpunkt unzulässig und können nur über den Lifecycle-Orchestrator gestartet werden; dieser Reparaturpfad bleibt auch bei blockiertem Fachzugriff erreichbar.
+5. Der Readiness-Aggregatstatus wird aus den aktuell deklarierten Checks und der aktuellen `required`-Kennzeichnung neu berechnet; gespeicherte Evidenz kann eine nachträglich verschärfte Check-Deklaration nicht freigeben.
+6. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
+7. Waste bildet `provision` und `reconcile` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; ein separater `readiness`-Job liest nur diesen Datensatz und das instanzgebundene verwaltete Interface.
+8. Waste meldet die beiden Pflichtprüfungen `waste-management.tenant-provisioning` und `waste-management.tenant-database-interface`. Eine fehlende, unvollständige oder fremd besessene Evidenz ist `blocked`; `reconcile` bleibt die deklarierte Reparaturaktion.
 
 Fehlerfälle:
 

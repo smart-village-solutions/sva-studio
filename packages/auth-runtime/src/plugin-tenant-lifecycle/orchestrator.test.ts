@@ -69,6 +69,7 @@ const createDependencies = () => ({
   createJob: vi.fn(async () => job),
   queueJob: vi.fn(async () => undefined),
   markEnqueueFailed: vi.fn(async () => undefined),
+  markClaimConflict: vi.fn(async () => undefined),
 });
 
 const input = {
@@ -127,6 +128,20 @@ describe('plugin tenant lifecycle orchestrator', () => {
       createPluginTenantLifecycleOrchestrator(dependencies).start(input)
     ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.handlerMissing}:speech:provision`);
     expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
+  });
+
+  it('marks an unclaimed job terminal when a concurrent lifecycle start wins', async () => {
+    const dependencies = createDependencies();
+    dependencies.repository.claimLifecycle.mockResolvedValueOnce(null);
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.claimConflict}:speech:provision`);
+    expect(dependencies.markClaimConflict).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      job,
+    });
+    expect(dependencies.queueJob).not.toHaveBeenCalled();
   });
 
   it('rejects lifecycle cancellation when the registered handler cannot honour it', async () => {

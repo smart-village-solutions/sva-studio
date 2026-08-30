@@ -3,10 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { PluginTenantLifecycleRepository } from '@sva/data-repositories';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import {
-  readInstanceRegistryPluginActivationPolicies,
-  readInstanceRegistryPluginTenantLifecycleRegistry,
-} from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
+import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
 import { withRegistryRepository } from '../iam-instance-registry/repository.js';
 import {
   createStudioJob,
@@ -52,6 +49,7 @@ const needsAutomaticProvisioning = (
   lifecycle: Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>
 ): boolean => {
   if (!lifecycle) return true;
+  if (lifecycle.accessState === 'suspended') return false;
   if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return false;
   if (
     lifecycle.accessState === 'active' &&
@@ -111,14 +109,19 @@ export const ensureConfiguredPluginTenantProvisioning = async (
   instanceId: string
 ): Promise<void> => {
   const lifecycleRegistry = readInstanceRegistryPluginTenantLifecycleRegistry();
-  const automaticPluginIds = readInstanceRegistryPluginActivationPolicies().modules.flatMap(
-    ({ moduleId, activationPolicy }) =>
-      activationPolicy !== 'optional' &&
-      lifecycleRegistry.get(moduleId)?.operations.some(({ operation }) => operation === 'provision')
-        ? [moduleId]
-        : []
+  const activations = await withRegistryRepository((repository) =>
+    repository.listModuleActivations(instanceId)
   );
-  for (const pluginId of automaticPluginIds) {
+  const effectivePluginIds = new Set(
+    activations.filter(({ effectiveActive }) => effectiveActive).map(({ moduleId }) => moduleId)
+  );
+  const provisioningPluginIds = [...lifecycleRegistry.values()].flatMap((definition) =>
+    effectivePluginIds.has(definition.pluginId) &&
+    definition.operations.some(({ operation }) => operation === 'provision')
+      ? [definition.pluginId]
+      : []
+  );
+  for (const pluginId of provisioningPluginIds) {
     const lifecycle = await withPluginTenantLifecycleRepository(instanceId, (resolvedRepository) =>
       resolvedRepository.getLifecycle(instanceId, pluginId)
     );

@@ -8,6 +8,10 @@ import {
   createPluginTenantLifecycleJobCorrelation,
   pluginTenantLifecycleJobInputKey,
 } from '../plugin-tenant-lifecycle/job-correlation.js';
+import {
+  isConfiguredPluginTenantLifecycleJobType,
+  readConfiguredPluginTenantAccess,
+} from '../plugin-tenant-lifecycle/access.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import {
   withPluginTenantLifecycleRepository,
@@ -63,6 +67,33 @@ const replaceRegistrationsBySource = (
       entry,
     ])
   );
+};
+
+const guardPluginTenantExecution = (
+  job: Pick<StudioJobRecord, 'source' | 'jobTypeId' | 'pluginId' | 'instanceId'>,
+  handler: StudioJobExecutionRegistration['handler']
+): StudioJobExecutionRegistration['handler'] => {
+  const pluginId = job.pluginId;
+  if (
+    job.source !== 'plugin' ||
+    !pluginId ||
+    isConfiguredPluginTenantLifecycleJobType(pluginId, job.jobTypeId)
+  ) {
+    return handler;
+  }
+  return async (context) => {
+    const access = await readConfiguredPluginTenantAccess(job.instanceId, pluginId);
+    if (!access.allowed) {
+      throw Object.assign(new Error(`plugin_tenant_access_blocked:${pluginId}:${access.reason}`), {
+        cause: {
+          category: 'permanent',
+          code: 'plugin_tenant_access_blocked',
+          reason: access.reason,
+        },
+      });
+    }
+    return handler(context);
+  };
 };
 
 export const registerStudioJobExecutionHandlers = (
@@ -167,7 +198,10 @@ export const createStudioJobTaskList = (
             ),
         };
       },
-      resolveHandler: (job) => getHandlers().get(toRegistryKey(job.source, job.jobTypeId))?.handler,
+      resolveHandler: (job) => {
+        const handler = getHandlers().get(toRegistryKey(job.source, job.jobTypeId))?.handler;
+        return handler ? guardPluginTenantExecution(job, handler) : undefined;
+      },
       onExecutionSucceeded: lifecycleCorrelation.complete,
     }).run({
       instanceId,

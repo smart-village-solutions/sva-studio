@@ -12,6 +12,7 @@ vi.mock('./job-lifecycle-orchestrator.js', () => ({
 }));
 
 vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
+  readInstanceRegistryPluginActivationPolicies: () => new Map(),
   readInstanceRegistryPluginTenantLifecycleRegistry: () =>
     new Map([
       [

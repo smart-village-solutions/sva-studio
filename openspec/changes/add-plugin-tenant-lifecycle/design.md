@@ -62,8 +62,11 @@ Terminale Fehler schreiben Studio-Job und Lifecycle-Ledger innerhalb derselben
 Tenant-DB-Transaktion, damit kein terminaler Job einen aktiven Claim zurücklässt.
 
 Nach dem Commit einer Aktivierungsrichtlinie oder einer neuen Instanz plant der
-Host fehlende oder retryable `provision`-Läufe für `automatic`- und
-`required`-Plugins über denselben Lifecycle-Orchestrator. Der Post-Commit-Lauf
+Host fehlende oder retryable `provision`-Läufe für alle in der Instanz effektiv
+aktiven Lifecycle-Plugins über denselben Lifecycle-Orchestrator. Damit werden
+auch manuell aktivierte `optional`-Plugins berücksichtigt. Suspendierte
+Lifecycle-Zustände bleiben bis zu einer expliziten Reaktivierung ausgeschlossen.
+Der Post-Commit-Lauf
 ist vom bereits bestätigten Request entkoppelt; ein Queue- oder Datenbankfehler
 wird protokolliert und darf die committete Mutation nicht nachträglich als
 fehlgeschlagen melden. Aktive Jobs sowie aktuelle, nicht blockierende

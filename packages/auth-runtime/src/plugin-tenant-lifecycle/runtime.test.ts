@@ -10,6 +10,14 @@ const state = vi.hoisted(() => ({
   failUnclaimedLifecycle: vi.fn(),
   failLifecycle: vi.fn(),
   getLifecycle: vi.fn(),
+  listModuleActivations: vi.fn(async () => [
+    {
+      moduleId: 'speech',
+      activationPolicy: 'automatic' as const,
+      effectiveActive: true,
+      stateRevision: 1,
+    },
+  ]),
   getModuleActivationPolicy: vi.fn(async () => ({
     activationPolicy: 'automatic' as const,
     effectiveActive: true,
@@ -45,7 +53,10 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
 
 vi.mock('../iam-instance-registry/repository.js', () => ({
   withRegistryRepository: async (work: (repository: unknown) => Promise<unknown>) =>
-    work({ getModuleActivationPolicy: state.getModuleActivationPolicy }),
+    work({
+      getModuleActivationPolicy: state.getModuleActivationPolicy,
+      listModuleActivations: state.listModuleActivations,
+    }),
 }));
 
 vi.mock('../plugin-operations/core.shared.js', () => ({
@@ -190,6 +201,39 @@ describe('configured plugin tenant lifecycle runtime', () => {
       readinessStatus: 'ready',
       desiredGeneration: 3,
       completedGeneration: 3,
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).not.toHaveBeenCalled();
+  });
+
+  it('provisions an effectively active optional lifecycle plugin', async () => {
+    state.listModuleActivations.mockResolvedValueOnce([
+      {
+        moduleId: 'speech',
+        activationPolicy: 'optional',
+        effectiveActive: true,
+        stateRevision: 2,
+      },
+    ]);
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ jobTypeId: 'speech.provisionTenant' }),
+      })
+    );
+  });
+
+  it('does not auto-provision a suspended lifecycle', async () => {
+    state.getLifecycle.mockResolvedValueOnce({
+      ...lifecycleRecord,
+      accessState: 'suspended',
+      activeJobId: undefined,
     });
     const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
 

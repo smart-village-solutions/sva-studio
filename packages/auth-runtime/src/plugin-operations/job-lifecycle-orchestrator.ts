@@ -38,7 +38,7 @@ type OrchestratorDeps = {
   readonly logger: PluginOperationLogger;
   readonly loadRepository: (instanceId: string) => Promise<RepositoryPort>;
   readonly resolveHandler: (
-    job: Pick<StudioJobRecord, 'source' | 'jobTypeId'>
+    job: Pick<StudioJobRecord, 'source' | 'jobTypeId' | 'pluginId' | 'instanceId'>
   ) => StudioJobExecutionHandler | undefined;
   readonly createWorkerId?: (job: { readonly instanceId: string; readonly id: string }) => string;
   readonly now?: () => string;

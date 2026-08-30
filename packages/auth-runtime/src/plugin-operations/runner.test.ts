@@ -12,6 +12,11 @@ const repositoryState = vi.hoisted(() => ({
   },
 }));
 
+const pluginAccessState = vi.hoisted(() => ({
+  isLifecycleJobType: vi.fn(() => false),
+  readAccess: vi.fn(async () => ({ allowed: true as const, reason: 'ready' as const })),
+}));
+
 vi.mock('@sva/server-runtime', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => repositoryState.logger,
@@ -21,6 +26,11 @@ vi.mock('./repository.js', () => ({
   withStudioJobRepository: repositoryState.withStudioJobRepository,
   withPluginTenantLifecycleRepository: repositoryState.withPluginTenantLifecycleRepository,
   withStudioJobLifecycleRepositories: repositoryState.withStudioJobLifecycleRepositories,
+}));
+
+vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
+  isConfiguredPluginTenantLifecycleJobType: pluginAccessState.isLifecycleJobType,
+  readConfiguredPluginTenantAccess: pluginAccessState.readAccess,
 }));
 
 import {
@@ -53,6 +63,8 @@ const baseJob = {
 describe('plugin operation runner task list', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pluginAccessState.isLifecycleJobType.mockReturnValue(false);
+    pluginAccessState.readAccess.mockResolvedValue({ allowed: true, reason: 'ready' });
     registerPluginOperationExecutionHandlers({});
   });
 
@@ -210,6 +222,67 @@ describe('plugin operation runner task list', () => {
         }),
       })
     );
+  });
+
+  it('fails a queued plugin job before handler execution when tenant access became blocked', async () => {
+    const updateJobState = vi.fn(async () => null);
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        appendJobEvent: vi.fn(async () => null),
+      })
+    );
+    pluginAccessState.readAccess.mockResolvedValueOnce({
+      allowed: false,
+      reason: 'blocked',
+    });
+    const handler = vi.fn(async () => ({}));
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
+
+    await expect(
+      taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+        job: { attempts: 1, max_attempts: 5 },
+      } as never)
+    ).resolves.toBeUndefined();
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(updateJobState).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        status: 'failed',
+        errorPayload: expect.objectContaining({
+          category: 'permanent',
+          details: {
+            plugin: expect.objectContaining({ code: 'plugin_tenant_access_blocked' }),
+          },
+        }),
+      })
+    );
+  });
+
+  it('keeps lifecycle repair jobs executable while tenant access is blocked', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState: vi.fn(async () => null),
+        appendJobEvent: vi.fn(async () => null),
+      })
+    );
+    pluginAccessState.isLifecycleJobType.mockReturnValueOnce(true);
+    const handler = vi.fn(async () => ({}));
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
+
+    await taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
+      job: { attempts: 1, max_attempts: 5 },
+    } as never);
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(pluginAccessState.readAccess).not.toHaveBeenCalled();
   });
 
   it('marks a job as retrying and rethrows while attempts remain', async () => {

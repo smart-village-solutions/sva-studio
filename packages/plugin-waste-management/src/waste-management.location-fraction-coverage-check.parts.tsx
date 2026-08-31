@@ -16,6 +16,7 @@ export type CoverageResult = Readonly<{
 
 export const CoverageCheckForm = ({
   fractions,
+  disabled,
   fractionId,
   startDate,
   endDate,
@@ -25,6 +26,7 @@ export const CoverageCheckForm = ({
   onSubmit,
 }: Readonly<{
   fractions: readonly WasteFractionRecord[];
+  disabled?: boolean;
   fractionId: string;
   startDate: string;
   endDate: string;
@@ -47,6 +49,7 @@ export const CoverageCheckForm = ({
         <Select
           id="waste-location-coverage-fraction"
           value={fractionId}
+          disabled={disabled}
           onChange={(event) => onFractionChange(event.target.value)}
         >
           <option value="">{pt('masterData.locationsWorkspace.coverage.fractionUnset')}</option>
@@ -79,7 +82,7 @@ export const CoverageCheckForm = ({
           onChange={(event) => onEndDateChange(event.target.value)}
         />
       </StudioField>
-      <Button type="submit">
+      <Button type="submit" disabled={disabled}>
         <IconChecklist aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.locationsWorkspace.coverage.check')}
       </Button>

@@ -66,6 +66,45 @@ const links = [
 afterEach(() => cleanup());
 
 describe('WasteLocationFractionCoverageCheck', () => {
+  it.each([
+    ['loading', 'masterData.locationsWorkspace.coverage.fractionsLoading'],
+    ['error', 'masterData.locationsWorkspace.coverage.fractionsLoadError'],
+    ['ready', 'masterData.locationsWorkspace.coverage.fractionsEmpty'],
+  ] as const)(
+    'shows the %s fraction state without enabling the check',
+    (fractionsStatus, message) => {
+      render(
+        <WasteLocationFractionCoverageCheck
+          locations={locations}
+          fractions={[]}
+          fractionsStatus={fractionsStatus}
+          tours={tours}
+          links={links}
+          onReplaceLocationSelection={vi.fn()}
+          onOpenBulkAssignments={vi.fn()}
+          onOpenEditLocation={vi.fn()}
+          getLocationLabel={(location) => location.id}
+        />
+      );
+
+      expect(screen.getByText(message)).toBeTruthy();
+      expect(
+        (
+          screen.getByLabelText(
+            'masterData.locationsWorkspace.coverage.fraction'
+          ) as HTMLSelectElement
+        ).disabled
+      ).toBe(true);
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'masterData.locationsWorkspace.coverage.check',
+          }) as HTMLButtonElement
+        ).disabled
+      ).toBe(true);
+    }
+  );
+
   it('shows missing and incomplete assignments separately and opens bulk assignment for all issues', () => {
     const onReplaceLocationSelection = vi.fn();
     const onOpenBulkAssignments = vi.fn();
@@ -92,7 +131,9 @@ describe('WasteLocationFractionCoverageCheck', () => {
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate'), {
       target: { value: '2027-12-31' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
 
     expect(screen.getByText('masterData.locationsWorkspace.coverage.missing')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.coverage.incomplete')).toBeTruthy();
@@ -140,7 +181,9 @@ describe('WasteLocationFractionCoverageCheck', () => {
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate'), {
       target: { value: '2027-01-01' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
 
     expect(screen.getByRole('alert').textContent).toBe(
       'masterData.locationsWorkspace.coverage.invalidDateRange'

@@ -45,6 +45,10 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
         'Prüfen Sie, ob alle aktiven Abholorte im gewählten Zeitraum lückenlos einer Tour der Abfallfraktion zugeordnet sind.',
       fraction: 'Abfallfraktion',
       fractionUnset: 'Abfallfraktion auswählen',
+      fractionsLoading: 'Abfallfraktionen werden geladen.',
+      fractionsLoadError:
+        'Die Abfallfraktionen konnten nicht geladen werden. Die Abholorte können weiterhin bearbeitet werden.',
+      fractionsEmpty: 'Für diesen Mandanten sind noch keine Abfallfraktionen vorhanden.',
       startDate: 'Startdatum',
       endDate: 'Enddatum',
       check: 'Prüfen',

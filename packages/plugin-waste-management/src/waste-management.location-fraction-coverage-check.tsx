@@ -15,11 +15,13 @@ import {
 } from './waste-management.location-fraction-coverage-check.parts.js';
 import { checkLocationFractionCoverage } from './waste-management.location-fraction-coverage.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import type { WasteLocationCoverageFractionsStatus } from './use-waste-master-data-state.js';
 
 type CoverageCheckProps = Readonly<{
   search?: WasteManagementSearchParams;
   locations: readonly WasteCollectionLocationRecord[];
   fractions: readonly WasteFractionRecord[];
+  fractionsStatus?: WasteLocationCoverageFractionsStatus;
   tours: readonly WasteTourRecord[];
   links: readonly WasteLocationTourLinkRecord[];
   onReplaceLocationSelection: (locationIds: readonly string[]) => void;
@@ -42,6 +44,8 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
   const [endDate, setEndDate] = useState('');
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [result, setResult] = useState<CoverageResult | null>(null);
+  const fractionsStatus = props.fractionsStatus ?? 'ready';
+  const fractionsUnavailable = fractionsStatus !== 'ready' || props.fractions.length === 0;
   const locationsById = useMemo(
     () => new Map(props.locations.map((location) => [location.id, location] as const)),
     [props.locations]
@@ -89,6 +93,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       </div>
       <CoverageCheckForm
         fractions={props.fractions}
+        disabled={fractionsUnavailable}
         fractionId={fractionId}
         startDate={startDate}
         endDate={endDate}
@@ -97,6 +102,19 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
         onEndDateChange={setEndDate}
         onSubmit={runCheck}
       />
+      {fractionsStatus === 'loading' || fractionsStatus === 'idle' ? (
+        <p className="mt-3 text-sm text-muted-foreground" role="status">
+          {pt('masterData.locationsWorkspace.coverage.fractionsLoading')}
+        </p>
+      ) : fractionsStatus === 'error' ? (
+        <p className="mt-3 text-sm text-destructive" role="alert">
+          {pt('masterData.locationsWorkspace.coverage.fractionsLoadError')}
+        </p>
+      ) : props.fractions.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground" role="status">
+          {pt('masterData.locationsWorkspace.coverage.fractionsEmpty')}
+        </p>
+      ) : null}
       {errorKey ? (
         <p className="mt-3 text-sm text-destructive" role="alert">
           {pt(errorKey)}

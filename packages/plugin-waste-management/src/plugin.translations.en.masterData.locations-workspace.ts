@@ -45,6 +45,10 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
         'Check whether every active collection location is continuously assigned to a tour of the selected waste fraction during the chosen period.',
       fraction: 'Waste fraction',
       fractionUnset: 'Select a waste fraction',
+      fractionsLoading: 'Waste fractions are loading.',
+      fractionsLoadError:
+        'Waste fractions could not be loaded. Collection locations can still be edited.',
+      fractionsEmpty: 'No waste fractions have been created for this tenant yet.',
       startDate: 'Start date',
       endDate: 'End date',
       check: 'Check',

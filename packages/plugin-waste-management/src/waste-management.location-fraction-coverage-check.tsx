@@ -10,6 +10,9 @@ import { useMemo, useState, type FormEvent } from 'react';
 
 import {
   CoverageCheckForm,
+  CoverageFractionsAvailability,
+} from './waste-management.location-fraction-coverage-check.form.js';
+import {
   CoverageResults,
   type CoverageResult,
 } from './waste-management.location-fraction-coverage-check.parts.js';
@@ -36,6 +39,24 @@ const getCoverageErrorKey = (fractionId: string, startDate: string, endDate: str
     : endDate < startDate
       ? 'masterData.locationsWorkspace.coverage.invalidDateRange'
       : null;
+
+const CoverageCheckHeader = () => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-1">
+      <h3
+        id="waste-location-coverage-title"
+        className="flex items-center gap-2 font-semibold text-foreground"
+      >
+        <IconChecklist aria-hidden="true" className="h-5 w-5" />
+        {pt('masterData.locationsWorkspace.coverage.title')}
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        {pt('masterData.locationsWorkspace.coverage.description')}
+      </p>
+    </div>
+  );
+};
 
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -79,18 +100,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       className="border-b border-border/70 bg-muted/10 px-4 py-4"
       aria-labelledby="waste-location-coverage-title"
     >
-      <div className="space-y-1">
-        <h3
-          id="waste-location-coverage-title"
-          className="flex items-center gap-2 font-semibold text-foreground"
-        >
-          <IconChecklist aria-hidden="true" className="h-5 w-5" />
-          {pt('masterData.locationsWorkspace.coverage.title')}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          {pt('masterData.locationsWorkspace.coverage.description')}
-        </p>
-      </div>
+      <CoverageCheckHeader />
       <CoverageCheckForm
         fractions={props.fractions}
         disabled={fractionsUnavailable}
@@ -102,19 +112,10 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
         onEndDateChange={setEndDate}
         onSubmit={runCheck}
       />
-      {fractionsStatus === 'loading' || fractionsStatus === 'idle' ? (
-        <p className="mt-3 text-sm text-muted-foreground" role="status">
-          {pt('masterData.locationsWorkspace.coverage.fractionsLoading')}
-        </p>
-      ) : fractionsStatus === 'error' ? (
-        <p className="mt-3 text-sm text-destructive" role="alert">
-          {pt('masterData.locationsWorkspace.coverage.fractionsLoadError')}
-        </p>
-      ) : props.fractions.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground" role="status">
-          {pt('masterData.locationsWorkspace.coverage.fractionsEmpty')}
-        </p>
-      ) : null}
+      <CoverageFractionsAvailability
+        status={fractionsStatus}
+        hasFractions={props.fractions.length > 0}
+      />
       {errorKey ? (
         <p className="mt-3 text-sm text-destructive" role="alert">
           {pt(errorKey)}

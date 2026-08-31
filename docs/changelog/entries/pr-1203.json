@@ -1,0 +1,4 @@
+{
+  "prNumber": 1203,
+  "body": "Die Kontrollansicht der Abholorte bietet vorhandene Abfallfraktionen wieder zur Auswahl an.\n\n- Abfallfraktionen werden über die bestehende getrennte Stammdatenabfrage geladen.\n- Ladefehler oder ein leerer Fraktionsbestand werden verständlich angezeigt, ohne die übrige Abholort-Ansicht zu beeinträchtigen.\n- Die Vollständigkeitsprüfung bleibt deaktiviert, bis auswählbare Abfallfraktionen verfügbar sind."
+}

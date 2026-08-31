@@ -41,7 +41,6 @@ export {
 import {
   adaptPluginOperationExecutionHandler,
   pluginTenantLifecycleRetryTaskIdentifier,
-  privilegedStudioJobTaskIdentifier,
   studioJobTaskIdentifier,
   toRegistryKey,
   toStudioJobTaskList,

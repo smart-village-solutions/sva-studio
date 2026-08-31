@@ -6,20 +6,34 @@ import type {
 } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconChecklist } from '@tabler/icons-react';
-import { useMemo, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from 'react';
 
 import {
   CoverageCheckForm,
+  CoverageFractionsAvailability,
+  CoverageToursAvailability,
+} from './waste-management.location-fraction-coverage-check.form.js';
+import {
   CoverageResults,
   type CoverageResult,
 } from './waste-management.location-fraction-coverage-check.parts.js';
 import { checkLocationFractionCoverage } from './waste-management.location-fraction-coverage.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
 type CoverageCheckProps = Readonly<{
   search?: WasteManagementSearchParams;
   locations: readonly WasteCollectionLocationRecord[];
   fractions: readonly WasteFractionRecord[];
+  fractionsStatus?: WasteLocationCoverageDataStatus;
+  toursStatus?: WasteLocationCoverageDataStatus;
   tours: readonly WasteTourRecord[];
   links: readonly WasteLocationTourLinkRecord[];
   onReplaceLocationSelection: (locationIds: readonly string[]) => void;
@@ -35,6 +49,46 @@ const getCoverageErrorKey = (fractionId: string, startDate: string, endDate: str
       ? 'masterData.locationsWorkspace.coverage.invalidDateRange'
       : null;
 
+const CoverageCheckHeader = () => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-1">
+      <h3
+        id="waste-location-coverage-title"
+        className="flex items-center gap-2 font-semibold text-foreground"
+      >
+        <IconChecklist aria-hidden="true" className="h-5 w-5" />
+        {pt('masterData.locationsWorkspace.coverage.title')}
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        {pt('masterData.locationsWorkspace.coverage.description')}
+      </p>
+    </div>
+  );
+};
+
+const useResetResult = (
+  props: CoverageCheckProps,
+  criteria: readonly [fractionId: string, startDate: string, endDate: string],
+  setResult: Dispatch<SetStateAction<CoverageResult | null>>
+) => {
+  const [fractionId, startDate, endDate] = criteria;
+  useEffect(() => {
+    setResult(null);
+  }, [
+    endDate,
+    fractionId,
+    props.fractions,
+    props.fractionsStatus,
+    props.links,
+    props.locations,
+    props.tours,
+    props.toursStatus,
+    setResult,
+    startDate,
+  ]);
+};
+
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const [fractionId, setFractionId] = useState('');
@@ -42,10 +96,15 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
   const [endDate, setEndDate] = useState('');
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [result, setResult] = useState<CoverageResult | null>(null);
+  const fractionsStatus = props.fractionsStatus ?? 'ready';
+  const toursStatus = props.toursStatus ?? 'ready';
+  const coverageDataUnavailable =
+    fractionsStatus !== 'ready' || toursStatus !== 'ready' || props.fractions.length === 0;
   const locationsById = useMemo(
     () => new Map(props.locations.map((location) => [location.id, location] as const)),
     [props.locations]
   );
+  useResetResult(props, [fractionId, startDate, endDate], setResult);
   const runCheck = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextError = getCoverageErrorKey(fractionId, startDate, endDate);
@@ -75,20 +134,10 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       className="border-b border-border/70 bg-muted/10 px-4 py-4"
       aria-labelledby="waste-location-coverage-title"
     >
-      <div className="space-y-1">
-        <h3
-          id="waste-location-coverage-title"
-          className="flex items-center gap-2 font-semibold text-foreground"
-        >
-          <IconChecklist aria-hidden="true" className="h-5 w-5" />
-          {pt('masterData.locationsWorkspace.coverage.title')}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          {pt('masterData.locationsWorkspace.coverage.description')}
-        </p>
-      </div>
+      <CoverageCheckHeader />
       <CoverageCheckForm
         fractions={props.fractions}
+        disabled={coverageDataUnavailable}
         fractionId={fractionId}
         startDate={startDate}
         endDate={endDate}
@@ -97,6 +146,11 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
         onEndDateChange={setEndDate}
         onSubmit={runCheck}
       />
+      <CoverageFractionsAvailability
+        status={fractionsStatus}
+        hasFractions={props.fractions.length > 0}
+      />
+      <CoverageToursAvailability status={toursStatus} />
       {errorKey ? (
         <p className="mt-3 text-sm text-destructive" role="alert">
           {pt(errorKey)}

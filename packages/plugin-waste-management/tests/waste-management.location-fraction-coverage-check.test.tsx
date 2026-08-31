@@ -66,6 +66,74 @@ const links = [
 afterEach(() => cleanup());
 
 describe('WasteLocationFractionCoverageCheck', () => {
+  it.each([
+    ['loading', 'masterData.locationsWorkspace.coverage.fractionsLoading'],
+    ['error', 'masterData.locationsWorkspace.coverage.fractionsLoadError'],
+    ['ready', 'masterData.locationsWorkspace.coverage.fractionsEmpty'],
+  ] as const)(
+    'shows the %s fraction state without enabling the check',
+    (fractionsStatus, message) => {
+      render(
+        <WasteLocationFractionCoverageCheck
+          locations={locations}
+          fractions={[]}
+          fractionsStatus={fractionsStatus}
+          tours={tours}
+          links={links}
+          onReplaceLocationSelection={vi.fn()}
+          onOpenBulkAssignments={vi.fn()}
+          onOpenEditLocation={vi.fn()}
+          getLocationLabel={(location) => location.id}
+        />
+      );
+
+      expect(screen.getByText(message)).toBeTruthy();
+      expect(
+        (
+          screen.getByLabelText(
+            'masterData.locationsWorkspace.coverage.fraction'
+          ) as HTMLSelectElement
+        ).disabled
+      ).toBe(true);
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'masterData.locationsWorkspace.coverage.check',
+          }) as HTMLButtonElement
+        ).disabled
+      ).toBe(true);
+    }
+  );
+
+  it.each([
+    ['loading', 'masterData.locationsWorkspace.coverage.toursLoading'],
+    ['error', 'masterData.locationsWorkspace.coverage.toursLoadError'],
+  ] as const)('shows the %s tours state without enabling the check', (toursStatus, message) => {
+    render(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={fractions}
+        fractionsStatus="ready"
+        toursStatus={toursStatus}
+        tours={[]}
+        links={links}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => location.id}
+      />
+    );
+
+    expect(screen.getByText(message)).toBeTruthy();
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'masterData.locationsWorkspace.coverage.check',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+  });
+
   it('shows missing and incomplete assignments separately and opens bulk assignment for all issues', () => {
     const onReplaceLocationSelection = vi.fn();
     const onOpenBulkAssignments = vi.fn();
@@ -92,7 +160,9 @@ describe('WasteLocationFractionCoverageCheck', () => {
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate'), {
       target: { value: '2027-12-31' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
 
     expect(screen.getByText('masterData.locationsWorkspace.coverage.missing')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.coverage.incomplete')).toBeTruthy();
@@ -115,6 +185,60 @@ describe('WasteLocationFractionCoverageCheck', () => {
     expect(onReplaceLocationSelection).toHaveBeenCalledWith(['missing', 'partial']);
     expect(onReplaceLocationSelection).toHaveBeenCalledTimes(1);
     expect(onOpenBulkAssignments).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears stale results when the coverage data reloads', () => {
+    const { rerender } = render(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={fractions}
+        fractionsStatus="ready"
+        toursStatus="ready"
+        tours={tours}
+        links={links}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => `Ort ${location.id}`}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.fraction'), {
+      target: { value: 'paper' },
+    });
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.startDate'), {
+      target: { value: '2027-01-01' },
+    });
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate'), {
+      target: { value: '2027-12-31' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
+
+    expect(screen.getByText('Ort missing')).toBeTruthy();
+
+    rerender(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={fractions}
+        fractionsStatus="loading"
+        toursStatus="loading"
+        tours={[]}
+        links={[]}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => `Ort ${location.id}`}
+      />
+    );
+
+    expect(screen.queryByText('Ort missing')).toBeNull();
+    expect(
+      screen.queryByRole('button', {
+        name: 'masterData.locationsWorkspace.coverage.selectAndAssign:{"value":2}',
+      })
+    ).toBeNull();
   });
 
   it('rejects an end date before the start date without running the check', () => {
@@ -140,7 +264,9 @@ describe('WasteLocationFractionCoverageCheck', () => {
     fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate'), {
       target: { value: '2027-01-01' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
 
     expect(screen.getByRole('alert').textContent).toBe(
       'masterData.locationsWorkspace.coverage.invalidDateRange'

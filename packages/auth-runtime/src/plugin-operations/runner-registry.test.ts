@@ -5,7 +5,9 @@ const state = vi.hoisted(() => ({
   withPluginTenantLifecycleRepository: vi.fn(),
   withStudioJobLifecycleRepositories: vi.fn(),
   withStudioJobRepository: vi.fn(),
+  runConfiguredPluginTenantProvisioningSchedule: vi.fn(async () => undefined),
   scheduleConfiguredPluginTenantProvisioning: vi.fn(),
+  enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
   isConfiguredPluginTenantLifecycleJobType: vi.fn(() => false),
   getLifecycle: vi.fn(),
 }));
@@ -48,6 +50,8 @@ vi.mock('./repository.js', () => ({
 }));
 
 vi.mock('../iam-instance-registry/repository.js', () => ({
+  runConfiguredPluginTenantProvisioningSchedule:
+    state.runConfiguredPluginTenantProvisioningSchedule,
   scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
 }));
 
@@ -235,16 +239,21 @@ describe('plugin operation runner registry', () => {
     });
   });
 
-  it('runs the durable lifecycle retry task through automatic provisioning', async () => {
+  it('propagates durable lifecycle retry task failures to the worker', async () => {
     const registry = await import('./runner-registry.js');
     const taskList = registry.createStudioJobTaskList(() => new Map());
-
-    await taskList[registry.pluginTenantLifecycleRetryTaskIdentifier]?.(
-      { instanceId: 'tenant-a' },
-      {} as never
+    state.runConfiguredPluginTenantProvisioningSchedule.mockRejectedValueOnce(
+      new Error('registry unavailable')
     );
 
-    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith('tenant-a');
+    await expect(
+      taskList[registry.pluginTenantLifecycleRetryTaskIdentifier]?.(
+        { instanceId: 'tenant-a' },
+        {} as never
+      )
+    ).rejects.toThrow('registry unavailable');
+
+    expect(state.runConfiguredPluginTenantProvisioningSchedule).toHaveBeenCalledWith('tenant-a');
   });
 
   it('persists lifecycle and successful job state through one repository transaction', async () => {
@@ -351,6 +360,7 @@ describe('plugin operation runner registry', () => {
       work({
         studioJobs: { updateJobState },
         tenantLifecycle: { failLifecycle },
+        enqueuePluginTenantLifecycleRetry: state.enqueuePluginTenantLifecycleRetry,
       })
     );
 
@@ -395,9 +405,10 @@ describe('plugin operation runner registry', () => {
     );
     const persistedRetryAfter = failLifecycle.mock.calls[0]?.[0].retryAfter;
     expect(persistedRetryAfter).toEqual(expect.any(String));
-    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith(
-      'tenant-a',
-      persistedRetryAfter
-    );
+    expect(state.enqueuePluginTenantLifecycleRetry).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      runAt: new Date(persistedRetryAfter as string),
+    });
+    expect(state.scheduleConfiguredPluginTenantProvisioning).not.toHaveBeenCalled();
   });
 });

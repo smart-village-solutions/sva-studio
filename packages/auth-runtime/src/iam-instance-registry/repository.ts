@@ -36,20 +36,16 @@ const pluginTenantLifecycleLogger = createSdkLogger({
   level: 'info',
 });
 
-export const scheduleConfiguredPluginTenantProvisioning = (
-  instanceId: string,
-  runAt?: string
-): void => {
-  const futureRunAt = runAt && Date.parse(runAt) > Date.now() ? new Date(runAt) : undefined;
-  const scheduled = futureRunAt
-    ? import('../plugin-operations/runner-worker.js').then(({ queuePluginTenantLifecycleRetry }) =>
-        queuePluginTenantLifecycleRetry({ instanceId, runAt: futureRunAt })
-      )
-    : import('../plugin-tenant-lifecycle/runtime.js').then(
-        ({ ensureConfiguredPluginTenantProvisioning }) =>
-          ensureConfiguredPluginTenantProvisioning(instanceId)
-      );
-  void scheduled.catch((error) => {
+export const runConfiguredPluginTenantProvisioningSchedule = async (
+  instanceId: string
+): Promise<void> => {
+  const { ensureConfiguredPluginTenantProvisioning } =
+    await import('../plugin-tenant-lifecycle/runtime.js');
+  await ensureConfiguredPluginTenantProvisioning(instanceId);
+};
+
+export const scheduleConfiguredPluginTenantProvisioning = (instanceId: string): void => {
+  void runConfiguredPluginTenantProvisioningSchedule(instanceId).catch((error) => {
     pluginTenantLifecycleLogger.error('plugin_tenant_lifecycle_schedule_failed', {
       operation: 'plugin_tenant_lifecycle_schedule',
       result: 'failed',

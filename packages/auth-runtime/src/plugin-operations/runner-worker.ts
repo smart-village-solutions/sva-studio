@@ -11,11 +11,7 @@ import {
   studioJobTaskIdentifier,
 } from './runner-registry.js';
 
-export {
-  queuePluginOperationJob,
-  queuePluginTenantLifecycleRetry,
-  queueStudioJob,
-} from './runner-queue.js';
+export { queuePluginOperationJob, queueStudioJob } from './runner-queue.js';
 
 const logger = createSdkLogger({ component: 'studio-jobs-runner', level: 'info' });
 

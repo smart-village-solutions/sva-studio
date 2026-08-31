@@ -14,7 +14,6 @@ const resolveAuthConfigForInstanceMock = vi.fn();
 const getInstanceKeycloakStatusViaTenantAdminMock = vi.fn();
 const getInstanceKeycloakStatusViaProvisionerMock = vi.fn();
 const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
-const queuePluginTenantLifecycleRetryMock = vi.fn(async () => undefined);
 const studioModuleIamRegistryMock = new Map([
   [
     'news',
@@ -147,24 +146,16 @@ vi.mock('../plugin-tenant-lifecycle/runtime.js', () => ({
   ensureConfiguredPluginTenantProvisioning: ensureConfiguredPluginTenantProvisioningMock,
 }));
 
-vi.mock('../plugin-operations/runner-worker.js', () => ({
-  queuePluginTenantLifecycleRetry: queuePluginTenantLifecycleRetryMock,
-}));
-
 describe('iam instance registry repository wiring', () => {
-  it('uses a durable delayed worker job for a future lifecycle retry deadline', async () => {
-    const { scheduleConfiguredPluginTenantProvisioning } = await import('./repository.js');
-    const runAt = '2999-08-30T12:10:00.000Z';
+  it('propagates automatic provisioning failures from the awaited scheduling path', async () => {
+    const { runConfiguredPluginTenantProvisioningSchedule } = await import('./repository.js');
+    ensureConfiguredPluginTenantProvisioningMock.mockRejectedValueOnce(
+      new Error('registry unavailable')
+    );
 
-    scheduleConfiguredPluginTenantProvisioning('tenant-a', runAt);
-
-    await vi.waitFor(() => {
-      expect(queuePluginTenantLifecycleRetryMock).toHaveBeenCalledWith({
-        instanceId: 'tenant-a',
-        runAt: new Date(runAt),
-      });
-    });
-    expect(ensureConfiguredPluginTenantProvisioningMock).not.toHaveBeenCalled();
+    await expect(runConfiguredPluginTenantProvisioningSchedule('tenant-a')).rejects.toThrow(
+      'registry unavailable'
+    );
   });
 
   it('injects the configured snapshot registry into runtime and provisioning services', async () => {

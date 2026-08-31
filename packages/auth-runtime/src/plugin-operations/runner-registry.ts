@@ -4,7 +4,10 @@ import type { StudioJobRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
-import { scheduleConfiguredPluginTenantProvisioning } from '../iam-instance-registry/repository.js';
+import {
+  runConfiguredPluginTenantProvisioningSchedule,
+  scheduleConfiguredPluginTenantProvisioning,
+} from '../iam-instance-registry/repository.js';
 import {
   createPluginTenantLifecycleJobCorrelation,
   pluginTenantLifecycleJobInputKey,
@@ -30,18 +33,37 @@ import type {
   StudioJobRunnerPayload,
 } from './runner-internal.js';
 
-export { pluginTenantLifecycleRetryTaskIdentifier } from './runner-internal.js';
+export {
+  pluginTenantLifecycleRetryTaskIdentifier,
+  privilegedStudioJobTaskIdentifier,
+  studioJobTaskIdentifier,
+} from './runner-internal.js';
 import {
   adaptPluginOperationExecutionHandler,
   pluginTenantLifecycleRetryTaskIdentifier,
+  privilegedStudioJobTaskIdentifier,
+  studioJobTaskIdentifier,
   toRegistryKey,
   toStudioJobTaskList,
 } from './runner-internal.js';
 
 const logger = createSdkLogger({ component: 'studio-jobs-runner', level: 'info' });
 
-export const studioJobTaskIdentifier = 'studio_job_execute';
-export const privilegedStudioJobTaskIdentifier = 'studio_job_execute_privileged';
+const enqueueFutureLifecycleRetry = async (input: {
+  readonly instanceId: string;
+  readonly lifecycle?: { readonly retryKind?: string; readonly retryAfter?: string } | null;
+  readonly enqueue: (input: {
+    readonly instanceId: string;
+    readonly runAt: Date;
+  }) => Promise<unknown>;
+}): Promise<boolean> => {
+  const retryAfter =
+    input.lifecycle?.retryKind === 'retryable' ? input.lifecycle.retryAfter : undefined;
+  if (!retryAfter || Date.parse(retryAfter) <= Date.now()) return false;
+  await input.enqueue({ instanceId: input.instanceId, runAt: new Date(retryAfter) });
+  return true;
+};
+
 export const pluginOperationTaskIdentifier = studioJobTaskIdentifier;
 
 let registeredStudioJobHandlers = new Map<string, StudioJobExecutionRegistration>();
@@ -206,10 +228,10 @@ export const createStudioJobTaskList = (
               );
             }
             const lifecycleJob = loadedJob;
-            let lifecycleRetryAfter: string | undefined;
+            let lifecycleRetryEnqueued = false;
             const updatedJob = await withStudioJobLifecycleRepositories(
               tenantInstanceId,
-              async ({ studioJobs, tenantLifecycle }) => {
+              async ({ studioJobs, tenantLifecycle, enqueuePluginTenantLifecycleRetry }) => {
                 const transactionCorrelation = createPluginTenantLifecycleJobCorrelation({
                   lifecycleRegistry: readInstanceRegistryPluginTenantLifecycleRegistry(),
                   withRepository: async (_instanceId, work) => work(tenantLifecycle),
@@ -228,16 +250,17 @@ export const createStudioJobTaskList = (
                     },
                     reason: input.status === 'cancelled' ? 'cancelled' : 'failed',
                   });
-                  lifecycleRetryAfter =
-                    failedLifecycle?.retryKind === 'retryable'
-                      ? failedLifecycle.retryAfter
-                      : undefined;
+                  lifecycleRetryEnqueued = await enqueueFutureLifecycleRetry({
+                    instanceId: tenantInstanceId,
+                    lifecycle: failedLifecycle,
+                    enqueue: enqueuePluginTenantLifecycleRetry,
+                  });
                 }
                 return studioJobs.updateJobState(input);
               }
             );
-            if (input.status !== 'succeeded') {
-              scheduleConfiguredPluginTenantProvisioning(tenantInstanceId, lifecycleRetryAfter);
+            if (input.status !== 'succeeded' && !lifecycleRetryEnqueued) {
+              scheduleConfiguredPluginTenantProvisioning(tenantInstanceId);
             }
             return updatedJob;
           },
@@ -270,7 +293,7 @@ export const createStudioJobTaskList = (
     if (typeof instanceId !== 'string' || instanceId.length === 0) {
       throw new Error('plugin_tenant_lifecycle_retry_payload_invalid');
     }
-    scheduleConfiguredPluginTenantProvisioning(instanceId);
+    await runConfiguredPluginTenantProvisioningSchedule(instanceId);
   },
 });
 

@@ -11,6 +11,7 @@ import type { Pool } from 'pg';
 
 import { createPoolResolver, type QueryClient, withResolvedInstanceDb } from '../db.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
+import { enqueuePluginTenantLifecycleRetry } from './runner-queue.js';
 
 type WithResolvedInstanceDb = <T>(
   resolvePool: () => Pool | null,
@@ -84,6 +85,10 @@ export const withStudioJobLifecycleRepositories = async <T>(
   work: (repositories: {
     readonly studioJobs: StudioJobRepository;
     readonly tenantLifecycle: PluginTenantLifecycleRepository;
+    readonly enqueuePluginTenantLifecycleRetry: (input: {
+      readonly instanceId: string;
+      readonly runAt: Date;
+    }) => Promise<unknown>;
   }) => Promise<T>
 ): Promise<T> =>
   withResolvedInstanceDb(resolvePool, instanceId, async (client) => {
@@ -91,5 +96,7 @@ export const withStudioJobLifecycleRepositories = async <T>(
     return work({
       studioJobs: createStudioJobRepository(executor),
       tenantLifecycle: createPluginTenantLifecycleRepository(executor),
+      enqueuePluginTenantLifecycleRetry: (input) =>
+        enqueuePluginTenantLifecycleRetry(client, input),
     });
   });

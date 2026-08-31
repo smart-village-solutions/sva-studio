@@ -101,10 +101,11 @@ describe('plugin operation runner worker', () => {
   });
 
   it('persists a deadline-driven lifecycle retry as a delayed worker job', async () => {
-    const { queuePluginTenantLifecycleRetry } = await import('./runner-worker.js');
+    const { enqueuePluginTenantLifecycleRetry } = await import('./runner-queue.js');
     const runAt = new Date('2026-08-30T12:10:00.000Z');
+    const pool = state.resolvePool();
 
-    await queuePluginTenantLifecycleRetry({ instanceId: 'tenant-a', runAt });
+    await enqueuePluginTenantLifecycleRetry(pool, { instanceId: 'tenant-a', runAt });
 
     expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
       expect.stringContaining('graphile_worker.sva_enqueue_job'),

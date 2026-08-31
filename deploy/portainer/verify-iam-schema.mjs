@@ -67,6 +67,7 @@ try {
   const workerReadiness = verifyWorkerContract
     ? await runGraphileWorkerReadinessForConnection(
         clientConfig,
+        'iam_app',
         process.env.APP_DB_USER?.trim() || 'sva_app',
         process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker'
       )

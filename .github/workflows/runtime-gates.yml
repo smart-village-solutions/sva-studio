@@ -370,6 +370,7 @@ jobs:
           fi
           echo "Scope: \`${{ steps.scope.outputs.integration_mode }}\` gegen Base-SHA \`${{ github.event.pull_request.base.sha }}\`." >> "$GITHUB_STEP_SUMMARY"
           echo 'Allgemeine Integration umfasst nur echte infra-abhängige Ziele; Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Der `auth-runtime:test:integration`-Scope führt den echten Plugin-Lifecycle-PostgreSQL-/Graphile-Harness explizit aus.' >> "$GITHUB_STEP_SUMMARY"
 
   integration-required:
     name: Integration
@@ -400,4 +401,5 @@ jobs:
         run: |
           echo 'Integrations-Gate fuer main/schedule abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Scope: voller Lauf der allgemeinen echten Integrationsziele via `pnpm test:integration`.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Enthalten: echter Plugin-Lifecycle-PostgreSQL-/Graphile-Harness über `auth-runtime:test:integration`.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.' >> "$GITHUB_STEP_SUMMARY"

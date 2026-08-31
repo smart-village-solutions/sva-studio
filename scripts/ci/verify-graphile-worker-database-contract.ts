@@ -94,6 +94,17 @@ const psqlStatus = (user: string, password: string, port: string, sql: string): 
     { env: { ...process.env, PGPASSWORD: password }, stdio: 'ignore' }
   ).status;
 
+const executeAsEffectiveApp = (port: string, sql: string): string =>
+  psql(
+    'postgres',
+    adminPassword,
+    port,
+    `BEGIN;
+     SET LOCAL ROLE iam_app;
+     ${sql}
+     COMMIT;`
+  );
+
 const startContractDatabase = (): string => {
   run('docker', [
     'run',
@@ -173,6 +184,7 @@ const runWorkerReadiness = async (port: string, appDbUser: string, workerDbUser:
       port: Number.parseInt(port, 10),
       user: 'postgres',
     },
+    'iam_app',
     appDbUser,
     workerDbUser
   );
@@ -251,6 +263,23 @@ const assertAppRestrictions = (port: string): void => {
       'sva_app',
       appPassword,
       port,
+      `SELECT graphile_worker.sva_enqueue_job(
+        'studio_job_execute',
+        '{"instanceId":"direct-login","jobId":"direct-login"}'::json,
+        'plugin-operations',
+        1,
+        'studio-job:direct-login',
+        now()
+      );`
+    ) === 0
+  ) {
+    throw new Error('graphile_contract_direct_login_enqueue_was_allowed');
+  }
+  if (
+    psqlStatus(
+      'sva_app',
+      appPassword,
+      port,
       "SELECT graphile_worker.add_job('studio_job_execute', '{}'::json);"
     ) === 0
   ) {
@@ -268,6 +297,29 @@ const assertAppRestrictions = (port: string): void => {
   }
 };
 
+const assertEffectiveAppEnqueue = (port: string): void => {
+  executeAsEffectiveApp(
+    port,
+    `SELECT graphile_worker.sva_enqueue_job(
+      'studio_job_execute',
+      '{"instanceId":"effective-role","jobId":"effective-role"}'::json,
+      'plugin-operations',
+      1,
+      'studio-job:effective-role',
+      now() + interval '1 day'
+    );`
+  );
+  const queuedCount = psql(
+    'sva_job_worker',
+    workerPassword,
+    port,
+    "SELECT count(*) FROM graphile_worker.jobs WHERE key = 'studio-job:effective-role';"
+  );
+  if (queuedCount !== '1') {
+    throw new Error(`graphile_contract_effective_app_enqueue_missing:${queuedCount}`);
+  }
+};
+
 const main = async (): Promise<void> => {
   let runner: ContractRunner | undefined;
   let workerPool: ContractPool | undefined;
@@ -277,8 +329,9 @@ const main = async (): Promise<void> => {
     await assertMissingWorkerRoleReadiness(port);
     bootstrapWorkerRole(port);
     await assertCanonicalWorkerReadiness(port);
+    assertEffectiveAppEnqueue(port);
     enqueueContractJobs({
-      executeAsApp: (sql) => psql('sva_app', appPassword, port, sql),
+      executeAsApp: (sql) => executeAsEffectiveApp(port, sql),
       queryAsWorker: (sql) => psql('sva_job_worker', workerPassword, port, sql),
     });
     ({ pool: workerPool, runner } = await processContractJob(port));

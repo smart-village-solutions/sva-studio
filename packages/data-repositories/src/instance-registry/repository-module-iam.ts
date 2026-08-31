@@ -38,7 +38,7 @@ WITH active_module AS MATERIALIZED (
 ),
 intent AS (
   INSERT INTO iam.instance_plugin_lifecycle (
-    instance_id, plugin_id, desired_operation, desired_generation, readiness,
+    instance_id, plugin_id, desired_operation, desired_generation, readiness_status,
     contract_revision, next_recheck_at, retry_kind, retry_after,
     recovery_error_code, updated_at
   )
@@ -47,7 +47,7 @@ intent AS (
   ON CONFLICT (instance_id, plugin_id) DO UPDATE
   SET desired_operation = 'reconcile',
     desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1,
-    readiness = 'pending', readiness_revision = NULL,
+    readiness_status = 'pending', readiness_revision = NULL,
     contract_revision = EXCLUDED.contract_revision,
     next_recheck_at = now(), retry_kind = NULL, retry_after = NULL,
     recovery_error_code = NULL, updated_at = now()

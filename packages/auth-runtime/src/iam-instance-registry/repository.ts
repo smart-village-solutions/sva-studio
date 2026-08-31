@@ -13,7 +13,6 @@ import {
   readInstanceRegistryPluginTenantLifecycleRegistry,
 } from './plugin-activation-policy-snapshot.js';
 
-import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';
 import {
   getInstanceKeycloakPlanViaProvisioner,
@@ -30,12 +29,19 @@ import {
   resolveIdentityProviderForInstance,
 } from '../iam-account-management/shared-runtime.js';
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
+import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 
 const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
   level: 'info',
 });
+
+const resolvePool = createPoolResolver(getIamDatabaseUrl);
+
+export const closeInstanceRegistryRepositoryPoolForShutdown = async (): Promise<void> => {
+  await resolvePool()?.end();
+};
 
 const readPersistablePluginTenantLifecycleRegistry = () =>
   new Map(
@@ -203,8 +209,6 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
     } as const;
   }
 };
-
-const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
 const invalidateInstancePermissionSnapshots = async (input: {
   instanceId: string;

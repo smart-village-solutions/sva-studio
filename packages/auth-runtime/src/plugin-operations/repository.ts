@@ -58,6 +58,10 @@ export const createWithStudioJobRepository =
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
+export const closeStudioJobRepositoryPoolForShutdown = async (): Promise<void> => {
+  await resolvePool()?.end();
+};
+
 export const withStudioJobRepository = createWithStudioJobRepository({
   resolvePool,
   withDb: withResolvedInstanceDb,

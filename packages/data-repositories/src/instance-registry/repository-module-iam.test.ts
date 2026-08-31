@@ -19,6 +19,8 @@ describe('instance registry repository module iam', () => {
 
     expect(statements[0]?.text).toContain('FOR UPDATE');
     expect(statements[0]?.text).toContain('active_job_id IS NULL');
+    expect(statements[0]?.text).toContain('readiness_status');
+    expect(statements[0]?.text).not.toMatch(/\breadiness\b/u);
     expect(statements[0]?.text).toContain('graphile_worker.sva_enqueue_job');
     expect(statements[0]?.text).toContain("identifier => 'plugin_tenant_lifecycle_retry'");
     expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1', true]);

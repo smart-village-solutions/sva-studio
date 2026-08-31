@@ -49,6 +49,8 @@ export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
       fractionsLoadError:
         'Waste fractions could not be loaded. Collection locations can still be edited.',
       fractionsEmpty: 'No waste fractions have been created for this tenant yet.',
+      toursLoading: 'Tours are loading for the coverage check.',
+      toursLoadError: 'Tours could not be loaded. Collection locations can still be edited.',
       startDate: 'Start date',
       endDate: 'End date',
       check: 'Check',

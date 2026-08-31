@@ -12,6 +12,7 @@ export const WasteMasterDataLocationsWorkspace = (
         locations={props.auditCollectionLocations ?? props.collectionLocations}
         fractions={props.fractions ?? []}
         fractionsStatus={props.fractionsStatus}
+        toursStatus={props.toursStatus}
         tours={props.availableTours}
         links={props.locationTourLinks}
         onReplaceLocationSelection={props.onReplaceLocationSelection}

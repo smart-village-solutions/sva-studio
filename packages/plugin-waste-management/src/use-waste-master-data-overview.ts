@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
@@ -29,25 +29,52 @@ const resolveMasterDataLoadError = (translate: Translate, loadError: unknown) =>
     : translate('masterData.messages.loadError');
 };
 
-const loadAvailableToursForLocations = async (
-  tab: WasteManagementSearchParams['masterDataTab'],
-  setAvailableTours: WasteMasterDataState['setAvailableTours'],
-  isMountedRef: React.MutableRefObject<boolean>
-) => {
-  if (tab !== 'locations') {
-    return;
-  }
+type LocationCoverageSupportLoader = Pick<
+  WasteMasterDataState,
+  | 'setAvailableTours'
+  | 'setLocationCoverageFractions'
+  | 'setLocationCoverageFractionsStatus'
+  | 'setLocationCoverageToursStatus'
+>;
 
-  try {
-    const response = await getWasteManagementToursOverview();
-    if (isMountedRef.current) {
-      setAvailableTours(response.tours);
+const isCurrentCoverageRequest = (
+  requestId: number,
+  requestIdRef: MutableRefObject<number>,
+  isMountedRef: MutableRefObject<boolean>
+) => isMountedRef.current && requestIdRef.current === requestId;
+
+const loadLocationCoverageSupport = async (
+  state: LocationCoverageSupportLoader,
+  requestId: number,
+  requestIdRef: MutableRefObject<number>,
+  isMountedRef: MutableRefObject<boolean>
+) => {
+  const loadFractions = async () => {
+    try {
+      const response = await getWasteManagementMasterDataOverview({ scope: 'fractions' });
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setLocationCoverageFractions(response.fractions);
+      state.setLocationCoverageFractionsStatus('ready');
+    } catch {
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setLocationCoverageFractions([]);
+      state.setLocationCoverageFractionsStatus('error');
     }
-  } catch {
-    if (isMountedRef.current) {
-      setAvailableTours([]);
+  };
+  const loadTours = async () => {
+    try {
+      const response = await getWasteManagementToursOverview();
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setAvailableTours(response.tours);
+      state.setLocationCoverageToursStatus('ready');
+    } catch {
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setAvailableTours([]);
+      state.setLocationCoverageToursStatus('error');
     }
-  }
+  };
+
+  await Promise.all([loadFractions(), loadTours()]);
 };
 
 export const useWasteMasterDataOverview = (
@@ -57,30 +84,27 @@ export const useWasteMasterDataOverview = (
 ) => {
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
+  const coverageRequestIdRef = useRef(0);
   ptRef.current = pt;
   const { setAvailableTours, setLoading, setOverview, setOverviewError } = state;
-  const { setLocationCoverageFractions, setLocationCoverageFractionsStatus } = state;
-
-  const loadLocationCoverageFractions = useCallback(async () => {
-    try {
-      const response = await getWasteManagementMasterDataOverview({ scope: 'fractions' });
-      if (!isMountedRef.current) return;
-      setLocationCoverageFractions(response.fractions);
-      setLocationCoverageFractionsStatus('ready');
-    } catch {
-      if (!isMountedRef.current) return;
-      setLocationCoverageFractions([]);
-      setLocationCoverageFractionsStatus('error');
-    }
-  }, [setLocationCoverageFractions, setLocationCoverageFractionsStatus]);
+  const {
+    setLocationCoverageFractions,
+    setLocationCoverageFractionsStatus,
+    setLocationCoverageToursStatus,
+  } = state;
 
   const loadOverview = useCallback(async () => {
+    const coverageRequestId = ++coverageRequestIdRef.current;
     if (tab === 'locations') {
       setLocationCoverageFractions([]);
       setLocationCoverageFractionsStatus('loading');
+      setAvailableTours([]);
+      setLocationCoverageToursStatus('loading');
     } else {
       setLocationCoverageFractions([]);
       setLocationCoverageFractionsStatus('idle');
+      setAvailableTours([]);
+      setLocationCoverageToursStatus('idle');
     }
 
     try {
@@ -90,7 +114,19 @@ export const useWasteMasterDataOverview = (
       if (!isMountedRef.current) return;
       setOverview(overviewResponse);
       setOverviewError(null);
-      if (tab === 'locations') void loadLocationCoverageFractions();
+      if (tab === 'locations') {
+        void loadLocationCoverageSupport(
+          {
+            setAvailableTours,
+            setLocationCoverageFractions,
+            setLocationCoverageFractionsStatus,
+            setLocationCoverageToursStatus,
+          },
+          coverageRequestId,
+          coverageRequestIdRef,
+          isMountedRef
+        );
+      }
     } catch (loadError) {
       if (!isMountedRef.current) return;
       setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));
@@ -99,11 +135,11 @@ export const useWasteMasterDataOverview = (
       if (isMountedRef.current) setLoading(false);
     }
   }, [
-    loadLocationCoverageFractions,
     setAvailableTours,
     setLoading,
     setLocationCoverageFractions,
     setLocationCoverageFractionsStatus,
+    setLocationCoverageToursStatus,
     setOverview,
     setOverviewError,
     tab,
@@ -116,14 +152,6 @@ export const useWasteMasterDataOverview = (
       isMountedRef.current = false;
     };
   }, [loadOverview]);
-
-  useEffect(() => {
-    if (!state.overview || tab !== 'locations') {
-      return;
-    }
-
-    void loadAvailableToursForLocations(tab, setAvailableTours, isMountedRef);
-  }, [setAvailableTours, state.overview, tab]);
 
   return loadOverview;
 };

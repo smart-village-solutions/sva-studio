@@ -86,6 +86,9 @@ const LocationsMasterDataLoaderHarness = () => {
       <span data-testid="coverage-fractions-state">
         {state.locationCoverageFractionsStatus}:{state.locationCoverageFractions.length}
       </span>
+      <span data-testid="coverage-tours-state">
+        {state.locationCoverageToursStatus}:{state.availableTours.length}
+      </span>
     </div>
   );
 };
@@ -94,7 +97,14 @@ const DynamicMasterDataLoaderHarness = ({ tab }: { readonly tab: 'fractions' | '
   const state = useWasteMasterDataState();
   useWasteMasterDataOverview(state, (key) => key, tab);
 
-  return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
+  return (
+    <div>
+      <span>{state.error ?? (state.loading ? 'loading' : 'loaded')}</span>
+      <span data-testid="dynamic-coverage-fractions-state">
+        {state.locationCoverageFractionsStatus}:{state.locationCoverageFractions.length}
+      </span>
+    </div>
+  );
 };
 
 const CollectionLocationLoaderHarness = () => {
@@ -386,6 +396,7 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+      expect(screen.getByTestId('coverage-tours-state').textContent).toBe('ready:0');
     });
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
@@ -425,6 +436,78 @@ describe('waste management data loaders', () => {
     });
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the coverage check unavailable when the tours fail to load', async () => {
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      async (options?: { readonly scope?: string }) =>
+        options?.scope === 'fractions'
+          ? { fractions: [{ id: 'fraction-1' }] }
+          : {
+              fractions: [],
+              regions: [],
+              cities: [],
+              streets: [],
+              houseNumbers: [],
+              collectionLocations: [],
+              locationTourLinks: [],
+            }
+    );
+    apiMocks.getWasteManagementToursOverview.mockRejectedValue(new Error('tours failed'));
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('loaded')).toBeTruthy();
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+      expect(screen.getByTestId('coverage-tours-state').textContent).toBe('error:0');
+    });
+  });
+
+  it('ignores a stale coverage fractions response after leaving the locations tab', async () => {
+    let resolveStaleFractions: ((value: object) => void) | undefined;
+    let fractionRequestCount = 0;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      (options?: { readonly scope?: string }) => {
+        if (options?.scope === 'locations') {
+          return Promise.resolve({
+            fractions: [],
+            regions: [],
+            cities: [],
+            streets: [],
+            houseNumbers: [],
+            collectionLocations: [],
+            locationTourLinks: [],
+          });
+        }
+
+        fractionRequestCount += 1;
+        return fractionRequestCount === 1
+          ? new Promise((resolve) => (resolveStaleFractions = resolve))
+          : Promise.resolve({ fractions: [] });
+      }
+    );
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+
+    const { rerender } = render(<DynamicMasterDataLoaderHarness tab="locations" />);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('dynamic-coverage-fractions-state').textContent).toBe('loading:0');
+    });
+
+    rerender(<DynamicMasterDataLoaderHarness tab="fractions" />);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(3);
+      expect(screen.getByTestId('dynamic-coverage-fractions-state').textContent).toBe('idle:0');
+    });
+
+    await act(async () => {
+      resolveStaleFractions?.({ fractions: [{ id: 'stale-fraction' }] });
+    });
+
+    expect(screen.getByTestId('dynamic-coverage-fractions-state').textContent).toBe('idle:0');
   });
 
   it('reloads the master-data overview when the active tab scope changes', async () => {

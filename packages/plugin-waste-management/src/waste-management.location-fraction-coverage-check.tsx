@@ -11,6 +11,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import {
   CoverageCheckForm,
   CoverageFractionsAvailability,
+  CoverageToursAvailability,
 } from './waste-management.location-fraction-coverage-check.form.js';
 import {
   CoverageResults,
@@ -18,13 +19,14 @@ import {
 } from './waste-management.location-fraction-coverage-check.parts.js';
 import { checkLocationFractionCoverage } from './waste-management.location-fraction-coverage.js';
 import type { WasteManagementSearchParams } from './search-params.js';
-import type { WasteLocationCoverageFractionsStatus } from './use-waste-master-data-state.js';
+import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
 type CoverageCheckProps = Readonly<{
   search?: WasteManagementSearchParams;
   locations: readonly WasteCollectionLocationRecord[];
   fractions: readonly WasteFractionRecord[];
-  fractionsStatus?: WasteLocationCoverageFractionsStatus;
+  fractionsStatus?: WasteLocationCoverageDataStatus;
+  toursStatus?: WasteLocationCoverageDataStatus;
   tours: readonly WasteTourRecord[];
   links: readonly WasteLocationTourLinkRecord[];
   onReplaceLocationSelection: (locationIds: readonly string[]) => void;
@@ -66,7 +68,9 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [result, setResult] = useState<CoverageResult | null>(null);
   const fractionsStatus = props.fractionsStatus ?? 'ready';
-  const fractionsUnavailable = fractionsStatus !== 'ready' || props.fractions.length === 0;
+  const toursStatus = props.toursStatus ?? 'ready';
+  const coverageDataUnavailable =
+    fractionsStatus !== 'ready' || toursStatus !== 'ready' || props.fractions.length === 0;
   const locationsById = useMemo(
     () => new Map(props.locations.map((location) => [location.id, location] as const)),
     [props.locations]
@@ -103,7 +107,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
       <CoverageCheckHeader />
       <CoverageCheckForm
         fractions={props.fractions}
-        disabled={fractionsUnavailable}
+        disabled={coverageDataUnavailable}
         fractionId={fractionId}
         startDate={startDate}
         endDate={endDate}
@@ -116,6 +120,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
         status={fractionsStatus}
         hasFractions={props.fractions.length > 0}
       />
+      <CoverageToursAvailability status={toursStatus} />
       {errorKey ? (
         <p className="mt-3 text-sm text-destructive" role="alert">
           {pt(errorKey)}

@@ -4,7 +4,7 @@ import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
 import { IconChecklist } from '@tabler/icons-react';
 import type { FormEvent } from 'react';
 
-import type { WasteLocationCoverageFractionsStatus } from './use-waste-master-data-state.js';
+import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
 export const CoverageCheckForm = ({
   fractions,
@@ -86,7 +86,7 @@ export const CoverageFractionsAvailability = ({
   status,
   hasFractions,
 }: Readonly<{
-  status: WasteLocationCoverageFractionsStatus;
+  status: WasteLocationCoverageDataStatus;
   hasFractions: boolean;
 }>) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -112,4 +112,24 @@ export const CoverageFractionsAvailability = ({
       {pt('masterData.locationsWorkspace.coverage.fractionsEmpty')}
     </p>
   );
+};
+
+export const CoverageToursAvailability = ({
+  status,
+}: Readonly<{ status: WasteLocationCoverageDataStatus }>) => {
+  const pt = usePluginTranslation('wasteManagement');
+
+  if (status === 'loading' || status === 'idle') {
+    return (
+      <p className="mt-3 text-sm text-muted-foreground" role="status">
+        {pt('masterData.locationsWorkspace.coverage.toursLoading')}
+      </p>
+    );
+  }
+
+  return status === 'error' ? (
+    <p className="mt-3 text-sm text-destructive" role="alert">
+      {pt('masterData.locationsWorkspace.coverage.toursLoadError')}
+    </p>
+  ) : null;
 };

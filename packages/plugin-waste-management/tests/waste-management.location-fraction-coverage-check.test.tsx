@@ -105,6 +105,35 @@ describe('WasteLocationFractionCoverageCheck', () => {
     }
   );
 
+  it.each([
+    ['loading', 'masterData.locationsWorkspace.coverage.toursLoading'],
+    ['error', 'masterData.locationsWorkspace.coverage.toursLoadError'],
+  ] as const)('shows the %s tours state without enabling the check', (toursStatus, message) => {
+    render(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={fractions}
+        fractionsStatus="ready"
+        toursStatus={toursStatus}
+        tours={[]}
+        links={links}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => location.id}
+      />
+    );
+
+    expect(screen.getByText(message)).toBeTruthy();
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'masterData.locationsWorkspace.coverage.check',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+  });
+
   it('shows missing and incomplete assignments separately and opens bulk assignment for all issues', () => {
     const onReplaceLocationSelection = vi.fn();
     const onOpenBulkAssignments = vi.fn();

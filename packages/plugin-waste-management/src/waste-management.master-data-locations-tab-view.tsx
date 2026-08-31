@@ -65,6 +65,7 @@ export const WasteMasterDataLocationsTabView = ({
       search={search}
       fractions={controller.locationCoverageFractions}
       fractionsStatus={controller.locationCoverageFractionsStatus}
+      toursStatus={controller.locationCoverageToursStatus}
       auditCollectionLocations={controller.overview?.collectionLocations ?? []}
       regions={controller.filteredRegions}
       cities={controller.filteredCities}

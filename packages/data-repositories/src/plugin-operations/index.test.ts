@@ -225,6 +225,165 @@ describe('studio job repository', () => {
     ]);
   });
 
+  it('CAS-fences state transitions by status, attempt and worker owner', async () => {
+    const { executor, statements } = createQueuedExecutor([[jobRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.transitionJobState({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        status: 'succeeded',
+        progress: jobRow.progress,
+        attempts: 1,
+        workerId: 'worker-a',
+        heartbeatAt: '2026-05-09T12:03:00.000Z',
+        expectedStatuses: ['running'],
+        expectedAttempts: 1,
+        expectedWorkerId: 'worker-a',
+      })
+    ).resolves.toMatchObject({ outcome: 'applied' });
+
+    expect(statements[0]?.text).toContain('status = ANY($12::text[])');
+    expect(statements[0]?.text).toContain('AND attempts = $13');
+    expect(statements[0]?.text).toContain('AND worker_id IS NOT DISTINCT FROM $14');
+    expect(statements[0]?.values.slice(-3)).toEqual([['running'], 1, 'worker-a']);
+  });
+
+  it('distinguishes idempotent and conflicting CAS transitions', async () => {
+    const succeeded = { ...jobRow, status: 'succeeded' as const, attempts: 1 };
+    const idempotent = createQueuedExecutor([[], [succeeded]]);
+    await expect(
+      createStudioJobRepository(idempotent.executor).transitionJobState({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        status: 'succeeded',
+        attempts: 1,
+        workerId: 'worker-a',
+        expectedStatuses: ['running'],
+        expectedAttempts: 1,
+        expectedWorkerId: 'worker-a',
+      })
+    ).resolves.toMatchObject({ outcome: 'alreadyApplied' });
+
+    const conflicting = createQueuedExecutor([
+      [],
+      [{ ...jobRow, attempts: 2, worker_id: 'worker-b' }],
+    ]);
+    await expect(
+      createStudioJobRepository(conflicting.executor).transitionJobState({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        status: 'failed',
+        attempts: 1,
+        workerId: 'worker-a',
+        expectedStatuses: ['running'],
+        expectedAttempts: 1,
+        expectedWorkerId: 'worker-a',
+      })
+    ).resolves.toMatchObject({ outcome: 'conflict' });
+  });
+
+  it('commits a fenced terminal state and exactly one matching terminal event', async () => {
+    const succeededRow = {
+      ...jobRow,
+      status: 'succeeded',
+      attempts: 1,
+      worker_id: 'worker-a',
+      finished_at: '2026-05-09T12:05:00.000Z',
+    };
+    const succeededEvent = {
+      ...eventRow,
+      event_type: 'job.succeeded',
+      status: 'succeeded',
+      attempts: 1,
+    };
+    const { executor, statements } = createQueuedExecutor([
+      [succeededRow],
+      [],
+      [succeededRow],
+      [succeededEvent],
+    ]);
+    const repository = createStudioJobRepository(executor);
+    const input = {
+      jobId: 'job-1',
+      instanceId: 'tenant-a',
+      status: 'succeeded' as const,
+      attempts: 1,
+      workerId: 'worker-a',
+      expectedStatuses: ['running'] as const,
+      expectedAttempts: 1,
+      expectedWorkerId: 'worker-a',
+      leasePredicate: { kind: 'activeOwner' } as const,
+      event: {
+        id: 'terminal-event-1',
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        eventType: 'job.succeeded' as const,
+        status: 'succeeded' as const,
+        attempts: 1,
+      },
+    };
+
+    await expect(repository.transitionJobStateAndAppendEvent(input)).resolves.toMatchObject({
+      outcome: 'applied',
+    });
+    await expect(repository.transitionJobStateAndAppendEvent(input)).resolves.toMatchObject({
+      outcome: 'alreadyApplied',
+    });
+
+    expect(statements[0]?.text).toContain('WITH eligible AS MATERIALIZED');
+    expect(statements[0]?.text).toContain('AND attempts = $13');
+    expect(statements[0]?.text).toContain('AND worker_id IS NOT DISTINCT FROM $14');
+    expect(statements[0]?.text).toContain("heartbeat_at > NOW() - INTERVAL '120 seconds'");
+    expect(statements[0]?.text).toContain('AND NOT EXISTS (');
+    expect(statements[0]?.text).toContain('ON CONFLICT (job_id, attempts)');
+    expect(statements[0]?.text).toContain("'job.succeeded', 'job.failed', 'job.cancelled'");
+    expect(statements[0]?.text.indexOf('INSERT INTO iam.studio_job_events')).toBeLessThan(
+      statements[0]?.text.indexOf('UPDATE iam.studio_jobs AS job') ?? -1
+    );
+  });
+
+  it('fences an expired owner lease before atomically writing its terminal event and job state', async () => {
+    const failedRow = {
+      ...jobRow,
+      status: 'failed',
+      attempts: 1,
+      worker_id: 'worker-a',
+      finished_at: '2026-05-09T12:05:00.000Z',
+    };
+    const { executor, statements } = createQueuedExecutor([[failedRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.transitionJobStateAndAppendEvent({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        status: 'failed',
+        attempts: 1,
+        workerId: 'worker-a',
+        expectedStatuses: ['running'],
+        expectedAttempts: 1,
+        expectedWorkerId: 'worker-a',
+        leasePredicate: { kind: 'expiredOwner' },
+        event: {
+          id: 'terminal-event-2',
+          jobId: 'job-1',
+          instanceId: 'tenant-a',
+          eventType: 'job.failed',
+          status: 'failed',
+          attempts: 1,
+        },
+      })
+    ).resolves.toMatchObject({ outcome: 'applied' });
+
+    expect(statements[0]?.text).toContain("heartbeat_at <= NOW() - INTERVAL '120 seconds'");
+    expect(statements[0]?.text).not.toContain("heartbeat_at > NOW() - INTERVAL '120 seconds'");
+    expect(statements[0]?.text).toContain(
+      "existing_terminal.event_type IN ('job.succeeded', 'job.failed', 'job.cancelled')"
+    );
+  });
+
   it('updates progress, heartbeat and cancellation independently from terminal state changes', async () => {
     const { executor, statements } = createQueuedExecutor([[jobRow], [jobRow], [jobRow]]);
     const repository = createStudioJobRepository(executor);
@@ -267,6 +426,33 @@ describe('studio job repository', () => {
     expect(statements[2]?.text).toContain('cancel_requested_at = $1');
     expect(statements[2]?.text).toContain("status IN ('queued', 'running', 'retrying')");
     expect(statements[2]?.text).toContain('cancel_requested_at IS NULL');
+  });
+
+  it('fences heartbeat and progress writes by the active lease owner tuple', async () => {
+    const runningRow = { ...jobRow, status: 'running', attempts: 2, worker_id: 'worker-b' };
+    const { executor, statements } = createQueuedExecutor([[runningRow], [runningRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await repository.updateJobProgressWithLease({
+      jobId: 'job-1',
+      instanceId: 'tenant-a',
+      attempts: 2,
+      workerId: 'worker-b',
+      progress: { completedSteps: 1, totalSteps: 2 },
+      lastProgressAt: '2026-05-09T12:03:00.000Z',
+    });
+    await repository.touchJobHeartbeatWithLease({
+      jobId: 'job-1',
+      instanceId: 'tenant-a',
+      attempts: 2,
+      workerId: 'worker-b',
+      heartbeatAt: '2026-05-09T12:03:30.000Z',
+    });
+
+    expect(statements[0]?.text).toContain("status = 'running'");
+    expect(statements[0]?.text).toContain('attempts = $6 AND worker_id = $7');
+    expect(statements[0]?.text).toContain("heartbeat_at > NOW() - INTERVAL '120 seconds'");
+    expect(statements[1]?.text).toContain('attempts = $4 AND worker_id = $5');
   });
 
   it('returns null for missing updates and detail reads', async () => {

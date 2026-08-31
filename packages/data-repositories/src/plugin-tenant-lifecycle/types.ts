@@ -3,6 +3,10 @@ export type PluginTenantLifecycleOperation =
 export type PluginTenantReadinessStatus = 'pending' | 'ready' | 'degraded' | 'blocked';
 export type PluginTenantAccessState = 'active' | 'suspended';
 export type PluginTenantLifecycleRetryKind = 'terminal' | 'retryable';
+export type PluginTenantLifecycleTransitionResult =
+  | { readonly outcome: 'applied'; readonly record: PluginTenantLifecycleRecord }
+  | { readonly outcome: 'alreadyApplied'; readonly record: PluginTenantLifecycleRecord }
+  | { readonly outcome: 'conflict'; readonly record?: PluginTenantLifecycleRecord };
 
 export type PluginTenantLifecycleRecord = {
   readonly instanceId: string;
@@ -19,6 +23,9 @@ export type PluginTenantLifecycleRecord = {
   readonly errorCode?: string;
   readonly retryKind?: PluginTenantLifecycleRetryKind;
   readonly retryAfter?: string;
+  readonly nextRecheckAt?: string;
+  readonly contractRevision?: string;
+  readonly recoveryErrorCode?: string;
   readonly requestedAt: string;
   readonly startedAt?: string;
   readonly completedAt?: string;
@@ -61,7 +68,8 @@ export type PluginTenantLifecycleRepository = {
     readonly readinessStatus: PluginTenantReadinessStatus;
     readonly readinessRevision: string;
     readonly readinessChecks: readonly Readonly<Record<string, unknown>>[];
-  }) => Promise<PluginTenantLifecycleRecord | null>;
+    readonly contractRevision?: string;
+  }) => Promise<PluginTenantLifecycleTransitionResult>;
   readonly failLifecycle: (input: {
     readonly instanceId: string;
     readonly pluginId: string;
@@ -71,5 +79,5 @@ export type PluginTenantLifecycleRepository = {
     readonly errorCode: string;
     readonly retryKind: PluginTenantLifecycleRetryKind;
     readonly retryAfter?: string;
-  }) => Promise<PluginTenantLifecycleRecord | null>;
+  }) => Promise<PluginTenantLifecycleTransitionResult>;
 };

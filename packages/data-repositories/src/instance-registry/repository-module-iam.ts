@@ -13,18 +13,87 @@ import {
   upsertPermission,
   upsertProtectedRole,
 } from './repository-module-iam-shared.js';
-import { compareAlphabetically } from './repository-shared.js';
+import { compareAlphabetically, queryRows, statement } from './repository-shared.js';
 
 type ModuleIamRepository = Pick<
   InstanceRegistryRepository,
   | 'assignModule'
   | 'getModuleActivationPolicy'
   | 'reconcileModuleActivationPolicies'
+  | 'persistPluginTenantLifecycleReconcileIntents'
   | 'restoreModuleActivation'
   | 'revokeModule'
   | 'syncAssignedModuleIam'
   | 'syncProtectedSystemRolePermissions'
 >;
+
+type LifecycleIntentRow = { plugin_id: string };
+
+const persistPluginTenantLifecycleReconcileIntentSql = `
+WITH active_module AS MATERIALIZED (
+  SELECT module_id
+  FROM iam.instance_modules
+  WHERE instance_id = $1 AND module_id = $2 AND effective_active
+  FOR UPDATE
+),
+intent AS (
+  INSERT INTO iam.instance_plugin_lifecycle (
+    instance_id, plugin_id, desired_operation, desired_generation, readiness,
+    contract_revision, next_recheck_at, retry_kind, retry_after,
+    recovery_error_code, updated_at
+  )
+  SELECT $1, $2, 'provision', 1, 'pending', $3, now(), NULL, NULL, NULL, now()
+  FROM active_module
+  ON CONFLICT (instance_id, plugin_id) DO UPDATE
+  SET desired_operation = 'reconcile',
+    desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1,
+    readiness = 'pending', readiness_revision = NULL,
+    contract_revision = EXCLUDED.contract_revision,
+    next_recheck_at = now(), retry_kind = NULL, retry_after = NULL,
+    recovery_error_code = NULL, updated_at = now()
+  WHERE iam.instance_plugin_lifecycle.active_job_id IS NULL
+    AND ($4::boolean
+      OR iam.instance_plugin_lifecycle.contract_revision IS DISTINCT FROM EXCLUDED.contract_revision)
+  RETURNING plugin_id
+),
+enqueued AS (
+  SELECT graphile_worker.sva_enqueue_job(
+    identifier => 'plugin_tenant_lifecycle_retry',
+    payload => json_build_object('instanceId', $1::text, 'pluginId', $2::text),
+    queue_name => 'plugin-tenant-lifecycle', max_attempts => 5,
+    job_key => 'plugin-tenant-lifecycle-activation:' || $1::text || ':' || $2::text,
+    run_at => now()
+  )
+  FROM intent
+)
+SELECT intent.plugin_id
+FROM intent
+CROSS JOIN enqueued;
+`;
+
+const createPersistPluginTenantLifecycleReconcileIntents =
+  (
+    executor: SqlExecutor
+  ): InstanceRegistryRepository['persistPluginTenantLifecycleReconcileIntents'] =>
+  async ({ instanceId, lifecycles, forcePluginIds }) => {
+    const forced = new Set(forcePluginIds);
+    const persisted: string[] = [];
+    for (const lifecycle of [...lifecycles].sort((left, right) =>
+      compareAlphabetically(left.pluginId, right.pluginId)
+    )) {
+      const rows = await queryRows<LifecycleIntentRow>(
+        executor,
+        statement(persistPluginTenantLifecycleReconcileIntentSql, [
+          instanceId,
+          lifecycle.pluginId,
+          lifecycle.contractRevision,
+          forced.has(lifecycle.pluginId),
+        ])
+      );
+      if (rows[0]) persisted.push(rows[0].plugin_id);
+    }
+    return persisted;
+  };
 
 const emptyReconcileResult = (): PermissionCatalogReconcileResult => ({
   permissionsInserted: 0,
@@ -118,6 +187,8 @@ const createSyncProtectedSystemRolePermissions =
 
 export const createModuleIamRepository = (executor: SqlExecutor): ModuleIamRepository => ({
   ...createModuleActivationRepository(executor),
+  persistPluginTenantLifecycleReconcileIntents:
+    createPersistPluginTenantLifecycleReconcileIntents(executor),
   syncAssignedModuleIam: createSyncAssignedModuleIam(executor),
   syncProtectedSystemRolePermissions: createSyncProtectedSystemRolePermissions(executor),
 });

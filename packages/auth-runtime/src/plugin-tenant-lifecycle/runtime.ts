@@ -29,7 +29,87 @@ import {
 } from './orchestrator.js';
 
 const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'info' });
-const lifecycleEnqueueRecoveryDelayMs = 60_000;
+export const lifecycleEnqueueRecoveryDelayMs = 120_000;
+
+const persistAtomicLifecycleStart: NonNullable<
+  Parameters<typeof createPluginTenantLifecycleOrchestrator>[0]['persistStart']
+> = async ({ request, jobTypeId, queueName, executionLane }) =>
+  withStudioJobLifecycleRepositories(
+    request.instanceId,
+    async ({
+      studioJobs,
+      tenantLifecycle,
+      enqueuePluginTenantLifecycleRecovery,
+      enqueueStudioJob,
+    }) => {
+      const lifecycle = await tenantLifecycle.requestLifecycle({
+        instanceId: request.instanceId,
+        pluginId: request.pluginId,
+        operation: request.operation,
+      });
+      const jobId = randomUUID();
+      const job = await studioJobs.createJob({
+        id: jobId,
+        instanceId: request.instanceId,
+        source: 'plugin',
+        pluginId: request.pluginId,
+        jobTypeId,
+        queueName,
+        status: 'queued',
+        progress: { completedSteps: 0, totalSteps: 1 },
+        inputPayload: {
+          [pluginTenantLifecycleJobInputKey]: {
+            operation: request.operation,
+            generation: lifecycle.desiredGeneration,
+          },
+        },
+        attempts: 0,
+        maxAttempts: 5,
+        idempotencyKey: `${request.pluginId}:tenant-lifecycle:${request.operation}:${lifecycle.desiredGeneration}`,
+        requestId: request.requestId,
+        actorAccountId: request.actorAccountId,
+        correlationId: randomUUID(),
+        scheduledAt: request.scheduledAt,
+      });
+      await studioJobs.appendJobEvent({
+        id: randomUUID(),
+        jobId: job.id,
+        instanceId: request.instanceId,
+        eventType: 'job.queued',
+        status: 'queued',
+        progress: job.progress,
+        attempts: 0,
+      });
+      const claimed = await tenantLifecycle.claimLifecycle({
+        instanceId: request.instanceId,
+        pluginId: request.pluginId,
+        jobId: job.id,
+        generation: lifecycle.desiredGeneration,
+        operation: request.operation,
+      });
+      if (!claimed) throw new Error('plugin_tenant_lifecycle_claim_conflict');
+      try {
+        await enqueueStudioJob({
+          instanceId: request.instanceId,
+          jobId: job.id,
+          queueName,
+          maxAttempts: job.maxAttempts,
+          executionLane,
+          runAt: new Date(request.scheduledAt),
+        });
+      } catch {
+        throw new Error(
+          `${pluginTenantLifecycleHostErrorCodes.enqueueFailed}:${request.pluginId}:${request.operation}`
+        );
+      }
+      await enqueuePluginTenantLifecycleRecovery({
+        instanceId: request.instanceId,
+        pluginId: request.pluginId,
+        runAt: new Date(Date.now() + lifecycleEnqueueRecoveryDelayMs),
+      });
+      return { lifecycle: claimed, job };
+    }
+  );
 
 const repository: Pick<
   PluginTenantLifecycleRepository,
@@ -80,11 +160,23 @@ const resolveAutomaticProvisioningSchedule = (
     const operation = resolveInitialOperation();
     return operation ? { operation, scheduledAt: now.toISOString() } : null;
   }
-  if (lifecycle.activeJobId || lifecycle.retryKind === 'terminal') return null;
+  if (lifecycle.activeJobId) return null;
+  const contractDrift =
+    definition.contractRevision !== undefined &&
+    lifecycle.contractRevision !== undefined &&
+    lifecycle.contractRevision !== definition.contractRevision;
+  if (contractDrift) {
+    const operation = hasOperation('reconcile') ? 'reconcile' : resolveInitialOperation();
+    return operation ? { operation, scheduledAt: now.toISOString() } : null;
+  }
+  if (lifecycle.retryKind === 'terminal') return null;
   if (blocksAutomaticLifecycleRetryWhileSuspended(lifecycle)) {
     return null;
   }
   if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > now.getTime()) {
+    return null;
+  }
+  if (lifecycle.nextRecheckAt && Date.parse(lifecycle.nextRecheckAt) > now.getTime()) {
     return null;
   }
   if (lifecycle.retryKind === 'retryable') {
@@ -187,6 +279,7 @@ export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLif
         job,
         errorCode,
       }),
+    persistStart: persistAtomicLifecycleStart,
   }).start(input);
 
 const automaticLifecycleRetryDelaysMs = [250, 1_000] as const;
@@ -303,8 +396,6 @@ export const ensureConfiguredPluginTenantProvisioning = async (
       .map(({ definition }) => definition.pluginId)
       .sort()
       .join(',');
-    throw new Error(
-      `plugin_tenant_lifecycle_schedule_exhausted:${instanceId}:${pendingPluginIds}`
-    );
+    throw new Error(`plugin_tenant_lifecycle_schedule_exhausted:${instanceId}:${pendingPluginIds}`);
   }
 };

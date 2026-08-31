@@ -1,4 +1,5 @@
 import * as graphileWorker from 'graphile-worker';
+import { randomUUID } from 'node:crypto';
 
 import type { StudioJobRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
@@ -221,16 +222,31 @@ export const createStudioJobTaskList = (
               return loadedJob;
             }),
           updateJobState: async (input) => {
-            const isLifecycleCompletion =
-              (input.status === 'succeeded' ||
-                input.status === 'failed' ||
-                input.status === 'cancelled') &&
-              loadedJob !== null &&
-              isConfiguredLifecycleJob(loadedJob);
-            if (!isLifecycleCompletion || !loadedJob?.pluginId) {
-              return withStudioJobRepository(tenantInstanceId, (repository) =>
-                repository.updateJobState(input)
-              );
+            return withStudioJobRepository(tenantInstanceId, async (repository) => {
+              if (loadedJob && (input.status === 'running' || input.status === 'retrying')) {
+                const transition = await repository.transitionJobState({
+                  ...input,
+                  expectedStatuses: [loadedJob.status],
+                  expectedAttempts: loadedJob.attempts,
+                  expectedWorkerId: loadedJob.workerId ?? null,
+                });
+                if (transition.outcome === 'conflict') {
+                  throw new Error(`studio_job_lease_lost:${input.jobId}`);
+                }
+                loadedJob = transition.job;
+                return transition.job;
+              }
+              return repository.updateJobState(input);
+            });
+          },
+          persistTerminalState: async ({ state: input, event }) => {
+            if (!loadedJob || !input.workerId) {
+              throw new Error(`studio_job_terminal_owner_missing:${input.jobId}`);
+            }
+            const terminalWorkerId = input.workerId;
+            const isLifecycleCompletion = isConfiguredLifecycleJob(loadedJob);
+            if (isLifecycleCompletion && !loadedJob.pluginId) {
+              throw new Error(`plugin_tenant_lifecycle_plugin_missing:${input.jobId}`);
             }
             const lifecycleJob = loadedJob;
             const lifecyclePluginId = loadedJob.pluginId;
@@ -242,12 +258,23 @@ export const createStudioJobTaskList = (
                   lifecycleRegistry: readInstanceRegistryPluginTenantLifecycleRegistry(),
                   withRepository: async (_instanceId, work) => work(tenantLifecycle),
                 });
-                if (input.status === 'succeeded') {
-                  await transactionCorrelation.complete({
+                if (isLifecycleCompletion && input.status === 'succeeded') {
+                  const completedLifecycle = await transactionCorrelation.complete({
                     job: lifecycleJob,
                     result: successfulResult,
                   });
-                } else {
+                  if (
+                    lifecyclePluginId &&
+                    completedLifecycle?.readinessStatus === 'pending' &&
+                    completedLifecycle.nextRecheckAt
+                  ) {
+                    await enqueuePluginTenantLifecycleRetry({
+                      instanceId: tenantInstanceId,
+                      pluginId: lifecyclePluginId,
+                      runAt: new Date(completedLifecycle.nextRecheckAt),
+                    });
+                  }
+                } else if (isLifecycleCompletion && lifecyclePluginId) {
                   const failedLifecycle = await transactionCorrelation.fail({
                     job: lifecycleJob,
                     error: input.errorPayload ?? {
@@ -263,18 +290,49 @@ export const createStudioJobTaskList = (
                     enqueue: enqueuePluginTenantLifecycleRetry,
                   });
                 }
-                return studioJobs.updateJobState(input);
+                const transition = await studioJobs.transitionJobStateAndAppendEvent({
+                  ...input,
+                  expectedStatuses: ['running'],
+                  expectedAttempts: input.attempts,
+                  expectedWorkerId: terminalWorkerId,
+                  leasePredicate: { kind: 'activeOwner' },
+                  event: {
+                    id: randomUUID(),
+                    jobId: input.jobId,
+                    instanceId: input.instanceId,
+                    ...event,
+                  },
+                });
+                if (transition.outcome === 'conflict') {
+                  throw new Error(`studio_job_terminal_transition_conflict:${input.jobId}`);
+                }
+                return transition.job;
               }
             );
-            if (input.status !== 'succeeded' && !lifecycleRetryEnqueued) {
+            if (isLifecycleCompletion && input.status !== 'succeeded' && !lifecycleRetryEnqueued) {
               scheduleConfiguredPluginTenantProvisioning(tenantInstanceId);
             }
             return updatedJob;
           },
           updateJobProgress: (input) =>
-            withStudioJobRepository(tenantInstanceId, (repository) =>
-              repository.updateJobProgress(input)
-            ),
+            withStudioJobRepository(tenantInstanceId, async (repository) => {
+              if (!loadedJob?.workerId) throw new Error(`studio_job_lease_lost:${input.jobId}`);
+              const updated = await repository.updateJobProgressWithLease({
+                ...input,
+                attempts: loadedJob.attempts,
+                workerId: loadedJob.workerId,
+              });
+              if (!updated) throw new Error(`studio_job_lease_lost:${input.jobId}`);
+              loadedJob = updated;
+              return updated;
+            }),
+          touchJobHeartbeat: (input) =>
+            withStudioJobRepository(tenantInstanceId, async (repository) => {
+              const updated = await repository.touchJobHeartbeatWithLease(input);
+              if (!updated) throw new Error(`studio_job_lease_lost:${input.jobId}`);
+              loadedJob = updated;
+              return updated;
+            }),
           appendJobEvent: (input) =>
             withStudioJobRepository(tenantInstanceId, (repository) =>
               repository.appendJobEvent(input)

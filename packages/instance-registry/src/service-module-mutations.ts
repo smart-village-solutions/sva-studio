@@ -185,6 +185,11 @@ export const createAssignModuleHandler =
         managedContracts: resolveManagedModuleContracts(deps),
         contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
       });
+      await deps.repository.persistPluginTenantLifecycleReconcileIntents({
+        instanceId: input.instanceId,
+        lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],
+        forcePluginIds: changedAssignments.map(({ moduleId }) => moduleId),
+      });
     } catch (error) {
       try {
         for (const assignment of [...changedAssignments].reverse()) {
@@ -247,9 +252,7 @@ const assignBootstrapModulesAndSyncIam = async (input: {
   readonly permissionReconcile: PermissionCatalogReconcileResult | void;
 }> => {
   const { deps, instanceId, requestedModuleIds, managedModuleIds } = input;
-  const currentAssignedModuleIds = new Set(
-    await deps.repository.listAssignedModules(instanceId)
-  );
+  const currentAssignedModuleIds = new Set(await deps.repository.listAssignedModules(instanceId));
   const changedAssignments: Array<{
     readonly moduleId: string;
     readonly previous: ModuleActivationSnapshot;

@@ -1,5 +1,8 @@
 import type { StudioJobError, StudioJobRecord } from '@sva/core';
-import type { PluginTenantLifecycleRepository } from '@sva/data-repositories';
+import type {
+  PluginTenantLifecycleRecord,
+  PluginTenantLifecycleRepository,
+} from '@sva/data-repositories';
 import {
   createPluginTenantReadinessSnapshot,
   definePluginTenantLifecycleError,
@@ -161,7 +164,7 @@ export const createPluginTenantLifecycleJobCorrelation = (
   async complete(input: {
     readonly job: StudioJobRecord;
     readonly result: PluginJobExecutionResult | void;
-  }): Promise<void> {
+  }): Promise<PluginTenantLifecycleRecord | undefined> {
     const context = resolveLifecycleContext(dependencies, input.job);
     if (!context) {
       return;
@@ -183,7 +186,7 @@ export const createPluginTenantLifecycleJobCorrelation = (
     } catch {
       throw permanentLifecycleError('plugin_tenant_lifecycle_result_invalid', input.job);
     }
-    await dependencies.withRepository(input.job.instanceId, async (repository) => {
+    return dependencies.withRepository(input.job.instanceId, async (repository) => {
       const completed = await repository.completeLifecycle({
         instanceId: input.job.instanceId,
         pluginId: context.pluginId,
@@ -193,14 +196,10 @@ export const createPluginTenantLifecycleJobCorrelation = (
         readinessStatus: snapshot.status,
         readinessRevision: snapshot.revision,
         readinessChecks: snapshot.checks,
+        contractRevision: context.definition.contractRevision,
       });
-      if (completed) {
-        return;
-      }
-
-      const current = await repository.getLifecycle(input.job.instanceId, context.pluginId);
-      if (current?.completedGeneration === context.metadata.generation) {
-        return;
+      if (completed.outcome === 'applied' || completed.outcome === 'alreadyApplied') {
+        return completed.record;
       }
       throw permanentLifecycleError('plugin_tenant_lifecycle_completion_stale', input.job);
     });
@@ -210,7 +209,7 @@ export const createPluginTenantLifecycleJobCorrelation = (
     readonly job: StudioJobRecord;
     readonly error: StudioJobError;
     readonly reason: 'failed' | 'missing_handler' | 'cancelled';
-  }): Promise<Awaited<ReturnType<PluginTenantLifecycleRepository['failLifecycle']>> | undefined> {
+  }): Promise<PluginTenantLifecycleRecord | undefined> {
     const context = resolveLifecycleFailureContext(input.job);
     if (!context) {
       return;
@@ -221,14 +220,18 @@ export const createPluginTenantLifecycleJobCorrelation = (
       input.error,
       input.reason
     );
-    return dependencies.withRepository(input.job.instanceId, (repository) =>
-      repository.failLifecycle({
+    return dependencies.withRepository(input.job.instanceId, async (repository) => {
+      const transition = await repository.failLifecycle({
         instanceId: input.job.instanceId,
         pluginId: context.pluginId,
         jobId: input.job.id,
         generation: context.metadata.generation,
         ...failure,
-      })
-    );
+      });
+      if (transition.outcome === 'conflict') {
+        throw permanentLifecycleError('plugin_tenant_lifecycle_completion_stale', input.job);
+      }
+      return transition.record;
+    });
   },
 });

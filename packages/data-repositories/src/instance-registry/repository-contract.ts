@@ -186,6 +186,11 @@ export type InstanceRegistryRepository = {
     managedContracts?: readonly InstanceModuleIamContractRecord[];
     contracts: readonly InstanceModuleIamContractRecord[];
   }) => Promise<PermissionCatalogReconcileResult | void>;
+  readonly persistPluginTenantLifecycleReconcileIntents: (input: {
+    instanceId: string;
+    lifecycles: readonly Readonly<{ pluginId: string; contractRevision: string }>[];
+    forcePluginIds: readonly string[];
+  }) => Promise<readonly string[]>;
   readonly syncProtectedSystemRolePermissions: (input: {
     instanceId: string;
     role: ProtectedSystemRolePermissionBundleRecord;

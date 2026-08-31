@@ -14,6 +14,7 @@ import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import {
   enqueuePluginTenantLifecycleRecovery,
   enqueuePluginTenantLifecycleRetry,
+  enqueueStudioJobWithClient,
 } from './runner-queue.js';
 
 type WithResolvedInstanceDb = <T>(
@@ -98,6 +99,9 @@ export const withStudioJobLifecycleRepositories = async <T>(
       readonly pluginId: string;
       readonly runAt: Date;
     }) => Promise<unknown>;
+    readonly enqueueStudioJob: (
+      input: Parameters<typeof enqueueStudioJobWithClient>[1]
+    ) => Promise<void>;
   }) => Promise<T>
 ): Promise<T> =>
   withResolvedInstanceDb(resolvePool, instanceId, async (client) => {
@@ -109,5 +113,6 @@ export const withStudioJobLifecycleRepositories = async <T>(
         enqueuePluginTenantLifecycleRetry(client, input),
       enqueuePluginTenantLifecycleRecovery: (input) =>
         enqueuePluginTenantLifecycleRecovery(client, input),
+      enqueueStudioJob: (input) => enqueueStudioJobWithClient(client, input),
     });
   });

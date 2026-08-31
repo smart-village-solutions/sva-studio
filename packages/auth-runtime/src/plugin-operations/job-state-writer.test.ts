@@ -20,6 +20,32 @@ const baseJob = {
 } as const;
 
 describe('job state writer', () => {
+  it('uses the atomic terminal port without issuing independent job or event writes', async () => {
+    const updateJobState = vi.fn(async () => null);
+    const appendSucceededEvent = vi.fn(async () => null);
+    const persistTerminalState = vi.fn(async () => undefined);
+    const writer = createJobStateWriter({
+      updateJobState,
+      appendStartedEvent: vi.fn(async () => null),
+      appendSucceededEvent,
+      appendRetriedEvent: vi.fn(async () => null),
+      appendFailedEvent: vi.fn(async () => null),
+      persistTerminalState,
+      now: () => '2026-05-09T12:02:00.000Z',
+    });
+
+    await writer.markSucceeded({
+      job: { ...baseJob, status: 'running', attempts: 1, workerId: 'worker-a' },
+      attempts: 1,
+      startedAt: '2026-05-09T12:01:00.000Z',
+      workerId: 'worker-a',
+      result: {},
+    });
+
+    expect(persistTerminalState).toHaveBeenCalledOnce();
+    expect(updateJobState).not.toHaveBeenCalled();
+    expect(appendSucceededEvent).not.toHaveBeenCalled();
+  });
   it('writes running and success states through injected ports', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendStartedEvent = vi.fn(async () => null);

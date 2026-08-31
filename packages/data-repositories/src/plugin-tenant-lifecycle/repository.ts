@@ -1,6 +1,29 @@
 import type { SqlExecutor } from '../iam/repositories/types.js';
 import { lifecycleStatement, readLifecycleRow, readLifecycleRows } from './shared.js';
-import type { PluginTenantLifecycleRepository } from './types.js';
+import type {
+  PluginTenantLifecycleRecord,
+  PluginTenantLifecycleRepository,
+  PluginTenantLifecycleTransitionResult,
+} from './types.js';
+
+const classifyTransition = async (
+  executor: SqlExecutor,
+  input: { readonly instanceId: string; readonly pluginId: string; readonly generation: number },
+  applied: PluginTenantLifecycleRecord | null
+): Promise<PluginTenantLifecycleTransitionResult> => {
+  if (applied) return { outcome: 'applied', record: applied };
+  const current = await readLifecycleRow(
+    executor,
+    lifecycleStatement(
+      'SELECT * FROM iam.instance_plugin_lifecycle WHERE instance_id = $1 AND plugin_id = $2;',
+      [input.instanceId, input.pluginId]
+    )
+  );
+  if (current?.completedGeneration === input.generation && !current.activeJobId) {
+    return { outcome: 'alreadyApplied', record: current };
+  }
+  return { outcome: 'conflict', ...(current ? { record: current } : {}) };
+};
 
 const createRequestLifecycle =
   (executor: SqlExecutor): PluginTenantLifecycleRepository['requestLifecycle'] =>
@@ -28,6 +51,7 @@ SET access_state = CASE
     error_code = NULL,
     retry_kind = NULL,
     retry_after = NULL,
+    next_recheck_at = NOW() + INTERVAL '120 seconds',
     requested_at = NOW(),
     started_at = NULL,
     completed_at = NULL,
@@ -89,42 +113,52 @@ RETURNING *;
 
 const createCompleteLifecycle =
   (executor: SqlExecutor): PluginTenantLifecycleRepository['completeLifecycle'] =>
-  (input) =>
-    readLifecycleRow(
+  async (input) =>
+    classifyTransition(
       executor,
-      lifecycleStatement(
-        `
+      input,
+      await readLifecycleRow(
+        executor,
+        lifecycleStatement(
+          `
 UPDATE iam.instance_plugin_lifecycle
 SET access_state = CASE WHEN $5 = 'suspend' THEN 'suspended'
       WHEN $5 = 'reactivate' THEN 'active' ELSE access_state END,
     readiness_status = $6, completed_generation = $4, claimed_generation = NULL,
     active_job_id = NULL, readiness_revision = $7, readiness_checks = $8::jsonb,
     error_code = NULL, retry_kind = NULL, retry_after = NULL,
+    next_recheck_at = CASE WHEN $6 = 'pending' THEN NOW() + INTERVAL '120 seconds' ELSE NULL END,
+    contract_revision = $9,
     completed_at = NOW(), updated_at = NOW()
 WHERE instance_id = $1 AND plugin_id = $2 AND active_job_id = $3::uuid
   AND claimed_generation = $4 AND desired_generation = $4 AND desired_operation = $5
 RETURNING *;
 `,
-        [
-          input.instanceId,
-          input.pluginId,
-          input.jobId,
-          input.generation,
-          input.operation,
-          input.readinessStatus,
-          input.readinessRevision,
-          JSON.stringify(input.readinessChecks),
-        ]
+          [
+            input.instanceId,
+            input.pluginId,
+            input.jobId,
+            input.generation,
+            input.operation,
+            input.readinessStatus,
+            input.readinessRevision,
+            JSON.stringify(input.readinessChecks),
+            input.contractRevision ?? null,
+          ]
+        )
       )
     );
 
 const createFailLifecycle =
   (executor: SqlExecutor): PluginTenantLifecycleRepository['failLifecycle'] =>
-  (input) =>
-    readLifecycleRow(
+  async (input) =>
+    classifyTransition(
       executor,
-      lifecycleStatement(
-        `
+      input,
+      await readLifecycleRow(
+        executor,
+        lifecycleStatement(
+          `
 UPDATE iam.instance_plugin_lifecycle
 SET readiness_status = $5, claimed_generation = NULL, active_job_id = NULL,
     error_code = $6, retry_kind = $7, retry_after = $8::timestamptz,
@@ -133,16 +167,17 @@ WHERE instance_id = $1 AND plugin_id = $2 AND active_job_id = $3::uuid
   AND claimed_generation = $4 AND desired_generation = $4
 RETURNING *;
 `,
-        [
-          input.instanceId,
-          input.pluginId,
-          input.jobId,
-          input.generation,
-          input.readinessStatus,
-          input.errorCode,
-          input.retryKind,
-          input.retryAfter ?? null,
-        ]
+          [
+            input.instanceId,
+            input.pluginId,
+            input.jobId,
+            input.generation,
+            input.readinessStatus,
+            input.errorCode,
+            input.retryKind,
+            input.retryAfter ?? null,
+          ]
+        )
       )
     );
 

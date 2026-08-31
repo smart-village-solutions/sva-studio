@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict oHs9UBegRDgXQbjmjYbb6OA5qhrEK0RiMSJnnuK8ooaosxyWZuOqH8Hi7su2sor
+\restrict M4FCOWSk22Cit75bXmgV4b5AJWFT85WtvUgagN1B1Q6YTlRCcuVCOA5FmUaRFhq
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -1185,10 +1185,14 @@ CREATE TABLE iam.instance_plugin_lifecycle (
     started_at timestamp with time zone,
     completed_at timestamp with time zone,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    next_recheck_at timestamp with time zone DEFAULT (now() + '00:02:00'::interval),
+    contract_revision text,
+    recovery_error_code text,
     CONSTRAINT instance_plugin_lifecycle_access_state_chk CHECK ((access_state = ANY (ARRAY['active'::text, 'suspended'::text]))),
     CONSTRAINT instance_plugin_lifecycle_claim_chk CHECK (((active_job_id IS NULL) = (claimed_generation IS NULL))),
     CONSTRAINT instance_plugin_lifecycle_generation_chk CHECK (((desired_generation >= 1) AND (completed_generation >= 0) AND (completed_generation <= desired_generation) AND ((claimed_generation IS NULL) OR ((claimed_generation >= 1) AND (claimed_generation <= desired_generation))))),
     CONSTRAINT instance_plugin_lifecycle_operation_chk CHECK ((desired_operation = ANY (ARRAY['provision'::text, 'reconcile'::text, 'suspend'::text, 'reactivate'::text, 'readiness'::text]))),
+    CONSTRAINT instance_plugin_lifecycle_pending_recheck_chk CHECK (((readiness_status <> 'pending'::text) OR (next_recheck_at IS NOT NULL))),
     CONSTRAINT instance_plugin_lifecycle_plugin_id_chk CHECK ((plugin_id ~ '^[a-z][a-z0-9-]{1,30}$'::text)),
     CONSTRAINT instance_plugin_lifecycle_readiness_checks_chk CHECK ((jsonb_typeof(readiness_checks) = 'array'::text)),
     CONSTRAINT instance_plugin_lifecycle_readiness_status_chk CHECK ((readiness_status = ANY (ARRAY['pending'::text, 'ready'::text, 'degraded'::text, 'blocked'::text]))),
@@ -3061,6 +3065,13 @@ CREATE UNIQUE INDEX idx_instance_plugin_lifecycle_active_job ON iam.instance_plu
 
 
 --
+-- Name: idx_instance_plugin_lifecycle_recheck; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_plugin_lifecycle_recheck ON iam.instance_plugin_lifecycle USING btree (next_recheck_at, instance_id, plugin_id) WHERE (next_recheck_at IS NOT NULL);
+
+
+--
 -- Name: idx_instance_plugin_lifecycle_status_updated_at; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -3303,6 +3314,13 @@ CREATE INDEX idx_roles_managed_scope ON iam.roles USING btree (instance_id, mana
 --
 
 CREATE INDEX idx_studio_job_events_job_created_at ON iam.studio_job_events USING btree (instance_id, job_id, created_at);
+
+
+--
+-- Name: idx_studio_job_events_terminal_attempt; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_studio_job_events_terminal_attempt ON iam.studio_job_events USING btree (job_id, attempts) WHERE (event_type = ANY (ARRAY['job.succeeded'::text, 'job.failed'::text, 'job.cancelled'::text]));
 
 
 --
@@ -4943,4 +4961,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict oHs9UBegRDgXQbjmjYbb6OA5qhrEK0RiMSJnnuK8ooaosxyWZuOqH8Hi7su2sor
+\unrestrict M4FCOWSk22Cit75bXmgV4b5AJWFT85WtvUgagN1B1Q6YTlRCcuVCOA5FmUaRFhq

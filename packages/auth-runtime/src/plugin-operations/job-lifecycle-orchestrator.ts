@@ -32,7 +32,20 @@ type RepositoryPort = {
       ? TInput
       : never
   ) => Promise<unknown>;
+  readonly persistTerminalState?: Parameters<
+    typeof createJobStateWriter
+  >[0]['persistTerminalState'];
+  readonly touchJobHeartbeat?: (input: {
+    readonly jobId: string;
+    readonly instanceId: string;
+    readonly attempts: number;
+    readonly workerId: string;
+    readonly heartbeatAt: string;
+  }) => Promise<unknown>;
 };
+
+export const studioJobHeartbeatIntervalMs = 30_000;
+export const studioJobLeaseStaleAfterMs = 120_000;
 
 type OrchestratorDeps = {
   readonly logger: PluginOperationLogger;
@@ -115,6 +128,7 @@ const createOrchestratorStateWriter = (
     appendRetriedEvent: eventWriter.appendRetriedEvent,
     appendFailedEvent: eventWriter.appendFailedEvent,
     appendCancelledEvent: eventWriter.appendCancelledEvent,
+    persistTerminalState: repository.persistTerminalState,
     now: deps.now,
   });
 
@@ -183,8 +197,37 @@ const runPersistedJob = async (
     workerId
   );
   const stateWriter = createOrchestratorStateWriter(deps, repository, eventWriter);
+  let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  let lastHeartbeatClock = Date.now();
+  let leaseLost = false;
+  const assertLeaseOwned = (): void => {
+    if (leaseLost || Date.now() - lastHeartbeatClock >= studioJobLeaseStaleAfterMs) {
+      throw new Error(`studio_job_lease_lost:${job.id}:${attempts}:${workerId}`);
+    }
+  };
   try {
     await stateWriter.markRunning({ job, attempts, startedAt, workerId });
+    if (repository.touchJobHeartbeat) {
+      heartbeatTimer = setInterval(() => {
+        void repository
+          .touchJobHeartbeat?.({
+            jobId: job.id,
+            instanceId: job.instanceId,
+            attempts,
+            workerId,
+            heartbeatAt: (deps.now ?? (() => new Date().toISOString()))(),
+          })
+          .then(() => {
+            lastHeartbeatClock = Date.now();
+          })
+          .catch((error: unknown) => {
+            if (error instanceof Error && error.message.startsWith('studio_job_lease_lost:')) {
+              leaseLost = true;
+            }
+          });
+      }, studioJobHeartbeatIntervalMs);
+      heartbeatTimer.unref?.();
+    }
     const handler = deps.resolveHandler(job);
     if (!handler) {
       const errorPayload = createMissingHandlerPayload(job);
@@ -200,6 +243,7 @@ const runPersistedJob = async (
       return;
     }
     const result = await handler({ job, ...handlerContext });
+    assertLeaseOwned();
     await deps.onExecutionSucceeded?.({ job, result });
     try {
       await stateWriter.markSucceeded({ job, attempts, startedAt, workerId, result });
@@ -241,6 +285,7 @@ const runPersistedJob = async (
     if (!failure.finalFailure) throw error;
     await deps.onExecutionTerminal?.({ job, error: failure.errorPayload, reason: 'failed' });
   } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     dispose();
   }
 };

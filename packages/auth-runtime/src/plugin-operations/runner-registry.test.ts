@@ -338,8 +338,14 @@ describe('plugin operation runner registry', () => {
   it('persists lifecycle and successful job state through one repository transaction', async () => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);
-    const updateJobState = vi.fn(async () => ({ status: 'succeeded' }));
-    const completeLifecycle = vi.fn(async () => ({ completedGeneration: 3 }));
+    const transitionJobStateAndAppendEvent = vi.fn(async () => ({
+      outcome: 'applied' as const,
+      job: { status: 'succeeded' },
+    }));
+    const completeLifecycle = vi.fn(async (input) => ({
+      outcome: 'applied' as const,
+      record: input,
+    }));
     const lifecycleJob = {
       id: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
       instanceId: 'tenant-a',
@@ -363,7 +369,7 @@ describe('plugin operation runner registry', () => {
     );
     state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
       work({
-        studioJobs: { updateJobState },
+        studioJobs: { transitionJobStateAndAppendEvent },
         tenantLifecycle: { completeLifecycle, getLifecycle: vi.fn() },
       })
     );
@@ -392,12 +398,17 @@ describe('plugin operation runner registry', () => {
       status: 'succeeded' as const,
       attempts: 1,
     };
-    await repository.updateJobState(succeededInput);
+    await repository.persistTerminalState({
+      state: { ...succeededInput, workerId: 'worker-1' },
+      event: { eventType: 'job.succeeded', status: 'succeeded', attempts: 1 },
+    });
 
     expect(completeLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({ jobId: lifecycleJob.id, generation: 3 })
     );
-    expect(updateJobState).toHaveBeenCalledWith(succeededInput);
+    expect(transitionJobStateAndAppendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ ...succeededInput, expectedWorkerId: 'worker-1' })
+    );
     expect(state.withStudioJobLifecycleRepositories).toHaveBeenCalledWith(
       'tenant-a',
       expect.any(Function)
@@ -407,9 +418,15 @@ describe('plugin operation runner registry', () => {
   it('persists lifecycle failure and schedules its durable retry deadline', async () => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);
-    const updateJobState = vi.fn(async () => undefined);
+    const transitionJobStateAndAppendEvent = vi.fn(async (input) => ({
+      outcome: 'applied' as const,
+      job: input,
+    }));
     const failLifecycle = vi.fn(
-      async (input: { readonly retryKind: 'retryable'; readonly retryAfter?: string }) => input
+      async (input: { readonly retryKind: 'retryable'; readonly retryAfter?: string }) => ({
+        outcome: 'applied' as const,
+        record: input,
+      })
     );
     const lifecycleJob = {
       id: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
@@ -439,7 +456,7 @@ describe('plugin operation runner registry', () => {
     );
     state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
       work({
-        studioJobs: { updateJobState },
+        studioJobs: { transitionJobStateAndAppendEvent },
         tenantLifecycle: { failLifecycle },
         enqueuePluginTenantLifecycleRetry: state.enqueuePluginTenantLifecycleRetry,
       })
@@ -470,7 +487,10 @@ describe('plugin operation runner registry', () => {
         },
       },
     };
-    await repository.updateJobState(terminalInput);
+    await repository.persistTerminalState({
+      state: { ...terminalInput, workerId: 'worker-1' },
+      event: { eventType: 'job.failed', status: 'failed', attempts: 5 },
+    });
 
     expect(failLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -479,7 +499,9 @@ describe('plugin operation runner registry', () => {
         errorCode: 'waste-management.databaseUnavailable',
       })
     );
-    expect(updateJobState).toHaveBeenCalledWith(terminalInput);
+    expect(transitionJobStateAndAppendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ ...terminalInput, expectedWorkerId: 'worker-1' })
+    );
     expect(state.withStudioJobLifecycleRepositories).toHaveBeenCalledWith(
       'tenant-a',
       expect.any(Function)

@@ -47,6 +47,20 @@ unvollständige beziehungsweise suspendierte Ressourcen zugreifen.
    Access-Entscheidung für die aktuell angemeldete Instanz, aktualisiert das
    Cockpit auch den `/auth/me`-Snapshot. Lifecycle-HTTP-Fehler folgen der vom
    Request bevorzugten unterstützten Sprache.
+10. Lifecycle-Anlage, Studio-Job, Claim und beide Graphile-Wake-ups teilen eine
+    PostgreSQL-Transaktion. Terminale Lifecycle-Korrelation, Jobstatus und
+    genau ein Terminalevent teilen ebenfalls eine Transaktion; Redelivery wird
+    über Attempt und Eindeutigkeitsconstraint idempotent.
+11. `iam.studio_jobs` ist die einzige hostlesbare Lease-Evidenz. Der Owner ist
+    das Tupel `(jobId, attempt, workerId)`. Start, Fortschritt, Heartbeat und
+    Abschluss sind statusgebundene CAS-Transitionen. Der Host schreibt alle
+    30 Sekunden einen Heartbeat; nach 120 Sekunden kann der Owner nicht mehr
+    schreiben. Recovery prüft spätestens nach weiteren 30 Sekunden, fenced den
+    alten Owner und startet eine neue Lifecycle-Generation.
+12. Ein valides `pending` besitzt `next_recheck_at` und einen persistenten
+    serverseitigen Wake-up. Aktivierung und IAM-Materialisierung committen für
+    aktive Lifecycle-Plugins einen idempotenten Reconcile-Intent samt Wake-up
+    in derselben Transaktion. UI-Polling ist kein Konvergenzmechanismus.
 
 ## Konsequenzen
 

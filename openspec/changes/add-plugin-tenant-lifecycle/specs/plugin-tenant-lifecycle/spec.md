@@ -144,3 +144,17 @@ Nachweis.
 - **WHEN** die zuständige Lane wieder verfügbar ist
 - **THEN** nimmt sie den durch Lane, Claim und Generation gefenceten Task selbstständig wieder auf
 - **AND** bleibt die Runtime bis zur nachgewiesenen Erholung fail-closed diagnostizierbar
+
+#### Scenario: Heartbeat und Recovery fencen einen pausierten Worker
+
+- **GIVEN** ein laufender Lifecycle-Job besitzt den Owner `(jobId, attempt, workerId)`
+- **WHEN** länger als 120 Sekunden kein Heartbeat geschrieben wurde
+- **THEN** können Fortschritt und Terminalzustand dieses Owners nicht mehr committet werden
+- **AND** fenced Recovery den stale Lease per CAS und plant spätestens innerhalb von 150 Sekunden eine neue Generation
+
+#### Scenario: Pending konvergiert serverseitig
+
+- **GIVEN** ein valides Handler-Ergebnis aggregiert zu `pending`
+- **WHEN** Lifecycle, Jobstatus und Terminalevent committet werden
+- **THEN** enthält der Lifecycle einen persistenten Recheck-Zeitpunkt
+- **AND** wird der zugehörige Wake-up in derselben Transaktion geschrieben

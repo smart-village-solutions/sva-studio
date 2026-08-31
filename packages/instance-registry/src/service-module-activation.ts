@@ -46,6 +46,11 @@ export const createReconcileModuleActivationPoliciesHandler =
       managedContracts: resolveManagedModuleContracts(deps),
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
+    const lifecycleIntents = await deps.repository.persistPluginTenantLifecycleReconcileIntents({
+      instanceId,
+      lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],
+      forcePluginIds: result.changedModuleIds,
+    });
     await invalidateInstancePermissionSnapshots(
       deps,
       instanceId,
@@ -63,6 +68,7 @@ export const createReconcileModuleActivationPoliciesHandler =
         unchangedModuleIds: result.unchangedModuleIds,
         assignedModules: assignedModuleIds,
         permissionReconcile: permissionReconcile ?? null,
+        lifecycleIntents,
       },
     });
 

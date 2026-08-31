@@ -44,11 +44,11 @@ export const enqueuePluginTenantLifecycleRecovery = (
   input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date }
 ): Promise<unknown> => enqueuePluginTenantLifecycleTask(client, input, 'recovery');
 
-export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> => {
-  const pool = resolvePool();
-  if (!pool) throw new Error('studio_job_queue_database_unavailable');
-
-  await pool.query(
+export const enqueueStudioJobWithClient = async (
+  client: QueueClient,
+  input: QueueStudioJobInput
+): Promise<void> => {
+  await client.query(
     `SELECT graphile_worker.sva_enqueue_job(
       identifier => $1::text,
       payload => $2::json,
@@ -68,6 +68,13 @@ export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> 
       input.runAt ?? null,
     ]
   );
+};
+
+export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> => {
+  const pool = resolvePool();
+  if (!pool) throw new Error('studio_job_queue_database_unavailable');
+
+  await enqueueStudioJobWithClient(pool, input);
 };
 
 export const queuePluginOperationJob = queueStudioJob;

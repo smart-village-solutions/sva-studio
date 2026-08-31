@@ -22,6 +22,44 @@ const job: StudioJobRecord = {
 };
 
 describe('job lifecycle orchestrator', () => {
+  it('renews the owner-tuple lease every 30 seconds while the handler is running', async () => {
+    vi.useFakeTimers();
+    let finishHandler: (() => void) | undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishHandler = resolve;
+        })
+    );
+    const touchJobHeartbeat = vi.fn(async () => job);
+    const orchestrator = createJobLifecycleOrchestrator({
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      loadRepository: async () => ({
+        getJobById: vi.fn(async () => job),
+        updateJobState: vi.fn(async () => job),
+        updateJobProgress: vi.fn(async () => job),
+        appendJobEvent: vi.fn(async () => undefined),
+        persistTerminalState: vi.fn(async () => undefined),
+        touchJobHeartbeat,
+      }),
+      resolveHandler: () => handler,
+      createWorkerId: () => 'worker-a',
+    });
+
+    const running = orchestrator.run({
+      instanceId: job.instanceId,
+      jobId: job.id,
+      attempts: 1,
+      maxAttempts: 5,
+    });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(touchJobHeartbeat).toHaveBeenCalledWith(
+      expect.objectContaining({ attempts: 1, workerId: 'worker-a' })
+    );
+    finishHandler?.();
+    await running;
+    vi.useRealTimers();
+  });
   it('ignores redelivery of an already terminal job', async () => {
     const terminalJob = { ...job, status: 'succeeded' as const };
     const updateJobState = vi.fn(async () => terminalJob);

@@ -201,6 +201,10 @@ export type InstanceRegistryServiceDeps = {
   ) => Promise<WasteManagementDataSourceRecord | null>;
   readonly saveWasteDataSourceRecord?: (record: WasteManagementDataSourceRecord) => Promise<void>;
   readonly moduleIamRegistry?: ReadonlyMap<string, InstanceModuleIamRegistryEntry>;
+  readonly pluginTenantLifecycleRegistry?: ReadonlyMap<
+    string,
+    Readonly<{ pluginId: string; contractRevision: string }>
+  >;
   readonly readModuleActivationPolicySnapshot?: () => TenantModuleActivationPolicySnapshot;
   readonly probeTenantIamAccess?: (input: {
     instanceId: string;

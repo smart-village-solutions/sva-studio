@@ -25,6 +25,7 @@ const createDeps = (input?: {
       grantsInserted: 1,
       grantsUnchanged: 0,
     })),
+    persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => ['events']),
     appendAuditEvent: vi.fn(async () => undefined),
   } as unknown as InstanceRegistryRepository;
   const invalidatePermissionSnapshots = vi.fn(async () => undefined);
@@ -41,6 +42,9 @@ const createDeps = (input?: {
           tenantBootstrapRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
         },
       ],
+    ]),
+    pluginTenantLifecycleRegistry: new Map([
+      ['events', { pluginId: 'events', contractRevision: 'events-1:1' }],
     ]),
     readModuleActivationPolicySnapshot: () => ({
       revision: input?.snapshotRevision ?? 'catalog-1',

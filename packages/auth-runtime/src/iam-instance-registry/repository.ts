@@ -10,6 +10,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import {
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginTenantLifecycleRegistry,
 } from './plugin-activation-policy-snapshot.js';
 
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
@@ -35,6 +36,15 @@ const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
   level: 'info',
 });
+
+const readPersistablePluginTenantLifecycleRegistry = () =>
+  new Map(
+    [...readInstanceRegistryPluginTenantLifecycleRegistry()].flatMap(([pluginId, lifecycle]) =>
+      lifecycle.contractRevision
+        ? [[pluginId, { pluginId, contractRevision: lifecycle.contractRevision }] as const]
+        : []
+    )
+  );
 
 export const runConfiguredPluginTenantProvisioningSchedule = async (
   instanceId: string
@@ -225,6 +235,9 @@ const registryRuntime = createInstanceRegistryRuntime({
     get moduleIamRegistry() {
       return readInstanceRegistryModuleIamRegistry();
     },
+    get pluginTenantLifecycleRegistry() {
+      return readPersistablePluginTenantLifecycleRegistry();
+    },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     protectSecret: protectField,
     revealSecret: revealField,
@@ -240,6 +253,9 @@ const registryRuntime = createInstanceRegistryRuntime({
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
     get moduleIamRegistry() {
       return readInstanceRegistryModuleIamRegistry();
+    },
+    get pluginTenantLifecycleRegistry() {
+      return readPersistablePluginTenantLifecycleRegistry();
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     protectSecret: protectField,

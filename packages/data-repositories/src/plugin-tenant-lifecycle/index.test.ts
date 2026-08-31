@@ -18,6 +18,9 @@ const row = {
   error_code: null,
   retry_kind: null,
   retry_after: null,
+  next_recheck_at: '2026-08-30T12:02:00.000Z',
+  contract_revision: 'policy:contract',
+  recovery_error_code: null,
   requested_at: '2026-08-30T12:00:00.000Z',
   started_at: null,
   completed_at: null,
@@ -29,6 +32,19 @@ const createExecutor = (rows: readonly (typeof row)[] = [row]) => {
   const executor: SqlExecutor = {
     async execute<TRow>(statement) {
       statements.push(statement);
+      return { rowCount: rows.length, rows: rows as readonly TRow[] };
+    },
+  };
+  return { executor, statements };
+};
+
+const createQueuedExecutor = (queuedRows: readonly (readonly (typeof row)[])[]) => {
+  const statements: SqlStatement[] = [];
+  const queue = [...queuedRows];
+  const executor: SqlExecutor = {
+    async execute<TRow>(statement) {
+      statements.push(statement);
+      const rows = queue.shift() ?? [];
       return { rowCount: rows.length, rows: rows as readonly TRow[] };
     },
   };
@@ -127,24 +143,70 @@ describe('plugin tenant lifecycle repository', () => {
   });
 
   it('fences completion by active job, claimed generation and current desired generation', async () => {
-    const { executor, statements } = createExecutor([]);
+    const { executor, statements } = createExecutor([row]);
     const repository = createPluginTenantLifecycleRepository(executor);
 
-    await repository.completeLifecycle({
-      instanceId: 'tenant-a',
-      pluginId: 'speech',
-      jobId: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
-      generation: 3,
-      operation: 'readiness',
-      readinessStatus: 'ready',
-      readinessRevision: 'schema:3',
-      readinessChecks: [{ checkId: 'speech.databaseSchema', status: 'ready' }],
-    });
+    await expect(
+      repository.completeLifecycle({
+        instanceId: 'tenant-a',
+        pluginId: 'speech',
+        jobId: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+        generation: 3,
+        operation: 'readiness',
+        readinessStatus: 'ready',
+        readinessRevision: 'schema:3',
+        readinessChecks: [{ checkId: 'speech.databaseSchema', status: 'ready' }],
+        contractRevision: 'speech-1:1',
+      })
+    ).resolves.toMatchObject({ outcome: 'applied' });
 
     expect(statements[0]?.text).toContain('AND active_job_id = $3::uuid');
     expect(statements[0]?.text).toContain('AND claimed_generation = $4');
     expect(statements[0]?.text).toContain('AND desired_generation = $4');
+    expect(statements[0]?.text).toContain(
+      "WHEN $6 = 'pending' THEN NOW() + INTERVAL '120 seconds'"
+    );
+    expect(statements[0]?.text).toContain('contract_revision = $9');
     expect(statements[0]?.values[7]).toBe('[{"checkId":"speech.databaseSchema","status":"ready"}]');
+    expect(statements[0]?.values[8]).toBe('speech-1:1');
+  });
+
+  it('distinguishes already applied and conflicting lifecycle transitions', async () => {
+    const alreadyAppliedRow = {
+      ...row,
+      completed_generation: '3',
+      active_job_id: null,
+      claimed_generation: null,
+    };
+    const already = createQueuedExecutor([[], [alreadyAppliedRow]]);
+    await expect(
+      createPluginTenantLifecycleRepository(already.executor).completeLifecycle({
+        instanceId: 'tenant-a',
+        pluginId: 'speech',
+        jobId: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+        generation: 3,
+        operation: 'readiness',
+        readinessStatus: 'ready',
+        readinessRevision: 'schema:3',
+        readinessChecks: [],
+      })
+    ).resolves.toMatchObject({ outcome: 'alreadyApplied' });
+
+    const conflict = createQueuedExecutor([
+      [],
+      [{ ...alreadyAppliedRow, completed_generation: '2' }],
+    ]);
+    await expect(
+      createPluginTenantLifecycleRepository(conflict.executor).failLifecycle({
+        instanceId: 'tenant-a',
+        pluginId: 'speech',
+        jobId: '7dbe0bb5-4689-46b0-b21f-0d9ea3cd9489',
+        generation: 3,
+        readinessStatus: 'blocked',
+        errorCode: 'stale',
+        retryKind: 'terminal',
+      })
+    ).resolves.toMatchObject({ outcome: 'conflict' });
   });
 
   it('keeps suspend and reactivate reversible without deleting lifecycle identity', async () => {

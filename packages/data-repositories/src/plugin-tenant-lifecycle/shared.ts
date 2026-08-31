@@ -22,6 +22,9 @@ type PluginTenantLifecycleRow = {
   readonly error_code: string | null;
   readonly retry_kind: PluginTenantLifecycleRetryKind | null;
   readonly retry_after: Date | string | null;
+  readonly next_recheck_at: Date | string | null;
+  readonly contract_revision: string | null;
+  readonly recovery_error_code: string | null;
   readonly requested_at: Date | string;
   readonly started_at: Date | string | null;
   readonly completed_at: Date | string | null;
@@ -51,6 +54,9 @@ const mapRow = (row: PluginTenantLifecycleRow): PluginTenantLifecycleRecord => (
   ...(row.error_code ? { errorCode: row.error_code } : {}),
   ...(row.retry_kind ? { retryKind: row.retry_kind } : {}),
   ...(row.retry_after ? { retryAfter: toIso(row.retry_after) } : {}),
+  ...(row.next_recheck_at ? { nextRecheckAt: toIso(row.next_recheck_at) } : {}),
+  ...(row.contract_revision ? { contractRevision: row.contract_revision } : {}),
+  ...(row.recovery_error_code ? { recoveryErrorCode: row.recovery_error_code } : {}),
   requestedAt: toIso(row.requested_at),
   ...(row.started_at ? { startedAt: toIso(row.started_at) } : {}),
   ...(row.completed_at ? { completedAt: toIso(row.completed_at) } : {}),

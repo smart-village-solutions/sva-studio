@@ -56,9 +56,15 @@ const currentLifecycle = (completedGeneration: number): PluginTenantLifecycleRec
 
 const createDependencies = () => {
   const repository = {
-    completeLifecycle: vi.fn(async () => currentLifecycle(3)),
+    completeLifecycle: vi.fn(async () => ({
+      outcome: 'applied' as const,
+      record: currentLifecycle(3),
+    })),
     getLifecycle: vi.fn(async () => currentLifecycle(3)),
-    failLifecycle: vi.fn(async () => currentLifecycle(3)),
+    failLifecycle: vi.fn(async () => ({
+      outcome: 'applied' as const,
+      record: currentLifecycle(3),
+    })),
   };
   return {
     repository,
@@ -107,8 +113,10 @@ describe('plugin tenant lifecycle job correlation', () => {
 
   it('rejects a stale completion instead of overwriting a newer generation', async () => {
     const { dependencies, repository } = createDependencies();
-    repository.completeLifecycle.mockResolvedValueOnce(null);
-    repository.getLifecycle.mockResolvedValueOnce(currentLifecycle(4));
+    repository.completeLifecycle.mockResolvedValueOnce({
+      outcome: 'conflict',
+      record: currentLifecycle(4),
+    });
 
     await expect(
       createPluginTenantLifecycleJobCorrelation(dependencies).complete({
@@ -128,7 +136,10 @@ describe('plugin tenant lifecycle job correlation', () => {
 
   it('accepts a repeated completion of the already persisted generation', async () => {
     const { dependencies, repository } = createDependencies();
-    repository.completeLifecycle.mockResolvedValueOnce(null);
+    repository.completeLifecycle.mockResolvedValueOnce({
+      outcome: 'alreadyApplied',
+      record: currentLifecycle(3),
+    });
 
     await expect(
       createPluginTenantLifecycleJobCorrelation(dependencies).complete({
@@ -143,7 +154,7 @@ describe('plugin tenant lifecycle job correlation', () => {
           },
         },
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toMatchObject({ completedGeneration: 3 });
   });
 
   it('classifies invalid plugin readiness evidence as a permanent contract error', async () => {

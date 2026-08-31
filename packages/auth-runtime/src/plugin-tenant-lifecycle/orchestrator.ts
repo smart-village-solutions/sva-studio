@@ -71,6 +71,12 @@ export type PluginTenantLifecycleOrchestratorDependencies = {
     readonly job: StudioJobRecord;
     readonly errorCode: string;
   }) => Promise<void>;
+  readonly persistStart?: (input: {
+    readonly request: StartPluginTenantLifecycleInput;
+    readonly jobTypeId: string;
+    readonly queueName: string;
+    readonly executionLane: 'default' | 'privileged';
+  }) => Promise<StartPluginTenantLifecycleResult>;
 };
 
 export type StartPluginTenantLifecycleInput = {
@@ -241,6 +247,14 @@ export const createPluginTenantLifecycleOrchestrator = (
       dependencies,
       input
     );
+    if (dependencies.persistStart) {
+      return dependencies.persistStart({
+        request: input,
+        jobTypeId: operationDefinition.jobTypeId,
+        queueName: registration.queueName,
+        executionLane: registration.executionLane ?? 'default',
+      });
+    }
     const requestedLifecycle = await dependencies.repository.requestLifecycle({
       instanceId: input.instanceId,
       pluginId: input.pluginId,

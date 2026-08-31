@@ -6,11 +6,13 @@ const state = vi.hoisted(() => ({
   markStudioJobEnqueueFailed: vi.fn(async () => undefined),
   queuePluginOperationJob: vi.fn(async () => undefined),
   enqueuePluginTenantLifecycleRecovery: vi.fn(async () => undefined),
+  enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
   requestLifecycle: vi.fn(),
   claimLifecycle: vi.fn(),
   failUnclaimedLifecycle: vi.fn(),
   failLifecycle: vi.fn(),
   updateJobState: vi.fn(),
+  transitionJobStateAndAppendEvent: vi.fn(),
   withStudioJobLifecycleRepositories: vi.fn(),
   getLifecycle: vi.fn(),
   getJobById: vi.fn(),
@@ -139,6 +141,15 @@ vi.mock('../plugin-operations/runner.js', () => ({
         },
       ],
       [
+        'speech.reconcileTenant',
+        {
+          handler: vi.fn(),
+          queueName: 'plugin-operations',
+          executionLane: 'privileged',
+          supportsCancellation: false,
+        },
+      ],
+      [
         'speech.suspendTenant',
         {
           handler: vi.fn(),
@@ -205,15 +216,29 @@ describe('configured plugin tenant lifecycle runtime', () => {
     state.readinessChecks = [];
     state.operations = [{ operation: 'provision' as const, jobTypeId: 'speech.provisionTenant' }];
     state.updateJobState.mockResolvedValue(job);
-    state.failLifecycle.mockResolvedValue(lifecycleRecord);
+    state.transitionJobStateAndAppendEvent.mockResolvedValue({ outcome: 'applied', job });
+    state.failLifecycle.mockResolvedValue({ outcome: 'applied', record: lifecycleRecord });
     state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
       work({
-        studioJobs: { updateJobState: state.updateJobState },
+        studioJobs: {
+          createJob: (input: Record<string, unknown>) =>
+            state.createStudioJob({
+              instanceId: input.instanceId,
+              create: input,
+            }),
+          appendJobEvent: vi.fn(async () => undefined),
+          updateJobState: state.updateJobState,
+          getJobById: state.getJobById,
+          transitionJobStateAndAppendEvent: state.transitionJobStateAndAppendEvent,
+        },
         tenantLifecycle: {
+          requestLifecycle: state.requestLifecycle,
           claimLifecycle: state.claimLifecycle,
           failLifecycle: state.failLifecycle,
         },
         enqueuePluginTenantLifecycleRecovery: state.enqueuePluginTenantLifecycleRecovery,
+        enqueuePluginTenantLifecycleRetry: state.enqueuePluginTenantLifecycleRetry,
+        enqueueStudioJob: state.queuePluginOperationJob,
       })
     );
   });
@@ -249,14 +274,16 @@ describe('configured plugin tenant lifecycle runtime', () => {
         }),
       })
     );
-    expect(state.queuePluginOperationJob).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      jobId: job.id,
-      queueName: 'plugin-operations',
-      maxAttempts: 5,
-      executionLane: 'privileged',
-      runAt: new Date('2026-08-30T12:00:00.000Z'),
-    });
+    expect(state.queuePluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        jobId: job.id,
+        queueName: 'plugin-operations',
+        maxAttempts: 5,
+        executionLane: 'privileged',
+        runAt: expect.any(Date),
+      })
+    );
     expect(state.enqueuePluginTenantLifecycleRecovery).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       pluginId: 'speech',
@@ -328,6 +355,27 @@ describe('configured plugin tenant lifecycle runtime', () => {
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
 
     expect(state.createStudioJob).toHaveBeenCalled();
+  });
+
+  it('evaluates current contract drift before historical terminal evidence', async () => {
+    state.operations = [
+      { operation: 'provision', jobTypeId: 'speech.provisionTenant' },
+      { operation: 'reconcile', jobTypeId: 'speech.reconcileTenant' },
+    ];
+    state.getLifecycle.mockResolvedValueOnce({
+      ...lifecycleRecord,
+      readinessStatus: 'ready',
+      completedGeneration: 3,
+      retryKind: 'terminal',
+      contractRevision: '0.9.0:1',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.requestLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: 'reconcile' })
+    );
   });
 
   it('keeps degraded access without creating a pending generation before the retry deadline', async () => {
@@ -532,15 +580,74 @@ describe('configured plugin tenant lifecycle runtime', () => {
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
 
     expect(state.getJobById).toHaveBeenCalledWith('tenant-a', job.id);
-    expect(state.queuePluginOperationJob).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      jobId: job.id,
-      queueName: 'plugin-operations',
-      maxAttempts: 5,
-      executionLane: 'privileged',
-      runAt: new Date('2026-08-30T12:00:00.000Z'),
-    });
+    expect(state.queuePluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        jobId: job.id,
+        queueName: 'plugin-operations',
+        maxAttempts: 5,
+        executionLane: 'privileged',
+        runAt: expect.any(Date),
+      })
+    );
     expect(state.createStudioJob).not.toHaveBeenCalled();
+  });
+
+  it('leaves a fresh running lease untouched and schedules the next 30 second recovery check', async () => {
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      claimedGeneration: 3,
+      activeJobId: job.id,
+    });
+    state.getJobById.mockResolvedValue({
+      ...job,
+      status: 'running',
+      attempts: 1,
+      workerId: 'worker-a',
+      heartbeatAt: new Date().toISOString(),
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.queuePluginOperationJob).not.toHaveBeenCalled();
+    expect(state.failLifecycle).not.toHaveBeenCalled();
+    expect(state.enqueuePluginTenantLifecycleRecovery).toHaveBeenCalledWith(
+      expect.objectContaining({ runAt: expect.any(Date) })
+    );
+  });
+
+  it('fences an expired running lease before scheduling a new lifecycle generation', async () => {
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      claimedGeneration: 3,
+      activeJobId: job.id,
+    });
+    state.getJobById.mockResolvedValue({
+      ...job,
+      status: 'running',
+      attempts: 1,
+      workerId: 'worker-a',
+      heartbeatAt: '2026-08-30T12:00:00.000Z',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: 'plugin_tenant_lifecycle_lease_expired' })
+    );
+    expect(state.transitionJobStateAndAppendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedStatuses: ['running'],
+        expectedAttempts: 1,
+        expectedWorkerId: 'worker-a',
+        leasePredicate: { kind: 'expiredOwner' },
+      })
+    );
+    expect(state.enqueuePluginTenantLifecycleRetry).toHaveBeenCalledWith(
+      expect.objectContaining({ runAt: expect.any(Date) })
+    );
   });
 
   it('persists job and lifecycle enqueue failure through one transaction', async () => {
@@ -560,23 +667,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
       'tenant-a',
       expect.any(Function)
     );
-    expect(state.failLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pluginId: 'speech',
-        jobId: job.id,
-        generation: 3,
-        retryKind: 'retryable',
-      })
-    );
-    expect(state.updateJobState).toHaveBeenCalledWith(
-      expect.objectContaining({
-        jobId: job.id,
-        status: 'failed',
-        errorPayload: {
-          code: 'plugin_operation_enqueue_failed',
-          category: 'permanent',
-        },
-      })
-    );
+    expect(state.failLifecycle).not.toHaveBeenCalled();
+    expect(state.updateJobState).not.toHaveBeenCalled();
   });
 });

@@ -67,20 +67,21 @@ akzeptiert, wenn Job-ID, Instanz, Plugin, Claim- und Sollgeneration weiterhin
 Stale- oder Konkurrenzkonflikt und kein wiederholbarer Schreibfehler; ein davor
 bereits erzeugter, aber unterlegener Job wird terminal markiert und nicht als
 verwaister Queue-Eintrag zurückgelassen.
-Terminale Fehler und Enqueue-Fehler nach einem erfolgreichen Claim schreiben
-Studio-Job und Lifecycle-Ledger innerhalb derselben Tenant-DB-Transaktion,
-damit kein terminaler oder nicht eingereihter Job einen aktiven Claim
-zurücklässt.
+Lifecycle-Request, Studio-Job, Claim, Execution-Wake-up und Recovery-Wake-up
+werden mit demselben PostgreSQL-Executor in einer Transaktion geschrieben.
+Terminale Korrelation, Jobstatus und genau ein Terminalevent werden ebenfalls
+gemeinsam committet. Der partielle Eindeutigkeitsconstraint auf Job und Attempt
+macht Redelivery idempotent; eine leere CAS-Rückgabe ist ein Konflikt.
 
 Nach dem Commit einer Aktivierungsrichtlinie oder einer neuen Instanz plant der
 Host fehlende oder retryable `provision`-Läufe für alle in der Instanz effektiv
 aktiven Lifecycle-Plugins über denselben Lifecycle-Orchestrator. Damit werden
 auch manuell aktivierte `optional`-Plugins berücksichtigt. Suspendierte
 Lifecycle-Zustände bleiben bis zu einer expliziten Reaktivierung ausgeschlossen.
-Der Post-Commit-Lauf
-ist vom bereits bestätigten Request entkoppelt; ein Queue- oder Datenbankfehler
-wird protokolliert und darf die committete Mutation nicht nachträglich als
-fehlgeschlagen melden. Aktive Jobs sowie zur aktuellen Check-Deklaration
+Die Aktivierungs- und IAM-Transaktion schreibt für jedes betroffene aktive
+Lifecycle-Plugin einen persistenten Reconcile-Intent samt Graphile-Wake-up.
+Ein rein speicherinterner Post-Commit-Hook ist kein Konvergenznachweis. Aktive
+Jobs sowie zur aktuellen Check-Deklaration
 passende, nicht blockierende Readiness-Evidenz verhindern eine erneute
 Provisionierung; veraltete Evidenz löst dagegen einen neuen Lauf aus. Der Fleet-Reconcile
 läuft nach Handler-Registrierung im Hintergrund und blockiert keinen normalen
@@ -92,6 +93,16 @@ Retry eines anderen Plugins derselben Instanz nicht ersetzen. Das Cockpit pollt
 Readiness sowohl bei einem aktiven Job als auch während eines persistierten
 retryable Retry-Fensters und beendet das Polling nach der serverseitig
 beobachteten Erholung.
+
+`iam.studio_jobs` ist die alleinige hostlesbare Lease-Evidenz; private
+Graphile-Tabellen sind kein Bestandteil des Vertrags. Der Owner ist
+`(jobId, attempt, workerId)`. Start, Fortschritt, Heartbeat und Abschluss
+verwenden CAS auf Owner und erwarteten Status. Heartbeats laufen alle 30
+Sekunden. Nach 120 Sekunden verweigert PostgreSQL weitere Owner-Schreibvorgänge;
+Recovery lässt frische Leases unangetastet, fenced stale Leases und plant
+spätestens innerhalb weiterer 30 Sekunden eine neue Lifecycle-Generation.
+Plan 041 verantwortet weiterhin Prozess- und Lane-Supervision, nicht diesen
+Lease- und Resume-Vertrag.
 
 Idempotenz bleibt zweistufig: Der Host verhindert doppelte Jobanlage über den
 vorhandenen Studio-Job-Idempotenzvertrag; der Plugin-Handler reconciliiert die
@@ -106,6 +117,9 @@ Checks. Der Host berechnet den Aggregatstatus bei jedem Lesen gegen die aktuell
 deklarierten Checks und deren aktuelle `required`-Kennzeichnung neu; ein alter
 Aggregatwert darf eine verschärfte Deklaration nicht umgehen. Texte und
 fachliche Diagnose bleiben beim Plugin.
+Ein persistiertes `pending` enthält immer `next_recheck_at`; derselbe Commit
+plant den serverseitigen Wake-up. Vertragsrevisionen werden vor historischer
+Terminal- oder Retry-Evidenz ausgewertet.
 
 ### Aktivierung und Fachbereitschaft sind getrennt
 

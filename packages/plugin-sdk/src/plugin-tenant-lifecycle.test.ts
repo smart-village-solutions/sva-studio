@@ -120,6 +120,26 @@ describe('plugin tenant lifecycle contracts', () => {
     ).toThrow('unknown_plugin_tenant_lifecycle_job_type:speech:provision:speech.missingJob');
   });
 
+  it('rejects non-boolean lifecycle cancellation flags at runtime', () => {
+    expect(() =>
+      definePluginTenantLifecycle(
+        'speech',
+        {
+          contractVersion: 1,
+          operations: [
+            {
+              operation: 'provision',
+              jobTypeId: 'speech.provisionTenant',
+              supportsCancellation: 'true',
+            },
+          ],
+          readinessChecks: [],
+        } as never,
+        jobTypes
+      )
+    ).toThrow('invalid_plugin_tenant_lifecycle_cancellation_flag:speech:provision');
+  });
+
   it('rejects duplicate operations and foreign readiness checks', () => {
     expect(() =>
       definePluginTenantLifecycle(

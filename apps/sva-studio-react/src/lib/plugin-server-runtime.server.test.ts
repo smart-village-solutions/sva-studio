@@ -53,4 +53,15 @@ describe('plugin server runtime loader', () => {
       })
     ).rejects.toThrow('duplicate_plugin_server_handler_binding:shared.handler');
   });
+
+  it('rejects non-function server handler bindings before publication', async () => {
+    await expect(
+      createPluginServerExecutionHandlersFromSnapshot({
+        pluginSources: [source('news')],
+        loadServerModule: vi.fn().mockResolvedValue({
+          createPluginServerHandlers: () => ({ 'news.list': 'not-a-handler' }),
+        }),
+      })
+    ).rejects.toThrow('invalid_plugin_server_handler_binding:news:news.list');
+  });
 });

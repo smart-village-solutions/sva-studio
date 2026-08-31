@@ -19,7 +19,9 @@ unvollständige beziehungsweise suspendierte Ressourcen zugreifen.
    Operationen `provision`, `reconcile`, `suspend`, `reactivate` und
    `readiness` deklarieren.
 2. Der Host führt diese Operationen als bestehende Plugin-Operations-Jobs aus
-   und bindet sie an Instanz, Plugin, Sollgeneration und atomaren Claim.
+   und bindet sie an Instanz, Plugin, Sollgeneration und atomaren Claim. Das
+   optionale Merkmal `supportsCancellation` wird an der Plugin-Grenze als
+   Boolean validiert; andere Laufzeitwerte werden fail-closed abgewiesen.
 3. `iam.instance_plugin_lifecycle` speichert ausschließlich generischen Soll-,
    Claim-, Job-, Readiness- und Fehlerzustand. Fachschema, Migrationen,
    Repositories und Secrets bleiben unter Plugin-Ownership.

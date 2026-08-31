@@ -107,6 +107,9 @@ export const createPluginServerExecutionHandlersFromSnapshot = async (input: {
     const factory = (await loadServerModule(source))?.createPluginServerHandlers;
     if (!factory) throw new Error(`missing_plugin_server_module_factory:${source.pluginId}`);
     for (const [handlerId, handler] of Object.entries(factory())) {
+      if (typeof handler !== 'function') {
+        throw new Error(`invalid_plugin_server_handler_binding:${source.pluginId}:${handlerId}`);
+      }
       if (handlers[handlerId]) {
         throw new Error(`duplicate_plugin_server_handler_binding:${handlerId}`);
       }

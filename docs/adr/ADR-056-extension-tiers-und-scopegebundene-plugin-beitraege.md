@@ -51,7 +51,8 @@ Root-Berechtigung verwenden.
     dürfen außerhalb dieses Plugin-Snapshots ergänzt werden.
 12. Deklarative Server-Handler werden über den Manifest-`server`-Entry an
     ausführbaren Code gebunden. Der Host verlangt vollständige, eindeutige
-    Handler-Abdeckung und prüft exakten Pfad, Methode, Authentifizierung,
+    Handler-Abdeckung, weist nicht ausführbare Handler-Bindings vor der
+    Veröffentlichung zurück und prüft exakten Pfad, Methode, Authentifizierung,
     Scope, Tenant-Aktivierung und Berechtigung, bevor er einen hosterzeugten
     Execution-Context an Plugin-Code übergibt.
 13. Deaktivierung entfernt nur automatisch synchronisierte Modul-Grants.

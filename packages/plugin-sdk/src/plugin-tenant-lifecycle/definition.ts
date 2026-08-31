@@ -41,6 +41,14 @@ const defineOperation = (input: {
       `invalid_plugin_tenant_lifecycle_operation:${pluginNamespace}:${definition.operation}`
     );
   }
+  if (
+    definition.supportsCancellation !== undefined &&
+    typeof definition.supportsCancellation !== 'boolean'
+  ) {
+    throw new Error(
+      `invalid_plugin_tenant_lifecycle_cancellation_flag:${pluginNamespace}:${definition.operation}`
+    );
+  }
   if (declaredOperations.has(definition.operation)) {
     throw new Error(
       `duplicate_plugin_tenant_lifecycle_operation:${pluginNamespace}:${definition.operation}`

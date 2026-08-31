@@ -360,6 +360,31 @@ Zustandsmatrizen oder zusätzlichen OpenSpec-Changes zu erzeugen.
 - Jeden Lieferabschnitt mit seinem kleinsten echten Gate-Pfad abschließen,
   bevor der nächste Abschnitt die Fehlerfläche erweitert.
 
+### Assurance Case für risikoreiche Großvorhaben
+
+Wenn ein Großvorhaben verteilte Zustände, Nebenläufigkeit, Retry/Recovery,
+sicherheitsrelevante Trust Boundaries oder gekoppelte Persistenz-/Runtime-
+Übergänge einführt, muss der zugehörige OpenSpec-Change vor der Implementierung
+eine Datei `assurance.md` enthalten. Ihr verbindlicher Aufbau steht in
+`docs/development/system-assurance.md`.
+
+- Jede kritische Systembehauptung erhält eine stabile Invarianten-ID.
+- Für jede Invariante werden Systemgrenzen, Verletzungsszenarien, Prävention,
+  Erkennung, Recovery und Restrisiken beschrieben.
+- Jede Invariante wird auf direkte Evidenz abgebildet. Abhängig vom Risiko sind
+  Runtime-Validierung, Zustandsmaschinen-, Negativ-, Fault-Injection-,
+  Konkurrenz-, Redelivery-, Integrations-, Topologie- oder Recovery-Tests
+  erforderlich.
+- Coverage, statische Checks und allgemeine Reviews sind ergänzende Signale,
+  aber kein direkter Nachweis einer Invariante.
+- Nicht automatisierbare Annahmen benötigen einen reproduzierbaren manuellen
+  Nachweis oder eine ausdrücklich akzeptierte Restrisikoentscheidung.
+- Eine kritische Invariante ohne Evidenz oder akzeptiertes Restrisiko ist ein
+  Merge-Blocker. „Keine weiteren Findings“ ist keine Evidenz.
+- Der System-Assurance-Review versucht dokumentierte Invarianten gezielt zu
+  widerlegen. Er darf Merge-Reife nur auf Basis konkreter Gegenbeispiele,
+  reproduzierbarer Nachweise und vollständig zugeordneter Evidenz bewerten.
+
 ### Review- und Fix-Stop-Regel
 
 Wenn in aufeinanderfolgenden Reviews oder CI-/Test-Runden mehrere neue Befunde
@@ -383,6 +408,8 @@ bestehende PR gezielt gehärtet; allgemeine Aufräumarbeiten folgen getrennt.
 - „OpenSpec ist grün“ oder „Unit-Tests sind grün“ als alleinigen Nachweis für
   die Vollständigkeit einer verteilten Zustands- oder Sicherheitsinvariante zu
   behandeln.
+- Einen Assurance Case durch eine allgemeine Review-Zusammenfassung, Coverage
+  oder eine bloße Liste grüner Checks zu ersetzen.
 - Einen neuen Review-Befund nur lokal zu beheben, obwohl wiederholte Befunde
   bereits auf eine gemeinsame unvollständige Invariante hinweisen.
 - Kleine lokale Änderungen durch pauschale Großprojekt-Artefakte oder

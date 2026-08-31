@@ -62,6 +62,7 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 - [Lokale Bearbeitung des Projektberichts](./project-report-lokale-bearbeitung.md)
 - [QS-Mindeststandard](./qs-mindeststandard-sva-studio.md)
 - [Review-Agent-Governance](./review-agent-governance.md)
+- [System-Assurance für risikoreiche Großvorhaben](./system-assurance.md)
 - [SonarCloud Security Hotspots](./sonarcloud-security-hotspots.md)
 - [Stagehand Admin Exploration](./stagehand-admin-exploration.md)
 

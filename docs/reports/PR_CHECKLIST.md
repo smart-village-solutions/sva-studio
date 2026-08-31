@@ -38,6 +38,14 @@
 - [ ] Bei sicherheitskritischer oder domänenkritischer Logik wurde mindestens `docs/architecture/05-building-block-view.md` oder `docs/architecture/08-cross-cutting-concepts.md` aktualisiert
 - [ ] Neue oder geänderte IAM-Patterns sind als ADR unter `docs/adr/` dokumentiert und in `docs/architecture/09-architecture-decisions.md` referenziert
 
+## System-Assurance bei risikoreichen Großvorhaben
+
+- [ ] Der OpenSpec-Change enthält einen aktuellen `assurance.md` für den exakten PR-HEAD
+- [ ] Kritische Invarianten besitzen stabile IDs und direkte Evidenz oder eine ausdrücklich akzeptierte Restrisikoentscheidung
+- [ ] Systemgrenzen, Verbraucher, Zustandsübergänge sowie Failure-/Crashpunkte sind vollständig inventarisiert
+- [ ] Konkurrenz, Redelivery, Teilfehler, Prozessabbruch, Wiederanlauf und Recovery sind abhängig vom Risiko reproduzierbar geprüft
+- [ ] Der System-Assurance-Review weist keine unbekannte oder unzugeordnete Nachweislücke aus
+
 ## Reviewer Quick Check
 
 - [ ] Keine absoluten lokalen Dateipfade in Doku oder Skripten

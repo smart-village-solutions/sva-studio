@@ -37,6 +37,17 @@ type LocationCoverageSupportLoader = Pick<
   | 'setLocationCoverageToursStatus'
 >;
 
+const prepareLocationCoverageLoad = (
+  tab: WasteManagementSearchParams['masterDataTab'],
+  state: LocationCoverageSupportLoader
+) => {
+  const status = tab === 'locations' ? 'loading' : 'idle';
+  state.setLocationCoverageFractions([]);
+  state.setLocationCoverageFractionsStatus(status);
+  state.setAvailableTours([]);
+  state.setLocationCoverageToursStatus(status);
+};
+
 const isCurrentCoverageRequest = (
   requestId: number,
   requestIdRef: MutableRefObject<number>,
@@ -95,40 +106,37 @@ export const useWasteMasterDataOverview = (
 
   const loadOverview = useCallback(async () => {
     const coverageRequestId = ++coverageRequestIdRef.current;
-    if (tab === 'locations') {
-      setLocationCoverageFractions([]);
-      setLocationCoverageFractionsStatus('loading');
-      setAvailableTours([]);
-      setLocationCoverageToursStatus('loading');
-    } else {
-      setLocationCoverageFractions([]);
-      setLocationCoverageFractionsStatus('idle');
-      setAvailableTours([]);
-      setLocationCoverageToursStatus('idle');
-    }
+    prepareLocationCoverageLoad(tab, {
+      setAvailableTours,
+      setLocationCoverageFractions,
+      setLocationCoverageFractionsStatus,
+      setLocationCoverageToursStatus,
+    });
 
     const overviewPromise = getWasteManagementMasterDataOverview(
       resolveMasterDataOverviewScope(tab)
     );
-    if (tab === 'locations') {
-      void loadLocationCoverageSupport(
-        {
-          setAvailableTours,
-          setLocationCoverageFractions,
-          setLocationCoverageFractionsStatus,
-          setLocationCoverageToursStatus,
-        },
-        coverageRequestId,
-        coverageRequestIdRef,
-        isMountedRef
-      );
-    }
+    const coverageSupportPromise =
+      tab === 'locations'
+        ? loadLocationCoverageSupport(
+            {
+              setAvailableTours,
+              setLocationCoverageFractions,
+              setLocationCoverageFractionsStatus,
+              setLocationCoverageToursStatus,
+            },
+            coverageRequestId,
+            coverageRequestIdRef,
+            isMountedRef
+          )
+        : undefined;
 
     try {
       const overviewResponse = await overviewPromise;
       if (!isMountedRef.current) return;
       setOverview(overviewResponse);
       setOverviewError(null);
+      await coverageSupportPromise;
     } catch (loadError) {
       if (!isMountedRef.current) return;
       setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));

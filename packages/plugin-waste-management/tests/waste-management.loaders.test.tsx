@@ -441,6 +441,41 @@ describe('waste management data loaders', () => {
     expect(await screen.findByText('loaded')).toBeTruthy();
   });
 
+  it('waits for location coverage support before completing the reload', async () => {
+    let resolveTours: ((value: { tours: readonly never[] }) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      async (options?: { readonly scope?: string }) =>
+        options?.scope === 'fractions'
+          ? { fractions: [{ id: 'fraction-1' }] }
+          : {
+              fractions: [],
+              regions: [],
+              cities: [],
+              streets: [],
+              houseNumbers: [],
+              collectionLocations: [],
+              locationTourLinks: [],
+            }
+    );
+    apiMocks.getWasteManagementToursOverview.mockImplementation(
+      () => new Promise((resolve) => (resolveTours = resolve))
+    );
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+    });
+    expect(screen.queryByText('loaded')).toBeNull();
+
+    await act(async () => {
+      resolveTours?.({ tours: [] });
+    });
+
+    expect(await screen.findByText('loaded')).toBeTruthy();
+    expect(screen.getByTestId('coverage-tours-state').textContent).toBe('ready:0');
+  });
+
   it('keeps location master data usable when the coverage fractions fail to load', async () => {
     apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
       async (options?: { readonly scope?: string }) => {

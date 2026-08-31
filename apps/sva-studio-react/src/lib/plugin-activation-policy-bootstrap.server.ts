@@ -5,6 +5,7 @@ let configurationPromise: Promise<PluginActivationPolicyConfiguration> | undefin
 let reconciliationPromise: Promise<void> | undefined;
 let reconciliationRetryRevision: string | undefined;
 let reconciliationRetryAfterMs = 0;
+let reconciliationRetryTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 let bootstrapGeneration = 0;
 
 const fleetReconcileRetryDelayMs = 60_000;
@@ -46,12 +47,47 @@ const logReconcileFailure = async (
   createSdkLogger({ component: 'plugin-activation-policy-bootstrap' })[level](message, metadata);
 };
 
-const startFleetReconcileInBackground = ({
-  authRuntime,
-  revision,
-}: PluginActivationPolicyConfiguration): void => {
+const clearFleetReconcileRetry = (): void => {
+  if (reconciliationRetryTimer) {
+    globalThis.clearTimeout(reconciliationRetryTimer);
+    reconciliationRetryTimer = undefined;
+  }
+  reconciliationRetryRevision = undefined;
+  reconciliationRetryAfterMs = 0;
+};
+
+const scheduleFleetReconcileRetry = (
+  configuration: PluginActivationPolicyConfiguration,
+  generation: number
+): void => {
+  if (generation !== bootstrapGeneration) return;
+  if (reconciliationRetryTimer) globalThis.clearTimeout(reconciliationRetryTimer);
+
+  reconciliationRetryRevision = configuration.revision;
+  reconciliationRetryAfterMs = Date.now() + fleetReconcileRetryDelayMs;
+  reconciliationRetryTimer = globalThis.setTimeout(() => {
+    reconciliationRetryTimer = undefined;
+    if (
+      generation !== bootstrapGeneration ||
+      reconciliationRetryRevision !== configuration.revision
+    ) {
+      return;
+    }
+    reconciliationRetryAfterMs = 0;
+    startFleetReconcileInBackground(configuration);
+  }, fleetReconcileRetryDelayMs);
+  reconciliationRetryTimer.unref?.();
+};
+
+const startFleetReconcileInBackground = (
+  configuration: PluginActivationPolicyConfiguration
+): void => {
+  const { authRuntime, revision } = configuration;
   if (reconciledRevision === revision || reconciliationPromise) return;
   if (reconciliationRetryRevision === revision && Date.now() < reconciliationRetryAfterMs) return;
+  if (reconciliationRetryRevision && reconciliationRetryRevision !== revision) {
+    clearFleetReconcileRetry();
+  }
   const generation = bootstrapGeneration;
   reconciliationPromise = (async () => {
     try {
@@ -61,15 +97,11 @@ const startFleetReconcileInBackground = ({
       if (report.status === 'ready') {
         if (generation === bootstrapGeneration) {
           reconciledRevision = revision;
-          reconciliationRetryRevision = undefined;
-          reconciliationRetryAfterMs = 0;
+          clearFleetReconcileRetry();
         }
         return;
       }
-      if (generation === bootstrapGeneration) {
-        reconciliationRetryRevision = revision;
-        reconciliationRetryAfterMs = Date.now() + fleetReconcileRetryDelayMs;
-      }
+      scheduleFleetReconcileRetry(configuration, generation);
       await logReconcileFailure(
         'warn',
         'Plugin activation policy fleet reconcile completed with failures',
@@ -84,10 +116,7 @@ const startFleetReconcileInBackground = ({
         }
       );
     } catch (error) {
-      if (generation === bootstrapGeneration) {
-        reconciliationRetryRevision = revision;
-        reconciliationRetryAfterMs = Date.now() + fleetReconcileRetryDelayMs;
-      }
+      scheduleFleetReconcileRetry(configuration, generation);
       await logReconcileFailure(
         'error',
         'Plugin activation policy fleet reconcile failed unexpectedly',
@@ -119,11 +148,10 @@ export const startPluginActivationPolicyFleetReconcileInBackground = (): void =>
 
 export const resetPluginActivationPolicyBootstrapForTests = (): void => {
   bootstrapGeneration += 1;
+  clearFleetReconcileRetry();
   configuredRevision = undefined;
   reconciledRevision = undefined;
   latestConfiguration = undefined;
   configurationPromise = undefined;
   reconciliationPromise = undefined;
-  reconciliationRetryRevision = undefined;
-  reconciliationRetryAfterMs = 0;
 };

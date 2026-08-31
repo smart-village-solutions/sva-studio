@@ -64,12 +64,14 @@ describe('plugin activation policy fleet reconcile', () => {
     expect(mocks.withScopedRegistryService).toHaveBeenNthCalledWith(
       1,
       'instance-a',
-      expect.any(Function)
+      expect.any(Function),
+      { forceIamSync: true }
     );
     expect(mocks.withScopedRegistryService).toHaveBeenNthCalledWith(
       2,
       'instance-b',
-      expect.any(Function)
+      expect.any(Function),
+      { forceIamSync: true }
     );
     expect(report).toEqual(
       expect.objectContaining({

@@ -7,6 +7,7 @@ import type {
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { createInstanceRegistryService } from './service.js';
+import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-runtime', level: 'info' });
@@ -126,11 +127,16 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     withRegistryRepository((repository) => work(createService(repository, deps.serviceDeps)));
   const withScopedRegistryService = async <T>(
     instanceId: string,
-    work: (service: InstanceRegistryService) => Promise<T>
+    work: (service: InstanceRegistryService) => Promise<T>,
+    options: Readonly<{ forceIamSync?: boolean }> = {}
   ): Promise<T> => {
     const scopedResult = await withScopedRegistryRepository(instanceId, async (repository) => {
-      const service = createService(repository, deps.serviceDeps);
-      const reconcileResult = await service.reconcileModuleActivationPolicies({ instanceId });
+      const serviceDeps = { repository, ...deps.serviceDeps };
+      const service = createInstanceRegistryService(serviceDeps);
+      const reconcileResult = await createReconcileModuleActivationPoliciesHandler(
+        serviceDeps,
+        options
+      )({ instanceId });
       return { reconcileResult, result: await work(service) };
     });
     runActivationPolicyFollowUp(deps, {

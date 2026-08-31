@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
 import { createInstanceRegistryService } from './service.js';
+import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const createDeps = (input?: {
@@ -101,13 +102,13 @@ describe('instance module activation policy reconcile', () => {
     );
   });
 
-  it('does not repeat IAM or audit work for an unchanged policy revision', async () => {
+  it('reconciles IAM contracts even when the activation policy revision is unchanged', async () => {
     const { deps, repository, invalidatePermissionSnapshots } = createDeps({
       changedModuleIds: [],
     });
 
     await expect(
-      createInstanceRegistryService(deps).reconcileModuleActivationPolicies({
+      createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
         instanceId: 'tenant-a',
       })
     ).resolves.toEqual({
@@ -116,9 +117,29 @@ describe('instance module activation policy reconcile', () => {
       unchangedModuleIds: ['events'],
     });
 
-    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
-    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
-    expect(invalidatePermissionSnapshots).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      managedModuleIds: ['events'],
+      managedContracts: [
+        expect.objectContaining({
+          moduleId: 'events',
+          permissionIds: ['events.read'],
+          tenantBootstrapRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
+        }),
+      ],
+      contracts: [
+        expect.objectContaining({
+          moduleId: 'events',
+          permissionIds: ['events.read'],
+          tenantBootstrapRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
+        }),
+      ],
+    });
+    expect(repository.appendAuditEvent).toHaveBeenCalledOnce();
+    expect(invalidatePermissionSnapshots).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      trigger: 'instance_module_policy_reconciled',
+    });
   });
 
   it('fails closed before IAM synchronization when policy reconciliation loses a lock', async () => {

@@ -91,8 +91,8 @@ describe('plugin activation policy bootstrap', () => {
     expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' });
   });
 
-  it('backs off a degraded fleet reconcile before retrying the revision', async () => {
-    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+  it('schedules an autonomous retry after a degraded fleet reconcile', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     reconcileMock
       .mockResolvedValueOnce({
         status: 'degraded',
@@ -115,13 +115,37 @@ describe('plugin activation policy bootstrap', () => {
     startPluginActivationPolicyFleetReconcileInBackground();
     await Promise.resolve();
     expect(reconcileMock).toHaveBeenCalledTimes(1);
-    now.mockReturnValue(61_000);
-    startPluginActivationPolicyFleetReconcileInBackground();
+    const retryTimer = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 60_000);
+    expect(retryTimer).toBeDefined();
+    (retryTimer?.[0] as () => void)();
     await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
     await ensurePluginActivationPoliciesConfigured();
 
     expect(configureMock).toHaveBeenCalledTimes(1);
     expect(reconcileMock).toHaveBeenCalledTimes(2);
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('schedules an autonomous retry after an unexpected fleet reconcile failure', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    reconcileMock
+      .mockRejectedValueOnce(new TypeError('database unavailable'))
+      .mockResolvedValueOnce({ status: 'ready' });
+
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(loggerErrorMock).toHaveBeenCalledOnce());
+
+    const retryTimer = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 60_000);
+    expect(retryTimer).toBeDefined();
+    (retryTimer?.[0] as () => void)();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
+
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      'Plugin activation policy fleet reconcile failed unexpectedly',
+      expect.objectContaining({ revision: 'catalog-1', error_type: 'TypeError' })
+    );
+    setTimeoutSpy.mockRestore();
   });
 
   it('does not block configuration on the fleet-wide reconcile', async () => {

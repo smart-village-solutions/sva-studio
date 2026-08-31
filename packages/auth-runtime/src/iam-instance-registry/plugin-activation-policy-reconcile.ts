@@ -31,7 +31,9 @@ export const reconcileConfiguredPluginActivationPoliciesForAllInstances = async 
     instanceCount = instances.length;
     for (const instance of instances) {
       try {
-        await withScopedRegistryService(instance.instanceId, async () => undefined);
+        await withScopedRegistryService(instance.instanceId, async () => undefined, {
+          forceIamSync: true,
+        });
         reconciledInstanceCount += 1;
       } catch {
         failures.push({

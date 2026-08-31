@@ -120,7 +120,8 @@ describe('content-route-parsers-poi', () => {
   it('keeps sparse parser payloads without manufacturing optional fields', () => {
     expect(parseOpeningHours([{}])).toEqual([{}]);
     expect(parsePrices([{}])).toEqual([{}]);
-    expect(parseOperatingCompany({})).toBeUndefined();
+    expect(parseOperatingCompany({})).toEqual({});
+    expect(parseOperatingCompany({}, { requireNameForDetails: true })).toBeUndefined();
     expect(parseOperatingCompany({ name: ' Betreiber ' })).toEqual({ name: 'Betreiber' });
     expect(parseMediaContents([{}])).toEqual([{}]);
     expect(parseAccessibilityInformation({})).toEqual({});
@@ -138,9 +139,17 @@ describe('content-route-parsers-poi', () => {
         contact: { webUrls: [{ url: 'http://example.test' }] },
       }) as Response
     );
-    await expectInvalidRequest(parseOperatingCompany({ address: { city: 'Bochum' } }) as Response);
     await expectInvalidRequest(
-      parseOperatingCompany({ contact: { email: 'kontakt@example.test' } }) as Response
+      parseOperatingCompany(
+        { address: { city: 'Bochum' } },
+        { requireNameForDetails: true }
+      ) as Response
+    );
+    await expectInvalidRequest(
+      parseOperatingCompany(
+        { contact: { email: 'kontakt@example.test' } },
+        { requireNameForDetails: true }
+      ) as Response
     );
   });
 

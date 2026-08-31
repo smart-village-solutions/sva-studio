@@ -32,6 +32,7 @@ const createTenantPermissionDenial = (
   user: RouteGuardUser,
   grantedPermissions: ReadonlySet<string>
 ): PermissionDenialDetails | undefined => {
+  const hasUntrustedStaticCapability = 'resourceCapability' in requirement;
   const permissionRequirementSatisfied = satisfiesRequiredValues(
     requirement.actions,
     grantedPermissions
@@ -53,7 +54,7 @@ const createTenantPermissionDenial = (
         : requirement.actions.values,
     requirementMode: requirement.actions.mode,
     denialReason:
-      permissionRequirementSatisfied && requirement.resourceCapability
+      permissionRequirementSatisfied && hasUntrustedStaticCapability
         ? 'abac_condition_unmet'
         : 'permission_missing',
   });
@@ -64,13 +65,14 @@ const evaluateTenantAccess = (
   user: RouteGuardUser
 ): RouteAccessDecision => {
   const grantedPermissions = new Set(user.permissionActions ?? []);
+  const hasUntrustedStaticCapability = 'resourceCapability' in requirement;
   const allowed =
     Boolean(user.instanceId) &&
     user.permissionStatus !== 'degraded' &&
     (!requirement.moduleId || user.assignedModules?.includes(requirement.moduleId)) &&
     // Route guards do not receive the resource-scoped authorization evidence needed to
     // verify a capability. Keep access closed until the capability is evaluated server-side.
-    !requirement.resourceCapability &&
+    !hasUntrustedStaticCapability &&
     satisfiesRequiredValues(requirement.actions, grantedPermissions);
 
   return allowed

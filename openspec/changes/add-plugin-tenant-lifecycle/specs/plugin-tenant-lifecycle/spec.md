@@ -37,6 +37,29 @@ Das System SHALL jeden tenantbezogenen Lifecycle-Lauf an Plugin, `instanceId`, S
 - **THEN** lehnt der Host diesen Abschluss deterministisch ab
 - **AND** bleibt die Evidenz der neueren Generation unverändert
 
+### Requirement: Lifecycle-Autorisierung ist operationsspezifisch und hostgeführt
+
+Das System MUST das Lesen des Plugin-Readiness-Modells und jede ausführbare
+Lifecycle-Operation mit einer eigenen fully-qualified Service-Action
+autorisieren. Die Operation MUST vor der Auswahl der Action validiert werden.
+Plugin-Deskriptoren MUST statische `resourceCapability`-Felder ablehnen;
+ressourcenbezogene positive Evidenz darf ausschließlich aus einem hostseitigen
+Resolver für validierten Request-Kontext und autoritative Fachdaten stammen.
+
+#### Scenario: Service-Credential versucht eine fremde Lifecycle-Operation
+
+- **GIVEN** ein Service-Credential besitzt genau eine der Actions für Readiness-Lesen, `provision`, `readiness`, `reconcile`, `suspend` oder `reactivate`
+- **WHEN** es das Readiness-Modell oder eine andere als die zugeordnete Operation anfordert
+- **THEN** lehnt der Host die Anfrage mit `403` ab
+- **AND** startet keinen Plugin-Handler und keinen Lifecycle-Job
+
+#### Scenario: Plugin liefert eine positive Resource-Capability
+
+- **GIVEN** ein Plugin-Deskriptor enthält `resourceCapability: { allowed: true }`
+- **WHEN** der Host den Build-time-Snapshot materialisiert
+- **THEN** weist er den Deskriptor fail-closed zurück
+- **AND** kann die positive Entscheidung keinen Routing- oder Server-Handler-Pfad erreichen
+
 ### Requirement: Plugins melden einen gemeinsamen operationalen Tenantstatus
 
 Das System SHALL pro aktivem Plugin und Instanz einen Status `pending`, `ready`, `degraded` oder `blocked` mit namespaced Einzelprüfungen, Revision, Aktualisierungszeit und optionaler Reparaturaktion bereitstellen.

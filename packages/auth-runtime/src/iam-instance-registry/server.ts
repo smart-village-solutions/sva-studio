@@ -48,6 +48,7 @@ import {
 } from './core-keycloak.js';
 import {
   getPluginTenantReadinessInternal,
+  resolvePluginTenantLifecycleServiceAction,
   startPluginTenantLifecycleInternal,
 } from '../plugin-tenant-lifecycle/http.js';
 
@@ -58,7 +59,8 @@ const withRegistryRequestContext = <T>(request: Request, work: () => Promise<T>)
 
 const withAuthenticatedRegistryHandler = (
   request: Request,
-  actionId: RegistryActionId,
+  actionIdOrResolver:
+    RegistryActionId | ((request: Request) => Promise<RegistryActionId | Response>),
   handler: (request: Request, ctx: RegistryRequestContext) => Promise<Response>
 ): Promise<Response> =>
   withRegistryRequestContext(request, async () => {
@@ -76,7 +78,12 @@ const withAuthenticatedRegistryHandler = (
             }
           );
         }
-        const resolution = await authenticateRegistryServiceToken(bearerToken, actionId);
+        const actionResolution =
+          typeof actionIdOrResolver === 'function'
+            ? await actionIdOrResolver(request)
+            : actionIdOrResolver;
+        if (actionResolution instanceof Response) return actionResolution;
+        const resolution = await authenticateRegistryServiceToken(bearerToken, actionResolution);
         if (resolution.kind === 'response') return resolution.response;
         markAuthenticatedRegistryServiceRequest(request);
         const logContext = buildLogContext('platform', { includeTraceId: true });
@@ -84,7 +91,7 @@ const withAuthenticatedRegistryHandler = (
           operation: 'instance_registry_service_action',
           auth_kind: resolution.context.authKind,
           actor_id: resolution.context.user.id,
-          action_id: actionId,
+          action_id: actionResolution,
           request_id: logContext.request_id,
         });
         return await handler(request, resolution.context);
@@ -119,11 +126,15 @@ export const instanceRegistryHandlers = {
   getInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.read', getInstanceInternal),
   getPluginTenantReadiness: async (request: Request): Promise<Response> =>
-    withAuthenticatedRegistryHandler(request, 'instance.read', getPluginTenantReadinessInternal),
+    withAuthenticatedRegistryHandler(
+      request,
+      REGISTRY_ACTIONS.pluginLifecycleRead,
+      getPluginTenantReadinessInternal
+    ),
   startPluginTenantLifecycle: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(
       request,
-      'instance.reconcile',
+      resolvePluginTenantLifecycleServiceAction,
       startPluginTenantLifecycleInternal
     ),
   createInstance: async (request: Request): Promise<Response> =>

@@ -376,6 +376,12 @@ describe('plugin registries', () => {
       },
       {
         pluginId: 'news',
+        contributionType: 'action',
+        contributionId: 'news.open',
+        code: 'missing_access_requirement',
+      },
+      {
+        pluginId: 'news',
         contributionType: 'route',
         contributionId: 'news-list',
         code: 'missing_access_requirement',
@@ -407,9 +413,7 @@ describe('plugin registries', () => {
   });
 
   describe('plugin access requirement characterization', () => {
-    it('accepts absent or structurally identical linked requirements', () => {
-      expect(() => createPluginRegistry([pluginWithLinkedRequirements(undefined)])).not.toThrow();
-
+    it('accepts structurally identical linked requirements', () => {
       expect(() =>
         createPluginRegistry([
           pluginWithLinkedRequirements(
@@ -420,32 +424,68 @@ describe('plugin registries', () => {
       ).not.toThrow();
     });
 
+    it('rejects every linked contribution when an explicit access requirement is missing', () => {
+      expect(() => createPluginRegistry([pluginWithLinkedRequirements(undefined)])).toThrow(
+        'plugin_access_requirement_missing:news:news.open:news.open'
+      );
+
+      const requirement = tenantRequirement();
+      const linkedPlugin = pluginWithLinkedRequirements(requirement);
+      expect(() =>
+        createPluginRegistry([
+          {
+            ...linkedPlugin,
+            routes: linkedPlugin.routes.map((route) => ({
+              ...route,
+              accessRequirement: undefined,
+            })),
+          },
+        ])
+      ).toThrow('plugin_access_requirement_missing:news:news-open:news.open');
+
+      expect(() =>
+        createPluginRegistry([
+          {
+            ...linkedPlugin,
+            navigation: [
+              {
+                id: 'news-open-nav',
+                to: '/plugins/news/open',
+                titleKey: 'news.open',
+                section: 'dataManagement',
+                actionId: 'news.open',
+              },
+            ],
+          },
+        ])
+      ).toThrow('plugin_access_requirement_missing:news:news-open-nav:news.open');
+    });
+
     it.each([
-      ['action', undefined, {}],
-      ['route', {}, undefined],
-      ['null action', null, {}],
-      ['null route', {}, null],
+      ['positive', { allowed: true }],
+      ['negative', { allowed: false }],
+      ['malformed', {}],
+      ['null', null],
     ] as const)(
-      'keeps a null or absent capability equivalent to a malformed empty capability on the %s requirement',
-      (_source, actionCapability, routeCapability) => {
+      'rejects a %s static resource capability before publication',
+      (_name, capability) => {
         expect(() =>
           createPluginRegistry([
             pluginWithLinkedRequirements(
-              tenantRequirement({ resourceCapability: actionCapability as never }),
-              tenantRequirement({ resourceCapability: routeCapability as never })
+              tenantRequirement({ resourceCapability: capability as never })
             ),
           ])
-        ).not.toThrow();
+        ).toThrow('plugin_resource_capability_forbidden:news:news.open');
       }
     );
 
     it('rejects a requirement present on only one linked contribution', () => {
       expect(() =>
         createPluginRegistry([pluginWithLinkedRequirements(tenantRequirement(), undefined)])
-      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+      ).toThrow('plugin_access_requirement_missing:news:news-open:news.open');
       expect(() =>
         createPluginRegistry([pluginWithLinkedRequirements(undefined, tenantRequirement())])
-      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+      ).toThrow('plugin_access_requirement_missing:news:news.open:news.open');
     });
 
     it.each([
@@ -682,9 +722,9 @@ describe('plugin registries', () => {
         actions: { mode: 'all' as 'allOf', values: ['news.read', 'news.create'] },
       });
 
-      expect(() => createPluginRegistry([pluginWithLinkedRequirements(invalidRequirement)])).toThrow(
-        'plugin_access_requirement_mode_invalid:news:news.open:actions:all'
-      );
+      expect(() =>
+        createPluginRegistry([pluginWithLinkedRequirements(invalidRequirement)])
+      ).toThrow('plugin_access_requirement_mode_invalid:news:news.open:actions:all');
 
       const plugin = pluginWithLinkedRequirements(tenantRequirement());
       expect(() =>
@@ -747,33 +787,6 @@ describe('plugin registries', () => {
           },
         ])
       ).toThrow('plugin_access_requirement_legacy_mismatch:news:news.open:news.create');
-    });
-
-    it.each([
-      ['action', { action: 'news.create' }],
-      ['allowed', { allowed: false }],
-      ['instanceId', { instanceId: 'instance-2' }],
-      ['organizationId', { organizationId: 'organization-2' }],
-      ['resourceType', { resourceType: 'news.category' }],
-      ['resourceId', { resourceId: 'article-2' }],
-    ] as const)('compares resource capability field %s exactly', (_field, override) => {
-      const capability = {
-        action: 'news.read',
-        allowed: true,
-        instanceId: 'instance-1',
-        organizationId: 'organization-1',
-        resourceType: 'news.article',
-        resourceId: 'article-1',
-      } as const;
-
-      expect(() =>
-        createPluginRegistry([
-          pluginWithLinkedRequirements(
-            tenantRequirement({ resourceCapability: capability }),
-            tenantRequirement({ resourceCapability: { ...capability, ...override } })
-          ),
-        ])
-      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
     });
   });
 
@@ -1616,9 +1629,7 @@ describe('plugin registries', () => {
           ],
         },
       ])
-    ).toThrow(
-      'plugin_route_action_access_requirement_mismatch:news:news.requirement-missing:news.secure'
-    );
+    ).toThrow('plugin_access_requirement_missing:news:news.requirement-missing:news.secure');
     expect(() =>
       createPluginRegistry([
         {

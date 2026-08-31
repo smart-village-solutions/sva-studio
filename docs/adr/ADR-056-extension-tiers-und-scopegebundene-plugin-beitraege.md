@@ -59,6 +59,21 @@ Root-Berechtigung verwenden.
     Permission-Definitionen und manuelle Rollenzuweisungen bleiben erhalten,
     werden aber für inaktive Module zentral aus den effektiven Berechtigungen
     gefiltert.
+14. Jede deklarierte Action und jeder damit oder mit einem Server-Handler
+    verknüpfte Route- beziehungsweise Navigationseintrag besitzt eine explizite
+    vollständige Access-Anforderung. Fehlende Anforderungen verhindern die
+    Snapshot-Veröffentlichung; unverknüpfte Beiträge werden dadurch nicht
+    implizit als öffentlich oder nur authentifiziert eingestuft.
+15. Plugin-Deskriptoren dürfen keine `resourceCapability` und insbesondere
+    keine positive Ressourcenentscheidung liefern. Ressourcenbezogene Evidenz
+    wird ausschließlich vom Host aus validiertem Request-Kontext und
+    autoritativen Fachdaten aufgelöst und getrennt von der statischen
+    Access-Anforderung an den zentralen Evaluator übergeben.
+16. Der Lifecycle-Service-Vertrag trennt das Lesen mit
+    `instance.pluginLifecycle.read` von den fünf ausführbaren Actions
+    `.provision`, `.readiness`, `.reconcile`, `.suspend` und `.reactivate`.
+    Die Operation wird vor der Service-Token-Autorisierung validiert; eine
+    Action autorisiert keine andere Operation.
 
 ## Begründung
 
@@ -92,6 +107,8 @@ Root-Berechtigung verwenden.
   der Host-Allowlist und ihrer Tests.
 - Der Host muss Server-Entry und Deskriptor-Snapshot beim Bootstrap vollständig
   zusammenführen; ein fehlender Handler verhindert den Plugin-Server-Dispatch.
+- Service-Accounts benötigen für Lifecycle-Lesen und jede ausführbare Operation
+  getrennte Client-Rollen.
 
 ## Verworfene Alternativen
 

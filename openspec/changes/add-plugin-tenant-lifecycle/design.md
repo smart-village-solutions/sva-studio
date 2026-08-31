@@ -113,6 +113,21 @@ Ein Plugin kann aktiv, aber noch nicht fachlich bereit sein. Tenant-Routen und
 interne Fachzugriffe bleiben bis zur erforderlichen Readiness fail-closed. Bei
 `required` blockiert fehlende Readiness zusätzlich die Installationsbereitschaft.
 
+### Autorisierung stammt ausschließlich aus Hostevidenz
+
+Autorisierbare Plugin-Beiträge besitzen vor Snapshot-Veröffentlichung eine
+explizite vollständige Access-Anforderung. Plugin-Deskriptoren dürfen keine
+statische `resourceCapability` tragen. Bei ressourcenbezogenen Server-Handlern
+löst ausschließlich der Host die Capability aus validiertem Request-Kontext
+und autoritativen Fachdaten auf und übergibt sie getrennt von der statischen
+Anforderung an den zentralen Access-Evaluator.
+
+Für Service-Credentials trennt der Host das Lesen des Readiness-Modells von
+jeder ausführbaren Lifecycle-Operation. Der Request-Body wird validiert, bevor
+die Operation auf ihre fully-qualified Action abgebildet wird. Browser-Sessions
+behalten die bestehende Plattformautorisierung und bei Mutationen den
+CSRF-Schutz.
+
 ### Persistenz bleibt plugin-owned
 
 Der gemeinsame Vertrag umfasst Joblauf, Secret-Zugriff nach Capability,

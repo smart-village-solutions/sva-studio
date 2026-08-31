@@ -311,7 +311,7 @@ export const collectPluginAccessTransitionDiagnostics = (
     const pluginId = normalizePluginNamespace(plugin.id);
     const diagnostics: PluginAccessTransitionDiagnostic[] = [];
     for (const action of plugin.actions ?? []) {
-      if (action.requiredAction && !action.accessRequirement) {
+      if (!action.accessRequirement) {
         diagnostics.push({
           pluginId,
           contributionType: 'action',
@@ -321,7 +321,7 @@ export const collectPluginAccessTransitionDiagnostics = (
       }
     }
     for (const route of plugin.routes) {
-      if (route.guard && !route.accessRequirement) {
+      if ((route.guard || route.actionId || route.serverHandlerId) && !route.accessRequirement) {
         diagnostics.push({
           pluginId,
           contributionType: 'route',
@@ -331,7 +331,10 @@ export const collectPluginAccessTransitionDiagnostics = (
       }
     }
     for (const navigationItem of plugin.navigation ?? []) {
-      if (navigationItem.requiredAction && !navigationItem.accessRequirement) {
+      if (
+        (navigationItem.requiredAction || navigationItem.actionId) &&
+        !navigationItem.accessRequirement
+      ) {
         diagnostics.push({
           pluginId,
           contributionType: 'navigation',
@@ -463,12 +466,14 @@ const assertPluginAccessRequirement = (
   requirement: UiAccessRequirement | undefined,
   legacyRequiredAction: string | undefined,
   extensionTier: PluginExtensionTier,
-  allowPlatform: boolean
+  allowPlatform: boolean,
+  requiredReference?: string
 ): void => {
   if (!requirement) {
-    if (legacyRequiredAction) {
+    const missingReference = legacyRequiredAction ?? requiredReference;
+    if (missingReference) {
       throw new Error(
-        `plugin_access_requirement_missing:${pluginNamespace}:${source}:${legacyRequiredAction}`
+        `plugin_access_requirement_missing:${pluginNamespace}:${source}:${missingReference}`
       );
     }
     return;
@@ -499,6 +504,9 @@ const assertPluginAccessRequirement = (
     throw new Error(
       `plugin_access_requirement_scope_invalid:${pluginNamespace}:${source}:${requirement.kind}`
     );
+  }
+  if ('resourceCapability' in requirement) {
+    throw new Error(`plugin_resource_capability_forbidden:${pluginNamespace}:${source}`);
   }
   if (requirement.moduleId !== pluginNamespace) {
     throw new Error(
@@ -786,7 +794,8 @@ const assertPluginRegistryActions = ({
       action.accessRequirement,
       action.requiredAction,
       extensionTier,
-      true
+      true,
+      action.id
     );
   }
 };
@@ -913,6 +922,11 @@ const assertPluginRegistryRoutes = ({
         `plugin_route_action_owner_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`,
         `plugin_route_action_missing:${pluginNamespace}:${route.id}:${routeActionId}`
       );
+      if (!route.accessRequirement) {
+        throw new Error(
+          `plugin_access_requirement_missing:${pluginNamespace}:${route.id}:${routeActionId}`
+        );
+      }
       if (route.guard !== action.requiredAction) {
         throw new Error(
           `plugin_route_action_guard_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
@@ -932,6 +946,11 @@ const assertPluginRegistryRoutes = ({
       if (!serverHandler) {
         throw new Error(
           `plugin_route_server_handler_missing:${pluginNamespace}:${route.id}:${serverHandlerId}`
+        );
+      }
+      if (!route.accessRequirement) {
+        throw new Error(
+          `plugin_access_requirement_missing:${pluginNamespace}:${route.id}:${serverHandlerId}`
         );
       }
       if (
@@ -1018,6 +1037,11 @@ const assertPluginRegistryNavigation = ({
       `plugin_navigation_action_owner_mismatch:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`,
       `plugin_navigation_action_missing:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`
     );
+    if (!navigationItem.accessRequirement) {
+      throw new Error(
+        `plugin_access_requirement_missing:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`
+      );
+    }
     if (
       navigationItem.requiredAction &&
       action.requiredAction &&

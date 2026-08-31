@@ -1,4 +1,8 @@
-import { evaluateUiAccess, type EffectivePermission } from '@sva/iam-core';
+import {
+  evaluateUiAccess,
+  type EffectivePermission,
+  type UiResourceCapability,
+} from '@sva/iam-core';
 import type {
   PluginServerExecutionHandler,
   PluginServerHandlerRegistryEntry,
@@ -27,6 +31,13 @@ export type PluginServerHandlerDispatcherDependencies = Readonly<{
     readonly keycloakSubject: string;
     readonly organizationId?: string;
   }) => Promise<EffectivePermissionsResolution>;
+  resolveResourceCapability?: (input: {
+    readonly request: Request;
+    readonly descriptor: PluginServerHandlerRegistryEntry;
+    readonly instanceId: string;
+    readonly organizationId?: string;
+    readonly actorAccountId: string;
+  }) => Promise<UiResourceCapability | undefined>;
   validateCsrf?: typeof validateCsrf;
   translate?: (request: Request, key: PluginServerHandlerMessageKey) => string;
 }>;
@@ -95,6 +106,8 @@ const authorizeTenantHandler = async (input: {
     PluginServerHandlerDispatcherDependencies['resolvePermissions']
   >;
   readonly request: Request;
+  readonly resolveResourceCapability:
+    PluginServerHandlerDispatcherDependencies['resolveResourceCapability'] | undefined;
   readonly translate: NonNullable<PluginServerHandlerDispatcherDependencies['translate']>;
 }): Promise<Response | null> => {
   const requirement = input.descriptor.accessRequirement;
@@ -129,9 +142,21 @@ const authorizeTenantHandler = async (input: {
       'permissionCheckUnavailable'
     );
   }
+  const resourceCapability = input.resolveResourceCapability
+    ? await input.resolveResourceCapability({
+        request: input.request,
+        descriptor: input.descriptor,
+        instanceId,
+        ...(input.context.activeOrganizationId
+          ? { organizationId: input.context.activeOrganizationId }
+          : {}),
+        actorAccountId: input.context.user.id,
+      })
+    : undefined;
   const decision = evaluateUiAccess({
     isAuthenticated: true,
     requirement,
+    ...(resourceCapability ? { resourceCapability } : {}),
     snapshot: {
       status: 'ready',
       generation: 0,
@@ -163,6 +188,7 @@ export const createPluginServerHandlerDispatcher = (input: {
     ((request: Request) => isCanonicalAuthHost(resolveEffectiveRequestHost(request)));
   const readTenantAccess = input.dependencies?.readTenantAccess ?? readConfiguredPluginTenantAccess;
   const resolvePermissions = input.dependencies?.resolvePermissions ?? resolveEffectivePermissions;
+  const resolveResourceCapability = input.dependencies?.resolveResourceCapability;
   const validateRequestCsrf = input.dependencies?.validateCsrf ?? validateCsrf;
   const translate = resolveTranslation(input.dependencies);
   const descriptors = [...input.descriptors.values()];
@@ -208,6 +234,7 @@ export const createPluginServerHandlerDispatcher = (input: {
           descriptor,
           readTenantAccess,
           resolvePermissions,
+          resolveResourceCapability,
           request,
           translate,
         });

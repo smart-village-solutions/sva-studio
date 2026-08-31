@@ -5,6 +5,8 @@ const state = vi.hoisted(() => ({
   getInstanceById: vi.fn(),
   readConfiguredPluginTenantReadiness: vi.fn(),
   startConfiguredPluginTenantLifecycle: vi.fn(),
+  isServiceRequest: true,
+  validateSessionCsrf: vi.fn(() => null),
 }));
 
 vi.mock('@sva/server-runtime', async (importOriginal) => ({
@@ -22,7 +24,11 @@ vi.mock('../iam-instance-registry/repository.js', () => ({
 }));
 
 vi.mock('../iam-instance-registry/service-token.js', () => ({
-  isAuthenticatedRegistryServiceRequest: () => true,
+  isAuthenticatedRegistryServiceRequest: () => state.isServiceRequest,
+}));
+
+vi.mock('../iam-account-management/csrf.js', () => ({
+  validateCsrf: state.validateSessionCsrf,
 }));
 
 vi.mock('./read-model.js', () => ({
@@ -41,6 +47,8 @@ const context = {
 describe('plugin tenant lifecycle HTTP handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.isServiceRequest = true;
+    state.validateSessionCsrf.mockReturnValue(null);
     state.getInstanceById.mockResolvedValue({ instanceId: 'tenant-a' });
     state.readConfiguredPluginTenantReadiness.mockResolvedValue([
       { pluginId: 'speech', status: 'blocked' },
@@ -49,6 +57,41 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
       lifecycle: { pluginId: 'speech', desiredGeneration: 4 },
       job: { id: 'job-4' },
     });
+  });
+
+  it.each([
+    ['provision', 'instance.pluginLifecycle.provision'],
+    ['readiness', 'instance.pluginLifecycle.readiness'],
+    ['reconcile', 'instance.pluginLifecycle.reconcile'],
+    ['suspend', 'instance.pluginLifecycle.suspend'],
+    ['reactivate', 'instance.pluginLifecycle.reactivate'],
+  ] as const)('maps %s to its dedicated service action', async (operation, expectedAction) => {
+    const { resolvePluginTenantLifecycleServiceAction } = await import('./http.js');
+    const result = await resolvePluginTenantLifecycleServiceAction(
+      new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pluginId: 'speech', operation }),
+      })
+    );
+
+    expect(result).toBe(expectedAction);
+  });
+
+  it('rejects an invalid operation before selecting a service action', async () => {
+    const { resolvePluginTenantLifecycleServiceAction } = await import('./http.js');
+    const result = await resolvePluginTenantLifecycleServiceAction(
+      new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pluginId: 'speech', operation: 'unknown' }),
+      })
+    );
+
+    expect(result).toBeInstanceOf(Response);
+    if (result instanceof Response) {
+      expect(result.status).toBe(400);
+    }
   });
 
   it('returns the generic readiness model for an existing instance', async () => {
@@ -87,6 +130,30 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
         requestId: 'request-a',
       })
     );
+  });
+
+  it('keeps session lifecycle mutations behind the central CSRF gate', async () => {
+    state.isServiceRequest = false;
+    const csrfResponse = new Response(null, { status: 403 });
+    state.validateSessionCsrf.mockReturnValueOnce(csrfResponse);
+    const { startPluginTenantLifecycleInternal } = await import('./http.js');
+    const request = new Request(
+      'https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pluginId: 'speech', operation: 'reconcile' }),
+      }
+    );
+
+    const response = await startPluginTenantLifecycleInternal(request, {
+      authKind: 'session',
+      user: { id: 'admin-1', roles: ['system_admin'] },
+    } as never);
+
+    expect(response).toBe(csrfResponse);
+    expect(state.validateSessionCsrf).toHaveBeenCalledWith(request, 'request-a');
+    expect(state.startConfiguredPluginTenantLifecycle).not.toHaveBeenCalled();
   });
 
   it('maps inactive plugin repairs to a stable conflict response', async () => {

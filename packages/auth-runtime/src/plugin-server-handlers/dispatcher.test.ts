@@ -39,6 +39,19 @@ const platformDescriptor = (): PluginServerHandlerRegistryEntry => ({
   },
 });
 
+const itemDescriptor = (): PluginServerHandlerRegistryEntry => ({
+  ...tenantDescriptor(),
+  id: 'news.update',
+  path: '/api/v1/plugins/news/items/article-1',
+  method: 'PATCH',
+  actionId: 'news.update',
+  accessRequirement: {
+    kind: 'tenant',
+    moduleId: 'news',
+    actions: { mode: 'allOf', values: ['news.update'] },
+  },
+});
+
 const authenticateAs = (
   user: { id: string; roles: string[]; instanceId?: string },
   activeOrganizationId?: string
@@ -137,6 +150,156 @@ describe('plugin server handler dispatcher', () => {
       organizationId: 'organization-a',
     });
   });
+
+  it.each([
+    ['missing host evidence', undefined],
+    [
+      'foreign instance',
+      {
+        action: 'news.update',
+        allowed: true,
+        instanceId: 'tenant-b',
+        organizationId: 'organization-a',
+        resourceType: 'news.article',
+        resourceId: 'article-1',
+      },
+    ],
+    [
+      'foreign organization',
+      {
+        action: 'news.update',
+        allowed: true,
+        instanceId: 'tenant-a',
+        organizationId: 'organization-b',
+        resourceType: 'news.article',
+        resourceId: 'article-1',
+      },
+    ],
+    [
+      'wrong action',
+      {
+        action: 'news.delete',
+        allowed: true,
+        instanceId: 'tenant-a',
+        organizationId: 'organization-a',
+        resourceType: 'news.article',
+        resourceId: 'article-1',
+      },
+    ],
+    [
+      'wrong resource type',
+      {
+        action: 'news.update',
+        allowed: true,
+        instanceId: 'tenant-a',
+        organizationId: 'organization-a',
+        resourceType: 'news.category',
+        resourceId: 'article-1',
+      },
+    ],
+    [
+      'wrong resource id',
+      {
+        action: 'news.update',
+        allowed: true,
+        instanceId: 'tenant-a',
+        organizationId: 'organization-a',
+        resourceType: 'news.article',
+        resourceId: 'article-2',
+      },
+    ],
+  ] as const)('denies scoped handlers with %s before invocation', async (_name, evidence) => {
+    const descriptor = itemDescriptor();
+    const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('unexpected'));
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs(
+          { id: 'user-1', roles: [], instanceId: 'tenant-a' },
+          'organization-a'
+        ),
+        readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
+        resolvePermissions: vi.fn().mockResolvedValue({
+          ok: true,
+          permissions: [
+            {
+              action: 'news.update',
+              resourceType: 'news.article',
+              accessScope: 'organization',
+              organizationId: 'organization-a',
+              resourceId: 'article-1',
+            },
+          ],
+        }),
+        resolveResourceCapability: evidence ? vi.fn().mockResolvedValue(evidence) : undefined,
+        validateCsrf: vi.fn(() => null),
+      },
+    });
+
+    const response = await dispatch(
+      new Request('https://tenant.test/api/v1/plugins/news/items/article-1', {
+        method: 'PATCH',
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it.each(['own', 'organization'] as const)(
+    'passes only host-derived resource evidence for %s scope into the central evaluator',
+    async (accessScope) => {
+      const descriptor = itemDescriptor();
+      const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('ok'));
+      const resolveResourceCapability = vi.fn().mockResolvedValue({
+        action: 'news.update',
+        allowed: true,
+        instanceId: 'tenant-a',
+        organizationId: 'organization-a',
+        resourceType: 'news.article',
+        resourceId: 'article-1',
+      });
+      const dispatch = createPluginServerHandlerDispatcher({
+        descriptors: new Map([[descriptor.id, descriptor]]),
+        handlers: { [descriptor.id]: handler },
+        dependencies: {
+          authenticate: authenticateAs(
+            { id: 'user-1', roles: [], instanceId: 'tenant-a' },
+            'organization-a'
+          ),
+          readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
+          resolvePermissions: vi.fn().mockResolvedValue({
+            ok: true,
+            permissions: [
+              {
+                action: 'news.update',
+                resourceType: 'news.article',
+                accessScope,
+                resourceId: 'article-1',
+                ...(accessScope === 'organization' ? { organizationId: 'organization-a' } : {}),
+              },
+            ],
+          }),
+          resolveResourceCapability,
+          validateCsrf: vi.fn(() => null),
+        },
+      });
+      const request = new Request('https://tenant.test/api/v1/plugins/news/items/article-1', {
+        method: 'PATCH',
+      });
+
+      expect((await dispatch(request))?.status).toBe(200);
+      expect(resolveResourceCapability).toHaveBeenCalledWith({
+        request,
+        descriptor,
+        instanceId: 'tenant-a',
+        organizationId: 'organization-a',
+        actorAccountId: 'user-1',
+      });
+      expect(handler).toHaveBeenCalledOnce();
+    }
+  );
 
   it('rejects mutating handlers when central CSRF validation fails', async () => {
     const descriptor = { ...tenantDescriptor(), id: 'news.create', method: 'POST' as const };

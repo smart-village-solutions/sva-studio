@@ -53,7 +53,6 @@ export type UiAccessRequirement =
       actions: Readonly<{ mode: 'allOf' | 'anyOf'; values: readonly string[] }>;
       moduleId?: string;
       resourceContext?: 'collection';
-      resourceCapability?: UiResourceCapability;
     }>;
 
 type PendingEffectiveAccessSnapshot = Readonly<{
@@ -100,6 +99,7 @@ export type UiAccessDecision =
 export type EvaluateUiAccessInput = Readonly<{
   isAuthenticated: boolean;
   requirement: UiAccessRequirement;
+  resourceCapability?: UiResourceCapability;
   snapshot?: EffectiveAccessSnapshot;
 }>;
 
@@ -148,15 +148,21 @@ const evaluatePlatformRequirement = (
 const capabilityMatchesScope = (
   capability: UiResourceCapability,
   scope: Extract<UiAccessScope, { kind: 'tenant' }>,
-  action: string
+  action: string,
+  permission: EffectivePermission
 ): boolean =>
   capability.action === action &&
   capability.instanceId === scope.instanceId &&
+  capability.resourceType === permission.resourceType &&
+  (permission.resourceId === undefined || capability.resourceId === permission.resourceId) &&
+  (permission.organizationId === undefined ||
+    capability.organizationId === permission.organizationId) &&
   (capability.organizationId === undefined || capability.organizationId === scope.organizationId);
 
 const evaluateTenantRequirement = (
   requirement: Extract<UiAccessRequirement, { kind: 'tenant' }>,
-  snapshot: EffectiveAccessSnapshot
+  snapshot: EffectiveAccessSnapshot,
+  resourceCapability: UiResourceCapability | undefined
 ): UiAccessDecision => {
   if (
     snapshot.scope.kind !== 'tenant' ||
@@ -166,7 +172,10 @@ const evaluateTenantRequirement = (
   ) {
     return deny('scope_mismatch');
   }
-  if (requirement.actions.values.length === 0 || requirement.actions.values.some((action) => !isFullyQualifiedAction(action))) {
+  if (
+    requirement.actions.values.length === 0 ||
+    requirement.actions.values.some((action) => !isFullyQualifiedAction(action))
+  ) {
     return deny('permission_missing');
   }
   if (requirement.moduleId && !snapshot.assignedModules.includes(requirement.moduleId)) {
@@ -183,7 +192,9 @@ const evaluateTenantRequirement = (
 
   const unscopedActions = new Set(
     [...permissionsByAction.entries()]
-      .filter(([, permissions]) => permissions.some((permission) => !hasScopedConstraints(permission)))
+      .filter(([, permissions]) =>
+        permissions.some((permission) => !hasScopedConstraints(permission))
+      )
       .map(([action]) => action)
   );
   if (satisfiesSet(requirement.actions, unscopedActions)) {
@@ -202,7 +213,7 @@ const evaluateTenantRequirement = (
     return { status: 'allowed', reason: 'allowed_by_permission' };
   }
 
-  const capability = requirement.resourceCapability;
+  const capability = resourceCapability;
   if (!capability) {
     return deny('resource_capability_missing');
   }
@@ -212,7 +223,13 @@ const evaluateTenantRequirement = (
 
   const scopedActions = requirement.actions.values.filter((action) => !unscopedActions.has(action));
   const matchingScopedActions = new Set(
-    scopedActions.filter((action) => capabilityMatchesScope(capability, snapshot.scope, action))
+    scopedActions.filter((action) =>
+      permissionsByAction
+        .get(action)
+        ?.some((permission) =>
+          capabilityMatchesScope(capability, snapshot.scope, action, permission)
+        )
+    )
   );
   const actionRequirement = {
     mode: requirement.actions.mode,
@@ -248,5 +265,5 @@ export const evaluateUiAccess = (input: EvaluateUiAccessInput): UiAccessDecision
 
   return input.requirement.kind === 'platform'
     ? evaluatePlatformRequirement(input.requirement, snapshot)
-    : evaluateTenantRequirement(input.requirement, snapshot);
+    : evaluateTenantRequirement(input.requirement, snapshot, input.resourceCapability);
 };

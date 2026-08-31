@@ -33,3 +33,4 @@
 - [x] 5.4 `openspec validate add-plugin-tenant-lifecycle --strict`, Dokumentations- und Platzierungschecks ausführen
 - [x] 5.5 Zustands-, Boundary-, Crash- und Evidenzmatrizen im System-Assurance-Vertrag festlegen
 - [x] 5.6 System-Assurance-Vertrag menschlich freigeben; Folgepläne 038 bis 041 bis dahin nicht beginnen
+- [x] 5.7 Plugin-Autorisierung auf explizite Anforderungen, Host-Resource-Evidenz und getrennte Lifecycle-Service-Actions härten

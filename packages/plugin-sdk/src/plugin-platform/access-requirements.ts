@@ -4,19 +4,10 @@
  * Plugin registries use these helpers to keep route, navigation, and action access
  * metadata semantically aligned without coupling the comparison to registry wiring.
  */
-import type { UiAccessRequirement, UiResourceCapability } from '@sva/iam-core';
+import type { UiAccessRequirement } from '@sva/iam-core';
 
 type TenantAccessRequirement = Extract<UiAccessRequirement, { kind: 'tenant' }>;
 type PlatformAccessRequirement = Extract<UiAccessRequirement, { kind: 'platform' }>;
-
-const resourceCapabilityFields = [
-  'action',
-  'allowed',
-  'instanceId',
-  'organizationId',
-  'resourceType',
-  'resourceId',
-] as const satisfies readonly (keyof UiResourceCapability)[];
 
 const haveEqualValues = (left: readonly string[], right: readonly string[]): boolean => {
   const leftValues = new Set(left);
@@ -27,11 +18,6 @@ const haveEqualValues = (left: readonly string[], right: readonly string[]): boo
   );
 };
 
-const haveEqualResourceCapabilities = (
-  left: UiResourceCapability | undefined,
-  right: UiResourceCapability | undefined
-): boolean => resourceCapabilityFields.every((field) => left?.[field] === right?.[field]);
-
 const haveEqualTenantRequirements = (
   left: TenantAccessRequirement,
   right: TenantAccessRequirement
@@ -39,8 +25,7 @@ const haveEqualTenantRequirements = (
   left.moduleId === right.moduleId &&
   left.resourceContext === right.resourceContext &&
   left.actions.mode === right.actions.mode &&
-  haveEqualValues(left.actions.values, right.actions.values) &&
-  haveEqualResourceCapabilities(left.resourceCapability, right.resourceCapability);
+  haveEqualValues(left.actions.values, right.actions.values);
 
 const haveEqualPlatformRequirements = (
   left: PlatformAccessRequirement,

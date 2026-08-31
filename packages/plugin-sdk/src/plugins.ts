@@ -443,6 +443,19 @@ const assertPluginPermissionReference = (
   }
 };
 
+const assertPluginAccessRequirementMode = (
+  mode: unknown,
+  pluginNamespace: string,
+  source: string,
+  field: 'actions' | 'roles'
+): void => {
+  if (mode !== 'allOf' && mode !== 'anyOf') {
+    throw new Error(
+      `plugin_access_requirement_mode_invalid:${pluginNamespace}:${source}:${field}:${String(mode)}`
+    );
+  }
+};
+
 const assertPluginAccessRequirement = (
   plugin: PluginDefinition,
   pluginNamespace: string,
@@ -471,6 +484,7 @@ const assertPluginAccessRequirement = (
         `plugin_platform_access_legacy_guard_forbidden:${pluginNamespace}:${source}:${legacyRequiredAction}`
       );
     }
+    assertPluginAccessRequirementMode(requirement.roles.mode, pluginNamespace, source, 'roles');
     if (requirement.roles.values.length === 0) {
       throw new Error(`plugin_platform_access_roles_missing:${pluginNamespace}:${source}`);
     }
@@ -491,6 +505,7 @@ const assertPluginAccessRequirement = (
       `plugin_access_requirement_module_mismatch:${pluginNamespace}:${source}:${requirement.moduleId ?? 'missing'}`
     );
   }
+  assertPluginAccessRequirementMode(requirement.actions.mode, pluginNamespace, source, 'actions');
   if (requirement.actions.values.length === 0) {
     throw new Error(`plugin_access_requirement_actions_missing:${pluginNamespace}:${source}`);
   }

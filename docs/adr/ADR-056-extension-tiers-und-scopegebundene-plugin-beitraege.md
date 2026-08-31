@@ -25,7 +25,9 @@ Root-Berechtigung verwenden.
    `instance_registry_admin`.
 4. Route, Navigation, Action und deklarativer Server-Handler eines verknüpften Plugin-Pfads müssen dieselbe
    vollständige Autorisierungsanforderung besitzen. Der Host vergleicht Scope,
-   Modus und Rollen beziehungsweise Actions als Mengen.
+   Modus und Rollen beziehungsweise Actions als Mengen. Für Action- und
+   Rollenlisten sind ausschließlich `allOf` und `anyOf` zulässig; unbekannte
+   Laufzeitwerte werden vor der Snapshot-Veröffentlichung fail-closed abgewiesen.
 5. Legacy-Tenant-Guards und `requiredAction` sind für Plattformbeiträge
    unzulässig. Plattformrollen begründen umgekehrt keine Tenant-Berechtigung.
 6. Die Manifest-Metadaten werden durch Katalog und Loader in den kanonischen

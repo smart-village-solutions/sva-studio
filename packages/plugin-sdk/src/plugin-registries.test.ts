@@ -677,6 +677,34 @@ describe('plugin registries', () => {
       ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
     });
 
+    it('rejects invalid tenant access modes before publishing actions or handlers', () => {
+      const invalidRequirement = tenantRequirement({
+        actions: { mode: 'all' as 'allOf', values: ['news.read', 'news.create'] },
+      });
+
+      expect(() => createPluginRegistry([pluginWithLinkedRequirements(invalidRequirement)])).toThrow(
+        'plugin_access_requirement_mode_invalid:news:news.open:actions:all'
+      );
+
+      const plugin = pluginWithLinkedRequirements(tenantRequirement());
+      expect(() =>
+        createPluginRegistry([
+          {
+            ...plugin,
+            serverHandlers: [
+              {
+                id: 'news.load-items',
+                path: '/api/v1/plugins/news/items',
+                method: 'GET',
+                actionId: 'news.open',
+                accessRequirement: invalidRequirement,
+              },
+            ],
+          },
+        ])
+      ).toThrow('plugin_access_requirement_mode_invalid:news:news.load-items:actions:all');
+    });
+
     it('keeps empty actions, module mismatch, resource context, and legacy errors distinct', () => {
       expect(() =>
         createPluginRegistry([

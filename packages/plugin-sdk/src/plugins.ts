@@ -809,6 +809,11 @@ const assertPluginRegistryServerHandlers = ({
         `plugin_server_handler_method_invalid:${pluginNamespace}:${handlerId}:${String(handler.method)}`
       );
     }
+    if (!handler.accessRequirement) {
+      throw new Error(
+        `plugin_server_handler_access_requirement_missing:${pluginNamespace}:${handlerId}`
+      );
+    }
     assertPluginAccessRequirement(
       plugin,
       pluginNamespace,

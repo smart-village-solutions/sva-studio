@@ -43,6 +43,7 @@ import {
   resolveStudioContentDetailPath,
   type UiAccessRequirement,
   type PluginDefinition,
+  type PluginServerHandlerDefinition,
 } from './index.js';
 
 const component = () => null;
@@ -528,6 +529,29 @@ describe('plugin registries', () => {
           { extensionTiers: new Map([['news', 'admin']]) }
         )
       ).toThrow('plugin_server_handler_method_invalid:news:news.load-instances:post');
+    });
+
+    it('rejects server handlers without an access requirement at runtime', () => {
+      const plugin = pluginWithLinkedRequirements(platformRequirement());
+
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              ...plugin,
+              serverHandlers: [
+                {
+                  id: 'news.load-instances',
+                  path: '/api/v1/plugins/news/instances',
+                  method: 'GET',
+                  actionId: 'news.open',
+                } as PluginServerHandlerDefinition,
+              ],
+            },
+          ],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow('plugin_server_handler_access_requirement_missing:news:news.load-instances');
     });
 
     it('rejects cross-scope route and server handler links before publication', () => {

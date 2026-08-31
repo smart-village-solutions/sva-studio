@@ -11,7 +11,7 @@
 
 ## Scopegebundene Plugin-Routenmaterialisierung
 
-1. Der Plugin-Loader validiert Tier, Namespace und vollständige Access-Anforderung von Route, Navigation, Action und referenziertem Server-Handler gemeinsam.
+1. Der Plugin-Loader validiert Tier, Namespace und vollständige Access-Anforderung von Route, Navigation, Action und referenziertem Server-Handler gemeinsam. Ein Server-Handler ohne eigene Access-Anforderung wird bereits vor der Snapshot-Veröffentlichung abgelehnt.
 2. Der Build-time-Snapshot veröffentlicht getrennte Plattform- und Tenant-Sichten; ein widersprüchlicher Plugin-Descriptor erzeugt keinen partiellen Eintrag.
 3. Serverseitig bestimmt `resolveAuthConfigForRequest` aus dem Request-Host den Scope des Routenbaums.
 4. `/auth/me` gibt dieselbe hostvalidierte Auflösung im Header `X-SVA-Plugin-Route-Scope` zurück, auch wenn keine Session besteht. Der Browser verwendet diesen Header für einen hydrierungsgleichen Routenbaum.

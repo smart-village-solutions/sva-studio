@@ -307,12 +307,32 @@ describe('plugin operation runner task list', () => {
 
   it('blocks a queued lifecycle job when the plugin became inactive', async () => {
     const updateJobState = vi.fn(async () => null);
+    const updateLifecycleJobState = vi.fn(async () => null);
+    const lifecycleJob = {
+      ...baseJob,
+      inputPayload: {
+        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+      },
+    };
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
-        getJobById: vi.fn(async () => baseJob),
+        getJobById: vi.fn(async () => lifecycleJob),
         updateJobState,
         appendJobEvent: vi.fn(async () => null),
       })
+    );
+    repositoryState.withStudioJobLifecycleRepositories.mockImplementation(
+      async (_instanceId, work) =>
+        work({
+          studioJobs: { updateJobState: updateLifecycleJobState },
+          tenantLifecycle: {
+            failLifecycle: vi.fn(async () => ({
+              retryKind: 'retryable',
+              retryAfter: '2999-01-01T00:00:00.000Z',
+            })),
+          },
+          enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
+        })
     );
     pluginAccessState.isLifecycleJobType.mockReturnValueOnce(true);
     pluginAccessState.isEffectivelyActive.mockResolvedValueOnce(false);
@@ -326,8 +346,8 @@ describe('plugin operation runner task list', () => {
     } as never);
 
     expect(handler).not.toHaveBeenCalled();
-    expect(updateJobState).toHaveBeenNthCalledWith(
-      2,
+    expect(updateJobState).toHaveBeenCalledOnce();
+    expect(updateLifecycleJobState).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'failed',
         errorPayload: expect.objectContaining({

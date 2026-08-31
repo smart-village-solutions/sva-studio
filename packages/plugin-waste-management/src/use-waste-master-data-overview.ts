@@ -136,6 +136,7 @@ export const useWasteMasterDataOverview = (
       if (!isMountedRef.current) return;
       setOverview(overviewResponse);
       setOverviewError(null);
+      setLoading(false);
       await coverageSupportPromise;
     } catch (loadError) {
       if (!isMountedRef.current) return;

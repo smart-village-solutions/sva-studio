@@ -441,7 +441,7 @@ describe('waste management data loaders', () => {
     expect(await screen.findByText('loaded')).toBeTruthy();
   });
 
-  it('waits for location coverage support before completing the reload', async () => {
+  it('releases the page loader while location coverage support finishes locally', async () => {
     let resolveTours: ((value: { tours: readonly never[] }) => void) | undefined;
     apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
       async (options?: { readonly scope?: string }) =>
@@ -466,7 +466,8 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
     });
-    expect(screen.queryByText('loaded')).toBeNull();
+    expect(screen.getByText('loaded')).toBeTruthy();
+    expect(screen.getByTestId('coverage-tours-state').textContent).toBe('loading:0');
 
     await act(async () => {
       resolveTours?.({ tours: [] });

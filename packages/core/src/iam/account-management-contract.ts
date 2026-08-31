@@ -32,6 +32,7 @@ export type ApiErrorCode =
   | 'plugin_tenant_lifecycle_handler_missing'
   | 'plugin_tenant_lifecycle_cancellation_mismatch'
   | 'plugin_tenant_lifecycle_claim_conflict'
+  | 'plugin_tenant_lifecycle_claim_failed'
   | 'plugin_tenant_lifecycle_job_creation_failed'
   | 'plugin_tenant_lifecycle_enqueue_failed'
   | 'plugin_tenant_lifecycle_start_failed'

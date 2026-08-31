@@ -193,8 +193,13 @@ describe('EventsDetailPage', () => {
         'events.fields.mediaContentType': 'Medientyp',
         'events.fields.mediaWidth': 'Breite',
         'events.fields.mediaHeight': 'Höhe',
+        'events.fields.organizerName': 'Institution/Firma',
+        'events.fields.email': 'E-Mail',
+        'events.fields.phone': 'Telefon',
         'events.fields.imageSearch': 'Bild suchen',
         'events.messages.validationError': 'Bitte Eingaben prüfen.',
+        'events.validation.organizerName':
+          'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.',
         'events.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
         'events.messages.poiOptionsLoading': 'POI werden geladen.',
         'events.messages.poiOptionsEmpty': 'Keine passenden POI gefunden.',
@@ -438,6 +443,54 @@ describe('EventsDetailPage', () => {
     await waitFor(() => {
       expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
       expect(screen.getByLabelText('URL')).toBeTruthy();
+    });
+  });
+
+  it('requires and focuses the organizer name when organizer details are entered', async () => {
+    vi.mocked(createEvent).mockResolvedValue({
+      id: 'event-created',
+      title: 'Neues Event',
+    } as never);
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.change(
+      await screen.findByLabelText('E-Mail', { selector: '#event-organizer-email' }),
+      {
+        target: { value: 'kontakt@example.test' },
+      }
+    );
+    const saveButton = screen.getAllByRole('button', { name: 'Speichern' })[1];
+    if (!saveButton) throw new Error('event_save_button_missing');
+    fireEvent.click(saveButton);
+
+    const organizerName = await screen.findByLabelText('Institution/Firma');
+    await waitFor(() => {
+      expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
+      expect(organizerName.getAttribute('aria-required')).toBe('true');
+      expect(organizerName.getAttribute('aria-invalid')).toBe('true');
+      expect(document.activeElement).toBe(organizerName);
+    });
+    expect(
+      screen.getByText(
+        'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.'
+      )
+    ).toBeTruthy();
+
+    fireEvent.change(organizerName, { target: { value: 'Kulturamt' } });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(vi.mocked(createEvent)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizer: {
+            name: 'Kulturamt',
+            contact: { email: 'kontakt@example.test' },
+          },
+        }),
+        'user'
+      );
     });
   });
 

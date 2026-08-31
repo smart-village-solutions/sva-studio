@@ -83,44 +83,38 @@ export const serializeEventAddresses = (
 ) => (addresses ?? []).map(serializeEventAddress).filter((entry) => Object.keys(entry).length > 0);
 
 export const serializeEventOrganizer = (organizer: SerializableOrganizer) => {
-  const address = organizer.address;
+  const address = serializeEventAddress(organizer.address);
   const contact = organizer.contact;
+  const serializedContact = {
+    ...(compactEventString(contact?.firstName)
+      ? { firstName: compactEventString(contact?.firstName) }
+      : {}),
+    ...(compactEventString(contact?.lastName)
+      ? { lastName: compactEventString(contact?.lastName) }
+      : {}),
+    ...(compactEventString(contact?.phone) ? { phone: compactEventString(contact?.phone) } : {}),
+    ...(compactEventString(contact?.fax) ? { fax: compactEventString(contact?.fax) } : {}),
+    ...(compactEventString(contact?.email) ? { email: compactEventString(contact?.email) } : {}),
+    ...(serializeEventWebUrls(contact?.webUrls).length > 0
+      ? { webUrls: serializeEventWebUrls(contact?.webUrls) }
+      : {}),
+  };
 
   return {
     ...(compactEventString(organizer.name) ? { name: compactEventString(organizer.name) } : {}),
-    ...(address ? { address: serializeEventAddress(address) } : {}),
-    ...(contact
-      ? {
-          contact: {
-            ...(compactEventString(contact.firstName)
-              ? { firstName: compactEventString(contact.firstName) }
-              : {}),
-            ...(compactEventString(contact.lastName)
-              ? { lastName: compactEventString(contact.lastName) }
-              : {}),
-            ...(compactEventString(contact.phone)
-              ? { phone: compactEventString(contact.phone) }
-              : {}),
-            ...(compactEventString(contact.fax) ? { fax: compactEventString(contact.fax) } : {}),
-            ...(compactEventString(contact.email)
-              ? { email: compactEventString(contact.email) }
-              : {}),
-            ...(serializeEventWebUrls(contact.webUrls).length > 0
-              ? { webUrls: serializeEventWebUrls(contact.webUrls) }
-              : {}),
-          },
-        }
-      : {}),
+    ...(Object.keys(address).length > 0 ? { address } : {}),
+    ...(Object.keys(serializedContact).length > 0 ? { contact: serializedContact } : {}),
   };
 };
+
+export const hasEventOrganizerContent = (organizer: SerializableOrganizer): boolean =>
+  Object.keys(serializeEventOrganizer(organizer)).length > 0;
 
 export const serializeEventMediaContents = (
   mediaContents: readonly (SerializableMediaContent | null | undefined)[] | undefined | null
 ) =>
   (mediaContents ?? [])
-    .filter(
-      (entry): entry is SerializableMediaContent => entry !== null && entry !== undefined
-    )
+    .filter((entry): entry is SerializableMediaContent => entry !== null && entry !== undefined)
     .map(serializeEventMediaContent)
     .filter((entry) => Object.keys(entry).length > 0);
 

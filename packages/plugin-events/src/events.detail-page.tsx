@@ -330,6 +330,7 @@ export function EventsDetailPage({
     dateEnd: false,
   });
   const [activeTab, setActiveTab] = React.useState<EventsDetailTabId>('basis');
+  const [pendingFocusId, setPendingFocusId] = React.useState<string | null>(null);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly EventsDetailTabId[]>(['basis']);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly EventCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
@@ -661,6 +662,14 @@ export function EventsDetailPage({
     setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
   }, []);
 
+  React.useEffect(() => {
+    if (!pendingFocusId) return;
+    const element = globalThis.document?.getElementById(pendingFocusId);
+    if (!element) return;
+    element.focus();
+    setPendingFocusId(null);
+  }, [activeTab, pendingFocusId]);
+
   const handleTabChange = React.useCallback(
     (tabId: EventsDetailTabId) => {
       warmTab(tabId);
@@ -741,6 +750,13 @@ export function EventsDetailPage({
       } else if (validationErrors.includes('title')) {
         methods.setFocus('title');
         setActiveTab('basis');
+      } else if (validationErrors.includes('organizerName')) {
+        methods.setError('content.organizer.name', {
+          type: 'manual',
+          message: 'organizerName',
+        });
+        setActiveTab('content');
+        setPendingFocusId('event-organizer-name');
       } else if (validationErrors.includes('urls')) {
         methods.setFocus('content.urls.0.url');
         setActiveTab('content');

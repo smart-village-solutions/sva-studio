@@ -8,6 +8,9 @@ export const ContentInput = ({
   value = '',
   type,
   ariaInvalid,
+  description,
+  error,
+  required,
   onChange,
 }: Readonly<{
   id: string;
@@ -15,18 +18,37 @@ export const ContentInput = ({
   value?: string | number;
   type?: 'date' | 'number' | 'time';
   ariaInvalid?: true;
+  description?: string;
+  error?: string;
+  required?: boolean;
   onChange: (value: string) => void;
-}>) => (
-  <StudioField id={id} label={label}>
-    <Input
+}>) => {
+  const describedBy = [description ? `${id}-description` : null, error ? `${id}-error` : null]
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <StudioField
       id={id}
-      type={type}
-      aria-invalid={ariaInvalid}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  </StudioField>
-);
+      label={label}
+      description={description}
+      error={error}
+      required={required}
+      controlProps={{
+        id,
+        ...(ariaInvalid ? { 'aria-invalid': true } : {}),
+        ...(describedBy ? { 'aria-describedby': describedBy } : {}),
+      }}
+    >
+      <Input
+        id={id}
+        type={type}
+        aria-required={required ? true : undefined}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </StudioField>
+  );
+};
 
 export const indexedId = (id: string, index: number) => (index === 0 ? id : `${id}-${index}`);
 export const optionalText = (value: string | null | undefined) => value ?? '';

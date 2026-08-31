@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createDefaultEventsDetailFormValues,
   mapEventItemToDetailFormValues,
   mapEventsDetailFormValuesToInput,
 } from '../src/events.detail-form.js';
 import type { EventContentItem } from '../src/events.types.js';
 
 describe('events.detail-form', () => {
+  it('omits the organizer when all organizer fields contain only default placeholders', () => {
+    expect(
+      mapEventsDetailFormValuesToInput(createDefaultEventsDetailFormValues())
+    ).not.toHaveProperty('organizer');
+  });
+
   it('maps an event item into the fixed tab form model without dropping structured sections', () => {
     expect(
       mapEventItemToDetailFormValues({

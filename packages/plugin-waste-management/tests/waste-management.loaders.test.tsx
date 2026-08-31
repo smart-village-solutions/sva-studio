@@ -408,6 +408,39 @@ describe('waste management data loaders', () => {
     });
   });
 
+  it('loads location coverage support without waiting for the locations overview', async () => {
+    let resolveLocations: ((value: object) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      (options?: { readonly scope?: string }) =>
+        options?.scope === 'fractions'
+          ? Promise.resolve({ fractions: [{ id: 'fraction-1' }] })
+          : new Promise((resolve) => (resolveLocations = resolve))
+    );
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+      expect(screen.getByTestId('coverage-tours-state').textContent).toBe('ready:0');
+    });
+    expect(screen.queryByText('loaded')).toBeNull();
+
+    await act(async () => {
+      resolveLocations?.({
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      });
+    });
+
+    expect(await screen.findByText('loaded')).toBeTruthy();
+  });
+
   it('keeps location master data usable when the coverage fractions fail to load', async () => {
     apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
       async (options?: { readonly scope?: string }) => {

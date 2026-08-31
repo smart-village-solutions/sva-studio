@@ -107,26 +107,28 @@ export const useWasteMasterDataOverview = (
       setLocationCoverageToursStatus('idle');
     }
 
-    try {
-      const overviewResponse = await getWasteManagementMasterDataOverview(
-        resolveMasterDataOverviewScope(tab)
+    const overviewPromise = getWasteManagementMasterDataOverview(
+      resolveMasterDataOverviewScope(tab)
+    );
+    if (tab === 'locations') {
+      void loadLocationCoverageSupport(
+        {
+          setAvailableTours,
+          setLocationCoverageFractions,
+          setLocationCoverageFractionsStatus,
+          setLocationCoverageToursStatus,
+        },
+        coverageRequestId,
+        coverageRequestIdRef,
+        isMountedRef
       );
+    }
+
+    try {
+      const overviewResponse = await overviewPromise;
       if (!isMountedRef.current) return;
       setOverview(overviewResponse);
       setOverviewError(null);
-      if (tab === 'locations') {
-        void loadLocationCoverageSupport(
-          {
-            setAvailableTours,
-            setLocationCoverageFractions,
-            setLocationCoverageFractionsStatus,
-            setLocationCoverageToursStatus,
-          },
-          coverageRequestId,
-          coverageRequestIdRef,
-          isMountedRef
-        );
-      }
     } catch (loadError) {
       if (!isMountedRef.current) return;
       setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));

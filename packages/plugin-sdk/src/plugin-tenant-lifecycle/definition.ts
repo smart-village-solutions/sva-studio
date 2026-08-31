@@ -144,5 +144,8 @@ export const definePluginTenantLifecycle = (
   if (readinessChecks.length > 0 && !declaredOperations.has('readiness')) {
     throw new Error(`plugin_tenant_readiness_operation_required:${pluginNamespace}`);
   }
+  if (!declaredOperations.has('provision') && !declaredOperations.has('readiness')) {
+    throw new Error(`plugin_tenant_lifecycle_bootstrap_operation_required:${pluginNamespace}`);
+  }
   return { contractVersion: 1, operations, readinessChecks };
 };

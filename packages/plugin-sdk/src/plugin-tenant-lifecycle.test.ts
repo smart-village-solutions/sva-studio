@@ -197,6 +197,20 @@ describe('plugin tenant lifecycle contracts', () => {
     ).toThrow('plugin_tenant_readiness_operation_required:speech');
   });
 
+  it('requires a lifecycle bootstrap operation', () => {
+    expect(() =>
+      definePluginTenantLifecycle(
+        'speech',
+        {
+          contractVersion: 1,
+          operations: [{ operation: 'reconcile', jobTypeId: 'speech.reconcileTenant' }],
+          readinessChecks: [],
+        },
+        jobTypes
+      )
+    ).toThrow('plugin_tenant_lifecycle_bootstrap_operation_required:speech');
+  });
+
   it('normalizes namespaced lifecycle errors and validates retry hints', () => {
     expect(
       definePluginTenantLifecycleError('speech', {

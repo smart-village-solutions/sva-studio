@@ -263,4 +263,13 @@ export const ensureConfiguredPluginTenantProvisioning = async (
       await waitForAutomaticLifecycleRetry(retryDelayMs);
     }
   }
+  if (pendingDefinitions.length > 0) {
+    const pendingPluginIds = pendingDefinitions
+      .map(({ definition }) => definition.pluginId)
+      .sort()
+      .join(',');
+    throw new Error(
+      `plugin_tenant_lifecycle_schedule_exhausted:${instanceId}:${pendingPluginIds}`
+    );
+  }
 };

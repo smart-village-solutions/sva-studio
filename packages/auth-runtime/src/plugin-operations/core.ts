@@ -91,7 +91,7 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
           return createApiError(400, 'invalid_request', parsed.message, requestId);
         }
 
-        const validationError = validateStartRequestData(parsed.data, requestId);
+        const validationError = validateStartRequestData(parsed.data, request, requestId);
         if (validationError) {
           return validationError;
         }

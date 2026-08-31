@@ -2,6 +2,7 @@ import type { StudioPluginOperationStartRequest } from '@sva/core';
 
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { isConfiguredPluginTenantLifecycleJobType } from '../plugin-tenant-lifecycle/access.js';
+import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import { createApiError, toPayloadHash } from '../shared/request-helpers.js';
 import {
   createJsonItemResponse,
@@ -27,6 +28,7 @@ const readPluginNamespace = (value: string): string | null => {
 
 export const validateStartRequestData = (
   data: StudioPluginOperationStartRequest,
+  request: Request,
   requestId: string | undefined
 ): Response | null => {
   if (data.pluginId === 'waste-management') {
@@ -42,7 +44,7 @@ export const validateStartRequestData = (
     return createApiError(
       400,
       'invalid_request',
-      'Lifecycle-Jobs dürfen nur über den Host-Orchestrator gestartet werden.',
+      translatePluginTenantLifecycleMessage(request, 'lifecycleJobStartForbidden'),
       requestId
     );
   }

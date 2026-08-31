@@ -280,6 +280,7 @@ describe('plugin operations handlers', () => {
       new Request('https://studio.test/api/v1/plugin-operations/jobs', {
         method: 'POST',
         headers: {
+          'Accept-Language': 'en-US,en;q=0.9',
           'Content-Type': 'application/json',
           'Idempotency-Key': 'idem-lifecycle',
           Origin: 'https://studio.test',
@@ -295,7 +296,10 @@ describe('plugin operations handlers', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: 'invalid_request', message: expect.stringContaining('Host-Orchestrator') },
+      error: {
+        code: 'invalid_request',
+        message: 'Lifecycle jobs can only be started by the host orchestrator.',
+      },
     });
     expect(pluginTenantAccessState.readAccess).not.toHaveBeenCalled();
     expect(idempotencyState.reserveIdempotency).not.toHaveBeenCalled();

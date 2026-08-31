@@ -451,7 +451,9 @@ describe('configured plugin tenant lifecycle runtime', () => {
     state.createStudioJob.mockRejectedValue(new Error('queue unavailable'));
     const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
 
-    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+    await expect(ensureConfiguredPluginTenantProvisioning('tenant-a')).rejects.toThrow(
+      'plugin_tenant_lifecycle_schedule_exhausted:tenant-a:speech'
+    );
 
     expect(state.createStudioJob).toHaveBeenCalledTimes(3);
   });

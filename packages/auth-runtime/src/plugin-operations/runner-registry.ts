@@ -104,7 +104,9 @@ const guardPluginTenantExecution = (
   if (job.source !== 'plugin' || !pluginId) {
     return handler;
   }
-  const lifecycleJob = isConfiguredPluginTenantLifecycleJobType(pluginId, job.jobTypeId);
+  const lifecycleMetadata = readPluginTenantLifecycleJobMetadata(job);
+  const lifecycleJob =
+    lifecycleMetadata !== null && isConfiguredPluginTenantLifecycleJobType(pluginId, job.jobTypeId);
   return async (context) => {
     if (lifecycleJob) {
       const effectivelyActive = await isConfiguredPluginTenantEffectivelyActive(
@@ -119,15 +121,13 @@ const guardPluginTenantExecution = (
           },
         });
       }
-      const metadata = readPluginTenantLifecycleJobMetadata(job);
       const lifecycle = await withPluginTenantLifecycleRepository(job.instanceId, (repository) =>
         repository.getLifecycle(job.instanceId, pluginId)
       );
       if (
-        !metadata ||
         lifecycle?.activeJobId !== job.id ||
-        lifecycle.claimedGeneration !== metadata.generation ||
-        lifecycle.desiredOperation !== metadata.operation
+        lifecycle.claimedGeneration !== lifecycleMetadata.generation ||
+        lifecycle.desiredOperation !== lifecycleMetadata.operation
       ) {
         throw Object.assign(
           new Error(`plugin_tenant_lifecycle_claim_stale:${pluginId}:${job.id}`),

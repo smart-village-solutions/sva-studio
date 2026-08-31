@@ -11,6 +11,10 @@ import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../midd
 import { resolveEffectiveRequestHost } from '../request-hosts.js';
 import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
 import { validateCsrf } from '../shared/request-security.js';
+import {
+  translatePluginServerHandlerMessage,
+  type PluginServerHandlerMessageKey,
+} from './messages.js';
 
 type EffectivePermissionsResolution = Awaited<ReturnType<typeof resolveEffectivePermissions>>;
 
@@ -24,6 +28,7 @@ export type PluginServerHandlerDispatcherDependencies = Readonly<{
     readonly organizationId?: string;
   }) => Promise<EffectivePermissionsResolution>;
   validateCsrf?: typeof validateCsrf;
+  translate?: (request: Request, key: PluginServerHandlerMessageKey) => string;
 }>;
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -42,8 +47,18 @@ const satisfiesSet = (
     ? requirement.values.every((value) => available.has(value))
     : requirement.values.some((value) => available.has(value));
 
-const createError = (status: number, code: 'forbidden' | 'database_unavailable', message: string) =>
-  createApiError(status, code, message, getWorkspaceContext().requestId);
+const createError = (
+  request: Request,
+  translate: NonNullable<PluginServerHandlerDispatcherDependencies['translate']>,
+  status: number,
+  code: 'forbidden' | 'database_unavailable',
+  messageKey: PluginServerHandlerMessageKey
+) => createApiError(status, code, translate(request, messageKey), getWorkspaceContext().requestId);
+
+const resolveTranslation = (
+  dependencies: PluginServerHandlerDispatcherDependencies | undefined
+): NonNullable<PluginServerHandlerDispatcherDependencies['translate']> =>
+  dependencies?.translate ?? translatePluginServerHandlerMessage;
 
 export const assertPluginServerHandlerCoverage = (input: {
   readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
@@ -79,26 +94,26 @@ const authorizeTenantHandler = async (input: {
   readonly resolvePermissions: NonNullable<
     PluginServerHandlerDispatcherDependencies['resolvePermissions']
   >;
+  readonly request: Request;
+  readonly translate: NonNullable<PluginServerHandlerDispatcherDependencies['translate']>;
 }): Promise<Response | null> => {
   const requirement = input.descriptor.accessRequirement;
   if (requirement.kind !== 'tenant') {
     return createError(
+      input.request,
+      input.translate,
       403,
       'forbidden',
-      'Dieser Plugin-Endpunkt ist nicht im Instanzkontext verfügbar.'
+      'instanceScopeUnavailable'
     );
   }
   const instanceId = input.context.user.instanceId;
   if (!instanceId || requirement.moduleId !== input.descriptor.ownerPluginId) {
-    return createError(
-      403,
-      'forbidden',
-      'Kein gültiger Instanzkontext für diesen Plugin-Endpunkt.'
-    );
+    return createError(input.request, input.translate, 403, 'forbidden', 'invalidInstanceContext');
   }
   const tenantAccess = await input.readTenantAccess(instanceId, input.descriptor.ownerPluginId);
   if (!tenantAccess.allowed) {
-    return createError(403, 'forbidden', 'Das Plugin ist für diese Instanz nicht verfügbar.');
+    return createError(input.request, input.translate, 403, 'forbidden', 'pluginUnavailable');
   }
   const resolved = await input.resolvePermissions({
     instanceId,
@@ -106,7 +121,13 @@ const authorizeTenantHandler = async (input: {
     organizationId: input.context.activeOrganizationId,
   });
   if (!resolved.ok) {
-    return createError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.');
+    return createError(
+      input.request,
+      input.translate,
+      503,
+      'database_unavailable',
+      'permissionCheckUnavailable'
+    );
   }
   const decision = evaluateUiAccess({
     isAuthenticated: true,
@@ -127,7 +148,7 @@ const authorizeTenantHandler = async (input: {
   });
   return decision.status === 'allowed'
     ? null
-    : createError(403, 'forbidden', 'Keine Berechtigung für diesen Plugin-Endpunkt.');
+    : createError(input.request, input.translate, 403, 'forbidden', 'permissionDenied');
 };
 
 export const createPluginServerHandlerDispatcher = (input: {
@@ -143,6 +164,7 @@ export const createPluginServerHandlerDispatcher = (input: {
   const readTenantAccess = input.dependencies?.readTenantAccess ?? readConfiguredPluginTenantAccess;
   const resolvePermissions = input.dependencies?.resolvePermissions ?? resolveEffectivePermissions;
   const validateRequestCsrf = input.dependencies?.validateCsrf ?? validateCsrf;
+  const translate = resolveTranslation(input.dependencies);
   const descriptors = [...input.descriptors.values()];
 
   return async (request) => {
@@ -178,11 +200,7 @@ export const createPluginServerHandlerDispatcher = (input: {
           !isPlatformHost(request) ||
           !satisfiesSet(requirement.roles, new Set(context.user.roles))
         ) {
-          return createError(
-            403,
-            'forbidden',
-            'Keine Plattformberechtigung für diesen Plugin-Endpunkt.'
-          );
+          return createError(request, translate, 403, 'forbidden', 'platformPermissionDenied');
         }
       } else if (requirement.kind === 'tenant') {
         const accessError = await authorizeTenantHandler({
@@ -190,14 +208,12 @@ export const createPluginServerHandlerDispatcher = (input: {
           descriptor,
           readTenantAccess,
           resolvePermissions,
+          request,
+          translate,
         });
         if (accessError) return accessError;
       } else {
-        return createError(
-          403,
-          'forbidden',
-          'Der Plugin-Endpunkt besitzt keinen zulässigen Scope.'
-        );
+        return createError(request, translate, 403, 'forbidden', 'unsupportedScope');
       }
 
       return handler({

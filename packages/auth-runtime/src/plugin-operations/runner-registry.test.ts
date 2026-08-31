@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
   isConfiguredPluginTenantLifecycleJobType: vi.fn(() => false),
   getLifecycle: vi.fn(),
+  readTenantAccess: vi.fn(async () => ({ allowed: true, reason: 'ready' })),
 }));
 
 vi.mock('./job-lifecycle-orchestrator.js', () => ({
@@ -19,7 +20,7 @@ vi.mock('./job-lifecycle-orchestrator.js', () => ({
 vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
   isConfiguredPluginTenantEffectivelyActive: vi.fn(async () => true),
   isConfiguredPluginTenantLifecycleJobType: state.isConfiguredPluginTenantLifecycleJobType,
-  readConfiguredPluginTenantAccess: vi.fn(async () => ({ allowed: true, reason: 'ready' })),
+  readConfiguredPluginTenantAccess: state.readTenantAccess,
 }));
 
 vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
@@ -61,6 +62,7 @@ describe('plugin operation runner registry', () => {
     vi.clearAllMocks();
     state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(false);
     state.getLifecycle.mockResolvedValue(null);
+    state.readTenantAccess.mockResolvedValue({ allowed: true, reason: 'ready' });
   });
 
   it('rejects a lifecycle handler when its persisted claim no longer matches the job', async () => {
@@ -111,6 +113,43 @@ describe('plugin operation runner registry', () => {
       'plugin_tenant_lifecycle_claim_stale'
     );
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('treats a matching generic job without lifecycle metadata as a regular plugin job', async () => {
+    const registry = await import('./runner-registry.js');
+    const handler = vi.fn(async () => ({}));
+    state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(true);
+    const genericJob = {
+      id: 'manual-retry-job',
+      instanceId: 'tenant-a',
+      source: 'plugin' as const,
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.provision-tenant-database',
+      inputPayload: { requestedBy: 'manual-retry' },
+    };
+    const taskList = registry.createStudioJobTaskList(
+      () =>
+        new Map([
+          [
+            'plugin:waste-management.provision-tenant-database',
+            {
+              source: 'plugin' as const,
+              jobTypeId: 'waste-management.provision-tenant-database',
+              handler,
+              queueName: 'plugin-operations',
+            },
+          ],
+        ])
+    );
+    await taskList[registry.studioJobTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: genericJob.id },
+      { job: { attempts: 1, max_attempts: 5 } } as never
+    );
+    const [{ resolveHandler }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+
+    await expect(resolveHandler(genericJob)?.({ job: genericJob })).resolves.toEqual({});
+    expect(state.readTenantAccess).toHaveBeenCalledWith('tenant-a', 'waste-management');
+    expect(state.withPluginTenantLifecycleRepository).not.toHaveBeenCalled();
   });
 
   it('registers host and plugin handlers separately and exposes plugin registrations in plugin shape', async () => {

@@ -191,4 +191,28 @@ describe('plugin server handler dispatcher', () => {
     ).toBe(403);
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it('localizes dispatcher errors from the request language', async () => {
+    const platform = platformDescriptor();
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[platform.id, platform]]),
+      handlers: { [platform.id]: vi.fn() },
+      dependencies: {
+        authenticate: authenticateAs({ id: 'user-1', roles: [] }),
+        isPlatformHost: () => true,
+      },
+    });
+
+    const response = await dispatch(
+      new Request('https://platform.test/api/v1/plugins/news/platform', {
+        headers: { 'Accept-Language': 'en-US,en;q=0.9' },
+      })
+    );
+
+    await expect(response?.json()).resolves.toMatchObject({
+      error: {
+        message: 'You do not have platform permission for this plugin endpoint.',
+      },
+    });
+  });
 });

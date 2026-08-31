@@ -34,10 +34,13 @@ describe('Graphile worker migration contract', () => {
     const runtimeWorker = readWorkspaceFile(
       'packages/auth-runtime/src/plugin-operations/runner-worker.ts'
     );
+    const queueWorker = readWorkspaceFile(
+      'packages/auth-runtime/src/plugin-operations/runner-queue.ts'
+    );
 
     expect(runtimeWorker).toContain('const pool = resolveStudioJobWorkerPool()');
-    expect(runtimeWorker).toContain('const pool = resolvePool()');
-    expect(runtimeWorker).toContain('graphile_worker.sva_enqueue_job');
-    expect(runtimeWorker).not.toContain('graphile_worker.add_job');
+    expect(queueWorker).toContain('const pool = resolvePool()');
+    expect(queueWorker).toContain('graphile_worker.sva_enqueue_job');
+    expect(queueWorker).not.toContain('graphile_worker.add_job');
   });
 });

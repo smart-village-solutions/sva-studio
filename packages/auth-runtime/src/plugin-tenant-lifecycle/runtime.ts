@@ -51,7 +51,8 @@ const blocksAutomaticLifecycleRetryWhileSuspended = (
   lifecycle: NonNullable<Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>>
 ): boolean =>
   lifecycle.accessState === 'suspended' &&
-  (lifecycle.retryKind !== 'retryable' || lifecycle.desiredOperation !== 'reactivate');
+  (lifecycle.retryKind !== 'retryable' ||
+    (lifecycle.desiredOperation !== 'suspend' && lifecycle.desiredOperation !== 'reactivate'));
 
 const resolveAutomaticProvisioningSchedule = (
   definition: PluginTenantLifecycleRegistryEntry,

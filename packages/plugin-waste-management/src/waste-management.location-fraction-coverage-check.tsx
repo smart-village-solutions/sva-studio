@@ -6,7 +6,14 @@ import type {
 } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconChecklist } from '@tabler/icons-react';
-import { useMemo, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from 'react';
 
 import {
   CoverageCheckForm,
@@ -60,6 +67,28 @@ const CoverageCheckHeader = () => {
   );
 };
 
+const useResetResult = (
+  props: CoverageCheckProps,
+  criteria: readonly [fractionId: string, startDate: string, endDate: string],
+  setResult: Dispatch<SetStateAction<CoverageResult | null>>
+) => {
+  const [fractionId, startDate, endDate] = criteria;
+  useEffect(() => {
+    setResult(null);
+  }, [
+    endDate,
+    fractionId,
+    props.fractions,
+    props.fractionsStatus,
+    props.links,
+    props.locations,
+    props.tours,
+    props.toursStatus,
+    setResult,
+    startDate,
+  ]);
+};
+
 export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const [fractionId, setFractionId] = useState('');
@@ -75,6 +104,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
     () => new Map(props.locations.map((location) => [location.id, location] as const)),
     [props.locations]
   );
+  useResetResult(props, [fractionId, startDate, endDate], setResult);
   const runCheck = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextError = getCoverageErrorKey(fractionId, startDate, endDate);

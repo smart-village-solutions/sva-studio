@@ -187,6 +187,60 @@ describe('WasteLocationFractionCoverageCheck', () => {
     expect(onOpenBulkAssignments).toHaveBeenCalledTimes(1);
   });
 
+  it('clears stale results when the coverage data reloads', () => {
+    const { rerender } = render(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={fractions}
+        fractionsStatus="ready"
+        toursStatus="ready"
+        tours={tours}
+        links={links}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => `Ort ${location.id}`}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.fraction'), {
+      target: { value: 'paper' },
+    });
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.startDate'), {
+      target: { value: '2027-01-01' },
+    });
+    fireEvent.change(screen.getByLabelText('masterData.locationsWorkspace.coverage.endDate'), {
+      target: { value: '2027-12-31' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.locationsWorkspace.coverage.check' })
+    );
+
+    expect(screen.getByText('Ort missing')).toBeTruthy();
+
+    rerender(
+      <WasteLocationFractionCoverageCheck
+        locations={locations}
+        fractions={fractions}
+        fractionsStatus="loading"
+        toursStatus="loading"
+        tours={[]}
+        links={[]}
+        onReplaceLocationSelection={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        getLocationLabel={(location) => `Ort ${location.id}`}
+      />
+    );
+
+    expect(screen.queryByText('Ort missing')).toBeNull();
+    expect(
+      screen.queryByRole('button', {
+        name: 'masterData.locationsWorkspace.coverage.selectAndAssign:{"value":2}',
+      })
+    ).toBeNull();
+  });
+
   it('rejects an end date before the start date without running the check', () => {
     render(
       <WasteLocationFractionCoverageCheck

@@ -305,6 +305,104 @@ const invalidCreateAction = 'create';
 
 ---
 
+## 1.7 Proportionaler Projektzuschnitt und Invariantenprüfung
+
+Prozessaufwand richtet sich nach fachlichem Risiko, Kopplung und Fehlerfläche,
+nicht pauschal nach der Zahl geänderter Dateien oder Zeilen. Kleine, lokal
+begrenzte Änderungen sollen direkt und mit dem kleinsten aussagekräftigen
+Nachweis umgesetzt werden. Vorhaben mit mehreren eigenständig lieferbaren
+Fähigkeiten oder neuen systemübergreifenden Invarianten müssen dagegen vor der
+Implementierung in reviewbare Abschnitte zerlegt werden.
+
+### Einordnung vor der Umsetzung
+
+Eine vertiefte Vorabklärung ist insbesondere erforderlich, wenn eine Änderung
+mehrere der folgenden Eigenschaften verbindet:
+
+- neue verteilte, nebenläufige oder asynchrone Zustandsübergänge
+- neue Trust Boundaries, Autorisierungsgrenzen oder extern geladene Verträge
+- gekoppelte Änderungen an Persistenz, Migration, Runtime und Deployment
+- mehrere Dispatch-, Queue-, Worker-, Retry- oder Recovery-Pfade
+- mehrere fachlich eigenständig liefer- und reviewbare Fähigkeiten
+- eine Migration eines bestehenden Verbrauchers auf eine neue
+  Plattformabstraktion
+
+Eine kleine Änderung bleibt im proportionalen Schnellpfad, wenn sie lokal
+begrenzt ist, keine neue systemübergreifende Invariante einführt und weder eine
+neue Trust Boundary noch verteilte Zustands-, Migrations- oder
+Deployment-Semantik verändert. Dazu zählen typischerweise kleine Bugfixes,
+Text- und UI-Korrekturen sowie begrenzte Refactorings ohne neue
+Verhaltensdimension. Für solche Änderungen sind keine künstlichen PR-Stacks,
+Zustandsmatrizen oder zusätzlichen OpenSpec-Changes zu erzeugen.
+
+### ✅ REQUIRED für systemübergreifende Großvorhaben
+
+- Vor Implementierungsbeginn die fachlich und technisch unabhängigen
+  Lieferabschnitte identifizieren und ihre Abhängigkeiten festhalten.
+- Stacked PRs verwenden, wenn die Abschnitte einzeln build-, test- und
+  reviewbar sind. Ein großer Einzel-PR benötigt eine nachvollziehbare
+  Begründung, warum eine Trennung keine konsistenten Zwischenstände erzeugen
+  würde oder das Integrationsrisiko erhöht.
+- Bei asynchroner, transaktionaler oder nebenläufiger Orchestrierung vor dem
+  Code die Zustände, Ereignisse, persistenten Writes, Fehler- und Crashpunkte,
+  Retry-/Recovery-Wege sowie die beobachtbaren Endzustände beschreiben.
+- Sicherheits- und Ausführungsgrenzen vollständig inventarisieren, zum
+  Beispiel HTTP-Dispatch, interne Aufrufe, Jobanlage, Queue, Worker-Ausführung,
+  Startup, Reconciliation und clientseitige Materialisierung. Eine zentrale
+  Regel gilt erst dann als zentral, wenn alle relevanten Grenzen benannt sind.
+- Systeminvarianten explizit formulieren und die Teststrategie daraus ableiten.
+  Bei verteilter Arbeit gehören mindestens Konkurrenz, Redelivery,
+  Teilfehler, Prozessabbruch und Wiederanlauf in die Bewertung.
+- Den Proposal-Review einschließlich der nach Trigger-Matrix erforderlichen
+  Fachreviews vor dem ersten Implementierungsblock abschließen. Formale
+  OpenSpec-Validierung ersetzt keine fachliche Invarianten-, Runtime- oder
+  Failure-Mode-Prüfung.
+- Jeden Lieferabschnitt mit seinem kleinsten echten Gate-Pfad abschließen,
+  bevor der nächste Abschnitt die Fehlerfläche erweitert.
+
+### Review- und Fix-Stop-Regel
+
+Wenn in aufeinanderfolgenden Reviews oder CI-/Test-Runden mehrere neue Befunde
+dieselbe Invariante, Zustandsmaschine oder Systemgrenze betreffen, dürfen nicht
+weiter ausschließlich lokale Mikrofixes gestapelt werden. Vor dem nächsten
+Push sind die zugrunde liegende Invariante, ihr vollständiger Zustandsraum und
+alle bekannten Verbraucher zusammenhängend zu prüfen. Die daraus entstehenden
+Korrekturen bleiben so klein wie möglich, dürfen aber die gemeinsame Ursache
+nicht nur an einem einzelnen Symptom reparieren.
+
+Ein bereits stark integrierter PR wird nicht allein wegen seiner Größe spät
+mechanisch aufgeteilt. In diesem Fall ist anhand von Abhängigkeiten,
+Review-Evidenz und Regressionsrisiko zu entscheiden, ob ein Split noch stabile,
+eigenständig prüfbare Zwischenstände schafft. Ohne solchen Nachweis wird der
+bestehende PR gezielt gehärtet; allgemeine Aufräumarbeiten folgen getrennt.
+
+### ❌ FORBIDDEN
+
+- Mehrere unabhängig lieferbare Plattform-, Persistenz-, Runtime-, Adapter-
+  und UI-Fähigkeiten ohne Zuschnittsentscheidung in einem PR zu bündeln.
+- „OpenSpec ist grün“ oder „Unit-Tests sind grün“ als alleinigen Nachweis für
+  die Vollständigkeit einer verteilten Zustands- oder Sicherheitsinvariante zu
+  behandeln.
+- Einen neuen Review-Befund nur lokal zu beheben, obwohl wiederholte Befunde
+  bereits auf eine gemeinsame unvollständige Invariante hinweisen.
+- Kleine lokale Änderungen durch pauschale Großprojekt-Artefakte oder
+  künstliche Branch-/PR-Stacks zu verlangsamen.
+- Einen weit fortgeschrittenen, eng gekoppelten PR ohne stabile
+  Zwischenarchitektur nur zur Verringerung der Dateizahl nachträglich zu
+  zerlegen.
+
+**Warum diese Regel wichtig ist:**
+
+- Kleine Änderungen behalten kurze Feedbackwege und geringe Prozesskosten.
+- Große Änderungen werden entlang überprüfbarer Invarianten statt erst anhand
+  später Review-Kommentare strukturiert.
+- Stacked PRs reduzieren Review-Rauschen nur dann, wenn jeder Zwischenstand
+  tatsächlich konsistent, testbar und lieferbar bleibt.
+- Wiederholte Befunde werden als Signal für eine unvollständige Modellierung
+  behandelt und nicht als unbegrenzte Folge isolierter Einzelfehler.
+
+---
+
 ## 2. Translation System
 
 ### Process for UI Texts

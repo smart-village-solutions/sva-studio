@@ -26,6 +26,15 @@
 - UI-Implementierungen folgen der Reihenfolge: native Browser-/HTML-Funktion, vorhandene shadcn/ui- oder Design-System-Komponente, vorhandene Workspace-Komponente, dann minimale neue Komponente.
 - Bei Review und Refactoring gezielt nach entfernbarer Komplexität suchen: handgerollte Standardfunktionen, tote Flexibilität, ungenutzte Layer, vermeidbare Dependencies und spekulative Erweiterbarkeit. Solche Funde sind Ergänzungen zu normalen Correctness-, Security-, Test- und UX-Reviews, kein Ersatz.
 
+## Proportionaler Projektzuschnitt
+
+- Kleine, lokal begrenzte Änderungen ohne neue systemübergreifende Invariante bleiben im Schnellpfad: keine künstlichen PR-Stacks, Zustandsmatrizen oder zusätzlichen OpenSpec-Changes.
+- Vor systemübergreifenden Großvorhaben unabhängige Lieferabschnitte, Trust Boundaries, Ausführungsgrenzen und bei asynchroner beziehungsweise transaktionaler Logik die Zustands-, Fehler-, Crash- und Recovery-Matrix klären.
+- Stacked PRs sind der Standard, wenn die Abschnitte einzeln build-, test- und reviewbar sind; ein großer Einzel-PR braucht eine fachliche Begründung.
+- Wenn mehrere neue Review- oder Testbefunde dieselbe Invariante oder Systemgrenze betreffen, lokale Mikrofixes stoppen und vor dem nächsten Push Zustandsraum sowie alle Verbraucher zusammenhängend prüfen.
+- Einen bereits stark integrierten PR nicht allein wegen seiner Größe spät mechanisch zerlegen; ein Split benötigt weiterhin stabile, eigenständig prüfbare Zwischenstände.
+- Die kanonischen Kriterien und Pflichten stehen in [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md), Abschnitt 1.7.
+
 ## Tipps zur Entwicklungsumgebung
 
 - Dies ist ein pnpm-Workspace-Monorepo; Packages sind nach Funktionalität organisiert

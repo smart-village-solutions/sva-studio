@@ -11,7 +11,7 @@ import {
   startInstancePluginLifecycle,
 } from '../lib/iam-api';
 
-const activeJobPollingIntervalMs = 10_000;
+const readinessPollingIntervalMs = 10_000;
 
 export const usePluginTenantReadiness = (instanceId: string) => {
   const [items, setItems] = React.useState<readonly PluginTenantReadinessReadModel[]>([]);
@@ -51,21 +51,27 @@ export const usePluginTenantReadiness = (instanceId: string) => {
     };
   }, [refresh]);
 
-  const hasActiveJob = items.some((item) => Boolean(item.activeJobId));
+  const hasPendingLifecycleWork = items.some(
+    (item) =>
+      Boolean(item.activeJobId) ||
+      (item.error?.retryKind === 'retryable' &&
+        Boolean(item.error.retryAfter) &&
+        Number.isFinite(Date.parse(item.error.retryAfter ?? '')))
+  );
 
   React.useEffect(() => {
-    if (!hasActiveJob) {
+    if (!hasPendingLifecycleWork) {
       return;
     }
 
     const interval = window.setInterval(() => {
       void refresh();
-    }, activeJobPollingIntervalMs);
+    }, readinessPollingIntervalMs);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, [hasActiveJob, refresh]);
+  }, [hasPendingLifecycleWork, refresh]);
 
   const startRepair = React.useCallback(
     async (pluginId: string, operation: PluginTenantLifecycleOperation) => {

@@ -77,6 +77,13 @@ Provisionierung; veraltete Evidenz löst dagegen einen neuen Lauf aus. Der Fleet
 läuft nach Handler-Registrierung im Hintergrund und blockiert keinen normalen
 Request mit fleetweiter Arbeit.
 
+Verzögerte Retries werden pro Instanz und Plugin mit einem eigenen persistenten
+Wake-up eingeplant. Dadurch kann ein späterer Retry eines Plugins den früheren
+Retry eines anderen Plugins derselben Instanz nicht ersetzen. Das Cockpit pollt
+Readiness sowohl bei einem aktiven Job als auch während eines persistierten
+retryable Retry-Fensters und beendet das Polling nach der serverseitig
+beobachteten Erholung.
+
 Idempotenz bleibt zweistufig: Der Host verhindert doppelte Jobanlage über den
 vorhandenen Studio-Job-Idempotenzvertrag; der Plugin-Handler reconciliiert die
 Fachartefakte für die übergebene Sollgeneration. Das Lifecycle-Ledger enthält

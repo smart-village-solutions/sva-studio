@@ -150,8 +150,10 @@ Innerhalb von `@sva/auth-runtime` ist der Ablauf inzwischen weiter getrennt:
 - `runner.ts` bleibt Graphile-Adapter und Queue-Einstieg
 - `job-lifecycle-orchestrator.ts` kapselt Host-Lifecycle, Handler-Aufruf und Retry-/Terminal-Entscheidungen
 - Event-, State-, Progress- und Read-Modell-Normalisierung bleiben in eigenen Host-Bausteinen
-- verzögerte Tenant-Lifecycle-Retries werden als persistenter Task `plugin_tenant_lifecycle_retry` eingeplant; der migrationsverwaltete Enqueue-Wrapper erlaubt diesen Task neben den beiden Studio-Job-Lanes ausdrücklich
+- verzögerte Tenant-Lifecycle-Retries werden pro Instanz und Plugin mit eigenem Job-Key als persistenter Task `plugin_tenant_lifecycle_retry` eingeplant; der migrationsverwaltete Enqueue-Wrapper erlaubt diesen Task neben den beiden Studio-Job-Lanes ausdrücklich
 - reservierte `studioTenantLifecycle`-Metadaten lösen Lifecycle-Korrelation nur für den im Pluginvertrag registrierten Lifecycle-Jobtyp aus; normale Plugin-Jobs bleiben davon unberührt
+- Readiness-Clients pollen sowohl aktive Lifecycle-Jobs als auch persistierte retryable Retry-Fenster und stoppen nach der serverseitig beobachteten Erholung
+- Lifecycle-HTTP-Fehler verwenden anhand von `Accept-Language` die unterstützten deutschen oder englischen Hostmeldungen
 
 Fachliche Handler erhalten dabei einen hostgebauten Kontext statt Graphile-spezifischer Helfer:
 

@@ -1,3 +1,5 @@
+import { resolveRequestLocale } from '../shared/request-locale.js';
+
 export type PluginServerHandlerMessageKey =
   | 'instanceScopeUnavailable'
   | 'invalidInstanceContext'
@@ -28,26 +30,7 @@ const messages = {
   },
 } as const satisfies Record<'de' | 'en', Record<PluginServerHandlerMessageKey, string>>;
 
-const resolveLocale = (request: Request): keyof typeof messages => {
-  const acceptedLanguages = request.headers.get('accept-language')?.toLowerCase() ?? '';
-  const supportedPreference = acceptedLanguages
-    .split(',')
-    .map((entry, index) => {
-      const [language = '', ...parameters] = entry.trim().split(';');
-      const quality = Number(
-        parameters
-          .find((parameter) => parameter.trim().startsWith('q='))
-          ?.trim()
-          .slice(2) ?? 1
-      );
-      return { language, quality: Number.isFinite(quality) ? quality : 0, index };
-    })
-    .filter(({ language }) => /^(de|en)(-|$)/.test(language))
-    .sort((left, right) => right.quality - left.quality || left.index - right.index)[0];
-  return supportedPreference?.language.startsWith('en') ? 'en' : 'de';
-};
-
 export const translatePluginServerHandlerMessage = (
   request: Request,
   key: PluginServerHandlerMessageKey
-): string => messages[resolveLocale(request)][key];
+): string => messages[resolveRequestLocale(request)][key];

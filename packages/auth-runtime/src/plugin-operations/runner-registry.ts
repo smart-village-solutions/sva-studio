@@ -49,16 +49,19 @@ const logger = createSdkLogger({ component: 'studio-jobs-runner', level: 'info' 
 
 const enqueueFutureLifecycleRetry = async (input: {
   readonly instanceId: string;
+  readonly pluginId: string;
   readonly lifecycle?: { readonly retryKind?: string; readonly retryAfter?: string } | null;
   readonly enqueue: (input: {
     readonly instanceId: string;
+    readonly pluginId: string;
     readonly runAt: Date;
   }) => Promise<unknown>;
 }): Promise<boolean> => {
   const retryAfter =
     input.lifecycle?.retryKind === 'retryable' ? input.lifecycle.retryAfter : undefined;
   if (!retryAfter || Date.parse(retryAfter) <= Date.now()) return false;
-  await input.enqueue({ instanceId: input.instanceId, runAt: new Date(retryAfter) });
+  const runAt = new Date(retryAfter);
+  await input.enqueue({ instanceId: input.instanceId, pluginId: input.pluginId, runAt });
   return true;
 };
 
@@ -223,12 +226,13 @@ export const createStudioJobTaskList = (
                 input.status === 'cancelled') &&
               loadedJob !== null &&
               isConfiguredLifecycleJob(loadedJob);
-            if (!isLifecycleCompletion || !loadedJob) {
+            if (!isLifecycleCompletion || !loadedJob?.pluginId) {
               return withStudioJobRepository(tenantInstanceId, (repository) =>
                 repository.updateJobState(input)
               );
             }
             const lifecycleJob = loadedJob;
+            const lifecyclePluginId = loadedJob.pluginId;
             let lifecycleRetryEnqueued = false;
             const updatedJob = await withStudioJobLifecycleRepositories(
               tenantInstanceId,
@@ -253,6 +257,7 @@ export const createStudioJobTaskList = (
                   });
                   lifecycleRetryEnqueued = await enqueueFutureLifecycleRetry({
                     instanceId: tenantInstanceId,
+                    pluginId: lifecyclePluginId,
                     lifecycle: failedLifecycle,
                     enqueue: enqueuePluginTenantLifecycleRetry,
                   });

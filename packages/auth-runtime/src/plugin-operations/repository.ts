@@ -87,6 +87,7 @@ export const withStudioJobLifecycleRepositories = async <T>(
     readonly tenantLifecycle: PluginTenantLifecycleRepository;
     readonly enqueuePluginTenantLifecycleRetry: (input: {
       readonly instanceId: string;
+      readonly pluginId: string;
       readonly runAt: Date;
     }) => Promise<unknown>;
   }) => Promise<T>

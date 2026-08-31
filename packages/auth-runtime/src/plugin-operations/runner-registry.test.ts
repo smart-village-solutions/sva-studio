@@ -488,6 +488,7 @@ describe('plugin operation runner registry', () => {
     expect(persistedRetryAfter).toEqual(expect.any(String));
     expect(state.enqueuePluginTenantLifecycleRetry).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      pluginId: 'waste-management',
       runAt: new Date(persistedRetryAfter as string),
     });
     expect(state.scheduleConfiguredPluginTenantProvisioning).not.toHaveBeenCalled();

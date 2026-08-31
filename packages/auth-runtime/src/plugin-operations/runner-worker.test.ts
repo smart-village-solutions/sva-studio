@@ -100,23 +100,38 @@ describe('plugin operation runner worker', () => {
     expect(state.runTaskList.mock.results[0]?.value.gracefulShutdown).toHaveBeenCalledTimes(1);
   });
 
-  it('persists a deadline-driven lifecycle retry as a delayed worker job', async () => {
+  it('persists independent deadline-driven lifecycle retries per plugin', async () => {
     const { enqueuePluginTenantLifecycleRetry } = await import('./runner-queue.js');
     const runAt = new Date('2026-08-30T12:10:00.000Z');
     const pool = state.resolvePool();
 
-    await enqueuePluginTenantLifecycleRetry(pool, { instanceId: 'tenant-a', runAt });
+    await enqueuePluginTenantLifecycleRetry(pool, {
+      instanceId: 'tenant-a',
+      pluginId: 'waste-management',
+      runAt,
+    });
+    await enqueuePluginTenantLifecycleRetry(pool, {
+      instanceId: 'tenant-a',
+      pluginId: 'speech-flow',
+      runAt,
+    });
 
-    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
+    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenNthCalledWith(
+      1,
       expect.stringContaining('graphile_worker.sva_enqueue_job'),
       [
         'plugin_tenant_lifecycle_retry',
-        JSON.stringify({ instanceId: 'tenant-a' }),
+        JSON.stringify({ instanceId: 'tenant-a', pluginId: 'waste-management' }),
         'plugin-tenant-lifecycle',
         5,
-        'plugin-tenant-lifecycle-retry:tenant-a',
+        'plugin-tenant-lifecycle-retry:tenant-a:waste-management',
         runAt,
       ]
+    );
+    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('graphile_worker.sva_enqueue_job'),
+      expect.arrayContaining(['plugin-tenant-lifecycle-retry:tenant-a:speech-flow'])
     );
   });
 

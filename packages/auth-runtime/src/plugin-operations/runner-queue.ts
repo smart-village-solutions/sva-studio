@@ -12,7 +12,7 @@ type QueueClient = {
 
 export const enqueuePluginTenantLifecycleRetry = (
   client: QueueClient,
-  input: { readonly instanceId: string; readonly runAt: Date }
+  input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date }
 ): Promise<unknown> =>
   client.query(
     `SELECT graphile_worker.sva_enqueue_job(
@@ -25,10 +25,10 @@ export const enqueuePluginTenantLifecycleRetry = (
     )`,
     [
       pluginTenantLifecycleRetryTaskIdentifier,
-      JSON.stringify({ instanceId: input.instanceId }),
+      JSON.stringify({ instanceId: input.instanceId, pluginId: input.pluginId }),
       'plugin-tenant-lifecycle',
       5,
-      `plugin-tenant-lifecycle-retry:${input.instanceId}`,
+      `plugin-tenant-lifecycle-retry:${input.instanceId}:${input.pluginId}`,
       input.runAt,
     ]
   );

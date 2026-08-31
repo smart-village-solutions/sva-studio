@@ -39,6 +39,10 @@ unvollständige beziehungsweise suspendierte Ressourcen zugreifen.
 8. Plugins ohne Lifecycle-Vertrag behalten die bestehende Modul- und
    Action-Autorisierung. Neue plugin-spezifische Server-Handler verwenden den
    exportierten Host-Access-Entscheid zusätzlich zu ihrer normalen IAM-Prüfung.
+9. Verzögerte Retry-Wake-ups sind pro Instanz und Plugin getrennt. Das Cockpit
+   aktualisiert Readiness während aktiver Jobs und retryable Retry-Fenster, bis
+   der Server einen abgeschlossenen Zustand liefert. Lifecycle-HTTP-Fehler
+   folgen der vom Request bevorzugten unterstützten Sprache.
 
 ## Konsequenzen
 

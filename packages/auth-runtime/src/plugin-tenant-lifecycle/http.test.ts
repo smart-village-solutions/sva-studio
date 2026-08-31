@@ -97,7 +97,7 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     const response = await startPluginTenantLifecycleInternal(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Accept-Language': 'en-US,en;q=0.9', 'Content-Type': 'application/json' },
         body: JSON.stringify({ pluginId: 'speech', operation: 'reconcile' }),
       }),
       context as never
@@ -105,7 +105,27 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: 'plugin_tenant_lifecycle_inactive' },
+      error: {
+        code: 'plugin_tenant_lifecycle_inactive',
+        message: 'The plugin lifecycle operation could not be started.',
+      },
+    });
+  });
+
+  it('localizes invalid lifecycle requests for English administrators', async () => {
+    const { startPluginTenantLifecycleInternal } = await import('./http.js');
+    const response = await startPluginTenantLifecycleInternal(
+      new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
+        method: 'POST',
+        headers: { 'Accept-Language': 'en', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pluginId: 'INVALID', operation: 'reconcile' }),
+      }),
+      context as never
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request', message: 'The request body is invalid.' },
     });
   });
 
@@ -133,11 +153,16 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     state.getInstanceById.mockResolvedValue(null);
     const { getPluginTenantReadinessInternal } = await import('./http.js');
     const response = await getPluginTenantReadinessInternal(
-      new Request('https://studio.test/api/v1/iam/instances/missing/plugin-readiness'),
+      new Request('https://studio.test/api/v1/iam/instances/missing/plugin-readiness', {
+        headers: { 'Accept-Language': 'en-GB' },
+      }),
       context as never
     );
 
     expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'not_found', message: 'The instance was not found.' },
+    });
     expect(state.readConfiguredPluginTenantReadiness).not.toHaveBeenCalled();
   });
 });

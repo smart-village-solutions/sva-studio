@@ -14,6 +14,7 @@ import { ensurePlatformAccess } from '../iam-instance-registry/http.js';
 import { withRegistryRepository } from '../iam-instance-registry/repository.js';
 import { isAuthenticatedRegistryServiceRequest } from '../iam-instance-registry/service-token.js';
 import { jsonResponse } from '../db.js';
+import { translatePluginTenantLifecycleMessage } from './messages.js';
 import { readConfiguredPluginTenantReadiness } from './read-model.js';
 import { startConfiguredPluginTenantLifecycle } from './runtime.js';
 
@@ -42,13 +43,18 @@ const readInstanceId = (request: Request): string | null => {
 
 const readRequestId = (): string | undefined => getWorkspaceContext().requestId;
 
-const requireInstance = async (instanceId: string): Promise<Response | null> => {
+const requireInstance = async (request: Request, instanceId: string): Promise<Response | null> => {
   const instance = await withRegistryRepository((repository) =>
     repository.getInstanceById(instanceId)
   );
   return instance
     ? null
-    : createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', readRequestId());
+    : createApiError(
+        404,
+        'not_found',
+        translatePluginTenantLifecycleMessage(request, 'instanceNotFound'),
+        readRequestId()
+      );
 };
 
 const readLifecycleError = (
@@ -83,9 +89,14 @@ const readContext = async (
   }
   const instanceId = readInstanceId(request);
   if (!instanceId) {
-    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', readRequestId());
+    return createApiError(
+      400,
+      'invalid_instance_id',
+      translatePluginTenantLifecycleMessage(request, 'invalidInstanceId'),
+      readRequestId()
+    );
   }
-  const instanceError = await requireInstance(instanceId);
+  const instanceError = await requireInstance(request, instanceId);
   return instanceError ?? { instanceId };
 };
 
@@ -117,7 +128,12 @@ export const startPluginTenantLifecycleInternal = async (
   }
   const parsed = await parseRequestBody(request, startLifecycleSchema);
   if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', parsed.message, readRequestId());
+    return createApiError(
+      400,
+      'invalid_request',
+      translatePluginTenantLifecycleMessage(request, 'invalidRequest'),
+      readRequestId()
+    );
   }
 
   try {
@@ -135,7 +151,7 @@ export const startPluginTenantLifecycleInternal = async (
     return createApiError(
       lifecycleError.status,
       lifecycleError.code,
-      'Plugin-Lifecycle konnte nicht gestartet werden.',
+      translatePluginTenantLifecycleMessage(request, 'lifecycleStartFailed'),
       readRequestId()
     );
   }

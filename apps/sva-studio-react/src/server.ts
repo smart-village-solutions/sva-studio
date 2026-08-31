@@ -192,6 +192,10 @@ const dispatchKnownServerEntryRoutes = async (
   return null;
 };
 
+if (studioJobWorkerEnabled) {
+  startPluginOperationWorkerInBackground();
+}
+
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
   await ensurePluginActivationPoliciesConfigured();

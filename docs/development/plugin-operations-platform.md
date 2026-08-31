@@ -137,6 +137,8 @@ Die öffentliche Plattform spricht nicht über konkrete Worker-Technologie. Eine
 
 Die erste interne Implementierung nutzt dafür Graphile Worker im Hostprozess. Der Worker wird hostseitig lazy gestartet, nutzt denselben zentralen Studio-Postgres wie der führende Jobdatensatz und bleibt vollständig hinter `@sva/auth-runtime` verborgen.
 
+Worker-fähige Serverprozesse starten ihre konfigurierte Lane bereits beim Prozess-Bootstrap. Das privilegierte Provisioner-Profil ist dadurch nicht von einem ersten HTTP-Request oder externen Healthcheck abhängig; Requests stoßen nur den idempotenten Recheck desselben Controllers an.
+
 Für startbare Plugin-Jobtypen gilt zusätzlich ein verbindlicher Runtime-Integrationsschritt:
 
 - die deklarativen `jobTypes` bleiben Build-Time-Vertrag im Plugin

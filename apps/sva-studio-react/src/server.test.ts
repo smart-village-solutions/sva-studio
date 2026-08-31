@@ -749,7 +749,7 @@ describe('server transport', () => {
     expect(startFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('starts only the privileged worker lane in the provisioner runtime profile', async () => {
+  it('starts only the privileged worker lane during provisioner process bootstrap', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_LANE', 'privileged');
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
@@ -759,8 +759,7 @@ describe('server transport', () => {
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('ok')));
 
-    const mod = await import('./server');
-    await mod.default.fetch(new Request('http://localhost:3000/health/live'));
+    await import('./server');
     await vi.waitFor(() => {
       expect(ensurePrivilegedStudioJobWorkerStartedMock).toHaveBeenCalledOnce();
     });

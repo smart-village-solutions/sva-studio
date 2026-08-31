@@ -779,6 +779,31 @@ describe('server transport', () => {
     expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
   });
 
+  it('exits with an error after a terminal worker failure', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('ok')));
+
+    await import('./server');
+    await vi.waitFor(() => expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledOnce());
+    const options = ensurePluginOperationWorkerStartedMock.mock.calls[0]?.[0] as
+      | {
+          onTerminalFailure?: (failure: { error: unknown; lane: string }) => void;
+        }
+      | undefined;
+
+    expect(options?.onTerminalFailure).toBeTypeOf('function');
+    options?.onTerminalFailure?.({ error: new Error('worker crashed'), lane: 'default' });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
+  });
+
   it('waits for plugin operation handlers before dispatching auth routes', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 

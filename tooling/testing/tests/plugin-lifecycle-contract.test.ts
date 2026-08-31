@@ -21,13 +21,28 @@ describe('plugin lifecycle database contract gate', () => {
 
   it('keeps every lifecycle invariant positive and negative in the real harness', () => {
     const harness = read('scripts/ci/verify-plugin-lifecycle-database-contract.ts');
-    for (const invariant of ['LC-01', 'LC-02', 'LC-03', 'LC-04', 'LC-05', 'LC-06', 'ACT-01']) {
+    const workerFixture = read('tooling/testing/fixtures/plugin-lifecycle-worker-process.ts');
+    for (const invariant of [
+      'LC-01',
+      'LC-02',
+      'LC-03',
+      'LC-04',
+      'LC-05',
+      'LC-06',
+      'TOP-01',
+      'ACT-01',
+    ]) {
       expect(harness).toContain(`${invariant}-positive`);
       expect(harness).toContain(`${invariant}-negative`);
     }
-    expect(harness).not.toContain('TOP-01');
     expect(harness).toContain('postgres:16-alpine');
     expect(harness).toContain('runTaskList');
+    expect(harness).toContain('plugin-lifecycle-worker-process.ts');
+    expect(workerFixture).toContain('ensurePrivilegedStudioJobWorkerStarted');
+    expect(harness).toContain('top01_persistent_job_key_after_crash');
+    expect(harness).toContain('top01_original_scheduled_job_completed_after_restart');
+    expect(harness).toContain('top01_clean_shutdown_not_restarted');
+    expect(harness).not.toContain("sva_enqueue_job('studio_job_execute_privileged'");
     expect(harness).toContain('packages/data/scripts/run-migrations.sh');
     expect(harness).toContain('assertPersistedTerminalOutcome');
     expect(harness).toContain('final_attempt_retry_key_absent');

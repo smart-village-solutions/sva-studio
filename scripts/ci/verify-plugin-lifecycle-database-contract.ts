@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 
@@ -13,6 +13,7 @@ const pluginId = 'fault-plugin';
 const activationPluginId = 'act-plugin';
 const jobTypeId = 'fault-plugin.provision';
 const queueName = 'plugin-tenant-lifecycle-contract';
+const contractWorkerProcesses = new Set<ReturnType<typeof spawn>>();
 let handlerAttempts = 0;
 let handlerEffectDatabase: QueryClient | undefined;
 const requireFromAuthRuntime = createRequire(
@@ -417,7 +418,8 @@ type RuntimeModules = {
   }) => Promise<{ lifecycle: { desiredGeneration: number }; job: { id: string } }>;
   readonly ensure: (instanceId: string) => Promise<void>;
   readonly createTaskList: (
-    getRegistry: () => ReadonlyMap<string, unknown>
+    getRegistry: () => ReadonlyMap<string, unknown>,
+    taskIdentifier?: string
   ) => Record<string, (payload: unknown, helpers: unknown) => Promise<void>>;
   readonly registry: () => ReadonlyMap<string, unknown>;
   readonly configure: (input: {
@@ -488,7 +490,8 @@ const configureRuntime = (
     | 'malformed'
     | 'retry-once'
     | 'always-fail'
-    | 'idempotent-effect' = 'ready'
+    | 'idempotent-effect' = 'ready',
+  executionLane: 'default' | 'privileged' = 'default'
 ): void => {
   handlerAttempts = 0;
   runtime.configure({
@@ -521,6 +524,7 @@ const configureRuntime = (
   runtime.register({
     [jobTypeId]: {
       queueName,
+      executionLane,
       handler: async () => {
         handlerAttempts += 1;
         if (behavior === 'invalid') return {};
@@ -557,8 +561,77 @@ const configureRuntime = (
 
 const startLifecycle = (
   runtime: RuntimeModules,
-  operation: 'provision' | 'reconcile' = 'provision'
-) => runtime.start({ instanceId, pluginId, operation, scheduledAt: new Date().toISOString() });
+  operation: 'provision' | 'reconcile' = 'provision',
+  scheduledAt = new Date().toISOString()
+) => runtime.start({ instanceId, pluginId, operation, scheduledAt });
+
+type ContractWorkerProcess = {
+  readonly child: ReturnType<typeof spawn>;
+  readonly output: { stderr: string; stdout: string };
+};
+
+const spawnContractWorker = (
+  port: string,
+  jobId: string,
+  mode: 'hold' | 'run' | 'shutdown'
+): ContractWorkerProcess => {
+  const child = spawn(
+    process.execPath,
+    ['--import', 'tsx', 'tooling/testing/fixtures/plugin-lifecycle-worker-process.ts'],
+    {
+      cwd: rootDir,
+      env: {
+        ...process.env,
+        IAM_DATABASE_URL: `postgres://postgres:${adminPassword}@127.0.0.1:${port}/${database}`,
+        STUDIO_JOB_WORKER_DATABASE_URL: `postgres://sva_job_worker:${workerPassword}@127.0.0.1:${port}/${database}`,
+        SVA_LIFECYCLE_CONTRACT_JOB_ID: jobId,
+        SVA_LIFECYCLE_CONTRACT_WORKER_MODE: mode,
+        SVA_PLUGIN_OPERATION_WORKER_ENABLED: 'true',
+        SVA_PLUGIN_OPERATION_WORKER_LANE: 'privileged',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }
+  );
+  const output = { stderr: '', stdout: '' };
+  contractWorkerProcesses.add(child);
+  child.once('exit', () => contractWorkerProcesses.delete(child));
+  child.stdout?.on('data', (chunk: Buffer) => {
+    output.stdout += chunk.toString('utf8');
+  });
+  child.stderr?.on('data', (chunk: Buffer) => {
+    output.stderr += chunk.toString('utf8');
+  });
+  return { child, output };
+};
+
+const waitForWorkerOutput = async (
+  workerProcess: ContractWorkerProcess,
+  marker: string
+): Promise<void> =>
+  waitFor(`worker-process:${marker}`, async () => {
+    if (workerProcess.output.stdout.includes(marker)) return true;
+    if (workerProcess.child.exitCode !== null) {
+      throw new Error(
+        `plugin_lifecycle_worker_process_early_exit:${workerProcess.child.exitCode}:${workerProcess.output.stderr}`
+      );
+    }
+    return false;
+  });
+
+const waitForWorkerExit = async (
+  workerProcess: ContractWorkerProcess
+): Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }> => {
+  if (workerProcess.child.exitCode !== null || workerProcess.child.signalCode !== null) {
+    return {
+      code: workerProcess.child.exitCode,
+      signal: workerProcess.child.signalCode,
+    };
+  }
+  return new Promise((resolve, reject) => {
+    workerProcess.child.once('error', reject);
+    workerProcess.child.once('exit', (code, signal) => resolve({ code, signal }));
+  });
+};
 
 const runWorkerUntil = async (
   runtime: RuntimeModules,
@@ -695,7 +768,8 @@ const assertPersistedPendingRetry = async (
 const runMatrix = async (
   adminPool: ContractPool,
   workerPool: ContractPool,
-  runtime: RuntimeModules
+  runtime: RuntimeModules,
+  port: string
 ): Promise<void> => {
   handlerEffectDatabase = adminPool;
   configureRuntime(runtime);
@@ -924,6 +998,116 @@ const runMatrix = async (
         )) === 'true'
     );
   });
+
+  await reportCase('TOP-01-negative-default-lane-cannot-claim-privileged-job', async () => {
+    await cleanLifecycle(adminPool);
+    configureRuntime(runtime, 'contract-1', 'ready', 'privileged');
+    const started = await startLifecycle(runtime);
+    const defaultRunner = runTaskList(
+      { concurrency: 1, noHandleSignals: true },
+      runtime.createTaskList(runtime.registry, 'studio_job_execute'),
+      workerPool
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 500));
+    await defaultRunner.gracefulShutdown();
+    assert(
+      (await scalar(
+        adminPool,
+        "SELECT (status = 'queued')::text AS value FROM iam.studio_jobs WHERE id = $1",
+        [started.job.id]
+      )) === 'true',
+      'top01_default_lane_claimed_privileged_job'
+    );
+    assert(
+      (await scalar(
+        adminPool,
+        'SELECT count(*)::text AS value FROM graphile_worker.jobs WHERE key = $1',
+        [`studio-job:${started.job.id}`]
+      )) === '1',
+      'top01_privileged_job_key_missing_after_default_lane'
+    );
+
+    const privilegedWorker = spawnContractWorker(port, started.job.id, 'run');
+    await waitForWorkerOutput(privilegedWorker, 'WORKER_READY');
+    const exit = await waitForWorkerExit(privilegedWorker);
+    assert(exit.code === 0, `top01_privileged_worker_failed:${privilegedWorker.output.stderr}`);
+    assert(
+      (await scalar(
+        adminPool,
+        "SELECT (status = 'succeeded')::text AS value FROM iam.studio_jobs WHERE id = $1",
+        [started.job.id]
+      )) === 'true',
+      'top01_privileged_worker_did_not_consume_job'
+    );
+  });
+
+  await reportCase('TOP-01-positive-crash-recovery-without-http-request', async () => {
+    await cleanLifecycle(adminPool);
+    configureRuntime(runtime, 'contract-1', 'ready', 'privileged');
+    const started = await startLifecycle(
+      runtime,
+      'provision',
+      new Date(Date.now() + 10_000).toISOString()
+    );
+    const crashedWorker = spawnContractWorker(port, started.job.id, 'hold');
+    await waitForWorkerOutput(crashedWorker, 'WORKER_READY');
+    crashedWorker.child.kill('SIGKILL');
+    const crashExit = await waitForWorkerExit(crashedWorker);
+    assert(crashExit.signal === 'SIGKILL', 'top01_worker_process_did_not_crash');
+    assert(
+      (await scalar(
+        adminPool,
+        'SELECT count(*)::text AS value FROM graphile_worker.jobs WHERE key = $1',
+        [`studio-job:${started.job.id}`]
+      )) === '1',
+      'top01_persistent_job_key_after_crash'
+    );
+
+    const restartedWorker = spawnContractWorker(port, started.job.id, 'run');
+    await waitForWorkerOutput(restartedWorker, 'WORKER_READY');
+    const restartExit = await waitForWorkerExit(restartedWorker);
+    assert(
+      restartExit.code === 0,
+      `top01_restarted_worker_failed:${restartedWorker.output.stderr}`
+    );
+    assert(
+      (await scalar(
+        adminPool,
+        "SELECT (status = 'succeeded')::text AS value FROM iam.studio_jobs WHERE id = $1",
+        [started.job.id]
+      )) === 'true',
+      'top01_original_scheduled_job_completed_after_restart'
+    );
+  });
+
+  await reportCase('TOP-01-negative-clean-shutdown-is-not-restarted', async () => {
+    await cleanLifecycle(adminPool);
+    configureRuntime(runtime, 'contract-1', 'ready', 'privileged');
+    const started = await startLifecycle(
+      runtime,
+      'provision',
+      new Date(Date.now() + 60_000).toISOString()
+    );
+    const stoppedWorker = spawnContractWorker(port, started.job.id, 'shutdown');
+    await waitForWorkerOutput(stoppedWorker, 'WORKER_READY');
+    const stopExit = await waitForWorkerExit(stoppedWorker);
+    assert(stopExit.code === 0, `top01_clean_shutdown_failed:${stoppedWorker.output.stderr}`);
+    assert(
+      stoppedWorker.output.stdout.includes('WORKER_STOPPED'),
+      'top01_clean_shutdown_not_observed'
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 500));
+    assert(
+      (await scalar(
+        adminPool,
+        "SELECT (status = 'queued')::text AS value FROM iam.studio_jobs WHERE id = $1",
+        [started.job.id]
+      )) === 'true',
+      'top01_clean_shutdown_not_restarted'
+    );
+  });
+
+  configureRuntime(runtime);
 
   await reportCase('LC-04-positive-real-tasklist-terminal-commit', async () => {
     await cleanLifecycle(adminPool);
@@ -1453,11 +1637,14 @@ const main = async (): Promise<void> => {
     });
     await configureFixture(adminPool);
     runtime = await loadRuntime(port);
-    await runMatrix(adminPool, workerPool, runtime);
+    await runMatrix(adminPool, workerPool, runtime, port);
     process.stdout.write(
       `Plugin lifecycle database contract passed in ${Date.now() - startedAt}ms\n`
     );
   } finally {
+    for (const child of contractWorkerProcesses) {
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }
     await runtime?.close();
     await workerPool?.end();
     await adminPool?.end();

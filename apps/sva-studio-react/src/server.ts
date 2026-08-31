@@ -40,7 +40,9 @@ let dispatchAuthRouteRequestPromise: Promise<
 let pluginServerHandlerDispatcherPromise: Promise<
   (request: Request) => Promise<Response | null>
 > | null = null;
-let ensureStudioJobWorkerStartedPromise: Promise<() => Promise<void>> | null = null;
+let ensureStudioJobWorkerStartedPromise: Promise<
+  (typeof import('@sva/auth-runtime/server'))['ensureStudioJobWorkerStarted']
+> | null = null;
 let registerStudioPluginOperationHandlersPromise: Promise<
   (typeof import('./lib/plugin-operation-runtime.server'))['registerStudioPluginOperationHandlers']
 > | null = null;
@@ -114,6 +116,8 @@ const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
 const reportPluginWorkerBootstrapFailure = async (error: unknown): Promise<void> =>
   logPluginWorkerBootstrapFailure(await getLogger('server-entry-transport'), error);
 
+const terminateAfterTerminalWorkerFailure = (): never => process.exit(1);
+
 const startPluginOperationWorkerInBackground = (): void => {
   if (pluginOperationWorkerBootstrapPromise) {
     if (devRuntimeRefreshEnabled) {
@@ -132,7 +136,9 @@ const startPluginOperationWorkerInBackground = (): void => {
       startPluginActivationPolicyFleetReconcileInBackground();
       if (!studioJobWorkerEnabled) return;
       const startWorker = await getEnsureStudioJobWorkerStarted();
-      await startWorker();
+      await startWorker({
+        onTerminalFailure: terminateAfterTerminalWorkerFailure,
+      });
     } catch (error) {
       await reportPluginWorkerBootstrapFailure(error);
     } finally {

@@ -61,6 +61,12 @@ unvollständige beziehungsweise suspendierte Ressourcen zugreifen.
     serverseitigen Wake-up. Aktivierung und IAM-Materialisierung committen für
     aktive Lifecycle-Plugins einen idempotenten Reconcile-Intent samt Wake-up
     in derselben Transaktion. UI-Polling ist kein Konvergenzmechanismus.
+13. Auth-Runtime erkennt den fatalen Ausfall einer Default- oder privilegierten
+    Worker-Lane, setzt deren Health fail-closed und retiert den betroffenen Pool
+    genau einmal. Erst danach signalisiert sie den terminalen Fehler an den
+    Server-Bootstrap. Der Serverprozess beendet sich mit Fehlerstatus; Swarm ist
+    der alleinige, begrenzte Restart-Owner. Expliziter Shutdown emittiert kein
+    terminales Signal und startet keinen zweiten In-Process-Supervisor.
 
 ## Konsequenzen
 

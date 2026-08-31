@@ -293,9 +293,11 @@ describe('plugin operation runner worker', () => {
     });
     const { ensureStudioJobWorkerStarted, getStudioJobWorkerHealth } =
       await import('./runner-worker.js');
+    const terminalFailure = vi.fn();
 
-    await ensureStudioJobWorkerStarted();
-    rejectWorker(new Error('connection lost'));
+    await ensureStudioJobWorkerStarted({ onTerminalFailure: terminalFailure });
+    const runtimeError = new Error('connection lost');
+    rejectWorker(runtimeError);
     await vi.waitFor(() => {
       expect(state.logger.error).toHaveBeenCalledWith(
         'Studio-Job-Worker wurde unerwartet beendet',
@@ -310,6 +312,9 @@ describe('plugin operation runner worker', () => {
       reasonCode: 'studio_job_worker_runtime_failed',
       status: 'failed',
     });
+    await vi.waitFor(() =>
+      expect(terminalFailure).toHaveBeenCalledWith({ error: runtimeError, lane: 'default' })
+    );
     await ensureStudioJobWorkerStarted();
 
     expect(state.runTaskList).toHaveBeenCalledTimes(2);
@@ -367,6 +372,109 @@ describe('plugin operation runner worker', () => {
       await ensureStudioJobWorkerStarted();
       expect(state.runTaskList).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it.each([
+    {
+      ensureExport: 'ensureStudioJobWorkerStarted',
+      lane: 'default',
+      reasonCode: 'studio_job_worker_runtime_failed',
+    },
+    {
+      ensureExport: 'ensurePrivilegedStudioJobWorkerStarted',
+      lane: 'privileged',
+      reasonCode: 'privileged_studio_job_worker_runtime_failed',
+    },
+  ] as const)(
+    'signals a terminal $lane worker failure once after retiring its pool',
+    async ({ ensureExport, lane, reasonCode }) => {
+      process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = lane;
+      let rejectWorker!: (error: Error) => void;
+      const gracefulShutdown = vi.fn(async () => undefined);
+      state.runTaskList.mockReturnValueOnce({
+        gracefulShutdown,
+        promise: new Promise<void>((_resolve, reject) => {
+          rejectWorker = reject;
+        }),
+      });
+      const terminalFailure = vi.fn();
+      const worker = await import('./runner-worker.js');
+      const ensureWorker = worker[ensureExport];
+
+      await ensureWorker({ onTerminalFailure: terminalFailure });
+      const events = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+      const fatalError = new Error(`${lane} worker crashed`);
+      events.emit('worker:fatalError', { error: fatalError });
+
+      expect(worker.getStudioJobWorkerHealth()).toEqual({
+        ready: false,
+        reasonCode,
+        status: 'failed',
+      });
+      await vi.waitFor(() => expect(gracefulShutdown).toHaveBeenCalledOnce());
+      await vi.waitFor(() =>
+        expect(terminalFailure).toHaveBeenCalledWith({ error: fatalError, lane })
+      );
+
+      rejectWorker(new Error(`${lane} pool rejected after retirement`));
+      await Promise.resolve();
+      expect(terminalFailure).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('keeps the healthy lane isolated when the other lane fails terminally', async () => {
+    const defaultTerminalFailure = vi.fn();
+    const privilegedTerminalFailure = vi.fn();
+    const worker = await import('./runner-worker.js');
+
+    await worker.ensureStudioJobWorkerStarted({
+      onTerminalFailure: defaultTerminalFailure,
+    });
+    await worker.ensurePrivilegedStudioJobWorkerStarted({
+      onTerminalFailure: privilegedTerminalFailure,
+    });
+    await vi.waitFor(() => {
+      process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+      expect(worker.getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });
+    });
+
+    const defaultEvents = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+    defaultEvents.emit('worker:fatalError', { error: new Error('default lane failed') });
+
+    await vi.waitFor(() => expect(defaultTerminalFailure).toHaveBeenCalledOnce());
+    expect(privilegedTerminalFailure).not.toHaveBeenCalled();
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+    expect(worker.getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });
+  });
+
+  it('stops both lanes explicitly without signaling a terminal failure', async () => {
+    const defaultTerminalFailure = vi.fn();
+    const privilegedTerminalFailure = vi.fn();
+    const worker = await import('./runner-worker.js');
+
+    await worker.ensureStudioJobWorkerStarted({
+      onTerminalFailure: defaultTerminalFailure,
+    });
+    await worker.ensurePrivilegedStudioJobWorkerStarted({
+      onTerminalFailure: privilegedTerminalFailure,
+    });
+    await worker.stopStudioJobWorker();
+    await worker.stopPrivilegedStudioJobWorker();
+
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'default';
+    expect(worker.getStudioJobWorkerHealth()).toEqual({
+      ready: false,
+      reasonCode: 'studio_job_worker_stopped',
+      status: 'stopped',
+    });
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+    expect(worker.getStudioJobWorkerHealth()).toEqual({
+      ready: false,
+      reasonCode: 'privileged_studio_job_worker_stopped',
+      status: 'stopped',
+    });
+    expect(defaultTerminalFailure).not.toHaveBeenCalled();
+    expect(privilegedTerminalFailure).not.toHaveBeenCalled();
   });
 
   it('ignores delayed failures from a replaced worker pool', async () => {

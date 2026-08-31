@@ -72,7 +72,14 @@ export const parsePrices = (value: unknown): readonly SvaMainserverPriceInput[] 
   return prices;
 };
 
-export const parseOperatingCompany = (value: unknown): SvaMainserverOperatingCompanyInput | Response | undefined => {
+type ParseOperatingCompanyOptions = Readonly<{
+  requireNameForDetails?: boolean;
+}>;
+
+export const parseOperatingCompany = (
+  value: unknown,
+  options: ParseOperatingCompanyOptions = {}
+): SvaMainserverOperatingCompanyInput | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -89,8 +96,23 @@ export const parseOperatingCompany = (value: unknown): SvaMainserverOperatingCom
     return contact;
   }
 
+  const name = readString(value.name);
+  const hasDetails =
+    (address !== undefined && Object.keys(address).length > 0) ||
+    (contact !== undefined && Object.keys(contact).length > 0);
+  if (options.requireNameForDetails && !name && hasDetails) {
+    return errorJson(
+      400,
+      'invalid_request',
+      'Betreiberdaten mit Adresse oder Kontakt benötigen einen Namen.'
+    );
+  }
+  if (options.requireNameForDetails && !name) {
+    return undefined;
+  }
+
   return {
-    ...(readString(value.name) ? { name: readString(value.name) } : {}),
+    ...(name ? { name } : {}),
     ...(address ? { address } : {}),
     ...(contact ? { contact } : {}),
   };

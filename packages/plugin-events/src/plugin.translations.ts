@@ -49,6 +49,7 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     weekday: 'Wochentag',
     useOnlyTimeDescription: 'Nur Zeit-Hinweis verwenden',
     organizerName: 'Institution/Firma',
+    organizerNameHelp: 'Erforderlich, sobald weitere Veranstalterangaben ausgefüllt werden.',
     firstName: 'Vorname',
     lastName: 'Nachname',
     fax: 'Fax',
@@ -380,6 +381,8 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     categories: 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
     priceInformations: 'Preisangaben müssen valide Zahlen enthalten.',
     geoLocation: 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
+    organizerName:
+      'Geben Sie einen Namen für den Veranstalter ein oder entfernen Sie die übrigen Veranstalterangaben.',
   },
   values: {
     mediaContentTypes: {
@@ -438,6 +441,7 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     weekday: 'Weekday',
     useOnlyTimeDescription: 'Use time note only',
     organizerName: 'Organization/company',
+    organizerNameHelp: 'Required as soon as further organizer details are entered.',
     firstName: 'First name',
     lastName: 'Last name',
     fax: 'Fax',
@@ -733,6 +737,7 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     categories: 'Categories need a name with at most 128 characters.',
     priceInformations: 'Price entries must contain valid numbers.',
     geoLocation: 'Coordinates must be valid latitude and longitude values.',
+    organizerName: 'Enter an organizer name or remove the remaining organizer details.',
   },
   values: {
     mediaContentTypes: {

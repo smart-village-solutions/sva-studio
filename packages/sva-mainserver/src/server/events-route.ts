@@ -184,7 +184,7 @@ const parseEventRelations = (
     return tags;
   }
 
-  const organizer = parseOperatingCompany(body.organizer);
+  const organizer = parseOperatingCompany(body.organizer, { requireNameForDetails: true });
   if (isResponse(organizer)) {
     return organizer;
   }

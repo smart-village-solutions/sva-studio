@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateEventForm } from '../src/events.validation.js';
+import { hasInvalidFormGeoLocation, validateEventForm } from '../src/events.validation.js';
 
 describe('validateEventForm', () => {
   it('accepts a minimal event', () => {
@@ -8,11 +8,16 @@ describe('validateEventForm', () => {
   });
 
   it('ignores empty optional URL placeholders', () => {
-    expect(validateEventForm({ title: 'Stadtfest', urls: [{ url: '' }, { url: '   ' }] })).toEqual([]);
+    expect(validateEventForm({ title: 'Stadtfest', urls: [{ url: '' }, { url: '   ' }] })).toEqual(
+      []
+    );
   });
 
   it('requires a title and https urls', () => {
-    expect(validateEventForm({ title: '', urls: [{ url: 'http://example.test' }] })).toEqual(['title', 'urls']);
+    expect(validateEventForm({ title: '', urls: [{ url: 'http://example.test' }] })).toEqual([
+      'title',
+      'urls',
+    ]);
   });
 
   it('rejects non-https media source urls', () => {
@@ -58,9 +63,26 @@ describe('validateEventForm', () => {
         title: 'Stadtfest',
         addresses: [{ geoLocation: { latitude: 91, longitude: 7.2 } }],
         organizer: {
+          name: 'Kulturamt',
           address: { geoLocation: { latitude: 51.4, longitude: 181 } },
         },
       })
     ).toEqual(['geoLocation']);
+  });
+
+  it('rejects incomplete and nonnumeric form coordinates before serialization', () => {
+    expect(hasInvalidFormGeoLocation({ latitude: '51.4', longitude: '' })).toBe(true);
+    expect(hasInvalidFormGeoLocation({ latitude: '', longitude: 'not-a-number' })).toBe(true);
+    expect(hasInvalidFormGeoLocation({ latitude: '  ', longitude: '' })).toBe(false);
+    expect(hasInvalidFormGeoLocation({ latitude: '51.4', longitude: '7.2' })).toBe(false);
+  });
+
+  it('requires an organizer name when organizer details are present', () => {
+    expect(
+      validateEventForm({
+        title: 'Stadtfest',
+        organizer: { contact: { email: 'kontakt@example.test' } },
+      })
+    ).toEqual(['organizerName']);
   });
 });

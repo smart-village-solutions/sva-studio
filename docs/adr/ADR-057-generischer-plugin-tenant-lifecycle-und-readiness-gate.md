@@ -43,8 +43,10 @@ unvollständige beziehungsweise suspendierte Ressourcen zugreifen.
    exportierten Host-Access-Entscheid zusätzlich zu ihrer normalen IAM-Prüfung.
 9. Verzögerte Retry-Wake-ups sind pro Instanz und Plugin getrennt. Das Cockpit
    aktualisiert Readiness während aktiver Jobs und retryable Retry-Fenster, bis
-   der Server einen abgeschlossenen Zustand liefert. Lifecycle-HTTP-Fehler
-   folgen der vom Request bevorzugten unterstützten Sprache.
+   der Server einen abgeschlossenen Zustand liefert. Ändert sich dabei die
+   Access-Entscheidung für die aktuell angemeldete Instanz, aktualisiert das
+   Cockpit auch den `/auth/me`-Snapshot. Lifecycle-HTTP-Fehler folgen der vom
+   Request bevorzugten unterstützten Sprache.
 
 ## Konsequenzen
 

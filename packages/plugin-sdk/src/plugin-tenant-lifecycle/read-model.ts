@@ -56,6 +56,30 @@ type ParsedEvidence = {
   readonly readinessRevision?: string;
 };
 
+const resolveEvidenceState = (input: {
+  readonly evidence: PluginTenantLifecycleReadEvidence | undefined;
+  readonly firstRunEvidenceMissing: boolean;
+  readonly evidenceInvalid: boolean;
+}): PluginTenantReadinessReadModel['evidenceState'] => {
+  if (!input.evidence || input.firstRunEvidenceMissing) return 'missing';
+  return input.evidenceInvalid ? 'invalid' : 'valid';
+};
+
+const resolveReadinessStatus = (input: {
+  readonly definition: PluginTenantLifecycleRegistryEntry;
+  readonly evidence: PluginTenantLifecycleReadEvidence | undefined;
+  readonly evidenceInvalid: boolean;
+  readonly lifecycleIncomplete: boolean;
+  readonly lifecyclePending: boolean;
+  readonly missingRequiredCheck: boolean;
+  readonly validChecks: readonly PluginTenantReadinessCheckResult[];
+}): PluginTenantReadinessStatus => {
+  if (input.evidenceInvalid) return input.missingRequiredCheck ? 'blocked' : 'degraded';
+  if (!input.evidence || input.lifecyclePending) return 'pending';
+  if (input.lifecycleIncomplete) return input.evidence.readinessStatus;
+  return reducePluginTenantReadinessStatus(input.definition, input.validChecks);
+};
+
 const parseEvidence = (
   definition: PluginTenantLifecycleRegistryEntry,
   evidence: PluginTenantLifecycleReadEvidence | undefined
@@ -71,8 +95,15 @@ const parseEvidence = (
     contractRevision: definition.contractRevision,
     persistedRevision: evidence?.readinessRevision,
   });
+  const lifecycleIncomplete = Boolean(
+    evidence && evidence.completedGeneration < evidence.desiredGeneration
+  );
+  const firstRunEvidenceMissing = Boolean(
+    evidence && lifecycleIncomplete && !evidence.readinessRevision && rawChecks.length === 0
+  );
   const evidenceInvalid = Boolean(
     evidence &&
+    !firstRunEvidenceMissing &&
     (!revision.current ||
       validChecks.length !== rawChecks.length ||
       persistedChecks.size !== validChecks.length ||
@@ -83,22 +114,17 @@ const parseEvidence = (
     ({ checkId, required }) => required && !persistedChecks.has(checkId)
   );
   const lifecyclePending = Boolean(evidence?.activeJobId);
-  const lifecycleIncomplete = Boolean(
-    evidence && evidence.completedGeneration < evidence.desiredGeneration
-  );
   return {
-    evidenceState: evidence ? (evidenceInvalid ? 'invalid' : 'valid') : 'missing',
-    status: evidenceInvalid
-      ? missingRequiredCheck
-        ? 'blocked'
-        : 'degraded'
-      : evidence
-        ? lifecyclePending
-          ? 'pending'
-          : lifecycleIncomplete
-            ? evidence.readinessStatus
-            : reducePluginTenantReadinessStatus(definition, validChecks)
-        : 'pending',
+    evidenceState: resolveEvidenceState({ evidence, firstRunEvidenceMissing, evidenceInvalid }),
+    status: resolveReadinessStatus({
+      definition,
+      evidence,
+      evidenceInvalid,
+      lifecycleIncomplete,
+      lifecyclePending,
+      missingRequiredCheck,
+      validChecks,
+    }),
     checks: definition.readinessChecks.map((checkDefinition) => ({
       ...checkDefinition,
       ...(persistedChecks.get(checkDefinition.checkId) ?? {

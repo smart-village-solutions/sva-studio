@@ -5,6 +5,10 @@ const api = vi.hoisted(() => ({
   getInstancePluginReadiness: vi.fn(),
   startInstancePluginLifecycle: vi.fn(),
 }));
+const auth = vi.hoisted(() => ({
+  refreshSession: vi.fn(),
+  user: { instanceId: 'tenant-a' } as { instanceId?: string } | null,
+}));
 
 vi.mock('../lib/iam-api', async (importOriginal) => {
   const original = await importOriginal<typeof import('../lib/iam-api')>();
@@ -15,6 +19,10 @@ vi.mock('../lib/iam-api', async (importOriginal) => {
   };
 });
 
+vi.mock('../providers/auth-provider', () => ({
+  useAuth: () => auth,
+}));
+
 import { usePluginTenantReadiness } from './use-plugin-tenant-readiness';
 
 describe('usePluginTenantReadiness', () => {
@@ -22,6 +30,8 @@ describe('usePluginTenantReadiness', () => {
     vi.clearAllMocks();
     api.getInstancePluginReadiness.mockResolvedValue({ data: [], meta: {} });
     api.startInstancePluginLifecycle.mockResolvedValue({ data: {}, meta: {} });
+    auth.refreshSession.mockResolvedValue(undefined);
+    auth.user = { instanceId: 'tenant-a' };
   });
 
   afterEach(() => {
@@ -181,5 +191,43 @@ describe('usePluginTenantReadiness', () => {
     await waitFor(() => expect(result.current.items[0]?.error).toBeUndefined());
     expect(clearIntervalSpy).toHaveBeenCalledWith(8_888 as unknown as number);
     expect(api.getInstancePluginReadiness).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes the current tenant auth snapshot when plugin access changes', async () => {
+    let accessReady = false;
+    api.getInstancePluginReadiness.mockImplementation(async () => ({
+      data: [
+        accessReady
+          ? {
+              pluginId: 'speech-flow',
+              effectiveActive: true,
+              accessState: 'active',
+              evidenceState: 'valid',
+              status: 'ready',
+            }
+          : {
+              pluginId: 'speech-flow',
+              effectiveActive: true,
+              accessState: 'active',
+              evidenceState: 'valid',
+              status: 'pending',
+            },
+      ],
+      meta: {},
+    }));
+
+    const { result } = renderHook(() => usePluginTenantReadiness('tenant-a'));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.error).toBeNull();
+    expect(result.current.items).toHaveLength(1);
+    await waitFor(() => expect(auth.refreshSession).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      accessReady = true;
+      await result.current.refresh();
+    });
+
+    await waitFor(() => expect(auth.refreshSession).toHaveBeenCalledTimes(2));
   });
 });

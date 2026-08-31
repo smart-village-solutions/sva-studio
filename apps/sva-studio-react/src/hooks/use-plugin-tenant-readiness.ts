@@ -2,6 +2,7 @@ import type {
   PluginTenantLifecycleOperation,
   PluginTenantReadinessReadModel,
 } from '@sva/plugin-sdk';
+import { evaluatePluginTenantAccess } from '@sva/plugin-sdk';
 import React from 'react';
 
 import {
@@ -10,17 +11,24 @@ import {
   IamHttpError,
   startInstancePluginLifecycle,
 } from '../lib/iam-api';
+import { useAuth } from '../providers/auth-provider';
 
 const readinessPollingIntervalMs = 10_000;
 
 export const usePluginTenantReadiness = (instanceId: string) => {
+  const { refreshSession, user } = useAuth();
   const [items, setItems] = React.useState<readonly PluginTenantReadinessReadModel[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [activeAction, setActiveAction] = React.useState<string | null>(null);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const requestSequence = React.useRef(0);
   const currentInstanceId = React.useRef(instanceId);
+  const accessFingerprint = React.useRef<string | null>(null);
+  const authenticatedInstanceId = React.useRef(user?.instanceId);
+  const refreshAuthSession = React.useRef(refreshSession);
   currentInstanceId.current = instanceId;
+  authenticatedInstanceId.current = user?.instanceId;
+  refreshAuthSession.current = refreshSession;
 
   const refresh = React.useCallback(async () => {
     const sequence = ++requestSequence.current;
@@ -29,7 +37,20 @@ export const usePluginTenantReadiness = (instanceId: string) => {
     try {
       const response = await getInstancePluginReadiness(instanceId);
       if (sequence === requestSequence.current && currentInstanceId.current === instanceId) {
+        const nextAccessFingerprint = response.data
+          .map((item) =>
+            `${item.pluginId}:${evaluatePluginTenantAccess(item).allowed ? 'allowed' : 'denied'}`
+          )
+          .sort()
+          .join('\u0000');
+        const shouldRefreshAuthSnapshot =
+          authenticatedInstanceId.current === instanceId &&
+          accessFingerprint.current !== nextAccessFingerprint;
+        accessFingerprint.current = nextAccessFingerprint;
         setItems(response.data);
+        if (shouldRefreshAuthSnapshot) {
+          await refreshAuthSession.current();
+        }
       }
     } catch (cause) {
       if (sequence === requestSequence.current && currentInstanceId.current === instanceId) {
@@ -45,6 +66,7 @@ export const usePluginTenantReadiness = (instanceId: string) => {
   React.useEffect(() => {
     setItems([]);
     setActiveAction(null);
+    accessFingerprint.current = null;
     void refresh();
     return () => {
       requestSequence.current += 1;

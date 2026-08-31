@@ -569,6 +569,40 @@ describe('plugin tenant lifecycle contracts', () => {
     expect(evaluatePluginTenantAccess(model)).toEqual({ allowed: true, reason: 'degraded' });
   });
 
+  it('preserves retry metadata when the first lifecycle attempt has no readiness snapshot', () => {
+    const model = createPluginTenantReadinessReadModel({
+      definition: { pluginId: 'speech', ...tenantLifecycle },
+      activation: {
+        activationPolicy: 'required',
+        effectiveActive: true,
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      },
+      evidence: {
+        accessState: 'active',
+        readinessStatus: 'degraded',
+        desiredOperation: 'provision',
+        desiredGeneration: 1,
+        completedGeneration: 0,
+        readinessChecks: [],
+        errorCode: 'speech.databaseUnavailable',
+        retryKind: 'retryable',
+        retryAfter: '2026-08-30T12:10:00.000Z',
+        updatedAt: '2026-08-30T12:05:00.000Z',
+      },
+    });
+
+    expect(model).toMatchObject({
+      status: 'degraded',
+      evidenceState: 'missing',
+      error: {
+        code: 'speech.databaseUnavailable',
+        retryKind: 'retryable',
+        retryAfter: '2026-08-30T12:10:00.000Z',
+      },
+    });
+    expect(evaluatePluginTenantAccess(model)).toEqual({ allowed: false, reason: 'pending' });
+  });
+
   it('recomputes aggregate readiness when a persisted check becomes required', () => {
     const model = createPluginTenantReadinessReadModel({
       definition: {

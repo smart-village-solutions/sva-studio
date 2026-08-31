@@ -24,6 +24,11 @@ export type InstanceRegistryPool = {
   connect(): Promise<InstanceRegistryQueryClient>;
 };
 
+type ScopedRegistryServiceOptions = Readonly<{
+  forceIamSync?: boolean;
+  awaitActivationPolicyFollowUp?: boolean;
+}>;
+
 export type InstanceRegistryRuntimeDeps = {
   readonly resolvePool: () => InstanceRegistryPool | null;
   readonly createRepository: (executor: SqlExecutor) => InstanceRegistryRepository;
@@ -69,6 +74,18 @@ const runActivationPolicyFollowUp = (
   } catch (error) {
     logActivationPolicyFollowUpError(error, input.instanceId);
   }
+};
+
+const completeActivationPolicyFollowUp = async (
+  deps: InstanceRegistryRuntimeDeps,
+  input: { readonly instanceId: string; readonly changedModuleIds: readonly string[] },
+  awaitFollowUp: boolean
+): Promise<void> => {
+  if (awaitFollowUp) {
+    await deps.afterModuleActivationPolicyReconcile?.(input);
+    return;
+  }
+  runActivationPolicyFollowUp(deps, input);
 };
 
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
@@ -128,7 +145,7 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
   const withScopedRegistryService = async <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>,
-    options: Readonly<{ forceIamSync?: boolean }> = {}
+    options: ScopedRegistryServiceOptions = {}
   ): Promise<T> => {
     const scopedResult = await withScopedRegistryRepository(instanceId, async (repository) => {
       const serviceDeps = { repository, ...deps.serviceDeps };
@@ -139,10 +156,11 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
       )({ instanceId });
       return { reconcileResult, result: await work(service) };
     });
-    runActivationPolicyFollowUp(deps, {
-      instanceId,
-      changedModuleIds: scopedResult.reconcileResult.changedModuleIds,
-    });
+    await completeActivationPolicyFollowUp(
+      deps,
+      { instanceId, changedModuleIds: scopedResult.reconcileResult.changedModuleIds },
+      options.awaitActivationPolicyFollowUp === true
+    );
     return scopedResult.result;
   };
   const getProvisioningWorkerServiceDeps = (

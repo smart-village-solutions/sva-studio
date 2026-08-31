@@ -234,7 +234,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     probeTenantIamAccess,
   },
   afterModuleActivationPolicyReconcile: ({ instanceId }) =>
-    scheduleConfiguredPluginTenantProvisioning(instanceId),
+    runConfiguredPluginTenantProvisioningSchedule(instanceId),
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,

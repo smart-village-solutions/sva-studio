@@ -65,13 +65,13 @@ describe('plugin activation policy fleet reconcile', () => {
       1,
       'instance-a',
       expect.any(Function),
-      { forceIamSync: true }
+      { forceIamSync: true, awaitActivationPolicyFollowUp: true }
     );
     expect(mocks.withScopedRegistryService).toHaveBeenNthCalledWith(
       2,
       'instance-b',
       expect.any(Function),
-      { forceIamSync: true }
+      { forceIamSync: true, awaitActivationPolicyFollowUp: true }
     );
     expect(report).toEqual(
       expect.objectContaining({
@@ -104,6 +104,28 @@ describe('plugin activation policy fleet reconcile', () => {
         status: 'degraded',
         instanceCount: 2,
         reconciledInstanceCount: 1,
+        failures: [
+          {
+            instanceId: 'instance-a',
+            stage: 'reconcile_instance',
+            code: 'plugin_activation_policy_reconcile_failed',
+          },
+        ],
+      })
+    );
+  });
+
+  it('publishes a degraded report when lifecycle follow-up scheduling fails', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a' }]);
+    mocks.withScopedRegistryService.mockRejectedValueOnce(new Error('queue unavailable'));
+
+    await expect(
+      reconcileConfiguredPluginActivationPoliciesForAllInstances({ revision: 'catalog-2' })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'degraded',
+        reconciledInstanceCount: 0,
         failures: [
           {
             instanceId: 'instance-a',

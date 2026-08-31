@@ -151,4 +151,24 @@ describe('runtime wiring', () => {
       runtime.withScopedRegistryService('tenant-a', async () => 'committed')
     ).resolves.toBe('committed');
   });
+
+  it('awaits and propagates an activation follow-up when the caller requires convergence', async () => {
+    const afterModuleActivationPolicyReconcile = vi.fn(async () => {
+      throw new Error('queue unavailable');
+    });
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => createClient() }),
+      createRepository: () => ({}) as InstanceRegistryRepository,
+      serviceDeps: {
+        invalidateHost: vi.fn(),
+      },
+      afterModuleActivationPolicyReconcile,
+    });
+
+    await expect(
+      runtime.withScopedRegistryService('tenant-a', async () => 'committed', {
+        awaitActivationPolicyFollowUp: true,
+      })
+    ).rejects.toThrow('queue unavailable');
+  });
 });

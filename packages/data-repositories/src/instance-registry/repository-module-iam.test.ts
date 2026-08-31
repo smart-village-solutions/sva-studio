@@ -110,6 +110,9 @@ describe('instance registry repository module iam', () => {
     expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock');
     expect(statements[0]?.text).toContain("manual_override = 'enabled'");
     expect(statements[0]?.text).toContain("activation_policy <> 'required'");
+    expect(statements[0]?.text).toContain('UPDATE iam.instance_plugin_lifecycle');
+    expect(statements[0]?.text).toContain("retry_kind = 'terminal'");
+    expect(statements[0]?.text).toContain('EXISTS (SELECT 1 FROM mutation)');
     expect(statements[1]?.text).toContain('UPDATE iam.instance_modules');
     expect(statements[1]?.text).toContain('pg_try_advisory_xact_lock');
     expect(statements[1]?.text).toContain("manual_override = 'disabled'");

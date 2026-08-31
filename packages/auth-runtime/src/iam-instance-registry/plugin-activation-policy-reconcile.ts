@@ -33,6 +33,7 @@ export const reconcileConfiguredPluginActivationPoliciesForAllInstances = async 
       try {
         await withScopedRegistryService(instance.instanceId, async () => undefined, {
           forceIamSync: true,
+          awaitActivationPolicyFollowUp: true,
         });
         reconciledInstanceCount += 1;
       } catch {

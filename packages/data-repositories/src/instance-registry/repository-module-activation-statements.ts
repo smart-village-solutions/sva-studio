@@ -54,6 +54,14 @@ WHERE iam.instance_modules.activation_policy <> 'required'
   AND (NOT iam.instance_modules.effective_active
     OR iam.instance_modules.manual_override IS DISTINCT FROM 'enabled')
 RETURNING 1
+),
+reactivation_intent AS (
+  UPDATE iam.instance_plugin_lifecycle
+  SET retry_kind = NULL, retry_after = NULL, updated_at = now()
+  WHERE instance_id = $1 AND plugin_id = $2
+    AND retry_kind = 'terminal'
+    AND EXISTS (SELECT 1 FROM mutation)
+  RETURNING 1
 )
 SELECT acquired, EXISTS (SELECT 1 FROM mutation) AS changed FROM module_lock;
 `;

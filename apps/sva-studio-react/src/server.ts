@@ -127,6 +127,7 @@ const startPluginOperationWorkerInBackground = (): void => {
 
   pluginOperationWorkerBootstrapPromise = (async () => {
     try {
+      await ensurePluginActivationPoliciesConfigured();
       await ensurePluginOperationHandlersRegistered();
       startPluginActivationPolicyFleetReconcileInBackground();
       if (!studioJobWorkerEnabled) return;

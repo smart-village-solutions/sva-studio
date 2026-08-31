@@ -752,6 +752,13 @@ describe('server transport', () => {
   it('starts only the privileged worker lane during provisioner process bootstrap', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_LANE', 'privileged');
+    let resolveActivationPolicies: (() => void) | undefined;
+    ensurePluginActivationPoliciesConfiguredMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveActivationPolicies = resolve;
+        })
+    );
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -760,6 +767,12 @@ describe('server transport', () => {
     createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('ok')));
 
     await import('./server');
+    await vi.waitFor(() => {
+      expect(ensurePluginActivationPoliciesConfiguredMock).toHaveBeenCalledOnce();
+    });
+    expect(ensurePrivilegedStudioJobWorkerStartedMock).not.toHaveBeenCalled();
+
+    resolveActivationPolicies?.();
     await vi.waitFor(() => {
       expect(ensurePrivilegedStudioJobWorkerStartedMock).toHaveBeenCalledOnce();
     });

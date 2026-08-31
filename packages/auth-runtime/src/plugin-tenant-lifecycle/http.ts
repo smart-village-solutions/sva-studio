@@ -68,6 +68,7 @@ const readLifecycleError = (
       return { code, status: 400 };
     case 'plugin_tenant_lifecycle_enqueue_failed':
     case 'plugin_tenant_lifecycle_job_creation_failed':
+    case 'plugin_tenant_lifecycle_claim_failed':
       return { code, status: 503 };
     case 'plugin_tenant_lifecycle_inactive':
     case 'plugin_tenant_lifecycle_handler_missing':

@@ -129,9 +129,12 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     });
   });
 
-  it('maps job creation failures to a stable retryable service response', async () => {
+  it.each([
+    'plugin_tenant_lifecycle_job_creation_failed',
+    'plugin_tenant_lifecycle_claim_failed',
+  ] as const)('maps %s to a stable retryable service response', async (errorCode) => {
     state.startConfiguredPluginTenantLifecycle.mockRejectedValue(
-      new Error('plugin_tenant_lifecycle_job_creation_failed:speech:reconcile')
+      new Error(`${errorCode}:speech:reconcile`)
     );
     const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const response = await startPluginTenantLifecycleInternal(
@@ -145,7 +148,7 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: 'plugin_tenant_lifecycle_job_creation_failed' },
+      error: { code: errorCode },
     });
   });
 

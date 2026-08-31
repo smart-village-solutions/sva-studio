@@ -94,7 +94,8 @@ import { mediaContentFromAsset } from './events.detail-media.helpers.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
-import { hasInvalidGeoLocation, validateEventForm } from './events.validation.js';
+import { hasEventOrganizerContent } from './events.detail-form-structured-serializers.js';
+import { hasInvalidFormGeoLocation, validateEventForm } from './events.validation.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -709,9 +710,22 @@ export function EventsDetailPage({
       },
     };
     const payload = mapEventsDetailFormValuesToInput(valuesWithMedia);
+    const invalidAddressIndex = valuesWithMedia.content.addresses.findIndex((address) =>
+      hasInvalidFormGeoLocation(address.geoLocation)
+    );
+    const invalidOrganizerGeoLocation = hasInvalidFormGeoLocation(
+      valuesWithMedia.content.organizer.address?.geoLocation
+    );
+    const organizerNameMissing =
+      hasEventOrganizerContent(valuesWithMedia.content.organizer) &&
+      (valuesWithMedia.content.organizer.name ?? '').trim().length === 0;
     const validationErrors = [
-      ...validateEventForm(payload),
-      ...(invalidDateInputs.dateStart || invalidDateInputs.dateEnd ? ['dates'] : []),
+      ...new Set([
+        ...validateEventForm(payload),
+        ...(invalidDateInputs.dateStart || invalidDateInputs.dateEnd ? ['dates'] : []),
+        ...(invalidAddressIndex >= 0 || invalidOrganizerGeoLocation ? ['geoLocation'] : []),
+        ...(organizerNameMissing ? ['organizerName'] : []),
+      ]),
     ];
 
     if (validationErrors.length > 0) {
@@ -720,20 +734,22 @@ export function EventsDetailPage({
         methods.setFocus('content.dates.0.dateStart');
         setActiveTab('content');
       } else if (validationErrors.includes('geoLocation')) {
-        if (
-          (payload.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation))
-        ) {
-          methods.setError('content.addresses.0.geoLocation.latitude', {
+        if (invalidAddressIndex >= 0) {
+          methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.latitude`, {
             type: 'manual',
             message: 'geoLocation',
           });
-          methods.setError('content.addresses.0.geoLocation.longitude', {
+          methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.longitude`, {
             type: 'manual',
             message: 'geoLocation',
           });
-          methods.setFocus('content.addresses.0.geoLocation.latitude');
+          setPendingFocusId(
+            invalidAddressIndex === 0
+              ? 'event-address-latitude'
+              : `event-address-latitude-${invalidAddressIndex}`
+          );
         }
-        if (hasInvalidGeoLocation(payload.organizer?.address?.geoLocation)) {
+        if (invalidOrganizerGeoLocation) {
           methods.setError('content.organizer.address.geoLocation.latitude', {
             type: 'manual',
             message: 'geoLocation',
@@ -742,7 +758,7 @@ export function EventsDetailPage({
             type: 'manual',
             message: 'geoLocation',
           });
-          methods.setFocus('content.organizer.address.geoLocation.latitude');
+          setPendingFocusId('event-organizer-latitude');
         }
         setActiveTab('content');
       } else if (validationErrors.includes('categories')) {

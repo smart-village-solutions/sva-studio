@@ -33,6 +33,22 @@ export const hasInvalidGeoLocation = (value?: {
   );
 };
 
+export const hasInvalidFormGeoLocation = (value?: {
+  readonly latitude?: string;
+  readonly longitude?: string;
+}): boolean => {
+  const latitude = value?.latitude?.trim() ?? '';
+  const longitude = value?.longitude?.trim() ?? '';
+  if (latitude.length === 0 && longitude.length === 0) {
+    return false;
+  }
+
+  return hasInvalidGeoLocation({
+    latitude: latitude.length > 0 ? Number(latitude) : undefined,
+    longitude: longitude.length > 0 ? Number(longitude) : undefined,
+  });
+};
+
 export const validateEventForm = (input: EventFormInput): readonly string[] => {
   const errors: string[] = [];
 

@@ -89,8 +89,23 @@ export const parseOperatingCompany = (value: unknown): SvaMainserverOperatingCom
     return contact;
   }
 
+  const name = readString(value.name);
+  const hasDetails =
+    (address !== undefined && Object.keys(address).length > 0) ||
+    (contact !== undefined && Object.keys(contact).length > 0);
+  if (!name && hasDetails) {
+    return errorJson(
+      400,
+      'invalid_request',
+      'Betreiberdaten mit Adresse oder Kontakt benötigen einen Namen.'
+    );
+  }
+  if (!name) {
+    return undefined;
+  }
+
   return {
-    ...(readString(value.name) ? { name: readString(value.name) } : {}),
+    name,
     ...(address ? { address } : {}),
     ...(contact ? { contact } : {}),
   };

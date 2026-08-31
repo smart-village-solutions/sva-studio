@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateEventForm } from '../src/events.validation.js';
+import { hasInvalidFormGeoLocation, validateEventForm } from '../src/events.validation.js';
 
 describe('validateEventForm', () => {
   it('accepts a minimal event', () => {
@@ -68,6 +68,13 @@ describe('validateEventForm', () => {
         },
       })
     ).toEqual(['geoLocation']);
+  });
+
+  it('rejects incomplete and nonnumeric form coordinates before serialization', () => {
+    expect(hasInvalidFormGeoLocation({ latitude: '51.4', longitude: '' })).toBe(true);
+    expect(hasInvalidFormGeoLocation({ latitude: '', longitude: 'not-a-number' })).toBe(true);
+    expect(hasInvalidFormGeoLocation({ latitude: '  ', longitude: '' })).toBe(false);
+    expect(hasInvalidFormGeoLocation({ latitude: '51.4', longitude: '7.2' })).toBe(false);
   });
 
   it('requires an organizer name when organizer details are present', () => {

@@ -120,6 +120,7 @@ describe('content-route-parsers-poi', () => {
   it('keeps sparse parser payloads without manufacturing optional fields', () => {
     expect(parseOpeningHours([{}])).toEqual([{}]);
     expect(parsePrices([{}])).toEqual([{}]);
+    expect(parseOperatingCompany({})).toBeUndefined();
     expect(parseOperatingCompany({ name: ' Betreiber ' })).toEqual({ name: 'Betreiber' });
     expect(parseMediaContents([{}])).toEqual([{}]);
     expect(parseAccessibilityInformation({})).toEqual({});
@@ -136,6 +137,10 @@ describe('content-route-parsers-poi', () => {
       parseOperatingCompany({
         contact: { webUrls: [{ url: 'http://example.test' }] },
       }) as Response
+    );
+    await expectInvalidRequest(parseOperatingCompany({ address: { city: 'Bochum' } }) as Response);
+    await expectInvalidRequest(
+      parseOperatingCompany({ contact: { email: 'kontakt@example.test' } }) as Response
     );
   });
 
@@ -162,7 +167,9 @@ describe('content-route-parsers-poi', () => {
       },
     ]);
 
-    expect(parseCertificates([{ name: ' Familienfreundlich ' }])).toEqual([{ name: 'Familienfreundlich' }]);
+    expect(parseCertificates([{ name: ' Familienfreundlich ' }])).toEqual([
+      { name: 'Familienfreundlich' },
+    ]);
 
     expect(
       parseAccessibilityInformation({

@@ -107,8 +107,13 @@ export const serializeEventOrganizer = (organizer: SerializableOrganizer) => {
   };
 };
 
+const hasNonBlankCoordinate = (value?: string | null): boolean =>
+  value !== undefined && value !== null && value.trim().length > 0;
+
 export const hasEventOrganizerContent = (organizer: SerializableOrganizer): boolean =>
-  Object.keys(serializeEventOrganizer(organizer)).length > 0;
+  Object.keys(serializeEventOrganizer(organizer)).length > 0 ||
+  hasNonBlankCoordinate(organizer.address?.geoLocation?.latitude) ||
+  hasNonBlankCoordinate(organizer.address?.geoLocation?.longitude);
 
 export const serializeEventMediaContents = (
   mediaContents: readonly (SerializableMediaContent | null | undefined)[] | undefined | null

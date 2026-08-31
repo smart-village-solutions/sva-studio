@@ -335,7 +335,9 @@ describe('studio job repository', () => {
     expect(statements[0]?.text).toContain('WITH eligible AS MATERIALIZED');
     expect(statements[0]?.text).toContain('AND attempts = $13');
     expect(statements[0]?.text).toContain('AND worker_id IS NOT DISTINCT FROM $14');
-    expect(statements[0]?.text).toContain("heartbeat_at > NOW() - INTERVAL '120 seconds'");
+    expect(statements[0]?.text).toContain(
+      "COALESCE(heartbeat_at, started_at, updated_at) > NOW() - INTERVAL '120 seconds'"
+    );
     expect(statements[0]?.text).toContain('AND NOT EXISTS (');
     expect(statements[0]?.text).toContain('ON CONFLICT (job_id, attempts)');
     expect(statements[0]?.text).toContain("'job.succeeded', 'job.failed', 'job.cancelled'");
@@ -377,8 +379,12 @@ describe('studio job repository', () => {
       })
     ).resolves.toMatchObject({ outcome: 'applied' });
 
-    expect(statements[0]?.text).toContain("heartbeat_at <= NOW() - INTERVAL '120 seconds'");
-    expect(statements[0]?.text).not.toContain("heartbeat_at > NOW() - INTERVAL '120 seconds'");
+    expect(statements[0]?.text).toContain(
+      "COALESCE(heartbeat_at, started_at, updated_at) <= NOW() - INTERVAL '120 seconds'"
+    );
+    expect(statements[0]?.text).not.toContain(
+      "COALESCE(heartbeat_at, started_at, updated_at) > NOW() - INTERVAL '120 seconds'"
+    );
     expect(statements[0]?.text).toContain(
       "existing_terminal.event_type IN ('job.succeeded', 'job.failed', 'job.cancelled')"
     );

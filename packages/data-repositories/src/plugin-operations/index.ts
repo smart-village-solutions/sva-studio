@@ -434,8 +434,8 @@ WITH eligible AS MATERIALIZED (
     AND worker_id IS NOT DISTINCT FROM $14
     AND ${
       input.leasePredicate.kind === 'activeOwner'
-        ? "heartbeat_at > NOW() - INTERVAL '120 seconds'"
-        : "heartbeat_at <= NOW() - INTERVAL '120 seconds'"
+        ? "COALESCE(heartbeat_at, started_at, updated_at) > NOW() - INTERVAL '120 seconds'"
+        : "COALESCE(heartbeat_at, started_at, updated_at) <= NOW() - INTERVAL '120 seconds'"
     }
     AND NOT EXISTS (
       SELECT 1

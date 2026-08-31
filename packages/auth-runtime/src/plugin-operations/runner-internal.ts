@@ -50,14 +50,17 @@ export type QueueStudioJobInput = {
 };
 
 export const adaptPluginOperationExecutionHandler = (
-  handler: PluginOperationExecutionHandler
+  handler: PluginOperationExecutionHandler,
+  isLifecycleJob: (job: Parameters<StudioJobExecutionHandler>[0]['job']) => boolean = () => false
 ): StudioJobExecutionHandler => {
   return async (context) => {
     if (!context.pluginId) {
       throw new Error('plugin_job_missing_plugin_id');
     }
 
-    const tenantLifecycle = readPluginTenantLifecycleJobMetadata(context.job);
+    const tenantLifecycle = isLifecycleJob(context.job)
+      ? readPluginTenantLifecycleJobMetadata(context.job)
+      : null;
     return (
       (await handler({
         ...context,

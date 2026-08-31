@@ -234,6 +234,14 @@ describe('plugin tenant lifecycle contracts', () => {
 
     expect(() =>
       definePluginTenantLifecycleError('speech', {
+        code: 'speech.databaseUnavailable',
+        messageKey: 'speech.errors.databaseUnavailable',
+        retry: { kind: 'retryable', retryAfterMs: 0 },
+      })
+    ).toThrow('invalid_plugin_tenant_lifecycle_error:speech.databaseUnavailable');
+
+    expect(() =>
+      definePluginTenantLifecycleError('speech', {
         code: 'waste.databaseUnavailable',
         messageKey: 'speech.errors.databaseUnavailable',
         retry: { kind: 'terminal' },

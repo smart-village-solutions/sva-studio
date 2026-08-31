@@ -32,7 +32,7 @@ describe('plugin operation runner internals', () => {
 
   it('exposes validated tenant lifecycle metadata to plugin handlers', async () => {
     const handler = vi.fn(async () => undefined);
-    const adapted = adaptPluginOperationExecutionHandler(handler);
+    const adapted = adaptPluginOperationExecutionHandler(handler, () => true);
 
     await adapted({
       kind: 'job',
@@ -50,6 +50,26 @@ describe('plugin operation runner internals', () => {
       expect.objectContaining({
         tenantLifecycle: { operation: 'reconcile', generation: 4 },
       })
+    );
+  });
+
+  it('ignores reserved lifecycle metadata on generic plugin jobs', async () => {
+    const handler = vi.fn(async () => undefined);
+    const adapted = adaptPluginOperationExecutionHandler(handler, () => false);
+
+    await expect(
+      adapted({
+        kind: 'job',
+        instanceId: 'tenant-a',
+        pluginId: 'waste-management',
+        job: {
+          id: 'job-4',
+          inputPayload: { studioTenantLifecycle: 'application-owned-value' },
+        },
+      } as never)
+    ).resolves.toEqual({});
+    expect(handler).toHaveBeenCalledWith(
+      expect.not.objectContaining({ tenantLifecycle: expect.anything() })
     );
   });
 

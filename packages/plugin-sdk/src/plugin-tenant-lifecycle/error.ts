@@ -36,7 +36,7 @@ export const definePluginTenantLifecycleError = (
     (error.retry.kind === 'terminal' && 'retryAfterMs' in error.retry) ||
     (error.retry.kind === 'retryable' &&
       error.retry.retryAfterMs !== undefined &&
-      (!Number.isSafeInteger(error.retry.retryAfterMs) || error.retry.retryAfterMs < 0))
+      (!Number.isSafeInteger(error.retry.retryAfterMs) || error.retry.retryAfterMs <= 0))
   ) {
     throw new Error(`invalid_plugin_tenant_lifecycle_error:${code}`);
   }

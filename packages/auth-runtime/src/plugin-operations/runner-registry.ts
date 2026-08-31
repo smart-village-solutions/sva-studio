@@ -76,7 +76,8 @@ const normalizePluginRegistration = (
   source: 'plugin',
   jobTypeId,
   handler: adaptPluginOperationExecutionHandler(
-    typeof value === 'function' ? value : value.handler
+    typeof value === 'function' ? value : value.handler,
+    isConfiguredLifecycleJob
   ),
   queueName: typeof value === 'function' ? 'plugin-operations' : value.queueName,
   executionLane: typeof value === 'function' ? 'default' : value.executionLane,

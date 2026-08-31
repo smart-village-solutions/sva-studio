@@ -174,6 +174,22 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const hasRunningOperations = Boolean(
     operationsModel?.steps.some((step) => step.status === 'läuft')
   );
+  const assignModuleAndRefreshReadiness = React.useCallback(
+    async (targetInstanceId: string, moduleId: string) => {
+      const success = await instancesApi.assignModule(targetInstanceId, moduleId);
+      if (success) await pluginReadiness.refresh();
+      return success;
+    },
+    [instancesApi.assignModule, pluginReadiness.refresh]
+  );
+  const revokeModuleAndRefreshReadiness = React.useCallback(
+    async (targetInstanceId: string, moduleId: string) => {
+      const success = await instancesApi.revokeModule(targetInstanceId, moduleId);
+      if (success) await pluginReadiness.refresh();
+      return success;
+    },
+    [instancesApi.revokeModule, pluginReadiness.refresh]
+  );
 
   React.useEffect(() => {
     if (selectedInstance) {
@@ -486,8 +502,8 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 statusLoading={instancesApi.statusLoading}
                 mutationError={instancesApi.mutationError}
                 pluginReadiness={pluginReadiness}
-                onAssignModule={instancesApi.assignModule}
-                onRevokeModule={instancesApi.revokeModule}
+                onAssignModule={assignModuleAndRefreshReadiness}
+                onRevokeModule={revokeModuleAndRefreshReadiness}
                 onSeedIamBaseline={instancesApi.seedIamBaseline}
                 onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
               />

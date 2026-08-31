@@ -238,6 +238,35 @@ describe('plugin tenant lifecycle job correlation', () => {
     );
   });
 
+  it('applies the host backoff when a retryable plugin error omits its deadline', async () => {
+    const { dependencies, repository } = createDependencies();
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: {
+        code: 'plugin_operation_execution_failed',
+        category: 'permanent',
+        details: {
+          plugin: {
+            code: 'speech.databaseUnavailable',
+            messageKey: 'speech.errors.databaseUnavailable',
+            retry: { kind: 'retryable' },
+          },
+        },
+      },
+      reason: 'failed',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readinessStatus: 'degraded',
+        errorCode: 'speech.databaseUnavailable',
+        retryKind: 'retryable',
+        retryAfter: '2026-08-30T12:06:00.000Z',
+      })
+    );
+  });
+
   it('fails closed when plugin lifecycle error metadata is invalid', async () => {
     const { dependencies, repository } = createDependencies();
 

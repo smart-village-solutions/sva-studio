@@ -102,8 +102,9 @@ Fehlerpfad:
 4. Erst nach erfolgreichem Commit prüft ein hostgeführter, vom Request entkoppelter Post-Commit-Hook alle effektiv aktiven Plugins mit deklarierter `provision`-Operation. Damit werden auch manuell aktivierte `optional`-Plugins berücksichtigt. Dieselbe Prüfung wird nach einer neuen Instanzanlage explizit eingeplant.
 5. Fehlt Lifecycle-Evidenz, passt sie nicht mehr zur aktuellen Readiness-Deklaration oder ist ein früherer Lauf retryable gescheitert, startet der Hook dieselbe generische Lifecycle-Orchestrierung wie eine manuelle Reparatur. Queue- oder Datenbankfehler werden protokolliert, verändern aber nicht die Antwort einer bereits committeten Registry-Mutation. Aktive Jobs, suspendierte Zustände, terminale Fehler und valide aktuelle `ready`- oder `degraded`-Evidenz erzeugen keinen zweiten Lauf.
 6. Das Beanspruchen eines Lifecycle-Jobs und das Einplanen seines separaten Recovery-Tasks erfolgen in derselben Tenant-Transaktion. Der Recovery-Task prüft den persistierten Studio-Job nach dem Claim-Fenster und stellt einen noch `queued` vorliegenden Graphile-Job idempotent über dessen stabilen Job-Key wieder her; laufende oder terminale Jobs werden nicht erneut enqueued.
-6. Terminale Worker-Fehler sowie Fehler beim Enqueue eines bereits geclaimten Lifecycle-Jobs schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
-7. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
+7. Retryable Plugin-Fehler ohne eigene Deadline erhalten beim Persistieren einen hostdefinierten Backoff von 60 Sekunden. Aktivierungsänderungen im geöffneten Instanzdetail stoßen nach erfolgreicher Mutation zusätzlich einen unmittelbaren Readiness-Refresh an.
+8. Terminale Worker-Fehler sowie Fehler beim Enqueue eines bereits geclaimten Lifecycle-Jobs schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
+9. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
 
 ### Self-Service-Datenexport über Host-Worker
 

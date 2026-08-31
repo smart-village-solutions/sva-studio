@@ -11,6 +11,7 @@ import {
 } from '@sva/plugin-sdk';
 
 const lifecycleOperations = new Set<string>(pluginTenantLifecycleOperations);
+const pluginTenantLifecycleDefaultRetryDelayMs = 60_000;
 
 export const pluginTenantLifecycleJobInputKey = 'studioTenantLifecycle';
 
@@ -134,7 +135,9 @@ const resolveLifecycleFailure = (
       pluginError as PluginTenantLifecycleError
     );
     const retryAfterMs =
-      lifecycleError.retry.kind === 'retryable' ? lifecycleError.retry.retryAfterMs : undefined;
+      lifecycleError.retry.kind === 'retryable'
+        ? (lifecycleError.retry.retryAfterMs ?? pluginTenantLifecycleDefaultRetryDelayMs)
+        : undefined;
     const retryAfter =
       retryAfterMs === undefined
         ? undefined

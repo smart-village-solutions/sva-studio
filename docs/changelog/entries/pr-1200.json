@@ -1,0 +1,4 @@
+{
+  "prNumber": 1200,
+  "body": "Beim Speichern von Veranstaltungen behandelt das Studio Veranstalterdaten jetzt passend zu den Vorgaben des Mainservers.\n\n- Vollständig leere Veranstalter werden nicht gespeichert.\n- Sobald Adresse oder Kontaktdaten eingetragen sind, weist das Formular verständlich auf den erforderlichen Veranstalternamen hin und setzt den Fokus auf das Feld."
+}

@@ -83,3 +83,41 @@ Das System MUST Datenbanktopologie, Fachschema, Migrationen, Repositories und fa
 - **WHEN** beide den Tenant-Lifecycle ausführen
 - **THEN** verwenden sie denselben Hostvertrag für Job, Claim, Audit und Readiness
 - **AND** implementiert jedes Plugin seine eigene Topologie, Migration und Isolation
+
+### Requirement: Kritische Lifecycle-Invarianten besitzen direkte System-Evidenz
+
+Das System MUST die stabilen Invarianten `AUTH-01` bis `OBS-01` aus dem
+System-Assurance-Vertrag erfüllen. Jeder nicht terminale Zustand MUST einen
+persistenten Recovery-Pfad besitzen; Lifecycle-Ledger, Studio-Job und
+Terminalevent MUST eine gemeinsame Commit-Entscheidung teilen. Ein grüner
+Gesamt-PR ohne die jeweils führende direkte Evidenzklasse genügt nicht als
+Nachweis.
+
+#### Scenario: Prozessabbruch nach einem Lifecycle-Request
+
+- **GIVEN** ein Lifecycle-Request wird während Jobanlage, Claim oder Queueing unterbrochen
+- **WHEN** die Transaktion abbricht oder der Prozess endet
+- **THEN** bleiben entweder alle Lifecycle-, Job- und Wake-up-Daten unsichtbar
+- **OR** ein vollständig geclaimter Owner-Job besitzt einen persistenten Execution- und Recovery-Wake-up
+- **AND** benötigt die Konvergenz keinen neuen HTTP-Request und kein UI-Polling
+
+#### Scenario: Terminaler Abschluss wird gemeinsam persistiert
+
+- **GIVEN** ein aktueller generationsgebundener Lifecycle-Job endet erfolgreich, permanent fehlerhaft oder abgebrochen
+- **WHEN** der Host den Abschluss persistiert
+- **THEN** werden Lifecycle-Ledger, terminaler Studio-Jobstatus und korrespondierendes Terminalevent gemeinsam committet
+- **AND** kann eine Redelivery keinen anderen Terminalzustand erzeugen
+
+#### Scenario: Vertragsdrift wird vor historischer Klassifikation bewertet
+
+- **GIVEN** Lifecycle-Operation, Readiness-Checks oder deren Revision haben sich seit Jobanlage geändert
+- **WHEN** ein historischer Retry oder Abschluss verarbeitet wird
+- **THEN** bewertet der Host zuerst den aktuellen hostvalidierten Vertrag
+- **AND** erzeugt Reconcile oder einen explizit reparierbaren Konflikt statt historischer Freigabe
+
+#### Scenario: Worker-Ausfall wird ohne Request-Traffic repariert
+
+- **GIVEN** eine Default- oder privilegierte Worker-Lane fällt mit dauerhaft gespeicherter Arbeit aus
+- **WHEN** die zuständige Lane wieder verfügbar ist
+- **THEN** nimmt sie den durch Lane, Claim und Generation gefenceten Task selbstständig wieder auf
+- **AND** bleibt die Runtime bis zur nachgewiesenen Erholung fail-closed diagnostizierbar

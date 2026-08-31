@@ -25,6 +25,15 @@ einer gemeinsamen, RLS-geschützten Datenbank.
 
 ## Decisions
 
+### Der System-Assurance-Vertrag ist vor Folgeänderungen verbindlich
+
+Die vollständigen Zustands-, Boundary-, Crash- und Evidenzmatrizen sowie die
+stabilen Invarianten `AUTH-01` bis `OBS-01` stehen im
+[System-Assurance-Vertrag](./assurance.md). Er entscheidet für diesen Change
+die gemeinsame PostgreSQL-Transaktion für Lifecycle-Ledger, Studio-Job,
+Job-Event und Graphile-Wake-up. Die Folgeumsetzung beginnt erst nach expliziter
+menschlicher Freigabe dieses Vertrags.
+
 ### Lifecycle ist ein Plugin-Beitrag über bestehende Operations
 
 Ein Plugin kann Lifecycle-Fähigkeiten und zugehörige Jobtypen deklarieren. Der
@@ -127,6 +136,9 @@ Plugin.
 3. Waste-Provisionierung über einen kompatiblen Adapter anbinden.
 4. Generische Instanzanzeige und Reparaturaktion einführen.
 5. Erst danach SSF als neuen Verbraucher implementieren.
+6. Vor weiteren Lifecycle-Folgeänderungen den System-Assurance-Vertrag
+   freigeben und jede betroffene Invariante mit ihrer führenden Evidenzklasse
+   nachweisen.
 
 ## Open Questions
 

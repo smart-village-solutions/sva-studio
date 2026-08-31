@@ -10,8 +10,13 @@ describe('instance registry repository module iam', () => {
       [
         {
           activation_policy: 'required',
+          activation_origin: 'policy_reconcile',
           effective_active: true,
+          manual_override: null,
+          reconcile_id: 'reconcile-1',
+          reconciled_at: '2026-08-30T12:00:00.000Z',
           state_revision: '7',
+          updated_by: 'migration',
         },
       ],
       [],
@@ -20,10 +25,54 @@ describe('instance registry repository module iam', () => {
 
     await expect(repository.getModuleActivationPolicy('tenant-a', 'ssf')).resolves.toEqual({
       activationPolicy: 'required',
+      activationOrigin: 'policy_reconcile',
       effectiveActive: true,
+      manualOverride: null,
+      reconcileId: 'reconcile-1',
+      reconciledAt: '2026-08-30T12:00:00.000Z',
       stateRevision: 7,
+      updatedBy: 'migration',
     });
     await expect(repository.getModuleActivationPolicy('tenant-a', 'missing')).resolves.toBeNull();
+  });
+
+  it('restores an existing activation snapshot and removes a newly inserted row', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ acquired: true, changed: true }],
+      [{ acquired: true, changed: true }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.restoreModuleActivation('tenant-a', 'news', {
+        activationOrigin: 'policy_reconcile',
+        effectiveActive: true,
+        manualOverride: null,
+        reconcileId: 'reconcile-1',
+        reconciledAt: '2026-08-30T12:00:00.000Z',
+        stateRevision: 7,
+        updatedBy: 'migration',
+      })
+    ).resolves.toBe(true);
+    await expect(repository.restoreModuleActivation('tenant-a', 'events', null)).resolves.toBe(
+      true
+    );
+
+    expect(statements[0]?.text).toContain('state_revision = $10::bigint + 1');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'news',
+      true,
+      'policy_reconcile',
+      true,
+      null,
+      'reconcile-1',
+      '2026-08-30T12:00:00.000Z',
+      'migration',
+      7,
+    ]);
+    expect(statements[1]?.text).toContain('DELETE FROM iam.instance_modules');
+    expect(statements[1]?.values[2]).toBe(false);
   });
 
   it('returns false for idempotent module assignment and revocation writes', async () => {

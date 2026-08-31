@@ -94,6 +94,16 @@ export type PermissionCatalogReconcileResult = {
   readonly grantsUnchanged: number;
 };
 
+export type ModuleActivationRollbackState = {
+  readonly activationOrigin: TenantModuleActivationRecord['activationOrigin'];
+  readonly effectiveActive: boolean;
+  readonly manualOverride: TenantModuleActivationRecord['manualOverride'] | null;
+  readonly reconcileId: string | null;
+  readonly reconciledAt: string | null;
+  readonly stateRevision: number;
+  readonly updatedBy: string | null;
+};
+
 export type InstanceRegistryRepository = {
   readonly requestWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord>;
   readonly getWasteProvisioning: (
@@ -147,10 +157,20 @@ export type InstanceRegistryRepository = {
     moduleId: string
   ) => Promise<{
     activationPolicy: TenantModuleActivationPolicyDescriptor['activationPolicy'];
+    activationOrigin: TenantModuleActivationRecord['activationOrigin'];
     effectiveActive: boolean;
+    manualOverride: TenantModuleActivationRecord['manualOverride'] | null;
+    reconcileId: string | null;
+    reconciledAt: string | null;
     stateRevision: number;
+    updatedBy: string | null;
   } | null>;
   readonly assignModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly restoreModuleActivation: (
+    instanceId: string,
+    moduleId: string,
+    previous: ModuleActivationRollbackState | null
+  ) => Promise<boolean>;
   readonly revokeModule: (instanceId: string, moduleId: string) => Promise<boolean>;
   readonly reconcileModuleActivationPolicies: (input: {
     instanceId: string;

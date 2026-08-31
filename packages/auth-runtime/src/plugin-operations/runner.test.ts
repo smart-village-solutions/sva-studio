@@ -269,6 +269,8 @@ describe('plugin operation runner task list', () => {
   it('keeps lifecycle repair jobs executable while tenant access is blocked', async () => {
     const lifecycleJob = {
       ...baseJob,
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.provision-tenant-database',
       inputPayload: {
         studioTenantLifecycle: { operation: 'provision', generation: 3 },
       },
@@ -290,10 +292,32 @@ describe('plugin operation runner task list', () => {
           })),
         })
     );
-    pluginAccessState.isLifecycleJobType.mockReturnValueOnce(true);
-    const handler = vi.fn(async () => ({}));
+    repositoryState.withStudioJobLifecycleRepositories.mockImplementation(
+      async (_instanceId, work) =>
+        work({
+          studioJobs: { updateJobState: vi.fn(async () => null) },
+          tenantLifecycle: {
+            completeLifecycle: vi.fn(async () => ({ completedGeneration: 3 })),
+            failLifecycle: vi.fn(async () => ({
+              retryKind: 'retryable',
+              retryAfter: '2999-01-01T00:00:00.000Z',
+            })),
+          },
+          enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
+        })
+    );
+    pluginAccessState.isLifecycleJobType.mockReturnValue(true);
+    const handler = vi.fn(async () => ({
+      tenantLifecycle: { revision: 'news-v3', checks: [] },
+    }));
     const taskList = createPluginOperationTaskList(
-      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+      () =>
+        new Map([
+          [
+            'waste-management.provision-tenant-database',
+            { handler, queueName: 'plugin-operations' },
+          ],
+        ])
     );
 
     await taskList[studioJobTaskIdentifier]?.({ instanceId: 'tenant-a', jobId: 'job-1' }, {
@@ -301,7 +325,10 @@ describe('plugin operation runner task list', () => {
     } as never);
 
     expect(handler).toHaveBeenCalledOnce();
-    expect(pluginAccessState.isEffectivelyActive).toHaveBeenCalledWith('tenant-a', 'news');
+    expect(pluginAccessState.isEffectivelyActive).toHaveBeenCalledWith(
+      'tenant-a',
+      'waste-management'
+    );
     expect(pluginAccessState.readAccess).not.toHaveBeenCalled();
   });
 
@@ -334,7 +361,7 @@ describe('plugin operation runner task list', () => {
           enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
         })
     );
-    pluginAccessState.isLifecycleJobType.mockReturnValueOnce(true);
+    pluginAccessState.isLifecycleJobType.mockReturnValue(true);
     pluginAccessState.isEffectivelyActive.mockResolvedValueOnce(false);
     const handler = vi.fn(async () => ({}));
     const taskList = createPluginOperationTaskList(

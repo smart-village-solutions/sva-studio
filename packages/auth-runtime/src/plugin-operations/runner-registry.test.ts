@@ -152,6 +152,46 @@ describe('plugin operation runner registry', () => {
     expect(state.withPluginTenantLifecycleRepository).not.toHaveBeenCalled();
   });
 
+  it('does not correlate reserved metadata on a non-lifecycle job', async () => {
+    const registry = await import('./runner-registry.js');
+    const run = vi.fn(async () => undefined);
+    const updateJobState = vi.fn(async () => ({ status: 'succeeded' }));
+    const genericJob = {
+      id: 'generic-job',
+      instanceId: 'tenant-a',
+      source: 'plugin' as const,
+      pluginId: 'news',
+      jobTypeId: 'news.import-articles',
+      inputPayload: {
+        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+      },
+    };
+    state.createJobLifecycleOrchestrator.mockReturnValue({ run });
+    state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(false);
+    state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({ getJobById: vi.fn(async () => genericJob), updateJobState })
+    );
+    const taskList = registry.createStudioJobTaskList(() => new Map());
+
+    await taskList[registry.studioJobTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: genericJob.id },
+      { job: { attempts: 1, max_attempts: 5 } } as never
+    );
+    const [{ loadRepository }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+    const repository = await loadRepository('tenant-a');
+    await repository.getJobById('tenant-a', genericJob.id);
+    const succeededInput = {
+      jobId: genericJob.id,
+      instanceId: 'tenant-a',
+      status: 'succeeded' as const,
+      attempts: 1,
+    };
+    await repository.updateJobState(succeededInput);
+
+    expect(updateJobState).toHaveBeenCalledWith(succeededInput);
+    expect(state.withStudioJobLifecycleRepositories).not.toHaveBeenCalled();
+  });
+
   it('registers host and plugin handlers separately and exposes plugin registrations in plugin shape', async () => {
     const registry = await import('./runner-registry.js');
 
@@ -317,6 +357,7 @@ describe('plugin operation runner registry', () => {
       updatedAt: '2026-08-30T12:00:00.000Z',
     };
     state.createJobLifecycleOrchestrator.mockReturnValue({ run });
+    state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(true);
     state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({ getJobById: vi.fn(async () => lifecycleJob) })
     );
@@ -389,6 +430,7 @@ describe('plugin operation runner registry', () => {
       updatedAt: '2026-08-30T12:00:00.000Z',
     };
     state.createJobLifecycleOrchestrator.mockReturnValue({ run });
+    state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(true);
     state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
         getJobById: vi.fn(async () => lifecycleJob),

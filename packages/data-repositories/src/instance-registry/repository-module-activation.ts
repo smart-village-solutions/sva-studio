@@ -5,6 +5,7 @@ import {
   deactivateOmittedModuleActivationPoliciesSql,
   getModuleActivationPolicySql,
   reconcileModuleActivationPolicySql,
+  restoreModuleActivationSql,
   revokeModuleSql,
 } from './repository-module-activation-statements.js';
 import { compareAlphabetically, queryRows, statement } from './repository-shared.js';
@@ -14,6 +15,7 @@ type ModuleActivationRepository = Pick<
   | 'assignModule'
   | 'getModuleActivationPolicy'
   | 'reconcileModuleActivationPolicies'
+  | 'restoreModuleActivation'
   | 'revokeModule'
 >;
 
@@ -22,7 +24,7 @@ type MutationOutcome = { acquired: boolean; changed: boolean };
 const mutateModule = async (
   executor: SqlExecutor,
   sql: string,
-  values: readonly (string | number | null)[]
+  values: readonly (string | number | boolean | null)[]
 ): Promise<boolean> => {
   const rows = await queryRows<MutationOutcome>(executor, statement(sql, values));
   return rows[0]?.acquired === true && rows[0].changed;
@@ -90,23 +92,46 @@ export const createModuleActivationRepository = (
   async getModuleActivationPolicy(instanceId, moduleId) {
     const rows = await queryRows<{
       activation_policy: 'optional' | 'automatic' | 'required';
+      activation_origin: 'policy_reconcile' | 'manual' | 'migration';
       effective_active: boolean;
+      manual_override: 'enabled' | 'disabled' | null;
+      reconcile_id: string | null;
+      reconciled_at: string | null;
       state_revision: number | string;
+      updated_by: string | null;
     }>(executor, statement(getModuleActivationPolicySql, [instanceId, moduleId]));
     const row = rows[0];
     if (!row) return null;
     return {
       activationPolicy: row.activation_policy,
+      activationOrigin: row.activation_origin,
       effectiveActive: row.effective_active,
+      manualOverride: row.manual_override,
+      reconcileId: row.reconcile_id,
+      reconciledAt: row.reconciled_at,
       stateRevision:
         typeof row.state_revision === 'string'
           ? Number.parseInt(row.state_revision, 10)
           : row.state_revision,
+      updatedBy: row.updated_by,
     };
   },
   assignModule: (instanceId, moduleId) =>
     mutateModule(executor, assignModuleSql, [instanceId, moduleId]),
   revokeModule: (instanceId, moduleId) =>
     mutateModule(executor, revokeModuleSql, [instanceId, moduleId]),
+  restoreModuleActivation: (instanceId, moduleId, previous) =>
+    mutateModule(executor, restoreModuleActivationSql, [
+      instanceId,
+      moduleId,
+      previous !== null,
+      previous?.activationOrigin ?? null,
+      previous?.effectiveActive ?? null,
+      previous?.manualOverride ?? null,
+      previous?.reconcileId ?? null,
+      previous?.reconciledAt ?? null,
+      previous?.updatedBy ?? null,
+      previous?.stateRevision ?? 0,
+    ]),
   reconcileModuleActivationPolicies: createReconcileModuleActivationPolicies(executor),
 });

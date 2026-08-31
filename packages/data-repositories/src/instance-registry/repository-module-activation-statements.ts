@@ -1,8 +1,37 @@
 export const getModuleActivationPolicySql = `
-SELECT activation_policy, effective_active, state_revision
+SELECT activation_policy, activation_origin, effective_active, manual_override,
+  reconcile_id, reconciled_at, state_revision, updated_by
 FROM iam.instance_modules
 WHERE instance_id = $1 AND module_id = $2
 LIMIT 1;
+`;
+
+export const restoreModuleActivationSql = `
+WITH module_lock AS (
+  SELECT pg_try_advisory_xact_lock(
+    hashtextextended(json_build_array($1::text, $2::text)::text, 0)
+  ) AS acquired
+),
+removed AS (
+  DELETE FROM iam.instance_modules
+  WHERE instance_id = $1 AND module_id = $2 AND NOT $3::boolean
+    AND activation_origin = 'manual' AND effective_active AND manual_override = 'enabled'
+    AND state_revision = 1 AND (SELECT acquired FROM module_lock)
+  RETURNING 1
+),
+restored AS (
+  UPDATE iam.instance_modules
+  SET activation_origin = $4, effective_active = $5, manual_override = $6,
+    reconcile_id = $7, reconciled_at = $8, updated_by = $9,
+    state_revision = state_revision + 1, updated_at = now()
+  WHERE instance_id = $1 AND module_id = $2 AND $3::boolean
+    AND activation_origin = 'manual' AND effective_active AND manual_override = 'enabled'
+    AND state_revision = $10::bigint + 1 AND (SELECT acquired FROM module_lock)
+  RETURNING 1
+)
+SELECT acquired,
+  EXISTS (SELECT 1 FROM removed) OR EXISTS (SELECT 1 FROM restored) AS changed
+FROM module_lock;
 `;
 
 export const assignModuleSql = `

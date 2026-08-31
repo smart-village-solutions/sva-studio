@@ -10,12 +10,10 @@ import {
 } from '../iam-instance-registry/repository.js';
 import {
   createPluginTenantLifecycleJobCorrelation,
-  pluginTenantLifecycleJobInputKey,
   readPluginTenantLifecycleJobMetadata,
 } from '../plugin-tenant-lifecycle/job-correlation.js';
 import {
   isConfiguredPluginTenantEffectivelyActive,
-  isConfiguredPluginTenantLifecycleJobType,
   readConfiguredPluginTenantAccess,
 } from '../plugin-tenant-lifecycle/access.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
@@ -32,6 +30,7 @@ import type {
   StudioJobExecutionRegistry,
   StudioJobRunnerPayload,
 } from './runner-internal.js';
+import { isConfiguredLifecycleJob } from './runner-lifecycle.js';
 
 export {
   pluginTenantLifecycleRetryTaskIdentifier,
@@ -104,11 +103,13 @@ const guardPluginTenantExecution = (
   if (job.source !== 'plugin' || !pluginId) {
     return handler;
   }
-  const lifecycleMetadata = readPluginTenantLifecycleJobMetadata(job);
-  const lifecycleJob =
-    lifecycleMetadata !== null && isConfiguredPluginTenantLifecycleJobType(pluginId, job.jobTypeId);
+  const lifecycleJob = isConfiguredLifecycleJob(job);
   return async (context) => {
     if (lifecycleJob) {
+      const lifecycleMetadata = readPluginTenantLifecycleJobMetadata(job);
+      if (!lifecycleMetadata) {
+        throw new Error('missing_plugin_tenant_lifecycle_job_metadata');
+      }
       const effectivelyActive = await isConfiguredPluginTenantEffectivelyActive(
         job.instanceId,
         pluginId
@@ -220,7 +221,8 @@ export const createStudioJobTaskList = (
               (input.status === 'succeeded' ||
                 input.status === 'failed' ||
                 input.status === 'cancelled') &&
-              loadedJob?.inputPayload[pluginTenantLifecycleJobInputKey] !== undefined;
+              loadedJob !== null &&
+              isConfiguredLifecycleJob(loadedJob);
             if (!isLifecycleCompletion || !loadedJob) {
               return withStudioJobRepository(tenantInstanceId, (repository) =>
                 repository.updateJobState(input)

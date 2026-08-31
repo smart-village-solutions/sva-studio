@@ -145,6 +145,10 @@ export const createAssignModuleHandler =
       return { ok: false, reason: 'unknown_module' };
     }
 
+    const previousPrimaryActivation = await deps.repository.getModuleActivationPolicy(
+      input.instanceId,
+      input.moduleId
+    );
     const inserted = await deps.repository.assignModule(input.instanceId, input.moduleId);
     if (!inserted) {
       return { ok: false, reason: 'conflict' };
@@ -152,7 +156,7 @@ export const createAssignModuleHandler =
 
     let assignedModuleIds: readonly string[];
     let permissionReconcile: PermissionCatalogReconcileResult | void;
-    const newlyAssignedModuleIds = [input.moduleId];
+    const changedAssignments = [{ moduleId: input.moduleId, previous: previousPrimaryActivation }];
     try {
       const assignedAfterPrimaryInsert = await deps.repository.listAssignedModules(
         input.instanceId
@@ -161,9 +165,13 @@ export const createAssignModuleHandler =
 
       for (const moduleId of desiredAssignedModuleIds) {
         if (!assignedAfterPrimaryInsert.includes(moduleId)) {
+          const previousActivation = await deps.repository.getModuleActivationPolicy(
+            input.instanceId,
+            moduleId
+          );
           const companionInserted = await deps.repository.assignModule(input.instanceId, moduleId);
           if (companionInserted) {
-            newlyAssignedModuleIds.push(moduleId);
+            changedAssignments.push({ moduleId, previous: previousActivation });
           }
         }
       }
@@ -179,8 +187,19 @@ export const createAssignModuleHandler =
       });
     } catch (error) {
       try {
-        for (const moduleId of [...newlyAssignedModuleIds].reverse()) {
-          await deps.repository.revokeModule(input.instanceId, moduleId);
+        for (const assignment of [...changedAssignments].reverse()) {
+          const restored = await deps.repository.restoreModuleActivation(
+            input.instanceId,
+            assignment.moduleId,
+            assignment.previous
+          );
+          if (!restored) {
+            const restoreError = new Error(
+              `rollback_restore_failed:${assignment.moduleId}`
+            ) as Error & { cause: unknown };
+            restoreError.cause = error;
+            throw restoreError;
+          }
         }
       } catch (rollbackError) {
         throw createModuleAssignRollbackError(

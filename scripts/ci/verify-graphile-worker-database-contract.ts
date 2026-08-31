@@ -3,6 +3,8 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { enqueueContractJobs } from './graphile-worker-contract-jobs.js';
+
 const containerName = `sva-graphile-contract-${process.pid}`;
 const adminPassword = 'contract-admin-password';
 const appPassword = 'contract-app-password';
@@ -189,29 +191,6 @@ const assertMissingWorkerRoleReadiness = async (port: string): Promise<void> => 
   }
 };
 
-const enqueueContractJob = (port: string): void => {
-  psql(
-    'sva_app',
-    appPassword,
-    port,
-    `SELECT graphile_worker.sva_enqueue_job(
-      'studio_job_execute',
-      '{"instanceId":"contract","jobId":"contract-job"}'::json,
-      'plugin-operations',
-      5,
-      'studio-job:contract-job',
-      NULL
-    );`
-  );
-  const queuedCount = psql(
-    'sva_job_worker',
-    workerPassword,
-    port,
-    "SELECT count(*) FROM graphile_worker.jobs WHERE key = 'studio-job:contract-job';"
-  );
-  if (queuedCount !== '1') throw new Error(`graphile_contract_job_not_visible:${queuedCount}`);
-};
-
 const assertCanonicalWorkerReadiness = async (port: string): Promise<void> => {
   const report = await runWorkerReadiness(port, 'sva_app', 'sva_job_worker');
   if (!report.ok) {
@@ -298,7 +277,10 @@ const main = async (): Promise<void> => {
     await assertMissingWorkerRoleReadiness(port);
     bootstrapWorkerRole(port);
     await assertCanonicalWorkerReadiness(port);
-    enqueueContractJob(port);
+    enqueueContractJobs({
+      executeAsApp: (sql) => psql('sva_app', appPassword, port, sql),
+      queryAsWorker: (sql) => psql('sva_job_worker', workerPassword, port, sql),
+    });
     ({ pool: workerPool, runner } = await processContractJob(port));
     assertAppRestrictions(port);
 

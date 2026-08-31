@@ -20,6 +20,7 @@ type ModuleIamRepository = Pick<
   | 'assignModule'
   | 'getModuleActivationPolicy'
   | 'reconcileModuleActivationPolicies'
+  | 'restoreModuleActivation'
   | 'revokeModule'
   | 'syncAssignedModuleIam'
   | 'syncProtectedSystemRolePermissions'

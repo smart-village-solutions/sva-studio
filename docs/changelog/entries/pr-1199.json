@@ -1,0 +1,4 @@
+{
+  "prNumber": 1199,
+  "body": "Große Entwicklungsvorhaben werden künftig früher entlang stabiler, prüfbarer Lieferabschnitte geplant.\n\n- Kleine, lokal begrenzte Änderungen behalten einen schnellen und proportionalen Arbeitsweg.\n- Systemübergreifende Vorhaben klären vor der Umsetzung ihre Invarianten, Fehlerfälle und geeigneten PR-Grenzen.\n- Wiederkehrende Review-Befunde derselben Ursache lösen eine zusammenhängende Prüfung statt weiterer isolierter Einzelkorrekturen aus."
+}

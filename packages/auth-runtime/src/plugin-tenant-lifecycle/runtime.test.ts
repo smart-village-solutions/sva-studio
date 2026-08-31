@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   markPluginOperationEnqueueFailed: vi.fn(async () => undefined),
   markStudioJobEnqueueFailed: vi.fn(async () => undefined),
   queuePluginOperationJob: vi.fn(async () => undefined),
+  enqueuePluginTenantLifecycleRecovery: vi.fn(async () => undefined),
   requestLifecycle: vi.fn(),
   claimLifecycle: vi.fn(),
   failUnclaimedLifecycle: vi.fn(),
@@ -12,6 +13,7 @@ const state = vi.hoisted(() => ({
   updateJobState: vi.fn(),
   withStudioJobLifecycleRepositories: vi.fn(),
   getLifecycle: vi.fn(),
+  getJobById: vi.fn(),
   readinessChecks: [] as Array<{
     checkId: string;
     titleKey: string;
@@ -88,6 +90,10 @@ vi.mock('../plugin-operations/core.shared.js', () => ({
 }));
 
 vi.mock('../plugin-operations/repository.js', () => ({
+  withStudioJobRepository: async (
+    _instanceId: string,
+    work: (repository: unknown) => Promise<unknown>
+  ) => work({ getJobById: state.getJobById }),
   withPluginTenantLifecycleRepository: async (
     _instanceId: string,
     work: (repository: unknown) => Promise<unknown>
@@ -195,6 +201,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
     });
     state.createStudioJob.mockResolvedValue(job);
     state.getLifecycle.mockResolvedValue(null);
+    state.getJobById.mockResolvedValue(job);
     state.readinessChecks = [];
     state.operations = [{ operation: 'provision' as const, jobTypeId: 'speech.provisionTenant' }];
     state.updateJobState.mockResolvedValue(job);
@@ -202,7 +209,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
     state.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
       work({
         studioJobs: { updateJobState: state.updateJobState },
-        tenantLifecycle: { failLifecycle: state.failLifecycle },
+        tenantLifecycle: {
+          claimLifecycle: state.claimLifecycle,
+          failLifecycle: state.failLifecycle,
+        },
+        enqueuePluginTenantLifecycleRecovery: state.enqueuePluginTenantLifecycleRecovery,
       })
     );
   });
@@ -245,6 +256,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
       maxAttempts: 5,
       executionLane: 'privileged',
       runAt: new Date('2026-08-30T12:00:00.000Z'),
+    });
+    expect(state.enqueuePluginTenantLifecycleRecovery).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      runAt: expect.any(Date),
     });
   });
 
@@ -502,6 +518,28 @@ describe('configured plugin tenant lifecycle runtime', () => {
 
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
 
+    expect(state.createStudioJob).not.toHaveBeenCalled();
+  });
+
+  it('re-enqueues a claimed queued lifecycle job from the durable recovery task', async () => {
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      claimedGeneration: 3,
+      activeJobId: job.id,
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.getJobById).toHaveBeenCalledWith('tenant-a', job.id);
+    expect(state.queuePluginOperationJob).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      jobId: job.id,
+      queueName: 'plugin-operations',
+      maxAttempts: 5,
+      executionLane: 'privileged',
+      runAt: new Date('2026-08-30T12:00:00.000Z'),
+    });
     expect(state.createStudioJob).not.toHaveBeenCalled();
   });
 

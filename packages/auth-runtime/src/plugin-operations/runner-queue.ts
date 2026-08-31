@@ -10,9 +10,10 @@ type QueueClient = {
   readonly query: (text: string, values?: readonly unknown[]) => Promise<unknown>;
 };
 
-export const enqueuePluginTenantLifecycleRetry = (
+const enqueuePluginTenantLifecycleTask = (
   client: QueueClient,
-  input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date }
+  input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date },
+  jobKeyPurpose: 'retry' | 'recovery'
 ): Promise<unknown> =>
   client.query(
     `SELECT graphile_worker.sva_enqueue_job(
@@ -28,10 +29,20 @@ export const enqueuePluginTenantLifecycleRetry = (
       JSON.stringify({ instanceId: input.instanceId, pluginId: input.pluginId }),
       'plugin-tenant-lifecycle',
       5,
-      `plugin-tenant-lifecycle-retry:${input.instanceId}:${input.pluginId}`,
+      `plugin-tenant-lifecycle-${jobKeyPurpose}:${input.instanceId}:${input.pluginId}`,
       input.runAt,
     ]
   );
+
+export const enqueuePluginTenantLifecycleRetry = (
+  client: QueueClient,
+  input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date }
+): Promise<unknown> => enqueuePluginTenantLifecycleTask(client, input, 'retry');
+
+export const enqueuePluginTenantLifecycleRecovery = (
+  client: QueueClient,
+  input: { readonly instanceId: string; readonly pluginId: string; readonly runAt: Date }
+): Promise<unknown> => enqueuePluginTenantLifecycleTask(client, input, 'recovery');
 
 export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> => {
   const pool = resolvePool();

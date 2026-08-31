@@ -156,6 +156,7 @@ Innerhalb von `@sva/auth-runtime` ist der Ablauf inzwischen weiter getrennt:
 - `job-lifecycle-orchestrator.ts` kapselt Host-Lifecycle, Handler-Aufruf und Retry-/Terminal-Entscheidungen
 - Event-, State-, Progress- und Read-Modell-Normalisierung bleiben in eigenen Host-Bausteinen
 - verzögerte Tenant-Lifecycle-Retries werden pro Instanz und Plugin mit eigenem Job-Key als persistenter Task `plugin_tenant_lifecycle_retry` eingeplant; der migrationsverwaltete Enqueue-Wrapper erlaubt diesen Task neben den beiden Studio-Job-Lanes ausdrücklich
+- jeder persistierte Lifecycle-Claim plant in derselben Tenant-Transaktion einen separaten Recovery-Task; bleibt der zugehörige Studio-Job nach einem Prozessabbruch im Zustand `queued`, stellt der Task dessen Graphile-Eintrag idempotent über den stabilen Job-Key wieder her
 - im suspendierten Zustand dürfen ausschließlich fällige retryable Wiederholungen der persistierten Operationen `suspend` oder `reactivate` automatisch starten; Provisioning und fachfremde Operationen bleiben gesperrt
 - reservierte `studioTenantLifecycle`-Metadaten lösen Lifecycle-Korrelation nur für den im Pluginvertrag registrierten Lifecycle-Jobtyp aus; normale Plugin-Jobs bleiben davon unberührt
 - der SDK-Vertrag verlangt mindestens eine Bootstrap-Operation (`provision` oder `readiness`) sowie für jeden Readiness-Check ein explizites boolesches `required`; der Snapshot validiert Status und optionale `messageKey`- und `details`-Felder an der Plugin-Grenze, bevor Readiness-Evidenz persistiert wird

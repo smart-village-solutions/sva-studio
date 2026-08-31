@@ -32,9 +32,21 @@ const policyLabels = {
   required: 'admin.instances.pluginReadiness.policy.required',
 } as const;
 
+type PluginTenantLifecycleRepairOperation = Exclude<
+  PluginTenantLifecycleOperation,
+  'readiness'
+>;
+
+const operationLabels: Record<PluginTenantLifecycleRepairOperation, string> = {
+  provision: 'admin.instances.pluginReadiness.operation.provision',
+  reconcile: 'admin.instances.pluginReadiness.operation.reconcile',
+  suspend: 'admin.instances.pluginReadiness.operation.suspend',
+  reactivate: 'admin.instances.pluginReadiness.operation.reactivate',
+};
+
 const uniqueRepairOperations = (
   plugin: PluginTenantReadinessReadModel
-): readonly PluginTenantLifecycleOperation[] => {
+): readonly PluginTenantLifecycleRepairOperation[] => {
   const hasUnfinishedGeneration = plugin.completedGeneration < plugin.desiredGeneration;
   const terminalFailure = plugin.error?.retryKind === 'terminal';
   const repairableChecks =
@@ -161,6 +173,7 @@ export const PluginReadinessCard = ({
                       onClick={() => void onRepair(plugin.pluginId, operation)}
                       aria-label={t('admin.instances.pluginReadiness.repairAriaLabel', {
                         pluginId: plugin.pluginId,
+                        operation: t(operationLabels[operation]),
                       })}
                     >
                       {activeAction === action

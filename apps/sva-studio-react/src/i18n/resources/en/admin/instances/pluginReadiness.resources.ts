@@ -25,7 +25,13 @@ export const pluginReadinessInstancesAdminENResources = {
   },
   repair: 'Start repair',
   repairRunning: 'Starting repair…',
-  repairAriaLabel: 'Start repair for plugin {{pluginId}}',
+  repairAriaLabel: 'Start {{operation}} repair for plugin {{pluginId}}',
+  operation: {
+    provision: 'provisioning',
+    reconcile: 'reconciliation',
+    suspend: 'suspension',
+    reactivate: 'reactivation',
+  },
   activeJob: 'Open active job',
   activeJobAriaLabel: 'Open active job for plugin {{pluginId}}',
 } as const;

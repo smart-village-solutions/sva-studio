@@ -135,6 +135,30 @@ describe('plugin operation runner worker', () => {
     );
   });
 
+  it('uses a separate durable job key for lifecycle enqueue recovery', async () => {
+    const { enqueuePluginTenantLifecycleRecovery } = await import('./runner-queue.js');
+    const runAt = new Date('2026-08-30T12:01:00.000Z');
+    const pool = state.resolvePool();
+
+    await enqueuePluginTenantLifecycleRecovery(pool, {
+      instanceId: 'tenant-a',
+      pluginId: 'speech-flow',
+      runAt,
+    });
+
+    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
+      expect.stringContaining('graphile_worker.sva_enqueue_job'),
+      [
+        'plugin_tenant_lifecycle_retry',
+        JSON.stringify({ instanceId: 'tenant-a', pluginId: 'speech-flow' }),
+        'plugin-tenant-lifecycle',
+        5,
+        'plugin-tenant-lifecycle-recovery:tenant-a:speech-flow',
+        runAt,
+      ]
+    );
+  });
+
   it('runs privileged jobs on a dedicated task identifier that the default worker cannot claim', async () => {
     state.createStudioJobTaskList.mockImplementation((_registry, taskIdentifier) => ({
       [taskIdentifier]: vi.fn(),

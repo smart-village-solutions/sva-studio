@@ -21,6 +21,7 @@ import {
   queuePluginOperationJob,
 } from '../plugin-operations/runner.js';
 import { pluginTenantLifecycleJobInputKey } from './job-correlation.js';
+import { reconcileClaimedLifecycleJob } from './enqueue-recovery.js';
 import {
   createPluginTenantLifecycleOrchestrator,
   pluginTenantLifecycleHostErrorCodes,
@@ -28,6 +29,7 @@ import {
 } from './orchestrator.js';
 
 const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'info' });
+const lifecycleEnqueueRecoveryDelayMs = 60_000;
 
 const repository: Pick<
   PluginTenantLifecycleRepository,
@@ -38,8 +40,18 @@ const repository: Pick<
       tenantLifecycleRepository.requestLifecycle(input)
     ),
   claimLifecycle: (input) =>
-    withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
-      tenantLifecycleRepository.claimLifecycle(input)
+    withStudioJobLifecycleRepositories(
+      input.instanceId,
+      async ({ tenantLifecycle, enqueuePluginTenantLifecycleRecovery }) => {
+        const lifecycle = await tenantLifecycle.claimLifecycle(input);
+        if (!lifecycle) return null;
+        await enqueuePluginTenantLifecycleRecovery({
+          instanceId: input.instanceId,
+          pluginId: input.pluginId,
+          runAt: new Date(Date.now() + lifecycleEnqueueRecoveryDelayMs),
+        });
+        return lifecycle;
+      }
     ),
   failUnclaimedLifecycle: (input) =>
     withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
@@ -193,6 +205,28 @@ const scheduleAutomaticLifecycleDefinition = async (input: {
     input.instanceId,
     (resolvedRepository) => resolvedRepository.getLifecycle(input.instanceId, pluginId)
   );
+  if (lifecycle?.activeJobId) {
+    try {
+      await reconcileClaimedLifecycleJob({
+        instanceId: input.instanceId,
+        definition: input.definition,
+        lifecycle: { ...lifecycle, activeJobId: lifecycle.activeJobId },
+      });
+      return true;
+    } catch (error) {
+      logger.error('plugin_tenant_lifecycle_recovery_failed', {
+        operation: 'plugin_tenant_lifecycle_recovery',
+        result: 'failed',
+        error_code: 'plugin_tenant_lifecycle_recovery_failed',
+        error_type: error instanceof Error ? error.name : typeof error,
+        instance_id: input.instanceId,
+        plugin_id: pluginId,
+        job_id: lifecycle.activeJobId,
+        retry_attempt: input.attempt,
+      });
+      return false;
+    }
+  }
   const schedule = resolveAutomaticProvisioningSchedule(
     input.definition,
     input.activation,

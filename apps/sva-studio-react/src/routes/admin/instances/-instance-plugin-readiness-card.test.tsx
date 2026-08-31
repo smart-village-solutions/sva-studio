@@ -72,7 +72,7 @@ describe('PluginReadinessCard', () => {
     expect(screen.getByText('Aktivierungsrichtlinie: Automatisch')).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Reparatur für Plugin speech-flow starten' })
+      screen.getByRole('button', { name: 'Reparatur Abgleich für Plugin speech-flow starten' })
     );
 
     expect(onRepair).toHaveBeenCalledWith('speech-flow', 'reconcile');
@@ -97,7 +97,7 @@ describe('PluginReadinessCard', () => {
     expect(
       (
         screen.getByRole('button', {
-          name: 'Reparatur für Plugin speech-flow starten',
+          name: 'Reparatur Abgleich für Plugin speech-flow starten',
         }) as HTMLButtonElement
       ).disabled
     ).toBe(true);
@@ -123,7 +123,7 @@ describe('PluginReadinessCard', () => {
       screen.getByRole('link', { name: 'Open active job for plugin speech-flow' })
     ).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: 'Start repair for plugin speech-flow' })
+      screen.getByRole('button', { name: 'Start reconciliation repair for plugin speech-flow' })
     ).toBeTruthy();
   });
 
@@ -201,8 +201,42 @@ describe('PluginReadinessCard', () => {
     );
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Reparatur für Plugin speech-flow starten' })
+      screen.getByRole('button', { name: 'Reparatur Abgleich für Plugin speech-flow starten' })
     );
     expect(onRepair).toHaveBeenCalledWith('speech-flow', 'reconcile');
+  });
+
+  it('gives different repair operations distinct accessible names', () => {
+    render(
+      <PluginReadinessCard
+        plugins={[
+          pluginFixture({
+            checks: [
+              ...pluginFixture().checks,
+              {
+                checkId: 'provisioning',
+                titleKey: 'plugins.speechFlow.readiness.configuration',
+                required: true,
+                repairOperation: 'provision',
+                status: 'blocked',
+              },
+            ],
+          }),
+        ]}
+        isLoading={false}
+        activeAction={null}
+        error={null}
+        onRepair={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Reparatur Abgleich für Plugin speech-flow starten' })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', {
+        name: 'Reparatur Bereitstellung für Plugin speech-flow starten',
+      })
+    ).toBeTruthy();
   });
 });

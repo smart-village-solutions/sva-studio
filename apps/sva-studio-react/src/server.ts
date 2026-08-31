@@ -230,9 +230,7 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       }
     }
 
-    if (studioJobWorkerEnabled) {
-      await ensurePluginOperationHandlersRegistered();
-    }
+    await ensurePluginOperationHandlersRegistered();
 
     const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();
     const authResponse = await dispatchAuthRouteRequest(request);

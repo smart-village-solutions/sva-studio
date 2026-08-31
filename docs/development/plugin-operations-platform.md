@@ -142,6 +142,7 @@ Für startbare Plugin-Jobtypen gilt zusätzlich ein verbindlicher Runtime-Integr
 - die deklarativen `jobTypes` bleiben Build-Time-Vertrag im Plugin
 - die tatsächlichen `PluginOperationExecutionHandler` werden explizit serverseitig im App-Layer registriert
 - die Registrierung darf nicht implizit über UI-Module oder Browser-Code erfolgen
+- der Server-Entry wartet vor dem Dispatch von Operations-Routen auf die Handler-Registrierung, auch wenn der aktuelle Prozess wegen einer externen Worker-Topologie keinen lokalen Worker startet
 - ein Coverage-Test muss sicherstellen, dass jeder deklarierte startbare Jobtyp genau einen Runtime-Handler hat und kein Runtime-Handler ohne deklarativen Jobtyp existiert
 - neue startbare Jobtypen gelten erst dann als vollständig integriert, wenn Deklaration, Runtime-Registrierung und Start-Endpunkt-Test gemeinsam vorliegen
 
@@ -152,6 +153,7 @@ Innerhalb von `@sva/auth-runtime` ist der Ablauf inzwischen weiter getrennt:
 - Event-, State-, Progress- und Read-Modell-Normalisierung bleiben in eigenen Host-Bausteinen
 - verzögerte Tenant-Lifecycle-Retries werden pro Instanz und Plugin mit eigenem Job-Key als persistenter Task `plugin_tenant_lifecycle_retry` eingeplant; der migrationsverwaltete Enqueue-Wrapper erlaubt diesen Task neben den beiden Studio-Job-Lanes ausdrücklich
 - reservierte `studioTenantLifecycle`-Metadaten lösen Lifecycle-Korrelation nur für den im Pluginvertrag registrierten Lifecycle-Jobtyp aus; normale Plugin-Jobs bleiben davon unberührt
+- der SDK-Snapshot validiert Status sowie optionale `messageKey`- und `details`-Felder an der Plugin-Grenze, bevor Readiness-Evidenz persistiert wird
 - Readiness-Clients pollen sowohl aktive Lifecycle-Jobs als auch persistierte retryable Retry-Fenster und stoppen nach der serverseitig beobachteten Erholung
 - Lifecycle-HTTP-Fehler verwenden anhand von `Accept-Language` die unterstützten deutschen oder englischen Hostmeldungen
 

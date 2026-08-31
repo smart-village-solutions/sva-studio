@@ -297,6 +297,37 @@ describe('plugin tenant lifecycle contracts', () => {
     );
   });
 
+  it('rejects malformed optional readiness result fields at the snapshot boundary', () => {
+    const createSnapshotWithCheck = (check: Readonly<Record<string, unknown>>) =>
+      createPluginTenantReadinessSnapshot({
+        definition: tenantLifecycle,
+        pluginId: 'speech',
+        instanceId: 'tenant-a',
+        generation: 3,
+        result: {
+          revision: 'schema:3',
+          checks: [check],
+        } as never,
+        updatedAt: '2026-08-30T12:00:00.000Z',
+      });
+
+    expect(() =>
+      createSnapshotWithCheck({
+        checkId: 'speech.databaseSchema',
+        status: 'ready',
+        messageKey: 42,
+      })
+    ).toThrow('invalid_plugin_tenant_readiness_check_result:speech.databaseSchema');
+
+    expect(() =>
+      createSnapshotWithCheck({
+        checkId: 'speech.databaseSchema',
+        status: 'ready',
+        details: ['not', 'a', 'record'],
+      })
+    ).toThrow('invalid_plugin_tenant_readiness_check_result:speech.databaseSchema');
+  });
+
   it('creates pending readiness for an active plugin without lifecycle evidence', () => {
     expect(
       createPluginTenantReadinessReadModel({

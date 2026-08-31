@@ -59,6 +59,15 @@ export const createPluginTenantReadinessSnapshot = (input: {
     if (!readinessStatusSet.has(check.status)) {
       throw new Error(`invalid_plugin_tenant_readiness_check_result:${checkId}`);
     }
+    if (
+      (check.messageKey !== undefined && typeof check.messageKey !== 'string') ||
+      (check.details !== undefined &&
+        (typeof check.details !== 'object' ||
+          check.details === null ||
+          Array.isArray(check.details)))
+    ) {
+      throw new Error(`invalid_plugin_tenant_readiness_check_result:${checkId}`);
+    }
     seenCheckIds.add(checkId);
     return { ...check, checkId };
   });

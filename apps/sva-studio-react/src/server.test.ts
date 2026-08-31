@@ -806,27 +806,44 @@ describe('server transport', () => {
     expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
   });
 
-  it('registers lifecycle handlers but does not start a local worker when the lane is disabled', async () => {
+  it('waits for lifecycle handlers but does not start a local worker when the lane is disabled', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
 
-    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
-    registerStudioPluginOperationHandlersMock.mockResolvedValue(undefined);
+    let resolveHandlerRegistration: (() => void) | undefined;
+    const handlerRegistrationPromise = new Promise<void>((resolve) => {
+      resolveHandlerRegistration = resolve;
+    });
+    const authResponse = new Response('auth', { status: 200 });
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('start', { status: 200 }));
+    registerStudioPluginOperationHandlersMock.mockImplementation(() => handlerRegistrationPromise);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
-    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(authResponse);
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
-
-    await expect(response.text()).resolves.toBe('ok');
-    expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
-    await vi.waitFor(() =>
-      expect(registerStudioPluginOperationHandlersMock).toHaveBeenCalledOnce()
+    const responsePromise = mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/plugin-operations/jobs')
     );
+
+    await vi.waitFor(() => expect(dispatchStudioChangelogRequestMock).toHaveBeenCalledOnce());
+    const authDispatchedBeforeRegistration = await vi
+      .waitFor(() => expect(dispatchAuthRouteRequestMock).toHaveBeenCalledOnce(), { timeout: 250 })
+      .then(
+        () => true,
+        () => false
+      );
+    expect(authDispatchedBeforeRegistration).toBe(false);
+
+    resolveHandlerRegistration?.();
+
+    await expect(responsePromise).resolves.toBe(authResponse);
+    expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
+    expect(registerStudioPluginOperationHandlersMock).toHaveBeenCalledOnce();
     expect(startPluginActivationPolicyFleetReconcileInBackgroundMock).toHaveBeenCalledOnce();
   });
 

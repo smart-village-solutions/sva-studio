@@ -4,7 +4,8 @@ export type PluginTenantLifecycleMessageKey =
   | 'instanceNotFound'
   | 'invalidInstanceId'
   | 'invalidRequest'
-  | 'lifecycleStartFailed';
+  | 'lifecycleStartFailed'
+  | 'pluginAccessBlocked';
 
 const messages = {
   de: {
@@ -12,12 +13,14 @@ const messages = {
     invalidInstanceId: 'Instanz-ID fehlt.',
     invalidRequest: 'Der Request-Body ist ungültig.',
     lifecycleStartFailed: 'Der Plugin-Lifecycle konnte nicht gestartet werden.',
+    pluginAccessBlocked: 'Der Plugin-Fachzugriff ist noch nicht betriebsbereit.',
   },
   en: {
     instanceNotFound: 'The instance was not found.',
     invalidInstanceId: 'The instance ID is missing.',
     invalidRequest: 'The request body is invalid.',
     lifecycleStartFailed: 'The plugin lifecycle operation could not be started.',
+    pluginAccessBlocked: 'The plugin is not ready for tenant operations yet.',
   },
 } as const satisfies Record<
   ReturnType<typeof resolveRequestLocale>,

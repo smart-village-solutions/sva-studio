@@ -11,6 +11,7 @@ import { withAuthenticatedUser } from '../middleware.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { validateCsrf } from '../shared/request-security.js';
 import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
+import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import {
   executeStartPluginOperationJob,
   reserveStartIdempotency,
@@ -97,7 +98,7 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
 
         return parsed;
       },
-      execute: async ({ instanceId, actorAccountId, idempotencyKey, requestId, input }) => {
+      execute: async ({ request, instanceId, actorAccountId, idempotencyKey, requestId, input }) => {
         const pluginAccess = await readConfiguredPluginTenantAccess(
           instanceId,
           input.data.pluginId
@@ -106,7 +107,7 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
           return createApiError(
             409,
             'plugin_tenant_access_blocked',
-            'Der Plugin-Fachzugriff ist noch nicht betriebsbereit.',
+            translatePluginTenantLifecycleMessage(request, 'pluginAccessBlocked'),
             requestId
           );
         }

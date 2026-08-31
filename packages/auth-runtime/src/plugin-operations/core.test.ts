@@ -248,6 +248,7 @@ describe('plugin operations handlers', () => {
       new Request('https://studio.test/api/v1/plugin-operations/jobs', {
         method: 'POST',
         headers: {
+          'Accept-Language': 'en-US,en;q=0.9',
           'Content-Type': 'application/json',
           'Idempotency-Key': 'idem-blocked',
           Origin: 'https://studio.test',
@@ -263,7 +264,10 @@ describe('plugin operations handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: 'plugin_tenant_access_blocked' },
+      error: {
+        code: 'plugin_tenant_access_blocked',
+        message: 'The plugin is not ready for tenant operations yet.',
+      },
     });
     expect(idempotencyState.reserveIdempotency).not.toHaveBeenCalled();
     expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();

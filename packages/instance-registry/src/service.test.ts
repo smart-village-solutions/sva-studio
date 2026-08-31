@@ -1335,8 +1335,9 @@ describe('instance registry service facade', () => {
 
   it('rolls back newly assigned modules when bootstrap module IAM sync fails', async () => {
     const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => null),
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
-      revokeModule: vi.fn(async () => true),
+      restoreModuleActivation: vi.fn(async () => true),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
@@ -1360,10 +1361,81 @@ describe('instance registry service facade', () => {
     ).rejects.toThrow('sync_failed');
 
     expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
-    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith('demo', 'events', null);
+    expect(repository.revokeModule).not.toHaveBeenCalled();
     expect(repository.syncProtectedSystemRolePermissions).not.toHaveBeenCalled();
     expect(repository.appendAuditEvent).not.toHaveBeenCalled();
     expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
+  });
+
+  it('restores an existing inactive activation after bootstrap IAM sync fails', async () => {
+    const inactiveState = {
+      activationPolicy: 'automatic' as const,
+      activationOrigin: 'policy_reconcile' as const,
+      effectiveActive: false,
+      manualOverride: null,
+      reconcileId: 'reconcile-1',
+      reconciledAt: '2026-08-30T12:00:00.000Z',
+      stateRevision: 7,
+      updatedBy: 'system',
+    };
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => inactiveState),
+      assignModule: vi.fn(async () => true),
+      restoreModuleActivation: vi.fn(async () => true),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-existing-rollback',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-existing-rollback',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith(
+      'demo',
+      'events',
+      inactiveState
+    );
+  });
+
+  it('rolls back earlier bootstrap assignments when a later advisory lock conflicts', async () => {
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => null),
+      assignModule: vi.fn(async (_instanceId: string, moduleId: string) => {
+        if (moduleId === 'events') {
+          throw new Error('plugin_activation_state_conflict:events');
+        }
+        return true;
+      }),
+      restoreModuleActivation: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news']),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-lock-conflict',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-lock-conflict',
+      })
+    ).rejects.toThrow('plugin_activation_state_conflict:events');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith('demo', 'categories', null);
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
   });
 
   it('restores automatic activation state when IAM sync fails after a manual assignment', async () => {
@@ -1409,7 +1481,7 @@ describe('instance registry service facade', () => {
   it('throws a bootstrap rollback error when reverting newly assigned modules also fails', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
-      revokeModule: vi.fn(async () => {
+      restoreModuleActivation: vi.fn(async () => {
         throw new Error('rollback_failed');
       }),
       listAssignedModules: vi
@@ -1451,10 +1523,10 @@ describe('instance registry service facade', () => {
     }
   });
 
-  it('throws a bootstrap rollback error when revokeModule reports that rollback did not remove a module', async () => {
+  it('throws a bootstrap rollback error when activation restoration reports no change', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
-      revokeModule: vi.fn(async () => false),
+      restoreModuleActivation: vi.fn(async () => false),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
@@ -1482,7 +1554,7 @@ describe('instance registry service facade', () => {
       );
       expect((error as Error).name).toBe('InstanceModuleBootstrapRollbackError');
       expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe(
-        'rollback_revoke_failed:events'
+        'rollback_restore_failed:events'
       );
     }
   });

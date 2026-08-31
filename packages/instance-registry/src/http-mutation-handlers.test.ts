@@ -22,6 +22,11 @@ const readBody = async (response: Response) => JSON.parse(await response.text())
 const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
   getRequestId: () => 'req-test',
   getActor: (ctx) => ({ id: ctx.userId }),
+  translateMessage: (request, key) =>
+    key === 'pluginActivationRequiredCannotDisable' &&
+    request.headers.get('accept-language')?.startsWith('en')
+      ? 'A required plugin cannot be disabled.'
+      : 'Ein verpflichtendes Plugin kann nicht deaktiviert werden.',
   createApiError: (
     status: number,
     code: string,
@@ -609,13 +614,17 @@ describe('http mutation handlers', () => {
     );
 
     const response = await createInstanceRegistryMutationHttpHandlers(deps).revokeModule(
-      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', {
+        method: 'POST',
+        headers: { 'Accept-Language': 'en-US,en;q=0.9' },
+      }),
       { userId: 'u-1' }
     );
 
     expect(response.status).toBe(409);
     await expect(readBody(response)).resolves.toMatchObject({
       code: 'plugin_activation_required_cannot_disable',
+      message: 'A required plugin cannot be disabled.',
     });
   });
 

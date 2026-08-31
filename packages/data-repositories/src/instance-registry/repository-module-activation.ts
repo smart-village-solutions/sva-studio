@@ -27,7 +27,11 @@ const mutateModule = async (
   values: readonly (string | number | boolean | null)[]
 ): Promise<boolean> => {
   const rows = await queryRows<MutationOutcome>(executor, statement(sql, values));
-  return rows[0]?.acquired === true && rows[0].changed;
+  const outcome = rows[0];
+  if (outcome?.acquired === false) {
+    throw new Error(`plugin_activation_state_conflict:${String(values[1])}`);
+  }
+  return outcome?.acquired === true && outcome.changed;
 };
 
 const createReconcileModuleActivationPolicies =

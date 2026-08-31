@@ -233,6 +233,71 @@ export const createAssignModuleHandler =
     return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
   };
 
+type ModuleActivationSnapshot = Awaited<
+  ReturnType<InstanceRegistryServiceDeps['repository']['getModuleActivationPolicy']>
+>;
+
+const assignBootstrapModulesAndSyncIam = async (input: {
+  readonly deps: InstanceRegistryServiceDeps;
+  readonly instanceId: string;
+  readonly requestedModuleIds: readonly string[];
+  readonly managedModuleIds: readonly string[];
+}): Promise<{
+  readonly assignedModuleIds: readonly string[];
+  readonly permissionReconcile: PermissionCatalogReconcileResult | void;
+}> => {
+  const { deps, instanceId, requestedModuleIds, managedModuleIds } = input;
+  const currentAssignedModuleIds = new Set(
+    await deps.repository.listAssignedModules(instanceId)
+  );
+  const changedAssignments: Array<{
+    readonly moduleId: string;
+    readonly previous: ModuleActivationSnapshot;
+  }> = [];
+  try {
+    for (const moduleId of requestedModuleIds) {
+      if (!currentAssignedModuleIds.has(moduleId)) {
+        const previous = await deps.repository.getModuleActivationPolicy(instanceId, moduleId);
+        const inserted = await deps.repository.assignModule(instanceId, moduleId);
+        if (inserted) changedAssignments.push({ moduleId, previous });
+      }
+    }
+    const assignedModuleIds = await deps.repository.listAssignedModules(instanceId);
+    const permissionReconcile = await deps.repository.syncAssignedModuleIam({
+      instanceId,
+      managedModuleIds,
+      managedContracts: resolveManagedModuleContracts(deps),
+      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+    return { assignedModuleIds, permissionReconcile };
+  } catch (error) {
+    try {
+      for (const assignment of [...changedAssignments].reverse()) {
+        const restored = await deps.repository.restoreModuleActivation(
+          instanceId,
+          assignment.moduleId,
+          assignment.previous
+        );
+        if (!restored) {
+          const restoreError = new Error(
+            `rollback_restore_failed:${assignment.moduleId}`
+          ) as Error & { cause?: unknown };
+          restoreError.cause = error;
+          throw restoreError;
+        }
+      }
+    } catch (rollbackError) {
+      throw createBootstrapAssignRollbackError(
+        instanceId,
+        changedAssignments.map(({ moduleId }) => moduleId),
+        error,
+        rollbackError
+      );
+    }
+    throw error;
+  }
+};
+
 export const createBootstrapAdminStructureHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['bootstrapAdminStructure'] =>
   async (input) => {
@@ -248,51 +313,14 @@ export const createBootstrapAdminStructureHandler =
       return { ok: false, reason: 'unknown_module' };
     }
 
-    const currentAssignedModuleIds = new Set(
-      await deps.repository.listAssignedModules(input.instanceId)
-    );
-    const newlyAssignedModuleIds: string[] = [];
-    for (const moduleId of requestedModuleIds) {
-      if (!currentAssignedModuleIds.has(moduleId)) {
-        const inserted = await deps.repository.assignModule(input.instanceId, moduleId);
-        if (inserted) {
-          newlyAssignedModuleIds.push(moduleId);
-        }
-      }
-    }
-
-    let assignedModuleIds: readonly string[];
-    let modulePermissionReconcile: PermissionCatalogReconcileResult | void;
-    try {
-      assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-      modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
-        instanceId: input.instanceId,
-        managedModuleIds: [...registry.keys()],
-        managedContracts: resolveManagedModuleContracts(deps),
-        contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
-      });
-    } catch (error) {
-      try {
-        for (const moduleId of [...newlyAssignedModuleIds].reverse()) {
-          const removed = await deps.repository.revokeModule(input.instanceId, moduleId);
-          if (!removed) {
-            const rollbackRevokeError = new Error(`rollback_revoke_failed:${moduleId}`) as Error & {
-              cause?: unknown;
-            };
-            rollbackRevokeError.cause = error;
-            throw rollbackRevokeError;
-          }
-        }
-      } catch (rollbackError) {
-        throw createBootstrapAssignRollbackError(
-          input.instanceId,
-          newlyAssignedModuleIds,
-          error,
-          rollbackError
-        );
-      }
-      throw error;
-    }
+    const bootstrapAssignments = await assignBootstrapModulesAndSyncIam({
+      deps,
+      instanceId: input.instanceId,
+      requestedModuleIds,
+      managedModuleIds: [...registry.keys()],
+    });
+    const assignedModuleIds = bootstrapAssignments.assignedModuleIds;
+    let modulePermissionReconcile = bootstrapAssignments.permissionReconcile;
 
     let bootstrapCompleted = false;
     try {

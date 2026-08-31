@@ -140,7 +140,7 @@ export const createRevokeModuleHandler = <TContext>(
           return deps.createApiError(
             409,
             'plugin_activation_required_cannot_disable',
-            'Ein verpflichtendes Plugin kann nicht deaktiviert werden.',
+            deps.translateMessage(state.request, 'pluginActivationRequiredCannotDisable'),
             state.requestId
           );
         }

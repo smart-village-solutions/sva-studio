@@ -38,6 +38,10 @@ export type InstanceRegistryMutationHttpActor = {
 export type InstanceRegistryMutationHttpDeps<TContext> = {
   readonly getRequestId: () => string | undefined;
   readonly getActor: (ctx: TContext) => InstanceRegistryMutationHttpActor;
+  readonly translateMessage: (
+    request: Request,
+    key: 'pluginActivationRequiredCannotDisable'
+  ) => string;
   readonly createApiError: CreateApiError;
   readonly jsonResponse: JsonResponse;
   readonly asApiItem: AsApiItem;

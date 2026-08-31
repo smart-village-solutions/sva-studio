@@ -15,6 +15,7 @@ import type { RegistryRequestContext } from './auth-context.js';
 import { isAuthenticatedRegistryServiceRequest } from './service-token.js';
 import { confirmCriticalRegistryMutation } from './confirmation.js';
 import { ensurePlatformAccess, requireFreshReauth } from './http.js';
+import { translateInstanceRegistryMessage } from './messages.js';
 import { parseRegistryRequestBody } from './request-parsing.js';
 import { withRegistryService, withScopedRegistryService } from './repository.js';
 
@@ -23,6 +24,7 @@ const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 const mutationHandlers = createInstanceRegistryMutationHttpHandlers<RegistryRequestContext>({
   getRequestId,
   getActor: (ctx) => ({ id: ctx.user.id }),
+  translateMessage: translateInstanceRegistryMessage,
   createApiError: (status, code, message, requestId, details) =>
     createApiError(
       status,

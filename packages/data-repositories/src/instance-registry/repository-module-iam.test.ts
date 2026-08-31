@@ -86,6 +86,15 @@ describe('instance registry repository module iam', () => {
     await expect(repository.revokeModule('tenant-a', 'news')).resolves.toBe(false);
   });
 
+  it('surfaces advisory lock conflicts instead of treating them as idempotent writes', async () => {
+    const { executor } = createQueuedExecutor([[{ acquired: false, changed: false }]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.assignModule('tenant-a', 'news')).rejects.toThrow(
+      'plugin_activation_state_conflict:news'
+    );
+  });
+
   it('persists manual enable and disable overrides without deleting activation policy state', async () => {
     const { executor, statements } = createQueuedExecutor([
       [{ acquired: true, changed: true }],

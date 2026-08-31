@@ -59,6 +59,9 @@ const createSyncAssignedModuleIam =
     const { instanceId, managedModuleIds, managedContracts = [], contracts } = input;
     const permissions = buildManagedPermissions(contracts);
     const rolePermissionPairs = buildRolePermissionPairs(contracts);
+    const allManagedModuleIds = [
+      ...new Set([...managedModuleIds, ...managedContracts.map((contract) => contract.moduleId)]),
+    ].sort(compareAlphabetically);
     if (
       permissions.length === 0 &&
       rolePermissionPairs.length === 0 &&
@@ -82,8 +85,8 @@ const createSyncAssignedModuleIam =
     await cleanupModuleRolePermissions(
       executor,
       instanceId,
-      managedModuleIds,
-      contracts.map((contract) => contract.moduleId)
+      allManagedModuleIds,
+      rolePermissionPairs
     );
     return result;
   };

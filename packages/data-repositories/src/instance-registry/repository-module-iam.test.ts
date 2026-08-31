@@ -290,13 +290,13 @@ describe('instance registry repository module iam', () => {
     expect(statements[0]?.text).not.toContain('DELETE FROM iam.permissions');
   });
 
-  it('does not revoke grants merely because an active module removed a catalog entry', async () => {
+  it('revokes module-owned grants removed from an active IAM contract', async () => {
     const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createInstanceRegistryRepository(executor);
 
     await repository.syncAssignedModuleIam({
       instanceId: 'tenant-a',
-      managedModuleIds: ['news'],
+      managedModuleIds: [],
       managedContracts: [
         {
           moduleId: 'news',
@@ -310,7 +310,9 @@ describe('instance registry repository module iam', () => {
     const cleanup = statements.find((statement) =>
       statement.text.includes('DELETE FROM iam.role_permissions')
     );
-    expect(cleanup?.text).toContain("grant_origin_module_id NOT IN ('news')");
+    expect(cleanup?.text).toContain("grant_origin_module_id IN ('news')");
+    expect(cleanup?.text).toContain('FROM jsonb_to_recordset($2::jsonb)');
+    expect(cleanup?.values).toEqual(['tenant-a', '[]']);
     expect(
       statements.some((statement) => statement.text.includes('DELETE FROM iam.permissions'))
     ).toBe(false);
@@ -355,12 +357,16 @@ describe('instance registry repository module iam', () => {
       "role_permission.grant_origin_kind = 'module_sync'"
     );
     expect(rolePermissionCleanup?.text).toContain(
-      "role_permission.grant_origin_module_id IN ('news', 'events')"
+      "role_permission.grant_origin_module_id IN ('events', 'news')"
     );
-    expect(rolePermissionCleanup?.text).toContain(
-      "role_permission.grant_origin_module_id NOT IN ('news')"
-    );
-    expect(rolePermissionCleanup?.text).not.toContain('role.role_key IN');
+    expect(rolePermissionCleanup?.text).toContain('FROM jsonb_to_recordset($2::jsonb)');
+    expect(rolePermissionCleanup?.text).toContain('active_pair.role_name = role.role_key');
+    expect(rolePermissionCleanup?.values).toEqual([
+      'tenant-a',
+      JSON.stringify([
+        { module_id: 'news', role_name: 'system_admin', permission_id: 'news.read' },
+      ]),
+    ]);
   });
 
   it('uses locale-aware ordering for managed permission and role cleanup sets', async () => {

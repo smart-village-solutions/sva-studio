@@ -139,7 +139,7 @@ Die erste interne Implementierung nutzt dafür Graphile Worker im Hostprozess. D
 
 Worker-fähige Serverprozesse starten ihre konfigurierte Lane bereits beim Prozess-Bootstrap. Vor dem ersten Queue-Consume wartet der Bootstrap auf den vollständig konfigurierten Aktivierungs-/Lifecycle-Snapshot und die Runtime-Handler. Das privilegierte Provisioner-Profil ist dadurch weder von einem ersten HTTP-Request oder externen Healthcheck abhängig noch kann es queued Lifecycle-Jobs gegen einen leeren Registry-Snapshot ausführen; Requests stoßen nur den idempotenten Recheck desselben Controllers an.
 
-Der anschließende Fleet-Reconcile gleicht für jede Instanz auch bei unveränderten Aktivierungszeilen die aktuell konfigurierten IAM-Verträge idempotent ab. Reine IAM-Vertragsänderungen werden dadurch auf bestehende Zuweisungen angewendet. Ein fehlgeschlagener oder degradierter Fleet-Lauf plant revisions- und prozessgenerationsgebunden selbstständig einen neuen Versuch; er ist nicht von einem späteren HTTP-Request abhängig.
+Der anschließende Fleet-Reconcile gleicht für jede Instanz auch bei unveränderten Aktivierungszeilen die aktuell konfigurierten IAM-Verträge idempotent ab. Reine IAM-Vertragsänderungen werden dadurch auf bestehende Zuweisungen angewendet; entfernte Rollen-/Permission-Paare verlieren ausschließlich ihren als `module_sync` markierten Grant, während manuelle Grants und Permission-Definitionen bestehen bleiben. Ein fehlgeschlagener oder degradierter Fleet-Lauf plant revisions- und prozessgenerationsgebunden selbstständig einen neuen Versuch; er ist nicht von einem späteren HTTP-Request abhängig.
 
 Für startbare Plugin-Jobtypen gilt zusätzlich ein verbindlicher Runtime-Integrationsschritt:
 

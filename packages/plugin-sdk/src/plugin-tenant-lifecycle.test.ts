@@ -155,6 +155,26 @@ describe('plugin tenant lifecycle contracts', () => {
     ).toThrow('plugin_tenant_readiness_check_namespace_mismatch:speech:waste:waste.databaseSchema');
   });
 
+  it('requires readiness checks to declare an explicit boolean required flag', () => {
+    expect(() =>
+      definePluginTenantLifecycle(
+        'speech',
+        {
+          contractVersion: 1,
+          operations: [{ operation: 'readiness', jobTypeId: 'speech.checkTenantReadiness' }],
+          readinessChecks: [
+            {
+              checkId: 'speech.databaseSchema',
+              titleKey: 'speech.readiness.databaseSchema',
+              required: 0,
+            },
+          ],
+        } as never,
+        jobTypes
+      )
+    ).toThrow('invalid_plugin_tenant_readiness_check:speech.databaseSchema');
+  });
+
   it('requires a readiness operation when checks are declared', () => {
     expect(() =>
       createPluginRegistry([

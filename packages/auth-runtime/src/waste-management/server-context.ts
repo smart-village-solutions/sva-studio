@@ -19,6 +19,7 @@ import { protectField, revealField } from '../iam-account-management/encryption.
 import { buildLogContext } from '../log-context.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
 import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
+import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import { createApiError } from '../shared/request-helpers.js';
 
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
@@ -45,7 +46,7 @@ export const withAuthenticatedWasteManagementHandler = (
             return createApiError(
               409,
               'plugin_tenant_access_blocked',
-              'Der Plugin-Fachzugriff ist noch nicht betriebsbereit.',
+              translatePluginTenantLifecycleMessage(request, 'pluginAccessBlocked'),
               buildLogContext(instanceId).request_id,
               { reason_code: access.reason }
             );

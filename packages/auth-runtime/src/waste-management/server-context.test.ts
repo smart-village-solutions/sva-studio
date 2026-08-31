@@ -86,11 +86,19 @@ describe('sharedWasteManagementDeps', () => {
     const handler = vi.fn(async () => new Response('handled'));
 
     const response = await withAuthenticatedWasteManagementHandler(
-      new Request('https://studio.example/api/v1/waste-management/settings'),
+      new Request('https://studio.example/api/v1/waste-management/settings', {
+        headers: { 'accept-language': 'en-GB,en;q=0.9,de;q=0.8' },
+      }),
       handler
     );
 
     expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'plugin_tenant_access_blocked',
+        message: 'The plugin is not ready for tenant operations yet.',
+      },
+    });
     expect(handler).not.toHaveBeenCalled();
     expect(authMocks.readConfiguredPluginTenantAccess).toHaveBeenCalledWith(
       'tenant-a',

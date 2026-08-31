@@ -88,7 +88,9 @@ const defineCheck = (input: {
   );
   if (checkIds.has(checkId)) throw new Error(`duplicate_plugin_tenant_readiness_check:${checkId}`);
   const titleKey = normalizePluginIdentifier(check.titleKey);
-  if (titleKey.length === 0) throw new Error(`invalid_plugin_tenant_readiness_check:${checkId}`);
+  if (titleKey.length === 0 || typeof check.required !== 'boolean') {
+    throw new Error(`invalid_plugin_tenant_readiness_check:${checkId}`);
+  }
   if (check.repairOperation && !declaredOperations.has(check.repairOperation)) {
     throw new Error(
       `unknown_plugin_tenant_readiness_repair_operation:${checkId}:${check.repairOperation}`

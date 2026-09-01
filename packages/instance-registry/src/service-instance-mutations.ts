@@ -1,6 +1,11 @@
 import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
+import type { InstanceRegistryRecord } from '@sva/core';
 
-import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
+import type {
+  CreateInstanceProvisioningInput,
+  CreateInstanceProvisioningResult,
+  UpdateInstanceInput,
+} from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createProvisioningArtifacts } from './service-provisioning.js';
@@ -35,6 +40,23 @@ const assertIdempotentCreateRetry = async (
   return true;
 };
 
+const resolveIdempotentCreateRetry = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CreateInstanceProvisioningInput,
+  instance: InstanceRegistryRecord
+): Promise<CreateInstanceProvisioningResult | null> => {
+  if (!(await assertIdempotentCreateRetry(deps, input))) {
+    return null;
+  }
+  await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
+    instanceId: instance.instanceId,
+    actorId: input.actorId,
+    requestId: input.requestId,
+  });
+  invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
+  return { ok: true, instance: toListItem(instance) };
+};
+
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
@@ -48,15 +70,8 @@ export const createProvisioningRequestHandler =
       deps.repository.getInstanceById(input.instanceId)
     );
     if (existing) {
-      if (await assertIdempotentCreateRetry(deps, input)) {
-        await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
-          instanceId: existing.instanceId,
-          actorId: input.actorId,
-          requestId: input.requestId,
-        });
-        invalidateHostWithLog(deps.invalidateHost, existing.primaryHostname, existing.instanceId);
-        return { ok: true, instance: toListItem(existing) };
-      }
+      const retry = await resolveIdempotentCreateRetry(deps, input, existing);
+      if (retry) return retry;
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
         instance_id: input.instanceId,
@@ -108,18 +123,9 @@ export const createProvisioningRequestHandler =
       const concurrentInstance = await runInstanceRegistryStep('registry_lookup', () =>
         deps.repository.getInstanceById(input.instanceId)
       );
-      if (concurrentInstance && (await assertIdempotentCreateRetry(deps, input))) {
-        await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
-          instanceId: concurrentInstance.instanceId,
-          actorId: input.actorId,
-          requestId: input.requestId,
-        });
-        invalidateHostWithLog(
-          deps.invalidateHost,
-          concurrentInstance.primaryHostname,
-          concurrentInstance.instanceId
-        );
-        return { ok: true, instance: toListItem(concurrentInstance) };
+      if (concurrentInstance) {
+        const retry = await resolveIdempotentCreateRetry(deps, input, concurrentInstance);
+        if (retry) return retry;
       }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',

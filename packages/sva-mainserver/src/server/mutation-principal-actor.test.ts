@@ -5,6 +5,8 @@ const state = vi.hoisted(() => ({
   loadIdentity: vi.fn(),
   reconcileConflict: vi.fn(),
   recordObservation: vi.fn(),
+  resolveActorInfo: vi.fn(),
+  resolveMutationPrincipalContext: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
 }));
@@ -13,8 +15,8 @@ vi.mock('@sva/auth-runtime/server', () => ({
   loadCurrentMainserverDataProviderBinding: state.loadBinding,
   reconcileDeletedUserDataProviderConflict: state.reconcileConflict,
   recordMainserverDataProviderObservation: state.recordObservation,
-  resolveActorInfo: vi.fn(),
-  resolveMutationPrincipalContext: vi.fn(),
+  resolveActorInfo: state.resolveActorInfo,
+  resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -27,7 +29,10 @@ vi.mock('./service.js', () => ({
 }));
 
 import { SvaMainserverError } from './errors.js';
-import { ensureStableDataProviderIdentity } from './mutation-principal-actor.js';
+import {
+  ensureStableDataProviderIdentity,
+  resolveMainserverMutationActor,
+} from './mutation-principal-actor.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -168,5 +173,65 @@ describe('stable DataProvider identity verification', () => {
         historical_binding_count: 1,
       })
     );
+  });
+});
+
+describe('Mainserver editor context binding', () => {
+  const ctx = {
+    user: { id: 'subject-1', instanceId: 'de-musterhausen' },
+  };
+  const authorizedActor = {
+    instanceId: 'de-musterhausen',
+    keycloakSubject: 'subject-1',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.resolveActorInfo.mockResolvedValue({
+      actor: { actorAccountId: '11111111-1111-4111-8111-111111111111' },
+    });
+    state.resolveMutationPrincipalContext.mockResolvedValue({
+      ok: true,
+      context: actor.mutationPrincipalContext,
+    });
+    state.loadBinding.mockResolvedValue({ status: 'verified', dataProviderId: '832' });
+  });
+
+  it('does not require a mutation context binding for a versioned GET request', async () => {
+    const result = await resolveMainserverMutationActor({
+      request: new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news/news-1/authorization',
+        {
+          headers: {
+            'X-SVA-Acting-Principal-Type': 'user',
+            'X-SVA-Mainserver-Contract-Version': '2',
+          },
+        }
+      ),
+      ctx,
+      authorizedActor,
+    });
+
+    expect(result).toMatchObject({ actingPrincipalType: 'user' });
+  });
+
+  it('still rejects a versioned PATCH request without its mutation context binding', async () => {
+    const result = await resolveMainserverMutationActor({
+      request: new Request('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        headers: {
+          'X-SVA-Acting-Principal-Type': 'user',
+          'X-SVA-Mainserver-Contract-Version': '2',
+        },
+      }),
+      ctx,
+      authorizedActor,
+    });
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(409);
+    await expect((result as Response).json()).resolves.toMatchObject({
+      error: 'stale_mainserver_context',
+    });
   });
 });

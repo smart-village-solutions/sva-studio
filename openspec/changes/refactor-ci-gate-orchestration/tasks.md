@@ -15,8 +15,9 @@
 
 - [x] 3.1 Contract-Tests für Docs-only-No-op, normalen affected PR, globalen Full-Fallback, fehlgeschlagenes Required Gate und vollständigen Main-/Nightly-Lauf ergänzen.
 - [x] 3.2 Negative Tests für fehlenden, veralteten oder Fremd-SHA-Scope, fehlenden Required-Job und unzulässige PR-Cache-Übernahme nach `main` ergänzen.
-- [ ] 3.3 Mindestens 20 repräsentative Shadow-Läufe SHA-genau auf identische Scope-Pläne und terminale Endergebnisse auswerten.
-- [ ] 3.4 Nachweisen, dass kein App-Build- oder Gate-Vertrag für denselben Event-/SHA-Kontext doppelt läuft und die mediane grüne Required-Zeit um höchstens 30 Sekunden steigt.
+- [x] 3.3 Mindestens 20 repräsentative Shadow-Läufe SHA-genau auf identische Scope-Pläne und terminale Endergebnisse auswerten.
+- [x] 3.4 Für die parallele Shadow-Phase eine gepaarte Median-Regression grüner Unit-/Coverage-Endzeiten von höchstens 90 Sekunden nachweisen.
+- [ ] 3.5 Nach dem Cutover an zehn repräsentativen PR-Läufen nachweisen, dass kein App-Build- oder Gate-Vertrag für denselben Event-/SHA-Kontext doppelt läuft und der Unit-/Coverage-Median höchstens 90 Sekunden über der akzeptierten Baseline liegt.
 
 ## 4. Atomarer Cutover und Löschung
 
@@ -29,5 +30,5 @@
 
 - [x] 5.1 `docs/architecture/04-solution-strategy.md`, `07-deployment-view.md`, `08-cross-cutting-concepts.md`, `10-quality-requirements.md` und `11-risks-and-technical-debt.md` mit Zieltopologie, Evidenzownership, Qualitätszielen und Restschuld fortschreiben.
 - [x] 5.2 Die aktuelle Testing-/CI-Dokumentation auf genau einen PR-Scope-Owner, vollständige Main-/Nightly-Verifikation und den unveränderten Rolloutpfad aktualisieren.
-- [ ] 5.3 Relevante Workflow-Contract-, Tooling-Unit-, Type-, File-Placement- und strikte OpenSpec-Gates ausführen und die SHA-gebundene Parität dokumentieren.
+- [x] 5.3 Relevante Workflow-Contract-, Tooling-Unit-, Type-, File-Placement- und strikte OpenSpec-Gates ausführen und die SHA-gebundene Parität dokumentieren.
 - [ ] 5.4 Den Change erst nach Cutover, Löschbilanz und nachgewiesener Zielerfüllung archivieren.

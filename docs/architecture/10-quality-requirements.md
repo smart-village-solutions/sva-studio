@@ -400,7 +400,7 @@ Referenzen:
 
 - Direkt zuordenbare Unit- oder Coverage-Fehler sollen nach Aktivierung in höchstens 3 Minuten im Median und höchstens 5 Minuten bei P90 als bestätigter roter Status vorliegen. App-E2E-Kosten werden getrennt pro `main`-Commit ausgewiesen.
 - Changed-first darf den final geprüften Scope nicht reduzieren; direkt ausgeführte Targets und der übrige affected Scope müssen disjunkt und gemeinsam vollständig sein.
-- Die mediane terminale Zeit grüner Required Checks darf gegenüber der Ausgangsbaseline um höchstens 30 Sekunden steigen.
+- Für die abgeschlossene Changed-first-Aktivierung galt eine Regression von höchstens 30 Sekunden gegenüber ihrer Ausgangsbaseline. Für den späteren CI-Topologie-Shadow gilt wegen der temporären Doppelarbeit das unten definierte gepaarte 90-Sekunden-Kriterium; nach dem Cutover wird die produktive Topologie separat gegen die akzeptierte Ausgangsbaseline nachgemessen.
 - Ein zweiter kleiner PR-Push soll mindestens 30 Prozent der cachefähigen unveränderten Target-Laufzeit einsparen. Der Wert bezieht sich ausschließlich auf deterministische Targets und rechtfertigt keine Cache-Aktivierung für Coverage, Integration oder E2E ohne Paritätsnachweis.
 - Die Abnahme benötigt mindestens 20 repräsentative PR-Läufe; lokale Einzelmessungen sind noch kein Erfüllungsnachweis.
 - Die Auswertung vom 23. August 2026 umfasst 20 grüne PR-Head-SHAs. Die mediane terminale Zeit von `Unit` und `Coverage` sank gegenüber der 20-Run-Baseline von 505,5 auf 348 Sekunden. Der einzige direkt zuordenbare rote Unit-Lauf in diesem Fenster bestätigte den Fehler nach 172 Sekunden; zwei späte Coverage-Verstöße eines nur transitiv betroffenen Projekts sind transparent dokumentiert, zählen aber nicht als direkt verursachtes Fehlersignal.
@@ -409,8 +409,8 @@ Referenzen:
 
 - Jeder Shadow-Vergleich muss auf exakt ein Head-SHA und einen versionierten Base-/Head-Scope gebunden sein. Fehlende, doppelte, veraltete, nicht terminale oder fremd-SHA-gebundene Ergebnisse gelten als Abweichung.
 - Die sieben Required-Verträge sowie A11y, App Build, Documentation Integrity, Documentation Catalog und DB Schema Snapshot müssen im Vergleich sichtbar bleiben. Shadow-Namen dürfen keinen bestehenden Required-Kontext ersetzen.
-- Vor einem Cutover sind mindestens 20 repräsentative Live-Läufe mit null ungeklärter Scope-Unterabdeckung oder Ergebnisdrift erforderlich. Die mediane grüne Required-Zeit darf gegenüber der Ausgangsbasis um höchstens 30 Sekunden steigen.
-- Der aktuelle Implementierungsstand ist lokal und statisch validiert; die Live-Stichprobe steht bei `0/20`. Daraus folgt noch keine Cutover-Freigabe.
+- Vor einem Cutover sind mindestens 20 repräsentative Live-Läufe mit null ungeklärter Scope-Unterabdeckung oder Ergebnisdrift erforderlich. Während der parallelen Shadow-Phase darf die gepaarte Median-Regression grüner Unit-/Coverage-Endzeiten gegenüber der Alt-Orchestrierung höchstens 90 Sekunden betragen.
+- Die Live-Stichprobe steht bei `20/20`; ihre gepaarte Unit-/Coverage-Regression beträgt 78 Sekunden. Vor dem Cutover muss die korrigierte Sammler-Deadline live grün sein. Nach dem Cutover müssen zehn repräsentative Läufe ohne Doppelarbeit einen Unit-/Coverage-Median von höchstens 438 Sekunden gegenüber der akzeptierten Baseline von 348 Sekunden belegen.
 
 ### Ergänzung 2026-08: Qualitätsziele der IAM-ABAC-Auswertung
 

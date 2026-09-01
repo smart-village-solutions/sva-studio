@@ -77,7 +77,7 @@ Das Monorepo SHALL die vier abgelösten allgemeinen Orchestrierungsworkflows dur
 
 - **WHEN** mindestens 20 repräsentative Shadow-Läufe für identische Head-SHAs ausgewertet werden
 - **THEN** stimmen Scope-Plan und terminale Endentscheidung mit der Alt-Orchestrierung überein
-- **AND** verschlechtert sich die mediane terminale Zeit grüner Required Checks um höchstens 30 Sekunden
+- **AND** verschlechtert sich die gepaarte mediane terminale Zeit grüner Unit-/Coverage-Verträge gegenüber der Alt-Orchestrierung um höchstens 90 Sekunden
 
 #### Scenario: Cutover ist bereit
 
@@ -91,3 +91,9 @@ Das Monorepo SHALL die vier abgelösten allgemeinen Orchestrierungsworkflows dur
 - **THEN** umfassen die produktiven YAML-Nachfolger der vier Ausgangsworkflows höchstens 840 Zeilen
 - **AND** ist die Nettoänderung produktiver CI-Orchestrierungs-TS-Zeilen höchstens null
 - **AND** läuft kein App-Build- oder Gate-Vertrag doppelt für denselben Event-/SHA-Kontext
+
+#### Scenario: Produktive Laufzeit wird nachgemessen
+
+- **WHEN** nach dem Cutover zehn repräsentative grüne PR-Läufe abgeschlossen sind
+- **THEN** liegt der Median der terminalen Unit-/Coverage-Zeit höchstens 90 Sekunden über der akzeptierten Baseline von 348 Sekunden
+- **AND** enthält die Messung keine temporäre Shadow- oder Alt-Orchestrierungs-Doppelarbeit

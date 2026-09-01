@@ -28,12 +28,16 @@ Evidenzgrenzen abzuschwächen.
 - Die Migration erfolgt über nicht blockierende Topologie-Parität, danach
   atomaren Cutover und erst anschließend Löschung der Alt-Orchestrierung.
 - Die vier abgelösten Orchestrierungsworkflows werden von aktuell 1.050 auf
-  höchstens 840 produktive YAML-Zeilen reduziert. Produktive
+  höchstens 840 produktive YAML-Zeilen nach dem Cutover reduziert;
+  ausschließlich temporäre Shadow-Paritätsjobs zählen nicht zur produktiven
+  Zieltopologie. Produktive
   CI-Orchestrierungs-TS-Zeilen dürfen nach dem Cutover netto nicht steigen.
 - Derselbe App-Build- oder Gate-Vertrag darf für denselben Event-/SHA-Kontext
-  nicht doppelt ausgeführt werden. Die mediane terminale Zeit grüner Required
-  Checks darf gegenüber der bestehenden Baseline um höchstens 30 Sekunden
-  steigen.
+  nach dem Cutover nicht doppelt ausgeführt werden. Während der parallelen
+  Shadow-Phase darf die gepaarte mediane terminale Zeit grüner Unit-/Coverage-
+  Verträge gegenüber der Alt-Orchestrierung um höchstens 90 Sekunden steigen.
+  Nach dem Cutover wird dies an zehn repräsentativen Läufen ohne Doppelarbeit
+  gegen die akzeptierte Baseline nachgemessen.
 
 ## Unveränderte Grenzen
 

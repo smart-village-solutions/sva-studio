@@ -1,0 +1,4 @@
+{
+  "prNumber": 1229,
+  "body": "Die technische Qualitätssicherung des Studios wird auf eine langfristig einfacher pflegbare Struktur vorbereitet.\n\n- Die bestehende und die neue Prüfstruktur wurden über repräsentative Pull Requests miteinander verglichen.\n- Ein Prüfjob wartet nun robust auf spät startende Abschlussprüfungen, ohne fehlende Ergebnisse zu akzeptieren.\n- Der geschützte Veröffentlichungsweg nach Dev, Staging und Production bleibt unverändert."
+}

@@ -6,6 +6,8 @@ Die versionierte Migration `20260827_01_add_mainserver_source_revision` ergänzt
 
 Dieses Runbook beschreibt Diagnose und Wiederherstellung für automatisch provisionierte Waste-Datenbanken. Reguläre Rollouts erfolgen ausschließlich nach dem [Studio-Rollout-Prozess](../guides/studio-rollout-process.md). Direkte Datenbank- oder Stack-Eingriffe sind nur Incident-Recovery und kein zweiter Standardpfad.
 
+Generische Claims, Generationen, Worker-Lanes, Queue-Korrelation und Retry-/Repair-Entscheidungen werden im [Plugin-Tenant-Lifecycle-Runbook](./plugin-tenant-lifecycle-operations.md) diagnostiziert. Dieses Dokument ergänzt ausschließlich die Waste-spezifische Datenbanktopologie, Migration, Rechteprüfung, Sicherung und Wiederherstellung.
+
 ## Kanonischer Zustand
 
 Der zentrale Zustand liegt in `iam.instance_waste_provisioning`. `ready` erlaubt Runtime-Zugriff, `provisioning` hält ihn fail-closed, `failed` bietet die berechtigte Retry-Aktion und `disabled` erhält Datenbank sowie Sicherungen bei gesperrter Runtime.

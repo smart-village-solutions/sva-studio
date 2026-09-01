@@ -140,6 +140,73 @@ $$;
 
 
 --
+-- Name: plugin_tenant_lifecycle_observability_snapshot(); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.plugin_tenant_lifecycle_observability_snapshot() RETURNS TABLE(reason_code text, stall_count bigint)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'iam'
+    SET statement_timeout TO '10s'
+    AS $$
+  WITH lifecycle_jobs AS MATERIALIZED (
+    SELECT
+      lifecycle.active_job_id,
+      lifecycle.completed_generation,
+      lifecycle.desired_generation,
+      lifecycle.next_recheck_at,
+      lifecycle.readiness_status,
+      lifecycle.retry_after,
+      lifecycle.retry_kind,
+      lifecycle.started_at AS lifecycle_started_at,
+      lifecycle.updated_at AS lifecycle_updated_at,
+      job.heartbeat_at,
+      job.id AS job_id,
+      job.scheduled_at,
+      job.started_at AS job_started_at,
+      job.status AS job_status
+    FROM iam.instance_plugin_lifecycle AS lifecycle
+    LEFT JOIN iam.studio_jobs AS job
+      ON job.id = lifecycle.active_job_id
+  )
+  SELECT 'stale_claim'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE active_job_id IS NOT NULL
+    AND job_status = 'running'
+    AND coalesce(heartbeat_at, job_started_at, lifecycle_started_at, lifecycle_updated_at)
+      <= statement_timestamp() - interval '120 seconds'
+  UNION ALL
+  SELECT 'queued_due'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE active_job_id IS NOT NULL
+    AND job_status = 'queued'
+    AND scheduled_at <= statement_timestamp() - interval '120 seconds'
+  UNION ALL
+  SELECT 'retry_due'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE retry_kind = 'retryable'
+    AND retry_after <= statement_timestamp()
+  UNION ALL
+  SELECT 'pending_recheck_due'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE readiness_status = 'pending'
+    AND next_recheck_at <= statement_timestamp()
+  UNION ALL
+  SELECT 'generation_without_owner'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE desired_generation > completed_generation
+    AND (
+      active_job_id IS NULL
+      OR job_id IS NULL
+      OR job_status IN ('succeeded', 'failed', 'cancelled')
+    )
+    AND NOT (
+      (retry_kind = 'retryable' AND retry_after > statement_timestamp())
+      OR (readiness_status = 'pending' AND next_recheck_at > statement_timestamp())
+    );
+$$;
+
+
+--
 -- Name: prevent_activity_logs_mutation(); Type: FUNCTION; Schema: iam; Owner: -
 --
 
@@ -4765,6 +4832,13 @@ CREATE POLICY instance_plugin_lifecycle_isolation_policy ON iam.instance_plugin_
 
 
 --
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_observability_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_plugin_lifecycle_observability_policy ON iam.instance_plugin_lifecycle FOR SELECT TO iam_observability USING (true);
+
+
+--
 -- Name: instance_waste_data_sources; Type: ROW SECURITY; Schema: iam; Owner: -
 --
 
@@ -4955,6 +5029,13 @@ CREATE POLICY role_permissions_isolation_policy ON iam.role_permissions USING ((
 --
 
 CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: studio_jobs studio_jobs_observability_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO iam_observability USING (true);
 
 
 --

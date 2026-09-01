@@ -5,6 +5,10 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { resolveStudioJobWorkerPool } from '../db.js';
 import {
+  recordPluginTenantLifecycleLaneHealth,
+  recordPluginTenantLifecycleLaneSuccess,
+} from '../plugin-tenant-lifecycle/observability.js';
+import {
   createStudioJobTaskList,
   getRegisteredStudioJobExecutionRegistry,
   privilegedStudioJobTaskIdentifier,
@@ -45,6 +49,16 @@ let privilegedRunnerHealth: StudioJobWorkerHealth = {
   status: 'idle',
 };
 
+const updateRunnerHealth = (health: StudioJobWorkerHealth): void => {
+  runnerHealth = health;
+  recordPluginTenantLifecycleLaneHealth('default', health);
+};
+
+const updatePrivilegedRunnerHealth = (health: StudioJobWorkerHealth): void => {
+  privilegedRunnerHealth = health;
+  recordPluginTenantLifecycleLaneHealth('privileged', health);
+};
+
 const parseWorkerConcurrency = (rawValue: string | undefined): number => {
   const fallback = 1;
   if (!rawValue) {
@@ -61,6 +75,7 @@ const parseWorkerConcurrency = (rawValue: string | undefined): number => {
 
 const observeWorkerHealth = (
   events: graphileWorker.WorkerEvents,
+  lane: StudioJobWorkerLane,
   reasonPrefix: string,
   updateHealth: (health: StudioJobWorkerHealth) => void,
   handleFatalError: (error: unknown) => void
@@ -79,6 +94,7 @@ const observeWorkerHealth = (
 
   events.on('worker:getJob:empty', markReady);
   events.on('job:start', markReady);
+  events.on('job:success', () => recordPluginTenantLifecycleLaneSuccess(lane));
   events.on('pool:listen:error', (event) => markFailed('connection_failed', event));
   events.on('worker:getJob:error', (event) => markFailed('claim_failed', event));
   events.on('worker:fatalError', (event) => {
@@ -91,6 +107,7 @@ const observeWorkerHealth = (
 
 const createGraphileWorkerRunner = (
   taskIdentifier: string,
+  lane: StudioJobWorkerLane,
   reasonPrefix: string,
   updateHealth: (health: StudioJobWorkerHealth) => void,
   handleFatalError: (error: unknown) => void
@@ -101,7 +118,7 @@ const createGraphileWorkerRunner = (
   }
 
   const events = new EventEmitter() as graphileWorker.WorkerEvents;
-  observeWorkerHealth(events, reasonPrefix, updateHealth, handleFatalError);
+  observeWorkerHealth(events, lane, reasonPrefix, updateHealth, handleFatalError);
   return graphileWorker.runTaskList(
     {
       concurrency: parseWorkerConcurrency(process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY),
@@ -165,19 +182,20 @@ export const ensureStudioJobWorkerStarted = async (
   options: StudioJobWorkerStartOptions = {}
 ): Promise<void> => {
   if (runner) return;
-  runnerHealth = {
+  updateRunnerHealth({
     ready: false,
     reasonCode: 'studio_job_worker_starting',
     status: 'starting',
-  };
+  });
   try {
     let startedRunner: graphileWorker.WorkerPool | null = null;
     startedRunner = observeWorkerFailure(
       createGraphileWorkerRunner(
         studioJobTaskIdentifier,
+        'default',
         'studio_job_worker',
         (health) => {
-          if (runner === null || runner === startedRunner) runnerHealth = health;
+          if (runner === null || runner === startedRunner) updateRunnerHealth(health);
         },
         (error) =>
           retireTerminalWorker(
@@ -194,11 +212,11 @@ export const ensureStudioJobWorkerStarted = async (
       'studio_job_worker_runtime_failed',
       (error) => {
         if (runner === startedRunner) {
-          runnerHealth = {
+          updateRunnerHealth({
             ready: false,
             reasonCode: 'studio_job_worker_runtime_failed',
             status: 'failed',
-          };
+          });
         }
         retireTerminalWorker(
           startedRunner,
@@ -214,11 +232,11 @@ export const ensureStudioJobWorkerStarted = async (
     );
     runner = startedRunner;
   } catch (error) {
-    runnerHealth = {
+    updateRunnerHealth({
       ready: false,
       reasonCode: 'studio_job_worker_start_failed',
       status: 'failed',
-    };
+    });
     logger.error('Studio-Job-Worker konnte nicht gestartet werden', {
       operation: 'studio_job_worker_start_failed',
       error: error instanceof Error ? error.message : String(error),
@@ -231,20 +249,21 @@ export const ensurePrivilegedStudioJobWorkerStarted = async (
   options: StudioJobWorkerStartOptions = {}
 ): Promise<void> => {
   if (privilegedRunner) return;
-  privilegedRunnerHealth = {
+  updatePrivilegedRunnerHealth({
     ready: false,
     reasonCode: 'privileged_studio_job_worker_starting',
     status: 'starting',
-  };
+  });
   try {
     let startedRunner: graphileWorker.WorkerPool | null = null;
     startedRunner = observeWorkerFailure(
       createGraphileWorkerRunner(
         privilegedStudioJobTaskIdentifier,
+        'privileged',
         'privileged_studio_job_worker',
         (health) => {
           if (privilegedRunner === null || privilegedRunner === startedRunner) {
-            privilegedRunnerHealth = health;
+            updatePrivilegedRunnerHealth(health);
           }
         },
         (error) =>
@@ -262,11 +281,11 @@ export const ensurePrivilegedStudioJobWorkerStarted = async (
       'privileged_studio_job_worker_runtime_failed',
       (error) => {
         if (privilegedRunner === startedRunner) {
-          privilegedRunnerHealth = {
+          updatePrivilegedRunnerHealth({
             ready: false,
             reasonCode: 'privileged_studio_job_worker_runtime_failed',
             status: 'failed',
-          };
+          });
         }
         retireTerminalWorker(
           startedRunner,
@@ -282,11 +301,11 @@ export const ensurePrivilegedStudioJobWorkerStarted = async (
     );
     privilegedRunner = startedRunner;
   } catch (error) {
-    privilegedRunnerHealth = {
+    updatePrivilegedRunnerHealth({
       ready: false,
       reasonCode: 'privileged_studio_job_worker_start_failed',
       status: 'failed',
-    };
+    });
     logger.error('Privilegierter Studio-Job-Worker konnte nicht gestartet werden', {
       operation: 'privileged_studio_job_worker_start_failed',
       error: error instanceof Error ? error.message : String(error),
@@ -315,11 +334,11 @@ export const stopStudioJobWorker = async (): Promise<void> => {
   explicitlyStoppedWorkers.add(runner);
   await runner.gracefulShutdown();
   runner = null;
-  runnerHealth = {
+  updateRunnerHealth({
     ready: false,
     reasonCode: 'studio_job_worker_stopped',
     status: 'stopped',
-  };
+  });
 };
 
 export const stopPrivilegedStudioJobWorker = async (): Promise<void> => {
@@ -327,11 +346,11 @@ export const stopPrivilegedStudioJobWorker = async (): Promise<void> => {
   explicitlyStoppedWorkers.add(privilegedRunner);
   await privilegedRunner.gracefulShutdown();
   privilegedRunner = null;
-  privilegedRunnerHealth = {
+  updatePrivilegedRunnerHealth({
     ready: false,
     reasonCode: 'privileged_studio_job_worker_stopped',
     status: 'stopped',
-  };
+  });
 };
 
 export const stopPluginOperationWorker = stopStudioJobWorker;

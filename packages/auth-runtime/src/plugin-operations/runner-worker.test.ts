@@ -509,6 +509,26 @@ describe('plugin operation runner worker', () => {
     await expect(stopStudioJobWorker()).resolves.toBeUndefined();
   });
 
+  it('records the last successful processing time for the owning lane only', async () => {
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+    const worker = await import('./runner-worker.js');
+    const observability = await import('../plugin-tenant-lifecycle/observability.js');
+
+    await worker.ensurePrivilegedStudioJobWorkerStarted();
+    const events = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+    events.emit('job:success', {
+      job: { task_identifier: 'studio_job_execute_privileged' },
+      worker: {},
+    });
+
+    expect(
+      observability.readPluginTenantLifecycleLaneSnapshot('privileged').lastSuccessAtMs
+    ).toEqual(expect.any(Number));
+    expect(
+      observability.readPluginTenantLifecycleLaneSnapshot('default').lastSuccessAtMs
+    ).toBeNull();
+  });
+
   it('treats an explicitly disabled worker as ready', async () => {
     process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED = 'false';
     const { getStudioJobWorkerHealth } = await import('./runner-worker.js');

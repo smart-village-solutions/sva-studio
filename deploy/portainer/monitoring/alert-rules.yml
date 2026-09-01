@@ -122,6 +122,139 @@ groups:
     rules:
       # TODO: Aktivieren sobald Application Metriken verfügbar sind
 
+  - name: plugin_tenant_lifecycle_alerts
+    interval: 15s
+    rules:
+      - alert: PluginTenantLifecycleLaneUnavailableWarning
+        expr: |
+          (min by (lane) (sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"}) < 1)
+          or absent(sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"})
+        for: 15s
+        labels:
+          severity: warning
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Privilegierte Plugin-Lifecycle-Lane ist nicht bereit"
+          description: "Die privilegierte Worker-Lane kann persistierte Plugin-Lifecycle-Arbeit nicht sicher verarbeiten."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleLaneUnavailableCritical
+        expr: |
+          (min by (lane) (sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"}) < 1)
+          or absent(sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"})
+        for: 30s
+        labels:
+          severity: critical
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Privilegierte Plugin-Lifecycle-Lane ist ausgefallen"
+          description: "Die privilegierte Worker-Lane ist über das kritische Alarmfenster hinaus nicht bereit."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleStaleClaimWarning
+        expr: |
+          max by (reason_code) (sva_plugin_tenant_lifecycle_stall_count{reason_code="stale_claim"}) > 0
+        for: 15s
+        labels:
+          severity: warning
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Plugin-Lifecycle-Claim ohne frischen Heartbeat"
+          description: "Mindestens ein persistierter Lifecycle-Claim ist älter als das 120-Sekunden-Lease-SLO."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleStaleClaimCritical
+        expr: |
+          max by (reason_code) (sva_plugin_tenant_lifecycle_stall_count{reason_code="stale_claim"}) > 0
+        for: 30s
+        labels:
+          severity: critical
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Plugin-Lifecycle-Claim bleibt überaltert"
+          description: "Mindestens ein überalterter Lifecycle-Claim wurde nicht durch den persistenten Recovery-Pfad übernommen."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleDueWorkStalledWarning
+        expr: |
+          max by (reason_code) (
+            sva_plugin_tenant_lifecycle_stall_count{reason_code=~"queued_due|retry_due|pending_recheck_due"}
+          ) > 0
+        for: 15s
+        labels:
+          severity: warning
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Fällige Plugin-Lifecycle-Arbeit wartet"
+          description: "Persistierte Queue-, Retry- oder Pending-Recheck-Arbeit ist fällig und noch nicht verarbeitet."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleDueWorkStalledCritical
+        expr: |
+          max by (reason_code) (
+            sva_plugin_tenant_lifecycle_stall_count{reason_code=~"queued_due|retry_due|pending_recheck_due"}
+          ) > 0
+        for: 30s
+        labels:
+          severity: critical
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Fällige Plugin-Lifecycle-Arbeit bleibt blockiert"
+          description: "Fällige persistierte Lifecycle-Arbeit wurde über das kritische Alarmfenster hinaus nicht verarbeitet."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleGenerationWithoutOwnerWarning
+        expr: |
+          max by (reason_code) (
+            sva_plugin_tenant_lifecycle_stall_count{reason_code="generation_without_owner"}
+          ) > 0
+        for: 15s
+        labels:
+          severity: warning
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Plugin-Lifecycle-Generation ohne aktiven Owner"
+          description: "Mindestens eine offene Sollgeneration besitzt keinen aktiven öffentlichen Studio-Job-Owner."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleGenerationWithoutOwnerCritical
+        expr: |
+          max by (reason_code) (
+            sva_plugin_tenant_lifecycle_stall_count{reason_code="generation_without_owner"}
+          ) > 0
+        for: 30s
+        labels:
+          severity: critical
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Plugin-Lifecycle-Generation bleibt ohne Owner"
+          description: "Eine offene Sollgeneration bleibt ohne aktiven Studio-Job-Owner und benötigt sichere Korrelation."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleObservabilityUnavailableWarning
+        expr: |
+          max by (reason_code) (sva_plugin_tenant_lifecycle_observation_failure) > 0
+        for: 15s
+        labels:
+          severity: warning
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Plugin-Lifecycle-Aggregatsnapshot nicht verfügbar"
+          description: "Der sichere aggregierte Lifecycle-Diagnosevertrag konnte nicht gelesen werden."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
+      - alert: PluginTenantLifecycleObservabilityUnavailableCritical
+        expr: |
+          max by (reason_code) (sva_plugin_tenant_lifecycle_observation_failure) > 0
+        for: 30s
+        labels:
+          severity: critical
+          component: plugin-tenant-lifecycle
+        annotations:
+          summary: "Plugin-Lifecycle-Observability bleibt ausgefallen"
+          description: "Der Aggregatsnapshot bleibt über das kritische Alarmfenster hinaus nicht verfügbar."
+          runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
+
   - name: iam_role_sync_alerts
     interval: 1m
     rules:

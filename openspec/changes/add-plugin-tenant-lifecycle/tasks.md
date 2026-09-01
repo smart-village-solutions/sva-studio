@@ -35,3 +35,4 @@
 - [x] 5.6 System-Assurance-Vertrag menschlich freigeben; Folgepläne 038 bis 041 bis dahin nicht beginnen
 - [x] 5.7 Plugin-Autorisierung auf explizite Anforderungen, Host-Resource-Evidenz und getrennte Lifecycle-Service-Actions härten
 - [x] 5.8 Lifecycle-/Job-/Queue-Transitionen, terminale Events, Pending-Recheck und 30/120/150-Lease-Recovery atomar linearisieren
+- [x] 5.9 Aggregierte Lifecycle-Metriken, 120-Sekunden-Alerts und ein nicht-destruktives Betriebsrunbook ergänzen

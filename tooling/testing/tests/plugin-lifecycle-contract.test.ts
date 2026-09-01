@@ -31,6 +31,7 @@ describe('plugin lifecycle database contract gate', () => {
       'LC-06',
       'TOP-01',
       'ACT-01',
+      'OBS-01',
     ]) {
       expect(harness).toContain(`${invariant}-positive`);
       expect(harness).toContain(`${invariant}-negative`);
@@ -47,6 +48,24 @@ describe('plugin lifecycle database contract gate', () => {
     expect(harness).toContain('assertPersistedTerminalOutcome');
     expect(harness).toContain('final_attempt_retry_key_absent');
     expect(harness).toContain('act01_reconcile_key_rollback');
+  });
+
+  it('keeps the observability function aggregated and least-privileged', () => {
+    const migration = read('packages/data/migrations/0091_iam_plugin_lifecycle_observability.sql');
+    expect(migration).toContain('CREATE ROLE iam_observability');
+    expect(migration).toContain("RAISE EXCEPTION 'iam_observability_role_already_exists'");
+    expect(migration).not.toContain('ALTER ROLE iam_observability');
+    expect(migration).toMatch(/NOLOGIN NOSUPERUSER[\s\S]*NOBYPASSRLS/);
+    expect(migration).toContain('SECURITY DEFINER');
+    expect(migration).toContain('SET search_path = pg_catalog, iam');
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION iam.plugin_tenant_lifecycle_observability_snapshot() FROM PUBLIC'
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION iam.plugin_tenant_lifecycle_observability_snapshot() TO iam_app'
+    );
+    expect(migration).toContain('REVOKE CREATE ON SCHEMA iam FROM iam_observability');
+    expect(migration).not.toMatch(/EXECUTE\s+format|EXECUTE\s+[^;]*\|\|/i);
   });
 
   it('executes the direct login denial for the allowlisted enqueue function', () => {

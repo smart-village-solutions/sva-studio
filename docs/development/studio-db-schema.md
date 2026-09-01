@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-30`
+- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-31`
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -38,7 +38,7 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0090_iam_plugin_lifecycle_linearization.sql`
+- Repo-Migrationen vorhanden bis: `0091_iam_plugin_lifecycle_observability.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0077`:
 
@@ -72,7 +72,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0090_iam_plugin_lifecycle_linearization.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle. `0090` ergänzt Recheck-, Vertrags- und Recovery-Evidenz sowie den eindeutigen Terminalevent-Vertrag pro Job-Attempt.
+- Enthält strukturell den Repo-Sollstand bis `0091_iam_plugin_lifecycle_observability.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle. `0090` ergänzt Recheck-, Vertrags- und Recovery-Evidenz sowie den eindeutigen Terminalevent-Vertrag pro Job-Attempt. `0091` ergänzt den parameterlosen, ausschließlich aggregierenden Lifecycle-Observability-Snapshot. Sein NOLOGIN-/NOBYPASSRLS-Definer besitzt nur spaltenbegrenzte Leserechte und eigene `FOR SELECT`-Policies; `iam_app` erhält ausschließlich `EXECUTE` auf die Funktion.
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -239,6 +239,7 @@ Kernidee:
 - `iam.instance_plugin_lifecycle` hält pro Instanz und Plugin ausschließlich den generischen Sollzustand: reversible Zugriffssperre, Lifecycle-Operation, Soll-, Claim- und Abschlussgeneration, aktiver Studio-Job sowie Readiness-, Fehler-, Retry-, Vertrags- und Recheck-Evidenz. `pending` erfordert einen persistenten `next_recheck_at`. Plugin-Fachschema, Migrationen, Repositories und Secrets werden dort nicht gespeichert.
 - Ein Claim bindet genau einen Studio-Job an die aktuelle Sollgeneration. Abschluss- und Fehler-Updates müssen Job, Instanz, Plugin und Generation vergleichen; ein älterer Lauf kann dadurch die Evidenz einer neueren Sollgeneration nicht überschreiben.
 - `iam.studio_jobs` ist die hostlesbare Lease-Evidenz. Heartbeat, Fortschritt und Abschluss vergleichen Status, Attempt und Worker; nach 120 Sekunden ohne Heartbeat kann der alte Owner nicht mehr schreiben. Der partielle Eindeutigkeitsindex auf `iam.studio_job_events(job_id, attempts)` erlaubt höchstens ein terminales Event pro Attempt.
+- `iam.plugin_tenant_lifecycle_observability_snapshot()` liefert fleetweit ausschließlich fünf stabile Reason-Codes und deren Counts. Die parameterlose `SECURITY DEFINER`-Funktion verwendet einen festen `search_path`, einen zehnsekündigen Statement-Timeout und den dedizierten NOLOGIN-Principal `iam_observability`. Weder IDs noch Payloads gehören zum Rückgabetyp; der Runtime-Principal kann die Definer-Rolle nicht annehmen.
 - `readiness_checks` ist ein JSON-Array namespaced Plugin-Prüfungen. Der Host aggregiert daraus nur `pending`, `ready`, `degraded` oder `blocked`; die fachliche Diagnose bleibt unter Plugin-Ownership.
 - `iam.instance_waste_provisioning` hält ausschließlich Zustand, Generation, Datenbankname sowie Job- und Interface-Korrelation. Zugangsdaten und Waste-Fachdaten liegen dort nicht.
 - Der tenantgebundene Datenbankname ist der kanonische Inventarpfad für Backup und Restore; sowohl `ready` als auch `disabled` bleiben sicherungsrelevant.

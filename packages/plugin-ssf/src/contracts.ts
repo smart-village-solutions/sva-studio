@@ -21,7 +21,7 @@ export const normalizeSsfLocale = (value: string): string => {
   return normalized;
 };
 
-export const ssfLocaleSchema = z
+const ssfLocaleSchema = z
   .string()
   .min(1)
   .max(SSF_RUNTIME_LIMITS.localeCharacters)
@@ -47,14 +47,14 @@ export const ssfHtmlSchema = z.string().superRefine((value, context) => {
 
 export const ssfRevisionSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
 
-export const ssfResolvedMediaSchema = z
+const ssfResolvedMediaSchema = z
   .object({
     url: z.url().max(SSF_RUNTIME_LIMITS.urlCharacters),
     alternativeText: z.string().max(SSF_RUNTIME_LIMITS.alternativeTextCharacters),
   })
   .strict();
 
-export const ssfRuntimeLocaleSchema = z
+const ssfRuntimeLocaleSchema = z
   .object({
     locale: ssfLocaleSchema,
     authenticatedHomeExplanationHtml: ssfHtmlSchema,

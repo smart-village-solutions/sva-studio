@@ -3,6 +3,7 @@ import {
   ssfRuntimeConfigurationWithoutRevisionsSchema,
   type SsfResolvedMedia,
   type SsfRuntimeConfigurationWithoutRevisions,
+  type SsfRuntimeLocale,
 } from './contracts.js';
 import { SSF_PRODUCT_DEFAULTS_V1, type SsfProductDefaults } from './defaults.js';
 import { sanitizeSsfHtmlV1 } from './html.js';
@@ -129,31 +130,13 @@ const resolveMedia = async (
   return productDefault;
 };
 
-export const resolveSsfRuntimeConfiguration = async (
-  input: ResolveSsfRuntimeConfigurationInput
-): Promise<SsfRuntimeConfigurationWithoutRevisions> => {
-  const defaults = input.productDefaults ?? SSF_PRODUCT_DEFAULTS_V1;
-  const serverSettings = input.serverSettings ?? {};
-  const tenantSettings = input.tenantSettings ?? {};
-  const serverLocales = indexByLocale(input.serverLocales ?? [], 'server locale overrides');
-  const tenantLocales = indexByLocale(input.tenantLocales ?? [], 'tenant locale overrides');
-  const productLocales = indexByLocale(defaults.locales, 'product defaults');
-
-  const customBrandingAllowed = override(
-    tenantSettings.customBrandingAllowed,
-    defaults.customBrandingAllowed
-  );
-  const conversationContentStorageAllowed = override(
-    tenantSettings.conversationContentStorageAllowed,
-    defaults.conversationContentStorageAllowed
-  );
-  const desiredStorageMode = override(
-    tenantSettings.conversationContentStorageMode,
-    defaults.conversationContentStorageMode
-  );
-  const effectiveStorageMode = conversationContentStorageAllowed ? desiredStorageMode : 'disabled';
-
-  const locales = [...productLocales.entries()]
+const resolveLocales = (
+  defaults: SsfProductDefaults,
+  serverLocales: ReadonlyMap<string, SsfServerLocaleOverride>,
+  tenantLocales: ReadonlyMap<string, SsfTenantLocaleOverride>,
+  effectiveStorageMode: 'ask' | 'disabled'
+): readonly SsfRuntimeLocale[] =>
+  [...indexByLocale(defaults.locales, 'product defaults').entries()]
     .filter(([locale]) => serverLocales.get(locale)?.available !== false)
     .filter(([locale]) => tenantLocales.get(locale)?.enabled !== false)
     .map(([locale, productLocale]) => {
@@ -188,6 +171,31 @@ export const resolveSsfRuntimeConfiguration = async (
       };
     })
     .sort((left, right) => left.locale.localeCompare(right.locale));
+
+export const resolveSsfRuntimeConfiguration = async (
+  input: ResolveSsfRuntimeConfigurationInput
+): Promise<SsfRuntimeConfigurationWithoutRevisions> => {
+  const defaults = input.productDefaults ?? SSF_PRODUCT_DEFAULTS_V1;
+  const serverSettings = input.serverSettings ?? {};
+  const tenantSettings = input.tenantSettings ?? {};
+  const serverLocales = indexByLocale(input.serverLocales ?? [], 'server locale overrides');
+  const tenantLocales = indexByLocale(input.tenantLocales ?? [], 'tenant locale overrides');
+
+  const customBrandingAllowed = override(
+    tenantSettings.customBrandingAllowed,
+    defaults.customBrandingAllowed
+  );
+  const conversationContentStorageAllowed = override(
+    tenantSettings.conversationContentStorageAllowed,
+    defaults.conversationContentStorageAllowed
+  );
+  const desiredStorageMode = override(
+    tenantSettings.conversationContentStorageMode,
+    defaults.conversationContentStorageMode
+  );
+  const effectiveStorageMode = conversationContentStorageAllowed ? desiredStorageMode : 'disabled';
+
+  const locales = resolveLocales(defaults, serverLocales, tenantLocales, effectiveStorageMode);
 
   const defaultLocale = normalizeSsfLocale(
     override(tenantSettings.defaultLocale, serverSettings.defaultLocale, defaults.defaultLocale)

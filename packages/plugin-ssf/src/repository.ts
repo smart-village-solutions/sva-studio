@@ -1,42 +1,17 @@
 import type { Pool, PoolClient } from 'pg';
 
 import type {
+  ServerLocaleRow,
+  ServerSettingsRow,
+  TenantLocaleRow,
+  TenantSettingsRow,
+} from './repository.rows.js';
+import type {
   SsfServerLocaleOverride,
   SsfServerSettings,
   SsfTenantLocaleOverride,
   SsfTenantSettings,
 } from './resolver.js';
-
-interface ServerSettingsRow {
-  readonly default_locale: string | null;
-  readonly logo_media_reference: string | null;
-  readonly icon_media_reference: string | null;
-}
-
-interface ServerLocaleRow {
-  readonly locale: string;
-  readonly available: boolean | null;
-  readonly authenticated_home_explanation_html: string | null;
-  readonly guest_explanation_html: string | null;
-  readonly conversation_content_storage_question_html: string | null;
-}
-
-interface TenantSettingsRow {
-  readonly default_locale: string | null;
-  readonly custom_branding_allowed: boolean | null;
-  readonly conversation_content_storage_allowed: boolean | null;
-  readonly conversation_content_storage_mode: 'ask' | 'disabled' | null;
-  readonly logo_media_reference: string | null;
-  readonly icon_media_reference: string | null;
-}
-
-interface TenantLocaleRow {
-  readonly locale: string;
-  readonly enabled: boolean | null;
-  readonly authenticated_home_explanation_html: string | null;
-  readonly guest_explanation_html: string | null;
-  readonly conversation_content_storage_question_html: string | null;
-}
 
 export interface SsfConfigurationOverrides {
   readonly serverSettings: SsfServerSettings | null;

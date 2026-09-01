@@ -1,0 +1,4 @@
+{
+  "prNumber": 1253,
+  "body": "Production-Rollouts korrigieren veraltete App-Rollenmitgliedschaften jetzt automatisch.\n\n- Der Bootstrap stellt die vorgesehene Trennung zwischen App- und Worker-Rechten wieder her.\n- Bestehende Installationen werden idempotent korrigiert.\n- Ein Datenbank-Vertragstest deckt den historischen Production-Zustand ab."
+}

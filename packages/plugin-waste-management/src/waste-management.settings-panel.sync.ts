@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import { useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import {
@@ -17,10 +17,20 @@ export const useWasteSettingsSyncFeedback = (
   setMessage: Dispatch<SetStateAction<StatusMessage | null>>
 ) => {
   const [trackedJob, setTrackedJob] = useState<SyncJob | null>(null);
-  const syncStartedMessage = pt('settings.messages.wasteTypesSyncStarted');
+  const syncStartedMessageRef = useRef<StatusMessage | null>(null);
+
+  const showSyncStarted = () => {
+    const message: StatusMessage = {
+      kind: 'success',
+      text: pt('settings.messages.wasteTypesSyncStarted'),
+    };
+    syncStartedMessageRef.current = message;
+    setMessage(message);
+  };
 
   const warnAboutSync = () => {
     setTrackedJob(null);
+    syncStartedMessageRef.current = null;
     setMessage({
       kind: 'warning',
       text: pt('settings.messages.wasteTypesSyncWarning'),
@@ -38,22 +48,23 @@ export const useWasteSettingsSyncFeedback = (
         return;
       }
       setTrackedJob(null);
-      setMessage((currentMessage) =>
-        currentMessage?.text === syncStartedMessage ? null : currentMessage
-      );
+      const syncStartedMessage = syncStartedMessageRef.current;
+      syncStartedMessageRef.current = null;
+      setMessage((currentMessage) => (currentMessage === syncStartedMessage ? null : currentMessage));
     },
   });
 
   const applyMutationFeedback = (result: WasteManagementSettingsMutationResponse) => {
     if (result.syncStatus === 'queued' && result.syncJob) {
       setTrackedJob(result.syncJob);
-      setMessage({ kind: 'success', text: syncStartedMessage });
+      showSyncStarted();
       return;
     }
     if (result.syncStatus === 'failed') {
       warnAboutSync();
       return;
     }
+    syncStartedMessageRef.current = null;
     setMessage(null);
   };
 
@@ -62,7 +73,7 @@ export const useWasteSettingsSyncFeedback = (
     try {
       const job = await startWasteManagementSyncWasteTypes();
       setTrackedJob(job ?? null);
-      setMessage({ kind: 'success', text: syncStartedMessage });
+      showSyncStarted();
     } catch {
       warnAboutSync();
     }

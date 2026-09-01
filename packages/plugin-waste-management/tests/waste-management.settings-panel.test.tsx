@@ -10,10 +10,11 @@ const retryWasteTenantProvisioningMock = vi.hoisted(() => vi.fn());
 const startWasteManagementSyncWasteTypesMock = vi.hoisted(() => vi.fn());
 const useWasteTrackedJobMock = vi.hoisted(() => vi.fn());
 const capturedForms = vi.hoisted(() => [] as unknown[]);
+const translationSuffix = vi.hoisted(() => ({ value: '' }));
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
-    variables ? `${key}:${JSON.stringify(variables)}` : key,
+    variables ? `${key}:${JSON.stringify(variables)}` : `${key}${translationSuffix.value}`,
   wasteManagementMasterDataContract: {
     isWasteHolidayStateCode: (value: string): value is string => value.length > 0,
   },
@@ -154,6 +155,7 @@ vi.mock('../src/waste-management.settings-form.js', () => ({
 }));
 
 afterEach(() => {
+  translationSuffix.value = '';
   cleanup();
   capturedForms.length = 0;
   getWasteManagementSettingsMock.mockReset();
@@ -450,7 +452,7 @@ describe('WasteSettingsPanel', () => {
     });
   });
 
-  it('clears the started notice after the tracked wasteTypes job succeeds', async () => {
+  it('clears the started notice after success even when the translation changes', async () => {
     const settings = {
       instanceId: 'tenant-a',
       provider: 'postgresql',
@@ -477,9 +479,14 @@ describe('WasteSettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
     expect(await screen.findByText('settings.messages.wasteTypesSyncStarted')).toBeTruthy();
 
+    translationSuffix.value = ':changed';
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-all-locations-disruption' }));
+
     const trackedJobOptions = useWasteTrackedJobMock.mock.calls.at(-1)?.[0];
     if (!trackedJobOptions) throw new Error('missing_tracked_job_options');
-    trackedJobOptions.onTerminalJob({ ...syncJob, status: 'succeeded' });
+    act(() => {
+      trackedJobOptions.onTerminalJob({ ...syncJob, status: 'succeeded' });
+    });
 
     await waitFor(() => {
       expect(screen.queryByText('settings.messages.wasteTypesSyncStarted')).toBeNull();

@@ -30,7 +30,7 @@ describe('Graphile worker migration contract', () => {
     expect(runtimeWorker).not.toContain('bootstrapStudioAppDbUserIfNeeded');
   });
 
-  it('binds enqueue and processing to separate database pools', () => {
+  it('binds enqueue to the tenant role boundary and processing to the worker pool', () => {
     const runtimeWorker = readWorkspaceFile(
       'packages/auth-runtime/src/plugin-operations/runner-worker.ts'
     );
@@ -39,7 +39,8 @@ describe('Graphile worker migration contract', () => {
     );
 
     expect(runtimeWorker).toContain('const pool = resolveStudioJobWorkerPool()');
-    expect(queueWorker).toContain('const pool = resolvePool()');
+    expect(queueWorker).toContain('withInstanceDb(input.instanceId');
+    expect(queueWorker).not.toContain('resolveStudioJobWorkerPool');
     expect(queueWorker).toContain('graphile_worker.sva_enqueue_job');
     expect(queueWorker).not.toContain('graphile_worker.add_job');
   });

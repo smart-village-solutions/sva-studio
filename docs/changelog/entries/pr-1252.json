@@ -1,0 +1,4 @@
+{
+  "prNumber": 1252,
+  "body": "Die nächsten Ausbauschritte für die SSF-Integration sind klar voneinander abgegrenzt.\n\n- Die bereits vorhandene Runtime-Grundlage wird für die weitere Tenant-Administration wiederverwendet.\n- Als Nächstes folgen der interne Konfigurationsendpunkt und seine Sicherheitsprüfungen.\n- Deployment, Administrationsoberflächen und Tenant-Lifecycle bleiben getrennte Folgearbeiten."
+}

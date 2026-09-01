@@ -315,14 +315,15 @@ wirkungslos.
 | ----------------------------------------- | ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `ssf.configuration.server.manage`         | gesamte SSF-Installation  | Systemadmin       | serverweite SSF-Werte                                                                                              |
 | `ssf.configuration.tenant-policy.manage`  | ausgewählter Mandant      | Systemadmin       | mandantenspezifische Branding- und Speicher-Policies                                                               |
-| `ssf.configuration.tenant.read`           | autorisierter Mandant     | Systemadmin, Mandantenadmin | effektive Konfiguration                                                                                            |
-| `ssf.configuration.tenant.provenance.read` | autorisierter Mandant    | Systemadmin       | Herkunft der aufgelösten Werte                                                                                     |
+| `ssf.configuration.tenant.inspect`        | ausgewählter Mandant      | Systemadmin       | effektive Konfiguration aus dem Root-Kontext                                                                       |
+| `ssf.configuration.tenant.provenance.inspect` | ausgewählter Mandant  | Systemadmin       | Herkunft der aufgelösten Werte aus dem Root-Kontext                                                                |
+| `ssf.configuration.tenant.read`           | aktiver Mandant           | Mandantenadmin    | effektive Konfiguration im Tenant-Kontext                                                                          |
 | `ssf.configuration.tenant.manage`         | aktiver Mandant           | Mandantenadmin    | aktive Sprachen, Standardsprache, einzelne Text-Overrides, gewünschter Speichermodus und erlaubtes Tenant-Branding |
 
 Die Plattform-Actions `ssf.configuration.server.manage` und
 `ssf.configuration.tenant-policy.manage` sowie die Root-Grants für
-`ssf.configuration.tenant.read` und
-`ssf.configuration.tenant.provenance.read` werden als eigener
+`ssf.configuration.tenant.inspect` und
+`ssf.configuration.tenant.provenance.inspect` werden als eigener
 plattformgebundener Plugin-Beitrag registriert und standardmäßig
 `instance_registry_admin` zugewiesen. Sie erscheinen weder im Tenant-Katalog
 noch in SSF-Tenant-Tokens.
@@ -334,8 +335,8 @@ die an der SSF-Grenze als `tenant_admin` erscheint. Kundenspezifische Rollen
 dürfen dieselben Actions erhalten; die Runtime prüft niemals nur den Rollennamen.
 Benutzer und Gäste besitzen standardmäßig keine Konfigurations-Action.
 
-Die Herkunft der Werte wird nur bei zusätzlicher Action
-`ssf.configuration.tenant.provenance.read` ausgegeben. Systemadmins dürfen
+Die Herkunft der Werte wird nur bei der Plattform-Action
+`ssf.configuration.tenant.provenance.inspect` ausgegeben. Systemadmins dürfen
 effektive Tenant-Konfigurationen und deren Herkunft einsehen, aber tenant-eigene
 Overrides im Normalbetrieb nicht verändern.
 Ein späterer Supportzugriff benötigt einen getrennten, zeitlich begrenzten und

@@ -33,10 +33,13 @@ Mandantenadmins und Benutzer gehören genau einem Tenant.
 Gäste bleiben ausschließlich im SSF-Sessionmodell. `system_admin` und
 `tenant_admin` sind Personas und Defaultrollen; Konfigurationszugriffe werden
 ausschließlich über `ssf.configuration.server.manage`,
-`ssf.configuration.tenant-policy.manage`, `ssf.configuration.tenant.read` und
-`ssf.configuration.tenant.manage` entschieden. Die zusätzliche Herkunftsansicht
-verlangt `ssf.configuration.tenant.provenance.read`. Kundenspezifische Rollen
-können diese Actions ohne Rollennamen-Sonderfall erhalten.
+`ssf.configuration.tenant-policy.manage`,
+`ssf.configuration.tenant.inspect`,
+`ssf.configuration.tenant.provenance.inspect`,
+`ssf.configuration.tenant.read` und `ssf.configuration.tenant.manage`
+entschieden. Plattform- und Tenant-Actions besitzen getrennte IDs und damit
+jeweils genau eine Availability. Kundenspezifische Rollen können die für ihren
+Scope verfügbaren Actions ohne Rollennamen-Sonderfall erhalten.
 
 Die SSF-Personas verändern das Studio-IAM-Modell aus ADR-046 nicht. Die
 Studio-Rootrolle `instance_registry_admin` wird an der SSF-Integrationsgrenze

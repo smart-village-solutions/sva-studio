@@ -312,14 +312,15 @@ effect.
 | ----------------------------------------- | ----------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `ssf.configuration.server.manage`         | entire SSF installation | System administrator             | server-wide SSF values                                                                                             |
 | `ssf.configuration.tenant-policy.manage`  | selected tenant         | System administrator             | tenant-specific branding and storage policies                                                                      |
-| `ssf.configuration.tenant.read`           | authorized tenant       | System and tenant administrators | effective configuration                                                                                             |
-| `ssf.configuration.tenant.provenance.read` | authorized tenant      | System administrator             | origins of resolved values                                                                                          |
+| `ssf.configuration.tenant.inspect`        | selected tenant         | System administrator             | effective configuration from the root context                                                                       |
+| `ssf.configuration.tenant.provenance.inspect` | selected tenant     | System administrator             | origins of resolved values from the root context                                                                    |
+| `ssf.configuration.tenant.read`           | active tenant           | Tenant administrator             | effective configuration in the tenant context                                                                       |
 | `ssf.configuration.tenant.manage`         | active tenant           | Tenant administrator             | enabled languages, default locale, individual text overrides, desired storage mode, and permitted tenant branding |
 
 The platform actions `ssf.configuration.server.manage` and
 `ssf.configuration.tenant-policy.manage`, together with the root grants for
-`ssf.configuration.tenant.read` and
-`ssf.configuration.tenant.provenance.read`, are registered as a separate
+`ssf.configuration.tenant.inspect` and
+`ssf.configuration.tenant.provenance.inspect`, are registered as a separate
 platform-scoped plugin contribution and granted to `instance_registry_admin`
 by default. They appear neither in the tenant catalog nor in SSF tenant tokens.
 
@@ -330,8 +331,8 @@ represented as `tenant_admin` at the SSF boundary. Custom roles may receive the
 same actions; the runtime never checks only the role name. Users and guests
 have no configuration action by default.
 
-Value origins are returned only with the additional
-`ssf.configuration.tenant.provenance.read` action. System administrators may
+Value origins are returned only with the platform action
+`ssf.configuration.tenant.provenance.inspect`. System administrators may
 inspect effective tenant configurations and their origins, but they may not
 modify tenant-owned overrides during normal operation. A future support-access
 capability requires a separate, time-limited, audited contract.

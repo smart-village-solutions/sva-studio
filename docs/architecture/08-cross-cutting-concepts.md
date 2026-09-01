@@ -929,8 +929,10 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Konfigurations-Reads und -Writes prüfen die festgelegten
   `ssf.configuration.*`-Actions. Systemadmin und Mandantenadmin sind Personas
   mit Default-Grants; kundenspezifische Rollen werden nicht durch Prüfungen auf
-  feste Rollennamen ausgeschlossen. Die Herkunft aufgelöster Werte verlangt die
-  getrennte Action `ssf.configuration.tenant.provenance.read`.
+  feste Rollennamen ausgeschlossen. Root-Reads verwenden die ausschließlich
+  plattformverfügbaren Actions `ssf.configuration.tenant.inspect` und
+  `ssf.configuration.tenant.provenance.inspect`; Tenant-Reads verwenden die
+  getrennte tenantverfügbare Action `ssf.configuration.tenant.read`.
 - Effektive tenantgebundene `ssf.*`-Permissions werden mit einer tenantweiten
   Revision aus Studio-IAM in den separaten SSF-Keycloak-Client projiziert. Vor
   relevanten Änderungen bleiben Client und SSF-Readiness bis zu erfolgreichem

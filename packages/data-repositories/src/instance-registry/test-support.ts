@@ -34,6 +34,7 @@ export const provisioningRow = {
   status: 'pending',
   step_key: null,
   idempotency_key: 'idem-1',
+  payload_fingerprint: 'create-fingerprint-1',
   error_code: null,
   error_message: null,
   request_id: 'request-1',
@@ -73,11 +74,15 @@ export const stepRow = {
   created_at: '2026-01-01T00:00:00.000Z',
 };
 
-export const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unknown>[])[]) => {
+export const createQueuedExecutor = (
+  queuedRows: readonly (readonly Record<string, unknown>[])[]
+) => {
   const statements: SqlStatement[] = [];
   const queue = [...queuedRows];
   const executor: SqlExecutor = {
-    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+    async execute<TRow = Record<string, unknown>>(
+      statement: SqlStatement
+    ): Promise<SqlExecutionResult<TRow>> {
       statements.push(statement);
       const rows = queue.shift() ?? [];
       return {

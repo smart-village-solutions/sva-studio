@@ -58,6 +58,7 @@ export type InstanceProvisioningRun = {
   readonly status: InstanceStatus;
   readonly stepKey?: string;
   readonly idempotencyKey: string;
+  readonly payloadFingerprint?: string;
   readonly errorCode?: string;
   readonly errorMessage?: string;
   readonly requestId?: string;

@@ -41,6 +41,7 @@ export type ProvisioningRow = {
   status: InstanceStatus;
   step_key: string | null;
   idempotency_key: string;
+  payload_fingerprint: string | null;
   error_code: string | null;
   error_message: string | null;
   request_id: string | null;

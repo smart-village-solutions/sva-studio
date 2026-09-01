@@ -23,7 +23,7 @@ const listProvisioningRuns = async (executor: SqlExecutor, instanceId: string) =
     statement(
       `
 SELECT
-  id::text, instance_id, operation, status, step_key, idempotency_key, error_code,
+  id::text, instance_id, operation, status, step_key, idempotency_key, payload_fingerprint, error_code,
   error_message, request_id, actor_id, created_at::text, updated_at::text
 FROM iam.instance_provisioning_runs
 WHERE instance_id = $1
@@ -45,7 +45,7 @@ const listLatestProvisioningRuns = async (executor: SqlExecutor, instanceIds: re
     statement(
       `
 SELECT DISTINCT ON (instance_id)
-  id::text, instance_id, operation, status, step_key, idempotency_key, error_code,
+  id::text, instance_id, operation, status, step_key, idempotency_key, payload_fingerprint, error_code,
   error_message, request_id, actor_id, created_at::text, updated_at::text
 FROM iam.instance_provisioning_runs
 WHERE instance_id IN (${placeholders})
@@ -121,11 +121,12 @@ const createProvisioningRun = async (
     statement(
       `
 INSERT INTO iam.instance_provisioning_runs (
-  instance_id, operation, status, step_key, idempotency_key, error_code, error_message, request_id, actor_id
+  instance_id, operation, status, step_key, idempotency_key, payload_fingerprint,
+  error_code, error_message, request_id, actor_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING
-  id::text, instance_id, operation, status, step_key, idempotency_key, error_code,
+  id::text, instance_id, operation, status, step_key, idempotency_key, payload_fingerprint, error_code,
   error_message, request_id, actor_id, created_at::text, updated_at::text;
 `,
       [
@@ -134,6 +135,7 @@ RETURNING
         input.status,
         input.stepKey ?? null,
         input.idempotencyKey,
+        input.payloadFingerprint ?? null,
         input.errorCode ?? null,
         input.errorMessage ?? null,
         input.requestId ?? null,

@@ -16,6 +16,7 @@ vi.mock('@sva/server-runtime', async () => {
 });
 
 import { createInstanceRegistryService } from './service.js';
+import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
@@ -52,6 +53,15 @@ const latestRun = {
   operation: 'create' as const,
   status: 'requested' as const,
   idempotencyKey: 'idem-1',
+  payloadFingerprint: buildCreateInstancePayloadFingerprint({
+    instanceId: 'demo',
+    displayName: 'Demo',
+    parentDomain: 'studio.example.org',
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'studio-client',
+    idempotencyKey: 'idem-1',
+  }),
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -562,6 +572,51 @@ describe('instance registry service facade', () => {
       })
     );
     expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
+  it('rejects an idempotency key reused with a different create payload', async () => {
+    const reconcileModuleActivationPolicies = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+      reconcileModuleActivationPolicies,
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Changed display name',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
+
+    expect(reconcileModuleActivationPolicies).not.toHaveBeenCalled();
+    expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
+  it('rejects a create retry when legacy evidence has no payload fingerprint', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      listProvisioningRuns: vi.fn(async () => [{ ...latestRun, payloadFingerprint: undefined }]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
   });
 
   it('creates requested instances, protects secrets and invalidates the primary host', async () => {

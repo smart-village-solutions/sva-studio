@@ -314,7 +314,7 @@ Kernidee:
 
 Kernidee:
 
-- `idempotency_keys` schützt mutierende Abläufe gegen Wiederholung.
+- `idempotency_keys` schützt mutierende Abläufe gegen Wiederholung. Create-Retries der Instanz-Provisionierung binden den Idempotency-Key zusätzlich über einen kanonischen SHA-256-Fingerprint an den ursprünglichen fachlichen Payload; abweichende oder historisch nicht belegbare Payloads werden fail-closed als Wiederverwendung abgelehnt.
 - `goose_db_version` dokumentiert den tatsächlich angewendeten Migrationsstand.
 
 ### 9. Externe Waste-Fachdatenbank

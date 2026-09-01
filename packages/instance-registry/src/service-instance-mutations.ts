@@ -4,6 +4,7 @@ import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mut
 import { createGetInstanceDetail } from './service-detail.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createProvisioningArtifacts } from './service-provisioning.js';
+import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import {
   DEFAULT_TENANT_ADMIN_CLIENT_ID,
   encryptAuthClientSecret,
@@ -15,13 +16,24 @@ import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './ser
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 
-const isIdempotentCreateRetry = async (
+const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
   input: CreateInstanceProvisioningInput
-): Promise<boolean> =>
-  (await deps.repository.listProvisioningRuns(input.instanceId)).some(
+): Promise<boolean> => {
+  const matchingRun = (await deps.repository.listProvisioningRuns(input.instanceId)).find(
     (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
   );
+  if (!matchingRun) {
+    return false;
+  }
+  if (
+    !matchingRun.payloadFingerprint ||
+    matchingRun.payloadFingerprint !== buildCreateInstancePayloadFingerprint(input)
+  ) {
+    throw new Error('idempotency_key_reuse');
+  }
+  return true;
+};
 
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
@@ -36,7 +48,7 @@ export const createProvisioningRequestHandler =
       deps.repository.getInstanceById(input.instanceId)
     );
     if (existing) {
-      if (await isIdempotentCreateRetry(deps, input)) {
+      if (await assertIdempotentCreateRetry(deps, input)) {
         await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
           instanceId: existing.instanceId,
           actorId: input.actorId,

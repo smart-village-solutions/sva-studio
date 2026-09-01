@@ -313,6 +313,7 @@ export type InstanceRegistryRepository = {
     operation: InstanceProvisioningOperation;
     status: InstanceStatus;
     idempotencyKey: string;
+    payloadFingerprint?: string;
     stepKey?: string;
     actorId?: string;
     requestId?: string;

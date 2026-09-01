@@ -338,7 +338,7 @@ describe('meHandler', () => {
     );
   });
 
-  it('returns fail-closed empty assignedModules when module lookup fails', async () => {
+  it('returns fail-closed empty assignedModules and keeps revalidation pending when lookup fails', async () => {
     const { meHandler } = await import('./auth-route-handlers.js');
 
     mocks.withRegistryRepository.mockRejectedValueOnce(new Error('db unavailable'));
@@ -357,7 +357,7 @@ describe('meHandler', () => {
       user: { assignedModules: string[]; moduleAccessPending: boolean };
     };
     expect(payload.user.assignedModules).toEqual([]);
-    expect(payload.user.moduleAccessPending).toBe(false);
+    expect(payload.user.moduleAccessPending).toBe(true);
   });
 
   it('exposes pending lifecycle module access for tenant session revalidation', async () => {

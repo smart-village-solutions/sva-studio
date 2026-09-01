@@ -989,7 +989,7 @@ const loadAssignedModulesForAuthMe = async (user: {
       reason_code: 'assigned_module_lookup_failed',
       ...buildLogContext({ kind: 'instance', instanceId }),
     });
-    return { assignedModules: [], moduleAccessPending: false };
+    return { assignedModules: [], moduleAccessPending: true };
   }
 };
 

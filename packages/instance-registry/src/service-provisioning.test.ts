@@ -12,8 +12,9 @@ type ProvisioningRepositoryMock = Pick<
   'appendAuditEvent' | 'createProvisioningRun' | 'setInstanceStatus'
 >;
 
-const asRepository = (repository: Partial<ProvisioningRepositoryMock>): InstanceRegistryRepository =>
-  repository as InstanceRegistryRepository;
+const asRepository = (
+  repository: Partial<ProvisioningRepositoryMock>
+): InstanceRegistryRepository => repository as InstanceRegistryRepository;
 
 const createRun = (status: InstanceProvisioningRun['status']): InstanceProvisioningRun => ({
   id: `run-${status}`,
@@ -75,6 +76,7 @@ describe('service-provisioning', () => {
         operation: 'create',
         status: 'requested',
         idempotencyKey: 'idem-1',
+        payloadFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
       })
     );
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(

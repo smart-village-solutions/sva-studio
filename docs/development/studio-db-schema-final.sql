@@ -1281,12 +1281,14 @@ CREATE TABLE iam.instance_provisioning_runs (
     status text NOT NULL,
     step_key text,
     idempotency_key text NOT NULL,
+    payload_fingerprint text,
     error_code text,
     error_message text,
     request_id text,
     actor_id text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT instance_provisioning_create_payload_fingerprint_chk CHECK (((operation <> 'create'::text) OR (payload_fingerprint IS NOT NULL))) NOT VALID,
     CONSTRAINT instance_provisioning_operation_chk CHECK ((operation = ANY (ARRAY['create'::text, 'activate'::text, 'suspend'::text, 'archive'::text]))),
     CONSTRAINT instance_provisioning_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])))
 );

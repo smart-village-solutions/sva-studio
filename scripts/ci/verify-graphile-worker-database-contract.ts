@@ -155,6 +155,16 @@ const migrateGraphileWorker = (port: string): void => {
   }
 };
 
+const seedLegacyAppMembership = (port: string): void => {
+  psql(
+    'postgres',
+    adminPassword,
+    port,
+    `CREATE ROLE sva_app LOGIN PASSWORD '${appPassword}' INHERIT;
+     GRANT iam_app TO sva_app WITH INHERIT TRUE;`
+  );
+};
+
 const bootstrapWorkerRole = (port: string): void => {
   run('bash', ['deploy/portainer/bootstrap-entrypoint.sh'], {
     APP_DB_PASSWORD: appPassword,
@@ -338,6 +348,7 @@ const main = async (): Promise<void> => {
     const port = startContractDatabase();
     migrateGraphileWorker(port);
     await assertMissingWorkerRoleReadiness(port);
+    seedLegacyAppMembership(port);
     bootstrapWorkerRole(port);
     await assertCanonicalWorkerReadiness(port);
     assertEffectiveAppEnqueue(port);

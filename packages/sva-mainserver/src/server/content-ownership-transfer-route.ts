@@ -188,6 +188,7 @@ const executeLockedTransfer = async (input: {
     actor: input.actor,
     contentType: input.route.contentType,
     contentId: input.route.contentId,
+    providerEntityId: input.content.id,
     currentDataProviderId: sourceDataProviderId,
     currentOperationExternalId: input.actor.operationExternalId,
     ...(input.reconcilePreviousTransfer

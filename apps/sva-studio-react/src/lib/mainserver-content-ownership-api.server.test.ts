@@ -205,6 +205,7 @@ describe('mainserver content ownership API projection follow-up', () => {
         instanceId: 'instance-1',
         contentType: 'news.article',
         contentId: 'news-1',
+        providerEntityId: 'news-1',
         currentDataProviderId: 'provider-target',
       });
       return new Response(JSON.stringify({ error: 'content_transfer_target_invalid' }), {
@@ -243,6 +244,46 @@ describe('mainserver content ownership API projection follow-up', () => {
     );
   });
 
+  it('repairs a projected project through its Mainserver entity id', async () => {
+    state.loadRecoverableTransfers.mockResolvedValueOnce([
+      {
+        operationExternalId: 'operation-previous',
+        expectedDataProviderId: 'provider-target',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+    state.dispatch.mockImplementationOnce(async (_request, options) => {
+      await options.reconcilePreviousTransfer({
+        instanceId: 'instance-1',
+        contentType: 'projects.project',
+        contentId: 'project-local-1',
+        providerEntityId: 'project-source-1',
+        currentDataProviderId: 'provider-target',
+      });
+      return new Response(null, { status: 409 });
+    });
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/projects.project/project-local-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.loadRecoverableTransfers).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: 'project-local-1' })
+    );
+    expect(state.refreshProjection).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'project-source-1' })
+    );
+    expect(state.finalizeJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: 'project-local-1' })
+    );
+  });
+
   it('keeps reconciliation blocked when the recorded target binding has changed', async () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
@@ -260,6 +301,7 @@ describe('mainserver content ownership API projection follow-up', () => {
           instanceId: 'instance-1',
           contentType: 'news.article',
           contentId: 'news-1',
+          providerEntityId: 'news-1',
           currentDataProviderId: 'provider-recorded',
         })
       ).rejects.toThrow('content_transfer_target_binding_changed');

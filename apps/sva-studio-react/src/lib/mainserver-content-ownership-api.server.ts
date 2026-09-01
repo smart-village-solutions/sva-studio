@@ -51,10 +51,23 @@ const readContentType = (request: Request): ProjectionContentType | undefined =>
     : undefined;
 };
 
+const readContentId = (request: Request): string | undefined => {
+  const segments = new URL(request.url).pathname.split('/').filter(Boolean);
+  const ownershipIndex = segments.findIndex((segment) => segment === 'content-ownership');
+  const encoded = ownershipIndex >= 0 ? segments[ownershipIndex + 2] : undefined;
+  if (!encoded) return undefined;
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return undefined;
+  }
+};
+
 const refreshTransferredOwnershipProjection = async (input: {
   readonly followUp: MutationFollowUpContext;
   readonly contentType: ProjectionContentType;
   readonly contentId: string;
+  readonly providerEntityId: string;
   readonly operationExternalId: string;
   readonly expectedDataProviderId: string;
   readonly principal: RecoverableMainserverOwnershipTransfer['targetPrincipal'];
@@ -83,7 +96,7 @@ const refreshTransferredOwnershipProjection = async (input: {
     credentialFingerprint: target.target.connection.credentialFingerprint,
     authorizationMode: 'exact',
     operation: 'update',
-    entityId: input.contentId,
+    entityId: input.providerEntityId,
   });
   await finalizeMainserverMutationJournal({
     instanceId: input.followUp.instanceId,
@@ -105,6 +118,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
           reconcilePreviousTransfer: async (input: {
             readonly instanceId: string;
             readonly contentId: string;
+            readonly providerEntityId: string;
             readonly currentDataProviderId: string;
           }) => {
             const reconciliationFollowUp = readMainserverMutationFollowUpContext(request);
@@ -125,6 +139,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
                 followUp: reconciliationFollowUp,
                 contentType,
                 contentId: input.contentId,
+                providerEntityId: input.providerEntityId,
                 operationExternalId: entry.operationExternalId,
                 expectedDataProviderId: entry.expectedDataProviderId,
                 principal: entry.targetPrincipal,
@@ -152,11 +167,13 @@ export const dispatchMainserverContentOwnershipRequest = async (
         }>;
       };
       const principal = payload.data?.targetPrincipal;
-      const contentId = payload.data?.contentId;
+      const providerEntityId = payload.data?.contentId;
+      const contentId = readContentId(request);
       const expectedDataProviderId = payload.data?.targetDataProvider?.id;
       if (!followUp) throw new Error('content_transfer_follow_up_context_missing');
       if (
         !contentId ||
+        !providerEntityId ||
         !expectedDataProviderId ||
         !principal?.id ||
         (principal.type !== 'account' && principal.type !== 'organization')
@@ -167,6 +184,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
         followUp,
         contentType,
         contentId,
+        providerEntityId,
         operationExternalId: followUp.operationExternalId,
         expectedDataProviderId,
         principal: { type: principal.type, id: principal.id },

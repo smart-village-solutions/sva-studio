@@ -14,6 +14,7 @@ export type MainserverOwnershipTransferReconciler = (input: {
   readonly instanceId: string;
   readonly contentType: SupportedContentOwnershipRouteMatch['contentType'];
   readonly contentId: string;
+  readonly providerEntityId: string;
   readonly currentDataProviderId: string;
 }) => Promise<void>;
 
@@ -21,6 +22,7 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
   readonly actor: MainserverMutationActor;
   readonly contentType: SupportedContentOwnershipRouteMatch['contentType'];
   readonly contentId: string;
+  readonly providerEntityId: string;
   readonly currentDataProviderId: string;
   readonly currentOperationExternalId: string;
   readonly reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
@@ -30,6 +32,7 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
       instanceId: input.actor.instanceId,
       contentType: input.contentType,
       contentId: input.contentId,
+      providerEntityId: input.providerEntityId,
       currentDataProviderId: input.currentDataProviderId,
     });
   } catch (error) {
@@ -52,7 +55,6 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
     instanceId: input.actor.instanceId,
     contentType: input.contentType,
     contentId: input.contentId,
-    excludeOperationExternalId: input.currentOperationExternalId,
   });
   if (!blocked) return null;
   return errorJson(

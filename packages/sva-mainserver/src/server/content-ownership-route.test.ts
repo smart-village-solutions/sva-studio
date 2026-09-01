@@ -469,6 +469,7 @@ describe('Mainserver content ownership route', () => {
       instanceId: 'instance-1',
       contentType: 'news.article',
       contentId: 'news-1',
+      providerEntityId: 'news-1',
       currentDataProviderId: 'provider-source',
     });
     expect(reconcilePreviousTransfer.mock.invocationCallOrder[0]).toBeLessThan(
@@ -478,7 +479,6 @@ describe('Mainserver content ownership route', () => {
       instanceId: 'instance-1',
       contentType: 'news.article',
       contentId: 'news-1',
-      excludeOperationExternalId: 'operation-1',
     });
   });
 
@@ -912,6 +912,7 @@ describe('Mainserver content ownership route', () => {
   });
 
   it('returns the Mainserver source id after transferring a projected project', async () => {
+    const reconcilePreviousTransfer = vi.fn().mockResolvedValue(undefined);
     state.loadExternalContentReference.mockResolvedValue({
       sourceEntityId: 'project-source-1',
     });
@@ -929,13 +930,21 @@ describe('Mainserver content ownership route', () => {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ targetPrincipal: target.principal }),
         }
-      )
+      ),
+      { reconcilePreviousTransfer }
     );
 
     expect(response?.status).toBe(200);
     expect(response?.headers.get('x-sva-mainserver-entity-id')).toBe('project-source-1');
     await expect(response?.json()).resolves.toMatchObject({
       data: { contentId: 'project-source-1' },
+    });
+    expect(reconcilePreviousTransfer).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'projects.project',
+      contentId: 'project-local-1',
+      providerEntityId: 'project-source-1',
+      currentDataProviderId: 'provider-source',
     });
   });
 

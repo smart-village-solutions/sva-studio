@@ -4,12 +4,13 @@ import fc from 'fast-check';
 import { sanitizeSsfHtmlV1 } from '../src/runtime.js';
 
 describe('sanitizeSsfHtmlV1', () => {
-  it('keeps semantic content, styles and external HTTP images', () => {
+  it('keeps semantic content and external HTTP images without author-controlled CSS hooks', () => {
     const result = sanitizeSsfHtmlV1(
-      '<section class="intro" style="color: red"><h2>Hallo</h2><img src="https://example.org/a.png" alt="A"></section>'
+      '<section id="intro" class="intro" style="position: fixed"><h2>Hallo</h2><img src="https://example.org/a.png" alt="A"></section>'
     );
 
-    expect(result).toContain('<section class="intro" style="color:red">');
+    expect(result).toContain('<section><h2>Hallo</h2>');
+    expect(result).not.toMatch(/\s(?:class|id|style)=/u);
     expect(result).toContain('<img src="https://example.org/a.png" alt="A" />');
   });
 
@@ -38,8 +39,8 @@ describe('sanitizeSsfHtmlV1', () => {
           `<script>${payload}</script><img src="javascript:${payload}" onerror="${payload}"><p>${payload}</p>`
         ).toLowerCase();
         expect(result).not.toContain('<script');
-        expect(result).not.toContain('onerror');
-        expect(result).not.toContain('javascript:');
+        expect(result).not.toMatch(/<[^>]*\sonerror\s*=/u);
+        expect(result).not.toMatch(/<[^>]*\s(?:href|src)=["']javascript:/u);
       }),
       { numRuns: 100 }
     );

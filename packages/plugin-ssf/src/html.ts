@@ -86,7 +86,7 @@ export const sanitizeSsfHtmlV1 = (html: string): string => {
   const sanitized = sanitizeHtml(html, {
     allowedTags: [...ALLOWED_TAGS],
     allowedAttributes: {
-      '*': ['class', 'dir', 'id', 'lang', 'style', 'title'],
+      '*': ['dir', 'lang', 'title'],
       a: ['href', 'name', 'rel', 'target'],
       col: ['span', 'width'],
       img: ['alt', 'height', 'loading', 'src', 'title', 'width'],
@@ -103,7 +103,6 @@ export const sanitizeSsfHtmlV1 = (html: string): string => {
     allowProtocolRelative: false,
     disallowedTagsMode: 'discard',
     enforceHtmlBoundary: true,
-    parseStyleAttributes: true,
     transformTags: {
       a: (tagName, attributes) => {
         if (attributes.target !== '_blank') return { tagName, attribs: attributes };

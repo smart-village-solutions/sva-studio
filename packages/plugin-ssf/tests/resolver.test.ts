@@ -133,4 +133,17 @@ describe('resolveSsfRuntimeConfiguration', () => {
       })
     ).rejects.toThrow('default locale de-DE is not active');
   });
+
+  it.each(['serverLocales', 'tenantLocales'] as const)(
+    'rejects unsupported locale overrides from %s instead of silently ignoring them',
+    async (source) => {
+      await expect(
+        resolveSsfRuntimeConfiguration({
+          tenant,
+          [source]: [{ locale: 'fr' }],
+          mediaResolver: createMediaResolver(),
+        })
+      ).rejects.toThrow(`Unsupported locale fr in ${source === 'serverLocales' ? 'server' : 'tenant'} locale overrides.`);
+    }
+  );
 });

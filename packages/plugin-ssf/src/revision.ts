@@ -21,19 +21,28 @@ export const normalizeSsfConfigurationForRevision = (
     },
   });
 
+const createRevisionFromNormalizedConfiguration = (
+  configuration: SsfRuntimeConfigurationWithoutRevisions
+): `sha256:${string}` => {
+  const digest = createHash('sha256').update(canonicalize(configuration), 'utf8').digest('hex');
+  return `sha256:${digest}`;
+};
+
 export const createSsfConfigurationRevision = (
   configuration: SsfRuntimeConfigurationWithoutRevisions
 ): `sha256:${string}` => {
   const normalized = normalizeSsfConfigurationForRevision(configuration);
-  const digest = createHash('sha256').update(canonicalize(normalized), 'utf8').digest('hex');
-  return `sha256:${digest}`;
+  return createRevisionFromNormalizedConfiguration(normalized);
 };
 
 export const addSsfConfigurationRevisions = (
   configuration: SsfRuntimeConfigurationWithoutRevisions,
   authorizationRevision: `sha256:${string}`
-): SsfRuntimeConfiguration => ({
-  ...normalizeSsfConfigurationForRevision(configuration),
-  configurationRevision: createSsfConfigurationRevision(configuration),
-  authorizationRevision,
-});
+): SsfRuntimeConfiguration => {
+  const normalized = normalizeSsfConfigurationForRevision(configuration);
+  return {
+    ...normalized,
+    configurationRevision: createRevisionFromNormalizedConfiguration(normalized),
+    authorizationRevision,
+  };
+};

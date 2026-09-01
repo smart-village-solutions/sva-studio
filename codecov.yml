@@ -80,6 +80,7 @@ coverage:
         - packages/plugin-news/
         - packages/plugin-poi/
         - packages/plugin-sdk/
+        - packages/plugin-ssf/
         - packages/plugin-surveys/
         - packages/plugin-waste-management/
         - packages/waste-management-contracts/

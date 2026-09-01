@@ -145,6 +145,12 @@
       "functions": 58,
       "branches": 72
     },
+    "plugin-ssf": {
+      "lines": 88,
+      "statements": 88,
+      "functions": 80,
+      "branches": 75
+    },
     "plugin-surveys": {
       "lines": 97,
       "statements": 97,

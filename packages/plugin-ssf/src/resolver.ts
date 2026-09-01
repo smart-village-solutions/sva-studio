@@ -110,6 +110,20 @@ const indexByLocale = <T extends { readonly locale: string }>(
   return indexed;
 };
 
+const assertSupportedLocaleOverrides = (
+  productLocales: ReadonlyMap<string, SsfProductDefaults['locales'][number]>,
+  overrides: ReadonlyMap<string, unknown>,
+  source: string
+): void => {
+  for (const locale of overrides.keys()) {
+    if (!productLocales.has(locale)) {
+      throw new SsfRuntimeConfigurationValidationError(
+        `Unsupported locale ${locale} in ${source}.`
+      );
+    }
+  }
+};
+
 const resolveMedia = async (
   tenantId: string,
   purpose: 'logo' | 'icon',
@@ -131,12 +145,12 @@ const resolveMedia = async (
 };
 
 const resolveLocales = (
-  defaults: SsfProductDefaults,
+  productLocales: ReadonlyMap<string, SsfProductDefaults['locales'][number]>,
   serverLocales: ReadonlyMap<string, SsfServerLocaleOverride>,
   tenantLocales: ReadonlyMap<string, SsfTenantLocaleOverride>,
   effectiveStorageMode: 'ask' | 'disabled'
 ): readonly SsfRuntimeLocale[] =>
-  [...indexByLocale(defaults.locales, 'product defaults').entries()]
+  [...productLocales.entries()]
     .filter(([locale]) => serverLocales.get(locale)?.available !== false)
     .filter(([locale]) => tenantLocales.get(locale)?.enabled !== false)
     .map(([locale, productLocale]) => {
@@ -180,6 +194,9 @@ export const resolveSsfRuntimeConfiguration = async (
   const tenantSettings = input.tenantSettings ?? {};
   const serverLocales = indexByLocale(input.serverLocales ?? [], 'server locale overrides');
   const tenantLocales = indexByLocale(input.tenantLocales ?? [], 'tenant locale overrides');
+  const productLocales = indexByLocale(defaults.locales, 'product defaults');
+  assertSupportedLocaleOverrides(productLocales, serverLocales, 'server locale overrides');
+  assertSupportedLocaleOverrides(productLocales, tenantLocales, 'tenant locale overrides');
 
   const customBrandingAllowed = override(
     tenantSettings.customBrandingAllowed,
@@ -195,7 +212,7 @@ export const resolveSsfRuntimeConfiguration = async (
   );
   const effectiveStorageMode = conversationContentStorageAllowed ? desiredStorageMode : 'disabled';
 
-  const locales = resolveLocales(defaults, serverLocales, tenantLocales, effectiveStorageMode);
+  const locales = resolveLocales(productLocales, serverLocales, tenantLocales, effectiveStorageMode);
 
   const defaultLocale = normalizeSsfLocale(
     override(tenantSettings.defaultLocale, serverSettings.defaultLocale, defaults.defaultLocale)

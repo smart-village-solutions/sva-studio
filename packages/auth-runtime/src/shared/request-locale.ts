@@ -6,15 +6,18 @@ export const resolveRequestLocale = (request: Request): SupportedRequestLocale =
     .split(',')
     .map((entry, index) => {
       const [language = '', ...parameters] = entry.trim().split(';');
-      const quality = Number(
+      const parsedQuality = Number(
         parameters
           .find((parameter) => parameter.trim().startsWith('q='))
           ?.trim()
           .slice(2) ?? 1
       );
-      return { language, quality: Number.isFinite(quality) ? quality : 0, index };
+      const quality = Number.isFinite(parsedQuality)
+        ? Math.min(1, Math.max(0, parsedQuality))
+        : 0;
+      return { language, quality, index };
     })
-    .filter(({ language }) => /^(de|en)(-|$)/.test(language))
+    .filter(({ language, quality }) => quality > 0 && /^(de|en)(-|$)/.test(language))
     .sort((left, right) => right.quality - left.quality || left.index - right.index)[0];
   return supportedPreference?.language.startsWith('en') ? 'en' : 'de';
 };

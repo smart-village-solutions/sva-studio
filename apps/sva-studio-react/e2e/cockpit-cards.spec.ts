@@ -34,7 +34,7 @@ const cockpitCardsPermissions = {
   evaluatedAt: '2026-08-09T12:00:00.000Z',
 };
 
-test('creates, updates and deletes a Kachel while preserving its server identity', async ({
+test('persists Kachel text and media across create, update and reload before deletion', async ({
   page,
 }) => {
   await mockSharedShellRequests(page);
@@ -159,6 +159,7 @@ test('creates, updates and deletes a Kachel while preserving its server identity
   await page.locator('#cockpit-card-heading').fill('Bürgerbüro');
   await page.locator('#cockpit-card-category').selectOption('Service');
   await page.getByRole('tab', { name: 'Inhalt' }).click();
+  await page.locator('#cockpit-card-text').fill('Herbstangebote der Volkshochschule');
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
   await page.getByLabel('Bild-URL').nth(0).fill('https://example.test/buergerbuero-aussen.jpg');
@@ -176,7 +177,7 @@ test('creates, updates and deletes a Kachel while preserving its server identity
   expect(createdBody).toMatchObject({
     title: 'Bürgerbüro',
     genericType: 'COCKPIT_CARD',
-    contentBlocks: [],
+    contentBlocks: [{ body: 'Herbstangebote der Volkshochschule' }],
     mediaContents: [
       {
         sourceUrl: {
@@ -200,11 +201,14 @@ test('creates, updates and deletes a Kachel while preserving its server identity
   await expect(page).toHaveURL(/\/admin\/cockpit-cards\/card-1$/);
   await expect(page.locator('#cockpit-card-heading')).toHaveValue('Bürgerbüro');
   await page.locator('#cockpit-card-heading').fill('Bürgerbüro aktualisiert');
+  await page.getByRole('tab', { name: 'Inhalt' }).click();
+  await page.locator('#cockpit-card-text').fill('Angebote der Kreisvolkshochschule');
   await page.getByRole('button', { name: 'Kachel speichern' }).last().click();
 
   await expect.poll(() => updatedBody).toBeDefined();
   expect(updatedBody).toMatchObject({
     title: 'Bürgerbüro aktualisiert',
+    contentBlocks: [{ body: 'Angebote der Kreisvolkshochschule' }],
     externalId: 'mainserver-card-4711',
     payload: {
       languageCode: 'de',
@@ -213,6 +217,21 @@ test('creates, updates and deletes a Kachel while preserving its server identity
       importedBy: 'fixture',
     },
   });
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Kachel bearbeiten' })).toBeVisible();
+  await expect(page.getByText('Kachel konnte nicht geladen werden.')).toHaveCount(0);
+  await expect(page.locator('#cockpit-card-heading')).toHaveValue('Bürgerbüro aktualisiert');
+  await page.getByRole('tab', { name: 'Inhalt' }).click();
+  await expect(page.locator('#cockpit-card-text')).toHaveValue(
+    'Angebote der Kreisvolkshochschule'
+  );
+  await expect(page.getByLabel('Bild-URL').nth(0)).toHaveValue(
+    'https://example.test/buergerbuero-aussen.jpg'
+  );
+  await expect(page.getByLabel('Bild-URL').nth(1)).toHaveValue(
+    'https://example.test/buergerbuero-innen.jpg'
+  );
 
   await page.getByRole('button', { name: 'Kachel löschen' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Kachel löschen' }).click();

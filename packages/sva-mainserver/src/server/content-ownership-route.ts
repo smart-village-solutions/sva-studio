@@ -21,7 +21,6 @@ import {
 import { handleContentOwnershipTransfer } from './content-ownership-transfer-route.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
-import { isMainserverMutationCapabilityEnabled } from './mainserver-mutation-capabilities.js';
 import {
   resolveMainserverMutationActor,
   resolveMainserverResourceAccess,
@@ -181,13 +180,6 @@ const dispatchAuthenticated = async (
       409,
       'content_transfer_type_unsupported',
       'Dieser Inhaltstyp unterstützt noch keinen Transfer.'
-    );
-  }
-  if (!isMainserverMutationCapabilityEnabled('content.transferOwnership')) {
-    return errorJson(
-      409,
-      'content_transfer_type_unsupported',
-      'Der Mainserver-Vertrag für Inhaberübertragungen ist nicht bestätigt.'
     );
   }
   const supportedRoute: SupportedContentOwnershipRouteMatch = {

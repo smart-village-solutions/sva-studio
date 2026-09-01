@@ -1,6 +1,5 @@
 import {
   hasUnresolvedMainserverOwnershipTransfer,
-  resolveMainserverOwnershipTarget,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -17,6 +16,7 @@ import {
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
+import { resolveTargetForMutation } from './content-ownership-target-verification.js';
 import {
   ownershipTargetErrorResponse,
   parseOwnershipTargetPrincipal,
@@ -193,11 +193,14 @@ const executeLockedTransfer = async (input: {
   const source = await resolveAuthorizedTransferSource(input);
   if (!source.ok) return source.response;
   const sourceDataProviderId = source.dataProviderId;
-  const targetResolution = await resolveMainserverOwnershipTarget({
-    instanceId: input.actor.instanceId,
-    actorKeycloakSubject: input.actor.keycloakSubject,
+  const targetResolution = await resolveTargetForMutation({
+    actor: input.actor,
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
     principal: input.principal,
+    sourceDataProviderId,
   });
+  if (isResponse(targetResolution)) return targetResolution;
   if (!targetResolution.ok) {
     recordOwnershipTransferOutcome({
       actor: input.actor,

@@ -4,6 +4,7 @@ const defaultCapabilities = new Set([
   'cockpit-cards.create',
   'cockpit-cards.delete',
   'cockpit-cards.update',
+  'content.transferOwnership',
   'events.create',
   'events.delete',
   'events.update',

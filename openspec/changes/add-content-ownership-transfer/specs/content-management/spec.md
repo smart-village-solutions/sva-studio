@@ -97,7 +97,7 @@ Das System SHALL in der Bearbeitungsansicht dauerhaft erklären, dass normales S
 
 ### Requirement: Transferziel unterscheidet persönliche Accounts und Organisationen
 
-Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Organisationen SHALL über ihre Anzeige suchbar sein. Persönliche Accounts SHALL in V1 ohne zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder paginiert auswählbar sein. Eine exakte Gesamtzahl ist nicht erforderlich, sofern die Navigation keine verfügbaren Treffer ausblendet. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein.
+Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Organisationen SHALL über ihre Anzeige suchbar sein. Persönliche Accounts SHALL in V1 ohne zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder paginiert auswählbar sein. Eine exakte Gesamtzahl ist nicht erforderlich, sofern die Navigation keine verfügbaren Treffer ausblendet. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein. Ein Mainserver-Ziel, dessen verwendbare Credentials erst bei Bestätigung an einen DataProvider gebunden werden müssen, SHALL einen verständlichen Hinweis auf diese sichere Prüfung tragen.
 
 #### Scenario: Benutzer durchsucht mögliche Zielinhaber
 
@@ -107,6 +107,13 @@ Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Account
 - **AND** bleibt der Principal-Typ im gewählten `targetPrincipal` erhalten
 - **AND** zeigt die Oberfläche keine technische DataProvider-ID
 - **AND** zeigt sie keine E-Mail-Adresse
+
+#### Scenario: Noch nicht gebundenes Mainserver-Ziel erklärt die Verifikation
+
+- **GIVEN** ein auswählbarer Ziel-Principal besitzt den Zustand `verification_required`
+- **WHEN** die Oberfläche ihn in der Auswahl oder im Bestätigungsschritt zeigt
+- **THEN** erklärt sie, dass die DataProvider-Zuordnung beim bestätigten Transfer sicher geprüft wird
+- **AND** zeigt sie weder Credentials noch eine technische DataProvider-ID
 
 #### Scenario: Benutzer bestätigt die Wirkung des Transfers
 

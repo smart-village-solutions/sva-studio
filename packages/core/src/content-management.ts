@@ -140,6 +140,7 @@ export type IamContentOwnershipTransferResult = {
 export type IamContentOwnershipTarget = {
   readonly principal: IamContentOwnerPrincipal;
   readonly displayName: string;
+  readonly readiness?: 'ready' | 'verification_required';
 };
 
 export type IamContentOwnershipTargetList = {

@@ -11,6 +11,7 @@ const labels: ContentOwnershipPanelLabels = {
   currentOwner: 'Aktueller Inhaber',
   account: 'Persönlicher Account',
   organization: 'Organisation',
+  verificationRequired: 'DataProvider-Zuordnung wird beim Transfer geprüft.',
   saveKeepsOwner: 'Normales Speichern ändert den Inhaber nicht.',
   transferUnavailable: 'Nicht verfügbar',
   transferForbidden: 'Nicht berechtigt',
@@ -64,6 +65,7 @@ describe('ContentOwnershipPanel', () => {
     const target = {
       principal: { type: 'organization' as const, id: '22222222-2222-4222-8222-222222222222' },
       displayName: 'Zielorganisation',
+      readiness: 'verification_required' as const,
     };
     const loadTargets = vi.fn().mockResolvedValue({ items: [target], total: 1 });
     const onTransfer = vi.fn().mockResolvedValue(undefined);
@@ -80,7 +82,13 @@ describe('ContentOwnershipPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
     expect(await screen.findByText('Zielorganisation')).toBeTruthy();
+    expect(screen.getAllByText('DataProvider-Zuordnung wird beim Transfer geprüft.')).toHaveLength(
+      1
+    );
     fireEvent.click(screen.getByRole('radio', { name: /Zielorganisation/u }));
+    expect(screen.getAllByText('DataProvider-Zuordnung wird beim Transfer geprüft.')).toHaveLength(
+      2
+    );
 
     const submit = screen.getByRole('button', { name: 'Jetzt übertragen' });
     expect((submit as HTMLButtonElement).disabled).toBe(true);

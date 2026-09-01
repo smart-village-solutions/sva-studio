@@ -4,7 +4,9 @@ const state = vi.hoisted(() => ({
   annotateJournal: vi.fn(),
   hasUnresolvedTransfer: vi.fn(),
   loadExternalContentReference: vi.fn(),
+  loadIdentity: vi.fn(),
   listTargets: vi.fn(),
+  recordObservation: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveSource: vi.fn(),
   resolveTarget: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   hasUnresolvedMainserverOwnershipTransfer: state.hasUnresolvedTransfer,
   listMainserverOwnershipTargets: state.listTargets,
   loadExternalContentReferenceByContentId: state.loadExternalContentReference,
+  recordMainserverDataProviderObservation: state.recordObservation,
   resolveActorInfo: state.resolveActorInfo,
   resolveMainserverOwnershipSource: state.resolveSource,
   resolveMainserverOwnershipTarget: state.resolveTarget,
@@ -53,6 +56,7 @@ vi.mock('./service.js', () => ({
   getSvaMainserverEvent: state.getEvent,
   getSvaMainserverPoi: state.getPoi,
   getSvaMainserverGenericItem: state.getGenericItem,
+  loadSvaMainserverDataProviderIdentity: state.loadIdentity,
   transferSvaMainserverContentOwnership: state.transfer,
 }));
 
@@ -93,6 +97,11 @@ const target = {
   },
 };
 
+const verificationCandidate = {
+  principal: target.principal,
+  connection: target.connection,
+};
+
 const sourceTarget = {
   principal: { type: 'account' as const, id: '11111111-1111-4111-8111-111111111111' },
   dataProviderId: 'provider-source',
@@ -116,7 +125,7 @@ const useTargetResolution = (result: unknown) => {
 describe('Mainserver content ownership route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES = 'content.transferOwnership';
+    delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
     state.hasUnresolvedTransfer.mockResolvedValue(false);
     state.loadExternalContentReference.mockResolvedValue(undefined);
     state.resolveActorInfo.mockResolvedValue({ actor: { instanceId: 'instance-1' } });
@@ -142,6 +151,10 @@ describe('Mainserver content ownership route', () => {
       pageSize: 10,
       total: 1,
     });
+    state.loadIdentity.mockResolvedValue({
+      dataProvider: { id: 'provider-target', name: 'Zielorganisation' },
+    });
+    state.recordObservation.mockResolvedValue({ outcome: 'created' });
     useTargetResolution({ ok: true, target });
     state.validateCsrf.mockReturnValue(null);
     state.withLock.mockImplementation(async ({ execute }: { execute: () => Promise<unknown> }) =>
@@ -175,20 +188,18 @@ describe('Mainserver content ownership route', () => {
     expect(response?.status).toBe(405);
   });
 
-  it('fails closed until ownership transfer is explicitly confirmed', async () => {
-    delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
-
+  it('authorizes supported ownership transfers without runtime configuration', async () => {
     const response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(
         'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/authorization'
       )
     );
 
-    expect(response?.status).toBe(409);
+    expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({
-      error: 'content_transfer_type_unsupported',
+      data: { canTransfer: true },
     });
-    expect(state.resolveMutationActor).not.toHaveBeenCalled();
+    expect(state.resolveMutationActor).toHaveBeenCalled();
   });
 
   it('lists only server-validated targets after source authorization', async () => {
@@ -284,6 +295,141 @@ describe('Mainserver content ownership route', () => {
         ownershipTransfer: expect.objectContaining({ coverage: 'studio_mutations' }),
       })
     );
+  });
+
+  it('verifies and persists a missing target binding only after transfer confirmation', async () => {
+    let targetAttempts = 0;
+    state.resolveTarget.mockImplementation(async ({ principal }: { principal: { id: string } }) => {
+      if (principal.id === sourceTarget.principal.id) return { ok: true, target: sourceTarget };
+      targetAttempts += 1;
+      return targetAttempts === 1
+        ? {
+            ok: false,
+            code: 'content_transfer_target_binding_missing',
+            verificationCandidate,
+          }
+        : { ok: true, target };
+    });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.loadIdentity).toHaveBeenCalledWith(verificationCandidate.connection);
+    expect(state.recordObservation).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      principalType: 'organization',
+      principalId: target.principal.id,
+      credentialFingerprint: target.connection.credentialFingerprint,
+      dataProviderId: 'provider-target',
+      dataProviderName: 'Zielorganisation',
+      evidenceKind: 'identity_endpoint',
+    });
+    expect(state.loadIdentity.mock.invocationCallOrder[0]).toBeLessThan(
+      state.recordObservation.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+    expect(state.recordObservation.mock.invocationCallOrder[0]).toBeLessThan(
+      state.transfer.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+  });
+
+  it('fails without a provider write when target identity verification is unavailable', async () => {
+    useTargetResolution({
+      ok: false,
+      code: 'content_transfer_target_binding_missing',
+      verificationCandidate,
+    });
+    state.loadIdentity.mockRejectedValueOnce(
+      new SvaMainserverError({
+        code: 'network_error',
+        message: 'Identity unavailable',
+        statusCode: 503,
+      })
+    );
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'content_transfer_target_verification_failed',
+    });
+    expect(state.recordObservation).not.toHaveBeenCalled();
+    expect(state.transfer).not.toHaveBeenCalled();
+    expect(state.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        completedSteps: ['target_identity_verification_failed'],
+        providerOutcome: 'failed',
+        reconciliationStatus: 'complete',
+      })
+    );
+  });
+
+  it('preserves the stable verification error when journal finalization also fails', async () => {
+    useTargetResolution({
+      ok: false,
+      code: 'content_transfer_target_binding_missing',
+      verificationCandidate,
+    });
+    state.loadIdentity.mockRejectedValueOnce(new Error('Identity unavailable'));
+    state.finalize.mockRejectedValueOnce(new Error('Journal unavailable'));
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'content_transfer_target_verification_failed',
+    });
+    expect(state.transfer).not.toHaveBeenCalled();
+    expect(state.finalize).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a conflict discovered while verifying a missing target binding', async () => {
+    useTargetResolution({
+      ok: false,
+      code: 'content_transfer_target_binding_missing',
+      verificationCandidate,
+    });
+    state.recordObservation.mockResolvedValueOnce({ outcome: 'conflict' });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'content_transfer_target_binding_conflict',
+    });
+    expect(state.transfer).not.toHaveBeenCalled();
   });
 
   it('blocks a second write while an earlier transfer needs reconciliation', async () => {
@@ -618,7 +764,6 @@ describe('Mainserver content ownership route', () => {
   it.each([
     ['content_transfer_target_invalid', 400],
     ['content_transfer_target_credentials_missing', 409],
-    ['content_transfer_target_binding_missing', 409],
     ['content_transfer_target_binding_conflict', 409],
     ['database_unavailable', 503],
   ] as const)('maps target resolution error %s', async (code, status) => {

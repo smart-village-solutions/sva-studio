@@ -146,6 +146,15 @@ Beim Create SHALL `contentAuthorPolicy` die zulässige Wahl begrenzen. Bei beste
 - **AND** übermittelt `dp-target` ausschließlich aus der serverseitigen Binding-Auflösung
 - **AND** akzeptiert keine DataProvider-ID aus dem Browser
 
+#### Scenario: Fehlende Zielbindung wird anlassbezogen verifiziert
+
+- **GIVEN** ein ausgewählter aktiver Ziel-Principal besitzt verwendbare Credentials, aber noch keine Bindung für deren aktuellen Fingerprint
+- **WHEN** der Benutzer den Mainserver-Transfer bestätigt
+- **THEN** lädt Studio die stabile Identity-ID ausschließlich für dieses Ziel über `/data_provider.json`
+- **AND** zeichnet die Identity-Evidenz mit dem bestehenden konfliktbewussten Binding-Vertrag auf
+- **AND** löst es Ziel-Principal, Credential-Fingerprint und DataProvider-Bindung vor dem Provider-Write erneut auf
+- **AND** führt es bei fehlender Identity oder einem Binding-Konflikt keinen Provider-Write aus
+
 #### Scenario: Hard Delete verwendet Preimage statt Post-Read
 
 - **GIVEN** Pre-Read liefert DataProvider `dp-original`
@@ -170,9 +179,9 @@ Das System SHALL einen Mainserver-Inhabertransfer nur für Content-Typen anbiete
 #### Scenario: V1-Typ unterstützt Transfer
 
 - **WHEN** NewsItem, EventRecord, PointOfInterest, Tour oder ein Root-GenericItem vertraglich geprüft wird
-- **AND** der Runtime-Preflight bestätigt den erwarteten Mainserver-Vertrag
-- **THEN** kann die serverseitige Capability-Matrix den Transfer freigeben
-- **AND** erfolgt die Freigabe explizit über `SVA_MAINSERVER_CONFIRMED_CAPABILITIES`, nicht als Default-Capability
+- **AND** der erwartete Mainserver-Vertrag für den ausgelieferten Release bestätigt ist
+- **THEN** führt die serverseitige Capability-Matrix den Transfer dauerhaft als Code-Capability
+- **AND** benötigt die Freigabe keine Umgebungsvariable oder sonstige betriebliche Konfiguration
 - **AND** verwendet die Mutation den typisierten `dataProviderId`-Vertrag
 - **AND** behauptet diese Backend-Capability allein keine bereits vorhandene Studio-Detailansicht für den Typ
 - **AND** aktiviert das Studio die Aktion nur für einen tatsächlich registrierten redaktionellen Adapter

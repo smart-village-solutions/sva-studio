@@ -31,9 +31,9 @@ Normale Actions wie `content.updateMetadata` oder pluginspezifische Update-Actio
 
 ### Der Browser wählt einen Principal und niemals einen DataProvider
 
-Der Client sendet genau einen `targetPrincipal` mit `type = account | organization` und einer UUID. Der Server validiert Instanz, Aktivstatus und zulässigen Principal-Typ. Für Mainserver-Inhalte löst er zusätzlich unter der Zielinstanz eine aktuelle, konfliktfreie Eins-zu-eins-Bindung vom Principal zum DataProvider sowie verwendbare persönliche oder organisatorische Credentials auf.
+Der Client sendet genau einen `targetPrincipal` mit `type = account | organization` und einer UUID. Der Server validiert Instanz, Aktivstatus und zulässigen Principal-Typ. Für Mainserver-Inhalte verlangt er verwendbare persönliche oder organisatorische Credentials und löst eine aktuelle, konfliktfreie Eins-zu-eins-Bindung vom Principal zum DataProvider serverseitig auf.
 
-Leere, mehrdeutige, konfliktbehaftete, instanzfremde, gelöschte oder credential-lose Ziele werden nicht angeboten und bei direktem Request serverseitig abgewiesen. Eine vom Browser gelieferte DataProvider-ID gehört nicht zum Request-Schema.
+Fehlt für eine verwendbare Credential-Version lediglich die gespeicherte Bindung, darf der Zielkatalog den Principal als `verification_required` anbieten. Erst nach ausdrücklicher Transferbestätigung prüft der Server genau dieses Ziel über `/data_provider.json`, persistiert die authentifizierte Beobachtung und löst die Bindung erneut auf. Das Blättern oder Suchen im Zielkatalog löst keine externen Identity-Aufrufe je Treffer aus. Mehrdeutige, konfliktbehaftete, instanzfremde, gelöschte oder credential-lose Ziele werden nicht angeboten und bei direktem Request serverseitig abgewiesen. Eine vom Browser gelieferte DataProvider-ID gehört nicht zum Request-Schema.
 
 ### Lokale und Mainserver-basierte Inhalte besitzen getrennte Transferadapter
 
@@ -51,7 +51,7 @@ V1 aktiviert den Transfer nur für:
 - Tour im bestätigten Upstream-Vertrag; ohne vorhandenen redaktionellen Studio-Editor keine V1-Aktivierung,
 - Root-GenericItem einschließlich der vom Mainserver mitgeführten abhängigen GenericItems, TourStops und POI-Voucher.
 
-Fachplugins auf Basis eines Root-GenericItems verwenden denselben Host-Vertrag. Touren werden erst bei Einführung eines redaktionellen Studio-Editors an den bereits bestätigten Vertrag angebunden; dafür wird jetzt kein ungenutzter Adapter gepflegt. Surveys, Legacy SurveyPolls, Batch-Importe und alle weiteren Typen bleiben deaktiviert, bis ihr vollständiger Transfer- und Abhängigkeitsvertrag separat bestätigt ist. `content.transferOwnership` gehört nicht zu den Default-Capabilities, sondern wird erst nach dem Runtime-Preflight explizit über `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` freigeschaltet. Die UI leitet Verfügbarkeit aus dieser serverseitigen Capability-Matrix ab und führt keine eigene Typenliste.
+Fachplugins auf Basis eines Root-GenericItems verwenden denselben Host-Vertrag. Touren werden erst bei Einführung eines redaktionellen Studio-Editors an den bereits bestätigten Vertrag angebunden; dafür wird jetzt kein ungenutzter Adapter gepflegt. Surveys, Legacy SurveyPolls, Batch-Importe und alle weiteren Typen bleiben deaktiviert, bis ihr vollständiger Transfer- und Abhängigkeitsvertrag separat bestätigt ist. `content.transferOwnership` gehört für die bestätigten Studio-Typen dauerhaft zu den Code-Capabilities und besitzt keinen betrieblichen Konfigurationsschalter. Die UI leitet Verfügbarkeit aus dieser serverseitigen Capability-Matrix ab und führt keine eigene Typenliste.
 
 ### Source-Principal führt aus, Target-Principal übernimmt
 
@@ -101,7 +101,7 @@ Diese Hinweise werden lokalisiert und aus Berechtigung, Capability und aktuellem
 
 Ein gemeinsamer Host-Baustein liefert Trigger, Zielsuche, Zielzusammenfassung, Bestätigung, Lade-/Fehlerzustände und Erfolgsfeedback. Plugins tragen nur Content-Typ, Content-Identität und den First-Tab-Slot bei. Permission und Transfer-Capability kommen vom Server. Nicht autorisierte Inhalte zeigen keine aktive Transferaktion und erklären im normalen Bearbeitungshinweis das fehlende Übertragungsrecht. Nicht unterstützte Inhalte zeigen den aktuellen Inhaber, aber statt einer aktiven Aktion den Hinweis „Übertragung für diesen Inhaltstyp noch nicht verfügbar“.
 
-Die serverseitig paginierte Zielauswahl trennt „Persönliche Accounts“ und „Organisationen“ durch einen expliziten Filter. Organisationen können über ihre nicht verschlüsselte Anzeige gesucht werden. Persönliche Accounts werden in V1 ausschließlich paginiert angeboten; eine zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder wird nicht eingeführt. Die Oberfläche benötigt für Kandidatenlisten keine garantierte exakte Gesamtzahl, solange Vorwärts- und Rückwärtsnavigation keine verfügbaren Treffer ausblendet. Jeder Treffer besitzt eine textliche Typkennzeichnung und einen Anzeigenamen; technische DataProvider-IDs und E-Mail-Adressen werden nicht angezeigt. Der aktuelle Inhaber, inaktive, gelöschte, konfliktbehaftete oder credential-lose Principals sind nicht auswählbar.
+Die serverseitig paginierte Zielauswahl trennt „Persönliche Accounts“ und „Organisationen“ durch einen expliziten Filter. Organisationen können über ihre nicht verschlüsselte Anzeige gesucht werden. Persönliche Accounts werden in V1 ausschließlich paginiert angeboten; eine zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder wird nicht eingeführt. Die Oberfläche benötigt für Kandidatenlisten keine garantierte exakte Gesamtzahl, solange Vorwärts- und Rückwärtsnavigation keine verfügbaren Treffer ausblendet. Jeder Treffer besitzt eine textliche Typkennzeichnung und einen Anzeigenamen; technische DataProvider-IDs und E-Mail-Adressen werden nicht angezeigt. Der aktuelle Inhaber, inaktive, gelöschte, konfliktbehaftete oder credential-lose Principals sind nicht auswählbar. Kandidaten mit verwendbaren Credentials, aber noch fehlender Bindung, kennzeichnet die Oberfläche verständlich als Ziel, dessen DataProvider-Zuordnung beim bestätigten Transfer sicher geprüft wird.
 
 Vor der Mutation zeigt ein eigener Prüfschritt „Aktueller Inhaber → Neuer Inhaber“ mit Typ und Name. Bei Mainserver-Inhalten weist er darauf hin, dass damit auch die sichtbare Autorenidentität wechselt; bei lokalen Inhalten bleibt diese unverändert. Zusätzlich warnt er vor einem möglichen Verlust des anschließenden Zugriffs und verlangt eine eindeutige Bestätigung. Fokusführung, Tastaturbedienung, Screenreader-Beschriftung und lokalisierte Meldungen folgen den vorhandenen shadcn/ui- und Action-Feedback-Verträgen.
 
@@ -126,6 +126,7 @@ Der Server liefert stabile, PII-arme Fehlercodes mindestens für:
 - `content_transfer_target_binding_missing`,
 - `content_transfer_target_binding_conflict`,
 - `content_transfer_target_credentials_missing`,
+- `content_transfer_target_verification_failed`,
 - `content_transfer_type_unsupported`,
 - `content_transfer_source_changed`,
 - `content_transfer_provider_rejected`,
@@ -137,7 +138,7 @@ Antwort, Audit und Logs enthalten keine E-Mail-Adressen, Credential-Inhalte, Tok
 
 - Übergabe an einen falschen Principal → serverseitig gefilterte Zielauswahl, klare Typkennzeichnung, Wirkungszusammenfassung und explizite Bestätigung.
 - Actor verliert nach erfolgreicher Übergabe den Zugriff → Erfolg wird aus dem bestätigten Transferzustand angezeigt; ein anschließender 403/404 widerruft den Erfolg nicht.
-- Mainserver-Vertrag ist noch nicht auf dem Zielsystem verfügbar → Schema-/Capability-Preflight blockiert die Funktion vor Aktivierung.
+- Mainserver-Vertrag ist noch nicht auf dem Zielsystem verfügbar → Der geschützte Rollout blockiert die inkompatible Studio-/Mainserver-Kombination vor der Auslieferung.
 - Upstream-Erfolg bei verlorenem Response → Target-/Source-Re-Read und bestehendes Mutationsjournal verhindern erfundene Rollbacks und unkontrollierte Wiederholungen.
 - DataProvider-Bindung ändert sich parallel → DataProvider-Lock, Fresh Validation und erwartete Binding-Version blockieren stale Transfers.
 - Unterschiedliche Typverträge oder Editorstrukturen → zentrale Capability-Matrix, gemeinsamer First-Tab-Vertrag und Konformitätstests statt pluginlokaler Sonderwege.
@@ -149,7 +150,7 @@ Antwort, Audit und Logs enthalten keine E-Mail-Adressen, Credential-Inhalte, Tok
 3. Zielauflösung, typisierte Mainserver-Adapter, Journal-/Reconciliation-Pfad und Projektion implementieren.
 4. Gemeinsame UI-Aktion und Plugin-Capabilities für die V1-Typen aktivieren.
 5. Bestehende Test-Principals mit fehlender `studio`-Rolle gezielt reprovisionieren und die vollständige Transfermatrix in Dev/Staging abnehmen.
-6. Studio und erforderliche Mainserver-Version über ihre jeweiligen geschützten Rolloutpfade ausrollen; Aktivierung erst nach positivem Runtime-Preflight.
+6. Studio und erforderliche Mainserver-Version nach positivem Vertragsnachweis über ihre jeweiligen geschützten Rolloutpfade ausrollen; die bestätigte Transfer-Capability benötigt danach keinen Laufzeitschalter.
 
 ## Open Questions
 

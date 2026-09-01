@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import {
@@ -14,9 +14,10 @@ const refreshNoTechnicalHistory = async () => undefined;
 
 export const useWasteSettingsSyncFeedback = (
   pt: PluginTranslation,
-  setMessage: (message: StatusMessage | null) => void
+  setMessage: Dispatch<SetStateAction<StatusMessage | null>>
 ) => {
   const [trackedJob, setTrackedJob] = useState<SyncJob | null>(null);
+  const syncStartedMessage = pt('settings.messages.wasteTypesSyncStarted');
 
   const warnAboutSync = () => {
     setTrackedJob(null);
@@ -37,14 +38,16 @@ export const useWasteSettingsSyncFeedback = (
         return;
       }
       setTrackedJob(null);
-      setMessage(null);
+      setMessage((currentMessage) =>
+        currentMessage?.text === syncStartedMessage ? null : currentMessage
+      );
     },
   });
 
   const applyMutationFeedback = (result: WasteManagementSettingsMutationResponse) => {
     if (result.syncStatus === 'queued' && result.syncJob) {
       setTrackedJob(result.syncJob);
-      setMessage({ kind: 'success', text: pt('settings.messages.wasteTypesSyncStarted') });
+      setMessage({ kind: 'success', text: syncStartedMessage });
       return;
     }
     if (result.syncStatus === 'failed') {
@@ -59,7 +62,7 @@ export const useWasteSettingsSyncFeedback = (
     try {
       const job = await startWasteManagementSyncWasteTypes();
       setTrackedJob(job ?? null);
-      setMessage({ kind: 'success', text: pt('settings.messages.wasteTypesSyncStarted') });
+      setMessage({ kind: 'success', text: syncStartedMessage });
     } catch {
       warnAboutSync();
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
@@ -484,6 +484,53 @@ describe('WasteSettingsPanel', () => {
     await waitFor(() => {
       expect(screen.queryByText('settings.messages.wasteTypesSyncStarted')).toBeNull();
     });
+  });
+
+  it('preserves holiday sync feedback after the tracked wasteTypes job succeeds', async () => {
+    const settings = {
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'postgresql-1',
+      databaseUrlConfigured: true,
+      visibleStatus: 'ok',
+      holidayStateCode: 'NW',
+      lastHolidaySyncStatus: 'success',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    };
+    const syncJob = { id: 'job-waste-types-holiday-failure', status: 'queued' };
+    getWasteManagementSettingsMock.mockResolvedValueOnce(settings);
+    updateWasteManagementSettingsMock.mockResolvedValueOnce({
+      data: {
+        ...settings,
+        holidayStateCode: 'BB',
+        lastHolidaySyncStatus: 'failed',
+        disruptionLocationEnabled: true,
+      },
+      syncStatus: 'queued',
+      syncJob,
+    });
+
+    render(<WasteSettingsPanel />);
+    await screen.findByText('location-disruption:false');
+    fireEvent.click(screen.getByRole('button', { name: 'change-holiday-state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-location-disruption' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
+
+    const holidaySyncMessage =
+      'settings.messages.saveSuccessWithHolidaySync:{"status":"failed"}';
+    expect(await screen.findByText(holidaySyncMessage)).toBeTruthy();
+
+    const trackedJobOptions = useWasteTrackedJobMock.mock.calls.at(-1)?.[0];
+    if (!trackedJobOptions) throw new Error('missing_tracked_job_options');
+    act(() => {
+      trackedJobOptions.onTerminalJob({ ...syncJob, status: 'succeeded' });
+    });
+
+    expect(screen.getByText(holidaySyncMessage)).toBeTruthy();
   });
 
   it('retains retryable wasteTypes feedback when holiday synchronization also fails', async () => {

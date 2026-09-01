@@ -56,4 +56,19 @@ describe('create instance payload fingerprint', () => {
       })
     ).toBe(buildCreateInstancePayloadFingerprint(baseInput));
   });
+
+  it('binds secret presence without fingerprinting the secret value', () => {
+    expect(
+      buildCreateInstancePayloadFingerprint({
+        ...baseInput,
+        authClientSecret: undefined,
+      })
+    ).not.toBe(buildCreateInstancePayloadFingerprint(baseInput));
+    expect(
+      buildCreateInstancePayloadFingerprint({
+        ...baseInput,
+        tenantAdminClient: { clientId: 'tenant-admin' },
+      })
+    ).not.toBe(buildCreateInstancePayloadFingerprint(baseInput));
+  });
 });

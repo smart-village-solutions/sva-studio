@@ -66,6 +66,20 @@ const latestRun = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+const latestRunWithAuthSecret = {
+  ...latestRun,
+  payloadFingerprint: buildCreateInstancePayloadFingerprint({
+    instanceId: 'demo',
+    displayName: 'Demo',
+    parentDomain: 'studio.example.org',
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'studio-client',
+    authClientSecret: 'original-secret',
+    idempotencyKey: 'idem-1',
+  }),
+};
+
 const idempotentInstance = {
   ...baseInstance,
   authClientSecretConfigured: false,
@@ -666,7 +680,7 @@ describe('instance registry service facade', () => {
         tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
       })),
       getAuthClientSecretCiphertext,
-      listProvisioningRuns: vi.fn(async () => [latestRun]),
+      listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
     });
     const service = createInstanceRegistryService(
       createDeps(repository, {
@@ -698,7 +712,7 @@ describe('instance registry service facade', () => {
         tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
       })),
       getAuthClientSecretCiphertext,
-      listProvisioningRuns: vi.fn(async () => [latestRun]),
+      listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
     });
     const service = createInstanceRegistryService(
       createDeps(repository, {
@@ -723,6 +737,36 @@ describe('instance registry service facade', () => {
     });
 
     expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
+  });
+
+  it('accepts an unchanged create retry after provisioning generated omitted secrets', async () => {
+    const getAuthClientSecretCiphertext = vi.fn();
+    const getTenantAdminClientSecretCiphertext = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      getAuthClientSecretCiphertext,
+      getTenantAdminClientSecretCiphertext,
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
   });
 
   it('rejects a create retry when legacy evidence has no payload fingerprint', async () => {

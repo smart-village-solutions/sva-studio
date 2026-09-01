@@ -23,8 +23,10 @@ export const buildCreateInstancePayloadFingerprint = (
     authRealm: input.authRealm,
     authClientId: input.authClientId,
     authIssuerUrl: input.authIssuerUrl,
+    authClientSecretProvided: Boolean(input.authClientSecret?.trim()),
     tenantAdminClient: {
       clientId: input.tenantAdminClient?.clientId ?? DEFAULT_TENANT_ADMIN_CLIENT_ID,
+      secretProvided: Boolean(input.tenantAdminClient?.secret?.trim()),
     },
     tenantAdminBootstrap: input.tenantAdminBootstrap,
     themeKey: input.themeKey,
@@ -44,8 +46,8 @@ const matchesPersistedSecret = async (input: {
   readonly load: () => Promise<string | undefined>;
 }): Promise<boolean> => {
   const submitted = input.submitted?.trim() || undefined;
-  if (!input.configured) return submitted === undefined;
-  if (!submitted) return false;
+  if (!submitted) return true;
+  if (!input.configured) return false;
   const persisted = await input.load();
   return persisted !== undefined && secretsEqual(persisted, submitted);
 };

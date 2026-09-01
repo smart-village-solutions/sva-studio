@@ -109,6 +109,7 @@ describe('bootstrap-entrypoint', () => {
       'GRANT EXECUTE ON FUNCTION graphile_worker.add_job(text, json, text, timestamptz, integer, text, integer, text[], text) TO "sva_app";'
     );
     expect(sql).toContain('REVOKE ALL ON SCHEMA graphile_worker FROM "sva_app";');
+    expect(sql).toContain('REVOKE ALL ON SCHEMA graphile_worker FROM iam_app;');
     expect(sql).toContain('SET LOCAL ROLE iam_app;');
     expect(sql).toContain("'studio-job:bootstrap-contract'");
     expect(sql).toContain('ROLLBACK;');

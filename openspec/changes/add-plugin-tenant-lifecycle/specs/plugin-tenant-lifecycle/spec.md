@@ -89,6 +89,13 @@ Das System SHALL Suspendierung und Reaktivierung als reversible Lifecycle-Operat
 - **THEN** sperrt der Host Routen, Jobs und interne Fachzugriffe dieses Tenantkontexts
 - **AND** bleiben Aktivierungsevidenz, Fachdaten und Audit erhalten
 
+#### Scenario: Suspendierbarer Vertrag bleibt reversibel
+
+- **GIVEN** ein Plugin deklariert die Lifecycle-Operation `suspend`
+- **WHEN** der Host den Plugin-Vertrag validiert
+- **THEN** akzeptiert er den Vertrag nur mit ebenfalls deklarierter Operation `reactivate`
+- **AND** kann kein suspendierter Tenant durch einen unvollständigen Vertrag dauerhaft blockiert werden
+
 #### Scenario: Plugin-Tenant wird reaktiviert
 
 - **GIVEN** ein zuvor suspendierter Plugin-Tenant wird autorisiert reaktiviert

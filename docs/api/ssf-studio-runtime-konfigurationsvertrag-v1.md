@@ -190,9 +190,10 @@ Tenant-Assertion, keinen zweiten Signaturschlüssel und keinen Replay-Speicher.
 `configurationRevision` ist ein undurchsichtiger Inhaltsfingerabdruck der
 kanonisch serialisierten effektiven V1-Konfiguration ohne das Revisionsfeld
 selbst. Änderungen an einem wirksamen Tenant-Override, einem wirksamen
-serverweiten Wert oder einem ausgelieferten Produktdefault ändern die Revision
-automatisch. Eine Änderung an einem durch eine Policy unwirksamen gespeicherten
-Override verändert die Runtime-Antwort und damit die Revision nicht.
+serverweiten Wert oder einem im aufgelösten Ergebnis wirksamen Produktdefault
+ändern die Revision automatisch. Änderungen an durch eine Policy oder einen
+höher priorisierten Wert unwirksamen gespeicherten Werten verändern die
+Runtime-Antwort und damit die Revision nicht.
 
 ## Auflösung der effektiven Konfiguration
 
@@ -272,7 +273,8 @@ wirkungslos.
 | ----------------------------------------- | ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `ssf.configuration.server.manage`         | gesamte SSF-Installation  | Systemadmin       | serverweite SSF-Werte                                                                                              |
 | `ssf.configuration.tenant-policy.manage`  | ausgewählter Mandant      | Systemadmin       | mandantenspezifische Branding- und Speicher-Policies                                                               |
-| `ssf.configuration.tenant.read`           | autorisierter Mandant     | Systemadmin, Mandantenadmin | effektive Konfiguration; Herkunft der Werte nur für Systemadmins beziehungsweise dafür ausdrücklich autorisierte Rollen |
+| `ssf.configuration.tenant.read`           | autorisierter Mandant     | Systemadmin, Mandantenadmin | effektive Konfiguration                                                                                            |
+| `ssf.configuration.tenant.provenance.read` | autorisierter Mandant    | Systemadmin       | Herkunft der aufgelösten Werte                                                                                     |
 | `ssf.configuration.tenant.manage`         | aktiver Mandant           | Mandantenadmin    | aktive Sprachen, Standardsprache, einzelne Text-Overrides, gewünschter Speichermodus und erlaubtes Tenant-Branding |
 
 Die genannten Defaultrollen erhalten diese Actions über den normalen
@@ -280,8 +282,10 @@ Permission-Katalog. Kundenspezifische Rollen dürfen dieselben Actions erhalten;
 die Runtime prüft niemals nur den Rollennamen. Benutzer und Gäste besitzen
 standardmäßig keine Konfigurations-Action.
 
-Systemadmins dürfen effektive Tenant-Konfigurationen und die Herkunft der
-Werte einsehen, aber tenant-eigene Overrides im Normalbetrieb nicht verändern.
+Die Herkunft der Werte wird nur bei zusätzlicher Action
+`ssf.configuration.tenant.provenance.read` ausgegeben. Systemadmins dürfen
+effektive Tenant-Konfigurationen und deren Herkunft einsehen, aber tenant-eigene
+Overrides im Normalbetrieb nicht verändern.
 Ein späterer Supportzugriff benötigt einen getrennten, zeitlich begrenzten und
 auditierten Vertrag.
 

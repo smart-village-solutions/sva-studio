@@ -927,7 +927,8 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Konfigurations-Reads und -Writes prüfen die festgelegten
   `ssf.configuration.*`-Actions. Systemadmin und Mandantenadmin sind Personas
   mit Default-Grants; kundenspezifische Rollen werden nicht durch Prüfungen auf
-  feste Rollennamen ausgeschlossen.
+  feste Rollennamen ausgeschlossen. Die Herkunft aufgelöster Werte verlangt die
+  getrennte Action `ssf.configuration.tenant.provenance.read`.
 - Studio liefert nur effektive Konfiguration. Benutzerlisten, E-Mail-Adressen,
   Gast-Token, Gesprächsinhalte, Einwilligungsdatensätze, Sessions und
   Auswertungsdaten werden über diesen Vertrag nicht ausgetauscht.

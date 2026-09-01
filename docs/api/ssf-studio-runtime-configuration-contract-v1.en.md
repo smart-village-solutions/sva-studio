@@ -190,9 +190,9 @@ assertion, a second signing key, or replay storage.
 `configurationRevision` is an opaque content fingerprint of the canonically
 serialized effective V1 configuration, excluding the revision field itself. A
 change to an effective tenant override, an effective server-wide value, or a
-shipped product default automatically changes the revision. Changing a stored
-override that is ineffective because of a policy does not change the runtime
-response or its revision.
+product default effective in the resolved result automatically changes the
+revision. Changing a stored value that is ineffective because of a policy or a
+higher-precedence value does not change the runtime response or its revision.
 
 ## Resolving the effective configuration
 
@@ -272,17 +272,19 @@ effect.
 | ----------------------------------------- | ----------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `ssf.configuration.server.manage`         | entire SSF installation | System administrator             | server-wide SSF values                                                                                             |
 | `ssf.configuration.tenant-policy.manage`  | selected tenant         | System administrator             | tenant-specific branding and storage policies                                                                      |
-| `ssf.configuration.tenant.read`           | authorized tenant       | System and tenant administrators | effective configuration; value origins only for system administrators or roles explicitly authorized for them     |
+| `ssf.configuration.tenant.read`           | authorized tenant       | System and tenant administrators | effective configuration                                                                                             |
+| `ssf.configuration.tenant.provenance.read` | authorized tenant      | System administrator             | origins of resolved values                                                                                          |
 | `ssf.configuration.tenant.manage`         | active tenant           | Tenant administrator             | enabled languages, default locale, individual text overrides, desired storage mode, and permitted tenant branding |
 
 The default roles receive these actions through the regular permission
 catalog. Custom roles may receive the same actions; the runtime never checks
 only the role name. Users and guests have no configuration action by default.
 
-System administrators may inspect effective tenant configurations and the
-origin of their values, but they may not modify tenant-owned overrides during
-normal operation. A future support-access capability requires a separate,
-time-limited, audited contract.
+Value origins are returned only with the additional
+`ssf.configuration.tenant.provenance.read` action. System administrators may
+inspect effective tenant configurations and their origins, but they may not
+modify tenant-owned overrides during normal operation. A future support-access
+capability requires a separate, time-limited, audited contract.
 
 ## Effect of changes
 

@@ -33,8 +33,9 @@ Gäste bleiben ausschließlich im SSF-Sessionmodell. `system_admin` und
 `tenant_admin` sind Personas und Defaultrollen; Konfigurationszugriffe werden
 ausschließlich über `ssf.configuration.server.manage`,
 `ssf.configuration.tenant-policy.manage`, `ssf.configuration.tenant.read` und
-`ssf.configuration.tenant.manage` entschieden. Kundenspezifische Rollen können
-diese Actions ohne Rollennamen-Sonderfall erhalten.
+`ssf.configuration.tenant.manage` entschieden. Die zusätzliche Herkunftsansicht
+verlangt `ssf.configuration.tenant.provenance.read`. Kundenspezifische Rollen
+können diese Actions ohne Rollennamen-Sonderfall erhalten.
 
 SSF speichert die Runtime-Antwort nicht persistent. Studio und SSF verwenden
 keine gemeinsame Fachdatenbank und greifen nicht direkt auf die Persistenz des

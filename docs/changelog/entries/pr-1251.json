@@ -1,4 +1,4 @@
 {
   "prNumber": 1251,
-  "body": "Studio startet nach der Aktualisierung der Plugin-Lifecycle-Infrastruktur wieder zuverlässig.\n\n- Die Startprüfung erkennt die vorhandenen Worker-Berechtigungen auch unter dem eingeschränkten App-Datenbankkonto korrekt.\n- Die Trennung zwischen App- und Worker-Datenbankrechten bleibt vollständig erhalten.\n- Der Datenbank-Vertragstest prüft den produktiven Startpfad künftig mit dem tatsächlichen App-Datenbankkonto."
+  "body": "Studio startet mit dem eingeschränkten App-Datenbankkonto wieder zuverlässig.\n\n- Die Startprüfung erkennt die vorhandenen Worker-Berechtigungen auch unter dem eingeschränkten App-Datenbankkonto korrekt.\n- Die Trennung zwischen App- und Worker-Datenbankrechten bleibt vollständig erhalten.\n- Der Datenbank-Vertragstest prüft den produktiven Startpfad künftig mit dem tatsächlichen App-Datenbankkonto."
 }

@@ -70,7 +70,7 @@ Empfohlene Aufrufe:
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
-- risikoreiche Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante: `System Assurance`; ein fehlender Assurance Case oder fehlende Nachweisplanung blockiert die Implementierung, fehlende ausgeführte Evidenz für den exakten HEAD den Merge
+- risikoreiche Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante: in der Regel `System Assurance`; ein anderes Review- oder Dokumentationsformat ist zulässig, wenn es die konkreten Risiken gleichwertig abdeckt. Blockierend ist eine unbehandelte kritische Risiko- oder Nachweislücke, nicht das Fehlen eines bestimmten Artefakts.
 - Aenderungen an `config/plugin-architecture-allowlist.json`, `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
 - Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` werden vor dem Merge fachlich geprüft und über den normalen GitHub-Review-Prozess abgeschlossen
@@ -78,6 +78,12 @@ Empfohlene Aufrufe:
 - weitere Fachreviewer trigger-basiert analog zu Proposal-Reviews
 
 ## Abgrenzungen
+
+Die Trigger-Matrix ist eine Heuristik für verlässliche Review-Abdeckung. Sie
+liefert Standardvorschläge, aber kein unveränderliches Reviewer-Set. Der
+Orchestrator darf Reviewer zusammenfassen, ergänzen, ersetzen oder bei klarer
+Irrelevanz auslassen, sofern kritische Fachrisiken nicht ungeprüft bleiben und
+wesentliche Abweichungen kurz begründet werden.
 
 ### UX & Accessibility vs User Journey & Usability
 

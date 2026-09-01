@@ -335,26 +335,33 @@ Text- und UI-Korrekturen sowie begrenzte Refactorings ohne neue
 Verhaltensdimension. Für solche Änderungen sind keine künstlichen PR-Stacks,
 Zustandsmatrizen oder zusätzlichen OpenSpec-Changes zu erzeugen.
 
-### ✅ REQUIRED für systemübergreifende Großvorhaben
+### Leitlinien für systemübergreifende Großvorhaben
+
+Die folgenden Punkte sind eine Auswahl- und Prüfhilfe, keine mechanisch
+vollständig abzuarbeitende Checkliste. Das Team wählt die für Risiko und
+Änderungsbild relevanten Punkte, darf Form, Reihenfolge und Artefakte anpassen
+und dokumentiert nur wesentliche Abweichungen oder bewusst akzeptierte Risiken.
+Entscheidend sind nachvollziehbare Grenzen, überprüfbare Behauptungen und
+angemessene Evidenz, nicht die Einhaltung eines bestimmten Dokumentformats.
 
 - Vor Implementierungsbeginn die fachlich und technisch unabhängigen
   Lieferabschnitte identifizieren und ihre Abhängigkeiten festhalten.
-- Stacked PRs verwenden, wenn die Abschnitte einzeln build-, test- und
+- Stacked PRs erwägen, wenn die Abschnitte einzeln build-, test- und
   reviewbar sind. Ein großer Einzel-PR benötigt eine nachvollziehbare
   Begründung, warum eine Trennung keine konsistenten Zwischenstände erzeugen
   würde oder das Integrationsrisiko erhöht.
-- Bei asynchroner, transaktionaler oder nebenläufiger Orchestrierung vor dem
+- Bei asynchroner, transaktionaler oder nebenläufiger Orchestrierung die
   Code die Zustände, Ereignisse, persistenten Writes, Fehler- und Crashpunkte,
   Retry-/Recovery-Wege sowie die beobachtbaren Endzustände beschreiben.
-- Sicherheits- und Ausführungsgrenzen vollständig inventarisieren, zum
+- Die relevanten Sicherheits- und Ausführungsgrenzen risikobasiert inventarisieren, zum
   Beispiel HTTP-Dispatch, interne Aufrufe, Jobanlage, Queue, Worker-Ausführung,
   Startup, Reconciliation und clientseitige Materialisierung. Eine zentrale
   Regel gilt erst dann als zentral, wenn alle relevanten Grenzen benannt sind.
 - Systeminvarianten explizit formulieren und die Teststrategie daraus ableiten.
   Bei verteilter Arbeit gehören mindestens Konkurrenz, Redelivery,
   Teilfehler, Prozessabbruch und Wiederanlauf in die Bewertung.
-- Den Proposal-Review einschließlich der nach Trigger-Matrix erforderlichen
-  Fachreviews vor dem ersten Implementierungsblock abschließen. Formale
+- Den Proposal-Review einschließlich der nach Trigger-Matrix sinnvollen
+  Fachreviews möglichst vor dem ersten risikobehafteten Implementierungsblock abschließen. Formale
   OpenSpec-Validierung ersetzt keine fachliche Invarianten-, Runtime- oder
   Failure-Mode-Prüfung.
 - Jeden Lieferabschnitt mit seinem kleinsten echten Gate-Pfad abschließen,
@@ -362,13 +369,14 @@ Zustandsmatrizen oder zusätzlichen OpenSpec-Changes zu erzeugen.
 
 ### Assurance Case für risikoreiche Großvorhaben
 
-System-Assurance ist verpflichtend, wenn ein risikoreiches Großvorhaben eine
+System-Assurance ist der empfohlene vertiefte Reviewpfad, wenn ein risikoreiches Großvorhaben eine
 neue oder wesentlich veränderte systemübergreifende Invariante einführt und
 dabei verteilte Zustände, Nebenläufigkeit, Retry/Recovery,
 sicherheitsrelevante Trust Boundaries oder gekoppelte Persistenz-/Runtime-
-Übergänge betrifft. Der zugehörige OpenSpec-Change muss vor der Implementierung
-eine Datei `assurance.md` enthalten. Ihr verbindlicher Aufbau steht in
-`docs/development/system-assurance.md`.
+Übergänge betrifft. Der Assurance Case kann als `assurance.md` oder
+gleichwertig im Proposal, Design beziehungsweise PR dokumentiert werden. Das
+Referenzformat steht in `docs/development/system-assurance.md`; nicht relevante
+Abschnitte dürfen entfallen und projektspezifische Nachweise dürfen sie ersetzen.
 
 Das bloße Berühren eines bestehenden Retry-Pfads, einer Trust Boundary oder
 einer Persistenzgrenze löst System-Assurance nicht aus, wenn eine lokal
@@ -377,7 +385,9 @@ systemübergreifende Invariante verändert. Zeigen wiederholte Befunde dagegen
 eine unvollständige Invariante über mehrere Verbraucher oder Ausführungswege,
 greift die Review- und Fix-Stop-Regel.
 
-- Jede kritische Systembehauptung erhält eine stabile Invarianten-ID.
+- Kritische Systembehauptungen werden eindeutig referenzierbar gemacht; stabile
+  Invarianten-IDs sind bei mehreren Grenzen, Reviewrunden oder Lieferabschnitten
+  hilfreich, aber für einfache Fälle nicht zwingend.
 - Für jede Invariante werden Systemgrenzen, Verletzungsszenarien, Prävention,
   Erkennung, Recovery und Restrisiken beschrieben.
 - Vor Implementierungsbeginn wird jede Invariante auf einen konkreten
@@ -391,11 +401,12 @@ greift die Review- und Fix-Stop-Regel.
   aber kein direkter Nachweis einer Invariante.
 - Nicht automatisierbare Annahmen benötigen einen reproduzierbaren manuellen
   Nachweis oder eine ausdrücklich akzeptierte Restrisikoentscheidung.
-- Eine kritische Invariante ohne konkrete Nachweisplanung oder ausdrücklich
-  akzeptierte Restrisikoentscheidung blockiert die Implementierung. Fehlt vor
-  dem Merge die tatsächlich ausgeführte Evidenz für den exakten HEAD oder eine
-  ausdrücklich akzeptierte Restrisikoentscheidung, ist dies ein
-  Merge-Blocker. „Keine weiteren Findings“ ist keine Evidenz.
+- Wenn für eine sicherheits-, datenintegritäts- oder betriebsrelevante
+  Behauptung weder ein angemessener Nachweisweg noch eine bewusste
+  Restrisikoentscheidung erkennbar ist, darf die Entscheidung nicht allein auf
+  Plausibilität gestützt werden. Vor dem Merge braucht der konkrete Risikofall
+  belastbare Evidenz für den exakten HEAD oder eine ausdrücklich akzeptierte
+  Restrisikoentscheidung. „Keine weiteren Findings“ ist keine Evidenz.
 - Der System-Assurance-Review versucht dokumentierte Invarianten gezielt zu
   widerlegen. Er darf Merge-Reife nur auf Basis konkreter Gegenbeispiele,
   reproduzierbarer Nachweise und vollständig zugeordneter Evidenz bewerten.
@@ -416,7 +427,7 @@ Review-Evidenz und Regressionsrisiko zu entscheiden, ob ein Split noch stabile,
 eigenständig prüfbare Zwischenstände schafft. Ohne solchen Nachweis wird der
 bestehende PR gezielt gehärtet; allgemeine Aufräumarbeiten folgen getrennt.
 
-### ❌ FORBIDDEN
+### Zu vermeidende Fehlanwendungen
 
 - Mehrere unabhängig lieferbare Plattform-, Persistenz-, Runtime-, Adapter-
   und UI-Fähigkeiten ohne Zuschnittsentscheidung in einem PR zu bündeln.

@@ -29,12 +29,12 @@
 ## Proportionaler Projektzuschnitt
 
 - Kleine, lokal begrenzte Änderungen ohne neue systemübergreifende Invariante bleiben im Schnellpfad: keine künstlichen PR-Stacks, Zustandsmatrizen oder zusätzlichen OpenSpec-Changes.
-- Vor systemübergreifenden Großvorhaben unabhängige Lieferabschnitte, Trust Boundaries, Ausführungsgrenzen und bei asynchroner beziehungsweise transaktionaler Logik die Zustands-, Fehler-, Crash- und Recovery-Matrix klären.
-- Stacked PRs sind der Standard, wenn die Abschnitte einzeln build-, test- und reviewbar sind; ein großer Einzel-PR braucht eine fachliche Begründung.
-- Risikoreiche Großvorhaben benötigen vor der Implementierung einen Assurance Case mit stabilen Invarianten-IDs und konkreter Nachweisplanung. Die direkten, ausführbaren Nachweise müssen vor dem Merge für den exakten HEAD vorliegen; grüne CI und allgemeine Reviews gelten nicht als Vollständigkeitsbeweis.
+- Vor systemübergreifenden Großvorhaben die für den konkreten Fall relevanten Lieferabschnitte, Trust Boundaries, Ausführungsgrenzen und Failure Modes klären. Form und Tiefe der Darstellung richten sich nach dem Risiko; eine Zustandsmatrix ist nur ein mögliches Hilfsmittel.
+- Stacked PRs bevorzugen, wenn sie eigenständig build-, test- und reviewbare Zwischenstände mit geringerem Integrationsrisiko schaffen. Der konkrete Zuschnitt bleibt eine begründete Einzelfallentscheidung.
+- Bei risikoreichen Großvorhaben die kritischen Invarianten und ihre geplanten Nachweise vor der Implementierung nachvollziehbar festhalten. `assurance.md`, stabile IDs und die bereitgestellten Templates sind empfohlene Hilfsmittel, keine Selbstzwecke; gleichwertige Darstellungen im Proposal, Design oder PR sind zulässig. Vor dem Merge muss die gewählte Evidenz für den exakten HEAD belastbar sein.
 - Wenn mehrere neue Review- oder Testbefunde dieselbe Invariante oder Systemgrenze betreffen, lokale Mikrofixes stoppen und vor dem nächsten Push Zustandsraum sowie alle Verbraucher zusammenhängend prüfen.
 - Einen bereits stark integrierten PR nicht allein wegen seiner Größe spät mechanisch zerlegen; ein Split benötigt weiterhin stabile, eigenständig prüfbare Zwischenstände.
-- Die kanonischen Kriterien und Pflichten stehen in [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md), Abschnitt 1.7.
+- Die kanonischen Entscheidungsleitlinien und nicht verhandelbaren Qualitätsgrenzen stehen in [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md), Abschnitt 1.7.
 
 ## Tipps zur Entwicklungsumgebung
 

@@ -1,5 +1,8 @@
 # System-Assurance-Review – Template
 
+> Dieses Template ist ein Baukasten. Nicht relevante Abschnitte entfallen;
+> fallbezogen geeignetere Darstellungen sind ausdrücklich zulässig.
+
 ## Entscheidung
 
 - Prüfphase: [Planungsreview | Nachweisreview]
@@ -8,14 +11,14 @@
 - Assurance Case:
 - Begründung:
 
-## Vollständigkeit des Modells
+## Modellabdeckung (soweit für den Fall relevant)
 
 - Erfasste Systeme und Verbraucher:
 - Fehlende oder unklare Grenzen:
 - Fehlende oder widersprüchliche Zustände:
 - Nicht geprüfte Annahmen:
 
-## Invarianten-Evidenz
+## Invarianten-Evidenz (soweit hilfreich)
 
 Zulässige Statuswerte: `offen`, `geplant`, `belegt`, `Lücke` und
 `Restrisiko akzeptiert`.
@@ -24,13 +27,13 @@ Zulässige Statuswerte: `offen`, `geplant`, `belegt`, `Lücke` und
 | ---------- | ------------ | ----------------------- | ---------------------- | ------- |
 | INV-01     | kritisch     | Test/Constraint/Runbook | Fehlerfälle            | geplant |
 
-## Boundary- und Consumer-Abdeckung
+## Boundary- und Consumer-Abdeckung (soweit relevant)
 
 | Boundary-ID | Produzent/Eintritt | Durchsetzung | Recheck | Verbraucher | Evidenz | Status |
 | ----------- | ------------------ | ------------ | ------- | ----------- | ------- | ------ |
 | BND-01      | ...                | ...          | ...     | ...         | ...     | ...    |
 
-## Gegenbeispiele und Failure Modes
+## Gegenbeispiele und Failure Modes (soweit relevant)
 
 ### SA-01: <Kurztitel>
 
@@ -47,14 +50,13 @@ Zulässige Statuswerte: `offen`, `geplant`, `belegt`, `Lücke` und
 | ID  | Annahme/Risiko | Auswirkung | vorhandene Begrenzung | Entscheidung nötig von |
 | --- | -------------- | ---------- | --------------------- | ---------------------- |
 
-## Phasenbezogene Blocker
+## Entscheidungskriterien
 
-- [ ] Im Planungsreview keine kritische Invariante ohne konkrete Nachweisplanung
-- [ ] Im Nachweisreview keine kritische Invariante ohne ausgeführte direkte Evidenz für den exakten HEAD
-- [ ] Keine unbekannte oder unzugeordnete Systemgrenze
-- [ ] Keine nicht-terminale Sackgasse ohne Konvergenz/Recovery
-- [ ] Keine nur durch allgemeine CI/Coverage behauptete Evidenz
-- [ ] Alle Restrisiken ausdrücklich entschieden
+- [ ] Die für den konkreten Risikofall wesentlichen Behauptungen sind erfasst
+- [ ] Die gewählte Nachweistiefe ist dem Risiko angemessen
+- [ ] Kritische offene Risiken besitzen Owner und Entscheidung
+- [ ] Allgemeine CI/Coverage wird nicht als Ersatz für fallbezogene Evidenz verwendet
+- [ ] Nicht verwendete Template-Teile wurden nicht nur aus Bequemlichkeit ausgelassen
 
 ## Verifizierte Befehle und Nachweise
 

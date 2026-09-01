@@ -8,7 +8,7 @@ Instructions for AI coding assistants using OpenSpec for spec-driven development
 - Decide scope: new capability vs modify existing capability
 - Pick a unique `change-id`: kebab-case, verb-led (`add-`, `update-`, `remove-`, `refactor-`)
 - Scaffold: `proposal.md`, `tasks.md`, `design.md` (only if needed), and delta specs per affected capability
-- Add `assurance.md` for high-risk cross-system changes according to `DEVELOPMENT_RULES.md` section 1.7
+- For high-risk cross-system changes, record the relevant assurance reasoning according to `DEVELOPMENT_RULES.md` section 1.7; `assurance.md` is the recommended format, not the only valid one
 - Write deltas: use `## ADDED|MODIFIED|REMOVED|RENAMED Requirements`; include at least one `#### Scenario:` per requirement
 - Validate: `openspec validate [change-id] --strict` and fix issues
 - Request approval: Do not start implementation until proposal is approved
@@ -49,7 +49,7 @@ Skip proposal for:
 **Workflow**
 
 1. Review `openspec/project.md`, `openspec list`, and `openspec list --specs` to understand current context.
-2. Choose a unique verb-led `change-id` and scaffold `proposal.md`, `tasks.md`, optional `design.md`, required high-risk `assurance.md`, and spec deltas under `openspec/changes/<id>/`.
+2. Choose a unique verb-led `change-id` and scaffold `proposal.md`, `tasks.md`, optional `design.md`, optional high-risk `assurance.md`, and spec deltas under `openspec/changes/<id>/`.
 3. Draft spec deltas using `## ADDED|MODIFIED|REMOVED Requirements` with at least one `#### Scenario:` per requirement.
 4. Run `openspec validate <id> --strict` and resolve any issues before sharing the proposal.
 
@@ -59,9 +59,9 @@ Track these steps as TODOs and complete them one by one.
 
 1. **Read proposal.md** - Understand what's being built
 2. **Read design.md** (if exists) - Review technical decisions
-3. **Read assurance.md** (if required) - Verify invariants, boundaries, failure modes, and planned evidence
+3. **Read assurance.md or equivalent assurance sections** (if present) - Verify relevant invariants, boundaries, failure modes, and planned evidence
 4. **Read tasks.md** - Get implementation checklist
-5. **Approval gate** - Do not start implementation until the proposal and required assurance case are reviewed and approved
+5. **Approval gate** - Do not start implementation until the proposal and the assurance reasoning appropriate to its risk are reviewed and approved
 6. **Implement tasks sequentially** - Complete in order
 7. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
 8. **Update checklist** - After all work is done, set every task to `- [x]` so the list reflects reality
@@ -150,7 +150,7 @@ openspec/
 │   │   ├── proposal.md     # Why, what, impact
 │   │   ├── tasks.md        # Implementation checklist
 │   │   ├── design.md       # Technical decisions (optional; see criteria)
-│   │   ├── assurance.md    # Invariants and evidence (required for high-risk cross-system changes)
+│   │   ├── assurance.md    # Optional focused record of invariants and evidence
 │   │   └── specs/          # Delta changes
 │   │       └── [capability]/
 │   │           └── spec.md # ADDED/MODIFIED/REMOVED
@@ -276,8 +276,8 @@ Minimal `design.md` skeleton:
 - [...]
 ```
 
-6. **Create assurance.md for high-risk cross-system changes:**
-   Use the mandatory criteria and template in `docs/development/system-assurance.md`. If a critical invariant has neither a concrete evidence plan nor an explicitly accepted residual risk, implementation is blocked. Before merge, every critical invariant requires executed direct evidence for the exact HEAD or an explicitly accepted residual risk, regardless of green general checks.
+6. **Record assurance reasoning for high-risk cross-system changes:**
+   Use `docs/development/system-assurance.md` as an adaptable reference. Prefer `assurance.md` for complex cases, but equivalent reasoning in the proposal or design is valid. Select the checks and evidence appropriate to the concrete risks. Before merge, a critical unresolved risk still needs suitable evidence for the exact HEAD or an explicitly accepted residual-risk decision; green general checks alone do not replace that judgment.
 
 ## Spec File Format
 

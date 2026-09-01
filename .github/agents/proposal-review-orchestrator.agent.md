@@ -130,12 +130,13 @@ Lies alle genannten Dateien und erstelle ein Review nach deinem Template.
 Gib dein Review als strukturierten Markdown-Block zurück.
 ```
 
-System Assurance erhält zusätzlich die Prüfphase `Planungsreview`,
-`assurance.md` und den Auftrag, jede kritische Invariante gezielt zu
-widerlegen. Fehlt bei einem risikoreichen Großvorhaben `assurance.md` oder
-enthält es keine konkrete Nachweisplanung, ist dies ohne weiteren
-Plausibilitätsreview ein Blocker vor Implementierungsbeginn. Die geplanten
-Nachweise müssen zu diesem Zeitpunkt noch nicht ausgeführt sein.
+System Assurance erhält zusätzlich die Prüfphase `Planungsreview`, den
+vorhandenen Assurance Case oder gleichwertige Proposal-/Design-Artefakte und
+den Auftrag, die für den Fall kritischen Behauptungen gezielt zu widerlegen.
+Ein fehlendes `assurance.md` ist allein kein Befund. Entscheidend ist, ob die
+wesentlichen Risiken, Grenzen und geplanten Nachweise nachvollziehbar sind.
+Form und Prüftiefe dürfen begründet angepasst werden; die geplanten Nachweise
+müssen zu diesem Zeitpunkt noch nicht ausgeführt sein.
 
 **Parallelisierung:** Starte alle Reviews gleichzeitig, wenn möglich. Warte auf alle Ergebnisse, bevor du konsolidierst.
 

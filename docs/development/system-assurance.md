@@ -14,13 +14,16 @@ Berühren eines bestehenden Retry-Pfads, einer Trust Boundary oder einer
 Persistenzgrenze reicht ohne neue oder wesentlich veränderte
 systemübergreifende Invariante nicht als Trigger aus.
 
-## Verbindliches Artefakt
+## Anpassbarer Assurance Case
 
-Der OpenSpec-Change enthält vor Implementierungsbeginn eine Datei
-`openspec/changes/<change-id>/assurance.md`. Sie wird gemeinsam mit
-`proposal.md`, `design.md`, `tasks.md` und den Spec-Deltas gepflegt.
+Für komplexe Fälle wird eine Datei
+`openspec/changes/<change-id>/assurance.md` empfohlen. Die Inhalte dürfen
+stattdessen gleichwertig in `proposal.md`, `design.md`, einem ADR oder dem PR
+stehen, sofern sie zusammenhängend auffindbar und reviewbar bleiben. Das
+folgende Template ist ein Baukasten: Nicht relevante Tabellen und Felder
+entfallen, passende projektspezifische Darstellungen dürfen sie ersetzen.
 
-Vor Implementierungsbeginn ist der Assurance Case planungsreif, wenn die
+Vor einem risikobehafteten Implementierungsblock ist der Assurance Case planungsreif, wenn die
 kritischen Invarianten, Grenzen und Failure Modes beschrieben sind und jede
 Invariante einer konkreten Nachweisplanung oder einer ausdrücklich akzeptierten
 Restrisikoentscheidung zugeordnet ist.
@@ -46,7 +49,7 @@ Nachweisreife nicht eigenständig.
 Eine hohe Coverage-Zahl ist keine eigene Evidenzklasse. Sie kann nur anzeigen,
 ob bereits ausgewählte Codepfade ausgeführt wurden.
 
-## Template für `assurance.md`
+## Referenztemplate für `assurance.md`
 
 ```markdown
 # Assurance Case: <Change-ID>
@@ -96,9 +99,11 @@ ob bereits ausgewählte Codepfade ausgeführt wurden.
 Zulässige Statuswerte: `offen`, `geplant`, `belegt`, `Lücke` und
 `Restrisiko akzeptiert`.
 
-Für die Implementierungsfreigabe genügen `geplant`, `belegt` oder
-`Restrisiko akzeptiert`. Vor dem Merge sind nur `belegt` oder
-`Restrisiko akzeptiert` ausreichend.
+Die Statuswerte sind eine empfohlene gemeinsame Sprache. Für eine
+Implementierungsentscheidung sind `geplant`, `belegt` oder
+`Restrisiko akzeptiert` typische belastbare Zustände; vor dem Merge sind
+`belegt` oder `Restrisiko akzeptiert` zu erwarten. Gleichwertige Statusmodelle
+sind zulässig, wenn ihre Bedeutung eindeutig ist.
 
 ## Freigabe der Implementierung
 
@@ -117,7 +122,11 @@ Für die Implementierungsfreigabe genügen `geplant`, `belegt` oder
 - [ ] Es existieren keine unbekannten oder unzugeordneten Nachweislücken.
 ```
 
-## Arbeitsweise
+## Mögliche Arbeitsweise
+
+Die Reihenfolge ist ein Ausgangspunkt. Sie darf an Liefermodell, Risiko und
+vorhandene Artefakte angepasst werden, solange kritische Annahmen nicht
+unbemerkt zwischen Planung, Umsetzung und Merge verloren gehen.
 
 1. Invarianten und Grenzen vor dem ersten Implementierungsblock formulieren.
 2. Verletzungsszenarien und Failure Modes unabhängig von der geplanten
@@ -138,6 +147,7 @@ bewerten. Sie dürfen jedoch nicht aus dem Ausbleiben weiterer Findings auf
 Vollständigkeit schließen. CI führt die definierten Nachweise reproduzierbar
 aus, entscheidet aber nicht, ob die Menge der Invarianten vollständig ist.
 
-Die fachliche Merge-Entscheidung bleibt beim Menschen. Kritische Invarianten
-ohne Evidenz oder akzeptierte Restrisikoentscheidung blockieren diese
-Entscheidung unabhängig vom sonstigen Check-Status.
+Die fachliche Merge-Entscheidung bleibt beim Menschen. Bei kritischen
+Invarianten darf sie fehlende Evidenz nicht durch einen sonst grünen
+Check-Status ersetzen; Art und Umfang der erforderlichen Evidenz werden jedoch
+für den konkreten Risikofall festgelegt.

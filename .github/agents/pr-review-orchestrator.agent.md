@@ -77,7 +77,7 @@ Lies die PR oder den Diff-Kontext und ermittle:
 - `Code Quality` wird bei jeder Codeänderung aufgerufen.
 - `Test Quality` wird bei jeder Verhaltensänderung, bei neuen Tests oder bei Coverage-relevanten Änderungen aufgerufen.
 - `Test Quality` wird zusätzlich verpflichtend aufgerufen, wenn die PR-Historie wiederholte rote Test-/Coverage-Checks zeigt.
-- `System Assurance` wird bei risikoreichen Großvorhaben verpflichtend aufgerufen, die eine neue oder wesentlich veränderte systemübergreifende Invariante einführen und dabei verteilte Zustände, Nebenläufigkeit, Retry/Recovery, sicherheitsrelevante Trust Boundaries oder gekoppelte Persistenz-/Runtime-Übergänge betreffen.
+- `System Assurance` ist bei risikoreichen Großvorhaben mit neuen oder wesentlich veränderten systemübergreifenden Invarianten ein starker Standard. Der Orchestrator darf den Review anpassen oder durch einen gleichwertigen Fachreview ersetzen, wenn er die konkrete Risikoabdeckung kurz begründet.
 - Zusätzliche Reviewer nur bei erkennbarer Fachrelevanz.
 
 **Trigger-Matrix:**
@@ -106,16 +106,19 @@ Rufe alle ausgewählten Fachreviewer parallel auf. Jeder Reviewer erhält:
 - relevante Diff- oder Dateiliste
 - klare Aufforderung, sein jeweiliges Template zu verwenden
 
-Bestimme für System Assurance die Prüfphase aus der Lieferstufe:
+Bestimme für System Assurance die primäre Prüfphase aus der Lieferstufe. Passe
+sie an, wenn der PR Planungs- und Implementierungsanteile sinnvoll verbindet:
 
 - Ein reiner Proposal-PR ohne Implementierung erhält `Planungsreview`.
 - Ein PR mit Implementierung oder Merge-Reifeprüfung erhält `Nachweisreview`.
 
-System Assurance erhält die ermittelte Prüfphase, den Assurance Case, den
+System Assurance erhält die ermittelte Prüfphase, den vorhandenen Assurance Case oder gleichwertige Artefakte, den
 exakten PR-HEAD und die Aufforderung, Invarianten durch konkrete Gegenbeispiele
 zu widerlegen sowie abhängig von der Prüfphase die Nachweisplanung oder die
 ausgeführte direkte Evidenz zu verifizieren. Grüne Checks oder ausbleibende
-Findings dürfen nicht als Vollständigkeitsnachweis konsolidiert werden.
+Findings dürfen nicht als Vollständigkeitsnachweis konsolidiert werden. Das
+Review-Template ist an den Fall anzupassen; nicht relevante Matrizen sind kein
+Selbstzweck.
 
 #### Schritt 4: Ergebnisse konsolidieren
 

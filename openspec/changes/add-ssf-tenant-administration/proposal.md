@@ -29,10 +29,10 @@ Benutzerverwaltung aufzubauen.
 
 ## Dependencies and Coordination
 
-- Uses die gemergten Baselines aus
+- Verwendet die gemergten Baselines aus
   `extend-plugin-platform-scopes-and-activation` und PR #1246.
-- Depends on `add-plugin-tenant-lifecycle`.
-- Reuses die bestehenden Capabilities `iam-core`, `iam-access-control`,
+- Hängt von `add-plugin-tenant-lifecycle` ab.
+- Verwendet die bestehenden Capabilities `iam-core`, `iam-access-control`,
   `iam-auditing`, `instance-provisioning` und `plugin-operations-platform`.
 - `add-ssf-runtime-configuration-api` und dieser Change teilen Plugin- und
   Datenbank-Ownership, bleiben aber getrennte Lieferstränge: Runtime-Read-Pfad

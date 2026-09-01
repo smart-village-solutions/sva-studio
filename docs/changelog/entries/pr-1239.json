@@ -1,0 +1,4 @@
+{
+  "prNumber": 1239,
+  "body": "Die automatisierte Qualitätssicherung des Kachel-Editors prüft jetzt zusätzlich, dass geänderte Texte und hinterlegte Bild-URLs auch nach einem vollständigen Neuladen erhalten und sichtbar bleiben."
+}

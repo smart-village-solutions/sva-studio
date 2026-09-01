@@ -967,7 +967,10 @@ describe('dispatchSvaMainserverNewsRequest', () => {
                   contentType: ' image ',
                   height: '720',
                   width: '1280',
-                  sourceUrl: null,
+                  sourceUrl: {
+                    url: 'http://example.invalid/image.jpg',
+                    description: ' Titelbild ',
+                  },
                 },
               ],
             },
@@ -1007,6 +1010,10 @@ describe('dispatchSvaMainserverNewsRequest', () => {
                   contentType: 'image',
                   height: 720,
                   width: 1280,
+                  sourceUrl: {
+                    url: 'http://example.invalid/image.jpg',
+                    description: 'Titelbild',
+                  },
                 },
               ],
             }),

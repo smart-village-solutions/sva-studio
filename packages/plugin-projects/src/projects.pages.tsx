@@ -198,6 +198,12 @@ function ProjectImages({
             previewUnavailable: pt('messages.imagePreviewEmpty'),
           },
           announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
+          urlFeedback: {
+            upgradedToHttps: pt('media.urlUpgradedToHttps'),
+            insecureHttp: pt('media.urlInsecureHttp'),
+            httpsUnavailable: pt('media.urlHttpsUnavailable'),
+            invalid: pt('media.urlInvalid'),
+          },
           refresh: {
             title: pt('media.refreshTitle'),
             description: pt('media.refreshDescription'),

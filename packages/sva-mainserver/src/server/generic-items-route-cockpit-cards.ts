@@ -1,3 +1,5 @@
+import { isPersistableManualMediaUrl } from '@sva/core';
+
 import type { SvaMainserverGenericItemInput } from '../types.js';
 import { errorJson, isResponse } from './content-route-core.js';
 import { parseGenericItemInput } from './generic-items-route-input.js';
@@ -61,13 +63,16 @@ export const validateCockpitCardItemOrResponse = (
     return errorJson(400, 'invalid_request', 'Genau eine Kachel-Kategorie ist erforderlich.');
   if (
     item.mediaContents?.some(
-      (media) => media.contentType !== 'image' || !media.sourceUrl?.url.startsWith('https://')
+      (media) =>
+        media.contentType !== 'image' ||
+        !media.sourceUrl?.url ||
+        !isPersistableManualMediaUrl(media.sourceUrl.url)
     )
   )
     return errorJson(
       400,
       'invalid_request',
-      'Kacheln unterstützen ausschließlich gültige HTTPS-Bilder.'
+      'Kacheln unterstützen ausschließlich gültige persistierbare HTTP- oder HTTPS-Bilder.'
     );
   if (
     (item.webUrls?.length ?? 0) > 1 ||

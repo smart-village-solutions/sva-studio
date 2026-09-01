@@ -37,6 +37,7 @@ import {
   createStudioMediaPickerLabels,
   hasStudioCreatedSaveFeedback,
   isPersistableContentMediaUrl,
+  isPersistableManualContentMediaUrl,
   Select,
   StudioDetailTabIcon,
   StudioDetailPageTemplate,
@@ -90,7 +91,7 @@ import { mediaContentSourceKey } from './poi.detail-media.helpers.js';
 import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
 import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
-import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
+import { validatePoiForm } from './poi.validation.js';
 import {
   poiAssetToUsage,
   poiMediaContentsToUsages,
@@ -631,7 +632,7 @@ export function PoiDetailPage({
       if (validationErrors.includes('mediaContents')) {
         const invalidMediaIndex = values.content.mediaContents.findIndex((entry) => {
           const url = entry.sourceUrl?.url?.trim() ?? '';
-          return url.length > 0 && isHttpsUrl(url) === false;
+          return url.length > 0 && !isPersistableManualContentMediaUrl(url);
         });
         const mediaIndex = invalidMediaIndex >= 0 ? invalidMediaIndex : 0;
         methods.setError(`content.mediaContents.${mediaIndex}.sourceUrl.url`, {

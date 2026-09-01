@@ -1,3 +1,4 @@
+import { isPersistableManualContentMediaUrl } from '@sva/studio-ui-react';
 import { z } from 'zod';
 
 import {
@@ -17,7 +18,7 @@ const imageSchema = z
   .object({
     sourceUrl: z
       .object({
-        url: z.string().url().startsWith('https://'),
+        url: z.string().refine(isPersistableManualContentMediaUrl),
         description: z.string().optional(),
       })
       .passthrough(),

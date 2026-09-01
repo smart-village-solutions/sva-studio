@@ -9,6 +9,10 @@ import {
   revokeBrowserObjectUrl,
 } from './content-media-usage.js';
 import {
+  inspectManualContentMediaUrl,
+  isPersistableManualContentMediaUrl,
+} from './content-media-url.js';
+import {
   contentMediaUsagesToLocalDrafts,
   resolveContentMediaUsageDrafts,
 } from './content-media-drafts.js';
@@ -70,6 +74,44 @@ describe('content media usage', () => {
     expect(isPersistableContentMediaUrl('not a url')).toBe(false);
   });
 
+  it('keeps the asset URL contract HTTPS-only while allowing explicit HTTP for manual media', () => {
+    expect(isPersistableContentMediaUrl('http://cdn.example.test/image.jpg')).toBe(false);
+    expect(isPersistableManualContentMediaUrl('http://cdn.example.test/image.jpg')).toBe(true);
+    expect(
+      isPersistableManualContentMediaUrl('http://cdn.example.test/image.jpg?X-Amz-Signature=secret')
+    ).toBe(false);
+    expect(
+      isPersistableManualContentMediaUrl('http://user:secret@cdn.example.test/image.jpg')
+    ).toBe(false);
+  });
+
+  it('classifies manual URL input without silently downgrading protocol-free values', () => {
+    expect(
+      inspectManualContentMediaUrl(
+        ' https://api.tmb.pixelpoint.biz/api/asset/92919/thumbnail/595/372.jpg '
+      )
+    ).toEqual({
+      kind: 'https',
+      value: 'https://api.tmb.pixelpoint.biz/api/asset/92919/thumbnail/595/372.jpg',
+    });
+    expect(inspectManualContentMediaUrl('http://cdn.example.test/image.jpg')).toEqual({
+      kind: 'upgrade',
+      value: 'http://cdn.example.test/image.jpg',
+      httpsCandidate: 'https://cdn.example.test/image.jpg',
+      httpFallback: true,
+    });
+    expect(inspectManualContentMediaUrl('cdn.example.test/image.jpg')).toEqual({
+      kind: 'upgrade',
+      value: 'cdn.example.test/image.jpg',
+      httpsCandidate: 'https://cdn.example.test/image.jpg',
+      httpFallback: false,
+    });
+    expect(inspectManualContentMediaUrl('ftp://cdn.example.test/image.jpg')).toEqual({
+      kind: 'invalid',
+      value: 'ftp://cdn.example.test/image.jpg',
+    });
+  });
+
   it('creates references only for asset-backed usages', () => {
     const manual = createManualContentMediaUsage();
     expect(contentMediaUsageToReference(manual)).toBeNull();
@@ -107,20 +149,22 @@ describe('content media usage', () => {
       },
     ]);
     const [resolved] = resolveContentMediaUsageDrafts(
-        [draft],
-        [
-          {
-            draftId: 'draft-1',
-            assetId: 'asset-1',
-            persistentUrl: 'https://media.test/asset-1.jpg',
-          },
-        ]
-      );
-    expect(resolved).toEqual(expect.objectContaining({
-      assetId: 'asset-1',
-      persistentUrl: 'https://media.test/asset-1.jpg',
-      referenceStatus: 'pending',
-    }));
+      [draft],
+      [
+        {
+          draftId: 'draft-1',
+          assetId: 'asset-1',
+          persistentUrl: 'https://media.test/asset-1.jpg',
+        },
+      ]
+    );
+    expect(resolved).toEqual(
+      expect.objectContaining({
+        assetId: 'asset-1',
+        persistentUrl: 'https://media.test/asset-1.jpg',
+        referenceStatus: 'pending',
+      })
+    );
     expect(resolved).not.toHaveProperty('localDraft');
     expect(resolved).not.toHaveProperty('previewUrl');
   });

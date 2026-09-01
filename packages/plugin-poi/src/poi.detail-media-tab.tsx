@@ -45,6 +45,12 @@ const createPoiMediaUsageLabels = (pt: PoiTranslator) => ({
     previewUnavailable: pt('messages.mediaPreviewUnavailable'),
   },
   announcements: { moved: pt('messages.mediaMoved'), removed: pt('messages.mediaRemoved') },
+  urlFeedback: {
+    upgradedToHttps: pt('messages.mediaUrlUpgradedToHttps'),
+    insecureHttp: pt('messages.mediaUrlInsecureHttp'),
+    httpsUnavailable: pt('messages.mediaUrlHttpsUnavailable'),
+    invalid: pt('messages.mediaUrlInvalid'),
+  },
   refresh: {
     title: pt('messages.mediaRefreshTitle'),
     description: pt('messages.mediaRefreshDescription'),

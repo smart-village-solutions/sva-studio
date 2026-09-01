@@ -42,7 +42,7 @@ describe('validateNewsForm', () => {
           {
             intro: 'Kurztext',
             body: '<p>Hallo</p>',
-            mediaContents: [{ sourceUrl: { url: 'https://example.com/image.jpg' } }],
+            mediaContents: [{ sourceUrl: { url: 'http://example.com/image.jpg' } }],
           },
         ],
       })
@@ -58,7 +58,10 @@ describe('validateNewsForm', () => {
         charactersToBeShown: -1,
         sourceUrl: { url: 'http://example.com/article' },
         categories: [{ name: '' }],
-        contentBlocks: [{ body: '' }, { body: '<p>Hallo</p>', mediaContents: [{ sourceUrl: { url: 'ftp://example.com' } }] }],
+        contentBlocks: [
+          { body: '' },
+          { body: '<p>Hallo</p>', mediaContents: [{ sourceUrl: { url: 'ftp://example.com' } }] },
+        ],
       })
     ).toEqual([
       'title',

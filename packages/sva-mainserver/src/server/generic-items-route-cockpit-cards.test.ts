@@ -60,15 +60,6 @@ describe('cockpit card route validation', () => {
       },
       'Bild',
     ],
-    [
-      {
-        ...validItem,
-        mediaContents: [
-          { sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' },
-        ],
-      },
-      'Bild',
-    ],
     [{ ...validItem, webUrls: [{ url: 'https://one.test' }, { url: 'https://two.test' }] }, 'Link'],
     [{ ...validItem, webUrls: [{ url: 'http://example.test' }] }, 'Link'],
     [{ ...validItem, contentBlocks: [{ body: '<b>Text</b>' }] }, 'HTML'],
@@ -86,6 +77,17 @@ describe('cockpit card route validation', () => {
     await expect(response?.json()).resolves.toEqual(
       expect.objectContaining({ message: expect.stringContaining(message) })
     );
+  });
+
+  it('accepts explicit http image urls without relaxing destination links', () => {
+    expect(
+      validateCockpitCardItemOrResponse({
+        ...validItem,
+        mediaContents: [
+          { sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' },
+        ],
+      })
+    ).toBeNull();
   });
 
   it('preserves unknown payload keys', () => {

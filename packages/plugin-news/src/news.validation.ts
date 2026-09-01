@@ -1,3 +1,5 @@
+import { isPersistableManualContentMediaUrl } from '@sva/studio-ui-react';
+
 import type { NewsContentItem, NewsFormInput } from './news.types.js';
 
 const isHttpsUrl = (value: string): boolean => {
@@ -55,7 +57,11 @@ export const validateNewsForm = (input: NewsFormInput): readonly string[] => {
     errors.push('sourceUrl');
   }
 
-  if (input.categories?.some((category) => category.name.trim().length === 0 || category.name.length > 128)) {
+  if (
+    input.categories?.some(
+      (category) => category.name.trim().length === 0 || category.name.length > 128
+    )
+  ) {
     errors.push('categories');
   }
 
@@ -66,7 +72,10 @@ export const validateNewsForm = (input: NewsFormInput): readonly string[] => {
 
   if (
     contentBlocks.some((block) =>
-      block.mediaContents?.some((media) => media.sourceUrl?.url && isHttpsUrl(media.sourceUrl.url) === false)
+      block.mediaContents?.some((media) => {
+        const url = media.sourceUrl?.url?.trim() ?? '';
+        return url.length > 0 && !isPersistableManualContentMediaUrl(url);
+      })
     )
   ) {
     errors.push('mediaContents');

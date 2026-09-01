@@ -4,6 +4,7 @@ export {
   parseCategories,
   parseContact,
   parseLocation,
+  parseMediaUrl,
   parseTags,
   parseWebUrl,
   parseWebUrls,

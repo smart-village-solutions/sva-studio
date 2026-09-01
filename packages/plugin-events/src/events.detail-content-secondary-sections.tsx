@@ -75,6 +75,52 @@ export type EventsMediaSectionProps = Readonly<{
   pt: Translator;
 }>;
 
+const createEventsMediaLabels = (pt: Translator) => ({
+  title: pt('cards.content.media.title'),
+  description: pt('cards.content.media.description'),
+  empty: pt('cards.content.media.empty'),
+  actions: {
+    add: pt('messages.mediaPickerTitle'),
+    remove: pt('actions.removeImage'),
+    moveUp: pt('media.moveUp'),
+    moveDown: pt('media.moveDown'),
+    refreshMetadata: pt('media.refresh'),
+    cancel: pt('actions.cancel'),
+    apply: pt('media.apply'),
+  },
+  fields: {
+    url: pt('fields.mediaSourceUrl'),
+    altText: pt('fields.mediaSourceDescription'),
+    caption: pt('fields.mediaCaption'),
+    credit: pt('fields.mediaCopyright'),
+    license: pt('messages.mediaPickerLicense'),
+  },
+  states: {
+    linked: pt('media.linked'),
+    manual: pt('media.manual'),
+    synced: pt('media.synced'),
+    pending: pt('media.pending'),
+    missing: pt('media.missing'),
+    additional: pt('media.additional'),
+    unresolved: pt('media.unresolved'),
+    failed: pt('media.failed'),
+    previewUnavailable: pt('media.previewUnavailable'),
+  },
+  announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
+  urlFeedback: {
+    upgradedToHttps: pt('media.urlUpgradedToHttps'),
+    insecureHttp: pt('media.urlInsecureHttp'),
+    httpsUnavailable: pt('media.urlHttpsUnavailable'),
+    invalid: pt('media.urlInvalid'),
+  },
+  refresh: {
+    title: pt('media.refreshTitle'),
+    description: pt('media.refreshDescription'),
+    assetValue: pt('media.assetValue'),
+    contentValue: pt('media.contentValue'),
+  },
+});
+
 export function EventsMediaSection(props: EventsMediaSectionProps) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
   const mediaContents = useWatch({ control, name: 'content.mediaContents' }) ?? [];
@@ -108,45 +154,7 @@ export function EventsMediaSection(props: EventsMediaSectionProps) {
           onLoadAssetSnapshot={props.onLoadAssetSnapshot}
           showHeader={false}
           supportedFields={{ altText: true, caption: true, credit: true, license: false }}
-          labels={{
-            title: props.pt('cards.content.media.title'),
-            description: props.pt('cards.content.media.description'),
-            empty: props.pt('cards.content.media.empty'),
-            actions: {
-              add: props.pt('messages.mediaPickerTitle'),
-              remove: props.pt('actions.removeImage'),
-              moveUp: props.pt('media.moveUp'),
-              moveDown: props.pt('media.moveDown'),
-              refreshMetadata: props.pt('media.refresh'),
-              cancel: props.pt('actions.cancel'),
-              apply: props.pt('media.apply'),
-            },
-            fields: {
-              url: props.pt('fields.mediaSourceUrl'),
-              altText: props.pt('fields.mediaSourceDescription'),
-              caption: props.pt('fields.mediaCaption'),
-              credit: props.pt('fields.mediaCopyright'),
-              license: props.pt('messages.mediaPickerLicense'),
-            },
-            states: {
-              linked: props.pt('media.linked'),
-              manual: props.pt('media.manual'),
-              synced: props.pt('media.synced'),
-              pending: props.pt('media.pending'),
-              missing: props.pt('media.missing'),
-              additional: props.pt('media.additional'),
-              unresolved: props.pt('media.unresolved'),
-              failed: props.pt('media.failed'),
-              previewUnavailable: props.pt('media.previewUnavailable'),
-            },
-            announcements: { moved: props.pt('media.moved'), removed: props.pt('media.removed') },
-            refresh: {
-              title: props.pt('media.refreshTitle'),
-              description: props.pt('media.refreshDescription'),
-              assetValue: props.pt('media.assetValue'),
-              contentValue: props.pt('media.contentValue'),
-            },
-          }}
+          labels={createEventsMediaLabels(props.pt)}
         />
       </fieldset>
     </EventsDetailCard>

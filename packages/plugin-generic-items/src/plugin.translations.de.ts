@@ -210,6 +210,12 @@ export const genericItemsTranslationsDe = {
       previewUnavailable: 'Vorschau nicht verfügbar',
       moved: 'Medium an Position {{position}} von {{total}} verschoben.',
       removed: 'Medium entfernt.',
+      urlUpgradedToHttps: 'Die Bild-URL wurde auf HTTPS aktualisiert.',
+      urlInsecureHttp:
+        'Diese HTTP-Bild-URL wird unsicher übertragen und kann in HTTPS-Anwendungen blockiert werden.',
+      urlHttpsUnavailable:
+        'Für diese Bildadresse wurde keine funktionierende HTTPS-Version gefunden.',
+      urlInvalid: 'Die Bild-URL ist ungültig oder nicht dauerhaft speicherbar.',
       refreshTitle: 'Metadaten aktualisieren',
       refreshDescription: 'Wählen Sie die zu übernehmenden Felder.',
       assetValue: 'Mediathek',

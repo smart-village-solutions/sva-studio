@@ -196,8 +196,13 @@ describe('content-route-parsers-poi', () => {
   it('returns validation errors for malformed media, certificate and accessibility payloads', async () => {
     await expectInvalidRequest(parseMediaContents('no-array') as Response);
     await expectInvalidRequest(parseMediaContents([null]) as Response);
+    expect(parseMediaContents([{ sourceUrl: { url: 'http://example.test/plan.jpg' } }])).toEqual([
+      { sourceUrl: { url: 'http://example.test/plan.jpg' } },
+    ]);
     await expectInvalidRequest(
-      parseMediaContents([{ sourceUrl: { url: 'http://example.test/plan.jpg' } }]) as Response
+      parseMediaContents([
+        { sourceUrl: { url: 'http://example.test/plan.jpg?X-Amz-Signature=secret' } },
+      ]) as Response
     );
 
     await expectInvalidRequest(parseCertificates('no-array') as Response);

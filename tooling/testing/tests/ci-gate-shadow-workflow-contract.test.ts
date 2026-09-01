@@ -92,6 +92,17 @@ describe('consolidated CI gate workflows', () => {
     expect(mainGates).not.toContain('sva-studio-react:build');
   });
 
+  it('checks out complete history before Main coverage and SonarCloud', () => {
+    const coverageStart = mainGates.indexOf('\n  coverage:');
+    const complexityStart = mainGates.indexOf('\n  complexity:', coverageStart);
+    const coverageJob = mainGates.slice(coverageStart, complexityStart);
+
+    expect(coverageJob).toContain('uses: actions/checkout@v7\n        with:\n          fetch-depth: 0');
+    expect(coverageJob).not.toContain('filter: tree:0');
+    expect(coverageJob).not.toContain('git fetch --unshallow');
+    expect(coverageJob).not.toContain('git fetch --tags');
+  });
+
   it('runs full Main and Nightly diagnostics without PR scope, PR cache, or parity', () => {
     expect(mainGates).toContain('name: CI Gates (Main and Nightly)');
     expect(mainGates).toContain('push:\n    branches:\n      - main');

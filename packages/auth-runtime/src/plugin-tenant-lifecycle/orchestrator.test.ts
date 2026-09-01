@@ -11,6 +11,7 @@ import {
 const lifecycleDefinition: PluginTenantLifecycleRegistryEntry = {
   pluginId: 'speech',
   contractVersion: 1,
+  contractRevision: 'speech-1:1',
   operations: [{ operation: 'provision', jobTypeId: 'speech.provisionTenant' }],
   readinessChecks: [],
 };
@@ -94,6 +95,7 @@ describe('plugin tenant lifecycle orchestrator', () => {
         jobTypeId: 'speech.provisionTenant',
         operation: 'provision',
         generation: 3,
+        contractRevision: 'speech-1:1',
       })
     );
     expect(dependencies.repository.claimLifecycle).toHaveBeenCalledWith(

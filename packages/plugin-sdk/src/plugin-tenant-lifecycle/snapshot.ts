@@ -9,6 +9,12 @@ import type {
 } from './types.js';
 
 const readinessStatusSet = new Set<string>(['pending', 'ready', 'degraded', 'blocked']);
+const readinessStatusPriority: Readonly<Record<PluginTenantReadinessStatus, number>> = {
+  ready: 0,
+  degraded: 1,
+  pending: 2,
+  blocked: 3,
+};
 
 export const reducePluginTenantReadinessStatus = (
   definition: PluginTenantLifecycleDefinition,
@@ -16,14 +22,15 @@ export const reducePluginTenantReadinessStatus = (
 ): PluginTenantReadinessStatus =>
   definition.readinessChecks.reduce<PluginTenantReadinessStatus>((current, declaredCheck) => {
     const status = checks.find(({ checkId }) => checkId === declaredCheck.checkId)?.status;
-    if (status === 'blocked') {
-      return declaredCheck.required ? 'blocked' : current === 'blocked' ? 'blocked' : 'degraded';
-    }
-    if (status === 'degraded' && current !== 'blocked') return 'degraded';
-    if (status === 'pending' && current === 'ready') {
-      return declaredCheck.required ? 'pending' : 'degraded';
-    }
-    return current;
+    const candidate: PluginTenantReadinessStatus =
+      status === 'ready' || status === undefined
+        ? 'ready'
+        : declaredCheck.required
+          ? status
+          : 'degraded';
+    return readinessStatusPriority[candidate] > readinessStatusPriority[current]
+      ? candidate
+      : current;
   }, 'ready');
 
 export const createPluginTenantReadinessSnapshot = (input: {

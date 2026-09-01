@@ -33,6 +33,7 @@ const persistAtomicLifecycleStart: PersistPluginTenantLifecycleStart = async ({
   jobTypeId,
   queueName,
   executionLane,
+  contractRevision,
 }) =>
   withStudioJobLifecycleRepositories(
     request.instanceId,
@@ -61,6 +62,7 @@ const persistAtomicLifecycleStart: PersistPluginTenantLifecycleStart = async ({
           [pluginTenantLifecycleJobInputKey]: {
             operation: request.operation,
             generation: lifecycle.desiredGeneration,
+            ...(contractRevision ? { contractRevision } : {}),
           },
         },
         attempts: 0,

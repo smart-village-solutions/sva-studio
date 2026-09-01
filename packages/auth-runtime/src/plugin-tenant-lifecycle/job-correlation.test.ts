@@ -15,6 +15,7 @@ import {
 const definition: PluginTenantLifecycleRegistryEntry = {
   pluginId: 'speech',
   contractVersion: 1,
+  contractRevision: 'speech-1:1',
   operations: [{ operation: 'provision', jobTypeId: 'speech.provisionTenant' }],
   readinessChecks: [
     { checkId: 'speech.realm', titleKey: 'speech.readiness.realm', required: true },
@@ -31,7 +32,11 @@ const job: StudioJobRecord = {
   queueName: 'plugin-operations',
   status: 'running',
   inputPayload: {
-    [pluginTenantLifecycleJobInputKey]: { operation: 'provision', generation: 3 },
+    [pluginTenantLifecycleJobInputKey]: {
+      operation: 'provision',
+      generation: 3,
+      contractRevision: 'speech-1:1',
+    },
   },
   attempts: 1,
   maxAttempts: 5,
@@ -103,11 +108,12 @@ describe('plugin tenant lifecycle job correlation', () => {
       generation: 3,
       operation: 'provision',
       readinessStatus: 'degraded',
-      readinessRevision: 'realm-v3',
+      readinessRevision: JSON.stringify(['speech-1:1', 'realm-v3']),
       readinessChecks: [
         { checkId: 'speech.realm', status: 'ready' },
         { checkId: 'speech.branding', status: 'blocked' },
       ],
+      contractRevision: 'speech-1:1',
     });
   });
 
@@ -216,6 +222,39 @@ describe('plugin tenant lifecycle job correlation', () => {
         pluginId: 'speech',
         jobId: job.id,
         generation: 3,
+        errorCode: 'plugin_tenant_lifecycle_job_contract_mismatch',
+        retryKind: 'terminal',
+      })
+    );
+  });
+
+  it('discards obsolete retry semantics after a contract revision changes', async () => {
+    const { dependencies, repository } = createDependencies();
+    dependencies.lifecycleRegistry = new Map([
+      ['speech', { ...definition, contractRevision: 'speech-2:1' }],
+    ]);
+
+    await createPluginTenantLifecycleJobCorrelation(dependencies).fail({
+      job,
+      error: {
+        code: 'plugin_operation_execution_failed',
+        category: 'permanent',
+        details: {
+          plugin: {
+            code: 'speech.databaseUnavailable',
+            messageKey: 'speech.errors.databaseUnavailable',
+            retry: { kind: 'retryable', retryAfterMs: 600_000 },
+          },
+        },
+      },
+      reason: 'failed',
+    });
+
+    expect(repository.failLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readinessStatus: 'blocked',
+        errorCode: 'plugin_tenant_lifecycle_job_contract_mismatch',
+        retryKind: 'terminal',
       })
     );
   });

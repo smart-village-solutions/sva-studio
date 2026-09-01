@@ -99,6 +99,7 @@ export type StudioJobRepository = {
       readonly expectedStatuses: readonly StudioJobRecord['status'][];
       readonly expectedAttempts: number;
       readonly expectedWorkerId: string | null;
+      readonly leasePredicate?: Extract<StudioJobTerminalLeasePredicate, { kind: 'activeOwner' }>;
     }
   ): Promise<
     | { readonly outcome: 'applied'; readonly job: StudioJobRecord }
@@ -390,6 +391,7 @@ const transitionJobStateStatement = (
     readonly expectedStatuses: readonly StudioJobRecord['status'][];
     readonly expectedAttempts: number;
     readonly expectedWorkerId: string | null;
+    readonly leasePredicate?: Extract<StudioJobTerminalLeasePredicate, { kind: 'activeOwner' }>;
   }
 ): SqlStatement => ({
   text: `
@@ -401,6 +403,11 @@ WHERE instance_id = $10 AND id = $11
   AND status = ANY($12::text[])
   AND attempts = $13
   AND worker_id IS NOT DISTINCT FROM $14
+  ${
+    input.leasePredicate?.kind === 'activeOwner'
+      ? "AND COALESCE(heartbeat_at, started_at, updated_at) > NOW() - INTERVAL '120 seconds'"
+      : ''
+  }
 RETURNING
 ${jobSelectColumns}
   `,

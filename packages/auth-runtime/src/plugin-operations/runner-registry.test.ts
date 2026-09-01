@@ -192,6 +192,60 @@ describe('plugin operation runner registry', () => {
     expect(state.withStudioJobLifecycleRepositories).not.toHaveBeenCalled();
   });
 
+  it('requires the loaded worker to retain an active lease before scheduling a retry', async () => {
+    const registry = await import('./runner-registry.js');
+    const run = vi.fn(async () => undefined);
+    const transitionJobState = vi.fn(async (input) => ({
+      outcome: 'applied' as const,
+      job: { ...runningJob, ...input },
+    }));
+    const runningJob = {
+      id: 'retry-job',
+      instanceId: 'tenant-a',
+      source: 'host' as const,
+      jobTypeId: 'studio.retry',
+      queueName: 'host-queue',
+      status: 'running' as const,
+      inputPayload: {},
+      attempts: 1,
+      maxAttempts: 5,
+      workerId: 'worker-a',
+      idempotencyKey: 'studio.retry:1',
+      scheduledAt: '2026-08-30T12:00:00.000Z',
+      createdAt: '2026-08-30T12:00:00.000Z',
+      updatedAt: '2026-08-30T12:00:00.000Z',
+    };
+    state.createJobLifecycleOrchestrator.mockReturnValue({ run });
+    state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({ getJobById: vi.fn(async () => runningJob), transitionJobState })
+    );
+
+    const taskList = registry.createStudioJobTaskList(() => new Map());
+    await taskList[registry.studioJobTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: runningJob.id },
+      { job: { attempts: 1, max_attempts: 5 } } as never
+    );
+    const [{ loadRepository }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+    const repository = await loadRepository('tenant-a');
+    await repository.getJobById('tenant-a', runningJob.id);
+    await repository.updateJobState({
+      jobId: runningJob.id,
+      instanceId: 'tenant-a',
+      status: 'retrying',
+      attempts: 1,
+      workerId: 'worker-a',
+    });
+
+    expect(transitionJobState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedStatuses: ['running'],
+        expectedAttempts: 1,
+        expectedWorkerId: 'worker-a',
+        leasePredicate: { kind: 'activeOwner' },
+      })
+    );
+  });
+
   it('registers host and plugin handlers separately and exposes plugin registrations in plugin shape', async () => {
     const registry = await import('./runner-registry.js');
 

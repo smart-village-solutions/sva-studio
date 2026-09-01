@@ -53,6 +53,7 @@ type StagedPluginTenantLifecycleOrchestratorDependencies =
       readonly queueName: string;
       readonly operation: PluginTenantLifecycleOperation;
       readonly generation: number;
+      readonly contractRevision?: string;
       readonly actorAccountId?: string;
       readonly requestId?: string;
       readonly scheduledAt: string;
@@ -83,6 +84,7 @@ export type PersistPluginTenantLifecycleStart = (input: {
   readonly jobTypeId: string;
   readonly queueName: string;
   readonly executionLane: 'default' | 'privileged';
+  readonly contractRevision?: string;
 }) => Promise<StartPluginTenantLifecycleResult>;
 
 type AtomicPluginTenantLifecycleOrchestratorDependencies =
@@ -156,7 +158,7 @@ const resolveLifecycleOperation = async (
       input.operation
     );
   }
-  return { operationDefinition, registration };
+  return { lifecycle, operationDefinition, registration };
 };
 
 const handleEnqueueFailure = async (
@@ -263,7 +265,7 @@ export const createPluginTenantLifecycleOrchestrator = (
   dependencies: PluginTenantLifecycleOrchestratorDependencies
 ) => ({
   async start(input: StartPluginTenantLifecycleInput): Promise<StartPluginTenantLifecycleResult> {
-    const { operationDefinition, registration } = await resolveLifecycleOperation(
+    const { lifecycle, operationDefinition, registration } = await resolveLifecycleOperation(
       dependencies,
       input
     );
@@ -273,6 +275,7 @@ export const createPluginTenantLifecycleOrchestrator = (
         jobTypeId: operationDefinition.jobTypeId,
         queueName: registration.queueName,
         executionLane: registration.executionLane ?? 'default',
+        ...(lifecycle.contractRevision ? { contractRevision: lifecycle.contractRevision } : {}),
       });
     }
     const requestedLifecycle = await dependencies.repository.requestLifecycle({
@@ -288,6 +291,7 @@ export const createPluginTenantLifecycleOrchestrator = (
       queueName: registration.queueName,
       operation: input.operation,
       generation,
+      ...(lifecycle.contractRevision ? { contractRevision: lifecycle.contractRevision } : {}),
       actorAccountId: input.actorAccountId,
       requestId: input.requestId,
       scheduledAt: input.scheduledAt,

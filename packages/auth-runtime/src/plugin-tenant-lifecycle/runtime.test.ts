@@ -269,7 +269,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
           jobTypeId: 'speech.provisionTenant',
           idempotencyKey: 'speech:tenant-lifecycle:provision:3',
           inputPayload: {
-            studioTenantLifecycle: { operation: 'provision', generation: 3 },
+            studioTenantLifecycle: {
+              operation: 'provision',
+              generation: 3,
+              contractRevision: '1.0.0:1',
+            },
           },
         }),
       })
@@ -320,7 +324,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
           pluginId: 'speech',
           jobTypeId: 'speech.checkTenantReadiness',
           inputPayload: {
-            studioTenantLifecycle: { operation: 'readiness', generation: 3 },
+            studioTenantLifecycle: {
+              operation: 'readiness',
+              generation: 3,
+              contractRevision: '1.0.0:1',
+            },
           },
         }),
       })
@@ -415,7 +423,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
           jobTypeId: 'speech.checkTenantReadiness',
           idempotencyKey: 'speech:tenant-lifecycle:readiness:3',
           inputPayload: {
-            studioTenantLifecycle: { operation: 'readiness', generation: 3 },
+            studioTenantLifecycle: {
+              operation: 'readiness',
+              generation: 3,
+              contractRevision: '1.0.0:1',
+            },
           },
         }),
       })
@@ -440,7 +452,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
         create: expect.objectContaining({
           jobTypeId: 'speech.reactivateTenant',
           inputPayload: {
-            studioTenantLifecycle: { operation: 'reactivate', generation: 3 },
+            studioTenantLifecycle: {
+              operation: 'reactivate',
+              generation: 3,
+              contractRevision: '1.0.0:1',
+            },
           },
         }),
       })
@@ -465,7 +481,11 @@ describe('configured plugin tenant lifecycle runtime', () => {
         create: expect.objectContaining({
           jobTypeId: 'speech.suspendTenant',
           inputPayload: {
-            studioTenantLifecycle: { operation: 'suspend', generation: 3 },
+            studioTenantLifecycle: {
+              operation: 'suspend',
+              generation: 3,
+              contractRevision: '1.0.0:1',
+            },
           },
         }),
       })

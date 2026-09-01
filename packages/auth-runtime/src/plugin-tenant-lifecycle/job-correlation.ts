@@ -21,6 +21,7 @@ export const pluginTenantLifecycleJobInputKey = 'studioTenantLifecycle';
 export type PluginTenantLifecycleJobMetadata = {
   readonly operation: PluginTenantLifecycleOperation;
   readonly generation: number;
+  readonly contractRevision?: string;
 };
 
 const permanentLifecycleError = (code: string, job: StudioJobRecord): Error => {
@@ -42,11 +43,14 @@ export const readPluginTenantLifecycleJobMetadata = (
 
   const operation = (value as { readonly operation?: unknown }).operation;
   const generation = (value as { readonly generation?: unknown }).generation;
+  const contractRevision = (value as { readonly contractRevision?: unknown }).contractRevision;
   if (
     typeof operation !== 'string' ||
     !lifecycleOperations.has(operation) ||
     !Number.isSafeInteger(generation) ||
-    Number(generation) < 1
+    Number(generation) < 1 ||
+    (contractRevision !== undefined &&
+      (typeof contractRevision !== 'string' || contractRevision.length === 0))
   ) {
     throw new Error('invalid_plugin_tenant_lifecycle_job_metadata');
   }
@@ -54,6 +58,7 @@ export const readPluginTenantLifecycleJobMetadata = (
   return {
     operation: operation as PluginTenantLifecycleOperation,
     generation: Number(generation),
+    ...(typeof contractRevision === 'string' ? { contractRevision } : {}),
   };
 };
 
@@ -90,11 +95,17 @@ const resolveLifecycleContext = (
   if (!definition || operation?.jobTypeId !== job.jobTypeId) {
     throw permanentLifecycleError('plugin_tenant_lifecycle_job_contract_mismatch', job);
   }
+  if (metadata.contractRevision !== definition.contractRevision) {
+    throw permanentLifecycleError('plugin_tenant_lifecycle_job_contract_mismatch', job);
+  }
 
   return { definition, metadata, pluginId: job.pluginId };
 };
 
-const resolveLifecycleFailureContext = (job: StudioJobRecord) => {
+const resolveLifecycleFailureContext = (
+  dependencies: Pick<CorrelationDependencies, 'lifecycleRegistry'>,
+  job: StudioJobRecord
+) => {
   let metadata: PluginTenantLifecycleJobMetadata | null;
   try {
     metadata = readPluginTenantLifecycleJobMetadata(job);
@@ -105,7 +116,14 @@ const resolveLifecycleFailureContext = (job: StudioJobRecord) => {
   if (job.source !== 'plugin' || !job.pluginId) {
     throw permanentLifecycleError('plugin_tenant_lifecycle_job_identity_invalid', job);
   }
-  return { metadata, pluginId: job.pluginId };
+  const definition = dependencies.lifecycleRegistry.get(job.pluginId);
+  const operation = definition?.operations.find(
+    (candidate) => candidate.operation === metadata.operation
+  );
+  const contractMatches =
+    operation?.jobTypeId === job.jobTypeId &&
+    metadata.contractRevision === definition?.contractRevision;
+  return { contractMatches, metadata, pluginId: job.pluginId };
 };
 
 const resolveLifecycleFailure = (
@@ -210,16 +228,17 @@ export const createPluginTenantLifecycleJobCorrelation = (
     readonly error: StudioJobError;
     readonly reason: 'failed' | 'missing_handler' | 'cancelled';
   }): Promise<PluginTenantLifecycleRecord | undefined> {
-    const context = resolveLifecycleFailureContext(input.job);
+    const context = resolveLifecycleFailureContext(dependencies, input.job);
     if (!context) {
       return;
     }
-    const failure = resolveLifecycleFailure(
-      dependencies,
-      context.pluginId,
-      input.error,
-      input.reason
-    );
+    const failure = context.contractMatches
+      ? resolveLifecycleFailure(dependencies, context.pluginId, input.error, input.reason)
+      : {
+          readinessStatus: 'blocked' as const,
+          errorCode: 'plugin_tenant_lifecycle_job_contract_mismatch',
+          retryKind: 'terminal' as const,
+        };
     return dependencies.withRepository(input.job.instanceId, async (repository) => {
       const transition = await repository.failLifecycle({
         instanceId: input.job.instanceId,

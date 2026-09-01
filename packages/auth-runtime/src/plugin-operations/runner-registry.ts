@@ -229,6 +229,9 @@ export const createStudioJobTaskList = (
                   expectedStatuses: [loadedJob.status],
                   expectedAttempts: loadedJob.attempts,
                   expectedWorkerId: loadedJob.workerId ?? null,
+                  ...(input.status === 'retrying'
+                    ? { leasePredicate: { kind: 'activeOwner' as const } }
+                    : {}),
                 });
                 if (transition.outcome === 'conflict') {
                   throw new Error(`studio_job_lease_lost:${input.jobId}`);

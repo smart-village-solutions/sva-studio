@@ -250,6 +250,27 @@ describe('studio job repository', () => {
     expect(statements[0]?.values.slice(-3)).toEqual([['running'], 1, 'worker-a']);
   });
 
+  it('requires an active owner lease for running-to-retrying transitions', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ ...jobRow, status: 'retrying' }]]);
+
+    await createStudioJobRepository(executor).transitionJobState({
+      jobId: 'job-1',
+      instanceId: 'tenant-a',
+      status: 'retrying',
+      attempts: 1,
+      workerId: 'worker-a',
+      heartbeatAt: '2026-05-09T12:03:00.000Z',
+      expectedStatuses: ['running'],
+      expectedAttempts: 1,
+      expectedWorkerId: 'worker-a',
+      leasePredicate: { kind: 'activeOwner' },
+    });
+
+    expect(statements[0]?.text).toContain(
+      "COALESCE(heartbeat_at, started_at, updated_at) > NOW() - INTERVAL '120 seconds'"
+    );
+  });
+
   it('distinguishes idempotent and conflicting CAS transitions', async () => {
     const succeeded = { ...jobRow, status: 'succeeded' as const, attempts: 1 };
     const idempotent = createQueuedExecutor([[], [succeeded]]);

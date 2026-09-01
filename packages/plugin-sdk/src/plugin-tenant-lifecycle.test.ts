@@ -353,6 +353,54 @@ describe('plugin tenant lifecycle contracts', () => {
     expect(snapshot.status).toBe('degraded');
   });
 
+  it('keeps required pending checks above optional degradation', () => {
+    const snapshot = createPluginTenantReadinessSnapshot({
+      definition: {
+        ...tenantLifecycle,
+        readinessChecks: [
+          {
+            checkId: 'speech.databaseSchema',
+            titleKey: 'speech.readiness.databaseSchema',
+            required: true,
+            repairOperation: 'reconcile',
+          },
+          {
+            checkId: 'speech.optionalTelemetry',
+            titleKey: 'speech.readiness.optionalTelemetry',
+            required: false,
+          },
+        ],
+      },
+      pluginId: 'speech',
+      instanceId: 'tenant-a',
+      generation: 3,
+      result: {
+        revision: 'schema:3',
+        checks: [
+          { checkId: 'speech.databaseSchema', status: 'pending' },
+          { checkId: 'speech.optionalTelemetry', status: 'blocked' },
+        ],
+      },
+      updatedAt: '2026-08-30T00:00:00.000Z',
+    });
+
+    expect(snapshot.status).toBe('pending');
+    expect(
+      evaluatePluginTenantAccess({
+        pluginId: 'speech',
+        activationPolicy: 'required',
+        effectiveActive: true,
+        accessState: 'active',
+        evidenceState: 'valid',
+        desiredGeneration: 3,
+        completedGeneration: 3,
+        checks: snapshot.checks,
+        status: snapshot.status,
+        updatedAt: snapshot.updatedAt,
+      })
+    ).toEqual({ allowed: false, reason: 'pending' });
+  });
+
   it('rejects incomplete and foreign readiness results', () => {
     expect(() =>
       createPluginTenantReadinessSnapshot({

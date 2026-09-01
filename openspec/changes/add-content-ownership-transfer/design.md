@@ -53,18 +53,18 @@ V1 aktiviert den Transfer nur für:
 
 Fachplugins auf Basis eines Root-GenericItems verwenden denselben Host-Vertrag. Touren werden erst bei Einführung eines redaktionellen Studio-Editors an den bereits bestätigten Vertrag angebunden; dafür wird jetzt kein ungenutzter Adapter gepflegt. Surveys, Legacy SurveyPolls, Batch-Importe und alle weiteren Typen bleiben deaktiviert, bis ihr vollständiger Transfer- und Abhängigkeitsvertrag separat bestätigt ist. `content.transferOwnership` gehört für die bestätigten Studio-Typen dauerhaft zu den Code-Capabilities und besitzt keinen betrieblichen Konfigurationsschalter. Die UI leitet Verfügbarkeit aus dieser serverseitigen Capability-Matrix ab und führt keine eigene Typenliste.
 
-### Source-Principal führt aus, Target-Principal übernimmt
+### Der autorisierte Actor führt aus, der Target-Principal übernimmt
 
-Der aktuelle, für den Quellinhalt autorisierte persönliche oder organisatorische Principal führt Fresh Pre-Read und Transfermutation mit seinen Management-Credentials aus. Der Ziel-Principal liefert keine Browser-Credentials und wird nicht zum Actor. Nach erfolgreicher Übergabe bestimmen Zielbindung und Ziel-Credentials alle späteren Mutationen.
+Der tatsächlich handelnde und für den Quellinhalt autorisierte Actor führt Fresh Pre-Read und Transfermutation mit seinen Management-Credentials aus. Bei Scope `all` ist eine aktuelle Bindung des bisherigen Source-DataProviders an einen aktiven Studio-Principal weder für die Autorisierung noch für den Write erforderlich. Bei `own` oder `organization` wird sie nur soweit benötigt, wie sie den engeren Source-Scope nachweist. Der Ziel-Principal liefert keine Browser-Credentials und wird nicht zum Actor. Nach erfolgreicher Übergabe bestimmen Zielbindung und Ziel-Credentials alle späteren Mutationen.
 
 Der Server sperrt den Content-/DataProvider-Pfad während Reservierung und Finalisierung, prüft Transfer-Permission, Quell-Preimage, Zielbindung und Upstream-Capability erneut und reserviert eine stabile Operationsreferenz im bestehenden Mutationsjournal.
 
-### Unklare Ergebnisse werden durch Source und Target geklärt
+### Unklare Ergebnisse werden durch Actor und Target geklärt
 
-Bei Timeout oder Verbindungsabbruch liest Studio den Datensatz zuerst mit den Ziel-Credentials und anschließend, soweit noch zulässig, mit den Quell-Credentials:
+Bei Timeout oder Verbindungsabbruch liest Studio den Datensatz zuerst mit den Ziel-Credentials und anschließend mit den Credentials des autorisierten Actors:
 
 - bestätigt der Target-Re-Read die Ziel-DataProvider-ID, wird der Transfer als erfolgreich finalisiert;
-- bestätigt der Source-Re-Read weiterhin ausschließlich den Quell-DataProvider, darf dieselbe Operationsreferenz kontrolliert wiederholt werden;
+- bestätigt der Actor-Re-Read weiterhin ausschließlich den Quell-DataProvider, darf dieselbe Operationsreferenz kontrolliert wiederholt werden;
 - liefern die Reads widersprüchliche, fehlende oder nicht eindeutige Evidenz, bleibt der Vorgang `reconciliation_required` und eine weitere automatische Mutation ist gesperrt.
 
 Lokale Folgefehler nach bestätigtem Provider-Erfolg ändern den fachlichen Erfolg nicht. Sie werden als Reconciliation-Bedarf nachgezogen und nicht als Mainserver-Rollback dargestellt.
@@ -77,7 +77,7 @@ Bei lokalen Inhalten bleibt die Autorenanzeige trotz Ownership-Transfer stabil. 
 
 Die Inhaberanzeige verwendet bei Mainserver-Inhalten ausschließlich den `dataProvider` des frisch gelesenen Datensatzes. Sie rekonstruiert den aktuellen Inhaber weder aus Audit-Ereignissen noch aus History, Actor, aktivem Organisationskontext, Credential-Quelle oder einer möglicherweise veralteten lokalen Owner-Projektion. Eine konfliktfreie Principal-Bindung ergänzt den DataProvider um die verständliche Einordnung „Persönlicher Account“ oder „Organisation“, begründet aber nicht den DataProvider selbst.
 
-Ist der DataProvider vorhanden, aber keinem Studio-Principal eindeutig zugeordnet, zeigt die Oberfläche weiterhin seinen verfügbaren Anzeigenamen und kennzeichnet die fehlende eindeutige Zuordnung. Sie erfindet keinen Inhaber. Die Transferaktion bleibt dann deaktiviert, solange die serverseitige Source-Autorisierung den aktuellen Inhaber nicht eindeutig und mit passendem Scope validieren kann.
+Ist der DataProvider vorhanden, aber keinem Studio-Principal eindeutig zugeordnet, zeigt die Oberfläche weiterhin seinen verfügbaren Anzeigenamen und kennzeichnet die fehlende eindeutige Zuordnung. Sie erfindet keinen Inhaber. Mit `content.transferOwnership` und Scope `all` bleibt die Transferaktion verfügbar; bei `own` oder `organization` bleibt die eindeutige Zuordnung für den Nachweis des engeren Source-Scopes erforderlich.
 
 Bei lokalen Inhalten stammt der aktuelle Inhaber aus genau einem der beiden technischen Owner-Felder. Ein ownerloser lokaler Datensatz wird als „Kein Inhaber zugeordnet“ angezeigt und kann ausschließlich mit `content.transferOwnership` und Scope `all` zugewiesen werden.
 
@@ -139,7 +139,7 @@ Antwort, Audit und Logs enthalten keine E-Mail-Adressen, Credential-Inhalte, Tok
 - Übergabe an einen falschen Principal → serverseitig gefilterte Zielauswahl, klare Typkennzeichnung, Wirkungszusammenfassung und explizite Bestätigung.
 - Actor verliert nach erfolgreicher Übergabe den Zugriff → Erfolg wird aus dem bestätigten Transferzustand angezeigt; ein anschließender 403/404 widerruft den Erfolg nicht.
 - Mainserver-Vertrag ist noch nicht auf dem Zielsystem verfügbar → Der geschützte Rollout blockiert die inkompatible Studio-/Mainserver-Kombination vor der Auslieferung.
-- Upstream-Erfolg bei verlorenem Response → Target-/Source-Re-Read und bestehendes Mutationsjournal verhindern erfundene Rollbacks und unkontrollierte Wiederholungen.
+- Upstream-Erfolg bei verlorenem Response → Target-/Actor-Re-Read und bestehendes Mutationsjournal verhindern erfundene Rollbacks und unkontrollierte Wiederholungen.
 - DataProvider-Bindung ändert sich parallel → DataProvider-Lock, Fresh Validation und erwartete Binding-Version blockieren stale Transfers.
 - Unterschiedliche Typverträge oder Editorstrukturen → zentrale Capability-Matrix, gemeinsamer First-Tab-Vertrag und Konformitätstests statt pluginlokaler Sonderwege.
 

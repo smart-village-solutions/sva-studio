@@ -6,6 +6,8 @@ Der aktuelle Inhaber eines Mainserver-Datensatzes ist dessen aktuell gelesener D
 
 Normales Bearbeiten und Speichern ändert den Inhaber nicht. Auch ein abweichender Mutationsprincipal („Bearbeiten als“) ist keine Übertragung.
 
+Die wirksame Permission `content.transferOwnership` ist die einzige fachliche Freigabe für eine Übertragung. Mit Scope `all` darf der Actor jeden für ihn sichtbaren und vom Typvertrag unterstützten Inhalt übertragen. Der bisherige Inhaber muss dafür weder aktiv noch im Studio eindeutig an einen Principal gebunden sein und benötigt keine verwendbaren Credentials. Bei `own` oder `organization` bleibt eine eindeutige Bindung erforderlich, soweit sie den jeweiligen Source-Scope nachweist.
+
 ## Bedienung
 
 Im Bearbeitungsmodus steht der Bereich **Inhaber** am Anfang des ersten fachlichen Tabs. Er zeigt den aktuellen Inhaber und den dauerhaften Save-Hinweis. Nutzer mit wirksamem `content.transferOwnership` können **Inhalt übertragen** wählen, persönliche Accounts seitenweise auswählen, Organisationen suchen und den Wechsel nach einer Auswirkungsprüfung ausdrücklich bestätigen. Eine neue Suche über verschlüsselte Account-Namen oder E-Mail-Adressen ist nicht Bestandteil von V1.
@@ -36,4 +38,4 @@ Die Konflikt-Changes `add-mainserver-user-conflict-reconciliation` und `auto-rec
 
 ## Fehler und Abgleich
 
-Fehlende Permission, ungültige Ziel-Principals, fehlende Credentials, eine nicht erreichbare Zielidentität und widersprüchliche Bindungen werden vor dem Provider-Write abgelehnt. Ist der Ausgang nach einem Timeout weder über Ziel- noch Quell-Credentials eindeutig feststellbar, meldet das Studio `reconciliation_required`; der Vorgang darf dann nicht als sicher fehlgeschlagen wiederholt werden.
+Fehlende Permission, ungültige Ziel-Principals, fehlende Ziel-Credentials, eine nicht erreichbare Zielidentität und widersprüchliche Zielbindungen werden vor dem Provider-Write abgelehnt. Der aktuelle Quell-DataProvider stammt aus einem frischen Read mit den Credentials des autorisierten Actors. Eine eindeutige Studio-Principal-Bindung des bisherigen Inhabers dient nur der Anzeige und dem Audit und ist mit Scope `all` keine Vorbedingung. Ist der Ausgang nach einem Timeout weder über Ziel- noch Actor-Credentials eindeutig feststellbar, meldet das Studio `reconciliation_required`; der Vorgang darf dann nicht als sicher fehlgeschlagen wiederholt werden.

@@ -29,7 +29,6 @@ import { transferSvaMainserverContentOwnership } from './service.js';
 
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
-  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
   target: ResolvedMainserverOwnershipTarget;
@@ -41,7 +40,7 @@ const verifyTransferResult = async (input: {
     // The source read below provides the second independent observation.
   }
   try {
-    const sourceItem = await loadOwnershipItem(input.sourceConnection, input.content);
+    const sourceItem = await loadOwnershipItem(input.actor, input.content);
     if (sourceItem.dataProvider?.id === input.sourceDataProviderId) return 'source';
   } catch {
     // Neither credential context produced conclusive evidence.
@@ -51,7 +50,6 @@ const verifyTransferResult = async (input: {
 
 const finalizeUnclearTransfer = async (input: {
   actor: MainserverMutationActor;
-  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
@@ -132,7 +130,6 @@ const finalizeUnclearTransfer = async (input: {
 
 const executeProviderTransfer = async (input: {
   actor: MainserverMutationActor;
-  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
@@ -141,7 +138,7 @@ const executeProviderTransfer = async (input: {
 }): Promise<Response | null> => {
   try {
     await transferSvaMainserverContentOwnership({
-      ...input.sourceConnection,
+      ...input.actor,
       content: input.content,
       expectedSourceDataProviderId: input.sourceDataProviderId,
       targetDataProviderId: input.target.dataProviderId,
@@ -237,8 +234,13 @@ const executeLockedTransfer = async (input: {
   }
   const ownershipTransfer: OwnershipTransferAudit = {
     coverage: 'studio_mutations',
-    sourcePrincipalType: source.principal.type,
-    sourcePrincipalId: source.principal.id,
+    sourcePrincipalResolution: source.principal ? 'resolved' : 'unresolved',
+    ...(source.principal
+      ? {
+          sourcePrincipalType: source.principal.type,
+          sourcePrincipalId: source.principal.id,
+        }
+      : {}),
     targetPrincipalType: input.principal.type,
     targetPrincipalId: input.principal.id,
     sourceDataProviderId,
@@ -252,7 +254,6 @@ const executeLockedTransfer = async (input: {
     execute: () =>
       executeProviderTransfer({
         actor: input.actor,
-        sourceConnection: source.connection,
         route: input.route,
         content: input.content,
         sourceDataProviderId,

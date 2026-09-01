@@ -27,6 +27,15 @@ Das System SHALL die fully-qualified Action `content.transferOwnership` als eige
 - **THEN** verweigert die Autorisierung den Transfer fail-closed
 - **AND** benötigt der Actor Scope `all`, um einen ownerlosen Inhalt zuzuweisen
 
+#### Scenario: Globaler Scope ist unabhängig vom Lifecycle des bisherigen Inhabers
+
+- **GIVEN** ein sichtbarer Inhalt besitzt einen aktuellen Owner oder Mainserver-DataProvider
+- **AND** dessen bisheriger Principal ist inaktiv, gelöscht oder nicht eindeutig auflösbar
+- **AND** der Actor besitzt `content.transferOwnership` mit Scope `all`
+- **WHEN** der Actor einen Transfer anfordert
+- **THEN** autorisiert die Source-Prüfung den aktuellen Inhalt ohne Credentials oder Aktivstatus des bisherigen Principals
+- **AND** wird eine optionale Source-Principal-Bindung nicht zum Autorisierungsgate
+
 #### Scenario: System-Admin erhält die neue Tenant-Permission
 
 - **WHEN** der kanonische Permission-Reconcile `content.transferOwnership` materialisiert

@@ -1,7 +1,6 @@
 import {
   resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
-  type ResolvedMainserverOwnershipTarget,
 } from '@sva/auth-runtime/server';
 import { isUuid, type IamContentOwnerPrincipal } from '@sva/core';
 
@@ -59,8 +58,7 @@ export const ownershipTargetErrorResponse = (
 type SourceResolution =
   | Readonly<{
       ok: true;
-      principal: IamContentOwnerPrincipal;
-      connection: ResolvedMainserverOwnershipTarget['connection'];
+      principal?: IamContentOwnerPrincipal;
       dataProviderId: string;
     }>
   | Readonly<{ ok: false; response: Response }>;
@@ -85,56 +83,12 @@ export const resolveAuthorizedTransferSource = async (input: {
       ),
     };
   }
-  const source = await resolveMainserverOwnershipSource({
-    instanceId: input.actor.instanceId,
-    dataProviderId: initialDataProviderId,
-  });
-  if (!source) {
-    return {
-      ok: false,
-      response: errorJson(
-        409,
-        'content_transfer_source_changed',
-        'Die aktive Principal-Bindung ist nicht eindeutig.'
-      ),
-    };
-  }
-  const sourceResolution = await resolveMainserverOwnershipTarget({
-    instanceId: input.actor.instanceId,
-    actorKeycloakSubject: input.actor.keycloakSubject,
-    principal: source.principal,
-  });
-  if (!sourceResolution.ok || sourceResolution.target.dataProviderId !== initialDataProviderId) {
-    return {
-      ok: false,
-      response: errorJson(
-        409,
-        'content_transfer_source_changed',
-        'Die Credentials des aktuellen Inhabers sind nicht eindeutig.'
-      ),
-    };
-  }
-  const current = await loadOwnershipItem(sourceResolution.target.connection, input.content);
-  if (!matchesOwnershipContentType(input.route.contentType, current)) {
-    return { ok: false, response: errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.') };
-  }
-  const sourceDataProviderId = current.dataProvider?.id?.trim();
-  if (!sourceDataProviderId || sourceDataProviderId !== initialDataProviderId) {
-    return {
-      ok: false,
-      response: errorJson(
-        409,
-        'content_transfer_source_changed',
-        'Der aktuelle Inhaber ist nicht eindeutig.'
-      ),
-    };
-  }
   const authorization = await authorizeMainserverExistingContent({
     actor: input.actor,
     action: 'content.transferOwnership',
     contentType: input.route.contentType,
     contentId: input.route.contentId,
-    item: current,
+    item: actorVisibleCurrent,
   });
   if (isResponse(authorization)) {
     recordOwnershipTransferOutcome({
@@ -145,10 +99,13 @@ export const resolveAuthorizedTransferSource = async (input: {
     });
     return { ok: false, response: authorization };
   }
+  const source = await resolveMainserverOwnershipSource({
+    instanceId: input.actor.instanceId,
+    dataProviderId: initialDataProviderId,
+  }).catch(() => undefined);
   return {
     ok: true,
-    principal: source.principal,
-    connection: sourceResolution.target.connection,
-    dataProviderId: sourceDataProviderId,
+    ...(source ? { principal: source.principal } : {}),
+    dataProviderId: initialDataProviderId,
   };
 };

@@ -75,7 +75,7 @@ describe('Mainserver ownership targets', () => {
     });
   });
 
-  it('derives the current owner only from one verified active DataProvider binding', async () => {
+  it('derives the source principal from one verified binding independent of lifecycle state', async () => {
     state.query.mockResolvedValueOnce({
       rows: [
         {
@@ -100,6 +100,8 @@ describe('Mainserver ownership targets', () => {
       dataProviderId: 'provider-source',
       dataProviderName: 'Quellorganisation',
     });
+    expect(state.query.mock.calls[0]?.[0]).not.toContain('organization.is_active');
+    expect(state.query.mock.calls[0]?.[0]).not.toContain('account.status');
   });
 
   it('does not invent a source owner for ambiguous bindings', async () => {

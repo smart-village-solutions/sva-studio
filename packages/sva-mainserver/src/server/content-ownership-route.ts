@@ -89,7 +89,11 @@ const handleTargets = async (
   request: Request,
   route: ContentOwnershipRouteMatch,
   actor: MainserverMutationActor,
-  source: ResolvedMainserverOwnershipSource
+  source: Readonly<{
+    dataProviderId: string;
+    displayName: string;
+    principal?: ResolvedMainserverOwnershipSource['principal'];
+  }>
 ): Promise<Response> => {
   const url = new URL(request.url);
   const type = url.searchParams.get('type') ?? 'account';
@@ -109,7 +113,7 @@ const handleTargets = async (
     page,
     pageSize,
     ...(search ? { search } : {}),
-    currentOwner: source.principal,
+    ...(source.principal ? { currentOwner: source.principal } : {}),
     currentDataProviderId: source.dataProviderId,
   });
   return json({
@@ -117,8 +121,8 @@ const handleTargets = async (
     pagination: { page: result.page, pageSize: result.pageSize, total: result.total },
     contentType: route.contentType,
     currentOwner: {
-      principal: source.principal,
-      displayName: source.dataProviderName ?? source.dataProviderId,
+      ...(source.principal ? { principal: source.principal } : {}),
+      displayName: source.displayName,
     },
   });
 };
@@ -140,16 +144,6 @@ const handleAuthorizedTargets = async (
       'content_transfer_source_changed',
       'Der aktuelle Inhaber ist nicht eindeutig.'
     );
-  const source = await resolveMainserverOwnershipSource({
-    instanceId: actor.instanceId,
-    dataProviderId,
-  });
-  if (!source)
-    return errorJson(
-      409,
-      'content_transfer_source_changed',
-      'Die aktive Principal-Bindung ist nicht eindeutig.'
-    );
   const access = await resolveMainserverResourceAccess({
     actor,
     actions: ['content.transferOwnership'],
@@ -157,17 +151,28 @@ const handleAuthorizedTargets = async (
     contentId: route.contentId,
     item: current,
   });
-  return access['content.transferOwnership'] === true
-    ? route.operation === 'authorization'
-      ? json({
-          data: { canTransfer: true },
-          currentOwner: {
-            principal: source.principal,
-            displayName: source.dataProviderName ?? source.dataProviderId,
-          },
-        })
-      : handleTargets(request, route, actor, source)
-    : errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
+  if (access['content.transferOwnership'] !== true) {
+    return errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
+  }
+  const resolvedSource = await resolveMainserverOwnershipSource({
+    instanceId: actor.instanceId,
+    dataProviderId,
+  }).catch(() => undefined);
+  const source = {
+    dataProviderId,
+    displayName:
+      current.dataProvider?.name?.trim() || resolvedSource?.dataProviderName || dataProviderId,
+    ...(resolvedSource ? { principal: resolvedSource.principal } : {}),
+  };
+  return route.operation === 'authorization'
+    ? json({
+        data: { canTransfer: true },
+        currentOwner: {
+          ...(source.principal ? { principal: source.principal } : {}),
+          displayName: source.displayName,
+        },
+      })
+    : handleTargets(request, route, actor, source);
 };
 
 const dispatchAuthenticated = async (

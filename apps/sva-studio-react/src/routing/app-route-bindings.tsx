@@ -6,6 +6,7 @@ import {
 import { normalizeOrganizationDetailTab } from '@sva/routing/route-search';
 import {
   resolveUserDisplayName,
+  type IamContentOwnerPrincipal,
   type IamContentOwnershipTarget,
   type IamOrganizationContextOption,
 } from '@sva/core';
@@ -197,6 +198,11 @@ type MainserverResourcePrincipalResolution =
       }>;
     }>;
 
+type MainserverResolvedOwner = Readonly<{
+  principal?: IamContentOwnerPrincipal;
+  displayName: string;
+}>;
+
 const resolveMainserverDetailUrl = (contentType: string, contentId: string): string => {
   const collections: Readonly<Record<string, string>> = {
     'news.article': 'news',
@@ -356,7 +362,7 @@ const MainserverResourcePrincipalBoundary = ({
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const contentId = readStringParam(params.contentId, readStringParam(params.id));
-  const [resolvedOwner, setResolvedOwner] = React.useState<IamContentOwnershipTarget | null>(null);
+  const [resolvedOwner, setResolvedOwner] = React.useState<MainserverResolvedOwner | null>(null);
   const [transferAuthorized, setTransferAuthorized] = React.useState(false);
   React.useEffect(() => setResolvedOwner(null), [contentId, contentType]);
   const transferSupported = contentId !== undefined && contentType !== 'surveys.survey';
@@ -388,7 +394,7 @@ const MainserverResourcePrincipalBoundary = ({
       const response = await requestMainserverJson<{
         readonly data: readonly IamContentOwnershipTarget[];
         readonly pagination: Readonly<{ total: number }>;
-        readonly currentOwner: IamContentOwnershipTarget;
+        readonly currentOwner: MainserverResolvedOwner;
       }>({
         url: `${baseUrl}/targets?${query.toString()}`,
         init: { headers: createMainserverReadHeaders(actingPrincipalType) },
@@ -411,7 +417,7 @@ const MainserverResourcePrincipalBoundary = ({
     let active = true;
     void requestMainserverJson<{
       readonly data: Readonly<{ canTransfer: boolean }>;
-      readonly currentOwner: IamContentOwnershipTarget;
+      readonly currentOwner: MainserverResolvedOwner;
     }>({
       url: `${baseUrl}/authorization`,
       init: { headers: createMainserverReadHeaders(actingPrincipalType) },

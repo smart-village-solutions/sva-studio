@@ -102,29 +102,13 @@ const verificationCandidate = {
   connection: target.connection,
 };
 
-const sourceTarget = {
-  principal: { type: 'account' as const, id: '11111111-1111-4111-8111-111111111111' },
-  dataProviderId: 'provider-source',
-  dataProviderName: 'Quelle',
-  bindingId: 'binding-source',
-  bindingVersion: 'binding-source:2026-08-27T09:00:00.000Z',
-  connection: {
-    instanceId: 'instance-1',
-    keycloakSubject: 'kc-source',
-    actingPrincipalType: 'user' as const,
-    credentialFingerprint: 'c'.repeat(64),
-  },
-};
-
 const useTargetResolution = (result: unknown) => {
-  state.resolveTarget.mockImplementation(async ({ principal }: { principal: { id: string } }) =>
-    principal.id === sourceTarget.principal.id ? { ok: true, target: sourceTarget } : result
-  );
+  state.resolveTarget.mockResolvedValue(result);
 };
 
 describe('Mainserver content ownership route', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    for (const mock of Object.values(state)) mock.mockReset();
     delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
     state.hasUnresolvedTransfer.mockResolvedValue(false);
     state.loadExternalContentReference.mockResolvedValue(undefined);
@@ -261,7 +245,7 @@ describe('Mainserver content ownership route', () => {
     expect(response?.headers.get('x-sva-mainserver-entity-id')).toBe('news-1');
     expect(state.transfer).toHaveBeenCalledWith(
       expect.objectContaining({
-        keycloakSubject: 'kc-source',
+        keycloakSubject: 'kc-actor',
         expectedSourceDataProviderId: 'provider-source',
         targetDataProviderId: 'provider-target',
       })
@@ -272,6 +256,7 @@ describe('Mainserver content ownership route', () => {
       expectedDataProviderId: 'provider-target',
       metadata: expect.objectContaining({
         coverage: 'studio_mutations',
+        sourcePrincipalResolution: 'resolved',
         sourcePrincipalType: 'account',
         targetPrincipalType: 'organization',
         sourceDataProviderId: 'provider-source',
@@ -299,8 +284,7 @@ describe('Mainserver content ownership route', () => {
 
   it('verifies and persists a missing target binding only after transfer confirmation', async () => {
     let targetAttempts = 0;
-    state.resolveTarget.mockImplementation(async ({ principal }: { principal: { id: string } }) => {
-      if (principal.id === sourceTarget.principal.id) return { ok: true, target: sourceTarget };
+    state.resolveTarget.mockImplementation(async () => {
       targetAttempts += 1;
       return targetAttempts === 1
         ? {
@@ -544,17 +528,9 @@ describe('Mainserver content ownership route', () => {
     expect(response).toBe(actorError);
   });
 
-  it('fails closed when source ownership or transfer access cannot be resolved', async () => {
+  it('fails closed when the source DataProvider or transfer access cannot be resolved', async () => {
     state.getNews.mockResolvedValueOnce({ id: 'news-1', dataProvider: null });
     let response = await dispatchSvaMainserverContentOwnershipRequest(
-      new Request(
-        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets'
-      )
-    );
-    expect(response?.status).toBe(409);
-
-    state.resolveSource.mockResolvedValueOnce(undefined);
-    response = await dispatchSvaMainserverContentOwnershipRequest(
       new Request(
         'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets'
       )
@@ -570,6 +546,111 @@ describe('Mainserver content ownership route', () => {
     expect(response?.status).toBe(403);
   });
 
+  it('authorizes an orphaned source when the actor has transfer access', async () => {
+    state.resolveSource.mockResolvedValueOnce(undefined);
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      data: { canTransfer: true },
+      currentOwner: { displayName: 'Quelle' },
+    });
+  });
+
+  it('keeps source-principal enrichment failures out of the authorization gate', async () => {
+    state.resolveSource.mockRejectedValueOnce(new Error('database unavailable'));
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      data: { canTransfer: true },
+      currentOwner: { displayName: 'Quelle' },
+    });
+  });
+
+  it('transfers an orphaned source with the authorized actor credentials', async () => {
+    state.resolveSource.mockResolvedValue(undefined);
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.transfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keycloakSubject: 'kc-actor',
+        expectedSourceDataProviderId: 'provider-source',
+        targetDataProviderId: 'provider-target',
+      })
+    );
+    expect(state.annotateJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.not.objectContaining({
+          sourcePrincipalType: expect.anything(),
+          sourcePrincipalId: expect.anything(),
+        }),
+      })
+    );
+    expect(state.annotateJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ sourcePrincipalResolution: 'unresolved' }),
+      })
+    );
+  });
+
+  it('transfers an orphaned source to the authorized actor account', async () => {
+    const actorTarget = {
+      ...target,
+      principal: { type: 'account' as const, id: actor.actorAccountId },
+      dataProviderName: 'Actor',
+      connection: {
+        instanceId: actor.instanceId,
+        keycloakSubject: actor.keycloakSubject,
+        actingPrincipalType: 'user' as const,
+        credentialFingerprint: actor.credentialFingerprint,
+      },
+    };
+    state.resolveSource.mockResolvedValue(undefined);
+    useTargetResolution({ ok: true, target: actorTarget });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: actorTarget.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.transfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keycloakSubject: 'kc-actor',
+        expectedSourceDataProviderId: 'provider-source',
+        targetDataProviderId: 'provider-target',
+      })
+    );
+  });
+
   it('normalizes target pagination, search and owner fallback values', async () => {
     state.resolveSource.mockResolvedValueOnce({
       principal: { type: 'organization', id: 'organization-source' },
@@ -583,7 +664,7 @@ describe('Mainserver content ownership route', () => {
 
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({
-      currentOwner: { displayName: 'provider-source' },
+      currentOwner: { displayName: 'Quelle' },
     });
     expect(state.listTargets).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1, pageSize: 50, search: 'Target' })
@@ -729,15 +810,6 @@ describe('Mainserver content ownership route', () => {
     );
     expect(response?.status).toBe(409);
 
-    state.resolveSource.mockResolvedValueOnce(undefined);
-    response = await dispatchSvaMainserverContentOwnershipRequest(
-      new Request(
-        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
-        { method: 'POST', body: JSON.stringify({ targetPrincipal: target.principal }) }
-      )
-    );
-    expect(response?.status).toBe(409);
-
     const denied = new Response('denied', { status: 403 });
     state.authorize.mockResolvedValueOnce(denied);
     response = await dispatchSvaMainserverContentOwnershipRequest(
@@ -797,7 +869,6 @@ describe('Mainserver content ownership route', () => {
     state.transfer.mockRejectedValueOnce(new Error('network'));
     state.getNews
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
-      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-target' } });
 
     const response = await dispatchSvaMainserverContentOwnershipRequest(
@@ -820,7 +891,6 @@ describe('Mainserver content ownership route', () => {
     state.finalize.mockRejectedValueOnce(new Error('database unavailable'));
     state.getNews
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
-      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-target' } });
 
     const response = await dispatchSvaMainserverContentOwnershipRequest(
@@ -838,7 +908,6 @@ describe('Mainserver content ownership route', () => {
       new SvaMainserverError({ code: 'graphql_error', message: 'rejected', statusCode: 502 })
     );
     state.getNews
-      .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'other-provider' } })
       .mockResolvedValueOnce({ id: 'news-1', dataProvider: { id: 'provider-source' } });

@@ -28,8 +28,9 @@ export type SupportedContentOwnershipRouteMatch = Omit<ContentOwnershipRouteMatc
 
 export type OwnershipTransferAudit = Readonly<{
   coverage: 'studio_mutations';
-  sourcePrincipalType: 'account' | 'organization';
-  sourcePrincipalId: string;
+  sourcePrincipalResolution: 'resolved' | 'unresolved';
+  sourcePrincipalType?: 'account' | 'organization';
+  sourcePrincipalId?: string;
   targetPrincipalType: 'account' | 'organization';
   targetPrincipalId: string;
   sourceDataProviderId: string;

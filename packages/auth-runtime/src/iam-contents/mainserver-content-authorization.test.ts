@@ -129,6 +129,40 @@ describe('Mainserver content authorization', () => {
     });
   });
 
+  it('authorizes an unbound source only with global transfer scope', async () => {
+    const transferContext = {
+      ...context,
+      action: 'content.transferOwnership',
+      permissions: [
+        {
+          action: 'content.transferOwnership',
+          resourceType: 'content',
+          accessScope: 'all',
+        } as EffectivePermission,
+      ],
+      dataProviderId: 'provider-orphaned',
+    };
+
+    await expect(authorizeMainserverDataProviderAccess(transferContext)).resolves.toMatchObject({
+      allowed: true,
+      authorizationMode: 'exact',
+    });
+    expect(state.loadBinding).not.toHaveBeenCalled();
+
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...transferContext,
+        permissions: [
+          {
+            action: 'content.transferOwnership',
+            resourceType: 'content',
+            accessScope: 'own',
+          } as EffectivePermission,
+        ],
+      })
+    ).resolves.toMatchObject({ allowed: false, reason: 'forbidden' });
+  });
+
   it('rejects a missing DataProvider as an upstream contract failure', async () => {
     await expect(
       authorizeMainserverDataProviderAccess({

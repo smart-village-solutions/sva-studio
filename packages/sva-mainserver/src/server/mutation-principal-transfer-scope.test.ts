@@ -90,6 +90,7 @@ describe('Mainserver orphaned ownership transfer scope', () => {
     );
     expect(state.beginJournal).not.toHaveBeenCalled();
     expect(state.authorizeProvider).not.toHaveBeenCalled();
+    expect(state.emitAudit).not.toHaveBeenCalled();
   });
 
   it('denies the journal-free preflight when the transfer permission does not apply', async () => {
@@ -110,6 +111,7 @@ describe('Mainserver orphaned ownership transfer scope', () => {
 
     expect(response?.status).toBe(403);
     expect(state.beginJournal).not.toHaveBeenCalled();
+    expect(state.emitAudit).toHaveBeenCalledOnce();
   });
 
   it.each(['own', 'organization'] as const)(

@@ -36,19 +36,21 @@ export const authorizeMainserverActionPreflight = async (input: {
     permissions: permissions.permissions,
     actingPrincipalType: input.actor.mutationPrincipalContext.actingPrincipalType,
   });
-  await emitMainserverMutationAuthorizationAudit({
-    actor: input.actor,
-    action: input.action,
-    contentType: input.contentType,
-    contentId: input.contentId,
-    authorizationMode: decision.authorizationMode,
-    resolverMode: decision.resolverMode,
-    candidateAuthorizationMode: decision.candidateAuthorizationMode,
-    candidateAllowed: decision.candidateAllowed,
-    shadowDifference: decision.shadowDifference,
-    allowed: decision.allowed,
-    ...(!decision.allowed ? { reasonCode: decision.reason } : {}),
-  });
+  if (!decision.allowed) {
+    await emitMainserverMutationAuthorizationAudit({
+      actor: input.actor,
+      action: input.action,
+      contentType: input.contentType,
+      contentId: input.contentId,
+      authorizationMode: decision.authorizationMode,
+      resolverMode: decision.resolverMode,
+      candidateAuthorizationMode: decision.candidateAuthorizationMode,
+      candidateAllowed: decision.candidateAllowed,
+      shadowDifference: decision.shadowDifference,
+      allowed: false,
+      reasonCode: decision.reason,
+    });
+  }
   return decision.allowed
     ? null
     : errorJson(403, 'forbidden', 'Keine Berechtigung zur Übertragung dieses Inhalts.');

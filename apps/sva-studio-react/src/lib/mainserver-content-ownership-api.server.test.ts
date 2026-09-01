@@ -110,6 +110,38 @@ describe('mainserver content ownership API projection follow-up', () => {
     });
   });
 
+  it('keeps local and provider ids separate after a confirmed project transfer', async () => {
+    state.dispatch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            contentId: 'project-source-1',
+            targetPrincipal: {
+              type: 'organization',
+              id: '22222222-2222-4222-8222-222222222222',
+            },
+            targetDataProvider: { id: 'provider-target' },
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/projects.project/project-local-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.refreshProjection).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'project-source-1' })
+    );
+    expect(state.finalizeJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: 'project-local-1' })
+    );
+  });
+
   it('keeps the confirmed response successful when the local target projection fails', async () => {
     state.dispatch.mockResolvedValue(
       new Response(

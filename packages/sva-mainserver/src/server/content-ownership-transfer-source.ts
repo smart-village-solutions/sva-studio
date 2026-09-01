@@ -15,6 +15,7 @@ import {
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import {
+  authorizeMainserverActionPreflight,
   authorizeMainserverExistingContent,
   type MainserverMutationActor,
 } from './mutation-principal.js';
@@ -125,11 +126,34 @@ type TransferSourceObservation =
     }>
   | Readonly<{ ok: false; response: Response }>;
 
+const preflightTransferPermission = async (input: {
+  actor: MainserverMutationActor;
+  route: SupportedContentOwnershipRouteMatch;
+}): Promise<Response | null> => {
+  const response = await authorizeMainserverActionPreflight({
+    actor: input.actor,
+    action: 'content.transferOwnership',
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
+  });
+  if (response) {
+    recordOwnershipTransferOutcome({
+      actor: input.actor,
+      contentType: input.route.contentType,
+      outcome: response.status === 403 ? 'denied' : 'rejected',
+      errorCode: await readAuthorizationErrorCode(response),
+    });
+  }
+  return response;
+};
+
 export const observeTransferSource = async (input: {
   actor: MainserverMutationActor;
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
 }): Promise<TransferSourceObservation> => {
+  const permissionError = await preflightTransferPermission(input);
+  if (permissionError) return { ok: false, response: permissionError };
   const actorVisibleCurrent = await loadOwnershipItem(input.actor, input.content);
   if (!matchesOwnershipContentType(input.route.contentType, actorVisibleCurrent)) {
     return { ok: false, response: errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.') };

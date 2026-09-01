@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  authorizePrincipal: vi.fn(),
   authorizeProvider: vi.fn(),
   beginJournal: vi.fn(),
   emitAudit: vi.fn(),
@@ -9,7 +10,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
-  authorizeMainserverCreatePrincipal: vi.fn(),
+  authorizeMainserverCreatePrincipal: state.authorizePrincipal,
   authorizeMainserverDataProviderAccess: state.authorizeProvider,
   beginMainserverMutationJournal: state.beginJournal,
   emitAuthAuditEvent: state.emitAudit,
@@ -17,7 +18,10 @@ vi.mock('@sva/auth-runtime/server', () => ({
   resolveEffectivePermissions: state.resolvePermissions,
 }));
 
-import { authorizeMainserverExistingContent } from './mutation-principal-authorization.js';
+import {
+  authorizeMainserverActionPreflight,
+  authorizeMainserverExistingContent,
+} from './mutation-principal-authorization.js';
 import { resolveMainserverResourceAccess } from './mutation-principal-resource-access.js';
 
 const actor = {
@@ -53,9 +57,61 @@ describe('Mainserver orphaned ownership transfer scope', () => {
       resolverMode: 'compatibility',
       shadowDifference: false,
     });
+    state.authorizePrincipal.mockReturnValue({
+      allowed: true,
+      authorizationMode: 'exact',
+      reason: 'allowed',
+      resolverMode: 'automatic',
+    });
     state.beginJournal.mockResolvedValue(undefined);
     state.emitAudit.mockResolvedValue(undefined);
     state.readResolverMode.mockReturnValue('shadow');
+  });
+
+  it('preflights transfer permission without creating a mutation journal', async () => {
+    state.resolvePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [permission('own')],
+    });
+
+    await expect(
+      authorizeMainserverActionPreflight({
+        actor,
+        action: 'content.transferOwnership',
+        contentType: 'news.article',
+        contentId: 'news-1',
+      })
+    ).resolves.toBeNull();
+
+    expect(state.authorizePrincipal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'content.transferOwnership',
+        contentId: 'news-1',
+        permissions: [permission('own')],
+      })
+    );
+    expect(state.beginJournal).not.toHaveBeenCalled();
+    expect(state.authorizeProvider).not.toHaveBeenCalled();
+  });
+
+  it('denies the journal-free preflight when the transfer permission does not apply', async () => {
+    state.resolvePermissions.mockResolvedValue({ ok: true, permissions: [] });
+    state.authorizePrincipal.mockReturnValueOnce({
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'forbidden',
+      resolverMode: 'automatic',
+    });
+
+    const response = await authorizeMainserverActionPreflight({
+      actor,
+      action: 'content.transferOwnership',
+      contentType: 'news.article',
+      contentId: 'news-1',
+    });
+
+    expect(response?.status).toBe(403);
+    expect(state.beginJournal).not.toHaveBeenCalled();
   });
 
   it.each(['own', 'organization'] as const)(

@@ -15,6 +15,7 @@ export {
   toMainserverAdditionalActions,
 } from './mutation-principal-lifecycle.js';
 export {
+  authorizeMainserverActionPreflight,
   authorizeMainserverCreateForPrincipal,
   authorizeMainserverExistingContent,
 } from './mutation-principal-authorization.js';

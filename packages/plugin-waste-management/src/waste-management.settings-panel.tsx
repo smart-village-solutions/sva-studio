@@ -52,21 +52,23 @@ export const WasteSettingsPanel = () => {
     try {
       const result = await persistWasteSettings(form, pt);
       applyPersistedSettings(result.data);
+      syncFeedback.applyMutationFeedback(result);
       if (
         holidaySyncTriggered &&
         result.data.lastHolidaySyncStatus &&
         result.data.lastHolidaySyncStatus !== 'success'
       ) {
-        setMessage({
-          kind: result.data.lastHolidaySyncStatus === 'failed' ? 'error' : 'warning',
-          text: pt('settings.messages.saveSuccessWithHolidaySync', {
-            status: result.data.lastHolidaySyncStatus,
-          }),
-        });
+        if (result.syncStatus !== 'failed') {
+          setMessage({
+            kind: result.data.lastHolidaySyncStatus === 'failed' ? 'error' : 'warning',
+            text: pt('settings.messages.saveSuccessWithHolidaySync', {
+              status: result.data.lastHolidaySyncStatus,
+            }),
+          });
+        }
         saveFeedback.markFailed(operationId);
         return;
       }
-      syncFeedback.applyMutationFeedback(result);
       saveFeedback.markSaved(operationId);
     } catch (saveError) {
       setMessage({

@@ -592,6 +592,50 @@ describe('waste-management settings write support', () => {
     await expect(response.json()).resolves.not.toHaveProperty('syncStatus');
   });
 
+  it('preserves stored disruption settings when an older caller omits both switches', async () => {
+    const current = createSettings({
+      disruptionLocationEnabled: true,
+      disruptionAllLocationsEnabled: true,
+    });
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
+    const startPluginOperationJob = vi.fn();
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(current);
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings,
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+        startPluginOperationJob,
+      },
+      ctx: actor,
+      request: new Request('https://studio.test/api/v1/waste-management/settings', {
+        method: 'PUT',
+      }),
+      instanceId: 'tenant-a',
+      requestId: 'req-legacy-client',
+      input: {
+        schemaName: 'wm',
+        enabled: true,
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: true,
+      })
+    );
+    expect(startPluginOperationJob).not.toHaveBeenCalled();
+  });
+
   it('keeps a verified settings save successful when the wasteTypes job cannot be queued', async () => {
     const saved = createSettings({ disruptionAllLocationsEnabled: true });
     loadConfiguredWasteSettingsMock
@@ -620,6 +664,53 @@ describe('waste-management settings write support', () => {
       }),
       instanceId: 'tenant-a',
       requestId: 'req-failed-sync',
+      input: {
+        schemaName: 'wm',
+        enabled: true,
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: true,
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { disruptionAllLocationsEnabled: true },
+      syncStatus: 'failed',
+    });
+  });
+
+  it('keeps a verified settings save successful when queue creation rejects', async () => {
+    const saved = createSettings({ disruptionAllLocationsEnabled: true });
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(saved);
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings: vi.fn(async () => undefined),
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+        resolveActorInfo: vi.fn(async () => ({
+          actor: {
+            instanceId: 'tenant-a',
+            actorAccountId: 'account-1',
+            requestId: 'req-rejected-sync',
+            traceId: 'trace-rejected-sync',
+          },
+        })),
+        startPluginOperationJob: vi.fn(async () => {
+          throw new Error('idempotency database unavailable');
+        }),
+      },
+      ctx: actor,
+      request: new Request('https://studio.test/api/v1/waste-management/settings', {
+        method: 'PUT',
+      }),
+      instanceId: 'tenant-a',
+      requestId: 'req-rejected-sync',
       input: {
         schemaName: 'wm',
         enabled: true,

@@ -10,6 +10,7 @@ import { useWasteTrackedJob } from './waste-management.tools.job-state.js';
 
 type PluginTranslation = ReturnType<typeof usePluginTranslation>;
 type SyncJob = NonNullable<WasteManagementSettingsMutationResponse['syncJob']>;
+const refreshNoTechnicalHistory = async () => undefined;
 
 export const useWasteSettingsSyncFeedback = (
   pt: PluginTranslation,
@@ -28,10 +29,15 @@ export const useWasteSettingsSyncFeedback = (
 
   useWasteTrackedJob({
     lastJob: trackedJob,
-    refreshTechnicalHistory: async () => undefined,
+    refreshTechnicalHistory: refreshNoTechnicalHistory,
     setLastJob: setTrackedJob,
     onTerminalJob: (job) => {
-      if (job.status === 'failed' || job.status === 'cancelled') warnAboutSync();
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        warnAboutSync();
+        return;
+      }
+      setTrackedJob(null);
+      setMessage(null);
     },
   });
 

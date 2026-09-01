@@ -1321,7 +1321,30 @@ describe('waste master data repository', () => {
       null,
       false,
       true,
+      true,
+      true,
     ]);
+
+    const partialWrite = createExecutor();
+    await createWasteMasterDataRepository(partialWrite.executor).upsertWastePdfStaticSettings({
+      pdfContactBlock: 'Neue Beratung',
+    });
+
+    expect(partialWrite.statements[0]?.values).toEqual([
+      true,
+      null,
+      'Neue Beratung',
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(partialWrite.statements[0]?.text).toContain(
+      'CASE WHEN $6 THEN EXCLUDED.disruption_location_enabled'
+    );
+    expect(partialWrite.statements[0]?.text).toContain(
+      'CASE WHEN $7 THEN EXCLUDED.disruption_all_locations_enabled'
+    );
   });
 
   it('treats an all-empty waste pdf settings row as missing', async () => {

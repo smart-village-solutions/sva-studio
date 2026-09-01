@@ -117,38 +117,38 @@ export const enqueueWasteTypesSyncAfterMutation = async (
   deps: WasteManagementHandlerDeps,
   instanceId: string
 ): Promise<WasteTypesSyncMetadata> => {
-  const actorResolution = await (
-    deps.resolveActorInfo ??
-    ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
-  )(request, ctx);
-  if ('error' in actorResolution || !actorResolution.actor.actorAccountId) {
-    return { syncStatus: 'failed' };
-  }
-
-  const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
-    instanceId: actorResolution.actor.instanceId,
-    actorAccountId: actorResolution.actor.actorAccountId,
-    endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
-    idempotencyKey: `waste-sync:${instanceId}:${randomUUID()}`,
-    requestId: actorResolution.actor.requestId ?? getRequestId(deps),
-    scheduledAt: new Date().toISOString(),
-    data: {
-      pluginId: wasteManagementOperationsContract.pluginId,
-      jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
-      input: {
-        operation: 'sync-waste-types',
-        keycloakSubject: ctx.user.id,
-        activeOrganizationId: ctx.activeOrganizationId,
-      },
-    },
-  });
-
-  if (!response.ok) {
-    return { syncStatus: 'failed' };
-  }
-
   try {
+    const actorResolution = await (
+      deps.resolveActorInfo ??
+      ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
+        resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
+    )(request, ctx);
+    if ('error' in actorResolution || !actorResolution.actor.actorAccountId) {
+      return { syncStatus: 'failed' };
+    }
+
+    const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
+      instanceId: actorResolution.actor.instanceId,
+      actorAccountId: actorResolution.actor.actorAccountId,
+      endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+      idempotencyKey: `waste-sync:${instanceId}:${randomUUID()}`,
+      requestId: actorResolution.actor.requestId ?? getRequestId(deps),
+      scheduledAt: new Date().toISOString(),
+      data: {
+        pluginId: wasteManagementOperationsContract.pluginId,
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
+        input: {
+          operation: 'sync-waste-types',
+          keycloakSubject: ctx.user.id,
+          activeOrganizationId: ctx.activeOrganizationId,
+        },
+      },
+    });
+
+    if (!response.ok) {
+      return { syncStatus: 'failed' };
+    }
+
     const payload = (await response.json()) as ApiItemResponse<StudioJobRecord>;
     if (!payload.data?.id) {
       return { syncStatus: 'failed' };

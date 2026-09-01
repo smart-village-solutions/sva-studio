@@ -233,8 +233,10 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     pdfBrandingAssetUrl: normalizeOptionalTrimmedText(input.pdfBrandingAssetUrl),
     pdfContactBlock: normalizeOptionalTrimmedText(input.pdfContactBlock),
   };
-  const disruptionLocationEnabled = input.disruptionLocationEnabled ?? false;
-  const disruptionAllLocationsEnabled = input.disruptionAllLocationsEnabled ?? false;
+  const disruptionLocationEnabled =
+    input.disruptionLocationEnabled ?? writeContext.current.disruptionLocationEnabled;
+  const disruptionAllLocationsEnabled =
+    input.disruptionAllLocationsEnabled ?? writeContext.current.disruptionAllLocationsEnabled;
   const shouldSyncWasteTypes =
     disruptionLocationEnabled !== writeContext.current.disruptionLocationEnabled ||
     disruptionAllLocationsEnabled !== writeContext.current.disruptionAllLocationsEnabled;

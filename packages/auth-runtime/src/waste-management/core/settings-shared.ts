@@ -46,8 +46,10 @@ const applyWastePdfStaticSettings = (
   wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
 ): WasteManagementSettingsRecord => ({
   ...settings,
-  disruptionLocationEnabled: wastePdfStaticSettings?.disruptionLocationEnabled ?? false,
-  disruptionAllLocationsEnabled: wastePdfStaticSettings?.disruptionAllLocationsEnabled ?? false,
+  disruptionLocationEnabled:
+    wastePdfStaticSettings?.disruptionLocationEnabled ?? settings.disruptionLocationEnabled,
+  disruptionAllLocationsEnabled:
+    wastePdfStaticSettings?.disruptionAllLocationsEnabled ?? settings.disruptionAllLocationsEnabled,
   ...(hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
     ? {
         pdfBrandingAssetUrl:

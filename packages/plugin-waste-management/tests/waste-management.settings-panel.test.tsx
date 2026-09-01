@@ -420,4 +420,105 @@ describe('WasteSettingsPanel', () => {
     expect(await screen.findByText('settings.messages.wasteTypesSyncWarning')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'retry-waste-types-sync' })).toBeTruthy();
   });
+
+  it('keeps the polling callback stable across settings panel rerenders', async () => {
+    const settings = {
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'postgresql-1',
+      databaseUrlConfigured: true,
+      visibleStatus: 'ok',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    };
+    getWasteManagementSettingsMock.mockResolvedValueOnce(settings);
+
+    render(<WasteSettingsPanel />);
+    await screen.findByText('location-disruption:false');
+    const initialCallback = useWasteTrackedJobMock.mock.calls.at(-1)?.[0]
+      ?.refreshTechnicalHistory;
+
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-location-disruption' }));
+
+    await waitFor(() => {
+      expect(useWasteTrackedJobMock.mock.calls.at(-1)?.[0]?.refreshTechnicalHistory).toBe(
+        initialCallback
+      );
+    });
+  });
+
+  it('clears the started notice after the tracked wasteTypes job succeeds', async () => {
+    const settings = {
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'postgresql-1',
+      databaseUrlConfigured: true,
+      visibleStatus: 'ok',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    };
+    const syncJob = { id: 'job-waste-types-success', status: 'queued' };
+    getWasteManagementSettingsMock.mockResolvedValueOnce(settings);
+    updateWasteManagementSettingsMock.mockResolvedValueOnce({
+      data: { ...settings, disruptionLocationEnabled: true },
+      syncStatus: 'queued',
+      syncJob,
+    });
+
+    render(<WasteSettingsPanel />);
+    await screen.findByText('location-disruption:false');
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-location-disruption' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
+    expect(await screen.findByText('settings.messages.wasteTypesSyncStarted')).toBeTruthy();
+
+    const trackedJobOptions = useWasteTrackedJobMock.mock.calls.at(-1)?.[0];
+    if (!trackedJobOptions) throw new Error('missing_tracked_job_options');
+    trackedJobOptions.onTerminalJob({ ...syncJob, status: 'succeeded' });
+
+    await waitFor(() => {
+      expect(screen.queryByText('settings.messages.wasteTypesSyncStarted')).toBeNull();
+    });
+  });
+
+  it('retains retryable wasteTypes feedback when holiday synchronization also fails', async () => {
+    const settings = {
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'postgresql-1',
+      databaseUrlConfigured: true,
+      visibleStatus: 'ok',
+      holidayStateCode: 'NW',
+      lastHolidaySyncStatus: 'success',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    };
+    getWasteManagementSettingsMock.mockResolvedValueOnce(settings);
+    updateWasteManagementSettingsMock.mockResolvedValueOnce({
+      data: {
+        ...settings,
+        holidayStateCode: 'BB',
+        lastHolidaySyncStatus: 'failed',
+        disruptionLocationEnabled: true,
+      },
+      syncStatus: 'failed',
+    });
+
+    render(<WasteSettingsPanel />);
+    await screen.findByText('location-disruption:false');
+    fireEvent.click(screen.getByRole('button', { name: 'change-holiday-state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-location-disruption' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
+
+    expect(await screen.findByText('settings.messages.wasteTypesSyncWarning')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'retry-waste-types-sync' })).toBeTruthy();
+  });
 });

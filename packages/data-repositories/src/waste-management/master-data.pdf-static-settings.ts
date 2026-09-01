@@ -59,8 +59,10 @@ VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (id) DO UPDATE
 SET pdf_branding_asset_url = EXCLUDED.pdf_branding_asset_url,
     pdf_contact_block = EXCLUDED.pdf_contact_block,
-    disruption_location_enabled = EXCLUDED.disruption_location_enabled,
-    disruption_all_locations_enabled = EXCLUDED.disruption_all_locations_enabled,
+    disruption_location_enabled = CASE WHEN $6 THEN EXCLUDED.disruption_location_enabled
+      ELSE waste_settings.disruption_location_enabled END,
+    disruption_all_locations_enabled = CASE WHEN $7 THEN EXCLUDED.disruption_all_locations_enabled
+      ELSE waste_settings.disruption_all_locations_enabled END,
     updated_at = NOW();
 `,
   values: [
@@ -69,6 +71,8 @@ SET pdf_branding_asset_url = EXCLUDED.pdf_branding_asset_url,
     input.pdfContactBlock ?? null,
     input.disruptionLocationEnabled ?? false,
     input.disruptionAllLocationsEnabled ?? false,
+    input.disruptionLocationEnabled !== undefined,
+    input.disruptionAllLocationsEnabled !== undefined,
   ],
 });
 

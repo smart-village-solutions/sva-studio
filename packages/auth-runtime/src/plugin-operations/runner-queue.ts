@@ -1,4 +1,4 @@
-import { resolvePool } from '../db.js';
+import { withInstanceDb } from '../db.js';
 import {
   pluginTenantLifecycleRetryTaskIdentifier,
   privilegedStudioJobTaskIdentifier,
@@ -71,10 +71,7 @@ export const enqueueStudioJobWithClient = async (
 };
 
 export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> => {
-  const pool = resolvePool();
-  if (!pool) throw new Error('studio_job_queue_database_unavailable');
-
-  await enqueueStudioJobWithClient(pool, input);
+  await withInstanceDb(input.instanceId, (client) => enqueueStudioJobWithClient(client, input));
 };
 
 export const queuePluginOperationJob = queueStudioJob;

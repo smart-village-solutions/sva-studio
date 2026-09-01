@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   runTaskList: vi.fn(),
   resolvePool: vi.fn(),
+  withInstanceDb: vi.fn(),
   resolveStudioJobWorkerPool: vi.fn(),
   createStudioJobTaskList: vi.fn(),
   getRegisteredStudioJobExecutionRegistry: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock('graphile-worker', () => ({
 
 vi.mock('../db.js', () => ({
   resolvePool: state.resolvePool,
+  withInstanceDb: state.withInstanceDb,
   resolveStudioJobWorkerPool: state.resolveStudioJobWorkerPool,
 }));
 
@@ -39,6 +41,7 @@ describe('plugin operation runner worker', () => {
     delete process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY;
     delete process.env.SVA_PLUGIN_OPERATION_WORKER_LANE;
     state.resolvePool.mockReturnValue({ query: vi.fn(async () => undefined) });
+    state.withInstanceDb.mockImplementation(async (_instanceId, work) => work(state.resolvePool()));
     state.resolveStudioJobWorkerPool.mockReturnValue({ id: 'worker-pool-1' });
     state.createStudioJobTaskList.mockReturnValue({ studio_job_execute: vi.fn() });
     state.runTaskList.mockImplementation((options: { events: EventEmitter }) => {
@@ -86,6 +89,7 @@ describe('plugin operation runner worker', () => {
       { studio_job_execute: expect.any(Function) },
       { id: 'worker-pool-1' }
     );
+    expect(state.withInstanceDb).toHaveBeenCalledWith('tenant-a', expect.any(Function));
     expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
       expect.stringContaining('graphile_worker.sva_enqueue_job'),
       [
@@ -146,7 +150,7 @@ describe('plugin operation runner worker', () => {
       runAt,
     });
 
-    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
+    expect(state.resolvePool.mock.results.at(-1)?.value.query).toHaveBeenCalledWith(
       expect.stringContaining('graphile_worker.sva_enqueue_job'),
       [
         'plugin_tenant_lifecycle_retry',

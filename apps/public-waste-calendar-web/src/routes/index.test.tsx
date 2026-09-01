@@ -223,9 +223,7 @@ describe('PublicWasteIndexPage', () => {
       if (!url.searchParams.has('streetId')) {
         return new Response(JSON.stringify(selectionPayloads.city));
       }
-      return new Response(
-        JSON.stringify({ status: 'incomplete', step: 'city', options: [] })
-      );
+      return new Response(JSON.stringify({ status: 'incomplete', step: 'city', options: [] }));
     });
 
     render(<PublicWasteIndexPage />);

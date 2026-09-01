@@ -1,3 +1,5 @@
+# Der Dateiname bleibt bis nach dem Cutover als Trigger-Anker bestehen, weil GitHub
+# pull_request-Workflows vom Default-Branch registriert. Name und Verhalten sind produktiv.
 name: CI Gates (PR)
 
 concurrency:

@@ -93,12 +93,7 @@ function loadProjectJson(projectPath: string): NxProjectJson {
   ) as NxProjectJson;
 }
 
-function loadQualityGatesWorkflow(): string {
-  const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/ci-gates-pr-shadow.yml'), 'utf8');
-}
-
-function loadRuntimeGatesWorkflow(): string {
+function loadPrGatesWorkflow(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.github/workflows/ci-gates-pr-shadow.yml'), 'utf8');
 }
@@ -114,16 +109,6 @@ function loadWorkspaceSetupAction(): string {
     path.join(rootDir, '.github/actions/setup-pnpm-workspace/action.yml'),
     'utf8'
   );
-}
-
-function loadMainBuildWorkflow(): string {
-  const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/ci-gates-pr-shadow.yml'), 'utf8');
-}
-
-function loadRepositoryHygieneWorkflow(): string {
-  const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/ci-gates-pr-shadow.yml'), 'utf8');
 }
 
 function loadMainGatesWorkflow(): string {
@@ -200,7 +185,7 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps full PR coverage regression checks enabled in consolidated gates', () => {
-    const runtimeGatesWorkflow = loadRuntimeGatesWorkflow();
+    const runtimeGatesWorkflow = loadPrGatesWorkflow();
 
     expect(runtimeGatesWorkflow).toContain('NX_HEAD: ${{ github.event.pull_request.head.sha }}');
     expect(runtimeGatesWorkflow).toContain(
@@ -214,8 +199,8 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps Unit and Coverage aggregation fail-closed behind stable required names', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
 
     expect(qualityWorkflow).toContain('unit-direct:');
     expect(qualityWorkflow).toContain('unit-remaining:');
@@ -229,7 +214,7 @@ describe('workspace package scripts', () => {
   });
 
   it('requires both internal Unit jobs to succeed before accepting evidence', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
     const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
     const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
     const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
@@ -248,7 +233,7 @@ describe('workspace package scripts', () => {
   });
 
   it('retains successful Unit shard evidence across partial workflow reruns', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
     const directUploadStart = qualityWorkflow.indexOf('      - name: Upload direct Unit evidence');
     const completeJobStart = qualityWorkflow.indexOf('\n  unit-remaining:', directUploadStart);
     const directUpload = qualityWorkflow.slice(directUploadStart, completeJobStart);
@@ -273,7 +258,7 @@ describe('workspace package scripts', () => {
   });
 
   it('retains Coverage evidence across partial workflow reruns', () => {
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
     const uploadStart = runtimeWorkflow.indexOf('      - name: Upload Coverage evidence');
     const aggregateJobStart = runtimeWorkflow.indexOf('\n  coverage-aggregate:', uploadStart);
     const coverageUpload = runtimeWorkflow.slice(uploadStart, aggregateJobStart);
@@ -292,8 +277,8 @@ describe('workspace package scripts', () => {
   });
 
   it('sets up the repository Node runtime before running TypeScript aggregators', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
     const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
     const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
     const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
@@ -317,7 +302,7 @@ describe('workspace package scripts', () => {
   });
 
   it('runs direct Unit feedback in parallel with the remaining PR scope', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
     const fastFeedbackStart = qualityWorkflow.indexOf('  unit-direct:');
     const completeStart = qualityWorkflow.indexOf('  unit-remaining:');
     const fastFeedbackBlock = qualityWorkflow.slice(fastFeedbackStart, completeStart);
@@ -446,7 +431,7 @@ describe('workspace package scripts', () => {
 
   it('keeps general integration scripts on the dedicated honest helper', () => {
     const packageJson = loadRootPackageJson();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
 
     expect(packageJson.scripts?.['test:integration']).toBe(
       'tsx scripts/ci/run-integration-gate.ts --mode full'
@@ -466,8 +451,8 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps PR quality workflows on the shared pr-scope helper', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
     const e2eWorkflow = loadAppE2EWorkflow();
 
     expect(qualityWorkflow).toContain('name: CI Gates (PR)');
@@ -489,7 +474,7 @@ describe('workspace package scripts', () => {
   });
 
   it('determines PR scope before conditionally starting Redis in runtime gates', () => {
-    const workflow = loadRuntimeGatesWorkflow();
+    const workflow = loadPrGatesWorkflow();
     const scopeIndex = workflow.indexOf('      - name: Determine canonical PR scope once');
     const startRedisIndex = workflow.indexOf('      - name: Start Redis');
     const waitRedisIndex = workflow.indexOf('      - name: Wait for Redis readiness');
@@ -502,7 +487,7 @@ describe('workspace package scripts', () => {
   });
 
   it('requires the complete coverage job before accepting downloaded evidence', () => {
-    const workflow = loadRuntimeGatesWorkflow();
+    const workflow = loadPrGatesWorkflow();
     const aggregateStep = workflow.slice(workflow.indexOf('Aggregate required Coverage status'));
     const resultCheckIndex = aggregateStep.indexOf('test "$COMPLETE_RESULT" = "success"');
     const evidenceCheckIndex = aggregateStep.indexOf('node scripts/ci/ci-feedback-aggregate.ts');
@@ -513,7 +498,7 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps PR build validation on the shared pr-scope helper', () => {
-    const mainBuildWorkflow = loadMainBuildWorkflow();
+    const mainBuildWorkflow = loadPrGatesWorkflow();
 
     expect(mainBuildWorkflow).toContain('pull_request:');
     expect(mainBuildWorkflow).toContain('pnpm exec tsx scripts/ci/pr-scope.cli.ts');
@@ -523,7 +508,7 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps the DB schema snapshot gate scoped by the canonical PR decision', () => {
-    const workflow = loadRepositoryHygieneWorkflow();
+    const workflow = loadPrGatesWorkflow();
 
     expect(workflow).toContain('name: DB Schema Snapshot');
     expect(workflow).not.toContain('uses: dorny/paths-filter@v4');
@@ -534,7 +519,7 @@ describe('workspace package scripts', () => {
   it('keeps documentation catalog drift advisory and outside the app build graph', () => {
     const appProject = loadProjectJson('apps/sva-studio-react');
     const build = appProject.targets?.build;
-    const workflow = loadRepositoryHygieneWorkflow();
+    const workflow = loadPrGatesWorkflow();
     const jobStart = workflow.indexOf('  documentation-catalog:');
     const jobEnd = workflow.indexOf('\n  db-schema:', jobStart);
     const job = workflow.slice(jobStart, jobEnd);
@@ -576,8 +561,8 @@ describe('workspace package scripts', () => {
 
   it('recomputes Nx targets instead of trusting a missing, rejected, or damaged remote restore', () => {
     const setupAction = loadWorkspaceSetupAction();
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
 
     expect(setupAction).toContain('NX_NO_CLOUD=true');
     expect(setupAction).not.toContain('path: .nx/cache');

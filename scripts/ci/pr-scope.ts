@@ -37,6 +37,8 @@ const qualityEscalationPatterns = [
 const coverageFullEscalationPatterns = [
   ...qualityEscalationPatterns,
   /^package\.json$/u,
+  // Die produktiven Workflows behalten diese Dateinamen während des atomaren Cutovers
+  // als auf dem Default-Branch registrierte Trigger- und Migrationsanker.
   /^\.github\/workflows\/ci-gates-(?:pr|main)-shadow\.yml$/u,
 ];
 

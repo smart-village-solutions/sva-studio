@@ -1,3 +1,5 @@
+# Der Dateiname bleibt bis nach dem Cutover als stabiler Migrationsanker bestehen.
+# Name und Verhalten sind produktiv.
 name: CI Gates (Main and Nightly)
 
 concurrency:

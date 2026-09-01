@@ -12,15 +12,15 @@ Die Regeln in diesem Dokument sind auf kleine Teams und wachsende Maintainer-Str
 
 Die folgenden Status-Checks muessen im Branch-Schutz fuer `main` als **required** eingetragen sein:
 
-| Check-Run-Name (Branch Protection) | Quelle                                                                    | Muss gruen sein, wenn ...                                    |
-| ---------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `Lint`                             | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `lint`           | immer                                                        |
-| `Unit`                             | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `unit`           | immer                                                        |
-| `Types`                            | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `types`          | immer                                                        |
-| `Complexity`                       | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `complexity`     | immer                                                        |
-| `PR Integration`                   | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `integration-pr` | immer; bei expliziter Nicht-Relevanz als erfolgreicher No-op |
-| `File Placement`                   | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `file-placement` | immer                                                        |
-| `Coverage`                         | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `coverage`       | immer; bei expliziter Nicht-Relevanz als erfolgreicher No-op |
+| Check-Run-Name (Branch Protection) | Quelle                                                                        | Muss gruen sein, wenn ...                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `Lint`                             | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `lint`               | immer                                                        |
+| `Unit`                             | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `unit`               | immer                                                        |
+| `Types`                            | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `types`              | immer                                                        |
+| `Complexity`                       | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `complexity`         | immer                                                        |
+| `PR Integration`                   | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `integration`        | immer; bei expliziter Nicht-Relevanz als erfolgreicher No-op |
+| `File Placement`                   | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `file-placement`     | immer                                                        |
+| `Coverage`                         | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `coverage-aggregate` | immer; bei expliziter Nicht-Relevanz als erfolgreicher No-op |
 
 Verbindliche Regel: Kein unspezifisches "CI ist gruen". Entscheidend sind genau die oben genannten Check-Namen.
 

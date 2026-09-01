@@ -39,7 +39,8 @@ Failure:
 
 - Regex fehlt oder weicht vom finalen Pattern ab
 - `stack` ist im Pattern nicht enthalten
-  Frequency: on_demand
+
+Frequency: on_demand
 
 ---
 
@@ -64,7 +65,8 @@ Failure:
 
 - Hook-Zeile nicht auffindbar
 - Governance-Hinweis zur Migration fehlt
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -93,7 +95,8 @@ Failure:
 
 - Einer der TTL-Werte fehlt
 - Ein TTL-Wert ist nicht numerisch
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -117,7 +120,8 @@ Failure:
 
 - Stack-Tiefe nicht definiert
 - Wert ist ungleich 3
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -144,7 +148,8 @@ Failure:
 
 - `cadence_hours` fehlt
 - `after_parent_merge_hours` fehlt
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -172,7 +177,8 @@ Failure:
 
 - Weniger als vier Stale-Trigger vorhanden
 - `ttl_breach_hours` ist nicht 0
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -198,7 +204,8 @@ Failure:
 
 - Ein Eskalationslevel fehlt
 - Fälligkeiten sind nicht 8/24/48 Stunden
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -228,7 +235,8 @@ Failure:
 
 - Einer der dokumentierten Check-Namen fehlt
 - Check-Name ist umbenannt oder unspezifisch
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -253,7 +261,8 @@ Failure:
 
 - E2E-Release-Abgrenzung fehlt
 - Eigenständiger App-E2E-Workflow fehlt
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -278,7 +287,8 @@ Failure:
 
 - Allgemeines Minimum von 1 fehlt
 - Kritische Pfade mit 2 Approvals fehlen
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -304,7 +314,8 @@ Failure:
 
 - Ein Aktivierungskriterium fehlt
 - Numerische Trigger nicht klar angegeben
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -328,7 +339,8 @@ Failure:
 
 - Kein globaler Fallback-Owner vorhanden
 - Fallback verweist nicht auf `@sva-studio/maintainers`
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -354,7 +366,8 @@ Failure:
 
 - Kritischer Pfad ohne Team-Zuordnung
 - Owner-Zuweisung ist leer oder unvollständig
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -381,7 +394,8 @@ Failure:
 
 - Eine Schutzoption fehlt
 - Schutzoption ist nicht als verbindlich markiert
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -412,7 +426,8 @@ Failure:
 - Einer der dokumentierten Required Checks fehlt
 - Kontextliste ist `null`
 - Zusätzliche, nicht freigegebene Gate-Namen sind als required gesetzt
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -439,7 +454,8 @@ Failure:
 
 - P0/P1-Begrenzung fehlt
 - Audit-Felder sind unvollständig
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -465,7 +481,8 @@ Failure:
 
 - Eines der drei Events fehlt
 - Event ist keinem eindeutigen Lifecycle-Schritt zugeordnet
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -492,7 +509,8 @@ Failure:
 
 - Einer der drei Veröffentlichungskanäle fehlt
 - Reihenfolge ist nicht definiert
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -519,7 +537,8 @@ Failure:
 
 - Cleanup-SLA fehlt
 - Hard-TTL oder Inaktivitäts-TTL fehlt
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -548,7 +567,8 @@ Failure:
 - Retry-Logik unvollständig
 - Eskalationslabel fehlt
 - Kein Zombie-Sweep dokumentiert
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -573,7 +593,8 @@ Failure:
 
 - Active-Preview-Limit fehlt
 - Queue-Limit fehlt
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -598,7 +619,8 @@ Failure:
 
 - Kein numerisches Priorisierungsbudget
 - Keine automatisierte Enforcement-Aktion
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -625,7 +647,8 @@ Failure:
 - 7-Tage-Stale-Regel fehlt
 - 14-Tage-Destroy-Regel fehlt
 - Keep-Verlängerung nicht begrenzt
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -650,7 +673,8 @@ Failure:
 
 - Retry-Strategie nicht vorhanden
 - Eskalations-SLA fehlt
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -675,7 +699,8 @@ Failure:
 
 - Vercel nicht auf `github_secrets_only` festgelegt
 - Self-hosted nicht auf `vault_only` festgelegt
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -701,7 +726,8 @@ Failure:
 
 - `forbidden: true` fehlt
 - Verbotene Fundorte nicht aufgelistet
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -726,7 +752,8 @@ Failure:
 
 - Erlaubte Datenklassen unvollständig
 - 2h-Report-SLA fehlt
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -754,7 +781,8 @@ Failure:
 - Owner nicht gesetzt
 - 60-Minuten-SLA fehlt
 - Pflichtaktionen unvollständig
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -782,7 +810,8 @@ Failure:
 
 - Ketten-Schritt fehlt
 - 30-Minuten-SLA fehlt
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -809,7 +838,8 @@ Failure:
 
 - Revert-first nicht als Default markiert
 - Forward-Fix-Bedingungen unvollständig
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -833,7 +863,8 @@ Failure:
 
 - Anzahl KPI-Abschnitte ist ungleich 5
 - KPI-Überschriften sind nicht numerisch strukturiert
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -857,7 +888,8 @@ Failure:
 
 - Trefferanzahl kleiner als 35
 - Mindestens ein Pflichtfeld fehlt in einer KPI-Sektion
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -886,7 +918,8 @@ Failure:
 
 - Datenquelle außerhalb des freigegebenen Sets
 - Eine zentrale Datenquelle fehlt
-  Frequency: weekly
+
+Frequency: weekly
 
 ---
 
@@ -912,7 +945,8 @@ Failure:
 
 - Eine Eskalationsstufe fehlt
 - Eskalationszeiten sind nicht numerisch definiert
-  Frequency: daily
+
+Frequency: daily
 
 ---
 
@@ -938,7 +972,8 @@ Failure:
 
 - Coverage-Job ist in Workflow nicht vorhanden
 - Governance-Referenz auf Workflow/Job fehlt
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 
@@ -965,7 +1000,8 @@ Failure:
 
 - Ein Pflichtcheck fehlt in der PR-Checkliste
 - Checkliste enthält keine file-placement-Validierung
-  Frequency: per_PR
+
+Frequency: per_PR
 
 ---
 

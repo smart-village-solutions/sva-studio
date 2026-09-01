@@ -80,14 +80,31 @@ const LocationsMasterDataLoaderHarness = () => {
   const state = useWasteMasterDataState();
   useWasteMasterDataOverview(state, (key) => key, 'locations');
 
-  return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
+  return (
+    <div>
+      <span>{state.error ?? (state.loading ? 'loading' : 'loaded')}</span>
+      <span data-testid="coverage-fractions-state">
+        {state.locationCoverageFractionsStatus}:{state.locationCoverageFractions.length}
+      </span>
+      <span data-testid="coverage-tours-state">
+        {state.locationCoverageToursStatus}:{state.availableTours.length}
+      </span>
+    </div>
+  );
 };
 
 const DynamicMasterDataLoaderHarness = ({ tab }: { readonly tab: 'fractions' | 'locations' }) => {
   const state = useWasteMasterDataState();
   useWasteMasterDataOverview(state, (key) => key, tab);
 
-  return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
+  return (
+    <div>
+      <span>{state.error ?? (state.loading ? 'loading' : 'loaded')}</span>
+      <span data-testid="dynamic-coverage-fractions-state">
+        {state.locationCoverageFractionsStatus}:{state.locationCoverageFractions.length}
+      </span>
+    </div>
+  );
 };
 
 const CollectionLocationLoaderHarness = () => {
@@ -354,15 +371,20 @@ describe('waste management data loaders', () => {
   });
 
   it('loads location master data through the scoped locations endpoint and tours separately', async () => {
-    apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({
-      fractions: [],
-      regions: [],
-      cities: [],
-      streets: [],
-      houseNumbers: [],
-      collectionLocations: [],
-      locationTourLinks: [],
-    });
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      async (options?: { readonly scope?: string }) =>
+        options?.scope === 'fractions'
+          ? { fractions: [{ id: 'fraction-1' }] }
+          : {
+              fractions: [],
+              regions: [],
+              cities: [],
+              streets: [],
+              houseNumbers: [],
+              collectionLocations: [],
+              locationTourLinks: [],
+            }
+    );
     apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
 
     render(<LocationsMasterDataLoaderHarness />);
@@ -373,12 +395,188 @@ describe('waste management data loaders', () => {
 
     await waitFor(() => {
       expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+      expect(screen.getByTestId('coverage-tours-state').textContent).toBe('ready:0');
     });
 
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
       scope: 'locations',
     });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
+      scope: 'fractions',
+    });
+  });
+
+  it('loads location coverage support without waiting for the locations overview', async () => {
+    let resolveLocations: ((value: object) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      (options?: { readonly scope?: string }) =>
+        options?.scope === 'fractions'
+          ? Promise.resolve({ fractions: [{ id: 'fraction-1' }] })
+          : new Promise((resolve) => (resolveLocations = resolve))
+    );
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+      expect(screen.getByTestId('coverage-tours-state').textContent).toBe('ready:0');
+    });
+    expect(screen.queryByText('loaded')).toBeNull();
+
+    await act(async () => {
+      resolveLocations?.({
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      });
+    });
+
+    expect(await screen.findByText('loaded')).toBeTruthy();
+  });
+
+  it('releases the page loader while location coverage support finishes locally', async () => {
+    let resolveTours: ((value: { tours: readonly never[] }) => void) | undefined;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      async (options?: { readonly scope?: string }) =>
+        options?.scope === 'fractions'
+          ? { fractions: [{ id: 'fraction-1' }] }
+          : {
+              fractions: [],
+              regions: [],
+              cities: [],
+              streets: [],
+              houseNumbers: [],
+              collectionLocations: [],
+              locationTourLinks: [],
+            }
+    );
+    apiMocks.getWasteManagementToursOverview.mockImplementation(
+      () => new Promise((resolve) => (resolveTours = resolve))
+    );
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+    });
+    expect(screen.getByText('loaded')).toBeTruthy();
+    expect(screen.getByTestId('coverage-tours-state').textContent).toBe('loading:0');
+
+    await act(async () => {
+      resolveTours?.({ tours: [] });
+    });
+
+    expect(await screen.findByText('loaded')).toBeTruthy();
+    expect(screen.getByTestId('coverage-tours-state').textContent).toBe('ready:0');
+  });
+
+  it('keeps location master data usable when the coverage fractions fail to load', async () => {
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      async (options?: { readonly scope?: string }) => {
+        if (options?.scope === 'fractions') {
+          throw new Error('fractions failed');
+        }
+
+        return {
+          fractions: [],
+          regions: [],
+          cities: [],
+          streets: [],
+          houseNumbers: [],
+          collectionLocations: [],
+          locationTourLinks: [],
+        };
+      }
+    );
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('loaded')).toBeTruthy();
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('error:0');
+    });
+
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the coverage check unavailable when the tours fail to load', async () => {
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      async (options?: { readonly scope?: string }) =>
+        options?.scope === 'fractions'
+          ? { fractions: [{ id: 'fraction-1' }] }
+          : {
+              fractions: [],
+              regions: [],
+              cities: [],
+              streets: [],
+              houseNumbers: [],
+              collectionLocations: [],
+              locationTourLinks: [],
+            }
+    );
+    apiMocks.getWasteManagementToursOverview.mockRejectedValue(new Error('tours failed'));
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('loaded')).toBeTruthy();
+      expect(screen.getByTestId('coverage-fractions-state').textContent).toBe('ready:1');
+      expect(screen.getByTestId('coverage-tours-state').textContent).toBe('error:0');
+    });
+  });
+
+  it('ignores a stale coverage fractions response after leaving the locations tab', async () => {
+    let resolveStaleFractions: ((value: object) => void) | undefined;
+    let fractionRequestCount = 0;
+    apiMocks.getWasteManagementMasterDataOverview.mockImplementation(
+      (options?: { readonly scope?: string }) => {
+        if (options?.scope === 'locations') {
+          return Promise.resolve({
+            fractions: [],
+            regions: [],
+            cities: [],
+            streets: [],
+            houseNumbers: [],
+            collectionLocations: [],
+            locationTourLinks: [],
+          });
+        }
+
+        fractionRequestCount += 1;
+        return fractionRequestCount === 1
+          ? new Promise((resolve) => (resolveStaleFractions = resolve))
+          : Promise.resolve({ fractions: [] });
+      }
+    );
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+
+    const { rerender } = render(<DynamicMasterDataLoaderHarness tab="locations" />);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('dynamic-coverage-fractions-state').textContent).toBe('loading:0');
+    });
+
+    rerender(<DynamicMasterDataLoaderHarness tab="fractions" />);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(3);
+      expect(screen.getByTestId('dynamic-coverage-fractions-state').textContent).toBe('idle:0');
+    });
+
+    await act(async () => {
+      resolveStaleFractions?.({ fractions: [{ id: 'stale-fraction' }] });
+    });
+
+    expect(screen.getByTestId('dynamic-coverage-fractions-state').textContent).toBe('idle:0');
   });
 
   it('reloads the master-data overview when the active tab scope changes', async () => {

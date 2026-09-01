@@ -1,6 +1,5 @@
 import {
   hasUnresolvedMainserverOwnershipTransfer,
-  resolveMainserverOwnershipTarget,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -17,6 +16,7 @@ import {
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
+import { resolveTargetForMutation } from './content-ownership-target-verification.js';
 import {
   ownershipTargetErrorResponse,
   parseOwnershipTargetPrincipal,
@@ -29,7 +29,6 @@ import { transferSvaMainserverContentOwnership } from './service.js';
 
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
-  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
   target: ResolvedMainserverOwnershipTarget;
@@ -41,8 +40,8 @@ const verifyTransferResult = async (input: {
     // The source read below provides the second independent observation.
   }
   try {
-    const sourceItem = await loadOwnershipItem(input.sourceConnection, input.content);
-    if (sourceItem.dataProvider?.id === input.sourceDataProviderId) return 'source';
+    const actorItem = await loadOwnershipItem(input.actor, input.content);
+    if (actorItem.dataProvider?.id === input.sourceDataProviderId) return 'source';
   } catch {
     // Neither credential context produced conclusive evidence.
   }
@@ -51,7 +50,6 @@ const verifyTransferResult = async (input: {
 
 const finalizeUnclearTransfer = async (input: {
   actor: MainserverMutationActor;
-  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
@@ -91,7 +89,7 @@ const finalizeUnclearTransfer = async (input: {
       actor: input.actor,
       providerOutcome: 'failed',
       reconciliationStatus: 'complete',
-      completedSteps: ['source_reread_confirmed'],
+      completedSteps: ['actor_reread_confirmed'],
       contentId: input.route.contentId,
       observedDataProviderId: input.sourceDataProviderId,
       lastErrorCode: errorCode,
@@ -112,7 +110,7 @@ const finalizeUnclearTransfer = async (input: {
     actor: input.actor,
     providerOutcome: 'unknown',
     reconciliationStatus: 'reconciliation_required',
-    completedSteps: ['target_reread', 'source_reread'],
+    completedSteps: ['target_reread', 'actor_reread'],
     contentId: input.route.contentId,
     lastErrorCode: 'content_transfer_reconciliation_required',
     ownershipTransfer: input.ownershipTransfer,
@@ -132,7 +130,6 @@ const finalizeUnclearTransfer = async (input: {
 
 const executeProviderTransfer = async (input: {
   actor: MainserverMutationActor;
-  sourceConnection: ResolvedMainserverOwnershipTarget['connection'];
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   sourceDataProviderId: string;
@@ -141,7 +138,7 @@ const executeProviderTransfer = async (input: {
 }): Promise<Response | null> => {
   try {
     await transferSvaMainserverContentOwnership({
-      ...input.sourceConnection,
+      ...input.actor,
       content: input.content,
       expectedSourceDataProviderId: input.sourceDataProviderId,
       targetDataProviderId: input.target.dataProviderId,
@@ -193,11 +190,14 @@ const executeLockedTransfer = async (input: {
   const source = await resolveAuthorizedTransferSource(input);
   if (!source.ok) return source.response;
   const sourceDataProviderId = source.dataProviderId;
-  const targetResolution = await resolveMainserverOwnershipTarget({
-    instanceId: input.actor.instanceId,
-    actorKeycloakSubject: input.actor.keycloakSubject,
+  const targetResolution = await resolveTargetForMutation({
+    actor: input.actor,
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
     principal: input.principal,
+    sourceDataProviderId,
   });
+  if (isResponse(targetResolution)) return targetResolution;
   if (!targetResolution.ok) {
     recordOwnershipTransferOutcome({
       actor: input.actor,
@@ -234,8 +234,13 @@ const executeLockedTransfer = async (input: {
   }
   const ownershipTransfer: OwnershipTransferAudit = {
     coverage: 'studio_mutations',
-    sourcePrincipalType: source.principal.type,
-    sourcePrincipalId: source.principal.id,
+    sourcePrincipalResolution: source.principalResolution,
+    ...(source.principal
+      ? {
+          sourcePrincipalType: source.principal.type,
+          sourcePrincipalId: source.principal.id,
+        }
+      : {}),
     targetPrincipalType: input.principal.type,
     targetPrincipalId: input.principal.id,
     sourceDataProviderId,
@@ -249,7 +254,6 @@ const executeLockedTransfer = async (input: {
     execute: () =>
       executeProviderTransfer({
         actor: input.actor,
-        sourceConnection: source.connection,
         route: input.route,
         content: input.content,
         sourceDataProviderId,

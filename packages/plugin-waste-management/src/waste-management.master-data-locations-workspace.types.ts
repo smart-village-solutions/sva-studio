@@ -11,10 +11,13 @@ import type {
   WasteCollectionLocationSortMode,
 } from '@sva/plugin-sdk';
 import type { WasteManagementSearchParams } from './search-params.js';
+import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 
 export type WasteMasterDataLocationsWorkspaceProps = {
   readonly search?: WasteManagementSearchParams;
   readonly fractions?: readonly WasteFractionRecord[];
+  readonly fractionsStatus?: WasteLocationCoverageDataStatus;
+  readonly toursStatus?: WasteLocationCoverageDataStatus;
   readonly auditCollectionLocations?: readonly WasteCollectionLocationRecord[];
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];

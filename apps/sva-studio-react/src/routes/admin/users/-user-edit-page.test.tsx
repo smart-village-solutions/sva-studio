@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { UserEditPage } from './-user-edit-page';
@@ -18,6 +19,8 @@ const useOrganizationsMock = vi.fn();
 const useRolePermissionsMock = vi.fn();
 const getUserTimelineMock = vi.fn();
 const navigateMock = vi.fn();
+const refreshSessionMock = vi.fn();
+const useRealUserHook = vi.hoisted(() => ({ current: false }));
 const routerState = vi.hoisted(() => ({
   locationState: {} as Record<string, unknown>,
 }));
@@ -38,9 +41,14 @@ vi.mock('../../../hooks/use-iam-resource-access', () => ({
   isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
 }));
 
-vi.mock('../../../hooks/use-user', () => ({
-  useUser: (...args: unknown[]) => useUserMock(...args),
-}));
+vi.mock('../../../hooks/use-user', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../../hooks/use-user')>('../../../hooks/use-user');
+  return {
+    useUser: (...args: Parameters<typeof actual.useUser>) =>
+      useRealUserHook.current ? actual.useUser(...args) : useUserMock(...args),
+  };
+});
 
 vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
@@ -58,8 +66,46 @@ vi.mock('../../../hooks/use-role-permissions', () => ({
   useRolePermissions: () => useRolePermissionsMock(),
 }));
 
-vi.mock('../../../lib/iam-api', () => ({
-  getUserTimeline: (...args: unknown[]) => getUserTimelineMock(...args),
+vi.mock('../../../lib/iam-api', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../../lib/iam-api')>('../../../lib/iam-api');
+  return {
+    ...actual,
+    getUserTimeline: (...args: Parameters<typeof actual.getUserTimeline>) =>
+      getUserTimelineMock(...args),
+  };
+});
+
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'admin-1',
+      name: 'Admin',
+      roles: ['system_admin'],
+      instanceId: 'instance-1',
+    },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    logout: vi.fn(),
+    refreshSession: refreshSessionMock,
+  }),
+}));
+
+vi.mock('../../../lib/browser-operation-logging', () => ({
+  createOperationLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  logBrowserOperationFailure: vi.fn(),
+  logBrowserOperationStart: vi.fn(),
+  logBrowserOperationSuccess: vi.fn(),
+}));
+
+vi.mock('../../../lib/iam-user-events', () => ({
+  subscribeIamUsersUpdated: () => () => undefined,
+}));
+
+vi.mock('../../../providers/effective-access-invalidation', () => ({
+  requestEffectiveAccessInvalidation: vi.fn(),
 }));
 
 describe('UserEditPage', () => {
@@ -113,6 +159,8 @@ describe('UserEditPage', () => {
     useRolePermissionsMock.mockReset();
     getUserTimelineMock.mockReset();
     navigateMock.mockReset();
+    refreshSessionMock.mockReset();
+    useRealUserHook.current = false;
     routerState.locationState = {};
     getUserTimelineMock.mockResolvedValue({ data: [] });
     useGroupsMock.mockReturnValue({
@@ -1041,6 +1089,119 @@ describe('UserEditPage', () => {
     await waitFor(() => {
       expect(save).toHaveBeenCalledTimes(1);
       expect(screen.queryByText('Nutzerdaten wurden gespeichert.')).toBeNull();
+    });
+  });
+
+  it('opens the owning tab and focuses an invalid email from submit and summary selection', async () => {
+    const save = vi.fn();
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      save,
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'invalid' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
+
+    await waitFor(() => {
+      expect(save).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Bitte eine gültige E-Mail-Adresse eingeben.'
+      );
+      expect(
+        screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')
+      ).toBe('true');
+      expect(document.activeElement).toBe(screen.getByLabelText('E-Mail'));
+    });
+
+    expect(screen.getByLabelText('E-Mail').getAttribute('aria-invalid')).toBe('true');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Bitte eine gültige E-Mail-Adresse eingeben.' })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')
+      ).toBe('true');
+      expect(document.activeElement).toBe(screen.getByLabelText('E-Mail'));
+    });
+  });
+
+  it('saves user edits and resends the password setup email through HTTP', async () => {
+    useRealUserHook.current = true;
+    let updatePayload: unknown;
+    let resendRequests = 0;
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    studioMswServer.use(
+      http.get('/api/v1/iam/users/user-msw-edit', () => HttpResponse.json({ data: baseUser })),
+      http.patch('/api/v1/iam/users/user-msw-edit', async ({ request }) => {
+        updatePayload = await request.json();
+        return HttpResponse.json({
+          data: { ...baseUser, displayName: 'Alice HTTP Updated' },
+        });
+      }),
+      http.post('/api/v1/iam/users/user-msw-edit/send-password-setup-email', () => {
+        resendRequests += 1;
+        return HttpResponse.json({ data: { status: 'sent' } });
+      })
+    );
+
+    render(<UserEditPage userId="user-msw-edit" />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Anzeigename')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Anzeigename'), {
+      target: { value: 'Alice HTTP Updated' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[0]!);
+
+    await waitFor(() => {
+      expect(updatePayload).toEqual(
+        expect.objectContaining({
+          displayName: 'Alice HTTP Updated',
+          mainserverUserApplicationId: 'app-id-1',
+        })
+      );
+    });
+    expect(updatePayload).not.toHaveProperty('mainserverUserApplicationSecret');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Passwort-Einladung erneut senden' }));
+
+    await waitFor(() => {
+      expect(resendRequests).toBe(1);
+      expect(
+        screen.getByText('Die Einladungs-E-Mail zum Passwort setzen wurde versendet.')
+      ).toBeTruthy();
     });
   });
 

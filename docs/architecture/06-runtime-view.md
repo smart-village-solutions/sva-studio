@@ -1208,3 +1208,35 @@ Fehlerpfad:
 3. Der Transfer sperrt Instanz, Typ und Datensatz, liest die Quelle erneut und revalidiert Permission, Ziel, Credentials und Binding-Version.
 4. Das Journal wird vor dem Provider-Write um erwartetes Ziel und technische Transfermetadaten ergänzt.
 5. Eine bestätigte Zielzuordnung aktualisiert Projektion und UI. Bei verlorenem Response entscheiden Target- und Source-Re-Read; fehlende eindeutige Evidenz erzeugt `reconciliation_required`.
+
+### Szenario 20: SSF-Runtime-Konfiguration laden
+
+1. Für angemeldete Benutzer hat Studio zuvor die effektiven tenantgebundenen
+   `ssf.*`-Permissions mit einer tenantweiten Revision in den SSF-Keycloak-
+   Client projiziert. Ein Fehler hält Client und Plugin-Readiness gesperrt.
+2. Ein angemeldeter Benutzer oder eine Gäste-Session stellt SSF einen von SSF
+   validierten Mandantenkontext bereit.
+3. SSF leitet daraus die kanonische Studio-Instanz-ID ab und ruft den internen
+   V1-Endpunkt mit einem installationsweiten Keycloak-Service-Token auf.
+4. Studio prüft Token, Audience, `ssf.runtime-configuration.read`, Instanz,
+   Plugin-Aktivierung und Readiness fail-closed.
+5. Das SSF-Plugin löst Produktdefaults, serverweite Anpassungen und wirksame
+   Tenant-Overrides zu genau einer effektiven Konfiguration auf.
+6. Bei einem angemeldeten Benutzer vergleicht SSF die
+   `authorizationRevision` der Antwort mit dem Tokenclaim; Abwesenheit oder
+   Abweichung erzwingt eine neue Authentisierung und bleibt bis dahin gesperrt.
+7. SSF rendert die Antwort für den aktuellen Vorgang, ohne sie persistent zu
+   spiegeln. Änderungen im Studio wirken beim nächsten Abruf; eine bereits
+   geladene Session behält ihre Darstellung.
+
+Fehlerpfad:
+
+- Fehlende oder ungültige Authentisierung sowie unbekannte, gesperrte oder
+  nicht bereite Instanzen liefern den versionierten Fehlervertrag ohne fremde
+  Tenantdaten oder interne Details.
+- Ist Studio oder das SSF-Plugin nicht erreichbar, darf der Vorgang fehlschlagen;
+  V1 führt keine zusätzliche Synchronisations- oder Cache-Persistenz in SSF ein.
+- Scheitert die IAM-Projektion, werden keine neuen Tenant-Tokens ausgestellt und
+  Runtime-Abrufe liefern `ssf_tenant_not_ready`.
+
+Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).

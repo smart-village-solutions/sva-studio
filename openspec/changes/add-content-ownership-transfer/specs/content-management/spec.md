@@ -97,7 +97,7 @@ Das System SHALL in der Bearbeitungsansicht dauerhaft erklären, dass normales S
 
 ### Requirement: Transferziel unterscheidet persönliche Accounts und Organisationen
 
-Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Organisationen SHALL über ihre Anzeige suchbar sein. Persönliche Accounts SHALL in V1 ohne zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder paginiert auswählbar sein. Eine exakte Gesamtzahl ist nicht erforderlich, sofern die Navigation keine verfügbaren Treffer ausblendet. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein.
+Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Organisationen SHALL über ihre Anzeige suchbar sein. Persönliche Accounts SHALL in V1 ohne zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder paginiert auswählbar sein. Eine exakte Gesamtzahl ist nicht erforderlich, sofern die Navigation keine verfügbaren Treffer ausblendet. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein. Ein Mainserver-Ziel, dessen verwendbare Credentials erst bei Bestätigung an einen DataProvider gebunden werden müssen, SHALL einen verständlichen Hinweis auf diese sichere Prüfung tragen.
 
 #### Scenario: Benutzer durchsucht mögliche Zielinhaber
 
@@ -107,6 +107,13 @@ Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Account
 - **AND** bleibt der Principal-Typ im gewählten `targetPrincipal` erhalten
 - **AND** zeigt die Oberfläche keine technische DataProvider-ID
 - **AND** zeigt sie keine E-Mail-Adresse
+
+#### Scenario: Noch nicht gebundenes Mainserver-Ziel erklärt die Verifikation
+
+- **GIVEN** ein auswählbarer Ziel-Principal besitzt den Zustand `verification_required`
+- **WHEN** die Oberfläche ihn in der Auswahl oder im Bestätigungsschritt zeigt
+- **THEN** erklärt sie, dass die DataProvider-Zuordnung beim bestätigten Transfer sicher geprüft wird
+- **AND** zeigt sie weder Credentials noch eine technische DataProvider-ID
 
 #### Scenario: Benutzer bestätigt die Wirkung des Transfers
 
@@ -132,6 +139,8 @@ Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Account
 
 Das System SHALL Ownership-Transfers als eigene Mutation am aktuellen Inhalt autorisieren. Der Actor benötigt dafür `content.transferOwnership` im passenden Scope auf dem Quellinhalt. Normale Update-Permissions SHALL keinen Ownership-Transfer autorisieren. Der Ziel-Owner SHALL validiert werden, setzt aber keine zusätzliche Lese- oder Update-Berechtigung des Actors auf den Zielbereich voraus.
 
+Bei Scope `all` SHALL der aktuelle Owner beziehungsweise Mainserver-DataProvider aus dem frischen Content-Read für die Source-Autorisierung genügen. Aktivstatus, Löschzustand, Credentials oder eine eindeutige Principal-Bindung des bisherigen Inhabers SHALL den Transfer nicht blockieren. Bei Scope `own` oder `organization` SHALL eine Principal-Bindung nur soweit erforderlich sein, wie sie den engeren Source-Scope nachweist.
+
 #### Scenario: Eigener Inhalt wird an anderen Benutzer übertragen
 
 - **GIVEN** ein Benutzer besitzt `content.transferOwnership` mit Scope `own`
@@ -154,6 +163,15 @@ Das System SHALL Ownership-Transfers als eigene Mutation am aktuellen Inhalt aut
 - **WHEN** der Benutzer dem Inhalt einen Owner zuweisen will
 - **THEN** verweigert das System die Mutation
 - **AND** nur `content.transferOwnership` mit Scope `all` kann ownerlose Inhalte zuweisen
+
+#### Scenario: Global berechtigter Actor überträgt Inhalt eines nicht mehr aktiven Inhabers
+
+- **GIVEN** ein sichtbarer Mainserver-Inhalt besitzt einen aktuellen DataProvider
+- **AND** dessen bisheriger Studio-Principal ist inaktiv, gelöscht oder nicht mehr eindeutig gebunden
+- **AND** der Actor besitzt `content.transferOwnership` mit Scope `all`
+- **WHEN** der Actor den Inhalt an einen gültigen Account oder eine gültige Organisation überträgt
+- **THEN** autorisiert das System den aktuellen Inhalt ohne Credentials oder Lifecycle-Prüfung des bisherigen Principals
+- **AND** bleiben Aktivstatus, eindeutige Bindung und verwendbare Credentials Anforderungen ausschließlich an das Ziel
 
 #### Scenario: Normales Update versucht Ownership zu ändern
 
@@ -283,12 +301,12 @@ Keine Aktion SHALL ein neues Principal-Mapping allein aus einem Content-Read beg
 - **THEN** bleibt der bestätigte Organisations-DataProvider Inhaber
 - **AND** können andere berechtigte Mitglieder der Organisation den Inhalt weiter verwalten
 
-#### Scenario: Autorisierter Transfer verwendet Quell- und Ziel-Principal getrennt
+#### Scenario: Autorisierter Transfer verwendet Actor und Ziel-Principal getrennt
 
 - **GIVEN** ein Benutzer besitzt `content.transferOwnership` im passenden Scope auf dem Quellinhalt
 - **AND** der Server hat einen aktiven Ziel-Principal derselben Instanz konfliktfrei an `dp-target` gebunden
 - **WHEN** der Benutzer die Übergabe bestätigt
-- **THEN** führt der gebundene Quell-Principal Fresh Pre-Read und Transfermutation aus
+- **THEN** führt der autorisierte Actor Fresh Pre-Read und Transfermutation aus
 - **AND** sendet ausschließlich der Server `dataProviderId = dp-target` an die typisierte Mainserver-Mutation
 - **AND** wird der Ziel-Principal nicht zum Actor der Mutation
 

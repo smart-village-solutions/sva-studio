@@ -9,9 +9,13 @@ const isHttpsUrl = (value: string): boolean => {
   }
 };
 
-const hasInvalidUrl = (value: string | undefined): boolean => value !== undefined && value.trim().length > 0 && isHttpsUrl(value) === false;
+const hasInvalidUrl = (value: string | undefined): boolean =>
+  value !== undefined && value.trim().length > 0 && isHttpsUrl(value) === false;
 
-export const hasInvalidGeoLocation = (value?: { readonly latitude?: number; readonly longitude?: number }): boolean => {
+export const hasInvalidGeoLocation = (value?: {
+  readonly latitude?: number;
+  readonly longitude?: number;
+}): boolean => {
   const { latitude, longitude } = value ?? {};
   if (latitude === undefined && longitude === undefined) {
     return false;
@@ -29,6 +33,22 @@ export const hasInvalidGeoLocation = (value?: { readonly latitude?: number; read
   );
 };
 
+export const hasInvalidFormGeoLocation = (value?: {
+  readonly latitude?: string;
+  readonly longitude?: string;
+}): boolean => {
+  const latitude = value?.latitude?.trim() ?? '';
+  const longitude = value?.longitude?.trim() ?? '';
+  if (latitude.length === 0 && longitude.length === 0) {
+    return false;
+  }
+
+  return hasInvalidGeoLocation({
+    latitude: latitude.length > 0 ? Number(latitude) : undefined,
+    longitude: longitude.length > 0 ? Number(longitude) : undefined,
+  });
+};
+
 export const validateEventForm = (input: EventFormInput): readonly string[] => {
   const errors: string[] = [];
 
@@ -36,15 +56,31 @@ export const validateEventForm = (input: EventFormInput): readonly string[] => {
     errors.push('title');
   }
 
-  if ((input.dates ?? []).some((date) => isValidDateOnlyValue(date.dateStart) === false || isValidDateOnlyValue(date.dateEnd) === false)) {
+  if (input.organizer && (input.organizer.name?.trim().length ?? 0) === 0) {
+    errors.push('organizerName');
+  }
+
+  if (
+    (input.dates ?? []).some(
+      (date) =>
+        isValidDateOnlyValue(date.dateStart) === false ||
+        isValidDateOnlyValue(date.dateEnd) === false
+    )
+  ) {
     errors.push('dates');
   }
 
-  if ((input.urls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false)) {
+  if (
+    (input.urls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false)
+  ) {
     errors.push('urls');
   }
 
-  if ((input.contacts ?? []).some((contact) => (contact.webUrls ?? []).some((url) => hasInvalidUrl(url.url)))) {
+  if (
+    (input.contacts ?? []).some((contact) =>
+      (contact.webUrls ?? []).some((url) => hasInvalidUrl(url.url))
+    )
+  ) {
     errors.push('urls');
   }
 
@@ -60,7 +96,11 @@ export const validateEventForm = (input: EventFormInput): readonly string[] => {
     errors.push('urls');
   }
 
-  if ((input.categories ?? []).some((category) => category.name.trim().length === 0 || category.name.length > 128)) {
+  if (
+    (input.categories ?? []).some(
+      (category) => category.name.trim().length === 0 || category.name.length > 128
+    )
+  ) {
     errors.push('categories');
   }
 

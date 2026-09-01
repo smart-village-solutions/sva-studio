@@ -118,9 +118,11 @@ Rollback erfolgt wie bei News über `iam.instance_integrations.enabled = false`.
 
 Der eingecheckte GraphQL-Vertrag führt die optionale Variable `dataProviderId` für News, Events, POI, Touren und Generic Items. Studio übernimmt diese ID niemals aus einem Browser-Request. Der serverseitige Adapter liest den Datensatz frisch mit den Credentials des Quellprincipals, vergleicht den aktuellen DataProvider mit dem erwarteten Quellwert, sendet die intern aufgelöste Ziel-ID an die bestehende Resource-Mutation und akzeptiert den Vorgang nur, wenn die Antwort denselben Ziel-DataProvider bestätigt.
 
+Fehlt für ein aktives, credential-bereites Ziel lediglich die gespeicherte DataProvider-Bindung, kennzeichnet die Zielauswahl es als prüfpflichtig. Erst der bestätigte Transfer lädt für genau dieses Ziel `/data_provider.json`, zeichnet die authentifizierte Beobachtung auf und löst die Bindung erneut auf. Zielsuche und Pagination führen keine solchen externen Aufrufe aus. Ein Identity-Ausfall antwortet vor dem Provider-Write mit `content_transfer_target_verification_failed`; ein entdeckter Widerspruch bleibt `content_transfer_target_binding_conflict`.
+
 Der Studio-Adapter ist derzeit für News, Events, POI und Root-GenericItems implementiert. Touren bleiben deaktiviert, weil der verifizierte Schema-Snapshot in `TourInput` kein `dataProviderId` anbietet und das Studio keinen redaktionellen Tour-Detailadapter besitzt. Surveys, Legacy-SurveyPolls und Batch-Importe unterstützen keinen Inhabertransfer. Normale Update-Routen ändern den DataProvider nicht.
 
-`content.transferOwnership` ist keine Default-Capability. Die Route bleibt fail-closed, bis ein Runtime-Preflight den Zielvertrag bestätigt und die Action explizit in `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` aufgenommen wurde. Eine erfolgreiche lokale Typprüfung ersetzt diesen Betriebsnachweis nicht.
+`content.transferOwnership` ist für die bestätigten Studio-Typen dauerhaft als Code-Capability aktiviert und benötigt keine betriebliche Konfiguration. Die Route lehnt Surveys und andere nicht unterstützte Typen weiterhin anhand der serverseitigen Typmatrix ab. Der Mainserver-Vertrag wird als Release-Voraussetzung geprüft, ist aber kein Laufzeitschalter.
 
 Die Migration `0087_iam_content_transfer_ownership_permission.sql` ergänzt ausschließlich Permission- und Rollenbestandsdaten. Tabellen, Spalten, Constraints, Indizes, RLS, Trigger und Datenbankfunktionen ändern sich nicht; deshalb bleibt der strukturelle Schema-Snapshot unverändert.
 

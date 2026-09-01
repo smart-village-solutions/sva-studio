@@ -612,10 +612,10 @@ Referenzen:
 
 ### Fortschreibung 2026-08: CI-Topologie-Shadow
 
-- Risiko: Der temporäre Shadow verdoppelt Gate-Arbeit und Runner-Minuten. Maßnahme: nur bis zur repräsentativen `20/20`-Paritätsmessung betreiben und im atomaren Cutover zusammen mit den Alt-Orchestrierungen abbauen.
+- Risiko: Der temporäre Shadow verdoppelt Gate-Arbeit und Runner-Minuten. Maßnahme: Die erreichte `20/20`-Paritätsmessung beendet die fachliche Beobachtungsphase; nach dem Live-Nachweis der korrigierten Sammler-Deadline werden Shadow und Alt-Orchestrierung im atomaren Cutover abgebaut.
 - Risiko: Ein Shadow-Job könnte versehentlich als Required-Kontext oder Release-Evidenz interpretiert werden. Maßnahme: eindeutige `CI Shadow / ...`-Namen, keine Ruleset-Mutation und strikte Trennung von `Build`, `App E2E` und `Promote`.
-- Risiko: Statische Contract-Tests beweisen keine Live-Parität, Queue-Zeit oder GitHub-Semantik. Maßnahme: Stand `0/20` offen ausweisen; Plan 036 bleibt bis zu 20 Head-SHA-genauen Läufen ohne ungeklärte Abweichung gesperrt.
-- Restrisiko: Die Shadow-Implementierung ist zusätzliche temporäre Ownership. Sie darf nicht als dauerhafte zweite CI-Topologie bestehen bleiben.
+- Risiko: Statische Contract-Tests beweisen keine Live-Parität, Queue-Zeit oder GitHub-Semantik. Maßnahme: Die Live-Auswertung dokumentiert `20/20`, eine gepaarte Unit-/Coverage-Regression von 78 Sekunden sowie erkannte Infrastruktur- und Testflanken; die verlängerte PR-Sammler-Deadline wird vor dem Cutover auf einem exakten Head bestätigt.
+- Restrisiko: Die produktive Laufzeit ohne Doppelarbeit ist vor dem Cutover nicht messbar. Maßnahme: zehn repräsentative Post-Cutover-Läufe gegen höchstens 438 Sekunden Median beobachten und bei ungeklärter Unterabdeckung oder Ergebnisdrift den vollständigen Workflowstand per Revert-Commit wiederherstellen.
 
 ### Fortschreibung 2026-08: IAM-ABAC-Entscheidungsbausteine
 

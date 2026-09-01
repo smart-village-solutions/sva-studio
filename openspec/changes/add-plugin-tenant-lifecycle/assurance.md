@@ -6,7 +6,7 @@ Dieses Dokument ist der verbindliche System-Assurance-Vertrag für den Change
 `add-plugin-tenant-lifecycle`. Es ergänzt Proposal, Design, Delta-Specs sowie
 [ADR-056](../../../docs/adr/ADR-056-extension-tiers-und-scopegebundene-plugin-beitraege.md)
 und
-[ADR-057](../../../docs/adr/ADR-057-generischer-plugin-tenant-lifecycle-und-readiness-gate.md),
+[ADR-058](../../../docs/adr/ADR-058-generischer-plugin-tenant-lifecycle-und-readiness-gate.md),
 ohne deren Architekturentscheidungen zu duplizieren. Die zugehörigen
 arc42-Sichten sind insbesondere die
 [Lösungsstrategie](../../../docs/architecture/04-solution-strategy.md),

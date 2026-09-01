@@ -94,7 +94,8 @@ import { mediaContentFromAsset } from './events.detail-media.helpers.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';
-import { hasInvalidGeoLocation, validateEventForm } from './events.validation.js';
+import { hasEventOrganizerContent } from './events.detail-form-structured-serializers.js';
+import { hasInvalidFormGeoLocation, validateEventForm } from './events.validation.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -330,6 +331,7 @@ export function EventsDetailPage({
     dateEnd: false,
   });
   const [activeTab, setActiveTab] = React.useState<EventsDetailTabId>('basis');
+  const [pendingFocusId, setPendingFocusId] = React.useState<string | null>(null);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly EventsDetailTabId[]>(['basis']);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly EventCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
@@ -661,6 +663,14 @@ export function EventsDetailPage({
     setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
   }, []);
 
+  React.useEffect(() => {
+    if (!pendingFocusId) return;
+    const element = globalThis.document?.getElementById(pendingFocusId);
+    if (!element) return;
+    element.focus();
+    setPendingFocusId(null);
+  }, [activeTab, pendingFocusId]);
+
   const handleTabChange = React.useCallback(
     (tabId: EventsDetailTabId) => {
       warmTab(tabId);
@@ -700,9 +710,22 @@ export function EventsDetailPage({
       },
     };
     const payload = mapEventsDetailFormValuesToInput(valuesWithMedia);
+    const invalidAddressIndex = valuesWithMedia.content.addresses.findIndex((address) =>
+      hasInvalidFormGeoLocation(address.geoLocation)
+    );
+    const invalidOrganizerGeoLocation = hasInvalidFormGeoLocation(
+      valuesWithMedia.content.organizer.address?.geoLocation
+    );
+    const organizerNameMissing =
+      hasEventOrganizerContent(valuesWithMedia.content.organizer) &&
+      (valuesWithMedia.content.organizer.name ?? '').trim().length === 0;
     const validationErrors = [
-      ...validateEventForm(payload),
-      ...(invalidDateInputs.dateStart || invalidDateInputs.dateEnd ? ['dates'] : []),
+      ...new Set([
+        ...validateEventForm(payload),
+        ...(invalidDateInputs.dateStart || invalidDateInputs.dateEnd ? ['dates'] : []),
+        ...(invalidAddressIndex >= 0 || invalidOrganizerGeoLocation ? ['geoLocation'] : []),
+        ...(organizerNameMissing ? ['organizerName'] : []),
+      ]),
     ];
 
     if (validationErrors.length > 0) {
@@ -711,20 +734,22 @@ export function EventsDetailPage({
         methods.setFocus('content.dates.0.dateStart');
         setActiveTab('content');
       } else if (validationErrors.includes('geoLocation')) {
-        if (
-          (payload.addresses ?? []).some((address) => hasInvalidGeoLocation(address.geoLocation))
-        ) {
-          methods.setError('content.addresses.0.geoLocation.latitude', {
+        if (invalidAddressIndex >= 0) {
+          methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.latitude`, {
             type: 'manual',
             message: 'geoLocation',
           });
-          methods.setError('content.addresses.0.geoLocation.longitude', {
+          methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.longitude`, {
             type: 'manual',
             message: 'geoLocation',
           });
-          methods.setFocus('content.addresses.0.geoLocation.latitude');
+          setPendingFocusId(
+            invalidAddressIndex === 0
+              ? 'event-address-latitude'
+              : `event-address-latitude-${invalidAddressIndex}`
+          );
         }
-        if (hasInvalidGeoLocation(payload.organizer?.address?.geoLocation)) {
+        if (invalidOrganizerGeoLocation) {
           methods.setError('content.organizer.address.geoLocation.latitude', {
             type: 'manual',
             message: 'geoLocation',
@@ -733,7 +758,7 @@ export function EventsDetailPage({
             type: 'manual',
             message: 'geoLocation',
           });
-          methods.setFocus('content.organizer.address.geoLocation.latitude');
+          setPendingFocusId('event-organizer-latitude');
         }
         setActiveTab('content');
       } else if (validationErrors.includes('categories')) {
@@ -741,6 +766,13 @@ export function EventsDetailPage({
       } else if (validationErrors.includes('title')) {
         methods.setFocus('title');
         setActiveTab('basis');
+      } else if (validationErrors.includes('organizerName')) {
+        methods.setError('content.organizer.name', {
+          type: 'manual',
+          message: 'organizerName',
+        });
+        setActiveTab('content');
+        setPendingFocusId('event-organizer-name');
       } else if (validationErrors.includes('urls')) {
         methods.setFocus('content.urls.0.url');
         setActiveTab('content');

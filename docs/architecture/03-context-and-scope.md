@@ -89,3 +89,22 @@ Referenzen:
 - `packages/data-repositories/src/integrations/instance-integrations.ts`
 - `compose.yaml`
 - `compose.monitoring.yaml`
+
+### Zielbild 2026-09: SSF als abhängiges Nachbarsystem
+
+Smart Speech Flow (SSF) wird als separates, gemeinsam mit einer Studio-Installation
+betriebenes Nachbarsystem angebunden. Eine Studio-Instanz entspricht genau einem
+SSF-Mandanten; SSF führt keinen eigenen Mandantenbestand. Studio Core bleibt für
+Instanzidentität, IAM, Keycloak-Provisionierung, Medien, Plugin-Aktivierung und
+Audit führend. Das SSF-Plugin besitzt die serverweiten und tenantbezogenen
+SSF-Konfigurationen und liefert SSF ausschließlich die vollständig aufgelöste
+Runtime-Konfiguration über eine interne API.
+
+SSF besitzt weiterhin Anmeldung, Gäste-Sessions und Gesprächsablauf. Zwischen
+Studio und SSF gibt es weder eine gemeinsame Fachdatenbank noch direkten Zugriff
+auf die Persistenz des jeweils anderen Systems. Gesprächsinhalte, Gast-Token,
+Sessions und Auswertungsdaten gehören nicht zum ersten Integrationsvertrag.
+
+Der fachlich freigegebene, noch nicht implementierte Vertrag ist unter
+[Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
+dokumentiert.

@@ -129,6 +129,40 @@ describe('Mainserver content authorization', () => {
     });
   });
 
+  it('authorizes an unbound source only with global transfer scope', async () => {
+    const transferContext = {
+      ...context,
+      action: 'content.transferOwnership',
+      permissions: [
+        {
+          action: 'content.transferOwnership',
+          resourceType: 'content',
+          accessScope: 'all',
+        } as EffectivePermission,
+      ],
+      dataProviderId: 'provider-orphaned',
+    };
+
+    await expect(authorizeMainserverDataProviderAccess(transferContext)).resolves.toMatchObject({
+      allowed: true,
+      authorizationMode: 'exact',
+    });
+    expect(state.loadBinding).not.toHaveBeenCalled();
+
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...transferContext,
+        permissions: [
+          {
+            action: 'content.transferOwnership',
+            resourceType: 'content',
+            accessScope: 'own',
+          } as EffectivePermission,
+        ],
+      })
+    ).resolves.toMatchObject({ allowed: false, reason: 'forbidden' });
+  });
+
   it('rejects a missing DataProvider as an upstream contract failure', async () => {
     await expect(
       authorizeMainserverDataProviderAccess({
@@ -408,6 +442,25 @@ describe('Mainserver content authorization', () => {
       allowed: true,
       authorizationMode: 'credential_visible_compatibility',
       reason: 'allowed',
+      resolverMode: 'compatibility',
+    });
+  });
+
+  it('lets a sensitive caller enforce exact scope semantics in compatibility mode', async () => {
+    process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'compatibility';
+    state.loadBinding.mockResolvedValue({ dataProviderId: 'provider-user' });
+
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...context,
+        permissions: [permission('own')],
+        dataProviderId: 'provider-foreign',
+        forceExactScopeAuthorization: true,
+      })
+    ).resolves.toEqual({
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'data_provider_mismatch',
       resolverMode: 'compatibility',
     });
   });

@@ -1,9 +1,10 @@
 import {
   resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
-  type ResolvedMainserverOwnershipTarget,
+  type ResolvedMainserverOwnershipSource,
 } from '@sva/auth-runtime/server';
 import { isUuid, type IamContentOwnerPrincipal } from '@sva/core';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverOwnershipTransferContent } from '../types.js';
 import { errorJson, isRecord, isResponse } from './content-route-core.js';
@@ -17,6 +18,55 @@ import {
   authorizeMainserverExistingContent,
   type MainserverMutationActor,
 } from './mutation-principal.js';
+
+const logger = createSdkLogger({
+  component: 'sva-mainserver-content-ownership-route',
+  level: 'info',
+});
+
+export type OwnershipSourceEnrichment =
+  | Readonly<{ status: 'resolved'; source: ResolvedMainserverOwnershipSource }>
+  | Readonly<{ status: 'unresolved' | 'failed' }>;
+
+export const resolveOwnershipSourceEnrichment = async (input: {
+  actor: MainserverMutationActor;
+  contentType: string;
+  contentId: string;
+  dataProviderId: string;
+  operation: 'authorization' | 'targets' | 'transfer';
+}): Promise<OwnershipSourceEnrichment> => {
+  try {
+    const source = await resolveMainserverOwnershipSource({
+      instanceId: input.actor.instanceId,
+      dataProviderId: input.dataProviderId,
+    });
+    return source ? { status: 'resolved', source } : { status: 'unresolved' };
+  } catch (error) {
+    const context = getWorkspaceContext();
+    logger.warn('Mainserver ownership source enrichment failed', {
+      operation: 'mainserver_content_ownership_source_enrichment',
+      request_id: context.requestId,
+      trace_id: context.traceId,
+      instance_id: input.actor.instanceId,
+      content_type: input.contentType,
+      content_id: input.contentId,
+      data_provider_id: input.dataProviderId,
+      route_operation: input.operation,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return { status: 'failed' };
+  }
+};
+
+const readAuthorizationErrorCode = async (response: Response): Promise<string> => {
+  const payload = (await response
+    .clone()
+    .json()
+    .catch(() => undefined)) as unknown;
+  return isRecord(payload) && typeof payload.error === 'string'
+    ? payload.error
+    : 'content_transfer_authorization_failed';
+};
 
 export const parseOwnershipTargetPrincipal = async (
   request: Request
@@ -59,8 +109,8 @@ export const ownershipTargetErrorResponse = (
 type SourceResolution =
   | Readonly<{
       ok: true;
-      principal: IamContentOwnerPrincipal;
-      connection: ResolvedMainserverOwnershipTarget['connection'];
+      principal?: IamContentOwnerPrincipal;
+      principalResolution: OwnershipSourceEnrichment['status'];
       dataProviderId: string;
     }>
   | Readonly<{ ok: false; response: Response }>;
@@ -85,70 +135,36 @@ export const resolveAuthorizedTransferSource = async (input: {
       ),
     };
   }
-  const source = await resolveMainserverOwnershipSource({
-    instanceId: input.actor.instanceId,
+  const source = await resolveOwnershipSourceEnrichment({
+    actor: input.actor,
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
     dataProviderId: initialDataProviderId,
+    operation: 'transfer',
   });
-  if (!source) {
-    return {
-      ok: false,
-      response: errorJson(
-        409,
-        'content_transfer_source_changed',
-        'Die aktive Principal-Bindung ist nicht eindeutig.'
-      ),
-    };
-  }
-  const sourceResolution = await resolveMainserverOwnershipTarget({
-    instanceId: input.actor.instanceId,
-    actorKeycloakSubject: input.actor.keycloakSubject,
-    principal: source.principal,
-  });
-  if (!sourceResolution.ok || sourceResolution.target.dataProviderId !== initialDataProviderId) {
-    return {
-      ok: false,
-      response: errorJson(
-        409,
-        'content_transfer_source_changed',
-        'Die Credentials des aktuellen Inhabers sind nicht eindeutig.'
-      ),
-    };
-  }
-  const current = await loadOwnershipItem(sourceResolution.target.connection, input.content);
-  if (!matchesOwnershipContentType(input.route.contentType, current)) {
-    return { ok: false, response: errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.') };
-  }
-  const sourceDataProviderId = current.dataProvider?.id?.trim();
-  if (!sourceDataProviderId || sourceDataProviderId !== initialDataProviderId) {
-    return {
-      ok: false,
-      response: errorJson(
-        409,
-        'content_transfer_source_changed',
-        'Der aktuelle Inhaber ist nicht eindeutig.'
-      ),
-    };
-  }
   const authorization = await authorizeMainserverExistingContent({
     actor: input.actor,
     action: 'content.transferOwnership',
     contentType: input.route.contentType,
     contentId: input.route.contentId,
-    item: current,
+    item: actorVisibleCurrent,
+    forceExactScopeAuthorization: true,
+    ...(source.status === 'resolved' ? {} : { requiredAccessScope: 'all' }),
   });
   if (isResponse(authorization)) {
+    const errorCode = await readAuthorizationErrorCode(authorization);
     recordOwnershipTransferOutcome({
       actor: input.actor,
       contentType: input.route.contentType,
-      outcome: 'denied',
-      errorCode: 'content_transfer_permission_missing',
+      outcome: authorization.status === 403 ? 'denied' : 'rejected',
+      errorCode,
     });
     return { ok: false, response: authorization };
   }
   return {
     ok: true,
-    principal: source.principal,
-    connection: sourceResolution.target.connection,
-    dataProviderId: sourceDataProviderId,
+    ...(source.status === 'resolved' ? { principal: source.source.principal } : {}),
+    principalResolution: source.status,
+    dataProviderId: initialDataProviderId,
   };
 };

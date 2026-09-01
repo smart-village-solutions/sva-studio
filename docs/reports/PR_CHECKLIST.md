@@ -38,6 +38,15 @@
 - [ ] Bei sicherheitskritischer oder domänenkritischer Logik wurde mindestens `docs/architecture/05-building-block-view.md` oder `docs/architecture/08-cross-cutting-concepts.md` aktualisiert
 - [ ] Neue oder geänderte IAM-Patterns sind als ADR unter `docs/adr/` dokumentiert und in `docs/architecture/09-architecture-decisions.md` referenziert
 
+## System-Assurance bei risikoreichen Großvorhaben
+
+- [ ] Die für den konkreten Fall relevante Assurance-Argumentation ist in `assurance.md` oder einem gleichwertigen reviewbaren Artefakt für den exakten PR-HEAD auffindbar; nicht relevante Punkte sind als solche erkennbar
+- [ ] Im Proposal-Stadium besitzen kritische Behauptungen eine angemessene Nachweisplanung oder eine ausdrücklich akzeptierte Restrisikoentscheidung
+- [ ] Bei Implementierungs- oder Merge-Reife besitzen kritische Behauptungen angemessene ausgeführte Evidenz für den exakten HEAD oder eine ausdrücklich akzeptierte Restrisikoentscheidung
+- [ ] Relevante Systemgrenzen, Verbraucher, Zustandsübergänge sowie Failure-/Crashpunkte sind in einer für den Fall geeigneten Form erfasst
+- [ ] Konkurrenz, Redelivery, Teilfehler, Prozessabbruch, Wiederanlauf und Recovery wurden entsprechend ihrer tatsächlichen Relevanz bewertet
+- [ ] Der System-Assurance-Review weist keine unbehandelte kritische Risiko- oder Nachweislücke aus
+
 ## Reviewer Quick Check
 
 - [ ] Keine absoluten lokalen Dateipfade in Doku oder Skripten

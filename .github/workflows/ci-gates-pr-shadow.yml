@@ -502,7 +502,7 @@ jobs:
       - documentation-catalog
       - db-schema
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 35
     steps:
       - name: Checkout parity validator
         uses: actions/checkout@v7
@@ -532,7 +532,9 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/ci-shadow
           comparison_started_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
-          for attempt in {1..40}; do
+          parity_poll_started_epoch=$(date -u +%s)
+          comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))
+          while true; do
             gh api \
               -H 'Accept: application/vnd.github+json' \
               "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
@@ -554,6 +556,9 @@ jobs:
             fi
             if [ "$parity_status" -eq 1 ]; then
               exit 1
+            fi
+            if [ "$(date -u +%s)" -ge "$comparison_deadline_epoch" ]; then
+              break
             fi
             sleep 10
           done

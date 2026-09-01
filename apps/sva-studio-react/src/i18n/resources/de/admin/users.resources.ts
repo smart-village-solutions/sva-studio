@@ -117,6 +117,9 @@ export const usersAdminDEResources = {
     groupsLabel: 'Gruppen-Zuweisung',
     notesLabel: 'Notizen',
     notesCounter: '{{count}} / 2000 Zeichen',
+    validation: {
+      notesTooLong: 'Notizen dürfen höchstens 2000 Zeichen enthalten.',
+    },
     effectivePermissionsTitle: 'Aktuell wirksame Rechte',
     effectivePermissionsHint:
       'Diese Liste zeigt die derzeit aufgelösten Rechte des Nutzers aus Rollen- und Gruppen-Zuweisungen.',

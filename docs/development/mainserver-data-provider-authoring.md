@@ -2,7 +2,7 @@
 
 ## Ziel und Grenzen
 
-Bei Mainserver-Inhalten ist der vom Mainserver gesetzte `dataProvider` der unveränderliche ursprüngliche Inhaber. Der handelnde Studio-Account bleibt Actor; `actingPrincipalType` bestimmt ausschließlich, ob persönliche oder organisatorische Credentials für die konkrete Mutation verwendet werden. Freie `author`-Texte und lokale Projektionswerte begründen weder Ownership noch eine Principal-Bindung.
+Bei Mainserver-Inhalten ist der vom Mainserver am Datensatz gesetzte `dataProvider` der aktuelle Inhaber. Der handelnde Studio-Account bleibt Actor; `actingPrincipalType` bestimmt ausschließlich, ob persönliche oder organisatorische Credentials für die konkrete Mutation verwendet werden. Freie `author`-Texte und lokale Projektionswerte begründen weder Ownership noch eine Principal-Bindung.
 
 `/data_provider.json` liefert inzwischen eine stabile ID im Objektformat `{ "data_provider": { "id": ... } }`. Principal-zu-DataProvider-Bindungen entstehen deshalb vor dem Provider-Write automatisch aus diesem authentifizierten Nachweis. Create-Response oder Same-Credential-Re-Read bestätigen anschließend denselben Content-Inhaber. Listen, Details, Updates, Deletes, Namen und administrative Eingaben sind keine Bindungsevidenz.
 
@@ -12,6 +12,7 @@ Bei Mainserver-Inhalten ist der vom Mainserver gesetzte `dataProvider` der unver
 - Der Server validiert Actor, aktive Organisation, `contentAuthorPolicy`, Membership, Credentials, Action und Scope erneut.
 - Bei globaler Update-Berechtigung darf der Bestandseditor die Credential-Quelle aus einer Projektion ableiten, die exakt zum aktuellen Actor und aktiven Organisationskontext gehört. Für `own` und `organization` bleibt eine exakte Ownership-Bindung erforderlich; auch im globalen Fall autorisiert die Projektion selbst keine Mutation.
 - Vor dem ersten Write mit einer neuen oder rotierten Credential-Version muss `/data_provider.json` eine nicht leere String- oder Ganzzahl-ID liefern. Fehlt eine aktuelle Bindung und scheitert dieser Nachweis, endet die Mutation fail-closed.
+- Beim Inhabertransfer darf der paginierte Zielkatalog einen aktiven Principal mit verwendbaren Credentials, aber fehlender Bindung als `verification_required` anbieten. Erst die ausdrückliche Bestätigung prüft genau dieses Ziel über `/data_provider.json`, zeichnet die Beobachtung auf und löst die Bindung erneut auf. Listenabruf, Suche und Pagination führen keine Identity-Prüfung pro Kandidat aus.
 - Eine verifizierte Bindung darf bei einer vorübergehenden Identity-Störung nur für exakt denselben Credential-Fingerprint weiterverwendet werden.
 - Pre-Read, Read-Merge-Write, Provider-Write, Status-/Visibility-Zweitschritt, Post-Read, Projection, Audit und Reconciliation verwenden denselben unveränderlichen Credential-Fingerprint.
 - Jede bestehende Mutation benötigt einen frischen Same-Credential-Pre-Read. Projection und Cache autorisieren nie eine Mutation.
@@ -41,7 +42,7 @@ Der kanonische Remote-Promote reicht den Wert aus dem getrackten Umgebungsprofil
 - `legacy_compatible` ist der Übergangsstandard. V2-Requests benötigen immer den expliziten Principal. Nur headerlose alte Clients dürfen den Principal deterministisch über den bestehenden policy-gesteuerten Credential-Resolver ableiten.
 - `required` lehnt auch headerlose alte Mutationsrequests ohne expliziten Principal ab.
 
-`SVA_MAINSERVER_CONFIRMED_CAPABILITIES` enthält ausschließlich durch reale Contract-Tests bestätigte zusätzliche Actions. Ein leerer Wert erweitert keine Capability.
+`content.transferOwnership` gehört für die bestätigten Studio-Typen dauerhaft zu den Code-Capabilities und wird nicht über eine Umgebungsvariable geschaltet. `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` enthält ausschließlich weitere, durch reale Contract-Tests bestätigte Actions. Ein leerer Wert erweitert diese zusätzlichen Capabilities nicht.
 
 Die effektive Liste wird angemeldeten Studio-Clients über
 `GET /api/v1/mainserver/mutation-capabilities` bereitgestellt. UI-Rechte allein schalten keine

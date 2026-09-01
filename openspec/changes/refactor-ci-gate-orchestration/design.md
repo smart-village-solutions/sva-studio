@@ -141,19 +141,30 @@ Terminalität als Fehler gewertet. Der gemeinsame Workflow-Start bleibt davon
 getrennt die Zeitbasis für Run-Zuordnung und vergleichbare Laufzeitmessung,
 damit Runner-Wartezeit das Polling-Budget nicht verkürzt.
 
+Der PR-Sammler verwendet dieselbe absolute, ab seinem tatsächlichen Start
+laufende Deadline. Damit wird ein erst kurz vor Ende eines festen
+Versuchszählers startender Bestandsaggregator nicht fälschlich als fehlend
+bewertet. Nach Ablauf der Deadline bleibt die Auswertung fail-closed.
+
 ### Decision 6: Ownership-Gewinn ist quantitativ
 
 Die Summe der produktiven YAML-Zeilen, die die vier heutigen Workflows ersetzt,
 darf nach dem Cutover höchstens 840 Zeilen betragen. Das entspricht mindestens
-20 Prozent Reduktion gegenüber 1.050 Zeilen. Produktive
+20 Prozent Reduktion gegenüber 1.050 Zeilen. Temporäre Paritätsjobs der
+Shadow-Migration gehören nicht zur produktiven Zieltopologie und werden beim
+Cutover entfernt. Produktive
 CI-Orchestrierungs-TS-Zeilen dürfen netto nicht steigen; Contract-Tests und
 Evidenzschemas zählen nicht als Ausrede für eine neue universelle Engine.
 
 Für mindestens 20 repräsentative Shadow-Läufe müssen Scope-Plan und terminale
-Endentscheidung identisch sein. Die mediane terminale Zeit grüner Required
-Checks darf gegenüber der akzeptierten Accelerate-Baseline um höchstens 30
-Sekunden steigen. Doppelte Ausführung desselben App-Build- oder Gate-Vertrags
-für denselben Event-/SHA-Kontext ist ein Fehler, keine tolerierte Kostenart.
+Endentscheidung identisch sein. Während der unvermeidbar parallelen
+Shadow-Phase darf die gepaarte Median-Regression der grünen Unit-/Coverage-
+Endzeiten gegenüber der Alt-Orchestrierung höchstens 90 Sekunden betragen.
+Nach dem Cutover werden zehn repräsentative PR-Läufe ohne Shadow-Doppelarbeit
+gegen die akzeptierte Accelerate-Baseline von 348 Sekunden ausgewertet; ihr
+Median darf höchstens 90 Sekunden darüber liegen. Doppelte Ausführung desselben
+App-Build- oder Gate-Vertrags für denselben Event-/SHA-Kontext ist in der
+produktiven Zieltopologie ein Fehler, keine tolerierte Kostenart.
 
 ## Risks / Trade-offs
 
@@ -171,7 +182,8 @@ für denselben Event-/SHA-Kontext ist ein Fehler, keine tolerierte Kostenart.
   relevantem Drift aktualisieren.
 - Weniger Jobs können Parallelität reduzieren. Mitigation: Der gemeinsame
   Scope serialisiert nur die kurze Planung; unabhängige Gate-Jobs bleiben
-  parallel. Das +30-Sekunden-Ziel begrenzt Regressionen.
+  parallel. Die gepaarte +90-Sekunden-Grenze begrenzt den Shadow-Zustand; zehn
+  Läufe nach dem Cutover prüfen die produktive Topologie ohne Doppelarbeit.
 
 ## Migration Plan
 
@@ -182,9 +194,10 @@ für denselben Event-/SHA-Kontext ist ein Fehler, keine tolerierte Kostenart.
    veröffentlichen und die definierte Matrix für mindestens 20
    repräsentative Läufe auswerten.
 4. Bei identischem Scope/Ergebnis, vollständigen Checknamen und akzeptierter
-   Laufzeit den Cutover atomar durchführen.
-5. Veröffentlichung am exakten Cutover-Head prüfen, Altworkflows löschen und
-   YAML-/TS-Löschbilanz sowie Architektur dokumentieren.
+   gepaarter Shadow-Laufzeit den Cutover atomar durchführen.
+5. Veröffentlichung am exakten Cutover-Head prüfen, Altworkflows und
+   Paritätsjobs löschen, anschließend zehn repräsentative PR-Läufe beobachten
+   und YAML-/TS-Löschbilanz sowie Architektur dokumentieren.
 6. Bei Abweichung vor dem Cutover stoppen; nach einem fehlerhaften Cutover den
    letzten vollständigen Workflowstand in einem neuen Commit wiederherstellen.
 

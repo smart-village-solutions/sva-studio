@@ -2,7 +2,6 @@ import {
   listMainserverOwnershipTargets,
   loadExternalContentReferenceByContentId,
   resolveActorInfo,
-  resolveMainserverOwnershipSource,
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
   type ResolvedMainserverOwnershipSource,
@@ -19,15 +18,16 @@ import {
   type SupportedContentOwnershipRouteMatch,
 } from './content-ownership-route-contract.js';
 import { handleContentOwnershipTransfer } from './content-ownership-transfer-route.js';
+import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
-import { isMainserverMutationCapabilityEnabled } from './mainserver-mutation-capabilities.js';
 import {
   resolveMainserverMutationActor,
   resolveMainserverResourceAccess,
   type MainserverMutationActor,
 } from './mutation-principal.js';
 import { projectSourceReferenceInput } from './projects-route-transport.js';
+import { getSvaMainserverSurvey } from './service.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
 const logger = createSdkLogger({
@@ -90,7 +90,12 @@ const handleTargets = async (
   request: Request,
   route: ContentOwnershipRouteMatch,
   actor: MainserverMutationActor,
-  source: ResolvedMainserverOwnershipSource
+  source: Readonly<{
+    dataProviderId: string;
+    displayName: string;
+    principal?: ResolvedMainserverOwnershipSource['principal'];
+    principalResolution: 'resolved' | 'unresolved' | 'failed';
+  }>
 ): Promise<Response> => {
   const url = new URL(request.url);
   const type = url.searchParams.get('type') ?? 'account';
@@ -110,7 +115,7 @@ const handleTargets = async (
     page,
     pageSize,
     ...(search ? { search } : {}),
-    currentOwner: source.principal,
+    ...(source.principal ? { currentOwner: source.principal } : {}),
     currentDataProviderId: source.dataProviderId,
   });
   return json({
@@ -118,8 +123,9 @@ const handleTargets = async (
     pagination: { page: result.page, pageSize: result.pageSize, total: result.total },
     contentType: route.contentType,
     currentOwner: {
-      principal: source.principal,
-      displayName: source.dataProviderName ?? source.dataProviderId,
+      ...(source.principal ? { principal: source.principal } : {}),
+      principalResolution: source.principalResolution,
+      displayName: source.displayName,
     },
   });
 };
@@ -141,34 +147,102 @@ const handleAuthorizedTargets = async (
       'content_transfer_source_changed',
       'Der aktuelle Inhaber ist nicht eindeutig.'
     );
-  const source = await resolveMainserverOwnershipSource({
-    instanceId: actor.instanceId,
+  const sourceEnrichment = await resolveOwnershipSourceEnrichment({
+    actor,
+    contentType: route.contentType,
+    contentId: route.contentId,
     dataProviderId,
+    operation: route.operation,
   });
-  if (!source)
-    return errorJson(
-      409,
-      'content_transfer_source_changed',
-      'Die aktive Principal-Bindung ist nicht eindeutig.'
-    );
   const access = await resolveMainserverResourceAccess({
     actor,
     actions: ['content.transferOwnership'],
     contentType: route.contentType,
     contentId: route.contentId,
     item: current,
+    forceExactScopeActions: ['content.transferOwnership'],
+    ...(sourceEnrichment.status === 'resolved'
+      ? {}
+      : { requireAllScopeActions: ['content.transferOwnership'] }),
   });
-  return access['content.transferOwnership'] === true
-    ? route.operation === 'authorization'
-      ? json({
-          data: { canTransfer: true },
-          currentOwner: {
-            principal: source.principal,
-            displayName: source.dataProviderName ?? source.dataProviderId,
-          },
-        })
-      : handleTargets(request, route, actor, source)
-    : errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
+  const resolvedSource =
+    sourceEnrichment.status === 'resolved' ? sourceEnrichment.source : undefined;
+  const source = {
+    dataProviderId,
+    displayName:
+      current.dataProvider?.name?.trim() || resolvedSource?.dataProviderName || dataProviderId,
+    ...(resolvedSource ? { principal: resolvedSource.principal } : {}),
+    principalResolution: sourceEnrichment.status,
+  };
+  if (route.operation === 'authorization') {
+    return json({
+      data: { canTransfer: access['content.transferOwnership'] === true },
+      currentOwner: {
+        ...(source.principal ? { principal: source.principal } : {}),
+        principalResolution: source.principalResolution,
+        displayName: source.displayName,
+      },
+    });
+  }
+  if (access['content.transferOwnership'] !== true) {
+    return errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
+  }
+  return handleTargets(request, route, actor, source);
+};
+
+const handleSurveyAuthorization = async (
+  route: ContentOwnershipRouteMatch,
+  actor: MainserverMutationActor
+): Promise<Response> => {
+  const current = await getSvaMainserverSurvey({ ...actor, surveyId: route.contentId });
+  if (!current) return errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.');
+  const dataProviderId = current.dataProvider?.id?.trim();
+  if (!dataProviderId) {
+    return errorJson(
+      409,
+      'content_transfer_source_changed',
+      'Der aktuelle Inhaber ist nicht eindeutig.'
+    );
+  }
+  const sourceEnrichment = await resolveOwnershipSourceEnrichment({
+    actor,
+    contentType: route.contentType,
+    contentId: route.contentId,
+    dataProviderId,
+    operation: route.operation,
+  });
+  const resolvedSource =
+    sourceEnrichment.status === 'resolved' ? sourceEnrichment.source : undefined;
+  return json({
+    data: { canTransfer: false },
+    currentOwner: {
+      ...(resolvedSource ? { principal: resolvedSource.principal } : {}),
+      principalResolution: sourceEnrichment.status,
+      displayName:
+        current.dataProvider?.name?.trim() || resolvedSource?.dataProviderName || dataProviderId,
+    },
+  });
+};
+
+const ownershipRouteFailureResponse = (
+  error: unknown,
+  actor: MainserverMutationActor,
+  route: ContentOwnershipRouteMatch,
+  fallbackMessage: string
+): Response => {
+  const context = getWorkspaceContext();
+  logger.warn('Mainserver content ownership route failed', {
+    operation: 'mainserver_content_ownership',
+    request_id: context.requestId,
+    trace_id: context.traceId,
+    instance_id: actor.instanceId,
+    content_type: route.contentType,
+    content_id: route.contentId,
+    route_operation: route.operation,
+    error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
+    error_message: error instanceof Error ? error.message : String(error),
+  });
+  return toMainserverErrorResponse(error, fallbackMessage);
 };
 
 const dispatchAuthenticated = async (
@@ -176,26 +250,31 @@ const dispatchAuthenticated = async (
   route: ContentOwnershipRouteMatch,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  if (route.contentType === 'surveys.survey') {
+  if (route.contentType === 'surveys.survey' && route.operation !== 'authorization') {
     return errorJson(
       409,
       'content_transfer_type_unsupported',
       'Dieser Inhaltstyp unterstützt noch keinen Transfer.'
     );
   }
-  if (!isMainserverMutationCapabilityEnabled('content.transferOwnership')) {
-    return errorJson(
-      409,
-      'content_transfer_type_unsupported',
-      'Der Mainserver-Vertrag für Inhaberübertragungen ist nicht bestätigt.'
-    );
+  const actor = await resolveActor(request, ctx);
+  if (isResponse(actor)) return actor;
+  if (route.contentType === 'surveys.survey') {
+    try {
+      return await handleSurveyAuthorization(route, actor);
+    } catch (error) {
+      return ownershipRouteFailureResponse(
+        error,
+        actor,
+        route,
+        'Die Inhaberanzeige ist fehlgeschlagen.'
+      );
+    }
   }
   const supportedRoute: SupportedContentOwnershipRouteMatch = {
     ...route,
     contentType: route.contentType,
   };
-  const actor = await resolveActor(request, ctx);
-  if (isResponse(actor)) return actor;
   const providerContentId =
     supportedRoute.contentType === 'projects.project'
       ? ((
@@ -211,19 +290,12 @@ const dispatchAuthenticated = async (
       ? handleContentOwnershipTransfer(request, supportedRoute, actor, content)
       : handleAuthorizedTargets(request, supportedRoute, actor, content);
   } catch (error) {
-    const context = getWorkspaceContext();
-    logger.warn('Mainserver content ownership route failed', {
-      operation: 'mainserver_content_ownership',
-      request_id: context.requestId,
-      trace_id: context.traceId,
-      instance_id: actor.instanceId,
-      content_type: route.contentType,
-      content_id: route.contentId,
-      route_operation: route.operation,
-      error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-    return toMainserverErrorResponse(error, 'Die Inhaberübertragung ist fehlgeschlagen.');
+    return ownershipRouteFailureResponse(
+      error,
+      actor,
+      route,
+      'Die Inhaberübertragung ist fehlgeschlagen.'
+    );
   }
 };
 

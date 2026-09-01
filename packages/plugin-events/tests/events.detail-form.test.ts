@@ -1,12 +1,33 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createDefaultEventsDetailFormValues,
   mapEventItemToDetailFormValues,
   mapEventsDetailFormValuesToInput,
 } from '../src/events.detail-form.js';
+import { hasEventOrganizerContent } from '../src/events.detail-form-structured-serializers.js';
 import type { EventContentItem } from '../src/events.types.js';
 
 describe('events.detail-form', () => {
+  it('omits the organizer when all organizer fields contain only default placeholders', () => {
+    expect(
+      mapEventsDetailFormValuesToInput(createDefaultEventsDetailFormValues())
+    ).not.toHaveProperty('organizer');
+  });
+
+  it('treats incomplete organizer coordinates as entered organizer content', () => {
+    expect(
+      hasEventOrganizerContent({
+        address: { geoLocation: { latitude: '51.4', longitude: '' } },
+      })
+    ).toBe(true);
+    expect(
+      hasEventOrganizerContent({
+        address: { geoLocation: { latitude: '', longitude: 'not-a-number' } },
+      })
+    ).toBe(true);
+  });
+
   it('maps an event item into the fixed tab form model without dropping structured sections', () => {
     expect(
       mapEventItemToDetailFormValues({

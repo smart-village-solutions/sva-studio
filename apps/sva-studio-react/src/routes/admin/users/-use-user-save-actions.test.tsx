@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import type React from 'react';
+import { useForm } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { useUser } from '../../../hooks/use-user';
@@ -21,32 +21,28 @@ const createUserApi = (overrides: Partial<UserApi> = {}): UserApi => ({
 
 describe('useUserSaveActions', () => {
   it('returns to idle when the user update fails', async () => {
-    const preventDefault = vi.fn();
-    const setFormValues: React.Dispatch<React.SetStateAction<ReturnType<typeof toUserFormValues>>> =
-      vi.fn();
-    const { result } = renderHook(() =>
-      useUserSaveActions(createUserApi(), toUserFormValues(null), setFormValues, false)
-    );
-
-    await act(async () => {
-      await result.current.onSave({
-        preventDefault,
-      } as unknown as React.FormEvent<HTMLFormElement>);
+    const save = vi.fn(async () => null);
+    const { result } = renderHook(() => {
+      const form = useForm({ defaultValues: toUserFormValues(null) });
+      return useUserSaveActions(createUserApi({ save }), form, false);
     });
 
-    expect(preventDefault).toHaveBeenCalledOnce();
-    expect(setFormValues).not.toHaveBeenCalled();
+    await act(async () => {
+      await result.current.onSave();
+    });
+
+    expect(save).toHaveBeenCalledOnce();
     expect(result.current.saveStatus).toBe('idle');
   });
 
   it('keeps optional account operations safe when unavailable or unsuccessful', async () => {
     const resendPasswordSetupEmail = vi.fn(async () => false);
     const reprovisionMainserverData = vi.fn(async () => false);
-    const setFormValues: React.Dispatch<React.SetStateAction<ReturnType<typeof toUserFormValues>>> =
-      vi.fn();
     const { result, rerender } = renderHook(
-      ({ userApi }: { userApi: UserApi }) =>
-        useUserSaveActions(userApi, toUserFormValues(null), setFormValues, true),
+      ({ userApi }: { userApi: UserApi }) => {
+        const form = useForm({ defaultValues: toUserFormValues(null) });
+        return useUserSaveActions(userApi, form, true);
+      },
       { initialProps: { userApi: createUserApi() } }
     );
 

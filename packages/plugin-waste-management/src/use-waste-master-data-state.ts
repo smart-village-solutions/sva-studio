@@ -6,9 +6,18 @@ import type { StatusMessage } from './waste-management.page.support.js';
 import { useWasteMasterDataEntityState } from './waste-management.master-data.entity-state.js';
 import { useWasteMasterDataLocationState } from './waste-management.master-data.location-state.js';
 
+export type WasteLocationCoverageDataStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 export const useWasteMasterDataState = () => {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementMasterDataOverview | null>(null);
+  const [locationCoverageFractions, setLocationCoverageFractions] = useState<
+    WasteManagementMasterDataOverview['fractions']
+  >([]);
+  const [locationCoverageFractionsStatus, setLocationCoverageFractionsStatus] =
+    useState<WasteLocationCoverageDataStatus>('idle');
+  const [locationCoverageToursStatus, setLocationCoverageToursStatus] =
+    useState<WasteLocationCoverageDataStatus>('idle');
   const [collectionLocationPage, setCollectionLocationPage] =
     useState<WasteCollectionLocationPage | null>(null);
   const [filteredLocationIds, setFilteredLocationIds] = useState<readonly string[]>([]);
@@ -35,6 +44,9 @@ export const useWasteMasterDataState = () => {
   return {
     loading,
     overview,
+    locationCoverageFractions,
+    locationCoverageFractionsStatus,
+    locationCoverageToursStatus,
     collectionLocationPage,
     filteredLocationIds,
     error: error ?? overviewError ?? collectionLocationListError,
@@ -46,6 +58,9 @@ export const useWasteMasterDataState = () => {
     ...locationState,
     setLoading,
     setOverview,
+    setLocationCoverageFractions,
+    setLocationCoverageFractionsStatus,
+    setLocationCoverageToursStatus,
     setCollectionLocationPage,
     setFilteredLocationIds,
     setError,

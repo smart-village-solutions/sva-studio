@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useFieldArray, useFormContext, useWatch, type UseFormSetValue } from 'react-hook-form';
 import { Button, StudioFieldGroup } from '@sva/studio-ui-react';
 
@@ -19,6 +20,7 @@ import {
   type EventsContentTranslator as Translator,
 } from './events.detail-content-section-fields.js';
 import type { EventsMapCapabilities } from './events.detail-content-primary-sections.js';
+import { hasEventOrganizerContent } from './events.detail-form-structured-serializers.js';
 import { EventsGeoAddressFields } from './events.geo-address-fields.js';
 
 const dirty = { shouldDirty: true } as const;
@@ -132,10 +134,14 @@ const normalizeOrganizer = (organizer: EventOrganizerFormValue) => {
 
 function OrganizerContactFields({
   organizer,
+  nameError,
+  nameRequired,
   pt,
   setValue,
 }: Readonly<{
   organizer: EventOrganizerFormValue;
+  nameError?: string;
+  nameRequired: boolean;
   pt: Translator;
   setValue: SetValue;
 }>) {
@@ -148,6 +154,10 @@ function OrganizerContactFields({
         id="event-organizer-name"
         label={pt('fields.organizerName')}
         value={organizer.name}
+        ariaInvalid={nameError ? true : undefined}
+        description={pt('fields.organizerNameHelp')}
+        error={nameError}
+        required={nameRequired}
         onChange={(value) => setValue('content.organizer.name', value, dirty)}
       />
       <StudioFieldGroup columns={2}>
@@ -171,19 +181,36 @@ function OrganizerContactFields({
 export function EventsOrganizerSection({ capabilities, pt }: LocationSectionProps) {
   const {
     control,
+    clearErrors,
     formState: { errors },
     setValue,
   } = useFormContext<EventsDetailFormValues>();
   const organizer = useWatch({ control, name: 'content.organizer' }) ?? createDefaultOrganizer();
   const { address, geoLocation } = normalizeOrganizer(organizer);
   const organizerErrors = errors.content?.organizer?.address?.geoLocation;
+  const organizerNameError = errors.content?.organizer?.name;
+  const organizerHasContent = hasEventOrganizerContent(organizer);
+  const organizerNameMissing = organizerHasContent && (organizer.name ?? '').trim().length === 0;
   const path = 'content.organizer.address' as const;
+
+  useEffect(() => {
+    if (!organizerNameMissing) {
+      clearErrors('content.organizer.name');
+    }
+  }, [clearErrors, organizerNameMissing]);
+
   return (
     <EventsDetailCard
       title={pt('cards.content.organizer.title')}
       description={pt('cards.content.organizer.description')}
     >
-      <OrganizerContactFields organizer={organizer} pt={pt} setValue={setValue} />
+      <OrganizerContactFields
+        organizer={organizer}
+        nameError={organizerNameError ? pt('validation.organizerName') : undefined}
+        nameRequired={organizerHasContent}
+        pt={pt}
+        setValue={setValue}
+      />
       <EventsGeoAddressFields
         pt={pt}
         addition={optionalText(address.addition)}

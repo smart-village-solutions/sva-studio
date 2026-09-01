@@ -87,7 +87,7 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-Architektur: `ADR-002`
 - Plugin-SDK-Vertrag v1: `ADR-034`
 - Plugin-Plattform v2 für externe Distribution und host-owned Runtime: `ADR-041`
-- Generischer Plugin-Tenant-Lifecycle und fail-closed Fachzugriff: `ADR-057`
+- Generischer Plugin-Tenant-Lifecycle und fail-closed Fachzugriff: `ADR-058`
 - Design-Token-Architektur: `ADR-003`
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
@@ -117,7 +117,7 @@ Referenzen:
 - `./iam-service-architektur.md`
 - `../adr/ADR-034-plugin-sdk-vertrag-v1.md`
 - `../adr/ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
-- `../adr/ADR-057-generischer-plugin-tenant-lifecycle-und-readiness-gate.md`
+- `../adr/ADR-058-generischer-plugin-tenant-lifecycle-und-readiness-gate.md`
 - `../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`
@@ -247,7 +247,7 @@ Die öffentlichen Required-Check-Namen `Unit` und `Coverage` bleiben stabil. Par
 
 Zwei zusätzliche, nicht blockierende Workflows bilden die geplante Zieltopologie ab: ein PR-Shadow mit genau einer allgemeinen Scope-Entscheidung sowie ein vollständiger Main-/Nightly-Shadow ohne PR-Scope- oder PR-Cache-Übernahme. Der PR-Scope wird als versionierte, an Base- und Head-SHA gebundene Evidenz veröffentlicht. Alle Shadow-Jobs tragen eigene `CI Shadow / ...`-Namen; die sieben Required-Kontexte, das aktive Ruleset und die bestehenden Workflow-Entscheidungen bleiben unverändert.
 
-Der Shadow ist Migrationscode und noch kein Cutover-Nachweis. Zum Stand dieser Fortschreibung liegen `0/20` erforderlichen Live-Läufen vor. Erst eine Head-SHA-genaue Auswertung von mindestens 20 repräsentativen Läufen ohne ungeklärte Scope- oder Ergebnisabweichung darf Plan 036 und die atomare Umschaltung vorbereiten.
+Der Shadow ist Migrationscode und kein dauerhafter zweiter Betriebsweg. Die Head-SHA-genaue PR-Auswertung belegt `20/20` repräsentative Läufe ohne ungeklärte Scope- oder Ergebnisabweichung. Die atomare Umschaltung bleibt dennoch ein eigener Change: Zuvor muss die verlängerte PR-Sammler-Deadline live grün sein; danach werden Altworkflows und Paritätsjobs entfernt und zehn repräsentative produktive Läufe nachgemessen.
 
 ### Ergänzung 2026-08: Route-owned Anwenderdokumentation
 
@@ -267,3 +267,23 @@ Inhaltsupdates und Inhaberwechsel sind getrennte Befehle. Ein gemeinsamer Editor
 Das GitHub Wiki ist eine abgeleitete Leseansicht und keine zweite redaktionelle Quelle. Ein typsicherer Publikationskern überführt jede freigegebene Markdown-Datei in einen eindeutigen flachen Wiki-Slug, transformiert interne Links und erzeugt einen aufgabenorientierten Einstieg sowie eine kompakte Sidebar. Nicht-Markdown-Ziele bleiben gekennzeichnete Quellartefakte im Repository. Damit nutzt die Wissensbasis die vorhandene GitHub-Wiki-Oberfläche, ohne deren verschachtelte Raw-Pfade als Seitenmodell zu behandeln.
 
 Der frühere gemischte Bereich `docs/guides/` wurde anhand eines vollständigen Alt-/Neu-Pfad-Nachweises kontrolliert abgebaut. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.
+
+### Zielbild 2026-09: Gemeinsame Studio-Plattform für SSF
+
+SSF nutzt die vorhandenen Studio-Plattformfähigkeiten für Instanzen, IAM,
+Keycloak-Provisionierung, Medien, Plugin-Lifecycle, Audit und Observability. Das
+SSF-Fachmodell bleibt in einem installierbaren Studio-Plugin gekapselt. Root-
+beziehungsweise Systemadministration und tenantbezogene Mandantenadministration
+verwenden damit dieselben Plattformgrenzen wie andere Studio-Fachmodule.
+
+Runtime-Konfiguration wird bei Bedarf über eine interne, lesende API abgerufen.
+Ein installationsweites Keycloak-Service-Token wird gegen Audience und die
+vollständig qualifizierte Action `ssf.runtime-configuration.read` geprüft; die
+Instanz-ID stammt aus dem von SSF validierten Benutzer- oder Sessionkontext.
+Eine zweite Tenant-Signatur, ein Replay-Speicher und eine persistente SSF-
+Konfigurationskopie sind für diesen idempotenten V1-Lesepfad nicht vorgesehen.
+Ausfälle der gemeinsam betriebenen Komponenten dürfen den SSF-Vorgang sichtbar
+fehlschlagen lassen.
+
+Details und noch offene Implementierungsparameter stehen im
+[Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).

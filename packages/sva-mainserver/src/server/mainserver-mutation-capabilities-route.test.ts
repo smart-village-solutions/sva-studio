@@ -42,10 +42,9 @@ describe('dispatchSvaMainserverMutationCapabilitiesRequest', () => {
     expect(response?.status).toBe(200);
     const body = (await response?.json()) as { data: { enabledActions: string[] } };
     expect(body.data.enabledActions).toEqual(
-      expect.arrayContaining(['surveys.create', 'surveys.update'])
+      expect.arrayContaining(['content.transferOwnership', 'surveys.create', 'surveys.update'])
     );
     expect(body.data.enabledActions).not.toContain('surveys.delete');
-    expect(body.data.enabledActions).not.toContain('content.transferOwnership');
   });
 
   it('rejects unsupported methods', async () => {

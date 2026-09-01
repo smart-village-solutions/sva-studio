@@ -1697,7 +1697,12 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'locations',
+      });
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'fractions',
+      });
     });
 
     fireEvent.click(
@@ -1776,7 +1781,12 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'locations',
+      });
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'fractions',
+      });
     });
 
     fireEvent.click(
@@ -1841,7 +1851,12 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'locations',
+      });
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'fractions',
+      });
     });
 
     fireEvent.click(
@@ -1914,7 +1929,12 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'locations',
+      });
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'fractions',
+      });
     });
 
     fireEvent.click(
@@ -2008,7 +2028,12 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'locations',
+      });
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'fractions',
+      });
     });
 
     const regionSelect = document.getElementById(
@@ -2197,7 +2222,12 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'locations',
+      });
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+        scope: 'fractions',
+      });
     });
 
     const locationCheckboxes = Array.from(

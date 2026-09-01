@@ -153,8 +153,13 @@ export const contentDEResources = {
     title: 'Inhaber',
     currentOwner: 'Aktueller Inhaber',
     noOwner: 'Kein eindeutiger Inhaber zugeordnet',
+    ownerUnresolved: 'Keinem Account oder keiner Organisation eindeutig zugeordnet.',
+    ownerResolutionFailed:
+      'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
     account: 'Persönlicher Account',
     organization: 'Organisation',
+    verificationRequired:
+      'Die DataProvider-Zuordnung wird beim bestätigten Transfer sicher geprüft.',
     saveKeepsOwner: 'Normales Speichern ändert den Inhaber nicht.',
     transferUnavailable: 'Die Übertragung ist für diesen Inhaltstyp noch nicht verfügbar.',
     transferForbidden: 'Du kannst diesen Inhalt bearbeiten, aber nicht übertragen.',
@@ -186,6 +191,8 @@ export const contentDEResources = {
       'Die DataProvider-Zuordnung hat sich geändert oder ist nicht eindeutig. Bitte lade die Auswahl neu.',
     credentialsMissing:
       'Für den ausgewählten Zielinhaber sind keine verwendbaren Zugangsdaten hinterlegt.',
+    targetVerificationFailed:
+      'Die DataProvider-Zuordnung des Zielinhabers konnte nicht bestätigt werden.',
     unsupported: 'Dieser Inhaltstyp unterstützt die Übertragung nicht.',
     providerRejected: 'Der Mainserver hat die Übertragung abgelehnt.',
     reconciliationRequired:

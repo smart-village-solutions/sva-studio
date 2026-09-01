@@ -149,8 +149,12 @@ export const contentENResources = {
     title: 'Owner',
     currentOwner: 'Current owner',
     noOwner: 'No unambiguous owner assigned',
+    ownerUnresolved: 'Not unambiguously assigned to an account or organization.',
+    ownerResolutionFailed: 'The account or organization assignment could not be checked.',
     account: 'Personal account',
     organization: 'Organization',
+    verificationRequired:
+      'The DataProvider assignment will be verified securely when the transfer is confirmed.',
     saveKeepsOwner: 'Normal saving does not change the owner.',
     transferUnavailable: 'Ownership transfer is not yet available for this content type.',
     transferForbidden: 'You can edit this content, but you cannot transfer it.',
@@ -181,6 +185,7 @@ export const contentENResources = {
     bindingInvalid:
       'The DataProvider assignment changed or is ambiguous. Please reload the selection.',
     credentialsMissing: 'No usable credentials are configured for the selected target owner.',
+    targetVerificationFailed: 'The target owner DataProvider assignment could not be confirmed.',
     unsupported: 'This content type does not support ownership transfer.',
     providerRejected: 'The Mainserver rejected the transfer.',
     reconciliationRequired:

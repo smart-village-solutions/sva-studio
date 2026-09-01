@@ -323,3 +323,20 @@ Der eingecheckte Seitenkatalog bleibt ein Input des Studio-Builds. Seine Reprodu
 läuft jedoch als nicht blockierende Repository-Hygiene-Diagnose und ist keine Abhängigkeit des
 Image-Builds oder der Promotion. Erkannte Katalogdrift wird im separaten Dokumentationsflow
 behoben.
+
+### Zielbild 2026-09: Gemeinsames Serverprofil für Studio und SSF
+
+Eine SSF-fähige Installation betreibt SVA Studio, das installierte SSF-Plugin,
+SSF und einen separaten SSF-Keycloak auf demselben Server beziehungsweise in
+derselben kontrollierten Betriebsumgebung. Die Plugin-Auswahl beim Studio-
+Rollout kennzeichnet das Serverprofil; das installierte SSF-Plugin kann nach
+seiner Lifecycle-Klasse automatisch aktiviert sein.
+
+Der Runtime-Endpunkt ist ausschließlich im internen Netz erreichbar. Studio,
+SSF und das Plugin behalten getrennte Fachdatenhaltungen; das SSF-Plugin nutzt
+eine einzelne mandantenfähige PostgreSQL-Datenbank. Es wird keine zusätzliche
+SSF-seitige Persistenz für Studio-Konfiguration betrieben. Verfügbarkeit und
+Rollout bleiben deshalb bewusst gekoppelt; V1 verlangt keine eigenständige
+Offline-Fähigkeit eines Teilsystems.
+
+Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).

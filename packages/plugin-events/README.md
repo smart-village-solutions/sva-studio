@@ -28,7 +28,7 @@ Nicht über `index.ts` exportiert, aber intern relevant, sind:
 
 - `events.api.ts`: `listEvents`, `getEvent`, `createEvent`, `updateEvent`, `deleteEvent` und `listPoiForEventSelection`.
 - `events.types.ts`: Typen für Event-Daten, Pagination, Forminput und POI-Auswahl.
-- `events.validation.ts`: `validateEventForm` mit Prüfungen für Titel, Datumswerte, HTTPS-URLs und Kategorienlänge.
+- `events.validation.ts`: `validateEventForm` mit Prüfungen für Titel, Datumswerte, HTTPS-URLs, Kategorienlänge und den Veranstaltervertrag.
 
 ## Nutzung und Integration
 
@@ -54,6 +54,8 @@ Die React-Seiten erwarten eine Host-Umgebung, in der folgende Infrastruktur bere
 - Mainserver-Facades für Events und POIs sowie ein `fetch`-basiertes Runtime-Environment
 
 Beim Speichern ergänzt die UI optionale Host-Media-Referenzen für das Headerbild. Beim Bearbeiten lädt sie zusätzlich bestehende Media-Referenzen und POI-Optionen nach.
+
+Der Veranstalter ist insgesamt optional. Vollständig leere Veranstalterfelder werden nicht in den Mainserver-Payload aufgenommen. Sobald Name, Adresse oder Kontaktdaten eines Veranstalters vorhanden sind, muss das Feld `Institution/Firma` einen Namen enthalten; andernfalls verhindert die UI den Request, markiert das Namensfeld und fokussiert es im Content-Tab.
 
 ## Projektstruktur
 

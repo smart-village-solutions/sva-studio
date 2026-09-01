@@ -3,14 +3,18 @@ import type { IamContentOwnerPrincipal, IamContentOwnershipTarget } from '@sva/c
 export type ContentOwnershipPanelOwner = Readonly<{
   principal?: IamContentOwnerPrincipal;
   principalType?: IamContentOwnerPrincipal['type'];
+  principalResolution?: 'resolved' | 'unresolved' | 'failed';
   displayName: string;
 }>;
 
 export type ContentOwnershipPanelLabels = Readonly<{
   title: string;
   currentOwner: string;
+  ownerUnresolved: string;
+  ownerResolutionFailed: string;
   account: string;
   organization: string;
+  verificationRequired: string;
   saveKeepsOwner: string;
   transferUnavailable: string;
   transferForbidden: string;

@@ -809,6 +809,7 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Der Self-Service-Organisationskontext ist die Browserquelle für die Create-Auswahl. Ist er noch nicht geladen oder passt `activeOrganizationId` zu keinem aktiven Eintrag, bleibt die Auswahl ausdrücklich nicht verfügbar.
 - Ein fehlgeschlagener Teilrefresh setzt `isTotalFinal = false`. Alte Snapshot-Zeilen dürfen sichtbar bleiben, werden aber zusammen mit einem zugänglichen Unvollständigkeitshinweis angezeigt.
 - Fingerprints sind nicht reversibel und werden in Diagnoseansichten nur gekürzt angezeigt; API-Key, Secret, Token und rohe `/data_provider.json`-Antworten gelangen weder in Projection, Audit, Metriken noch Logs.
+- Der Mainserver-Zielkatalog für Inhabertransfers darf aktive Principals mit verwendbaren Credentials und noch fehlender Bindung als `verification_required` anzeigen. Erst die ausdrückliche Transferbestätigung lädt für genau dieses Ziel `/data_provider.json`, persistiert die Beobachtung konfliktbewusst und löst die Bindung erneut auf; Listenabruf, Suche und Pagination erzeugen keine externen Identity-Aufrufe je Treffer.
 - Der automatische Resolver lehnt `own` und `organization` ohne vollständige konfliktfreie Bindungen fail-closed ab. `org_only` benötigt nur die Organisationsbindung, `org_or_personal` persönliche und organisatorische Bindung. `credential_visible_compatibility` bleibt bis zum ausgewerteten Cutover ausschließlich Shadow- und Rollbackpfad.
 - Eine konfliktbehaftete persönliche Bindung darf sich nur anlassbezogen selbst heilen, wenn frische Identity-Evidenz den aktuellen Benutzer bestätigt und alle konkurrierenden Principals endgültig gelöschte Benutzer sind. Für einen nach Hard Delete fehlenden Account verlangt die Runtime zusätzlich einen unveränderlichen erfolgreichen `user.deleted`-Nachweis aus `iam.activity_logs`; archivierte Logs werden nicht als Löschbeweis akzeptiert. Sie historisiert die Binding-Evidenz und verifiziert die aktuelle Bindung atomar; sie löscht keine Zeile, behauptet keinen Credential-Widerruf und führt bei aktiven, reversibel inaktiven, organisatorischen, verwaisten oder unklaren Konkurrenten keinen Übergang aus.
 - Shadow-Kandidat, erzwungener Modus und Abweichung werden je Operations-ID getrennt persistiert. Dadurch ist die Aktivierung messbar und der Resolver ohne Datenverlust auf Kompatibilität zurückstellbar.
@@ -916,6 +917,8 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 ### Inhaberschaft, Autorisierung und Audit
 
 - `content.transferOwnership` ist von normaler Metadatenbearbeitung getrennt und wird gegen den aktuellen Source-Scope geprüft.
+- Scope `all` autorisiert den frisch gelesenen Quell-DataProvider ohne Lifecycle- oder Credential-Abhängigkeit vom bisherigen Principal; `own` und `organization` verlangen Bindungsevidenz nur zum Nachweis ihres engeren Source-Scopes.
+- Der autorisierte Actor führt Pre-Read, Provider-Write und Source-Re-Read aus. Aktivstatus, eindeutige Bindung und verwendbare Credentials bleiben ausschließlich Anforderungen an den Ziel-Principal.
 - Aktueller Inhaber ist der gegenwärtige Owner beziehungsweise Mainserver-DataProvider, niemals eine Rekonstruktion aus Audit oder Historie.
 - Transferaudits verwenden die Coverage `studio_mutations` und technische Principal-, Provider-, Operations- und Binding-Referenzen ohne E-Mail-Adressen oder Secrets.
 - Bestätigte Upstream-Erfolge werden durch lokale Folgefehler nicht als Rollback dargestellt.
@@ -925,3 +928,53 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Frameworkfreie Verträge bleiben vom React-Lifecycle getrennt. Die einzige neue Richtung ist `@sva/studio-ui-react` zu `@sva/plugin-sdk/content-media`.
 - Ein partieller Medienreferenzfehler speichert den bereits angelegten Inhalt nicht erneut. Der gemeinsame Controller hält ausschließlich den idempotenten Reference-Retry und räumt aufgelöste lokale Objekt-URLs auf.
 - Map-Konfiguration wird für den globalen Host-Fetch dedupliziert; ein fehlgeschlagener Read wird nicht dauerhaft gecacht. MapLibre-Runtime und CSS bleiben bundlelokal.
+
+### SSF-Runtime-Konfiguration: Security, Datenschutz und Aktualität
+
+- Der interne Leseendpunkt akzeptiert nur ein Keycloak-Service-Token mit fester
+  Audience und `ssf.runtime-configuration.read`; Browserzugriffe sind
+  ausgeschlossen. Die angeforderte Instanz muss zum von SSF validierten Kontext
+  passen.
+- SSF-Benutzertokens verwenden `studio_instance_id`, `ssf_roles` und
+  `ssf_permissions`; Permissions sind autoritativ. Die Studio-Rootrolle
+  `instance_registry_admin` wird nur an der Integrationsgrenze als SSF-
+  `system_admin`, die tenantlokale Studio-Rolle `system_admin` als SSF-
+  `tenant_admin` eingeordnet. Gäste bleiben im SSF-Sessionmodell. Access-Tokens
+  gelten standardmäßig fünf und höchstens zehn Minuten.
+- Konfigurations-Reads und -Writes prüfen die festgelegten
+  `ssf.configuration.*`-Actions. Systemadmin und Mandantenadmin sind Personas
+  mit Default-Grants; kundenspezifische Rollen werden nicht durch Prüfungen auf
+  feste Rollennamen ausgeschlossen. Root-Reads verwenden die ausschließlich
+  plattformverfügbaren Actions `ssf.configuration.tenant.inspect` und
+  `ssf.configuration.tenant.provenance.inspect`; Tenant-Reads verwenden die
+  getrennte tenantverfügbare Action `ssf.configuration.tenant.read`.
+- Effektive tenantgebundene `ssf.*`-Permissions werden mit einer tenantweiten
+  Revision aus Studio-IAM in den separaten SSF-Keycloak-Client projiziert. Vor
+  relevanten Änderungen bleiben Client und SSF-Readiness bis zu erfolgreichem
+  Reconcile, Session-Widerruf und Verifikation gesperrt. Token- und Runtime-
+  Revision müssen für authentifizierte Vorgänge übereinstimmen.
+- Plattformgebundene SSF-Actions erhalten ihren Default-Grant für
+  `instance_registry_admin` ausschließlich im Root-/Plattformkatalog. Sie
+  erscheinen weder im Tenant-Katalog noch in SSF-Tenant-Tokens.
+- Studio liefert nur effektive Konfiguration. Benutzerlisten, E-Mail-Adressen,
+  Gast-Token, Gesprächsinhalte, Einwilligungsdatensätze, Sessions und
+  Auswertungsdaten werden über diesen Vertrag nicht ausgetauscht.
+- Änderungen werden ohne Draft- oder Publish-Stufe beim nächsten Abruf wirksam.
+  Die Inhaltsrevision ändert sich nur, wenn sich die effektive Antwort ändert.
+- HTML-Texte schließen unmittelbar aktive Inhalte wie Skripte, Event-Handler
+  und gefährliche URL-Protokolle aus. Externe Bilder bleiben nach bewusster
+  Produktentscheidung zulässig; der veröffentlichende Mandant verantwortet
+  Zulässigkeit und erforderliche Information der Betroffenen.
+- Ist die Speicherung von Gesprächsinhalten nicht erlaubt oder die Frage
+  tenantweit deaktiviert, darf SSF weder fragen noch Inhalte speichern oder
+  nachträglich verarbeiten.
+- Auditdaten enthalten Akteur, Scope, Feldnamen, Revisionen und Ergebnis, aber
+  keine vollständigen HTML-Inhalte, Tokens oder Secrets. Erfolgreiche Abrufe
+  erzeugen nur strukturierte Logs und Metriken mit Korrelations-ID.
+
+Der vollständige V1-Vertrag ist unter
+[Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
+dokumentiert. Die IAM- und Runtime-Grenze ist in
+[ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
+entschieden; vor der Implementierung bleibt der normative OpenSpec-Abgleich
+erforderlich.

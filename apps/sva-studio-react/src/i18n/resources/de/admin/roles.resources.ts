@@ -106,6 +106,7 @@ export const rolesAdminDEResources = {
     descriptionLabel: 'Beschreibung',
     levelLabel: 'Rollenlevel',
     errors: {
+      displayNameRequired: 'Bitte einen Anzeigenamen angeben.',
       invalidRoleKey:
         'Der Rollenschlüssel muss 3 bis 64 Zeichen lang sein und darf nur Kleinbuchstaben, Ziffern und Unterstriche enthalten.',
       invalidRequest: 'Die Rollenanlage enthält ungültige oder unvollständige Daten.',

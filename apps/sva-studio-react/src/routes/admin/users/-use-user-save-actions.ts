@@ -1,14 +1,15 @@
 import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 import React from 'react';
+import type { SubmitErrorHandler, UseFormReturn } from 'react-hook-form';
 
 import { useUser } from '../../../hooks/use-user';
 import { toUserFormValues, toUserUpdatePayload, type UserFormValues } from './user-edit-model';
 
 export const useUserSaveActions = (
   userApi: ReturnType<typeof useUser>,
-  formValues: UserFormValues,
-  setFormValues: React.Dispatch<React.SetStateAction<UserFormValues>>,
-  hasUnsavedChanges: boolean
+  form: UseFormReturn<UserFormValues>,
+  hasUnsavedChanges: boolean,
+  onInvalid?: SubmitErrorHandler<UserFormValues>
 ) => {
   const saveFeedback = useStudioSaveFeedback();
   const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
@@ -22,22 +23,29 @@ export const useUserSaveActions = (
     }
   }, [hasUnsavedChanges, saveFeedback.markDirty]);
 
-  const onSave = React.useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+  const saveUser = React.useCallback(
+    async (formValues: UserFormValues) => {
       const operationId = saveFeedback.beginSaving();
       setPasswordSetupEmailSuccess(false);
       setMainserverReprovisionSuccess(false);
 
       const result = await userApi.save(toUserUpdatePayload(formValues));
       if (result) {
-        setFormValues(toUserFormValues(result));
+        form.reset(toUserFormValues(result));
         saveFeedback.markSaved(operationId);
       } else {
         saveFeedback.markFailed(operationId);
       }
     },
-    [formValues, saveFeedback, setFormValues, userApi]
+    [form, saveFeedback, userApi]
+  );
+  const onSave = React.useMemo(
+    () =>
+      form.handleSubmit(saveUser, (errors, event) => {
+        saveFeedback.reset();
+        onInvalid?.(errors, event);
+      }),
+    [form, onInvalid, saveFeedback, saveUser]
   );
 
   const onSendPasswordSetupEmail = React.useCallback(async () => {

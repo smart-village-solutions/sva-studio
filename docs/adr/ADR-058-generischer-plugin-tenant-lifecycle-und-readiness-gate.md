@@ -1,4 +1,4 @@
-# ADR-057: Generischer Plugin-Tenant-Lifecycle und Readiness-Gate
+# ADR-058: Generischer Plugin-Tenant-Lifecycle und Readiness-Gate
 
 **Status:** Accepted
 **Entscheidungsdatum:** 2026-08-30

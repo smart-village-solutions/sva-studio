@@ -15,8 +15,9 @@ export const finalizeMainserverMutation = async (input: {
   readonly lastErrorCode?: string;
   readonly ownershipTransfer?: Readonly<{
     coverage: 'studio_mutations';
-    sourcePrincipalType: 'account' | 'organization';
-    sourcePrincipalId: string;
+    sourcePrincipalResolution: 'resolved' | 'unresolved' | 'failed';
+    sourcePrincipalType?: 'account' | 'organization';
+    sourcePrincipalId?: string;
     targetPrincipalType: 'account' | 'organization';
     targetPrincipalId: string;
     sourceDataProviderId: string;

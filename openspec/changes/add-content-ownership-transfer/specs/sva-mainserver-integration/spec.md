@@ -120,11 +120,11 @@ Beim Create SHALL `contentAuthorPolicy` die zulässige Wahl begrenzen. Bei beste
 - **THEN** verwendet Studio `actingPrincipalType = organization`
 - **AND** bleibt der tatsächliche Benutzer als Actor im Audit erhalten
 
-#### Scenario: Bestehende Mutation verwendet Same-Credential-Pre-Read
+#### Scenario: Bestehende Mutation verwendet Actor-Credential-Pre-Read
 
 - **GIVEN** ein Benutzer möchte einen bestehenden Inhalt aktualisieren oder übertragen
 - **WHEN** Studio die Mutation autorisiert
-- **THEN** liest es den Inhalt unmittelbar mit dem gebundenen Quell-Write-Credential
+- **THEN** liest es den Inhalt unmittelbar mit dem Credential des autorisierten Actors
 - **AND** verwendet DataProvider und Verfügbarkeit dieses Reads für die Source-Scope-Entscheidung
 - **AND** führt bei fehlendem Zugriff keinen Write aus
 
@@ -142,9 +142,27 @@ Beim Create SHALL `contentAuthorPolicy` die zulässige Wahl begrenzen. Bei beste
 - **AND** `content.transferOwnership` autorisiert den aktuellen Inhalt
 - **AND** der aktive Ziel-Principal derselben Instanz ist eindeutig und aktuell an `dp-target` gebunden
 - **WHEN** Studio den Transfer vorbereitet
-- **THEN** verwendet es den Quell-Principal und dessen Credentials zur Ausführung
+- **THEN** verwendet es den autorisierten Actor und dessen Credentials zur Ausführung
 - **AND** übermittelt `dp-target` ausschließlich aus der serverseitigen Binding-Auflösung
 - **AND** akzeptiert keine DataProvider-ID aus dem Browser
+
+#### Scenario: Globaler Transfer benötigt keinen aktiven Source-Principal
+
+- **GIVEN** Pre-Read mit den Actor-Credentials liefert DataProvider `dp-source`
+- **AND** dessen Studio-Principal ist inaktiv, gelöscht oder nicht eindeutig auflösbar
+- **AND** `content.transferOwnership` mit Scope `all` autorisiert den aktuellen Inhalt
+- **WHEN** Studio an einen gültigen, eindeutig gebundenen Ziel-Principal überträgt
+- **THEN** verwendet es weiterhin die Actor-Credentials für Pre-Read und Provider-Write
+- **AND** behandelt es die Source-Principal-Auflösung nur als optionale Anzeige- und Audit-Anreicherung
+
+#### Scenario: Fehlende Zielbindung wird anlassbezogen verifiziert
+
+- **GIVEN** ein ausgewählter aktiver Ziel-Principal besitzt verwendbare Credentials, aber noch keine Bindung für deren aktuellen Fingerprint
+- **WHEN** der Benutzer den Mainserver-Transfer bestätigt
+- **THEN** lädt Studio die stabile Identity-ID ausschließlich für dieses Ziel über `/data_provider.json`
+- **AND** zeichnet die Identity-Evidenz mit dem bestehenden konfliktbewussten Binding-Vertrag auf
+- **AND** löst es Ziel-Principal, Credential-Fingerprint und DataProvider-Bindung vor dem Provider-Write erneut auf
+- **AND** führt es bei fehlender Identity oder einem Binding-Konflikt keinen Provider-Write aus
 
 #### Scenario: Hard Delete verwendet Preimage statt Post-Read
 
@@ -170,9 +188,9 @@ Das System SHALL einen Mainserver-Inhabertransfer nur für Content-Typen anbiete
 #### Scenario: V1-Typ unterstützt Transfer
 
 - **WHEN** NewsItem, EventRecord, PointOfInterest, Tour oder ein Root-GenericItem vertraglich geprüft wird
-- **AND** der Runtime-Preflight bestätigt den erwarteten Mainserver-Vertrag
-- **THEN** kann die serverseitige Capability-Matrix den Transfer freigeben
-- **AND** erfolgt die Freigabe explizit über `SVA_MAINSERVER_CONFIRMED_CAPABILITIES`, nicht als Default-Capability
+- **AND** der erwartete Mainserver-Vertrag für den ausgelieferten Release bestätigt ist
+- **THEN** führt die serverseitige Capability-Matrix den Transfer dauerhaft als Code-Capability
+- **AND** benötigt die Freigabe keine Umgebungsvariable oder sonstige betriebliche Konfiguration
 - **AND** verwendet die Mutation den typisierten `dataProviderId`-Vertrag
 - **AND** behauptet diese Backend-Capability allein keine bereits vorhandene Studio-Detailansicht für den Typ
 - **AND** aktiviert das Studio die Aktion nur für einen tatsächlich registrierten redaktionellen Adapter
@@ -202,7 +220,7 @@ Das System SHALL einen Mainserver-Inhabertransfer nur für Content-Typen anbiete
 
 ### Requirement: Mainserver-Transfer klärt unklare Provider-Ergebnisse fail-closed
 
-Das System SHALL jeden Mainserver-Inhabertransfer unter einer stabilen Operationsreferenz im bestehenden Mutationsjournal führen. Bei verlorenem oder unklarem Response SHALL es Ziel- und Quell-Evidenz lesen, bevor es Erfolg, Wiederholung oder `reconciliation_required` festlegt.
+Das System SHALL jeden Mainserver-Inhabertransfer unter einer stabilen Operationsreferenz im bestehenden Mutationsjournal führen. Bei verlorenem oder unklarem Response SHALL es Ziel- und Actor-Evidenz lesen, bevor es Erfolg, Wiederholung oder `reconciliation_required` festlegt.
 
 #### Scenario: Target-Re-Read bestätigt den Transfer
 
@@ -211,16 +229,16 @@ Das System SHALL jeden Mainserver-Inhabertransfer unter einer stabilen Operation
 - **THEN** finalisiert Studio den Transfer als erfolgreich
 - **AND** wiederholt es keine Provider-Mutation
 
-#### Scenario: Source-Re-Read bestätigt den unveränderten Zustand
+#### Scenario: Actor-Re-Read bestätigt den unveränderten Zustand
 
 - **GIVEN** ein Target-Re-Read bestätigt den Ziel-DataProvider nicht
-- **WHEN** ein Source-Re-Read den Inhalt weiterhin eindeutig unter `dp-source` liefert
+- **WHEN** ein Re-Read mit den Actor-Credentials den Inhalt weiterhin eindeutig unter `dp-source` liefert
 - **THEN** darf Studio dieselbe reservierte Operationsreferenz kontrolliert wiederaufnehmen
 - **AND** erzeugt es keinen zweiten fachlichen Transferauftrag
 
-#### Scenario: Source und Target liefern keine eindeutige Evidenz
+#### Scenario: Actor und Target liefern keine eindeutige Evidenz
 
-- **GIVEN** Response, Target-Re-Read und Source-Re-Read erlauben keine eindeutige Zustandsentscheidung
+- **GIVEN** Response, Target-Re-Read und Actor-Re-Read erlauben keine eindeutige Zustandsentscheidung
 - **WHEN** Studio den Vorgang auswertet
 - **THEN** setzt es `reconciliation_required`
 - **AND** sperrt es weitere automatische Transfers für denselben Inhalt

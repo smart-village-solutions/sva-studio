@@ -96,7 +96,8 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 054 | [Kontrollierter Inhabertransfer für Inhalte](./ADR-054-kontrollierter-inhabertransfer-fuer-inhalte.md)                                                                        | ✅     | 2026-08-27         | IAM / Content / Mainserver        |
 | 055 | [Waste-Mainserver-Abgleichsstatus über Quellrevision](./ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)                                                      | ✅     | 2026-08-27         | Waste / Integration / Runtime     |
 | 056 | [Extension-Tiers und scopegebundene Plugin-Beiträge](./ADR-056-extension-tiers-und-scopegebundene-plugin-beitraege.md)                                                        | ✅     | 2026-08-30         | Plugins / IAM / Plattform         |
-| 057 | [Generischer Plugin-Tenant-Lifecycle und Readiness-Gate](./ADR-057-generischer-plugin-tenant-lifecycle-und-readiness-gate.md)                                                  | ✅     | 2026-08-30         | Plugins / Runtime / IAM           |
+| 057 | [SSF-Service-Token und Runtime-Konfigurationsgrenze](./ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)                                                        | ✅     | 2026-09-01         | SSF / IAM / Plugins / Runtime     |
+| 058 | [Generischer Plugin-Tenant-Lifecycle und Readiness-Gate](./ADR-058-generischer-plugin-tenant-lifecycle-und-readiness-gate.md)                                                  | ✅     | 2026-08-30         | Plugins / Runtime / IAM           |
 
 ### Kanonischer Ablageort
 

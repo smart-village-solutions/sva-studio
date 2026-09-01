@@ -2,7 +2,7 @@
 
 ### Requirement: Auditspur für kontrollierte Content-Inhabertransfers
 
-Das System SHALL erfolgreiche, abgelehnte und unklare Content-Inhabertransfers append-only und PII-minimiert auditieren. Der Nachweis SHALL den tatsächlich handelnden Account von Quell-Principal, Ziel-Principal, Credential-Quelle und fachlichem Content-Inhaber trennen.
+Das System SHALL erfolgreiche, abgelehnte und unklare Content-Inhabertransfers append-only und PII-minimiert auditieren. Der Nachweis SHALL den tatsächlich handelnden Account von optional auflösbarem Quell-Principal, Ziel-Principal, Credential-Quelle und fachlichem Content-Inhaber trennen.
 
 Die Auditspur SHALL ihre Abdeckung als `studio_mutations` kennzeichnen. Sie SHALL nicht als vollständige Inhaberhistorie dargestellt oder zur Rekonstruktion des aktuellen Inhabers verwendet werden, weil DataProvider und Inhalte außerhalb des Studios verändert werden können. Maßgeblich für den aktuellen Mainserver-Inhaber SHALL immer der DataProvider eines aktuellen Content-Reads sein.
 
@@ -17,8 +17,23 @@ Die Auditspur SHALL ihre Abdeckung als `studio_mutations` kennzeichnen. Sie SHAL
 
 - **GIVEN** ein autorisierter Benutzer überträgt einen Mainserver-Inhalt
 - **WHEN** Response oder Target-Re-Read den Ziel-DataProvider bestätigt
-- **THEN** auditiert Studio Actor, Source-/Target-Principal, Credential-Fingerprint, alten und neuen DataProvider, Binding-Versionen, Content-ID/-Typ, Operationsreferenz und Ergebnis
+- **THEN** auditiert Studio Actor, Auflösungszustand des optionalen Source-Principals, Target-Principal, Credential-Fingerprint, alten und neuen DataProvider, Binding-Versionen, Content-ID/-Typ, Operationsreferenz und Ergebnis
 - **AND** ist die Action als `content.transferOwnership` von einem normalen Update unterscheidbar
+
+#### Scenario: Source-Principal ist nicht mehr eindeutig auflösbar
+
+- **GIVEN** Scope `all` autorisiert den Transfer eines aktuellen DataProviders ohne eindeutige Studio-Principal-Bindung
+- **WHEN** Studio den Transfer auditiert
+- **THEN** kennzeichnet es die Source-Principal-Auflösung als `unresolved`
+- **AND** bleibt der tatsächlich gelesene Quell-DataProvider im Audit erhalten
+
+#### Scenario: Source-Principal-Anreicherung schlägt technisch fehl
+
+- **GIVEN** Scope `all` autorisiert den Transfer unabhängig vom Source-Principal
+- **AND** die optionale Source-Principal-Anreicherung endet mit einem technischen Fehler
+- **WHEN** Studio den Transfer auditiert
+- **THEN** kennzeichnet es die Source-Principal-Auflösung als `failed`
+- **AND** bleibt der tatsächlich gelesene Quell-DataProvider im Audit erhalten
 
 #### Scenario: Transfer wird vor dem Provider-Write abgelehnt
 
@@ -29,7 +44,7 @@ Die Auditspur SHALL ihre Abdeckung als `studio_mutations` kennzeichnen. Sie SHAL
 #### Scenario: Upstream-Ergebnis bleibt unklar
 
 - **GIVEN** die Transfermutation endet mit Timeout oder verlorenem Response
-- **AND** Source-/Target-Re-Reads liefern keine eindeutige Evidenz
+- **AND** Actor-/Target-Re-Reads liefern keine eindeutige Evidenz
 - **WHEN** Studio den Vorgang fail-closed beendet
 - **THEN** auditiert es `content_transfer_reconciliation_required` mit erwarteter Source-/Target-Provider-Referenz und den redigierten Read-Ergebnissen
 - **AND** verhindert derselbe Reconciliation-Zustand eine unkontrollierte neue Transfermutation

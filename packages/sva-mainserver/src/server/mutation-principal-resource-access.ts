@@ -7,6 +7,7 @@ import type {
   DataProviderBearingItem,
   MainserverMutationActor,
 } from './mutation-principal-types.js';
+import { selectMainserverActionAccessScopePermissions } from './mutation-principal-permission-scope.js';
 
 export type MainserverResourceAccess = Readonly<Record<string, boolean>>;
 
@@ -16,6 +17,8 @@ export const resolveMainserverResourceAccess = async (input: {
   readonly contentId?: string;
   readonly contentType: string;
   readonly item: DataProviderBearingItem | undefined;
+  readonly requireAllScopeActions?: readonly string[];
+  readonly forceExactScopeActions?: readonly string[];
 }): Promise<MainserverResourceAccess> => {
   const denied = Object.fromEntries(input.actions.map((action) => [action, false]));
   const permissions = await resolveEffectivePermissions({
@@ -27,9 +30,23 @@ export const resolveMainserverResourceAccess = async (input: {
   });
   if (!permissions.ok) return denied;
 
+  const requireAllScopeActions = new Set(input.requireAllScopeActions ?? []);
+  const forceExactScopeActions = new Set(input.forceExactScopeActions ?? []);
+
   const dataProviderId = input.item?.dataProvider?.id?.trim() ?? '';
   const decisions = await Promise.all(
     input.actions.map(async (action) => {
+      const actionPermissions = requireAllScopeActions.has(action)
+        ? selectMainserverActionAccessScopePermissions(
+            permissions.permissions,
+            action,
+            'content',
+            'all'
+          )
+        : permissions.permissions;
+      if (requireAllScopeActions.has(action) && actionPermissions.length === 0) {
+        return [action, false] as const;
+      }
       const decision = await authorizeMainserverDataProviderAccess({
         instanceId: input.actor.instanceId,
         keycloakSubject: input.actor.keycloakSubject,
@@ -45,8 +62,9 @@ export const resolveMainserverResourceAccess = async (input: {
         action,
         contentType: input.contentType,
         contentId: input.contentId ?? input.item?.id,
-        permissions: permissions.permissions,
+        permissions: actionPermissions,
         dataProviderId,
+        ...(forceExactScopeActions.has(action) ? { forceExactScopeAuthorization: true } : {}),
       });
       return [action, decision.allowed] as const;
     })

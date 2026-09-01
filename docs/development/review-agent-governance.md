@@ -25,25 +25,26 @@ Empfohlene Aufrufe:
 
 ## Agenten-Inventar
 
-| Agent | Zweck | Primärer Einsatz |
-|------|-------|------------------|
-| `proposal-review-orchestrator.agent.md` | konsolidiert Proposal-Reviews | OpenSpec-Changes |
-| `pr-review-orchestrator.agent.md` | konsolidiert PR-/Code-Reviews | normale PRs und Diffs |
-| `architecture.agent.md` | Zielarchitektur, ADR-Bedarf, arc42-Fit | Architektur- und Systemänderungen |
-| `code-quality-guardian.agent.md` | Korrektheit, Typen, Architekturgrenzen | Codeänderungen |
-| `documentation.agent.md` | Doku-Abdeckung, Konsistenz, arc42 | jede PR / jedes Proposal |
-| `test-quality.agent.md` | Tests, Coverage, Verifikationsstrategie | Verhaltensänderungen, Test-/Coverage-Themen |
-| `security-privacy.agent.md` | Security, Privacy, Secrets, PII | Auth, Rollen, Tokens, Daten |
-| `studio-test-operator.agent.md` | End-to-End-Studio-Tests mit Chrome MCP und Grafana MCP | manuelle Smoke-/Regressionstests, Staging-Abnahmen |
-| `ux-accessibility.agent.md` | WCAG/BITV, Tastatur, Screenreader | UI und Navigation |
-| `i18n-content.agent.md` | harte Strings, Key-Konventionen, Textklarheit | user-facing Texte |
-| `user-journey-usability.agent.md` | Nutzersicht, Friktion, Flow-Verständlichkeit | UI-Flows, Formschritte |
-| `operations-reliability.agent.md` | Betrieb, Runbooks, Monitoring | Infra, Deployments, Workflows |
-| `interoperability-data.agent.md` | APIs, Standards, Datenmigration | Contracts, Exporte, Versionierung |
-| `logging.agent.md` | strukturierte Logs, Audit, Korrelationsfelder | Server-Code, Fehlerpfade |
-| `performance.agent.md` | Rendering, Caching, Hot Paths | Performance-sensitive Änderungen |
-| `pr-fixer.agent.md` | Iterativer PR-Fix (Threads, Tests, Quality Gates) | PRs merge-bereit machen |
-| `rollout-operator.agent.md` | Rollouts durchführen und verifizieren | Deployments, Image-Build, Quantum, Keycloak |
+| Agent                                   | Zweck                                                  | Primärer Einsatz                                   |
+| --------------------------------------- | ------------------------------------------------------ | -------------------------------------------------- |
+| `proposal-review-orchestrator.agent.md` | konsolidiert Proposal-Reviews                          | OpenSpec-Changes                                   |
+| `pr-review-orchestrator.agent.md`       | konsolidiert PR-/Code-Reviews                          | normale PRs und Diffs                              |
+| `architecture.agent.md`                 | Zielarchitektur, ADR-Bedarf, arc42-Fit                 | Architektur- und Systemänderungen                  |
+| `code-quality-guardian.agent.md`        | Korrektheit, Typen, Architekturgrenzen                 | Codeänderungen                                     |
+| `documentation.agent.md`                | Doku-Abdeckung, Konsistenz, arc42                      | jede PR / jedes Proposal                           |
+| `test-quality.agent.md`                 | Tests, Coverage, Verifikationsstrategie                | Verhaltensänderungen, Test-/Coverage-Themen        |
+| `system-assurance.agent.md`             | Invarianten, Gegenbeispiele, direkte Evidenz           | risikoreiche Großvorhaben                          |
+| `security-privacy.agent.md`             | Security, Privacy, Secrets, PII                        | Auth, Rollen, Tokens, Daten                        |
+| `studio-test-operator.agent.md`         | End-to-End-Studio-Tests mit Chrome MCP und Grafana MCP | manuelle Smoke-/Regressionstests, Staging-Abnahmen |
+| `ux-accessibility.agent.md`             | WCAG/BITV, Tastatur, Screenreader                      | UI und Navigation                                  |
+| `i18n-content.agent.md`                 | harte Strings, Key-Konventionen, Textklarheit          | user-facing Texte                                  |
+| `user-journey-usability.agent.md`       | Nutzersicht, Friktion, Flow-Verständlichkeit           | UI-Flows, Formschritte                             |
+| `operations-reliability.agent.md`       | Betrieb, Runbooks, Monitoring                          | Infra, Deployments, Workflows                      |
+| `interoperability-data.agent.md`        | APIs, Standards, Datenmigration                        | Contracts, Exporte, Versionierung                  |
+| `logging.agent.md`                      | strukturierte Logs, Audit, Korrelationsfelder          | Server-Code, Fehlerpfade                           |
+| `performance.agent.md`                  | Rendering, Caching, Hot Paths                          | Performance-sensitive Änderungen                   |
+| `pr-fixer.agent.md`                     | Iterativer PR-Fix (Threads, Tests, Quality Gates)      | PRs merge-bereit machen                            |
+| `rollout-operator.agent.md`             | Rollouts durchführen und verifizieren                  | Deployments, Image-Build, Quantum, Keycloak        |
 
 ## Trigger-Matrix
 
@@ -58,6 +59,7 @@ Empfohlene Aufrufe:
 - Texte, Übersetzungen, Labels: `i18n & Content`
 - UI-Flows, Erstnutzung, Fehlerzustände: `User Journey & Usability`
 - neue Logik, Verhalten, Tests, Coverage-Auswirkungen: `Test Quality`
+- risikoreiches Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante sowie verteilten Zuständen, Nebenläufigkeit, Retry/Recovery, sicherheitsrelevanten Trust Boundaries oder gekoppelten Persistenz-/Runtime-Übergängen: `System Assurance`
 - Infra, Migrationen, Runbooks, Monitoring: `Operations`
 - APIs, Datenformate, Standards: `Interoperability`
 - Server-Code, Audit, Fehlerbehandlung: `Logging`
@@ -68,6 +70,7 @@ Empfohlene Aufrufe:
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
+- risikoreiche Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante: in der Regel `System Assurance`; ein anderes Review- oder Dokumentationsformat ist zulässig, wenn es die konkreten Risiken gleichwertig abdeckt. Blockierend ist eine unbehandelte kritische Risiko- oder Nachweislücke, nicht das Fehlen eines bestimmten Artefakts.
 - Aenderungen an `config/plugin-architecture-allowlist.json`, `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
 - Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` werden vor dem Merge fachlich geprüft und über den normalen GitHub-Review-Prozess abgeschlossen
@@ -75,6 +78,12 @@ Empfohlene Aufrufe:
 - weitere Fachreviewer trigger-basiert analog zu Proposal-Reviews
 
 ## Abgrenzungen
+
+Die Trigger-Matrix ist eine Heuristik für verlässliche Review-Abdeckung. Sie
+liefert Standardvorschläge, aber kein unveränderliches Reviewer-Set. Der
+Orchestrator darf Reviewer zusammenfassen, ergänzen, ersetzen oder bei klarer
+Irrelevanz auslassen, sofern kritische Fachrisiken nicht ungeprüft bleiben und
+wesentliche Abweichungen kurz begründet werden.
 
 ### UX & Accessibility vs User Journey & Usability
 
@@ -105,7 +114,8 @@ Bei Promote-Änderungen muss der Review zusätzlich Shadow-Nachweis, App-only-Di
 3. Pflichtreviewer aufrufen
 4. zusätzliche Fachreviewer trigger-basiert ergänzen
 5. Ergebnisse konsolidieren
-6. Konflikte und offene Fragen explizit benennen
+6. Bei System-Assurance jede kritische Invariante auf direkte Evidenz, Gegenbeispiele und Restrisiken abbilden
+7. Konflikte und offene Fragen explizit benennen
 
 ## Konfliktauflösung
 

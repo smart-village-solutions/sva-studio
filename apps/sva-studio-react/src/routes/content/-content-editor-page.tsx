@@ -666,8 +666,11 @@ export const ContentEditorPage = ({
           labels={{
             title: t('content.ownership.title'),
             currentOwner: t('content.ownership.currentOwner'),
+            ownerUnresolved: t('content.ownership.ownerUnresolved'),
+            ownerResolutionFailed: t('content.ownership.ownerResolutionFailed'),
             account: t('content.ownership.account'),
             organization: t('content.ownership.organization'),
+            verificationRequired: t('content.ownership.verificationRequired'),
             saveKeepsOwner: t('content.ownership.saveKeepsOwner'),
             transferUnavailable: t('content.ownership.transferUnavailable'),
             transferForbidden: t('content.ownership.transferForbidden'),

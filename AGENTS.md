@@ -26,6 +26,16 @@
 - UI-Implementierungen folgen der Reihenfolge: native Browser-/HTML-Funktion, vorhandene shadcn/ui- oder Design-System-Komponente, vorhandene Workspace-Komponente, dann minimale neue Komponente.
 - Bei Review und Refactoring gezielt nach entfernbarer Komplexität suchen: handgerollte Standardfunktionen, tote Flexibilität, ungenutzte Layer, vermeidbare Dependencies und spekulative Erweiterbarkeit. Solche Funde sind Ergänzungen zu normalen Correctness-, Security-, Test- und UX-Reviews, kein Ersatz.
 
+## Proportionaler Projektzuschnitt
+
+- Kleine, lokal begrenzte Änderungen ohne neue systemübergreifende Invariante bleiben im Schnellpfad: keine künstlichen PR-Stacks, Zustandsmatrizen oder zusätzlichen OpenSpec-Changes.
+- Vor systemübergreifenden Großvorhaben die für den konkreten Fall relevanten Lieferabschnitte, Trust Boundaries, Ausführungsgrenzen und Failure Modes klären. Form und Tiefe der Darstellung richten sich nach dem Risiko; eine Zustandsmatrix ist nur ein mögliches Hilfsmittel.
+- Stacked PRs bevorzugen, wenn sie eigenständig build-, test- und reviewbare Zwischenstände mit geringerem Integrationsrisiko schaffen. Der konkrete Zuschnitt bleibt eine begründete Einzelfallentscheidung.
+- Bei risikoreichen Großvorhaben die kritischen Invarianten und ihre geplanten Nachweise vor der Implementierung nachvollziehbar festhalten. `assurance.md`, stabile IDs und die bereitgestellten Templates sind empfohlene Hilfsmittel, keine Selbstzwecke; gleichwertige Darstellungen im Proposal, Design oder PR sind zulässig. Vor dem Merge muss die gewählte Evidenz für den exakten HEAD belastbar sein.
+- Wenn mehrere neue Review- oder Testbefunde dieselbe Invariante oder Systemgrenze betreffen, lokale Mikrofixes stoppen und vor dem nächsten Push Zustandsraum sowie alle Verbraucher zusammenhängend prüfen.
+- Einen bereits stark integrierten PR nicht allein wegen seiner Größe spät mechanisch zerlegen; ein Split benötigt weiterhin stabile, eigenständig prüfbare Zwischenstände.
+- Die kanonischen Entscheidungsleitlinien und nicht verhandelbaren Qualitätsgrenzen stehen in [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md), Abschnitt 1.7.
+
 ## Tipps zur Entwicklungsumgebung
 
 - Dies ist ein pnpm-Workspace-Monorepo; Packages sind nach Funktionalität organisiert
@@ -171,7 +181,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 - **Kompatibilitätsanker**: `docs/guides/` enthält ausschließlich `studio-rollout-process.md`; neue allgemeine Dokumente gehören in den zuständigen Bereich. `docs/governance/dokumentationsmigration.md` weist die abgeschlossene Migration nach
 - **Nachweise und Historie**: Reports, Staging- und PR-Unterlagen bleiben in den dafür vorgesehenen, nicht normativen Bereichen
 - **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
-- **Sprache**: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
+- **Sprache**: Maßgebliche Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss). Für systemübergreifende technische Abstimmungen ist eine direkt verlinkte englische Übersetzung mit der Endung `.en.md` neben der maßgeblichen deutschen Fassung zulässig; bei Abweichungen gilt die deutsche Fassung.
 - **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
 - **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
 - **DB-Schema-Snapshot**: Änderungen an Tabellen, Spalten, Constraints, Indizes, RLS, Triggern oder DB-Funktionen müssen immer auch `docs/development/studio-db-schema-final.sql` und bei Bedarf `docs/development/studio-db-schema.md` aktualisieren

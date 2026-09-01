@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
@@ -29,25 +29,63 @@ const resolveMasterDataLoadError = (translate: Translate, loadError: unknown) =>
     : translate('masterData.messages.loadError');
 };
 
-const loadAvailableToursForLocations = async (
-  tab: WasteManagementSearchParams['masterDataTab'],
-  setAvailableTours: WasteMasterDataState['setAvailableTours'],
-  isMountedRef: React.MutableRefObject<boolean>,
-) => {
-  if (tab !== 'locations') {
-    return;
-  }
+type LocationCoverageSupportLoader = Pick<
+  WasteMasterDataState,
+  | 'setAvailableTours'
+  | 'setLocationCoverageFractions'
+  | 'setLocationCoverageFractionsStatus'
+  | 'setLocationCoverageToursStatus'
+>;
 
-  try {
-    const response = await getWasteManagementToursOverview();
-    if (isMountedRef.current) {
-      setAvailableTours(response.tours);
+const prepareLocationCoverageLoad = (
+  tab: WasteManagementSearchParams['masterDataTab'],
+  state: LocationCoverageSupportLoader
+) => {
+  const status = tab === 'locations' ? 'loading' : 'idle';
+  state.setLocationCoverageFractions([]);
+  state.setLocationCoverageFractionsStatus(status);
+  state.setAvailableTours([]);
+  state.setLocationCoverageToursStatus(status);
+};
+
+const isCurrentCoverageRequest = (
+  requestId: number,
+  requestIdRef: MutableRefObject<number>,
+  isMountedRef: MutableRefObject<boolean>
+) => isMountedRef.current && requestIdRef.current === requestId;
+
+const loadLocationCoverageSupport = async (
+  state: LocationCoverageSupportLoader,
+  requestId: number,
+  requestIdRef: MutableRefObject<number>,
+  isMountedRef: MutableRefObject<boolean>
+) => {
+  const loadFractions = async () => {
+    try {
+      const response = await getWasteManagementMasterDataOverview({ scope: 'fractions' });
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setLocationCoverageFractions(response.fractions);
+      state.setLocationCoverageFractionsStatus('ready');
+    } catch {
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setLocationCoverageFractions([]);
+      state.setLocationCoverageFractionsStatus('error');
     }
-  } catch {
-    if (isMountedRef.current) {
-      setAvailableTours([]);
+  };
+  const loadTours = async () => {
+    try {
+      const response = await getWasteManagementToursOverview();
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setAvailableTours(response.tours);
+      state.setLocationCoverageToursStatus('ready');
+    } catch {
+      if (!isCurrentCoverageRequest(requestId, requestIdRef, isMountedRef)) return;
+      state.setAvailableTours([]);
+      state.setLocationCoverageToursStatus('error');
     }
-  }
+  };
+
+  await Promise.all([loadFractions(), loadTours()]);
 };
 
 export const useWasteMasterDataOverview = (
@@ -57,26 +95,66 @@ export const useWasteMasterDataOverview = (
 ) => {
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
+  const coverageRequestIdRef = useRef(0);
   ptRef.current = pt;
   const { setAvailableTours, setLoading, setOverview, setOverviewError } = state;
+  const {
+    setLocationCoverageFractions,
+    setLocationCoverageFractionsStatus,
+    setLocationCoverageToursStatus,
+  } = state;
 
-  const loadOverview = useCallback(
-    async () => {
-      try {
-        const overviewResponse = await getWasteManagementMasterDataOverview(resolveMasterDataOverviewScope(tab));
-        if (!isMountedRef.current) return;
-        setOverview(overviewResponse);
-        setOverviewError(null);
-      } catch (loadError) {
-        if (!isMountedRef.current) return;
-        setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));
-        setAvailableTours([]);
-      } finally {
-        if (isMountedRef.current) setLoading(false);
-      }
-    },
-    [setAvailableTours, setLoading, setOverview, setOverviewError, tab]
-  );
+  const loadOverview = useCallback(async () => {
+    const coverageRequestId = ++coverageRequestIdRef.current;
+    prepareLocationCoverageLoad(tab, {
+      setAvailableTours,
+      setLocationCoverageFractions,
+      setLocationCoverageFractionsStatus,
+      setLocationCoverageToursStatus,
+    });
+
+    const overviewPromise = getWasteManagementMasterDataOverview(
+      resolveMasterDataOverviewScope(tab)
+    );
+    const coverageSupportPromise =
+      tab === 'locations'
+        ? loadLocationCoverageSupport(
+            {
+              setAvailableTours,
+              setLocationCoverageFractions,
+              setLocationCoverageFractionsStatus,
+              setLocationCoverageToursStatus,
+            },
+            coverageRequestId,
+            coverageRequestIdRef,
+            isMountedRef
+          )
+        : undefined;
+
+    try {
+      const overviewResponse = await overviewPromise;
+      if (!isMountedRef.current) return;
+      setOverview(overviewResponse);
+      setOverviewError(null);
+      setLoading(false);
+      await coverageSupportPromise;
+    } catch (loadError) {
+      if (!isMountedRef.current) return;
+      setOverviewError(resolveMasterDataLoadError(ptRef.current, loadError));
+      setAvailableTours([]);
+    } finally {
+      if (isMountedRef.current) setLoading(false);
+    }
+  }, [
+    setAvailableTours,
+    setLoading,
+    setLocationCoverageFractions,
+    setLocationCoverageFractionsStatus,
+    setLocationCoverageToursStatus,
+    setOverview,
+    setOverviewError,
+    tab,
+  ]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -85,14 +163,6 @@ export const useWasteMasterDataOverview = (
       isMountedRef.current = false;
     };
   }, [loadOverview]);
-
-  useEffect(() => {
-    if (!state.overview || tab !== 'locations') {
-      return;
-    }
-
-    void loadAvailableToursForLocations(tab, setAvailableTours, isMountedRef);
-  }, [setAvailableTours, state.overview, tab]);
 
   return loadOverview;
 };

@@ -17,10 +17,11 @@
 ## 2. Ziel-Principal-Auflösung
 
 - [x] 2.1 Einen serverseitigen, paginierten Zielkatalog für aktive Accounts und Organisationen derselben Instanz mit PII-minimiertem Anzeigemodell bereitstellen; Organisationen sind suchbar, Accounts werden in V1 ohne neue Suche über verschlüsselte PII paginiert.
-- [x] 2.2 Für Mainserver-Inhalte nur Ziele mit eindeutiger, konfliktfreier, aktueller DataProvider-Bindung und verwendbaren persönlichen beziehungsweise organisatorischen Credentials zulassen.
+- [x] 2.2 Für Mainserver-Inhalte Ziele mit eindeutiger, konfliktfreier, aktueller DataProvider-Bindung und verwendbaren persönlichen beziehungsweise organisatorischen Credentials direkt zulassen; bei verwendbaren Credentials ohne gespeicherte Bindung den Kandidaten als `verification_required` anbieten.
 - [x] 2.3 Ziel-Principal und Binding-Version unmittelbar vor der Mutation unter dem bestehenden DataProvider-Lock erneut prüfen.
 - [x] 2.4 Freie DataProvider-, Credential-, Account- oder Organisationswerte außerhalb des typisierten Ziel-Principal-Vertrags im Request-Schema ablehnen.
 - [x] 2.5 Tests für gelöschte, gesperrte, instanzfremde, credential-lose, mehrdeutige und konfliktbehaftete Ziele ergänzen.
+- [x] 2.6 Fehlende Zielbindungen erst nach ausdrücklicher Transferbestätigung für genau den gewählten Principal über `/data_provider.json` verifizieren, konfliktbewusst persistieren und erneut auflösen; Zielkatalog und Pagination lösen keine externen Identity-Aufrufe je Treffer aus.
 
 ## 3. Lokaler Content-Transfer
 
@@ -31,13 +32,15 @@
 ## 4. Typisierter Mainserver-Transfer
 
 - [x] 4.1 Im verifizierten Mainserver-Schema-Snapshot die optionalen `dataProviderId`-Argumente für News, Events, POI, Touren und GenericItems bestätigen; die vier vorhandenen Studio-Adapter typsicher anbinden und Touren mangels redaktionellem Studio-Editor capability-gated lassen.
-- [x] 4.2 Einen server-only Transferadapter ergänzen, der Quell-Principal und Ziel-Principal trennt und niemals DataProvider-IDs aus dem Browser übernimmt.
-- [x] 4.3 Fresh Same-Credential-Pre-Read, Transfer-Permission, Quell-DataProvider, Zielbindung und Typ-Capability vor dem Provider-Write erneut prüfen.
+- [x] 4.2 Einen server-only Transferadapter ergänzen, der autorisierten Actor und Ziel-Principal trennt und niemals DataProvider-IDs aus dem Browser übernimmt.
+- [x] 4.3 Fresh Actor-Credential-Pre-Read, Transfer-Permission, Quell-DataProvider, Zielbindung und Typ-Capability vor dem Provider-Write erneut prüfen; bei Scope `all` Source-Principal-Lifecycle und -Credentials nicht als Gate verwenden.
 - [x] 4.4 Eine stabile Operationsreferenz im bestehenden Mainserver-Mutationsjournal reservieren und erwarteten Quell- sowie Ziel-DataProvider festhalten.
 - [x] 4.5 Nach bestätigtem Transfer Response beziehungsweise Target-Re-Read validieren und Projektion, Credential-Quelle, Liste, History und Audit auf den Ziel-Principal nachziehen.
-- [x] 4.6 Bei verlorenem Response zuerst Target-, danach Source-Re-Read ausführen; nur eindeutige Evidenz finalisieren oder wiederholen, sonst `reconciliation_required` setzen.
+- [x] 4.6 Bei verlorenem Response zuerst Target-, danach Actor-Re-Read ausführen; nur eindeutige Evidenz finalisieren oder wiederholen, sonst `reconciliation_required` setzen.
 - [x] 4.7 Sicherstellen, dass lokale Folgefehler einen bestätigten Mainserver-Erfolg nicht als Provider-Fehler oder Rollback darstellen.
 - [x] 4.8 Contract- und Integrationstests für Root-/Abhängigkeitsübertragung, ExternalReference-Konsistenz, Retry, Timeout, Konflikt und Reconciliation ergänzen; Root-/Abhängigkeits- und ExternalReference-Transaktion sind in der Mainserver-Baseline `ee619d0e`, Adapter-/Retry-/Reconciliation-Pfade im Studio abgesichert.
+- [x] 4.9 `content.transferOwnership` nach bestätigter Staging-Matrix dauerhaft als Code-Capability aktivieren und den betrieblichen Laufzeitschalter aus dem Transferpfad entfernen.
+- [x] 4.10 Identity-Ausfall und beim anlassbezogenen Nachweis entdeckte Binding-Konflikte vor dem Provider-Write mit stabilen Fehlercodes und Journalstatus fail-closed behandeln.
 
 ## 5. Gemeinsame Oberfläche
 
@@ -53,10 +56,11 @@
 - [x] 5.10 Lokalisierte Erfolgs-, Denial-, Binding-, Credential-, Unsupported-, Ownership-Hinweis- und Reconciliation-Meldungen für Deutsch und Englisch ergänzen.
 - [x] 5.11 Fokusführung, Tastaturbedienung, Screenreader-Namen, Lade-/Disabled-State und 44×44-Zielgrößen mit Unit-, Axe- und E2E-Tests absichern.
 - [x] 5.12 Konformitätstests ergänzen, die je registriertem Content-Editor genau eine Inhaberanzeige im ersten Tab, den Save-Hinweis und die permission-/capability-gesteuerte Transferaktion nachweisen.
+- [x] 5.13 Ziele mit anlassbezogener Binding-Prüfung in Auswahl und Bestätigung lokalisiert kennzeichnen.
 
 ## 6. Audit, Observability und Dokumentation
 
-- [x] 6.1 Append-only Audit für Actor, Action, Content-ID/-Typ, Source-/Target-Principal, alte/neue DataProvider-Referenz, Operationsreferenz, Binding-Version, Ergebnis und Reconciliation-Status ergänzen, ohne PII oder Secrets zu speichern; Coverage ausdrücklich als `studio_mutations` kennzeichnen.
+- [x] 6.1 Append-only Audit für Actor, Action, Content-ID/-Typ, optionalen Source-Principal-Auflösungszustand, Target-Principal, alte/neue DataProvider-Referenz, Operationsreferenz, Binding-Version, Ergebnis und Reconciliation-Status ergänzen, ohne PII oder Secrets zu speichern; Coverage ausdrücklich als `studio_mutations` kennzeichnen.
 - [x] 6.2 Strukturierte Metriken und Logs für Erfolg, Denial, Target-Validierung, Upstream-Rejection, Timeout und `reconciliation_required` ergänzen.
 - [x] 6.3 Content-/IAM-Bedienungsdokumentation, Permission-Referenz und Mainserver-Runbook auf Deutsch aktualisieren.
 - [x] 6.4 Eine ADR zum kontrollierten Content-Inhabertransfer erstellen und die arc42-Abschnitte 03, 04, 05, 06, 08 und 09 aktualisieren.

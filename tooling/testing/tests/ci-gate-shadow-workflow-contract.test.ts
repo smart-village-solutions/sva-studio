@@ -78,13 +78,21 @@ describe('CI gate topology shadow workflows', () => {
   });
 
   it('compares exact-head terminal checks and retains parity evidence', () => {
+    const parityJob = prShadow.slice(prShadow.indexOf('  parity:'));
+
     expect(prShadow).toContain('name: CI Shadow / Parity');
     expect(prShadow).toContain('commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100');
     expect(prShadow).toContain('node scripts/ci/ci-gate-shadow-parity.cli.ts');
     expect(prShadow).toContain('--legacy-scope artifacts/ci-shadow/legacy-pr-scope.json');
     expect(prShadow).toContain('--scope-result "$SCOPE_RESULT"');
     expect(prShadow).toContain('--comparison-started-at "$comparison_started_at"');
-    expect(prShadow).toContain('for attempt in {1..40}; do');
+    expect(parityJob).toContain('timeout-minutes: 35');
+    expect(parityJob).toContain('parity_poll_started_epoch=$(date -u +%s)');
+    expect(parityJob).toContain(
+      'comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))'
+    );
+    expect(parityJob).toContain('while true; do');
+    expect(parityJob).not.toContain('for attempt in {1..40}; do');
     expect(prShadow).toContain('--fail-pending');
     expect(prShadow).toContain('if: always()\n    needs:');
     expect(prShadow).toContain('continue-on-error: true');
@@ -122,7 +130,9 @@ describe('CI gate topology shadow workflows', () => {
     expect(mainShadow).toContain('--comparison-started-at "$comparison_started_at"');
     expect(parityJob).toContain('timeout-minutes: 35');
     expect(parityJob).toContain('parity_poll_started_epoch=$(date -u +%s)');
-    expect(parityJob).toContain('comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))');
+    expect(parityJob).toContain(
+      'comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))'
+    );
     expect(parityJob).not.toContain('Date.parse(process.argv[1]) + 32 * 60_000');
     expect(parityJob).toContain('while true; do');
     expect(parityJob).not.toContain('for attempt in {1..40}; do');

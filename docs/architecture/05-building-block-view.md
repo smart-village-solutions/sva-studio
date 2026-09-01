@@ -865,3 +865,31 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 - `@sva/plugin-sdk` besitzt List-Search-Normalisierung, Map-/Geocoding-Client und den schmalen öffentlichen Subpath `content-media`.
 - `@sva/studio-ui-react` besitzt den Map-Lifecycle, Media-Picker-Konfiguration sowie den Media-Reference-Sync-Controller und seine Retry-Aktion.
 - Plugins besitzen weiterhin Payload, Mutation, Navigation, Übersetzung und bundlelokales Laden der MapLibre-Runtime.
+
+### Zielbild 2026-09: SSF-Control-Plane-Bausteine
+
+- Studio Core besitzt die kanonische Instanzidentität, Realm- und
+  Benutzerprovisionierung, Medienverwaltung, Plugin-Aktivierung, Readiness,
+  Autorisierungsgrenze und Auditierung.
+- Das SSF-Plugin besitzt eine einzelne plugin-eigene, mandantenfähige
+  PostgreSQL-Datenbank für SSF-Texte, Sprachwahl, Branding- und
+  Speicher-Policies sowie Tenant-Overrides. Es enthält die kanonischen,
+  versionierten Produktdefaults und löst Tenant-, serverweite und diese
+  ausgelieferten Produktwerte zur effektiven Konfiguration auf.
+- Die Studio-Serverruntime veröffentlicht den internen V1-Leseendpunkt und
+  delegiert nach Service- und Tenantprüfung an das SSF-Plugin.
+- SSF konsumiert nur die aufgelöste Antwort. Es kennt keine Override-Herkunft,
+  greift nicht auf Studio-Datenbanken zu und hält keine persistente Kopie der
+  Konfiguration.
+- Der separate SSF-Keycloak stellt Benutzer- und Service-Tokens aus. Gäste
+  verbleiben im SSF-Sessionmodell und werden nicht als Studio-Benutzer
+  materialisiert.
+- Eine Studio-owned SSF-IAM-Projektion materialisiert ausschließlich effektive
+  tenantgebundene `ssf.*`-Permissions und ihre Revision in den jeweiligen
+  SSF-Keycloak-Client. Projektionsfehler sperren Client und Plugin-Readiness.
+- Root-Actions des SSF-Plugins werden getrennt als Plattformbeitrag für
+  `instance_registry_admin` registriert und niemals in Tenant-Tokens projiziert.
+
+Der genaue Payload- und Fehlervertrag ist im
+[Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
+festgelegt.

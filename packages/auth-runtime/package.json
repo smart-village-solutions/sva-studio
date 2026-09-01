@@ -57,7 +57,7 @@
     "cookie-es": "^3.1.1",
     "file-type": "^22.0.1",
     "graphile-worker": "^0.16.6",
-    "ioredis": "^5.10.1",
+    "ioredis": "^6.0.0",
     "jose": "^6.2.5",
     "openid-client": "^6.8.4",
     "pg": "^8.22.0",

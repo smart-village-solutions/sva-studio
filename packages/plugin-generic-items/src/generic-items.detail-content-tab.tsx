@@ -578,6 +578,12 @@ export const GenericItemsDetailContentTab = ({
                 previewUnavailable: labels.mediaPreviewUnavailable,
               },
               announcements: { moved: labels.mediaMoved, removed: labels.mediaRemoved },
+              urlFeedback: {
+                upgradedToHttps: labels.mediaUrlUpgradedToHttps,
+                insecureHttp: labels.mediaUrlInsecureHttp,
+                httpsUnavailable: labels.mediaUrlHttpsUnavailable,
+                invalid: labels.mediaUrlInvalid,
+              },
               refresh: {
                 title: labels.mediaRefreshTitle,
                 description: labels.mediaRefreshDescription,

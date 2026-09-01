@@ -1,3 +1,5 @@
+import { isPersistableManualContentMediaUrl } from '@sva/studio-ui-react';
+
 import type { EventFormInput } from './events.types.js';
 import { isValidDateOnlyValue } from './events.date-only.js';
 
@@ -92,7 +94,12 @@ export const validateEventForm = (input: EventFormInput): readonly string[] => {
     errors.push('urls');
   }
 
-  if ((input.mediaContents ?? []).some((media) => hasInvalidUrl(media.sourceUrl?.url))) {
+  if (
+    (input.mediaContents ?? []).some((media) => {
+      const url = media.sourceUrl?.url?.trim() ?? '';
+      return url.length > 0 && !isPersistableManualContentMediaUrl(url);
+    })
+  ) {
     errors.push('urls');
   }
 

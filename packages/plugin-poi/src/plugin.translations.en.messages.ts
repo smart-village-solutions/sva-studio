@@ -72,6 +72,11 @@ export const poiMessagesEn = {
   mediaPreviewUnavailable: 'Preview unavailable',
   mediaMoved: 'Image moved to position {{position}} of {{total}}.',
   mediaRemoved: 'Image removed.',
+  mediaUrlUpgradedToHttps: 'The image URL was updated to HTTPS.',
+  mediaUrlInsecureHttp:
+    'This HTTP image URL is transferred insecurely and may be blocked in HTTPS applications.',
+  mediaUrlHttpsUnavailable: 'No working HTTPS version was found for this image address.',
+  mediaUrlInvalid: 'The image URL is invalid or not suitable for permanent storage.',
   mediaRefreshTitle: 'Update metadata from media library',
   mediaRefreshDescription: 'Select the fields to copy from the global media asset.',
   mediaAssetValue: 'Media library',

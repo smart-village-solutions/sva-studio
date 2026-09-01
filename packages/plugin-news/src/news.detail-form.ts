@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { isPersistableManualContentMediaUrl } from '@sva/studio-ui-react';
 import { z } from 'zod';
 
 import { buildNewsSavePayload, createNewsEditorFormValues } from './news.editor-model.js';
@@ -202,7 +203,7 @@ const legacySnapshotSchema = z
 const hasInvalidMediaUrls = (mediaContents: readonly NewsMediaContentFormValue[]) =>
   mediaContents.some((media) => {
     const url = media.sourceUrl.url.trim();
-    return url.length > 0 && isHttpsUrl(url) === false;
+    return url.length > 0 && !isPersistableManualContentMediaUrl(url);
   });
 
 const readCompatibilityString = (
@@ -672,11 +673,7 @@ const normalizeEditorialValues = (values: NewsDetailFormValues): NewsDetailFormV
 };
 
 type StringCompatibilitySnapshotField =
-  | 'keywords'
-  | 'externalId'
-  | 'newsType'
-  | 'charactersToBeShown'
-  | 'pointOfInterestId';
+  'keywords' | 'externalId' | 'newsType' | 'charactersToBeShown' | 'pointOfInterestId';
 
 type BooleanCompatibilitySnapshotField = 'fullVersion' | 'showPublishDate';
 

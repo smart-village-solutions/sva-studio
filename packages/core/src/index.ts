@@ -31,6 +31,12 @@ export type {
   PermissionRequirementMode,
 } from './iam/permission-denial.js';
 export { isPlausibleEmailAddress } from './email-address.js';
+export {
+  inspectManualMediaUrl,
+  isPersistableManualMediaUrl,
+  isPersistableMediaAssetUrl,
+  type ManualMediaUrlInspection,
+} from './media-url.js';
 export { convertRichTextHtmlToPlainText } from './rich-text-plain-text.js';
 export {
   iamContentAccessReasonCodes,

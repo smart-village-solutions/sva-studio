@@ -369,6 +369,12 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     previewUnavailable: 'Keine Vorschau verfügbar',
     moved: 'Bild an Position {{position}} von {{total}} verschoben.',
     removed: 'Bild wurde entfernt.',
+    urlUpgradedToHttps: 'Die Bild-URL wurde auf HTTPS aktualisiert.',
+    urlInsecureHttp:
+      'Diese HTTP-Bild-URL wird unsicher übertragen und kann in HTTPS-Anwendungen blockiert werden.',
+    urlHttpsUnavailable:
+      'Für diese Bildadresse wurde keine funktionierende HTTPS-Version gefunden.',
+    urlInvalid: 'Die Bild-URL ist ungültig oder nicht dauerhaft speicherbar.',
     refreshTitle: 'Metadaten aktualisieren',
     refreshDescription: 'Wählen Sie die zu übernehmenden Felder.',
     assetValue: 'Mediathek',
@@ -725,6 +731,11 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     previewUnavailable: 'Preview unavailable',
     moved: 'Image moved to position {{position}} of {{total}}.',
     removed: 'Image removed.',
+    urlUpgradedToHttps: 'The image URL was updated to HTTPS.',
+    urlInsecureHttp:
+      'This HTTP image URL is transferred insecurely and may be blocked in HTTPS applications.',
+    urlHttpsUnavailable: 'No working HTTPS version was found for this image address.',
+    urlInvalid: 'The image URL is invalid or not suitable for permanent storage.',
     refreshTitle: 'Refresh metadata',
     refreshDescription: 'Select the fields to apply.',
     assetValue: 'Media library',

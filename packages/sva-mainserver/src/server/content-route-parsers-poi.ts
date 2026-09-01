@@ -6,10 +6,24 @@ import type {
   SvaMainserverOperatingCompanyInput,
   SvaMainserverPriceInput,
 } from '../types.js';
-import { errorJson, isRecord, isTimeOfDay, readBoolean, readNumber, readString } from './content-route-core.js';
-import { parseAddress, parseContact, parseWebUrl, parseWebUrls } from './content-route-parsers.shared.js';
+import {
+  errorJson,
+  isRecord,
+  isTimeOfDay,
+  readBoolean,
+  readNumber,
+  readString,
+} from './content-route-core.js';
+import {
+  parseAddress,
+  parseContact,
+  parseMediaUrl,
+  parseWebUrls,
+} from './content-route-parsers.shared.js';
 
-export const parseOpeningHours = (value: unknown): readonly SvaMainserverOpeningHourInput[] | Response | undefined => {
+export const parseOpeningHours = (
+  value: unknown
+): readonly SvaMainserverOpeningHourInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -25,7 +39,11 @@ export const parseOpeningHours = (value: unknown): readonly SvaMainserverOpening
     const timeFrom = readString(item.timeFrom);
     const timeTo = readString(item.timeTo);
     if ((timeFrom && !isTimeOfDay(timeFrom)) || (timeTo && !isTimeOfDay(timeTo))) {
-      return errorJson(400, 'invalid_request', 'Öffnungszeiten müssen im Format HH:MM angegeben werden.');
+      return errorJson(
+        400,
+        'invalid_request',
+        'Öffnungszeiten müssen im Format HH:MM angegeben werden.'
+      );
     }
     openingHours.push({
       ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
@@ -33,7 +51,9 @@ export const parseOpeningHours = (value: unknown): readonly SvaMainserverOpening
       ...(readString(item.dateTo) ? { dateTo: readString(item.dateTo) } : {}),
       ...(timeFrom ? { timeFrom } : {}),
       ...(timeTo ? { timeTo } : {}),
-      ...(readNumber(item.sortNumber) !== undefined ? { sortNumber: readNumber(item.sortNumber) } : {}),
+      ...(readNumber(item.sortNumber) !== undefined
+        ? { sortNumber: readNumber(item.sortNumber) }
+        : {}),
       ...(readBoolean(item.open) !== undefined ? { open: readBoolean(item.open) } : {}),
       ...(readBoolean(item.useYear) !== undefined ? { useYear: readBoolean(item.useYear) } : {}),
       ...(readString(item.description) ? { description: readString(item.description) } : {}),
@@ -42,7 +62,9 @@ export const parseOpeningHours = (value: unknown): readonly SvaMainserverOpening
   return openingHours;
 };
 
-export const parsePrices = (value: unknown): readonly SvaMainserverPriceInput[] | Response | undefined => {
+export const parsePrices = (
+  value: unknown
+): readonly SvaMainserverPriceInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -58,13 +80,23 @@ export const parsePrices = (value: unknown): readonly SvaMainserverPriceInput[] 
     prices.push({
       ...(readString(item.name) ? { name: readString(item.name) } : {}),
       ...(readNumber(item.amount) !== undefined ? { amount: readNumber(item.amount) } : {}),
-      ...(readBoolean(item.groupPrice) !== undefined ? { groupPrice: readBoolean(item.groupPrice) } : {}),
+      ...(readBoolean(item.groupPrice) !== undefined
+        ? { groupPrice: readBoolean(item.groupPrice) }
+        : {}),
       ...(readNumber(item.ageFrom) !== undefined ? { ageFrom: readNumber(item.ageFrom) } : {}),
       ...(readNumber(item.ageTo) !== undefined ? { ageTo: readNumber(item.ageTo) } : {}),
-      ...(readNumber(item.minAdultCount) !== undefined ? { minAdultCount: readNumber(item.minAdultCount) } : {}),
-      ...(readNumber(item.maxAdultCount) !== undefined ? { maxAdultCount: readNumber(item.maxAdultCount) } : {}),
-      ...(readNumber(item.minChildrenCount) !== undefined ? { minChildrenCount: readNumber(item.minChildrenCount) } : {}),
-      ...(readNumber(item.maxChildrenCount) !== undefined ? { maxChildrenCount: readNumber(item.maxChildrenCount) } : {}),
+      ...(readNumber(item.minAdultCount) !== undefined
+        ? { minAdultCount: readNumber(item.minAdultCount) }
+        : {}),
+      ...(readNumber(item.maxAdultCount) !== undefined
+        ? { maxAdultCount: readNumber(item.maxAdultCount) }
+        : {}),
+      ...(readNumber(item.minChildrenCount) !== undefined
+        ? { minChildrenCount: readNumber(item.minChildrenCount) }
+        : {}),
+      ...(readNumber(item.maxChildrenCount) !== undefined
+        ? { maxChildrenCount: readNumber(item.maxChildrenCount) }
+        : {}),
       ...(readString(item.description) ? { description: readString(item.description) } : {}),
       ...(readString(item.category) ? { category: readString(item.category) } : {}),
     });
@@ -118,7 +150,9 @@ export const parseOperatingCompany = (
   };
 };
 
-export const parseMediaContents = (value: unknown): readonly SvaMainserverMediaContentInput[] | Response | undefined => {
+export const parseMediaContents = (
+  value: unknown
+): readonly SvaMainserverMediaContentInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -131,7 +165,7 @@ export const parseMediaContents = (value: unknown): readonly SvaMainserverMediaC
     if (!isRecord(media)) {
       return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
     }
-    const sourceUrl = parseWebUrl(media.sourceUrl);
+    const sourceUrl = parseMediaUrl(media.sourceUrl);
     if (sourceUrl instanceof Response) {
       return sourceUrl;
     }
@@ -147,7 +181,9 @@ export const parseMediaContents = (value: unknown): readonly SvaMainserverMediaC
   return mediaContents;
 };
 
-export const parseCertificates = (value: unknown): readonly SvaMainserverCertificateInput[] | Response | undefined => {
+export const parseCertificates = (
+  value: unknown
+): readonly SvaMainserverCertificateInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -170,13 +206,17 @@ export const parseCertificates = (value: unknown): readonly SvaMainserverCertifi
 };
 
 export const parseAccessibilityInformation = (
-  value: unknown,
+  value: unknown
 ): SvaMainserverAccessibilityInformationInput | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
   if (!isRecord(value)) {
-    return errorJson(400, 'invalid_request', 'Barrierefreiheitsdaten müssen als Objekt gesendet werden.');
+    return errorJson(
+      400,
+      'invalid_request',
+      'Barrierefreiheitsdaten müssen als Objekt gesendet werden.'
+    );
   }
   const urls = parseWebUrls(value.urls);
   if (urls instanceof Response) {

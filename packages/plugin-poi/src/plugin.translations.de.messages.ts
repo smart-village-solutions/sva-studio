@@ -83,6 +83,12 @@ export const poiMessagesDe = {
   mediaPreviewUnavailable: 'Keine Vorschau verfügbar',
   mediaMoved: 'Bild an Position {{position}} von {{total}} verschoben.',
   mediaRemoved: 'Bild entfernt.',
+  mediaUrlUpgradedToHttps: 'Die Bild-URL wurde auf HTTPS aktualisiert.',
+  mediaUrlInsecureHttp:
+    'Diese HTTP-Bild-URL wird unsicher übertragen und kann in HTTPS-Anwendungen blockiert werden.',
+  mediaUrlHttpsUnavailable:
+    'Für diese Bildadresse wurde keine funktionierende HTTPS-Version gefunden.',
+  mediaUrlInvalid: 'Die Bild-URL ist ungültig oder nicht dauerhaft speicherbar.',
   mediaRefreshTitle: 'Metadaten aus Mediathek aktualisieren',
   mediaRefreshDescription:
     'Wählen Sie die Felder aus, die aus dem globalen Medienobjekt übernommen werden sollen.',

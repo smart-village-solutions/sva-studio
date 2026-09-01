@@ -120,6 +120,17 @@ describe('cockpit card model', () => {
     });
   });
 
+  it('accepts an explicit http image while keeping the optional destination link https-only', () => {
+    expect(
+      mapCockpitCardFormValuesToGenericItemInput({
+        ...values,
+        images: [
+          { sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' as const },
+        ],
+      }).mediaContents
+    ).toEqual([{ sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' }]);
+  });
+
   it('uses safe defaults for malformed payloads and missing optional GenericItem fields', () => {
     expect(readCockpitCardPayload(null)).toEqual({
       languageCode: 'und',

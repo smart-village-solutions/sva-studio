@@ -129,6 +129,12 @@ const de = {
       failed: 'Fehlgeschlagen',
       moved: 'Bild an Position {{position}} von {{total}} verschoben.',
       removed: 'Bild wurde entfernt.',
+      urlUpgradedToHttps: 'Die Bild-URL wurde auf HTTPS aktualisiert.',
+      urlInsecureHttp:
+        'Diese HTTP-Bild-URL wird unsicher übertragen und kann in HTTPS-Anwendungen blockiert werden.',
+      urlHttpsUnavailable:
+        'Für diese Bildadresse wurde keine funktionierende HTTPS-Version gefunden.',
+      urlInvalid: 'Die Bild-URL ist ungültig oder nicht dauerhaft speicherbar.',
       refreshTitle: 'Metadaten abgleichen',
       refreshDescription: 'Wähle aus, welche Werte aus der Mediathek übernommen werden.',
       assetValue: 'Mediathek',
@@ -227,6 +233,11 @@ const en = {
       addByLink: 'Add media by link',
       pickerTitle: 'Add media',
       moved: 'Image moved to position {{position}} of {{total}}.',
+      urlUpgradedToHttps: 'The image URL was updated to HTTPS.',
+      urlInsecureHttp:
+        'This HTTP image URL is transferred insecurely and may be blocked in HTTPS applications.',
+      urlHttpsUnavailable: 'No working HTTPS version was found for this image address.',
+      urlInvalid: 'The image URL is invalid or not suitable for permanent storage.',
     },
     richText: projectRichTextTranslations.en,
   },

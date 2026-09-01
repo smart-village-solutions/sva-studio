@@ -1281,14 +1281,13 @@ CREATE TABLE iam.instance_provisioning_runs (
     status text NOT NULL,
     step_key text,
     idempotency_key text NOT NULL,
-    payload_fingerprint text,
     error_code text,
     error_message text,
     request_id text,
     actor_id text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT instance_provisioning_create_payload_fingerprint_chk CHECK (((operation <> 'create'::text) OR (payload_fingerprint IS NOT NULL))) NOT VALID,
+    payload_fingerprint text,
     CONSTRAINT instance_provisioning_operation_chk CHECK ((operation = ANY (ARRAY['create'::text, 'activate'::text, 'suspend'::text, 'archive'::text]))),
     CONSTRAINT instance_provisioning_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])))
 );
@@ -2409,6 +2408,14 @@ ALTER TABLE ONLY iam.instance_modules
 
 ALTER TABLE ONLY iam.instance_plugin_lifecycle
     ADD CONSTRAINT instance_plugin_lifecycle_pkey PRIMARY KEY (instance_id, plugin_id);
+
+
+--
+-- Name: instance_provisioning_runs instance_provisioning_create_payload_fingerprint_chk; Type: CHECK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_provisioning_runs
+    ADD CONSTRAINT instance_provisioning_create_payload_fingerprint_chk CHECK (((operation <> 'create'::text) OR (payload_fingerprint IS NOT NULL))) NOT VALID;
 
 
 --

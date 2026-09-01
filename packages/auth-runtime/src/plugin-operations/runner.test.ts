@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { StudioJobRepository } from '@sva/data-repositories';
+import type { StudioJobRecord } from '@sva/core';
+
 const repositoryState = vi.hoisted(() => ({
   withStudioJobRepository: vi.fn(),
   withPluginTenantLifecycleRepository: vi.fn(),
@@ -41,7 +44,7 @@ import {
   studioJobTaskIdentifier,
 } from './runner.js';
 
-const baseJob = {
+const baseJob: StudioJobRecord = {
   id: 'job-1',
   instanceId: 'tenant-a',
   source: 'plugin',
@@ -62,6 +65,114 @@ const baseJob = {
   updatedAt: '2026-05-09T12:00:00.000Z',
 };
 
+type RepositoryDoubleOptions = {
+  readonly job?: StudioJobRecord;
+  readonly getJobById?: (currentJob: StudioJobRecord) => Promise<StudioJobRecord | null>;
+  readonly updateJobState?: ReturnType<typeof vi.fn>;
+  readonly updateJobProgress?: ReturnType<typeof vi.fn>;
+  readonly appendJobEvent?: ReturnType<typeof vi.fn>;
+};
+
+const installStudioJobRepositoryDouble = (options: RepositoryDoubleOptions = {}) => {
+  let currentJob = options.job ?? baseJob;
+  const terminalEvents = new Map<string, Parameters<StudioJobRepository['appendJobEvent']>[0]>();
+  const updateJobState = options.updateJobState ?? vi.fn(async () => null);
+  const updateJobProgress = options.updateJobProgress ?? vi.fn(async () => null);
+  const appendJobEvent = options.appendJobEvent ?? vi.fn(async () => null);
+
+  const readCurrentJob = async () => {
+    const resolved = options.getJobById ? await options.getJobById(currentJob) : currentJob;
+    if (resolved) currentJob = resolved;
+    return resolved;
+  };
+  const applyUpdate = (
+    input: Parameters<StudioJobRepository['updateJobState']>[0]
+  ): StudioJobRecord => {
+    const { jobId, instanceId, ...changes } = input;
+    return { ...currentJob, ...changes, id: jobId, instanceId };
+  };
+  const matchesFence = (input: Parameters<StudioJobRepository['transitionJobState']>[0]) =>
+    input.expectedStatuses.includes(currentJob.status) &&
+    input.expectedAttempts === currentJob.attempts &&
+    input.expectedWorkerId === (currentJob.workerId ?? null);
+
+  const transitionJobState = vi.fn(
+    async (input: Parameters<StudioJobRepository['transitionJobState']>[0]) => {
+      if (!matchesFence(input)) return { outcome: 'conflict' as const, job: currentJob };
+      const {
+        expectedStatuses: _expectedStatuses,
+        expectedAttempts: _expectedAttempts,
+        expectedWorkerId: _expectedWorkerId,
+        ...update
+      } = input;
+      await updateJobState(update);
+      currentJob = applyUpdate(update);
+      return { outcome: 'applied' as const, job: currentJob };
+    }
+  );
+  const transitionJobStateAndAppendEvent = vi.fn(
+    async (input: Parameters<StudioJobRepository['transitionJobStateAndAppendEvent']>[0]) => {
+      const terminalEventKey = `${input.jobId}:${input.event.attempts}`;
+      const existingEvent = terminalEvents.get(terminalEventKey);
+      if (
+        existingEvent?.eventType === input.event.eventType &&
+        currentJob.status === input.status
+      ) {
+        return { outcome: 'alreadyApplied' as const, job: currentJob };
+      }
+      if (!matchesFence(input)) return { outcome: 'conflict' as const, job: currentJob };
+      const {
+        expectedStatuses: _expectedStatuses,
+        expectedAttempts: _expectedAttempts,
+        expectedWorkerId: _expectedWorkerId,
+        leasePredicate: _leasePredicate,
+        event,
+        ...update
+      } = input;
+
+      // Both effects are awaited before the in-memory commit so a rejected write
+      // cannot leave the double with a one-sided terminal state.
+      await updateJobState(update);
+      await appendJobEvent(event);
+      currentJob = applyUpdate(update);
+      terminalEvents.set(terminalEventKey, event);
+      return { outcome: 'applied' as const, job: currentJob };
+    }
+  );
+  const updateJobProgressWithLease = vi.fn(
+    async (input: Parameters<StudioJobRepository['updateJobProgressWithLease']>[0]) => {
+      if (input.attempts !== currentJob.attempts || input.workerId !== currentJob.workerId) {
+        return null;
+      }
+      await updateJobProgress(input);
+      currentJob = { ...currentJob, progress: input.progress };
+      return currentJob;
+    }
+  );
+
+  const repository = {
+    getJobById: vi.fn(readCurrentJob),
+    updateJobState,
+    transitionJobState,
+    transitionJobStateAndAppendEvent,
+    updateJobProgress,
+    updateJobProgressWithLease,
+    appendJobEvent,
+  };
+  repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+    work(repository)
+  );
+  repositoryState.withStudioJobLifecycleRepositories.mockImplementation(async (_instanceId, work) =>
+    work({
+      studioJobs: repository,
+      tenantLifecycle: {},
+      enqueuePluginTenantLifecycleRetry: vi.fn(async () => undefined),
+    })
+  );
+
+  return { repository, terminalEvents, getCurrentJob: () => currentJob };
+};
+
 describe('plugin operation runner task list', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,14 +186,11 @@ describe('plugin operation runner task list', () => {
     const updateJobState = vi.fn(async () => null);
     const updateJobProgress = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => baseJob),
-        updateJobState,
-        updateJobProgress,
-        appendJobEvent,
-      })
-    );
+    const { repository, terminalEvents } = installStudioJobRepositoryDouble({
+      updateJobState,
+      updateJobProgress,
+      appendJobEvent,
+    });
 
     const handler = vi.fn(
       async ({
@@ -195,18 +303,80 @@ describe('plugin operation runner task list', () => {
         },
       })
     );
+    expect(repository.transitionJobState).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedStatuses: ['queued'], expectedAttempts: 0 })
+    );
+    expect(repository.transitionJobStateAndAppendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedStatuses: ['running'],
+        expectedAttempts: 1,
+        event: expect.objectContaining({ eventType: 'job.succeeded' }),
+      })
+    );
+    expect(terminalEvents.size).toBe(1);
+  });
+
+  it('keeps the repository double fenced and terminal writes idempotent', async () => {
+    const updateJobState = vi.fn(async () => null);
+    const appendJobEvent = vi.fn(async () => null);
+    const { repository, terminalEvents, getCurrentJob } = installStudioJobRepositoryDouble({
+      updateJobState,
+      appendJobEvent,
+    });
+    const runningInput = {
+      jobId: 'job-1',
+      instanceId: 'tenant-a',
+      status: 'running' as const,
+      attempts: 1,
+      workerId: 'worker-1',
+      expectedStatuses: ['queued'] as const,
+      expectedAttempts: 0,
+      expectedWorkerId: null,
+    };
+
+    await expect(repository.transitionJobState(runningInput)).resolves.toMatchObject({
+      outcome: 'applied',
+    });
+    await expect(repository.transitionJobState(runningInput)).resolves.toMatchObject({
+      outcome: 'conflict',
+    });
+
+    const terminalInput = {
+      jobId: 'job-1',
+      instanceId: 'tenant-a',
+      status: 'succeeded' as const,
+      attempts: 1,
+      workerId: 'worker-1',
+      expectedStatuses: ['running'] as const,
+      expectedAttempts: 1,
+      expectedWorkerId: 'worker-1',
+      leasePredicate: { kind: 'activeOwner' as const },
+      event: {
+        id: 'event-1',
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        eventType: 'job.succeeded' as const,
+        status: 'succeeded' as const,
+        attempts: 1,
+      },
+    };
+    await expect(repository.transitionJobStateAndAppendEvent(terminalInput)).resolves.toMatchObject(
+      { outcome: 'applied' }
+    );
+    await expect(repository.transitionJobStateAndAppendEvent(terminalInput)).resolves.toMatchObject(
+      { outcome: 'alreadyApplied' }
+    );
+
+    expect(getCurrentJob().status).toBe('succeeded');
+    expect(updateJobState).toHaveBeenCalledTimes(2);
+    expect(appendJobEvent).toHaveBeenCalledOnce();
+    expect(terminalEvents.size).toBe(1);
   });
 
   it('marks a job as failed without retry when no handler is registered', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => baseJob),
-        updateJobState,
-        appendJobEvent,
-      })
-    );
+    installStudioJobRepositoryDouble({ updateJobState, appendJobEvent });
 
     const taskList = createPluginOperationTaskList(() => new Map());
 
@@ -229,13 +399,7 @@ describe('plugin operation runner task list', () => {
 
   it('fails a queued plugin job before handler execution when tenant access became blocked', async () => {
     const updateJobState = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => baseJob),
-        updateJobState,
-        appendJobEvent: vi.fn(async () => null),
-      })
-    );
+    installStudioJobRepositoryDouble({ updateJobState });
     pluginAccessState.readAccess.mockResolvedValueOnce({
       allowed: false,
       reason: 'blocked',
@@ -275,13 +439,7 @@ describe('plugin operation runner task list', () => {
         studioTenantLifecycle: { operation: 'provision', generation: 3 },
       },
     };
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => lifecycleJob),
-        updateJobState: vi.fn(async () => null),
-        appendJobEvent: vi.fn(async () => null),
-      })
-    );
+    const { repository } = installStudioJobRepositoryDouble({ job: lifecycleJob });
     repositoryState.withPluginTenantLifecycleRepository.mockImplementation(
       async (_instanceId, work) =>
         work({
@@ -295,7 +453,7 @@ describe('plugin operation runner task list', () => {
     repositoryState.withStudioJobLifecycleRepositories.mockImplementation(
       async (_instanceId, work) =>
         work({
-          studioJobs: { updateJobState: vi.fn(async () => null) },
+          studioJobs: repository,
           tenantLifecycle: {
             completeLifecycle: vi.fn(async () => ({ completedGeneration: 3 })),
             failLifecycle: vi.fn(async () => ({
@@ -341,17 +499,18 @@ describe('plugin operation runner task list', () => {
         studioTenantLifecycle: { operation: 'provision', generation: 3 },
       },
     };
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => lifecycleJob),
-        updateJobState,
-        appendJobEvent: vi.fn(async () => null),
-      })
-    );
+    const { repository } = installStudioJobRepositoryDouble({ job: lifecycleJob, updateJobState });
     repositoryState.withStudioJobLifecycleRepositories.mockImplementation(
       async (_instanceId, work) =>
         work({
-          studioJobs: { updateJobState: updateLifecycleJobState },
+          studioJobs: {
+            ...repository,
+            transitionJobStateAndAppendEvent: vi.fn(async (input) => {
+              const result = await repository.transitionJobStateAndAppendEvent(input);
+              await updateLifecycleJobState(input);
+              return result;
+            }),
+          },
           tenantLifecycle: {
             failLifecycle: vi.fn(async () => ({
               retryKind: 'retryable',
@@ -373,7 +532,7 @@ describe('plugin operation runner task list', () => {
     } as never);
 
     expect(handler).not.toHaveBeenCalled();
-    expect(updateJobState).toHaveBeenCalledOnce();
+    expect(updateJobState).toHaveBeenCalledTimes(2);
     expect(updateLifecycleJobState).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'failed',
@@ -390,13 +549,7 @@ describe('plugin operation runner task list', () => {
   it('marks a job as retrying and rethrows while attempts remain', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => baseJob),
-        updateJobState,
-        appendJobEvent,
-      })
-    );
+    installStudioJobRepositoryDouble({ updateJobState, appendJobEvent });
 
     const handler = vi.fn(async () => {
       throw new Error('boom');
@@ -428,13 +581,7 @@ describe('plugin operation runner task list', () => {
   it('marks a job as failed on the final attempt without rethrowing', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => baseJob),
-        updateJobState,
-        appendJobEvent,
-      })
-    );
+    installStudioJobRepositoryDouble({ updateJobState, appendJobEvent });
 
     const handler = vi.fn(async () => {
       throw new Error('boom');
@@ -469,13 +616,7 @@ describe('plugin operation runner task list', () => {
       .fn()
       .mockResolvedValueOnce(null)
       .mockRejectedValueOnce(persistenceError);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => baseJob),
-        updateJobState,
-        appendJobEvent: vi.fn(async () => null),
-      })
-    );
+    installStudioJobRepositoryDouble({ updateJobState });
     const handler = vi.fn(async () => {
       throw new Error('primary execution failure');
     });
@@ -507,13 +648,7 @@ describe('plugin operation runner task list', () => {
   it('marks a job as failed immediately for explicitly permanent execution errors', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => baseJob),
-        updateJobState,
-        appendJobEvent,
-      })
-    );
+    installStudioJobRepositoryDouble({ updateJobState, appendJobEvent });
 
     const handler = vi.fn(async () => {
       throw new Error('waste_mainserver_sync_not_implemented', {
@@ -556,16 +691,14 @@ describe('plugin operation runner task list', () => {
   it('marks a job as cancelled when the handler cooperatively aborts', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () => ({
-          ...baseJob,
-          cancelRequestedAt: '2026-05-09T12:04:00.000Z',
-        })),
-        updateJobState,
-        appendJobEvent,
-      })
-    );
+    installStudioJobRepositoryDouble({
+      updateJobState,
+      appendJobEvent,
+      getJobById: vi.fn(async (currentJob: StudioJobRecord) => ({
+        ...currentJob,
+        cancelRequestedAt: '2026-05-09T12:04:00.000Z',
+      })),
+    });
 
     const handler = vi.fn(async ({ throwIfCancellationRequested }) => {
       await throwIfCancellationRequested();
@@ -599,21 +732,18 @@ describe('plugin operation runner task list', () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
     let cancellationRequested = false;
-    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({
-        getJobById: vi.fn(async () =>
-          cancellationRequested
-            ? {
-                ...baseJob,
-                cancelRequestedAt: '2026-05-09T12:04:00.000Z',
-              }
-            : baseJob
-        ),
-        updateJobState,
-        appendJobEvent,
-        updateJobProgress: vi.fn(async () => null),
-      })
-    );
+    installStudioJobRepositoryDouble({
+      updateJobState,
+      appendJobEvent,
+      getJobById: vi.fn(async (currentJob: StudioJobRecord) =>
+        cancellationRequested
+          ? {
+              ...currentJob,
+              cancelRequestedAt: '2026-05-09T12:04:00.000Z',
+            }
+          : currentJob
+      ),
+    });
 
     const handler = vi.fn(async ({ abortSignal }) => {
       await new Promise<void>((resolve) => {

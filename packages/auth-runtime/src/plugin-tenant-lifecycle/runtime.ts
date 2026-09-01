@@ -11,7 +11,6 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
 import { withRegistryRepository } from '../iam-instance-registry/repository.js';
-import { createStudioJob, markStudioJobEnqueueFailed } from '../plugin-operations/core.shared.js';
 import {
   withPluginTenantLifecycleRepository,
   withStudioJobLifecycleRepositories,
@@ -25,15 +24,19 @@ import { reconcileClaimedLifecycleJob } from './enqueue-recovery.js';
 import {
   createPluginTenantLifecycleOrchestrator,
   pluginTenantLifecycleHostErrorCodes,
+  type PersistPluginTenantLifecycleStart,
   type StartPluginTenantLifecycleInput,
 } from './orchestrator.js';
 
 const logger = createSdkLogger({ component: 'plugin-tenant-lifecycle', level: 'info' });
 export const lifecycleEnqueueRecoveryDelayMs = 120_000;
 
-const persistAtomicLifecycleStart: NonNullable<
-  Parameters<typeof createPluginTenantLifecycleOrchestrator>[0]['persistStart']
-> = async ({ request, jobTypeId, queueName, executionLane }) =>
+const persistAtomicLifecycleStart: PersistPluginTenantLifecycleStart = async ({
+  request,
+  jobTypeId,
+  queueName,
+  executionLane,
+}) =>
   withStudioJobLifecycleRepositories(
     request.instanceId,
     async ({
@@ -111,34 +114,6 @@ const persistAtomicLifecycleStart: NonNullable<
     }
   );
 
-const repository: Pick<
-  PluginTenantLifecycleRepository,
-  'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle'
-> = {
-  requestLifecycle: (input) =>
-    withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
-      tenantLifecycleRepository.requestLifecycle(input)
-    ),
-  claimLifecycle: (input) =>
-    withStudioJobLifecycleRepositories(
-      input.instanceId,
-      async ({ tenantLifecycle, enqueuePluginTenantLifecycleRecovery }) => {
-        const lifecycle = await tenantLifecycle.claimLifecycle(input);
-        if (!lifecycle) return null;
-        await enqueuePluginTenantLifecycleRecovery({
-          instanceId: input.instanceId,
-          pluginId: input.pluginId,
-          runAt: new Date(Date.now() + lifecycleEnqueueRecoveryDelayMs),
-        });
-        return lifecycle;
-      }
-    ),
-  failUnclaimedLifecycle: (input) =>
-    withPluginTenantLifecycleRepository(input.instanceId, (tenantLifecycleRepository) =>
-      tenantLifecycleRepository.failUnclaimedLifecycle(input)
-    ),
-};
-
 const blocksAutomaticLifecycleRetryWhileSuspended = (
   lifecycle: NonNullable<Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>>
 ): boolean =>
@@ -200,43 +175,6 @@ const resolveAutomaticProvisioningSchedule = (
   return operation ? { operation, scheduledAt: now.toISOString() } : null;
 };
 
-const persistLifecycleEnqueueFailure = async (input: {
-  readonly instanceId: string;
-  readonly pluginId: string;
-  readonly job: Awaited<ReturnType<typeof createStudioJob>>;
-  readonly generation: number;
-}): Promise<void> =>
-  withStudioJobLifecycleRepositories(input.instanceId, async ({ studioJobs, tenantLifecycle }) => {
-    const lifecycle = await tenantLifecycle.failLifecycle({
-      instanceId: input.instanceId,
-      pluginId: input.pluginId,
-      jobId: input.job.id,
-      generation: input.generation,
-      readinessStatus: 'blocked',
-      errorCode: pluginTenantLifecycleHostErrorCodes.enqueueFailed,
-      retryKind: 'retryable',
-    });
-    if (!lifecycle) {
-      throw new Error('plugin_tenant_lifecycle_enqueue_cleanup_conflict');
-    }
-    const job = await studioJobs.updateJobState({
-      jobId: input.job.id,
-      instanceId: input.instanceId,
-      status: 'failed',
-      attempts: input.job.attempts,
-      startedAt: input.job.startedAt,
-      finishedAt: new Date().toISOString(),
-      progress: input.job.progress,
-      errorPayload: {
-        code: 'plugin_operation_enqueue_failed',
-        category: 'permanent',
-      },
-    });
-    if (!job) {
-      throw new Error('plugin_operation_enqueue_cleanup_conflict');
-    }
-  });
-
 export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLifecycleInput) =>
   createPluginTenantLifecycleOrchestrator({
     logger,
@@ -245,40 +183,8 @@ export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLif
       withRegistryRepository((instanceRegistryRepository) =>
         instanceRegistryRepository.getModuleActivationPolicy(instanceId, pluginId)
       ),
-    repository,
     resolveJobRegistration: (jobTypeId) =>
       getRegisteredPluginOperationExecutionRegistry().get(jobTypeId),
-    createJob: async (jobInput) =>
-      createStudioJob({
-        instanceId: jobInput.instanceId,
-        initialProgress: { completedSteps: 0, totalSteps: 1 },
-        create: {
-          source: 'plugin',
-          pluginId: jobInput.pluginId,
-          jobTypeId: jobInput.jobTypeId,
-          queueName: jobInput.queueName,
-          inputPayload: {
-            [pluginTenantLifecycleJobInputKey]: {
-              operation: jobInput.operation,
-              generation: jobInput.generation,
-            },
-          },
-          maxAttempts: 5,
-          idempotencyKey: `${jobInput.pluginId}:tenant-lifecycle:${jobInput.operation}:${jobInput.generation}`,
-          requestId: jobInput.requestId,
-          actorAccountId: jobInput.actorAccountId,
-          correlationId: randomUUID(),
-          scheduledAt: jobInput.scheduledAt,
-        },
-      }),
-    queueJob: queuePluginOperationJob,
-    persistEnqueueFailure: persistLifecycleEnqueueFailure,
-    markUnclaimedJobFailed: ({ instanceId, job, errorCode }) =>
-      markStudioJobEnqueueFailed({
-        instanceId,
-        job,
-        errorCode,
-      }),
     persistStart: persistAtomicLifecycleStart,
   }).start(input);
 

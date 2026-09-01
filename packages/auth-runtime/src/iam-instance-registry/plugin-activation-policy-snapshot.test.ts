@@ -92,6 +92,8 @@ describe('instance registry plugin activation policy snapshot', () => {
         {
           moduleId: 'ssf',
           permissionIds,
+          tenantBootstrapRoles: [{ roleName: 'tenant_admin', permissionIds }],
+          rootSystemRoles: [{ roleName: 'root_admin', permissionIds }],
           systemRoles: [{ roleName: 'system_admin', permissionIds }],
         },
       ],
@@ -100,7 +102,9 @@ describe('instance registry plugin activation policy snapshot', () => {
           pluginId: 'ssf',
           contractVersion: 1,
           operations: [{ operation: 'provision', jobTypeId: 'ssf.provisionTenant' }],
-          readinessChecks: [],
+          readinessChecks: [
+            { checkId: 'ssf.database', titleKey: 'ssf.readiness.database', required: true },
+          ],
         },
       ],
     });
@@ -111,6 +115,8 @@ describe('instance registry plugin activation policy snapshot', () => {
     expect(readInstanceRegistryModuleIamRegistry().get('ssf')).toEqual({
       moduleId: 'ssf',
       permissionIds: ['ssf.read'],
+      tenantBootstrapRoles: [{ roleName: 'tenant_admin', permissionIds: ['ssf.read'] }],
+      rootSystemRoles: [{ roleName: 'root_admin', permissionIds: ['ssf.read'] }],
       systemRoles: [{ roleName: 'system_admin', permissionIds: ['ssf.read'] }],
     });
     expect(Object.isFrozen(readInstanceRegistryModuleIamRegistry().get('ssf'))).toBe(true);
@@ -119,7 +125,9 @@ describe('instance registry plugin activation policy snapshot', () => {
       contractRevision: 'ssf-1:1',
       contractVersion: 1,
       operations: [{ operation: 'provision', jobTypeId: 'ssf.provisionTenant' }],
-      readinessChecks: [],
+      readinessChecks: [
+        { checkId: 'ssf.database', titleKey: 'ssf.readiness.database', required: true },
+      ],
     });
     expect(Object.isFrozen(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf'))).toBe(
       true

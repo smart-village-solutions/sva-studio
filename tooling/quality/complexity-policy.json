@@ -3514,12 +3514,6 @@
       "status": "open",
       "summary": "Tenant-Lifecycle-Runtime in kleinere Zustands-, Recovery- und Scheduling-Bausteine zerlegen"
     },
-    "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/runtime.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tenant-Lifecycle-Runtime in kleinere Zustands-, Recovery- und Scheduling-Bausteine zerlegen"
-    },
     "ci-scripts:scripts/ci/verify-graphile-worker-database-contract.ts:fileLines": {
       "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
       "ticketSystem": "backlog",

@@ -27,57 +27,77 @@ type PluginTenantLifecycleJobRegistration = {
   readonly supportsCancellation?: boolean;
 };
 
-export type PluginTenantLifecycleOrchestratorDependencies = {
+type PluginTenantLifecycleOrchestratorCommonDependencies = {
   readonly logger: PluginExecutionLogger;
   readonly lifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>;
   readonly resolveActivation: (
     instanceId: string,
     pluginId: string
   ) => Promise<{ readonly effectiveActive: boolean } | null>;
-  readonly repository: Pick<
-    PluginTenantLifecycleRepository,
-    'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle'
-  >;
   readonly resolveJobRegistration: (
     jobTypeId: string
   ) => PluginTenantLifecycleJobRegistration | undefined;
-  readonly createJob: (input: {
-    readonly instanceId: string;
-    readonly pluginId: string;
-    readonly jobTypeId: string;
-    readonly queueName: string;
-    readonly operation: PluginTenantLifecycleOperation;
-    readonly generation: number;
-    readonly actorAccountId?: string;
-    readonly requestId?: string;
-    readonly scheduledAt: string;
-  }) => Promise<StudioJobRecord>;
-  readonly queueJob: (input: {
-    readonly instanceId: string;
-    readonly jobId: string;
-    readonly queueName: string;
-    readonly maxAttempts: number;
-    readonly executionLane?: 'default' | 'privileged';
-    readonly runAt?: Date;
-  }) => Promise<void>;
-  readonly persistEnqueueFailure: (input: {
-    readonly instanceId: string;
-    readonly pluginId: string;
-    readonly job: StudioJobRecord;
-    readonly generation: number;
-  }) => Promise<void>;
-  readonly markUnclaimedJobFailed: (input: {
-    readonly instanceId: string;
-    readonly job: StudioJobRecord;
-    readonly errorCode: string;
-  }) => Promise<void>;
-  readonly persistStart?: (input: {
-    readonly request: StartPluginTenantLifecycleInput;
-    readonly jobTypeId: string;
-    readonly queueName: string;
-    readonly executionLane: 'default' | 'privileged';
-  }) => Promise<StartPluginTenantLifecycleResult>;
 };
+
+type StagedPluginTenantLifecycleOrchestratorDependencies =
+  PluginTenantLifecycleOrchestratorCommonDependencies & {
+    readonly persistStart?: never;
+    readonly repository: Pick<
+      PluginTenantLifecycleRepository,
+      'requestLifecycle' | 'claimLifecycle' | 'failUnclaimedLifecycle'
+    >;
+    readonly createJob: (input: {
+      readonly instanceId: string;
+      readonly pluginId: string;
+      readonly jobTypeId: string;
+      readonly queueName: string;
+      readonly operation: PluginTenantLifecycleOperation;
+      readonly generation: number;
+      readonly actorAccountId?: string;
+      readonly requestId?: string;
+      readonly scheduledAt: string;
+    }) => Promise<StudioJobRecord>;
+    readonly queueJob: (input: {
+      readonly instanceId: string;
+      readonly jobId: string;
+      readonly queueName: string;
+      readonly maxAttempts: number;
+      readonly executionLane?: 'default' | 'privileged';
+      readonly runAt?: Date;
+    }) => Promise<void>;
+    readonly persistEnqueueFailure: (input: {
+      readonly instanceId: string;
+      readonly pluginId: string;
+      readonly job: StudioJobRecord;
+      readonly generation: number;
+    }) => Promise<void>;
+    readonly markUnclaimedJobFailed: (input: {
+      readonly instanceId: string;
+      readonly job: StudioJobRecord;
+      readonly errorCode: string;
+    }) => Promise<void>;
+  };
+
+export type PersistPluginTenantLifecycleStart = (input: {
+  readonly request: StartPluginTenantLifecycleInput;
+  readonly jobTypeId: string;
+  readonly queueName: string;
+  readonly executionLane: 'default' | 'privileged';
+}) => Promise<StartPluginTenantLifecycleResult>;
+
+type AtomicPluginTenantLifecycleOrchestratorDependencies =
+  PluginTenantLifecycleOrchestratorCommonDependencies & {
+    readonly persistStart: PersistPluginTenantLifecycleStart;
+    readonly repository?: never;
+    readonly createJob?: never;
+    readonly queueJob?: never;
+    readonly persistEnqueueFailure?: never;
+    readonly markUnclaimedJobFailed?: never;
+  };
+
+export type PluginTenantLifecycleOrchestratorDependencies =
+  | AtomicPluginTenantLifecycleOrchestratorDependencies
+  | StagedPluginTenantLifecycleOrchestratorDependencies;
 
 export type StartPluginTenantLifecycleInput = {
   readonly instanceId: string;
@@ -140,7 +160,7 @@ const resolveLifecycleOperation = async (
 };
 
 const handleEnqueueFailure = async (
-  dependencies: PluginTenantLifecycleOrchestratorDependencies,
+  dependencies: StagedPluginTenantLifecycleOrchestratorDependencies,
   input: StartPluginTenantLifecycleInput,
   job: StudioJobRecord,
   generation: number
@@ -175,9 +195,9 @@ const handleEnqueueFailure = async (
 };
 
 const createLifecycleJob = async (
-  dependencies: PluginTenantLifecycleOrchestratorDependencies,
+  dependencies: StagedPluginTenantLifecycleOrchestratorDependencies,
   input: StartPluginTenantLifecycleInput,
-  jobInput: Parameters<PluginTenantLifecycleOrchestratorDependencies['createJob']>[0]
+  jobInput: Parameters<StagedPluginTenantLifecycleOrchestratorDependencies['createJob']>[0]
 ): Promise<StudioJobRecord> => {
   try {
     return await dependencies.createJob(jobInput);
@@ -215,7 +235,7 @@ const createLifecycleJob = async (
 };
 
 const terminalizeUnclaimedJob = async (
-  dependencies: PluginTenantLifecycleOrchestratorDependencies,
+  dependencies: StagedPluginTenantLifecycleOrchestratorDependencies,
   input: StartPluginTenantLifecycleInput,
   job: StudioJobRecord,
   errorCode: string

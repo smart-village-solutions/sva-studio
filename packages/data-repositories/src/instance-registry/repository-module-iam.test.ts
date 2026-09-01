@@ -392,6 +392,29 @@ describe('instance registry repository module iam', () => {
     ]);
   });
 
+  it('counts newly inserted permissions and module-owned grants', async () => {
+    const { executor } = createQueuedExecutor([[{ inserted: true }], [{}], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.read'],
+            permissions: [{ key: 'news.read', description: 'Read news', resourceType: 'news' }],
+            tenantBootstrapRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
+          },
+        ],
+      })
+    ).resolves.toMatchObject({
+      permissionsInserted: 1,
+      grantsInserted: 1,
+    });
+  });
+
   it('uses locale-aware ordering for managed permission and role cleanup sets', async () => {
     const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createInstanceRegistryRepository(executor);

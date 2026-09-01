@@ -132,6 +132,47 @@ describe('public waste repository', () => {
     });
   });
 
+  it('rejects an unknown explicit region before loading shared or regional locations', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ id: 'r-1', label: 'Prignitz' }],
+    });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.listSelectionOptions({ selection: { regionId: 'unknown-region' } })
+    ).resolves.toEqual({
+      step: 'city',
+      options: [],
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts an uppercase UUID for a known explicit region', async () => {
+    const regionId = 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA';
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: regionId.toLowerCase(), label: 'Prignitz' }],
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: 'c-1', label: 'Wittenberge' }],
+      });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.listSelectionOptions({ selection: { regionId } })
+    ).resolves.toMatchObject({
+      step: 'city',
+      options: [{ id: 'c-1', label: 'Wittenberge' }],
+    });
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({ values: [regionId.toLowerCase()] })
+    );
+  });
+
   it('surfaces the catch-all street option for city-wide collection locations', async () => {
     const execute = vi
       .fn()

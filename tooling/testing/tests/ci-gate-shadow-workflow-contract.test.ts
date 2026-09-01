@@ -36,6 +36,10 @@ describe('consolidated CI gate workflows', () => {
   it('computes the general PR scope exactly once and retains SHA-bound evidence', () => {
     const scopeStart = prGates.indexOf('\n  scope:');
     const lintStart = prGates.indexOf('\n  lint:', scopeStart);
+
+    expect(scopeStart).toBeGreaterThanOrEqual(0);
+    expect(lintStart).toBeGreaterThan(scopeStart);
+
     const scopeJob = prGates.slice(scopeStart, lintStart);
 
     expect(prGates.match(/pr-scope\.cli\.ts/gu)).toHaveLength(1);

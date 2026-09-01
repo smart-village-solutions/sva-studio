@@ -3,6 +3,29 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPublicWasteRepository } from './public-waste-repository.server.js';
 
 describe('public waste repository', () => {
+  it('lists only regions backed by active locations and tours', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 2,
+      rows: [
+        { id: 'region-1', label: 'Amt Bad Wilsnack/Weisen' },
+        { id: 'region-2', label: 'Groß Pankow (Prignitz)' },
+      ],
+    });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(repository.listPublicRegions()).resolves.toEqual([
+      { id: 'region-1', label: 'Amt Bad Wilsnack/Weisen' },
+      { id: 'region-2', label: 'Groß Pankow (Prignitz)' },
+    ]);
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining('INNER JOIN "waste".waste_regions'),
+      })
+    );
+    expect(execute.mock.calls[0]?.[0].text).toContain('cl.active = true');
+    expect(execute.mock.calls[0]?.[0].text).toContain('t.active = true');
+  });
+
   it('projects, deduplicates and sorts active public collection locations', async () => {
     const execute = vi.fn().mockResolvedValueOnce({
       rowCount: 4,

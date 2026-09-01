@@ -14,6 +14,11 @@ describe('public waste API routing', () => {
     expect(resolvePublicWasteReadApiRoute('/api/public-waste/locationsXYZ')).toBeNull();
   });
 
+  it('resolves the regions endpoint exactly', () => {
+    expect(resolvePublicWasteReadApiRoute('/api/public-waste/regions')).toBe('regions');
+    expect(resolvePublicWasteReadApiRoute('/api/public-waste/regions-foo')).toBeNull();
+  });
+
   it('keeps the existing public read routes available', () => {
     expect(resolvePublicWasteReadApiRoute('/api/public-waste/selection')).toBe('selection');
     expect(resolvePublicWasteReadApiRoute('/api/public-waste/calendar')).toBe('calendar');

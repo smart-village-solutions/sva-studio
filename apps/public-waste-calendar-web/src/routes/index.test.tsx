@@ -93,6 +93,14 @@ describe('PublicWasteIndexPage', () => {
 
   it('parses exactly one valid URL region and rejects malformed or ambiguous bindings', () => {
     expect(readPublicWasteRegionBinding('')).toEqual({ status: 'unbound' });
+    expect(readPublicWasteRegionBinding('', '/amt-bad-wilsnack')).toEqual({
+      status: 'slug',
+      regionSlug: 'amt-bad-wilsnack',
+    });
+    expect(readPublicWasteRegionBinding('', '/Amt-Bad-Wilsnack/')).toEqual({
+      status: 'slug',
+      regionSlug: 'amt-bad-wilsnack',
+    });
     expect(readPublicWasteRegionBinding(`?regionId=${BOUND_REGION_ID}`)).toEqual({
       status: 'bound',
       regionId: BOUND_REGION_ID,
@@ -105,10 +113,14 @@ describe('PublicWasteIndexPage', () => {
     expect(
       readPublicWasteRegionBinding(`?regionId=${BOUND_REGION_ID}&regionId=${OTHER_REGION_ID}`)
     ).toEqual({ status: 'invalid' });
+    expect(
+      readPublicWasteRegionBinding(`?regionId=${BOUND_REGION_ID}`, '/amt-bad-wilsnack')
+    ).toEqual({ status: 'invalid' });
+    expect(readPublicWasteRegionBinding('', '/amt/bad-wilsnack')).toEqual({ status: 'invalid' });
   });
 
-  it('keeps a valid URL region across a conflicting cookie and address reset', async () => {
-    window.history.replaceState({}, '', `/?regionId=${BOUND_REGION_ID}`);
+  it('resolves a readable region path and keeps it across a conflicting cookie and address reset', async () => {
+    window.history.replaceState({}, '', '/amt-bad-wilsnack');
     document.cookie = `sva_public_waste_location=${encodeURIComponent(
       `${OTHER_REGION_ID}:22222222-2222-4222-8222-222222222222:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444`
     )}; Path=/`;
@@ -118,6 +130,20 @@ describe('PublicWasteIndexPage', () => {
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
         window.location.origin
       );
+
+      if (url.pathname === '/api/public-waste/regions') {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: BOUND_REGION_ID,
+                label: 'Amt Bad Wilsnack',
+                slug: 'amt-bad-wilsnack',
+              },
+            ],
+          })
+        );
+      }
 
       if (url.pathname === '/api/public-waste/selection') {
         expect(url.searchParams.get('regionId')).toBe(BOUND_REGION_ID);
@@ -177,10 +203,35 @@ describe('PublicWasteIndexPage', () => {
         );
         return (
           !url.pathname.startsWith('/api/public-waste/') ||
+          url.pathname === '/api/public-waste/regions' ||
           url.searchParams.get('regionId') === BOUND_REGION_ID
         );
       })
     ).toBe(true);
+  });
+
+  it('fails closed when a readable region path is unknown or ambiguous', async () => {
+    window.history.replaceState({}, '', '/amt-bad-wilsnack');
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [
+            { id: BOUND_REGION_ID, label: 'Nord', slug: 'nord' },
+            { id: OTHER_REGION_ID, label: 'Nord', slug: 'nord' },
+          ],
+        })
+      )
+    );
+
+    render(<PublicWasteIndexPage />);
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Die angegebene Region ist ungültig'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0]), window.location.origin).pathname).toBe(
+      '/api/public-waste/regions'
+    );
   });
 
   it('shows a fail-closed error for malformed and unknown URL regions', async () => {

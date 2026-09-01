@@ -8,13 +8,15 @@ Der Ortskatalog verändert keine Waste-Fachdaten. Er liefert keine E-Mail-Abonne
 
 ## Weboberfläche an eine Region binden
 
-Einbettende Seiten können die öffentliche Weboberfläche mit einer `regionId` dauerhaft auf eine öffentlich auswählbare Region begrenzen:
+Einbettende Seiten begrenzen die öffentliche Weboberfläche über einen lesbaren Regionspfad dauerhaft auf eine öffentlich auswählbare Region. Der Pfad wird aus dem Regionsnamen gebildet; Umlaute werden als `ae`, `oe` beziehungsweise `ue`, `ß` als `ss` und Worttrenner als Bindestriche geschrieben:
 
 ```text
-https://abfallkalender.example/?regionId=11111111-1111-4111-8111-111111111111
+https://abfallkalender.example/amt-bad-wilsnack
 ```
 
-Die Auswahl beginnt dann direkt beim Ort. „Adresse ändern“, weitere Adresssuchen und die aus dem gewählten Standort abgeleiteten Kalender-, PDF-, iCal- und Erinnerungsaktionen behalten die URL-Region bei. Ohne `regionId` bleibt die regionsübergreifende Auswahl unverändert. Formal ungültige, mehrfach angegebene oder unbekannte Regionswerte werden mit einem Fehlerzustand abgelehnt; es erfolgt kein ungefilterter Fallback.
+Die verfügbaren Namen und Slugs liefert `GET /api/public-waste/regions`. Die Auswahl beginnt direkt beim Ort. „Adresse ändern“, weitere Adresssuchen und die aus dem gewählten Standort abgeleiteten Kalender-, PDF-, iCal- und Erinnerungsaktionen behalten die URL-Region bei. Ohne Regionspfad bleibt die regionsübergreifende Auswahl unverändert. Formal ungültige, unbekannte oder nicht eindeutige Slugs werden mit einem Fehlerzustand abgelehnt; es erfolgt kein ungefilterter Fallback.
+
+Bestehende technische Einbindungen mit genau einem gültigen Suchparameter `regionId` bleiben kompatibel, sind aber nicht das Format für neue öffentliche Links.
 
 ## Abholorte laden
 

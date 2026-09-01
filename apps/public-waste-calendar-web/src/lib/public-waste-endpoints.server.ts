@@ -13,6 +13,7 @@ import {
   loadNextPublicWasteSelection,
   loadResolvedPublicWasteCalendar,
 } from './public-waste-api.js';
+import { projectPublicWasteRegions } from './public-waste-regions-api.js';
 import type {
   PublicWasteCalendarEntry,
   PublicWasteReminderSignupRequest,
@@ -221,6 +222,11 @@ export const handlePublicWasteLocationsRequest = async (input: {
   jsonResponse({
     items: await input.repository.listPublicLocations(),
   });
+
+export const handlePublicWasteRegionsRequest = async (input: {
+  readonly repository: Pick<PublicWasteRepository, 'listPublicRegions'>;
+}): Promise<Response> =>
+  jsonResponse(projectPublicWasteRegions(await input.repository.listPublicRegions()));
 
 export const handlePublicWasteCalendarRequest = async (input: {
   readonly repository: Pick<

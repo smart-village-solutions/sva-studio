@@ -19,6 +19,7 @@ import {
   handlePublicWasteIcalRequest,
   handlePublicWasteLocationsRequest,
   handlePublicWastePdfRequest,
+  handlePublicWasteRegionsRequest,
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
 } from '../lib/public-waste-endpoints.server.js';
@@ -38,6 +39,7 @@ export const PUBLIC_WASTE_RUNTIME_APP_NAME = 'public-waste-calendar-web';
 type PublicWasteRuntimeRepository = Pick<
   PublicWasteRepository,
   | 'listPublicLocations'
+  | 'listPublicRegions'
   | 'listSelectionOptions'
   | 'loadCalendarEntries'
   | 'loadSelectionSummary'
@@ -388,6 +390,12 @@ const dispatchPublicWasteApiRequest = async (input: {
 
   if (readApiRoute === 'locations') {
     return handlePublicWasteLocationsRequest({
+      repository: input.repository,
+    });
+  }
+
+  if (readApiRoute === 'regions') {
+    return handlePublicWasteRegionsRequest({
       repository: input.repository,
     });
   }

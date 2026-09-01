@@ -14,6 +14,7 @@ import {
   handlePublicWasteIcalRequest,
   handlePublicWasteLocationsRequest,
   handlePublicWastePdfRequest,
+  handlePublicWasteRegionsRequest,
   handlePublicWasteSelectionRequest,
 } from './src/lib/public-waste-endpoints.server.js';
 import { loadPublicWastePdfBrandingImage } from './src/lib/public-waste-pdf-branding.server.js';
@@ -86,6 +87,9 @@ const publicWasteApiPlugin = (): Plugin => {
 
     if (route === 'locations') {
       return handlePublicWasteLocationsRequest({ repository });
+    }
+    if (route === 'regions') {
+      return handlePublicWasteRegionsRequest({ repository });
     }
     if (route === 'selection') {
       return handlePublicWasteSelectionRequest({ repository, request });

@@ -7,6 +7,7 @@ import {
   handlePublicWasteIcalRequest,
   handlePublicWasteLocationsRequest,
   handlePublicWastePdfRequest,
+  handlePublicWasteRegionsRequest,
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
 } from './public-waste-endpoints.server.js';
@@ -59,6 +60,33 @@ describe('public waste endpoints', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/json');
     await expect(response.json()).resolves.toEqual({ items });
+  });
+
+  it('returns readable slugs for publicly selectable regions', async () => {
+    const response = await handlePublicWasteRegionsRequest({
+      repository: {
+        listPublicRegions: vi.fn().mockResolvedValue([
+          { id: 'region-1', label: 'Amt Bad Wilsnack/Weisen' },
+          { id: 'region-2', label: 'Groß Pankow (Prignitz)' },
+        ]),
+      },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      items: [
+        {
+          id: 'region-1',
+          label: 'Amt Bad Wilsnack/Weisen',
+          slug: 'amt-bad-wilsnack-weisen',
+        },
+        {
+          id: 'region-2',
+          label: 'Groß Pankow (Prignitz)',
+          slug: 'gross-pankow-prignitz',
+        },
+      ],
+    });
   });
 
   it('returns the resolved calendar model as json', async () => {
@@ -362,8 +390,7 @@ describe('public waste endpoints', () => {
             fractionLabel: 'Bioabfall',
             fractionDescription: '<p>Bioabfall aus Küche &amp; Garten.</p>',
             tourDescription: '<p><strong>Regelabfuhr</strong> für die Innenstadt.</p>',
-            note:
-              '<p>Bitte Tonne ab 6 Uhr bereitstellen.</p><ul><li>Keine Säcke</li></ul><p><a href="https://example.org/hinweise">Mehr Infos</a></p><script>alert(1)</script>',
+            note: '<p>Bitte Tonne ab 6 Uhr bereitstellen.</p><ul><li>Keine Säcke</li></ul><p><a href="https://example.org/hinweise">Mehr Infos</a></p><script>alert(1)</script>',
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),

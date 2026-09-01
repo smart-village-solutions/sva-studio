@@ -77,6 +77,60 @@ describe('public waste runtime', () => {
     await runtime.dispose();
   });
 
+  it('serves readable region metadata and the app shell for a region path', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    const listPublicRegions = vi.fn().mockResolvedValue([
+      {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        label: 'Amt Bad Wilsnack',
+      },
+    ]);
+    const runtime = await createPublicWasteRuntime({
+      assetsDir,
+      env: {
+        PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
+        PUBLIC_WASTE_SCHEMA_NAME: 'public',
+      },
+      createRepository: async () => ({
+        repository: {
+          listPublicLocations: vi.fn(),
+          listPublicRegions,
+          listSelectionOptions: vi.fn(),
+          loadCalendarEntries: vi.fn(),
+          loadSelectionSummary: vi.fn(),
+          loadReminderOptions: vi.fn(),
+        },
+        pool: { connect: vi.fn() } as never,
+        schemaName: 'public',
+        dispose: async () => {},
+      }),
+    });
+
+    const regionsResponse = await runtime.handle(
+      new Request('http://localhost/api/public-waste/regions')
+    );
+    expect(regionsResponse.status).toBe(200);
+    await expect(regionsResponse.json()).resolves.toEqual({
+      items: [
+        {
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          label: 'Amt Bad Wilsnack',
+          slug: 'amt-bad-wilsnack',
+        },
+      ],
+    });
+    expect(listPublicRegions).toHaveBeenCalledOnce();
+
+    const pageResponse = await runtime.handle(new Request('http://localhost/amt-bad-wilsnack'));
+    expect(pageResponse.status).toBe(200);
+    expect(pageResponse.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    await expect(pageResponse.text()).resolves.toContain('Public Waste');
+
+    await runtime.dispose();
+  });
+
   it('serves the public collection location catalog without changing calendar routing', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);
@@ -103,6 +157,7 @@ describe('public waste runtime', () => {
       createRepository: async () => ({
         repository: {
           listPublicLocations,
+          listPublicRegions: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries,
           loadSelectionSummary: vi.fn(),
@@ -142,6 +197,7 @@ describe('public waste runtime', () => {
       createRepository: async () => ({
         repository: {
           listPublicLocations,
+          listPublicRegions: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn(),
           loadSelectionSummary: vi.fn(),
@@ -182,6 +238,7 @@ describe('public waste runtime', () => {
       createRepository: async () => ({
         repository: {
           listPublicLocations: vi.fn(),
+          listPublicRegions: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn().mockResolvedValue([
             {
@@ -289,6 +346,7 @@ describe('public waste runtime', () => {
       createRepository: async () => ({
         repository: {
           listPublicLocations: vi.fn(),
+          listPublicRegions: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn(),
           loadSelectionSummary: vi.fn(),
@@ -372,6 +430,7 @@ describe('public waste runtime', () => {
       createRepository: async () => ({
         repository: {
           listPublicLocations: vi.fn(),
+          listPublicRegions: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn(),
           loadSelectionSummary: vi.fn().mockResolvedValue('Perleberg, Ackerstr. 12'),

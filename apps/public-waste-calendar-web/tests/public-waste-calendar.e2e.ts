@@ -234,6 +234,20 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
   const streetId = '33333333-3333-4333-8333-333333333333';
   const houseNumberId = '44444444-4444-4444-8444-444444444444';
 
+  await page.route('**/api/public-waste/regions', async (route) => {
+    await route.fulfill({
+      json: {
+        items: [
+          {
+            id: regionId,
+            label: 'Amt Bad Wilsnack',
+            slug: 'amt-bad-wilsnack',
+          },
+        ],
+      },
+    });
+  });
+
   await page.route('**/api/public-waste/selection**', async (route) => {
     const url = new URL(route.request().url());
     expect(url.searchParams.get('regionId')).toBe(regionId);
@@ -334,7 +348,7 @@ test('keeps an iframe calendar bound to its URL region across repeated address s
     });
   });
 
-  await page.goto(`/?regionId=${regionId}`);
+  await page.goto('/amt-bad-wilsnack');
 
   const selectAddress = async () => {
     await expect(page.getByRole('combobox', { name: 'Ort suchen' })).toBeVisible();

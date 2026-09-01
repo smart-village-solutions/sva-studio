@@ -5,22 +5,19 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const workflow = (name: string): string =>
-  fs.readFileSync(path.join(rootDir, '.github/workflows', name), 'utf8');
+const workflowPath = (name: string): string => path.join(rootDir, '.github/workflows', name);
+const workflow = (name: string): string => fs.readFileSync(workflowPath(name), 'utf8');
 
-describe('CI gate topology shadow workflows', () => {
-  const prShadow = workflow('ci-gates-pr-shadow.yml');
-  const mainShadow = workflow('ci-gates-main-shadow.yml');
+describe('consolidated CI gate workflows', () => {
+  const prGates = workflow('ci-gates-pr-shadow.yml');
+  const mainGates = workflow('ci-gates-main-shadow.yml');
 
-  it('keeps the PR shadow non-required and on pull requests only', () => {
-    expect(prShadow).toContain('name: CI Gate Topology Shadow (PR)');
-    expect(prShadow).toContain('on:\n  pull_request:');
-    expect(prShadow).not.toContain('\n  push:');
-    expect(prShadow).not.toContain('\n  schedule:');
+  it('publishes exactly the seven stable required names from the PR workflow', () => {
+    expect(prGates).toContain('name: CI Gates (PR)');
+    expect(prGates).toContain('on:\n  pull_request:');
+    expect(prGates).not.toContain('\n  push:');
 
-    const jobNames = [...prShadow.matchAll(/^ {4}name: (.+)$/gmu)].map((match) => match[1]);
-    expect(jobNames.length).toBeGreaterThan(10);
-    expect(jobNames.every((name) => name.startsWith('CI Shadow /'))).toBe(true);
+    const jobNames = [...prGates.matchAll(/^ {4}name: (.+)$/gmu)].map((match) => match[1]);
     for (const requiredName of [
       'Lint',
       'Unit',
@@ -30,29 +27,43 @@ describe('CI gate topology shadow workflows', () => {
       'File Placement',
       'Coverage',
     ]) {
-      expect(jobNames).not.toContain(requiredName);
+      expect(jobNames.filter((name) => name === requiredName)).toHaveLength(1);
     }
+    expect(jobNames).not.toContain('CI Shadow / Parity');
+    expect(prGates).not.toContain('CI Shadow');
   });
 
-  it('computes the general PR scope exactly once and passes explicit event SHAs', () => {
-    expect(prShadow.match(/pr-scope\.cli\.ts/gu)).toHaveLength(1);
-    expect(prShadow).not.toContain('dorny/paths-filter');
-    expect(prShadow).toContain('--base ${{ github.event.pull_request.base.sha }}');
-    expect(prShadow).toContain('--head ${{ github.event.pull_request.head.sha }}');
-    expect(prShadow).toContain('--evidence-path artifacts/ci-shadow/pr-scope.json');
-    expect(prShadow).toContain('--legacy-evidence-path artifacts/ci-shadow/legacy-pr-scope.json');
-    expect(prShadow).toContain('documentation_catalog_mode:');
-    expect(prShadow).toContain('db_schema_mode:');
+  it('computes the general PR scope exactly once and retains SHA-bound evidence', () => {
+    expect(prGates.match(/pr-scope\.cli\.ts/gu)).toHaveLength(1);
+    expect(prGates).not.toContain('dorny/paths-filter');
+    expect(prGates).toContain('--base ${{ github.event.pull_request.base.sha }}');
+    expect(prGates).toContain('--head ${{ github.event.pull_request.head.sha }}');
+    expect(prGates).toContain('--evidence-path artifacts/ci-gates/pr-scope.json');
+    expect(prGates).not.toContain('--legacy-evidence-path');
+    expect(prGates).toContain('name: ci-gate-scope-${{ github.run_id }}');
   });
 
-  it('reuses the existing gate commands without deployment mutations', () => {
+  it('keeps Unit and Coverage aggregation fail-closed', () => {
+    expect(prGates).toContain('name: Unit Fast Feedback');
+    expect(prGates).toContain('name: Unit Complete');
+    expect(prGates).toContain('name: Unit');
+    expect(prGates).toContain('--expected unit-direct,unit-remaining');
+    expect(prGates).toContain('pattern: unit-feedback-*-${{ github.run_id }}');
+    expect(prGates).toContain('name: Coverage Complete');
+    expect(prGates).toContain('name: Coverage');
+    expect(prGates).toContain('--expected coverage-complete');
+    expect(prGates).toContain('validate-downloaded-coverage.ts');
+    expect(prGates).toContain('if-no-files-found: error');
+  });
+
+  it('reuses all protected gate commands without deployment mutations', () => {
     for (const command of [
       'pnpm test:eslint:affected',
       'pnpm test:unit:affected --phase direct',
       'pnpm test:unit:affected --phase remaining',
       'pnpm test:types:affected',
       'pnpm test:coverage:affected',
-      'pnpm sonar-new-code-gate',
+      'pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}',
       'pnpm coverage-gate',
       'pnpm complexity-gate',
       'scripts/ci/run-integration-gate.ts --mode affected',
@@ -65,88 +76,60 @@ describe('CI gate topology shadow workflows', () => {
       'sva-studio-react:check:documentation-catalog',
       'scripts/ci/check-db-schema-snapshot.ts',
     ]) {
-      expect(prShadow).toContain(command);
+      expect(prGates).toContain(command);
     }
-    expect(prShadow).toContain('name: CI Shadow / Unit');
-    expect(prShadow).toContain('--expected unit-direct,unit-remaining');
-    expect(prShadow).toContain('name: CI Shadow / Coverage');
-    expect(prShadow).toContain('node scripts/ci/validate-downloaded-coverage.ts');
-    for (const forbidden of ['quantum-cli', 'promote.yml', 'docker stack deploy', 'environment:']) {
-      expect(prShadow).not.toContain(forbidden);
-      expect(mainShadow).not.toContain(forbidden);
+    for (const forbidden of ['quantum-cli', 'docker stack deploy', 'environment:']) {
+      expect(prGates).not.toContain(forbidden);
+      expect(mainGates).not.toContain(forbidden);
     }
   });
 
-  it('compares exact-head terminal checks and retains parity evidence', () => {
-    const parityJob = prShadow.slice(prShadow.indexOf('  parity:'));
-
-    expect(prShadow).toContain('name: CI Shadow / Parity');
-    expect(prShadow).toContain('commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100');
-    expect(prShadow).toContain('node scripts/ci/ci-gate-shadow-parity.cli.ts');
-    expect(prShadow).toContain('--legacy-scope artifacts/ci-shadow/legacy-pr-scope.json');
-    expect(prShadow).toContain('--scope-result "$SCOPE_RESULT"');
-    expect(prShadow).toContain('--comparison-started-at "$comparison_started_at"');
-    expect(parityJob).toContain('timeout-minutes: 35');
-    expect(parityJob).toContain('parity_poll_started_epoch=$(date -u +%s)');
-    expect(parityJob).toContain(
-      'comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))'
-    );
-    expect(parityJob).toContain('while true; do');
-    expect(parityJob).not.toContain('for attempt in {1..40}; do');
-    expect(prShadow).toContain('--fail-pending');
-    expect(prShadow).toContain('if: always()\n    needs:');
-    expect(prShadow).toContain('continue-on-error: true');
-    expect(prShadow).toContain('name: ci-gate-shadow-parity-${{ github.run_id }}');
-    expect(prShadow).toContain('retention-days: 30');
+  it('restores Codecov and Sonar writes exactly once without a second main app build', () => {
+    expect(prGates.match(/uses: codecov\/codecov-action@v7/gu)).toHaveLength(1);
+    expect(mainGates.match(/uses: codecov\/codecov-action@v7/gu)).toHaveLength(1);
+    expect(mainGates.match(/uses: SonarSource\/sonarqube-scan-action@v7/gu)).toHaveLength(1);
+    expect(mainGates).toContain('run: pnpm sonar:prepare-lcov');
+    expect(mainGates).not.toContain('sva-studio-react:build');
   });
 
-  it('runs full Main and Nightly diagnostics without PR scope or PR cache', () => {
-    expect(mainShadow).toContain('name: CI Gate Topology Shadow (Main and Nightly)');
-    expect(mainShadow).toContain('push:\n    branches:\n      - main');
-    expect(mainShadow).toContain("cron: '0 2 * * *'");
-    expect(mainShadow).not.toContain('pull_request:');
-    expect(mainShadow).not.toContain('pr-scope');
-    expect(mainShadow).not.toContain('actions/cache');
-    expect(mainShadow).not.toContain('test:unit:affected');
-    expect(mainShadow).not.toContain('test:coverage:affected');
-    expect(mainShadow).not.toContain('sva-studio-react:build');
-    expect(mainShadow).toContain('pnpm test:unit');
-    expect(mainShadow).toContain('pnpm test:coverage');
-    expect(mainShadow).toContain('pnpm test:integration');
+  it('runs full Main and Nightly diagnostics without PR scope, PR cache, or parity', () => {
+    expect(mainGates).toContain('name: CI Gates (Main and Nightly)');
+    expect(mainGates).toContain('push:\n    branches:\n      - main');
+    expect(mainGates).toContain("cron: '0 2 * * *'");
+    expect(mainGates).not.toContain('pull_request:');
+    expect(mainGates).not.toContain('pr-scope');
+    expect(mainGates).not.toContain('actions/cache');
+    expect(mainGates).not.toContain('test:unit:affected');
+    expect(mainGates).not.toContain('test:coverage:affected');
+    expect(mainGates).not.toContain('Parity');
+    expect(mainGates).not.toContain('CI Shadow');
+    expect(mainGates).toContain('pnpm test:unit');
+    expect(mainGates).toContain('pnpm test:coverage');
+    expect(mainGates).toContain('pnpm test:integration');
   });
 
-  it('collects retained exact-head parity for Main and Nightly', () => {
-    const parityJob = mainShadow.slice(mainShadow.indexOf('  parity:'));
-
-    expect(mainShadow).toContain('name: CI Shadow Main / Parity');
-    expect(mainShadow).toContain(
-      'actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100'
-    );
-    expect(mainShadow).toContain('current_run_created_at=');
-    expect(mainShadow).toContain('fromdateiso8601) - $time | fabs) <= 900');
-    expect(mainShadow).toContain('actions/runs/${run_id}/jobs?filter=latest&per_page=100');
-    expect(mainShadow).toContain('node scripts/ci/ci-gate-main-shadow-parity.cli.ts');
-    expect(mainShadow).toContain('--event "$EVENT_NAME"');
-    expect(mainShadow).toContain('--comparison-started-at "$comparison_started_at"');
-    expect(parityJob).toContain('timeout-minutes: 35');
-    expect(parityJob).toContain('parity_poll_started_epoch=$(date -u +%s)');
-    expect(parityJob).toContain(
-      'comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))'
-    );
-    expect(parityJob).not.toContain('Date.parse(process.argv[1]) + 32 * 60_000');
-    expect(parityJob).toContain('while true; do');
-    expect(parityJob).not.toContain('for attempt in {1..40}; do');
-    expect(parityJob).toContain('rm -rf artifacts/ci-shadow-main/jobs');
-    expect(mainShadow).toContain('--fail-pending');
-    expect(mainShadow).toContain('name: ci-gate-main-shadow-parity-${{ github.run_id }}');
-    expect(mainShadow).toContain('retention-days: 30');
+  it('removes the four legacy workflows and parity implementation', () => {
+    for (const removedWorkflow of [
+      'quality-gates.yml',
+      'runtime-gates.yml',
+      'main-build.yml',
+      'repository-hygiene.yml',
+    ]) {
+      expect(fs.existsSync(workflowPath(removedWorkflow))).toBe(false);
+    }
+    for (const removedScript of [
+      'legacy-pr-scope.ts',
+      'ci-gate-shadow-parity.ts',
+      'ci-gate-shadow-parity.cli.ts',
+      'ci-gate-main-shadow-parity.ts',
+      'ci-gate-main-shadow-parity.cli.ts',
+      'ci-gate-shadow-parity.test.ts',
+    ]) {
+      expect(fs.existsSync(path.join(rootDir, 'scripts/ci', removedScript))).toBe(false);
+    }
   });
 
-  it('leaves legacy required and release workflows independently named', () => {
-    expect(workflow('quality-gates.yml')).toContain('  unit:\n    name: Unit');
-    expect(workflow('runtime-gates.yml')).toContain('  coverage:\n    name: Coverage');
-    expect(workflow('main-build.yml')).toContain('name: App Build');
-    expect(workflow('repository-hygiene.yml')).toContain('name: File Placement');
+  it('keeps the release workflows independently named', () => {
     expect(workflow('build.yml')).toContain('name: Build');
     expect(workflow('app-e2e.yml')).toContain('name: App E2E');
     expect(workflow('promote.yml')).toContain('name: Promote');

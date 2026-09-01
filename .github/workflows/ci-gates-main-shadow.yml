@@ -1,7 +1,9 @@
-name: CI Gate Topology Shadow (Main and Nightly)
+# Der Dateiname bleibt bis nach dem Cutover als stabiler Migrationsanker bestehen.
+# Name und Verhalten sind produktiv.
+name: CI Gates (Main and Nightly)
 
 concurrency:
-  group: ci-gates-main-shadow-${{ github.ref }}
+  group: ci-gates-main-${{ github.ref }}
   cancel-in-progress: false
 
 on:
@@ -13,13 +15,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
-  checks: read
   contents: read
 
 jobs:
   lint:
-    name: CI Shadow Main / Lint
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -30,7 +30,7 @@ jobs:
       - run: pnpm test:eslint
 
   unit:
-    name: CI Shadow Main / Unit
+    name: Unit
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -41,7 +41,7 @@ jobs:
       - run: pnpm test:unit
 
   types:
-    name: CI Shadow Main / Types
+    name: Types
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -52,10 +52,12 @@ jobs:
       - run: pnpm test:types
 
   coverage:
-    name: CI Shadow Main / Coverage
+    name: Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       REDIS_URL: redis://127.0.0.1:6379
       COVERAGE_GATE_REQUIRE_SUMMARIES: '1'
     steps:
@@ -64,12 +66,12 @@ jobs:
           filter: tree:0
       - uses: ./.github/actions/setup-pnpm-workspace
       - name: Start Redis
-        run: docker run -d --name sva-studio-redis-main-shadow -p 6379:6379 redis:7-alpine
+        run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
       - name: Wait for Redis readiness
         run: |
           set -euo pipefail
           for i in {1..30}; do
-            if docker exec sva-studio-redis-main-shadow redis-cli -p 6379 ping | grep -q PONG; then
+            if docker exec sva-studio-redis-coverage redis-cli -p 6379 ping | grep -q PONG; then
               exit 0
             fi
             sleep 2
@@ -79,12 +81,61 @@ jobs:
         run: |
           pnpm test:coverage
           pnpm coverage-gate
+      - name: Upload to Codecov
+        if: always() && env.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ./apps/**/coverage/lcov.info,./packages/**/coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: false
+          flags: unittests
+          name: coverage-${{ github.run_id }}
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-reports-${{ github.run_id }}
+          path: |
+            **/coverage/coverage-summary.json
+            **/coverage/lcov.info
+            tooling/testing/coverage-policy.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+      - name: Prepare SonarCloud coverage report
+        if: always() && env.SONAR_TOKEN != ''
+        run: pnpm sonar:prepare-lcov
+      - name: Ensure full git history for SonarCloud
+        if: always() && env.SONAR_TOKEN != ''
+        run: |
+          set -euo pipefail
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --unshallow --tags
+          else
+            git fetch --tags --prune
+          fi
+          git rev-parse --is-shallow-repository
+      - name: Setup Java for SonarCloud
+        if: always() && env.SONAR_TOKEN != ''
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: SonarCloud Scan
+        if: always() && env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v7
+        with:
+          args: >
+            -Dsonar.scanner.skipJreProvisioning=true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Stop Redis
         if: always()
-        run: docker rm -f sva-studio-redis-main-shadow || true
+        run: docker rm -f sva-studio-redis-coverage || true
 
   complexity:
-    name: CI Shadow Main / Complexity
+    name: Complexity
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -96,7 +147,7 @@ jobs:
       - run: pnpm complexity-gate
 
   integration:
-    name: CI Shadow Main / Integration
+    name: Integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -114,7 +165,7 @@ jobs:
         run: pnpm test:integration
 
   file-placement:
-    name: CI Shadow Main / File Placement
+    name: File Placement
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -127,7 +178,7 @@ jobs:
           pnpm check:rollout-docs
 
   a11y:
-    name: CI Shadow Main / A11y
+    name: A11y
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -138,7 +189,7 @@ jobs:
       - run: pnpm test:a11y
 
   documentation-integrity:
-    name: CI Shadow Main / Documentation Integrity
+    name: Documentation Integrity
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -149,7 +200,7 @@ jobs:
       - run: pnpm check:docs
 
   documentation-catalog:
-    name: CI Shadow Main / Documentation Catalog (advisory)
+    name: Documentation Catalog (advisory)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -161,7 +212,7 @@ jobs:
         run: pnpm nx run sva-studio-react:check:documentation-catalog
 
   db-schema:
-    name: CI Shadow Main / DB Schema Snapshot
+    name: DB Schema Snapshot
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -171,96 +222,3 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm-workspace
       - run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts
-
-  parity:
-    name: CI Shadow Main / Parity
-    if: always()
-    needs:
-      - lint
-      - unit
-      - types
-      - coverage
-      - complexity
-      - integration
-      - file-placement
-      - a11y
-      - documentation-integrity
-      - documentation-catalog
-      - db-schema
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - name: Checkout parity validator
-        uses: actions/checkout@v7
-        with:
-          filter: blob:none
-          sparse-checkout: |
-            .nvmrc
-            scripts/ci
-      - name: Setup repository Node.js runtime
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-      - name: Collect exact-head main or nightly parity
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.sha }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/ci-shadow-main
-          current_run_created_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
-          parity_poll_started_epoch=$(date -u +%s)
-          comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))
-          while true; do
-            gh api \
-              -H 'Accept: application/vnd.github+json' \
-              "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&event=${EVENT_NAME}&per_page=100" \
-              > artifacts/ci-shadow-main/workflow-runs.json
-            jq --arg anchor "$current_run_created_at" \
-              '($anchor | fromdateiso8601) as $time | .workflow_runs |= map(select(((.created_at | fromdateiso8601) - $time | fabs) <= 900))' \
-              artifacts/ci-shadow-main/workflow-runs.json \
-              > artifacts/ci-shadow-main/workflow-runs.current.json
-            comparison_started_at=$(jq -r '[.workflow_runs[].created_at] | min' artifacts/ci-shadow-main/workflow-runs.current.json)
-            rm -rf artifacts/ci-shadow-main/jobs
-            mkdir -p artifacts/ci-shadow-main/jobs
-            for run_id in $(jq -r '.workflow_runs[].id' artifacts/ci-shadow-main/workflow-runs.current.json); do
-              gh api \
-                -H 'Accept: application/vnd.github+json' \
-                "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?filter=latest&per_page=100" \
-                > "artifacts/ci-shadow-main/jobs/${run_id}.json"
-            done
-            jq -s \
-              '{check_runs: [.[].jobs[] | {name, head_sha, status, conclusion, started_at, completed_at, details_url: .html_url}]}' \
-              artifacts/ci-shadow-main/jobs/*.json \
-              > artifacts/ci-shadow-main/check-runs.json
-            set +e
-            node scripts/ci/ci-gate-main-shadow-parity.cli.ts \
-              --checks artifacts/ci-shadow-main/check-runs.json \
-              --output artifacts/ci-shadow-main/parity.json \
-              --head "$HEAD_SHA" \
-              --event "$EVENT_NAME" \
-              --comparison-started-at "$comparison_started_at"
-            parity_status=$?
-            set -e
-            if [ "$parity_status" -eq 0 ]; then exit 0; fi
-            if [ "$parity_status" -eq 1 ]; then exit 1; fi
-            if [ "$(date -u +%s)" -ge "$comparison_deadline_epoch" ]; then break; fi
-            sleep 10
-          done
-          node scripts/ci/ci-gate-main-shadow-parity.cli.ts \
-            --checks artifacts/ci-shadow-main/check-runs.json \
-            --output artifacts/ci-shadow-main/parity.json \
-            --head "$HEAD_SHA" \
-            --event "$EVENT_NAME" \
-            --comparison-started-at "$comparison_started_at" \
-            --fail-pending
-      - name: Upload main and nightly parity evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: ci-gate-main-shadow-parity-${{ github.run_id }}
-          path: artifacts/ci-shadow-main/parity.json
-          if-no-files-found: error
-          overwrite: true
-          retention-days: 30

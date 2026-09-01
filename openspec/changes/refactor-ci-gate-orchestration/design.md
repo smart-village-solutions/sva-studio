@@ -126,9 +126,12 @@ Die Paritätsmatrix umfasst mindestens:
 - unzulässige PR-Cache-Übernahme nach `main`.
 
 Plan 036 schaltet die sieben Kontexte in einem reviewbaren Change atomar auf
-die neue Topologie um. Erst nach erfolgreicher Veröffentlichung aller
-Required-Kontexte für den exakten Cutover-Head werden die vier Altworkflows
-gelöscht. Eine ungeklärte Scope- oder Ergebnisabweichung stoppt den Cutover.
+die neue Topologie um. Der bereits auf dem Default-Branch registrierte Pfad
+des PR-Shadow-Workflows bleibt dabei zunächst als Triggeranker erhalten; sein
+Workflowname, seine Jobs und sein Laufzeitverhalten werden produktiv. Auf dem
+exakten PR-Head werden alle sieben Required-Kontexte geprüft. Derselbe Merge
+entfernt anschließend atomar die vier Altworkflows und die reine
+Paritätslogik. Eine ungeklärte Scope- oder Ergebnisabweichung stoppt den Merge.
 
 Die Main-/Nightly-Parität bewertet pro Gate genau den tatsächlich laufenden
 Bestandsjob. Ein von einer eventgebundenen Hilfsjob-Definition zusätzlich
@@ -195,15 +198,17 @@ produktiven Zieltopologie ein Fehler, keine tolerierte Kostenart.
    repräsentative Läufe auswerten.
 4. Bei identischem Scope/Ergebnis, vollständigen Checknamen und akzeptierter
    gepaarter Shadow-Laufzeit den Cutover atomar durchführen.
-5. Veröffentlichung am exakten Cutover-Head prüfen, Altworkflows und
-   Paritätsjobs löschen, anschließend zehn repräsentative PR-Läufe beobachten
-   und YAML-/TS-Löschbilanz sowie Architektur dokumentieren.
+5. Veröffentlichung am exakten Cutover-PR-Head prüfen; mit demselben Merge die
+   Altworkflows und Paritätsjobs entfernen, anschließend zehn repräsentative
+   PR-Läufe beobachten und YAML-/TS-Löschbilanz sowie Architektur
+   dokumentieren.
 6. Bei Abweichung vor dem Cutover stoppen; nach einem fehlerhaften Cutover den
    letzten vollständigen Workflowstand in einem neuen Commit wiederherstellen.
 
 ## Open Questions
 
-- Keine fachliche Frage blockiert das Proposal. Konkrete Dateinamen und die
-  kleinstmögliche Jobgruppierung werden in Plan 035 anhand der aktuellen
-  Workflow-Contract-Tests festgelegt, ohne die hier definierten Grenzen zu
-  verändern.
+- Keine fachliche Frage blockiert das Proposal. Die produktiven Workflownamen
+  lauten `CI Gates (PR)` und `CI Gates (Main and Nightly)`. Die historischen
+  Dateipfade bleiben während des atomaren Cutovers ausschließlich als
+  GitHub-Triggeranker erhalten und können nach stabiler Beobachtung separat
+  umbenannt werden.

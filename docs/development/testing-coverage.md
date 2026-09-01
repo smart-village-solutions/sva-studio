@@ -68,7 +68,7 @@ Das Kommando bildet den blockierenden GitHub-PR-Pfad für lokale Vorprüfung wei
 - `pnpm verify:runtime-artifact` bleibt bewusst außerhalb von `pnpm test:pr`; der schwere Runtime-Pfad läuft im GitHub-Job `App Build` für runtime-kritische Pull Requests und verpflichtend im einzigen Main-Workflow `Build`. `pnpm test:release:studio` bleibt eine lokale vollständige Vorprüfung, kein Deploymentpfad.
   - lokaler Benchmark am `2. Juni 2026`: `pnpm verify:runtime-artifact` trotz `21/23` Nx-Cache-Treffern bei ca. `220.98s` und damit oberhalb der internen Aktivierungsgrenze für generische PR-Gates
 - i18n für `apps/sva-studio-react` und Plugin-UI läuft bewusst über den vorhandenen Build-Vorcheck `sva-studio-react:check:i18n`; es gibt dafür absichtlich keinen zweiten parallelen PR-Job, um denselben Signaltyp nicht doppelt auszuführen
-- das selektive GitHub-Gate `Quality Gates / A11y` bleibt ein eigener UI-spezifischer Signalpfad; lokal wird es bei UI-relevanten PRs gezielt mit `pnpm test:a11y` vorgeprüft, statt jeden `test:pr`-Lauf pauschal zu verlängern
+- das selektive GitHub-Gate `CI Gates (PR) / A11y` bleibt ein eigener UI-spezifischer Signalpfad; lokal wird es bei UI-relevanten PRs gezielt mit `pnpm test:a11y` vorgeprüft, statt jeden `test:pr`-Lauf pauschal zu verlängern
 
 Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Beim initialen oder wesentlich scope-erweiternden Code-Push kann die lokale New-Code-/Patch-Coverage vorab geprüft werden, sodass die häufigste Abweichung zwischen lokalem PR-Gate und Sonar früher sichtbar wird. Bei kleinen Folgefixes in einem bestehenden PR übernehmen die GitHub-Gates diese Gesamtvalidierung; ein breiter lokaler Wiederholungslauf ist dafür nicht erforderlich.
 
@@ -152,11 +152,23 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 
 ## CI-Verhalten
 
-Workflow: `.github/workflows/runtime-gates.yml`
+Workflows: `.github/workflows/ci-gates-pr-shadow.yml` und
+`.github/workflows/ci-gates-main-shadow.yml`
 
-Die vorbereitete Zieltopologie läuft zusätzlich unter `.github/workflows/ci-gates-pr-shadow.yml` und `.github/workflows/ci-gates-main-shadow.yml`. Sie ist nicht blockierend und verändert weder die unten beschriebenen Required Checks noch das aktive Ruleset. Der PR-Shadow ruft `scripts/ci/pr-scope.cli.ts` genau einmal auf und verteilt dessen versionierte, Base-/Head-SHA-gebundene Evidenz an alle Shadow-Jobs. Main und Nightly führen die vollständigen nicht deploymentbezogenen Gates ohne PR-Scope, PR-Cache oder zusätzlichen App-Build aus.
+Die konsolidierte Zieltopologie besitzt einen PR-Workflow und einen getrennten
+Main-/Nightly-Workflow. Der PR-Workflow ruft `scripts/ci/pr-scope.cli.ts` genau
+einmal auf und verteilt dessen versionierte, Base-/Head-SHA-gebundene
+Entscheidung an alle PR-Gates. Main und Nightly führen die vollständigen
+nicht deploymentbezogenen Gates ohne PR-Scope, PR-Cache oder zusätzlichen
+App-Build aus. Die Dateipfade behalten für den atomaren GitHub-Cutover ihre
+historischen `-shadow`-Namen; Workflow, Jobs und Laufzeitverhalten sind
+produktiv und enthalten keine Paritätslogik mehr.
 
-Der Job `CI Shadow / Parity` vergleicht die terminalen Bestands- und Shadow-Ergebnisse für exakt dasselbe Head-SHA. Fehlende, tatsächlich doppelt laufende, nach Ablauf der begrenzten Sammler-Deadline nicht terminale oder fremd-SHA-gebundene Checks sind Abweichungen. Die Sammler-Deadline beginnt beim tatsächlichen Start des Parity-Jobs; der gemeinsame Workflow-Start dient davon getrennt der Run-Zuordnung und Laufzeitmessung. Ein zusätzlicher `skipped`-Hilfsjob mit demselben Anzeigenamen wird ignoriert, sobald ein echter Bestandsjob für dieses Gate existiert; zwei echte Checks bleiben fail-closed. Die Live-Parität ist mit `20/20` repräsentativen PR-Läufen ohne ungeklärte Scope- oder Ergebnisdrift belegt. Vor dem Cutover muss zusätzlich die korrigierte Sammler-Deadline live grün sein; Shadow-Ergebnisse dürfen weder Merge-Schutz noch Release-Evidenz ersetzen. Details und Aussagegrenzen stehen in `../reports/ci-gate-shadow-parity-2026-08.md`.
+Die vier früheren Orchestrierungsworkflows und die beiden Paritätsjobs sind
+entfernt. Codecov wird je PR-/Main-Coverage-Lauf höchstens einmal beschrieben;
+der SonarCloud-Scan bleibt genau einmal im Main-/Nightly-Coverage-Job. Details
+zur abgeschlossenen Shadow-Abnahme stehen in
+`../reports/ci-gate-shadow-parity-2026-08.md`.
 
 - Pull Requests:
   - Required Check `Coverage`: für reguläre PRs bewusster No-op; Coverage-/CI-kritische Änderungen führen im internen Job `Coverage Complete` direkt geänderte Projekte zuerst aus, prüfen deren Paket-Floors und Baseline-Deltas sofort und validieren danach den übrigen Scope einschließlich globaler und New-Code-Gates
@@ -172,44 +184,45 @@ Der Job `CI Shadow / Parity` vergleicht die terminalen Bestands- und Shadow-Erge
 
 ### PR-Workflow-Matrix
 
-| Workflow / Jobname in GitHub              | Zweck                                                                                                                                               | Trigger-Modell            |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `Runtime Gates / Coverage`                | Stabiler PR-Aggregator; No-op nur bei explizitem Scope, sonst fail-closed über den internen Job `Coverage Complete`; auf `main`/nightly voller Lauf | alle PRs, `main`, nightly |
-| `Quality Gates / Unit`                    | Stabiler PR-Aggregator über paralleles `Unit Fast Feedback` und den disjunkten internen Restjob `Unit Complete`; auf `main` volle Diagnostik        | alle PRs, `main`          |
-| `Runtime Gates / Complexity`              | Repository-weites Komplexitäts-Gate                                                                                                                 | alle PRs, `main`, nightly |
-| `Quality Gates / A11y`                    | selektiver Accessibility-Check nur für UI-relevante PRs, voller Lauf auf `main`                                                                     | alle PRs, `main`          |
-| `Runtime Gates / PR Integration`          | scoped allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat                                                                            | Pull Requests             |
-| `Runtime Gates / Integration`             | voller Lauf der allgemeinen echten Integrationsziele                                                                                                | `main`, nightly           |
-| `Main Build / App Build`                  | relevanter App-Build für PRs und `main`, inklusive selektivem `verify:runtime-artifact` nur für runtime-kritische Pull Requests                     | alle PRs, `main`          |
-| `App E2E / App E2E`                       | Vollständiger Browserlauf; nur automatischer erfolgreicher `main`-Push ist releasefähige, Head-SHA-gebundene Evidenz                                | `main`, nightly, manuell  |
-| `monitoring-stack`                        | Monitoring-spezifische Docker-/Stack-Checks                                                                                                         | pfadbasiert               |
-| `Schema Diff Gate`                        | Schema-Diff gegen Staging                                                                                                                           | pfadbasiert               |
-| `Repository Hygiene / File Placement`     | Dateiplatzierungs-Regeln                                                                                                                            | alle PRs und `main`       |
-| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op außerhalb relevanter Pfade                                       | alle PRs und `main`       |
+| Workflow / Jobname in GitHub                  | Zweck                                                                                                 | Trigger-Modell           |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------ |
+| `CI Gates (PR) / Coverage`                    | Stabiler PR-Aggregator; No-op nur bei explizitem Scope, sonst fail-closed über `Coverage Complete`    | alle PRs                 |
+| `CI Gates (PR) / Unit`                        | Stabiler Aggregator über paralleles `Unit Fast Feedback` und `Unit Complete`                          | alle PRs                 |
+| `CI Gates (PR) / Lint`, `Types`, `Complexity` | Kanonisch gescopte statische und typbezogene Gates                                                    | alle PRs                 |
+| `CI Gates (PR) / PR Integration`              | Allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat                                     | alle PRs                 |
+| `CI Gates (PR) / App Build`                   | Relevanter App-Build einschließlich selektivem `verify:runtime-artifact`                              | alle PRs                 |
+| `CI Gates (PR) / File Placement`              | Dateiplatzierungs- und Rollout-Dokumentationsregeln                                                   | alle PRs                 |
+| `CI Gates (Main and Nightly)`                 | Vollständige Lint-, Unit-, Types-, Coverage-, Complexity-, Integration-, A11y- und Hygiene-Diagnostik | `main`, nightly, manuell |
+| `App E2E / App E2E`                           | Vollständiger Browserlauf; nur der automatische erfolgreiche `main`-Push ist Release-Evidenz          | `main`, nightly, manuell |
+| `monitoring-stack`                            | Monitoring-spezifische Docker-/Stack-Checks                                                           | pfadbasiert              |
+| `Schema Diff Gate`                            | Schema-Diff gegen Staging                                                                             | pfadbasiert              |
 
 ### Recommended Branch-Protection-Checks
 
 Empfehlung für `main`:
 
 - immer required:
-  - `Quality Gates / Lint`
-  - `Quality Gates / Unit`
-  - `Quality Gates / Types`
-  - `Quality Gates / A11y`
-  - `Runtime Gates / Coverage`
-  - `Runtime Gates / Complexity`
-  - `Runtime Gates / PR Integration` für Pull Requests
-  - `Runtime Gates / Integration` für `main`
-  - `Repository Hygiene / File Placement`
+  - `Lint`
+  - `Unit`
+  - `Types`
+  - `Complexity`
+  - `PR Integration`
+  - `File Placement`
+  - `Coverage`
 - zusätzlich operativ überwacht, aber nicht als PR-Required-Check:
   - `App E2E / App E2E` auf `main`; sein erfolgreicher kanonischer Lauf wird stattdessen vor Staging blockierend ausgewertet
   - `monitoring-stack`
   - `Schema Diff Gate`
-  - `Repository Hygiene / DB Schema Snapshot`
+  - `CI Gates (PR) / DB Schema Snapshot`
 
 ### CI-Summaries und Artefakte
 
-Die wichtigsten Workflows schreiben eine kurze `GITHUB_STEP_SUMMARY` mit Scope, Ergebnis und Artefaktname. Ziel ist, dass Reviews die relevanten Nachweise direkt im PR-UI finden, ohne zuerst in die kompletten Logs zu wechseln.
+Der Scope-Job veröffentlicht genau ein versioniertes Artefakt
+`artifacts/ci-gates/pr-scope.json`. Die parallelen Unit- und Coverage-Phasen
+veröffentlichen ihre vorhandenen SHA-gebundenen Evidenzartefakte; ausschließlich
+die stabilen Aggregatoren `Unit` und `Coverage` treffen daraus die öffentliche,
+fail-closed Endentscheidung. Logs und Artefakte bleiben damit prüfbar, ohne eine
+zweite Summary- oder Paritätspolicy einzuführen.
 
 ### Echte Integrationsziele
 
@@ -217,7 +230,7 @@ Die wichtigsten Workflows schreiben eine kurze `GITHUB_STEP_SUMMARY` mit Scope, 
 
 ### DB-Snapshot-Gate
 
-Das Gate `Repository Hygiene / DB Schema Snapshot` vergleicht einen sauberen migrationsbasierten Postgres-Schema-Dump mit `docs/development/studio-db-schema-final.sql`. Der Job läuft nur für relevante Pfade wie `packages/data/migrations/**`, die Snapshot-Dokumente und den Check selbst; alle anderen PRs enden bewusst als erfolgreicher No-op.
+Das Gate `CI Gates (PR) / DB Schema Snapshot` vergleicht einen sauberen migrationsbasierten Postgres-Schema-Dump mit `docs/development/studio-db-schema-final.sql`. Der Job läuft nur für relevante Pfade wie `packages/data/migrations/**`, die Snapshot-Dokumente und den Check selbst; alle anderen PRs enden bewusst als erfolgreicher No-op.
 
 Aktivierungskriterium:
 

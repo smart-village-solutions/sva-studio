@@ -93,14 +93,9 @@ function loadProjectJson(projectPath: string): NxProjectJson {
   ) as NxProjectJson;
 }
 
-function loadQualityGatesWorkflow(): string {
+function loadPrGatesWorkflow(): string {
   const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/quality-gates.yml'), 'utf8');
-}
-
-function loadRuntimeGatesWorkflow(): string {
-  const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/runtime-gates.yml'), 'utf8');
+  return fs.readFileSync(path.join(rootDir, '.github/workflows/ci-gates-pr-shadow.yml'), 'utf8');
 }
 
 function loadAppE2EWorkflow(): string {
@@ -116,14 +111,9 @@ function loadWorkspaceSetupAction(): string {
   );
 }
 
-function loadMainBuildWorkflow(): string {
+function loadMainGatesWorkflow(): string {
   const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/main-build.yml'), 'utf8');
-}
-
-function loadRepositoryHygieneWorkflow(): string {
-  const rootDir = resolveRootDir();
-  return fs.readFileSync(path.join(rootDir, '.github/workflows/repository-hygiene.yml'), 'utf8');
+  return fs.readFileSync(path.join(rootDir, '.github/workflows/ci-gates-main-shadow.yml'), 'utf8');
 }
 
 function loadRunPrGateScript(): string {
@@ -194,44 +184,42 @@ describe('workspace package scripts', () => {
     expect(testCoveragePrScript).not.toContain('pnpm patch-coverage-gate');
   });
 
-  it('keeps full PR coverage regression checks enabled in runtime gates', () => {
-    const runtimeGatesWorkflow = loadRuntimeGatesWorkflow();
+  it('keeps full PR coverage regression checks enabled in consolidated gates', () => {
+    const runtimeGatesWorkflow = loadPrGatesWorkflow();
 
     expect(runtimeGatesWorkflow).toContain('NX_HEAD: ${{ github.event.pull_request.head.sha }}');
     expect(runtimeGatesWorkflow).toContain(
-      "NX_RUN_FULL: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
+      "NX_RUN_FULL: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
     );
-    expect(runtimeGatesWorkflow).toContain('run: pnpm test:coverage:affected');
+    expect(runtimeGatesWorkflow).toContain('pnpm test:coverage:affected');
     expect(runtimeGatesWorkflow).toContain(
-      "COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
+      "COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ needs.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
     );
     expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 
   it('keeps Unit and Coverage aggregation fail-closed behind stable required names', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
 
-    expect(qualityWorkflow).toContain('unit-fast-feedback:');
-    expect(qualityWorkflow).toContain('unit-complete:');
+    expect(qualityWorkflow).toContain('unit-direct:');
+    expect(qualityWorkflow).toContain('unit-remaining:');
     expect(qualityWorkflow).toContain('  unit:\n    name: Unit');
     expect(qualityWorkflow).toContain('--expected unit-direct,unit-remaining');
     expect(qualityWorkflow).toContain('if-no-files-found: error');
-    expect(runtimeWorkflow).toContain(
-      "coverage-complete:\n    name: ${{ github.event_name == 'pull_request' && 'Coverage Complete' || 'Coverage' }}"
-    );
-    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage');
+    expect(runtimeWorkflow).toContain('  coverage:\n    name: Coverage Complete');
+    expect(runtimeWorkflow).toContain('  coverage-aggregate:\n    name: Coverage');
     expect(runtimeWorkflow).toContain('--expected coverage-complete');
     expect(runtimeWorkflow).toContain('validate-downloaded-coverage.ts');
   });
 
   it('requires both internal Unit jobs to succeed before accepting evidence', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
     const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
     const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
     const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
-    const fastResultCheck = unitAggregator.indexOf('test "$FAST_RESULT" = "success"');
-    const completeResultCheck = unitAggregator.indexOf('test "$COMPLETE_RESULT" = "success"');
+    const fastResultCheck = unitAggregator.indexOf('test "$DIRECT_RESULT" = "success"');
+    const completeResultCheck = unitAggregator.indexOf('test "$REMAINING_RESULT" = "success"');
     const evidenceRequiredBranch = unitAggregator.indexOf(
       'if [ "$EVIDENCE_REQUIRED" != "true" ]; then'
     );
@@ -245,18 +233,16 @@ describe('workspace package scripts', () => {
   });
 
   it('retains successful Unit shard evidence across partial workflow reruns', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const directUploadStart = qualityWorkflow.indexOf(
-      '      - name: Upload direct unit feedback evidence'
-    );
-    const completeJobStart = qualityWorkflow.indexOf('\n  unit-complete:', directUploadStart);
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const directUploadStart = qualityWorkflow.indexOf('      - name: Upload direct Unit evidence');
+    const completeJobStart = qualityWorkflow.indexOf('\n  unit-remaining:', directUploadStart);
     const directUpload = qualityWorkflow.slice(directUploadStart, completeJobStart);
     const remainingUploadStart = qualityWorkflow.indexOf(
-      '      - name: Upload remaining unit feedback evidence'
+      '      - name: Upload remaining Unit evidence'
     );
     const aggregatorJobStart = qualityWorkflow.indexOf('\n  unit:', remainingUploadStart);
     const remainingUpload = qualityWorkflow.slice(remainingUploadStart, aggregatorJobStart);
-    const downloadStart = qualityWorkflow.indexOf('      - name: Download unit evidence');
+    const downloadStart = qualityWorkflow.indexOf('      - name: Download Unit evidence');
     const aggregateStart = qualityWorkflow.indexOf(
       '      - name: Aggregate required Unit status',
       downloadStart
@@ -272,14 +258,11 @@ describe('workspace package scripts', () => {
   });
 
   it('retains Coverage evidence across partial workflow reruns', () => {
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
-    const uploadStart = runtimeWorkflow.indexOf('      - name: Upload coverage artifacts');
-    const prepareSonarStart = runtimeWorkflow.indexOf(
-      '      - name: Prepare SonarCloud coverage report',
-      uploadStart
-    );
-    const coverageUpload = runtimeWorkflow.slice(uploadStart, prepareSonarStart);
-    const downloadStart = runtimeWorkflow.indexOf('      - name: Download coverage evidence');
+    const runtimeWorkflow = loadPrGatesWorkflow();
+    const uploadStart = runtimeWorkflow.indexOf('      - name: Upload Coverage evidence');
+    const aggregateJobStart = runtimeWorkflow.indexOf('\n  coverage-aggregate:', uploadStart);
+    const coverageUpload = runtimeWorkflow.slice(uploadStart, aggregateJobStart);
+    const downloadStart = runtimeWorkflow.indexOf('      - name: Download Coverage evidence');
     const aggregateStart = runtimeWorkflow.indexOf(
       '      - name: Aggregate required Coverage status',
       downloadStart
@@ -294,12 +277,14 @@ describe('workspace package scripts', () => {
   });
 
   it('sets up the repository Node runtime before running TypeScript aggregators', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
     const unitAggregatorStart = qualityWorkflow.indexOf('  unit:\n    name: Unit');
     const typesStart = qualityWorkflow.indexOf('\n  types:', unitAggregatorStart);
     const unitAggregator = qualityWorkflow.slice(unitAggregatorStart, typesStart);
-    const coverageAggregatorStart = runtimeWorkflow.indexOf('  coverage:\n    name: Coverage');
+    const coverageAggregatorStart = runtimeWorkflow.indexOf(
+      '  coverage-aggregate:\n    name: Coverage'
+    );
     const complexityStart = runtimeWorkflow.indexOf('\n  complexity:', coverageAggregatorStart);
     const coverageAggregator = runtimeWorkflow.slice(coverageAggregatorStart, complexityStart);
 
@@ -316,22 +301,22 @@ describe('workspace package scripts', () => {
     }
   });
 
-  it('runs direct Unit feedback independently from the complete PR scope', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const fastFeedbackStart = qualityWorkflow.indexOf('  unit-fast-feedback:');
-    const completeStart = qualityWorkflow.indexOf('  unit-complete:');
+  it('runs direct Unit feedback in parallel with the remaining PR scope', () => {
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const fastFeedbackStart = qualityWorkflow.indexOf('  unit-direct:');
+    const completeStart = qualityWorkflow.indexOf('  unit-remaining:');
     const fastFeedbackBlock = qualityWorkflow.slice(fastFeedbackStart, completeStart);
 
     expect(fastFeedbackBlock).toContain('pnpm test:unit:affected --phase direct');
-    expect(fastFeedbackBlock).not.toContain('needs:');
+    expect(fastFeedbackBlock).toContain('needs: scope');
+    expect(fastFeedbackBlock).not.toContain('unit-remaining');
     expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase remaining');
   });
 
   it('retains complete diagnostics on main and nightly execution paths', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
+    const qualityWorkflow = loadMainGatesWorkflow();
     const e2eWorkflow = loadAppE2EWorkflow();
 
-    expect(qualityWorkflow).toContain('Run complete main unit diagnostics');
     expect(qualityWorkflow).toContain('run: pnpm test:unit');
     expect(e2eWorkflow).toContain('schedule:');
     expect(e2eWorkflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
@@ -446,7 +431,7 @@ describe('workspace package scripts', () => {
 
   it('keeps general integration scripts on the dedicated honest helper', () => {
     const packageJson = loadRootPackageJson();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
 
     expect(packageJson.scripts?.['test:integration']).toBe(
       'tsx scripts/ci/run-integration-gate.ts --mode full'
@@ -454,9 +439,7 @@ describe('workspace package scripts', () => {
     expect(runtimeWorkflow).toContain(
       'pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}'
     );
-    expect(runtimeWorkflow).toContain(
-      'Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.'
-    );
+    expect(loadMainGatesWorkflow()).toContain('run: pnpm test:integration');
   });
 
   it('cleans stale local studio serve processes before running app e2e', () => {
@@ -468,25 +451,21 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps PR quality workflows on the shared pr-scope helper', () => {
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
     const e2eWorkflow = loadAppE2EWorkflow();
 
-    expect(qualityWorkflow).toContain('name: Quality Gates');
-    expect(runtimeWorkflow).toContain('name: Runtime Gates');
+    expect(qualityWorkflow).toContain('name: CI Gates (PR)');
+    expect(runtimeWorkflow).toContain('name: CI Gates (PR)');
     expect(e2eWorkflow).toContain('name: App E2E');
+    expect(qualityWorkflow).toContain('pnpm exec tsx scripts/ci/pr-scope.cli.ts');
     expect(qualityWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
-    );
-    expect(qualityWorkflow).toContain(
-      "NX_RUN_FULL: ${{ steps.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}"
+      "NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}"
     );
     expect(qualityWorkflow).not.toContain(
       'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
-    expect(runtimeWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
-    );
+    expect(runtimeWorkflow).toContain('pnpm exec tsx scripts/ci/pr-scope.cli.ts');
     expect(runtimeWorkflow).not.toContain(
       'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
@@ -495,9 +474,9 @@ describe('workspace package scripts', () => {
   });
 
   it('determines PR scope before conditionally starting Redis in runtime gates', () => {
-    const workflow = loadRuntimeGatesWorkflow();
-    const scopeIndex = workflow.indexOf('      - name: Determine PR scope');
-    const startRedisIndex = workflow.indexOf('      - name: Start Redis for coverage tests');
+    const workflow = loadPrGatesWorkflow();
+    const scopeIndex = workflow.indexOf('      - name: Determine canonical PR scope once');
+    const startRedisIndex = workflow.indexOf('      - name: Start Redis');
     const waitRedisIndex = workflow.indexOf('      - name: Wait for Redis readiness');
 
     expect(scopeIndex).toBeGreaterThan(-1);
@@ -508,7 +487,7 @@ describe('workspace package scripts', () => {
   });
 
   it('requires the complete coverage job before accepting downloaded evidence', () => {
-    const workflow = loadRuntimeGatesWorkflow();
+    const workflow = loadPrGatesWorkflow();
     const aggregateStep = workflow.slice(workflow.indexOf('Aggregate required Coverage status'));
     const resultCheckIndex = aggregateStep.indexOf('test "$COMPLETE_RESULT" = "success"');
     const evidenceCheckIndex = aggregateStep.indexOf('node scripts/ci/ci-feedback-aggregate.ts');
@@ -519,36 +498,30 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps PR build validation on the shared pr-scope helper', () => {
-    const mainBuildWorkflow = loadMainBuildWorkflow();
+    const mainBuildWorkflow = loadPrGatesWorkflow();
 
     expect(mainBuildWorkflow).toContain('pull_request:');
-    expect(mainBuildWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
-    );
-    expect(mainBuildWorkflow).toContain("steps.scope.outputs.app_build_mode != 'skip'");
-    expect(mainBuildWorkflow).toContain("steps.scope.outputs.runtime_verify_mode != 'skip'");
+    expect(mainBuildWorkflow).toContain('pnpm exec tsx scripts/ci/pr-scope.cli.ts');
+    expect(mainBuildWorkflow).toContain("needs.scope.outputs.app_build_mode != 'skip'");
+    expect(mainBuildWorkflow).toContain("needs.scope.outputs.runtime_verify_mode != 'skip'");
     expect(mainBuildWorkflow).toContain('pnpm verify:runtime-artifact');
   });
 
-  it('keeps the DB schema snapshot gate path-scoped in repository hygiene', () => {
-    const workflow = loadRepositoryHygieneWorkflow();
+  it('keeps the DB schema snapshot gate scoped by the canonical PR decision', () => {
+    const workflow = loadPrGatesWorkflow();
 
     expect(workflow).toContain('name: DB Schema Snapshot');
-    expect(workflow).toContain('uses: dorny/paths-filter@v4');
-    expect(workflow).toContain("'packages/data/migrations/**'");
-    expect(workflow).toContain("'docs/development/studio-db-schema-final.sql'");
-    expect(workflow).toContain("'docs/development/studio-db-schema.md'");
-    expect(workflow).toContain("'scripts/ci/check-db-schema-snapshot.ts'");
+    expect(workflow).not.toContain('uses: dorny/paths-filter@v4');
+    expect(workflow).toContain("needs.scope.outputs.db_schema_mode != 'skip'");
     expect(workflow).toContain('pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts');
-    expect(workflow).toContain('Median-Mehrlast <= 2 Minuten');
   });
 
   it('keeps documentation catalog drift advisory and outside the app build graph', () => {
     const appProject = loadProjectJson('apps/sva-studio-react');
     const build = appProject.targets?.build;
-    const workflow = loadRepositoryHygieneWorkflow();
-    const jobStart = workflow.indexOf('  check-documentation-catalog:');
-    const jobEnd = workflow.indexOf('\n  check-db-schema-snapshot:', jobStart);
+    const workflow = loadPrGatesWorkflow();
+    const jobStart = workflow.indexOf('  documentation-catalog:');
+    const jobEnd = workflow.indexOf('\n  db-schema:', jobStart);
     const job = workflow.slice(jobStart, jobEnd);
 
     expect(build?.dependsOn).not.toContain('check:documentation-catalog');
@@ -556,10 +529,9 @@ describe('workspace package scripts', () => {
     expect(jobStart).toBeGreaterThan(-1);
     expect(jobEnd).toBeGreaterThan(jobStart);
     expect(job).toContain('name: Documentation Catalog (advisory)');
-    expect(job).toContain("'apps/sva-studio-react/src/lib/plugin-catalog-loader.ts'");
+    expect(job).toContain("needs.scope.outputs.documentation_catalog_mode != 'skip'");
     expect(job).toContain('continue-on-error: true');
     expect(job).toContain('pnpm nx run sva-studio-react:check:documentation-catalog');
-    expect(job).toContain('steps.catalog.outcome');
   });
 
   it('runs full App E2E only for main pushes and diagnostic invocations', () => {
@@ -589,14 +561,14 @@ describe('workspace package scripts', () => {
 
   it('recomputes Nx targets instead of trusting a missing, rejected, or damaged remote restore', () => {
     const setupAction = loadWorkspaceSetupAction();
-    const qualityWorkflow = loadQualityGatesWorkflow();
-    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+    const qualityWorkflow = loadPrGatesWorkflow();
+    const runtimeWorkflow = loadPrGatesWorkflow();
 
     expect(setupAction).toContain('NX_NO_CLOUD=true');
     expect(setupAction).not.toContain('path: .nx/cache');
     expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase direct');
     expect(qualityWorkflow).toContain('pnpm test:unit:affected --phase remaining');
-    expect(runtimeWorkflow).toContain('run: pnpm test:coverage:affected');
+    expect(runtimeWorkflow).toContain('pnpm test:coverage:affected');
   });
 
   it('typechecks all CI gate sources via tsconfig.scripts.json', () => {

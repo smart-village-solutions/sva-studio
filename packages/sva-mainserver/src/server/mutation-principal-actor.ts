@@ -63,7 +63,7 @@ const hasCurrentContextBinding = (
 ): boolean => {
   const supplied = request.headers.get(MAINSERVER_CONTEXT_BINDING_HEADER)?.trim();
   const requiresBinding =
-    request.method !== 'POST' &&
+    (request.method === 'PUT' || request.method === 'PATCH' || request.method === 'DELETE') &&
     request.headers.get(MAINSERVER_CONTRACT_VERSION_HEADER)?.trim() === MAINSERVER_CONTRACT_VERSION;
   return (
     (!supplied && !requiresBinding) ||

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1235,
+  "body": "Regionsspezifische Links zum öffentlichen Abfallkalender sind jetzt lesbar und ohne interne Kennungen verwendbar.\n\n- Links verwenden bekannte Regionsnamen, zum Beispiel `/amt-bad-wilsnack`.\n- Adresswechsel, Kalender, PDF, iCal und E-Mail-Erinnerungen bleiben auf die verlinkte Region begrenzt.\n- Unbekannte oder nicht eindeutige Regionslinks geben keine ungefilterten Standortdaten frei."
+}

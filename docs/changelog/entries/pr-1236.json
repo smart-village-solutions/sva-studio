@@ -1,0 +1,4 @@
+{
+  "prNumber": 1236,
+  "body": "Die Übertragung von Inhalten wird nicht mehr durch eine fälschlich verlangte Kontextbindung für Lesezugriffe blockiert.\n\n- Die Berechtigungsprüfung und die Liste möglicher Ziel-Accounts oder -Organisationen funktionieren wieder als normale Lesezugriffe.\n- Änderungen und Löschungen bleiben weiterhin an den aktuellen Editor-Kontext gebunden."
+}

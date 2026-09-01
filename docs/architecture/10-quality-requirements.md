@@ -412,12 +412,12 @@ Referenzen:
 - Die Abnahme benötigt mindestens 20 repräsentative PR-Läufe; lokale Einzelmessungen sind noch kein Erfüllungsnachweis.
 - Die Auswertung vom 23. August 2026 umfasst 20 grüne PR-Head-SHAs. Die mediane terminale Zeit von `Unit` und `Coverage` sank gegenüber der 20-Run-Baseline von 505,5 auf 348 Sekunden. Der einzige direkt zuordenbare rote Unit-Lauf in diesem Fenster bestätigte den Fehler nach 172 Sekunden; zwei späte Coverage-Verstöße eines nur transitiv betroffenen Projekts sind transparent dokumentiert, zählen aber nicht als direkt verursachtes Fehlersignal.
 
-### Ergänzung 2026-08: Qualitätsziele für den CI-Topologie-Shadow
+### Ergänzung 2026-09: Abnahme der konsolidierten CI-Topologie
 
-- Jeder Shadow-Vergleich muss auf exakt ein Head-SHA und einen versionierten Base-/Head-Scope gebunden sein. Fehlende, doppelte, veraltete, nicht terminale oder fremd-SHA-gebundene Ergebnisse gelten als Abweichung.
-- Die sieben Required-Verträge sowie A11y, App Build, Documentation Integrity, Documentation Catalog und DB Schema Snapshot müssen im Vergleich sichtbar bleiben. Shadow-Namen dürfen keinen bestehenden Required-Kontext ersetzen.
-- Vor einem Cutover sind mindestens 20 repräsentative Live-Läufe mit null ungeklärter Scope-Unterabdeckung oder Ergebnisdrift erforderlich. Während der parallelen Shadow-Phase darf die gepaarte Median-Regression grüner Unit-/Coverage-Endzeiten gegenüber der Alt-Orchestrierung höchstens 90 Sekunden betragen.
-- Die Live-Stichprobe steht bei `20/20`; ihre gepaarte Unit-/Coverage-Regression beträgt 78 Sekunden. Vor dem Cutover muss die korrigierte Sammler-Deadline live grün sein. Nach dem Cutover müssen zehn repräsentative Läufe ohne Doppelarbeit einen Unit-/Coverage-Median von höchstens 438 Sekunden gegenüber der akzeptierten Baseline von 348 Sekunden belegen.
+- Die Shadow-Abnahme ist mit `20/20` Head-SHA-genauen Live-Läufen ohne ungeklärte Scope-Unterabdeckung oder Ergebnisdrift abgeschlossen; ihre gepaarte Unit-/Coverage-Regression betrug 78 Sekunden.
+- Die produktive PR-Topologie muss genau die Required-Namen `Lint`, `Unit`, `Types`, `Complexity`, `PR Integration`, `File Placement` und `Coverage` veröffentlichen. Fehlende Scope- oder Teiljob-Evidenz bleibt fail-closed.
+- Die produktiven Nachfolger umfassen höchstens 840 YAML-Zeilen, besitzen keinen Paritätssammler und führen App-Build-, Codecov- oder SonarCloud-Verträge pro Event-/SHA-Kontext höchstens einmal aus.
+- Nach dem Cutover müssen zehn repräsentative Läufe ohne Doppelarbeit einen Unit-/Coverage-Median von höchstens 438 Sekunden gegenüber der akzeptierten Baseline von 348 Sekunden belegen.
 
 ### Ergänzung 2026-08: Qualitätsziele der IAM-ABAC-Auswertung
 

@@ -5,8 +5,12 @@
 - Abgenommene repräsentative PR-Stichprobe: `20/20`
 - Zusätzlich ausgewertete PR-Paritätsartefakte: 43, davon 41 unmittelbar
   vergleichbare Heads ohne Scope- oder Ergebnisdrift
-- Cutover-Empfehlung: noch nein; zuerst muss die verlängerte PR-Sammler-
-  Deadline auf einem exakten GitHub-Head grün bestätigt werden
+- Exakter PR-Paritätslauf mit verlängerter Sammler-Deadline:
+  [Run 33504704837](https://github.com/smart-village-solutions/sva-studio/actions/runs/33504704837), grün
+- Exakter Main-Paritätslauf:
+  [Run 33506869717](https://github.com/smart-village-solutions/sva-studio/actions/runs/33506869717), grün
+- Cutover-Voraussetzungen: erfüllt; der atomare Cutover entfernt
+  Alt-Orchestrierung und reine Paritätslogik im selben Merge
 - Aktives Ruleset `11600196`: unverändert sieben Required-Kontexte `Lint`,
   `Unit`, `Types`, `Complexity`, `PR Integration`, `File Placement`, `Coverage`
 - Releasepfad `Build` → Dev → Staging → Production: unverändert
@@ -69,33 +73,27 @@ abweichende Scope- oder Gate-Policy der Zieltopologie.
 
 ## Ownership- und Cutover-Grenze
 
-Die vier Altworkflows umfassen weiterhin zusammen 1.050 YAML-Zeilen. Die zwei
-Shadow-Dateien umfassen derzeit 849 Zeilen einschließlich der ausschließlich
-für die Migration benötigten PR- und Main-Paritätsjobs. Die verbindliche Grenze
-von höchstens 840 Zeilen bezieht sich auf die produktiven Nachfolger nach dem
-Cutover; die heutigen Workflow-Anteile vor den beiden Paritätsjobs umfassen
-zusammen 660 Zeilen. Die endgültige Löschbilanz wird trotzdem erst am
-Cutover-Head abgenommen und nicht durch eine kosmetische Kürzung des
-Migrationsstands vorweggenommen.
+Die vier Altworkflows umfassen in der Baseline zusammen 1.050 YAML-Zeilen. Die
+beiden produktiven Nachfolger umfassen im Cutover-Stand zusammen 714 Zeilen und
+unterschreiten damit die verbindliche Grenze von 840 Zeilen. Reine PR-/Main-
+Paritätsskripte sowie der migrationsspezifische Legacy-Scope sind entfernt;
+die Nettoänderung produktiver CI-Orchestrierungs-TypeScript-Dateien ist mit
+696 gelöschten Zeilen negativ.
 
 ## Nächste Freigabeschritte
 
-1. Diesen PR mit dem korrigierten PR-Sammler und den aktualisierten Verträgen
-   über die exakten GitHub-Gates validieren.
-2. Ruleset und sieben Required-Namen unmittelbar vor dem Cutover erneut lesen.
-3. Altworkflows und Paritätsjobs in einem separaten, atomaren Cutover entfernen,
-   ohne `build.yml`, `app-e2e.yml` oder `promote.yml` zu verändern.
-4. Am exakten Cutover-Head alle sieben Required-Kontexte prüfen und danach zehn
+1. Den atomaren Cutover-PR über die exakten GitHub-Gates validieren.
+2. Am exakten Cutover-Head alle sieben Required-Kontexte prüfen und danach zehn
    repräsentative PR-Läufe auf Doppelarbeit und den Median von höchstens
    438 Sekunden beobachten.
-5. Bei fehlendem Required-Kontext, ungeklärter Scope-Unterabdeckung oder
+3. Bei fehlendem Required-Kontext, ungeklärter Scope-Unterabdeckung oder
    Ergebnisdrift den vollständigen vorherigen Workflowstand per Revert-Commit
    wiederherstellen.
 
 ## Aussagegrenze
 
 Die Live-Artefakte belegen die PR-Scope- und Ergebnisparität sowie die
-temporäre Laufzeit- und Kostenwirkung. Sie beweisen noch nicht die produktive
-Post-Cutover-Laufzeit, die endgültige YAML-Löschbilanz oder die Veröffentlichung
-aller Required-Kontexte durch die neue Topologie. Deshalb ist die
-Paritätsvoraussetzung erfüllt, der Cutover selbst aber noch nicht freigegeben.
+temporäre Laufzeit- und Kostenwirkung. Die lokale Löschbilanz belegt die
+Ownership-Grenze. Noch offen bleiben die Veröffentlichung aller Required-
+Kontexte am exakten Cutover-PR-Head und die produktive Post-Cutover-Stichprobe
+von zehn repräsentativen Läufen.

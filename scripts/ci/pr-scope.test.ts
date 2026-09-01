@@ -7,7 +7,6 @@ import {
   type PrScopeDecision,
 } from './pr-scope.ts';
 import { createPrScopeEvidence, parsePrScopeEvidence } from './pr-scope.cli.ts';
-import { classifyLegacyWorkflowScope } from './legacy-pr-scope.ts';
 
 const expectDecision = (decision: PrScopeDecision, expected: Partial<PrScopeDecision>): void => {
   expect(decision).toMatchObject(expected);
@@ -233,7 +232,7 @@ describe('pr-scope', () => {
   });
 
   it('escalates integration to full for gate workflow changes with current workflow names', () => {
-    const decision = classifyPrScope(['.github/workflows/runtime-gates.yml']);
+    const decision = classifyPrScope(['.github/workflows/ci-gates-pr-shadow.yml']);
 
     expectDecision(decision, {
       codeRelevant: true,
@@ -246,7 +245,7 @@ describe('pr-scope', () => {
 
   it('keeps full coverage triggers independent from per-project regression scoping', () => {
     const decision = classifyPrScope([
-      '.github/workflows/runtime-gates.yml',
+      '.github/workflows/ci-gates-main-shadow.yml',
       'apps/sva-studio-react/src/lib/studio-changelog.server.ts',
       'packages/plugin-events/tests/events.pages.test.tsx',
     ]);
@@ -257,7 +256,7 @@ describe('pr-scope', () => {
   });
 
   it('keeps workflow-only changes on affected quality gates', () => {
-    const decision = classifyPrScope(['.github/workflows/quality-gates.yml']);
+    const decision = classifyPrScope(['.github/workflows/ci-gates-pr-shadow.yml']);
 
     expectDecision(decision, {
       codeRelevant: true,
@@ -325,22 +324,6 @@ describe('pr-scope', () => {
       'packages/core/src/index.ts',
     ]);
     expect(classifyPrScope(changedFiles).dbSchemaMode).toBe('full');
-  });
-
-  it('derives legacy workflow scope without using the centralized classifier', () => {
-    const fixtures = [
-      ['docs/development/testing-coverage.md'],
-      ['packages/core/src/index.ts'],
-      ['apps/sva-studio-react/src/routes/index.tsx'],
-      ['apps/sva-studio-react/src/server.ts'],
-      ['packages/data/migrations/0042_add_index.sql'],
-      ['scripts/ci/pr-scope.ts'],
-      ['pnpm-lock.yaml'],
-    ];
-
-    for (const files of fixtures) {
-      expect(classifyLegacyWorkflowScope(files)).toEqual(classifyPrScope(files));
-    }
   });
 
   it('falls back to two-dot diff when no merge base is available', () => {

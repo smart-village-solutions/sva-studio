@@ -9,6 +9,7 @@ import {
   buildCoverageProjectCommand,
   buildEarlyCoverageGateCommand,
   clearWorkspaceCoverageOutputs,
+  excludeCoverageExemptProjects,
   writeCoverageShardShadowEvidence,
 } from './affected-coverage-gate.ts';
 import { resolveCoveragePlan } from './coverage-plan.ts';
@@ -37,6 +38,15 @@ describe('affected-coverage-gate', () => {
     expect(buildEarlyCoverageGateCommand(['plugin-news', 'routing'])).toBe(
       'COVERAGE_GATE_EVALUATE_REGRESSIONS=1 COVERAGE_GATE_PROJECT_FILTER=plugin-news,routing pnpm coverage-gate'
     );
+  });
+
+  it('excludes policy-exempt projects before coverage planning', () => {
+    expect(
+      excludeCoverageExemptProjects(
+        ['tooling-testing', 'plugin-news', 'public-waste-calendar-web'],
+        ['tooling-testing', 'public-waste-calendar-web']
+      )
+    ).toEqual(['plugin-news']);
   });
 
   it('keeps shard evidence write failures observational in the required coverage runner', () => {

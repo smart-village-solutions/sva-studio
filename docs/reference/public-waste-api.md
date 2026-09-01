@@ -6,6 +6,20 @@ Die Public-Waste-Runtime stellt öffentliche, ausschließlich lesende Endpunkte 
 
 Der Ortskatalog verändert keine Waste-Fachdaten. Er liefert keine E-Mail-Abonnements, Consent-, Token-, Outbox-, Credential-, Audit- oder Jobdaten.
 
+## Weboberfläche an eine Region binden
+
+Einbettende Seiten begrenzen die öffentliche Weboberfläche über einen lesbaren Regionspfad dauerhaft auf eine öffentlich auswählbare Region. Der Pfad wird aus dem Regionsnamen gebildet; Umlaute werden als `ae`, `oe` beziehungsweise `ue`, `ß` als `ss` und Worttrenner als Bindestriche geschrieben:
+
+```text
+https://abfallkalender.example/amt-bad-wilsnack
+```
+
+Die verfügbaren Namen und Slugs liefert `GET /api/public-waste/regions`. Der Katalog veröffentlicht nur nicht leere, eindeutig auflösbare Slugs. Die Auswahl beginnt direkt beim Ort. „Adresse ändern“, weitere Adresssuchen und die aus dem gewählten Standort abgeleiteten Kalender-, PDF-, iCal- und Erinnerungsaktionen behalten die URL-Region bei. Ohne Regionspfad bleibt die regionsübergreifende Auswahl unverändert. Formal ungültige, unbekannte oder nicht eindeutige Slugs werden mit einem Fehlerzustand abgelehnt; es erfolgt kein ungefilterter Fallback.
+
+Der Slug folgt dem aktuellen Regionsnamen. Wird dieser Name in den Stammdaten geändert, muss die einbettende Seite den Link anhand des aktuellen Regionskatalogs aktualisieren. Der Pfad ist damit ein lesbarer Kundenlink, aber kein namensunabhänglicher Permalink.
+
+Bestehende technische Einbindungen mit genau einem gültigen Suchparameter `regionId` bleiben kompatibel, sind aber nicht das Format für neue öffentliche Links.
+
 ## Abholorte laden
 
 ```http

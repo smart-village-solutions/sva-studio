@@ -3,6 +3,31 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPublicWasteRepository } from './public-waste-repository.server.js';
 
 describe('public waste repository', () => {
+  it('lists only regions backed by active locations and tours', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 2,
+      rows: [
+        { id: 'region-1', label: 'Amt Bad Wilsnack/Weisen' },
+        { id: 'region-2', label: 'Groß Pankow (Prignitz)' },
+      ],
+    });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(repository.listPublicRegions()).resolves.toEqual([
+      { id: 'region-1', label: 'Amt Bad Wilsnack/Weisen' },
+      { id: 'region-2', label: 'Groß Pankow (Prignitz)' },
+    ]);
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining('FROM "waste".waste_regions r'),
+      })
+    );
+    expect(execute.mock.calls[0]?.[0].text).toContain('WHERE EXISTS');
+    expect(execute.mock.calls[0]?.[0].text).not.toContain('SELECT DISTINCT');
+    expect(execute.mock.calls[0]?.[0].text).toContain('cl.active = true');
+    expect(execute.mock.calls[0]?.[0].text).toContain('t.active = true');
+  });
+
   it('projects, deduplicates and sorts active public collection locations', async () => {
     const execute = vi.fn().mockResolvedValueOnce({
       rowCount: 4,
@@ -130,6 +155,47 @@ describe('public waste repository', () => {
       step: 'street',
       options: [{ id: 's-1', label: 'Hauptstraße' }],
     });
+  });
+
+  it('rejects an unknown explicit region before loading shared or regional locations', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ id: 'r-1', label: 'Prignitz' }],
+    });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.listSelectionOptions({ selection: { regionId: 'unknown-region' } })
+    ).resolves.toEqual({
+      step: 'city',
+      options: [],
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts an uppercase UUID for a known explicit region', async () => {
+    const regionId = 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA';
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: regionId.toLowerCase(), label: 'Prignitz' }],
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: 'c-1', label: 'Wittenberge' }],
+      });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.listSelectionOptions({ selection: { regionId } })
+    ).resolves.toMatchObject({
+      step: 'city',
+      options: [{ id: 'c-1', label: 'Wittenberge' }],
+    });
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({ values: [regionId.toLowerCase()] })
+    );
   });
 
   it('surfaces the catch-all street option for city-wide collection locations', async () => {

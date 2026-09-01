@@ -360,6 +360,7 @@ const MainserverResourcePrincipalBoundary = ({
   children: (control: MainserverPrincipalControlModel) => React.ReactNode;
   contentType: string;
 }>) => {
+  const { user } = useAuth();
   const resolution = useMainserverResourcePrincipalControl(contentType);
   const mutationCapabilities = useMainserverMutationCapabilities();
   const navigate = useNavigate();
@@ -412,6 +413,7 @@ const MainserverResourcePrincipalBoundary = ({
       setTransferAuthorized(false);
       return;
     }
+    setTransferAuthorized(false);
     let active = true;
     void requestMainserverJson<{
       readonly data: Readonly<{ canTransfer: boolean }>;
@@ -423,14 +425,14 @@ const MainserverResourcePrincipalBoundary = ({
       (response) => {
         if (!active) return;
         setResolvedOwner(response.currentOwner);
-        setTransferAuthorized(transferCapabilityConfirmed && response.data.canTransfer);
+        setTransferAuthorized(response.data.canTransfer);
       },
       () => active && setTransferAuthorized(false)
     );
     return () => {
       active = false;
     };
-  }, [contentId, actingPrincipalType, baseUrl, resolution.kind, transferCapabilityConfirmed]);
+  }, [contentId, actingPrincipalType, baseUrl, resolution.kind, user?.id]);
   if (resolution.kind === 'loading') {
     return <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>;
   }

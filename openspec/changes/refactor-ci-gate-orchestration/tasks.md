@@ -21,10 +21,10 @@
 
 ## 4. Atomarer Cutover und Löschung
 
-- [ ] 4.1 Vor dem Cutover das aktive Ruleset erneut lesen und bei jeder Abweichung von den sieben vereinbarten Kontexten stoppen.
+- [x] 4.1 Vor dem Cutover das aktive Ruleset erneut lesen und bei jeder Abweichung von den sieben vereinbarten Kontexten stoppen.
 - [ ] 4.2 Die sieben Required-Kontexte atomar auf die neue Topologie umschalten, ohne Ruleset-Namen zu verändern.
 - [ ] 4.3 Am exakten Cutover-Head alle Required-Kontexte und die vollständige Main-/Release-Abgrenzung verifizieren; erst danach die vier Alt-Orchestrierungsworkflows löschen.
-- [ ] 4.4 Eine produktive YAML-Summe von höchstens 840 Zeilen und keine Nettozunahme produktiver CI-Orchestrierungs-TS-Zeilen nachweisen.
+- [x] 4.4 Eine produktive YAML-Summe von höchstens 840 Zeilen und keine Nettozunahme produktiver CI-Orchestrierungs-TS-Zeilen nachweisen.
 
 ## 5. Dokumentation und Abschluss
 

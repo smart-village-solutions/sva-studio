@@ -14,25 +14,22 @@ Die Policy ist fuer kleine Teams und wachsende Maintainer-Strukturen geschrieben
 
 Die folgenden Checks muessen in GitHub Branch Protection fuer `main` als `required` konfiguriert sein:
 
-1. `Quality Gates / Lint`
-2. `Quality Gates / Unit`
-3. `Quality Gates / Types`
-4. `Runtime Gates / Coverage`
-5. `Runtime Gates / Complexity`
-6. `Runtime Gates / PR Integration`
-7. `App E2E / App E2E`
+1. `Lint`
+2. `Unit`
+3. `Types`
+4. `Complexity`
+5. `PR Integration`
+6. `File Placement`
+7. `Coverage`
 
 Quellen:
 
-- Coverage-Workflow: `.github/workflows/runtime-gates.yml`
-- E2E-Workflow: `.github/workflows/app-e2e.yml`
+- PR-Gate-Workflow: `.github/workflows/ci-gates-pr-shadow.yml` (historischer
+  Dateiname als Triggeranker während des Cutovers)
 - Gate-Baseline: `docs/governance/merge-review-gates.md`
 
-Enforcement-Hinweis fuer `App E2E / App E2E`:
-
-- Zielmodell: Der Check ist in Branch Protection immer als `required` hinterlegt.
-- Technische Voraussetzung: `.github/workflows/app-e2e.yml` muss dafuer fuer alle PRs laufen und bei PRs ohne relevante Pfadtreffer fruehzeitig mit Status `success` enden.
-- Solange der Workflow noch ueber `pull_request.paths` eingeschraenkt ist, darf der Check nicht als strikt required fuer alle PRs aktiviert werden, damit PRs ohne Trigger nicht im Status `expected` haengen bleiben.
+`App E2E / App E2E` bleibt separate Main-/Staging-Release-Evidenz aus
+`.github/workflows/app-e2e.yml`, ist aber kein Required-Kontext des PR-Rulesets.
 
 ### Required Reviews
 

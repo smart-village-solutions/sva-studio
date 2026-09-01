@@ -610,12 +610,12 @@ Referenzen:
 - Restrisiko: Ein Browserfehler erreicht nach dem Merge zunächst `main` und das automatisch aktualisierte Dev. Maßnahme: Der kanonische vollständige Main-E2E-Lauf ist für exakt dieses Head-SHA vor jeder Staging-Mutation blockierend; Nightly, manuell und Fremd-SHA sind keine Release-Evidenz.
 - Restrisiko: In der 20-Run-Auswertung trat nur ein direkt zuordenbarer roter Unit-/Coverage-Fall auf. Die Zielwerte sind erfüllt, aber die rote Stichprobe bleibt dünn; die versionierte Laufzeitevidenz wird deshalb fortgeführt und nicht als einmalige Messung entfernt.
 
-### Fortschreibung 2026-08: CI-Topologie-Shadow
+### Fortschreibung 2026-09: Konsolidierte CI-Topologie
 
-- Risiko: Der temporäre Shadow verdoppelt Gate-Arbeit und Runner-Minuten. Maßnahme: Die erreichte `20/20`-Paritätsmessung beendet die fachliche Beobachtungsphase; nach dem Live-Nachweis der korrigierten Sammler-Deadline werden Shadow und Alt-Orchestrierung im atomaren Cutover abgebaut.
-- Risiko: Ein Shadow-Job könnte versehentlich als Required-Kontext oder Release-Evidenz interpretiert werden. Maßnahme: eindeutige `CI Shadow / ...`-Namen, keine Ruleset-Mutation und strikte Trennung von `Build`, `App E2E` und `Promote`.
-- Risiko: Statische Contract-Tests beweisen keine Live-Parität, Queue-Zeit oder GitHub-Semantik. Maßnahme: Die Live-Auswertung dokumentiert `20/20`, eine gepaarte Unit-/Coverage-Regression von 78 Sekunden sowie erkannte Infrastruktur- und Testflanken; die verlängerte PR-Sammler-Deadline wird vor dem Cutover auf einem exakten Head bestätigt.
-- Restrisiko: Die produktive Laufzeit ohne Doppelarbeit ist vor dem Cutover nicht messbar. Maßnahme: zehn repräsentative Post-Cutover-Läufe gegen höchstens 438 Sekunden Median beobachten und bei ungeklärter Unterabdeckung oder Ergebnisdrift den vollständigen Workflowstand per Revert-Commit wiederherstellen.
+- Das Risiko paralleler Shadow-Arbeit ist durch den Cutover beseitigt: Vier Altworkflows, beide Paritätssammler und die Legacy-Scope-Berechnung sind entfernt.
+- Risiko: Der zentrale PR-Scope ist eine gemeinsame Abhängigkeit. Maßnahme: versionierte Base-/Head-SHA-Evidenz, sichere Full-Fallbacks bei auswertbarer Unsicherheit und fail-closed Required-Aggregatoren bei fehlender Evidenz.
+- Risiko: Codecov oder SonarCloud könnten durch parallele Workflows doppelt beschrieben werden. Maßnahme: je ein Upload im PR- beziehungsweise Main-Coverage-Job, genau ein SonarCloud-Scan auf Main/Nightly und kein zusätzlicher Main-App-Build.
+- Restrisiko: Die produktive Laufzeit ohne Doppelarbeit ist erst nach dem Cutover messbar. Maßnahme: zehn repräsentative Post-Cutover-Läufe gegen höchstens 438 Sekunden Median beobachten und bei ungeklärter Unterabdeckung oder Ergebnisdrift den vollständigen Workflowstand per Revert-Commit wiederherstellen.
 
 ### Fortschreibung 2026-08: IAM-ABAC-Entscheidungsbausteine
 

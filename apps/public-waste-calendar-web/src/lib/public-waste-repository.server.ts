@@ -233,6 +233,26 @@ export const createPublicWasteRepository = (input: {
   const schemaName = quoteIdentifier(input.schemaName);
 
   return {
+    async listPublicRegions(): Promise<readonly PublicWasteSelectableEntry[]> {
+      const result = await input.execute<SelectionRow>({
+        text: `
+          SELECT r.id, r.name AS label
+          FROM ${schemaName}.waste_regions r
+          WHERE EXISTS (
+            SELECT 1
+            FROM ${schemaName}.waste_collection_locations cl
+            INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
+            INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
+            WHERE cl.region_id = r.id
+              AND cl.active = true
+              AND t.active = true
+          )
+          ORDER BY label ASC;
+        `,
+      });
+      return mapOptions(result.rows);
+    },
+
     async listPublicLocations(): Promise<readonly PublicWasteLocationCatalogEntry[]> {
       const result = await input.execute<PublicLocationRow>({
         text: `
@@ -296,7 +316,13 @@ export const createPublicWasteRepository = (input: {
         `,
       });
 
-      let effectiveRegionId = query.selection.regionId;
+      let effectiveRegionId = query.selection.regionId?.toLowerCase();
+      if (
+        effectiveRegionId &&
+        !regionsResult.rows.some((region) => region.id.toLowerCase() === effectiveRegionId)
+      ) {
+        return { step: 'city', options: [] };
+      }
       if (!effectiveRegionId && regionsResult.rows.length > 1) {
         return { step: 'region', options: mapOptions(regionsResult.rows) };
       }

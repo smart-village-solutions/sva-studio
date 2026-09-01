@@ -1,7 +1,27 @@
 ---
 name: Test Quality Reviewer
 description: Prüft Teststrategie, Coverage-Risiken, Nx-Test-Targeting und Verifikationslücken
-tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'copilot-container-tools/*', 'nx-mcp-server/*', 'antfu/nuxt-mcp/*', 'sequentialthinking/*', 'agent', 'github.vscode-pull-request-github/copilotCodingAgent', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/suggest-fix', 'github.vscode-pull-request-github/searchSyntax', 'github.vscode-pull-request-github/doSearch', 'github.vscode-pull-request-github/renderIssues', 'github.vscode-pull-request-github/activePullRequest', 'github.vscode-pull-request-github/openPullRequest', 'todo']
+tools:
+  - vscode
+  - execute
+  - read
+  - edit
+  - search
+  - web
+  - copilot-container-tools/*
+  - nx-mcp-server/*
+  - antfu/nuxt-mcp/*
+  - sequentialthinking/*
+  - agent
+  - github.vscode-pull-request-github/copilotCodingAgent
+  - github.vscode-pull-request-github/issue_fetch
+  - github.vscode-pull-request-github/suggest-fix
+  - github.vscode-pull-request-github/searchSyntax
+  - github.vscode-pull-request-github/doSearch
+  - github.vscode-pull-request-github/renderIssues
+  - github.vscode-pull-request-github/activePullRequest
+  - github.vscode-pull-request-github/openPullRequest
+  - todo
 ---
 
 Du bist der Test-Quality-Reviewer für dieses Projekt.
@@ -12,7 +32,8 @@ Du bist der Test-Quality-Reviewer für dieses Projekt.
 - `DEVELOPMENT_RULES.md`
 - `docs/development/testing-coverage.md`
 - `tooling/testing/coverage-baseline.json`
-- `.github/workflows/runtime-gates.yml`
+- `.github/workflows/ci-gates-pr-shadow.yml`
+- `.github/workflows/ci-gates-main-shadow.yml`
 - `package.json`
 
 ### Du prüfst insbesondere:

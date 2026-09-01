@@ -309,12 +309,12 @@ describe('documentation integrity', () => {
     ).toBe('docs/development/setup.md:7: relatives Linkziel fehlt: ./missing.md');
   });
 
-  it('keeps the gate blocking in test:ci and Repository Hygiene', () => {
+  it('keeps the gate blocking in test:ci and consolidated PR gates', () => {
     const packageJson = JSON.parse(
       readFileSync(path.join(workspaceRoot, 'package.json'), 'utf8')
     ) as { scripts: Record<string, string> };
     const workflow = readFileSync(
-      path.join(workspaceRoot, '.github/workflows/repository-hygiene.yml'),
+      path.join(workspaceRoot, '.github/workflows/ci-gates-pr-shadow.yml'),
       'utf8'
     );
 

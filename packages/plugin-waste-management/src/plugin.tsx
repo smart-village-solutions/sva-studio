@@ -1,7 +1,6 @@
 import {
   definePluginAuditEvents,
   definePluginPermissions,
-  wasteManagementOperationsContract,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 

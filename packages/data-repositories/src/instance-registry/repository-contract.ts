@@ -165,7 +165,11 @@ export type InstanceRegistryRepository = {
     stateRevision: number;
     updatedBy: string | null;
   } | null>;
-  readonly assignModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly assignModule: (
+    instanceId: string,
+    moduleId: string,
+    lifecycleContractRevision?: string
+  ) => Promise<boolean>;
   readonly restoreModuleActivation: (
     instanceId: string,
     moduleId: string,

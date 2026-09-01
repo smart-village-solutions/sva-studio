@@ -62,8 +62,39 @@ reactivation_intent AS (
     AND retry_kind = 'terminal'
     AND EXISTS (SELECT 1 FROM mutation)
   RETURNING 1
+),
+lifecycle_intent AS (
+  INSERT INTO iam.instance_plugin_lifecycle (
+    instance_id, plugin_id, desired_operation, desired_generation, readiness_status,
+    contract_revision, next_recheck_at, retry_kind, retry_after,
+    recovery_error_code, updated_at
+  )
+  SELECT $1, $2, 'provision', 1, 'pending', $3, now(), NULL, NULL, NULL, now()
+  FROM mutation
+  WHERE $3::text IS NOT NULL
+  ON CONFLICT (instance_id, plugin_id) DO UPDATE
+  SET desired_operation = 'reconcile',
+    desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1,
+    readiness_status = 'pending', readiness_revision = NULL,
+    contract_revision = EXCLUDED.contract_revision,
+    next_recheck_at = now(), retry_kind = NULL, retry_after = NULL,
+    recovery_error_code = NULL, updated_at = now()
+  WHERE iam.instance_plugin_lifecycle.active_job_id IS NULL
+  RETURNING plugin_id
+),
+lifecycle_enqueued AS (
+  SELECT graphile_worker.sva_enqueue_job(
+    identifier => 'plugin_tenant_lifecycle_retry',
+    payload => json_build_object('instanceId', $1::text, 'pluginId', $2::text),
+    queue_name => 'plugin-tenant-lifecycle', max_attempts => 5,
+    job_key => 'plugin-tenant-lifecycle-activation:' || $1::text || ':' || $2::text,
+    run_at => now()
+  )
+  FROM lifecycle_intent
 )
-SELECT acquired, EXISTS (SELECT 1 FROM mutation) AS changed FROM module_lock;
+SELECT acquired, EXISTS (SELECT 1 FROM mutation) AS changed,
+  EXISTS (SELECT 1 FROM lifecycle_enqueued) AS lifecycle_enqueued
+FROM module_lock;
 `;
 
 export const revokeModuleSql = `

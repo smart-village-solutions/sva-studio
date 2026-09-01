@@ -149,7 +149,14 @@ export const createAssignModuleHandler =
       input.instanceId,
       input.moduleId
     );
-    const inserted = await deps.repository.assignModule(input.instanceId, input.moduleId);
+    const primaryLifecycle = deps.pluginTenantLifecycleRegistry?.get(input.moduleId);
+    const inserted = primaryLifecycle
+      ? await deps.repository.assignModule(
+          input.instanceId,
+          input.moduleId,
+          primaryLifecycle.contractRevision
+        )
+      : await deps.repository.assignModule(input.instanceId, input.moduleId);
     if (!inserted) {
       return { ok: false, reason: 'conflict' };
     }
@@ -169,7 +176,14 @@ export const createAssignModuleHandler =
             input.instanceId,
             moduleId
           );
-          const companionInserted = await deps.repository.assignModule(input.instanceId, moduleId);
+          const companionLifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
+          const companionInserted = companionLifecycle
+            ? await deps.repository.assignModule(
+                input.instanceId,
+                moduleId,
+                companionLifecycle.contractRevision
+              )
+            : await deps.repository.assignModule(input.instanceId, moduleId);
           if (companionInserted) {
             changedAssignments.push({ moduleId, previous: previousActivation });
           }
@@ -188,7 +202,7 @@ export const createAssignModuleHandler =
       await deps.repository.persistPluginTenantLifecycleReconcileIntents({
         instanceId: input.instanceId,
         lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],
-        forcePluginIds: changedAssignments.map(({ moduleId }) => moduleId),
+        forcePluginIds: [],
       });
     } catch (error) {
       try {
@@ -261,7 +275,10 @@ const assignBootstrapModulesAndSyncIam = async (input: {
     for (const moduleId of requestedModuleIds) {
       if (!currentAssignedModuleIds.has(moduleId)) {
         const previous = await deps.repository.getModuleActivationPolicy(instanceId, moduleId);
-        const inserted = await deps.repository.assignModule(instanceId, moduleId);
+        const lifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
+        const inserted = lifecycle
+          ? await deps.repository.assignModule(instanceId, moduleId, lifecycle.contractRevision)
+          : await deps.repository.assignModule(instanceId, moduleId);
         if (inserted) changedAssignments.push({ moduleId, previous });
       }
     }

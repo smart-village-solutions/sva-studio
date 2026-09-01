@@ -63,6 +63,7 @@ const collect = async (metricName: string) => {
 
 describe('plugin tenant lifecycle observability', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.resetModules();
     vi.clearAllMocks();
     state.callbacks.clear();
@@ -121,6 +122,20 @@ describe('plugin tenant lifecycle observability', () => {
       expect(attributes).not.toHaveProperty('request_id');
       expect(attributes).not.toHaveProperty('correlation_id');
     }
+  });
+
+  it('throttles fleet-wide aggregate reads across metric collections', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T10:00:00.000Z'));
+    await import('./observability.js');
+
+    await collect('sva_plugin_tenant_lifecycle_stall_count');
+    await collect('sva_plugin_tenant_lifecycle_observation_failure');
+    expect(state.query).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(30_000);
+    await collect('sva_plugin_tenant_lifecycle_stall_count');
+    expect(state.query).toHaveBeenCalledTimes(2);
   });
 
   it('fails observability closed without throwing from asynchronous metric collection', async () => {

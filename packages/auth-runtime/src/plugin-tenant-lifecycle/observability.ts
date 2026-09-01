@@ -67,6 +67,9 @@ const logger = createSdkLogger({
   level: 'info',
 });
 const meter = metrics.getMeter('sva.plugin-tenant-lifecycle');
+const stallSnapshotCacheTtlMs = 30_000;
+let cachedStallSnapshot: Readonly<{ expiresAtMs: number; snapshot: StallSnapshot }> | null = null;
+let stallSnapshotReadInFlight: Promise<StallSnapshot> | null = null;
 
 const stallGauge = meter.createObservableGauge('sva_plugin_tenant_lifecycle_stall_count', {
   description: 'Fleet-wide plugin tenant lifecycle stalls grouped by a bounded reason code.',
@@ -135,11 +138,29 @@ export const readPluginTenantLifecycleStallSnapshot = async (): Promise<StallSna
   return snapshot;
 };
 
+const readCachedPluginTenantLifecycleStallSnapshot = (): Promise<StallSnapshot> => {
+  const now = Date.now();
+  if (cachedStallSnapshot && cachedStallSnapshot.expiresAtMs > now) {
+    return Promise.resolve(cachedStallSnapshot.snapshot);
+  }
+  if (stallSnapshotReadInFlight) return stallSnapshotReadInFlight;
+  const read = readPluginTenantLifecycleStallSnapshot()
+    .then((snapshot) => {
+      cachedStallSnapshot = { expiresAtMs: Date.now() + stallSnapshotCacheTtlMs, snapshot };
+      return snapshot;
+    })
+    .finally(() => {
+      if (stallSnapshotReadInFlight === read) stallSnapshotReadInFlight = null;
+    });
+  stallSnapshotReadInFlight = read;
+  return read;
+};
+
 meter.addBatchObservableCallback(
   async (result) => {
     const poolAvailable = resolvePool() !== null;
     try {
-      const snapshot = await readPluginTenantLifecycleStallSnapshot();
+      const snapshot = await readCachedPluginTenantLifecycleStallSnapshot();
       for (const reasonCode of pluginTenantLifecycleStallReasons) {
         result.observe(stallGauge, snapshot[reasonCode], { reason_code: reasonCode });
       }

@@ -120,8 +120,12 @@ export const createModuleActivationRepository = (
       updatedBy: row.updated_by,
     };
   },
-  assignModule: (instanceId, moduleId) =>
-    mutateModule(executor, assignModuleSql, [instanceId, moduleId]),
+  assignModule: (instanceId, moduleId, lifecycleContractRevision) =>
+    mutateModule(executor, assignModuleSql, [
+      instanceId,
+      moduleId,
+      lifecycleContractRevision ?? null,
+    ]),
   revokeModule: (instanceId, moduleId) =>
     mutateModule(executor, revokeModuleSql, [instanceId, moduleId]),
   restoreModuleActivation: (instanceId, moduleId, previous) =>

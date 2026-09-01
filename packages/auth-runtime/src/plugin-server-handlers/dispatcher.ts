@@ -128,6 +128,9 @@ const authorizeTenantHandler = async (input: {
   if (!tenantAccess.allowed) {
     return createError(input.request, input.translate, 403, 'forbidden', 'pluginUnavailable');
   }
+  if (requirement.resourceContext === 'collection' && !input.context.activeOrganizationId) {
+    return createError(input.request, input.translate, 403, 'forbidden', 'invalidInstanceContext');
+  }
   const resolved = await input.resolvePermissions({
     instanceId,
     keycloakSubject: input.context.user.id,

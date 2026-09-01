@@ -1134,7 +1134,7 @@ describe('instance registry service facade', () => {
       }),
     });
 
-    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events', 'events-1:1');
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
@@ -1154,7 +1154,7 @@ describe('instance registry service facade', () => {
     expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
       instanceId: 'demo',
       lifecycles: [{ pluginId: 'events', contractRevision: 'events-1:1' }],
-      forcePluginIds: ['events'],
+      forcePluginIds: [],
     });
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1229,7 +1229,13 @@ describe('instance registry service facade', () => {
           assignedModules: ['categories', 'events', 'news'],
         }),
     });
-    const service = createInstanceRegistryService(createDeps(repository));
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        pluginTenantLifecycleRegistry: new Map([
+          ['events', { pluginId: 'events', contractRevision: 'events-1:1' }],
+        ]),
+      })
+    );
 
     await expect(
       service.bootstrapAdminStructure({
@@ -1248,7 +1254,7 @@ describe('instance registry service facade', () => {
 
     expect(repository.assignModule).toHaveBeenCalledTimes(2);
     expect(repository.assignModule).toHaveBeenNthCalledWith(1, 'demo', 'categories');
-    expect(repository.assignModule).toHaveBeenNthCalledWith(2, 'demo', 'events');
+    expect(repository.assignModule).toHaveBeenNthCalledWith(2, 'demo', 'events', 'events-1:1');
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',

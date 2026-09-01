@@ -140,6 +140,20 @@ describe('instance registry repository module iam', () => {
     expect(statements[1]?.text).not.toContain('DELETE FROM iam.instance_modules');
   });
 
+  it('persists and enqueues a lifecycle intent atomically with module activation', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ acquired: true, changed: true }]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.assignModule('tenant-a', 'events', 'events-1:1')).resolves.toBe(true);
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1']);
+    expect(statements[0]?.text).toContain('INSERT INTO iam.instance_modules');
+    expect(statements[0]?.text).toContain('INSERT INTO iam.instance_plugin_lifecycle');
+    expect(statements[0]?.text).toContain("identifier => 'plugin_tenant_lifecycle_retry'");
+    expect(statements[0]?.text).toContain('FROM lifecycle_intent');
+  });
+
   it('reconciles activation policies deterministically and preserves non-required overrides', async () => {
     const { executor, statements } = createQueuedExecutor([
       [{ acquired: true, changed: true }],

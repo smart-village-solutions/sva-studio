@@ -9,6 +9,8 @@ import {
 const labels: ContentOwnershipPanelLabels = {
   title: 'Inhaber',
   currentOwner: 'Aktueller Inhaber',
+  ownerUnresolved: 'Keinem Account oder keiner Organisation eindeutig zugeordnet.',
+  ownerResolutionFailed: 'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
   account: 'Persönlicher Account',
   organization: 'Organisation',
   verificationRequired: 'DataProvider-Zuordnung wird beim Transfer geprüft.',
@@ -44,6 +46,29 @@ const currentOwner = {
 afterEach(cleanup);
 
 describe('ContentOwnershipPanel', () => {
+  it.each([
+    ['unresolved', labels.ownerUnresolved],
+    ['failed', labels.ownerResolutionFailed],
+  ] as const)('shows the %s principal resolution below the DataProvider owner', (status, text) => {
+    render(
+      <ContentOwnershipPanel
+        currentOwner={{
+          displayName: 'Bestehender DataProvider',
+          principalResolution: status,
+        }}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={vi.fn()}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Bestehender DataProvider')).toBeTruthy();
+    expect(screen.getByText(text)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Inhalt übertragen' })).toBeTruthy();
+  });
+
   it('shows the owner but no active transfer action for unsupported content', () => {
     render(
       <ContentOwnershipPanel

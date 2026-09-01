@@ -41,11 +41,21 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
   ContentOwnershipPanel: ({
     canTransfer,
     currentOwner,
+    supported,
   }: {
     canTransfer: boolean;
-    currentOwner: { displayName: string };
+    currentOwner: {
+      displayName: string;
+      principalResolution?: 'resolved' | 'unresolved' | 'failed';
+    };
+    supported: boolean;
   }) => (
-    <div data-can-transfer={String(canTransfer)} data-testid="content-ownership-panel">
+    <div
+      data-can-transfer={String(canTransfer)}
+      data-principal-resolution={currentOwner.principalResolution}
+      data-supported={String(supported)}
+      data-testid="content-ownership-panel"
+    >
       {currentOwner.displayName}
     </div>
   ),
@@ -869,6 +879,7 @@ describe('appRouteBindings', () => {
         data: { canTransfer: true },
         currentOwner: {
           principal: { type: 'account', id: 'account-1' },
+          principalResolution: 'resolved',
           displayName: 'Aktueller Account',
         },
       });
@@ -882,10 +893,74 @@ describe('appRouteBindings', () => {
       );
     });
     expect(screen.getByTestId('content-ownership-panel').textContent).toBe('Aktueller Account');
+    expect(
+      screen.getByTestId('content-ownership-panel').getAttribute('data-principal-resolution')
+    ).toBe('resolved');
     expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
       expect.objectContaining({
         url: '/api/v1/mainserver/content-ownership/news.article/content-1/authorization',
       })
+    );
+  });
+
+  it('shows unresolved ownership even when transfer authorization is denied', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.requestMainserverJson
+      .mockResolvedValueOnce({
+        data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: false },
+        currentOwner: {
+          principalResolution: 'unresolved',
+          displayName: 'Nicht zugeordneter DataProvider',
+        },
+      });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('content-ownership-panel').getAttribute('data-principal-resolution')
+      ).toBe('unresolved');
+    });
+    expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
+      'false'
+    );
+    expect(screen.getByTestId('content-ownership-panel').textContent).toBe(
+      'Nicht zugeordneter DataProvider'
+    );
+  });
+
+  it('loads survey ownership status although surveys cannot be transferred', async () => {
+    routeState.params = { id: 'survey-1' };
+    routeState.requestMainserverJson
+      .mockResolvedValueOnce({
+        data: { dataProvider: { id: 'provider-1', name: 'Survey DataProvider' } },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: false },
+        currentOwner: {
+          principalResolution: 'resolved',
+          principal: { type: 'organization', id: 'org-1' },
+          displayName: 'Survey-Organisation',
+        },
+      });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.surveysDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('content-ownership-panel').textContent).toBe('Survey-Organisation');
+    });
+    expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/api/v1/mainserver/content-ownership/surveys.survey/survey-1/authorization',
+      })
+    );
+    expect(screen.getByTestId('content-ownership-panel').getAttribute('data-supported')).toBe(
+      'false'
     );
   });
 

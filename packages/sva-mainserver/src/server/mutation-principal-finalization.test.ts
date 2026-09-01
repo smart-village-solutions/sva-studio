@@ -55,6 +55,7 @@ describe('finalizeMainserverMutation', () => {
   it('writes the PII-free ownership transition into the append-only audit event', async () => {
     const ownershipTransfer = {
       coverage: 'studio_mutations' as const,
+      sourcePrincipalResolution: 'resolved' as const,
       sourcePrincipalType: 'account' as const,
       sourcePrincipalId: '11111111-1111-4111-8111-111111111111',
       targetPrincipalType: 'organization' as const,

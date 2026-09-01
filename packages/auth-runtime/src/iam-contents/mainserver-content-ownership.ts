@@ -113,27 +113,6 @@ export const resolveMainserverOwnershipSource = async (input: {
        WHERE binding.instance_id = $1
          AND binding.data_provider_id = $2
          AND binding.status = 'verified'
-         AND (
-           (binding.principal_type = 'user' AND EXISTS (
-             SELECT 1
-             FROM iam.accounts account
-             WHERE account.instance_id = binding.instance_id
-               AND account.id = binding.principal_id
-               AND account.status = 'active'
-               AND account.is_blocked = FALSE
-               AND account.deletion_lifecycle_state = 'active'
-               AND account.soft_deleted_at IS NULL
-               AND account.permanently_deleted_at IS NULL
-           ))
-           OR
-           (binding.principal_type = 'organization' AND EXISTS (
-             SELECT 1
-             FROM iam.organizations organization
-             WHERE organization.instance_id = binding.instance_id
-               AND organization.id = binding.principal_id
-               AND organization.is_active = TRUE
-           ))
-         )
        ORDER BY binding.last_observed_at DESC
        LIMIT 2;`,
       [input.instanceId, input.dataProviderId]

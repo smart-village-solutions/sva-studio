@@ -37,6 +37,9 @@ describe('MainserverPrincipalControl accessibility', () => {
         labels={{
           title: 'Inhaber',
           currentOwner: 'Aktueller Inhaber',
+          ownerUnresolved: 'Keinem Account oder keiner Organisation eindeutig zugeordnet.',
+          ownerResolutionFailed:
+            'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
           account: 'Persönlicher Account',
           organization: 'Organisation',
           verificationRequired: 'DataProvider-Zuordnung wird beim Transfer geprüft.',

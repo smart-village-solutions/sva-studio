@@ -902,6 +902,8 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 ### Inhaberschaft, Autorisierung und Audit
 
 - `content.transferOwnership` ist von normaler Metadatenbearbeitung getrennt und wird gegen den aktuellen Source-Scope geprüft.
+- Scope `all` autorisiert den frisch gelesenen Quell-DataProvider ohne Lifecycle- oder Credential-Abhängigkeit vom bisherigen Principal; `own` und `organization` verlangen Bindungsevidenz nur zum Nachweis ihres engeren Source-Scopes.
+- Der autorisierte Actor führt Pre-Read, Provider-Write und Source-Re-Read aus. Aktivstatus, eindeutige Bindung und verwendbare Credentials bleiben ausschließlich Anforderungen an den Ziel-Principal.
 - Aktueller Inhaber ist der gegenwärtige Owner beziehungsweise Mainserver-DataProvider, niemals eine Rekonstruktion aus Audit oder Historie.
 - Transferaudits verwenden die Coverage `studio_mutations` und technische Principal-, Provider-, Operations- und Binding-Referenzen ohne E-Mail-Adressen oder Secrets.
 - Bestätigte Upstream-Erfolge werden durch lokale Folgefehler nicht als Rollback dargestellt.

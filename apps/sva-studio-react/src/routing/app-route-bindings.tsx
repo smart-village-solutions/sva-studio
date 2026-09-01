@@ -6,6 +6,7 @@ import {
 import { normalizeOrganizationDetailTab } from '@sva/routing/route-search';
 import {
   resolveUserDisplayName,
+  type IamContentOwnerPrincipal,
   type IamContentOwnershipTarget,
   type IamOrganizationContextOption,
 } from '@sva/core';
@@ -197,6 +198,12 @@ type MainserverResourcePrincipalResolution =
       }>;
     }>;
 
+type MainserverResolvedOwner = Readonly<{
+  principal?: IamContentOwnerPrincipal;
+  principalResolution: 'resolved' | 'unresolved' | 'failed';
+  displayName: string;
+}>;
+
 const resolveMainserverDetailUrl = (contentType: string, contentId: string): string => {
   const collections: Readonly<Record<string, string>> = {
     'news.article': 'news',
@@ -239,6 +246,8 @@ const resolveOwnershipTransferError = (error: unknown): string => {
 const ownershipPanelLabels = (): ContentOwnershipPanelLabels => ({
   title: t('content.ownership.title'),
   currentOwner: t('content.ownership.currentOwner'),
+  ownerUnresolved: t('content.ownership.ownerUnresolved'),
+  ownerResolutionFailed: t('content.ownership.ownerResolutionFailed'),
   account: t('content.ownership.account'),
   organization: t('content.ownership.organization'),
   verificationRequired: t('content.ownership.verificationRequired'),
@@ -356,7 +365,7 @@ const MainserverResourcePrincipalBoundary = ({
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const contentId = readStringParam(params.contentId, readStringParam(params.id));
-  const [resolvedOwner, setResolvedOwner] = React.useState<IamContentOwnershipTarget | null>(null);
+  const [resolvedOwner, setResolvedOwner] = React.useState<MainserverResolvedOwner | null>(null);
   const [transferAuthorized, setTransferAuthorized] = React.useState(false);
   React.useEffect(() => setResolvedOwner(null), [contentId, contentType]);
   const transferSupported = contentId !== undefined && contentType !== 'surveys.survey';
@@ -388,7 +397,7 @@ const MainserverResourcePrincipalBoundary = ({
       const response = await requestMainserverJson<{
         readonly data: readonly IamContentOwnershipTarget[];
         readonly pagination: Readonly<{ total: number }>;
-        readonly currentOwner: IamContentOwnershipTarget;
+        readonly currentOwner: MainserverResolvedOwner;
       }>({
         url: `${baseUrl}/targets?${query.toString()}`,
         init: { headers: createMainserverReadHeaders(actingPrincipalType) },
@@ -399,19 +408,14 @@ const MainserverResourcePrincipalBoundary = ({
     [actingPrincipalType, baseUrl]
   );
   React.useEffect(() => {
-    if (
-      resolution.kind !== 'ready' ||
-      !contentId ||
-      !transferSupported ||
-      !transferCapabilityConfirmed
-    ) {
+    if (resolution.kind !== 'ready' || !contentId) {
       setTransferAuthorized(false);
       return;
     }
     let active = true;
     void requestMainserverJson<{
       readonly data: Readonly<{ canTransfer: boolean }>;
-      readonly currentOwner: IamContentOwnershipTarget;
+      readonly currentOwner: MainserverResolvedOwner;
     }>({
       url: `${baseUrl}/authorization`,
       init: { headers: createMainserverReadHeaders(actingPrincipalType) },
@@ -419,21 +423,14 @@ const MainserverResourcePrincipalBoundary = ({
       (response) => {
         if (!active) return;
         setResolvedOwner(response.currentOwner);
-        setTransferAuthorized(response.data.canTransfer);
+        setTransferAuthorized(transferCapabilityConfirmed && response.data.canTransfer);
       },
       () => active && setTransferAuthorized(false)
     );
     return () => {
       active = false;
     };
-  }, [
-    contentId,
-    actingPrincipalType,
-    baseUrl,
-    resolution.kind,
-    transferCapabilityConfirmed,
-    transferSupported,
-  ]);
+  }, [contentId, actingPrincipalType, baseUrl, resolution.kind, transferCapabilityConfirmed]);
   if (resolution.kind === 'loading') {
     return <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>;
   }
@@ -451,6 +448,7 @@ const MainserverResourcePrincipalBoundary = ({
         resolvedOwner
           ? {
               principal: resolvedOwner.principal,
+              principalResolution: resolvedOwner.principalResolution,
               displayName: resolvedOwner.displayName,
             }
           : resolution.owner
@@ -482,7 +480,11 @@ const MainserverResourcePrincipalBoundary = ({
           const confirmedName =
             detail.data.dataProvider?.name?.trim() || detail.data.dataProvider?.id?.trim();
           if (!confirmedName) throw new Error('content_transfer_owner_missing');
-          setResolvedOwner({ principal: target.principal, displayName: confirmedName });
+          setResolvedOwner({
+            principal: target.principal,
+            principalResolution: 'resolved',
+            displayName: confirmedName,
+          });
         } catch {
           await navigate({ to: '/content' });
         }

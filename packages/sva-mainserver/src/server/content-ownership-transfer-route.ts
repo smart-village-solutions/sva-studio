@@ -32,7 +32,6 @@ import { finalizeMainserverMutation, type MainserverMutationActor } from './muta
 import { transferSvaMainserverContentOwnership } from './service.js';
 
 export type { MainserverOwnershipTransferReconciler } from './content-ownership-transfer-reconciliation.js';
-
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
   content: SvaMainserverOwnershipTransferContent;

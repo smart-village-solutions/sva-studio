@@ -10,5 +10,11 @@ describe('public waste translations', () => {
     expect(createPublicWasteTranslator('en')('errors.boundRegionUnavailable')).toContain(
       'The specified region is invalid'
     );
+    expect(createPublicWasteTranslator('de')('errors.loadFailed')).toContain(
+      'konnten nicht geladen werden'
+    );
+    expect(createPublicWasteTranslator('en')('errors.loadFailed')).toContain(
+      'could not be loaded'
+    );
   });
 });

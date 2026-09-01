@@ -233,7 +233,7 @@ export function PublicWasteIndexPage() {
   const toLoadErrorMessage = (error: unknown): string =>
     error instanceof Error && error.message === BOUND_REGION_UNAVAILABLE_ERROR
       ? t('errors.boundRegionUnavailable')
-      : 'Die öffentlichen Abfallkalender-Daten konnten nicht geladen werden.';
+      : t('errors.loadFailed');
 
   React.useEffect(() => {
     let cancelled = false;

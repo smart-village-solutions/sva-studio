@@ -32,6 +32,9 @@ type MutationFollowUpContext = NonNullable<
   ReturnType<typeof readMainserverMutationFollowUpContext>
 >;
 
+const toContentTransferErrorCode = (code: string): string =>
+  code.startsWith('content_transfer_') ? code : `content_transfer_${code}`;
+
 const readContentType = (request: Request): ProjectionContentType | undefined => {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);
   const ownershipIndex = segments.findIndex((segment) => segment === 'content-ownership');
@@ -61,7 +64,7 @@ const refreshTransferredOwnershipProjection = async (input: {
     actorKeycloakSubject: input.followUp.keycloakSubject,
     principal: input.principal,
   });
-  if (!target.ok) throw new Error(target.code);
+  if (!target.ok) throw new Error(toContentTransferErrorCode(target.code));
   if (target.target.dataProviderId !== input.expectedDataProviderId) {
     throw new Error('content_transfer_target_binding_changed');
   }

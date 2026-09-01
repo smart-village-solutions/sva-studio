@@ -16,7 +16,7 @@ import {
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
 import {
-  hasBlockingOwnershipTransferReconciliation,
+  reconcileOrBlockOwnershipTransfer,
   type MainserverOwnershipTransferReconciler,
 } from './content-ownership-transfer-reconciliation.js';
 import { resolveTargetForMutation } from './content-ownership-target-verification.js';
@@ -183,24 +183,17 @@ const executeLockedTransfer = async (input: {
   const source = await resolveAuthorizedTransferSource(input);
   if (!source.ok) return source.response;
   const sourceDataProviderId = source.dataProviderId;
-  if (
-    await hasBlockingOwnershipTransferReconciliation({
-      instanceId: input.actor.instanceId,
-      contentType: input.route.contentType,
-      contentId: input.route.contentId,
-      currentDataProviderId: sourceDataProviderId,
-      currentOperationExternalId: input.actor.operationExternalId,
-      ...(input.reconcilePreviousTransfer
-        ? { reconcilePreviousTransfer: input.reconcilePreviousTransfer }
-        : {}),
-    })
-  ) {
-    return errorJson(
-      409,
-      'content_transfer_reconciliation_required',
-      'Ein früherer Transfer muss zuerst abgeglichen werden.'
-    );
-  }
+  const reconciliationBlock = await reconcileOrBlockOwnershipTransfer({
+    actor: input.actor,
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
+    currentDataProviderId: sourceDataProviderId,
+    currentOperationExternalId: input.actor.operationExternalId,
+    ...(input.reconcilePreviousTransfer
+      ? { reconcilePreviousTransfer: input.reconcilePreviousTransfer }
+      : {}),
+  });
+  if (reconciliationBlock) return reconciliationBlock;
   const targetResolution = await resolveTargetForMutation({
     actor: input.actor,
     contentType: input.route.contentType,

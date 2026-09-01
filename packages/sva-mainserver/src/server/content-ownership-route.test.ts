@@ -445,6 +445,15 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_reconciliation_required',
     });
+    expect(state.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor,
+        providerOutcome: 'failed',
+        reconciliationStatus: 'complete',
+        completedSteps: ['previous_transfer_reconciliation_blocked'],
+        lastErrorCode: 'content_transfer_reconciliation_required',
+      })
+    );
     expect(state.transfer).not.toHaveBeenCalled();
   });
 

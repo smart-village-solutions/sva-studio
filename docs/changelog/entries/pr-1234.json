@@ -1,0 +1,4 @@
+{
+  "prNumber": 1234,
+  "body": "Die technische Qualitätssicherung des Studios verwendet nun die vereinfachte, langfristig besser pflegbare Prüfstruktur.\n\n- Pull Requests sowie Main- und Nightly-Läufe verwenden jeweils einen konsolidierten Workflow.\n- Die bestehenden verpflichtenden Prüfnamen und der geschützte Veröffentlichungsweg bleiben unverändert.\n- Die abgeschlossene parallele Shadow-Prüfung und ihre temporäre Vergleichslogik wurden entfernt."
+}

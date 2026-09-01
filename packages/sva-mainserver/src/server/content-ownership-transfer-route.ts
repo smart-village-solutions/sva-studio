@@ -1,6 +1,5 @@
 import {
   hasUnresolvedMainserverOwnershipTransfer,
-  reconcileConfirmedMainserverOwnershipTransfer,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -27,6 +26,13 @@ import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { finalizeMainserverMutation, type MainserverMutationActor } from './mutation-principal.js';
 import { transferSvaMainserverContentOwnership } from './service.js';
+
+export type MainserverOwnershipTransferReconciler = (input: {
+  readonly instanceId: string;
+  readonly contentType: SupportedContentOwnershipRouteMatch['contentType'];
+  readonly contentId: string;
+  readonly currentDataProviderId: string;
+}) => Promise<void>;
 
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
@@ -174,16 +180,21 @@ const executeLockedTransfer = async (input: {
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   principal: IamContentOwnerPrincipal;
+  reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
 }): Promise<Response> => {
   const source = await resolveAuthorizedTransferSource(input);
   if (!source.ok) return source.response;
   const sourceDataProviderId = source.dataProviderId;
-  await reconcileConfirmedMainserverOwnershipTransfer({
-    instanceId: input.actor.instanceId,
-    contentType: input.route.contentType,
-    contentId: input.route.contentId,
-    currentDataProviderId: sourceDataProviderId,
-  });
+  try {
+    await input.reconcilePreviousTransfer?.({
+      instanceId: input.actor.instanceId,
+      contentType: input.route.contentType,
+      contentId: input.route.contentId,
+      currentDataProviderId: sourceDataProviderId,
+    });
+  } catch {
+    // The unresolved journal remains the fail-closed barrier below.
+  }
   if (
     await hasUnresolvedMainserverOwnershipTransfer({
       instanceId: input.actor.instanceId,
@@ -292,7 +303,8 @@ export const handleContentOwnershipTransfer = async (
   request: Request,
   route: SupportedContentOwnershipRouteMatch,
   actor: MainserverMutationActor,
-  content: SvaMainserverOwnershipTransferContent
+  content: SvaMainserverOwnershipTransferContent,
+  reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler
 ): Promise<Response> => {
   const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
   if (csrfError) return csrfError;
@@ -302,6 +314,13 @@ export const handleContentOwnershipTransfer = async (
     instanceId: actor.instanceId,
     contentType: route.contentType,
     contentId: route.contentId,
-    execute: () => executeLockedTransfer({ actor, route, content, principal }),
+    execute: () =>
+      executeLockedTransfer({
+        actor,
+        route,
+        content,
+        principal,
+        ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
+      }),
   });
 };

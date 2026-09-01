@@ -17,7 +17,10 @@ import {
   type ContentOwnershipRouteMatch,
   type SupportedContentOwnershipRouteMatch,
 } from './content-ownership-route-contract.js';
-import { handleContentOwnershipTransfer } from './content-ownership-transfer-route.js';
+import {
+  handleContentOwnershipTransfer,
+  type MainserverOwnershipTransferReconciler,
+} from './content-ownership-transfer-route.js';
 import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
@@ -248,7 +251,8 @@ const ownershipRouteFailureResponse = (
 const dispatchAuthenticated = async (
   request: Request,
   route: ContentOwnershipRouteMatch,
-  ctx: AuthenticatedRequestContext
+  ctx: AuthenticatedRequestContext,
+  reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler
 ): Promise<Response> => {
   if (route.contentType === 'surveys.survey' && route.operation !== 'authorization') {
     return errorJson(
@@ -287,7 +291,13 @@ const dispatchAuthenticated = async (
   const content = toOwnershipTransferContent(supportedRoute.contentType, providerContentId);
   try {
     return supportedRoute.operation === 'transfer'
-      ? handleContentOwnershipTransfer(request, supportedRoute, actor, content)
+      ? handleContentOwnershipTransfer(
+          request,
+          supportedRoute,
+          actor,
+          content,
+          reconcilePreviousTransfer
+        )
       : handleAuthorizedTargets(request, supportedRoute, actor, content);
   } catch (error) {
     return ownershipRouteFailureResponse(
@@ -300,7 +310,10 @@ const dispatchAuthenticated = async (
 };
 
 export const dispatchSvaMainserverContentOwnershipRequest = async (
-  request: Request
+  request: Request,
+  options: Readonly<{
+    reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
+  }> = {}
 ): Promise<Response | null> => {
   const route = matchRoute(request);
   if (!route) return null;
@@ -310,5 +323,7 @@ export const dispatchSvaMainserverContentOwnershipRequest = async (
     (route.operation === 'transfer' && request.method === 'POST');
   if (!methodAllowed)
     return errorJson(405, 'method_not_allowed', 'HTTP-Methode wird nicht unterstützt.');
-  return withAuthenticatedUser(request, (ctx) => dispatchAuthenticated(request, route, ctx));
+  return withAuthenticatedUser(request, (ctx) =>
+    dispatchAuthenticated(request, route, ctx, options.reconcilePreviousTransfer)
+  );
 };

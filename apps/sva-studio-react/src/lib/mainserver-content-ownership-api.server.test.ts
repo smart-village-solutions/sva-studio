@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   dispatch: vi.fn(),
   finalizeJournal: vi.fn(),
+  loadRecoverableTransfers: vi.fn(),
   markReconciliationRequired: vi.fn(),
   readFollowUp: vi.fn(),
   refreshProjection: vi.fn(),
@@ -11,6 +12,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   finalizeMainserverMutationJournal: state.finalizeJournal,
+  loadRecoverableMainserverOwnershipTransfers: state.loadRecoverableTransfers,
   markMainserverMutationReconciliationRequired: state.markReconciliationRequired,
   resolveMainserverOwnershipTarget: state.resolveTarget,
 }));
@@ -34,6 +36,7 @@ describe('mainserver content ownership API projection follow-up', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.finalizeJournal.mockResolvedValue(undefined);
+    state.loadRecoverableTransfers.mockResolvedValue([]);
     state.markReconciliationRequired.mockResolvedValue(undefined);
     state.readFollowUp.mockReturnValue({
       instanceId: 'instance-1',
@@ -178,6 +181,59 @@ describe('mainserver content ownership API projection follow-up', () => {
         actorAccountId: '22222222-2222-4222-8222-222222222222',
         auditActorAccountId: '11111111-1111-4111-8111-111111111111',
         keycloakSubject: 'kc-recipient',
+      })
+    );
+  });
+
+  it('repairs a provider-confirmed projection before dispatching another transfer', async () => {
+    state.loadRecoverableTransfers.mockResolvedValueOnce([
+      {
+        operationExternalId: 'operation-previous',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+    state.dispatch.mockImplementationOnce(async (_request, options) => {
+      await options.reconcilePreviousTransfer({
+        instanceId: 'instance-1',
+        contentType: 'news.article',
+        contentId: 'news-1',
+        currentDataProviderId: 'provider-target',
+      });
+      return new Response(JSON.stringify({ error: 'content_transfer_target_invalid' }), {
+        status: 409,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.loadRecoverableTransfers).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      currentDataProviderId: 'provider-target',
+    });
+    expect(state.refreshProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutationRef: 'operation-previous',
+        ownershipPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      })
+    );
+    expect(state.finalizeJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationExternalId: 'operation-previous',
+        reconciliationStatus: 'complete',
       })
     );
   });

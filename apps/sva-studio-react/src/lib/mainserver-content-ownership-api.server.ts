@@ -1,7 +1,9 @@
 import {
   finalizeMainserverMutationJournal,
+  loadRecoverableMainserverOwnershipTransfers,
   markMainserverMutationReconciliationRequired,
   resolveMainserverOwnershipTarget,
+  type RecoverableMainserverOwnershipTransfer,
 } from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
 import {
@@ -26,6 +28,10 @@ const supportedContentTypes = new Set<ProjectionContentType>([
 ]);
 const logger = createSdkLogger({ component: 'mainserver-content-ownership-api', level: 'info' });
 
+type MutationFollowUpContext = NonNullable<
+  ReturnType<typeof readMainserverMutationFollowUpContext>
+>;
+
 const readContentType = (request: Request): ProjectionContentType | undefined => {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);
   const ownershipIndex = segments.findIndex((segment) => segment === 'content-ownership');
@@ -42,11 +48,85 @@ const readContentType = (request: Request): ProjectionContentType | undefined =>
     : undefined;
 };
 
+const refreshTransferredOwnershipProjection = async (input: {
+  readonly followUp: MutationFollowUpContext;
+  readonly contentType: ProjectionContentType;
+  readonly contentId: string;
+  readonly operationExternalId: string;
+  readonly principal: RecoverableMainserverOwnershipTransfer['targetPrincipal'];
+}): Promise<void> => {
+  const target = await resolveMainserverOwnershipTarget({
+    instanceId: input.followUp.instanceId,
+    actorKeycloakSubject: input.followUp.keycloakSubject,
+    principal: input.principal,
+  });
+  if (!target.ok) throw new Error(target.code);
+  await refreshProjectedContentsForMainserverMutation({
+    instanceId: input.followUp.instanceId,
+    keycloakSubject: target.target.connection.keycloakSubject,
+    actorAccountId:
+      input.principal.type === 'account' ? input.principal.id : input.followUp.actorAccountId,
+    auditActorAccountId: input.followUp.actorAccountId,
+    actorDisplayName: input.followUp.actorDisplayName,
+    ownershipPrincipal: input.principal,
+    mutationRef: input.operationExternalId,
+    contentType: input.contentType,
+    ...(input.principal.type === 'organization' ? { organizationId: input.principal.id } : {}),
+    actingPrincipalType: target.target.connection.actingPrincipalType,
+    credentialFingerprint: target.target.connection.credentialFingerprint,
+    authorizationMode: 'exact',
+    operation: 'update',
+    entityId: input.contentId,
+  });
+  await finalizeMainserverMutationJournal({
+    instanceId: input.followUp.instanceId,
+    operationExternalId: input.operationExternalId,
+    providerOutcome: 'succeeded',
+    reconciliationStatus: 'complete',
+    completedSteps: ['target_projection_refreshed'],
+    contentId: input.contentId,
+  });
+};
+
 export const dispatchMainserverContentOwnershipRequest = async (
   request: Request
 ): Promise<Response | null> => {
-  const response = await dispatchSvaMainserverContentOwnershipRequest(request);
-  const contentType = response ? readContentType(request) : undefined;
+  const contentType = readContentType(request);
+  const response = await dispatchSvaMainserverContentOwnershipRequest(request, {
+    ...(contentType
+      ? {
+          reconcilePreviousTransfer: async (input: {
+            readonly instanceId: string;
+            readonly contentId: string;
+            readonly currentDataProviderId: string;
+          }) => {
+            const reconciliationFollowUp = readMainserverMutationFollowUpContext(request);
+            if (!reconciliationFollowUp) {
+              throw new Error('content_transfer_follow_up_context_missing');
+            }
+            if (input.instanceId !== reconciliationFollowUp.instanceId) {
+              throw new Error('content_transfer_reconciliation_instance_mismatch');
+            }
+            const recoverable = await loadRecoverableMainserverOwnershipTransfers({
+              instanceId: input.instanceId,
+              contentType,
+              contentId: input.contentId,
+              currentDataProviderId: input.currentDataProviderId,
+            });
+            for (const entry of recoverable) {
+              await refreshTransferredOwnershipProjection({
+                followUp: reconciliationFollowUp,
+                contentType,
+                contentId: input.contentId,
+                operationExternalId: entry.operationExternalId,
+                principal: entry.targetPrincipal,
+              });
+            }
+          },
+        }
+      : {}),
+  });
+  const followUp = readMainserverMutationFollowUpContext(request);
   const isConfirmedTransfer =
     response?.ok === true &&
     request.method === 'POST' &&
@@ -55,7 +135,6 @@ export const dispatchMainserverContentOwnershipRequest = async (
     await refreshProjectionAfterMainserverMutation(request, response, contentType);
   }
   if (response && contentType && isConfirmedTransfer) {
-    const followUp = readMainserverMutationFollowUpContext(request);
     try {
       const payload = (await response.clone().json()) as {
         readonly data?: Readonly<{
@@ -74,38 +153,13 @@ export const dispatchMainserverContentOwnershipRequest = async (
       ) {
         throw new Error('content_transfer_response_invalid');
       }
-      {
-        const target = await resolveMainserverOwnershipTarget({
-          instanceId: followUp.instanceId,
-          actorKeycloakSubject: followUp.keycloakSubject,
-          principal: { type: principal.type, id: principal.id },
-        });
-        if (!target.ok) throw new Error(target.code);
-        await refreshProjectedContentsForMainserverMutation({
-          instanceId: followUp.instanceId,
-          keycloakSubject: target.target.connection.keycloakSubject,
-          actorAccountId: principal.type === 'account' ? principal.id : followUp.actorAccountId,
-          auditActorAccountId: followUp.actorAccountId,
-          actorDisplayName: followUp.actorDisplayName,
-          ownershipPrincipal: { type: principal.type, id: principal.id },
-          mutationRef: followUp.operationExternalId,
-          contentType,
-          ...(principal.type === 'organization' ? { organizationId: principal.id } : {}),
-          actingPrincipalType: target.target.connection.actingPrincipalType,
-          credentialFingerprint: target.target.connection.credentialFingerprint,
-          authorizationMode: 'exact',
-          operation: 'update',
-          entityId: contentId,
-        });
-        await finalizeMainserverMutationJournal({
-          instanceId: followUp.instanceId,
-          operationExternalId: followUp.operationExternalId,
-          providerOutcome: 'succeeded',
-          reconciliationStatus: 'complete',
-          completedSteps: ['target_projection_refreshed'],
-          contentId,
-        });
-      }
+      await refreshTransferredOwnershipProjection({
+        followUp,
+        contentType,
+        contentId,
+        operationExternalId: followUp.operationExternalId,
+        principal: { type: principal.type, id: principal.id },
+      });
     } catch (error) {
       if (followUp) {
         await markMainserverMutationReconciliationRequired({

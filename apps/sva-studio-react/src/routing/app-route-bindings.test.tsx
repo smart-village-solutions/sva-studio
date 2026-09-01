@@ -1094,6 +1094,39 @@ describe('appRouteBindings', () => {
     );
   });
 
+  it('retries a missing projected principal when the editor context becomes ready', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'System Administration',
+      instanceId: 'de-musterhausen',
+    };
+    routeState.organizationContextIsLoading = true;
+    routeState.getContent.mockResolvedValue({
+      data: {
+        credentialSource: undefined,
+        sourceDataProviderName: 'Unresolved DataProvider',
+      },
+    });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const view = render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Resource principal unavailable');
+    });
+
+    routeState.organizationContextIsLoading = false;
+    view.rerender(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-edit-page').getAttribute('data-principal-value')).toBe(
+        'user'
+      );
+    });
+    expect(routeState.getContent).toHaveBeenCalledTimes(2);
+  });
+
   it('shows the persistent error state when loading the resource principal fails', async () => {
     routeState.params = { id: 'content-1' };
     routeState.getContent.mockRejectedValue(new Error('Mainserver unavailable'));

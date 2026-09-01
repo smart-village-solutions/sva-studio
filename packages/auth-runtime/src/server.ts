@@ -162,8 +162,9 @@ export {
 } from './iam-contents/mainserver-mutation-journal.js';
 export {
   hasUnresolvedMainserverOwnershipTransfer,
+  loadRecoverableMainserverOwnershipTransfers,
   markMainserverMutationReconciliationRequired,
-  reconcileConfirmedMainserverOwnershipTransfer,
+  type RecoverableMainserverOwnershipTransfer,
 } from './iam-contents/mainserver-ownership-transfer-reconciliation.js';
 export {
   loadMainserverAuthoringDiagnostics,

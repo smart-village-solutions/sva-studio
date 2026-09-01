@@ -8,8 +8,8 @@ import {
 } from './mainserver-mutation-journal.js';
 import {
   hasUnresolvedMainserverOwnershipTransfer,
+  loadRecoverableMainserverOwnershipTransfers,
   markMainserverMutationReconciliationRequired,
-  reconcileConfirmedMainserverOwnershipTransfer,
 } from './mainserver-ownership-transfer-reconciliation.js';
 
 const state = vi.hoisted(() => ({ query: vi.fn(), withInstanceScopedDb: vi.fn() }));
@@ -197,22 +197,42 @@ describe('Mainserver mutation journal', () => {
     );
   });
 
-  it('completes a confirmed transfer reconciliation without repeating the provider write', async () => {
-    state.query.mockResolvedValueOnce({ rows: [] });
-
-    await reconcileConfirmedMainserverOwnershipTransfer({
-      instanceId: 'de-musterhausen',
-      contentType: 'news.article',
-      contentId: 'news-1',
-      currentDataProviderId: 'provider-target',
+  it('loads provider-confirmed pending and unknown transfers for projection reconciliation', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [
+        {
+          operation_external_id: 'operation-1',
+          target_principal_type: 'organization',
+          target_principal_id: '22222222-2222-4222-8222-222222222222',
+        },
+      ],
     });
 
+    await expect(
+      loadRecoverableMainserverOwnershipTransfers({
+        instanceId: 'de-musterhausen',
+        contentType: 'news.article',
+        contentId: 'news-1',
+        currentDataProviderId: 'provider-target',
+      })
+    ).resolves.toEqual([
+      {
+        operationExternalId: 'operation-1',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+
     expect(state.query).toHaveBeenCalledWith(
-      expect.stringContaining("expected_data_provider_id = $4"),
+      expect.stringContaining('expected_data_provider_id = $4'),
       ['de-musterhausen', 'news.article', 'news-1', 'provider-target']
     );
-    expect(state.query.mock.calls[0]?.[0]).toContain("provider_outcome = 'succeeded'");
-    expect(state.query.mock.calls[0]?.[0]).toContain("reconciliation_status = 'complete'");
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "provider_outcome IN ('pending', 'unknown', 'succeeded')"
+    );
+    expect(state.query.mock.calls[0]?.[0]).not.toContain('UPDATE');
   });
 
   it('marks a confirmed provider result for local reconciliation', async () => {
@@ -234,5 +254,7 @@ describe('Mainserver mutation journal', () => {
         'content_transfer_projection_refresh_failed',
       ]
     );
+    expect(state.query.mock.calls[0]?.[0]).toContain('SELECT DISTINCT');
+    expect(state.query.mock.calls[0]?.[0]).toContain('jsonb_agg(step ORDER BY step)');
   });
 });

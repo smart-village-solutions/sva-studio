@@ -297,10 +297,12 @@ const useMainserverResourcePrincipalControl = (
     principal: editorPrincipal,
     label: editorPrincipalLabel,
   });
-  editorPrincipalFallback.current = {
-    principal: editorPrincipal,
-    label: editorPrincipalLabel,
-  };
+  if (editorPrincipal) {
+    editorPrincipalFallback.current = {
+      principal: editorPrincipal,
+      label: editorPrincipalLabel,
+    };
+  }
   const [resolution, setResolution] = React.useState<MainserverResourcePrincipalResolution>({
     kind: 'loading',
   });
@@ -373,7 +375,7 @@ const useMainserverResourcePrincipalControl = (
     return () => {
       active = false;
     };
-  }, [contentId, contentType]);
+  }, [contentId, contentType, editorPrincipal]);
 
   return resolution;
 };

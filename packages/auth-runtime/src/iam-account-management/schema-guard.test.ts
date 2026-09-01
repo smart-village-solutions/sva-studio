@@ -54,8 +54,10 @@ describe('schema guard helpers', () => {
     );
     const readinessSql = postgresState.query.mock.calls[0]?.[0] as string;
     expect(readinessSql).toContain("p.proname = 'sva_enqueue_job'");
+    expect(readinessSql).toContain('oidvectortypes(p.proargtypes)');
     expect(readinessSql).toContain("c.relname = '_private_jobs'");
     expect(readinessSql).toContain('has_sequence_privilege');
+    expect(readinessSql).not.toContain('pg_get_function_identity_arguments');
     expect(readinessSql).not.toContain("to_regprocedure('graphile_worker.");
     expect(readinessSql).not.toContain("to_regclass('graphile_worker.");
     expect(readinessSql).not.toContain("format('%I.%I', sequence.schemaname");

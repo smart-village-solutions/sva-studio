@@ -58,8 +58,8 @@ WITH principals AS (
       JOIN pg_namespace n ON n.oid = p.pronamespace
       WHERE n.nspname = 'graphile_worker'
         AND p.proname = 'sva_enqueue_job'
-        AND pg_get_function_identity_arguments(p.oid) =
-          'identifier text, payload json, queue_name text, max_attempts integer, job_key text, run_at timestamp with time zone'
+        AND oidvectortypes(p.proargtypes) =
+          'text, json, text, integer, text, timestamp with time zone'
     ) AS enqueue_function_oid,
     (
       SELECT c.oid

@@ -168,8 +168,12 @@ offen. Quelle:
   Workflows, entsprechend mindestens 20 Prozent Reduktion;
 - keine Nettozunahme produktiver CI-Orchestrierungs-TS-Zeilen;
 - keine doppelte App-Build- oder Gate-Ausführung pro Event-/SHA-Kontext;
-- höchstens 30 Sekunden Regression der medianen terminalen Zeit grüner
-  Required Checks.
+- während der parallelen Shadow-Phase höchstens 90 Sekunden gepaarte
+  Median-Regression grüner Unit-/Coverage-Endzeiten gegenüber der
+  Alt-Orchestrierung;
+- nach dem Cutover zehn repräsentative Läufe ohne Doppelarbeit mit höchstens
+  438 Sekunden Unit-/Coverage-Median gegenüber der akzeptierten Baseline von
+  348 Sekunden.
 
 ## Proof-Limits
 

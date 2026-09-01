@@ -240,7 +240,7 @@ Die öffentlichen Required-Check-Namen `Unit` und `Coverage` bleiben stabil. Par
 
 Zwei zusätzliche, nicht blockierende Workflows bilden die geplante Zieltopologie ab: ein PR-Shadow mit genau einer allgemeinen Scope-Entscheidung sowie ein vollständiger Main-/Nightly-Shadow ohne PR-Scope- oder PR-Cache-Übernahme. Der PR-Scope wird als versionierte, an Base- und Head-SHA gebundene Evidenz veröffentlicht. Alle Shadow-Jobs tragen eigene `CI Shadow / ...`-Namen; die sieben Required-Kontexte, das aktive Ruleset und die bestehenden Workflow-Entscheidungen bleiben unverändert.
 
-Der Shadow ist Migrationscode und noch kein Cutover-Nachweis. Zum Stand dieser Fortschreibung liegen `0/20` erforderlichen Live-Läufen vor. Erst eine Head-SHA-genaue Auswertung von mindestens 20 repräsentativen Läufen ohne ungeklärte Scope- oder Ergebnisabweichung darf Plan 036 und die atomare Umschaltung vorbereiten.
+Der Shadow ist Migrationscode und kein dauerhafter zweiter Betriebsweg. Die Head-SHA-genaue PR-Auswertung belegt `20/20` repräsentative Läufe ohne ungeklärte Scope- oder Ergebnisabweichung. Die atomare Umschaltung bleibt dennoch ein eigener Change: Zuvor muss die verlängerte PR-Sammler-Deadline live grün sein; danach werden Altworkflows und Paritätsjobs entfernt und zehn repräsentative produktive Läufe nachgemessen.
 
 ### Ergänzung 2026-08: Route-owned Anwenderdokumentation
 

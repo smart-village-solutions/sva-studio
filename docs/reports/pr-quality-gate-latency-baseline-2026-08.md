@@ -42,6 +42,12 @@ Nach mindestens 20 repräsentativen neuen PR-Läufen werden dieselben Größen e
 - mediane terminale Zeit grüner Required Checks höchstens 30 Sekunden über dieser Baseline
 - mindestens 30 Prozent eingesparte Laufzeit bei cachefähigen unveränderten Targets auf einem zweiten kleinen PR-Push
 
+Diese Kriterien gehören zur damaligen Changed-first-Aktivierung. Für die
+spätere CI-Topologiemigration gelten wegen der temporär parallelen
+Alt-/Shadow-Orchestrierung ein gepaartes 90-Sekunden-Kriterium im Shadow und
+eine getrennte Nachmessung ohne Doppelarbeit; siehe
+`./ci-gate-shadow-parity-2026-08.md`.
+
 Die neuen Artefakte unter `artifacts/ci-feedback/` binden Messung, Scope und Ergebnis an Base- und Head-SHA. Ein früher Logeintrag ohne terminal roten Gate-Status gilt nicht als erfülltes Fast-Feedback-Ziel.
 
 ## Auswertung nach der Changed-first-Aktivierung

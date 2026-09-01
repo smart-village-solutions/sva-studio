@@ -7,6 +7,7 @@ import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cl
 import { CiCommandExecutionError, runCiCommand } from './ci-command-runner.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
+import { readJson, type CoveragePolicy } from './coverage-gate.ts';
 import { resolveCoveragePlan, type ResolvedCoveragePlan } from './coverage-plan.ts';
 import { writeCoverageShardEvidence } from './coverage-shard-evidence.ts';
 import { loadNxProjectRoots, loadWorkspaceProjectRoots } from './nx-project-graph.ts';
@@ -50,6 +51,14 @@ const getCoverageProjects = (base: string, head: string, full: boolean): string[
   }
 
   return JSON.parse(output) as string[];
+};
+
+export const excludeCoverageExemptProjects = (
+  projects: readonly string[],
+  exemptProjects: readonly string[]
+): string[] => {
+  const exemptions = new Set(exemptProjects);
+  return projects.filter((project) => !exemptions.has(project));
 };
 
 export const buildAppCoverageCommand = (): string => `pnpm nx run ${APP_PROJECT}:test:coverage`;
@@ -157,10 +166,18 @@ export const runAffectedCoverageGate = (
 ): DurationEntry[] => {
   clearWorkspaceCoverageOutputs();
   const full = process.env.NX_RUN_FULL === '1';
-  const fullProjects = getCoverageProjects(options.base, options.head, true);
+  const coveragePolicy = readJson<CoveragePolicy>(
+    path.join(process.cwd(), 'tooling/testing/coverage-policy.json')
+  );
+  const getPolicyCoveredProjects = (base: string, head: string, runFull: boolean): string[] =>
+    excludeCoverageExemptProjects(
+      getCoverageProjects(base, head, runFull),
+      coveragePolicy.exemptProjects
+    );
+  const fullProjects = getPolicyCoveredProjects(options.base, options.head, true);
   const resolvedPlan = resolveCoveragePlan(options, full, fullProjects, {
     resolveChangedFiles,
-    getCoverageProjects,
+    getCoverageProjects: getPolicyCoveredProjects,
     loadNxProjectRoots,
     loadWorkspaceProjectRoots,
   });

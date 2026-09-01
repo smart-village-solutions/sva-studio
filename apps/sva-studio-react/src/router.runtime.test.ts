@@ -167,6 +167,7 @@ describe('router runtime helpers', () => {
         cookieState = value;
       },
     });
+    document.head.querySelector('meta[name="sva-plugin-route-scope"]')?.remove();
   });
 
   afterEach(() => {
@@ -646,6 +647,21 @@ describe('router runtime helpers', () => {
         headers: { 'X-SVA-Plugin-Route-Scope': 'tenant' },
       })
     );
+    const { getRouter } = await import('./router');
+
+    await getRouter();
+
+    expect(routerMocks.getClientRouteFactoriesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
+    );
+  });
+
+  it('keeps the server-declared tenant tree when auth me is temporarily unavailable', async () => {
+    const scopeMeta = document.createElement('meta');
+    scopeMeta.name = 'sva-plugin-route-scope';
+    scopeMeta.content = 'tenant';
+    document.head.append(scopeMeta);
+    routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('network unavailable'));
     const { getRouter } = await import('./router');
 
     await getRouter();

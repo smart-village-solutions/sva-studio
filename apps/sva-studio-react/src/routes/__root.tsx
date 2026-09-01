@@ -19,6 +19,11 @@ import AppShell from '../components/AppShell';
 import ErrorFallback from '../components/ErrorFallback';
 import NotFound from '../components/NotFound';
 import { resolveBreadcrumbItems } from '../lib/breadcrumbs';
+import {
+  PLUGIN_ROUTE_SCOPE_META_NAME,
+  readDocumentPluginRouteScope,
+  type PluginRouteScope,
+} from '../lib/plugin-route-scope';
 import { createThemeBootstrapScript } from '../lib/theme';
 import { AuthProvider } from '../providers/auth-provider';
 import { EffectiveAccessProvider } from '../providers/effective-access-provider';
@@ -38,20 +43,31 @@ export const ensureRootSdkInitialized = createServerOnlyFn(async () => {
   await ensureSdkInitialized();
 });
 
+export const resolveRootPluginRouteScope = createServerOnlyFn(async () => {
+  const [{ getRequest }, { resolveServerPluginRouteScope }] = await Promise.all([
+    import('@tanstack/react-start/server'),
+    import('../lib/plugin-route-scope.server'),
+  ]);
+  return resolveServerPluginRouteScope(getRequest());
+});
+
 /**
  * Initialisiert serverseitig notwendige SDK-Bausteine für die Root-Route.
  */
 export const loadRootData = async () => {
   if (import.meta.env.SSR) {
     await ensureRootSdkInitialized();
+    return { pluginRouteScope: await resolveRootPluginRouteScope() };
   }
-  return {};
+  return { pluginRouteScope: readDocumentPluginRouteScope() ?? 'platform' };
 };
+
+type RootLoaderData = { readonly pluginRouteScope: PluginRouteScope };
 
 /**
  * Definiert Meta- und Link-Tags für das Root-Dokument.
  */
-export const getRootHead = () => ({
+export const getRootHead = ({ loaderData }: { loaderData?: RootLoaderData } = {}) => ({
   meta: [
     {
       charSet: 'utf-8',
@@ -63,6 +79,14 @@ export const getRootHead = () => ({
     {
       title: 'SVA Studio',
     },
+    ...(loaderData
+      ? [
+          {
+            name: PLUGIN_ROUTE_SCOPE_META_NAME,
+            content: loaderData.pluginRouteScope,
+          },
+        ]
+      : []),
   ],
   links: [
     {

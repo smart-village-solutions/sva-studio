@@ -195,6 +195,29 @@ describe('plugin tenant lifecycle contracts', () => {
     ).toThrow('invalid_plugin_tenant_readiness_check:speech.databaseSchema');
   });
 
+  it('rejects readiness as a runtime repair operation', () => {
+    expect(() =>
+      definePluginTenantLifecycle(
+        'speech',
+        {
+          contractVersion: 1,
+          operations: [{ operation: 'readiness', jobTypeId: 'speech.checkTenantReadiness' }],
+          readinessChecks: [
+            {
+              checkId: 'speech.databaseSchema',
+              titleKey: 'speech.readiness.databaseSchema',
+              required: true,
+              repairOperation: 'readiness',
+            },
+          ],
+        } as never,
+        jobTypes
+      )
+    ).toThrow(
+      'unknown_plugin_tenant_readiness_repair_operation:speech.databaseSchema:readiness'
+    );
+  });
+
   it('requires a readiness operation when checks are declared', () => {
     expect(() =>
       createPluginRegistry([

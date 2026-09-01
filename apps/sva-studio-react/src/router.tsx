@@ -12,35 +12,23 @@ import {
 } from './lib/dev-auth';
 import { fetchWithRequestTimeout } from './lib/iam-api';
 import { fetchAuthMeSingleFlight } from './lib/auth-me-singleflight';
+import {
+  readDocumentPluginRouteScope,
+  readPluginRouteScope,
+  type PluginRouteScope,
+} from './lib/plugin-route-scope';
 import { appRouteBindings } from './routing/app-route-bindings';
 import { rootRoute } from './routes/__root';
 
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {
-    const [{ getRequest }, authRuntime, mod] = await Promise.all([
+    const [{ getRequest }, { resolveServerPluginRouteScope }, mod] = await Promise.all([
       import('@tanstack/react-start/server'),
-      import('@sva/auth-runtime/server'),
+      import('./lib/plugin-route-scope.server'),
       import('@sva/routing/server'),
     ]);
     const request = getRequest();
-    let pluginScope: 'platform' | 'tenant' = 'platform';
-    if (isDevAuthAvailable() && hasActiveDevAuthSessionCookie(request.headers.get('cookie'))) {
-      pluginScope = 'tenant';
-    } else {
-      try {
-        const authConfig = await authRuntime.resolveAuthConfigForRequest(request);
-        pluginScope = authConfig.kind === 'instance' ? 'tenant' : 'platform';
-      } catch (error) {
-        if (!(
-          error instanceof Error &&
-          error.name === 'TenantAuthResolutionError' &&
-          'reason' in error &&
-          error.reason === 'tenant_host_invalid'
-        )) {
-          throw error;
-        }
-      }
-    }
+    const pluginScope = await resolveServerPluginRouteScope(request);
     return mod.getServerRouteFactories({
       bindings: appRouteBindings,
       adminResources: studioAdminResources,
@@ -50,7 +38,7 @@ const getRuntimeRouteFactories = createIsomorphicFn()
   })
   .client(async () => {
     const mod = await import('@sva/routing');
-    let pluginScope: 'platform' | 'tenant' = 'platform';
+    let pluginScope: PluginRouteScope = readDocumentPluginRouteScope() ?? 'platform';
     if (isDevAuthAvailable() && hasActiveDevAuthSession()) {
       pluginScope = 'tenant';
     } else {
@@ -60,15 +48,17 @@ const getRuntimeRouteFactories = createIsomorphicFn()
           { credentials: 'include' },
           { timeoutMs: 5_000 }
         );
-        const declaredScope = response?.headers.get(PLUGIN_ROUTE_SCOPE_HEADER_NAME);
-        if (declaredScope === 'tenant' || declaredScope === 'platform') {
+        const declaredScope = readPluginRouteScope(
+          response?.headers.get(PLUGIN_ROUTE_SCOPE_HEADER_NAME)
+        );
+        if (declaredScope) {
           pluginScope = declaredScope;
         } else {
           const user = response?.ok ? readRouteGuardUser(await response.json()) : null;
           pluginScope = user?.instanceId ? 'tenant' : 'platform';
         }
       } catch {
-        // Ohne bestätigte Tenant-Session bleibt die Router-Materialisierung fail-closed auf den Plattform-Scope begrenzt.
+        // Der SSR-Scope bleibt erhalten, wenn die Session-Abfrage beim Hydrieren technisch ausfällt.
       }
     }
     return mod.getClientRouteFactories({

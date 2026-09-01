@@ -22,6 +22,9 @@ const definitionAllowedKeys = new Set([
 const operationAllowedKeys = new Set(['operation', 'jobTypeId', 'supportsCancellation'] as const);
 const checkAllowedKeys = new Set(['checkId', 'titleKey', 'required', 'repairOperation'] as const);
 const operationSet = new Set<string>(pluginTenantLifecycleOperations);
+const repairOperationSet = new Set<string>(
+  pluginTenantLifecycleOperations.filter((operation) => operation !== 'readiness')
+);
 
 const defineOperation = (input: {
   readonly pluginNamespace: string;
@@ -99,7 +102,11 @@ const defineCheck = (input: {
   if (titleKey.length === 0 || typeof check.required !== 'boolean') {
     throw new Error(`invalid_plugin_tenant_readiness_check:${checkId}`);
   }
-  if (check.repairOperation && !declaredOperations.has(check.repairOperation)) {
+  if (
+    check.repairOperation &&
+    (!repairOperationSet.has(check.repairOperation) ||
+      !declaredOperations.has(check.repairOperation))
+  ) {
     throw new Error(
       `unknown_plugin_tenant_readiness_repair_operation:${checkId}:${check.repairOperation}`
     );

@@ -27,7 +27,12 @@ import {
   readString,
 } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
-import { parseAddress, parseCategories, parseWebUrl } from './content-route-parsers.js';
+import {
+  parseAddress,
+  parseCategories,
+  parseMediaUrl,
+  parseWebUrl,
+} from './content-route-parsers.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
@@ -231,7 +236,7 @@ const parseContentBlockMediaContents = (
     if (!isRecord(media)) {
       return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
     }
-    const sourceUrl = parseWebUrl(media.sourceUrl);
+    const sourceUrl = parseMediaUrl(media.sourceUrl);
     if (sourceUrl instanceof Response) {
       return sourceUrl;
     }

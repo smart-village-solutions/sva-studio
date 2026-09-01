@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -949,6 +949,7 @@ describe('appRouteBindings', () => {
     routeState.params = { id: 'content-1' };
     routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
     routeState.enabledMainserverMutationActions = ['content.transferOwnership'];
+    let resolveRevalidation: ((value: unknown) => void) | undefined;
     routeState.requestMainserverJson
       .mockResolvedValueOnce({
         data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
@@ -961,14 +962,12 @@ describe('appRouteBindings', () => {
           displayName: 'Aktueller Account',
         },
       })
-      .mockResolvedValueOnce({
-        data: { canTransfer: false },
-        currentOwner: {
-          principal: { type: 'account', id: 'account-1' },
-          principalResolution: 'resolved',
-          displayName: 'Aktueller Account',
-        },
-      });
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRevalidation = resolve;
+          })
+      );
 
     const { appRouteBindings } = await import('./app-route-bindings');
     const view = render(<appRouteBindings.newsDetail />);
@@ -982,6 +981,19 @@ describe('appRouteBindings', () => {
     routeState.authUser = { id: 'user-2', instanceId: 'de-musterhausen' };
     view.rerender(<appRouteBindings.newsDetail />);
 
+    expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
+      'false'
+    );
+    await act(async () => {
+      resolveRevalidation?.({
+        data: { canTransfer: false },
+        currentOwner: {
+          principal: { type: 'account', id: 'account-1' },
+          principalResolution: 'resolved',
+          displayName: 'Aktueller Account',
+        },
+      });
+    });
     await waitFor(() => {
       expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
         'false'

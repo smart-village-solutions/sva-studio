@@ -413,6 +413,7 @@ const MainserverResourcePrincipalBoundary = ({
       setTransferAuthorized(false);
       return;
     }
+    setTransferAuthorized(false);
     let active = true;
     void requestMainserverJson<{
       readonly data: Readonly<{ canTransfer: boolean }>;

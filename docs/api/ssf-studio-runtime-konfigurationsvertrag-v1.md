@@ -177,8 +177,10 @@ Tenant-Assertion, keinen zweiten Signaturschlüssel und keinen Replay-Speicher.
 
 `configurationRevision` ist ein undurchsichtiger Inhaltsfingerabdruck der
 kanonisch serialisierten effektiven V1-Konfiguration ohne das Revisionsfeld
-selbst. Änderungen an einem Tenant-Override, einem wirksamen serverweiten Wert
-oder einem ausgelieferten Produktdefault ändern die Revision automatisch.
+selbst. Änderungen an einem wirksamen Tenant-Override, einem wirksamen
+serverweiten Wert oder einem ausgelieferten Produktdefault ändern die Revision
+automatisch. Eine Änderung an einem durch eine Policy unwirksamen gespeicherten
+Override verändert die Runtime-Antwort und damit die Revision nicht.
 
 ## Auflösung der effektiven Konfiguration
 
@@ -224,7 +226,9 @@ einschränken, der API-Vertrag definiert jedoch keine starre kleine Tag-Liste.
 Studio entfernt unmittelbar aktive beziehungsweise ausführbare Inhalte wie
 Skripte, Event-Handler und gefährliche URL-Protokolle. Externe Bilder benötigen
 keine Domain-Allowlist und keinen verpflichtenden Proxy; ihre Verwendung liegt
-in der Verantwortung des administrierenden Benutzers.
+in der Verantwortung des administrierenden Benutzers. Vor der Veröffentlichung
+muss der verantwortliche Mandant die Zulässigkeit der externen Einbindung und
+die erforderliche Information der betroffenen Benutzer und Gäste sicherstellen.
 
 ## Branding- und Speicher-Policies
 
@@ -346,5 +350,6 @@ Implementierungsplanung bleiben folgende technische Konkretisierungen:
 - konkrete HTML-Sanitizer-Bibliothek und minimale Gefahrenregeln,
 - OpenAPI-Schema einschließlich Formaten und maximalen Feldgrößen,
 - Übergangs- und Entfernungskriterien für `admin` und `customer`,
-- Abgleich des vereinfachten Service-Token-Vertrags mit dem bestehenden
-  OpenSpec-Change `add-ssf-runtime-configuration-api`.
+- Abgleich des vereinfachten Service-Token-Vertrags mit der parallel
+  entwickelten Runtime-OpenSpec-Ausarbeitung, sobald diese auf dem gemeinsamen
+  Branch verfügbar ist.

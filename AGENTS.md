@@ -181,7 +181,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 - **Kompatibilitätsanker**: `docs/guides/` enthält ausschließlich `studio-rollout-process.md`; neue allgemeine Dokumente gehören in den zuständigen Bereich. `docs/governance/dokumentationsmigration.md` weist die abgeschlossene Migration nach
 - **Nachweise und Historie**: Reports, Staging- und PR-Unterlagen bleiben in den dafür vorgesehenen, nicht normativen Bereichen
 - **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
-- **Sprache**: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
+- **Sprache**: Maßgebliche Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss). Für systemübergreifende technische Abstimmungen ist eine direkt verlinkte englische Übersetzung mit der Endung `.en.md` neben der maßgeblichen deutschen Fassung zulässig; bei Abweichungen gilt die deutsche Fassung.
 - **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
 - **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
 - **DB-Schema-Snapshot**: Änderungen an Tabellen, Spalten, Constraints, Indizes, RLS, Triggern oder DB-Funktionen müssen immer auch `docs/development/studio-db-schema-final.sql` und bei Bedarf `docs/development/studio-db-schema.md` aktualisieren

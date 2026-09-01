@@ -180,8 +180,10 @@ assertion, a second signing key, or replay storage.
 
 `configurationRevision` is an opaque content fingerprint of the canonically
 serialized effective V1 configuration, excluding the revision field itself. A
-change to a tenant override, an effective server-wide value, or a shipped
-product default automatically changes the revision.
+change to an effective tenant override, an effective server-wide value, or a
+shipped product default automatically changes the revision. Changing a stored
+override that is ineffective because of a policy does not change the runtime
+response or its revision.
 
 ## Resolving the effective configuration
 
@@ -227,7 +229,9 @@ contract does not define a small, rigid tag list. Studio removes directly
 active or executable content such as scripts, event handlers, and dangerous
 URL schemes. External images require neither a domain allowlist nor a mandatory
 proxy; their use is the responsibility of the administrator editing the
-content.
+content. Before publication, the responsible tenant must ensure that the
+external inclusion is lawful and that affected users and guests receive any
+required information.
 
 ## Branding and storage policies
 
@@ -348,5 +352,5 @@ need to be specified for the normative OpenSpec and implementation plan:
 - the concrete HTML sanitizer library and minimum hazardous-content rules,
 - the OpenAPI schema, including formats and maximum field sizes,
 - migration and removal criteria for `admin` and `customer`,
-- alignment of the simplified service-token contract with the existing
-  `add-ssf-runtime-configuration-api` OpenSpec change.
+- alignment of the simplified service-token contract with the runtime OpenSpec
+  work being developed in parallel once it is available on the shared branch.

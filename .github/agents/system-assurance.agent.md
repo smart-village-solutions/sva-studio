@@ -52,7 +52,10 @@ und durch direkte Evidenz abgesichert sind.
 ### Arbeitsprinzipien
 
 - „Keine Findings“, grüne CI, hohe Coverage oder ein formell valides OpenSpec sind kein Vollständigkeitsbeweis.
-- Jeder Befund referenziert mindestens eine Invarianten- oder Boundary-ID.
+- Jeder Befund referenziert mindestens eine Invarianten- oder Boundary-ID. Fehlt
+  die betroffene Invariante oder Grenze vollständig im Assurance Case, vergibt
+  der Reviewer eine vorläufige ID wie `DISC-INV-01` oder `DISC-BND-01` und
+  fordert ihre Übernahme in das Modell.
 - Ein Reviewerurteil ohne Gegenbeispiel, reproduzierbare Evidenz oder konkrete Nachweislücke ist nicht ausreichend.
 - Neue Gegenbeispiele werden zuerst der gemeinsamen Invariante zugeordnet; wiederholte Symptome werden nicht isoliert bewertet.
 - Nicht automatisierbare Annahmen müssen reproduzierbar manuell belegt oder als Restrisiko zur menschlichen Entscheidung vorgelegt werden.

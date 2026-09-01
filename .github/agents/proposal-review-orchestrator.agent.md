@@ -180,7 +180,7 @@ Auf explizite Anweisung (z.B. „arbeite die Verbesserungen ein", „apply", „
 4. Führe abschließend `openspec validate <change-id> --strict` aus
 5. Gib eine Zusammenfassung: was eingearbeitet wurde, was offen bleibt
 
-**Einschränkung:** Der Apply-Modus arbeitet nur in `proposal.md`, `design.md`, `tasks.md` und `specs/*/spec.md` – niemals in Code-Dateien.
+**Einschränkung:** Der Apply-Modus arbeitet nur in `proposal.md`, `design.md`, `assurance.md`, `tasks.md` und `specs/*/spec.md` – niemals in Code-Dateien.
 
 ### Regeln
 

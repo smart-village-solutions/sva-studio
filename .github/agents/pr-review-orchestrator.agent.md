@@ -106,11 +106,16 @@ Rufe alle ausgewählten Fachreviewer parallel auf. Jeder Reviewer erhält:
 - relevante Diff- oder Dateiliste
 - klare Aufforderung, sein jeweiliges Template zu verwenden
 
-System Assurance erhält zusätzlich die Prüfphase `Nachweisreview`, den Assurance
-Case, den exakten PR-HEAD und die Aufforderung, Invarianten durch konkrete
-Gegenbeispiele zu widerlegen oder ihre direkte Evidenz zu verifizieren. Grüne
-Checks oder ausbleibende Findings dürfen nicht als Vollständigkeitsnachweis
-konsolidiert werden.
+Bestimme für System Assurance die Prüfphase aus der Lieferstufe:
+
+- Ein reiner Proposal-PR ohne Implementierung erhält `Planungsreview`.
+- Ein PR mit Implementierung oder Merge-Reifeprüfung erhält `Nachweisreview`.
+
+System Assurance erhält die ermittelte Prüfphase, den Assurance Case, den
+exakten PR-HEAD und die Aufforderung, Invarianten durch konkrete Gegenbeispiele
+zu widerlegen sowie abhängig von der Prüfphase die Nachweisplanung oder die
+ausgeführte direkte Evidenz zu verifizieren. Grüne Checks oder ausbleibende
+Findings dürfen nicht als Vollständigkeitsnachweis konsolidiert werden.
 
 #### Schritt 4: Ergebnisse konsolidieren
 

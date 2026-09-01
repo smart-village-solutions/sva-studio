@@ -472,6 +472,12 @@ describe('Mainserver content ownership route', () => {
     expect(reconcilePreviousTransfer.mock.invocationCallOrder[0]).toBeLessThan(
       state.hasUnresolvedTransfer.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
+    expect(state.hasUnresolvedTransfer).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      excludeOperationExternalId: 'operation-1',
+    });
   });
 
   it('keeps provider success when journal finalization fails', async () => {

@@ -10,6 +10,7 @@ export const hasUnresolvedMainserverOwnershipTransfer = async (input: {
   readonly instanceId: string;
   readonly contentType: string;
   readonly contentId: string;
+  readonly excludeOperationExternalId?: string;
 }): Promise<boolean> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
     const result = await client.query<{ unresolved: boolean }>(
@@ -21,14 +22,21 @@ export const hasUnresolvedMainserverOwnershipTransfer = async (input: {
            AND content_type = $2
            AND content_id = $3
            AND reconciliation_status IN ('pending', 'reconciliation_required')
+           AND ($4::text IS NULL OR operation_external_id <> $4)
        ) AS unresolved;`,
-      [input.instanceId, input.contentType, input.contentId]
+      [
+        input.instanceId,
+        input.contentType,
+        input.contentId,
+        input.excludeOperationExternalId ?? null,
+      ]
     );
     return result.rows[0]?.unresolved === true;
   });
 
 export type RecoverableMainserverOwnershipTransfer = Readonly<{
   operationExternalId: string;
+  expectedDataProviderId: string;
   targetPrincipal: Readonly<{
     type: 'account' | 'organization';
     id: string;
@@ -37,6 +45,7 @@ export type RecoverableMainserverOwnershipTransfer = Readonly<{
 
 type RecoverableOwnershipTransferRow = Readonly<{
   operation_external_id: string;
+  expected_data_provider_id: string;
   target_principal_type: string;
   target_principal_id: string;
 }>;
@@ -50,6 +59,7 @@ export const loadRecoverableMainserverOwnershipTransfers = async (input: {
   withInstanceScopedDb(input.instanceId, async (client) => {
     const result = await client.query<RecoverableOwnershipTransferRow>(
       `SELECT operation_external_id,
+              expected_data_provider_id,
               preimage->>'targetPrincipalType' AS target_principal_type,
               preimage->>'targetPrincipalId' AS target_principal_id
        FROM iam.mainserver_mutation_journal
@@ -67,6 +77,7 @@ export const loadRecoverableMainserverOwnershipTransfers = async (input: {
     );
     return result.rows.map((row) => ({
       operationExternalId: row.operation_external_id,
+      expectedDataProviderId: row.expected_data_provider_id,
       targetPrincipal: {
         type: row.target_principal_type as 'account' | 'organization',
         id: row.target_principal_id,

@@ -53,6 +53,7 @@ const refreshTransferredOwnershipProjection = async (input: {
   readonly contentType: ProjectionContentType;
   readonly contentId: string;
   readonly operationExternalId: string;
+  readonly expectedDataProviderId: string;
   readonly principal: RecoverableMainserverOwnershipTransfer['targetPrincipal'];
 }): Promise<void> => {
   const target = await resolveMainserverOwnershipTarget({
@@ -61,6 +62,9 @@ const refreshTransferredOwnershipProjection = async (input: {
     principal: input.principal,
   });
   if (!target.ok) throw new Error(target.code);
+  if (target.target.dataProviderId !== input.expectedDataProviderId) {
+    throw new Error('content_transfer_target_binding_changed');
+  }
   await refreshProjectedContentsForMainserverMutation({
     instanceId: input.followUp.instanceId,
     keycloakSubject: target.target.connection.keycloakSubject,
@@ -119,6 +123,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
                 contentType,
                 contentId: input.contentId,
                 operationExternalId: entry.operationExternalId,
+                expectedDataProviderId: entry.expectedDataProviderId,
                 principal: entry.targetPrincipal,
               });
             }
@@ -140,14 +145,16 @@ export const dispatchMainserverContentOwnershipRequest = async (
         readonly data?: Readonly<{
           contentId?: string;
           targetPrincipal?: Readonly<{ type?: string; id?: string }>;
-          targetDataProvider?: Readonly<{ name?: string }>;
+          targetDataProvider?: Readonly<{ id?: string; name?: string }>;
         }>;
       };
       const principal = payload.data?.targetPrincipal;
       const contentId = payload.data?.contentId;
+      const expectedDataProviderId = payload.data?.targetDataProvider?.id;
       if (!followUp) throw new Error('content_transfer_follow_up_context_missing');
       if (
         !contentId ||
+        !expectedDataProviderId ||
         !principal?.id ||
         (principal.type !== 'account' && principal.type !== 'organization')
       ) {
@@ -158,6 +165,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
         contentType,
         contentId,
         operationExternalId: followUp.operationExternalId,
+        expectedDataProviderId,
         principal: { type: principal.type, id: principal.id },
       });
     } catch (error) {

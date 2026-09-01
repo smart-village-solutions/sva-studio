@@ -48,6 +48,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.resolveTarget.mockResolvedValue({
       ok: true,
       target: {
+        dataProviderId: 'provider-target',
         dataProviderName: 'Zielorganisation',
         connection: {
           keycloakSubject: 'kc-actor',
@@ -68,7 +69,7 @@ describe('mainserver content ownership API projection follow-up', () => {
               type: 'organization',
               id: '22222222-2222-4222-8222-222222222222',
             },
-            targetDataProvider: { name: 'Zielorganisation' },
+            targetDataProvider: { id: 'provider-target', name: 'Zielorganisation' },
           },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
@@ -119,6 +120,7 @@ describe('mainserver content ownership API projection follow-up', () => {
               type: 'organization',
               id: '22222222-2222-4222-8222-222222222222',
             },
+            targetDataProvider: { id: 'provider-target' },
           },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
@@ -147,6 +149,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.resolveTarget.mockResolvedValueOnce({
       ok: true,
       target: {
+        dataProviderId: 'provider-target',
         connection: {
           keycloakSubject: 'kc-recipient',
           actingPrincipalType: 'user',
@@ -163,6 +166,7 @@ describe('mainserver content ownership API projection follow-up', () => {
               type: 'account',
               id: '22222222-2222-4222-8222-222222222222',
             },
+            targetDataProvider: { id: 'provider-target' },
           },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
@@ -189,6 +193,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.loadRecoverableTransfers.mockResolvedValueOnce([
       {
         operationExternalId: 'operation-previous',
+        expectedDataProviderId: 'provider-target',
         targetPrincipal: {
           type: 'organization',
           id: '22222222-2222-4222-8222-222222222222',
@@ -236,5 +241,43 @@ describe('mainserver content ownership API projection follow-up', () => {
         reconciliationStatus: 'complete',
       })
     );
+  });
+
+  it('keeps reconciliation blocked when the recorded target binding has changed', async () => {
+    state.loadRecoverableTransfers.mockResolvedValueOnce([
+      {
+        operationExternalId: 'operation-previous',
+        expectedDataProviderId: 'provider-recorded',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+    state.dispatch.mockImplementationOnce(async (_request, options) => {
+      await expect(
+        options.reconcilePreviousTransfer({
+          instanceId: 'instance-1',
+          contentType: 'news.article',
+          contentId: 'news-1',
+          currentDataProviderId: 'provider-recorded',
+        })
+      ).rejects.toThrow('content_transfer_target_binding_changed');
+      return new Response(JSON.stringify({ error: 'content_transfer_reconciliation_required' }), {
+        status: 409,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+
+    const response = await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(response?.status).toBe(409);
+    expect(state.refreshProjection).not.toHaveBeenCalled();
+    expect(state.finalizeJournal).not.toHaveBeenCalled();
   });
 });

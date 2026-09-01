@@ -1,0 +1,4 @@
+{
+  "prNumber": 1240,
+  "body": "Störungshinweise lassen sich je Mandant dauerhaft für die eigene Straße und für alle Straßen konfigurieren.\n\n- Beide Optionen sind standardmäßig deaktiviert und werden in den Waste-Einstellungen gespeichert.\n- Aktivierte Störungshinweise erscheinen als eigene Abfallarten in der App-Konfiguration.\n- Falls die nachgelagerte Synchronisierung fehlschlägt, bleibt die Einstellung gespeichert und kann erneut synchronisiert werden."
+}

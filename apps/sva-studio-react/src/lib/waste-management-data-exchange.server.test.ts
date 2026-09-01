@@ -23,15 +23,19 @@ const createPortablePackage = (calendarWebUrl: string): Uint8Array => {
     records: [{ entityType: 'portableSettings', calendarWebUrl, holidayStateCode: 'BB' }],
   });
   return zipSync({
-    'manifest.json': strToU8(JSON.stringify({
-      formatVersion: '1.0.0',
-      pluginId: 'waste-management',
-      profiles: [{
-        profileId: 'waste-management.portable-einstellungen',
-        fileName,
-        sha256: createHash('sha256').update(contents).digest('hex'),
-      }],
-    })),
+    'manifest.json': strToU8(
+      JSON.stringify({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profiles: [
+          {
+            profileId: 'waste-management.portable-einstellungen',
+            fileName,
+            sha256: createHash('sha256').update(contents).digest('hex'),
+          },
+        ],
+      })
+    ),
     [fileName]: strToU8(contents),
   });
 };
@@ -214,15 +218,17 @@ describe('Waste data exchange operations', () => {
     const { deps, query } = createDeps();
     repository.listWasteTours.mockRejectedValueOnce(new Error('tour_read_failed'));
 
-    await expect(createExportDataOperation(deps)(
-      'instance-1',
-      {
-        operation: 'export-data',
-        profileIds: ['waste-management.fraktionen', 'waste-management.touren'],
-        targetFormat: 'application/zip',
-      },
-      { jobId: 'job-1' }
-    )).rejects.toThrow('tour_read_failed');
+    await expect(
+      createExportDataOperation(deps)(
+        'instance-1',
+        {
+          operation: 'export-data',
+          profileIds: ['waste-management.fraktionen', 'waste-management.touren'],
+          targetFormat: 'application/zip',
+        },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('tour_read_failed');
 
     expect(query.mock.calls.map(([statement]) => statement).slice(1)).toEqual([
       'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
@@ -237,13 +243,15 @@ describe('Waste data exchange operations', () => {
       pluginId: 'waste-management',
       profileId: 'waste-management.fraktionen',
       exportedAt: '2026-08-16T09:00:00.000Z',
-      records: [{
-        entityType: 'fraction',
-        id: 'fraction-1',
-        name: 'Bio',
-        pdfShortLabel: 'BIO',
-        color: '#00aa00',
-      }],
+      records: [
+        {
+          entityType: 'fraction',
+          id: 'fraction-1',
+          name: 'Bio',
+          pdfShortLabel: 'BIO',
+          color: '#00aa00',
+        },
+      ],
     };
     const importDeps = {
       ...deps,
@@ -271,19 +279,21 @@ describe('Waste data exchange operations', () => {
   });
 
   it('allocates collision-free labels for fractions without an optional PDF short label', async () => {
-    repository.listWasteFractions.mockResolvedValueOnce([{
-      id: 'existing-fraction',
-      name: 'Bio',
-      pdfShortLabel: 'BIO',
-      color: '#008800',
-      active: true,
-      reminderConfig: {
-        reminderCount: 'none',
-        channels: { push: false, email: false, calendar: false },
+    repository.listWasteFractions.mockResolvedValueOnce([
+      {
+        id: 'existing-fraction',
+        name: 'Bio',
+        pdfShortLabel: 'BIO',
+        color: '#008800',
+        active: true,
+        reminderConfig: {
+          reminderCount: 'none',
+          channels: { push: false, email: false, calendar: false },
+        },
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
       },
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    }]);
+    ]);
     const { deps } = createDeps();
     const envelope = {
       formatVersion: '1.0.0',
@@ -425,22 +435,26 @@ describe('Waste data exchange operations', () => {
       throw new Error('interface_save_failed');
     });
 
-    await expect(importCanonicalWasteManagementPackage({
-      deps: {
-        ...deps,
-        loadDefaultInterfaceRecord: vi.fn(async () => targetInterface),
-        readBinarySource: vi.fn(async () => createPortablePackage('https://new.example')),
-        saveInterfaceRecord,
-      },
-      instanceId: 'instance-1',
-      blobRef: 'blob:portable-package',
-      dryRun: false,
-    })).rejects.toThrow('interface_save_failed');
+    await expect(
+      importCanonicalWasteManagementPackage({
+        deps: {
+          ...deps,
+          loadDefaultInterfaceRecord: vi.fn(async () => targetInterface),
+          readBinarySource: vi.fn(async () => createPortablePackage('https://new.example')),
+          saveInterfaceRecord,
+        },
+        instanceId: 'instance-1',
+        blobRef: 'blob:portable-package',
+        dryRun: false,
+      })
+    ).rejects.toThrow('interface_save_failed');
 
     expect(saveInterfaceRecord).toHaveBeenCalledTimes(1);
-    expect(query.mock.calls.map(([statement]) => statement).filter(
-      (statement) => ['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
-    )).toEqual(['BEGIN', 'ROLLBACK']);
+    expect(
+      query.mock.calls
+        .map(([statement]) => statement)
+        .filter((statement) => ['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement))
+    ).toEqual(['BEGIN', 'ROLLBACK']);
   });
 
   it('restores portable settings when the Waste commit fails after their update', async () => {
@@ -458,17 +472,19 @@ describe('Waste data exchange operations', () => {
       savedInterfaces.push(record);
     });
 
-    await expect(importCanonicalWasteManagementPackage({
-      deps: {
-        ...deps,
-        loadDefaultInterfaceRecord: vi.fn(async () => targetInterface),
-        readBinarySource: vi.fn(async () => createPortablePackage('https://new.example')),
-        saveInterfaceRecord,
-      },
-      instanceId: 'instance-1',
-      blobRef: 'blob:portable-package',
-      dryRun: false,
-    })).rejects.toThrow('waste_commit_failed');
+    await expect(
+      importCanonicalWasteManagementPackage({
+        deps: {
+          ...deps,
+          loadDefaultInterfaceRecord: vi.fn(async () => targetInterface),
+          readBinarySource: vi.fn(async () => createPortablePackage('https://new.example')),
+          saveInterfaceRecord,
+        },
+        instanceId: 'instance-1',
+        blobRef: 'blob:portable-package',
+        dryRun: false,
+      })
+    ).rejects.toThrow('waste_commit_failed');
 
     expect(savedInterfaces).toHaveLength(2);
     expect(savedInterfaces[0]?.publicConfig).toMatchObject({
@@ -482,6 +498,8 @@ describe('Waste data exchange operations', () => {
     repository.getWastePdfStaticSettings.mockResolvedValueOnce({
       pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
       pdfContactBlock: 'Abfallberatung',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
       updatedAt: '2026-08-16T08:00:00.000Z',
     });
     const sourceInterface: ExternalInterfaceRecord = {

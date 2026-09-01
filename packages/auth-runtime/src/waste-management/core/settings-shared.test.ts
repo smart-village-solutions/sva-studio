@@ -191,6 +191,8 @@ describe('waste-management settings shared helpers', () => {
       calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
       pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
       pdfContactBlock: 'Abfallberatung aus Waste-DB',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
       emailReminderConfig: createEmailReminderConfig(),
       databaseUrlConfigured: true,
       visibleStatus: 'error',
@@ -200,6 +202,7 @@ describe('waste-management settings shared helpers', () => {
       lastCheckErrorMessage: 'DB auth failed',
       holidayStateCode: 'NW',
       lastHolidaySyncStatus: 'success',
+      lastSuccessfulHolidaySyncAt: undefined,
       updatedAt: '2026-05-09T11:00:00.000Z',
       customRecurrencePresets: [
         {
@@ -417,6 +420,8 @@ describe('waste-management settings shared helpers', () => {
       availableInterfaces: [],
       databaseUrlConfigured: false,
       visibleStatus: 'not_configured',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
       customRecurrencePresets: [],
     });
   });
@@ -438,6 +443,8 @@ describe('waste-management settings shared helpers', () => {
       availableInterfaces: [],
       databaseUrlConfigured: false,
       visibleStatus: 'not_configured',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
       customRecurrencePresets: [],
     });
   });
@@ -514,6 +521,8 @@ describe('waste-management settings shared helpers', () => {
       ],
       databaseUrlConfigured: false,
       visibleStatus: 'not_configured',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
       customRecurrencePresets: [],
     });
   });

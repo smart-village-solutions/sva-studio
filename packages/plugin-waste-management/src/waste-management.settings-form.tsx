@@ -10,6 +10,7 @@ import {
   WasteCalendarWebUrlSection,
   WasteHolidayStateSection,
   WasteInterfaceSelectionSection,
+  WasteDisruptionNotificationsSection,
 } from './waste-management.settings-form.sections.js';
 import type { SettingsFormState } from './waste-management.settings.shared.js';
 export type {
@@ -76,6 +77,7 @@ export const WasteSettingsForm = ({
           onChange={onChange}
         />
         <WasteCalendarWebUrlSection form={form} saving={saving} onChange={onChange} />
+        <WasteDisruptionNotificationsSection form={form} saving={saving} onChange={onChange} />
         <WasteInterfaceSelectionSection
           form={form}
           settings={settings}

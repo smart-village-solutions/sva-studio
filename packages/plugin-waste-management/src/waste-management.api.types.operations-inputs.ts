@@ -25,6 +25,8 @@ export type WasteManagementSettingsInput = Readonly<{
   calendarWebUrl?: string;
   pdfBrandingAssetUrl?: string;
   pdfContactBlock?: string;
+  disruptionLocationEnabled: boolean;
+  disruptionAllLocationsEnabled: boolean;
   emailReminderConfig?: WasteManagementEmailReminderConfig;
   holidayStateCode?: WasteHolidayStateCode;
   customRecurrencePresets: readonly Omit<

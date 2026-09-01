@@ -158,9 +158,9 @@ describe('buildWasteTypesStaticContent', () => {
   });
 
   it('rejects fractions without a short label', async () => {
-    await expect(buildWasteTypesStaticContent([createFraction({ pdfShortLabel: undefined })])).rejects.toThrow(
-      'missing_waste_type_short_label:fraction-bio'
-    );
+    await expect(
+      buildWasteTypesStaticContent([createFraction({ pdfShortLabel: undefined })])
+    ).rejects.toThrow('missing_waste_type_short_label:fraction-bio');
   });
 
   it('rejects duplicate normalized waste type keys', async () => {
@@ -178,6 +178,82 @@ describe('buildWasteTypesStaticContent', () => {
       createFraction({ id: 'fraction-ascii', pdfShortLabel: 'ZA' }),
     ]);
 
-    expect(Object.keys(JSON.parse(artifact.content) as Record<string, unknown>)).toEqual(['ZA', 'ÄB']);
+    expect(Object.keys(JSON.parse(artifact.content) as Record<string, unknown>)).toEqual([
+      'ZA',
+      'ÄB',
+    ]);
+  });
+
+  it.each([
+    {
+      label: 'neither disruption type',
+      settings: { disruptionLocationEnabled: false, disruptionAllLocationsEnabled: false },
+      expected: {},
+    },
+    {
+      label: 'only the location disruption type',
+      settings: { disruptionLocationEnabled: true, disruptionAllLocationsEnabled: false },
+      expected: {
+        disruption_location: { label: 'Meine Straße', notification_kind: 'disruption' },
+      },
+    },
+    {
+      label: 'only the all-locations disruption type',
+      settings: { disruptionLocationEnabled: false, disruptionAllLocationsEnabled: true },
+      expected: {
+        disruption_all_locations: { label: 'Alle Straßen', notification_kind: 'disruption' },
+      },
+    },
+    {
+      label: 'both disruption types',
+      settings: { disruptionLocationEnabled: true, disruptionAllLocationsEnabled: true },
+      expected: {
+        disruption_all_locations: { label: 'Alle Straßen', notification_kind: 'disruption' },
+        disruption_location: { label: 'Meine Straße', notification_kind: 'disruption' },
+      },
+    },
+  ])('adds $label without counting it as a fraction', async ({ settings, expected }) => {
+    const artifact = await buildWasteTypesStaticContent([], settings);
+
+    expect(JSON.parse(artifact.content)).toEqual(expected);
+    expect(artifact.fractionCount).toBe(0);
+  });
+
+  it('keeps regular fractions unchanged while sorting disruption keys deterministically', async () => {
+    const settings = { disruptionLocationEnabled: true, disruptionAllLocationsEnabled: true };
+    const first = await buildWasteTypesStaticContent([createFraction()], settings);
+    const second = await buildWasteTypesStaticContent([createFraction()], settings);
+    const payload = JSON.parse(first.content) as Record<string, Record<string, unknown>>;
+
+    expect(Object.keys(payload)).toEqual([
+      'BIO',
+      'disruption_all_locations',
+      'disruption_location',
+    ]);
+    expect(payload.BIO).toMatchObject({ id: 'fraction-bio', short_label: 'BIO' });
+    expect(payload.disruption_location).toEqual({
+      label: 'Meine Straße',
+      notification_kind: 'disruption',
+    });
+    expect(payload.disruption_location).not.toHaveProperty('id');
+    expect(payload.disruption_location).not.toHaveProperty('reminders');
+    expect(first.fractionCount).toBe(1);
+    expect(second).toEqual(first);
+  });
+
+  it('changes the content hash when a disruption type is enabled', async () => {
+    const disabled = await buildWasteTypesStaticContent([createFraction()]);
+    const enabled = await buildWasteTypesStaticContent([createFraction()], {
+      disruptionLocationEnabled: true,
+      disruptionAllLocationsEnabled: false,
+    });
+
+    expect(enabled.version).not.toBe(disabled.version);
+  });
+
+  it('rejects fraction labels that use a reserved disruption key', async () => {
+    await expect(
+      buildWasteTypesStaticContent([createFraction({ pdfShortLabel: 'disruption_location' })])
+    ).rejects.toThrow('reserved_waste_type_key:DISRUPTION_LOCATION');
   });
 });

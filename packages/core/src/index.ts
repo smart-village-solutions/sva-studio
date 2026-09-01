@@ -379,6 +379,13 @@ export type {
   WasteOutputFraction,
 } from './waste-management-output.types.js';
 export { buildWasteTypesStaticContent } from './waste-management-static-content.js';
+export type {
+  WasteDisruptionNotificationSettings,
+  WasteDisruptionStaticContentEntry,
+  WasteFractionStaticContentEntry,
+  WasteTypeStaticContentEntry,
+  WasteTypesStaticContentArtifact,
+} from './waste-management-static-content.js';
 export {
   assertWasteAnnualTourTransferLimits,
   wasteAnnualTourTransferLimits,
@@ -408,10 +415,6 @@ export {
   buildWasteAnnualTourTransferPreview,
   toWasteAnnualTourTransferPublicPreview,
 } from './waste-management-annual-tour-transfer.preview.js';
-export type {
-  WasteTypeStaticContentEntry,
-  WasteTypesStaticContentArtifact,
-} from './waste-management-static-content.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {

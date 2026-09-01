@@ -1,0 +1,4 @@
+{
+  "prNumber": 1227,
+  "body": "Inhalte können jetzt standardmäßig an andere Accounts oder Organisationen übertragen werden.\n\n- Die Funktion ist dauerhaft aktiviert und benötigt keine betriebliche Konfiguration mehr.\n- Fehlende Mainserver-Zuordnungen werden beim Übertragen mit den Zugangsdaten des Ziels sicher geprüft.\n- Bei mehrdeutigen oder nicht verwendbaren Zuordnungen bleibt die Übertragung gesperrt und zeigt einen verständlichen Hinweis."
+}

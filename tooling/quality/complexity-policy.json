@@ -21,15 +21,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/**/src/**/*.ts",
-        "packages/**/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "packages/sva-mainserver/src/generated/**/*.ts"
-      ]
+      "include": ["packages/**/src/**/*.ts", "packages/**/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx", "packages/sva-mainserver/src/generated/**/*.ts"]
     },
     {
       "id": "apps-default",
@@ -37,14 +30,8 @@
       "class": "zentral",
       "owner": "team-frontend",
       "reviewCadence": "pro-pr",
-      "include": [
-        "apps/**/src/**/*.ts",
-        "apps/**/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx"
-      ]
+      "include": ["apps/**/src/**/*.ts", "apps/**/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx"]
     },
     {
       "id": "scripts-default",
@@ -52,12 +39,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "scripts/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ]
+      "include": ["scripts/**/*.ts"],
+      "exclude": ["**/*.test.ts"]
     },
     {
       "id": "routing",
@@ -65,12 +48,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/routing/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/routing/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -79,12 +58,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/core/src/security/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/core/src/security/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -93,12 +68,8 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/core/src/iam/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/core/src/iam/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -113,12 +84,8 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/iam-core/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/iam-core/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -133,12 +100,8 @@
       "class": "zentral",
       "owner": "team-iam",
       "reviewCadence": "sprintweise",
-      "include": [
-        "packages/data/src/iam/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/data/src/iam/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -147,12 +110,8 @@
       "class": "kritisch",
       "owner": "team-data",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/data/src/instance-registry/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/data/src/instance-registry/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -161,12 +120,8 @@
       "class": "kritisch",
       "owner": "team-data",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/data-repositories/src/instance-registry/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/data-repositories/src/instance-registry/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100
     },
     {
@@ -175,12 +130,8 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/auth-runtime/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/auth-runtime/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -195,12 +146,8 @@
       "class": "kritisch",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/iam-admin/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/iam-admin/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -215,12 +162,8 @@
       "class": "zentral",
       "owner": "team-iam",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/iam-governance/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/iam-governance/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -235,12 +178,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/instance-registry/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/instance-registry/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -255,12 +194,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/plugin-sdk/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["packages/plugin-sdk/src/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -275,14 +210,8 @@
       "class": "zentral",
       "owner": "team-content",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/plugin-news/src/**/*.ts",
-        "packages/plugin-news/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx"
-      ],
+      "include": ["packages/plugin-news/src/**/*.ts", "packages/plugin-news/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -297,13 +226,8 @@
       "class": "kritisch",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "packages/sva-mainserver/src/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "packages/sva-mainserver/src/generated/**/*.ts"
-      ],
+      "include": ["packages/sva-mainserver/src/**/*.ts"],
+      "exclude": ["**/*.test.ts", "packages/sva-mainserver/src/generated/**/*.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -318,14 +242,8 @@
       "class": "zentral",
       "owner": "team-frontend",
       "reviewCadence": "pro-pr",
-      "include": [
-        "apps/sva-studio-react/src/**/*.ts",
-        "apps/sva-studio-react/src/**/*.tsx"
-      ],
-      "exclude": [
-        "**/*.test.ts",
-        "**/*.test.tsx"
-      ],
+      "include": ["apps/sva-studio-react/src/**/*.ts", "apps/sva-studio-react/src/**/*.tsx"],
+      "exclude": ["**/*.test.ts", "**/*.test.tsx"],
       "priority": 100,
       "overrides": {
         "fileLines": 400,
@@ -340,12 +258,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "scripts/ci/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["scripts/ci/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 320,
@@ -360,12 +274,8 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": [
-        "scripts/ops/**/*.ts"
-      ],
-      "exclude": [
-        "**/*.test.ts"
-      ],
+      "include": ["scripts/ops/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
       "priority": 100,
       "overrides": {
         "fileLines": 400,
@@ -3543,6 +3453,102 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "PostgreSQL-spezifische Interface-Auflösung aus dem allgemeinen Runtime-Modul ausgliedern"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-lifecycle-orchestrator.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Job-Lifecycle-Orchestrierung in kleinere Übergangs- und Persistenzschritte aufteilen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-state-writer.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-OPS-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Status- und History-Schreibpfade in kleinere Lifecycle-Schritte aufteilen (packages/auth-runtime/src/plugin-operations/job-state-writer.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-state-writer.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Status- und History-Schreibpfade in kleinere Lifecycle-Schritte aufteilen (packages/auth-runtime/src/plugin-operations/job-state-writer.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-registry.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Runner-Registry in fokussierte Validierungs-, Event- und Zustandsübergänge zerlegen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-registry.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Runner-Registry in fokussierte Validierungs-, Event- und Zustandsübergänge zerlegen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-registry.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Runner-Registry in fokussierte Validierungs-, Event- und Zustandsübergänge zerlegen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-worker.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Runner-Worker in kleinere Ausführungs-, Fehler- und Abschlussbausteine aufteilen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/enqueue-recovery.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Recovery-Enqueue in kleinere Auswahl-, Lease- und Persistenzschritte aufteilen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/orchestrator.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Tenant-Lifecycle-Orchestrierung in fokussierte Ablauf- und Fehlerpfade gliedern"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/runtime.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Tenant-Lifecycle-Runtime in kleinere Zustands-, Recovery- und Scheduling-Bausteine zerlegen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/runtime.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Tenant-Lifecycle-Runtime in kleinere Zustands-, Recovery- und Scheduling-Bausteine zerlegen"
+    },
+    "ci-scripts:scripts/ci/verify-graphile-worker-database-contract.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Graphile-Worker-Datenbankverifier in wiederverwendbare Setup-, Prüf- und Cleanup-Bausteine gliedern"
+    },
+    "ci-scripts:scripts/ci/verify-plugin-lifecycle-database-contract.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Lifecycle-Datenbankverifier in kleinere Vertrags-, Fixture- und Assertionsmodule aufteilen"
+    },
+    "ci-scripts:scripts/ci/verify-plugin-lifecycle-database-contract.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Lifecycle-Datenbankverifier in kleinere Vertrags-, Fixture- und Assertionsmodule aufteilen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-module-mutations.ts:functionLines": {
+      "ticketId": "QUAL-INSTANCE-REGISTRY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Modul-Mutationsservice in gemeinsame Sync- und Audit-Helfer zerlegen"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/plugins.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-SDK-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Vertragsauflösung in kleinere Validierungs- und Kompatibilitätsbausteine zerlegen"
     }
   }
 }

@@ -282,6 +282,20 @@ describe('pr-scope', () => {
     expect(decision.escalationReasons).toEqual([]);
   });
 
+  it('cannot skip integration for lifecycle, repository, migration, queue, or harness changes', () => {
+    for (const path of [
+      'packages/auth-runtime/src/plugin-tenant-lifecycle/runtime.ts',
+      'packages/auth-runtime/src/plugin-operations/runner-queue.ts',
+      'packages/data-repositories/src/plugin-tenant-lifecycle/repository.ts',
+      'packages/data/migrations/0090_iam_plugin_lifecycle_linearization.sql',
+    ]) {
+      expect(classifyPrScope([path]).integrationMode).toBe('affected');
+    }
+    expect(
+      classifyPrScope(['scripts/ci/verify-plugin-lifecycle-database-contract.ts']).integrationMode
+    ).toBe('full');
+  });
+
   it('includes deleted files when resolving changed files', () => {
     const changedFiles = resolveChangedFiles('origin/main', 'HEAD', (args) => {
       expect(args).toEqual([

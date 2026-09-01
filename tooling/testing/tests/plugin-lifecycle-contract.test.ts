@@ -3,8 +3,6 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { classifyPrScope } from '../../../scripts/ci/pr-scope.js';
-
 const root = resolve(import.meta.dirname, '../../..');
 const read = (path: string): string => readFileSync(resolve(root, path), 'utf8');
 
@@ -80,19 +78,5 @@ describe('plugin lifecycle database contract gate', () => {
     expect(harness).toContain('sva-lifecycle-contract-${process.pid}-${randomUUID()');
     expect(harness).toContain("spawnSync('docker', ['rm', '--force', containerName]");
     expect(harness).not.toContain('docker compose down');
-  });
-
-  it('cannot skip integration for lifecycle, repository, migration, queue, or harness changes', () => {
-    for (const path of [
-      'packages/auth-runtime/src/plugin-tenant-lifecycle/runtime.ts',
-      'packages/auth-runtime/src/plugin-operations/runner-queue.ts',
-      'packages/data-repositories/src/plugin-tenant-lifecycle/repository.ts',
-      'packages/data/migrations/0090_iam_plugin_lifecycle_linearization.sql',
-    ]) {
-      expect(classifyPrScope([path]).integrationMode).toBe('affected');
-    }
-    expect(
-      classifyPrScope(['scripts/ci/verify-plugin-lifecycle-database-contract.ts']).integrationMode
-    ).toBe('full');
   });
 });

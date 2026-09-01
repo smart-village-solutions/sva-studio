@@ -64,10 +64,13 @@ accepted as aliases for `user` and `guest`. Newly issued or materialized roles
 use only the new values.
 
 System administrators are managed in the Studio root context and do not appear
-in tenant tokens. A tenant administrator does not automatically receive
-operational conversation permissions. If the same person also uses SSF
-operationally, that person additionally receives the `user` role and the
-corresponding `ssf.*` permissions.
+in tenant tokens. `system_admin` and `tenant_admin` are personas and default
+roles, not direct authorization inputs. Server-side decisions use only fully
+qualified `ssf.*` actions. Custom roles can therefore receive the same rights
+without special-casing a role name. A tenant administrator does not
+automatically receive operational conversation permissions. If the same person
+also uses SSF operationally, that person additionally receives the `user` role
+and the corresponding operational `ssf.*` permissions.
 
 Guests remain entirely within the existing SSF session model. They receive
 neither a Studio account nor a regular Keycloak account. Guest tokens, session
@@ -86,7 +89,10 @@ In addition to the standard OIDC claims, an SSF tenant token contains at least:
   "sub": "keycloak-user-id",
   "studio_instance_id": "01J...",
   "ssf_roles": ["tenant_admin"],
-  "ssf_permissions": ["ssf.sessions.read"],
+  "ssf_permissions": [
+    "ssf.configuration.tenant.read",
+    "ssf.configuration.tenant.manage"
+  ],
   "preferred_username": "erika",
   "name": "Erika Muster",
   "locale": "de-DE"
@@ -262,11 +268,16 @@ effect.
 
 ## Write permissions in Studio
 
-| Actor                | Permitted changes                                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| System administrator | server-wide SSF values and tenant-specific branding and storage policies                                          |
-| Tenant administrator | enabled languages, default locale, individual text overrides, desired storage mode, and permitted tenant branding |
-| Users and guests     | no configuration changes                                                                                          |
+| Action                                    | Scope                   | Default grant                    | Permitted changes                                                                                                  |
+| ----------------------------------------- | ----------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ssf.configuration.server.manage`         | entire SSF installation | System administrator             | server-wide SSF values                                                                                             |
+| `ssf.configuration.tenant-policy.manage`  | selected tenant         | System administrator             | tenant-specific branding and storage policies                                                                      |
+| `ssf.configuration.tenant.read`           | authorized tenant       | System and tenant administrators | effective configuration; value origins only for system administrators or roles explicitly authorized for them     |
+| `ssf.configuration.tenant.manage`         | active tenant           | Tenant administrator             | enabled languages, default locale, individual text overrides, desired storage mode, and permitted tenant branding |
+
+The default roles receive these actions through the regular permission
+catalog. Custom roles may receive the same actions; the runtime never checks
+only the role name. Users and guests have no configuration action by default.
 
 System administrators may inspect effective tenant configurations and the
 origin of their values, but they may not modify tenant-owned overrides during
@@ -350,7 +361,8 @@ transition. `configurationRevision` versions the content independently of
 The functional decisions have been made. The following technical details still
 need to be specified for the normative OpenSpec and implementation plan:
 
-- the complete initial catalog of `ssf.*` permissions,
+- the complete initial catalog of remaining `ssf.*` permissions beyond the
+  configuration actions fixed by this contract,
 - the concrete Keycloak client ID and audience,
 - the canonical serialization and hashing algorithm for
   `configurationRevision`,

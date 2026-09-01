@@ -924,6 +924,10 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   `ssf_permissions`; Permissions sind autoritativ. Systemadmins bleiben im
   Root-Kontext, Gäste im SSF-Sessionmodell. Access-Tokens gelten standardmäßig
   fünf und höchstens zehn Minuten.
+- Konfigurations-Reads und -Writes prüfen die festgelegten
+  `ssf.configuration.*`-Actions. Systemadmin und Mandantenadmin sind Personas
+  mit Default-Grants; kundenspezifische Rollen werden nicht durch Prüfungen auf
+  feste Rollennamen ausgeschlossen.
 - Studio liefert nur effektive Konfiguration. Benutzerlisten, E-Mail-Adressen,
   Gast-Token, Gesprächsinhalte, Einwilligungsdatensätze, Sessions und
   Auswertungsdaten werden über diesen Vertrag nicht ausgetauscht.

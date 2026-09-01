@@ -63,9 +63,14 @@ Die bisherigen Werte `admin` und `customer` werden während einer
 beziehungsweise materialisierte Rollen verwenden nur die neuen Werte.
 
 Systemadmins werden im Root-Kontext des Studios verwaltet und erscheinen nicht
-in Tenant-Tokens. Ein Mandantenadmin erhält nicht automatisch operative
-Gesprächsrechte. Soll dieselbe Person SSF operativ nutzen, erhält sie zusätzlich
-die Rolle `user` und die zugehörigen `ssf.*`-Permissions.
+in Tenant-Tokens. `system_admin` und `tenant_admin` sind Personas und
+Defaultrollen, aber keine direkte Autorisierungsgrundlage. Serverseitige
+Entscheidungen verwenden ausschließlich vollständig qualifizierte `ssf.*`-
+Actions. Damit können kundenspezifische Rollen dieselben Rechte erhalten, ohne
+Rollennamen als Sonderfall zu behandeln. Ein Mandantenadmin erhält nicht
+automatisch operative Gesprächsrechte. Soll dieselbe Person SSF operativ
+nutzen, erhält sie zusätzlich die Rolle `user` und die zugehörigen operativen
+`ssf.*`-Permissions.
 
 Gäste bleiben vollständig im bestehenden SSF-Sessionmodell. Sie erhalten kein
 Studio- und kein reguläres Keycloak-Konto. Gast-Token, Session-IDs und
@@ -84,7 +89,10 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
   "sub": "keycloak-user-id",
   "studio_instance_id": "01J...",
   "ssf_roles": ["tenant_admin"],
-  "ssf_permissions": ["ssf.sessions.read"],
+  "ssf_permissions": [
+    "ssf.configuration.tenant.read",
+    "ssf.configuration.tenant.manage"
+  ],
   "preferred_username": "erika",
   "name": "Erika Muster",
   "locale": "de-DE"
@@ -260,11 +268,17 @@ wirkungslos.
 
 ## Schreibrechte im Studio
 
-| Akteur             | Zulässige Änderungen                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Systemadmin        | serverweite SSF-Werte, mandantenspezifische Branding- und Speicher-Policies                                        |
-| Mandantenadmin     | aktive Sprachen, Standardsprache, einzelne Text-Overrides, gewünschter Speichermodus und erlaubtes Tenant-Branding |
-| Benutzer und Gäste | keine Konfigurationsänderungen                                                                                     |
+| Action                                    | Scope                     | Standardzuweisung | Zulässige Änderungen                                                                                               |
+| ----------------------------------------- | ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ssf.configuration.server.manage`         | gesamte SSF-Installation  | Systemadmin       | serverweite SSF-Werte                                                                                              |
+| `ssf.configuration.tenant-policy.manage`  | ausgewählter Mandant      | Systemadmin       | mandantenspezifische Branding- und Speicher-Policies                                                               |
+| `ssf.configuration.tenant.read`           | autorisierter Mandant     | Systemadmin, Mandantenadmin | effektive Konfiguration; Herkunft der Werte nur für Systemadmins beziehungsweise dafür ausdrücklich autorisierte Rollen |
+| `ssf.configuration.tenant.manage`         | aktiver Mandant           | Mandantenadmin    | aktive Sprachen, Standardsprache, einzelne Text-Overrides, gewünschter Speichermodus und erlaubtes Tenant-Branding |
+
+Die genannten Defaultrollen erhalten diese Actions über den normalen
+Permission-Katalog. Kundenspezifische Rollen dürfen dieselben Actions erhalten;
+die Runtime prüft niemals nur den Rollennamen. Benutzer und Gäste besitzen
+standardmäßig keine Konfigurations-Action.
 
 Systemadmins dürfen effektive Tenant-Konfigurationen und die Herkunft der
 Werte einsehen, aber tenant-eigene Overrides im Normalbetrieb nicht verändern.
@@ -349,7 +363,8 @@ ist unabhängig von `contractVersion`.
 Die fachlichen Entscheidungen sind getroffen. Für die normative OpenSpec- und
 Implementierungsplanung bleiben folgende technische Konkretisierungen:
 
-- vollständiger initialer Katalog der `ssf.*`-Permissions,
+- vollständiger initialer Katalog der übrigen `ssf.*`-Permissions außerhalb
+  der hier festgelegten Konfigurations-Actions,
 - konkrete Keycloak-Client-ID und Audience,
 - kanonisches Serialisierungs- und Hashverfahren für
   `configurationRevision`,

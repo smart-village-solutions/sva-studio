@@ -29,7 +29,12 @@ Signatur, keine Browserfreigabe und keinen Replay-Speicher.
 Benutzertokens tragen den kanonischen Mandantenclaim `studio_instance_id` sowie
 `ssf_roles` und die autoritativen `ssf_permissions`. Systemadmins bleiben im
 Studio-Root-Kontext; Mandantenadmins und Benutzer gehören genau einem Tenant.
-Gäste bleiben ausschließlich im SSF-Sessionmodell.
+Gäste bleiben ausschließlich im SSF-Sessionmodell. `system_admin` und
+`tenant_admin` sind Personas und Defaultrollen; Konfigurationszugriffe werden
+ausschließlich über `ssf.configuration.server.manage`,
+`ssf.configuration.tenant-policy.manage`, `ssf.configuration.tenant.read` und
+`ssf.configuration.tenant.manage` entschieden. Kundenspezifische Rollen können
+diese Actions ohne Rollennamen-Sonderfall erhalten.
 
 SSF speichert die Runtime-Antwort nicht persistent. Studio und SSF verwenden
 keine gemeinsame Fachdatenbank und greifen nicht direkt auf die Persistenz des

@@ -35,5 +35,15 @@ describe('media URL contracts', () => {
       httpsCandidate: 'https://cdn.example.test/image.jpg',
       httpFallback: false,
     });
+    expect(inspectManualMediaUrl('cdn.example.test:8080/image.jpg')).toEqual({
+      kind: 'upgrade',
+      value: 'cdn.example.test:8080/image.jpg',
+      httpsCandidate: 'https://cdn.example.test:8080/image.jpg',
+      httpFallback: false,
+    });
+    expect(inspectManualMediaUrl('ftp://cdn.example.test/image.jpg')).toEqual({
+      kind: 'invalid',
+      value: 'ftp://cdn.example.test/image.jpg',
+    });
   });
 });

@@ -51,12 +51,15 @@ export type ManualMediaUrlInspection =
   | Readonly<{ kind: 'invalid'; value: string }>;
 
 const explicitSchemePattern = /^[a-z][a-z\d+.-]*:/iu;
+const protocolFreeHostWithPortPattern = /^[a-z\d.-]+:\d+(?:[/?#]|$)/iu;
 
 export const inspectManualMediaUrl = (input: string): ManualMediaUrlInspection => {
   const value = input.trim();
   if (value.length === 0) return { kind: 'empty', value: '' };
 
-  if (!explicitSchemePattern.test(value)) {
+  const hasExplicitScheme =
+    explicitSchemePattern.test(value) && !protocolFreeHostWithPortPattern.test(value);
+  if (!hasExplicitScheme) {
     const httpsCandidate = `https://${value}`;
     return isPersistableMediaAssetUrl(httpsCandidate)
       ? { kind: 'upgrade', value, httpsCandidate, httpFallback: false }

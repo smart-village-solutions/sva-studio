@@ -86,6 +86,10 @@ config_file = ".codex/agents/security-privacy.toml"
 description = "Testet das SVA Studio end-to-end mit Chrome MCP und verifiziert Observability über Grafana MCP."
 config_file = ".codex/agents/studio-test-operator.toml"
 
+[agents.system-assurance]
+description = "Prüft risikoreiche Großvorhaben anhand expliziter Invarianten, Gegenbeispiele und direkter Evidenz."
+config_file = ".codex/agents/system-assurance.toml"
+
 [agents.test-quality]
 description = "Prüft Teststrategie, Coverage-Risiken, Nx-Test-Targeting und Verifikationslücken."
 config_file = ".codex/agents/test-quality.toml"

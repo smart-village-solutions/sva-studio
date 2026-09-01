@@ -945,6 +945,51 @@ describe('appRouteBindings', () => {
     expect(routeState.requestMainserverJson).toHaveBeenCalledTimes(2);
   });
 
+  it('reloads server transfer authorization when the authenticated user changes', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
+    routeState.enabledMainserverMutationActions = ['content.transferOwnership'];
+    routeState.requestMainserverJson
+      .mockResolvedValueOnce({
+        data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: true },
+        currentOwner: {
+          principal: { type: 'account', id: 'account-1' },
+          principalResolution: 'resolved',
+          displayName: 'Aktueller Account',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: false },
+        currentOwner: {
+          principal: { type: 'account', id: 'account-1' },
+          principalResolution: 'resolved',
+          displayName: 'Aktueller Account',
+        },
+      });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const view = render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
+        'true'
+      );
+    });
+
+    routeState.authUser = { id: 'user-2', instanceId: 'de-musterhausen' };
+    view.rerender(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
+        'false'
+      );
+    });
+    expect(routeState.requestMainserverJson).toHaveBeenCalledTimes(3);
+  });
+
   it('shows unresolved ownership even when transfer authorization is denied', async () => {
     routeState.params = { id: 'content-1' };
     routeState.requestMainserverJson

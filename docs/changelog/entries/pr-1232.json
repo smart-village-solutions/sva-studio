@@ -1,0 +1,4 @@
+{
+  "prNumber": 1232,
+  "body": "Die Oberfläche übernimmt die serverseitige Berechtigung zum Inhabertransfer jetzt zuverlässig.\n\n- Verzögert geladene Funktionsinformationen überschreiben eine positive Transferberechtigung nicht mehr.\n- Bei einem Accountwechsel wird die Berechtigung erneut für den aktuellen Account geprüft."
+}

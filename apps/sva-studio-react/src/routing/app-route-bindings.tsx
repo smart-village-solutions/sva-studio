@@ -360,6 +360,7 @@ const MainserverResourcePrincipalBoundary = ({
   children: (control: MainserverPrincipalControlModel) => React.ReactNode;
   contentType: string;
 }>) => {
+  const { user } = useAuth();
   const resolution = useMainserverResourcePrincipalControl(contentType);
   const mutationCapabilities = useMainserverMutationCapabilities();
   const navigate = useNavigate();
@@ -430,7 +431,7 @@ const MainserverResourcePrincipalBoundary = ({
     return () => {
       active = false;
     };
-  }, [contentId, actingPrincipalType, baseUrl, resolution.kind]);
+  }, [contentId, actingPrincipalType, baseUrl, resolution.kind, user?.id]);
   if (resolution.kind === 'loading') {
     return <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>;
   }

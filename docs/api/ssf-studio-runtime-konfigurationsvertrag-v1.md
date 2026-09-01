@@ -10,13 +10,10 @@ gemeinsame Integrationsgrundlage für beide Anwendungen. Vor einer Umsetzung
 müssen die bestehenden OpenSpec-Changes mit diesem vereinfachten Vertrag
 abgeglichen und normativ angepasst werden.
 
-Architektonische Grundlage ist das
-[SSF-Control-Plane-Zielbild](../architecture/ssf-studio-control-plane-zielbild.md).
-Insbesondere der bisher vorgesehene zweistufige Authentifizierungsvertrag im
-OpenSpec-Change
-[`add-ssf-runtime-configuration-api`](../../openspec/changes/add-ssf-runtime-configuration-api/design.md)
-muss vor der Umsetzung durch den hier beschriebenen einfachen
-Service-Token-Vertrag ersetzt werden.
+Architektonische Grundlage ist das parallel entwickelte
+SSF-Control-Plane-Zielbild. Insbesondere ein dort bisher vorgesehener
+zweistufiger Authentifizierungsvertrag muss vor der Umsetzung durch den hier
+beschriebenen einfachen Service-Token-Vertrag ersetzt werden.
 
 V1 umfasst:
 

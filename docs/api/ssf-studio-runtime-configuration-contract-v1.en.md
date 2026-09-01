@@ -11,13 +11,10 @@ authoritative repository document if the translations diverge.
 Before implementation, the existing OpenSpec changes must be aligned with and
 normatively updated to reflect this simplified contract.
 
-The architectural baseline is the
-[SSF control-plane target architecture](../architecture/ssf-studio-control-plane-zielbild.md).
-In particular, the two-stage authentication contract currently proposed by the
-OpenSpec change
-[`add-ssf-runtime-configuration-api`](../../openspec/changes/add-ssf-runtime-configuration-api/design.md)
-must be replaced with the simple service-token contract described here before
-implementation.
+The architectural baseline is the SSF control-plane target architecture being
+developed in parallel. In particular, a two-stage authentication contract
+currently proposed there must be replaced with the simple service-token
+contract described here before implementation.
 
 V1 covers:
 

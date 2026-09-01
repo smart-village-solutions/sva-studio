@@ -1,7 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PublicWasteIndexPage } from './index.js';
+import { PublicWasteIndexPage, readPublicWasteRegionBinding } from './index.js';
+
+const BOUND_REGION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const OTHER_REGION_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 const selectionPayloads = {
   root: {
@@ -78,6 +81,7 @@ describe('PublicWasteIndexPage', () => {
   const fetchMock = vi.fn<typeof fetch>();
 
   beforeEach(() => {
+    window.history.replaceState({}, '', '/');
     document.cookie = 'sva_public_waste_location=; Max-Age=0; Path=/';
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
@@ -85,6 +89,120 @@ describe('PublicWasteIndexPage', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('parses exactly one valid URL region and rejects malformed or ambiguous bindings', () => {
+    expect(readPublicWasteRegionBinding('')).toEqual({ status: 'unbound' });
+    expect(readPublicWasteRegionBinding(`?regionId=${BOUND_REGION_ID}`)).toEqual({
+      status: 'bound',
+      regionId: BOUND_REGION_ID,
+    });
+    expect(readPublicWasteRegionBinding(`?regionId=${BOUND_REGION_ID.toUpperCase()}`)).toEqual({
+      status: 'bound',
+      regionId: BOUND_REGION_ID,
+    });
+    expect(readPublicWasteRegionBinding('?regionId=not-a-uuid')).toEqual({ status: 'invalid' });
+    expect(
+      readPublicWasteRegionBinding(`?regionId=${BOUND_REGION_ID}&regionId=${OTHER_REGION_ID}`)
+    ).toEqual({ status: 'invalid' });
+  });
+
+  it('keeps a valid URL region across a conflicting cookie and address reset', async () => {
+    window.history.replaceState({}, '', `/?regionId=${BOUND_REGION_ID}`);
+    document.cookie = `sva_public_waste_location=${encodeURIComponent(
+      `${OTHER_REGION_ID}:22222222-2222-4222-8222-222222222222:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444`
+    )}; Path=/`;
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+        window.location.origin
+      );
+
+      if (url.pathname === '/api/public-waste/selection') {
+        expect(url.searchParams.get('regionId')).toBe(BOUND_REGION_ID);
+        if (url.searchParams.has('houseNumberId')) {
+          return new Response(JSON.stringify(selectionPayloads.complete));
+        }
+        if (url.searchParams.has('streetId')) {
+          return new Response(JSON.stringify(selectionPayloads.street));
+        }
+        if (url.searchParams.has('cityId')) {
+          return new Response(JSON.stringify(selectionPayloads.city));
+        }
+        return new Response(JSON.stringify(selectionPayloads.root));
+      }
+
+      if (url.pathname === '/api/public-waste/calendar') {
+        expect(url.searchParams.get('regionId')).toBe(BOUND_REGION_ID);
+        return new Response(
+          JSON.stringify({
+            ...calendarPayload,
+            locationKey: `${BOUND_REGION_ID}:22222222-2222-4222-8222-222222222222:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444`,
+            icalUrl: `/api/public-waste/ical?regionId=${BOUND_REGION_ID}`,
+          })
+        );
+      }
+
+      throw new Error(`unexpected fetch: ${url.toString()}`);
+    });
+
+    render(<PublicWasteIndexPage />);
+
+    expect(await screen.findByRole('combobox', { name: 'Ort suchen' })).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: 'Region suchen' })).toBeNull();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Ort suchen' }), {
+      target: { value: 'Rat' },
+    });
+    fireEvent.click(await screen.findByRole('option', { name: 'Rathenow' }));
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Straße suchen' }), {
+      target: { value: 'Hafen' },
+    });
+    fireEvent.click(await screen.findByRole('option', { name: 'Am alten Hafen' }));
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Hausnummer suchen' }), {
+      target: { value: '12' },
+    });
+    fireEvent.click(await screen.findByRole('option', { name: '12' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Adresse ändern' }));
+
+    expect(await screen.findByRole('combobox', { name: 'Ort suchen' })).toBeTruthy();
+    expect(screen.queryByText('Region')).toBeNull();
+    expect(
+      fetchMock.mock.calls.every(([input]) => {
+        const url = new URL(
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+          window.location.origin
+        );
+        return (
+          !url.pathname.startsWith('/api/public-waste/') ||
+          url.searchParams.get('regionId') === BOUND_REGION_ID
+        );
+      })
+    ).toBe(true);
+  });
+
+  it('shows a fail-closed error for malformed and unknown URL regions', async () => {
+    window.history.replaceState({}, '', '/?regionId=not-a-uuid');
+    const { unmount } = render(<PublicWasteIndexPage />);
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Die angegebene Region ist ungültig'
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    unmount();
+    window.history.replaceState({}, '', `/?regionId=${BOUND_REGION_ID}`);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: 'incomplete', step: 'city', options: [] }))
+    );
+    render(<PublicWasteIndexPage />);
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Die angegebene Region ist ungültig'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('loads selection and calendar data from the public api, stores the cookie, and restores it on the next render', async () => {

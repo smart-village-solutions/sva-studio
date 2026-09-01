@@ -6,6 +6,16 @@ Die Public-Waste-Runtime stellt öffentliche, ausschließlich lesende Endpunkte 
 
 Der Ortskatalog verändert keine Waste-Fachdaten. Er liefert keine E-Mail-Abonnements, Consent-, Token-, Outbox-, Credential-, Audit- oder Jobdaten.
 
+## Weboberfläche an eine Region binden
+
+Einbettende Seiten können die öffentliche Weboberfläche mit einer `regionId` dauerhaft auf eine öffentlich auswählbare Region begrenzen:
+
+```text
+https://abfallkalender.example/?regionId=11111111-1111-4111-8111-111111111111
+```
+
+Die Auswahl beginnt dann direkt beim Ort. „Adresse ändern“, weitere Adresssuchen und die aus dem gewählten Standort abgeleiteten Kalender-, PDF-, iCal- und Erinnerungsaktionen behalten die URL-Region bei. Ohne `regionId` bleibt die regionsübergreifende Auswahl unverändert. Formal ungültige, mehrfach angegebene oder unbekannte Regionswerte werden mit einem Fehlerzustand abgelehnt; es erfolgt kein ungefilterter Fallback.
+
 ## Abholorte laden
 
 ```http

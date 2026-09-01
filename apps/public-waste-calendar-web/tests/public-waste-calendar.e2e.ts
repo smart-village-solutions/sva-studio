@@ -225,3 +225,164 @@ test('resolves a location, restores it from cookie, and exposes accessible expor
     )
     .toBe('0px');
 });
+
+test('keeps an iframe calendar bound to its URL region across repeated address searches and exports', async ({
+  page,
+}) => {
+  const regionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const cityId = '22222222-2222-4222-8222-222222222222';
+  const streetId = '33333333-3333-4333-8333-333333333333';
+  const houseNumberId = '44444444-4444-4444-8444-444444444444';
+
+  await page.route('**/api/public-waste/selection**', async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get('regionId')).toBe(regionId);
+
+    if (url.searchParams.get('houseNumberId') === houseNumberId) {
+      await route.fulfill({ json: { status: 'incomplete', step: 'houseNumber', options: [] } });
+      return;
+    }
+    if (url.searchParams.get('streetId') === streetId) {
+      await route.fulfill({
+        json: {
+          status: 'incomplete',
+          step: 'houseNumber',
+          options: [
+            { id: houseNumberId, label: '12' },
+            { id: '44444444-4444-4444-8444-444444444445', label: '14' },
+          ],
+        },
+      });
+      return;
+    }
+    if (url.searchParams.get('cityId') === cityId) {
+      await route.fulfill({
+        json: {
+          status: 'incomplete',
+          step: 'street',
+          options: [
+            { id: streetId, label: 'Am alten Hafen' },
+            { id: '33333333-3333-4333-8333-333333333334', label: 'Berliner Straße' },
+          ],
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      json: {
+        status: 'incomplete',
+        step: 'city',
+        options: [
+          { id: cityId, label: 'Rathenow' },
+          { id: '22222222-2222-4222-8222-222222222223', label: 'Premnitz' },
+        ],
+      },
+    });
+  });
+
+  await page.route('**/api/public-waste/calendar**', async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get('regionId')).toBe(regionId);
+    await route.fulfill({
+      json: {
+        locationKey: `${regionId}:${cityId}:${streetId}:${houseNumberId}`,
+        nextPickupDate: '2026-05-19',
+        selectionSummary: 'Rathenow, Am alten Hafen 12',
+        icalUrl: `/api/public-waste/ical?regionId=${regionId}&cityId=${cityId}&streetId=${streetId}&houseNumberId=${houseNumberId}`,
+        listEntries: [],
+        monthBuckets: [],
+        yearBuckets: [],
+        fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
+        reminderSignup: {
+          enabled: true,
+          consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+          privacyPolicyUrl: 'https://example.invalid/datenschutz',
+          fractions: [
+            {
+              id: 'bio',
+              label: 'Bioabfall',
+              slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  await page.route('**/api/public-waste/pdf**', async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get('regionId')).toBe(regionId);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/pdf',
+      headers: { 'content-disposition': 'attachment; filename="abfallkalender.pdf"' },
+      body: '%PDF-1.4',
+    });
+  });
+
+  await page.route('**/api/public-waste/reminder-signups', async (route) => {
+    const body = route.request().postDataJSON() as {
+      readonly selection?: { readonly regionId?: string };
+    };
+    expect(body.selection?.regionId).toBe(regionId);
+    await route.fulfill({
+      json: {
+        status: 'pending',
+        headline: 'Bestätigungslink versendet',
+        message: 'Bitte prüfen Sie Ihr E-Mail-Postfach.',
+      },
+    });
+  });
+
+  await page.goto(`/?regionId=${regionId}`);
+
+  const selectAddress = async () => {
+    await expect(page.getByRole('combobox', { name: 'Ort suchen' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Region suchen' })).toHaveCount(0);
+    await page.getByRole('combobox', { name: 'Ort suchen' }).fill('Rat');
+    await page.getByRole('option', { name: 'Rathenow' }).click();
+    await page.getByRole('combobox', { name: 'Straße suchen' }).fill('Hafen');
+    await page.getByRole('option', { name: 'Am alten Hafen' }).click();
+    await page.getByRole('combobox', { name: 'Hausnummer suchen' }).fill('12');
+    await page.getByRole('option', { name: '12' }).click();
+    await expect(page.getByRole('button', { name: 'Adresse ändern' })).toBeVisible();
+  };
+
+  await selectAddress();
+  await page.getByRole('button', { name: 'Adresse ändern' }).click();
+  await selectAddress();
+
+  await page.getByRole('button', { name: 'Kalender exportieren' }).click();
+  await expect(page.getByRole('link', { name: 'Kalender exportieren' })).toHaveAttribute(
+    'href',
+    new RegExp(`regionId=${regionId}`, 'u')
+  );
+
+  await page.getByRole('button', { name: 'PDF / Druckversion' }).click();
+  const pdfRequest = page.waitForRequest('**/api/public-waste/pdf**');
+  await page.getByRole('button', { name: 'PDF herunterladen' }).click();
+  await expect(pdfRequest).resolves.toBeTruthy();
+
+  await page.getByRole('button', { name: 'E-Mail-Erinnerung' }).click();
+  await page.getByRole('textbox', { name: 'E-Mail-Adresse' }).fill('person@example.test');
+  await page.getByRole('checkbox', { name: 'Ich stimme der Verarbeitung' }).check();
+  const reminderRequest = page.waitForRequest('**/api/public-waste/reminder-signups');
+  await page.getByRole('button', { name: 'E-Mail-Erinnerung anfordern' }).click();
+  await expect(reminderRequest).resolves.toBeTruthy();
+  await expect(page.getByText('Bestätigungslink versendet')).toBeVisible();
+});
+
+test('rejects a malformed URL region without starting an unfiltered selection', async ({
+  page,
+}) => {
+  let selectionRequestCount = 0;
+  await page.route('**/api/public-waste/selection**', async (route) => {
+    selectionRequestCount += 1;
+    await route.abort();
+  });
+
+  await page.goto('/?regionId=not-a-uuid');
+
+  await expect(page.getByRole('alert')).toContainText('Die angegebene Region ist ungültig');
+  expect(selectionRequestCount).toBe(0);
+});

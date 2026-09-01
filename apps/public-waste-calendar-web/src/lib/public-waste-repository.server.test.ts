@@ -132,6 +132,22 @@ describe('public waste repository', () => {
     });
   });
 
+  it('rejects an unknown explicit region before loading shared or regional locations', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ id: 'r-1', label: 'Prignitz' }],
+    });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.listSelectionOptions({ selection: { regionId: 'unknown-region' } })
+    ).resolves.toEqual({
+      step: 'city',
+      options: [],
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
   it('surfaces the catch-all street option for city-wide collection locations', async () => {
     const execute = vi
       .fn()

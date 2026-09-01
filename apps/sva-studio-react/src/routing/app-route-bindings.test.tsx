@@ -41,16 +41,19 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
   ContentOwnershipPanel: ({
     canTransfer,
     currentOwner,
+    supported,
   }: {
     canTransfer: boolean;
     currentOwner: {
       displayName: string;
       principalResolution?: 'resolved' | 'unresolved' | 'failed';
     };
+    supported: boolean;
   }) => (
     <div
       data-can-transfer={String(canTransfer)}
       data-principal-resolution={currentOwner.principalResolution}
+      data-supported={String(supported)}
       data-testid="content-ownership-panel"
     >
       {currentOwner.displayName}

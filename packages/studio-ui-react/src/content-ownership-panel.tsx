@@ -11,6 +11,20 @@ export type {
   ContentOwnershipPanelProps,
 } from './content-ownership-types.js';
 
+const OwnerResolutionHint = ({
+  owner,
+  labels,
+}: Pick<ContentOwnershipPanelProps, 'labels'> &
+  Readonly<{ owner: ContentOwnershipPanelProps['currentOwner'] }>) => {
+  const message =
+    owner.principalResolution === 'unresolved'
+      ? labels.ownerUnresolved
+      : owner.principalResolution === 'failed'
+        ? labels.ownerResolutionFailed
+        : undefined;
+  return message ? <p className="text-sm text-muted-foreground">{message}</p> : null;
+};
+
 export function ContentOwnershipPanel({
   currentOwner,
   supported,
@@ -52,11 +66,7 @@ export function ContentOwnershipPanel({
             <span className="text-muted-foreground"> · {currentType}</span>
           ) : null}
         </p>
-        {currentOwner.principalResolution === 'unresolved' ? (
-          <p className="text-sm text-muted-foreground">{labels.ownerUnresolved}</p>
-        ) : currentOwner.principalResolution === 'failed' ? (
-          <p className="text-sm text-muted-foreground">{labels.ownerResolutionFailed}</p>
-        ) : null}
+        <OwnerResolutionHint owner={currentOwner} labels={labels} />
         <p className="text-sm text-muted-foreground">{labels.saveKeepsOwner}</p>
       </div>
       {success ? (

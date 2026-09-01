@@ -66,15 +66,19 @@ export const resolveTargetForMutation = async (input: {
       outcome: 'rejected',
       errorCode: 'content_transfer_target_verification_failed',
     });
-    await finalizeMainserverMutation({
-      actor: input.actor,
-      providerOutcome: 'failed',
-      reconciliationStatus: 'complete',
-      completedSteps: ['target_identity_verification_failed'],
-      contentId: input.contentId,
-      observedDataProviderId: input.sourceDataProviderId,
-      lastErrorCode: 'content_transfer_target_verification_failed',
-    });
+    try {
+      await finalizeMainserverMutation({
+        actor: input.actor,
+        providerOutcome: 'failed',
+        reconciliationStatus: 'complete',
+        completedSteps: ['target_identity_verification_failed'],
+        contentId: input.contentId,
+        observedDataProviderId: input.sourceDataProviderId,
+        lastErrorCode: 'content_transfer_target_verification_failed',
+      });
+    } catch {
+      // Preserve the stable verification response even when the journal cannot be finalized.
+    }
     return errorJson(
       targetVerificationFailureStatus(error),
       'content_transfer_target_verification_failed',

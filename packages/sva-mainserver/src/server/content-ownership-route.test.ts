@@ -380,6 +380,33 @@ describe('Mainserver content ownership route', () => {
     );
   });
 
+  it('preserves the stable verification error when journal finalization also fails', async () => {
+    useTargetResolution({
+      ok: false,
+      code: 'content_transfer_target_binding_missing',
+      verificationCandidate,
+    });
+    state.loadIdentity.mockRejectedValueOnce(new Error('Identity unavailable'));
+    state.finalize.mockRejectedValueOnce(new Error('Journal unavailable'));
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'content_transfer_target_verification_failed',
+    });
+    expect(state.transfer).not.toHaveBeenCalled();
+    expect(state.finalize).toHaveBeenCalledOnce();
+  });
+
   it('rejects a conflict discovered while verifying a missing target binding', async () => {
     useTargetResolution({
       ok: false,

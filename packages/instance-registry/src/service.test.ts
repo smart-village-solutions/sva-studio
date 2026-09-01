@@ -92,6 +92,13 @@ const createRepository = (
     failWasteProvisioning: vi.fn(async () => null),
     failWasteProvisioningRequest: vi.fn(async () => null),
     syncAssignedModuleIam: vi.fn(async () => undefined),
+    persistPluginTenantLifecycleReconcileIntents: vi.fn(
+      async ({
+        lifecycles,
+      }: Parameters<
+        InstanceRegistryRepository['persistPluginTenantLifecycleReconcileIntents']
+      >[0]) => lifecycles.map(({ pluginId }) => pluginId)
+    ),
     syncProtectedSystemRolePermissions: vi.fn(async () => undefined),
     countLocalSystemAdminAssignments: vi.fn(async () => 1),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
@@ -505,6 +512,9 @@ describe('instance registry service facade', () => {
     });
     const service = createInstanceRegistryService(
       createDeps(repository, {
+        pluginTenantLifecycleRegistry: new Map([
+          ['news', { pluginId: 'news', contractRevision: 'news-1:1' }],
+        ]),
         readModuleActivationPolicySnapshot: () => ({
           revision: 'catalog-1',
           modules: [
@@ -539,6 +549,17 @@ describe('instance registry service facade', () => {
     );
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'demo' })
+    );
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      lifecycles: [{ pluginId: 'news', contractRevision: 'news-1:1' }],
+      forcePluginIds: [],
+    });
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_policy_reconciled',
+        details: expect.objectContaining({ lifecycleIntents: ['news'] }),
+      })
     );
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
@@ -1090,7 +1111,13 @@ describe('instance registry service facade', () => {
           assignedModules: ['categories', 'events', 'news'],
         }),
     });
-    const service = createInstanceRegistryService(createDeps(repository));
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        pluginTenantLifecycleRegistry: new Map([
+          ['events', { pluginId: 'events', contractRevision: 'events-1:1' }],
+        ]),
+      })
+    );
 
     await expect(
       service.assignModule({
@@ -1124,6 +1151,11 @@ describe('instance registry service facade', () => {
         ]),
       })
     );
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      lifecycles: [{ pluginId: 'events', contractRevision: 'events-1:1' }],
+      forcePluginIds: ['events'],
+    });
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'instance_module_assigned',

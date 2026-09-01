@@ -913,3 +913,35 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Frameworkfreie Verträge bleiben vom React-Lifecycle getrennt. Die einzige neue Richtung ist `@sva/studio-ui-react` zu `@sva/plugin-sdk/content-media`.
 - Ein partieller Medienreferenzfehler speichert den bereits angelegten Inhalt nicht erneut. Der gemeinsame Controller hält ausschließlich den idempotenten Reference-Retry und räumt aufgelöste lokale Objekt-URLs auf.
 - Map-Konfiguration wird für den globalen Host-Fetch dedupliziert; ein fehlgeschlagener Read wird nicht dauerhaft gecacht. MapLibre-Runtime und CSS bleiben bundlelokal.
+
+### SSF-Runtime-Konfiguration: Security, Datenschutz und Aktualität
+
+- Der interne Leseendpunkt akzeptiert nur ein Keycloak-Service-Token mit fester
+  Audience und `ssf.runtime-configuration.read`; Browserzugriffe sind
+  ausgeschlossen. Die angeforderte Instanz muss zum von SSF validierten Kontext
+  passen.
+- SSF-Benutzertokens verwenden `studio_instance_id`, `ssf_roles` und
+  `ssf_permissions`; Permissions sind autoritativ. Systemadmins bleiben im
+  Root-Kontext, Gäste im SSF-Sessionmodell. Access-Tokens gelten standardmäßig
+  fünf und höchstens zehn Minuten.
+- Studio liefert nur effektive Konfiguration. Benutzerlisten, E-Mail-Adressen,
+  Gast-Token, Gesprächsinhalte, Einwilligungsdatensätze, Sessions und
+  Auswertungsdaten werden über diesen Vertrag nicht ausgetauscht.
+- Änderungen werden ohne Draft- oder Publish-Stufe beim nächsten Abruf wirksam.
+  Die Inhaltsrevision ändert sich nur, wenn sich die effektive Antwort ändert.
+- HTML-Texte schließen unmittelbar aktive Inhalte wie Skripte, Event-Handler
+  und gefährliche URL-Protokolle aus. Externe Bilder bleiben nach bewusster
+  Produktentscheidung zulässig; der veröffentlichende Mandant verantwortet
+  Zulässigkeit und erforderliche Information der Betroffenen.
+- Ist die Speicherung von Gesprächsinhalten nicht erlaubt oder die Frage
+  tenantweit deaktiviert, darf SSF weder fragen noch Inhalte speichern oder
+  nachträglich verarbeiten.
+- Auditdaten enthalten Akteur, Scope, Feldnamen, Revisionen und Ergebnis, aber
+  keine vollständigen HTML-Inhalte, Tokens oder Secrets. Erfolgreiche Abrufe
+  erzeugen nur strukturierte Logs und Metriken mit Korrelations-ID.
+
+Der vollständige V1-Vertrag ist unter
+[Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
+dokumentiert. Die technische Umsetzung und der neue IAM-Vertrag benötigen vor
+dem Merge ihrer Implementierung eine eigene ADR sowie den normativen
+OpenSpec-Abgleich.

@@ -10,10 +10,10 @@ gemeinsame Integrationsgrundlage für beide Anwendungen. Vor einer Umsetzung
 müssen die bestehenden OpenSpec-Changes mit diesem vereinfachten Vertrag
 abgeglichen und normativ angepasst werden.
 
-Architektonische Grundlage ist das parallel entwickelte
-SSF-Control-Plane-Zielbild. Insbesondere ein dort bisher vorgesehener
-zweistufiger Authentifizierungsvertrag muss vor der Umsetzung durch den hier
-beschriebenen einfachen Service-Token-Vertrag ersetzt werden.
+Die zugehörigen Zielgrenzen sind in den arc42-Abschnitten 3 bis 8 verankert.
+Eine ältere, parallel entwickelte SSF-Control-Plane-Ausarbeitung sah noch einen
+zweistufigen Authentifizierungsvertrag vor; vor der Umsetzung muss sie an den
+hier beschriebenen einfachen Service-Token-Vertrag angeglichen werden.
 
 V1 umfasst:
 

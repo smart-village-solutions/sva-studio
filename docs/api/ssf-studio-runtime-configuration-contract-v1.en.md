@@ -11,10 +11,10 @@ authoritative repository document if the translations diverge.
 Before implementation, the existing OpenSpec changes must be aligned with and
 normatively updated to reflect this simplified contract.
 
-The architectural baseline is the SSF control-plane target architecture being
-developed in parallel. In particular, a two-stage authentication contract
-currently proposed there must be replaced with the simple service-token
-contract described here before implementation.
+The corresponding target boundaries are anchored in arc42 sections 3 through
+8. An older SSF control-plane draft developed in parallel still proposed a
+two-stage authentication contract; it must be aligned with the simple
+service-token contract described here before implementation.
 
 V1 covers:
 

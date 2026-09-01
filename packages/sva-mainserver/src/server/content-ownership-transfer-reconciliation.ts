@@ -3,7 +3,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { errorJson } from './content-route-core.js';
 import type { SupportedContentOwnershipRouteMatch } from './content-ownership-route-contract.js';
-import { finalizeMainserverMutation, type MainserverMutationActor } from './mutation-principal.js';
+import type { MainserverMutationActor } from './mutation-principal.js';
 
 const logger = createSdkLogger({
   component: 'sva-mainserver-ownership-transfer-reconciliation',
@@ -55,15 +55,6 @@ export const reconcileOrBlockOwnershipTransfer = async (input: {
     excludeOperationExternalId: input.currentOperationExternalId,
   });
   if (!blocked) return null;
-  await finalizeMainserverMutation({
-    actor: input.actor,
-    providerOutcome: 'failed',
-    reconciliationStatus: 'complete',
-    completedSteps: ['previous_transfer_reconciliation_blocked'],
-    contentId: input.contentId,
-    observedDataProviderId: input.currentDataProviderId,
-    lastErrorCode: 'content_transfer_reconciliation_required',
-  });
   return errorJson(
     409,
     'content_transfer_reconciliation_required',

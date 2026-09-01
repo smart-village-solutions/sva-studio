@@ -445,15 +445,8 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_reconciliation_required',
     });
-    expect(state.finalize).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actor,
-        providerOutcome: 'failed',
-        reconciliationStatus: 'complete',
-        completedSteps: ['previous_transfer_reconciliation_blocked'],
-        lastErrorCode: 'content_transfer_reconciliation_required',
-      })
-    );
+    expect(state.authorize).not.toHaveBeenCalled();
+    expect(state.finalize).not.toHaveBeenCalled();
     expect(state.transfer).not.toHaveBeenCalled();
   });
 
@@ -479,7 +472,7 @@ describe('Mainserver content ownership route', () => {
       currentDataProviderId: 'provider-source',
     });
     expect(reconcilePreviousTransfer.mock.invocationCallOrder[0]).toBeLessThan(
-      state.hasUnresolvedTransfer.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+      state.authorize.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
     expect(state.hasUnresolvedTransfer).toHaveBeenCalledWith({
       instanceId: 'instance-1',
@@ -487,6 +480,35 @@ describe('Mainserver content ownership route', () => {
       contentId: 'news-1',
       excludeOperationExternalId: 'operation-1',
     });
+  });
+
+  it('runs recovery before the transferred source is re-authorized', async () => {
+    const reconcilePreviousTransfer = vi.fn().mockResolvedValue(undefined);
+    state.authorize.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'data_provider_mismatch' }), {
+        status: 403,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      ),
+      { reconcilePreviousTransfer }
+    );
+
+    expect(response?.status).toBe(403);
+    expect(reconcilePreviousTransfer).toHaveBeenCalledOnce();
+    expect(reconcilePreviousTransfer.mock.invocationCallOrder[0]).toBeLessThan(
+      state.authorize.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+    expect(state.transfer).not.toHaveBeenCalled();
   });
 
   it('keeps provider success when journal finalization fails', async () => {

@@ -23,7 +23,8 @@ import { resolveTargetForMutation } from './content-ownership-target-verificatio
 import {
   ownershipTargetErrorResponse,
   parseOwnershipTargetPrincipal,
-  resolveAuthorizedTransferSource,
+  authorizeObservedTransferSource,
+  observeTransferSource,
 } from './content-ownership-transfer-source.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
@@ -180,9 +181,9 @@ const executeLockedTransfer = async (input: {
   principal: IamContentOwnerPrincipal;
   reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
 }): Promise<Response> => {
-  const source = await resolveAuthorizedTransferSource(input);
-  if (!source.ok) return source.response;
-  const sourceDataProviderId = source.dataProviderId;
+  const observation = await observeTransferSource(input);
+  if (!observation.ok) return observation.response;
+  const sourceDataProviderId = observation.dataProviderId;
   const reconciliationBlock = await reconcileOrBlockOwnershipTransfer({
     actor: input.actor,
     contentType: input.route.contentType,
@@ -194,6 +195,12 @@ const executeLockedTransfer = async (input: {
       : {}),
   });
   if (reconciliationBlock) return reconciliationBlock;
+  const source = await authorizeObservedTransferSource({
+    actor: input.actor,
+    route: input.route,
+    observation,
+  });
+  if (!source.ok) return source.response;
   const targetResolution = await resolveTargetForMutation({
     actor: input.actor,
     contentType: input.route.contentType,

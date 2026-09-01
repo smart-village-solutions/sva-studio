@@ -18,10 +18,8 @@ vi.mock('@sva/auth-runtime/server', () => ({
   resolveEffectivePermissions: state.resolvePermissions,
 }));
 
-import {
-  authorizeMainserverActionPreflight,
-  authorizeMainserverExistingContent,
-} from './mutation-principal-authorization.js';
+import { authorizeMainserverActionPreflight } from './mutation-principal-action-preflight.js';
+import { authorizeMainserverExistingContent } from './mutation-principal-authorization.js';
 import { resolveMainserverResourceAccess } from './mutation-principal-resource-access.js';
 
 const actor = {

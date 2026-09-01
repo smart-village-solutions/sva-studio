@@ -15,10 +15,10 @@ export {
   toMainserverAdditionalActions,
 } from './mutation-principal-lifecycle.js';
 export {
-  authorizeMainserverActionPreflight,
   authorizeMainserverCreateForPrincipal,
   authorizeMainserverExistingContent,
 } from './mutation-principal-authorization.js';
+export { authorizeMainserverActionPreflight } from './mutation-principal-action-preflight.js';
 export { resolveMainserverResourceAccess } from './mutation-principal-resource-access.js';
 export type {
   MainserverCreateBindingOutcome,

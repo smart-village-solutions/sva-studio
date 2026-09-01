@@ -12,6 +12,13 @@
       dokumentieren
 - [x] 0.4 Assurance-IDs `SSF-RT-01` bis `SSF-RT-10` den konkreten Testdateien
       und Gate-Kommandos zuordnen
+- [x] 0.5 Foundation-Slice aus PR #1246 als gemergte Baseline festhalten:
+      Plugin-Paket, V1-Vertrag, Datenbank, Resolver, Service-Token-Prüfung und
+      ihre gezielten Nachweise werden nicht erneut implementiert
+- [x] 0.6 Vor dem nächsten Codeblock den Lieferumfang auf technischen
+      Service-Zugriff, GET-Serverbeitrag, Host-Gates, Execution-Context und
+      Endpunkt-Integrationstests begrenzen; Deployment, Admin-UI,
+      Tenant-Lifecycle und produktives Enablement bleiben Follow-ups
 
 ## 1. Plugin- und API-Verträge
 
@@ -65,6 +72,9 @@
       Service-Token-Baustein extrahieren, ohne MCP-Verhalten zu verändern
 - [x] 4.2 SSF-Konfiguration für Issuer, Audience, Client-ID, RS256, `exp`,
       `azp` und `ssf.runtime-configuration.read` anbinden
+- [ ] 4.2a Einen expliziten technischen Service-Zugriff im Plugin-Vertrag und
+      Dispatcher ergänzen, ohne ihn als Plattform- oder Tenant-Benutzerzugriff
+      zu behandeln
 - [ ] 4.3 Host-Gates für Instanz, Suspendierung, Plugin-Aktivierung, Datenbank-
       Readiness und verifizierte `authorizationRevision` implementieren
 - [ ] 4.4 Tenantgebundenen Execution-Context erzeugen und den Plugin-Handler
@@ -73,6 +83,10 @@
       PII-arme Logs und Sicherheits-Audit implementieren
 - [ ] 4.6 Browser-, Token-, Header-, Fremdtenant-, Inaktivitäts-, Readiness- und
       Datenbankfehlerpfade durch Integrationstests absichern
+
+Die Aufgaben 1.3, 1.4, 4.2a und 4.3 bis 4.6 bilden zusammen den nächsten
+eigenständig review- und testbaren Implementierungsslice. Vor dessen Abschluss
+wird keine Aufgabe aus Abschnitt 5 begonnen.
 
 ## 5. Deployment und Betriebsgrenze
 

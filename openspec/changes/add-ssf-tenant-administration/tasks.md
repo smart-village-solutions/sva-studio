@@ -1,18 +1,35 @@
+## 0. Übernommene Baseline
+
+- [x] 0.1 Das mit PR #1246 eingeführte `@sva/plugin-ssf` und seine
+      Aktivierungsrichtlinie `automatic` wiederverwenden; kein zweites Plugin
+      oder paralleles Manifest anlegen
+- [x] 0.2 Die vorhandene einzelne SSF-Plugin-Datenbank, den eigenen
+      Migrationspfad sowie Migrator-, Root- und Tenant-Runtime-Principals als
+      Ownership-Baseline übernehmen; keine zweite Datenbank einführen
+- [x] 0.3 Transaktionsgebundenen Tenant-Kontext, erzwungene RLS,
+      Repository-Prädikate und Zwei-Tenant-Integrationstests aus PR #1246 als
+      Muster für alle neuen Tenant-Administrationstabellen übernehmen
+- [x] 0.4 V1-Runtime-Vertrag, Produktdefaults, Resolver und Service-Token-Code
+      bleiben im Runtime-Change; dieser Change erweitert sie nicht nebenläufig
+
 ## 1. SSF-Plugin und Verträge
 
-- [ ] 1.1 SSF-Plugin über den kanonischen Generator-/Katalogpfad anlegen
-- [ ] 1.2 Plugin als `automatic` mit Root-/Tenant-Contributions registrieren
-- [ ] 1.3 Konkrete `ssf.*`-Actions, Audit-Events und Fehlercodes definieren
-- [ ] 1.4 Zusätzliche Keycloak-Client-Anforderungen deklarativ festlegen
+- [ ] 1.1 Root- und Tenant-Contributions für Provisionierung, Lifecycle und
+      Administration im bestehenden Plugin registrieren
+- [ ] 1.2 Konkrete `ssf.*`-Actions, Audit-Events und Fehlercodes für diese
+      Contributions definieren
+- [ ] 1.3 Zusätzliche Keycloak-Client-Anforderungen deklarativ festlegen
 
 ## 2. SSF-Plugin-Datenbank
 
-- [ ] 2.1 Eine einzelne PostgreSQL-Datenbank mit Installations- und Tenant-Schema bereitstellen
-- [ ] 2.2 Getrennte Migrator-, Root- und Tenant-Runtime-Principals einrichten
-- [ ] 2.3 Tenant-Grunddatensatz mit `instanceId`, Status und Revision implementieren
-- [ ] 2.4 Transaktionsgebundenen Tenant-Kontext und RLS umsetzen
-- [ ] 2.5 Eigene Sollschema-Dokumentation und reversible Migrationen erstellen
-- [ ] 2.6 PostgreSQL-Integrationstests mit mindestens zwei Tenants und Root-/Tenant-Negativfällen ergänzen
+- [ ] 2.1 Die bestehende SSF-Datenbank um den Tenant-Grunddatensatz mit
+      `instanceId`, Status und Revision erweitern
+- [ ] 2.2 Neue Tabellen in den vorhandenen Tenant-Kontext, die RLS-Policies und
+      die bestehenden Root-/Tenant-Principals integrieren
+- [ ] 2.3 Den vorhandenen Sollschema-Snapshot und die Migrationen ausschließlich
+      um die neuen Lifecycle-Objekte erweitern
+- [ ] 2.4 PostgreSQL-Integrationstests um Lifecycle-, Root-/Tenant-Negativ- und
+      Migrationsfälle der neuen Objekte ergänzen
 
 ## 3. Keycloak und initialer Tenant-Admin
 

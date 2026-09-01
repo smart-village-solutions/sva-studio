@@ -22,17 +22,22 @@ Benutzerverwaltung aufzubauen.
   den generischen Plugin-Tenant-Lifecycle.
 - Root-Status und Reparaturaktionen erscheinen in der bestehenden
   Instanzverwaltung; es entsteht keine zweite Tenant-Registry.
-- Eine interne SSF-Runtime-Konfigurations-API ist noch nicht Bestandteil dieses
-  Changes und folgt mit `add-ssf-runtime-configuration-api`.
+- Die mit PR #1246 gemergte SSF-Runtime-Foundation wird wiederverwendet. Der
+  produktive interne Endpoint bleibt Bestandteil von
+  `add-ssf-runtime-configuration-api`; dieser Change baut weder ein zweites
+  SSF-Plugin noch eine zweite Plugin-Datenbank auf.
 
 ## Dependencies and Coordination
 
-- Depends on `extend-plugin-platform-scopes-and-activation`.
-- Depends on `add-plugin-tenant-lifecycle`.
-- Reuses die bestehenden Capabilities `iam-core`, `iam-access-control`,
+- Verwendet die gemergten Baselines aus
+  `extend-plugin-platform-scopes-and-activation` und PR #1246.
+- Hängt von `add-plugin-tenant-lifecycle` ab.
+- Verwendet die bestehenden Capabilities `iam-core`, `iam-access-control`,
   `iam-auditing`, `instance-provisioning` und `plugin-operations-platform`.
-- `add-ssf-runtime-configuration-api` baut auf dem hier provisionierten
-  Tenant-, Realm- und Datenbankzustand auf.
+- `add-ssf-runtime-configuration-api` und dieser Change teilen Plugin- und
+  Datenbank-Ownership, bleiben aber getrennte Lieferstränge: Runtime-Read-Pfad
+  im Runtime-Change; Provisionierung, Lifecycle und Administration in diesem
+  Change.
 
 ## Impact
 

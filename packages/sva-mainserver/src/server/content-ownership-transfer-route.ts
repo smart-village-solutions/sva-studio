@@ -1,5 +1,6 @@
 import {
   hasUnresolvedMainserverOwnershipTransfer,
+  reconcileConfirmedMainserverOwnershipTransfer,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -174,6 +175,15 @@ const executeLockedTransfer = async (input: {
   content: SvaMainserverOwnershipTransferContent;
   principal: IamContentOwnerPrincipal;
 }): Promise<Response> => {
+  const source = await resolveAuthorizedTransferSource(input);
+  if (!source.ok) return source.response;
+  const sourceDataProviderId = source.dataProviderId;
+  await reconcileConfirmedMainserverOwnershipTransfer({
+    instanceId: input.actor.instanceId,
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
+    currentDataProviderId: sourceDataProviderId,
+  });
   if (
     await hasUnresolvedMainserverOwnershipTransfer({
       instanceId: input.actor.instanceId,
@@ -187,9 +197,6 @@ const executeLockedTransfer = async (input: {
       'Ein früherer Transfer muss zuerst abgeglichen werden.'
     );
   }
-  const source = await resolveAuthorizedTransferSource(input);
-  if (!source.ok) return source.response;
-  const sourceDataProviderId = source.dataProviderId;
   const targetResolution = await resolveTargetForMutation({
     actor: input.actor,
     contentType: input.route.contentType,

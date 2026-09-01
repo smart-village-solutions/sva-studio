@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   annotateJournal: vi.fn(),
   hasUnresolvedTransfer: vi.fn(),
+  reconcileConfirmedTransfer: vi.fn(),
   loadExternalContentReference: vi.fn(),
   loadIdentity: vi.fn(),
   listTargets: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/auth-runtime/server')>()),
   annotateMainserverMutationJournal: state.annotateJournal,
   hasUnresolvedMainserverOwnershipTransfer: state.hasUnresolvedTransfer,
+  reconcileConfirmedMainserverOwnershipTransfer: state.reconcileConfirmedTransfer,
   listMainserverOwnershipTargets: state.listTargets,
   loadExternalContentReferenceByContentId: state.loadExternalContentReference,
   recordMainserverDataProviderObservation: state.recordObservation,
@@ -446,6 +448,30 @@ describe('Mainserver content ownership route', () => {
       error: 'content_transfer_reconciliation_required',
     });
     expect(state.transfer).not.toHaveBeenCalled();
+  });
+
+  it('reconciles a confirmed earlier transfer before checking the write barrier', async () => {
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.reconcileConfirmedTransfer).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      currentDataProviderId: 'provider-source',
+    });
+    expect(state.reconcileConfirmedTransfer.mock.invocationCallOrder[0]).toBeLessThan(
+      state.hasUnresolvedTransfer.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
   });
 
   it('keeps provider success when journal finalization fails', async () => {

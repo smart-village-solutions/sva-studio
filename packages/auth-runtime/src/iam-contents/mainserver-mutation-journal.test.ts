@@ -9,6 +9,7 @@ import {
 import {
   hasUnresolvedMainserverOwnershipTransfer,
   markMainserverMutationReconciliationRequired,
+  reconcileConfirmedMainserverOwnershipTransfer,
 } from './mainserver-ownership-transfer-reconciliation.js';
 
 const state = vi.hoisted(() => ({ query: vi.fn(), withInstanceScopedDb: vi.fn() }));
@@ -194,6 +195,24 @@ describe('Mainserver mutation journal', () => {
     expect(state.query.mock.calls[0]?.[0]).toContain(
       "reconciliation_status IN ('pending', 'reconciliation_required')"
     );
+  });
+
+  it('completes a confirmed transfer reconciliation without repeating the provider write', async () => {
+    state.query.mockResolvedValueOnce({ rows: [] });
+
+    await reconcileConfirmedMainserverOwnershipTransfer({
+      instanceId: 'de-musterhausen',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      currentDataProviderId: 'provider-target',
+    });
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("expected_data_provider_id = $4"),
+      ['de-musterhausen', 'news.article', 'news-1', 'provider-target']
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain("provider_outcome = 'succeeded'");
+    expect(state.query.mock.calls[0]?.[0]).toContain("reconciliation_status = 'complete'");
   });
 
   it('marks a confirmed provider result for local reconciliation', async () => {

@@ -280,6 +280,27 @@ const useMainserverResourcePrincipalControl = (
 ): MainserverResourcePrincipalResolution => {
   const params = useParams({ strict: false });
   const contentId = readStringParam(params.contentId, readStringParam(params.id)) || undefined;
+  const editorPrincipalResolution = useMainserverPrincipalControl();
+  const editorPrincipal =
+    editorPrincipalResolution.kind === 'ready'
+      ? editorPrincipalResolution.control.value
+      : undefined;
+  const editorPrincipalLabel =
+    editorPrincipalResolution.kind === 'ready'
+      ? editorPrincipalResolution.control.kind === 'fixed'
+        ? editorPrincipalResolution.control.label
+        : editorPrincipalResolution.control.options.find(
+            (option) => option.value === editorPrincipalResolution.control.value
+          )?.label
+      : undefined;
+  const editorPrincipalFallback = React.useRef({
+    principal: editorPrincipal,
+    label: editorPrincipalLabel,
+  });
+  editorPrincipalFallback.current = {
+    principal: editorPrincipal,
+    label: editorPrincipalLabel,
+  };
   const [resolution, setResolution] = React.useState<MainserverResourcePrincipalResolution>({
     kind: 'loading',
   });
@@ -299,7 +320,10 @@ const useMainserverResourcePrincipalControl = (
           return;
         }
 
-        const principal = data.credentialSource;
+        const principal =
+          data.credentialSource === 'organization' || data.credentialSource === 'user'
+            ? data.credentialSource
+            : editorPrincipalFallback.current.principal;
         if (principal !== 'organization' && principal !== 'user') {
           setResolution({ kind: 'error' });
           return;
@@ -328,6 +352,7 @@ const useMainserverResourcePrincipalControl = (
             value: principal,
             label:
               data.sourceDataProviderName?.trim() ||
+              editorPrincipalFallback.current.label ||
               t(
                 principal === 'organization'
                   ? 'content.principal.organization'

@@ -27,6 +27,32 @@ export const hasUnresolvedMainserverOwnershipTransfer = async (input: {
     return result.rows[0]?.unresolved === true;
   });
 
+export const reconcileConfirmedMainserverOwnershipTransfer = async (input: {
+  readonly instanceId: string;
+  readonly contentType: string;
+  readonly contentId: string;
+  readonly currentDataProviderId: string;
+}): Promise<void> => {
+  await withInstanceScopedDb(input.instanceId, async (client) => {
+    await client.query(
+      `UPDATE iam.mainserver_mutation_journal
+       SET reconciliation_status = 'complete',
+           completed_steps = completed_steps || '["provider_state_reconfirmed"]'::jsonb,
+           last_error_code = NULL,
+           completed_at = COALESCE(completed_at, NOW()),
+           updated_at = NOW()
+       WHERE instance_id = $1
+         AND action_id = 'content.transferOwnership'
+         AND content_type = $2
+         AND content_id = $3
+         AND provider_outcome = 'succeeded'
+         AND reconciliation_status = 'reconciliation_required'
+         AND expected_data_provider_id = $4;`,
+      [input.instanceId, input.contentType, input.contentId, input.currentDataProviderId]
+    );
+  });
+};
+
 export const markMainserverMutationReconciliationRequired = async (input: {
   readonly instanceId: string;
   readonly operationExternalId: string;

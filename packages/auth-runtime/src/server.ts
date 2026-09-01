@@ -163,6 +163,7 @@ export {
 export {
   hasUnresolvedMainserverOwnershipTransfer,
   markMainserverMutationReconciliationRequired,
+  reconcileConfirmedMainserverOwnershipTransfer,
 } from './iam-contents/mainserver-ownership-transfer-reconciliation.js';
 export {
   loadMainserverAuthoringDiagnostics,

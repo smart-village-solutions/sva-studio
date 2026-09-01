@@ -123,7 +123,8 @@ const createCompleteLifecycle =
           `
 UPDATE iam.instance_plugin_lifecycle
 SET access_state = CASE WHEN $5 = 'suspend' THEN 'suspended'
-      WHEN $5 = 'reactivate' THEN 'active' ELSE access_state END,
+      WHEN $5 = 'reactivate' AND $6 IN ('ready', 'degraded') THEN 'active'
+      WHEN $5 = 'reactivate' THEN 'suspended' ELSE access_state END,
     readiness_status = $6, completed_generation = $4, claimed_generation = NULL,
     active_job_id = NULL, readiness_revision = $7, readiness_checks = $8::jsonb,
     error_code = NULL, retry_kind = NULL, retry_after = NULL,

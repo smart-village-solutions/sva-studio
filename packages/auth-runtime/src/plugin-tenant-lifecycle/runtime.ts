@@ -158,6 +158,12 @@ const resolveAutomaticProvisioningSchedule = (
   if (lifecycle.nextRecheckAt && Date.parse(lifecycle.nextRecheckAt) > now.getTime()) {
     return null;
   }
+  if (
+    lifecycle.desiredGeneration > lifecycle.completedGeneration &&
+    hasOperation(lifecycle.desiredOperation)
+  ) {
+    return { operation: lifecycle.desiredOperation, scheduledAt: now.toISOString() };
+  }
   const readiness = createPluginTenantReadinessReadModel({
     definition,
     activation,

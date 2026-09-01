@@ -201,12 +201,11 @@ describe('plugin operation runner registry', () => {
     expect(state.withPluginTenantLifecycleRepository).not.toHaveBeenCalled();
   });
 
-  it('does not correlate reserved metadata on a non-lifecycle job', async () => {
+  it('fails closed for persisted lifecycle metadata after its registry definition is removed', async () => {
     const registry = await import('./runner-registry.js');
-    const run = vi.fn(async () => undefined);
-    const updateJobState = vi.fn(async () => ({ status: 'succeeded' }));
-    const genericJob = {
-      id: 'generic-job',
+    const handler = vi.fn(async () => ({}));
+    const lifecycleJob = {
+      id: 'removed-lifecycle-job',
       instanceId: 'tenant-a',
       source: 'plugin' as const,
       pluginId: 'news',
@@ -215,30 +214,32 @@ describe('plugin operation runner registry', () => {
         studioTenantLifecycle: { operation: 'provision', generation: 3 },
       },
     };
-    state.createJobLifecycleOrchestrator.mockReturnValue({ run });
     state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(false);
-    state.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
-      work({ getJobById: vi.fn(async () => genericJob), updateJobState })
+    const taskList = registry.createStudioJobTaskList(
+      () =>
+        new Map([
+          [
+            'plugin:news.import-articles',
+            {
+              source: 'plugin' as const,
+              jobTypeId: 'news.import-articles',
+              handler,
+              queueName: 'plugin-operations',
+            },
+          ],
+        ])
     );
-    const taskList = registry.createStudioJobTaskList(() => new Map());
-
     await taskList[registry.studioJobTaskIdentifier]?.(
-      { instanceId: 'tenant-a', jobId: genericJob.id },
+      { instanceId: 'tenant-a', jobId: lifecycleJob.id },
       { job: { attempts: 1, max_attempts: 5 } } as never
     );
-    const [{ loadRepository }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
-    const repository = await loadRepository('tenant-a');
-    await repository.getJobById('tenant-a', genericJob.id);
-    const succeededInput = {
-      jobId: genericJob.id,
-      instanceId: 'tenant-a',
-      status: 'succeeded' as const,
-      attempts: 1,
-    };
-    await repository.updateJobState(succeededInput);
+    const [{ resolveHandler }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
 
-    expect(updateJobState).toHaveBeenCalledWith(succeededInput);
-    expect(state.withStudioJobLifecycleRepositories).not.toHaveBeenCalled();
+    await expect(resolveHandler(lifecycleJob)?.({ job: lifecycleJob })).rejects.toThrow(
+      'plugin_tenant_lifecycle_job_contract_mismatch'
+    );
+    expect(handler).not.toHaveBeenCalled();
+    expect(state.readTenantAccess).not.toHaveBeenCalled();
   });
 
   it('requires the loaded worker to retain an active lease before scheduling a retry', async () => {

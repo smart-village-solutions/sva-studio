@@ -166,6 +166,10 @@ describe('plugin tenant lifecycle repository', () => {
     expect(statements[0]?.text).toContain(
       "WHEN $6 = 'pending' THEN NOW() + INTERVAL '120 seconds'"
     );
+    expect(statements[0]?.text).toContain(
+      "WHEN $5 = 'reactivate' AND $6 IN ('ready', 'degraded') THEN 'active'"
+    );
+    expect(statements[0]?.text).toContain("WHEN $5 = 'reactivate' THEN 'suspended'");
     expect(statements[0]?.text).toContain('contract_revision = $9');
     expect(statements[0]?.values[7]).toBe('[{"checkId":"speech.databaseSchema","status":"ready"}]');
     expect(statements[0]?.values[8]).toBe('speech-1:1');
@@ -230,7 +234,10 @@ describe('plugin tenant lifecycle repository', () => {
     });
 
     expect(statements[0]?.text).toContain("WHEN EXCLUDED.desired_operation = 'suspend'");
-    expect(statements[1]?.text).toContain("WHEN $5 = 'reactivate' THEN 'active'");
+    expect(statements[1]?.text).toContain(
+      "WHEN $5 = 'reactivate' AND $6 IN ('ready', 'degraded') THEN 'active'"
+    );
+    expect(statements[1]?.text).toContain("WHEN $5 = 'reactivate' THEN 'suspended'");
     expect(statements.every(({ text }) => !text.includes('DELETE FROM'))).toBe(true);
   });
 });

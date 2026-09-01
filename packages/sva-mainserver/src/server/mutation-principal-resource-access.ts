@@ -18,6 +18,7 @@ export const resolveMainserverResourceAccess = async (input: {
   readonly contentType: string;
   readonly item: DataProviderBearingItem | undefined;
   readonly requireAllScopeActions?: readonly string[];
+  readonly forceExactScopeActions?: readonly string[];
 }): Promise<MainserverResourceAccess> => {
   const denied = Object.fromEntries(input.actions.map((action) => [action, false]));
   const permissions = await resolveEffectivePermissions({
@@ -30,6 +31,7 @@ export const resolveMainserverResourceAccess = async (input: {
   if (!permissions.ok) return denied;
 
   const requireAllScopeActions = new Set(input.requireAllScopeActions ?? []);
+  const forceExactScopeActions = new Set(input.forceExactScopeActions ?? []);
 
   const dataProviderId = input.item?.dataProvider?.id?.trim() ?? '';
   const decisions = await Promise.all(
@@ -57,6 +59,7 @@ export const resolveMainserverResourceAccess = async (input: {
         contentId: input.contentId ?? input.item?.id,
         permissions: permissions.permissions,
         dataProviderId,
+        ...(forceExactScopeActions.has(action) ? { forceExactScopeAuthorization: true } : {}),
       });
       return [action, decision.allowed] as const;
     })

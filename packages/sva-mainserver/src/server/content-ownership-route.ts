@@ -157,6 +157,7 @@ const handleAuthorizedTargets = async (
     contentType: route.contentType,
     contentId: route.contentId,
     item: current,
+    forceExactScopeActions: ['content.transferOwnership'],
     ...(sourceEnrichment.status === 'resolved'
       ? {}
       : { requireAllScopeActions: ['content.transferOwnership'] }),

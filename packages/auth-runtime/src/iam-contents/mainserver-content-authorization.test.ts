@@ -446,6 +446,25 @@ describe('Mainserver content authorization', () => {
     });
   });
 
+  it('lets a sensitive caller enforce exact scope semantics in compatibility mode', async () => {
+    process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'compatibility';
+    state.loadBinding.mockResolvedValue({ dataProviderId: 'provider-user' });
+
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...context,
+        permissions: [permission('own')],
+        dataProviderId: 'provider-foreign',
+        forceExactScopeAuthorization: true,
+      })
+    ).resolves.toEqual({
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'data_provider_mismatch',
+      resolverMode: 'compatibility',
+    });
+  });
+
   it('allows unscoped and all permissions without a binding', async () => {
     for (const accessScope of [undefined, 'all'] as const) {
       await expect(

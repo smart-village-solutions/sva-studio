@@ -13,5 +13,5 @@ export const hasMainserverActionAccessScope = (
     (permission) =>
       permission.action === action &&
       permission.resourceType === (action.split('.')[0] ?? '') &&
-      permission.accessScope === accessScope
+      (permission.accessScope === undefined || permission.accessScope === accessScope)
   );

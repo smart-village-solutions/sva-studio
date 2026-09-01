@@ -27,6 +27,7 @@ Das System SHALL die fully-qualified Action `content.transferOwnership` als eige
 - **THEN** verweigert die Autorisierung den Transfer fail-closed
 - **AND** benötigt der Actor Scope `all`, um einen ownerlosen Inhalt zuzuweisen
 - **AND** darf ein Kompatibilitäts- oder Shadow-Resolver einen engeren Scope nicht als `all` behandeln
+- **AND** bleibt ein kanonisch globaler unscoped Legacy-Grant zu Scope `all` kompatibel
 
 #### Scenario: Globaler Scope ist unabhängig vom Lifecycle des bisherigen Inhabers
 
@@ -36,6 +37,7 @@ Das System SHALL die fully-qualified Action `content.transferOwnership` als eige
 - **WHEN** der Actor einen Transfer anfordert
 - **THEN** autorisiert die Source-Prüfung den aktuellen Inhalt ohne Credentials oder Aktivstatus des bisherigen Principals
 - **AND** wird eine optionale Source-Principal-Bindung nicht zum Autorisierungsgate
+- **AND** wertet der Transferpfad `own` und `organization` auch im Kompatibilitäts- oder Shadow-Modus exakt aus
 
 #### Scenario: System-Admin erhält die neue Tenant-Permission
 

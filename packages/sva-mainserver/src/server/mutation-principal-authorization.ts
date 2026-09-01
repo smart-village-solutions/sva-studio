@@ -131,6 +131,7 @@ const evaluateProviderActions = async (input: {
   contentId: string;
   dataProviderId: string;
   permissions: Awaited<ReturnType<typeof loadMutationPermissions>> & { readonly ok: true };
+  forceExactScopeAuthorization: boolean;
 }): Promise<AuthorizationAggregate | Response> => {
   const aggregate: AuthorizationAggregate = {
     authorizationMode: 'exact',
@@ -155,6 +156,7 @@ const evaluateProviderActions = async (input: {
       contentId: input.contentId,
       permissions: input.permissions.permissions,
       dataProviderId: input.dataProviderId,
+      ...(input.forceExactScopeAuthorization ? { forceExactScopeAuthorization: true } : {}),
     });
     await emitMainserverMutationAuthorizationAudit({
       actor: input.actor,
@@ -214,6 +216,7 @@ export const authorizeMainserverExistingContent = async (input: {
   readonly item: DataProviderBearingItem | undefined;
   readonly additionalActions?: readonly string[];
   readonly requiredAccessScope?: 'all';
+  readonly forceExactScopeAuthorization?: boolean;
 }): Promise<MainserverMutationAuthorization | Response> => {
   const permissions = await loadMutationPermissions(input.actor);
   if (!permissions.ok) {
@@ -249,6 +252,7 @@ export const authorizeMainserverExistingContent = async (input: {
     contentId: input.contentId,
     dataProviderId,
     permissions,
+    forceExactScopeAuthorization: input.forceExactScopeAuthorization === true,
   });
   if (authorization instanceof Response) return authorization;
 

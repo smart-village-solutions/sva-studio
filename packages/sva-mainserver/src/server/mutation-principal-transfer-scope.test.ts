@@ -36,10 +36,10 @@ const actor = {
 };
 
 const item = { id: 'news-1', dataProvider: { id: 'provider-source' } };
-const permission = (accessScope: 'all' | 'organization' | 'own') => ({
+const permission = (accessScope?: 'all' | 'organization' | 'own') => ({
   action: 'content.transferOwnership',
   resourceType: 'content',
-  accessScope,
+  ...(accessScope ? { accessScope } : {}),
 });
 
 describe('Mainserver orphaned ownership transfer scope', () => {
@@ -95,6 +95,28 @@ describe('Mainserver orphaned ownership transfer scope', () => {
 
     expect(result).not.toBeInstanceOf(Response);
     expect(state.authorizeProvider).toHaveBeenCalledOnce();
+  });
+
+  it('treats a canonical unscoped grant as global', async () => {
+    state.resolvePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [permission()],
+    });
+
+    const result = await authorizeMainserverExistingContent({
+      actor,
+      action: 'content.transferOwnership',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      item,
+      requiredAccessScope: 'all',
+      forceExactScopeAuthorization: true,
+    });
+
+    expect(result).not.toBeInstanceOf(Response);
+    expect(state.authorizeProvider).toHaveBeenCalledWith(
+      expect.objectContaining({ forceExactScopeAuthorization: true })
+    );
   });
 
   it('reports no UI access for a scoped grant when an all grant is required', async () => {

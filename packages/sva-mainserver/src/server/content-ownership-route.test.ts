@@ -565,7 +565,10 @@ describe('Mainserver content ownership route', () => {
       currentOwner: { displayName: 'Quelle' },
     });
     expect(state.resolveResourceAccess).toHaveBeenCalledWith(
-      expect.objectContaining({ requireAllScopeActions: ['content.transferOwnership'] })
+      expect.objectContaining({
+        requireAllScopeActions: ['content.transferOwnership'],
+        forceExactScopeActions: ['content.transferOwnership'],
+      })
     );
   });
 
@@ -621,7 +624,10 @@ describe('Mainserver content ownership route', () => {
       })
     );
     expect(state.authorize).toHaveBeenCalledWith(
-      expect.objectContaining({ requiredAccessScope: 'all' })
+      expect.objectContaining({
+        requiredAccessScope: 'all',
+        forceExactScopeAuthorization: true,
+      })
     );
     expect(state.annotateJournal).toHaveBeenCalledWith(
       expect.objectContaining({

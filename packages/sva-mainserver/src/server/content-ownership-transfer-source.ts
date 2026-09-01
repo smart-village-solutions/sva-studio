@@ -148,6 +148,7 @@ export const resolveAuthorizedTransferSource = async (input: {
     contentType: input.route.contentType,
     contentId: input.route.contentId,
     item: actorVisibleCurrent,
+    forceExactScopeAuthorization: true,
     ...(source.status === 'resolved' ? {} : { requiredAccessScope: 'all' }),
   });
   if (isResponse(authorization)) {

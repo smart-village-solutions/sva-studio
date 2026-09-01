@@ -54,6 +54,7 @@ type BoundAuthorizationContext = AuthorizationContext &
     actingPrincipalType: 'organization' | 'user';
     credentialFingerprint: string;
     contentAuthorPolicy?: IamContentAuthorPolicy;
+    forceExactScopeAuthorization?: boolean;
   }>;
 
 const buildRequest = (
@@ -97,10 +98,11 @@ export const authorizeMainserverCreatePrincipal = (
 
 const applyScopeResolverMode = (
   candidate: Omit<MainserverContentAuthorizationDecision, 'resolverMode'>,
-  compatibilityAllowed: boolean
+  compatibilityAllowed: boolean,
+  forceExactScopeAuthorization: boolean
 ): MainserverContentAuthorizationDecision => {
   const resolverMode = readMainserverScopeResolverMode();
-  if (resolverMode === 'automatic') {
+  if (resolverMode === 'automatic' || forceExactScopeAuthorization) {
     return { ...candidate, resolverMode };
   }
 
@@ -303,6 +305,7 @@ export const authorizeMainserverDataProviderAccess = async (
   const bindings = await loadRelevantBindings(input);
   return applyScopeResolverMode(
     resolveBoundAuthorizationCandidate({ ...input, dataProviderId: providerId }, bindings),
-    compatibilityAllowed
+    compatibilityAllowed,
+    input.forceExactScopeAuthorization === true
   );
 };

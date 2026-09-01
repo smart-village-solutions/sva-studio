@@ -23,7 +23,7 @@ vi.mock('pg', () => ({
   }),
 }));
 
-import { createPoolResolver, jsonResponse } from './db.js';
+import { createPoolResolver, jsonResponse, withResolvedIamAppDb } from './db.js';
 
 describe('jsonResponse', () => {
   beforeEach(() => {
@@ -78,5 +78,54 @@ describe('createPoolResolver', () => {
         operation: 'iam_database_pool',
       })
     );
+  });
+});
+
+describe('withResolvedIamAppDb', () => {
+  it('runs fleet-wide IAM work in a transaction under the iam_app role', async () => {
+    const release = vi.fn();
+    const query = vi.fn(async (statement: string) => ({
+      rowCount: statement === 'SELECT snapshot' ? 1 : 0,
+      rows: statement === 'SELECT snapshot' ? [{ value: 'ready' }] : [],
+    }));
+    const pool = { connect: vi.fn(async () => ({ query, release })) };
+
+    await expect(
+      withResolvedIamAppDb(
+        () => pool as never,
+        async (client) => (await client.query<{ value: string }>('SELECT snapshot')).rows[0]?.value
+      )
+    ).resolves.toBe('ready');
+
+    expect(query.mock.calls.map(([statement]) => statement)).toEqual([
+      'BEGIN',
+      'SET LOCAL ROLE iam_app;',
+      'SELECT snapshot',
+      'COMMIT',
+    ]);
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('rolls back and releases the client when fleet-wide IAM work fails', async () => {
+    const release = vi.fn();
+    const query = vi.fn(async () => ({ rowCount: 0, rows: [] }));
+    const pool = { connect: vi.fn(async () => ({ query, release })) };
+    const failure = new Error('snapshot failed');
+
+    await expect(
+      withResolvedIamAppDb(
+        () => pool as never,
+        async () => {
+          throw failure;
+        }
+      )
+    ).rejects.toBe(failure);
+
+    expect(query.mock.calls.map(([statement]) => statement)).toEqual([
+      'BEGIN',
+      'SET LOCAL ROLE iam_app;',
+      'ROLLBACK',
+    ]);
+    expect(release).toHaveBeenCalledOnce();
   });
 });

@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   logger: { warn: vi.fn() },
   query: vi.fn(),
   resolvePool: vi.fn(),
+  withIamAppDb: vi.fn(),
 }));
 
 vi.mock('@opentelemetry/api', () => ({
@@ -43,6 +44,7 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('../db.js', () => ({
   resolvePool: state.resolvePool,
+  withIamAppDb: state.withIamAppDb,
 }));
 
 const collect = async (metricName: string) => {
@@ -69,6 +71,10 @@ describe('plugin tenant lifecycle observability', () => {
     state.callbacks.clear();
     state.batchCallback = undefined;
     state.resolvePool.mockReturnValue({ query: state.query });
+    state.withIamAppDb.mockImplementation(
+      async (work: (client: { query: typeof state.query }) => Promise<unknown>) =>
+        work({ query: state.query })
+    );
     state.query.mockResolvedValue({
       rowCount: 5,
       rows: [
@@ -96,6 +102,7 @@ describe('plugin tenant lifecycle observability', () => {
     expect(state.query).toHaveBeenCalledWith(
       'SELECT reason_code, stall_count FROM iam.plugin_tenant_lifecycle_observability_snapshot();'
     );
+    expect(state.withIamAppDb).toHaveBeenCalledOnce();
     expect(state.query.mock.calls[0]?.[1]).toBeUndefined();
   });
 

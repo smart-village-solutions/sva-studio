@@ -94,6 +94,7 @@ AS $function$
   SELECT 'pending_recheck_due'::text, count(*)::bigint
   FROM lifecycle_jobs
   WHERE readiness_status = 'pending'
+    AND active_job_id IS NULL
     AND next_recheck_at <= statement_timestamp()
   UNION ALL
   SELECT 'generation_without_owner'::text, count(*)::bigint

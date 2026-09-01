@@ -315,7 +315,7 @@ const configureObservabilityFixture = async (pool: QueryClient): Promise<void> =
        claimed_generation, active_job_id, retry_kind, retry_after, started_at, updated_at,
        next_recheck_at
      ) VALUES
-       ($1, 'obs-stale', 'pending', 1, 0, 1, $3, NULL, NULL, $6, $6, $8),
+       ($1, 'obs-stale', 'pending', 1, 0, 1, $3, NULL, NULL, $6, $6, $7),
        ($2, 'obs-queued', 'pending', 1, 0, 1, $4, NULL, NULL, NULL, $6, $8),
        ($1, 'obs-fresh', 'pending', 1, 0, 1, $5, NULL, NULL, NULL, $7, $8),
        ($1, 'obs-retry', 'degraded', 2, 1, NULL, NULL, 'retryable', $7, NULL, $7, NULL),

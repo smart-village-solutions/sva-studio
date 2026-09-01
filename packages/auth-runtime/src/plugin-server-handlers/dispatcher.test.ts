@@ -178,6 +178,8 @@ describe('plugin server handler dispatcher', () => {
   it.each([
     ['own-scoped', { accessScope: 'own' as const }],
     ['resource-scoped', { resourceId: 'article-1' }],
+    ['geo-scoped', { geoScope: 'region-a' }],
+    ['custom-scoped', { scope: { region: 'region-a' } }],
   ])('denies tenant collection access backed only by a %s grant', async (_name, scope) => {
     const descriptor = tenantDescriptor();
     const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('unexpected'));

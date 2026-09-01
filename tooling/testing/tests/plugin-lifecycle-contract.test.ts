@@ -62,6 +62,9 @@ describe('plugin lifecycle database contract gate', () => {
     expect(migration).toContain(
       'GRANT EXECUTE ON FUNCTION iam.plugin_tenant_lifecycle_observability_snapshot() TO iam_app'
     );
+    expect(migration).toMatch(
+      /SELECT 'pending_recheck_due'::text,[\s\S]*readiness_status = 'pending'[\s\S]*active_job_id IS NULL[\s\S]*next_recheck_at <= statement_timestamp\(\)/
+    );
     expect(migration).toContain('REVOKE CREATE ON SCHEMA iam FROM iam_observability');
     expect(migration).not.toMatch(/EXECUTE\s+format|EXECUTE\s+[^;]*\|\|/i);
   });

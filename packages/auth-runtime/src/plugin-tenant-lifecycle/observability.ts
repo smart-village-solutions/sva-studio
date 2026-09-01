@@ -1,7 +1,7 @@
 import { metrics } from '@opentelemetry/api';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { resolvePool } from '../db.js';
+import { resolvePool, withIamAppDb } from '../db.js';
 
 export const pluginTenantLifecycleStallReasons = [
   'stale_claim',
@@ -119,10 +119,11 @@ const emptyStallSnapshot = (): StallSnapshot => ({
 });
 
 export const readPluginTenantLifecycleStallSnapshot = async (): Promise<StallSnapshot> => {
-  const pool = resolvePool();
-  if (!pool) throw new Error('plugin_tenant_lifecycle_observability_database_unavailable');
-  const result = await pool.query<StallRow>(
-    'SELECT reason_code, stall_count FROM iam.plugin_tenant_lifecycle_observability_snapshot();'
+  if (!resolvePool()) throw new Error('plugin_tenant_lifecycle_observability_database_unavailable');
+  const result = await withIamAppDb((client) =>
+    client.query<StallRow>(
+      'SELECT reason_code, stall_count FROM iam.plugin_tenant_lifecycle_observability_snapshot();'
+    )
   );
   const snapshot = emptyStallSnapshot();
   for (const row of result.rows) {

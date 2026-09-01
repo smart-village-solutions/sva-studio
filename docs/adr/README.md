@@ -95,6 +95,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 053 | [Layout-Shell mit Skeleton-Bereichen](./ADR-053-layout-shell-skeleton-architecture.md)                                                                                        | ✅     | 2026-02-25         | Frontend / Layout                 |
 | 054 | [Kontrollierter Inhabertransfer für Inhalte](./ADR-054-kontrollierter-inhabertransfer-fuer-inhalte.md)                                                                        | ✅     | 2026-08-27         | IAM / Content / Mainserver        |
 | 055 | [Waste-Mainserver-Abgleichsstatus über Quellrevision](./ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)                                                      | ✅     | 2026-08-27         | Waste / Integration / Runtime     |
+| 057 | [SSF-Service-Token und Runtime-Konfigurationsgrenze](./ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)                                                        | ✅     | 2026-09-01         | SSF / IAM / Plugins / Runtime     |
 
 ### Kanonischer Ablageort
 

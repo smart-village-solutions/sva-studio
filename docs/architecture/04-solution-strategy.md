@@ -260,3 +260,23 @@ Inhaltsupdates und Inhaberwechsel sind getrennte Befehle. Ein gemeinsamer Editor
 Das GitHub Wiki ist eine abgeleitete Leseansicht und keine zweite redaktionelle Quelle. Ein typsicherer Publikationskern überführt jede freigegebene Markdown-Datei in einen eindeutigen flachen Wiki-Slug, transformiert interne Links und erzeugt einen aufgabenorientierten Einstieg sowie eine kompakte Sidebar. Nicht-Markdown-Ziele bleiben gekennzeichnete Quellartefakte im Repository. Damit nutzt die Wissensbasis die vorhandene GitHub-Wiki-Oberfläche, ohne deren verschachtelte Raw-Pfade als Seitenmodell zu behandeln.
 
 Der frühere gemischte Bereich `docs/guides/` wurde anhand eines vollständigen Alt-/Neu-Pfad-Nachweises kontrolliert abgebaut. `docs/guides/studio-rollout-process.md` ist der einzige absichtlich stabile Pfad in diesem Bereich und die einzige normative Anleitung für reguläre Studio-Rollouts.
+
+### Zielbild 2026-09: Gemeinsame Studio-Plattform für SSF
+
+SSF nutzt die vorhandenen Studio-Plattformfähigkeiten für Instanzen, IAM,
+Keycloak-Provisionierung, Medien, Plugin-Lifecycle, Audit und Observability. Das
+SSF-Fachmodell bleibt in einem installierbaren Studio-Plugin gekapselt. Root-
+beziehungsweise Systemadministration und tenantbezogene Mandantenadministration
+verwenden damit dieselben Plattformgrenzen wie andere Studio-Fachmodule.
+
+Runtime-Konfiguration wird bei Bedarf über eine interne, lesende API abgerufen.
+Ein installationsweites Keycloak-Service-Token wird gegen Audience und die
+vollständig qualifizierte Action `ssf.runtime-configuration.read` geprüft; die
+Instanz-ID stammt aus dem von SSF validierten Benutzer- oder Sessionkontext.
+Eine zweite Tenant-Signatur, ein Replay-Speicher und eine persistente SSF-
+Konfigurationskopie sind für diesen idempotenten V1-Lesepfad nicht vorgesehen.
+Ausfälle der gemeinsam betriebenen Komponenten dürfen den SSF-Vorgang sichtbar
+fehlschlagen lassen.
+
+Details und noch offene Implementierungsparameter stehen im
+[Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).

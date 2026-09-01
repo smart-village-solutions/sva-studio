@@ -56,6 +56,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-051 technische Accounts und Organisations-Mainserver-Provisioning](../adr/ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md)
 - [ADR-052 Create-Policy, Read-Scope und Bestandsprincipal trennen](../adr/ADR-052-create-policy-read-scope-und-bestandsprincipal.md)
 - [ADR-055 Waste-Mainserver-Abgleichsstatus über Quellrevision](../adr/ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)
+- [ADR-057 SSF-Service-Token und Runtime-Konfigurationsgrenze](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -86,6 +87,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-046
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 - Abschnitt 05/06/08/09 (Bausteine/Laufzeit/Querschnitt/Entscheidungen): ADR-055
+- Abschnitt 03/04/05/06/07/08/09 (Kontext/Strategie/Bausteine/Laufzeit/Verteilung/Querschnitt/Entscheidungen): ADR-057
 
 ### Zuordnung Swarm-Deployment-ADRs
 
@@ -590,3 +592,23 @@ den Plugins. Die erlaubte UI-zu-SDK-Richtung ist auf den Subpath
 Zuordnung:
 
 - Abschnitt 05/08/09/10/11: OpenSpec-Change `refactor-shared-editor-primitives`
+
+### Fortschreibung 2026-09: SSF-Service-Token und Runtime-Konfiguration
+
+- [ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
+  legt die gemeinsame Instanzidentität, das separate SSF-Keycloak, die
+  autoritativen Claims und die einfache Service-Token-Grenze für den internen
+  V1-Lesepfad fest.
+- ADR-046 bleibt für Studio-Rollenscopes maßgeblich. ADR-057 definiert nur die
+  feste Übersetzung von `instance_registry_admin` zu SSF-`system_admin` und von
+  tenantlokalem Studio-`system_admin` zu SSF-`tenant_admin`.
+- Tenantgebundene `ssf.*`-Permissions werden revisionsgebunden und fail-closed
+  in den SSF-Keycloak-Client projiziert. Root-Actions besitzen stattdessen einen
+  getrennten Plattformbeitrag mit Grant für `instance_registry_admin`.
+- Das SSF-Plugin ist alleinige Runtime-Quelle der vollständig aufgelösten
+  Konfiguration einschließlich aller versionierten Produktdefaults. SSF hält
+  weder eine zweite Default-Auflösung noch eine persistente Konfigurationskopie.
+
+Zuordnung:
+
+- Abschnitt 03/04/05/06/07/08/09: ADR-057

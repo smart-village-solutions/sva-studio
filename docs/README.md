@@ -29,6 +29,8 @@ Diese Seite ist der zentrale Einstieg in die lokale Projekt- und Betriebsdokumen
 | Monorepo und Routing        | Paketgrenzen, Workspace-Struktur und Routingkonzept               | [Monorepo-Struktur](./reference/monorepo.md), [Routing](./reference/routing.md)                      |
 | Plattform und lokales Setup | Browser-Kompatibilität und lokale Redis-Infrastruktur             | [Browser-Unterstützung](./reference/browser-support.md), [Redis-Setup](./development/redis-setup.md) |
 
+Der fachlich freigegebene Integrationsentwurf für SSF ist im [Studio–SSF-Vertrag für Runtime-Konfiguration V1](./api/ssf-studio-runtime-konfigurationsvertrag-v1.md) dokumentiert; ergänzend steht eine [englische Übersetzung](./api/ssf-studio-runtime-configuration-contract-v1.en.md) zur Verfügung.
+
 Die kontrollierte Inhaltsmigration ist im [Migrationsnachweis](./governance/dokumentationsmigration.md) dokumentiert. Unter `docs/guides/` verbleibt ausschließlich der [kanonische Studio-Rollout](./guides/studio-rollout-process.md) als stabiler Kompatibilitätsanker und einzige verbindliche Bedienanleitung für reguläre Rollouts nach Dev, Staging und Production.
 
 ## Nicht Teil der aktuellen Wissensbasis

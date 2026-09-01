@@ -11,6 +11,9 @@ authoritative repository document if the translations diverge.
 Before implementation, the existing OpenSpec changes must be aligned with and
 normatively updated to reflect this simplified contract.
 
+The IAM and runtime boundary is established by
+[ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md).
+
 The corresponding target boundaries are anchored in arc42 sections 3 through
 8. An older SSF control-plane draft developed in parallel still proposed a
 two-stage authentication contract; it must be aligned with the simple
@@ -195,10 +198,12 @@ tenant customization
   ?? SSF product default shipped with the software version
 ```
 
-Product defaults are versioned and shipped with SSF or the SSF plugin. They
-are not copied into the database for every tenant. The runtime API returns only
-the fully resolved result. SSF does not know the origin of a value or receive
-administrative policy fields.
+Product defaults are shipped exclusively as a versioned part of the SSF
+plugin. They are agreed with the SSF product but their canonical runtime copy
+resides in the plugin, and they are not copied into the database for every
+tenant. The runtime API returns only the fully resolved result. SSF does not
+know the origin of a value, receive administrative policy fields, or resolve a
+second default layer.
 
 `tenant.displayName` and `tenant.timeZone` come from the generic Studio
 instance profile. Generic tenant branding from Studio media management is

@@ -10,6 +10,10 @@ gemeinsame Integrationsgrundlage für beide Anwendungen. Vor einer Umsetzung
 müssen die bestehenden OpenSpec-Changes mit diesem vereinfachten Vertrag
 abgeglichen und normativ angepasst werden.
 
+Die IAM- und Runtime-Grenze ist in
+[ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
+entschieden.
+
 Die zugehörigen Zielgrenzen sind in den arc42-Abschnitten 3 bis 8 verankert.
 Eine ältere, parallel entwickelte SSF-Control-Plane-Ausarbeitung sah noch einen
 zweistufigen Authentifizierungsvertrag vor; vor der Umsetzung muss sie an den
@@ -192,10 +196,12 @@ Tenant-Anpassung
   ?? mit dem Softwarestand ausgelieferter SSF-Produktdefault
 ```
 
-Produktdefaults werden versioniert mit SSF beziehungsweise dem SSF-Plugin
-ausgeliefert und nicht pro Mandant in die Datenbank kopiert. Die Runtime-API
-liefert ausschließlich das vollständig aufgelöste Ergebnis. SSF kennt weder
-die Herkunft eines Werts noch administrative Policy-Felder.
+Produktdefaults werden ausschließlich als versionierter Bestandteil des
+SSF-Plugins ausgeliefert und nicht pro Mandant in die Datenbank kopiert. Sie
+werden fachlich mit SSF abgestimmt, ihre kanonische Runtime-Kopie liegt jedoch
+im Plugin. Die Runtime-API liefert ausschließlich das vollständig aufgelöste
+Ergebnis. SSF kennt weder die Herkunft eines Werts noch administrative
+Policy-Felder und löst keine zweite Default-Schicht auf.
 
 `tenant.displayName` und `tenant.timeZone` stammen aus dem generischen
 Studio-Instanzprofil. Das allgemeine Tenant-Branding aus der Studio-

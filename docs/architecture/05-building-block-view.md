@@ -861,8 +861,9 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Autorisierungsgrenze und Auditierung.
 - Das SSF-Plugin besitzt eine einzelne plugin-eigene, mandantenfähige
   PostgreSQL-Datenbank für SSF-Texte, Sprachwahl, Branding- und
-  Speicher-Policies sowie Tenant-Overrides. Es löst Tenant-, serverweite und
-  ausgelieferte Produktwerte zur effektiven Konfiguration auf.
+  Speicher-Policies sowie Tenant-Overrides. Es enthält die kanonischen,
+  versionierten Produktdefaults und löst Tenant-, serverweite und diese
+  ausgelieferten Produktwerte zur effektiven Konfiguration auf.
 - Die Studio-Serverruntime veröffentlicht den internen V1-Leseendpunkt und
   delegiert nach Service- und Tenantprüfung an das SSF-Plugin.
 - SSF konsumiert nur die aufgelöste Antwort. Es kennt keine Override-Herkunft,

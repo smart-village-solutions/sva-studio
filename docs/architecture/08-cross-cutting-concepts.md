@@ -942,6 +942,7 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 
 Der vollständige V1-Vertrag ist unter
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
-dokumentiert. Die technische Umsetzung und der neue IAM-Vertrag benötigen vor
-dem Merge ihrer Implementierung eine eigene ADR sowie den normativen
-OpenSpec-Abgleich.
+dokumentiert. Die IAM- und Runtime-Grenze ist in
+[ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
+entschieden; vor der Implementierung bleibt der normative OpenSpec-Abgleich
+erforderlich.

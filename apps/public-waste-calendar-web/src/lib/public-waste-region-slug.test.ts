@@ -9,6 +9,9 @@ describe('public waste region slugs', () => {
   it('creates readable German URL slugs', () => {
     expect(toPublicWasteRegionSlug('Amt Bad Wilsnack/Weisen')).toBe('amt-bad-wilsnack-weisen');
     expect(toPublicWasteRegionSlug('Ämter für Groß Pankow')).toBe('aemter-fuer-gross-pankow');
+    expect(toPublicWasteRegionSlug('A\u0308mter fu\u0308r Groß Pankow')).toBe(
+      'aemter-fuer-gross-pankow'
+    );
   });
 
   it('accepts only canonical path-safe slugs', () => {

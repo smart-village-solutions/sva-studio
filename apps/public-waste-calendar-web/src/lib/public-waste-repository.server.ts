@@ -236,13 +236,17 @@ export const createPublicWasteRepository = (input: {
     async listPublicRegions(): Promise<readonly PublicWasteSelectableEntry[]> {
       const result = await input.execute<SelectionRow>({
         text: `
-          SELECT DISTINCT r.id, r.name AS label
-          FROM ${schemaName}.waste_collection_locations cl
-          INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
-          INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
-          INNER JOIN ${schemaName}.waste_regions r ON r.id = cl.region_id
-          WHERE cl.active = true
-            AND t.active = true
+          SELECT r.id, r.name AS label
+          FROM ${schemaName}.waste_regions r
+          WHERE EXISTS (
+            SELECT 1
+            FROM ${schemaName}.waste_collection_locations cl
+            INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
+            INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
+            WHERE cl.region_id = r.id
+              AND cl.active = true
+              AND t.active = true
+          )
           ORDER BY label ASC;
         `,
       });

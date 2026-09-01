@@ -2,7 +2,7 @@
 
 ## Why
 
-Regionsspezifische iFrame-Links dürfen keine Kenntnis interner UUIDs voraussetzen. Kommunen benötigen öffentliche URLs, die sie aus dem bekannten Regionsnamen ableiten, redaktionell prüfen und dauerhaft einbinden können.
+Regionsspezifische iFrame-Links dürfen keine Kenntnis interner UUIDs voraussetzen. Kommunen benötigen öffentliche URLs, die sie aus dem bekannten Regionsnamen ableiten, redaktionell prüfen und ohne technische IDs einbinden können.
 
 ## What Changes
 

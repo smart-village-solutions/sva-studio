@@ -14,7 +14,9 @@ Einbettende Seiten begrenzen die öffentliche Weboberfläche über einen lesbare
 https://abfallkalender.example/amt-bad-wilsnack
 ```
 
-Die verfügbaren Namen und Slugs liefert `GET /api/public-waste/regions`. Die Auswahl beginnt direkt beim Ort. „Adresse ändern“, weitere Adresssuchen und die aus dem gewählten Standort abgeleiteten Kalender-, PDF-, iCal- und Erinnerungsaktionen behalten die URL-Region bei. Ohne Regionspfad bleibt die regionsübergreifende Auswahl unverändert. Formal ungültige, unbekannte oder nicht eindeutige Slugs werden mit einem Fehlerzustand abgelehnt; es erfolgt kein ungefilterter Fallback.
+Die verfügbaren Namen und Slugs liefert `GET /api/public-waste/regions`. Der Katalog veröffentlicht nur nicht leere, eindeutig auflösbare Slugs. Die Auswahl beginnt direkt beim Ort. „Adresse ändern“, weitere Adresssuchen und die aus dem gewählten Standort abgeleiteten Kalender-, PDF-, iCal- und Erinnerungsaktionen behalten die URL-Region bei. Ohne Regionspfad bleibt die regionsübergreifende Auswahl unverändert. Formal ungültige, unbekannte oder nicht eindeutige Slugs werden mit einem Fehlerzustand abgelehnt; es erfolgt kein ungefilterter Fallback.
+
+Der Slug folgt dem aktuellen Regionsnamen. Wird dieser Name in den Stammdaten geändert, muss die einbettende Seite den Link anhand des aktuellen Regionskatalogs aktualisieren. Der Pfad ist damit ein lesbarer Kundenlink, aber kein namensunabhänglicher Permalink.
 
 Bestehende technische Einbindungen mit genau einem gültigen Suchparameter `regionId` bleiben kompatibel, sind aber nicht das Format für neue öffentliche Links.
 

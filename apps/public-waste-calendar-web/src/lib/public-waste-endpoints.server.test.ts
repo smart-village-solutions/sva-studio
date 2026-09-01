@@ -89,6 +89,23 @@ describe('public waste endpoints', () => {
     });
   });
 
+  it('does not publish ambiguous or empty region slugs', async () => {
+    const response = await handlePublicWasteRegionsRequest({
+      repository: {
+        listPublicRegions: vi.fn().mockResolvedValue([
+          { id: 'region-1', label: 'Groß Pankow' },
+          { id: 'region-2', label: 'Gross Pankow' },
+          { id: 'region-3', label: '---' },
+          { id: 'region-4', label: 'Amt Meyenburg' },
+        ]),
+      },
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      items: [{ id: 'region-4', label: 'Amt Meyenburg', slug: 'amt-meyenburg' }],
+    });
+  });
+
   it('returns the resolved calendar model as json', async () => {
     const response = await handlePublicWasteCalendarRequest({
       repository: {

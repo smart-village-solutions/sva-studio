@@ -2,6 +2,7 @@ const PUBLIC_WASTE_REGION_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const toPublicWasteRegionSlug = (label: string): string =>
   label
+    .normalize('NFC')
     .trim()
     .toLocaleLowerCase('de-DE')
     .replaceAll('ä', 'ae')

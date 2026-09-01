@@ -19,9 +19,11 @@ describe('public waste repository', () => {
     ]);
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringContaining('INNER JOIN "waste".waste_regions'),
+        text: expect.stringContaining('FROM "waste".waste_regions r'),
       })
     );
+    expect(execute.mock.calls[0]?.[0].text).toContain('WHERE EXISTS');
+    expect(execute.mock.calls[0]?.[0].text).not.toContain('SELECT DISTINCT');
     expect(execute.mock.calls[0]?.[0].text).toContain('cl.active = true');
     expect(execute.mock.calls[0]?.[0].text).toContain('t.active = true');
   });

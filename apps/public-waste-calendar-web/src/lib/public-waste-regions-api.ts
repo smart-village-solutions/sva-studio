@@ -18,9 +18,19 @@ export const requestPublicWasteRegions = async (): Promise<PublicWasteRegionResp
 
 export const projectPublicWasteRegions = (
   options: readonly { readonly id: string; readonly label: string }[]
-): PublicWasteRegionResponse => ({
-  items: options.map((option) => ({
+): PublicWasteRegionResponse => {
+  const projected = options.map((option) => ({
     ...option,
     slug: toPublicWasteRegionSlug(option.label),
-  })),
-});
+  }));
+  const slugCounts = new Map<string, number>();
+  for (const region of projected) {
+    slugCounts.set(region.slug, (slugCounts.get(region.slug) ?? 0) + 1);
+  }
+
+  return {
+    items: projected.filter(
+      (region) => region.slug.length > 0 && slugCounts.get(region.slug) === 1
+    ),
+  };
+};

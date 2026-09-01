@@ -931,6 +931,14 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   mit Default-Grants; kundenspezifische Rollen werden nicht durch Prüfungen auf
   feste Rollennamen ausgeschlossen. Die Herkunft aufgelöster Werte verlangt die
   getrennte Action `ssf.configuration.tenant.provenance.read`.
+- Effektive tenantgebundene `ssf.*`-Permissions werden mit einer tenantweiten
+  Revision aus Studio-IAM in den separaten SSF-Keycloak-Client projiziert. Vor
+  relevanten Änderungen bleiben Client und SSF-Readiness bis zu erfolgreichem
+  Reconcile, Session-Widerruf und Verifikation gesperrt. Token- und Runtime-
+  Revision müssen für authentifizierte Vorgänge übereinstimmen.
+- Plattformgebundene SSF-Actions erhalten ihren Default-Grant für
+  `instance_registry_admin` ausschließlich im Root-/Plattformkatalog. Sie
+  erscheinen weder im Tenant-Katalog noch in SSF-Tenant-Tokens.
 - Studio liefert nur effektive Konfiguration. Benutzerlisten, E-Mail-Adressen,
   Gast-Token, Gesprächsinhalte, Einwilligungsdatensätze, Sessions und
   Auswertungsdaten werden über diesen Vertrag nicht ausgetauscht.

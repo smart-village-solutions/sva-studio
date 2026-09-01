@@ -111,6 +111,7 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
     "ssf.configuration.tenant.read",
     "ssf.configuration.tenant.manage"
   ],
+  "ssf_authorization_revision": "sha256:...",
   "preferred_username": "erika",
   "name": "Erika Muster",
   "locale": "de-DE"
@@ -120,6 +121,23 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 `ssf_permissions` ist die verbindliche Grundlage der serverseitigen
 Autorisierung in SSF. `ssf_roles` dient der fachlichen Einordnung, Navigation
 und Auditierung. Eine E-Mail-Adresse ist nicht Teil des SSF-Tokenvertrags.
+
+Studio-IAM bleibt die führende Quelle der effektiven `ssf.*`-Permissions. Ein
+dedizierter SSF-Projektionslauf materialisiert ausschließlich diese effektiven
+Permissions, die SSF-Personas und eine tenantweite
+`ssf_authorization_revision` in den Client-Scope des separaten SSF-Keycloaks.
+Die Projektion wertet Default- und kundenspezifische Rollen gleich aus; rohe
+Studio-Rollennamen werden nicht zur SSF-Autorisierung verwendet.
+
+Vor einer relevanten Rollen-, Zuweisungs- oder Permission-Änderung markiert
+Studio die SSF-IAM-Projektion des Mandanten als nicht bereit und sperrt die
+Tokenausstellung des betroffenen Tenant-Clients. Danach werden Projektion und
+Revision reconciled und betroffene Sessions widerrufen. Erst nach erfolgreicher
+Verifikation wird der Client mit der neuen Revision wieder freigegeben. Ein
+Fehler lässt Client und Runtime-Konfiguration fail-closed im Zustand
+`ssf_tenant_not_ready`; ein alter oder fehlender Revisionsclaim wird von SSF
+abgelehnt. Dadurch kann eine fehlerhafte Projektion weder veraltete Rechte
+fortschreiben noch gültige kundenspezifische Grants stillschweigend auslassen.
 
 SSF-Access-Token haben standardmäßig eine Laufzeit von fünf Minuten und dürfen
 höchstens zehn Minuten gültig sein. Bei Deaktivierung oder einer kritischen
@@ -169,6 +187,7 @@ Tenant-Assertion, keinen zweiten Signaturschlüssel und keinen Replay-Speicher.
 {
   "contractVersion": "1.0",
   "configurationRevision": "sha256:...",
+  "authorizationRevision": "sha256:...",
   "tenant": {
     "id": "01J...",
     "displayName": "Beispielkommune",
@@ -206,12 +225,17 @@ Tenant-Assertion, keinen zweiten Signaturschlüssel und keinen Replay-Speicher.
 `conversationContentStorageQuestionHtml` für jede Sprache `null`.
 
 `configurationRevision` ist ein undurchsichtiger Inhaltsfingerabdruck der
-kanonisch serialisierten effektiven V1-Konfiguration ohne das Revisionsfeld
-selbst. Änderungen an einem wirksamen Tenant-Override, einem wirksamen
+kanonisch serialisierten effektiven V1-Konfiguration ohne die beiden
+Revisionsfelder. Änderungen an einem wirksamen Tenant-Override, einem wirksamen
 serverweiten Wert oder einem im aufgelösten Ergebnis wirksamen Produktdefault
 ändern die Revision automatisch. Änderungen an durch eine Policy oder einen
 höher priorisierten Wert unwirksamen gespeicherten Werten verändern die
 Runtime-Antwort und damit die Revision nicht.
+
+`authorizationRevision` ist die aktuell verifizierte tenantweite Revision der
+SSF-IAM-Projektion. Bei authentifizierten Vorgängen muss sie exakt dem Claim
+`ssf_authorization_revision` entsprechen. Gäste besitzen diesen Claim nicht;
+für sie wird der Vergleich nicht ausgeführt.
 
 ## Auflösung der effektiven Konfiguration
 
@@ -295,10 +319,20 @@ wirkungslos.
 | `ssf.configuration.tenant.provenance.read` | autorisierter Mandant    | Systemadmin       | Herkunft der aufgelösten Werte                                                                                     |
 | `ssf.configuration.tenant.manage`         | aktiver Mandant           | Mandantenadmin    | aktive Sprachen, Standardsprache, einzelne Text-Overrides, gewünschter Speichermodus und erlaubtes Tenant-Branding |
 
-Die genannten Defaultrollen erhalten diese Actions über den normalen
-Permission-Katalog. Kundenspezifische Rollen dürfen dieselben Actions erhalten;
-die Runtime prüft niemals nur den Rollennamen. Benutzer und Gäste besitzen
-standardmäßig keine Konfigurations-Action.
+Die Plattform-Actions `ssf.configuration.server.manage` und
+`ssf.configuration.tenant-policy.manage` sowie die Root-Grants für
+`ssf.configuration.tenant.read` und
+`ssf.configuration.tenant.provenance.read` werden als eigener
+plattformgebundener Plugin-Beitrag registriert und standardmäßig
+`instance_registry_admin` zugewiesen. Sie erscheinen weder im Tenant-Katalog
+noch in SSF-Tenant-Tokens.
+
+Die tenantgebundenen Actions `ssf.configuration.tenant.read` und
+`ssf.configuration.tenant.manage` werden über den normalen Tenant-Permission-
+Katalog standardmäßig der tenantlokalen Studio-Rolle `system_admin` zugewiesen,
+die an der SSF-Grenze als `tenant_admin` erscheint. Kundenspezifische Rollen
+dürfen dieselben Actions erhalten; die Runtime prüft niemals nur den Rollennamen.
+Benutzer und Gäste besitzen standardmäßig keine Konfigurations-Action.
 
 Die Herkunft der Werte wird nur bei zusätzlicher Action
 `ssf.configuration.tenant.provenance.read` ausgegeben. Systemadmins dürfen

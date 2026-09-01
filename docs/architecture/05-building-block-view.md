@@ -872,6 +872,11 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 - Der separate SSF-Keycloak stellt Benutzer- und Service-Tokens aus. Gäste
   verbleiben im SSF-Sessionmodell und werden nicht als Studio-Benutzer
   materialisiert.
+- Eine Studio-owned SSF-IAM-Projektion materialisiert ausschließlich effektive
+  tenantgebundene `ssf.*`-Permissions und ihre Revision in den jeweiligen
+  SSF-Keycloak-Client. Projektionsfehler sperren Client und Plugin-Readiness.
+- Root-Actions des SSF-Plugins werden getrennt als Plattformbeitrag für
+  `instance_registry_admin` registriert und niemals in Tenant-Tokens projiziert.
 
 Der genaue Payload- und Fehlervertrag ist im
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)

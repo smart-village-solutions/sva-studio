@@ -110,6 +110,7 @@ In addition to the standard OIDC claims, an SSF tenant token contains at least:
     "ssf.configuration.tenant.read",
     "ssf.configuration.tenant.manage"
   ],
+  "ssf_authorization_revision": "sha256:...",
   "preferred_username": "erika",
   "name": "Erika Muster",
   "locale": "de-DE"
@@ -119,6 +120,22 @@ In addition to the standard OIDC claims, an SSF tenant token contains at least:
 `ssf_permissions` is the authoritative basis for server-side authorization in
 SSF. `ssf_roles` supports domain classification, navigation, and auditing. An
 email address is not part of the SSF token contract.
+
+Studio IAM remains the authoritative source of effective `ssf.*` permissions.
+A dedicated SSF projection run materializes only these effective permissions,
+the SSF personas, and a tenant-wide `ssf_authorization_revision` into the
+client scope of the separate SSF Keycloak. The projection evaluates default
+and custom roles equally; raw Studio role names are not used for SSF
+authorization.
+
+Before a relevant role, assignment, or permission change, Studio marks the
+tenant's SSF IAM projection as not ready and disables token issuance for the
+affected tenant client. It then reconciles and verifies the projection and
+revision and revokes affected sessions. Only after successful verification is
+the client enabled with the new revision. A failure keeps both client and
+runtime configuration fail-closed in `ssf_tenant_not_ready`; SSF rejects a
+missing or stale revision claim. A failed projection can therefore neither
+preserve stale rights nor silently omit valid custom-role grants.
 
 SSF access tokens have a default lifetime of five minutes and must not be
 valid for more than ten minutes. When a user is disabled or a critical role
@@ -168,6 +185,7 @@ assertion, a second signing key, or replay storage.
 {
   "contractVersion": "1.0",
   "configurationRevision": "sha256:...",
+  "authorizationRevision": "sha256:...",
   "tenant": {
     "id": "01J...",
     "displayName": "Example Municipality",
@@ -205,11 +223,16 @@ assertion, a second signing key, or replay storage.
 `conversationContentStorageQuestionHtml` is `null` for every locale.
 
 `configurationRevision` is an opaque content fingerprint of the canonically
-serialized effective V1 configuration, excluding the revision field itself. A
+serialized effective V1 configuration, excluding both revision fields. A
 change to an effective tenant override, an effective server-wide value, or a
 product default effective in the resolved result automatically changes the
 revision. Changing a stored value that is ineffective because of a policy or a
 higher-precedence value does not change the runtime response or its revision.
+
+`authorizationRevision` is the currently verified tenant-wide revision of the
+SSF IAM projection. For authenticated operations it must exactly match the
+`ssf_authorization_revision` claim. Guests do not carry this claim and do not
+perform this comparison.
 
 ## Resolving the effective configuration
 
@@ -293,9 +316,19 @@ effect.
 | `ssf.configuration.tenant.provenance.read` | authorized tenant      | System administrator             | origins of resolved values                                                                                          |
 | `ssf.configuration.tenant.manage`         | active tenant           | Tenant administrator             | enabled languages, default locale, individual text overrides, desired storage mode, and permitted tenant branding |
 
-The default roles receive these actions through the regular permission
-catalog. Custom roles may receive the same actions; the runtime never checks
-only the role name. Users and guests have no configuration action by default.
+The platform actions `ssf.configuration.server.manage` and
+`ssf.configuration.tenant-policy.manage`, together with the root grants for
+`ssf.configuration.tenant.read` and
+`ssf.configuration.tenant.provenance.read`, are registered as a separate
+platform-scoped plugin contribution and granted to `instance_registry_admin`
+by default. They appear neither in the tenant catalog nor in SSF tenant tokens.
+
+The tenant-scoped actions `ssf.configuration.tenant.read` and
+`ssf.configuration.tenant.manage` use the regular tenant permission catalog and
+are granted by default to the tenant-local Studio `system_admin` role, which is
+represented as `tenant_admin` at the SSF boundary. Custom roles may receive the
+same actions; the runtime never checks only the role name. Users and guests
+have no configuration action by default.
 
 Value origins are returned only with the additional
 `ssf.configuration.tenant.provenance.read` action. System administrators may

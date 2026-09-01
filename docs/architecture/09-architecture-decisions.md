@@ -602,6 +602,9 @@ Zuordnung:
 - ADR-046 bleibt für Studio-Rollenscopes maßgeblich. ADR-057 definiert nur die
   feste Übersetzung von `instance_registry_admin` zu SSF-`system_admin` und von
   tenantlokalem Studio-`system_admin` zu SSF-`tenant_admin`.
+- Tenantgebundene `ssf.*`-Permissions werden revisionsgebunden und fail-closed
+  in den SSF-Keycloak-Client projiziert. Root-Actions besitzen stattdessen einen
+  getrennten Plattformbeitrag mit Grant für `instance_registry_admin`.
 - Das SSF-Plugin ist alleinige Runtime-Quelle der vollständig aufgelösten
   Konfiguration einschließlich aller versionierten Produktdefaults. SSF hält
   weder eine zweite Default-Auflösung noch eine persistente Konfigurationskopie.

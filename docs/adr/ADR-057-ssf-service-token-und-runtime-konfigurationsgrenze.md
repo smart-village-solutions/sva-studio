@@ -27,8 +27,9 @@ oder Sessionkontext. Für diesen idempotenten Read gibt es keine zweite Tenant-
 Signatur, keine Browserfreigabe und keinen Replay-Speicher.
 
 Benutzertokens tragen den kanonischen Mandantenclaim `studio_instance_id` sowie
-`ssf_roles` und die autoritativen `ssf_permissions`. Systemadmins bleiben im
-Studio-Root-Kontext; Mandantenadmins und Benutzer gehören genau einem Tenant.
+`ssf_roles`, die autoritativen `ssf_permissions` und eine tenantweite
+`ssf_authorization_revision`. Systemadmins bleiben im Studio-Root-Kontext;
+Mandantenadmins und Benutzer gehören genau einem Tenant.
 Gäste bleiben ausschließlich im SSF-Sessionmodell. `system_admin` und
 `tenant_admin` sind Personas und Defaultrollen; Konfigurationszugriffe werden
 ausschließlich über `ssf.configuration.server.manage`,
@@ -44,6 +45,20 @@ tenantlokale Studio-Defaultrolle `system_admin` wird für SSF als `tenant_admin`
 eingeordnet. Eine tenantlokale operative SSF-Rolle ergibt `user`; eine
 validierte Gäste-Session ergibt `guest`. Kundenspezifische Rollen benötigen
 keine Persona-Synthese, weil ihre effektiven `ssf.*`-Actions autoritativ sind.
+
+Studio-IAM projiziert die effektiven `ssf.*`-Permissions aus Default- und
+kundenspezifischen Rollen in den Client-Scope des separaten SSF-Keycloaks. Vor
+einer relevanten IAM-Änderung wird der betroffene Tenant-Client gesperrt und die
+Projektion als nicht bereit markiert. Nach Reconcile, Revisionsverifikation und
+Session-Widerruf wird der Client wieder freigegeben. Fehler verbleiben
+fail-closed; SSF vergleicht den Tokenclaim mit der vom Runtime-Endpunkt
+gelieferten `authorizationRevision`.
+
+Root-Actions werden nicht in diesen Tenant-Pfad projiziert. Das SSF-Plugin
+registriert `ssf.configuration.server.manage`,
+`ssf.configuration.tenant-policy.manage` sowie die erforderlichen Root-Reads
+als plattformgebundenen Beitrag mit Default-Grant für
+`instance_registry_admin`. Tenant-Actions bleiben im normalen Tenant-Katalog.
 
 SSF speichert die Runtime-Antwort nicht persistent. Studio und SSF verwenden
 keine gemeinsame Fachdatenbank und greifen nicht direkt auf die Persistenz des
@@ -74,6 +89,11 @@ Konfigurationen oder Revisionen berechnen.
 - Die Integrationsübersetzung zwischen Studio-IAM und SSF-Personas muss bei
   Provisionierung und Token-Materialisierung konsistent angewendet werden;
   ADR-046 wird nicht supersediert.
+- Relevante Tenant-IAM-Änderungen sperren die SSF-Tokenausstellung bis zur
+  verifizierten Projektion. Dadurch kann ein Keycloak-Ausfall die SSF-Nutzung
+  des betroffenen Mandanten vorübergehend blockieren.
+- Plattform-Grants und Tenant-Grants verwenden getrennte Katalog- und
+  Projektionspfade, obwohl ihre Action-IDs im selben `ssf`-Namespace liegen.
 - Gesprächsinhalte, Gäste-Sessions und Auswertungsdaten bleiben außerhalb des
   Runtime-Konfigurationsvertrags.
 

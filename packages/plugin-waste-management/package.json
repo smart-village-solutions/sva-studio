@@ -42,7 +42,7 @@
     "@types/react-dom": "^19.2.4",
     "@vitest/coverage-v8": "^4.1.10",
     "happy-dom": "^20.11.1",
-    "msw": "^2.14.6",
+    "msw": "^2.15.0",
     "tooling-testing": "workspace:*",
     "vitest": "^4.1.10"
   }

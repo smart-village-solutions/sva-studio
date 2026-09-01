@@ -15,10 +15,7 @@ import {
   withPluginTenantLifecycleRepository,
   withStudioJobLifecycleRepositories,
 } from '../plugin-operations/repository.js';
-import {
-  getRegisteredPluginOperationExecutionRegistry,
-  queuePluginOperationJob,
-} from '../plugin-operations/runner.js';
+import { getRegisteredPluginOperationExecutionRegistry } from '../plugin-operations/runner.js';
 import { pluginTenantLifecycleJobInputKey } from './job-correlation.js';
 import { reconcileClaimedLifecycleJob } from './enqueue-recovery.js';
 import {

@@ -172,7 +172,15 @@ const bootstrapWorkerRole = (port: string): void => {
   });
 };
 
-const runWorkerReadiness = async (port: string, appDbUser: string, workerDbUser: string) => {
+const runWorkerReadiness = async (
+  port: string,
+  appDbUser: string,
+  workerDbUser: string,
+  connection: { readonly password: string; readonly user: string } = {
+    password: adminPassword,
+    user: 'postgres',
+  }
+) => {
   const schemaGuardModule = (await import(
     pathToFileURL(resolve('packages/auth-runtime/dist/iam-account-management/schema-guard.js')).href
   )) as typeof import('../../packages/auth-runtime/src/iam-account-management/schema-guard.js');
@@ -180,9 +188,9 @@ const runWorkerReadiness = async (port: string, appDbUser: string, workerDbUser:
     {
       database,
       host: '127.0.0.1',
-      password: adminPassword,
+      password: connection.password,
       port: Number.parseInt(port, 10),
-      user: 'postgres',
+      user: connection.user,
     },
     'iam_app',
     appDbUser,
@@ -204,7 +212,10 @@ const assertMissingWorkerRoleReadiness = async (port: string): Promise<void> => 
 };
 
 const assertCanonicalWorkerReadiness = async (port: string): Promise<void> => {
-  const report = await runWorkerReadiness(port, 'sva_app', 'sva_job_worker');
+  const report = await runWorkerReadiness(port, 'sva_app', 'sva_job_worker', {
+    password: appPassword,
+    user: 'sva_app',
+  });
   if (!report.ok) {
     throw new Error(`graphile_contract_readiness_failed:${report.failedChecks.join(',')}`);
   }

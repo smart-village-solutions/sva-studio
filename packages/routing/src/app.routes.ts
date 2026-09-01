@@ -21,13 +21,16 @@ export const getClientRouteFactories = ({
   adminResources = [],
   plugins = [],
   diagnostics,
+  pluginScope,
 }: {
   readonly bindings: AppRouteBindings;
   readonly adminResources?: readonly AdminResourceDefinition[];
   readonly plugins?: readonly PluginDefinition[];
   readonly diagnostics?: RoutingDiagnosticsHook;
-}): readonly AppRouteFactory[] => [
-  ...createUiRouteFactories(bindings, { adminResources, diagnostics }),
-  ...authRouteFactories,
-  ...getPluginRouteFactories(plugins, { diagnostics }),
-] as const;
+  readonly pluginScope?: import('./plugin.routes.js').PluginRouteScope;
+}): readonly AppRouteFactory[] =>
+  [
+    ...createUiRouteFactories(bindings, { adminResources, diagnostics }),
+    ...authRouteFactories,
+    ...getPluginRouteFactories(plugins, { diagnostics, scope: pluginScope }),
+  ] as const;

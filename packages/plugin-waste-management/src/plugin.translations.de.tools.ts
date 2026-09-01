@@ -218,6 +218,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     updatedAt: 'Zuletzt aktualisiert: {{value}}',
     phases: {
       'waste-management.provision-database': 'Datenbank wird provisioniert',
+      'waste-management.tenant-readiness': 'Datenbankbereitschaft wird geprüft',
       'waste-management.apply-migrations': 'Migrationen werden angewendet',
       'waste-management.verify-access': 'Datenbankzugriff wird geprüft',
       'waste-management.initialize': 'Datenquelle wird initialisiert',

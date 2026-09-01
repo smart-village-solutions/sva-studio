@@ -19,6 +19,10 @@ export const instanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstance),
     PATCH: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.updateInstance),
   },
+  '/api/v1/iam/instances/$instanceId/plugin-readiness': {
+    GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getPluginTenantReadiness),
+    POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.startPluginTenantLifecycle),
+  },
   '/api/v1/iam/instances/$instanceId/audit': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getSingleInstanceAuditRun),
   },

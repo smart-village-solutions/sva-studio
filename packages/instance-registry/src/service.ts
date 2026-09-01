@@ -27,16 +27,22 @@ import {
   createRevokeModuleHandler,
   createSeedIamBaselineHandler,
 } from './service-module-mutations.js';
+import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import { createProbeTenantIamAccessHandler } from './service-probe.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
-export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
+export const createInstanceRegistryService = (
+  deps: InstanceRegistryServiceDeps
+): InstanceRegistryService => ({
   prepareConfirmationChallenge: createPrepareInstanceConfirmationChallenge(deps.repository),
   consumeConfirmationChallenge: createConsumeInstanceConfirmationChallenge(deps.repository),
   recordConfirmationAttempt: async (input) => {
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
-      eventType: input.outcome === 'accepted' ? 'instance_confirmation_accepted' : 'instance_confirmation_rejected',
+      eventType:
+        input.outcome === 'accepted'
+          ? 'instance_confirmation_accepted'
+          : 'instance_confirmation_rejected',
       actorId: input.actorId,
       requestId: input.requestId,
       details: {
@@ -58,6 +64,7 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
   assignModule: createAssignModuleHandler(deps),
   bootstrapAdminStructure: createBootstrapAdminStructureHandler(deps),
   revokeModule: createRevokeModuleHandler(deps),
+  reconcileModuleActivationPolicies: createReconcileModuleActivationPoliciesHandler(deps),
   seedIamBaseline: createSeedIamBaselineHandler(deps),
   probeTenantIamAccess: createProbeTenantIamAccessHandler(deps),
   getKeycloakProvisioningRun: createGetKeycloakProvisioningRunHandler(deps),

@@ -16,7 +16,7 @@ Dieses Dokument beschreibt den aktuellen Entwicklungsvertrag für generische Plu
 - `@sva/plugin-sdk` definiert deklarative `jobTypes` und `importProfiles` und validiert Namespace, Pflichtfelder und Kollisionen im Build-Time-Registry-Pfad.
 - `@sva/core` hält die stabilen generischen Verträge für Status, Progress, Jobdatensatz und Start-Request.
 - `@sva/routing` ist die einzige öffentliche Runtime-Route-Wahrheit für produktive Plugin-Operations-Endpunkte.
-- `@sva/auth-runtime` prüft Authentifizierung, Instanzkontext, Request-Vertrag und hostgeführte Fehlerabbildung.
+- `@sva/auth-runtime` prüft Authentifizierung, Instanzkontext, Request-Vertrag und hostgeführte Fehlerabbildung. Collection-Handler akzeptieren dabei keine rein eigenen, ressourcenbezogenen, Geo- oder freien Scope-Grants, weil der Plugin-Kontext diese Einschränkungen nicht vollständig transportiert.
 - `@sva/data-repositories` hält den zentralen Job-Store und damit die führende Governance- und Betriebssicht.
 - `@sva/server-runtime` bleibt Owner der gemeinsamen serverseitigen Fehler-, Logging- und Request-Kontext-Helfer.
 
@@ -137,11 +137,16 @@ Die öffentliche Plattform spricht nicht über konkrete Worker-Technologie. Eine
 
 Die erste interne Implementierung nutzt dafür Graphile Worker im Hostprozess. Der Worker wird hostseitig lazy gestartet, nutzt denselben zentralen Studio-Postgres wie der führende Jobdatensatz und bleibt vollständig hinter `@sva/auth-runtime` verborgen.
 
+Worker-fähige Serverprozesse starten ihre konfigurierte Lane bereits beim Prozess-Bootstrap. Vor dem ersten Queue-Consume wartet der Bootstrap auf den vollständig konfigurierten Aktivierungs-/Lifecycle-Snapshot und die Runtime-Handler. Das privilegierte Provisioner-Profil ist dadurch weder von einem ersten HTTP-Request oder externen Healthcheck abhängig noch kann es queued Lifecycle-Jobs gegen einen leeren Registry-Snapshot ausführen; Requests stoßen nur den idempotenten Recheck desselben Controllers an.
+
+Der anschließende Fleet-Reconcile gleicht für jede Instanz auch bei unveränderten Aktivierungszeilen die aktuell konfigurierten IAM-Verträge idempotent ab. Reine IAM-Vertragsänderungen werden dadurch auf bestehende Zuweisungen angewendet; entfernte Rollen-/Permission-Paare verlieren ausschließlich ihren als `module_sync` markierten Grant, während manuelle Grants und Permission-Definitionen bestehen bleiben. Ein fehlgeschlagener oder degradierter Fleet-Lauf plant revisions- und prozessgenerationsgebunden selbstständig einen neuen Versuch; er ist nicht von einem späteren HTTP-Request abhängig.
+
 Für startbare Plugin-Jobtypen gilt zusätzlich ein verbindlicher Runtime-Integrationsschritt:
 
 - die deklarativen `jobTypes` bleiben Build-Time-Vertrag im Plugin
 - die tatsächlichen `PluginOperationExecutionHandler` werden explizit serverseitig im App-Layer registriert
 - die Registrierung darf nicht implizit über UI-Module oder Browser-Code erfolgen
+- der Server-Entry wartet vor dem Dispatch von Operations-Routen auf die Handler-Registrierung, auch wenn der aktuelle Prozess wegen einer externen Worker-Topologie keinen lokalen Worker startet
 - ein Coverage-Test muss sicherstellen, dass jeder deklarierte startbare Jobtyp genau einen Runtime-Handler hat und kein Runtime-Handler ohne deklarativen Jobtyp existiert
 - neue startbare Jobtypen gelten erst dann als vollständig integriert, wenn Deklaration, Runtime-Registrierung und Start-Endpunkt-Test gemeinsam vorliegen
 
@@ -150,6 +155,18 @@ Innerhalb von `@sva/auth-runtime` ist der Ablauf inzwischen weiter getrennt:
 - `runner.ts` bleibt Graphile-Adapter und Queue-Einstieg
 - `job-lifecycle-orchestrator.ts` kapselt Host-Lifecycle, Handler-Aufruf und Retry-/Terminal-Entscheidungen
 - Event-, State-, Progress- und Read-Modell-Normalisierung bleiben in eigenen Host-Bausteinen
+- verzögerte Tenant-Lifecycle-Retries werden pro Instanz und Plugin mit eigenem Job-Key als persistenter Task `plugin_tenant_lifecycle_retry` eingeplant; der migrationsverwaltete Enqueue-Wrapper erlaubt diesen Task neben den beiden Studio-Job-Lanes ausdrücklich
+- jeder persistierte Lifecycle-Claim plant in derselben Tenant-Transaktion einen separaten Recovery-Task; bleibt der zugehörige Studio-Job nach einem Prozessabbruch im Zustand `queued`, stellt der Task dessen Graphile-Eintrag idempotent über den stabilen Job-Key wieder her
+- im suspendierten Zustand dürfen ausschließlich fällige retryable Wiederholungen der persistierten Operationen `suspend` oder `reactivate` automatisch starten; Provisioning und fachfremde Operationen bleiben gesperrt
+- reservierte `studioTenantLifecycle`-Metadaten lösen Lifecycle-Korrelation nur für den im Pluginvertrag registrierten Lifecycle-Jobtyp aus; normale Plugin-Jobs bleiben davon unberührt
+- der SDK-Vertrag verlangt mindestens eine Bootstrap-Operation (`provision` oder `readiness`) sowie für jeden Readiness-Check ein explizites boolesches `required`; der Snapshot validiert Status und optionale `messageKey`- und `details`-Felder an der Plugin-Grenze, bevor Readiness-Evidenz persistiert wird
+- erschöpfte lokale Scheduling-Versuche lassen den persistenten Lifecycle-Retry fehlschlagen, damit Graphile Worker seine verbleibenden Zustellversuche nutzt und den Task nicht vorzeitig quittiert
+- meldet ein Plugin einen retryable Lifecycle-Fehler ohne eigene Deadline, persistiert der Host einen 60-sekündigen Default-Backoff; explizite Retry-Verzögerungen müssen positive ganze Millisekunden sein. Worker und Read-Model verwenden dieselbe Deadline und starten keine unmittelbare neue Jobgeneration
+- das reservierte `studioTenantLifecycle`-Eingabefeld wird nur für einen im aktiven Lifecycle-Vertrag registrierten Jobtyp als Host-Metadatum geparst; generische Plugin-Jobs reichen gleichnamige Anwendungsdaten unverändert an ihren Handler weiter
+- Readiness-Clients pollen aktive Lifecycle-Jobs, persistierte retryable Retry-Fenster und abgeschlossene Ergebnisse mit weiterhin ausstehender Readiness; sie stoppen nach der serverseitig beobachteten Erholung
+- `/auth/me` kennzeichnet lifecycle-bedingt noch ausstehende Modulfreigaben; der globale Auth-Provider revalidiert den Session-Snapshot nur solange dieses Signal aktiv ist, damit Tenant-Routen nach asynchroner Fertigstellung ohne Seitenreload freigeschaltet werden
+- erfolgreiche Modulaktivierung oder -deaktivierung im Instanzdetail lädt die Plugin-Readiness unmittelbar neu; die Karte hängt nicht von einem Instanz-ID-Wechsel oder einer bereits sichtbaren Polling-Bedingung ab
+- Lifecycle-HTTP-Fehler verwenden anhand von `Accept-Language` die unterstützten deutschen oder englischen Hostmeldungen
 
 Fachliche Handler erhalten dabei einen hostgebauten Kontext statt Graphile-spezifischer Helfer:
 

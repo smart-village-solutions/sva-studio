@@ -6,9 +6,13 @@ import {
   saveWasteDataSourceRecord,
 } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
-import { studioModuleIamRegistry } from '@sva/studio-module-iam';
+import { createSdkLogger } from '@sva/server-runtime';
+import {
+  readInstanceRegistryModuleIamRegistry,
+  readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginTenantLifecycleRegistry,
+} from './plugin-activation-policy-snapshot.js';
 
-import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';
 import {
   getInstanceKeycloakPlanViaProvisioner,
@@ -25,19 +29,64 @@ import {
   resolveIdentityProviderForInstance,
 } from '../iam-account-management/shared-runtime.js';
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
+import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 
-const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
-  getInstanceKeycloakPreflightViaProvisioner(input);
+const pluginTenantLifecycleLogger = createSdkLogger({
+  component: 'plugin-tenant-lifecycle-scheduler',
+  level: 'info',
+});
 
-const getWorkerKeycloakPlan = async (input: Parameters<typeof getInstanceKeycloakPlanViaProvisioner>[0]) =>
-  getInstanceKeycloakPlanViaProvisioner(input);
+const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
-const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]) =>
-  getInstanceKeycloakStatusViaProvisioner(input);
+export const closeInstanceRegistryRepositoryPoolForShutdown = async (): Promise<void> => {
+  await resolvePool()?.end();
+};
 
-const getTenantAuditKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaTenantAdmin>[0]) =>
-  getInstanceKeycloakStatusViaTenantAdmin(input);
+const readPersistablePluginTenantLifecycleRegistry = () =>
+  new Map(
+    [...readInstanceRegistryPluginTenantLifecycleRegistry()].flatMap(([pluginId, lifecycle]) =>
+      lifecycle.contractRevision
+        ? [[pluginId, { pluginId, contractRevision: lifecycle.contractRevision }] as const]
+        : []
+    )
+  );
+
+export const runConfiguredPluginTenantProvisioningSchedule = async (
+  instanceId: string
+): Promise<void> => {
+  const { ensureConfiguredPluginTenantProvisioning } =
+    await import('../plugin-tenant-lifecycle/runtime.js');
+  await ensureConfiguredPluginTenantProvisioning(instanceId);
+};
+
+export const scheduleConfiguredPluginTenantProvisioning = (instanceId: string): void => {
+  void runConfiguredPluginTenantProvisioningSchedule(instanceId).catch((error) => {
+    pluginTenantLifecycleLogger.error('plugin_tenant_lifecycle_schedule_failed', {
+      operation: 'plugin_tenant_lifecycle_schedule',
+      result: 'failed',
+      error_code: 'plugin_tenant_lifecycle_schedule_failed',
+      error_type: error instanceof Error ? error.name : typeof error,
+      instance_id: instanceId,
+    });
+  });
+};
+
+const getWorkerKeycloakPreflight = async (
+  input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]
+) => getInstanceKeycloakPreflightViaProvisioner(input);
+
+const getWorkerKeycloakPlan = async (
+  input: Parameters<typeof getInstanceKeycloakPlanViaProvisioner>[0]
+) => getInstanceKeycloakPlanViaProvisioner(input);
+
+const getWorkerKeycloakStatus = async (
+  input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]
+) => getInstanceKeycloakStatusViaProvisioner(input);
+
+const getTenantAuditKeycloakStatus = async (
+  input: Parameters<typeof getInstanceKeycloakStatusViaTenantAdmin>[0]
+) => getInstanceKeycloakStatusViaTenantAdmin(input);
 
 const probePasswordSetupEmailCapability = async (input: {
   instanceId: string;
@@ -59,7 +108,9 @@ const probePasswordSetupEmailCapability = async (input: {
   }
 
   const authConfig = await resolveAuthConfigForInstance(input.instanceId);
-  const targetClient = await input.identityProvider.provider.getOidcClientByClientId(authConfig.clientId);
+  const targetClient = await input.identityProvider.provider.getOidcClientByClientId(
+    authConfig.clientId
+  );
   if (!targetClient) {
     return {
       ok: false as const,
@@ -159,9 +210,10 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
   }
 };
 
-const resolvePool = createPoolResolver(getIamDatabaseUrl);
-
-const invalidateInstancePermissionSnapshots = async (input: { instanceId: string; trigger: string }) => {
+const invalidateInstancePermissionSnapshots = async (input: {
+  instanceId: string;
+  trigger: string;
+}) => {
   const pool = resolvePool();
   if (!pool) {
     throw new Error('IAM database not configured');
@@ -184,7 +236,13 @@ const registryRuntime = createInstanceRegistryRuntime({
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
-    moduleIamRegistry: studioModuleIamRegistry,
+    get moduleIamRegistry() {
+      return readInstanceRegistryModuleIamRegistry();
+    },
+    get pluginTenantLifecycleRegistry() {
+      return readPersistablePluginTenantLifecycleRegistry();
+    },
+    readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     protectSecret: protectField,
     revealSecret: revealField,
     loadWasteDataSourceRecord,
@@ -192,10 +250,18 @@ const registryRuntime = createInstanceRegistryRuntime({
     getKeycloakStatus: getTenantAuditKeycloakStatus,
     probeTenantIamAccess,
   },
+  afterModuleActivationPolicyReconcile: ({ instanceId }) =>
+    runConfiguredPluginTenantProvisioningSchedule(instanceId),
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
-    moduleIamRegistry: studioModuleIamRegistry,
+    get moduleIamRegistry() {
+      return readInstanceRegistryModuleIamRegistry();
+    },
+    get pluginTenantLifecycleRegistry() {
+      return readPersistablePluginTenantLifecycleRegistry();
+    },
+    readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     protectSecret: protectField,
     revealSecret: revealField,
     syncTenantAdminBootstrapAccount,

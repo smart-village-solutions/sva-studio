@@ -162,10 +162,14 @@ Jedes publishbare Plugin liefert ein serialisierbares Manifest:
     "requiredCapabilities": ["routing", "navigation", "iam"]
   },
   "entryPoints": {
-    "browser": "./dist/index.js"
+    "browser": "./dist/index.js",
+    "server": "./dist/server.js"
   }
 }
 ```
+
+Der `server`-Entry ist nur erforderlich, wenn `PluginDefinition.serverHandlers`
+deklariert werden. Er darf nicht aus dem Browser-Entry re-exportiert werden.
 
 Der Host bindet Plugins über `apps/sva-studio-react/plugin-catalog.json` ein. Ein Katalogeintrag enthält nur Aktivierungs- und Quellinformationen; das Manifest wird anschließend aus dem referenzierten Package gelesen.
 
@@ -459,6 +463,32 @@ Die App liest den Katalog, lädt Manifeste und Module abhängig vom `sourceType`
 - Job-, Import- und IAM-Registries
 
 Plugins registrieren sich weiterhin nicht selbst zur Laufzeit. Die Aktivierung bleibt hostowned.
+
+### Serverseitige Plugin-Handler
+
+Ein Serverbeitrag besteht aus zwei getrennten Teilen:
+
+1. `PluginDefinition.serverHandlers` deklariert ID, exakten API-Pfad, Methode,
+   Action und vollständige Plattform- oder Tenant-Zugriffsanforderung.
+2. Der Manifest-`server`-Entry exportiert `createPluginServerHandlers` und bindet
+   jede deklarierte ID genau einmal an ausführbaren Code.
+
+```ts
+import type { PluginServerHandlerModuleFactory } from '@sva/plugin-sdk';
+
+export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () => ({
+  'weather.read-configuration': async ({ actor, request }) => {
+    const url = new URL(request.url);
+    return Response.json({ actorId: actor.id, locale: url.searchParams.get('locale') });
+  },
+});
+```
+
+Der Host lehnt fehlende und unbekannte Handler beim Bootstrap ab. Er prüft vor
+der Ausführung Pfad und Methode sowie Authentifizierung, Root-Host und
+Plattformrolle beziehungsweise Tenant-Aktivierung und namespaced Permissions.
+Der Handler erhält nur den daraus erzeugten Execution-Context und implementiert
+keinen eigenen Scope- oder Session-Resolver.
 
 ## Routing
 

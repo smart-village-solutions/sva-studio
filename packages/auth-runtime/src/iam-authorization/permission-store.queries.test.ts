@@ -70,15 +70,13 @@ describe('permission-store queries', () => {
         accessScope: 'all',
       },
     ]);
-    expect(state.query).toHaveBeenCalledWith(
-      expect.stringContaining('target.id IS NOT NULL'),
-      [
-        INSTANCE_ID,
-        KEYCLOAK_SUBJECT,
-        ORGANIZATION_ID,
-        expect.arrayContaining(['content.read']),
-      ]
-    );
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('target.id IS NOT NULL'), [
+      INSTANCE_ID,
+      KEYCLOAK_SUBJECT,
+      ORGANIZATION_ID,
+      expect.arrayContaining(['content.read']),
+    ]);
+    expect(state.query.mock.calls[0]?.[0]).toContain('permission_module.effective_active = true');
   });
 
   it('projects organization ids only for scope-sensitive permissions on unscoped loads', async () => {
@@ -124,13 +122,11 @@ describe('permission-store queries', () => {
         organizationId: ORGANIZATION_ID,
       },
     ]);
-    expect(state.query).toHaveBeenCalledWith(
-      expect.stringContaining('CASE'),
-      [
-        INSTANCE_ID,
-        KEYCLOAK_SUBJECT,
-        expect.arrayContaining(['content.read']),
-      ]
-    );
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('CASE'), [
+      INSTANCE_ID,
+      KEYCLOAK_SUBJECT,
+      expect.arrayContaining(['content.read']),
+    ]);
+    expect(state.query.mock.calls[0]?.[0]).toContain('permission_module.effective_active = true');
   });
 });

@@ -168,6 +168,9 @@ export const resolveAssignedModuleContracts = (
   });
 };
 
+export const resolveManagedModuleContracts = (deps: InstanceRegistryServiceDeps) =>
+  resolveAssignedModuleContracts(deps, [...requireModuleIamRegistry(deps).keys()]);
+
 export const invalidateInstancePermissionSnapshots = async (
   deps: InstanceRegistryServiceDeps,
   instanceId: string,

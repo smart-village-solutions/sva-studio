@@ -82,6 +82,48 @@ export const sharedVitestConfig = defineConfig({
       '@sva/sva-mainserver': fileURLToPath(
         new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)
       ),
+      '@sva/instance-registry/http-contracts': fileURLToPath(
+        new URL('../../packages/instance-registry/src/http-contracts.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/http-guards': fileURLToPath(
+        new URL('../../packages/instance-registry/src/http-guards.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/http-instance-handlers': fileURLToPath(
+        new URL('../../packages/instance-registry/src/http-instance-handlers.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/http-mutation-handlers': fileURLToPath(
+        new URL('../../packages/instance-registry/src/http-mutation-handlers.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/provisioning-auth': fileURLToPath(
+        new URL('../../packages/instance-registry/src/provisioning-auth.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/provisioning-auth-state': fileURLToPath(
+        new URL('../../packages/instance-registry/src/provisioning-auth-state.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/provisioning-worker': fileURLToPath(
+        new URL('../../packages/instance-registry/src/provisioning-worker.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/runtime-wiring': fileURLToPath(
+        new URL('../../packages/instance-registry/src/runtime-wiring.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/service-keycloak': fileURLToPath(
+        new URL('../../packages/instance-registry/src/service-keycloak.ts', import.meta.url)
+      ),
+      '@sva/instance-registry/service-keycloak-execution': fileURLToPath(
+        new URL(
+          '../../packages/instance-registry/src/service-keycloak-execution.ts',
+          import.meta.url
+        )
+      ),
+      '@sva/instance-registry/service-keycloak-execution-shared': fileURLToPath(
+        new URL(
+          '../../packages/instance-registry/src/service-keycloak-execution-shared.ts',
+          import.meta.url
+        )
+      ),
+      '@sva/instance-registry/service-types': fileURLToPath(
+        new URL('../../packages/instance-registry/src/service-types.ts', import.meta.url)
+      ),
       '@sva/instance-registry': fileURLToPath(
         new URL('../../packages/instance-registry/src/index.ts', import.meta.url)
       ),

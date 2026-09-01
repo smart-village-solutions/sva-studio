@@ -19,19 +19,33 @@ describe('plugin catalog loader', () => {
   it('prefers source entries for workspace plugins and manifest entries for packaged plugins', () => {
     const manifest = definePluginManifest({
       pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
       version: '0.0.1',
       sdkVersion: '0.0.1',
       hostCompatibility: { studioVersionRange: '^0.0.1' },
       entryPoints: { browser: './dist/index.js' },
     });
 
-    expect(getWorkspacePluginModuleCandidates(manifest)).toEqual(['dist/index.js', 'src/index.ts', 'src/index.tsx']);
-    expect(getPackagePluginModuleCandidates(manifest)).toEqual(['dist/index.js', 'src/index.ts', 'src/index.tsx']);
+    expect(getWorkspacePluginModuleCandidates(manifest)).toEqual([
+      'dist/index.js',
+      'src/index.ts',
+      'src/index.tsx',
+    ]);
+    expect(getPackagePluginModuleCandidates(manifest)).toEqual([
+      'dist/index.js',
+      'src/index.ts',
+      'src/index.tsx',
+    ]);
   });
 
   it('builds catalog seeds from config and fails closed on unresolved manifests', () => {
     const manifest = definePluginManifest({
       pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
       version: '0.0.1',
       sdkVersion: '0.0.1',
       hostCompatibility: { studioVersionRange: '^0.0.1' },
@@ -73,6 +87,9 @@ describe('plugin catalog loader', () => {
   it('creates a compatible snapshot from config, manifests and module exports', async () => {
     const manifest = definePluginManifest({
       pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
       version: '0.0.1',
       sdkVersion: '0.0.1',
       hostCompatibility: { studioVersionRange: '^0.0.1', requiredCapabilities: ['routing'] },
@@ -107,6 +124,9 @@ describe('plugin catalog loader', () => {
   it('loads an installed distribution through the same catalog and snapshot contract', async () => {
     const manifest = definePluginManifest({
       pluginId: 'weather',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
       version: '1.2.3',
       sdkVersion: '0.0.1',
       hostCompatibility: { studioVersionRange: '^0.0.1', requiredCapabilities: ['routing'] },
@@ -171,6 +191,9 @@ describe('plugin catalog loader', () => {
   it('does not load plugin modules for disabled catalog entries', async () => {
     const manifest = definePluginManifest({
       pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
       version: '0.0.1',
       sdkVersion: '0.0.1',
       hostCompatibility: { studioVersionRange: '^0.0.1', requiredCapabilities: ['routing'] },

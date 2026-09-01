@@ -21,6 +21,9 @@ Architekturprinzipien auf IST-Basis.
 - Standardisierte technische Wiederverwendung zwischen CRUD-Content-Plugins wird im Plugin-SDK zentralisiert; es gibt keine direkten Plugin-zu-Plugin-Abhängigkeiten
 - Plugin-Vertrag v1: Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
 - Plugin-Plattform v2 erweitert dieses Zielbild um Manifest-, Katalog-, Loader- und Runtime-Verträge, damit lokale Entwicklung und externe Distribution denselben hostvalidierten Snapshot-Pfad nutzen
+- Plugin-Manifeste deklarieren verpflichtend den Extension-Tier `feature`, `admin` oder `platform`. Nur freigegebene Admin-/Plattform-Tiers dürfen Plattformbeiträge für `instance_registry_admin` in den kanonischen Snapshot einbringen; Fachplugins bleiben tenantgebunden.
+- Der versionierte Manifestvertrag deklariert außerdem `optional`, `automatic` oder `required`; `iam.instance_modules` materialisiert die Richtlinie als einzigen effektiven Tenant-Aktivierungszustand und erhält manuelle Overrides für automatische Plugins.
+- Aktivierung und Fachbereitschaft bleiben getrennte Verträge. Für Plugins mit Tenant-Lifecycle gibt der Host Fachrouten und normale Plugin-Jobs erst bei valider, nicht blockierender Readiness frei; fehlende, ungültige, suspendierte oder blockierte Evidenz bleibt fail-closed.
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Gemeinsame serverseitige Fachverträge mehrerer Apps liegen im owning Workspace-Package; direkte Quellimporte zwischen unterschiedlichen Verzeichnissen unter `apps/` sind nicht zulässig
@@ -32,6 +35,8 @@ Architekturprinzipien auf IST-Basis.
 - PostgreSQL-Revisionsvektoren sind die autoritative Gültigkeitsgrenze für L1 und Redis. `NOTIFY` beschleunigt Eviction, entscheidet aber nicht über Korrektheit.
 - Die Browser-UI trennt Identität und Session (`AuthProvider`) vom scopegebundenen Berechtigungszustand (`EffectiveAccessProvider`). Nicht aufgelöste, ladende oder fehlerhafte Access-Snapshots geben keine UI-Aktion frei.
 - Tenant-UI-Zugriff verlangt die vollständig qualifizierte Action und, wo ein Fachmodul existiert, zusätzlich dessen aktuelle Modulzuweisung. Plattformzugriff verwendet ausschließlich technische Plattformrollen.
+- Verknüpfte Plugin-Actions, Routen, Navigation und deklarative Server-Handler müssen Scope und vollständige Autorisierungsanforderung konsistent deklarieren; widersprüchliche Beiträge werden vor der Snapshot-Veröffentlichung fail-closed abgewiesen.
+- Die Router-Materialisierung wählt anhand der hostvalidierten Auth-Auflösung genau den Plattform- oder Tenant-Beitragsbaum. `/auth/me` übermittelt diese Auflösung auch ohne Session als nicht-sensiblen Scope-Header, damit Server und Browser denselben Baum erzeugen.
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung und wird als fachlicher String-Schlüssel geführt
 - `organizationId` bleibt im IAM ein optionaler Fachkontext innerhalb einer Instanz und bindet instanzweite Rechte nicht implizit an eine Organisation
 - Verwaltete IAM-Permissions klassifizieren ihre Laufzeitsemantik explizit über `runtimeScope = instance | record | organization_context`; `accessScope` bleibt auf datensatzbezogene Rollen-Zuordnungen begrenzt
@@ -46,7 +51,7 @@ Architekturprinzipien auf IST-Basis.
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
 - Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API. Die framework-agnostische Rich-Text-Allowlist wird über den browser-sicheren Subpfad `@sva/core/rich-text-html-policy` geteilt; Browser und Server wenden sie mit laufzeitgeeigneten Sanitizern an.
 - Medienmanagement ist eine hostseitige Querschnitts-Capability: Domänenvertrag in `@sva/media`, Persistenz in `@sva/data-repositories`, Runtime in `@sva/auth-runtime`, Host-UI unter `/admin/media`, Plugin-Bindings nur über `@sva/plugin-sdk` und `@sva/studio-ui-react`
-- Hintergrundprozesse und asynchrone Folgearbeiten werden über einen hostgeführten, runner-agnostischen Plattformvertrag standardisiert; Graphile Worker ist die bevorzugte erste interne Runner-Implementierung, Temporal bleibt eine dokumentierte spätere Eskalationsoption
+- Hintergrundprozesse und asynchrone Folgearbeiten werden über einen hostgeführten, runner-agnostischen Plattformvertrag standardisiert; Graphile Worker ist die bevorzugte erste interne Runner-Implementierung, Temporal bleibt eine dokumentierte spätere Eskalationsoption. Auth-Runtime erkennt fatale Lane-Ausfälle und retiert den Pool fail-closed; der Serverprozess beendet sich anschließend mit Fehlerstatus, während Swarm alleiniger begrenzter Restart-Owner bleibt.
 - Wiederkehrende Mainserver-HTTP-Basis, Standard-Content-Metadaten und kleine UI-nahe Utilities werden für News, Events und POI im `@sva/plugin-sdk` gebündelt; fachliche Modelle und Editor-Spezialisierungen bleiben in den Plugins
 - Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
 
@@ -82,6 +87,7 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-Architektur: `ADR-002`
 - Plugin-SDK-Vertrag v1: `ADR-034`
 - Plugin-Plattform v2 für externe Distribution und host-owned Runtime: `ADR-041`
+- Generischer Plugin-Tenant-Lifecycle und fail-closed Fachzugriff: `ADR-058`
 - Design-Token-Architektur: `ADR-003`
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
@@ -111,6 +117,7 @@ Referenzen:
 - `./iam-service-architektur.md`
 - `../adr/ADR-034-plugin-sdk-vertrag-v1.md`
 - `../adr/ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
+- `../adr/ADR-058-generischer-plugin-tenant-lifecycle-und-readiness-gate.md`
 - `../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`

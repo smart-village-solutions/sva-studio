@@ -84,6 +84,9 @@ export type StudioJobListResult = {
   readonly total: number;
 };
 
+export type StudioJobTerminalLeasePredicate =
+  { readonly kind: 'activeOwner' } | { readonly kind: 'expiredOwner' };
+
 export type StudioJobRepository = {
   createJob(input: StudioJobCreateInput): Promise<StudioJobRecord>;
   getJobById(instanceId: string, jobId: string): Promise<StudioJobRecord | null>;
@@ -91,8 +94,45 @@ export type StudioJobRepository = {
   listJobs(instanceId: string, query: StudioJobListQuery): Promise<StudioJobListResult>;
   deleteJob(instanceId: string, jobId: string): Promise<StudioJobRecord | null>;
   updateJobState(input: StudioJobUpdateInput): Promise<StudioJobRecord | null>;
+  transitionJobState(
+    input: StudioJobUpdateInput & {
+      readonly expectedStatuses: readonly StudioJobRecord['status'][];
+      readonly expectedAttempts: number;
+      readonly expectedWorkerId: string | null;
+      readonly leasePredicate?: Extract<StudioJobTerminalLeasePredicate, { kind: 'activeOwner' }>;
+    }
+  ): Promise<
+    | { readonly outcome: 'applied'; readonly job: StudioJobRecord }
+    | { readonly outcome: 'alreadyApplied'; readonly job: StudioJobRecord }
+    | { readonly outcome: 'conflict'; readonly job?: StudioJobRecord }
+  >;
+  transitionJobStateAndAppendEvent(
+    input: StudioJobUpdateInput & {
+      readonly expectedStatuses: readonly StudioJobRecord['status'][];
+      readonly expectedAttempts: number;
+      readonly expectedWorkerId: string | null;
+      readonly leasePredicate: StudioJobTerminalLeasePredicate;
+      readonly event: StudioJobEventCreateInput;
+    }
+  ): Promise<
+    | { readonly outcome: 'applied'; readonly job: StudioJobRecord }
+    | { readonly outcome: 'alreadyApplied'; readonly job: StudioJobRecord }
+    | { readonly outcome: 'conflict'; readonly job?: StudioJobRecord }
+  >;
   updateJobProgress(input: StudioJobProgressUpdateInput): Promise<StudioJobRecord | null>;
+  updateJobProgressWithLease(
+    input: StudioJobProgressUpdateInput & {
+      readonly attempts: number;
+      readonly workerId: string;
+    }
+  ): Promise<StudioJobRecord | null>;
   touchJobHeartbeat(input: StudioJobHeartbeatInput): Promise<StudioJobRecord | null>;
+  touchJobHeartbeatWithLease(
+    input: StudioJobHeartbeatInput & {
+      readonly attempts: number;
+      readonly workerId: string;
+    }
+  ): Promise<StudioJobRecord | null>;
   requestJobCancellation(input: StudioJobCancellationRequestInput): Promise<StudioJobRecord | null>;
   appendJobEvent(input: StudioJobEventCreateInput): Promise<StudioJobEventRecord>;
 };
@@ -346,6 +386,118 @@ ${jobSelectColumns}
   ],
 });
 
+const transitionJobStateStatement = (
+  input: StudioJobUpdateInput & {
+    readonly expectedStatuses: readonly StudioJobRecord['status'][];
+    readonly expectedAttempts: number;
+    readonly expectedWorkerId: string | null;
+    readonly leasePredicate?: Extract<StudioJobTerminalLeasePredicate, { kind: 'activeOwner' }>;
+  }
+): SqlStatement => ({
+  text: `
+UPDATE iam.studio_jobs
+SET status = $1, progress = $2::jsonb, attempts = $3, started_at = $4,
+  finished_at = $5, result_payload = $6::jsonb, error_payload = $7::jsonb,
+  worker_id = $8, heartbeat_at = $9, updated_at = NOW()
+WHERE instance_id = $10 AND id = $11
+  AND status = ANY($12::text[])
+  AND attempts = $13
+  AND worker_id IS NOT DISTINCT FROM $14
+  ${
+    input.leasePredicate?.kind === 'activeOwner'
+      ? "AND COALESCE(heartbeat_at, started_at, updated_at) > NOW() - INTERVAL '120 seconds'"
+      : ''
+  }
+RETURNING
+${jobSelectColumns}
+  `,
+  values: [
+    input.status,
+    toJsonSqlValue(input.progress),
+    input.attempts,
+    input.startedAt ?? null,
+    input.finishedAt ?? null,
+    toJsonSqlValue(input.resultPayload),
+    toJsonSqlValue(input.errorPayload),
+    input.workerId ?? null,
+    input.heartbeatAt ?? null,
+    input.instanceId,
+    input.jobId,
+    input.expectedStatuses,
+    input.expectedAttempts,
+    input.expectedWorkerId,
+  ],
+});
+
+const transitionJobStateAndAppendEventStatement = (
+  input: Parameters<StudioJobRepository['transitionJobStateAndAppendEvent']>[0]
+): SqlStatement => ({
+  text: `
+WITH eligible AS MATERIALIZED (
+  SELECT id
+  FROM iam.studio_jobs
+  WHERE instance_id = $10 AND id = $11
+    AND status = ANY($12::text[]) AND attempts = $13
+    AND worker_id IS NOT DISTINCT FROM $14
+    AND ${
+      input.leasePredicate.kind === 'activeOwner'
+        ? "COALESCE(heartbeat_at, started_at, updated_at) > NOW() - INTERVAL '120 seconds'"
+        : "COALESCE(heartbeat_at, started_at, updated_at) <= NOW() - INTERVAL '120 seconds'"
+    }
+    AND NOT EXISTS (
+      SELECT 1
+      FROM iam.studio_job_events AS existing_terminal
+      WHERE existing_terminal.job_id = $11
+        AND existing_terminal.attempts = $13
+        AND existing_terminal.event_type IN ('job.succeeded', 'job.failed', 'job.cancelled')
+    )
+  FOR UPDATE
+), terminal_event AS (
+  INSERT INTO iam.studio_job_events (
+    id, job_id, instance_id, event_type, status, progress, attempts, message, details
+  )
+  SELECT $15, $11, $10, $16, $1, $17::jsonb, $3, $18, $19::jsonb
+  FROM eligible
+  ON CONFLICT (job_id, attempts)
+    WHERE event_type IN ('job.succeeded', 'job.failed', 'job.cancelled')
+  DO NOTHING
+  RETURNING job_id
+), transitioned AS (
+  UPDATE iam.studio_jobs AS job
+  SET status = $1, progress = $2::jsonb, attempts = $3, started_at = $4,
+    finished_at = $5, result_payload = $6::jsonb, error_payload = $7::jsonb,
+    worker_id = $8, heartbeat_at = $9, updated_at = NOW()
+  FROM terminal_event
+  WHERE job.instance_id = $10 AND job.id = terminal_event.job_id
+  RETURNING job.*
+)
+SELECT
+${jobSelectColumns}
+FROM transitioned
+  `,
+  values: [
+    input.status,
+    toJsonSqlValue(input.progress),
+    input.attempts,
+    input.startedAt ?? null,
+    input.finishedAt ?? null,
+    toJsonSqlValue(input.resultPayload),
+    toJsonSqlValue(input.errorPayload),
+    input.workerId ?? null,
+    input.heartbeatAt ?? null,
+    input.instanceId,
+    input.jobId,
+    input.expectedStatuses,
+    input.expectedAttempts,
+    input.expectedWorkerId,
+    input.event.id,
+    input.event.eventType,
+    toJsonSqlValue(input.event.progress),
+    input.event.message ?? null,
+    toJsonSqlValue(input.event.details),
+  ],
+});
+
 const updateJobProgressStatement = (input: StudioJobProgressUpdateInput): SqlStatement => ({
   text: `
 UPDATE iam.studio_jobs
@@ -368,6 +520,29 @@ ${jobSelectColumns}
   ],
 });
 
+const updateJobProgressWithLeaseStatement = (
+  input: StudioJobProgressUpdateInput & { readonly attempts: number; readonly workerId: string }
+): SqlStatement => ({
+  text: `
+UPDATE iam.studio_jobs
+SET progress = $1::jsonb, last_progress_at = $2, heartbeat_at = $3, updated_at = NOW()
+WHERE instance_id = $4 AND id = $5 AND status = 'running'
+  AND attempts = $6 AND worker_id = $7
+  AND heartbeat_at > NOW() - INTERVAL '120 seconds'
+RETURNING
+${jobSelectColumns}
+  `,
+  values: [
+    toJsonSqlValue(input.progress),
+    input.lastProgressAt,
+    input.heartbeatAt ?? input.lastProgressAt,
+    input.instanceId,
+    input.jobId,
+    input.attempts,
+    input.workerId,
+  ],
+});
+
 const touchJobHeartbeatStatement = (input: StudioJobHeartbeatInput): SqlStatement => ({
   text: `
 UPDATE iam.studio_jobs
@@ -381,6 +556,21 @@ RETURNING
 ${jobSelectColumns}
   `,
   values: [input.heartbeatAt, input.workerId ?? null, input.instanceId, input.jobId],
+});
+
+const touchJobHeartbeatWithLeaseStatement = (
+  input: StudioJobHeartbeatInput & { readonly attempts: number; readonly workerId: string }
+): SqlStatement => ({
+  text: `
+UPDATE iam.studio_jobs
+SET heartbeat_at = $1, updated_at = NOW()
+WHERE instance_id = $2 AND id = $3 AND status = 'running'
+  AND attempts = $4 AND worker_id = $5
+  AND heartbeat_at > NOW() - INTERVAL '120 seconds'
+RETURNING
+${jobSelectColumns}
+  `,
+  values: [input.heartbeatAt, input.instanceId, input.jobId, input.attempts, input.workerId],
 });
 
 const requestJobCancellationStatement = (
@@ -666,6 +856,40 @@ const updateJobState = async (
   return rows[0] ? mapStudioJobRow(rows[0]) : null;
 };
 
+const transitionJobState = async (
+  executor: SqlExecutor,
+  input: Parameters<StudioJobRepository['transitionJobState']>[0]
+): ReturnType<StudioJobRepository['transitionJobState']> => {
+  const rows = await queryRows<StudioJobRow>(executor, transitionJobStateStatement(input));
+  const applied = rows[0];
+  if (applied) return { outcome: 'applied', job: mapStudioJobRow(applied) };
+  const current = await getJobById(executor, input.instanceId, input.jobId);
+  if (current?.status === input.status && current.attempts === input.attempts) {
+    return { outcome: 'alreadyApplied', job: current };
+  }
+  return { outcome: 'conflict', ...(current ? { job: current } : {}) };
+};
+
+const transitionJobStateAndAppendEvent = async (
+  executor: SqlExecutor,
+  input: Parameters<StudioJobRepository['transitionJobStateAndAppendEvent']>[0]
+): ReturnType<StudioJobRepository['transitionJobStateAndAppendEvent']> => {
+  const rows = await queryRows<StudioJobRow>(
+    executor,
+    transitionJobStateAndAppendEventStatement(input)
+  );
+  const applied = rows[0];
+  if (applied) return { outcome: 'applied', job: mapStudioJobRow(applied) };
+  const current = await getJobDetail(executor, input.instanceId, input.jobId);
+  const matchingEvent = current?.history.some(
+    (event) => event.attempts === input.attempts && event.eventType === input.event.eventType
+  );
+  if (current?.status === input.status && current.attempts === input.attempts && matchingEvent) {
+    return { outcome: 'alreadyApplied', job: current };
+  }
+  return { outcome: 'conflict', ...(current ? { job: current } : {}) };
+};
+
 const updateJobProgress = async (
   executor: SqlExecutor,
   input: StudioJobProgressUpdateInput
@@ -674,11 +898,27 @@ const updateJobProgress = async (
   return rows[0] ? mapStudioJobRow(rows[0]) : null;
 };
 
+const updateJobProgressWithLease = async (
+  executor: SqlExecutor,
+  input: Parameters<StudioJobRepository['updateJobProgressWithLease']>[0]
+): Promise<StudioJobRecord | null> => {
+  const rows = await queryRows<StudioJobRow>(executor, updateJobProgressWithLeaseStatement(input));
+  return rows[0] ? mapStudioJobRow(rows[0]) : null;
+};
+
 const touchJobHeartbeat = async (
   executor: SqlExecutor,
   input: StudioJobHeartbeatInput
 ): Promise<StudioJobRecord | null> => {
   const rows = await queryRows<StudioJobRow>(executor, touchJobHeartbeatStatement(input));
+  return rows[0] ? mapStudioJobRow(rows[0]) : null;
+};
+
+const touchJobHeartbeatWithLease = async (
+  executor: SqlExecutor,
+  input: Parameters<StudioJobRepository['touchJobHeartbeatWithLease']>[0]
+): Promise<StudioJobRecord | null> => {
+  const rows = await queryRows<StudioJobRow>(executor, touchJobHeartbeatWithLeaseStatement(input));
   return rows[0] ? mapStudioJobRow(rows[0]) : null;
 };
 
@@ -707,8 +947,12 @@ export const createStudioJobRepository = (executor: SqlExecutor): StudioJobRepos
   listJobs: (instanceId, query) => listJobs(executor, instanceId, query),
   deleteJob: (instanceId, jobId) => deleteJob(executor, instanceId, jobId),
   updateJobState: (input) => updateJobState(executor, input),
+  transitionJobState: (input) => transitionJobState(executor, input),
+  transitionJobStateAndAppendEvent: (input) => transitionJobStateAndAppendEvent(executor, input),
   updateJobProgress: (input) => updateJobProgress(executor, input),
+  updateJobProgressWithLease: (input) => updateJobProgressWithLease(executor, input),
   touchJobHeartbeat: (input) => touchJobHeartbeat(executor, input),
+  touchJobHeartbeatWithLease: (input) => touchJobHeartbeatWithLease(executor, input),
   requestJobCancellation: (input) => requestJobCancellation(executor, input),
   appendJobEvent: (input) => appendJobEvent(executor, input),
 });

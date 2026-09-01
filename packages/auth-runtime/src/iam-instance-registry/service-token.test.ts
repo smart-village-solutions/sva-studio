@@ -5,6 +5,22 @@ vi.mock('../log-context.js', () => ({
   buildLogContext: () => ({ request_id: 'req-service-token' }),
 }));
 
+const lifecycleServiceActions = [
+  'instance.pluginLifecycle.read',
+  'instance.pluginLifecycle.provision',
+  'instance.pluginLifecycle.readiness',
+  'instance.pluginLifecycle.reconcile',
+  'instance.pluginLifecycle.suspend',
+  'instance.pluginLifecycle.reactivate',
+] as const;
+
+const lifecycleServiceActionMatrix = lifecycleServiceActions.flatMap((requiredAction) =>
+  lifecycleServiceActions.map(
+    (credentialAction) =>
+      [requiredAction, credentialAction, requiredAction === credentialAction] as const
+  )
+);
+
 describe('registry service token authentication', () => {
   afterEach(() => {
     delete process.env.SVA_STUDIO_MCP_ENABLED;
@@ -41,20 +57,87 @@ describe('registry service token authentication', () => {
     });
   }, 30_000);
 
+  it.each(lifecycleServiceActionMatrix)(
+    'requires %s and evaluates a credential scoped only to %s',
+    async (requiredAction, credentialAction, expectedAccepted) => {
+      process.env.SVA_STUDIO_MCP_ENABLED = 'true';
+      process.env.SVA_STUDIO_MCP_ISSUER = 'https://id.example/realms/studio';
+      const { authenticateRegistryServiceToken } = await import('./service-token.js');
+      const payload = {
+        sub: 'service-account-mcp',
+        azp: 'sva-studio-mcp',
+        realm_access: { roles: ['instance_registry_admin'] },
+        resource_access: { 'sva-studio-mcp': { roles: [credentialAction] } },
+      };
+
+      const result = await authenticateRegistryServiceToken(
+        'token',
+        requiredAction,
+        async () => payload
+      );
+
+      if (expectedAccepted) {
+        expect(result).toMatchObject({
+          kind: 'authenticated',
+          context: { actionId: requiredAction },
+        });
+        return;
+      }
+
+      expect(result.kind).toBe('response');
+      if (result.kind === 'response') {
+        expect(result.response.status).toBe(403);
+        await expect(result.response.json()).resolves.toMatchObject({
+          error: { code: 'missing_action_scope' },
+        });
+      }
+    }
+  );
+
   it.each([
-    ['invalid_service_token', { sub: 'service', azp: 'other', realm_access: { roles: ['instance_registry_admin'] }, resource_access: { 'sva-studio-mcp': { roles: ['instance.create'] } } }],
-    ['missing_platform_role', { sub: 'service', azp: 'sva-studio-mcp', realm_access: { roles: [] }, resource_access: { 'sva-studio-mcp': { roles: ['instance.create'] } } }],
-    ['missing_action_scope', { sub: 'service', azp: 'sva-studio-mcp', realm_access: { roles: ['instance_registry_admin'] }, resource_access: { 'sva-studio-mcp': { roles: ['instance.read'] } } }],
+    [
+      'invalid_service_token',
+      {
+        sub: 'service',
+        azp: 'other',
+        realm_access: { roles: ['instance_registry_admin'] },
+        resource_access: { 'sva-studio-mcp': { roles: ['instance.create'] } },
+      },
+    ],
+    [
+      'missing_platform_role',
+      {
+        sub: 'service',
+        azp: 'sva-studio-mcp',
+        realm_access: { roles: [] },
+        resource_access: { 'sva-studio-mcp': { roles: ['instance.create'] } },
+      },
+    ],
+    [
+      'missing_action_scope',
+      {
+        sub: 'service',
+        azp: 'sva-studio-mcp',
+        realm_access: { roles: ['instance_registry_admin'] },
+        resource_access: { 'sva-studio-mcp': { roles: ['instance.read'] } },
+      },
+    ],
   ])('rejects claims with %s', async (expectedCode, payload) => {
     process.env.SVA_STUDIO_MCP_ENABLED = 'true';
     process.env.SVA_STUDIO_MCP_ISSUER = 'https://id.example/realms/studio';
     const { authenticateRegistryServiceToken } = await import('./service-token.js');
-    const result = await authenticateRegistryServiceToken('token', 'instance.create', async () => payload);
+    const result = await authenticateRegistryServiceToken(
+      'token',
+      'instance.create',
+      async () => payload
+    );
 
     expect(result.kind).toBe('response');
     if (result.kind === 'response') {
       expect(result.response.status).toBe(expectedCode === 'invalid_service_token' ? 401 : 403);
-      await expect(result.response.json()).resolves.toMatchObject({ error: { code: expectedCode } });
+      await expect(result.response.json()).resolves.toMatchObject({
+        error: { code: expectedCode },
+      });
     }
   });
 
@@ -69,7 +152,9 @@ describe('registry service token authentication', () => {
     expect(result.kind).toBe('response');
     if (result.kind === 'response') {
       expect(result.response.status).toBe(503);
-      await expect(result.response.json()).resolves.toMatchObject({ error: { code: 'identity_provider_unavailable' } });
+      await expect(result.response.json()).resolves.toMatchObject({
+        error: { code: 'identity_provider_unavailable' },
+      });
     }
   });
 
@@ -83,7 +168,9 @@ describe('registry service token authentication', () => {
     expect(result.kind).toBe('response');
     if (result.kind === 'response') {
       expect(result.response.status).toBe(401);
-      await expect(result.response.json()).resolves.toMatchObject({ error: { code: 'invalid_service_token' } });
+      await expect(result.response.json()).resolves.toMatchObject({
+        error: { code: 'invalid_service_token' },
+      });
     }
   });
 
@@ -107,14 +194,28 @@ describe('registry service token authentication', () => {
   it('distinguishes an absent Authorization header from a malformed Bearer header', async () => {
     const { readBearerToken } = await import('./service-token.js');
     expect(readBearerToken(new Request('https://studio.example/api'))).toBeUndefined();
-    expect(readBearerToken(new Request('https://studio.example/api', { headers: { authorization: 'Basic abc' } }))).toBeNull();
-    expect(readBearerToken(new Request('https://studio.example/api', { headers: { authorization: 'Bearer abc' } }))).toBe('abc');
+    expect(
+      readBearerToken(
+        new Request('https://studio.example/api', { headers: { authorization: 'Basic abc' } })
+      )
+    ).toBeNull();
+    expect(
+      readBearerToken(
+        new Request('https://studio.example/api', { headers: { authorization: 'Bearer abc' } })
+      )
+    ).toBe('abc');
   });
 
   it.each([
-    ['issuer', { issuer: 'https://id.example/realms/other', audience: 'sva-studio-mcp', expiresIn: 60 }],
+    [
+      'issuer',
+      { issuer: 'https://id.example/realms/other', audience: 'sva-studio-mcp', expiresIn: 60 },
+    ],
     ['audience', { issuer: 'https://id.example/realms/studio', audience: 'other', expiresIn: 60 }],
-    ['expiry', { issuer: 'https://id.example/realms/studio', audience: 'sva-studio-mcp', expiresIn: -60 }],
+    [
+      'expiry',
+      { issuer: 'https://id.example/realms/studio', audience: 'sva-studio-mcp', expiresIn: -60 },
+    ],
   ])('rejects a JWT with invalid %s before claim authorization', async (_reason, claims) => {
     const { privateKey, publicKey } = await generateKeyPair('RS256');
     const publicJwk = await exportJWK(publicKey);
@@ -144,7 +245,9 @@ describe('registry service token authentication', () => {
     const trusted = await generateKeyPair('RS256');
     const untrusted = await generateKeyPair('RS256');
     const publicJwk = await exportJWK(trusted.publicKey);
-    const keySet = createLocalJWKSet({ keys: [{ ...publicJwk, kid: 'trusted', alg: 'RS256', use: 'sig' }] });
+    const keySet = createLocalJWKSet({
+      keys: [{ ...publicJwk, kid: 'trusted', alg: 'RS256', use: 'sig' }],
+    });
     const config = {
       issuer: 'https://id.example/realms/studio',
       audience: 'sva-studio-mcp',
@@ -178,7 +281,9 @@ describe('registry service token authentication', () => {
       .setAudience(config.audience)
       .setExpirationTime('5m')
       .sign(hmacKey);
-    await expect(verifyRegistryServiceJwt(invalidAlgorithm, config, keySet)).rejects.toBeInstanceOf(Error);
+    await expect(verifyRegistryServiceJwt(invalidAlgorithm, config, keySet)).rejects.toBeInstanceOf(
+      Error
+    );
   });
 
   it('requires an explicit expiration claim', async () => {
@@ -191,11 +296,16 @@ describe('registry service token authentication', () => {
       .setIssuedAt()
       .sign(privateKey);
     const { verifyRegistryServiceJwt } = await import('./service-token.js');
-    await expect(verifyRegistryServiceJwt(token, {
-      issuer: 'https://id.example/realms/studio',
-      audience: 'sva-studio-mcp',
-      clientId: 'sva-studio-mcp',
-    }, createLocalJWKSet({ keys: [{ ...publicJwk, kid: 'test-key', alg: 'RS256', use: 'sig' }] })))
-      .rejects.toThrow('service_token_exp_required');
+    await expect(
+      verifyRegistryServiceJwt(
+        token,
+        {
+          issuer: 'https://id.example/realms/studio',
+          audience: 'sva-studio-mcp',
+          clientId: 'sva-studio-mcp',
+        },
+        createLocalJWKSet({ keys: [{ ...publicJwk, kid: 'test-key', alg: 'RS256', use: 'sig' }] })
+      )
+    ).rejects.toThrow('service_token_exp_required');
   });
 });

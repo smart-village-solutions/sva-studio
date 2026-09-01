@@ -10,6 +10,7 @@ import type {
   PluginPermissionDefinition,
   PluginPermissionRegistryEntry,
   PluginRouteDefinition,
+  PluginServerHandlerRegistryEntry,
   PluginTranslations,
 } from './plugins.js';
 import {
@@ -18,6 +19,7 @@ import {
   createPluginModuleIamRegistry,
   createPluginPermissionRegistry,
   createPluginRegistry,
+  createPluginServerHandlerRegistry,
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
@@ -31,20 +33,14 @@ import type { ContentTypeDefinition, RegisteredStudioContentType } from './conte
 import { collectRegisteredStudioContentTypes } from './content-types.js';
 import { createMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.js';
 import {
-  createPluginExportProfileRegistry,
-  createPluginImportProfileRegistry,
-  createPluginJobTypeRegistry,
-  mergePluginExportProfiles,
-  mergePluginImportProfiles,
-  mergePluginJobTypes,
-} from './plugin-operations.js';
+  runOperationsPhase,
+  type OperationsPhaseOutput,
+} from './build-time-registry-operations.js';
+import type { PluginTenantLifecycleRegistryEntry } from './plugin-tenant-lifecycle.js';
+import type { PluginExtensionTier } from './plugin-platform/contracts.js';
 import type {
   PluginExternalInterfaceTypeDefinition,
   PluginExternalInterfaceTypeRegistryEntry,
-} from './external-interfaces.js';
-import {
-  createPluginExternalInterfaceTypeRegistry,
-  mergePluginExternalInterfaceTypes,
 } from './external-interfaces.js';
 import type {
   PluginExportProfileDefinition,
@@ -58,18 +54,21 @@ import type {
 export type BuildTimeRegistryInput = {
   readonly plugins?: readonly PluginDefinition[];
   readonly adminResources?: readonly AdminResourceDefinition[];
+  readonly pluginExtensionTiers?: ReadonlyMap<string, PluginExtensionTier>;
 };
 
 export type BuildTimeRegistry = {
   readonly plugins: readonly PluginDefinition[];
   readonly pluginRegistry: ReadonlyMap<string, PluginDefinition>;
   readonly pluginActionRegistry: ReadonlyMap<string, PluginActionRegistryEntry>;
+  readonly pluginServerHandlerRegistry: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
   readonly pluginAuditEventRegistry: ReadonlyMap<string, PluginAuditEventRegistryEntry>;
   readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
   readonly pluginExportProfileRegistry: ReadonlyMap<string, PluginExportProfileRegistryEntry>;
+  readonly pluginTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>;
   readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
     string,
     PluginExternalInterfaceTypeRegistryEntry
@@ -79,9 +78,14 @@ export type BuildTimeRegistry = {
   readonly jobTypes: readonly PluginJobTypeDefinition[];
   readonly importProfiles: readonly PluginImportProfileDefinition[];
   readonly exportProfiles: readonly PluginExportProfileDefinition[];
+  readonly tenantLifecycles: readonly PluginTenantLifecycleRegistryEntry[];
   readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
   readonly routes: readonly PluginRouteDefinition[];
+  readonly platformRoutes: readonly PluginRouteDefinition[];
+  readonly tenantRoutes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
+  readonly platformNavigation: readonly PluginNavigationItem[];
+  readonly tenantNavigation: readonly PluginNavigationItem[];
   readonly contentTypes: readonly ContentTypeDefinition[];
   readonly studioContentTypes: readonly RegisteredStudioContentType[];
   readonly mainserverGenericTypeRegistry: ReadonlyMap<string, string>;
@@ -114,8 +118,13 @@ type AuditPhaseOutput = {
 
 type RoutingPhaseOutput = {
   readonly routes: readonly PluginRouteDefinition[];
+  readonly platformRoutes: readonly PluginRouteDefinition[];
+  readonly tenantRoutes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
+  readonly platformNavigation: readonly PluginNavigationItem[];
+  readonly tenantNavigation: readonly PluginNavigationItem[];
   readonly pluginActionRegistry: ReadonlyMap<string, PluginActionRegistryEntry>;
+  readonly pluginServerHandlerRegistry: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
 };
 
 type PermissionPhaseOutput = {
@@ -123,20 +132,6 @@ type PermissionPhaseOutput = {
   readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
   readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
-};
-
-type OperationsPhaseOutput = {
-  readonly jobTypes: readonly PluginJobTypeDefinition[];
-  readonly importProfiles: readonly PluginImportProfileDefinition[];
-  readonly exportProfiles: readonly PluginExportProfileDefinition[];
-  readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
-  readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
-  readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
-  readonly pluginExportProfileRegistry: ReadonlyMap<string, PluginExportProfileRegistryEntry>;
-  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
-    string,
-    PluginExternalInterfaceTypeRegistryEntry
-  >;
 };
 
 const validateAdminResourceContentTypes = (
@@ -157,8 +152,11 @@ const validateAdminResourceContentTypes = (
   }
 };
 
-const runPreflightPhase = (plugins: readonly PluginDefinition[]): PreflightPhaseOutput => {
-  const pluginRegistry = createPluginRegistry(plugins);
+const runPreflightPhase = (
+  plugins: readonly PluginDefinition[],
+  pluginExtensionTiers: ReadonlyMap<string, PluginExtensionTier> | undefined
+): PreflightPhaseOutput => {
+  const pluginRegistry = createPluginRegistry(plugins, { extensionTiers: pluginExtensionTiers });
 
   return {
     plugins: Array.from(pluginRegistry.values()),
@@ -203,22 +201,20 @@ const runPermissionPhase = (plugins: readonly PluginDefinition[]): PermissionPha
   pluginModuleIamRegistry: createPluginModuleIamRegistry(plugins),
 });
 
-const runOperationsPhase = (plugins: readonly PluginDefinition[]): OperationsPhaseOutput => ({
-  jobTypes: mergePluginJobTypes(plugins),
-  importProfiles: mergePluginImportProfiles(plugins),
-  exportProfiles: mergePluginExportProfiles(plugins),
-  externalInterfaceTypes: mergePluginExternalInterfaceTypes(plugins),
-  pluginJobTypeRegistry: createPluginJobTypeRegistry(plugins),
-  pluginImportProfileRegistry: createPluginImportProfileRegistry(plugins),
-  pluginExportProfileRegistry: createPluginExportProfileRegistry(plugins),
-  pluginExternalInterfaceTypeRegistry: createPluginExternalInterfaceTypeRegistry(plugins),
-});
-
-const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => ({
-  routes: mergePluginRouteDefinitions(plugins),
-  navigation: mergePluginNavigationItems(plugins),
-  pluginActionRegistry: createPluginActionRegistry(plugins),
-});
+const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => {
+  const routes = mergePluginRouteDefinitions(plugins);
+  const navigation = mergePluginNavigationItems(plugins);
+  return {
+    routes,
+    platformRoutes: routes.filter((route) => route.accessRequirement?.kind === 'platform'),
+    tenantRoutes: routes.filter((route) => route.accessRequirement?.kind !== 'platform'),
+    navigation,
+    platformNavigation: navigation.filter((item) => item.accessRequirement?.kind === 'platform'),
+    tenantNavigation: navigation.filter((item) => item.accessRequirement?.kind !== 'platform'),
+    pluginActionRegistry: createPluginActionRegistry(plugins),
+    pluginServerHandlerRegistry: createPluginServerHandlerRegistry(plugins),
+  };
+};
 
 const publishBuildTimeRegistry = ({
   preflight,
@@ -240,21 +236,28 @@ const publishBuildTimeRegistry = ({
   plugins: preflight.plugins,
   pluginRegistry: preflight.pluginRegistry,
   pluginActionRegistry: routing.pluginActionRegistry,
+  pluginServerHandlerRegistry: routing.pluginServerHandlerRegistry,
   pluginAuditEventRegistry: audit.pluginAuditEventRegistry,
   pluginPermissionRegistry: permissions.pluginPermissionRegistry,
   pluginModuleIamRegistry: permissions.pluginModuleIamRegistry,
   pluginJobTypeRegistry: operations.pluginJobTypeRegistry,
   pluginImportProfileRegistry: operations.pluginImportProfileRegistry,
   pluginExportProfileRegistry: operations.pluginExportProfileRegistry,
+  pluginTenantLifecycleRegistry: operations.pluginTenantLifecycleRegistry,
   pluginExternalInterfaceTypeRegistry: operations.pluginExternalInterfaceTypeRegistry,
   pluginPermissions: permissions.pluginPermissions,
   pluginModuleIamContracts: permissions.pluginModuleIamContracts,
   jobTypes: operations.jobTypes,
   importProfiles: operations.importProfiles,
   exportProfiles: operations.exportProfiles,
+  tenantLifecycles: operations.tenantLifecycles,
   externalInterfaceTypes: operations.externalInterfaceTypes,
   routes: routing.routes,
+  platformRoutes: routing.platformRoutes,
+  tenantRoutes: routing.tenantRoutes,
   navigation: routing.navigation,
+  platformNavigation: routing.platformNavigation,
+  tenantNavigation: routing.tenantNavigation,
   contentTypes: content.contentTypes,
   studioContentTypes: content.studioContentTypes,
   mainserverGenericTypeRegistry: content.mainserverGenericTypeRegistry,
@@ -267,8 +270,9 @@ const publishBuildTimeRegistry = ({
 export const createBuildTimeRegistry = ({
   plugins = [],
   adminResources = [],
+  pluginExtensionTiers,
 }: BuildTimeRegistryInput): BuildTimeRegistry => {
-  const preflight = runPreflightPhase(plugins);
+  const preflight = runPreflightPhase(plugins, pluginExtensionTiers);
   const content = runContentPhase(preflight.plugins);
   const admin = runAdminPhase(preflight.plugins, adminResources);
   validateAdminResourceContentTypes(admin.adminResources, content.contentTypes);

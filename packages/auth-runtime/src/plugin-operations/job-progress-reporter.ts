@@ -33,33 +33,32 @@ export const createJobProgressReporter = (
     readonly instanceId: string;
     readonly progress: StudioJobProgress;
   }): Promise<void> => {
-    const updatedAt = input.progress.lastUpdatedAt ?? (deps.now ?? (() => new Date().toISOString()))();
+    const updatedAt =
+      input.progress.lastUpdatedAt ?? (deps.now ?? (() => new Date().toISOString()))();
     const progress = {
       ...input.progress,
       lastUpdatedAt: updatedAt,
     } satisfies StudioJobProgress;
     deps.onProgressPersisted?.(progress);
 
-    await Promise.all([
-      deps.updateJobProgress({
-        jobId: deps.job.id,
-        instanceId: deps.job.instanceId,
-        progress,
-        lastProgressAt: updatedAt,
-        heartbeatAt: updatedAt,
-      }),
-      deps.appendProgressedEvent({
-        jobId: deps.job.id,
-        instanceId: deps.job.instanceId,
-        progress,
-        attempts: deps.attempts,
-        message: progress.currentStepLabel,
-        hostDetails: {
-          workerId: deps.workerId,
-        },
-        pluginDetails: progress.details,
-      }),
-    ]);
+    await deps.updateJobProgress({
+      jobId: deps.job.id,
+      instanceId: deps.job.instanceId,
+      progress,
+      lastProgressAt: updatedAt,
+      heartbeatAt: updatedAt,
+    });
+    await deps.appendProgressedEvent({
+      jobId: deps.job.id,
+      instanceId: deps.job.instanceId,
+      progress,
+      attempts: deps.attempts,
+      message: progress.currentStepLabel,
+      hostDetails: {
+        workerId: deps.workerId,
+      },
+      pluginDetails: progress.details,
+    });
   };
 
   return {

@@ -7,23 +7,30 @@ import type {
   PluginOperationExecutionHandlerContext,
   StudioJobExecutionHandler,
 } from './types.js';
+import { readPluginTenantLifecycleJobMetadata } from '../plugin-tenant-lifecycle/job-correlation.js';
 
 export type StudioJobRunnerPayload = {
   readonly instanceId: string;
   readonly jobId: string;
 };
 
+export const pluginTenantLifecycleRetryTaskIdentifier = 'plugin_tenant_lifecycle_retry';
+export const studioJobTaskIdentifier = 'studio_job_execute';
+export const privilegedStudioJobTaskIdentifier = 'studio_job_execute_privileged';
+
 export type StudioJobExecutionRegistration = {
   readonly source: StudioJobSource;
   readonly jobTypeId: string;
   readonly handler: StudioJobExecutionHandler;
   readonly queueName: string;
+  readonly executionLane?: 'default' | 'privileged';
   readonly supportsCancellation?: boolean;
 };
 
 export type PluginOperationExecutionRegistration = {
   readonly handler: PluginOperationExecutionHandler;
   readonly queueName: string;
+  readonly executionLane?: 'default' | 'privileged';
   readonly supportsCancellation?: boolean;
 };
 
@@ -43,14 +50,23 @@ export type QueueStudioJobInput = {
 };
 
 export const adaptPluginOperationExecutionHandler = (
-  handler: PluginOperationExecutionHandler
+  handler: PluginOperationExecutionHandler,
+  isLifecycleJob: (job: Parameters<StudioJobExecutionHandler>[0]['job']) => boolean = () => false
 ): StudioJobExecutionHandler => {
   return async (context) => {
     if (!context.pluginId) {
       throw new Error('plugin_job_missing_plugin_id');
     }
 
-    return (await handler(context as PluginOperationExecutionHandlerContext)) ?? {};
+    const tenantLifecycle = isLifecycleJob(context.job)
+      ? readPluginTenantLifecycleJobMetadata(context.job)
+      : null;
+    return (
+      (await handler({
+        ...context,
+        ...(tenantLifecycle ? { tenantLifecycle } : {}),
+      } as PluginOperationExecutionHandlerContext)) ?? {}
+    );
   };
 };
 

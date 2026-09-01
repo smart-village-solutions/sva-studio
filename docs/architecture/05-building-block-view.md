@@ -52,14 +52,24 @@ Abhängigkeiten des aktuellen Systems.
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
+   - hostgeführter Plugin-Tenant-Lifecycle mit generationsgebundenem Ledger, Readiness-Read-Modell und zentraler Access-Entscheidung; `/auth/me` entfernt nicht freigegebene lifecycle-verwaltete Module aus `assignedModules`, normale Plugin-Jobs prüfen dieselbe Entscheidung vor Idempotenzreservierung und Queueing
 5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge sowie hostpublizierter, read-only Session-Access-Snapshot für Plugin-UI
    - erweitert um deklarative Operations-Beiträge für registrierte Jobtypen und Importprofile im bestehenden Build-time-Snapshot
+   - definiert den frameworkfreien Readiness- und Access-Entscheid für tenantbezogene Plugin-Lifecycles; Datenbanktopologie und Fachprüfungen bleiben plugin-owned
    - erweitert um deklarative `externalInterfaceTypes`, damit Plugins zusätzliche Schnittstellentyp-Metadaten beisteuern können, ohne eigene Persistenz- oder Secret-Pfade einzuführen
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext, OTEL-Bootstrap und zentraler Resolver für External-Interface-Secrets und Statusprüfungen
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
    - Zielbild Plugin-Plattform v2: zusätzlich serialisierbarer Manifest-Vertrag, hostgeführter Katalog, Loader zur Snapshot-Materialisierung und host-owned Runtime-Boundaries für pluginseitige Server-, Job- und Integrationsbeiträge
+   - der Manifest-Vertrag führt den verpflichtenden Extension-Tier `feature`, `admin` oder `platform`; der Loader trägt ihn in die Registry-Preflight-Phase, bevor Route, Navigation oder Action veröffentlicht werden
+   - die Registry erlaubt Plattformbeiträge nur für freigegebene Tiers und die Rolle `instance_registry_admin`; tenantbezogene Plugin-Rechte bleiben vollständig namespaced und modulgebunden
+   - freie Plugin-Routen können einen namespaceten, rein deklarativen Server-Handler referenzieren; Pfad, Action und Access-Anforderung werden vor Veröffentlichung gemeinsam validiert, während die ausführbare Handler-Bindung host-owned bleibt
+   - der Build-time-Snapshot veröffentlicht getrennte Plattform-/Tenant-Sichten für Route und Navigation; `@sva/routing` materialisiert pro Host nur die passende Sicht
+   - `@sva/core` definiert die framework-unabhängige Aktivierungsauflösung; `@sva/data-repositories` materialisiert Policy, Override und Revision im vorhandenen Instanz-Modulsatz
+   - die Studio-App injiziert Aktivierungsrichtlinien und Plugin-IAM-Verträge atomar aus demselben validierten Snapshot in `@sva/auth-runtime`; nur hosteigene Module wie `media` werden zusätzlich ergänzt, ein zweiter statischer Plugin-IAM-Katalog ist keine Runtime-Quelle
+   - `@sva/auth-runtime` konfiguriert eine neue Snapshot-Revision im kurzen Bootstrap-Pfad und startet den kontrollierten Fleet-Reconcile erst nach Registrierung der Plugin-Operations-Handler im Hintergrund; der Lauf synchronisiert IAM-Verträge auch bei unveränderten Aktivierungszeilen, und Teilfehler werden revisionsgebunden berichtet sowie über einen eigenständigen Wake-up erneut versucht
+   - der scoped Instance-Registry-Runtime meldet erfolgreich committete Aktivierungs-Reconciles über einen fehlertoleranten Post-Commit-Hook; der Fleet-Reconcile wartet auf diese Folgeplanung und wertet ihren Fehler als revisionsgebundene Degradierung. Die Instanzanlage plant dieselbe Prüfung explizit ein, und `@sva/auth-runtime` startet darüber fehlende oder retryable `provision`-Läufe automatisch für `automatic`- und `required`-Plugins mit Tenant-Lifecycle, ohne fertige Readiness-Evidenz erneut zu provisionieren. Eine explizite Wiederzuweisung eines optionalen Plugins entfernt atomar dessen alte terminale Retry-Sperre; terminale Job- und Lifecycle-Zustände werden ansonsten gemeinsam in einer Tenant-DB-Transaktion persistiert
 6. Studio UI React (`packages/studio-ui-react`)
 
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
@@ -150,6 +160,7 @@ Abhängigkeiten des aktuellen Systems.
 - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
 - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
 - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
+- deklariert `provision`, `reconcile` und `readiness` über den generischen Tenant-Lifecycle; `@sva/waste-management-runtime` adaptiert Provision und Reconcile auf den bestehenden Datenbank-Provisioner und prüft Readiness getrennt über den bestehenden Provisionierungsdatensatz und das pluginverwaltete PostgreSQL-Interface
 - stößt nach erfolgreichen Fraktionsmutationen asynchron den dedizierten Job `waste-management.sync-waste-types` an und degradiert reine Mainserver-Sync-Fehler bewusst zu einem Retry-Hinweis im Fraktionskontext
 - zeigt den Stand des separaten Terminabgleichs zum SVA Mainserver revisionsbasiert direkt unter dem ruhigen Seitenheader; der Lesepfad kombiniert die tenantlokale Waste-Quellrevision mit dem bestehenden zentralen Jobstore und führt weder Dry-Run noch Mainserver-Abfrage aus
 - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
@@ -197,6 +208,7 @@ Abhängigkeiten des aktuellen Systems.
 - Tourverschiebungen überschreiten die Repository-Grenze als ISO-Kalenderdaten; PostgreSQL persistiert sie als `DATE` und erzwingt ihre Eindeutigkeit über partielle Indizes
 - jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird
 - Modulzuweisung und erneute Aktivierung enqueueen den namespaced Provisionierungsjob im vorhandenen Plugin-Operations-Pfad; nur die privilegierte Lane im vorhandenen Provisioner-Service darf Datenbanken und Rollen anlegen
+- der Lifecycle-Adapter führt Host- und bestehende Waste-Sollgeneration getrennt: Der Host claimt den generischen Lifecycle, während der Adapter den vorhandenen Waste-Provisionierungsdatensatz idempotent vorbereitet und dessen Generation an den unveränderten Provisioner übergibt
 - `@sva/data` bleibt dabei ausdrücklich ohne neue primäre Waste-SQL- oder Orchestrierungs-Ownership
 - die Host-Fassade erzeugt keine persistenten Waste-PDF-Artefakte mehr; PDF-Exporte werden ad hoc in der öffentlichen Web-App ausgelöst
 

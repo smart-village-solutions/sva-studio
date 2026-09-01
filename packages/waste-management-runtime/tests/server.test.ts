@@ -20,6 +20,7 @@ const createContext = (input: {
   readonly jobTypeId: string;
   readonly inputPayload: Record<string, unknown>;
   readonly progress?: PluginJobHandlerContext['job']['progress'];
+  readonly tenantLifecycle?: PluginJobHandlerContext['tenantLifecycle'];
 }): PluginJobHandlerContext => ({
   kind: 'job',
   pluginId: 'waste-management',
@@ -62,6 +63,7 @@ const createContext = (input: {
   throwIfCancellationRequested: vi.fn(async () => undefined),
   requestId: 'req-1',
   actorAccountId: 'actor-1',
+  ...(input.tenantLifecycle ? { tenantLifecycle: input.tenantLifecycle } : {}),
 });
 
 describe('waste management runtime handlers', () => {
@@ -135,6 +137,122 @@ describe('waste management runtime handlers', () => {
         },
       },
     });
+  });
+
+  it.each(['provision', 'reconcile'] as const)(
+    'adapts the generic %s lifecycle operation to the existing Waste provisioner',
+    async (operation) => {
+      const requestTenantDatabaseProvisioning = vi.fn(async () => ({
+        desiredGeneration: 11,
+      }));
+      const provisionTenantDatabase = vi.fn(async () => ({
+        durationMs: 2,
+        details: {
+          databaseName: 'sva_waste_test',
+          interfaceId: 'waste-management:instance-1',
+          desiredGeneration: 7,
+        },
+      }));
+      const handlers = createWasteManagementPluginOperationExecutionHandlers(
+        createRuntime({ requestTenantDatabaseProvisioning, provisionTenantDatabase })
+      );
+      const context = createContext({
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+        inputPayload: {
+          studioTenantLifecycle: { operation, generation: 7 },
+        },
+        tenantLifecycle: { operation, generation: 7 },
+      });
+
+      const result =
+        await handlers[wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]?.(
+          context
+        );
+
+      expect(provisionTenantDatabase).toHaveBeenCalledWith(
+        'instance-1',
+        { operation: 'provision-tenant-database', desiredGeneration: 11 },
+        { jobId: 'job-1' }
+      );
+      expect(requestTenantDatabaseProvisioning).toHaveBeenCalledWith('instance-1');
+      expect(result).toMatchObject({
+        tenantLifecycle: {
+          revision: 'waste-tenant-database-v1',
+          checks: [
+            { checkId: 'waste-management.tenant-provisioning', status: 'ready' },
+            { checkId: 'waste-management.tenant-database-interface', status: 'ready' },
+          ],
+        },
+      });
+    }
+  );
+
+  it('executes readiness as a read-only lifecycle operation', async () => {
+    const readTenantDatabaseReadiness = vi.fn(async () => ({
+      revision: 'waste-tenant-database-v1',
+      checks: [
+        {
+          checkId: 'waste-management.tenant-provisioning',
+          status: 'blocked' as const,
+          messageKey: 'wasteManagement.readiness.provisioningBlocked',
+        },
+        {
+          checkId: 'waste-management.tenant-database-interface',
+          status: 'blocked' as const,
+          messageKey: 'wasteManagement.readiness.managedInterfaceBlocked',
+        },
+      ],
+    }));
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({ readTenantDatabaseReadiness })
+    );
+    const context = createContext({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.tenantReadiness,
+      inputPayload: {
+        studioTenantLifecycle: { operation: 'readiness', generation: 8 },
+      },
+      tenantLifecycle: { operation: 'readiness', generation: 8 },
+    });
+
+    const result =
+      await handlers[wasteManagementOperationsContract.jobTypeIds.tenantReadiness]?.(context);
+
+    expect(readTenantDatabaseReadiness).toHaveBeenCalledWith('instance-1');
+    expect(result).toMatchObject({
+      progress: { completedSteps: 2, totalSteps: 2 },
+      resultPayload: {
+        plugin: { operation: 'tenant-readiness', mode: 'executed' },
+      },
+      tenantLifecycle: {
+        checks: [
+          { checkId: 'waste-management.tenant-provisioning', status: 'blocked' },
+          { checkId: 'waste-management.tenant-database-interface', status: 'blocked' },
+        ],
+      },
+    });
+    expect(context.progressReporter.reportProgress).toHaveBeenCalledTimes(2);
+  });
+
+  it('propagates provisioning preparation failures without invoking the provisioner', async () => {
+    const requestTenantDatabaseProvisioning = vi.fn(async () => {
+      throw new Error('waste_provisioning_state_unavailable');
+    });
+    const provisionTenantDatabase = vi.fn();
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({ requestTenantDatabaseProvisioning, provisionTenantDatabase })
+    );
+    const context = createContext({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+      inputPayload: {
+        studioTenantLifecycle: { operation: 'reconcile', generation: 9 },
+      },
+      tenantLifecycle: { operation: 'reconcile', generation: 9 },
+    });
+
+    await expect(
+      handlers[wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]?.(context)
+    ).rejects.toThrow('waste_provisioning_state_unavailable');
+    expect(provisionTenantDatabase).not.toHaveBeenCalled();
   });
 
   it('re-exports the canonical runtime handler map and alias from the helper module', () => {
@@ -290,6 +408,14 @@ describe('waste management runtime handlers', () => {
 const createRuntime = (
   overrides: Partial<WasteManagementOperationRuntime> = {}
 ): WasteManagementOperationRuntime => ({
+  requestTenantDatabaseProvisioning: async () => ({ desiredGeneration: 1 }),
+  readTenantDatabaseReadiness: async () => ({
+    revision: 'waste-tenant-database-v1',
+    checks: [
+      { checkId: 'waste-management.tenant-provisioning', status: 'ready' },
+      { checkId: 'waste-management.tenant-database-interface', status: 'ready' },
+    ],
+  }),
   provisionTenantDatabase: async () => ({
     durationMs: 1,
     details: {

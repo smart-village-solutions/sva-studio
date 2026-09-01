@@ -10,6 +10,8 @@ import {
 import { withAuthenticatedUser } from '../middleware.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { validateCsrf } from '../shared/request-security.js';
+import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
+import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import {
   executeStartPluginOperationJob,
   reserveStartIdempotency,
@@ -89,14 +91,26 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
           return createApiError(400, 'invalid_request', parsed.message, requestId);
         }
 
-        const validationError = validateStartRequestData(parsed.data, requestId);
+        const validationError = validateStartRequestData(parsed.data, request, requestId);
         if (validationError) {
           return validationError;
         }
 
         return parsed;
       },
-      execute: async ({ instanceId, actorAccountId, idempotencyKey, requestId, input }) => {
+      execute: async ({ request, instanceId, actorAccountId, idempotencyKey, requestId, input }) => {
+        const pluginAccess = await readConfiguredPluginTenantAccess(
+          instanceId,
+          input.data.pluginId
+        );
+        if (!pluginAccess.allowed) {
+          return createApiError(
+            409,
+            'plugin_tenant_access_blocked',
+            translatePluginTenantLifecycleMessage(request, 'pluginAccessBlocked'),
+            requestId
+          );
+        }
         const replayOrConflictResponse = await reserveStartIdempotency({
           instanceId,
           actorAccountId,

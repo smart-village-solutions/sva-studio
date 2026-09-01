@@ -16,11 +16,56 @@ const createTestPlugin = (): PluginDefinition => ({
   translations: {},
 });
 
+const createPlatformTestPlugin = (): PluginDefinition => ({
+  id: 'news',
+  displayName: 'News administration',
+  actions: [
+    {
+      id: 'news.manage-instances',
+      titleKey: 'news.actions.manageInstances',
+      accessRequirement: {
+        kind: 'platform',
+        roles: { mode: 'allOf', values: ['instance_registry_admin'] },
+      },
+    },
+  ],
+  routes: [
+    {
+      id: 'news-instance-management',
+      path: '/plugins/news/instances',
+      documentation: { kind: 'page', id: 'news.instances', pageType: 'overview' },
+      actionId: 'news.manage-instances',
+      accessRequirement: {
+        kind: 'platform',
+        roles: { mode: 'allOf', values: ['instance_registry_admin'] },
+      },
+      component: () => null,
+    },
+  ],
+  navigation: [
+    {
+      id: 'news-instance-management-nav',
+      to: '/plugins/news/instances',
+      titleKey: 'news.navigation.instanceManagement',
+      section: 'system',
+      actionId: 'news.manage-instances',
+      accessRequirement: {
+        kind: 'platform',
+        roles: { mode: 'allOf', values: ['instance_registry_admin'] },
+      },
+    },
+  ],
+  translations: {},
+});
+
 describe('plugin platform contracts', () => {
   it('normalizes published plugin manifests into a serializable host contract', () => {
     expect(
       definePluginManifest({
         pluginId: ' news ',
+        manifestVersion: 1,
+        extensionTier: 'admin',
+        tenantActivationPolicy: 'automatic',
         version: '1.2.3',
         sdkVersion: '0.0.1',
         hostCompatibility: {
@@ -38,6 +83,9 @@ describe('plugin platform contracts', () => {
       })
     ).toEqual({
       pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'admin',
+      tenantActivationPolicy: 'automatic',
       version: '1.2.3',
       sdkVersion: '0.0.1',
       hostCompatibility: {
@@ -48,6 +96,7 @@ describe('plugin platform contracts', () => {
         browser: './dist/browser.js',
         server: './dist/server.js',
         jobs: './dist/jobs.js',
+        integrations: undefined,
       },
       runtimeRequirements: {
         jobs: 'waste-management.operations',
@@ -55,10 +104,96 @@ describe('plugin platform contracts', () => {
     });
   });
 
+  it('rejects manifests without an explicit extension tier', () => {
+    expect(() =>
+      definePluginManifest({
+        pluginId: 'news',
+        manifestVersion: 1,
+        tenantActivationPolicy: 'optional',
+        version: '1.2.3',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^2.0.0' },
+        entryPoints: { browser: './dist/browser.js' },
+      } as never)
+    ).toThrowError('plugin_manifest_extension_tier_missing:news');
+  });
+
+  it('rejects manifests without a supported contract version', () => {
+    expect(() =>
+      definePluginManifest({
+        pluginId: 'news',
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
+        version: '1.2.3',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^2.0.0' },
+        entryPoints: { browser: './dist/browser.js' },
+      } as never)
+    ).toThrowError('plugin_manifest_contract_version_missing:news');
+
+    expect(() =>
+      definePluginManifest({
+        pluginId: 'news',
+        manifestVersion: 2,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
+        version: '1.2.3',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^2.0.0' },
+        entryPoints: { browser: './dist/browser.js' },
+      } as never)
+    ).toThrowError('plugin_manifest_contract_version_unsupported:news:2');
+  });
+
+  it('rejects missing and unknown tenant activation policies', () => {
+    expect(() =>
+      definePluginManifest({
+        pluginId: 'news',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        version: '1.2.3',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^2.0.0' },
+        entryPoints: { browser: './dist/browser.js' },
+      } as never)
+    ).toThrowError('plugin_manifest_activation_policy_missing:news');
+
+    expect(() =>
+      definePluginManifest({
+        pluginId: 'news',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'always',
+        version: '1.2.3',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^2.0.0' },
+        entryPoints: { browser: './dist/browser.js' },
+      } as never)
+    ).toThrowError('plugin_manifest_activation_policy_invalid:news:always');
+  });
+
+  it('rejects unknown extension tiers', () => {
+    expect(() =>
+      definePluginManifest({
+        pluginId: 'news',
+        manifestVersion: 1,
+        extensionTier: 'super-admin',
+        tenantActivationPolicy: 'optional',
+        version: '1.2.3',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^2.0.0' },
+        entryPoints: { browser: './dist/browser.js' },
+      } as never)
+    ).toThrowError('plugin_manifest_extension_tier_invalid:news:super-admin');
+  });
+
   it('rejects manifests with job entry points but without declared job runtime requirements', () => {
     expect(() =>
       definePluginManifest({
         pluginId: 'waste-management',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '1.2.3',
         sdkVersion: '0.0.1',
         hostCompatibility: {
@@ -76,6 +211,9 @@ describe('plugin platform contracts', () => {
     expect(
       definePluginManifest({
         pluginId: 'news',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '1.2.3',
         sdkVersion: '0.0.1',
         hostCompatibility: {
@@ -87,6 +225,9 @@ describe('plugin platform contracts', () => {
       })
     ).toEqual({
       pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
       version: '1.2.3',
       sdkVersion: '0.0.1',
       hostCompatibility: {
@@ -107,6 +248,9 @@ describe('plugin platform contracts', () => {
     expect(
       definePluginManifest({
         pluginId: 'news',
+        manifestVersion: 1,
+        extensionTier: 'feature',
+        tenantActivationPolicy: 'optional',
         version: '1.2.3',
         sdkVersion: '0.0.1',
         hostCompatibility: {
@@ -129,6 +273,9 @@ describe('plugin platform contracts', () => {
         sourceRef: 'packages/plugin-news',
         manifest: definePluginManifest({
           pluginId: 'news',
+          manifestVersion: 1,
+          extensionTier: 'feature',
+          tenantActivationPolicy: 'optional',
           version: '1.0.0',
           sdkVersion: '0.0.1',
           hostCompatibility: { studioVersionRange: '^2.0.0' },
@@ -148,6 +295,9 @@ describe('plugin platform contracts', () => {
   it('materializes local and installed plugins into one canonical host snapshot', () => {
     const manifest = definePluginManifest({
       pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
       version: '1.0.0',
       sdkVersion: '0.0.1',
       hostCompatibility: { studioVersionRange: '^2.0.0' },
@@ -175,7 +325,96 @@ describe('plugin platform contracts', () => {
         manifest,
       },
     ]);
+    expect(snapshot.tenantActivationPolicySnapshot).toEqual({
+      revision: 'news:optional:1:1.0.0:1:optional',
+      modules: [
+        {
+          moduleId: 'news',
+          activationPolicy: 'optional',
+          manifestVersion: 1,
+          policyRevision: '1.0.0:1:optional',
+        },
+      ],
+    });
     expect(snapshot.registry.plugins.map((plugin) => plugin.id)).toEqual(['news']);
+  });
+
+  it('rejects declared server handlers without a server entry point', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '1.0.0',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^2.0.0' },
+      entryPoints: { browser: './dist/browser.js' },
+    });
+    const workspaceEntry = definePluginCatalogEntry({
+      pluginId: 'news',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/plugin-news',
+      manifest,
+    });
+
+    expect(() =>
+      createPluginSnapshot({
+        catalog: [workspaceEntry],
+        loadedPlugins: [
+          {
+            catalogEntry: workspaceEntry,
+            plugin: {
+              ...createTestPlugin(),
+              serverHandlers: [
+                {
+                  id: 'news.list',
+                  method: 'GET',
+                  path: '/api/v1/plugins/news/list',
+                  actionId: 'news.read',
+                },
+              ],
+            },
+          },
+        ],
+      })
+    ).toThrow('plugin_snapshot_server_handlers_missing_server_entry:news');
+  });
+
+  it('passes the manifest extension tier into snapshot contribution validation', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'admin',
+      tenantActivationPolicy: 'automatic',
+      version: '1.0.0',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^2.0.0' },
+      entryPoints: { browser: './dist/browser.js' },
+    });
+    const entry = definePluginCatalogEntry({
+      pluginId: 'news',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/plugin-news',
+      manifest,
+    });
+
+    expect(() =>
+      createPluginSnapshot({
+        catalog: [entry],
+        loadedPlugins: [{ catalogEntry: entry, plugin: createPlatformTestPlugin() }],
+      })
+    ).not.toThrow();
+  });
+
+  it('gives an intentionally empty plugin catalog a reconcilable revision', () => {
+    expect(
+      createPluginSnapshot({ catalog: [], loadedPlugins: [] }).tenantActivationPolicySnapshot
+    ).toEqual({
+      revision: 'plugin-catalog:empty',
+      modules: [],
+    });
   });
 
   it('defines host-owned execution context capabilities for plugin handlers', () => {

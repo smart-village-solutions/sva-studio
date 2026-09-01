@@ -97,15 +97,11 @@ export const cleanupModuleRolePermissions = async (
   executor: SqlExecutor,
   instanceId: string,
   managedModuleIds: readonly string[],
-  activeModuleIds: readonly string[]
+  activeRolePermissionPairs: readonly RolePermissionPair[]
 ): Promise<void> => {
   if (managedModuleIds.length === 0) {
     return;
   }
-  const activeModuleFilter =
-    activeModuleIds.length > 0
-      ? `AND role_permission.grant_origin_module_id NOT IN (${createTextList(activeModuleIds)})`
-      : '';
   await executor.execute(
     statement(
       `
@@ -118,9 +114,28 @@ WHERE role_permission.instance_id = $1
   AND permission.id = role_permission.permission_id
   AND role_permission.grant_origin_kind = 'module_sync'
   AND role_permission.grant_origin_module_id IN (${createTextList(managedModuleIds)})
-  ${activeModuleFilter};
+  AND NOT EXISTS (
+    SELECT 1
+    FROM jsonb_to_recordset($2::jsonb) AS active_pair(
+      module_id TEXT,
+      role_name TEXT,
+      permission_id TEXT
+    )
+    WHERE active_pair.module_id = role_permission.grant_origin_module_id
+      AND active_pair.role_name = role.role_key
+      AND active_pair.permission_id = permission.permission_key
+  );
 `,
-      [instanceId]
+      [
+        instanceId,
+        JSON.stringify(
+          activeRolePermissionPairs.map((pair) => ({
+            module_id: pair.moduleId,
+            role_name: pair.roleName,
+            permission_id: pair.permissionId,
+          }))
+        ),
+      ]
     )
   );
 };

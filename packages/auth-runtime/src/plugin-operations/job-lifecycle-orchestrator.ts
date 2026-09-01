@@ -1,4 +1,4 @@
-import type { StudioJobRecord } from '@sva/core';
+import type { StudioJobError, StudioJobRecord } from '@sva/core';
 import type { StudioJobExecutionHandler, StudioJobExecutionHandlerContext } from './types.js';
 
 import { isPluginOperationCancellationError } from './job-cancellation.js';
@@ -32,16 +32,36 @@ type RepositoryPort = {
       ? TInput
       : never
   ) => Promise<unknown>;
+  readonly persistTerminalState?: Parameters<
+    typeof createJobStateWriter
+  >[0]['persistTerminalState'];
+  readonly touchJobHeartbeat?: (input: {
+    readonly jobId: string;
+    readonly instanceId: string;
+    readonly attempts: number;
+    readonly workerId: string;
+    readonly heartbeatAt: string;
+  }) => Promise<unknown>;
 };
+
+export const studioJobHeartbeatIntervalMs = 30_000;
+export const studioJobLeaseStaleAfterMs = 120_000;
 
 type OrchestratorDeps = {
   readonly logger: PluginOperationLogger;
   readonly loadRepository: (instanceId: string) => Promise<RepositoryPort>;
-  readonly resolveHandler: (
-    job: Pick<StudioJobRecord, 'source' | 'jobTypeId'>
-  ) => StudioJobExecutionHandler | undefined;
+  readonly resolveHandler: (job: StudioJobRecord) => StudioJobExecutionHandler | undefined;
   readonly createWorkerId?: (job: { readonly instanceId: string; readonly id: string }) => string;
   readonly now?: () => string;
+  readonly onExecutionSucceeded?: (input: {
+    readonly job: StudioJobRecord;
+    readonly result: Awaited<ReturnType<StudioJobExecutionHandler>>;
+  }) => Promise<void>;
+  readonly onExecutionTerminal?: (input: {
+    readonly job: StudioJobRecord;
+    readonly error: StudioJobError;
+    readonly reason: 'failed' | 'missing_handler' | 'cancelled';
+  }) => Promise<void>;
 };
 
 type RunInput = {
@@ -108,6 +128,7 @@ const createOrchestratorStateWriter = (
     appendRetriedEvent: eventWriter.appendRetriedEvent,
     appendFailedEvent: eventWriter.appendFailedEvent,
     appendCancelledEvent: eventWriter.appendCancelledEvent,
+    persistTerminalState: repository.persistTerminalState,
     now: deps.now,
   });
 
@@ -121,7 +142,7 @@ const persistExecutionFailure = async (input: {
   readonly startedAt: string;
   readonly workerId: string;
   readonly progress: StudioJobRecord['progress'];
-}): Promise<boolean> => {
+}): Promise<{ readonly finalFailure: boolean; readonly errorPayload: StudioJobError }> => {
   const errorPayload = createExecutionErrorPayload(
     input.job,
     input.error,
@@ -154,99 +175,139 @@ const persistExecutionFailure = async (input: {
     });
     throw persistenceError;
   }
-  return finalFailure;
+  return { finalFailure, errorPayload };
 };
 
-export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
-  run: async ({ instanceId, jobId, attempts, maxAttempts }: RunInput): Promise<void> => {
-    const repository = await deps.loadRepository(instanceId);
-    const job = await repository.getJobById(instanceId, jobId);
-    if (!job) {
-      deps.logger.warn('Plugin-Operations-Jobdatensatz zur Worker-Ausführung nicht gefunden', {
-        operation: 'plugin_operation_job_missing',
-        job_id: jobId,
-        instance_id: instanceId,
-      });
-      return;
+const runPersistedJob = async (
+  deps: OrchestratorDeps,
+  repository: RepositoryPort,
+  job: StudioJobRecord,
+  input: Pick<RunInput, 'attempts' | 'maxAttempts'>
+): Promise<void> => {
+  const { attempts, maxAttempts } = input;
+  const startedAt = (deps.now ?? (() => new Date().toISOString()))();
+  const workerId = (deps.createWorkerId ?? defaultCreateWorkerId)(job);
+  const eventWriter = createJobEventWriter({ appendJobEvent: repository.appendJobEvent });
+  const { handlerContext, dispose, getLatestProgress } = await createHandlerContext(
+    deps,
+    repository,
+    eventWriter,
+    job,
+    attempts,
+    workerId
+  );
+  const stateWriter = createOrchestratorStateWriter(deps, repository, eventWriter);
+  let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  let lastHeartbeatClock = Date.now();
+  let leaseLost = false;
+  const assertLeaseOwned = (): void => {
+    if (leaseLost || Date.now() - lastHeartbeatClock >= studioJobLeaseStaleAfterMs) {
+      throw new Error(`studio_job_lease_lost:${job.id}:${attempts}:${workerId}`);
     }
-
-    const startedAt = (deps.now ?? (() => new Date().toISOString()))();
-    const workerId = (deps.createWorkerId ?? defaultCreateWorkerId)(job);
-    const eventWriter = createJobEventWriter({
-      appendJobEvent: repository.appendJobEvent,
-    });
-    const { handlerContext, dispose, getLatestProgress } = await createHandlerContext(
-      deps,
-      repository,
-      eventWriter,
-      job,
-      attempts,
-      workerId
-    );
-    const stateWriter = createOrchestratorStateWriter(deps, repository, eventWriter);
-
-    try {
-      await stateWriter.markRunning({
+  };
+  try {
+    await stateWriter.markRunning({ job, attempts, startedAt, workerId });
+    if (repository.touchJobHeartbeat) {
+      heartbeatTimer = setInterval(() => {
+        void repository
+          .touchJobHeartbeat?.({
+            jobId: job.id,
+            instanceId: job.instanceId,
+            attempts,
+            workerId,
+            heartbeatAt: (deps.now ?? (() => new Date().toISOString()))(),
+          })
+          .then(() => {
+            lastHeartbeatClock = Date.now();
+          })
+          .catch((error: unknown) => {
+            if (error instanceof Error && error.message.startsWith('studio_job_lease_lost:')) {
+              leaseLost = true;
+            }
+          });
+      }, studioJobHeartbeatIntervalMs);
+      heartbeatTimer.unref?.();
+    }
+    const handler = deps.resolveHandler(job);
+    if (!handler) {
+      const errorPayload = createMissingHandlerPayload(job);
+      await stateWriter.markMissingHandler({
         job,
         attempts,
-        startedAt,
-        workerId,
-      });
-
-      const handler = deps.resolveHandler(job);
-      if (!handler) {
-        await stateWriter.markMissingHandler({
-          job,
-          attempts,
-          startedAt,
-          workerId,
-          progress: getLatestProgress(),
-          errorPayload: createMissingHandlerPayload(job),
-        });
-        return;
-      }
-
-      const result = await handler({
-        job,
-        ...handlerContext,
-      });
-      await stateWriter.markSucceeded({
-        job,
-        attempts,
-        startedAt,
-        workerId,
-        result,
-      });
-    } catch (error) {
-      if (isPluginOperationCancellationError(error)) {
-        await stateWriter.markCancelled({
-          job,
-          attempts,
-          startedAt,
-          workerId,
-          message: error.message,
-          progress: getLatestProgress(),
-          cancelRequestedAt: error.cancelRequestedAt,
-        });
-        return;
-      }
-
-      const finalFailure = await persistExecutionFailure({
-        deps,
-        stateWriter,
-        job,
-        error,
-        attempts,
-        maxAttempts,
         startedAt,
         workerId,
         progress: getLatestProgress(),
+        errorPayload,
       });
-      if (!finalFailure) {
-        throw error;
-      }
-    } finally {
-      dispose();
+      await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'missing_handler' });
+      return;
     }
-  },
+    const result = await handler({ job, ...handlerContext });
+    assertLeaseOwned();
+    await deps.onExecutionSucceeded?.({ job, result });
+    try {
+      await stateWriter.markSucceeded({ job, attempts, startedAt, workerId, result });
+    } catch (error) {
+      const persistedJob = await repository.getJobById(job.instanceId, job.id);
+      if (persistedJob?.status === 'succeeded') return;
+      throw error;
+    }
+  } catch (error) {
+    if (isPluginOperationCancellationError(error)) {
+      const errorPayload: StudioJobError = {
+        code: 'plugin_operation_cancelled',
+        category: 'permanent',
+        message: error.message,
+      };
+      await stateWriter.markCancelled({
+        job,
+        attempts,
+        startedAt,
+        workerId,
+        message: error.message,
+        progress: getLatestProgress(),
+        cancelRequestedAt: error.cancelRequestedAt,
+      });
+      await deps.onExecutionTerminal?.({ job, error: errorPayload, reason: 'cancelled' });
+      return;
+    }
+    const failure = await persistExecutionFailure({
+      deps,
+      stateWriter,
+      job,
+      error,
+      attempts,
+      maxAttempts,
+      startedAt,
+      workerId,
+      progress: getLatestProgress(),
+    });
+    if (!failure.finalFailure) throw error;
+    await deps.onExecutionTerminal?.({ job, error: failure.errorPayload, reason: 'failed' });
+  } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    dispose();
+  }
+};
+
+const runJobLifecycle = async (deps: OrchestratorDeps, input: RunInput): Promise<void> => {
+  const { instanceId, jobId } = input;
+  const repository = await deps.loadRepository(instanceId);
+  const job = await repository.getJobById(instanceId, jobId);
+  if (!job) {
+    deps.logger.warn('Plugin-Operations-Jobdatensatz zur Worker-Ausführung nicht gefunden', {
+      operation: 'plugin_operation_job_missing',
+      job_id: jobId,
+      instance_id: instanceId,
+    });
+    return;
+  }
+  if (job.status === 'succeeded' || job.status === 'failed' || job.status === 'cancelled') {
+    return;
+  }
+  await runPersistedJob(deps, repository, job, input);
+};
+
+export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
+  run: (input: RunInput): Promise<void> => runJobLifecycle(deps, input),
 });

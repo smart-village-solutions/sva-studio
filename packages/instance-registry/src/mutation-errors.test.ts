@@ -46,6 +46,15 @@ describe('mutation-errors', () => {
     });
   });
 
+  it('classifies concurrent plugin activation reconciliation as conflict', () => {
+    expect(
+      classifyInstanceMutationError(new Error('plugin_activation_state_conflict:events'))
+    ).toEqual({
+      status: 409,
+      code: 'plugin_activation_state_conflict',
+    });
+  });
+
   it('classifies tenant RLS and schema write failures as database failures', () => {
     expect(
       classifyInstanceMutationError(

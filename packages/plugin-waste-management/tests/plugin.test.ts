@@ -201,6 +201,7 @@ describe('pluginWasteManagement contract', () => {
     });
     expect(pluginWasteManagement.jobTypes?.map((jobType) => jobType.jobTypeId)).toEqual([
       'waste-management.provision-tenant-database',
+      'waste-management.tenant-readiness',
       'waste-management.initialize-data-source',
       'waste-management.apply-migrations',
       'waste-management.import-data',
@@ -291,6 +292,40 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.ortsbezogene-tourtermine',
     ]);
     expect(pluginWasteManagement.exportProfiles).toHaveLength(9);
+  });
+
+  it('adapts provision and reconcile to the existing tenant database job', () => {
+    expect(pluginWasteManagement.tenantLifecycle).toEqual({
+      contractVersion: 1,
+      operations: [
+        {
+          operation: 'provision',
+          jobTypeId: 'waste-management.provision-tenant-database',
+        },
+        {
+          operation: 'reconcile',
+          jobTypeId: 'waste-management.provision-tenant-database',
+        },
+        {
+          operation: 'readiness',
+          jobTypeId: 'waste-management.tenant-readiness',
+        },
+      ],
+      readinessChecks: [
+        {
+          checkId: 'waste-management.tenant-provisioning',
+          titleKey: 'wasteManagement.readiness.provisioning',
+          required: true,
+          repairOperation: 'reconcile',
+        },
+        {
+          checkId: 'waste-management.tenant-database-interface',
+          titleKey: 'wasteManagement.readiness.managedInterface',
+          required: true,
+          repairOperation: 'reconcile',
+        },
+      ],
+    });
   });
 
   it('registers the canonical waste audit events for settings, master data and technical tools', () => {

@@ -8,9 +8,12 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
+  invalidateInstanceRegistryHost: vi.fn(),
   loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceRecord: state.saveExternalInterfaceRecord,
   deleteExternalInterfaceRecord: state.deleteExternalInterfaceRecord,
+  loadWasteDataSourceRecord: vi.fn(),
+  saveWasteDataSourceRecord: vi.fn(),
 }));
 
 vi.mock('node:dns/promises', () => ({

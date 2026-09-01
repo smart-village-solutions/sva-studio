@@ -21,7 +21,10 @@ const tenantRequirement = (
 });
 
 const readyTenantSnapshot = (
-  permissions: Extract<EffectiveAccessSnapshot, { status: 'ready'; scope: { kind: 'tenant' } }>['permissions'],
+  permissions: Extract<
+    EffectiveAccessSnapshot,
+    { status: 'ready'; scope: { kind: 'tenant' } }
+  >['permissions'],
   assignedModules: readonly string[] = ['news']
 ): EffectiveAccessSnapshot => ({
   status: 'ready',
@@ -38,7 +41,9 @@ describe('evaluateUiAccess', () => {
       status: 'allowed',
       reason: 'public_surface',
     });
-    expect(evaluateUiAccess({ isAuthenticated: false, requirement: { kind: 'authenticated' } })).toEqual({
+    expect(
+      evaluateUiAccess({ isAuthenticated: false, requirement: { kind: 'authenticated' } })
+    ).toEqual({
       status: 'denied',
       reason: 'authentication_required',
     });
@@ -87,7 +92,10 @@ describe('evaluateUiAccess', () => {
     expect(
       evaluateUiAccess({
         isAuthenticated: true,
-        requirement: { kind: 'platform', roles: { mode: 'anyOf', values: ['instance_registry_admin'] } },
+        requirement: {
+          kind: 'platform',
+          roles: { mode: 'anyOf', values: ['instance_registry_admin'] },
+        },
         snapshot: platformSnapshot,
       })
     ).toEqual({ status: 'allowed', reason: 'allowed_by_permission' });
@@ -242,7 +250,12 @@ describe('evaluateUiAccess', () => {
 
   it('requires a matching server capability for resource-scoped actions', () => {
     const snapshot = readyTenantSnapshot([
-      { action: 'news.update', resourceType: 'content', accessScope: 'organization', organizationId: 'org-a' },
+      {
+        action: 'news.update',
+        resourceType: 'content',
+        accessScope: 'organization',
+        organizationId: 'org-a',
+      },
     ]);
     const requirement = tenantRequirement(['news.update'], { moduleId: 'news' });
 
@@ -250,20 +263,26 @@ describe('evaluateUiAccess', () => {
       status: 'denied',
       reason: 'resource_capability_missing',
     });
+    const capability = {
+      action: 'news.update',
+      allowed: true,
+      instanceId: 'tenant-a',
+      organizationId: 'org-a',
+      resourceType: 'content',
+      resourceId: 'news-1',
+    } as const;
     expect(
       evaluateUiAccess({
         isAuthenticated: true,
-        requirement: {
-          ...requirement,
-          resourceCapability: {
-            action: 'news.update',
-            allowed: true,
-            instanceId: 'tenant-a',
-            organizationId: 'org-a',
-            resourceType: 'content',
-            resourceId: 'news-1',
-          },
-        },
+        requirement: { ...requirement, resourceCapability: capability },
+        snapshot,
+      })
+    ).toEqual({ status: 'denied', reason: 'resource_capability_missing' });
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement,
+        resourceCapability: capability,
         snapshot,
       })
     ).toEqual({ status: 'allowed', reason: 'allowed_by_resource_capability' });
@@ -271,7 +290,12 @@ describe('evaluateUiAccess', () => {
 
   it('allows collection access with a scoped permission without treating it as an item capability', () => {
     const snapshot = readyTenantSnapshot([
-      { action: 'news.read', resourceType: 'content', accessScope: 'organization', organizationId: 'org-a' },
+      {
+        action: 'news.read',
+        resourceType: 'content',
+        accessScope: 'organization',
+        organizationId: 'org-a',
+      },
     ]);
 
     expect(
@@ -302,15 +326,13 @@ describe('evaluateUiAccess', () => {
     expect(
       evaluateUiAccess({
         isAuthenticated: true,
-        requirement: {
-          ...requirement,
-          resourceCapability: {
-            action: 'news.update',
-            allowed: false,
-            instanceId: 'tenant-a',
-            resourceType: 'content',
-            resourceId: 'news-1',
-          },
+        requirement,
+        resourceCapability: {
+          action: 'news.update',
+          allowed: false,
+          instanceId: 'tenant-a',
+          resourceType: 'content',
+          resourceId: 'news-1',
         },
         snapshot,
       })
@@ -319,15 +341,13 @@ describe('evaluateUiAccess', () => {
     expect(
       evaluateUiAccess({
         isAuthenticated: true,
-        requirement: {
-          ...requirement,
-          resourceCapability: {
-            action: 'news.update',
-            allowed: true,
-            instanceId: 'tenant-a',
-            resourceType: 'content',
-            resourceId: 'news-1',
-          },
+        requirement,
+        resourceCapability: {
+          action: 'news.update',
+          allowed: true,
+          instanceId: 'tenant-a',
+          resourceType: 'content',
+          resourceId: 'news-1',
         },
         snapshot,
       })
@@ -349,7 +369,9 @@ describe('evaluateUiAccess', () => {
       evaluateUiAccess({
         isAuthenticated: true,
         requirement: tenantRequirement(['update']),
-        snapshot: readyTenantSnapshot([{ action: 'update', resourceType: 'content', accessScope: 'all' }]),
+        snapshot: readyTenantSnapshot([
+          { action: 'update', resourceType: 'content', accessScope: 'all' },
+        ]),
       })
     ).toEqual({ status: 'denied', reason: 'permission_missing' });
   });
@@ -418,16 +440,15 @@ describe('evaluateUiAccess', () => {
     },
     {
       persona: 'organization switched after capability read',
-      requirement: tenantRequirement(['content.update'], {
-        resourceCapability: {
-          action: 'content.update',
-          allowed: true,
-          instanceId: 'tenant-a',
-          organizationId: 'org-before-switch',
-          resourceType: 'content',
-          resourceId: 'content-1',
-        },
-      }),
+      requirement: tenantRequirement(['content.update']),
+      resourceCapability: {
+        action: 'content.update',
+        allowed: true,
+        instanceId: 'tenant-a',
+        organizationId: 'org-before-switch',
+        resourceType: 'content',
+        resourceId: 'content-1',
+      },
       snapshot: readyTenantSnapshot([
         {
           action: 'content.update',
@@ -438,13 +459,17 @@ describe('evaluateUiAccess', () => {
       ]),
       expected: { status: 'denied', reason: 'resource_capability_missing' },
     },
-  ])('applies the persona matrix for $persona', ({ requirement, snapshot, expected }) => {
-    expect(
-      evaluateUiAccess({
-        isAuthenticated: true,
-        requirement,
-        snapshot,
-      })
-    ).toEqual(expected);
-  });
+  ])(
+    'applies the persona matrix for $persona',
+    ({ requirement, resourceCapability, snapshot, expected }) => {
+      expect(
+        evaluateUiAccess({
+          isAuthenticated: true,
+          requirement,
+          ...(resourceCapability ? { resourceCapability } : {}),
+          snapshot,
+        })
+      ).toEqual(expected);
+    }
+  );
 });

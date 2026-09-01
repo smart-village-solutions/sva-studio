@@ -1,13 +1,7 @@
-export const pluginSdkVersion = '0.0.1';
-export type PluginSdkPackageRole =
-  'plugin-contracts' | 'plugin-platform' | 'admin-resources' | 'content-types' | 'plugin-i18n';
-export const pluginSdkPackageRoles = [
-  'plugin-contracts',
-  'plugin-platform',
-  'admin-resources',
-  'content-types',
-  'plugin-i18n',
-] as const satisfies readonly PluginSdkPackageRole[];
+// prettier-ignore
+export { pluginSdkPackageRoles, pluginSdkVersion, type PluginSdkPackageRole } from './sdk-metadata.js';
+// prettier-ignore
+export type { PluginServerHandlerExecutionContext, PluginServerHandlerModuleFactory, PluginServerExecutionHandler } from './plugins.js';
 export type {
   AdminResourceDefinition,
   AdminResourceBulkActionSelectionMode,
@@ -80,6 +74,7 @@ export type {
   PluginExternalInterfaceTypeRegistryEntry,
   PluginExecutionLogger,
   PluginExecutionProgressReporter,
+  PluginExtensionTier,
   PluginIntegrationExecutionContext,
   PluginJobExecutionHandler,
   PluginJobExecutionResult,
@@ -93,6 +88,7 @@ export type {
   PluginJobTypeRegistryEntry,
   PluginManifest,
   PluginManifestCapability,
+  PluginTenantActivationPolicy,
   PluginPlatformHost,
   PluginModuleIamContract,
   PluginModuleIamRegistryEntry,
@@ -105,6 +101,8 @@ export type {
   PluginNavigationSection,
   PluginRouteDefinition,
   PluginRouteGuard,
+  PluginServerHandlerDefinition,
+  PluginServerHandlerRegistryEntry,
   PluginRequestExecutionContext,
   PluginSnapshot,
   ResolvedPluginCatalog,
@@ -214,6 +212,7 @@ export {
   createPluginModuleIamRegistry,
   createPluginPermissionRegistry,
   createPluginRegistry,
+  createPluginServerHandlerRegistry,
   resolvePluginCatalog,
   resolvePluginCatalogAsync,
   createStandardContentAdminResource,
@@ -244,6 +243,8 @@ export {
   definePluginImportProfiles,
   definePluginJobTypes,
   definePluginManifest,
+  PLUGIN_PLATFORM_ADMIN_ROLE,
+  PLUGIN_ROUTE_SCOPE_HEADER_NAME,
   defineMediaPickerDefinition,
   compactOptionalString,
   contentMediaUploadPhaseMessageKey,
@@ -311,9 +312,7 @@ export {
   wasteManagementMasterDataContract,
   wasteManagementOperationsContract,
 } from './public-api.js';
+export * from './plugin-tenant-lifecycle.js';
 export * from './data-exchange-public-api.js';
-export {
-  hasContentLifecycleAccess,
-  resolveContentLifecycleAction,
-  resolveContentVisibilityAction,
-} from './standard-content-access.js';
+// prettier-ignore
+export { hasContentLifecycleAccess, resolveContentLifecycleAction, resolveContentVisibilityAction } from './standard-content-access.js';

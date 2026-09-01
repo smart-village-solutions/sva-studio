@@ -1,5 +1,12 @@
 # 10 Qualitätsanforderungen
 
+## Plugin-Aktivierungsrichtlinien
+
+- Ein vorhandener manueller Modulzustand muss bei der Schema-Migration als aktiver manueller Override erhalten bleiben; Migration und Reconcile dürfen keine Plugin-Fachdaten löschen.
+- Zwei konkurrierende Mutationen desselben `(Tenant, Plugin)` dürfen nicht beide erfolgreich sein. Genau ein transaktionaler Pfad gewinnt, der andere endet deterministisch mit `plugin_activation_state_conflict`.
+- Ein manuell deaktiviertes `automatic`-Plugin bleibt über Neustart und Policy-Reconcile deaktiviert. Ein `required`-Plugin bleibt aktiv und lehnt jede Deaktivierung serverseitig mit einem stabilen Konfliktcode ab.
+- Eine unveränderte Policy-Revision erzeugt weder zusätzliche IAM-Mutationen noch neue Auditereignisse. Ein geänderter effektiver Zustand synchronisiert IAM, Cache-Revision und Audit innerhalb derselben scoped Transaktionsgrenze.
+
 ## Zweck
 
 Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.

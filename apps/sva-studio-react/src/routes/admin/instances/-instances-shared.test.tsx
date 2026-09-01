@@ -36,6 +36,7 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     parentDomain: 'studio.example.org',
     primaryHostname: 'demo.studio.example.org',
     assignedModules: [],
+    moduleActivations: [],
     realmMode: 'new',
     authRealm: 'demo',
     authClientId: 'sva-studio-login',
@@ -151,13 +152,20 @@ describe('instances shared helpers', () => {
         message: 'csrf',
       } as never)
     ).toContain('Sicherheitsprüfung');
-    expect(getErrorMessage({ name: 'IamHttpError', status: 500, code: 'unknown', message: 'boom' } as never)).toContain(
-      'Instanz'
-    );
+    expect(
+      getErrorMessage({
+        name: 'IamHttpError',
+        status: 500,
+        code: 'unknown',
+        message: 'boom',
+      } as never)
+    ).toContain('Instanz');
   });
 
   it('reads the suggested parent domain from window and falls back safely for invalid urls', () => {
-    vi.stubGlobal('window', { location: { href: 'https://demo.studio.example.org/admin/instances' } });
+    vi.stubGlobal('window', {
+      location: { href: 'https://demo.studio.example.org/admin/instances' },
+    });
     expect(readSuggestedParentDomain()).toBe('demo.studio.example.org');
 
     vi.stubGlobal('window', { location: { href: 'not a url' } });
@@ -174,19 +182,22 @@ describe('instances shared helpers', () => {
         key: 'secret',
         title: 'Tenant-Client-Secret',
         ready: true,
-        summary: 'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
+        summary:
+          'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
       },
       {
         key: 'tenantAdmin',
         title: 'Initialer Tenant-Admin',
         ready: true,
-        summary: 'Ein Tenant-Admin ist hinterlegt und kann beim ersten Bootstrap oder Reset verwendet werden.',
+        summary:
+          'Ein Tenant-Admin ist hinterlegt und kann beim ersten Bootstrap oder Reset verwendet werden.',
       },
       {
         key: 'followUp',
         title: 'Nächster Betriebs-Schritt',
         ready: false,
-        summary: 'Nach dem Speichern folgt im Detail die technische Prüfung und das Keycloak-Provisioning.',
+        summary:
+          'Nach dem Speichern folgt im Detail die technische Prüfung und das Keycloak-Provisioning.',
       },
     ]);
 
@@ -199,7 +210,8 @@ describe('instances shared helpers', () => {
       })
     ).toEqual({
       title: 'Instanz gespeichert',
-      summary: 'Die Instanz hb-meinquartier wurde in der Registry angelegt. Aktueller Status: Angefordert.',
+      summary:
+        'Die Instanz hb-meinquartier wurde in der Registry angelegt. Aktueller Status: Angefordert.',
       nextSteps: [
         'Öffnen Sie danach den Setup-Flow, um Provisioning, Aktivierung und Tenant-Admin-Struktur abzuschließen.',
         'Führen Sie dort den Keycloak-Abgleich für Realm saas-hb-meinquartier aus.',
@@ -217,7 +229,8 @@ describe('instances shared helpers', () => {
       key: 'secret',
       title: 'Tenant-Client-Secret',
       ready: true,
-      summary: 'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
+      summary:
+        'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
     });
 
     const workflow = getSetupWorkflowSteps(
@@ -231,6 +244,7 @@ describe('instances shared helpers', () => {
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         assignedModules: [],
+        moduleActivations: [],
         realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -250,7 +264,8 @@ describe('instances shared helpers', () => {
 
     expect(workflow.find((step) => step.key === 'tenantSecret')).toMatchObject({
       status: 'pending',
-      description: 'Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
+      description:
+        'Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
     });
   });
 
@@ -265,6 +280,7 @@ describe('instances shared helpers', () => {
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
       assignedModules: [],
+      moduleActivations: [],
       realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'sva-studio',
@@ -359,6 +375,7 @@ describe('instances shared helpers', () => {
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         assignedModules: [],
+        moduleActivations: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -399,7 +416,9 @@ describe('instances shared helpers', () => {
       null
     );
 
-    expect(workflow.find((step) => step.key === 'tenantAdminClient')?.action).toBe('provision_admin_client');
+    expect(workflow.find((step) => step.key === 'tenantAdminClient')?.action).toBe(
+      'provision_admin_client'
+    );
     expect(workflow.find((step) => step.key === 'tenantAdmin')?.action).toBe('reset_tenant_admin');
   });
 
@@ -415,6 +434,7 @@ describe('instances shared helpers', () => {
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         assignedModules: [],
+        moduleActivations: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -474,6 +494,7 @@ describe('instances shared helpers', () => {
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         assignedModules: [],
+        moduleActivations: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -568,7 +589,11 @@ describe('instances shared helpers', () => {
     );
 
     expect(model.primaryAction.action).toBe('activate_instance');
-    expect(model.secondaryActions.some((action: { action: string }) => action.action === 'probeTenantIamAccess')).toBe(true);
+    expect(
+      model.secondaryActions.some(
+        (action: { action: string }) => action.action === 'probeTenantIamAccess'
+      )
+    ).toBe(true);
     expect(model.dominantEvidence.source).toBe('role_reconcile');
     expect(model.dominantEvidence.checkedAt).toBe('2026-01-02T08:15:00.000Z');
     expect(model.anomalyQueue).toHaveLength(2);
@@ -590,6 +615,7 @@ describe('instances shared helpers', () => {
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         assignedModules: [],
+        moduleActivations: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -674,7 +700,9 @@ describe('instances shared helpers', () => {
 
     expect(model.overallStatus).toBe('blocked');
     expect(model.anomalyQueue).toHaveLength(3);
-    expect(model.anomalyQueue.every((item: { status: string }) => item.status !== 'ready')).toBe(true);
+    expect(model.anomalyQueue.every((item: { status: string }) => item.status !== 'ready')).toBe(
+      true
+    );
     expect(model.primaryAction.action).toBe('probeTenantIamAccess');
   });
 
@@ -690,6 +718,7 @@ describe('instances shared helpers', () => {
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         assignedModules: [],
+        moduleActivations: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -845,7 +874,14 @@ describe('instances shared helpers', () => {
   });
 
   it('returns localized status guidance for all remaining lifecycle states', () => {
-    for (const lifecycleStatus of ['validated', 'provisioning', 'active', 'failed', 'suspended', 'archived'] as const) {
+    for (const lifecycleStatus of [
+      'validated',
+      'provisioning',
+      'active',
+      'failed',
+      'suspended',
+      'archived',
+    ] as const) {
       expect(getStatusGuidance({ status: lifecycleStatus } as never)).toEqual({
         title: expect.any(String),
         body: expect.any(String),
@@ -889,6 +925,7 @@ describe('instances shared helpers', () => {
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         assignedModules: [],
+        moduleActivations: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -980,7 +1017,8 @@ describe('instances shared helpers', () => {
           mode: 'new',
           overallStatus: 'ready',
           generatedAt: '2026-01-02T09:05:00.000Z',
-          driftSummary: 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.',
+          driftSummary:
+            'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.',
           steps: [],
         },
         latestKeycloakProvisioningRun: {
@@ -1086,11 +1124,13 @@ describe('instances shared helpers', () => {
         latestKeycloakProvisioningRun: undefined,
         keycloakProvisioningRuns: [],
       }),
-      null,
+      null
     );
 
     expect(model.steps.find((step) => step.key === 'realm')).toMatchObject({ status: 'offen' });
-    expect(model.steps.find((step) => step.key === 'final_validation')).toMatchObject({ status: 'offen' });
+    expect(model.steps.find((step) => step.key === 'final_validation')).toMatchObject({
+      status: 'offen',
+    });
     expect(buildOperationsPrimaryAction(model)).toMatchObject({
       action: 'execute_provisioning',
       reason: 'run_retry',
@@ -1118,7 +1158,7 @@ describe('instances shared helpers', () => {
         latestKeycloakProvisioningRun: undefined,
         keycloakProvisioningRuns: [],
       }),
-      null,
+      null
     );
 
     expect(buildOperationsPrimaryAction(model)).toMatchObject({
@@ -1282,7 +1322,7 @@ describe('instances shared helpers', () => {
           runtimeSecretSource: 'tenant',
         },
       }),
-      null,
+      null
     );
 
     expect(buildOperationsPrimaryAction(model)).toMatchObject({

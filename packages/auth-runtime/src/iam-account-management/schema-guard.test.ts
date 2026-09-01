@@ -30,7 +30,10 @@ describe('schema guard helpers', () => {
     postgresState.query.mockResolvedValueOnce({
       rows: [
         {
-          app_can_enqueue: true,
+          effective_app_role_exists: true,
+          effective_app_can_enqueue: true,
+          effective_app_cannot_process: true,
+          app_login_cannot_enqueue_directly: true,
           app_cannot_create: true,
           graphile_schema_exists: true,
           worker_can_process: true,
@@ -43,22 +46,28 @@ describe('schema guard helpers', () => {
     });
 
     await expect(
-      runGraphileWorkerReadinessForConnection({}, 'sva_app', 'sva_job_worker')
+      runGraphileWorkerReadinessForConnection({}, 'iam_app', 'sva_app', 'sva_job_worker')
     ).resolves.toEqual({ failedChecks: [], ok: true });
-    expect(postgresState.query).toHaveBeenCalledWith(expect.stringContaining('app_can_enqueue'), [
-      'sva_app',
-      'sva_job_worker',
-    ]);
-    expect(postgresState.query).toHaveBeenCalledWith(expect.stringContaining('to_regrole($2)'), [
+    expect(postgresState.query).toHaveBeenCalledWith(
+      expect.stringContaining('effective_app_can_enqueue'),
+      ['iam_app', 'sva_app', 'sva_job_worker']
+    );
+    expect(postgresState.query).toHaveBeenCalledWith(expect.stringContaining('to_regrole($3)'), [
+      'iam_app',
       'sva_app',
       'sva_job_worker',
     ]);
     expect(postgresState.end).toHaveBeenCalledOnce();
 
-    postgresState.query.mockResolvedValueOnce({ rows: [{ app_can_enqueue: false }] });
-    const failed = await runGraphileWorkerReadinessForConnection({}, 'sva_app', 'sva_job_worker');
+    postgresState.query.mockResolvedValueOnce({ rows: [{ effective_app_can_enqueue: false }] });
+    const failed = await runGraphileWorkerReadinessForConnection(
+      {},
+      'iam_app',
+      'sva_app',
+      'sva_job_worker'
+    );
     expect(failed.ok).toBe(false);
-    expect(failed.failedChecks).toContain('app_can_enqueue');
+    expect(failed.failedChecks).toContain('effective_app_can_enqueue');
   });
 
   it('evaluates required checks from boolean-like rows and summarizes failures', async () => {

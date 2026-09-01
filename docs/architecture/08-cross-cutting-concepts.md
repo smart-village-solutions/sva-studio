@@ -158,8 +158,19 @@ gleichzeitig beeinflussen.
 - Die Waste-Postleitzahl-Anreicherung nutzt deshalb ausschließlich die hostseitig aufgelöste Karten-Geocodierung. API-Schlüssel, vollständige Abfragen und Providerdetails gelangen weder in das Waste-Plugin noch in Job- oder Audit-Protokolle.
 - Plugin-deklarierte `externalInterfaceTypes` beschreiben nur Metadaten und Feldschemas; Persistenz, Secret-Auflösung, Health-Checks und Audit bleiben verpflichtend hostseitig.
 - Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
+- Bei Plugins mit Tenant-Lifecycle ist valide Fachbereitschaft ein zusätzliches hostseitiges Gate: ungültige oder fehlende Evidenz, `pending`, `blocked` und Suspendierung entfernen den effektiven Modulzugriff und blockieren normale Plugin-Jobs vor jeder persistierenden Mutation. Plugin-spezifische APIs müssen denselben aus `@sva/auth-runtime/server` exportierten Access-Entscheid verwenden.
 - Pluginseitige Request-, Job- und Integrationsbeiträge laufen ausschließlich in host-owned Execution-Contexts mit Auth-, Instanz-, Logger-, Audit- und Fehlervertrag des Hosts
 - Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen
+- Jedes Plugin-Manifest besitzt einen expliziten Extension-Tier. Fehlende oder unbekannte Tiers sowie Plattformbeiträge eines `feature`-Plugins werden vor der Snapshot-Materialisierung mit stabilen Validierungsfehlern abgewiesen.
+- Plattformbeiträge verwenden ausschließlich `instance_registry_admin` und dürfen keine Tenant-Guards oder `requiredAction` übernehmen. Verknüpfte Actions, Routen und Navigation müssen Scope, Modus und Rollenmenge exakt teilen.
+- Deklarative Serverbeiträge enthalten im Build-Snapshot keinen ausführbaren
+  Code. Der Host lädt ihre Bindungen ausschließlich aus dem Manifest-`server`-Entry,
+  verlangt eine vollständige ID-Abdeckung und führt sie erst nach exaktem
+  Pfad-/Methodenabgleich und hostseitiger Scope-Autorisierung aus.
+- Tenant-Aktivierung folgt ausschließlich dem persistierten Instanz-Modulsatz. `automatic` akzeptiert einen dauerhaften manuellen Override; `required` bleibt durch Service-Policy und Datenbank-Constraint aktiv. Policy-Reconcile-Updates tragen eine Manifest-, Policy- und Zustandsrevision.
+- Inaktive Module verlieren automatisch synchronisierte Grants; manuelle
+  Rollenzuweisungen bleiben gespeichert, sind aber bis zur Reaktivierung nicht
+  Teil der effektiven Permission-Auflösung.
 - Die phasenweise Registry-Erzeugung ordnet bestehende Outputs für Content, Admin, Audit und Routing, führt aber keine neuen Plugin-Beitragstypen oder Breaking-API ein
 - Standardisierte Content-Plugins registrieren ihre CRUD-Hauptflächen über `adminResources` mit optionalem `contentUi`-Spezialisierungsblock; `/admin/news`, `/admin/events` und `/admin/poi` sind host-owned Pfade mit pluginseitig beigestellten Fachflächen, nicht plugin-owned Routen
 - Dasselbe Pattern gilt jetzt auch für `/admin/surveys`: der Pfad bleibt host-owned, während `@sva/plugin-surveys` nur die fachlichen Listen-/Detail-/Editor-Bindings und UI-Bausteine beisteuert
@@ -585,7 +596,9 @@ Referenzen:
 - Plattform- und Tenant-Scope sind diskriminiert. Tenant-Entscheidungen kombinieren vollständig qualifizierte Actions mit einem additiven Modul-Gate; technische Plattformrollen dürfen nicht als Tenant-Permission-Ersatz dienen.
 - Ressourcenbezogene `own`-, Organisations- oder Geo-Rechte benötigen eine passende serverautoritativ gelieferte Capability. Globale Action-Mitgliedschaft allein gibt keine Datensatzmutation frei.
 - Plugin-Actions, Navigation, Routen und Admin-Ressourcen deklarieren Access-Anforderungen. Der Host veröffentlicht daraus einen aufgelösten Session-Snapshot; Plugin-UI führt keinen eigenen Auth-Read aus.
-- Verknüpfte Plugin-Beiträge werden vor Snapshot-Veröffentlichung gegen denselben Access-Vertrag geprüft: Action-Werte besitzen Mengen-Semantik, während Modus, Modul, Ressourcen-Kontext und jedes Resource-Capability-Feld exakt übereinstimmen müssen. Die interne Modularisierung im Plugin SDK ändert weder öffentliche Registry-Fassaden noch Fehlerpriorität oder Fehlercodes.
+- Verknüpfte Plugin-Beiträge werden vor Snapshot-Veröffentlichung gegen denselben Access-Vertrag geprüft: Jede Action und jede damit oder mit einem Server-Handler verknüpfte Route beziehungsweise Navigation benötigt eine explizite vollständige Anforderung; Action-Werte besitzen Mengen-Semantik, während Modus, Modul und Ressourcen-Kontext übereinstimmen müssen.
+- Statische `resourceCapability`-Felder in Plugin-Deskriptoren werden vor Snapshot-Veröffentlichung abgewiesen. Ressourcenbezogene Evidenz stammt ausschließlich aus einem Host-Resolver, der validierten Request-Kontext und autoritative Fachdaten auswertet, und wird getrennt von der Plugin-Anforderung an den zentralen Evaluator übergeben.
+- Die Lifecycle-Service-Token-Boundary verwendet `instance.pluginLifecycle.read` für das Readiness-Modell sowie getrennte Actions für `provision`, `readiness`, `reconcile`, `suspend` und `reactivate`. Die validierte Operation bestimmt die erforderliche Action; eine Lifecycle-Action deckt keine andere Operation ab.
 
 - `AuthProvider` kapselt Session-Status zentral in der Root-Shell.
 - UI-Bausteine konsumieren Auth-Daten ausschließlich über `useAuth()`.
@@ -744,6 +757,8 @@ Nach Mutationsbeginn gibt es keinen automatischen Retry und keinen automatischen
 ### Ergänzung 2026-08: Waste-Datenbankgrenze
 
 Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht in der Governance-Datenbank `sva_studio` gespeichert. Datenbank und Rollen werden kollisionssicher aus der kanonischen Instanzidentität abgeleitet. Die External-Interface-Registry schützt alle Verbindungs-URLs als tenantgebundene Secrets; Owner, Migration, Studio-Runtime und öffentliche Runtime bleiben getrennt. Die normale App besitzt keine `CREATEDB`-/`CREATEROLE`-Rechte. Backups und Restore-Drills behandeln jede registrierte Tenant-Datenbank als eigene Sicherungs- und Wiederherstellungseinheit.
+
+Der generische Plugin-Tenant-Lifecycle ändert diese Topologie nicht. Seine Waste-Readiness liest ausschließlich über die bestehenden instanzgebundenen Repository-Pfade und verlangt sowohl einen vollständig abgeschlossenen Waste-Provisionierungsdatensatz als auch ein aktiviertes, erfolgreich geprüftes Interface mit `ownerKind = plugin` und `ownerId = waste-management`. Es entstehen weder zusätzliche Fachtabellen noch ein alternativer SQL- oder Secret-Zugriffspfad.
 
 Der reguläre Promote-Migrations-One-shot wendet neben den Goose-Migrationen für `sva_studio` ausstehende versionierte Migrationen auf alle registrierten `ready`- und `disabled`-Waste-Datenbanken an. Jede Waste-Datenbank protokolliert ihren Stand in `public.sva_waste_schema_migrations`; eine Migration wird pro Tenant in einer eigenen Transaktion ausgeführt und erst nach erfolgreicher Verifikation als angewendet markiert. Der Schema-Builder für Neuprovisionierungen ist ausdrücklich kein Reconcile-Vertrag für Bestandsdatenbanken. Destruktive Bestandsänderungen benötigen einen eigenen geprüften Migrationsschritt mit Preflight und expliziter Freigabe.
 

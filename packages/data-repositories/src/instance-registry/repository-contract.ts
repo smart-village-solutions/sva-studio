@@ -7,8 +7,18 @@ import type {
   InstanceRegistryRecord,
   InstanceRealmMode,
   InstanceStatus,
+  TenantModuleActivationRecord,
+  TenantModuleActivationPolicyDescriptor,
   WasteTenantProvisioningRecord,
 } from '@sva/core';
+
+export type TenantModuleActivationPolicyInput = TenantModuleActivationPolicyDescriptor;
+
+export type TenantModuleActivationReconcileResult = {
+  readonly changedModuleIds: readonly string[];
+  readonly conflictModuleIds: readonly string[];
+  readonly unchangedModuleIds: readonly string[];
+};
 
 export type CreateKeycloakProvisioningRunResult = {
   readonly run: InstanceKeycloakProvisioningRun;
@@ -84,6 +94,16 @@ export type PermissionCatalogReconcileResult = {
   readonly grantsUnchanged: number;
 };
 
+export type ModuleActivationRollbackState = {
+  readonly activationOrigin: TenantModuleActivationRecord['activationOrigin'];
+  readonly effectiveActive: boolean;
+  readonly manualOverride: TenantModuleActivationRecord['manualOverride'] | null;
+  readonly reconcileId: string | null;
+  readonly reconciledAt: string | null;
+  readonly stateRevision: number;
+  readonly updatedBy: string | null;
+};
+
 export type InstanceRegistryRepository = {
   readonly requestWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord>;
   readonly getWasteProvisioning: (
@@ -129,14 +149,52 @@ export type InstanceRegistryRepository = {
   }) => Promise<readonly InstanceRegistryRecord[]>;
   readonly getInstanceById: (instanceId: string) => Promise<InstanceRegistryRecord | null>;
   readonly listAssignedModules: (instanceId: string) => Promise<readonly string[]>;
-  readonly assignModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly listModuleActivations: (
+    instanceId: string
+  ) => Promise<readonly TenantModuleActivationRecord[]>;
+  readonly getModuleActivationPolicy: (
+    instanceId: string,
+    moduleId: string
+  ) => Promise<{
+    activationPolicy: TenantModuleActivationPolicyDescriptor['activationPolicy'];
+    activationOrigin: TenantModuleActivationRecord['activationOrigin'];
+    effectiveActive: boolean;
+    manualOverride: TenantModuleActivationRecord['manualOverride'] | null;
+    reconcileId: string | null;
+    reconciledAt: string | null;
+    stateRevision: number;
+    updatedBy: string | null;
+  } | null>;
+  readonly assignModule: (
+    instanceId: string,
+    moduleId: string,
+    lifecycleContractRevision?: string
+  ) => Promise<boolean>;
+  readonly restoreModuleActivation: (
+    instanceId: string,
+    moduleId: string,
+    previous: ModuleActivationRollbackState | null
+  ) => Promise<boolean>;
   readonly revokeModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly reconcileModuleActivationPolicies: (input: {
+    instanceId: string;
+    policies: readonly TenantModuleActivationPolicyInput[];
+    preservedModuleIds: readonly string[];
+    reconcileId: string;
+    actorId?: string;
+  }) => Promise<TenantModuleActivationReconcileResult>;
   readonly bumpPermissionCacheInstanceRevision?: (instanceId: string) => Promise<number>;
   readonly syncAssignedModuleIam: (input: {
     instanceId: string;
     managedModuleIds: readonly string[];
+    managedContracts?: readonly InstanceModuleIamContractRecord[];
     contracts: readonly InstanceModuleIamContractRecord[];
   }) => Promise<PermissionCatalogReconcileResult | void>;
+  readonly persistPluginTenantLifecycleReconcileIntents: (input: {
+    instanceId: string;
+    lifecycles: readonly Readonly<{ pluginId: string; contractRevision: string }>[];
+    forcePluginIds: readonly string[];
+  }) => Promise<readonly string[]>;
   readonly syncProtectedSystemRolePermissions: (input: {
     instanceId: string;
     role: ProtectedSystemRolePermissionBundleRecord;
@@ -255,6 +313,7 @@ export type InstanceRegistryRepository = {
     operation: InstanceProvisioningOperation;
     status: InstanceStatus;
     idempotencyKey: string;
+    payloadFingerprint?: string;
     stepKey?: string;
     actorId?: string;
     requestId?: string;

@@ -106,6 +106,7 @@ export {
   studioJobRuntimeContract,
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
+export { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from './plugin-platform-contract.js';
 export {
   externalInterfaceContract,
   mailDispatchContract,
@@ -436,6 +437,21 @@ export {
   normalizeHost,
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
+export {
+  canDisableTenantModule,
+  resolveTenantModuleEffectiveActivation,
+  tenantModuleActivationOrigins,
+  tenantModuleActivationPolicies,
+  tenantModuleManualOverrides,
+} from './instances/module-activation.js';
+export type {
+  TenantModuleActivationOrigin,
+  TenantModuleActivationPolicy,
+  TenantModuleActivationPolicyDescriptor,
+  TenantModuleActivationPolicySnapshot,
+  TenantModuleActivationRecord,
+  TenantModuleManualOverride,
+} from './instances/module-activation.js';
 export {
   areAllInstanceKeycloakRequirementsSatisfied,
   INSTANCE_KEYCLOAK_REQUIREMENTS,

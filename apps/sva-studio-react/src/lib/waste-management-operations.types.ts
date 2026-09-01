@@ -19,10 +19,15 @@ import type {
 import type { MailDispatchMessage } from '@sva/mail-runtime';
 import type {
   loadDefaultExternalInterfaceRecord,
+  loadExternalInterfaceRecordByAlias,
   listExternalInterfaceRecords,
   saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
-import type { loadWasteTenantProvisioningRecord } from '@sva/data-repositories/server';
+import type {
+  loadWasteTenantProvisioningRecord,
+  requestWasteTenantProvisioning,
+} from '@sva/data-repositories/server';
+import type { PluginTenantLifecycleExecutionResult } from '@sva/plugin-sdk';
 
 export type SqlClient = {
   query: <TRow = Record<string, unknown>>(
@@ -46,6 +51,8 @@ export type WasteOperationRuntimeDeps = {
   readonly listInterfaceRecords?: typeof listExternalInterfaceRecords;
   readonly saveInterfaceRecord?: typeof saveExternalInterfaceRecord;
   readonly loadProvisioning?: typeof loadWasteTenantProvisioningRecord;
+  readonly requestProvisioning?: typeof requestWasteTenantProvisioning;
+  readonly loadManagedInterface?: typeof loadExternalInterfaceRecordByAlias;
   readonly revealSecret?: (
     ciphertext: string | null | undefined,
     aad: string
@@ -98,6 +105,12 @@ export type WasteOperationProgressReporter = {
 };
 
 export type WasteManagementOperationRuntime = {
+  requestTenantDatabaseProvisioning: (
+    instanceId: string
+  ) => Promise<{ readonly desiredGeneration: number }>;
+  readTenantDatabaseReadiness: (
+    instanceId: string
+  ) => Promise<PluginTenantLifecycleExecutionResult>;
   provisionTenantDatabase: (
     instanceId: string,
     input: WasteManagementProvisionTenantDatabaseJobInput,

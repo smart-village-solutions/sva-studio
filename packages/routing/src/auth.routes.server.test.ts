@@ -137,6 +137,8 @@ const authServerMocks = vi.hoisted(() => {
       listInstances: vi.fn(async () => response('listInstancesHandler')),
       getInstanceAuditRun: vi.fn(async () => response('getInstanceAuditRunHandler')),
       getInstance: vi.fn(async () => response('getInstanceHandler')),
+      getPluginTenantReadiness: vi.fn(async () => response('getPluginTenantReadinessHandler')),
+      startPluginTenantLifecycle: vi.fn(async () => response('startPluginTenantLifecycleHandler')),
       getSingleInstanceAuditRun: vi.fn(async () => response('getSingleInstanceAuditRunHandler')),
       createInstance: vi.fn(async () => response('createInstanceHandler')),
       updateInstance: vi.fn(async () => response('updateInstanceHandler')),
@@ -288,9 +290,7 @@ const authServerMocks = vi.hoisted(() => {
     updateContentHandler: vi.fn(async () => response('updateContentHandler')),
     deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
-    transferContentOwnershipHandler: vi.fn(async () =>
-      response('transferContentOwnershipHandler')
-    ),
+    transferContentOwnershipHandler: vi.fn(async () => response('transferContentOwnershipHandler')),
     listContentOwnershipTargetsHandler: vi.fn(async () =>
       response('listContentOwnershipTargetsHandler')
     ),
@@ -1051,9 +1051,7 @@ describe('auth.routes.server', () => {
       }),
     });
     await mainserverSyncStatusHandlers.GET?.({
-      request: new Request(
-        'http://localhost/api/v1/waste-management/mainserver-sync-status'
-      ),
+      request: new Request('http://localhost/api/v1/waste-management/mainserver-sync-status'),
     });
     await syncWasteTypesHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/sync-waste-types', {
@@ -1203,6 +1201,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.getMediaDeliveryHandler).toHaveBeenCalled();
     expect(authServerMocks.replaceMediaReferencesHandler).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.updateInstance).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.getPluginTenantReadiness).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.startPluginTenantLifecycle).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceAuditRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getSingleInstanceAuditRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakStatus).toHaveBeenCalled();

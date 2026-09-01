@@ -1,4 +1,5 @@
-const qualify = (alias: string | undefined, column: string): string => (alias ? `${alias}.${column}` : column);
+const qualify = (alias: string | undefined, column: string): string =>
+  alias ? `${alias}.${column}` : column;
 
 export const buildInstanceSelectColumns = (alias?: string): string => {
   const id = qualify(alias, 'id');
@@ -24,6 +25,7 @@ export const buildInstanceSelectColumns = (alias?: string): string => {
     SELECT COALESCE(array_agg(module_id ORDER BY module_id), ARRAY[]::text[])
     FROM iam.instance_modules
     WHERE instance_id = ${id}
+      AND effective_active
   ) AS assigned_module_ids,
   ${qualify(alias, 'feature_flags')},
   ${qualify(alias, 'mainserver_config_ref')},

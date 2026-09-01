@@ -34,7 +34,14 @@ describe('plugin registry', () => {
         component: (() => null) as never,
       },
     ],
-    navigation: [{ id: 'news.nav', to: '/plugins/news', titleKey: 'news.navigation.title', section: 'dataManagement' as const }],
+    navigation: [
+      {
+        id: 'news.nav',
+        to: '/plugins/news',
+        titleKey: 'news.navigation.title',
+        section: 'dataManagement' as const,
+      },
+    ],
     actions: definePluginActions('news', [
       {
         id: 'news.publish',
@@ -51,8 +58,12 @@ describe('plugin registry', () => {
       { id: 'news.read', titleKey: 'news.permissions.read' },
       { id: 'news.publish', titleKey: 'news.permissions.publish' },
     ]),
-    contentTypes: definePluginContentTypes('news', [{ contentType: 'news.article', displayName: 'News' }]),
-    auditEvents: definePluginAuditEvents('news', [{ eventType: 'news.published', titleKey: 'news.audit.published' }]),
+    contentTypes: definePluginContentTypes('news', [
+      { contentType: 'news.article', displayName: 'News' },
+    ]),
+    auditEvents: definePluginAuditEvents('news', [
+      { eventType: 'news.published', titleKey: 'news.audit.published' },
+    ]),
     translations: {
       de: {
         news: {
@@ -197,6 +208,11 @@ describe('plugin registry', () => {
               id: 'news.missing-route-guard',
               path: '/plugins/news/missing-guard',
               actionId: 'news.publish',
+              accessRequirement: {
+                kind: 'tenant',
+                moduleId: 'news',
+                actions: { mode: 'allOf', values: ['news.publish'] },
+              },
               component: (() => null) as never,
             },
           ],
@@ -264,7 +280,9 @@ describe('plugin registry', () => {
           ],
         },
       ])
-    ).toThrow('plugin_navigation_action_guard_mismatch:news:news.mismatched-nav-guard:news.publish');
+    ).toThrow(
+      'plugin_navigation_action_guard_mismatch:news:news.mismatched-nav-guard:news.publish'
+    );
   });
 
   it('merges route, navigation, content type and translations', () => {
@@ -375,7 +393,9 @@ describe('plugin registry', () => {
   it('exposes a typed public plugin contract', () => {
     expectTypeOf(pluginA).toMatchTypeOf<PluginDefinition>();
     expectTypeOf<(typeof pluginA.routes)[number]['guard']>().toEqualTypeOf<undefined>();
-    expectTypeOf<(typeof pluginA.navigation)[number]['section']>().toEqualTypeOf<'dataManagement'>();
+    expectTypeOf<
+      (typeof pluginA.navigation)[number]['section']
+    >().toEqualTypeOf<'dataManagement'>();
   });
 
   it('enforces namespace isolation for plugin content types, admin resources and audit events', () => {
@@ -429,11 +449,15 @@ describe('plugin registry', () => {
     ).toThrow('plugin_admin_resource_namespace_mismatch:news:events:events.articles');
 
     expect(() =>
-      definePluginAuditEvents('news', [{ eventType: 'published', titleKey: 'news.audit.published' }])
+      definePluginAuditEvents('news', [
+        { eventType: 'published', titleKey: 'news.audit.published' },
+      ])
     ).toThrow('invalid_plugin_audit_event_type:published');
 
     expect(() =>
-      definePluginAuditEvents('news', [{ eventType: 'events.published', titleKey: 'news.audit.published' }])
+      definePluginAuditEvents('news', [
+        { eventType: 'events.published', titleKey: 'news.audit.published' },
+      ])
     ).toThrow('plugin_audit_event_namespace_mismatch:news:events:events.published');
   });
 
@@ -464,7 +488,13 @@ describe('plugin registry', () => {
         {
           id: 'news-duplicate',
           displayName: 'News Duplicate',
-          routes: [{ id: 'news.duplicate', path: '/plugins/news-duplicate', component: (() => null) as never }],
+          routes: [
+            {
+              id: 'news.duplicate',
+              path: '/plugins/news-duplicate',
+              component: (() => null) as never,
+            },
+          ],
           actions: [
             {
               id: 'news-duplicate.publish',
@@ -509,7 +539,9 @@ describe('plugin registry', () => {
     expect(() => definePluginActions('News', [])).toThrow('invalid_plugin_namespace:News');
 
     expect(() => definePluginActions('core', [])).toThrow('reserved_plugin_action_namespace:core');
-    expect(() => definePluginActions('content', [])).toThrow('reserved_plugin_action_namespace:content');
+    expect(() => definePluginActions('content', [])).toThrow(
+      'reserved_plugin_action_namespace:content'
+    );
     expect(() => definePluginActions('iam', [])).toThrow('reserved_plugin_action_namespace:iam');
 
     expect(() =>
@@ -622,7 +654,9 @@ describe('plugin registry', () => {
         {
           id: 'content',
           displayName: 'Content',
-          routes: [{ id: 'content.list', path: '/plugins/content', component: (() => null) as never }],
+          routes: [
+            { id: 'content.list', path: '/plugins/content', component: (() => null) as never },
+          ],
         },
       ])
     ).toThrow('reserved_plugin_action_namespace:content');
@@ -836,7 +870,9 @@ describe('build-time registry', () => {
           },
         },
       },
-      contentTypes: definePluginContentTypes('news', [{ contentType: 'news.article', displayName: 'News' }]),
+      contentTypes: definePluginContentTypes('news', [
+        { contentType: 'news.article', displayName: 'News' },
+      ]),
       auditEvents: definePluginAuditEvents('news', [{ eventType: 'news.published' }]),
       adminResources: definePluginAdminResources('news', [
         {

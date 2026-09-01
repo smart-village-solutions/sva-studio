@@ -8,9 +8,16 @@ import {
 import { getEffectiveTenantIamStatus } from './-instance-detail-tenant-iam';
 import { getOperationsActionLabel } from './-instances-shared';
 
-import type { DetailWorkflowAction, InstanceConfigurationAssessment } from './-instances-shared-types';
+import type {
+  DetailWorkflowAction,
+  InstanceConfigurationAssessment,
+} from './-instances-shared-types';
 import type { IamInstanceDetail, IamTenantIamAxisStatus } from '@sva/core';
-import type { OperationsPrimaryAction, RealmOperationsModel } from './-instance-detail-operations-types';
+import type {
+  OperationsPrimaryAction,
+  RealmOperationsModel,
+} from './-instance-detail-operations-types';
+import type { RequiredPluginReadinessAssessment } from './-instance-required-plugin-readiness';
 
 export type InstanceDoctorCheck = {
   readonly key: string;
@@ -33,13 +40,11 @@ export type InstanceDoctorModel = {
   readonly repairActions: readonly InstanceDoctorAction[];
   readonly validationActions: readonly InstanceDoctorAction[];
   readonly validationState: 'ready' | 'blocked' | 'degraded';
-  readonly warning:
-    | {
-        readonly tone: 'blocked' | 'degraded';
-        readonly title: string;
-        readonly summary: string;
-      }
-    | null;
+  readonly warning: {
+    readonly tone: 'blocked' | 'degraded';
+    readonly title: string;
+    readonly summary: string;
+  } | null;
 };
 
 const mapPreflightStatus = (status?: string): IamTenantIamAxisStatus => {
@@ -83,6 +88,7 @@ const dedupeActions = (actions: readonly InstanceDoctorAction[]) => {
 const buildChecks = (
   instance: IamInstanceDetail,
   configurationAssessment: InstanceConfigurationAssessment,
+  requiredPluginReadiness: RequiredPluginReadinessAssessment | null
 ): InstanceDoctorCheck[] => {
   const tenantIamStatus = getEffectiveTenantIamStatus(instance);
   const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
@@ -93,9 +99,21 @@ const buildChecks = (
       title: t('admin.instances.doctor.checks.configuration'),
       summary: configurationAssessment.body,
       status: mapConfigurationStatusToCockpitStatus(configurationAssessment.overallStatus),
-      sourceLabel: getCockpitSourceLabel(instance.keycloakStatus ? 'keycloak_status_snapshot' : 'registry'),
+      sourceLabel: getCockpitSourceLabel(
+        instance.keycloakStatus ? 'keycloak_status_snapshot' : 'registry'
+      ),
     },
   ];
+
+  if (requiredPluginReadiness) {
+    checks.push({
+      key: 'required-plugin-readiness',
+      title: t('admin.instances.pluginReadiness.title'),
+      summary: requiredPluginReadiness.summary,
+      status: requiredPluginReadiness.status,
+      sourceLabel: t('admin.instances.pluginReadiness.title'),
+    });
+  }
 
   if (tenantIamStatus?.access) {
     checks.push({
@@ -126,9 +144,9 @@ const buildChecks = (
       key: 'preflight',
       title: t('admin.instances.doctor.checks.preflight'),
       summary:
-        instance.keycloakPreflight.checks.find((check) => check.status !== 'ready')?.summary
-        ?? instance.keycloakPreflight.checks[0]?.summary
-        ?? t('admin.instances.flow.preflightEmpty'),
+        instance.keycloakPreflight.checks.find((check) => check.status !== 'ready')?.summary ??
+        instance.keycloakPreflight.checks[0]?.summary ??
+        t('admin.instances.flow.preflightEmpty'),
       status: mapPreflightStatus(instance.keycloakPreflight.overallStatus),
       sourceLabel: getCockpitSourceLabel('keycloak_status_snapshot'),
       checkedAt: instance.keycloakPreflight.checkedAt,
@@ -150,7 +168,9 @@ const buildChecks = (
   return checks;
 };
 
-const readValidationState = (checks: readonly InstanceDoctorCheck[]): InstanceDoctorModel['validationState'] => {
+const readValidationState = (
+  checks: readonly InstanceDoctorCheck[]
+): InstanceDoctorModel['validationState'] => {
   if (checks.some((check) => check.status === 'blocked')) {
     return 'blocked';
   }
@@ -171,7 +191,9 @@ const readValidationSummary = (validationState: InstanceDoctorModel['validationS
   }
 };
 
-const toDoctorAction = (action: OperationsPrimaryAction | InstanceDoctorAction): InstanceDoctorAction => ({
+const toDoctorAction = (
+  action: OperationsPrimaryAction | InstanceDoctorAction
+): InstanceDoctorAction => ({
   action: action.action,
   label: action.label,
 });
@@ -182,16 +204,23 @@ export const buildInstanceDoctorModel = ({
   mutationError,
   operationsModel,
   primaryAction,
+  requiredPluginReadiness = null,
 }: {
   instance: IamInstanceDetail;
   configurationAssessment: InstanceConfigurationAssessment;
   mutationError: IamHttpError | null;
   operationsModel: RealmOperationsModel;
   primaryAction: OperationsPrimaryAction;
+  requiredPluginReadiness?: RequiredPluginReadinessAssessment | null;
 }): InstanceDoctorModel => {
-  const checks = buildChecks(instance, configurationAssessment);
+  const checks = buildChecks(instance, configurationAssessment, requiredPluginReadiness);
   const validationState = readValidationState(checks);
-  const cockpitModel = buildInstanceDetailCockpitModel(instance, mutationError);
+  const cockpitModel = buildInstanceDetailCockpitModel(
+    instance,
+    mutationError,
+    configurationAssessment,
+    requiredPluginReadiness
+  );
   const firstNonReadyCheck = checks.find((check) => check.status !== 'ready');
 
   const recommendedAction = {
@@ -202,17 +231,38 @@ export const buildInstanceDoctorModel = ({
   const repairActions = dedupeActions([
     toDoctorAction(primaryAction),
     ...(instance.tenantAdminBootstrap?.username?.trim()
-      ? [{ action: 'reset_tenant_admin' as const, label: getOperationsActionLabel('reset_tenant_admin') }]
+      ? [
+          {
+            action: 'reset_tenant_admin' as const,
+            label: getOperationsActionLabel('reset_tenant_admin'),
+          },
+        ]
       : []),
     ...(operationsModel.mode === 'new'
-      ? [{ action: 'execute_provisioning' as const, label: getOperationsActionLabel('execute_provisioning') }]
-      : [{ action: 'reconcileKeycloak' as const, label: getOperationsActionLabel('reconcileKeycloak') }]),
+      ? [
+          {
+            action: 'execute_provisioning' as const,
+            label: getOperationsActionLabel('execute_provisioning'),
+          },
+        ]
+      : [
+          {
+            action: 'reconcileKeycloak' as const,
+            label: getOperationsActionLabel('reconcileKeycloak'),
+          },
+        ]),
   ]);
 
   const validationActions = dedupeActions([
     { action: 'check_preflight' as const, label: getOperationsActionLabel('check_preflight') },
-    { action: 'check_keycloak_status' as const, label: getOperationsActionLabel('check_keycloak_status') },
-    { action: 'probeTenantIamAccess' as const, label: getOperationsActionLabel('probeTenantIamAccess') },
+    {
+      action: 'check_keycloak_status' as const,
+      label: getOperationsActionLabel('check_keycloak_status'),
+    },
+    {
+      action: 'probeTenantIamAccess' as const,
+      label: getOperationsActionLabel('probeTenantIamAccess'),
+    },
   ]);
 
   return {

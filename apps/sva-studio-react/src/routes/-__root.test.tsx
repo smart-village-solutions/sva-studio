@@ -138,6 +138,15 @@ describe('root route document', () => {
     });
   });
 
+  it('publishes the server-resolved plugin route scope for hydration', async () => {
+    const { getRootHead } = await import('./__root');
+
+    expect(getRootHead({ loaderData: { pluginRouteScope: 'tenant' } }).meta).toContainEqual({
+      name: 'sva-plugin-route-scope',
+      content: 'tenant',
+    });
+  });
+
   it('renders the app shell and focuses main content from the skip link', async () => {
     const { RootDocument } = await import('./__root');
 

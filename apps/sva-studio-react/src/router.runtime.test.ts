@@ -34,6 +34,7 @@ const routerMocks = vi.hoisted(() => {
   const getServerRouteFactoriesSpy = vi.fn(() => [routeFactorySpy]);
   const parseRuntimeProfile = vi.fn((value: unknown) => (typeof value === 'string' ? value : null));
   const isMockAuthRuntimeProfile = vi.fn((value: unknown) => value === 'mock-profile');
+  const resolveAuthConfigForRequest = vi.fn(async () => ({ kind: 'platform' as const }));
 
   return {
     createRouterSpy,
@@ -46,6 +47,7 @@ const routerMocks = vi.hoisted(() => {
     parseRuntimeProfile,
     rootRoute,
     routeFactorySpy,
+    resolveAuthConfigForRequest,
   };
 });
 
@@ -90,6 +92,10 @@ vi.mock('@sva/routing', () => ({
 
 vi.mock('@sva/routing/server', () => ({
   getServerRouteFactories: routerMocks.getServerRouteFactoriesSpy,
+}));
+
+vi.mock('@sva/auth-runtime/server', () => ({
+  resolveAuthConfigForRequest: routerMocks.resolveAuthConfigForRequest,
 }));
 
 vi.mock('@sva/core', async (importOriginal) => ({
@@ -142,8 +148,13 @@ describe('router runtime helpers', () => {
     routerMocks.fetchWithRequestTimeoutSpy.mockReset();
     routerMocks.getClientRouteFactoriesSpy.mockClear();
     routerMocks.getRequestSpy.mockClear();
+    routerMocks.getRequestSpy.mockReturnValue(
+      new Request('https://studio.example.org/admin/users')
+    );
     routerMocks.getServerRouteFactoriesSpy.mockClear();
     routerMocks.routeFactorySpy.mockClear();
+    routerMocks.resolveAuthConfigForRequest.mockClear();
+    routerMocks.resolveAuthConfigForRequest.mockResolvedValue({ kind: 'platform' });
     routerMocks.rootRoute.addChildren.mockClear();
     routerMocks.parseRuntimeProfile.mockClear();
     routerMocks.isMockAuthRuntimeProfile.mockClear();
@@ -156,6 +167,7 @@ describe('router runtime helpers', () => {
         cookieState = value;
       },
     });
+    document.head.querySelector('meta[name="sva-plugin-route-scope"]')?.remove();
   });
 
   afterEach(() => {
@@ -272,6 +284,7 @@ describe('router runtime helpers', () => {
       ],
       bindings: { home: expect.any(Function) },
       plugins: [{ id: 'plugin-a' }],
+      pluginScope: 'platform',
     });
     expect(routerMocks.routeFactorySpy).toHaveBeenCalledWith(routerMocks.rootRoute);
     expect(routerMocks.rootRoute.addChildren).toHaveBeenCalledWith([{ id: 'materialized-route' }]);
@@ -384,13 +397,13 @@ describe('router runtime helpers', () => {
       assignedModules: ['news'],
     });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenNthCalledWith(
-      2,
+      3,
       'http://localhost:3000/api/v1/iam/me/context',
       { credentials: 'include' },
       { timeoutMs: 5_000 }
     );
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenNthCalledWith(
-      3,
+      4,
       'http://localhost:3000/iam/me/permissions?instanceId=instance-1&organizationId=org-1',
       { credentials: 'include' },
       { timeoutMs: 5_000 }
@@ -545,12 +558,116 @@ describe('router runtime helpers', () => {
       ],
       bindings: { home: expect.any(Function) },
       plugins: [{ id: 'plugin-a' }],
+      pluginScope: 'platform',
     });
     expect(routerMocks.routeFactorySpy).toHaveBeenCalledWith(routerMocks.rootRoute);
     expect(router).toEqual(
       expect.objectContaining({
         __router: true,
       })
+    );
+  });
+
+  it('materializes tenant routes for a server-readable dev-auth session', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+    routerMocks.getRequestSpy.mockReturnValueOnce({
+      url: 'https://studio.example.org/plugins/waste-management',
+      headers: new Headers({ cookie: 'sva_dev_auth=1' }),
+    } as Request);
+    const { getRouter } = await import('./router');
+
+    routerMocks.executionMode.current = 'server';
+    await getRouter();
+
+    expect(routerMocks.resolveAuthConfigForRequest).not.toHaveBeenCalled();
+    expect(routerMocks.getServerRouteFactoriesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
+    );
+  });
+
+  it('materializes tenant routes for a client-readable dev-auth session', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+    cookieState = 'sva_dev_auth=1';
+    const { getRouter } = await import('./router');
+
+    await getRouter();
+
+    expect(routerMocks.fetchWithRequestTimeoutSpy).not.toHaveBeenCalled();
+    expect(routerMocks.getClientRouteFactoriesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
+    );
+  });
+
+  it('uses platform routes for invalid non-tenant hosts without hiding other auth failures', async () => {
+    const { getRouter } = await import('./router');
+
+    routerMocks.executionMode.current = 'server';
+    routerMocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      Object.assign(new Error('invalid host'), {
+        name: 'TenantAuthResolutionError',
+        reason: 'tenant_host_invalid',
+      })
+    );
+
+    await expect(getRouter()).resolves.toEqual(expect.objectContaining({ __router: true }));
+    expect(routerMocks.getServerRouteFactoriesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pluginScope: 'platform' })
+    );
+
+    routerMocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      Object.assign(new Error('tenant database unavailable'), {
+        name: 'TenantAuthResolutionError',
+        reason: 'tenant_not_found',
+      })
+    );
+
+    await expect(getRouter()).rejects.toThrow('tenant database unavailable');
+  });
+
+  it('materializes only tenant plugin routes for a tenant session', async () => {
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ user: { instanceId: 'instance-1', roles: ['editor'] } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    const { getRouter } = await import('./router');
+
+    await getRouter();
+
+    expect(routerMocks.getClientRouteFactoriesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
+    );
+  });
+
+  it('keeps the tenant plugin tree on an unauthenticated tenant host', async () => {
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
+      new Response(null, {
+        status: 401,
+        headers: { 'X-SVA-Plugin-Route-Scope': 'tenant' },
+      })
+    );
+    const { getRouter } = await import('./router');
+
+    await getRouter();
+
+    expect(routerMocks.getClientRouteFactoriesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
+    );
+  });
+
+  it('keeps the server-declared tenant tree when auth me is temporarily unavailable', async () => {
+    const scopeMeta = document.createElement('meta');
+    scopeMeta.name = 'sva-plugin-route-scope';
+    scopeMeta.content = 'tenant';
+    document.head.append(scopeMeta);
+    routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('network unavailable'));
+    const { getRouter } = await import('./router');
+
+    await getRouter();
+
+    expect(routerMocks.getClientRouteFactoriesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginScope: 'tenant' })
     );
   });
 });

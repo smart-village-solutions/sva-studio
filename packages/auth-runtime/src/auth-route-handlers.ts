@@ -1,5 +1,5 @@
 import { serialize as serializeCookie } from 'cookie-es';
-import type { IamUserGroupAssignment } from '@sva/core';
+import { PLUGIN_ROUTE_SCOPE_HEADER_NAME, type IamUserGroupAssignment } from '@sva/core';
 import {
   createSdkLogger,
   getWorkspaceContext,
@@ -22,6 +22,7 @@ import { resolveEffectivePermissions } from './iam-authorization/permission-stor
 import { filterTenantEffectivePermissions } from './iam-authorization/root-only-permissions.js';
 import { withInstanceScopedDb } from './iam-authorization/shared.js';
 import { withRegistryRepository } from './iam-instance-registry/repository.js';
+import { resolveConfiguredPluginTenantModuleAccess } from './plugin-tenant-lifecycle/access.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import {
   decodeLoginStateCookie,
@@ -114,7 +115,7 @@ const summarizeRequestUrl = (
 
 const createAuthDependencyErrorResponse = (
   request: Request,
-  operation: 'auth_callback' | 'auth_login' | 'auth_logout',
+  operation: 'auth_callback' | 'auth_login' | 'auth_logout' | 'auth_me',
   error: unknown
 ): Response => {
   const requestId = getWorkspaceContext().requestId;
@@ -520,6 +521,7 @@ type AuthMeResolution = {
   readonly permissionActions: string[];
   readonly permissionStatus: 'ok' | 'degraded';
   readonly assignedModules: string[];
+  readonly moduleAccessPending: boolean;
   readonly groups: readonly IamUserGroupAssignment[];
 };
 
@@ -962,16 +964,23 @@ const loadAuthMePermissionState = async (user: {
   };
 };
 
-const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Promise<string[]> => {
+const loadAssignedModulesForAuthMe = async (user: {
+  instanceId?: string;
+}): Promise<Pick<AuthMeResolution, 'assignedModules' | 'moduleAccessPending'>> => {
   if (!user.instanceId) {
-    return [];
+    return { assignedModules: [], moduleAccessPending: false };
   }
   const instanceId = user.instanceId;
 
   try {
-    return Array.from(
+    const assignedModules = Array.from(
       await withRegistryRepository((repository) => repository.listAssignedModules(instanceId))
     );
+    const access = await resolveConfiguredPluginTenantModuleAccess(instanceId, assignedModules);
+    return {
+      assignedModules: Array.from(access.accessibleModules),
+      moduleAccessPending: access.hasPendingLifecycleAccess,
+    };
   } catch (error) {
     logger.error('Auth me assigned module lookup failed', {
       endpoint: '/auth/me',
@@ -980,7 +989,7 @@ const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Prom
       reason_code: 'assigned_module_lookup_failed',
       ...buildLogContext({ kind: 'instance', instanceId }),
     });
-    return [];
+    return { assignedModules: [], moduleAccessPending: true };
   }
 };
 
@@ -1086,13 +1095,13 @@ const resolveAuthMeState = async (user: {
   instanceId?: string;
 }): Promise<AuthMeResolution> => {
   const permissionState = await loadAuthMePermissionState(user);
-  const assignedModules = await loadAssignedModulesForAuthMe(user);
+  const moduleAccess = await loadAssignedModulesForAuthMe(user);
   const instanceDisplayName = await loadInstanceDisplayNameForAuthMe(user);
   const groups = await loadGroupsForAuthMe(user);
 
   return {
     ...permissionState,
-    assignedModules,
+    ...moduleAccess,
     groups,
     instanceDisplayName,
   };
@@ -1114,6 +1123,7 @@ const createAuthMeResponse = (
       user: {
         ...user,
         assignedModules: resolution.assignedModules,
+        moduleAccessPending: resolution.moduleAccessPending,
         groups: resolution.groups,
         ...(resolution.instanceDisplayName
           ? { instanceDisplayName: resolution.instanceDisplayName }
@@ -1449,11 +1459,34 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
 export const meHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    let authConfig;
+    try {
+      authConfig = await resolveAuthConfigForRequest(request);
+    } catch (error) {
+      const response = createAuthDependencyErrorResponse(request, 'auth_me', error);
+      response.headers.set(
+        PLUGIN_ROUTE_SCOPE_HEADER_NAME,
+        error instanceof TenantAuthResolutionError && error.reason === 'tenant_host_invalid'
+          ? 'platform'
+          : 'tenant'
+      );
+      return response;
+    }
+    const attachPluginRouteScope = (response: Response): Response => {
+      response.headers.set(
+        PLUGIN_ROUTE_SCOPE_HEADER_NAME,
+        authConfig.kind === 'instance' ? 'tenant' : 'platform'
+      );
+      return response;
+    };
+
     if (isActiveDevAuthRequest(request)) {
-      return new Response(JSON.stringify({ user: createMockSessionUser() }), {
-        status: 200,
-        headers: createAuthMeHeaders(),
-      });
+      return attachPluginRouteScope(
+        new Response(JSON.stringify({ user: createMockSessionUser() }), {
+          status: 200,
+          headers: createAuthMeHeaders(),
+        })
+      );
     }
 
     logger.info('Auth me request received', {
@@ -1466,26 +1499,35 @@ export const meHandler = async (request: Request): Promise<Response> => {
       ...buildLogContext(),
     });
 
-    return withAuthenticatedUser(request, async ({ user, sessionExpiresAt, sessionId }) => {
-      const resolution = await resolveAuthMeState(user);
+    const response = await withAuthenticatedUser(
+      request,
+      async ({ user, sessionExpiresAt, sessionId }) => {
+        const resolution = await resolveAuthMeState(user);
 
-      logger.debug('Auth check successful', {
-        endpoint: '/auth/me',
-        auth_state: 'authenticated',
-        operation: 'get_current_user',
-        roles_count: user.roles?.length ?? 0,
-        groups_count: resolution.groups.length,
-        permission_actions_count: resolution.permissionActions.length,
-        permission_status: resolution.permissionStatus,
-        ...buildLogContext(
-          user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined
-        ),
-      });
+        logger.debug('Auth check successful', {
+          endpoint: '/auth/me',
+          auth_state: 'authenticated',
+          operation: 'get_current_user',
+          roles_count: user.roles?.length ?? 0,
+          groups_count: resolution.groups.length,
+          permission_actions_count: resolution.permissionActions.length,
+          permission_status: resolution.permissionStatus,
+          ...buildLogContext(
+            user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined
+          ),
+        });
 
-      const response = createAuthMeResponse(user, resolution, sessionExpiresAt);
-      attachSessionCookie(response, getAuthConfig().sessionCookieName, sessionId, sessionExpiresAt);
-      return response;
-    });
+        const response = createAuthMeResponse(user, resolution, sessionExpiresAt);
+        attachSessionCookie(
+          response,
+          getAuthConfig().sessionCookieName,
+          sessionId,
+          sessionExpiresAt
+        );
+        return response;
+      }
+    );
+    return attachPluginRouteScope(response);
   });
 };
 

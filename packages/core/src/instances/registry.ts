@@ -58,6 +58,7 @@ export type InstanceProvisioningRun = {
   readonly status: InstanceStatus;
   readonly stepKey?: string;
   readonly idempotencyKey: string;
+  readonly payloadFingerprint?: string;
   readonly errorCode?: string;
   readonly errorMessage?: string;
   readonly requestId?: string;
@@ -78,6 +79,7 @@ export type InstanceAuditEvent = {
     | 'tenant_iam_access_probed'
     | 'instance_module_assigned'
     | 'instance_module_revoked'
+    | 'instance_module_policy_reconciled'
     | 'instance_module_iam_seeded'
     | 'instance_admin_bootstrapped'
     | 'instance_confirmation_accepted'
@@ -89,24 +91,12 @@ export type InstanceAuditEvent = {
 };
 
 export type InstanceKeycloakProvisioningIntent =
-  | 'provision'
-  | 'provision_admin_client'
-  | 'reset_tenant_admin'
-  | 'rotate_client_secret';
+  'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
 
-export type InstanceKeycloakProvisioningRunStatus =
-  | 'planned'
-  | 'running'
-  | 'succeeded'
-  | 'failed';
+export type InstanceKeycloakProvisioningRunStatus = 'planned' | 'running' | 'succeeded' | 'failed';
 
 export type InstanceKeycloakProvisioningStepStatus =
-  | 'pending'
-  | 'running'
-  | 'done'
-  | 'failed'
-  | 'skipped'
-  | 'unchanged';
+  'pending' | 'running' | 'done' | 'failed' | 'skipped' | 'unchanged';
 
 export type InstanceKeycloakCheckStatus = 'ready' | 'warning' | 'blocked';
 
@@ -185,14 +175,20 @@ export const isValidParentDomain = (value: string): boolean => {
   const labels = normalized.split('.');
   return (
     labels.length >= 2 &&
-    labels.every((label) => label.length > 0 && !label.startsWith(PUNYCODE_PREFIX) && HOST_LABEL_REGEX.test(label))
+    labels.every(
+      (label) =>
+        label.length > 0 && !label.startsWith(PUNYCODE_PREFIX) && HOST_LABEL_REGEX.test(label)
+    )
   );
 };
 
 export const isValidHostname = (value: string): boolean => {
   const normalized = normalizeHost(value);
   const labels = normalized.split('.');
-  return labels.every((label) => label.length > 0 && !label.startsWith(PUNYCODE_PREFIX) && HOST_LABEL_REGEX.test(label));
+  return labels.every(
+    (label) =>
+      label.length > 0 && !label.startsWith(PUNYCODE_PREFIX) && HOST_LABEL_REGEX.test(label)
+  );
 };
 
 export const buildPrimaryHostname = (instanceId: string, parentDomain: string): string =>

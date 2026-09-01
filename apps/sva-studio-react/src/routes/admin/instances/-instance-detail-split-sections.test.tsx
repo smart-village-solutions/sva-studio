@@ -14,6 +14,17 @@ import type {
   OperationsSectionProps,
 } from './-instance-detail-view-shared';
 
+vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
+  usePluginTenantReadiness: () => ({
+    items: [],
+    isLoading: false,
+    activeAction: null,
+    error: null,
+    refresh: vi.fn(),
+    startRepair: vi.fn(),
+  }),
+}));
+
 const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
   mockStudioModuleIamContracts: [
     {
@@ -59,6 +70,7 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     parentDomain: 'studio.example.org',
     primaryHostname: 'demo.studio.example.org',
     assignedModules: [],
+    moduleActivations: [],
     realmMode: 'new',
     authRealm: 'demo',
     authClientId: 'sva-studio-login',
@@ -432,6 +444,21 @@ describe('instance detail split sections', () => {
       <InstanceDetailOperationsSection
         selectedInstance={createDetailFixture({
           assignedModules: ['news'],
+          moduleActivations: [
+            {
+              instanceId: 'demo',
+              moduleId: 'news',
+              activationPolicy: 'automatic',
+              activationOrigin: 'manual',
+              effectiveActive: true,
+              manualOverride: 'enabled',
+              manifestVersion: 1,
+              policyRevision: 'news-1',
+              stateRevision: 2,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
           moduleIamStatus: undefined,
         })}
         detailFormValues={createDetailFormValues()}
@@ -450,6 +477,10 @@ describe('instance detail split sections', () => {
     expect(screen.getByText('poi')).toBeTruthy();
     expect(screen.getAllByText('Aktiv')).toHaveLength(1);
     expect(screen.getAllByText('Deaktiviert')).toHaveLength(2);
+    expect(screen.getByText('Automatisch')).toBeTruthy();
+    expect(screen.getByText('Manuelle Änderung')).toBeTruthy();
+    expect(screen.getByText('Aktiviert')).toBeTruthy();
+    expect(screen.getAllByText('Noch nicht materialisiert')).toHaveLength(4);
     expect(
       screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')
     ).toBeTruthy();
@@ -588,6 +619,14 @@ describe('instance detail split sections', () => {
           tenantSecretUserInputRequired={true}
           mutationError={null}
           statusLoading={false}
+          pluginReadiness={{
+            items: [],
+            isLoading: false,
+            activeAction: null,
+            error: null,
+            refresh: vi.fn(),
+            startRepair: vi.fn(),
+          }}
           setActiveWorkspaceTab={setActiveWorkspaceTab}
           setDetailFormValues={
             setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']

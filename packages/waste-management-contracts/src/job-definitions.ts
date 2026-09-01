@@ -1,10 +1,8 @@
-import {
-  definePluginJobTypes,
-  wasteManagementOperationsContract,
-  type PluginJobTypeDefinition,
-} from '@sva/plugin-sdk';
+// prettier-ignore
+import { definePluginJobTypes, wasteManagementOperationsContract, type PluginJobTypeDefinition } from '@sva/plugin-sdk';
 
 import { wastePostalCodeJobType } from './job-definitions.postal-code.js';
+import { wasteTenantReadinessJobType } from './tenant-readiness-job-definition.js';
 
 export { createWasteManagementPluginExportProfiles } from './export-profile-definitions.js';
 export { createWasteManagementPluginImportProfiles } from './import-profile-definitions.js';
@@ -39,6 +37,7 @@ const wasteManagementPluginJobTypes = [
       detailKeys: ['failed-step', 'error-code'],
     },
   },
+  wasteTenantReadinessJobType,
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,
     queue: wasteManagementOperationsContract.queueName,

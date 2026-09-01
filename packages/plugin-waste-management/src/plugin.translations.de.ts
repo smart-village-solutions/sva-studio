@@ -14,6 +14,7 @@ import { wasteManagementPluginTranslationsDETools } from './plugin.translations.
 import { wasteManagementPluginTranslationsDETours } from './plugin.translations.de.tours.js';
 import { wasteManagementPluginTranslationsDEScheduling } from './plugin.translations.de.scheduling.js';
 import { wasteManagementPluginTranslationsDEPermissions } from './plugin.translations.de.permissions.js';
+import { wasteManagementPluginTranslationsDEReadiness } from './plugin.translations.de.readiness.js';
 import { createWasteManagementPluginTranslationLocale } from './plugin.translations.shared.base.js';
 
 export const wasteManagementPluginTranslationsDE = createWasteManagementPluginTranslationLocale([
@@ -33,4 +34,5 @@ export const wasteManagementPluginTranslationsDE = createWasteManagementPluginTr
   wasteManagementPluginTranslationsDETours,
   wasteManagementPluginTranslationsDEScheduling,
   wasteManagementPluginTranslationsDEPermissions,
+  wasteManagementPluginTranslationsDEReadiness,
 ]);

@@ -4,6 +4,7 @@ import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
+import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
@@ -19,6 +20,7 @@ export const createProvisioningArtifacts = async (
     operation: 'create',
     status: 'requested',
     idempotencyKey: input.idempotencyKey,
+    payloadFingerprint: buildCreateInstancePayloadFingerprint(input),
     actorId: input.actorId,
     requestId: input.requestId,
   }));
@@ -42,7 +44,7 @@ export const provisionInstanceAuth = async (
   if (!deps.provisionInstanceAuth) {
     return instance;
   }
-
+  const payloadFingerprint = buildCreateInstancePayloadFingerprint(input);
   logger.info('provisioning_step_started', {
     operation: 'create_instance',
     step_key: 'keycloak',
@@ -55,10 +57,10 @@ export const provisionInstanceAuth = async (
     status: 'provisioning',
     stepKey: 'keycloak',
     idempotencyKey: input.idempotencyKey,
+    payloadFingerprint,
     actorId: input.actorId,
     requestId: input.requestId,
   });
-
   try {
     await deps.provisionInstanceAuth({
       instanceId: instance.instanceId,
@@ -86,6 +88,7 @@ export const provisionInstanceAuth = async (
       status: validatedInstance.status,
       stepKey: 'keycloak',
       idempotencyKey: input.idempotencyKey,
+      payloadFingerprint,
       actorId: input.actorId,
       requestId: input.requestId,
     });
@@ -113,6 +116,7 @@ export const provisionInstanceAuth = async (
       status: failedInstance.status,
       stepKey: 'keycloak',
       idempotencyKey: input.idempotencyKey,
+      payloadFingerprint,
       actorId: input.actorId,
       requestId: input.requestId,
       errorCode: 'keycloak_provisioning_failed',

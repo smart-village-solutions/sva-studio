@@ -133,8 +133,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
   },
   sync: {
     actionLabel: 'Synchronize',
-    startSuccess:
-      'Mainserver synchronization was started. The transfer can take up to one hour.',
+    startSuccess: 'Mainserver synchronization was started. The transfer can take up to one hour.',
     startError: 'Mainserver synchronization could not be started.',
   },
   reset: {
@@ -213,6 +212,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     updatedAt: 'Updated: {{value}}',
     phases: {
       'waste-management.provision-database': 'Database is being provisioned',
+      'waste-management.tenant-readiness': 'Database readiness is being checked',
       'waste-management.apply-migrations': 'Migrations are being applied',
       'waste-management.verify-access': 'Database access is being verified',
       'waste-management.initialize': 'Data source is being initialized',

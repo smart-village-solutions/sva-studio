@@ -11,6 +11,8 @@ import type {
   PermissionCatalogReconcileResult,
   ProtectedSystemRolePermissionBundleRecord,
   PrepareInstanceConfirmationChallengeInput,
+  TenantModuleActivationPolicyInput,
+  TenantModuleActivationReconcileResult,
 } from './repository-contract.js';
 import { createModuleIamRepository } from './repository-module-iam.js';
 import { createMutationRepository } from './repository-mutations.js';
@@ -28,9 +30,13 @@ export type {
   PermissionCatalogReconcileResult,
   ProtectedSystemRolePermissionBundleRecord,
   PrepareInstanceConfirmationChallengeInput,
+  TenantModuleActivationPolicyInput,
+  TenantModuleActivationReconcileResult,
 };
 
-export const createInstanceRegistryRepository = (executor: SqlExecutor): InstanceRegistryRepository => {
+export const createInstanceRegistryRepository = (
+  executor: SqlExecutor
+): InstanceRegistryRepository => {
   const permissionCacheRevisions = createPermissionCacheRevisionRepository(executor);
   return {
     ...createConfirmationChallengeRepository(executor),

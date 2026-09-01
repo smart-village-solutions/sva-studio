@@ -1,13 +1,32 @@
 import type { AuthenticatedRequestContext } from '../middleware.js';
 
 export const REGISTRY_ACTIONS = {
-  list: 'instance.list', read: 'instance.read', auditRead: 'instance.audit.read', diagnose: 'instance.diagnose',
-  provisionRunRead: 'instance.provision.run.read', create: 'instance.create', update: 'instance.update',
-  provisionPlan: 'instance.provision.plan', provisionExecute: 'instance.provision.execute', reconcile: 'instance.reconcile',
-  moduleAssign: 'instance.module.assign', moduleRevoke: 'instance.module.revoke', iamBaselineSeed: 'instance.iam.baseline.seed',
+  list: 'instance.list',
+  read: 'instance.read',
+  auditRead: 'instance.audit.read',
+  diagnose: 'instance.diagnose',
+  provisionRunRead: 'instance.provision.run.read',
+  create: 'instance.create',
+  update: 'instance.update',
+  provisionPlan: 'instance.provision.plan',
+  provisionExecute: 'instance.provision.execute',
+  reconcile: 'instance.reconcile',
+  moduleAssign: 'instance.module.assign',
+  moduleRevoke: 'instance.module.revoke',
+  iamBaselineSeed: 'instance.iam.baseline.seed',
   iamRolesReconcile: 'instance.iam.roles.reconcile',
-  adminBootstrap: 'instance.admin.bootstrap', statusActivate: 'instance.status.activate', statusSuspend: 'instance.status.suspend',
-  statusArchive: 'instance.status.archive', secretRotate: 'instance.secret.rotate', confirmationPrepare: 'instance.confirmation.prepare',
+  adminBootstrap: 'instance.admin.bootstrap',
+  statusActivate: 'instance.status.activate',
+  statusSuspend: 'instance.status.suspend',
+  statusArchive: 'instance.status.archive',
+  secretRotate: 'instance.secret.rotate',
+  confirmationPrepare: 'instance.confirmation.prepare',
+  pluginLifecycleRead: 'instance.pluginLifecycle.read',
+  pluginLifecycleProvision: 'instance.pluginLifecycle.provision',
+  pluginLifecycleReadiness: 'instance.pluginLifecycle.readiness',
+  pluginLifecycleReconcile: 'instance.pluginLifecycle.reconcile',
+  pluginLifecycleSuspend: 'instance.pluginLifecycle.suspend',
+  pluginLifecycleReactivate: 'instance.pluginLifecycle.reactivate',
 } as const;
 
 export type RegistryActionId = (typeof REGISTRY_ACTIONS)[keyof typeof REGISTRY_ACTIONS];

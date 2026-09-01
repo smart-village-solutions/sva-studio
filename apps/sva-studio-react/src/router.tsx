@@ -2,6 +2,7 @@ import { studioAdminResources, studioPlugins } from './lib/plugins';
 import { createRouter, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
+import { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/plugin-sdk';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 
 import {
@@ -11,24 +12,60 @@ import {
 } from './lib/dev-auth';
 import { fetchWithRequestTimeout } from './lib/iam-api';
 import { fetchAuthMeSingleFlight } from './lib/auth-me-singleflight';
+import {
+  readDocumentPluginRouteScope,
+  readPluginRouteScope,
+  type PluginRouteScope,
+} from './lib/plugin-route-scope';
 import { appRouteBindings } from './routing/app-route-bindings';
 import { rootRoute } from './routes/__root';
 
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {
-    const mod = await import('@sva/routing/server');
+    const [{ getRequest }, { resolveServerPluginRouteScope }, mod] = await Promise.all([
+      import('@tanstack/react-start/server'),
+      import('./lib/plugin-route-scope.server'),
+      import('@sva/routing/server'),
+    ]);
+    const request = getRequest();
+    const pluginScope = await resolveServerPluginRouteScope(request);
     return mod.getServerRouteFactories({
       bindings: appRouteBindings,
       adminResources: studioAdminResources,
       plugins: studioPlugins,
+      pluginScope,
     });
   })
   .client(async () => {
     const mod = await import('@sva/routing');
+    let pluginScope: PluginRouteScope = readDocumentPluginRouteScope() ?? 'platform';
+    if (isDevAuthAvailable() && hasActiveDevAuthSession()) {
+      pluginScope = 'tenant';
+    } else {
+      try {
+        const response = await fetchWithRequestTimeout(
+          new URL('/auth/me', resolveBaseUrl()).toString(),
+          { credentials: 'include' },
+          { timeoutMs: 5_000 }
+        );
+        const declaredScope = readPluginRouteScope(
+          response?.headers.get(PLUGIN_ROUTE_SCOPE_HEADER_NAME)
+        );
+        if (declaredScope) {
+          pluginScope = declaredScope;
+        } else {
+          const user = response?.ok ? readRouteGuardUser(await response.json()) : null;
+          pluginScope = user?.instanceId ? 'tenant' : 'platform';
+        }
+      } catch {
+        // Der SSR-Scope bleibt erhalten, wenn die Session-Abfrage beim Hydrieren technisch ausfällt.
+      }
+    }
     return mod.getClientRouteFactories({
       bindings: appRouteBindings,
       adminResources: studioAdminResources,
       plugins: studioPlugins,
+      pluginScope,
     });
   });
 
@@ -314,9 +351,6 @@ type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
 };
 
 const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factories: TFactories) =>
-  // TanStack Router: createRootRoute() liefert einen konkreten Typ, der nicht
-  // direkt mit dem generischen RootRoute-Parameter der Factories kompatibel ist.
-  // Workaround bis TanStack Router dies nativ unterstützt.
   factories.map((factory) =>
     factory(rootRoute as unknown as RootRoute)
   ) as MaterializedRoutes<TFactories>;
@@ -327,7 +361,6 @@ export const createRuntimeRouteTree = <TFactories extends readonly AppRouteFacto
   return rootRoute.addChildren([...runtimeRoutes]);
 };
 
-// Create a new router instance
 export const getRouter = async () => {
   const runtimeRouteFactories = await getRuntimeRouteFactories();
   const routeTree = createRuntimeRouteTree(runtimeRouteFactories);

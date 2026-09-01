@@ -16,6 +16,7 @@ vi.mock('@sva/server-runtime', async () => {
 });
 
 import { createInstanceRegistryService } from './service.js';
+import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
@@ -52,8 +53,37 @@ const latestRun = {
   operation: 'create' as const,
   status: 'requested' as const,
   idempotencyKey: 'idem-1',
+  payloadFingerprint: buildCreateInstancePayloadFingerprint({
+    instanceId: 'demo',
+    displayName: 'Demo',
+    parentDomain: 'studio.example.org',
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'studio-client',
+    idempotencyKey: 'idem-1',
+  }),
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const latestRunWithAuthSecret = {
+  ...latestRun,
+  payloadFingerprint: buildCreateInstancePayloadFingerprint({
+    instanceId: 'demo',
+    displayName: 'Demo',
+    parentDomain: 'studio.example.org',
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'studio-client',
+    authClientSecret: 'original-secret',
+    idempotencyKey: 'idem-1',
+  }),
+};
+
+const idempotentInstance = {
+  ...baseInstance,
+  authClientSecretConfigured: false,
+  tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
 };
 
 const createRepository = (
@@ -63,7 +93,19 @@ const createRepository = (
     listInstances: vi.fn(async () => [baseInstance]),
     getInstanceById: vi.fn(async () => baseInstance),
     listAssignedModules: vi.fn(async () => baseInstance.assignedModules),
+    listModuleActivations: vi.fn(async () => []),
+    getModuleActivationPolicy: vi.fn(async () => ({
+      activationPolicy: 'optional' as const,
+      activationOrigin: 'manual' as const,
+      effectiveActive: true,
+      manualOverride: 'enabled' as const,
+      reconcileId: null,
+      reconciledAt: null,
+      stateRevision: 1,
+      updatedBy: null,
+    })),
     assignModule: vi.fn(async () => true),
+    restoreModuleActivation: vi.fn(async () => true),
     revokeModule: vi.fn(async () => true),
     requestWasteProvisioning: vi.fn(async () => ({
       instanceId: 'demo',
@@ -80,6 +122,13 @@ const createRepository = (
     failWasteProvisioning: vi.fn(async () => null),
     failWasteProvisioningRequest: vi.fn(async () => null),
     syncAssignedModuleIam: vi.fn(async () => undefined),
+    persistPluginTenantLifecycleReconcileIntents: vi.fn(
+      async ({
+        lifecycles,
+      }: Parameters<
+        InstanceRegistryRepository['persistPluginTenantLifecycleReconcileIntents']
+      >[0]) => lifecycles.map(({ pluginId }) => pluginId)
+    ),
     syncProtectedSystemRolePermissions: vi.fn(async () => undefined),
     countLocalSystemAdminAssignments: vi.fn(async () => 1),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
@@ -474,10 +523,270 @@ describe('instance registry service facade', () => {
         realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'studio-client',
-        idempotencyKey: 'idem-1',
+        idempotencyKey: 'other-request',
       })
     ).resolves.toEqual({ ok: false, reason: 'already_exists' });
     expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
+  it('resumes policy reconciliation for an idempotent create retry', async () => {
+    const reconcileModuleActivationPolicies = vi.fn(async () => ({
+      changedModuleIds: [],
+      conflictModuleIds: [],
+      unchangedModuleIds: ['news'],
+    }));
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => idempotentInstance),
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+      reconcileModuleActivationPolicies,
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        pluginTenantLifecycleRegistry: new Map([
+          ['news', { pluginId: 'news', contractRevision: 'news-1:1' }],
+        ]),
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'catalog-1',
+          modules: [
+            {
+              moduleId: 'news',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: 'news-1',
+            },
+          ],
+        }),
+      })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', reconcileId: 'catalog-1' })
+    );
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo' })
+    );
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      lifecycles: [{ pluginId: 'news', contractRevision: 'news-1:1' }],
+      forcePluginIds: [],
+    });
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_policy_reconciled',
+        details: expect.objectContaining({ lifecycleIntents: ['news'] }),
+      })
+    );
+    expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
+  it('resolves a concurrent identical create after losing the instance insert race', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(idempotentInstance),
+      createInstance: vi.fn(async () => null),
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(repository.createInstance).toHaveBeenCalledTimes(1);
+    expect(repository.listProvisioningRuns).toHaveBeenCalledWith('demo');
+  });
+
+  it('waits for the winning create request to persist its idempotency evidence', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(idempotentInstance),
+      createInstance: vi.fn(async () => null),
+      listProvisioningRuns: vi.fn().mockResolvedValueOnce([]).mockResolvedValue([latestRun]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(repository.listProvisioningRuns).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects an idempotency key reused with a different create payload', async () => {
+    const reconcileModuleActivationPolicies = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+      reconcileModuleActivationPolicies,
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Changed display name',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
+
+    expect(reconcileModuleActivationPolicies).not.toHaveBeenCalled();
+    expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
+  it('rejects a create retry when its submitted secret differs from encrypted registry state', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'auth-cipher');
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+      })),
+      getAuthClientSecretCiphertext,
+      listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        revealSecret: vi.fn((value) => (value === 'auth-cipher' ? 'original-secret' : undefined)),
+      })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        authClientSecret: 'different-secret',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
+
+    expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
+  });
+
+  it('accepts a create retry when its submitted secret matches encrypted registry state', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'auth-cipher');
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+      })),
+      getAuthClientSecretCiphertext,
+      listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        revealSecret: vi.fn((value) => (value === 'auth-cipher' ? 'original-secret' : undefined)),
+      })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        authClientSecret: ' original-secret ',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
+  });
+
+  it('accepts an unchanged create retry after provisioning generated omitted secrets', async () => {
+    const getAuthClientSecretCiphertext = vi.fn();
+    const getTenantAdminClientSecretCiphertext = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      getAuthClientSecretCiphertext,
+      getTenantAdminClientSecretCiphertext,
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+  });
+
+  it('rejects a create retry when legacy evidence has no payload fingerprint', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      listProvisioningRuns: vi.fn(async () => [{ ...latestRun, payloadFingerprint: undefined }]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
   });
 
   it('creates requested instances, protects secrets and invalidates the primary host', async () => {
@@ -1027,7 +1336,13 @@ describe('instance registry service facade', () => {
           assignedModules: ['categories', 'events', 'news'],
         }),
     });
-    const service = createInstanceRegistryService(createDeps(repository));
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        pluginTenantLifecycleRegistry: new Map([
+          ['events', { pluginId: 'events', contractRevision: 'events-1:1' }],
+        ]),
+      })
+    );
 
     await expect(
       service.assignModule({
@@ -1044,7 +1359,7 @@ describe('instance registry service facade', () => {
       }),
     });
 
-    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events', 'events-1:1');
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
@@ -1061,6 +1376,11 @@ describe('instance registry service facade', () => {
         ]),
       })
     );
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      lifecycles: [{ pluginId: 'events', contractRevision: 'events-1:1' }],
+      forcePluginIds: [],
+    });
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'instance_module_assigned',
@@ -1134,7 +1454,13 @@ describe('instance registry service facade', () => {
           assignedModules: ['categories', 'events', 'news'],
         }),
     });
-    const service = createInstanceRegistryService(createDeps(repository));
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        pluginTenantLifecycleRegistry: new Map([
+          ['events', { pluginId: 'events', contractRevision: 'events-1:1' }],
+        ]),
+      })
+    );
 
     await expect(
       service.bootstrapAdminStructure({
@@ -1153,7 +1479,7 @@ describe('instance registry service facade', () => {
 
     expect(repository.assignModule).toHaveBeenCalledTimes(2);
     expect(repository.assignModule).toHaveBeenNthCalledWith(1, 'demo', 'categories');
-    expect(repository.assignModule).toHaveBeenNthCalledWith(2, 'demo', 'events');
+    expect(repository.assignModule).toHaveBeenNthCalledWith(2, 'demo', 'events', 'events-1:1');
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
@@ -1272,8 +1598,9 @@ describe('instance registry service facade', () => {
 
   it('rolls back newly assigned modules when bootstrap module IAM sync fails', async () => {
     const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => null),
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
-      revokeModule: vi.fn(async () => true),
+      restoreModuleActivation: vi.fn(async () => true),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
@@ -1297,16 +1624,127 @@ describe('instance registry service facade', () => {
     ).rejects.toThrow('sync_failed');
 
     expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
-    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith('demo', 'events', null);
+    expect(repository.revokeModule).not.toHaveBeenCalled();
     expect(repository.syncProtectedSystemRolePermissions).not.toHaveBeenCalled();
     expect(repository.appendAuditEvent).not.toHaveBeenCalled();
     expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
   });
 
+  it('restores an existing inactive activation after bootstrap IAM sync fails', async () => {
+    const inactiveState = {
+      activationPolicy: 'automatic' as const,
+      activationOrigin: 'policy_reconcile' as const,
+      effectiveActive: false,
+      manualOverride: null,
+      reconcileId: 'reconcile-1',
+      reconciledAt: '2026-08-30T12:00:00.000Z',
+      stateRevision: 7,
+      updatedBy: 'system',
+    };
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => inactiveState),
+      assignModule: vi.fn(async () => true),
+      restoreModuleActivation: vi.fn(async () => true),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-existing-rollback',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-existing-rollback',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith(
+      'demo',
+      'events',
+      inactiveState
+    );
+  });
+
+  it('rolls back earlier bootstrap assignments when a later advisory lock conflicts', async () => {
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => null),
+      assignModule: vi.fn(async (_instanceId: string, moduleId: string) => {
+        if (moduleId === 'events') {
+          throw new Error('plugin_activation_state_conflict:events');
+        }
+        return true;
+      }),
+      restoreModuleActivation: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news']),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-lock-conflict',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-lock-conflict',
+      })
+    ).rejects.toThrow('plugin_activation_state_conflict:events');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith('demo', 'categories', null);
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+  });
+
+  it('restores automatic activation state when IAM sync fails after a manual assignment', async () => {
+    const automaticState = {
+      activationPolicy: 'automatic' as const,
+      activationOrigin: 'policy_reconcile' as const,
+      effectiveActive: true,
+      manualOverride: null,
+      reconcileId: 'reconcile-1',
+      reconciledAt: '2026-08-30T12:00:00.000Z',
+      stateRevision: 7,
+      updatedBy: 'system',
+    };
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => automaticState),
+      assignModule: vi.fn(async () => true),
+      restoreModuleActivation: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-automatic-rollback',
+        actorId: 'actor-1',
+        requestId: 'req-module-automatic-rollback',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith(
+      'demo',
+      'events',
+      automaticState
+    );
+    expect(repository.revokeModule).not.toHaveBeenCalled();
+  });
+
   it('throws a bootstrap rollback error when reverting newly assigned modules also fails', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
-      revokeModule: vi.fn(async () => {
+      restoreModuleActivation: vi.fn(async () => {
         throw new Error('rollback_failed');
       }),
       listAssignedModules: vi
@@ -1348,10 +1786,10 @@ describe('instance registry service facade', () => {
     }
   });
 
-  it('throws a bootstrap rollback error when revokeModule reports that rollback did not remove a module', async () => {
+  it('throws a bootstrap rollback error when activation restoration reports no change', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
-      revokeModule: vi.fn(async () => false),
+      restoreModuleActivation: vi.fn(async () => false),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
@@ -1379,7 +1817,7 @@ describe('instance registry service facade', () => {
       );
       expect((error as Error).name).toBe('InstanceModuleBootstrapRollbackError');
       expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe(
-        'rollback_revoke_failed:events'
+        'rollback_restore_failed:events'
       );
     }
   });
@@ -1387,7 +1825,7 @@ describe('instance registry service facade', () => {
   it('invalidates instance permission snapshots after module IAM changes', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
-      revokeModule: vi.fn(async () => true),
+      restoreModuleActivation: vi.fn(async () => true),
       getInstanceById: vi.fn(async () => baseInstance),
       listAssignedModules: vi
         .fn()
@@ -1526,7 +1964,11 @@ describe('instance registry service facade', () => {
     ).rejects.toThrow('sync_failed');
 
     expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
-    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith(
+      'demo',
+      'events',
+      expect.objectContaining({ effectiveActive: true, manualOverride: 'enabled' })
+    );
     expect(repository.appendAuditEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'instance_module_assigned',
@@ -1538,7 +1980,7 @@ describe('instance registry service facade', () => {
   it('preserves sync and rollback failures when the rollback itself fails', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
-      revokeModule: vi.fn(async () => {
+      restoreModuleActivation: vi.fn(async () => {
         throw new Error('rollback_failed');
       }),
       listAssignedModules: vi.fn(async () => ['news', 'events']),
@@ -1634,6 +2076,32 @@ describe('instance registry service facade', () => {
         }),
       })
     );
+  });
+
+  it('rejects revocation of a persisted required plugin before changing IAM state', async () => {
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => ({
+        activationPolicy: 'required',
+        effectiveActive: true,
+        stateRevision: 3,
+      })),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).revokeModule({
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-required-revoke',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      reason: 'plugin_activation_required_cannot_disable',
+    });
+
+    expect(repository.revokeModule).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
   });
 
   it('disables waste provisioning on module revocation without deleting its state', async () => {

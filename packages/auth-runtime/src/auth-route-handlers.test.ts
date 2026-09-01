@@ -7,6 +7,7 @@ type SessionUser = {
   roles: string[];
   permissionStatus?: 'ok' | 'degraded';
   assignedModules?: string[];
+  moduleAccessPending?: boolean;
   groups?: readonly IamUserGroupAssignment[];
 };
 
@@ -36,12 +37,14 @@ const mocks = vi.hoisted(() => {
     ),
     withAuthenticatedUser: vi.fn(),
     resolveEffectivePermissions: vi.fn(),
+    resolveConfiguredPluginTenantModuleAccess: vi.fn(),
     withRegistryRepository: vi.fn(),
     withInstanceScopedDb: vi.fn(),
     isMockAuthEnabled: vi.fn(),
     hasActiveMockAuthSession: vi.fn(() => false),
     createMockSessionUser: vi.fn(),
     getAuthConfig: vi.fn(() => ({ sessionCookieName: 'sva_session' })),
+    resolveAuthConfigForRequest: vi.fn(),
     readCookieFromRequest: vi.fn(() => 'session-1'),
     appendSetCookie: vi.fn(),
   };
@@ -99,6 +102,10 @@ vi.mock('./iam-instance-registry/repository.js', () => ({
   withRegistryRepository: mocks.withRegistryRepository,
 }));
 
+vi.mock('./plugin-tenant-lifecycle/access.js', () => ({
+  resolveConfiguredPluginTenantModuleAccess: mocks.resolveConfiguredPluginTenantModuleAccess,
+}));
+
 vi.mock('./mock-auth.js', () => ({
   DEV_AUTH_COOKIE_NAME: 'sva_dev_auth',
   isMockAuthEnabled: mocks.isMockAuthEnabled,
@@ -108,7 +115,7 @@ vi.mock('./mock-auth.js', () => ({
 
 vi.mock('./config.js', () => ({
   getAuthConfig: mocks.getAuthConfig,
-  resolveAuthConfigForRequest: vi.fn(),
+  resolveAuthConfigForRequest: mocks.resolveAuthConfigForRequest,
 }));
 
 vi.mock('./cookies.js', () => ({
@@ -193,6 +200,7 @@ describe('meHandler', () => {
 
     mocks.isMockAuthEnabled.mockReturnValue(false);
     mocks.hasActiveMockAuthSession.mockReturnValue(false);
+    mocks.resolveAuthConfigForRequest.mockResolvedValue(authConfigBase);
     mocks.createMockSessionUser.mockReturnValue({
       id: 'mock-user',
       instanceId: 'de-test',
@@ -229,6 +237,12 @@ describe('meHandler', () => {
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
     });
+    mocks.resolveConfiguredPluginTenantModuleAccess.mockImplementation(
+      async (_instanceId: string, assignedModules: readonly string[]) => ({
+        accessibleModules: assignedModules,
+        hasPendingLifecycleAccess: false,
+      })
+    );
     mocks.withRegistryRepository.mockImplementation(
       async (
         handler: (repository: {
@@ -290,11 +304,13 @@ describe('meHandler', () => {
     expect(response.headers.get('Content-Type')).toContain('application/json');
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(response.headers.get('Pragma')).toBe('no-cache');
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('platform');
 
     const payload = (await response.json()) as {
       user: {
         id: string;
         assignedModules: string[];
+        moduleAccessPending: boolean;
         groups: IamUserGroupAssignment[];
         instanceDisplayName?: string;
         permissionActions: string[];
@@ -303,6 +319,7 @@ describe('meHandler', () => {
 
     expect(payload.user.id).toBe('kc-user-1');
     expect(payload.user.assignedModules).toEqual(['news']);
+    expect(payload.user.moduleAccessPending).toBe(false);
     expect(payload.user.instanceDisplayName).toBe('Tenant Test');
     expect(payload.user.groups).toEqual([
       {
@@ -321,7 +338,7 @@ describe('meHandler', () => {
     );
   });
 
-  it('returns fail-closed empty assignedModules when module lookup fails', async () => {
+  it('returns fail-closed empty assignedModules and keeps revalidation pending when lookup fails', async () => {
     const { meHandler } = await import('./auth-route-handlers.js');
 
     mocks.withRegistryRepository.mockRejectedValueOnce(new Error('db unavailable'));
@@ -336,8 +353,26 @@ describe('meHandler', () => {
       expect.objectContaining({ reason_code: 'assigned_module_lookup_failed', error_type: 'Error' })
     );
 
-    const payload = (await response.json()) as { user: { assignedModules: string[] } };
+    const payload = (await response.json()) as {
+      user: { assignedModules: string[]; moduleAccessPending: boolean };
+    };
     expect(payload.user.assignedModules).toEqual([]);
+    expect(payload.user.moduleAccessPending).toBe(true);
+  });
+
+  it('exposes pending lifecycle module access for tenant session revalidation', async () => {
+    mocks.resolveConfiguredPluginTenantModuleAccess.mockResolvedValueOnce({
+      accessibleModules: [],
+      hasPendingLifecycleAccess: true,
+    });
+
+    const response = await meHandler(createAuthMeRequest());
+
+    const payload = (await response.json()) as {
+      user: { assignedModules: string[]; moduleAccessPending: boolean };
+    };
+    expect(payload.user.assignedModules).toEqual([]);
+    expect(payload.user.moduleAccessPending).toBe(true);
   });
 
   it('returns fail-closed empty groups when group lookup fails', async () => {
@@ -376,6 +411,58 @@ describe('meHandler', () => {
       instanceId: 'de-test',
       roles: ['system_admin'],
     });
+  });
+
+  it('publishes the host-validated tenant route scope without requiring a session', async () => {
+    mocks.resolveAuthConfigForRequest.mockResolvedValueOnce({
+      ...authConfigBase,
+      kind: 'instance',
+      instanceId: 'de-test',
+    });
+    mocks.withAuthenticatedUser.mockResolvedValueOnce(new Response(null, { status: 401 }));
+
+    const response = await meHandler(new Request('https://de-test.example.org/auth/me'));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('tenant');
+  });
+
+  it('maps tenant auth resolution failures and publishes the tenant route scope', async () => {
+    const { TenantAuthResolutionError } = await import('./runtime-errors.js');
+    mocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      new TenantAuthResolutionError({
+        host: 'de-test.example.org',
+        reason: 'registry_unavailable',
+      })
+    );
+
+    const response = await meHandler(new Request('https://de-test.example.org/auth/me'));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('tenant');
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Auth route failed during tenant auth resolution',
+      expect.objectContaining({
+        operation: 'auth_me',
+        reason_code: 'scope_resolution_failed',
+        tenant_host: 'de-test.example.org',
+      })
+    );
+  });
+
+  it('publishes the platform route scope for an invalid tenant host', async () => {
+    const { TenantAuthResolutionError } = await import('./runtime-errors.js');
+    mocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      new TenantAuthResolutionError({
+        host: 'unknown.example.org',
+        reason: 'tenant_host_invalid',
+      })
+    );
+
+    const response = await meHandler(new Request('https://unknown.example.org/auth/me'));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('X-SVA-Plugin-Route-Scope')).toBe('platform');
   });
 
   it('skips permission lookup and returns empty permissionActions when user has no instanceId', async () => {

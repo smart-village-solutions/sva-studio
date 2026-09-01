@@ -31,6 +31,12 @@ export type {
   PermissionRequirementMode,
 } from './iam/permission-denial.js';
 export { isPlausibleEmailAddress } from './email-address.js';
+export {
+  inspectManualMediaUrl,
+  isPersistableManualMediaUrl,
+  isPersistableMediaAssetUrl,
+  type ManualMediaUrlInspection,
+} from './media-url.js';
 export { convertRichTextHtmlToPlainText } from './rich-text-plain-text.js';
 export {
   iamContentAccessReasonCodes,
@@ -100,6 +106,7 @@ export {
   studioJobRuntimeContract,
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
+export { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from './plugin-platform-contract.js';
 export {
   externalInterfaceContract,
   mailDispatchContract,
@@ -379,6 +386,13 @@ export type {
   WasteOutputFraction,
 } from './waste-management-output.types.js';
 export { buildWasteTypesStaticContent } from './waste-management-static-content.js';
+export type {
+  WasteDisruptionNotificationSettings,
+  WasteDisruptionStaticContentEntry,
+  WasteFractionStaticContentEntry,
+  WasteTypeStaticContentEntry,
+  WasteTypesStaticContentArtifact,
+} from './waste-management-static-content.js';
 export {
   assertWasteAnnualTourTransferLimits,
   wasteAnnualTourTransferLimits,
@@ -408,10 +422,6 @@ export {
   buildWasteAnnualTourTransferPreview,
   toWasteAnnualTourTransferPublicPreview,
 } from './waste-management-annual-tour-transfer.preview.js';
-export type {
-  WasteTypeStaticContentEntry,
-  WasteTypesStaticContentArtifact,
-} from './waste-management-static-content.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {
@@ -427,6 +437,21 @@ export {
   normalizeHost,
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
+export {
+  canDisableTenantModule,
+  resolveTenantModuleEffectiveActivation,
+  tenantModuleActivationOrigins,
+  tenantModuleActivationPolicies,
+  tenantModuleManualOverrides,
+} from './instances/module-activation.js';
+export type {
+  TenantModuleActivationOrigin,
+  TenantModuleActivationPolicy,
+  TenantModuleActivationPolicyDescriptor,
+  TenantModuleActivationPolicySnapshot,
+  TenantModuleActivationRecord,
+  TenantModuleManualOverride,
+} from './instances/module-activation.js';
 export {
   areAllInstanceKeycloakRequirementsSatisfied,
   INSTANCE_KEYCLOAK_REQUIREMENTS,

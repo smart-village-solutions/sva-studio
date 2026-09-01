@@ -121,6 +121,7 @@ groups:
     interval: 1m
     rules:
       # TODO: Aktivieren sobald Application Metriken verfügbar sind
+      # Plugin-Tenant-Lifecycle-Alerts bleiben bis zum produktiven OTEL-Pfad aus Issue #1237 deaktiviert.
 
   - name: iam_role_sync_alerts
     interval: 1m

@@ -63,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          filter: tree:0
+          fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm-workspace
       - name: Start Redis
         run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
@@ -106,16 +106,6 @@ jobs:
       - name: Prepare SonarCloud coverage report
         if: always() && env.SONAR_TOKEN != ''
         run: pnpm sonar:prepare-lcov
-      - name: Ensure full git history for SonarCloud
-        if: always() && env.SONAR_TOKEN != ''
-        run: |
-          set -euo pipefail
-          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
-            git fetch --unshallow --tags
-          else
-            git fetch --tags --prune
-          fi
-          git rev-parse --is-shallow-repository
       - name: Setup Java for SonarCloud
         if: always() && env.SONAR_TOKEN != ''
         uses: actions/setup-java@v5

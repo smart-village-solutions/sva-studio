@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto';
-
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
+import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
@@ -8,21 +7,6 @@ import { appendRunStep } from './service-keycloak-run-steps.js';
 const buildTempPasswordAad = (runId: string): string => `iam.instances.keycloak_run_temp_password:${runId}`;
 
 export type KeycloakProvisioningMutation = 'executeKeycloakProvisioning' | 'reconcileKeycloak';
-
-const normalizeForFingerprint = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    return value.map(normalizeForFingerprint);
-  }
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .filter(([, entryValue]) => entryValue !== undefined)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, entryValue]) => [key, normalizeForFingerprint(entryValue)])
-    );
-  }
-  return value;
-};
 
 export const buildKeycloakProvisioningPayloadFingerprint = (input: {
   readonly mutation: KeycloakProvisioningMutation;
@@ -38,9 +22,7 @@ export const buildKeycloakProvisioningPayloadFingerprint = (input: {
       : {
           rotateClientSecret: input.rotateClientSecret ?? false,
         };
-  return createHash('sha256')
-    .update(JSON.stringify(normalizeForFingerprint(payload)))
-    .digest('hex');
+  return buildPayloadFingerprint(payload);
 };
 
 export const buildProvisioningInput = (

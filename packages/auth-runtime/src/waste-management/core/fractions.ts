@@ -5,7 +5,7 @@ import { createApiError, parseRequestBody } from '../../shared/request-helpers.j
 import { emitWasteAuditEvent } from './auth.js';
 import {
   createWasteFractionMutationResponse,
-  enqueueWasteTypesSyncAfterFractionMutation,
+  enqueueWasteTypesSyncAfterMutation,
   normalizeWasteFractionReminderConfig,
   normalizeWasteFractionShortLabel,
   validateUniqueActiveWasteFractionShortLabel,
@@ -78,14 +78,18 @@ export const wasteManagementFractionHandlers = {
           active: parsed.data.active,
           reminderConfig,
         }),
-      loadSaved: () => requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, parsed.data.id),
+      loadSaved: () =>
+        requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(
+          instanceId,
+          parsed.data.id
+        ),
     });
 
     if (response.status >= 400) {
       return response;
     }
 
-    const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    const syncMetadata = await enqueueWasteTypesSyncAfterMutation(request, ctx, deps, instanceId);
     return await withWasteFractionSyncMetadata<WasteFractionRecord>(response, syncMetadata);
   },
   updateWasteManagementFractionInternal: async (
@@ -111,7 +115,12 @@ export const wasteManagementFractionHandlers = {
     const loadWasteFraction = requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById');
     const existing = await loadWasteFraction(instanceId, fractionId);
     if (!existing) {
-      return createApiError(404, 'not_found', 'Die Waste-Fraktion wurde nicht gefunden.', requestId);
+      return createApiError(
+        404,
+        'not_found',
+        'Die Waste-Fraktion wurde nicht gefunden.',
+        requestId
+      );
     }
     const duplicateShortLabelError = await validateUniqueActiveWasteFractionShortLabel(
       deps,
@@ -160,7 +169,7 @@ export const wasteManagementFractionHandlers = {
       return response;
     }
 
-    const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    const syncMetadata = await enqueueWasteTypesSyncAfterMutation(request, ctx, deps, instanceId);
     return await withWasteFractionSyncMetadata<WasteFractionRecord>(response, syncMetadata);
   },
   deleteWasteManagementFractionInternal: async (
@@ -177,9 +186,17 @@ export const wasteManagementFractionHandlers = {
     const { instanceId, requestId, resourceId: fractionId } = authorized;
 
     try {
-      const existing = await requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, fractionId);
+      const existing = await requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(
+        instanceId,
+        fractionId
+      );
       if (!existing) {
-        return createApiError(404, 'not_found', 'Die Waste-Fraktion wurde nicht gefunden.', requestId);
+        return createApiError(
+          404,
+          'not_found',
+          'Die Waste-Fraktion wurde nicht gefunden.',
+          requestId
+        );
       }
 
       await requireDeps(deps.deleteWasteFraction, 'deleteWasteFraction')(instanceId, fractionId);
@@ -195,13 +212,17 @@ export const wasteManagementFractionHandlers = {
       });
 
       await updateWasteVisibleStatus(deps, instanceId, 'success');
-      const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+      const syncMetadata = await enqueueWasteTypesSyncAfterMutation(request, ctx, deps, instanceId);
       return createWasteFractionMutationResponse(200, { id: fractionId }, requestId, syncMetadata);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
         throw error;
       }
-      const isConflict = typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === '23503';
+      const isConflict =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: string }).code === '23503';
       await emitWasteAuditEvent({
         deps,
         ctx,
@@ -214,8 +235,18 @@ export const wasteManagementFractionHandlers = {
       });
       await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
       return isConflict
-        ? createApiError(409, 'invalid_request', 'Die Waste-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden.', requestId)
-        : createApiError(503, 'database_unavailable', 'Die Waste-Fraktion konnte nicht gelöscht werden.', requestId);
+        ? createApiError(
+            409,
+            'invalid_request',
+            'Die Waste-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden.',
+            requestId
+          )
+        : createApiError(
+            503,
+            'database_unavailable',
+            'Die Waste-Fraktion konnte nicht gelöscht werden.',
+            requestId
+          );
     }
   },
 };

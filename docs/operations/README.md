@@ -22,6 +22,7 @@ Die Dokumente unterscheiden bewusst zwischen Überblick, technischer Infrastrukt
 - [IAM-Deployment-Runbook](./iam-deployment-runbook.md)
 - [IAM-Acceptance-Runbook](./iam-acceptance-runbook.md)
 - [Studio-Instanz-MCP-Betrieb](./studio-instance-mcp-betrieb.md)
+- [Plugin-Tenant-Lifecycle-Betrieb](./plugin-tenant-lifecycle-operations.md)
 - [Waste-Tenant-Datenbankbetrieb](./waste-tenant-database-operations.md)
 
 ## Weitere Runbooks und Betriebsverträge

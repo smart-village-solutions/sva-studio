@@ -5,7 +5,10 @@ import type {
   WasteAnnualTourTransferResult,
 } from '@sva/plugin-sdk';
 
-import { registerSharedIamRoutes } from './studio-shell.helpers';
+import {
+  establishServerReadableAuthSession,
+  registerSharedIamRoutes,
+} from './studio-shell.helpers';
 
 type WasteSettingsState = {
   provider: 'postgresql' | 'supabase';
@@ -662,25 +665,6 @@ const openWastePlugin = async (page: Page) => {
   await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
   await page.getByRole('link', { name: 'Abfallkalender' }).click();
   await expect(page.getByRole('heading', { name: 'Abfallkalender' })).toBeVisible();
-};
-
-const establishServerReadableAuthSession = async (context: BrowserContext, page: Page) => {
-  const origin = new URL(page.url()).origin;
-  const response = await context.request.post(
-    new URL('/auth/dev-login?returnTo=%2F', origin).toString(),
-    {
-      headers: {
-        Origin: origin,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      maxRedirects: 0,
-    }
-  );
-
-  // Credential-free suites use the server's Playwright-only dev-auth mode.
-  // When real auth credentials are configured, the endpoint stays disabled
-  // and the persisted Keycloak session already belongs to this context.
-  expect([302, 404]).toContain(response.status());
 };
 
 test.describe('waste management plugin', () => {

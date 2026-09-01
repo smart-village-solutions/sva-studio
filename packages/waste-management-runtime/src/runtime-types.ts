@@ -1,5 +1,6 @@
 import type { StudioJobProgress, WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
 import type {
+  PluginTenantLifecycleExecutionResult,
   WasteManagementApplyMigrationsJobInput,
   WasteManagementExportJobInput,
   WasteManagementImportJobInput,
@@ -33,6 +34,12 @@ export const createProgress = (input: {
 export type WasteManagementJobProgress = StudioJobProgress;
 
 export type WasteManagementOperationRuntime = {
+  readonly requestTenantDatabaseProvisioning: (
+    instanceId: string
+  ) => Promise<{ readonly desiredGeneration: number }>;
+  readonly readTenantDatabaseReadiness: (
+    instanceId: string
+  ) => Promise<PluginTenantLifecycleExecutionResult>;
   readonly provisionTenantDatabase: (
     instanceId: string,
     payload: WasteManagementProvisionTenantDatabaseJobInput,

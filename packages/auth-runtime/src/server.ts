@@ -1,4 +1,18 @@
 export {
+  configureInstanceRegistryPluginActivationPolicies,
+  configureInstanceRegistryPluginRuntimeSnapshot,
+  readInstanceRegistryModuleIamRegistry,
+  readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginTenantLifecycleRegistry,
+  type InstanceRegistryModuleIamSnapshotEntry,
+} from './iam-instance-registry/plugin-activation-policy-snapshot.js';
+export {
+  readPluginActivationPolicyFleetReconcileReport,
+  reconcileConfiguredPluginActivationPoliciesForAllInstances,
+  type PluginActivationPolicyFleetReconcileFailure,
+  type PluginActivationPolicyFleetReconcileReport,
+} from './iam-instance-registry/plugin-activation-policy-reconcile.js';
+export {
   readEffectiveSvaMainserverCredentials,
   readEffectiveSvaMainserverCredentialsWithStatus,
 } from './mainserver-effective-credentials.js';
@@ -61,6 +75,22 @@ export {
   stopPluginOperationWorker,
 } from './plugin-operations/runner.js';
 export {
+  createPluginTenantLifecycleOrchestrator,
+  pluginTenantLifecycleHostErrorCodes,
+} from './plugin-tenant-lifecycle/orchestrator.js';
+export { startConfiguredPluginTenantLifecycle } from './plugin-tenant-lifecycle/runtime.js';
+export { readConfiguredPluginTenantReadiness } from './plugin-tenant-lifecycle/read-model.js';
+export {
+  filterConfiguredPluginTenantAccessibleModules,
+  readConfiguredPluginTenantAccess,
+  resolveConfiguredPluginTenantModuleAccess,
+} from './plugin-tenant-lifecycle/access.js';
+export type {
+  PluginTenantLifecycleOrchestratorDependencies,
+  StartPluginTenantLifecycleInput,
+  StartPluginTenantLifecycleResult,
+} from './plugin-tenant-lifecycle/orchestrator.js';
+export {
   createAndQueueDsrExportStudioJob,
   dsrExportStudioJobRegistration,
   dsrExportStudioJobTypeId,
@@ -85,6 +115,11 @@ export {
   type PersistAuthAuditResult,
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
+export {
+  assertPluginServerHandlerCoverage,
+  createPluginServerHandlerDispatcher,
+  type PluginServerHandlerDispatcherDependencies,
+} from './plugin-server-handlers/dispatcher.js';
 export { ensureFeature, getFeatureFlags } from './iam-account-management/feature-flags.js';
 export { withInstanceScopedDb } from './iam-account-management/shared.js';
 export { resolveActorAccountId } from './iam-account-management/shared.js';
@@ -162,7 +197,9 @@ export {
 } from './iam-contents/mainserver-mutation-journal.js';
 export {
   hasUnresolvedMainserverOwnershipTransfer,
+  loadRecoverableMainserverOwnershipTransfers,
   markMainserverMutationReconciliationRequired,
+  type RecoverableMainserverOwnershipTransfer,
 } from './iam-contents/mainserver-ownership-transfer-reconciliation.js';
 export {
   loadMainserverAuthoringDiagnostics,

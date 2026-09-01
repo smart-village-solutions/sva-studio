@@ -50,6 +50,12 @@ export {
   type ContentMediaUsagePatch,
 } from './content-media-usage.js';
 export {
+  inspectManualContentMediaUrl,
+  isPersistableManualContentMediaUrl,
+  probeContentMediaImageUrl,
+  type ManualContentMediaUrlInspection,
+} from './content-media-url.js';
+export {
   contentMediaUsagesToMainserver,
   mainserverContentMediaToUsages,
   type MainserverContentMedia,

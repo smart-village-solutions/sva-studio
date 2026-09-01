@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const createStartHandlerMock = vi.fn();
 const createSdkLoggerMock = vi.fn();
 const dispatchAuthRouteRequestMock = vi.fn();
+const dispatchPluginServerHandlerMock = vi.fn();
+const createStudioPluginServerHandlerDispatcherMock = vi.fn();
 const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
@@ -22,6 +24,8 @@ const createServerFunctionRequestDiagnosticsMock = vi.fn();
 const readServerFunctionResponseBodyForDiagnosticsMock = vi.fn();
 const resolveServerFunctionBranchDecisionMock = vi.fn();
 const registerStudioPluginOperationHandlersMock = vi.fn();
+const ensurePluginActivationPoliciesConfiguredMock = vi.fn();
+const startPluginActivationPolicyFleetReconcileInBackgroundMock = vi.fn();
 
 vi.mock('@tanstack/react-start/server', () => ({
   createStartHandler: createStartHandlerMock,
@@ -96,11 +100,26 @@ vi.mock('./lib/plugin-operation-runtime.server', () => ({
   registerStudioPluginOperationHandlers: registerStudioPluginOperationHandlersMock,
 }));
 
+vi.mock('./lib/plugin-server-runtime.server', () => ({
+  createStudioPluginServerHandlerDispatcher: createStudioPluginServerHandlerDispatcherMock,
+}));
+
+vi.mock('./lib/plugin-activation-policy-bootstrap.server', () => ({
+  ensurePluginActivationPoliciesConfigured: ensurePluginActivationPoliciesConfiguredMock,
+  startPluginActivationPolicyFleetReconcileInBackground:
+    startPluginActivationPolicyFleetReconcileInBackgroundMock,
+}));
+
 describe('server transport', () => {
   beforeEach(() => {
+    ensurePluginActivationPoliciesConfiguredMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReturnValue({ requestId: 'req-default' });
     runWithoutWorkspaceContextMock.mockImplementation((callback) => callback());
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
+    dispatchPluginServerHandlerMock.mockResolvedValue(null);
+    createStudioPluginServerHandlerDispatcherMock.mockResolvedValue(
+      dispatchPluginServerHandlerMock
+    );
   });
 
   afterEach(() => {
@@ -109,6 +128,8 @@ describe('server transport', () => {
     createStartHandlerMock.mockReset();
     createSdkLoggerMock.mockReset();
     dispatchAuthRouteRequestMock.mockReset();
+    dispatchPluginServerHandlerMock.mockReset();
+    createStudioPluginServerHandlerDispatcherMock.mockReset();
     dispatchMainserverNewsRequestMock.mockReset();
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();
@@ -129,6 +150,8 @@ describe('server transport', () => {
     readServerFunctionResponseBodyForDiagnosticsMock.mockReset();
     resolveServerFunctionBranchDecisionMock.mockReset();
     registerStudioPluginOperationHandlersMock.mockReset();
+    ensurePluginActivationPoliciesConfiguredMock.mockReset();
+    startPluginActivationPolicyFleetReconcileInBackgroundMock.mockReset();
   });
 
   it('bypasses auth requests before TanStack Start', async () => {
@@ -151,9 +174,33 @@ describe('server transport', () => {
     const response = await mod.default.fetch(new Request('http://localhost:3000/auth/login'));
 
     expect(registerStudioPluginOperationHandlersMock).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() =>
+      expect(startPluginActivationPolicyFleetReconcileInBackgroundMock).toHaveBeenCalledOnce()
+    );
+    expect(registerStudioPluginOperationHandlersMock.mock.invocationCallOrder[0]).toBeLessThan(
+      startPluginActivationPolicyFleetReconcileInBackgroundMock.mock.invocationCallOrder[0] ?? 0
+    );
     expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('auth');
+  });
+
+  it('dispatches declared plugin server routes before auth and TanStack Start', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const pluginResponse = new Response('plugin', { status: 200 });
+    const startFetch = vi.fn().mockResolvedValue(new Response('start'));
+    createStartHandlerMock.mockReturnValue(startFetch);
+    dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+
+    const mod = await import('./server');
+    const request = new Request('http://localhost:3000/api/v1/plugins/news/items');
+    const response = await mod.default.fetch(request);
+
+    expect(createStudioPluginServerHandlerDispatcherMock).toHaveBeenCalledTimes(1);
+    expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    expect(response).toBe(pluginResponse);
   });
 
   it('bypasses mainserver news requests before auth routing', async () => {
@@ -702,9 +749,16 @@ describe('server transport', () => {
     expect(startFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('starts only the privileged worker lane in the provisioner runtime profile', async () => {
+  it('starts only the privileged worker lane during provisioner process bootstrap', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_LANE', 'privileged');
+    let resolveActivationPolicies: (() => void) | undefined;
+    ensurePluginActivationPoliciesConfiguredMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveActivationPolicies = resolve;
+        })
+    );
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -712,12 +766,42 @@ describe('server transport', () => {
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('ok')));
 
-    const mod = await import('./server');
-    await mod.default.fetch(new Request('http://localhost:3000/health/live'));
+    await import('./server');
+    await vi.waitFor(() => {
+      expect(ensurePluginActivationPoliciesConfiguredMock).toHaveBeenCalledOnce();
+    });
+    expect(ensurePrivilegedStudioJobWorkerStartedMock).not.toHaveBeenCalled();
+
+    resolveActivationPolicies?.();
     await vi.waitFor(() => {
       expect(ensurePrivilegedStudioJobWorkerStartedMock).toHaveBeenCalledOnce();
     });
     expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
+  });
+
+  it('exits with an error after a terminal worker failure', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('ok')));
+
+    await import('./server');
+    await vi.waitFor(() => expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledOnce());
+    const options = ensurePluginOperationWorkerStartedMock.mock.calls[0]?.[0] as
+      | {
+          onTerminalFailure?: (failure: { error: unknown; lane: string }) => void;
+        }
+      | undefined;
+
+    expect(options?.onTerminalFailure).toBeTypeOf('function');
+    options?.onTerminalFailure?.({ error: new Error('worker crashed'), lane: 'default' });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
   });
 
   it('waits for plugin operation handlers before dispatching auth routes', async () => {
@@ -759,27 +843,45 @@ describe('server transport', () => {
     expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does not register plugin operation handlers when the runtime flag disables the worker', async () => {
+  it('waits for lifecycle handlers but does not start a local worker when the lane is disabled', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
 
-    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
-    registerStudioPluginOperationHandlersMock.mockRejectedValue(
-      new Error('missing runtime requirement')
-    );
+    let resolveHandlerRegistration: (() => void) | undefined;
+    const handlerRegistrationPromise = new Promise<void>((resolve) => {
+      resolveHandlerRegistration = resolve;
+    });
+    const authResponse = new Response('auth', { status: 200 });
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('start', { status: 200 }));
+    registerStudioPluginOperationHandlersMock.mockImplementation(() => handlerRegistrationPromise);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
-    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(authResponse);
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+    const responsePromise = mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/plugin-operations/jobs')
+    );
 
-    await expect(response.text()).resolves.toBe('ok');
+    await vi.waitFor(() => expect(dispatchStudioChangelogRequestMock).toHaveBeenCalledOnce());
+    const authDispatchedBeforeRegistration = await vi
+      .waitFor(() => expect(dispatchAuthRouteRequestMock).toHaveBeenCalledOnce(), { timeout: 250 })
+      .then(
+        () => true,
+        () => false
+      );
+    expect(authDispatchedBeforeRegistration).toBe(false);
+
+    resolveHandlerRegistration?.();
+
+    await expect(responsePromise).resolves.toBe(authResponse);
     expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
-    expect(registerStudioPluginOperationHandlersMock).not.toHaveBeenCalled();
+    expect(registerStudioPluginOperationHandlersMock).toHaveBeenCalledOnce();
+    expect(startPluginActivationPolicyFleetReconcileInBackgroundMock).toHaveBeenCalledOnce();
   });
 
   it('retries plugin operation handler registration after a transient import-time failure', async () => {

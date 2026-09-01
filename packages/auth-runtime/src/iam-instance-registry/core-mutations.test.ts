@@ -10,7 +10,9 @@ const state = vi.hoisted(() => {
     revokeModule: vi.fn(async () => new Response('revoke')),
     seedIamBaseline: vi.fn(async () => new Response('seed')),
     probeTenantIamAccess: vi.fn(async () => new Response('probe')),
-    mutateInstanceStatus: vi.fn(async (_request, _ctx, nextStatus: string) => new Response(nextStatus)),
+    mutateInstanceStatus: vi.fn(
+      async (_request, _ctx, nextStatus: string) => new Response(nextStatus)
+    ),
   };
 
   return {
@@ -28,9 +30,6 @@ const state = vi.hoisted(() => {
     parseRegistryRequestBody: vi.fn(),
     withRegistryService: vi.fn(),
     withScopedRegistryService: vi.fn(),
-    loadWasteTenantProvisioningRecord: vi.fn(),
-    startPluginOperationJobFromFacade: vi.fn(),
-    loggerError: vi.fn(),
   };
 });
 
@@ -50,15 +49,6 @@ vi.mock('../db.js', () => ({
 
 vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: state.getWorkspaceContext,
-  createSdkLogger: vi.fn(() => ({ error: state.loggerError })),
-}));
-
-vi.mock('@sva/data-repositories/server', () => ({
-  loadWasteTenantProvisioningRecord: state.loadWasteTenantProvisioningRecord,
-}));
-
-vi.mock('../waste-management/core/operations-support.js', () => ({
-  startPluginOperationJobFromFacade: state.startPluginOperationJobFromFacade,
 }));
 
 vi.mock('@sva/instance-registry/http-mutation-handlers', () => ({
@@ -84,154 +74,6 @@ describe('iam-instance-registry core mutations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    state.startPluginOperationJobFromFacade.mockResolvedValue(new Response(null, { status: 202 }));
-  });
-
-  it('enqueues tenant provisioning after waste assignment and bootstrap', async () => {
-    state.loadWasteTenantProvisioningRecord.mockResolvedValue({
-      status: 'provisioning',
-      desiredGeneration: 2,
-    });
-    state.handlers.assignModule.mockResolvedValueOnce(
-      Response.json({ data: { instanceId: 'inst-waste', assignedModules: ['waste-management'] } })
-    );
-    state.handlers.bootstrapAdminStructure.mockResolvedValueOnce(
-      Response.json({ data: { instanceId: 'inst-bootstrap', assignedModules: ['news', 'waste-management'] } })
-    );
-    const subject = await import('./core-mutations.js');
-    const ctx = { user: { id: 'actor-1' } } as never;
-
-    await subject.assignInstanceModuleMutation(
-      new Request('https://example.test/api/v1/instances/inst-waste/modules', {
-        method: 'POST',
-        body: JSON.stringify({ moduleId: 'waste-management' }),
-      }),
-      ctx
-    );
-    await subject.bootstrapInstanceAdminStructureMutation(
-      new Request('https://example.test/api/v1/instances/inst-bootstrap/bootstrap', {
-        method: 'POST',
-      }),
-      ctx
-    );
-
-    expect(state.startPluginOperationJobFromFacade).toHaveBeenCalledTimes(2);
-    expect(state.startPluginOperationJobFromFacade).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        instanceId: 'inst-waste',
-        idempotencyKey: 'waste-provisioning:inst-waste:2',
-        data: expect.objectContaining({
-          jobTypeId: 'waste-management.provision-tenant-database',
-          input: { operation: 'provision-tenant-database', desiredGeneration: 2 },
-        }),
-      })
-    );
-    expect(state.startPluginOperationJobFromFacade).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ instanceId: 'inst-bootstrap' })
-    );
-  });
-
-  it.each([
-    [null, 'missing'],
-    [{ status: 'ready', desiredGeneration: 2 }, 'ready'],
-  ])('does not enqueue when provisioning is %s', async (provisioning) => {
-    state.loadWasteTenantProvisioningRecord.mockResolvedValue(provisioning);
-    state.handlers.assignModule.mockResolvedValueOnce(
-      Response.json({ item: { id: 'inst-waste', assignedModules: ['waste-management'] } })
-    );
-    const subject = await import('./core-mutations.js');
-
-    const response = await subject.assignInstanceModuleMutation(
-      new Request('https://example.test/api/v1/instances/inst-waste/modules', {
-        method: 'POST',
-        body: JSON.stringify({ moduleId: 'waste-management' }),
-      }),
-      { user: { id: 'actor-1' } } as never
-    );
-
-    expect(response.ok).toBe(true);
-    expect(state.startPluginOperationJobFromFacade).not.toHaveBeenCalled();
-  });
-
-  it('logs rejected enqueue responses without failing the successful assignment', async () => {
-    state.loadWasteTenantProvisioningRecord.mockResolvedValue({
-      status: 'provisioning',
-      desiredGeneration: 3,
-    });
-    state.startPluginOperationJobFromFacade.mockResolvedValueOnce(
-      new Response(null, { status: 503 })
-    );
-    state.handlers.assignModule.mockResolvedValueOnce(
-      Response.json({ instanceId: 'inst-waste', assignedModules: ['waste-management'] })
-    );
-    const subject = await import('./core-mutations.js');
-
-    const response = await subject.assignInstanceModuleMutation(
-      new Request('https://example.test/api/v1/instances/inst-waste/modules', {
-        method: 'POST',
-        body: JSON.stringify({ moduleId: 'waste-management' }),
-      }),
-      { user: { id: 'actor-1' } } as never
-    );
-
-    expect(response.ok).toBe(true);
-    expect(state.loggerError).toHaveBeenCalledWith(
-      'Waste tenant database provisioning could not be enqueued',
-      expect.objectContaining({ status_code: 503, trigger: 'assignment' })
-    );
-  });
-
-  it('logs malformed mutation results without changing the successful response', async () => {
-    state.handlers.assignModule.mockResolvedValueOnce(new Response('not-json'));
-    const subject = await import('./core-mutations.js');
-
-    const response = await subject.assignInstanceModuleMutation(
-      new Request('https://example.test/api/v1/instances/inst-waste/modules', {
-        method: 'POST',
-        body: JSON.stringify({ moduleId: 'waste-management' }),
-      }),
-      { user: { id: 'actor-1' } } as never
-    );
-
-    expect(response.ok).toBe(true);
-    expect(state.loggerError).toHaveBeenCalledWith(
-      'Waste tenant database provisioning enqueue failed',
-      expect.objectContaining({ error_type: 'Error', trigger: 'assignment' })
-    );
-  });
-
-  it('skips provisioning for unrelated, failed, and module-free mutation responses', async () => {
-    state.handlers.assignModule
-      .mockResolvedValueOnce(new Response(null, { status: 409 }))
-      .mockResolvedValueOnce(Response.json({ data: { instanceId: 'inst-news' } }));
-    state.handlers.bootstrapAdminStructure.mockResolvedValueOnce(
-      Response.json({ data: { instanceId: 'inst-news', assignedModules: ['news', 42] } })
-    );
-    const subject = await import('./core-mutations.js');
-    const ctx = { user: { id: 'actor-1' } } as never;
-
-    await subject.assignInstanceModuleMutation(
-      new Request('https://example.test/modules', {
-        method: 'POST',
-        body: JSON.stringify({ moduleId: 'waste-management' }),
-      }),
-      ctx
-    );
-    await subject.assignInstanceModuleMutation(
-      new Request('https://example.test/modules', {
-        method: 'POST',
-        body: JSON.stringify({ moduleId: 'news' }),
-      }),
-      ctx
-    );
-    await subject.bootstrapInstanceAdminStructureMutation(
-      new Request('https://example.test/bootstrap', { method: 'POST' }),
-      ctx
-    );
-
-    expect(state.loadWasteTenantProvisioningRecord).not.toHaveBeenCalled();
   });
 
   it('configures mutation handlers and error mapping with auth-runtime adapters', async () => {
@@ -285,7 +127,17 @@ describe('iam-instance-registry core mutations', () => {
     expect(state.handlers.seedIamBaseline).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.probeTenantIamAccess).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.mutateInstanceStatus).toHaveBeenNthCalledWith(1, request, ctx, 'active');
-    expect(state.handlers.mutateInstanceStatus).toHaveBeenNthCalledWith(2, request, ctx, 'suspended');
-    expect(state.handlers.mutateInstanceStatus).toHaveBeenNthCalledWith(3, request, ctx, 'archived');
+    expect(state.handlers.mutateInstanceStatus).toHaveBeenNthCalledWith(
+      2,
+      request,
+      ctx,
+      'suspended'
+    );
+    expect(state.handlers.mutateInstanceStatus).toHaveBeenNthCalledWith(
+      3,
+      request,
+      ctx,
+      'archived'
+    );
   });
 });

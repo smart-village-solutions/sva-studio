@@ -61,6 +61,7 @@ const cancellablePluginJobTypeIds = new Set<string>([
   wasteManagementOperationsContract.jobTypeIds.syncMainserver,
   wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
 ]);
+const privilegedJobTypeId = wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase;
 
 const workspaceJobModuleLoaders = import.meta.glob(
   '../../../../packages/plugin-*/src/server.ts'
@@ -339,6 +340,7 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
         {
           handler,
           queueName: 'plugin-operations',
+          executionLane: jobTypeId === privilegedJobTypeId ? 'privileged' : 'default',
           supportsCancellation: cancellablePluginJobTypeIds.has(jobTypeId),
         },
       ])

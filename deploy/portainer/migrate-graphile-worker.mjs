@@ -57,7 +57,11 @@ try {
       SET search_path = pg_catalog, graphile_worker
     AS $enqueue$
     BEGIN
-      IF identifier NOT IN ('studio_job_execute', 'studio_job_execute_privileged') THEN
+      IF identifier NOT IN (
+        'studio_job_execute',
+        'studio_job_execute_privileged',
+        'plugin_tenant_lifecycle_retry'
+      ) THEN
         RAISE EXCEPTION 'unsupported_studio_job_identifier' USING ERRCODE = '22023';
       END IF;
       IF json_typeof(payload) IS DISTINCT FROM 'object' THEN

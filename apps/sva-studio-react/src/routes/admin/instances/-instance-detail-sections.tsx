@@ -14,9 +14,14 @@ import type {
   WorkflowAction,
   WorkspaceTabKey,
 } from './-instance-detail-view-shared';
-import type { DetailFormValues, InstanceConfigurationAssessment, SelectedInstance } from './-instances-shared-types';
+import type {
+  DetailFormValues,
+  InstanceConfigurationAssessment,
+  SelectedInstance,
+} from './-instances-shared-types';
 import type { IamHttpError } from '../../../lib/iam-api';
 import type { IamTenantIamStatus } from '@sva/core';
+import type { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 
 type WorkspaceSectionsProps = {
   readonly activeWorkspaceTab: WorkspaceTabKey;
@@ -27,6 +32,7 @@ type WorkspaceSectionsProps = {
   readonly tenantSecretUserInputRequired: boolean;
   readonly mutationError: IamHttpError | null;
   readonly statusLoading: boolean;
+  readonly pluginReadiness: ReturnType<typeof usePluginTenantReadiness>;
   readonly setActiveWorkspaceTab: (value: WorkspaceTabKey) => void;
   readonly setDetailFormValues: React.Dispatch<React.SetStateAction<DetailFormValues | null>>;
   readonly onUpdateSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
@@ -35,7 +41,10 @@ type WorkspaceSectionsProps = {
   readonly onAssignModule: (instanceId: string, moduleId: string) => Promise<unknown>;
   readonly onRevokeModule: (instanceId: string, moduleId: string) => Promise<unknown>;
   readonly onSeedIamBaseline: () => Promise<void>;
-  readonly onBootstrapAdminStructure: (instanceId: string, moduleIds: readonly string[]) => Promise<unknown>;
+  readonly onBootstrapAdminStructure: (
+    instanceId: string,
+    moduleIds: readonly string[]
+  ) => Promise<unknown>;
   readonly onLoadProvisioningRun: (runId: string) => Promise<void>;
 };
 
@@ -51,6 +60,7 @@ export const InstanceDetailWorkspaceSections = ({
   tenantSecretUserInputRequired,
   mutationError,
   statusLoading,
+  pluginReadiness,
   setActiveWorkspaceTab,
   setDetailFormValues,
   onUpdateSubmit,
@@ -62,8 +72,15 @@ export const InstanceDetailWorkspaceSections = ({
   onBootstrapAdminStructure,
   onLoadProvisioningRun,
 }: WorkspaceSectionsProps) => (
-  <Tabs value={activeWorkspaceTab} onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTabKey)} className="space-y-4">
-    <TabsList aria-label={t('admin.instances.cockpit.tabsAriaLabel')} className="h-auto flex-wrap justify-start">
+  <Tabs
+    value={activeWorkspaceTab}
+    onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTabKey)}
+    className="space-y-4"
+  >
+    <TabsList
+      aria-label={t('admin.instances.cockpit.tabsAriaLabel')}
+      className="h-auto flex-wrap justify-start"
+    >
       <TabsTrigger value="betrieb" onClick={() => setActiveWorkspaceTab('betrieb')}>
         {t('admin.instances.detail.tabs.betrieb')}
       </TabsTrigger>
@@ -80,6 +97,7 @@ export const InstanceDetailWorkspaceSections = ({
         selectedInstance={selectedInstance}
         statusLoading={statusLoading}
         mutationError={mutationError}
+        pluginReadiness={pluginReadiness}
         onAssignModule={onAssignModule}
         onRevokeModule={onRevokeModule}
         onSeedIamBaseline={async () => onSeedIamBaseline()}

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createExecutionErrorPayload,
-  createMissingHandlerPayload,
-} from './job-error-mapper.js';
+import { createExecutionErrorPayload, createMissingHandlerPayload } from './job-error-mapper.js';
 
 const baseJob = {
   id: 'job-1',
@@ -74,6 +71,24 @@ describe('job error mapper', () => {
           category: 'permanent',
           code: 'waste_mainserver_sync_not_implemented',
         },
+      },
+    });
+  });
+
+  it('treats terminal lifecycle causes as permanent before the final attempt', () => {
+    const error = new Error('waste_tenant_database_invalid') as Error & { cause?: unknown };
+    error.cause = {
+      code: 'waste-management.tenant-database-invalid',
+      messageKey: 'wasteManagement.lifecycle.tenantDatabaseInvalid',
+      retry: { kind: 'terminal' },
+    };
+
+    expect(createExecutionErrorPayload(baseJob, error, false)).toEqual({
+      code: 'plugin_operation_execution_failed',
+      category: 'permanent',
+      message: 'waste_tenant_database_invalid',
+      details: {
+        plugin: error.cause,
       },
     });
   });

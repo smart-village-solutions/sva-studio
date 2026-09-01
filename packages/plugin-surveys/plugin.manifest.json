@@ -1,5 +1,8 @@
 {
   "pluginId": "surveys",
+  "manifestVersion": 1,
+  "extensionTier": "feature",
+  "tenantActivationPolicy": "optional",
   "version": "0.0.1",
   "sdkVersion": "0.0.1",
   "hostCompatibility": {

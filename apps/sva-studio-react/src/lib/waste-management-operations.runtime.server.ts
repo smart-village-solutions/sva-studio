@@ -18,10 +18,15 @@ import type {
 } from './waste-management-operations.types.js';
 import { createProvisionTenantDatabaseOperation } from './waste-tenant-database-provisioner.server.js';
 import { createEnrichPostalCodesOperation } from './waste-management-postal-code-enrichment.server.js';
+import { requestWasteTenantProvisioning } from '@sva/data-repositories/server';
+import { createReadWasteTenantDatabaseReadinessOperation } from './waste-tenant-database-readiness.server.js';
 
 export const createWasteManagementOperationRuntime = (
   deps: WasteOperationRuntimeDeps = {}
 ): WasteManagementOperationRuntime => ({
+  requestTenantDatabaseProvisioning: (instanceId) =>
+    (deps.requestProvisioning ?? requestWasteTenantProvisioning)(instanceId),
+  readTenantDatabaseReadiness: createReadWasteTenantDatabaseReadinessOperation(deps),
   provisionTenantDatabase: createProvisionTenantDatabaseOperation({
     getProvisionerDatabaseUrl: () => process.env.WASTE_DATABASE_PROVISIONER_URL,
     createPool: deps.createPool,

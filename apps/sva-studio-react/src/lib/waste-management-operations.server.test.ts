@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ExcelJS from 'exceljs';
-import type { ExternalInterfaceRecord } from '@sva/core';
+import type { ExternalInterfaceRecord, WastePdfStaticSettingsRecord } from '@sva/core';
 import { protectField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
@@ -126,6 +126,8 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('waste_settings');
     expect(statements).toContain('pdf_branding_asset_url TEXT');
     expect(statements).toContain('pdf_contact_block TEXT');
+    expect(statements).toContain('disruption_location_enabled BOOLEAN NOT NULL DEFAULT FALSE');
+    expect(statements).toContain('disruption_all_locations_enabled BOOLEAN NOT NULL DEFAULT FALSE');
     expect(statements).toContain('waste_settings_singleton_check');
     expect(statements).toContain('waste_email_reminder_subscriptions');
     expect(statements).toContain('waste_email_reminder_outbox');
@@ -182,7 +184,9 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('ON CONFLICT (assignment_id, collection_location_id) DO NOTHING');
     expect(statements).toContain('CREATE TABLE IF NOT EXISTS "wm".waste_mainserver_source_state');
     expect(statements).toContain('SECURITY DEFINER SET search_path = pg_catalog');
-    expect(statements).toContain('FOR EACH STATEMENT EXECUTE FUNCTION "wm".sva_bump_waste_mainserver_source_revision()');
+    expect(statements).toContain(
+      'FOR EACH STATEMENT EXECUTE FUNCTION "wm".sva_bump_waste_mainserver_source_revision()'
+    );
     expect(statements).toContain('UPDATE OF "name", "postal_code" ON "wm"."waste_cities"');
     expect(statements).not.toContain('UPDATE OF "reminder_config" ON "wm"."waste_fractions"');
   });
@@ -422,7 +426,18 @@ describe('waste management operations runtime', () => {
     });
 
     const query = vi.fn(async () => ({ rowCount: 0, rows: [] }));
+    const getWastePdfStaticSettings = vi
+      .fn()
+      .mockResolvedValueOnce({
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: true,
+      })
+      .mockResolvedValueOnce({
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
+      });
     const repository = createRepositoryMock({
+      getWastePdfStaticSettings,
       listWasteFractions: vi.fn(async () => [
         {
           id: 'fraction-bio',
@@ -486,6 +501,14 @@ describe('waste management operations runtime', () => {
                   },
                 },
               },
+              disruption_all_locations: {
+                label: 'Alle Straßen',
+                notification_kind: 'disruption',
+              },
+              disruption_location: {
+                label: 'Meine Straße',
+                notification_kind: 'disruption',
+              },
             },
             null,
             2
@@ -504,6 +527,21 @@ describe('waste management operations runtime', () => {
       fractionCount: 1,
       staticContentId: 'static-1',
     });
+
+    await runtime.syncWasteTypes('instance-1', {
+      operation: 'sync-waste-types',
+      keycloakSubject: 'user-1',
+      activeOrganizationId: 'org-1',
+    });
+
+    expect(createOrUpdateSvaMainserverStaticContentMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        staticContent: expect.objectContaining({
+          name: 'wasteTypes',
+          content: expect.not.stringContaining('disruption_'),
+        }),
+      })
+    );
   });
 
   it('delegates mainserver sync jobs to the dedicated sync helper', async () => {
@@ -1389,6 +1427,7 @@ const createRepositoryMock = (
 
 const createRepositoryMockBase = () => ({
   listWasteFractions: vi.fn(async (): Promise<unknown[]> => []),
+  getWastePdfStaticSettings: vi.fn(async (): Promise<WastePdfStaticSettingsRecord | null> => null),
   listWasteRegions: vi.fn(async (): Promise<unknown[]> => []),
   listWasteCities: vi.fn(async (): Promise<unknown[]> => []),
   listWasteStreets: vi.fn(async (): Promise<unknown[]> => []),

@@ -10,6 +10,7 @@ import {
   normalizePluginIdentifier,
   parseNamespacedPluginIdentifier,
 } from '../plugin-identifiers.js';
+import { normalizePluginAccessRequirement } from './access-requirements.js';
 import type {
   PluginActionDefinition,
   PluginActionRegistryEntry,
@@ -80,6 +81,7 @@ export const normalizePluginActionDefinition = (
     ...action,
     id: actionId,
     titleKey,
+    accessRequirement: normalizePluginAccessRequirement(action.accessRequirement),
     featureFlag: normalizePluginIdentifier(action.featureFlag ?? '') || undefined,
     legacyAliases: normalizeLegacyAliases(actionId, action.legacyAliases),
   };

@@ -21,14 +21,14 @@ import {
   type RevokeInstanceModulePayload,
 } from './mutation-input-builders.js';
 
-export const createAssignModuleHandler =
-  <TContext>(
-    deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: InstanceRegistryMutationErrorMapper
-  ) =>
+export const createAssignModuleHandler = <TContext>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  mapMutationError: InstanceRegistryMutationErrorMapper
+) =>
   createScopedRegistryMutationHandler(deps, {
     operation: 'assign_instance_module',
-    parse: (request) => deps.parseRequestBody<AssignInstanceModulePayload>(request, assignModuleSchema),
+    parse: (request) =>
+      deps.parseRequestBody<AssignInstanceModulePayload>(request, assignModuleSchema),
     execute: (service, input) =>
       service.assignModule(
         buildAssignInstanceModuleInput(input.instanceId, input.payload, {
@@ -40,12 +40,22 @@ export const createAssignModuleHandler =
     respond: (result, state) => {
       if (!result.ok) {
         if (result.reason === 'not_found') {
-          return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', state.requestId);
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Instanz wurde nicht gefunden.',
+            state.requestId
+          );
         }
         if (result.reason === 'unknown_module') {
           return deps.createApiError(400, 'invalid_request', 'Unbekanntes Modul.', state.requestId);
         }
-        return deps.createApiError(409, 'conflict', 'Modul konnte nicht zugewiesen werden.', state.requestId);
+        return deps.createApiError(
+          409,
+          'conflict',
+          'Modul konnte nicht zugewiesen werden.',
+          state.requestId
+        );
       }
 
       return deps.jsonResponse(200, deps.asApiItem(result.instance, state.requestId));
@@ -53,14 +63,14 @@ export const createAssignModuleHandler =
     mapMutationError,
   });
 
-export const createBootstrapAdminStructureHandler =
-  <TContext>(
-    deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: InstanceRegistryMutationErrorMapper
-  ) =>
+export const createBootstrapAdminStructureHandler = <TContext>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  mapMutationError: InstanceRegistryMutationErrorMapper
+) =>
   createScopedRegistryMutationHandler(deps, {
     operation: 'bootstrap_instance_admin_structure',
-    parse: (request) => deps.parseRequestBody<BootstrapAdminStructurePayload>(request, bootstrapAdminStructureSchema),
+    parse: (request) =>
+      deps.parseRequestBody<BootstrapAdminStructurePayload>(request, bootstrapAdminStructureSchema),
     execute: (service, input) =>
       service.bootstrapAdminStructure(
         buildBootstrapAdminStructureInput(input.instanceId, input.payload, {
@@ -72,12 +82,22 @@ export const createBootstrapAdminStructureHandler =
     respond: (result, state) => {
       if (!result.ok) {
         if (result.reason === 'not_found') {
-          return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', state.requestId);
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Instanz wurde nicht gefunden.',
+            state.requestId
+          );
         }
         if (result.reason === 'unknown_module') {
           return deps.createApiError(400, 'invalid_request', 'Unbekanntes Modul.', state.requestId);
         }
-        return deps.createApiError(409, 'conflict', 'Admin-Struktur konnte nicht initialisiert werden.', state.requestId);
+        return deps.createApiError(
+          409,
+          'conflict',
+          'Admin-Struktur konnte nicht initialisiert werden.',
+          state.requestId
+        );
       }
 
       return deps.jsonResponse(200, deps.asApiItem(result.instance, state.requestId));
@@ -85,16 +105,16 @@ export const createBootstrapAdminStructureHandler =
     mapMutationError,
   });
 
-export const createRevokeModuleHandler =
-  <TContext>(
-    deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: InstanceRegistryMutationErrorMapper
-  ) =>
+export const createRevokeModuleHandler = <TContext>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  mapMutationError: InstanceRegistryMutationErrorMapper
+) =>
   createScopedRegistryMutationHandler(deps, {
     operation: 'revoke_instance_module',
     criticalActionId: 'instance.module.revoke',
     resolveCriticalModuleId: (payload: RevokeInstanceModulePayload) => payload.moduleId,
-    parse: (request) => deps.parseRequestBody<RevokeInstanceModulePayload>(request, revokeModuleSchema),
+    parse: (request) =>
+      deps.parseRequestBody<RevokeInstanceModulePayload>(request, revokeModuleSchema),
     execute: (service, input) =>
       service.revokeModule(
         buildRevokeInstanceModuleInput(input.instanceId, input.payload, {
@@ -106,12 +126,30 @@ export const createRevokeModuleHandler =
     respond: (result, state) => {
       if (!result.ok) {
         if (result.reason === 'not_found') {
-          return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', state.requestId);
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Instanz wurde nicht gefunden.',
+            state.requestId
+          );
         }
         if (result.reason === 'unknown_module') {
           return deps.createApiError(400, 'invalid_request', 'Unbekanntes Modul.', state.requestId);
         }
-        return deps.createApiError(409, 'conflict', 'Modul konnte nicht entzogen werden.', state.requestId);
+        if (result.reason === 'plugin_activation_required_cannot_disable') {
+          return deps.createApiError(
+            409,
+            'plugin_activation_required_cannot_disable',
+            deps.translateMessage(state.request, 'pluginActivationRequiredCannotDisable'),
+            state.requestId
+          );
+        }
+        return deps.createApiError(
+          409,
+          'conflict',
+          'Modul konnte nicht entzogen werden.',
+          state.requestId
+        );
       }
 
       return deps.jsonResponse(200, deps.asApiItem(result.instance, state.requestId));
@@ -119,14 +157,14 @@ export const createRevokeModuleHandler =
     mapMutationError,
   });
 
-export const createSeedIamBaselineHandler =
-  <TContext>(
-    deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: InstanceRegistryMutationErrorMapper
-  ) =>
+export const createSeedIamBaselineHandler = <TContext>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  mapMutationError: InstanceRegistryMutationErrorMapper
+) =>
   createScopedRegistryMutationHandler(deps, {
     operation: 'seed_instance_iam_baseline',
-    parse: (request) => deps.parseRequestBody<Record<string, never>>(request, seedIamBaselineSchema),
+    parse: (request) =>
+      deps.parseRequestBody<Record<string, never>>(request, seedIamBaselineSchema),
     execute: (service, input) =>
       service.seedIamBaseline(
         buildSeedInstanceIamBaselineInput(input.instanceId, {
@@ -142,20 +180,20 @@ export const createSeedIamBaselineHandler =
     mapMutationError,
   });
 
-export const createMutateInstanceStatusHandler =
-  <TContext>(
-    deps: InstanceRegistryMutationHttpDeps<TContext>,
-    mapMutationError: InstanceRegistryMutationErrorMapper
-  ) => {
-  const createStatusMutationHandler = (nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>) =>
+export const createMutateInstanceStatusHandler = <TContext>(
+  deps: InstanceRegistryMutationHttpDeps<TContext>,
+  mapMutationError: InstanceRegistryMutationErrorMapper
+) => {
+  const createStatusMutationHandler = (
+    nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>
+  ) =>
     createScopedRegistryMutationHandler(deps, {
       operation: `change_instance_status_${nextStatus}`,
       criticalActionId: `instance.status.${nextStatus === 'active' ? 'activate' : nextStatus === 'suspended' ? 'suspend' : 'archive'}`,
       parse: async (inputRequest) => {
-        const payloadResult = await deps.parseRequestBody<{ status: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'> }>(
-          inputRequest,
-          statusMutationSchema
-        );
+        const payloadResult = await deps.parseRequestBody<{
+          status: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>;
+        }>(inputRequest, statusMutationSchema);
         if (!payloadResult.ok) {
           return payloadResult;
         }
@@ -175,9 +213,19 @@ export const createMutateInstanceStatusHandler =
       respond: (result, state) => {
         if (!result.ok) {
           if (result.reason === 'not_found') {
-            return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', state.requestId);
+            return deps.createApiError(
+              404,
+              'not_found',
+              'Instanz wurde nicht gefunden.',
+              state.requestId
+            );
           }
-          return deps.createApiError(409, 'conflict', 'Statuswechsel ist im aktuellen Zustand nicht erlaubt.', state.requestId);
+          return deps.createApiError(
+            409,
+            'conflict',
+            'Statuswechsel ist im aktuellen Zustand nicht erlaubt.',
+            state.requestId
+          );
         }
 
         return deps.jsonResponse(200, deps.asApiItem(result.instance, state.requestId));
@@ -189,8 +237,14 @@ export const createMutateInstanceStatusHandler =
     active: createStatusMutationHandler('active'),
     suspended: createStatusMutationHandler('suspended'),
     archived: createStatusMutationHandler('archived'),
-  } satisfies Record<Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>, (request: Request, ctx: TContext) => Promise<Response>>;
+  } satisfies Record<
+    Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>,
+    (request: Request, ctx: TContext) => Promise<Response>
+  >;
 
-  return (request: Request, ctx: TContext, nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>): Promise<Response> =>
-    handlers[nextStatus](request, ctx);
+  return (
+    request: Request,
+    ctx: TContext,
+    nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>
+  ): Promise<Response> => handlers[nextStatus](request, ctx);
 };

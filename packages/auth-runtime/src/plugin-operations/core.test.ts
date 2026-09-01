@@ -29,6 +29,11 @@ const artifactState = vi.hoisted(() => ({
   resolveActorInfo: vi.fn(),
 }));
 
+const pluginTenantAccessState = vi.hoisted(() => ({
+  readAccess: vi.fn(),
+  isLifecycleJobType: vi.fn(),
+}));
+
 vi.mock('@sva/server-runtime', async () => {
   const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
   return {
@@ -59,6 +64,11 @@ vi.mock('../iam-account-management/shared.js', () => ({
 
 vi.mock('../plugin-operation-artifacts.server.js', () => ({
   readPluginOperationArtifact: artifactState.readPluginOperationArtifact,
+}));
+
+vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
+  readConfiguredPluginTenantAccess: pluginTenantAccessState.readAccess,
+  isConfiguredPluginTenantLifecycleJobType: pluginTenantAccessState.isLifecycleJobType,
 }));
 
 vi.mock('../instance-permission-authorization.js', () => ({
@@ -119,6 +129,8 @@ describe('plugin operations handlers', () => {
     artifactState.resolveActorInfo.mockResolvedValue({
       actor: { actorAccountId: 'account-1' },
     });
+    pluginTenantAccessState.readAccess.mockResolvedValue({ allowed: true, reason: 'not_managed' });
+    pluginTenantAccessState.isLifecycleJobType.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -224,6 +236,73 @@ describe('plugin operations handlers', () => {
     });
     expect(idempotencyState.reserveIdempotency).not.toHaveBeenCalled();
     expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
+  it('rejects blocked plugin tenant access before reserving idempotency', async () => {
+    pluginTenantAccessState.readAccess.mockResolvedValueOnce({
+      allowed: false,
+      reason: 'blocked',
+    });
+
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-blocked',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          input: {},
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'plugin_tenant_access_blocked',
+        message: 'The plugin is not ready for tenant operations yet.',
+      },
+    });
+    expect(idempotencyState.reserveIdempotency).not.toHaveBeenCalled();
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
+  it('rejects lifecycle job types on the generic endpoint', async () => {
+    pluginTenantAccessState.isLifecycleJobType.mockReturnValueOnce(true);
+
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-lifecycle',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          input: {},
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'Lifecycle jobs can only be started by the host orchestrator.',
+      },
+    });
+    expect(pluginTenantAccessState.readAccess).not.toHaveBeenCalled();
+    expect(idempotencyState.reserveIdempotency).not.toHaveBeenCalled();
   });
 
   it('returns 503 when queueing into the internal runner fails', async () => {

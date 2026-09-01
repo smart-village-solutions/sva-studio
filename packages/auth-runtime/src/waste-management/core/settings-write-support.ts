@@ -15,6 +15,10 @@ import {
   resolveTargetInterfaceRecord,
 } from './settings-write-support.interface-selection.js';
 import { withFixedWasteEmailReminderPaths } from './email-reminder-paths.js';
+import {
+  enqueueWasteTypesSyncAfterMutation,
+  type WasteTypesSyncMetadata,
+} from './fractions-support.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
@@ -98,19 +102,22 @@ export const createWasteSettingsSuccessResponse = (
   saved: WasteManagementSettingsRecord,
   requestId: string | undefined,
   holidayStateCode: WasteHolidayStateCode | undefined,
-  lastHolidaySyncStatus: WasteHolidaySyncStatus | undefined
+  lastHolidaySyncStatus: WasteHolidaySyncStatus | undefined,
+  syncMetadata: WasteTypesSyncMetadata = {}
 ): Response =>
   new Response(
-    JSON.stringify(
-      asApiItem(
+    JSON.stringify({
+      ...asApiItem(
         {
           ...saved,
           holidayStateCode,
           lastHolidaySyncStatus,
         },
         requestId
-      )
-    ),
+      ),
+      ...(syncMetadata.syncStatus ? { syncStatus: syncMetadata.syncStatus } : {}),
+      ...(syncMetadata.syncJob ? { syncJob: syncMetadata.syncJob } : {}),
+    }),
     {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -137,6 +144,7 @@ const reloadWasteSettingsOrError = async (input: {
 type UpdateWasteManagementSettingsAfterValidationInput = {
   readonly deps: WasteManagementHandlerDeps;
   readonly ctx: AuthenticatedRequestContext;
+  readonly request?: Request;
   readonly instanceId: string;
   readonly requestId: string | undefined;
   readonly input: {
@@ -146,6 +154,8 @@ type UpdateWasteManagementSettingsAfterValidationInput = {
     readonly calendarWebUrl?: string;
     readonly pdfBrandingAssetUrl?: string;
     readonly pdfContactBlock?: string;
+    readonly disruptionLocationEnabled?: boolean;
+    readonly disruptionAllLocationsEnabled?: boolean;
     readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
     readonly holidayStateCode?: WasteHolidayStateCode;
     readonly customRecurrencePresets: readonly Omit<
@@ -163,6 +173,7 @@ type UpdateWasteManagementSettingsAfterValidationInput = {
 export const updateWasteManagementSettingsAfterValidation = async ({
   deps,
   ctx,
+  request,
   instanceId,
   requestId,
   input,
@@ -222,10 +233,19 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     pdfBrandingAssetUrl: normalizeOptionalTrimmedText(input.pdfBrandingAssetUrl),
     pdfContactBlock: normalizeOptionalTrimmedText(input.pdfContactBlock),
   };
+  const disruptionLocationEnabled =
+    input.disruptionLocationEnabled ?? writeContext.current.disruptionLocationEnabled;
+  const disruptionAllLocationsEnabled =
+    input.disruptionAllLocationsEnabled ?? writeContext.current.disruptionAllLocationsEnabled;
+  const shouldSyncWasteTypes =
+    disruptionLocationEnabled !== writeContext.current.disruptionLocationEnabled ||
+    disruptionAllLocationsEnabled !== writeContext.current.disruptionAllLocationsEnabled;
 
   await deps.saveWastePdfStaticSettings?.(instanceId, {
     pdfBrandingAssetUrl: normalizedPdfStaticSettings.pdfBrandingAssetUrl,
     pdfContactBlock: normalizedPdfStaticSettings.pdfContactBlock,
+    disruptionLocationEnabled,
+    disruptionAllLocationsEnabled,
   });
   await persistWasteSettingsInterfaceSelection({
     deps,
@@ -270,12 +290,19 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     resourceId: instanceId,
   });
   await updateWasteVisibleStatus(deps, instanceId, 'success');
+  const syncMetadata =
+    shouldSyncWasteTypes && request
+      ? await enqueueWasteTypesSyncAfterMutation(request, ctx, deps, instanceId)
+      : shouldSyncWasteTypes
+        ? { syncStatus: 'failed' as const }
+        : {};
 
   return createWasteSettingsSuccessResponse(
     saved,
     requestId,
     input.holidayStateCode,
-    lastHolidaySyncStatus
+    lastHolidaySyncStatus,
+    syncMetadata
   );
 };
 
@@ -322,6 +349,8 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
   await deps.saveWastePdfStaticSettings?.(instanceId, {
     pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
     pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
+    disruptionLocationEnabled: writeContext.current.disruptionLocationEnabled,
+    disruptionAllLocationsEnabled: writeContext.current.disruptionAllLocationsEnabled,
   });
   await persistWasteSettingsInterfaceSelection({
     deps,

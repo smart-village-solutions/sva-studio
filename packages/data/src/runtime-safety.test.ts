@@ -7,16 +7,23 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const readRepoFile = (relativePath: string) => readFileSync(resolve(testDirectory, '..', '..', relativePath), 'utf8');
+const readRepoFile = (relativePath: string) =>
+  readFileSync(resolve(testDirectory, '..', '..', relativePath), 'utf8');
 
 test('@sva/data stays a db-operations and compatibility package', () => {
   const indexSource = readRepoFile('data/src/index.ts').trim();
   const serverSource = readRepoFile('data/src/server.ts').trim();
-  const iamCreateRepositorySource = readRepoFile('data/src/iam/repositories/create-repository.ts').trim();
+  const iamCreateRepositorySource = readRepoFile(
+    'data/src/iam/repositories/create-repository.ts'
+  ).trim();
   const iamStatementsSource = readRepoFile('data/src/iam/repositories/statements.ts').trim();
   const iamTypesSource = readRepoFile('data/src/iam/repositories/types.ts').trim();
-  const instanceIntegrationsSource = readRepoFile('data/src/integrations/instance-integrations.ts').trim();
-  const instanceIntegrationsServerSource = readRepoFile('data/src/integrations/instance-integrations.server.ts').trim();
+  const instanceIntegrationsSource = readRepoFile(
+    'data/src/integrations/instance-integrations.ts'
+  ).trim();
+  const instanceIntegrationsServerSource = readRepoFile(
+    'data/src/integrations/instance-integrations.server.ts'
+  ).trim();
   const readmeSource = readRepoFile('data/README.md');
   const packageJsonSource = readRepoFile('data/package.json');
   const projectJsonSource = readRepoFile('data/project.json');
@@ -25,7 +32,10 @@ test('@sva/data stays a db-operations and compatibility package', () => {
     "export { createDataClient } from '@sva/data-client';\nexport type { DataClientOptions } from '@sva/data-client';\nexport * from '@sva/data-repositories';"
   );
   assert.equal(serverSource, "export * from '@sva/data-repositories/server';");
-  assert.equal(iamCreateRepositorySource, "export { createIamSeedRepository } from '@sva/data-repositories';");
+  assert.equal(
+    iamCreateRepositorySource,
+    "export { createIamSeedRepository } from '@sva/data-repositories';"
+  );
   assert.equal(iamStatementsSource, "export { iamSeedStatements } from '@sva/data-repositories';");
   assert.match(iamTypesSource, /from '@sva\/data-repositories';/);
   assert.match(instanceIntegrationsSource, /createCachedInstanceIntegrationLoader/);
@@ -51,7 +61,10 @@ test('geo hierarchy migration validates only paths affected by the new edge', ()
   expect(sql).toMatch(/max_result_depth INTEGER/);
   assert.match(sql, /parent\.descendant_id = NEW\.ancestor_id/);
   assert.match(sql, /child\.ancestor_id = NEW\.descendant_id/);
-  assert.doesNotMatch(sql, /WHERE h\.ancestor_id = NEW\.ancestor_id\s+OR h\.descendant_id = NEW\.descendant_id/);
+  assert.doesNotMatch(
+    sql,
+    /WHERE h\.ancestor_id = NEW\.ancestor_id\s+OR h\.descendant_id = NEW\.descendant_id/
+  );
 });
 
 test('bootstrap script validates usernames and uses identifier-safe grants', () => {
@@ -59,7 +72,10 @@ test('bootstrap script validates usernames and uses identifier-safe grants', () 
 
   expect(script).toMatch(/IAM_DATABASE_URL username must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
   assert.match(script, /POSTGRES_DB must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
-  assert.match(script, /-v postgres_db="\$\{POSTGRES_DB\}" -v app_user="\$\{app_user\}" -v app_password="\$\{app_password\}"/);
+  assert.match(
+    script,
+    /-v postgres_db="\$\{POSTGRES_DB\}" -v app_user="\$\{app_user\}" -v app_password="\$\{app_password\}"/
+  );
   assert.match(script, /GRANT CONNECT ON DATABASE :"postgres_db" TO :"app_user";/);
   assert.match(script, /GRANT CREATE ON DATABASE :"postgres_db" TO :"app_user";/);
   assert.match(script, /GRANT USAGE, CREATE ON SCHEMA public TO :"app_user";/);
@@ -74,10 +90,16 @@ test('migration script supports profile-specific postgres targets', () => {
 
   expect(script).toMatch(/POSTGRES_SERVICE="\$\{POSTGRES_SERVICE:-postgres\}"/);
   assert.match(script, /POSTGRES_PASSWORD="\$\{POSTGRES_PASSWORD:-sva_local_dev_password\}"/);
-  assert.match(script, /SVA_LOCAL_POSTGRES_CONTAINER_NAME="\$\{SVA_LOCAL_POSTGRES_CONTAINER_NAME:-\}"/);
+  assert.match(
+    script,
+    /SVA_LOCAL_POSTGRES_CONTAINER_NAME="\$\{SVA_LOCAL_POSTGRES_CONTAINER_NAME:-\}"/
+  );
   assert.match(script, /GOOSE_WRAPPER="\$\{GOOSE_WRAPPER:-packages\/data\/scripts\/goosew\.sh\}"/);
   assert.match(script, /Invalid goose command: '\$\{GOOSE_COMMAND\}'/);
-  assert.match(script, /db_string="postgres:\/\/\$\{POSTGRES_USER\}@\$\{POSTGRES_HOST\}:\$\{POSTGRES_PORT\}\/\$\{POSTGRES_DB\}\?sslmode=disable"/);
+  assert.match(
+    script,
+    /db_string="postgres:\/\/\$\{POSTGRES_USER\}@\$\{POSTGRES_HOST\}:\$\{POSTGRES_PORT\}\/\$\{POSTGRES_DB\}\?sslmode=disable"/
+  );
   assert.match(script, /exec env PGPASSWORD="\$\{POSTGRES_PASSWORD\}" "\$\{GOOSE_WRAPPER\}"/);
 });
 
@@ -87,50 +109,81 @@ test('destructive integration scripts isolate themselves from the default local 
   const encryptionScript = readRepoFile('data/scripts/test-encryption.sh');
 
   for (const script of [seedScript, rlsScript, encryptionScript]) {
-    expect(script).toMatch(/PROTECTED_DB_NAMES_REGEX="\$\{PROTECTED_DB_NAMES_REGEX:-\^\(sva_studio\|postgres\)\$\}"/);
+    expect(script).toMatch(
+      /PROTECTED_DB_NAMES_REGEX="\$\{PROTECTED_DB_NAMES_REGEX:-\^\(sva_studio\|postgres\)\$\}"/
+    );
     assert.match(script, /TEST_DB_NAME="\$\{TEST_DB_NAME:-\$\{sanitized_db_name:0:63\}\}"/);
     assert.match(script, /Refusing to run .* against protected database/);
     assert.match(script, /DROP DATABASE IF EXISTS "\$\{TEST_DB_NAME\}";/);
   }
 
-  assert.match(seedScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up/);
-  assert.match(seedScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/);
+  assert.match(
+    seedScript,
+    /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up/
+  );
+  assert.match(
+    seedScript,
+    /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/
+  );
 
-  assert.match(rlsScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up-to 22/);
+  assert.match(
+    rlsScript,
+    /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up-to 22/
+  );
 
   assert.match(
     encryptionScript,
     /IAM_DATABASE_URL="\$\{IAM_DATABASE_URL:-postgres:\/\/sva:sva_local_dev_password@localhost:5432\/\$\{TEST_DB_NAME\}\}"/
   );
-  assert.match(encryptionScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/);
+  assert.match(
+    encryptionScript,
+    /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/
+  );
 });
 
 test('self-service permission change migration keeps admin inserts and rollback fail-closed', () => {
   const sql = readRepoFile('data/migrations/0042_iam_self_service_permission_change_requests.sql');
 
   expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS request_origin TEXT NOT NULL DEFAULT 'admin'/);
-  assert.match(sql, /UPDATE iam\.permission_change_requests[\s\S]*SET request_note = COALESCE\(request_note, ''\)/);
-  assert.match(sql, /IF EXISTS \(\s*SELECT 1[\s\S]*WHERE role_id IS NULL[\s\S]*RAISE EXCEPTION 'Cannot restore role_id NOT NULL/);
-  assert.doesNotMatch(sql, /ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN role_id SET NOT NULL;[\s\S]*ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN request_note DROP NOT NULL/);
+  assert.match(
+    sql,
+    /UPDATE iam\.permission_change_requests[\s\S]*SET request_note = COALESCE\(request_note, ''\)/
+  );
+  assert.match(
+    sql,
+    /IF EXISTS \(\s*SELECT 1[\s\S]*WHERE role_id IS NULL[\s\S]*RAISE EXCEPTION 'Cannot restore role_id NOT NULL/
+  );
+  assert.doesNotMatch(
+    sql,
+    /ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN role_id SET NOT NULL;[\s\S]*ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN request_note DROP NOT NULL/
+  );
 });
 
 test('sidebar application permission migration adds navigation permissions for existing roles', () => {
   const sql = readRepoFile('data/migrations/0046_iam_sidebar_application_permissions.sql');
 
   expect(sql).toMatch(/'app\.read', 'app\.read', 'app', 'Show the app link in the sidebar'/);
-  assert.match(sql, /'cockpit\.read', 'cockpit\.read', 'cockpit', 'Show the cockpit link in the sidebar'/);
   assert.match(
     sql,
-    /WHERE role_key IN \('system_admin', 'instance_registry_admin'\)/
+    /'cockpit\.read', 'cockpit\.read', 'cockpit', 'Show the cockpit link in the sidebar'/
   );
+  assert.match(sql, /WHERE role_key IN \('system_admin', 'instance_registry_admin'\)/);
   assert.match(sql, /grant_origin_kind,\s*access_scope/);
   assert.match(sql, /'seed',\s*'all'/);
-  assert.match(sql, /DELETE FROM iam\.role_permissions[\s\S]*permission_key IN \('app\.read', 'cockpit\.read'\)/);
-  assert.match(sql, /DELETE FROM iam\.permissions[\s\S]*permission_key IN \('app\.read', 'cockpit\.read'\)/);
+  assert.match(
+    sql,
+    /DELETE FROM iam\.role_permissions[\s\S]*permission_key IN \('app\.read', 'cockpit\.read'\)/
+  );
+  assert.match(
+    sql,
+    /DELETE FROM iam\.permissions[\s\S]*permission_key IN \('app\.read', 'cockpit\.read'\)/
+  );
 });
 
 test('sidebar application permission cache invalidation migration notifies affected instances', () => {
-  const sql = readRepoFile('data/migrations/0047_iam_sidebar_application_permission_cache_invalidation.sql');
+  const sql = readRepoFile(
+    'data/migrations/0047_iam_sidebar_application_permission_cache_invalidation.sql'
+  );
 
   expect(sql).toMatch(/iam_permission_snapshot_invalidation/);
   assert.match(sql, /json_build_object\(/);
@@ -147,7 +200,10 @@ test('platform tenant role split migration neutralizes tenant-side root role art
   expect(sql).toMatch(/CREATE TEMP TABLE migration_0050_touched_instances ON COMMIT DROP AS/);
   assert.match(sql, /DELETE FROM iam\.account_roles/);
   assert.match(sql, /DELETE FROM iam\.group_roles/);
-  assert.match(sql, /DELETE FROM iam\.role_permissions[\s\S]*permission_key = 'instance\.registry\.manage'/);
+  assert.match(
+    sql,
+    /DELETE FROM iam\.role_permissions[\s\S]*permission_key = 'instance\.registry\.manage'/
+  );
   assert.match(sql, /\[legacy-root-role-in-tenant\]/);
   assert.match(sql, /\[legacy-bootstrap-role\]/);
   assert.match(sql, /is_system_role = false/);
@@ -179,7 +235,10 @@ test('experimental shell permission migration backfills the additive ui gate for
 
   expect(sql).toMatch(/'experimental\.read'/);
   assert.match(sql, /'experimental',\s*NULL,\s*'allow'/);
-  assert.match(sql, /permission_key IN \('app\.read', 'cockpit\.read', 'iam\.monitoring\.read', 'feature\.toggle'\)/);
+  assert.match(
+    sql,
+    /permission_key IN \('app\.read', 'cockpit\.read', 'iam\.monitoring\.read', 'feature\.toggle'\)/
+  );
   assert.match(sql, /grant_origin_kind,\s*access_scope/);
   assert.match(sql, /'seed',\s*'all'/);
   assert.match(sql, /iam_permission_snapshot_invalidation/);
@@ -192,10 +251,19 @@ test('legacy standard role grant cleanup migration removes historical seed grant
 
   expect(sql).toMatch(/migration_0053_touched_instances/);
   assert.match(sql, /grant_origin_kind = 'seed'/);
-  assert.match(sql, /role_key IN \(\s*'app_manager',\s*'feature-manager',\s*'interface-manager',\s*'designer',\s*'editor',\s*'moderator'\s*\)/);
-  assert.match(sql, /permission_key IN \(\s*'app\.read',\s*'cockpit\.read',\s*'experimental\.read'/);
+  assert.match(
+    sql,
+    /role_key IN \(\s*'app_manager',\s*'feature-manager',\s*'interface-manager',\s*'designer',\s*'editor',\s*'moderator'\s*\)/
+  );
+  assert.match(
+    sql,
+    /permission_key IN \(\s*'app\.read',\s*'cockpit\.read',\s*'experimental\.read'/
+  );
   assert.match(sql, /'iam\.monitoring\.write'/);
-  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(
+    sql,
+    /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/
+  );
   assert.match(sql, /legacy_standard_role_grants_cleaned/);
   assert.match(sql, /legacy_standard_role_grants_restored/);
 });
@@ -210,7 +278,10 @@ test('categories permission migration backfills additive plugin permissions with
   assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
   assert.match(sql, /'system_admin', 'categories\.read'/);
   assert.match(sql, /'system_admin', 'categories\.delete'/);
-  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(
+    sql,
+    /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/
+  );
   assert.match(sql, /ON CONFLICT \(instance_id, role_id, permission_id\) DO NOTHING/);
   assert.match(sql, /iam_permission_snapshot_invalidation/);
   assert.match(sql, /categories_permissions_migrated/);
@@ -222,7 +293,9 @@ test('categories permission migration backfills additive plugin permissions with
 test('content author display migration keeps existing personal content user-authored', () => {
   const sql = readRepoFile('data/migrations/0062_iam_content_author_display_mode.sql');
 
-  expect(sql).toMatch(/UPDATE iam\.contents\s+SET author_display_mode = 'user'\s+WHERE organization_id IS NULL;/);
+  expect(sql).toMatch(
+    /UPDATE iam\.contents\s+SET author_display_mode = 'user'\s+WHERE organization_id IS NULL;/
+  );
   assert.match(
     sql,
     /UPDATE iam\.content_list_projection\s+SET author_display_mode = 'user'\s+WHERE source_system = 'iam'\s+AND organization_id IS NULL;/
@@ -250,10 +323,18 @@ test('admin account hard-delete migration anonymizes retained content account re
     'permission_change_requests_membership_target_fk',
   ];
 
-  expect(sql).toMatch(/ALTER TABLE iam\.content_history\s+ALTER COLUMN actor_account_id DROP NOT NULL;/);
+  expect(sql).toMatch(
+    /ALTER TABLE iam\.content_history\s+ALTER COLUMN actor_account_id DROP NOT NULL;/
+  );
   assert.match(sql, /ALTER TABLE iam\.contents\s+ALTER COLUMN author_account_id DROP NOT NULL,/);
-  assert.match(sql, /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN creator_account_id DROP NOT NULL,/);
-  assert.match(sql, /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN updater_account_id DROP NOT NULL;/);
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN creator_account_id DROP NOT NULL,/
+  );
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.contents[\s\S]*ALTER COLUMN updater_account_id DROP NOT NULL;/
+  );
   assert.match(
     sql,
     /ALTER TABLE iam\.content_history[\s\S]*DROP CONSTRAINT IF EXISTS content_history_actor_account_id_fkey,[\s\S]*ADD CONSTRAINT content_history_actor_account_id_fkey[\s\S]*REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
@@ -275,7 +356,10 @@ test('admin account hard-delete migration anonymizes retained content account re
     assert.match(schemaSnapshot, new RegExp(`${constraintName}[\\s\\S]*ON DELETE RESTRICT;`));
   }
   assert.match(schemaSnapshot, /CREATE TABLE iam\.content_history \([\s\S]*actor_account_id uuid,/);
-  assert.match(schemaSnapshot, /CREATE TABLE iam\.contents \([\s\S]*author_account_id uuid,[\s\S]*creator_account_id uuid,[\s\S]*updater_account_id uuid,/);
+  assert.match(
+    schemaSnapshot,
+    /CREATE TABLE iam\.contents \([\s\S]*author_account_id uuid,[\s\S]*creator_account_id uuid,[\s\S]*updater_account_id uuid,/
+  );
   assert.match(
     schemaSnapshot,
     /content_history_actor_account_id_fkey FOREIGN KEY \(actor_account_id\) REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
@@ -292,16 +376,27 @@ test('admin account hard-delete migration anonymizes retained content account re
     schemaSnapshot,
     /contents_updater_account_id_fkey FOREIGN KEY \(updater_account_id\) REFERENCES iam\.accounts\(id\) ON DELETE SET NULL;/
   );
-  assert.match(sql, /RAISE EXCEPTION 'Cannot restore content account hard-delete constraints while anonymized rows exist\.'/);
+  assert.match(
+    sql,
+    /RAISE EXCEPTION 'Cannot restore content account hard-delete constraints while anonymized rows exist\.'/
+  );
 });
 
 test('activity log hard-delete compatibility migration removes immutable account foreign keys additively', () => {
   const sql = readRepoFile('data/migrations/0068_iam_activity_log_account_hard_delete_compat.sql');
   const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
 
-  expect(sql).toMatch(/ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_account_id_fkey,/);
-  assert.match(sql, /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_subject_id_fkey;/);
-  assert.match(sql, /ALTER TABLE iam\.platform_activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS platform_activity_logs_account_id_fkey;/);
+  expect(sql).toMatch(
+    /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_account_id_fkey,/
+  );
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS activity_logs_subject_id_fkey;/
+  );
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.platform_activity_logs[\s\S]*DROP CONSTRAINT IF EXISTS platform_activity_logs_account_id_fkey;/
+  );
   assert.match(
     sql,
     /RAISE EXCEPTION 'Cannot restore activity log account foreign keys while orphaned audit references exist\.';/
@@ -312,13 +407,21 @@ test('activity log hard-delete compatibility migration removes immutable account
 });
 
 test('content projection deleted-account fallback migration keeps trigger inserts compatible with anonymized content rows', () => {
-  const sql = readRepoFile('data/migrations/0069_iam_content_projection_deleted_account_fallback.sql');
+  const sql = readRepoFile(
+    'data/migrations/0069_iam_content_projection_deleted_account_fallback.sql'
+  );
   const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
 
   expect(sql).toMatch(/COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
   assert.match(sql, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
-  assert.match(schemaSnapshot, /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/);
-  assert.match(schemaSnapshot, /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/);
+  assert.match(
+    schemaSnapshot,
+    /COALESCE\(NEW\.creator_account_id::text, '__iam_author_deleted__'\)/
+  );
+  assert.match(
+    schemaSnapshot,
+    /COALESCE\(NEW\.updater_account_id::text, '__iam_author_deleted__'\)/
+  );
 });
 
 test('categories instance-module migration backfills additive module assignments for mainserver content tenants', () => {
@@ -345,7 +448,10 @@ test('system admin core permission backfill migration restores missing tenant ia
   assert.match(sql, /'system_admin', 'iam\.user\.read'/);
   assert.match(sql, /'system_admin', 'iam\.org\.write'/);
   assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
-  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(
+    sql,
+    /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/
+  );
   assert.match(sql, /ON CONFLICT \(instance_id, role_id, permission_id\) DO NOTHING/);
   assert.match(sql, /iam_permission_snapshot_invalidation/);
   assert.match(sql, /system_admin_core_permissions_migrated/);
@@ -361,9 +467,15 @@ test('modules read permission migration backfills all tenants and grants only sy
   assert.match(sql, /FROM iam\.instances instances/);
   assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
   assert.match(sql, /WHERE roles\.role_key = 'system_admin'/);
-  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(
+    sql,
+    /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/
+  );
   assert.match(sql, /ON CONFLICT \(instance_id, role_id, permission_id\) DO NOTHING/);
-  assert.match(sql, /INSERT INTO iam\.permission_cache_instance_revisions \(instance_id, revision, updated_at\)/);
+  assert.match(
+    sql,
+    /INSERT INTO iam\.permission_cache_instance_revisions \(instance_id, revision, updated_at\)/
+  );
   assert.match(sql, /revision = iam\.permission_cache_instance_revisions\.revision \+ 1/);
   assert.match(sql, /'event', 'PermissionRevisionChanged'/);
   assert.match(sql, /'revisionScope', 'instance'/);
@@ -377,16 +489,43 @@ test('modules read permission migration backfills all tenants and grants only sy
 });
 
 test('postal-code enrichment jobs are unique per instance while active', () => {
-  const sql = readRepoFile('data/migrations/0082_iam_waste_postal_code_enrichment_active_job_unique.sql');
+  const sql = readRepoFile(
+    'data/migrations/0082_iam_waste_postal_code_enrichment_active_job_unique.sql'
+  );
   const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
 
   for (const source of [sql, schemaSnapshot]) {
-    expect(source).toMatch(/CREATE UNIQUE INDEX idx_studio_jobs_active_waste_postal_code_enrichment/);
+    expect(source).toMatch(
+      /CREATE UNIQUE INDEX idx_studio_jobs_active_waste_postal_code_enrichment/
+    );
     expect(source).toMatch(/ON iam\.studio_jobs(?: USING btree)? \(instance_id, job_type_id\)/);
     expect(source).toMatch(/job_type_id = 'waste-management\.enrich-postal-codes'/);
     expect(source).toMatch(/'queued'[^\n]*'running'[^\n]*'retrying'/);
   }
-  expect(sql).toMatch(/DROP INDEX IF EXISTS iam\.idx_studio_jobs_active_waste_postal_code_enrichment/);
+  expect(sql).toMatch(
+    /DROP INDEX IF EXISTS iam\.idx_studio_jobs_active_waste_postal_code_enrichment/
+  );
+});
+
+test('plugin activation policy migration preserves existing module assignments as manual enables', () => {
+  const sql = readRepoFile('data/migrations/0088_iam_instance_module_activation_policy.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+
+  expect(upSql).toMatch(/ADD COLUMN activation_policy text NOT NULL DEFAULT 'optional'/);
+  assert.match(upSql, /ADD COLUMN effective_active boolean NOT NULL DEFAULT true/);
+  assert.match(
+    upSql,
+    /UPDATE iam\.instance_modules\s+SET\s+activation_origin = 'migration',\s+manual_override = 'enabled';/
+  );
+  assert.doesNotMatch(upSql, /DELETE FROM iam\.instance_modules/);
+  assert.doesNotMatch(upSql, /TRUNCATE (?:TABLE )?iam\.instance_modules/);
+  for (const source of [upSql, schemaSnapshot]) {
+    expect(source).toMatch(
+      /manual_override = 'enabled'(?:::text)?\)?\s+AND \(?activation_policy = 'optional'/
+    );
+    expect(source).toMatch(/activation_origin = 'policy_reconcile'/);
+  }
 });
 
 test('organization type migration and schema snapshot support associations and institutions', () => {
@@ -414,8 +553,14 @@ test('iam ownership authorization model migration replaces legacy ownership, dir
   assert.doesNotMatch(sql, /owner_user_id = creator_account_id/);
   assert.doesNotMatch(sql, /owner_organization_id = organization_id/);
   assert.match(sql, /Existing rows without canonical owner columns remain ownerless intentionally/);
-  assert.match(sql, /ALTER TABLE iam\.content_list_projection[\s\S]*ADD COLUMN IF NOT EXISTS owner_user_id UUID NULL/);
-  assert.match(sql, /ALTER TABLE iam\.content_list_projection[\s\S]*ADD COLUMN IF NOT EXISTS owner_organization_id UUID NULL/);
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.content_list_projection[\s\S]*ADD COLUMN IF NOT EXISTS owner_user_id UUID NULL/
+  );
+  assert.match(
+    sql,
+    /ALTER TABLE iam\.content_list_projection[\s\S]*ADD COLUMN IF NOT EXISTS owner_organization_id UUID NULL/
+  );
   assert.match(sql, /DROP CONSTRAINT IF EXISTS content_list_projection_scope_key/);
   assert.match(sql, /UNIQUE NULLS NOT DISTINCT[\s\S]*owner_user_id[\s\S]*owner_organization_id/);
   assert.match(sql, /DROP TABLE IF EXISTS iam\.account_permissions/);
@@ -437,11 +582,22 @@ test('content projection legacy primary key migration preserves scoped mainserve
 });
 
 test('runtime artifact verification runs workspace node helper via bash', () => {
-  const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
+  const script = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'),
+    'utf8'
+  );
 
-  expect(script).toMatch(/bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
-  assert.match(script, /KEYCLOAK_PORT="\$\{KEYCLOAK_PORT\}" bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
-  assert.doesNotMatch(script, /(^|[^[:alnum:]_])"\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
+  expect(script).toMatch(
+    /bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/
+  );
+  assert.match(
+    script,
+    /KEYCLOAK_PORT="\$\{KEYCLOAK_PORT\}" bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/
+  );
+  assert.doesNotMatch(
+    script,
+    /(^|[^[:alnum:]_])"\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/
+  );
   expect(script).toContain('SVA_PLUGIN_OPERATION_WORKER_ENABLED=false');
 });
 
@@ -458,12 +614,18 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'deploy/portainer/Dockerfile'),
     'utf8'
   );
-  const rootDockerfile = readFileSync(resolve(testDirectory, '..', '..', '..', 'Dockerfile'), 'utf8');
+  const rootDockerfile = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'Dockerfile'),
+    'utf8'
+  );
   const productionJsxRuntimeGuard = readFileSync(
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.ts'),
     'utf8'
   );
-  const dockerignore = readFileSync(resolve(testDirectory, '..', '..', '..', '.dockerignore'), 'utf8');
+  const dockerignore = readFileSync(
+    resolve(testDirectory, '..', '..', '..', '.dockerignore'),
+    'utf8'
+  );
   const patchRuntimeArtifact = readFileSync(
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
     'utf8'
@@ -476,7 +638,10 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/sync-injected-workspace-packages.ts'),
     'utf8'
   );
-  const studioProjectJson = readFileSync(resolve(testDirectory, '..', '..', '..', 'apps/sva-studio-react/project.json'), 'utf8');
+  const studioProjectJson = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'apps/sva-studio-react/project.json'),
+    'utf8'
+  );
 
   expect(imageVerifyScript).toMatch(/docker pull "\$\{IMAGE_REF\}"/);
   assert.doesNotMatch(imageVerifyScript, /skipped-local/);
@@ -489,21 +654,36 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /"\$\{SERVER_INDEX_PATH\}"/);
   assert.match(runtimeVerifyScript, /"\$\{PATCHED_SERVER_ENTRY_PATH\}"/);
   assert.match(runtimeVerifyScript, /"\$\{SERVER_CHUNK_PATH\}"/);
-  assert.match(runtimeVerifyScript, /NITRO_SERVICE_ENTRY_PATH="\$\{APP_DIR\}\/\.output\/server\/_libs\/_\.mjs"/);
-  assert.match(runtimeVerifyScript, /grep -Fq '\.\/_chunks\/ssr-renderer\.mjs' "\$\{SERVER_INDEX_PATH\}"/);
+  assert.match(
+    runtimeVerifyScript,
+    /NITRO_SERVICE_ENTRY_PATH="\$\{APP_DIR\}\/\.output\/server\/_libs\/_\.mjs"/
+  );
+  assert.match(
+    runtimeVerifyScript,
+    /grep -Fq '\.\/_chunks\/ssr-renderer\.mjs' "\$\{SERVER_INDEX_PATH\}"/
+  );
   assert.match(runtimeVerifyScript, /grep -Fq '\.\/_libs\/_\.mjs' "\$\{SERVER_INDEX_PATH\}"/);
-  assert.match(runtimeVerifyScript, /grep -Fq '\.\.\/_ssr\/ssr\.mjs' "\$\{NITRO_SERVICE_ENTRY_PATH\}"/);
+  assert.match(
+    runtimeVerifyScript,
+    /grep -Fq '\.\.\/_ssr\/ssr\.mjs' "\$\{NITRO_SERVICE_ENTRY_PATH\}"/
+  );
   assert.match(runtimeVerifyScript, /run_postgres_sql_with_retry\(\)/);
   assert.match(runtimeVerifyScript, /for _ in \$\(seq 1 10\); do/);
   assert.match(runtimeVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);
-  assert.doesNotMatch(runtimeVerifyScript, /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/);
+  assert.doesNotMatch(
+    runtimeVerifyScript,
+    /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/
+  );
 
   for (const dockerfile of [rootDockerfile, portainerDockerfile]) {
     assert.match(
       dockerfile,
       /pnpm exec tsx scripts\/ci\/check-production-jsx-runtime\.ts \/workspace\/apps\/sva-studio-react/
     );
-    assert.doesNotMatch(dockerfile, /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f/);
+    assert.doesNotMatch(
+      dockerfile,
+      /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f/
+    );
   }
   assert.match(productionJsxRuntimeGuard, /collectRuntimeSpecifiers/);
   assert.match(productionJsxRuntimeGuard, /pendingPaths/);
@@ -516,29 +696,68 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(dockerignore, /^\.git$/m);
 
   assert.match(patchRuntimeArtifact, /findPnpmPackageDir/);
-  assert.match(patchRuntimeArtifact, /path\.join\(pnpmDir, entry\.name, 'node_modules', \.\.\.packageSegments\)/);
-  assert.match(patchRuntimeArtifact, /path\.join\(currentDir, 'node_modules', \.\.\.packageSegments\)/);
-  assert.match(patchRuntimeArtifact, /finalServerEntrySource\.includes\(nitroSsrServiceImportPath\)/);
-  assert.match(patchRuntimeArtifact, /finalServerEntrySource\.includes\(nitroSsrRendererImportPath\)/);
+  assert.match(
+    patchRuntimeArtifact,
+    /path\.join\(pnpmDir, entry\.name, 'node_modules', \.\.\.packageSegments\)/
+  );
+  assert.match(
+    patchRuntimeArtifact,
+    /path\.join\(currentDir, 'node_modules', \.\.\.packageSegments\)/
+  );
+  assert.match(
+    patchRuntimeArtifact,
+    /finalServerEntrySource\.includes\(nitroSsrServiceImportPath\)/
+  );
+  assert.match(
+    patchRuntimeArtifact,
+    /finalServerEntrySource\.includes\(nitroSsrRendererImportPath\)/
+  );
   assert.doesNotMatch(patchRuntimeArtifact, /node_modules', '\.pnpm', 'node_modules'/);
   assert.doesNotMatch(patchRuntimeArtifact, /requireFromApp\.resolve/);
 
   assert.match(syncInjectedWorkspacePackages, /node_modules', '\.pnpm'/);
-  assert.match(syncInjectedWorkspacePackages, /const replaceInjectedDist = async \(sourceDistDir: string, injectedPackageDir: string\) =>/);
-  assert.match(syncInjectedWorkspacePackages, /await cp\(sourceDistDir, targetDistDir, \{ force: true, recursive: true \}\)/);
-  assert.match(syncInjectedWorkspacePackages, /await replaceInjectedDist\(liveSourceDistDir, injectedCopy\.dir\)/);
-  assert.match(syncInjectedWorkspacePackages, /if \(injectedCopy\.realDir === workspacePackage\.realDir\)/);
+  assert.match(
+    syncInjectedWorkspacePackages,
+    /const replaceInjectedDist = async \(sourceDistDir: string, injectedPackageDir: string\) =>/
+  );
+  assert.match(
+    syncInjectedWorkspacePackages,
+    /await cp\(sourceDistDir, targetDistDir, \{ force: true, recursive: true \}\)/
+  );
+  assert.match(
+    syncInjectedWorkspacePackages,
+    /await replaceInjectedDist\(liveSourceDistDir, injectedCopy\.dir\)/
+  );
+  assert.match(
+    syncInjectedWorkspacePackages,
+    /if \(injectedCopy\.realDir === workspacePackage\.realDir\)/
+  );
 
-  assert.match(checkServerPackageRuntime, /const replaceInjectedDist = \(sourceDistDir: string, injectedPackageDir: string\): void =>/);
-  assert.match(checkServerPackageRuntime, /const backupDistDir = path\.join\(injectedPackageDir, `\.dist-backup-\$\{swapSuffix\}`\);/);
+  assert.match(
+    checkServerPackageRuntime,
+    /const replaceInjectedDist = \(sourceDistDir: string, injectedPackageDir: string\): void =>/
+  );
+  assert.match(
+    checkServerPackageRuntime,
+    /const backupDistDir = path\.join\(injectedPackageDir, `\.dist-backup-\$\{swapSuffix\}`\);/
+  );
   assert.match(checkServerPackageRuntime, /fs\.renameSync\(targetDistDir, backupDistDir\)/);
   assert.match(checkServerPackageRuntime, /fs\.renameSync\(stagedDistDir, targetDistDir\)/);
   assert.match(checkServerPackageRuntime, /maxRetries: 5/);
-  assert.doesNotMatch(checkServerPackageRuntime, /fs\.rmSync\(targetDistDir, \{ recursive: true, force: true \}\)/);
+  assert.doesNotMatch(
+    checkServerPackageRuntime,
+    /fs\.rmSync\(targetDistDir, \{ recursive: true, force: true \}\)/
+  );
 
-  assert.match(studioProjectJson, /generate-studio-changelog-artifact\.ts --output \.generated\/studio-changelog\.json/);
+  assert.match(
+    studioProjectJson,
+    /generate-studio-changelog-artifact\.ts --output \.generated\/studio-changelog\.json/
+  );
   assert.match(studioProjectJson, /run-workspace-node\.sh -e/);
-  assert.match(studioProjectJson, /fs\.mkdirSync\('\.output\/server\/generated',\{recursive:true\}\)/);
+  assert.match(
+    studioProjectJson,
+    /fs\.mkdirSync\('\.output\/server\/generated',\{recursive:true\}\)/
+  );
   assert.match(
     studioProjectJson,
     /fs\.copyFileSync\('\.generated\/studio-changelog\.json','\.output\/server\/generated\/studio-changelog\.json'\)/
@@ -551,140 +770,214 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     studioProjectJson,
     /patch-runtime-artifact\.ts \. && bash \.\.\/\.\.\/scripts\/ci\/run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/sync-injected-workspace-packages\.ts \./
   );
-  assert.match(runtimeVerifyScript, /"injected-workspace-sync": "\$\{INJECTED_WORKSPACE_SYNC_STATUS\}"/);
-  assert.match(runtimeVerifyScript, /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/);
-});
-
-test('portable docker runtime guard follows reachable modules and excludes only the known optional helper', { timeout: 10_000 }, () => {
-  const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
-  const serverDir = resolve(tempRoot, '.output/server');
-  const ssrDir = resolve(serverDir, '_ssr');
-  const libraryDir = resolve(serverDir, '_libs');
-  const chunksDir = resolve(serverDir, '_chunks');
-  const otelChunkDir = resolve(serverDir, 'chunks/_');
-  const recoveryChunkDir = resolve(serverDir, 'chunks/build');
-  const guardScript = resolve(testDirectory, '..', '..', '..', 'scripts/ci/check-production-jsx-runtime.ts');
-
-  try {
-    mkdirSync(ssrDir, { recursive: true });
-    mkdirSync(libraryDir, { recursive: true });
-    mkdirSync(chunksDir, { recursive: true });
-    mkdirSync(otelChunkDir, { recursive: true });
-    mkdirSync(recoveryChunkDir, { recursive: true });
-    writeFileSync(serverDir + '/index.mjs', 'import "./_chunks/ssr-renderer.mjs";\n');
-    writeFileSync(resolve(chunksDir, 'ssr-renderer.mjs'), 'export { service } from "../_libs/service.mjs";\n');
-    writeFileSync(resolve(libraryDir, 'service.mjs'), 'export const service = import("../_ssr/ssr.mjs");\n');
-    writeFileSync(
-      resolve(ssrDir, 'ssr.mjs'),
-      'import "./server-test.mjs"; import "../_libs/hast-util-to-jsx-runtime+[...].mjs";\n'
-    );
-    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
-    writeFileSync(resolve(ssrDir, 'commonjs.cjs'), 'require("./resolution-target");\n');
-    writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "jsxDEV";\n');
-    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "prod-runtime";\n');
-    writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'export const preload = "prod-runtime";\n');
-    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
-    writeFileSync(
-      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
-      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
-    );
-
-    execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
-
-    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "./commonjs.cjs";\n');
-    execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
-    writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "prod-runtime";\n');
-    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "jsxDEV";\n');
-    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
-      /Command failed/
-    );
-    writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "prod-runtime";\n');
-    writeFileSync(resolve(ssrDir, 'template-target.mjs'), 'export const template = "jsxDEV";\n');
-    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import(`./template-target.mjs`);\n');
-    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
-      /Command failed/
-    );
-    writeFileSync(resolve(ssrDir, 'extensionless-target'), 'module.exports = "jsxDEV";\n');
-    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'require("./extensionless-target");\n');
-    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
-      /Command failed/
-    );
-    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
-
-    writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'const preload = "jsxDEV";\n');
-    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
-      /Command failed/
-    );
-
-    writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'export const preload = "prod-runtime";\n');
-    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'const recovery = "jsxDEV";\n');
-    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
-      /Command failed/
-    );
-
-    writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'export const recovery = "prod-runtime";\n');
-    writeFileSync(
-      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
-      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\nconst inlinedDevelopmentTransform = "jsxDEV";\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
-    );
-    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
-      /Command failed/
-    );
-
-    writeFileSync(
-      resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
-      '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
-    );
-    writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "react/jsx-dev-runtime";\n');
-
-    expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
-      /Command failed/
-    );
-  } finally {
-    rmSync(tempRoot, { force: true, recursive: true });
-  }
-});
-
-test('injected workspace sync copies dist into pnpm store package copies', { timeout: 15_000 }, () => {
-  const tempRoot = mkdtempSync(resolve(tmpdir(), 'sync-injected-workspace-'));
-  const appDir = resolve(tempRoot, 'apps', 'demo-app');
-  const sourcePackageDir = resolve(tempRoot, 'packages', 'demo-lib');
-  const sourceDistDir = resolve(sourcePackageDir, 'dist');
-  const injectedPackageDir = resolve(
-    tempRoot,
-    'node_modules',
-    '.pnpm',
-    '@sva+demo-lib@file+packages+demo-lib',
-    'node_modules',
-    '@sva',
-    'demo-lib'
+  assert.match(
+    runtimeVerifyScript,
+    /"injected-workspace-sync": "\$\{INJECTED_WORKSPACE_SYNC_STATUS\}"/
   );
-  const syncScriptPath = resolve(testDirectory, '..', '..', '..', 'scripts', 'ci', 'sync-injected-workspace-packages.ts');
-  const workspaceNodeScriptPath = resolve(testDirectory, '..', '..', '..', 'scripts', 'ci', 'run-workspace-node.sh');
-
-  try {
-    mkdirSync(sourceDistDir, { recursive: true });
-    mkdirSync(appDir, { recursive: true });
-    mkdirSync(injectedPackageDir, { recursive: true });
-
-    writeFileSync(resolve(tempRoot, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n  - packages/*\n');
-    writeFileSync(resolve(appDir, 'package.json'), JSON.stringify({ name: 'demo-app' }));
-    writeFileSync(resolve(sourcePackageDir, 'package.json'), JSON.stringify({ name: '@sva/demo-lib', type: 'module' }));
-    writeFileSync(resolve(sourceDistDir, 'index.js'), 'export const synced = true;\n');
-    writeFileSync(resolve(injectedPackageDir, 'package.json'), JSON.stringify({ name: '@sva/demo-lib', type: 'module' }));
-    mkdirSync(resolve(appDir, 'node_modules', '@sva'), { recursive: true });
-    symlinkSync(injectedPackageDir, resolve(appDir, 'node_modules', '@sva', 'demo-lib'), 'dir');
-
-    execFileSync('bash', [workspaceNodeScriptPath, '--import', 'tsx', syncScriptPath, appDir], {
-      cwd: resolve(testDirectory, '..', '..', '..'),
-      stdio: 'pipe',
-    });
-
-    expect(readFileSync(resolve(injectedPackageDir, 'dist', 'index.js'), 'utf8')).toBe('export const synced = true;\n');
-  } finally {
-    rmSync(tempRoot, { force: true, recursive: true });
-  }
+  assert.match(
+    runtimeVerifyScript,
+    /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/
+  );
 });
+
+test(
+  'portable docker runtime guard follows reachable modules and excludes only the known optional helper',
+  { timeout: 10_000 },
+  () => {
+    const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
+    const serverDir = resolve(tempRoot, '.output/server');
+    const ssrDir = resolve(serverDir, '_ssr');
+    const libraryDir = resolve(serverDir, '_libs');
+    const chunksDir = resolve(serverDir, '_chunks');
+    const otelChunkDir = resolve(serverDir, 'chunks/_');
+    const recoveryChunkDir = resolve(serverDir, 'chunks/build');
+    const guardScript = resolve(
+      testDirectory,
+      '..',
+      '..',
+      '..',
+      'scripts/ci/check-production-jsx-runtime.ts'
+    );
+
+    try {
+      mkdirSync(ssrDir, { recursive: true });
+      mkdirSync(libraryDir, { recursive: true });
+      mkdirSync(chunksDir, { recursive: true });
+      mkdirSync(otelChunkDir, { recursive: true });
+      mkdirSync(recoveryChunkDir, { recursive: true });
+      writeFileSync(serverDir + '/index.mjs', 'import "./_chunks/ssr-renderer.mjs";\n');
+      writeFileSync(
+        resolve(chunksDir, 'ssr-renderer.mjs'),
+        'export { service } from "../_libs/service.mjs";\n'
+      );
+      writeFileSync(
+        resolve(libraryDir, 'service.mjs'),
+        'export const service = import("../_ssr/ssr.mjs");\n'
+      );
+      writeFileSync(
+        resolve(ssrDir, 'ssr.mjs'),
+        'import "./server-test.mjs"; import "../_libs/hast-util-to-jsx-runtime+[...].mjs";\n'
+      );
+      writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
+      writeFileSync(resolve(ssrDir, 'commonjs.cjs'), 'require("./resolution-target");\n');
+      writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "jsxDEV";\n');
+      writeFileSync(
+        resolve(ssrDir, 'resolution-target.js'),
+        'export const actual = "prod-runtime";\n'
+      );
+      writeFileSync(
+        resolve(otelChunkDir, 'server.mjs'),
+        'export const preload = "prod-runtime";\n'
+      );
+      writeFileSync(
+        resolve(recoveryChunkDir, 'server.mjs'),
+        'export const recovery = "prod-runtime";\n'
+      );
+      writeFileSync(
+        resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+        '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
+      );
+
+      execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
+
+      writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "./commonjs.cjs";\n');
+      execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
+      writeFileSync(
+        resolve(ssrDir, 'resolution-target.cjs'),
+        'export const decoy = "prod-runtime";\n'
+      );
+      writeFileSync(resolve(ssrDir, 'resolution-target.js'), 'export const actual = "jsxDEV";\n');
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+      writeFileSync(
+        resolve(ssrDir, 'resolution-target.js'),
+        'export const actual = "prod-runtime";\n'
+      );
+      writeFileSync(resolve(ssrDir, 'template-target.mjs'), 'export const template = "jsxDEV";\n');
+      writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import(`./template-target.mjs`);\n');
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+      writeFileSync(resolve(ssrDir, 'extensionless-target'), 'module.exports = "jsxDEV";\n');
+      writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'require("./extensionless-target");\n');
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+      writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
+
+      writeFileSync(resolve(otelChunkDir, 'server.mjs'), 'const preload = "jsxDEV";\n');
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+
+      writeFileSync(
+        resolve(otelChunkDir, 'server.mjs'),
+        'export const preload = "prod-runtime";\n'
+      );
+      writeFileSync(resolve(recoveryChunkDir, 'server.mjs'), 'const recovery = "jsxDEV";\n');
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+
+      writeFileSync(
+        resolve(recoveryChunkDir, 'server.mjs'),
+        'export const recovery = "prod-runtime";\n'
+      );
+      writeFileSync(
+        resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+        '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\nconst inlinedDevelopmentTransform = "jsxDEV";\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
+      );
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+
+      writeFileSync(
+        resolve(libraryDir, 'hast-util-to-jsx-runtime+[...].mjs'),
+        '//#region ../../node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.6/node_modules/hast-util-to-jsx-runtime/lib/index.js\nfunction developmentCreate(filePath, jsxDEV) {\n  return jsxDEV(type, props, key, isStaticChildren, {\n  });\n}\n//#endregion\nexport const coalescedModule = "prod-runtime";\n'
+      );
+      writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "react/jsx-dev-runtime";\n');
+
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+    } finally {
+      rmSync(tempRoot, { force: true, recursive: true });
+    }
+  }
+);
+
+test(
+  'injected workspace sync copies dist into pnpm store package copies',
+  { timeout: 15_000 },
+  () => {
+    const tempRoot = mkdtempSync(resolve(tmpdir(), 'sync-injected-workspace-'));
+    const appDir = resolve(tempRoot, 'apps', 'demo-app');
+    const sourcePackageDir = resolve(tempRoot, 'packages', 'demo-lib');
+    const sourceDistDir = resolve(sourcePackageDir, 'dist');
+    const injectedPackageDir = resolve(
+      tempRoot,
+      'node_modules',
+      '.pnpm',
+      '@sva+demo-lib@file+packages+demo-lib',
+      'node_modules',
+      '@sva',
+      'demo-lib'
+    );
+    const syncScriptPath = resolve(
+      testDirectory,
+      '..',
+      '..',
+      '..',
+      'scripts',
+      'ci',
+      'sync-injected-workspace-packages.ts'
+    );
+    const workspaceNodeScriptPath = resolve(
+      testDirectory,
+      '..',
+      '..',
+      '..',
+      'scripts',
+      'ci',
+      'run-workspace-node.sh'
+    );
+
+    try {
+      mkdirSync(sourceDistDir, { recursive: true });
+      mkdirSync(appDir, { recursive: true });
+      mkdirSync(injectedPackageDir, { recursive: true });
+
+      writeFileSync(
+        resolve(tempRoot, 'pnpm-workspace.yaml'),
+        'packages:\n  - apps/*\n  - packages/*\n'
+      );
+      writeFileSync(resolve(appDir, 'package.json'), JSON.stringify({ name: 'demo-app' }));
+      writeFileSync(
+        resolve(sourcePackageDir, 'package.json'),
+        JSON.stringify({ name: '@sva/demo-lib', type: 'module' })
+      );
+      writeFileSync(resolve(sourceDistDir, 'index.js'), 'export const synced = true;\n');
+      writeFileSync(
+        resolve(injectedPackageDir, 'package.json'),
+        JSON.stringify({ name: '@sva/demo-lib', type: 'module' })
+      );
+      mkdirSync(resolve(appDir, 'node_modules', '@sva'), { recursive: true });
+      symlinkSync(injectedPackageDir, resolve(appDir, 'node_modules', '@sva', 'demo-lib'), 'dir');
+
+      execFileSync('bash', [workspaceNodeScriptPath, '--import', 'tsx', syncScriptPath, appDir], {
+        cwd: resolve(testDirectory, '..', '..', '..'),
+        stdio: 'pipe',
+      });
+
+      expect(readFileSync(resolve(injectedPackageDir, 'dist', 'index.js'), 'utf8')).toBe(
+        'export const synced = true;\n'
+      );
+    } finally {
+      rmSync(tempRoot, { force: true, recursive: true });
+    }
+  }
+);
 
 test('public waste build syncs injected workspace packages before vite resolves server imports', () => {
   const publicWastePackageJson = readFileSync(
@@ -708,7 +1001,9 @@ test('public waste build syncs injected workspace packages before vite resolves 
 test('sva-studio-react vite SSR config resolves mail-runtime from workspace source', () => {
   const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
 
-  expect(viteConfig).toMatch(/'@sva\/mail-runtime': resolveAppPath\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts'\)/);
+  expect(viteConfig).toMatch(
+    /'@sva\/mail-runtime': resolveAppPath\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts'\)/
+  );
   assert.match(viteConfig, /'@sva\/mail-runtime',/);
   assert.match(viteConfig, /'\.localhost'/);
   assert.doesNotMatch(viteConfig, /lvh\.me/);

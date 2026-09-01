@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict a6pcZv047R1ijqVkcXgaInH7kse8w6qcOb4bkLKvZ47wVFMhVUR2FqDOhwnl3BG
+\restrict M4FCOWSk22Cit75bXmgV4b5AJWFT85WtvUgagN1B1Q6YTlRCcuVCOA5FmUaRFhq
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -136,6 +136,74 @@ CREATE FUNCTION iam.current_instance_id() RETURNS text
     LANGUAGE sql STABLE
     AS $$
   SELECT NULLIF(current_setting('app.instance_id', true), '')
+$$;
+
+
+--
+-- Name: plugin_tenant_lifecycle_observability_snapshot(); Type: FUNCTION; Schema: iam; Owner: -
+--
+
+CREATE FUNCTION iam.plugin_tenant_lifecycle_observability_snapshot() RETURNS TABLE(reason_code text, stall_count bigint)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'iam'
+    SET statement_timeout TO '10s'
+    AS $$
+  WITH lifecycle_jobs AS MATERIALIZED (
+    SELECT
+      lifecycle.active_job_id,
+      lifecycle.completed_generation,
+      lifecycle.desired_generation,
+      lifecycle.next_recheck_at,
+      lifecycle.readiness_status,
+      lifecycle.retry_after,
+      lifecycle.retry_kind,
+      lifecycle.started_at AS lifecycle_started_at,
+      lifecycle.updated_at AS lifecycle_updated_at,
+      job.heartbeat_at,
+      job.id AS job_id,
+      job.scheduled_at,
+      job.started_at AS job_started_at,
+      job.status AS job_status
+    FROM iam.instance_plugin_lifecycle AS lifecycle
+    LEFT JOIN iam.studio_jobs AS job
+      ON job.id = lifecycle.active_job_id
+  )
+  SELECT 'stale_claim'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE active_job_id IS NOT NULL
+    AND job_status = 'running'
+    AND coalesce(heartbeat_at, job_started_at, lifecycle_started_at, lifecycle_updated_at)
+      <= statement_timestamp() - interval '120 seconds'
+  UNION ALL
+  SELECT 'queued_due'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE active_job_id IS NOT NULL
+    AND job_status = 'queued'
+    AND scheduled_at <= statement_timestamp() - interval '120 seconds'
+  UNION ALL
+  SELECT 'retry_due'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE retry_kind = 'retryable'
+    AND retry_after <= statement_timestamp()
+  UNION ALL
+  SELECT 'pending_recheck_due'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE readiness_status = 'pending'
+    AND active_job_id IS NULL
+    AND next_recheck_at <= statement_timestamp()
+  UNION ALL
+  SELECT 'generation_without_owner'::text, count(*)::bigint
+  FROM lifecycle_jobs
+  WHERE desired_generation > completed_generation
+    AND (
+      active_job_id IS NULL
+      OR job_id IS NULL
+      OR job_status IN ('succeeded', 'failed', 'cancelled')
+    )
+    AND NOT (
+      (retry_kind = 'retryable' AND retry_after > statement_timestamp())
+      OR (readiness_status = 'pending' AND next_recheck_at > statement_timestamp())
+    );
 $$;
 
 
@@ -1140,8 +1208,66 @@ CREATE TABLE iam.instance_memberships (
 CREATE TABLE iam.instance_modules (
     instance_id text NOT NULL,
     module_id text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    activation_policy text DEFAULT 'optional'::text NOT NULL,
+    activation_origin text DEFAULT 'manual'::text NOT NULL,
+    effective_active boolean DEFAULT true NOT NULL,
+    manual_override text,
+    manifest_version integer DEFAULT 1 NOT NULL,
+    policy_revision text DEFAULT 'legacy'::text NOT NULL,
+    state_revision bigint DEFAULT 1 NOT NULL,
+    reconcile_id text,
+    reconciled_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text,
+    CONSTRAINT instance_modules_activation_origin_check CHECK ((activation_origin = ANY (ARRAY['manual'::text, 'policy_reconcile'::text, 'migration'::text]))),
+    CONSTRAINT instance_modules_activation_policy_check CHECK ((activation_policy = ANY (ARRAY['optional'::text, 'automatic'::text, 'required'::text]))),
+    CONSTRAINT instance_modules_manifest_version_check CHECK ((manifest_version > 0)),
+    CONSTRAINT instance_modules_manual_override_check CHECK (((manual_override IS NULL) OR (manual_override = ANY (ARRAY['enabled'::text, 'disabled'::text])))),
+    CONSTRAINT instance_modules_manual_override_state_check CHECK (((manual_override IS NULL) OR ((manual_override = 'enabled'::text) AND effective_active) OR ((manual_override = 'enabled'::text) AND (activation_policy = 'optional'::text) AND (activation_origin = 'policy_reconcile'::text)) OR ((manual_override = 'disabled'::text) AND (NOT effective_active)))),
+    CONSTRAINT instance_modules_required_policy_check CHECK (((activation_policy <> 'required'::text) OR (effective_active AND (manual_override IS NULL)))),
+    CONSTRAINT instance_modules_state_revision_check CHECK ((state_revision > 0))
 );
+
+
+--
+-- Name: instance_plugin_lifecycle; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_plugin_lifecycle (
+    instance_id text NOT NULL,
+    plugin_id text NOT NULL,
+    access_state text DEFAULT 'active'::text NOT NULL,
+    readiness_status text DEFAULT 'pending'::text NOT NULL,
+    desired_operation text DEFAULT 'provision'::text NOT NULL,
+    desired_generation bigint DEFAULT 1 NOT NULL,
+    completed_generation bigint DEFAULT 0 NOT NULL,
+    claimed_generation bigint,
+    active_job_id uuid,
+    readiness_revision text,
+    readiness_checks jsonb DEFAULT '[]'::jsonb NOT NULL,
+    error_code text,
+    retry_kind text,
+    retry_after timestamp with time zone,
+    requested_at timestamp with time zone DEFAULT now() NOT NULL,
+    started_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    next_recheck_at timestamp with time zone DEFAULT (now() + '00:02:00'::interval),
+    contract_revision text,
+    recovery_error_code text,
+    CONSTRAINT instance_plugin_lifecycle_access_state_chk CHECK ((access_state = ANY (ARRAY['active'::text, 'suspended'::text]))),
+    CONSTRAINT instance_plugin_lifecycle_claim_chk CHECK (((active_job_id IS NULL) = (claimed_generation IS NULL))),
+    CONSTRAINT instance_plugin_lifecycle_generation_chk CHECK (((desired_generation >= 1) AND (completed_generation >= 0) AND (completed_generation <= desired_generation) AND ((claimed_generation IS NULL) OR ((claimed_generation >= 1) AND (claimed_generation <= desired_generation))))),
+    CONSTRAINT instance_plugin_lifecycle_operation_chk CHECK ((desired_operation = ANY (ARRAY['provision'::text, 'reconcile'::text, 'suspend'::text, 'reactivate'::text, 'readiness'::text]))),
+    CONSTRAINT instance_plugin_lifecycle_pending_recheck_chk CHECK (((readiness_status <> 'pending'::text) OR (next_recheck_at IS NOT NULL))),
+    CONSTRAINT instance_plugin_lifecycle_plugin_id_chk CHECK ((plugin_id ~ '^[a-z][a-z0-9-]{1,30}$'::text)),
+    CONSTRAINT instance_plugin_lifecycle_readiness_checks_chk CHECK ((jsonb_typeof(readiness_checks) = 'array'::text)),
+    CONSTRAINT instance_plugin_lifecycle_readiness_status_chk CHECK ((readiness_status = ANY (ARRAY['pending'::text, 'ready'::text, 'degraded'::text, 'blocked'::text]))),
+    CONSTRAINT instance_plugin_lifecycle_retry_chk CHECK ((((retry_kind IS NULL) AND (retry_after IS NULL)) OR ((retry_kind = 'terminal'::text) AND (retry_after IS NULL)) OR (retry_kind = 'retryable'::text)))
+);
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1161,6 +1287,7 @@ CREATE TABLE iam.instance_provisioning_runs (
     actor_id text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    payload_fingerprint text,
     CONSTRAINT instance_provisioning_operation_chk CHECK ((operation = ANY (ARRAY['create'::text, 'activate'::text, 'suspend'::text, 'archive'::text]))),
     CONSTRAINT instance_provisioning_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])))
 );
@@ -2276,6 +2403,22 @@ ALTER TABLE ONLY iam.instance_modules
 
 
 --
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle
+    ADD CONSTRAINT instance_plugin_lifecycle_pkey PRIMARY KEY (instance_id, plugin_id);
+
+
+--
+-- Name: instance_provisioning_runs instance_provisioning_create_payload_fingerprint_chk; Type: CHECK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_provisioning_runs
+    ADD CONSTRAINT instance_provisioning_create_payload_fingerprint_chk CHECK (((operation <> 'create'::text) OR (payload_fingerprint IS NOT NULL))) NOT VALID;
+
+
+--
 -- Name: instance_provisioning_runs instance_provisioning_runs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2992,6 +3135,27 @@ CREATE INDEX idx_instance_modules_instance_created ON iam.instance_modules USING
 
 
 --
+-- Name: idx_instance_plugin_lifecycle_active_job; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_instance_plugin_lifecycle_active_job ON iam.instance_plugin_lifecycle USING btree (active_job_id) WHERE (active_job_id IS NOT NULL);
+
+
+--
+-- Name: idx_instance_plugin_lifecycle_recheck; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_plugin_lifecycle_recheck ON iam.instance_plugin_lifecycle USING btree (next_recheck_at, instance_id, plugin_id) WHERE (next_recheck_at IS NOT NULL);
+
+
+--
+-- Name: idx_instance_plugin_lifecycle_status_updated_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_plugin_lifecycle_status_updated_at ON iam.instance_plugin_lifecycle USING btree (readiness_status, updated_at DESC);
+
+
+--
 -- Name: idx_instance_provisioning_runs_instance_created; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -3230,6 +3394,13 @@ CREATE INDEX idx_studio_job_events_job_created_at ON iam.studio_job_events USING
 
 
 --
+-- Name: idx_studio_job_events_terminal_attempt; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_studio_job_events_terminal_attempt ON iam.studio_job_events USING btree (job_id, attempts) WHERE (event_type = ANY (ARRAY['job.succeeded'::text, 'job.failed'::text, 'job.cancelled'::text]));
+
+
+--
 -- Name: idx_studio_jobs_active_waste_postal_code_enrichment; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -3276,6 +3447,13 @@ CREATE INDEX idx_studio_jobs_instance_status_updated_at ON iam.studio_jobs USING
 --
 
 CREATE INDEX idx_studio_jobs_parent_job_id ON iam.studio_jobs USING btree (parent_job_id);
+
+
+--
+-- Name: instance_modules_active_instance_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX instance_modules_active_instance_idx ON iam.instance_modules USING btree (instance_id, module_id) WHERE effective_active;
 
 
 --
@@ -4003,6 +4181,22 @@ ALTER TABLE ONLY iam.instance_modules
 
 
 --
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle
+    ADD CONSTRAINT instance_plugin_lifecycle_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_plugin_lifecycle
+    ADD CONSTRAINT instance_plugin_lifecycle_job_fk FOREIGN KEY (active_job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id);
+
+
+--
 -- Name: instance_provisioning_runs instance_provisioning_runs_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4635,6 +4829,26 @@ CREATE POLICY instance_memberships_isolation_policy ON iam.instance_memberships 
 
 
 --
+-- Name: instance_plugin_lifecycle; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_plugin_lifecycle ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_plugin_lifecycle_isolation_policy ON iam.instance_plugin_lifecycle USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: instance_plugin_lifecycle instance_plugin_lifecycle_observability_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_plugin_lifecycle_observability_policy ON iam.instance_plugin_lifecycle FOR SELECT TO iam_observability USING (true);
+
+
+--
 -- Name: instance_waste_data_sources; Type: ROW SECURITY; Schema: iam; Owner: -
 --
 
@@ -4828,7 +5042,18 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 
 
 --
+-- Name: studio_jobs studio_jobs_observability_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY studio_jobs_observability_policy ON iam.studio_jobs FOR SELECT TO iam_observability USING (true);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict a6pcZv047R1ijqVkcXgaInH7kse8w6qcOb4bkLKvZ47wVFMhVUR2FqDOhwnl3BG
+-- Externe Waste-Tenant-Schemata sind bewusst nicht Bestandteil dieses zentralen Snapshots.
+-- Die Störungsoptionen in public.waste_settings werden über die versionierte Tenant-Migration
+-- 20260901_01_add_waste_disruption_settings gepflegt; siehe studio-db-schema.md, Abschnitt 9.
+
+\unrestrict M4FCOWSk22Cit75bXmgV4b5AJWFT85WtvUgagN1B1Q6YTlRCcuVCOA5FmUaRFhq

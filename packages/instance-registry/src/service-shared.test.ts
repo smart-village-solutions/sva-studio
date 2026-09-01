@@ -33,6 +33,8 @@ describe('service-shared waste-management helpers', () => {
         provider: 'postgresql',
         schemaName: 'custom',
         enabled: true,
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
         databaseUrlConfigured: true,
         visibleStatus: 'unknown',
         databaseUrlCiphertext:
@@ -51,6 +53,8 @@ describe('service-shared waste-management helpers', () => {
         provider: 'postgresql',
         schemaName: 'public',
         enabled: true,
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: false,
         databaseUrlConfigured: true,
         databaseUrlCiphertext: 'existing-db-cipher',
         visibleStatus: 'error',
@@ -69,6 +73,8 @@ describe('service-shared waste-management helpers', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         schemaName: 'public',
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: false,
         databaseUrlCiphertext: 'existing-db-cipher',
         visibleStatus: 'unknown',
         lastCheckedAt: '2026-05-09T10:00:00.000Z',

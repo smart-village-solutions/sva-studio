@@ -1,3 +1,5 @@
+import { isPersistableMediaAssetUrl } from '@sva/core';
+
 export type ContentMediaAssetSnapshot = Readonly<{
   persistentUrl: string;
   altText: string;
@@ -37,7 +39,8 @@ export const revokeBrowserObjectUrl = (value: string | null | undefined): void =
     typeof URL === 'undefined' ||
     typeof URL.revokeObjectURL !== 'function' ||
     revokedObjectUrls.has(value)
-  ) return;
+  )
+    return;
   if (revokedObjectUrls.size >= maxRememberedRevokedObjectUrls) {
     const oldest = revokedObjectUrls.values().next().value;
     if (oldest !== undefined) revokedObjectUrls.delete(oldest);
@@ -103,34 +106,8 @@ export const toContentMediaAssetSnapshot = (
   license: usage.license,
 });
 
-const sensitiveMediaUrlQueryKeys = new Set([
-  'x-amz-signature',
-  'x-amz-credential',
-  'x-amz-security-token',
-  'x-amz-expires',
-  'x-goog-signature',
-  'googleaccessid',
-  'awsaccesskeyid',
-  'signature',
-  'token',
-  'expires',
-  'sig',
-  'se',
-  'sp',
-  'sv',
-]);
-
-export const isPersistableContentMediaUrl = (value: string): boolean => {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' || url.username || url.password) return false;
-    return [...url.searchParams.keys()].every(
-      (key) => sensitiveMediaUrlQueryKeys.has(key.toLowerCase()) === false
-    );
-  } catch {
-    return false;
-  }
-};
+export const isPersistableContentMediaUrl = (value: string): boolean =>
+  isPersistableMediaAssetUrl(value);
 
 export const contentMediaUsageToReference = (usage: ContentMediaUsage) =>
   usage.assetId

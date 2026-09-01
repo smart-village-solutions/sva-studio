@@ -1,10 +1,13 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstanceDetailPage, readActionFeedbackClassName } from './-instance-detail-page';
 
 const useInstancesMock = vi.fn();
+const { pluginReadinessRefreshMock } = vi.hoisted(() => ({
+  pluginReadinessRefreshMock: vi.fn(async () => undefined),
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -16,6 +19,17 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
+}));
+
+vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
+  usePluginTenantReadiness: () => ({
+    items: [],
+    isLoading: false,
+    activeAction: null,
+    error: null,
+    refresh: pluginReadinessRefreshMock,
+    startRepair: vi.fn(),
+  }),
 }));
 
 const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
@@ -214,6 +228,7 @@ describe('InstanceDetailPage', () => {
 
   beforeEach(() => {
     useInstancesMock.mockReset();
+    pluginReadinessRefreshMock.mockClear();
   });
 
   afterEach(() => {
@@ -541,15 +556,23 @@ describe('InstanceDetailPage', () => {
 
     await activateTab('Betrieb');
 
-    expect(await screen.findByText('news')).toBeTruthy();
-    expect(screen.getByText('events')).toBeTruthy();
-    expect(screen.getByText('media')).toBeTruthy();
+    expect((await screen.findAllByText('news')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('events').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('media').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Modul entziehen' })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: 'Modul zuweisen' })).toHaveLength(1);
 
-    expect(screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')).toBeTruthy();
-    expect(screen.getByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.')).toBeTruthy();
-    expect(screen.getByText('Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.')).toBeTruthy();
+    expect(
+      screen.getAllByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        'Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.'
+      ).length
+    ).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
   });
 
@@ -889,6 +912,7 @@ describe('InstanceDetailPage', () => {
     const seedIamBaseline = vi.fn().mockResolvedValue(true);
     const loadKeycloakProvisioningRun = vi.fn().mockResolvedValue(true);
     const assignModule = vi.fn().mockResolvedValue(true);
+    const revokeModule = vi.fn().mockResolvedValue(true);
     const bootstrapAdminStructure = vi.fn().mockResolvedValue(true);
 
     useInstancesMock.mockReturnValue(
@@ -896,6 +920,7 @@ describe('InstanceDetailPage', () => {
         seedIamBaseline,
         loadKeycloakProvisioningRun,
         assignModule,
+        revokeModule,
         bootstrapAdminStructure,
         selectedInstance: createSelectedInstance({
           assignedModules: ['news'],
@@ -945,14 +970,31 @@ describe('InstanceDetailPage', () => {
 
     await activateTab('Betrieb');
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
-    expect(screen.getByText('news')).toBeTruthy();
+    expect(screen.getAllByText('news').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
 
+    await waitFor(() => {
+      expect(assignModule).toHaveBeenCalledWith('demo', 'events');
+      expect(pluginReadinessRefreshMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: 'Modul wirklich entziehen?' })).getByRole(
+        'button',
+        { name: 'Modul entziehen' }
+      )
+    );
+
+    await waitFor(() => {
+      expect(revokeModule).toHaveBeenCalledWith('demo', 'news');
+      expect(pluginReadinessRefreshMock).toHaveBeenCalledTimes(2);
+    });
+
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
-    expect(assignModule).toHaveBeenCalledWith('demo', 'events');
     expect(bootstrapAdminStructure).not.toHaveBeenCalled();
 
     await activateTab('Doctor');

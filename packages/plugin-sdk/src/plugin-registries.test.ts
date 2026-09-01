@@ -43,6 +43,7 @@ import {
   resolveStudioContentDetailPath,
   type UiAccessRequirement,
   type PluginDefinition,
+  type PluginServerHandlerDefinition,
 } from './index.js';
 
 const component = () => null;
@@ -54,6 +55,14 @@ const tenantRequirement = (
   moduleId: 'news',
   actions: { mode: 'allOf', values: ['news.read'] },
   ...overrides,
+});
+
+const platformRequirement = (
+  values: readonly string[] = ['instance_registry_admin'],
+  mode: 'allOf' | 'anyOf' = 'allOf'
+): Extract<UiAccessRequirement, { kind: 'platform' }> => ({
+  kind: 'platform',
+  roles: { mode, values },
 });
 
 const pluginWithLinkedRequirements = (
@@ -367,6 +376,12 @@ describe('plugin registries', () => {
       },
       {
         pluginId: 'news',
+        contributionType: 'action',
+        contributionId: 'news.open',
+        code: 'missing_access_requirement',
+      },
+      {
+        pluginId: 'news',
         contributionType: 'route',
         contributionId: 'news-list',
         code: 'missing_access_requirement',
@@ -398,9 +413,7 @@ describe('plugin registries', () => {
   });
 
   describe('plugin access requirement characterization', () => {
-    it('accepts absent or structurally identical linked requirements', () => {
-      expect(() => createPluginRegistry([pluginWithLinkedRequirements(undefined)])).not.toThrow();
-
+    it('accepts structurally identical linked requirements', () => {
       expect(() =>
         createPluginRegistry([
           pluginWithLinkedRequirements(
@@ -411,45 +424,285 @@ describe('plugin registries', () => {
       ).not.toThrow();
     });
 
+    it('rejects every linked contribution when an explicit access requirement is missing', () => {
+      expect(() => createPluginRegistry([pluginWithLinkedRequirements(undefined)])).toThrow(
+        'plugin_access_requirement_missing:news:news.open:news.open'
+      );
+
+      const requirement = tenantRequirement();
+      const linkedPlugin = pluginWithLinkedRequirements(requirement);
+      expect(() =>
+        createPluginRegistry([
+          {
+            ...linkedPlugin,
+            routes: linkedPlugin.routes.map((route) => ({
+              ...route,
+              accessRequirement: undefined,
+            })),
+          },
+        ])
+      ).toThrow('plugin_access_requirement_missing:news:news-open:news.open');
+
+      expect(() =>
+        createPluginRegistry([
+          {
+            ...linkedPlugin,
+            navigation: [
+              {
+                id: 'news-open-nav',
+                to: '/plugins/news/open',
+                titleKey: 'news.open',
+                section: 'dataManagement',
+                actionId: 'news.open',
+              },
+            ],
+          },
+        ])
+      ).toThrow('plugin_access_requirement_missing:news:news-open-nav:news.open');
+    });
+
     it.each([
-      ['action', undefined, {}],
-      ['route', {}, undefined],
-      ['null action', null, {}],
-      ['null route', {}, null],
+      ['positive', { allowed: true }],
+      ['negative', { allowed: false }],
+      ['malformed', {}],
+      ['null', null],
     ] as const)(
-      'keeps a null or absent capability equivalent to a malformed empty capability on the %s requirement',
-      (_source, actionCapability, routeCapability) => {
+      'rejects a %s static resource capability before publication',
+      (_name, capability) => {
         expect(() =>
           createPluginRegistry([
             pluginWithLinkedRequirements(
-              tenantRequirement({ resourceCapability: actionCapability as never }),
-              tenantRequirement({ resourceCapability: routeCapability as never })
+              tenantRequirement({ resourceCapability: capability as never })
             ),
           ])
-        ).not.toThrow();
+        ).toThrow('plugin_resource_capability_forbidden:news:news.open');
       }
     );
 
     it('rejects a requirement present on only one linked contribution', () => {
       expect(() =>
         createPluginRegistry([pluginWithLinkedRequirements(tenantRequirement(), undefined)])
-      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+      ).toThrow('plugin_access_requirement_missing:news:news-open:news.open');
       expect(() =>
         createPluginRegistry([pluginWithLinkedRequirements(undefined, tenantRequirement())])
-      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+      ).toThrow('plugin_access_requirement_missing:news:news.open:news.open');
     });
 
     it.each([
       ['public', { kind: 'public' } as const],
       ['authenticated', { kind: 'authenticated' } as const],
-      [
-        'platform',
-        { kind: 'platform', roles: { mode: 'allOf', values: ['platform.admin'] } } as const,
-      ],
     ])('rejects the non-tenant %s kind before linked comparison', (kind, requirement) => {
       expect(() => createPluginRegistry([pluginWithLinkedRequirements(requirement)])).toThrow(
         `plugin_access_requirement_scope_invalid:news:news.open:${kind}`
       );
+    });
+
+    it('rejects platform contributions from the feature extension tier', () => {
+      expect(() =>
+        createPluginRegistry([pluginWithLinkedRequirements(platformRequirement())], {
+          extensionTiers: new Map([['news', 'feature']]),
+        })
+      ).toThrow('plugin_platform_access_tier_forbidden:news:news.open:feature');
+    });
+
+    it('accepts platform contributions from the admin extension tier', () => {
+      expect(() =>
+        createPluginRegistry([pluginWithLinkedRequirements(platformRequirement())], {
+          extensionTiers: new Map([['news', 'admin']]),
+        })
+      ).not.toThrow();
+    });
+
+    it('materializes linked platform routes and server handlers into separate scope registries', () => {
+      const requirement = platformRequirement();
+      const plugin = pluginWithLinkedRequirements(requirement);
+      const registry = createBuildTimeRegistry({
+        plugins: [
+          {
+            ...plugin,
+            routes: plugin.routes.map((route) => ({
+              ...route,
+              serverHandlerId: 'news.load-instances',
+            })),
+            serverHandlers: [
+              {
+                id: 'news.load-instances',
+                path: '/api/v1/plugins/news/instances',
+                method: 'GET',
+                actionId: 'news.open',
+                accessRequirement: requirement,
+              },
+            ],
+          },
+        ],
+        pluginExtensionTiers: new Map([['news', 'admin']]),
+      });
+
+      expect(registry.platformRoutes.map((route) => route.id)).toEqual(['news-open']);
+      expect(registry.tenantRoutes).toEqual([]);
+      expect(registry.pluginServerHandlerRegistry.get('news.load-instances')).toMatchObject({
+        ownerPluginId: 'news',
+        method: 'GET',
+        path: '/api/v1/plugins/news/instances',
+      });
+    });
+
+    it('publishes canonical access actions for server handlers and their linked actions', () => {
+      const requirement = tenantRequirement({
+        actions: { mode: 'allOf', values: [' news.read '] },
+      });
+      const plugin = pluginWithLinkedRequirements(requirement);
+      const registry = createBuildTimeRegistry({
+        plugins: [
+          {
+            ...plugin,
+            serverHandlers: [
+              {
+                id: 'news.load-items',
+                path: '/api/v1/plugins/news/items',
+                method: 'GET',
+                actionId: 'news.open',
+                accessRequirement: requirement,
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(
+        registry.pluginServerHandlerRegistry.get('news.load-items')?.accessRequirement
+      ).toMatchObject({ actions: { values: ['news.read'] } });
+      expect(registry.pluginActionRegistry.get('news.open')?.accessRequirement).toMatchObject({
+        actions: { values: ['news.read'] },
+      });
+    });
+
+    it('rejects unsupported server handler methods at runtime', () => {
+      const plugin = pluginWithLinkedRequirements(platformRequirement());
+
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              ...plugin,
+              serverHandlers: [
+                {
+                  id: 'news.load-instances',
+                  path: '/api/v1/plugins/news/instances',
+                  method: 'post' as 'POST',
+                  actionId: 'news.open',
+                  accessRequirement: platformRequirement(),
+                },
+              ],
+            },
+          ],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow('plugin_server_handler_method_invalid:news:news.load-instances:post');
+    });
+
+    it('rejects server handlers without an access requirement at runtime', () => {
+      const plugin = pluginWithLinkedRequirements(platformRequirement());
+
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              ...plugin,
+              serverHandlers: [
+                {
+                  id: 'news.load-instances',
+                  path: '/api/v1/plugins/news/instances',
+                  method: 'GET',
+                  actionId: 'news.open',
+                } as PluginServerHandlerDefinition,
+              ],
+            },
+          ],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow('plugin_server_handler_access_requirement_missing:news:news.load-instances');
+    });
+
+    it('rejects cross-scope route and server handler links before publication', () => {
+      const platform = platformRequirement();
+      const plugin = pluginWithLinkedRequirements(platform);
+
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              ...plugin,
+              routes: plugin.routes.map((route) => ({
+                ...route,
+                serverHandlerId: 'news.load-instances',
+              })),
+              serverHandlers: [
+                {
+                  id: 'news.load-instances',
+                  path: '/api/v1/plugins/news/instances',
+                  method: 'GET',
+                  actionId: 'news.open',
+                  accessRequirement: tenantRequirement(),
+                },
+              ],
+            },
+          ],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow(
+        'plugin_server_handler_action_access_requirement_mismatch:news:news.load-instances:news.open'
+      );
+    });
+
+    it('rejects tenant legacy guards on platform contributions', () => {
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              ...pluginWithLinkedRequirements(platformRequirement()),
+              actions: [
+                {
+                  id: 'news.open',
+                  titleKey: 'news.actions.open',
+                  requiredAction: 'news.read',
+                  accessRequirement: platformRequirement(),
+                },
+              ],
+            },
+          ],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow('plugin_platform_access_legacy_guard_forbidden:news:news.open:news.read');
+    });
+
+    it('rejects missing and unapproved platform roles', () => {
+      expect(() =>
+        createPluginRegistry([pluginWithLinkedRequirements(platformRequirement([]))], {
+          extensionTiers: new Map([['news', 'admin']]),
+        })
+      ).toThrow('plugin_platform_access_roles_missing:news:news.open');
+
+      expect(() =>
+        createPluginRegistry(
+          [pluginWithLinkedRequirements(platformRequirement(['platform.admin']))],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow('plugin_platform_access_role_invalid:news:news.open:platform.admin');
+    });
+
+    it('compares linked platform role requirements exactly', () => {
+      expect(() =>
+        createPluginRegistry(
+          [
+            pluginWithLinkedRequirements(
+              platformRequirement(['instance_registry_admin'], 'allOf'),
+              platformRequirement(['instance_registry_admin'], 'anyOf')
+            ),
+          ],
+          { extensionTiers: new Map([['news', 'admin']]) }
+        )
+      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
     });
 
     it('treats action values as sets while preserving mode semantics', () => {
@@ -494,6 +747,34 @@ describe('plugin registries', () => {
       ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
     });
 
+    it('rejects invalid tenant access modes before publishing actions or handlers', () => {
+      const invalidRequirement = tenantRequirement({
+        actions: { mode: 'all' as 'allOf', values: ['news.read', 'news.create'] },
+      });
+
+      expect(() =>
+        createPluginRegistry([pluginWithLinkedRequirements(invalidRequirement)])
+      ).toThrow('plugin_access_requirement_mode_invalid:news:news.open:actions:all');
+
+      const plugin = pluginWithLinkedRequirements(tenantRequirement());
+      expect(() =>
+        createPluginRegistry([
+          {
+            ...plugin,
+            serverHandlers: [
+              {
+                id: 'news.load-items',
+                path: '/api/v1/plugins/news/items',
+                method: 'GET',
+                actionId: 'news.open',
+                accessRequirement: invalidRequirement,
+              },
+            ],
+          },
+        ])
+      ).toThrow('plugin_access_requirement_mode_invalid:news:news.load-items:actions:all');
+    });
+
     it('keeps empty actions, module mismatch, resource context, and legacy errors distinct', () => {
       expect(() =>
         createPluginRegistry([
@@ -536,33 +817,6 @@ describe('plugin registries', () => {
           },
         ])
       ).toThrow('plugin_access_requirement_legacy_mismatch:news:news.open:news.create');
-    });
-
-    it.each([
-      ['action', { action: 'news.create' }],
-      ['allowed', { allowed: false }],
-      ['instanceId', { instanceId: 'instance-2' }],
-      ['organizationId', { organizationId: 'organization-2' }],
-      ['resourceType', { resourceType: 'news.category' }],
-      ['resourceId', { resourceId: 'article-2' }],
-    ] as const)('compares resource capability field %s exactly', (_field, override) => {
-      const capability = {
-        action: 'news.read',
-        allowed: true,
-        instanceId: 'instance-1',
-        organizationId: 'organization-1',
-        resourceType: 'news.article',
-        resourceId: 'article-1',
-      } as const;
-
-      expect(() =>
-        createPluginRegistry([
-          pluginWithLinkedRequirements(
-            tenantRequirement({ resourceCapability: capability }),
-            tenantRequirement({ resourceCapability: { ...capability, ...override } })
-          ),
-        ])
-      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
     });
   });
 
@@ -961,9 +1215,7 @@ describe('plugin registries', () => {
     ).toThrowError('plugin_export_data_profile_namespace_mismatch:news:events.articles');
     expect(() =>
       definePluginExportProfiles('news', [{ ...profile, jobTypeId: 'events.export' }])
-    ).toThrowError(
-      'plugin_export_profile_job_type_namespace_mismatch:news:events.export'
-    );
+    ).toThrowError('plugin_export_profile_job_type_namespace_mismatch:news:events.export');
 
     for (const override of [
       { displayName: ' ' },
@@ -981,7 +1233,13 @@ describe('plugin registries', () => {
   it('rejects duplicate export profiles and profiles without a registered job type', () => {
     expect(() =>
       createPluginExportProfileRegistry([
-        { ...newsPlugin, exportProfiles: [...(newsPlugin.exportProfiles ?? []), ...(newsPlugin.exportProfiles ?? [])] },
+        {
+          ...newsPlugin,
+          exportProfiles: [
+            ...(newsPlugin.exportProfiles ?? []),
+            ...(newsPlugin.exportProfiles ?? []),
+          ],
+        },
       ])
     ).toThrowError('duplicate_plugin_export_profile:news.article-export');
 
@@ -1401,9 +1659,7 @@ describe('plugin registries', () => {
           ],
         },
       ])
-    ).toThrow(
-      'plugin_route_action_access_requirement_mismatch:news:news.requirement-missing:news.secure'
-    );
+    ).toThrow('plugin_access_requirement_missing:news:news.requirement-missing:news.secure');
     expect(() =>
       createPluginRegistry([
         {

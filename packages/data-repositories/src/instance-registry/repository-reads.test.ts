@@ -8,7 +8,10 @@ describe('instance registry repository reads', () => {
     const { executor, statements } = createQueuedExecutor([[instanceRow]]);
 
     await expect(
-      createInstanceRegistryRepository(executor).listInstances({ search: ' Tenant ', status: 'active' })
+      createInstanceRegistryRepository(executor).listInstances({
+        search: ' Tenant ',
+        status: 'active',
+      })
     ).resolves.toEqual([
       {
         instanceId: 'tenant-a',
@@ -121,10 +124,59 @@ describe('instance registry repository reads', () => {
   });
 
   it('lists assigned modules for an instance', async () => {
-    const { executor } = createQueuedExecutor([[{ module_id: 'news' }, { module_id: 'poi' }]]);
+    const { executor, statements } = createQueuedExecutor([
+      [{ module_id: 'news' }, { module_id: 'poi' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.listAssignedModules('tenant-a')).resolves.toEqual(['news', 'poi']);
+    expect(statements[0]?.text).toContain('AND effective_active');
+  });
+
+  it('lists persisted module activation policy, origin, override and revisions', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [
+        {
+          instance_id: 'tenant-a',
+          module_id: 'events',
+          activation_policy: 'automatic',
+          activation_origin: 'manual',
+          effective_active: false,
+          manual_override: 'disabled',
+          manifest_version: 1,
+          policy_revision: 'events-2',
+          state_revision: '4',
+          reconcile_id: null,
+          reconciled_at: null,
+          created_at: '2026-08-30T10:00:00.000Z',
+          updated_at: '2026-08-30T11:00:00.000Z',
+          updated_by: 'root-admin',
+        },
+      ],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.listModuleActivations('tenant-a')).resolves.toEqual([
+      {
+        instanceId: 'tenant-a',
+        moduleId: 'events',
+        activationPolicy: 'automatic',
+        activationOrigin: 'manual',
+        effectiveActive: false,
+        manualOverride: 'disabled',
+        manifestVersion: 1,
+        policyRevision: 'events-2',
+        stateRevision: 4,
+        reconcileId: undefined,
+        reconciledAt: undefined,
+        createdAt: '2026-08-30T10:00:00.000Z',
+        updatedAt: '2026-08-30T11:00:00.000Z',
+        updatedBy: 'root-admin',
+      },
+    ]);
+    expect(statements[0]?.text).toContain('activation_policy');
+    expect(statements[0]?.text).toContain('activation_origin');
+    expect(statements[0]?.text).toContain('ORDER BY module_id ASC');
   });
 
   it('resolves hostname variants and returns null when they are missing', async () => {
@@ -136,10 +188,12 @@ describe('instance registry repository reads', () => {
       primaryHostname: 'tenant-a.example.test',
     });
     await expect(repository.resolveHostname('missing.example.test')).resolves.toBeNull();
-    await expect(repository.resolvePrimaryHostname('tenant-a.example.test')).resolves.toMatchObject({
-      instanceId: 'tenant-a',
-      primaryHostname: 'tenant-a.example.test',
-    });
+    await expect(repository.resolvePrimaryHostname('tenant-a.example.test')).resolves.toMatchObject(
+      {
+        instanceId: 'tenant-a',
+        primaryHostname: 'tenant-a.example.test',
+      }
+    );
     await expect(repository.resolvePrimaryHostname('missing.example.test')).resolves.toBeNull();
   });
 });

@@ -38,7 +38,11 @@
       "dependsOn": ["build", "^build"],
       "options": {
         "cwd": ".",
-        "command": "node --import tsx scripts/ci/verify-graphile-worker-database-contract.ts"
+        "commands": [
+          "node --import tsx scripts/ci/verify-graphile-worker-database-contract.ts",
+          "node --import tsx scripts/ci/verify-plugin-lifecycle-database-contract.ts"
+        ],
+        "parallel": false
       }
     },
     "test:types": {

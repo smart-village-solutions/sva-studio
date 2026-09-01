@@ -5,17 +5,24 @@ import {
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
 } from './service-keycloak.js';
-import { buildInstanceDetail, buildModuleIamStatus, buildTenantIamStatus } from './service-helpers.js';
+import {
+  buildInstanceDetail,
+  buildModuleIamStatus,
+  buildTenantIamStatus,
+} from './service-helpers.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
-type InstanceRecord = NonNullable<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>>;
+type InstanceRecord = NonNullable<
+  Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>
+>;
 const logger = createSdkLogger({ component: 'iam-instance-registry-service', level: 'info' });
 
 const loadOptionalArtifact = async <T>(
   instanceId: string,
-  artifactKey: 'keycloak_status' | 'keycloak_preflight' | 'keycloak_plan' | 'waste_management_settings',
+  artifactKey:
+    'keycloak_status' | 'keycloak_preflight' | 'keycloak_plan' | 'waste_management_settings',
   load: () => Promise<T | null>
 ): Promise<T | undefined> => {
   try {
@@ -42,6 +49,7 @@ export const loadKeycloakDetailArtifacts = async (
   const [
     provisioningRuns,
     auditEvents,
+    moduleActivations,
     keycloakStatus,
     keycloakPreflight,
     keycloakPlan,
@@ -49,22 +57,28 @@ export const loadKeycloakDetailArtifacts = async (
     accessEvidence,
     reconcileEvidence,
     wasteManagementSettings,
-  ] =
-    await Promise.all([
-      deps.repository.listProvisioningRuns(instance.instanceId),
-      deps.repository.listAuditEvents(instance.instanceId),
-      loadOptionalArtifact(instance.instanceId, 'keycloak_status', () => getKeycloakStatus(instance.instanceId)),
-      loadOptionalArtifact(instance.instanceId, 'keycloak_preflight', () => getKeycloakPreflight(instance.instanceId)),
-      loadOptionalArtifact(instance.instanceId, 'keycloak_plan', () => planKeycloakProvisioning(instance.instanceId)),
-      deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
-      deps.repository.getLatestTenantIamAccessProbe(instance.instanceId),
-      deps.repository.getRoleReconcileSummary(instance.instanceId),
-      loadOptionalArtifact(
-        instance.instanceId,
-        'waste_management_settings',
-        () => deps.loadWasteDataSourceRecord?.(instance.instanceId) ?? Promise.resolve(null)
-      ),
-    ]);
+  ] = await Promise.all([
+    deps.repository.listProvisioningRuns(instance.instanceId),
+    deps.repository.listAuditEvents(instance.instanceId),
+    deps.repository.listModuleActivations(instance.instanceId),
+    loadOptionalArtifact(instance.instanceId, 'keycloak_status', () =>
+      getKeycloakStatus(instance.instanceId)
+    ),
+    loadOptionalArtifact(instance.instanceId, 'keycloak_preflight', () =>
+      getKeycloakPreflight(instance.instanceId)
+    ),
+    loadOptionalArtifact(instance.instanceId, 'keycloak_plan', () =>
+      planKeycloakProvisioning(instance.instanceId)
+    ),
+    deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
+    deps.repository.getLatestTenantIamAccessProbe(instance.instanceId),
+    deps.repository.getRoleReconcileSummary(instance.instanceId),
+    loadOptionalArtifact(
+      instance.instanceId,
+      'waste_management_settings',
+      () => deps.loadWasteDataSourceRecord?.(instance.instanceId) ?? Promise.resolve(null)
+    ),
+  ]);
 
   const tenantIamStatus = buildTenantIamStatus({
     keycloakStatus,
@@ -89,12 +103,16 @@ export const loadKeycloakDetailArtifacts = async (
         }
       : undefined,
   });
-  const moduleIamStatus = buildModuleIamStatus(instance.assignedModules, deps.moduleIamRegistry ?? new Map());
+  const moduleIamStatus = buildModuleIamStatus(
+    instance.assignedModules,
+    deps.moduleIamRegistry ?? new Map()
+  );
 
   return buildInstanceDetail(
     instance,
     provisioningRuns,
     auditEvents,
+    moduleActivations,
     keycloakStatus,
     keycloakPreflight,
     keycloakPlan,

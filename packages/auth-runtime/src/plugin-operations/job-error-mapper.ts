@@ -7,8 +7,17 @@ const readPluginErrorCause = (error: Error): Record<string, unknown> | undefined
     : undefined;
 };
 
-const hasPermanentPluginCause = (error: Error): boolean =>
-  readPluginErrorCause(error)?.category === 'permanent';
+const hasPermanentPluginCause = (error: Error): boolean => {
+  const cause = readPluginErrorCause(error);
+  if (cause?.category === 'permanent') return true;
+  const retry = cause?.retry;
+  return (
+    retry !== null &&
+    typeof retry === 'object' &&
+    !Array.isArray(retry) &&
+    (retry as Record<string, unknown>).kind === 'terminal'
+  );
+};
 
 export const createMissingHandlerPayload = (
   job: Pick<StudioJobRecord, 'source' | 'jobTypeId' | 'pluginId'>
@@ -29,8 +38,14 @@ export const createExecutionErrorPayload = (
   error: unknown,
   finalFailure: boolean
 ): StudioJobError => ({
-  code: job.source === 'plugin' ? 'plugin_operation_execution_failed' : 'studio_job_execution_failed',
-  category: error instanceof Error && hasPermanentPluginCause(error) ? 'permanent' : finalFailure ? 'permanent' : 'retryable',
+  code:
+    job.source === 'plugin' ? 'plugin_operation_execution_failed' : 'studio_job_execution_failed',
+  category:
+    error instanceof Error && hasPermanentPluginCause(error)
+      ? 'permanent'
+      : finalFailure
+        ? 'permanent'
+        : 'retryable',
   message: error instanceof Error ? error.message : String(error),
   details:
     error instanceof Error

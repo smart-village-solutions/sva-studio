@@ -6,6 +6,7 @@ import {
   mockSharedShellRequests,
   navigateClientSide,
 } from './news-plugin.fixtures';
+import { establishServerReadableAuthSession } from './studio-shell.helpers';
 
 const cockpitCardsUser = {
   user: {
@@ -225,6 +226,7 @@ test('persists Kachel text and media across create, update and reload before del
     },
   });
 
+  await establishServerReadableAuthSession(page.context(), page);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Kachel bearbeiten' })).toBeVisible();
   await expect(page.getByText('Kachel konnte nicht geladen werden.')).toHaveCount(0);

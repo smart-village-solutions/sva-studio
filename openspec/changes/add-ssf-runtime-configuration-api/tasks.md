@@ -1,8 +1,10 @@
 ## 0. Voraussetzungen und Baseline
 
-- [ ] 0.1 `extend-plugin-platform-scopes-and-activation` auf dem
+- [x] 0.1 `extend-plugin-platform-scopes-and-activation` auf dem
       Implementierungsbranch verfügbar machen und exakte Manifest-, Server-,
       Aktivierungs- und Dispatcher-Verträge gegen dieses Design prüfen
+      (der gemergte Vertrag unterstützt `platform` und `tenant`; der für SSF
+      benötigte technische Service-Zugriff bleibt eine explizite Erweiterung)
 - [x] 0.2 Bestehenden MCP-Service-Token-Pfad charakterisieren und seine
       unveränderte Auth-/Fehlersemantik mit Tests festhalten
 - [x] 0.3 Zentralen Studio-Schema-Snapshot und Schemaübersicht prüfen; die

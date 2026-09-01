@@ -20,13 +20,13 @@ describe('validateEventForm', () => {
     ]);
   });
 
-  it('rejects non-https media source urls', () => {
+  it('accepts explicit http media source urls', () => {
     expect(
       validateEventForm({
         title: 'Stadtfest',
         mediaContents: [{ sourceUrl: { url: 'http://example.test/image.jpg' } }],
       })
-    ).toEqual(['urls']);
+    ).toEqual([]);
   });
 
   it('rejects non-date-only event date values', () => {

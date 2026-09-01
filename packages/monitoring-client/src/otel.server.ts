@@ -25,6 +25,9 @@ import { maskEmailAddresses as maskEmailAddressesShared } from '@sva/core';
 import { setGlobalLoggerProvider } from './logger-provider.server.js';
 import { redactLogString, serializeAndRedactLogValue } from './logging/redaction.js';
 
+export const OTEL_METRIC_EXPORT_INTERVAL_MS = 30_000;
+export const OTEL_METRIC_EXPORT_TIMEOUT_MS = 15_000;
+
 export interface WorkspaceContext {
   workspaceId?: string;
 }
@@ -200,6 +203,8 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
     spanProcessors: [], // Explicitly no span processors
     metricReader: new PeriodicExportingMetricReader({
       exporter: metricExporter,
+      exportIntervalMillis: OTEL_METRIC_EXPORT_INTERVAL_MS,
+      exportTimeoutMillis: OTEL_METRIC_EXPORT_TIMEOUT_MS,
     }),
     logRecordProcessor: logProcessor,
     instrumentations: [

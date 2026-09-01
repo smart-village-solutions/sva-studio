@@ -12,6 +12,7 @@ const migrationId = '20260816_01_add_waste_city_postal_code';
 const tourShiftMigrationId = '20260816_02_tour_date_shift_date_contract';
 const germanNumericCollationMigrationId = '20260824_01_add_german_numeric_collation';
 const mainserverRevisionMigrationId = '20260827_01_add_mainserver_source_revision';
+const disruptionSettingsMigrationId = '20260901_01_add_waste_disruption_settings';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -77,7 +78,7 @@ const createAdminClient = (rows: readonly object[]) => ({
 describe('Waste-Tenant-Migration', () => {
   it('contains the additive postal-code, tour-shift, collation, and source-revision contracts', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(4);
+    expect(wasteTenantMigrations).toHaveLength(5);
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
       statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
@@ -123,6 +124,14 @@ describe('Waste-Tenant-Migration', () => {
     );
     expect(wasteTenantMigrations[3]?.verification.sql).toContain('FROM pg_trigger AS trigger_row');
     expect(wasteTenantMigrations[3]?.verification.values).toEqual([28]);
+    expect(wasteTenantMigrations[4]).toMatchObject({ id: disruptionSettingsMigrationId });
+    expect(wasteTenantMigrations[4]?.statements.join('\n')).toContain(
+      'disruption_location_enabled BOOLEAN NOT NULL DEFAULT FALSE'
+    );
+    expect(wasteTenantMigrations[4]?.statements.join('\n')).toContain(
+      'disruption_all_locations_enabled BOOLEAN NOT NULL DEFAULT FALSE'
+    );
+    expect(wasteTenantMigrations[4]?.verification.sql).toContain("column_default = 'false'");
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {
@@ -151,7 +160,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 8, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 10, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -192,6 +201,7 @@ describe('Waste-Tenant-Migration', () => {
         tourShiftMigrationId,
         germanNumericCollationMigrationId,
         mainserverRevisionMigrationId,
+        disruptionSettingsMigrationId,
       ],
     });
 

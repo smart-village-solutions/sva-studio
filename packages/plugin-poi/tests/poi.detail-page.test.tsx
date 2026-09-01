@@ -709,7 +709,7 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     const mediaUrl = screen.getAllByLabelText('URL').at(-1)!;
     fireEvent.change(mediaUrl, {
-      target: { value: 'http://invalid.example/media.jpg' },
+      target: { value: 'ftp://invalid.example/media.jpg' },
     });
     switchSection('basis');
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
@@ -729,7 +729,7 @@ describe('PoiDetailPage', () => {
       payload: {},
       mediaContents: [
         { captionText: 'Erstes Bild', sourceUrl: { url: 'https://example.test/one.jpg' } },
-        { captionText: 'Zweites Bild', sourceUrl: { url: 'http://invalid.example/two.jpg' } },
+        { captionText: 'Zweites Bild', sourceUrl: { url: 'ftp://invalid.example/two.jpg' } },
       ],
     } as never);
 

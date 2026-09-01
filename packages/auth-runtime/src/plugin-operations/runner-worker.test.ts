@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   runTaskList: vi.fn(),
   resolvePool: vi.fn(),
+  withInstanceDb: vi.fn(),
   resolveStudioJobWorkerPool: vi.fn(),
   createStudioJobTaskList: vi.fn(),
   getRegisteredStudioJobExecutionRegistry: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock('graphile-worker', () => ({
 
 vi.mock('../db.js', () => ({
   resolvePool: state.resolvePool,
+  withInstanceDb: state.withInstanceDb,
   resolveStudioJobWorkerPool: state.resolveStudioJobWorkerPool,
 }));
 
@@ -39,6 +41,7 @@ describe('plugin operation runner worker', () => {
     delete process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY;
     delete process.env.SVA_PLUGIN_OPERATION_WORKER_LANE;
     state.resolvePool.mockReturnValue({ query: vi.fn(async () => undefined) });
+    state.withInstanceDb.mockImplementation(async (_instanceId, work) => work(state.resolvePool()));
     state.resolveStudioJobWorkerPool.mockReturnValue({ id: 'worker-pool-1' });
     state.createStudioJobTaskList.mockReturnValue({ studio_job_execute: vi.fn() });
     state.runTaskList.mockImplementation((options: { events: EventEmitter }) => {
@@ -86,6 +89,7 @@ describe('plugin operation runner worker', () => {
       { studio_job_execute: expect.any(Function) },
       { id: 'worker-pool-1' }
     );
+    expect(state.withInstanceDb).toHaveBeenCalledWith('tenant-a', expect.any(Function));
     expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
       expect.stringContaining('graphile_worker.sva_enqueue_job'),
       [
@@ -98,6 +102,65 @@ describe('plugin operation runner worker', () => {
       ]
     );
     expect(state.runTaskList.mock.results[0]?.value.gracefulShutdown).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists independent deadline-driven lifecycle retries per plugin', async () => {
+    const { enqueuePluginTenantLifecycleRetry } = await import('./runner-queue.js');
+    const runAt = new Date('2026-08-30T12:10:00.000Z');
+    const pool = state.resolvePool();
+
+    await enqueuePluginTenantLifecycleRetry(pool, {
+      instanceId: 'tenant-a',
+      pluginId: 'waste-management',
+      runAt,
+    });
+    await enqueuePluginTenantLifecycleRetry(pool, {
+      instanceId: 'tenant-a',
+      pluginId: 'speech-flow',
+      runAt,
+    });
+
+    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('graphile_worker.sva_enqueue_job'),
+      [
+        'plugin_tenant_lifecycle_retry',
+        JSON.stringify({ instanceId: 'tenant-a', pluginId: 'waste-management' }),
+        'plugin-tenant-lifecycle',
+        5,
+        'plugin-tenant-lifecycle-retry:tenant-a:waste-management',
+        runAt,
+      ]
+    );
+    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('graphile_worker.sva_enqueue_job'),
+      expect.arrayContaining(['plugin-tenant-lifecycle-retry:tenant-a:speech-flow'])
+    );
+  });
+
+  it('uses a separate durable job key for lifecycle enqueue recovery', async () => {
+    const { enqueuePluginTenantLifecycleRecovery } = await import('./runner-queue.js');
+    const runAt = new Date('2026-08-30T12:01:00.000Z');
+    const pool = state.resolvePool();
+
+    await enqueuePluginTenantLifecycleRecovery(pool, {
+      instanceId: 'tenant-a',
+      pluginId: 'speech-flow',
+      runAt,
+    });
+
+    expect(state.resolvePool.mock.results.at(-1)?.value.query).toHaveBeenCalledWith(
+      expect.stringContaining('graphile_worker.sva_enqueue_job'),
+      [
+        'plugin_tenant_lifecycle_retry',
+        JSON.stringify({ instanceId: 'tenant-a', pluginId: 'speech-flow' }),
+        'plugin-tenant-lifecycle',
+        5,
+        'plugin-tenant-lifecycle-recovery:tenant-a:speech-flow',
+        runAt,
+      ]
+    );
   });
 
   it('runs privileged jobs on a dedicated task identifier that the default worker cannot claim', async () => {
@@ -234,9 +297,11 @@ describe('plugin operation runner worker', () => {
     });
     const { ensureStudioJobWorkerStarted, getStudioJobWorkerHealth } =
       await import('./runner-worker.js');
+    const terminalFailure = vi.fn();
 
-    await ensureStudioJobWorkerStarted();
-    rejectWorker(new Error('connection lost'));
+    await ensureStudioJobWorkerStarted({ onTerminalFailure: terminalFailure });
+    const runtimeError = new Error('connection lost');
+    rejectWorker(runtimeError);
     await vi.waitFor(() => {
       expect(state.logger.error).toHaveBeenCalledWith(
         'Studio-Job-Worker wurde unerwartet beendet',
@@ -251,6 +316,9 @@ describe('plugin operation runner worker', () => {
       reasonCode: 'studio_job_worker_runtime_failed',
       status: 'failed',
     });
+    await vi.waitFor(() =>
+      expect(terminalFailure).toHaveBeenCalledWith({ error: runtimeError, lane: 'default' })
+    );
     await ensureStudioJobWorkerStarted();
 
     expect(state.runTaskList).toHaveBeenCalledTimes(2);
@@ -310,6 +378,109 @@ describe('plugin operation runner worker', () => {
     });
   });
 
+  it.each([
+    {
+      ensureExport: 'ensureStudioJobWorkerStarted',
+      lane: 'default',
+      reasonCode: 'studio_job_worker_runtime_failed',
+    },
+    {
+      ensureExport: 'ensurePrivilegedStudioJobWorkerStarted',
+      lane: 'privileged',
+      reasonCode: 'privileged_studio_job_worker_runtime_failed',
+    },
+  ] as const)(
+    'signals a terminal $lane worker failure once after retiring its pool',
+    async ({ ensureExport, lane, reasonCode }) => {
+      process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = lane;
+      let rejectWorker!: (error: Error) => void;
+      const gracefulShutdown = vi.fn(async () => undefined);
+      state.runTaskList.mockReturnValueOnce({
+        gracefulShutdown,
+        promise: new Promise<void>((_resolve, reject) => {
+          rejectWorker = reject;
+        }),
+      });
+      const terminalFailure = vi.fn();
+      const worker = await import('./runner-worker.js');
+      const ensureWorker = worker[ensureExport];
+
+      await ensureWorker({ onTerminalFailure: terminalFailure });
+      const events = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+      const fatalError = new Error(`${lane} worker crashed`);
+      events.emit('worker:fatalError', { error: fatalError });
+
+      expect(worker.getStudioJobWorkerHealth()).toEqual({
+        ready: false,
+        reasonCode,
+        status: 'failed',
+      });
+      await vi.waitFor(() => expect(gracefulShutdown).toHaveBeenCalledOnce());
+      await vi.waitFor(() =>
+        expect(terminalFailure).toHaveBeenCalledWith({ error: fatalError, lane })
+      );
+
+      rejectWorker(new Error(`${lane} pool rejected after retirement`));
+      await Promise.resolve();
+      expect(terminalFailure).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('keeps the healthy lane isolated when the other lane fails terminally', async () => {
+    const defaultTerminalFailure = vi.fn();
+    const privilegedTerminalFailure = vi.fn();
+    const worker = await import('./runner-worker.js');
+
+    await worker.ensureStudioJobWorkerStarted({
+      onTerminalFailure: defaultTerminalFailure,
+    });
+    await worker.ensurePrivilegedStudioJobWorkerStarted({
+      onTerminalFailure: privilegedTerminalFailure,
+    });
+    await vi.waitFor(() => {
+      process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+      expect(worker.getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });
+    });
+
+    const defaultEvents = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+    defaultEvents.emit('worker:fatalError', { error: new Error('default lane failed') });
+
+    await vi.waitFor(() => expect(defaultTerminalFailure).toHaveBeenCalledOnce());
+    expect(privilegedTerminalFailure).not.toHaveBeenCalled();
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+    expect(worker.getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });
+  });
+
+  it('stops both lanes explicitly without signaling a terminal failure', async () => {
+    const defaultTerminalFailure = vi.fn();
+    const privilegedTerminalFailure = vi.fn();
+    const worker = await import('./runner-worker.js');
+
+    await worker.ensureStudioJobWorkerStarted({
+      onTerminalFailure: defaultTerminalFailure,
+    });
+    await worker.ensurePrivilegedStudioJobWorkerStarted({
+      onTerminalFailure: privilegedTerminalFailure,
+    });
+    await worker.stopStudioJobWorker();
+    await worker.stopPrivilegedStudioJobWorker();
+
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'default';
+    expect(worker.getStudioJobWorkerHealth()).toEqual({
+      ready: false,
+      reasonCode: 'studio_job_worker_stopped',
+      status: 'stopped',
+    });
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+    expect(worker.getStudioJobWorkerHealth()).toEqual({
+      ready: false,
+      reasonCode: 'privileged_studio_job_worker_stopped',
+      status: 'stopped',
+    });
+    expect(defaultTerminalFailure).not.toHaveBeenCalled();
+    expect(privilegedTerminalFailure).not.toHaveBeenCalled();
+  });
+
   it('ignores delayed failures from a replaced worker pool', async () => {
     let rejectOldWorker!: (error: Error) => void;
     state.runTaskList.mockReturnValueOnce({
@@ -340,6 +511,26 @@ describe('plugin operation runner worker', () => {
   it('returns early when stop is called before the worker was started', async () => {
     const { stopStudioJobWorker } = await import('./runner-worker.js');
     await expect(stopStudioJobWorker()).resolves.toBeUndefined();
+  });
+
+  it('records the last successful processing time for the owning lane only', async () => {
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+    const worker = await import('./runner-worker.js');
+    const observability = await import('../plugin-tenant-lifecycle/observability.js');
+
+    await worker.ensurePrivilegedStudioJobWorkerStarted();
+    const events = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+    events.emit('job:success', {
+      job: { task_identifier: 'studio_job_execute_privileged' },
+      worker: {},
+    });
+
+    expect(
+      observability.readPluginTenantLifecycleLaneSnapshot('privileged').lastSuccessAtMs
+    ).toEqual(expect.any(Number));
+    expect(
+      observability.readPluginTenantLifecycleLaneSnapshot('default').lastSuccessAtMs
+    ).toBeNull();
   });
 
   it('treats an explicitly disabled worker as ready', async () => {

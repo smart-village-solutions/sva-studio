@@ -46,6 +46,7 @@ type SessionUser = {
   instanceId?: string;
   instanceDisplayName?: string;
   assignedModules?: string[];
+  moduleAccessPending?: boolean;
   groups?: readonly IamUserGroupAssignment[];
   keycloakRoles?: string[];
   permissionActions?: readonly string[];
@@ -95,6 +96,7 @@ const isTestRuntime = () =>
 const SILENT_SSO_TIMEOUT_MS = isTestRuntime() ? 250 : 8_000;
 const PRE_EXPIRY_REAUTH_LEAD_MS = 60_000;
 const PRE_EXPIRY_REAUTH_RETRY_SAFETY_MS = 1_000;
+const MODULE_ACCESS_REVALIDATION_INTERVAL_MS = 10_000;
 const AUTH_DEBUG_ENABLED = !isProductionMode;
 const authLogger = createOperationLogger('auth-provider', AUTH_DEBUG_ENABLED ? 'debug' : 'info');
 const MAIN_SERVER_VISIBLE_TYPE_BY_READ_ACTION = new Map<string, string>([
@@ -780,6 +782,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       currentDocument.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [loadUser]);
+
+  React.useEffect(() => {
+    const currentWindow = globalThis.window;
+    if (!currentWindow || !user?.moduleAccessPending) {
+      return;
+    }
+
+    const intervalId = currentWindow.setInterval(() => {
+      void loadUser(true);
+    }, MODULE_ACCESS_REVALIDATION_INTERVAL_MS);
+
+    return () => {
+      currentWindow.clearInterval(intervalId);
+    };
+  }, [loadUser, user?.moduleAccessPending]);
 
   React.useEffect(() => {
     clearSessionExpiryTimer();

@@ -17,7 +17,7 @@ import {
   seedInstanceIamBaselineMutation,
 } from './core-mutations.js';
 import { parseRegistryRequestBody } from './request-parsing.js';
-import { withRegistryService } from './repository.js';
+import { scheduleConfiguredPluginTenantProvisioning, withRegistryService } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
 
@@ -38,6 +38,7 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
   requireFreshReauth,
   withRegistryService,
   onInstanceProvisioningRequested: ({ instanceId, primaryHostname, actorId }) => {
+    scheduleConfiguredPluginTenantProvisioning(instanceId);
     logger.info('Instance provisioning requested', {
       operation: 'instance_create',
       instance_id: instanceId,

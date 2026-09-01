@@ -1,3 +1,5 @@
+import { isPersistableManualMediaUrl } from '@sva/core';
+
 import type {
   SvaMainserverAddressInput,
   SvaMainserverCategoryInput,
@@ -21,7 +23,7 @@ type ParseAddressOptions = {
 
 const readGeoLocation = (
   value: Record<string, unknown>,
-  options?: ParseAddressOptions,
+  options?: ParseAddressOptions
 ): { readonly latitude?: number; readonly longitude?: number } | Response => {
   const { geoLocation } = value;
   if (geoLocation === undefined || geoLocation === null) {
@@ -58,7 +60,11 @@ export const parseWebUrl = (value: unknown): SvaMainserverWebUrlInput | Response
   }
   const url = readString(value.url);
   if (!url || !isHttpsUrl(url)) {
-    return errorJson(400, 'invalid_request', 'URL-Angaben müssen eine gültige HTTPS-URL enthalten.');
+    return errorJson(
+      400,
+      'invalid_request',
+      'URL-Angaben müssen eine gültige HTTPS-URL enthalten.'
+    );
   }
   return {
     url,
@@ -66,7 +72,28 @@ export const parseWebUrl = (value: unknown): SvaMainserverWebUrlInput | Response
   };
 };
 
-export const parseWebUrls = (value: unknown): readonly SvaMainserverWebUrlInput[] | Response | undefined => {
+export const parseMediaUrl = (value: unknown): SvaMainserverWebUrlInput | Response | undefined => {
+  if (value === undefined || value === null) return undefined;
+  if (!isRecord(value)) {
+    return errorJson(400, 'invalid_request', 'Medien-URLs müssen als Objekt gesendet werden.');
+  }
+  const url = readString(value.url);
+  if (!url || !isPersistableManualMediaUrl(url)) {
+    return errorJson(
+      400,
+      'invalid_request',
+      'Medien-URLs müssen dauerhaft persistierbare HTTP- oder HTTPS-URLs enthalten.'
+    );
+  }
+  return {
+    url,
+    ...(readString(value.description) ? { description: readString(value.description) } : {}),
+  };
+};
+
+export const parseWebUrls = (
+  value: unknown
+): readonly SvaMainserverWebUrlInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -87,7 +114,9 @@ export const parseWebUrls = (value: unknown): readonly SvaMainserverWebUrlInput[
   return urls;
 };
 
-export const parseCategories = (value: unknown): readonly SvaMainserverCategoryInput[] | Response | undefined => {
+export const parseCategories = (
+  value: unknown
+): readonly SvaMainserverCategoryInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -102,7 +131,11 @@ export const parseCategories = (value: unknown): readonly SvaMainserverCategoryI
     }
     const name = readString(item.name);
     if (!name || name.length > 128) {
-      return errorJson(400, 'invalid_request', 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.');
+      return errorJson(
+        400,
+        'invalid_request',
+        'Kategorien benötigen einen Namen mit maximal 128 Zeichen.'
+      );
     }
     const children = parseCategories(item.children);
     if (children instanceof Response) {
@@ -119,7 +152,7 @@ export const parseCategories = (value: unknown): readonly SvaMainserverCategoryI
 
 export const parseAddress = (
   value: unknown,
-  options?: ParseAddressOptions,
+  options?: ParseAddressOptions
 ): SvaMainserverAddressInput | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
@@ -145,7 +178,9 @@ export const parseAddress = (
   };
 };
 
-export const parseAddressList = (value: unknown): readonly SvaMainserverAddressInput[] | Response | undefined => {
+export const parseAddressList = (
+  value: unknown
+): readonly SvaMainserverAddressInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -198,7 +233,9 @@ export const parseTags = (value: unknown): readonly string[] | Response | undefi
   return value.map(readString).filter((tag): tag is string => Boolean(tag));
 };
 
-export const parseLocation = (value: unknown): SvaMainserverLocationInput | Response | undefined => {
+export const parseLocation = (
+  value: unknown
+): SvaMainserverLocationInput | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }

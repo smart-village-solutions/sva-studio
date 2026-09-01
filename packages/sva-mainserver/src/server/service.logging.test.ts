@@ -11,7 +11,8 @@ vi.mock('@opentelemetry/api', () => ({
     getMeter: () => ({
       createHistogram: () => ({ record: vi.fn() }),
       createCounter: () => ({ add: vi.fn() }),
-      createObservableGauge: () => ({ addCallback: vi.fn() }),
+      createObservableGauge: (name: string) => ({ name, addCallback: vi.fn() }),
+      addBatchObservableCallback: vi.fn(),
     }),
   },
   trace: {

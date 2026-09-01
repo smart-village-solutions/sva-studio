@@ -189,6 +189,11 @@ export type {
   PluginPermissionRegistryEntry,
   PluginRouteDefinition,
   PluginRouteGuard,
+  PluginServerHandlerDefinition,
+  PluginServerHandlerExecutionContext,
+  PluginServerHandlerModuleFactory,
+  PluginServerHandlerRegistryEntry,
+  PluginServerExecutionHandler,
   PluginTranslations,
 } from './plugins.js';
 export {
@@ -198,6 +203,7 @@ export {
   createPluginModuleIamRegistry,
   createPluginPermissionRegistry,
   createPluginRegistry,
+  createPluginServerHandlerRegistry,
   definePluginActions,
   definePluginAuditEvents,
   definePluginModuleIamContract,
@@ -222,6 +228,7 @@ export type {
   PluginExecutionContextCapabilities,
   PluginExecutionLogger,
   PluginExecutionProgressReporter,
+  PluginExtensionTier,
   PluginIntegrationExecutionContext,
   PluginJobExecutionHandler,
   PluginJobExecutionResult,
@@ -230,15 +237,12 @@ export type {
   PluginJobProgressReporter,
   PluginManifest,
   PluginManifestCapability,
+  PluginTenantActivationPolicy,
   PluginRequestExecutionContext,
   PluginSnapshot,
 } from './plugin-platform-contracts.js';
-export {
-  createPluginSnapshot,
-  definePluginCatalogEntry,
-  definePluginExecutionContextCapabilities,
-  definePluginManifest,
-} from './plugin-platform-contracts.js';
+// prettier-ignore
+export { PLUGIN_PLATFORM_ADMIN_ROLE, PLUGIN_ROUTE_SCOPE_HEADER_NAME, createPluginSnapshot, definePluginCatalogEntry, definePluginExecutionContextCapabilities, definePluginManifest } from './plugin-platform-contracts.js';
 export { resolvePluginCatalog, resolvePluginCatalogAsync } from './plugin-platform-resolution.js';
 export type {
   PluginCatalogIssue,
@@ -254,6 +258,7 @@ export type {
   PluginJobTypeDefinition,
   PluginJobTypeRegistryEntry,
 } from './plugin-operations.js';
+export * from './plugin-tenant-lifecycle.js';
 export {
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
@@ -295,13 +300,8 @@ export {
   createStandardContentTypeDefinition,
   resolveStandardContentAccessCapabilities,
 } from './standard-content-plugin.js';
-export type {
-  EffectiveAccessSnapshot,
-  UiAccessDecision,
-  UiAccessRequirement,
-  UiAccessScope,
-  UiResourceCapability,
-} from '@sva/iam-core';
+// prettier-ignore
+export type { EffectiveAccessSnapshot, UiAccessDecision, UiAccessRequirement, UiAccessScope, UiResourceCapability } from '@sva/iam-core';
 export type * from './plugin-translations.js';
 export {
   registerPluginTranslationResolver,

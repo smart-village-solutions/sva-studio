@@ -56,6 +56,7 @@ export const mapProvisioningRun = (row: ProvisioningRow): InstanceProvisioningRu
   status: row.status,
   stepKey: row.step_key ?? undefined,
   idempotencyKey: row.idempotency_key,
+  payloadFingerprint: row.payload_fingerprint ?? undefined,
   errorCode: row.error_code ?? undefined,
   errorMessage: row.error_message ?? undefined,
   requestId: row.request_id ?? undefined,

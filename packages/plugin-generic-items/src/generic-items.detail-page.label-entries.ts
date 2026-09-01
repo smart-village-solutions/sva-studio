@@ -1,4 +1,5 @@
-const translationEntries = <Key extends string>(entries: ReadonlyArray<readonly [Key, string]>) => entries;
+const translationEntries = <Key extends string>(entries: ReadonlyArray<readonly [Key, string]>) =>
+  entries;
 
 export const genericItemsDetailLabelEntries = translationEntries([
   ['identityTitle', 'cards.basis.identity.title'],
@@ -154,6 +155,10 @@ export const genericItemsDetailLabelEntries = translationEntries([
   ['mediaPreviewUnavailable', 'media.previewUnavailable'],
   ['mediaMoved', 'media.moved'],
   ['mediaRemoved', 'media.removed'],
+  ['mediaUrlUpgradedToHttps', 'media.urlUpgradedToHttps'],
+  ['mediaUrlInsecureHttp', 'media.urlInsecureHttp'],
+  ['mediaUrlHttpsUnavailable', 'media.urlHttpsUnavailable'],
+  ['mediaUrlInvalid', 'media.urlInvalid'],
   ['mediaRefreshTitle', 'media.refreshTitle'],
   ['mediaRefreshDescription', 'media.refreshDescription'],
   ['mediaAssetValue', 'media.assetValue'],

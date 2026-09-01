@@ -72,6 +72,9 @@ const createJobPluginSource = (input: {
   sourceRef: input.sourceRef ?? 'packages/plugin-waste-management',
   manifest: definePluginManifest({
     pluginId: input.pluginId,
+    manifestVersion: 1,
+    extensionTier: 'feature',
+    tenantActivationPolicy: 'optional',
     version: '0.0.1',
     sdkVersion: '0.0.1',
     hostCompatibility: {
@@ -250,6 +253,9 @@ describe('plugin operation runtime registration', () => {
           sourceRef: 'packages/plugin-news',
           manifest: definePluginManifest({
             pluginId: 'browser-only-plugin',
+            manifestVersion: 1,
+            extensionTier: 'feature',
+            tenantActivationPolicy: 'optional',
             version: '0.0.1',
             sdkVersion: '0.0.1',
             hostCompatibility: {
@@ -280,6 +286,9 @@ describe('plugin operation runtime registration', () => {
             sourceRef: 'packages/plugin-waste-management',
             manifest: {
               pluginId: 'custom-waste-plugin',
+              manifestVersion: 1,
+              extensionTier: 'feature',
+              tenantActivationPolicy: 'optional',
               version: '0.0.1',
               sdkVersion: '0.0.1',
               hostCompatibility: {
@@ -370,6 +379,9 @@ describe('plugin operation runtime registration', () => {
           }),
           manifest: definePluginManifest({
             pluginId: 'waste-management',
+            manifestVersion: 1,
+            extensionTier: 'feature',
+            tenantActivationPolicy: 'optional',
             version: '0.0.1',
             sdkVersion: '0.0.1',
             hostCompatibility: {

@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   withLock: vi.fn(),
   withTargetLock: vi.fn(),
   authorize: vi.fn(),
+  authorizePreflight: vi.fn(),
   finalize: vi.fn(),
   resolveMutationActor: vi.fn(),
   resolveResourceAccess: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock('@sva/auth-runtime/server', async (importOriginal) => ({
   withMainserverOwnershipTargetBindingLock: state.withTargetLock,
 }));
 vi.mock('./mutation-principal.js', () => ({
+  authorizeMainserverActionPreflight: state.authorizePreflight,
   authorizeMainserverExistingContent: state.authorize,
   finalizeMainserverMutation: state.finalize,
   resolveMainserverMutationActor: state.resolveMutationActor,
@@ -129,6 +131,7 @@ describe('Mainserver content ownership route', () => {
       dataProviderName: 'Quelle',
     });
     state.resolveResourceAccess.mockResolvedValue({ 'content.transferOwnership': true });
+    state.authorizePreflight.mockResolvedValue(null);
     state.authorize.mockResolvedValue({ authorizationMode: 'exact' });
     state.getNews.mockResolvedValue({
       id: 'news-1',
@@ -445,6 +448,97 @@ describe('Mainserver content ownership route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       error: 'content_transfer_reconciliation_required',
     });
+    expect(state.authorize).not.toHaveBeenCalled();
+    expect(state.finalize).not.toHaveBeenCalled();
+    expect(state.transfer).not.toHaveBeenCalled();
+  });
+
+  it('denies transfer recovery before reading or reconciling the source', async () => {
+    const reconcilePreviousTransfer = vi.fn().mockResolvedValue(undefined);
+    state.authorizePreflight.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'forbidden' }), {
+        status: 403,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      ),
+      { reconcilePreviousTransfer }
+    );
+
+    expect(response?.status).toBe(403);
+    expect(state.getNews).not.toHaveBeenCalled();
+    expect(reconcilePreviousTransfer).not.toHaveBeenCalled();
+    expect(state.hasUnresolvedTransfer).not.toHaveBeenCalled();
+    expect(state.authorize).not.toHaveBeenCalled();
+  });
+
+  it('reconciles a confirmed earlier transfer before checking the write barrier', async () => {
+    const reconcilePreviousTransfer = vi.fn().mockResolvedValue(undefined);
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      ),
+      { reconcilePreviousTransfer }
+    );
+
+    expect(response?.status).toBe(200);
+    expect(reconcilePreviousTransfer).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      providerEntityId: 'news-1',
+      currentDataProviderId: 'provider-source',
+    });
+    expect(reconcilePreviousTransfer.mock.invocationCallOrder[0]).toBeLessThan(
+      state.authorize.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+    expect(state.hasUnresolvedTransfer).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      contentId: 'news-1',
+    });
+  });
+
+  it('runs recovery before the transferred source is re-authorized', async () => {
+    const reconcilePreviousTransfer = vi.fn().mockResolvedValue(undefined);
+    state.authorize.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'data_provider_mismatch' }), {
+        status: 403,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      ),
+      { reconcilePreviousTransfer }
+    );
+
+    expect(response?.status).toBe(403);
+    expect(reconcilePreviousTransfer).toHaveBeenCalledOnce();
+    expect(reconcilePreviousTransfer.mock.invocationCallOrder[0]).toBeLessThan(
+      state.authorize.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
     expect(state.transfer).not.toHaveBeenCalled();
   });
 
@@ -849,6 +943,7 @@ describe('Mainserver content ownership route', () => {
   });
 
   it('returns the Mainserver source id after transferring a projected project', async () => {
+    const reconcilePreviousTransfer = vi.fn().mockResolvedValue(undefined);
     state.loadExternalContentReference.mockResolvedValue({
       sourceEntityId: 'project-source-1',
     });
@@ -866,13 +961,21 @@ describe('Mainserver content ownership route', () => {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ targetPrincipal: target.principal }),
         }
-      )
+      ),
+      { reconcilePreviousTransfer }
     );
 
     expect(response?.status).toBe(200);
     expect(response?.headers.get('x-sva-mainserver-entity-id')).toBe('project-source-1');
     await expect(response?.json()).resolves.toMatchObject({
       data: { contentId: 'project-source-1' },
+    });
+    expect(reconcilePreviousTransfer).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'projects.project',
+      contentId: 'project-local-1',
+      providerEntityId: 'project-source-1',
+      currentDataProviderId: 'provider-source',
     });
   });
 

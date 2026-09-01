@@ -46,6 +46,12 @@ export type ContentMediaUsageBlockLabels = Readonly<{
     previewUnavailable: string;
   }>;
   announcements: Readonly<{ moved: string; removed: string }>;
+  urlFeedback: Readonly<{
+    upgradedToHttps: string;
+    insecureHttp: string;
+    httpsUnavailable: string;
+    invalid: string;
+  }>;
   refresh: Readonly<{
     title: string;
     description: string;

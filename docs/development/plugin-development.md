@@ -162,10 +162,14 @@ Jedes publishbare Plugin liefert ein serialisierbares Manifest:
     "requiredCapabilities": ["routing", "navigation", "iam"]
   },
   "entryPoints": {
-    "browser": "./dist/index.js"
+    "browser": "./dist/index.js",
+    "server": "./dist/server.js"
   }
 }
 ```
+
+Der `server`-Entry ist nur erforderlich, wenn `PluginDefinition.serverHandlers`
+deklariert werden. Er darf nicht aus dem Browser-Entry re-exportiert werden.
 
 Der Host bindet Plugins über `apps/sva-studio-react/plugin-catalog.json` ein. Ein Katalogeintrag enthält nur Aktivierungs- und Quellinformationen; das Manifest wird anschließend aus dem referenzierten Package gelesen.
 
@@ -351,10 +355,10 @@ Plugins mit Host-Medienreferenzen deklarieren Rollen, Medientypen und optional P
 
 - Ein typsicherer Adapter übersetzt das Fachmodell in `ContentMediaUsage` und zurück. Nicht im gemeinsamen Block bearbeitete sowie unbekannte Felder müssen den Roundtrip unverändert überstehen.
 - `uiId` bleibt bei Umsortierung stabil; `assetId` ist optional. Manuelle URLs erzeugen keine erfundene Assetreferenz.
-- `persistentUrl` ist die fachlich speicherbare HTTPS-URL, `previewUrl` bleibt transient. Presigned, `blob:`- oder ablaufende URLs dürfen nicht persistiert werden.
+- `persistentUrl` ist der fachlich speicherbare Content-Snapshot, `previewUrl` bleibt transient. Für Medienbibliotheksassets und aufgelöste Uploads muss `persistentUrl` eine dauerhafte HTTPS-URL sein. Eine redaktionell manuell eingegebene HTTP-Bild-URL darf dagegen nach erfolgloser HTTPS-Bildprobe mit sichtbarer Mixed-Content-Warnung gespeichert werden. Presigned, `blob:`-, zugangsdatenhaltige oder ablaufende URLs dürfen in keinem Fall persistiert werden.
 - Die gemeinsame Rolle lautet `gallery_item`; `sortOrder` wird nach jeder Änderung lückenlos aus der sichtbaren Reihenfolge abgeleitet.
 - Neu ausgewählte Dateien werden als `localDraft` in `ContentMediaUsage` gehalten. Das Plugin darf bei Auswahl weder `uploadHostMediaFile` aufrufen noch ein technisches Asset erfinden.
-- Beim Speichern übergibt das Plugin `contentMediaUsagesToLocalDrafts(...)` an `saveContentWithHostMediaReferences(...)` und baut seinen Fachpayload im `saveContent(draftResolutions)`-Callback mit `resolveContentMediaUsageDrafts(...)` neu. Nur so gelangen finale HTTPS-URLs in den Fachvertrag.
+- Beim Speichern übergibt das Plugin `contentMediaUsagesToLocalDrafts(...)` an `saveContentWithHostMediaReferences(...)` und baut seinen Fachpayload im `saveContent(draftResolutions)`-Callback mit `resolveContentMediaUsageDrafts(...)` neu. Nur so gelangen finale HTTPS-URLs hochgeladener Assets in den Fachvertrag; bereits vorhandene manuelle HTTP-/HTTPS-Snapshots bleiben davon getrennt.
 - Ein Retry nach bestätigtem Fach-Write wiederholt nur Markierung und Commit der Content-Save-Operation. Plugins implementieren weder eigenen Cleanup noch einen Aufruf von `media.delete`.
 - Die UI zeigt fehlende, zusätzliche oder nicht auflösbare Referenzen an, verändert sie beim Laden aber nicht stillschweigend.
 
@@ -459,6 +463,32 @@ Die App liest den Katalog, lädt Manifeste und Module abhängig vom `sourceType`
 - Job-, Import- und IAM-Registries
 
 Plugins registrieren sich weiterhin nicht selbst zur Laufzeit. Die Aktivierung bleibt hostowned.
+
+### Serverseitige Plugin-Handler
+
+Ein Serverbeitrag besteht aus zwei getrennten Teilen:
+
+1. `PluginDefinition.serverHandlers` deklariert ID, exakten API-Pfad, Methode,
+   Action und vollständige Plattform- oder Tenant-Zugriffsanforderung.
+2. Der Manifest-`server`-Entry exportiert `createPluginServerHandlers` und bindet
+   jede deklarierte ID genau einmal an ausführbaren Code.
+
+```ts
+import type { PluginServerHandlerModuleFactory } from '@sva/plugin-sdk';
+
+export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () => ({
+  'weather.read-configuration': async ({ actor, request }) => {
+    const url = new URL(request.url);
+    return Response.json({ actorId: actor.id, locale: url.searchParams.get('locale') });
+  },
+});
+```
+
+Der Host lehnt fehlende und unbekannte Handler beim Bootstrap ab. Er prüft vor
+der Ausführung Pfad und Methode sowie Authentifizierung, Root-Host und
+Plattformrolle beziehungsweise Tenant-Aktivierung und namespaced Permissions.
+Der Handler erhält nur den daraus erzeugten Execution-Context und implementiert
+keinen eigenen Scope- oder Session-Resolver.
 
 ## Routing
 

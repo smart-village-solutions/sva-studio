@@ -179,6 +179,7 @@ zur abgeschlossenen Shadow-Abnahme stehen in
 - Workflow- und CI-Dateiänderungen werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf den vollen Produkt-Workspace
 - Main + Nightly:
   - Job `Coverage`: `test:coverage` (voll)
+  - Der Coverage-Job lädt die vollständige Git-Historie bereits beim Checkout mit `fetch-depth: 0`; SonarCloud darf keinen nachgelagerten `git fetch --unshallow` benötigen
   - Job `Complexity`: blockierend
   - Job `Integration`: voller, verpflichtender Integrationslauf
 
@@ -226,7 +227,7 @@ zweite Summary- oder Paritätspolicy einzuführen.
 
 ### Echte Integrationsziele
 
-`test:integration` steht nur für echte infra-abhängige Targets. Im allgemeinen Gate laufen aktuell `auth-runtime:test:integration`, `data:test:integration` und `sva-studio-react:test:integration`; sie verwenden lokale PostgreSQL-Container beziehungsweise denselben lokalen Compose-Postgres und werden deshalb bewusst seriell ausgeführt. Das Auth-Runtime-Ziel prüft Migration, App-Enqueue, echte Worker-Verarbeitung sowie die getrennten Graphile-Rechte. Das App-Ziel prüft den PostgreSQL-Vertrag für tourbezogene Ausweichtermine einschließlich `DATE`, partieller Unique-Indizes und konkurrierender Inserts. Bekannte Platzhalter wie `core`, `media`, `studio-module-iam`, `tooling-testing` und die Plugin-Pakete werden dort bewusst nicht als grüne Integrationssignale mitgezählt. `monitoring-client:test:integration` bleibt ein echtes Stack-Signal, wird aber dedupliziert über den separaten Workflow `Monitoring Stack` abgesichert.
+`test:integration` steht nur für echte infra-abhängige Targets. Im allgemeinen Gate laufen aktuell `auth-runtime:test:integration`, `data:test:integration` und `sva-studio-react:test:integration`; sie verwenden lokale PostgreSQL-Container beziehungsweise denselben lokalen Compose-Postgres und werden deshalb bewusst seriell ausgeführt. Das Auth-Runtime-Ziel prüft Migration, den effektiven `iam_app`-Enqueue-Pfad, echte Worker-Verarbeitung sowie die getrennten Graphile-Rechte. Zusätzlich führt es in einem eindeutig eigenen, anschließend entfernten PostgreSQL-16-Container den Plugin-Lifecycle-Fault-Harness aus. Dieser beweist die Invarianten `LC-01` bis `LC-06` und `ACT-01` mit echten Repositories, Transaktionen, Graphile-Tasklisten und deterministischen Datenbank-Failpoints; Mock-Tests bleiben nur ergänzend. Das App-Ziel prüft den PostgreSQL-Vertrag für tourbezogene Ausweichtermine einschließlich `DATE`, partieller Unique-Indizes und konkurrierender Inserts. Bekannte Platzhalter wie `core`, `media`, `studio-module-iam`, `tooling-testing` und die Plugin-Pakete werden dort bewusst nicht als grüne Integrationssignale mitgezählt. `monitoring-client:test:integration` bleibt ein echtes Stack-Signal, wird aber dedupliziert über den separaten Workflow `Monitoring Stack` abgesichert.
 
 ### DB-Snapshot-Gate
 

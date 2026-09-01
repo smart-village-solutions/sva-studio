@@ -9,6 +9,15 @@
 5. Routing, Sidebar, Host-Seiten und Plugin-Session-Snapshot konsumieren dieselbe Generation. `unresolved`, `loading` und `error` sind fail-closed.
 6. Eine UI-Freigabe ersetzt niemals die serverseitige Action-, Instanz-, Organisations- oder Ressourcenprüfung.
 
+## Scopegebundene Plugin-Routenmaterialisierung
+
+1. Der Plugin-Loader validiert Tier, Namespace und vollständige Access-Anforderung von Route, Navigation, Action und referenziertem Server-Handler gemeinsam. Ein Server-Handler ohne eigene Access-Anforderung wird bereits vor der Snapshot-Veröffentlichung abgelehnt.
+2. Der Build-time-Snapshot veröffentlicht getrennte Plattform- und Tenant-Sichten; ein widersprüchlicher Plugin-Descriptor erzeugt keinen partiellen Eintrag.
+3. Serverseitig bestimmt `resolveAuthConfigForRequest` aus dem Request-Host den Scope des Routenbaums.
+4. `/auth/me` gibt dieselbe hostvalidierte Auflösung im Header `X-SVA-Plugin-Route-Scope` zurück, auch wenn keine Session besteht. Der Browser verwendet diesen Header für einen hydrierungsgleichen Routenbaum.
+5. Im Plattformbaum werden ausschließlich explizite Plattformbeiträge materialisiert. Im Tenant-Baum werden Plattformbeiträge nicht registriert; tenantbezogene Guards verlangen weiterhin den persistent aktiven Modulsatz und die namespaceten Actions.
+6. Ein fehlender oder ungültiger Scope-Nachweis materialisiert browserseitig fail-closed nur den Plattformbaum und verleiht keine Plattformberechtigung; jeder Route- und Serverzugriff prüft die deklarierte Autorisierung zusätzlich.
+
 ## Revisionsgebundener Permission-Cache
 
 1. Der Read-Pfad liest den aktuellen `instanceRevision`-/`userRevision`-Vektor aus PostgreSQL.
@@ -85,6 +94,18 @@ Fehlerpfad:
 - Fehlt das migrierte Graphile-Schema oder der dedizierte Worker-Zugang, startet die Runtime fail-closed; sie versucht keine privilegierte Selbstreparatur.
 - Bei aktivierter Worker-Lane umfasst die HTTP-Readiness den tatsächlichen Worker-Zustand. Startfehler und unerwartete Abbrüche setzen `jobWorker` mit stabilem Reason-Code auf `not_ready` und werden als Fehlerereignis protokolliert; eine bewusst deaktivierte Lane bleibt readiness-neutral.
 
+### Automatische Plugin-Aktivierung und Tenant-Provisionierung
+
+1. Der kurze Server-Bootstrap übernimmt Aktivierungsrichtlinien, IAM-Verträge und Tenant-Lifecycles atomar aus demselben Plugin-Snapshot, blockiert den ersten Request aber nicht mit Fleet-Arbeit.
+2. Nach Registrierung der Plugin-Operations-Handler startet die Runtime den revisionsgebundenen Fleet-Reconcile im Hintergrund. Er synchronisiert die aktuellen IAM-Verträge unabhängig davon, ob Aktivierungszeilen geändert wurden, und plant nach einem degradierten oder fehlgeschlagenen Lauf selbstständig einen revisionsgebundenen Wiederholungsversuch.
+3. Jede Instanz materialisiert Richtlinie, IAM-Grants und Audit innerhalb ihrer scoped Transaktion.
+4. Erst nach erfolgreichem Commit prüft ein hostgeführter, vom Request entkoppelter Post-Commit-Hook alle effektiv aktiven Plugins mit deklarierter `provision`-Operation. Damit werden auch manuell aktivierte `optional`-Plugins berücksichtigt. Dieselbe Prüfung wird nach einer neuen Instanzanlage explizit eingeplant.
+5. Fehlt Lifecycle-Evidenz, passt sie nicht mehr zur aktuellen Readiness-Deklaration oder ist ein früherer Lauf retryable gescheitert, startet der Hook dieselbe generische Lifecycle-Orchestrierung wie eine manuelle Reparatur. Queue- oder Datenbankfehler werden beim normalen Post-Commit-Hook protokolliert und verändern nicht die Antwort einer bereits committeten Registry-Mutation; der Fleet-Reconcile wartet dagegen auf die Folgeplanung und meldet deren Fehler als `degraded`. Eine erfolgreiche explizite Wiederzuweisung entfernt atomar eine alte terminale Retry-Sperre, damit der anschließende Hook eine neue Provisionierungsgeneration anlegen kann. Aktive Jobs, suspendierte Zustände, sonstige terminale Fehler und valide aktuelle `ready`- oder `degraded`-Evidenz erzeugen keinen zweiten Lauf.
+6. Das Beanspruchen eines Lifecycle-Jobs und das Einplanen seines separaten Recovery-Tasks erfolgen in derselben Tenant-Transaktion. Der Recovery-Task prüft den persistierten Studio-Job nach dem Claim-Fenster und stellt einen noch `queued` vorliegenden Graphile-Job idempotent über dessen stabilen Job-Key wieder her; laufende oder terminale Jobs werden nicht erneut enqueued.
+7. Retryable Plugin-Fehler ohne eigene Deadline erhalten beim Persistieren einen hostdefinierten Backoff von 60 Sekunden. Aktivierungsänderungen im geöffneten Instanzdetail stoßen nach erfolgreicher Mutation zusätzlich einen unmittelbaren Readiness-Refresh an.
+8. Terminale Worker-Fehler sowie Fehler beim Enqueue eines bereits geclaimten Lifecycle-Jobs schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
+9. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
+
 ### Self-Service-Datenexport über Host-Worker
 
 1. Ein authentifizierter Benutzer ruft `POST /iam/me/data-export` für das eigene Konto auf.
@@ -127,9 +148,9 @@ Fehlerpfad:
 6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
 7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
 8. Die Mehrfachbearbeitung tourweiter Gültigkeitszeiträume sperrt die vollständige Auswahl in einer Fachdatenbank-Transaktion, validiert die resultierenden Zeiträume und schreibt ausschließlich `first_date` und `end_date`; bei einer ungültigen oder nicht anwendbaren Tour wird die gesamte Änderung zurückgerollt.
-9. Erfolgreiche Fraktionsmutationen starten zusätzlich asynchron den dedizierten Job `waste-management.sync-waste-types`.
-10. Die Studio-Runtime lädt dafür die aktiven Fraktionen, baut in `@sva/core` das `wasteTypes`-JSON mit stabilen PDF-Kürzel-Keys und schreibt es über `@sva/sva-mainserver` per `createOrUpdateStaticContent` auf den Mainserver.
-11. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; für die Branding-Grafik verwendet er den gemeinsamen Medienpicker und speichert ausschließlich eine dauerhafte öffentliche HTTPS-URL. Operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
+9. Erfolgreiche Fraktionsmutationen und Änderungen der beiden Störungsoptionen starten zusätzlich asynchron denselben dedizierten Job `waste-management.sync-waste-types`. Der fachliche Save bleibt auch dann erfolgreich, wenn der Job nicht eingereiht oder später nicht abgeschlossen werden kann; die UI zeigt dafür Warnung und Wiederholung an.
+10. Die Studio-Runtime lädt dafür die aktiven Fraktionen sowie die tenantbezogenen Optionen `disruptionLocationEnabled` und `disruptionAllLocationsEnabled`. `@sva/core` baut daraus das vollständige `wasteTypes`-JSON mit stabilen PDF-Kürzel-Keys und den reservierten Sondertypen `disruption_location` (`Meine Straße`) beziehungsweise `disruption_all_locations` (`Alle Straßen`). Sondertypen tragen ausschließlich `label` und `notification_kind: "disruption"`, zählen nicht als Fraktionen und werden gemeinsam mit den regulären Einträgen deterministisch sortiert und gehasht.
+11. Der Tab `Einstellungen` pflegt die beiden Störungsoptionen unabhängig voneinander. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; für die Branding-Grafik verwendet er den gemeinsamen Medienpicker und speichert ausschließlich eine dauerhafte öffentliche HTTPS-URL. Operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
 12. Technische Operationen wie Import, Migration, Seed, Reset und `sync-waste-types` starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
 13. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
 14. Explizite Tour-Einsätze werden als eigenständige Datensätze mit Datum, optionalem gemeinsamen Hinweis und mindestens einem Abholort gepflegt; mehrere Orte werden atomar über eine Einsatz-Ort-Zuordnung gespeichert.
@@ -515,7 +536,32 @@ Fehlerpfad:
 
 - fällt der Modul-Lookup im Session-Pfad aus, wird `assignedModules` fail-closed als leer behandelt.
 - fehlt die Zuweisung, blockiert das Routing die Plugin-Route vor dem Rendern.
+
+### Szenario 2i: Plugin-Fachzugriff folgt valider Tenant-Readiness
+
+1. Ein aktives Plugin mit Tenant-Lifecycle schreibt seine generationsgebundene Readiness-Evidenz über den hostgeführten Lifecycle-Job.
+2. Der Host validiert die Evidenz gegen die deklarierte Checkliste. Fehlende oder strukturell ungültige Evidenz, `pending`, `blocked` und `accessState = suspended` geben keinen Fachzugriff frei; valide `ready`- und `degraded`-Zustände sind zugelassen.
+3. `/auth/me` filtert lifecycle-verwaltete, nicht freigegebene Plugins aus der effektiven `assignedModules`-Liste. Routing und Sidebar verwenden dadurch weiterhin den bestehenden zentralen Modul- und Action-Vertrag.
+4. `POST /api/v1/plugin-operations/jobs` und dedizierte Plugin-Serverrouten prüfen dieselbe Hostentscheidung vor Fachzugriff, Idempotenzreservierung, Jobanlage und Queueing. Unmittelbar vor der Handler-Ausführung prüft auch der Worker den aktuellen Tenant-Lifecycle-Zugriff erneut, damit ein nach dem Queueing blockiertes oder suspendiertes Plugin keinen Fachjob mehr ausführt. Deklarierte Lifecycle-Jobtypen sind am generischen Endpunkt unzulässig und können nur über den Lifecycle-Orchestrator gestartet werden; dieser Reparaturpfad bleibt auch bei blockiertem Fachzugriff erreichbar, prüft vor der Ausführung aber weiterhin die effektive Plugin-Aktivierung.
+   Dedizierte Plugin-Serverrouten werden aus dem Manifest-`server`-Entry geladen.
+   Der Dispatcher verlangt vollständige Handler-Abdeckung, gleicht Pfad und
+   Methode exakt ab und übergibt erst nach der hostseitigen Scope- und
+   Rechteprüfung einen hosterzeugten Execution-Context.
+5. Der Readiness-Aggregatstatus wird aus den aktuell deklarierten Checks und der aktuellen `required`-Kennzeichnung neu berechnet; gespeicherte Evidenz kann eine nachträglich verschärfte Check-Deklaration nicht freigeben.
+6. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
+7. Waste bildet `provision` und `reconcile` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; ein separater `readiness`-Job liest nur diesen Datensatz und das instanzgebundene verwaltete Interface.
+8. Waste meldet die beiden Pflichtprüfungen `waste-management.tenant-provisioning` und `waste-management.tenant-database-interface`. Eine fehlende, unvollständige oder fremd besessene Evidenz ist `blocked`; `reconcile` bleibt die deklarierte Reparaturaktion.
+
+Fehlerfälle:
+
+- Bei blockierter oder suspendierter Readiness antwortet der normale Plugin-Jobstart mit `409 plugin_tenant_access_blocked` und erzeugt weder Idempotenz- noch Jobzustand.
+- Fällt die Readiness-Auflösung im Sessionpfad aus, bleibt der Modulzugriff fail-closed.
+- Reparatur- und Readiness-Läufe umgehen das Gate nicht frei, sondern laufen ausschließlich generationsgebunden über den Host-Orchestrator.
 - direkte API-Aufrufe bleiben zusätzlich durch fehlende modulbezogene Permissions abgesichert.
+- Permission-Definitionen und manuelle Rollenbelegungen eines deaktivierten
+  Moduls bleiben für eine spätere Reaktivierung erhalten, werden aber über
+  `iam.instance_modules.effective_active` aus der effektiven Permission-Menge
+  gefiltert.
 
 ### Szenario 2f: IAM-User- und Rollenverwaltung mit technischem Keycloak-Schnitt
 
@@ -1057,9 +1103,27 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 2. Er selektiert aktive tenantweite Katalogdefinitionen und Beiträge der aktiven Module.
 3. Das Repository führt idempotente Upserts über `(instance_id, permission_key)` aus und ergänzt fehlende verwaltete `system_admin`-Grants.
 4. Die aufrufende scoped Runtime- oder CLI-Grenze besitzt die Datenbanktransaktion; das Repository öffnet und beendet keine verschachtelte Transaktion und behält dadurch den gesetzten Tenant-Kontext bis zum Abschluss der Operation.
-5. Katalogentfernung und explizite Grant-Ausnahmen wirken additiv: Bereits materialisierte Definitionen und Grants eines weiterhin aktiven Moduls bleiben bestehen. Bei echter Moduldeaktivierung entfernt das Repository ausschließlich eindeutig als `module_sync` markierte Grants des deaktivierten Moduls.
+5. Der IAM-Abgleich entfernt eindeutig als `module_sync` markierte Rollen-Grants, sobald das Modul inaktiv ist oder das aktuelle aktive Vertrags-Snapshot das konkrete Rollen-/Permission-Paar nicht mehr enthält. Permission-Definitionen und manuelle Grants bleiben dabei bestehen; bei echter Moduldeaktivierung werden anschließend die namespaceten Permission-Definitionen des deaktivierten Moduls entfernt. Core-Permissions und weiterhin deklarierte Paare aktiver Modulverträge bleiben erhalten.
 6. Der Service invalidiert den Tenant-Permission-Snapshot und persistiert Audit-Evidenz mit sicheren Reconcile-Zählern.
 7. Der kontrollierte Bootstrap eines Releases liest dieselbe kompilierte Katalogsicht aus dem Image und reconciliiert Core-Permissions sowie die Beiträge der in `iam.instance_modules` zugewiesenen Module für alle erlaubten Tenants. Er führt keine katalogbedingten Löschungen aus.
+
+### Plugin-Aktivierungsrichtlinien materialisieren
+
+1. Beim Serverstart materialisiert der hostvalidierte Plugin-Snapshot für jedes installierte Plugin genau eine tenantbezogene Richtlinie `optional`, `automatic` oder `required` samt Manifest- und Policy-Revision. Die Server-Runtime übernimmt diesen unveränderlichen Snapshot; sie führt keinen zweiten Plugin-Katalog.
+2. Beim erstmaligen Übernehmen einer Snapshot-Revision listet die Server-Runtime alle bestehenden Instanzen und führt denselben Reconcile je Instanz kontrolliert und idempotent aus. Erfolgreiche Instanzen persistieren Richtlinie, Revision und Reconcile-Evidenz; ein revisionsgebundener Abschlussbericht weist einzelne Teilfehler aus, ohne die übrigen Instanzen auszulassen.
+3. Vor einer späteren scoped Instanzoperation liest der Registry-Service den aktuellen Snapshot und reconciliiert die Einträge in `iam.instance_modules` erneut idempotent. Neue Instanzen durchlaufen denselben Handler unmittelbar nach ihrer Anlage.
+4. `optional` ist ohne manuellen Override inaktiv. `automatic` ist initial aktiv, respektiert aber dauerhaft `enabled` oder `disabled`. Wird ein Plugin aus dem Host-Snapshot entfernt, wird es effektiv inaktiv; ein vorhandenes manuelles `enabled` bleibt jedoch als inaktiver Override erhalten und greift bei einer späteren Wiederaufnahme erneut. `required` ist immer aktiv, entfernt einen früheren Override und kann serverseitig nicht deaktiviert werden.
+5. Reconcile, manuelle Aktivierung und manuelle Deaktivierung versuchen innerhalb der umgebenden Tenant-Transaktion denselben PostgreSQL-Advisory-Lock für `(instance_id, module_id)`. Die sortierte Modulreihenfolge verhindert Lock-Reihenfolge-Drift; ein konkurrierender Verlierer wartet nicht, sondern rollt mit `plugin_activation_state_conflict` zurück.
+6. Im normalen scoped Reconcile lösen nur geänderte Richtlinienzustände den IAM-Abgleich, die Permission-Snapshot-Invalidierung und das Audit-Ereignis `instance_module_policy_reconciled` aus. Der releaseweite Fleet-Reconcile erzwingt den idempotenten IAM-Abgleich zusätzlich bei unveränderten Aktivierungszeilen, damit reine IAM-Vertragsänderungen bestehende Instanzen erreichen. Auditdetails enthalten Reconcile-ID, geänderte und unveränderte Modul-IDs sowie nicht-sensitive IAM-Zählwerte.
+7. Eine unveränderte Snapshot-Revision bleibt idempotent. Eine Deaktivierung entfernt weder Plugin-Fachdaten noch Audit-Historie; sie ändert ausschließlich den effektiven Instanz-Modulsatz und die daraus abgeleiteten verwalteten IAM-Grants.
+
+Fehlerpfad:
+
+- Ein nicht konfigurierter Host-Snapshot ist vor Abschluss des Server-Bootstraps ein leerer, fail-closed Reconcile und erzeugt keine vermeintliche Policy-Evidenz.
+- Kann die Instanzliste nicht geladen werden oder scheitert eine einzelne Instanz, erhält der Fleet-Bericht den Status `degraded`, den stabilen Code `plugin_activation_policy_reconcile_failed` und bei Einzelfehlern die betroffene Instanz-ID. Andere Instanzen werden weiterverarbeitet.
+- Ein Lock-Konflikt führt zu HTTP `409` mit stabilem Code `plugin_activation_state_conflict`; innerhalb der scoped Runtime-Transaktion bleiben vorherige Teiländerungen nicht bestehen.
+- Die Deaktivierung eines `required`-Plugins führt zu HTTP `409` mit `plugin_activation_required_cannot_disable` und verändert weder Zustand noch IAM.
+- Fehlt für ein effektiv aktives Plugin der hostvalidierte IAM-Vertrag, bricht der nachgelagerte IAM-Abgleich fail-closed ab.
 
 ### Szenario 4c: DataProvider-gebundene Mainserver-Mutation
 

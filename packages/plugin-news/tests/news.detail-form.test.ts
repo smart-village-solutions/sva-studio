@@ -761,6 +761,27 @@ describe('news.detail-form', () => {
     });
   });
 
+  it('accepts explicit http urls for media while keeping the article source https-only', async () => {
+    await expect(
+      newsDetailFormSchema.parseAsync({
+        ...createDefaultNewsDetailFormValues(),
+        title: 'HTTP-Bild',
+        publishedAt: '2026-08-21T12:00',
+        sourceUrl: { url: 'https://example.org/details', description: '' },
+        contentMedia: [
+          {
+            captionText: '',
+            copyright: '',
+            contentType: 'image',
+            height: '',
+            width: '',
+            sourceUrl: { url: 'http://example.org/image.jpg', description: '' },
+          },
+        ],
+      })
+    ).resolves.toBeTruthy();
+  });
+
   it('normalizes editor content from compatibility content blocks and touched aliases', () => {
     const values = createDefaultNewsDetailFormValues();
 

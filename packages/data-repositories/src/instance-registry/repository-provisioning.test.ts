@@ -27,7 +27,12 @@ describe('instance registry repository provisioning', () => {
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.listProvisioningRuns('tenant-a')).resolves.toMatchObject([
-      { id: 'run-1', instanceId: 'tenant-a', requestId: 'request-1' },
+      {
+        id: 'run-1',
+        instanceId: 'tenant-a',
+        payloadFingerprint: 'create-fingerprint-1',
+        requestId: 'request-1',
+      },
     ]);
     await expect(repository.listLatestProvisioningRuns([])).resolves.toEqual({});
     await expect(repository.listLatestProvisioningRuns(['tenant-a'])).resolves.toMatchObject({
@@ -331,7 +336,7 @@ describe('instance registry repository provisioning', () => {
   });
 
   it('returns null for empty mutations and maps created runs and steps', async () => {
-    const { executor } = createQueuedExecutor([[], [], [provisioningRow], [keycloakRunRow], [], [keycloakRunRow], [stepRow], [stepRow]]);
+    const { executor, statements } = createQueuedExecutor([[], [], [provisioningRow], [keycloakRunRow], [], [keycloakRunRow], [stepRow], [stepRow]]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.setInstanceStatus({ instanceId: 'missing', status: 'active' })).resolves.toBeNull();
@@ -352,8 +357,11 @@ describe('instance registry repository provisioning', () => {
         operation: 'create',
         status: 'pending',
         idempotencyKey: 'idem-1',
+        payloadFingerprint: 'create-fingerprint-1',
       })
     ).resolves.toMatchObject({ id: 'run-1' });
+    expect(statements[2]?.text).toContain('payload_fingerprint');
+    expect(statements[2]?.values).toContain('create-fingerprint-1');
     await expect(
       repository.createKeycloakProvisioningRun({
         instanceId: 'tenant-a',

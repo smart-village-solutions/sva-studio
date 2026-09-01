@@ -13,6 +13,7 @@ const resolveIdentityProviderForInstanceMock = vi.fn();
 const resolveAuthConfigForInstanceMock = vi.fn();
 const getInstanceKeycloakStatusViaTenantAdminMock = vi.fn();
 const getInstanceKeycloakStatusViaProvisionerMock = vi.fn();
+const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
 const studioModuleIamRegistryMock = new Map([
   [
     'news',
@@ -108,11 +109,6 @@ vi.mock('@sva/instance-registry/runtime-wiring', () => ({
   createInstanceRegistryRuntime: createInstanceRegistryRuntimeMock,
 }));
 
-vi.mock('@sva/studio-module-iam', () => ({
-  studioModuleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
-  studioModuleIamRegistry: studioModuleIamRegistryMock,
-}));
-
 vi.mock('../runtime-secrets.js', () => ({
   getIamDatabaseUrl: vi.fn(() => 'postgres://iam'),
 }));
@@ -146,8 +142,30 @@ vi.mock('../config.js', () => ({
   resolveAuthConfigForInstance: (...args: unknown[]) => resolveAuthConfigForInstanceMock(...args),
 }));
 
+vi.mock('../plugin-tenant-lifecycle/runtime.js', () => ({
+  ensureConfiguredPluginTenantProvisioning: ensureConfiguredPluginTenantProvisioningMock,
+}));
+
 describe('iam instance registry repository wiring', () => {
-  it('injects a shared module iam registry into runtime and provisioning services', async () => {
+  it('propagates automatic provisioning failures from the awaited scheduling path', async () => {
+    const { runConfiguredPluginTenantProvisioningSchedule } = await import('./repository.js');
+    ensureConfiguredPluginTenantProvisioningMock.mockRejectedValueOnce(
+      new Error('registry unavailable')
+    );
+
+    await expect(runConfiguredPluginTenantProvisioningSchedule('tenant-a')).rejects.toThrow(
+      'registry unavailable'
+    );
+  });
+
+  it('injects the configured snapshot registry into runtime and provisioning services', async () => {
+    const { configureInstanceRegistryPluginRuntimeSnapshot } =
+      await import('./plugin-activation-policy-snapshot.js');
+    configureInstanceRegistryPluginRuntimeSnapshot({
+      activationPolicies: { revision: 'catalog-1', modules: [] },
+      moduleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
+      tenantLifecycles: [],
+    });
     await import('./repository.js');
 
     const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls[0]?.[0];

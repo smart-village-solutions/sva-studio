@@ -31,6 +31,7 @@ export {
   wasteDataSourceStatements,
   wasteMasterDataStatements,
 } from './public-api.js';
+export { createPluginTenantLifecycleRepository } from './plugin-tenant-lifecycle/index.js';
 
 export type {
   ExternalInterfaceRepository,
@@ -78,6 +79,14 @@ export type {
   WasteDataSourceRepository,
   WasteMasterDataRepository,
 } from './public-api.js';
+export type {
+  PluginTenantAccessState,
+  PluginTenantLifecycleOperation,
+  PluginTenantLifecycleRecord,
+  PluginTenantLifecycleRepository,
+  PluginTenantLifecycleRetryKind,
+  PluginTenantReadinessStatus,
+} from './plugin-tenant-lifecycle/index.js';
 
 export type {
   ExternalInterfaceConnectionCheckRecord,

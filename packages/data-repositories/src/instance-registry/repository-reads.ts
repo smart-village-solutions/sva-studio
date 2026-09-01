@@ -1,8 +1,10 @@
 import type { SqlExecutor } from '../iam/repositories/types.js';
+import type { TenantModuleActivationRecord } from '@sva/core';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
 import { buildInstanceSelectColumns } from './repository-instance-select.js';
 import { mapInstance } from './repository-mappers.js';
+import type { ModuleActivationRow } from './repository-module-activation-statements.js';
 import { queryRows, statement } from './repository-shared.js';
 import type { InstanceListRow } from './repository-types.js';
 
@@ -11,6 +13,7 @@ type ReadRepository = Pick<
   | 'listInstances'
   | 'getInstanceById'
   | 'listAssignedModules'
+  | 'listModuleActivations'
   | 'countLocalSystemAdminAssignments'
   | 'getAuthClientSecretCiphertext'
   | 'getTenantAdminClientSecretCiphertext'
@@ -18,7 +21,8 @@ type ReadRepository = Pick<
   | 'resolvePrimaryHostname'
 >;
 
-const mapFirstInstance = (rows: readonly InstanceListRow[]) => (rows[0] ? mapInstance(rows[0]) : null);
+const mapFirstInstance = (rows: readonly InstanceListRow[]) =>
+  rows[0] ? mapInstance(rows[0]) : null;
 
 const listInstances = async (
   executor: SqlExecutor,
@@ -58,7 +62,10 @@ LIMIT 1;
   return mapFirstInstance(rows);
 };
 
-const listAssignedModules = async (executor: SqlExecutor, instanceId: string): Promise<readonly string[]> => {
+const listAssignedModules = async (
+  executor: SqlExecutor,
+  instanceId: string
+): Promise<readonly string[]> => {
   const rows = await queryRows<{ module_id: string }>(
     executor,
     statement(
@@ -66,6 +73,7 @@ const listAssignedModules = async (executor: SqlExecutor, instanceId: string): P
 SELECT module_id
 FROM iam.instance_modules
 WHERE instance_id = $1
+  AND effective_active
 ORDER BY module_id ASC;
 `,
       [instanceId]
@@ -74,7 +82,62 @@ ORDER BY module_id ASC;
   return rows.map((row) => row.module_id);
 };
 
-const countLocalSystemAdminAssignments = async (executor: SqlExecutor, instanceId: string): Promise<number> => {
+const listModuleActivations = async (
+  executor: SqlExecutor,
+  instanceId: string
+): Promise<readonly TenantModuleActivationRecord[]> => {
+  const rows = await queryRows<ModuleActivationRow>(
+    executor,
+    statement(
+      `
+SELECT
+  instance_id,
+  module_id,
+  activation_policy,
+  activation_origin,
+  effective_active,
+  manual_override,
+  manifest_version,
+  policy_revision,
+  state_revision,
+  reconcile_id,
+  reconciled_at::text AS reconciled_at,
+  created_at::text AS created_at,
+  updated_at::text AS updated_at,
+  updated_by
+FROM iam.instance_modules
+WHERE instance_id = $1
+ORDER BY module_id ASC;
+`,
+      [instanceId]
+    )
+  );
+
+  return rows.map((row) => ({
+    instanceId: row.instance_id,
+    moduleId: row.module_id,
+    activationPolicy: row.activation_policy,
+    activationOrigin: row.activation_origin,
+    effectiveActive: row.effective_active,
+    manualOverride: row.manual_override ?? undefined,
+    manifestVersion: row.manifest_version,
+    policyRevision: row.policy_revision,
+    stateRevision:
+      typeof row.state_revision === 'string'
+        ? Number.parseInt(row.state_revision, 10)
+        : row.state_revision,
+    reconcileId: row.reconcile_id ?? undefined,
+    reconciledAt: row.reconciled_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    updatedBy: row.updated_by ?? undefined,
+  }));
+};
+
+const countLocalSystemAdminAssignments = async (
+  executor: SqlExecutor,
+  instanceId: string
+): Promise<number> => {
   const rows = await queryRows<{ assignment_count: number | string }>(
     executor,
     statement(
@@ -96,10 +159,13 @@ WHERE ar.instance_id = $1
     )
   );
   const rawCount = rows[0]?.assignment_count;
-  return typeof rawCount === 'string' ? Number.parseInt(rawCount, 10) || 0 : rawCount ?? 0;
+  return typeof rawCount === 'string' ? Number.parseInt(rawCount, 10) || 0 : (rawCount ?? 0);
 };
 
-const getAuthClientSecretCiphertext = async (executor: SqlExecutor, instanceId: string): Promise<string | null> => {
+const getAuthClientSecretCiphertext = async (
+  executor: SqlExecutor,
+  instanceId: string
+): Promise<string | null> => {
   const rows = await queryRows<{ auth_client_secret_ciphertext: string | null }>(
     executor,
     statement(
@@ -174,9 +240,13 @@ export const createReadRepository = (executor: SqlExecutor): ReadRepository => (
   listInstances: (input) => listInstances(executor, input),
   getInstanceById: (instanceId) => getInstanceById(executor, instanceId),
   listAssignedModules: (instanceId) => listAssignedModules(executor, instanceId),
-  countLocalSystemAdminAssignments: (instanceId) => countLocalSystemAdminAssignments(executor, instanceId),
-  getAuthClientSecretCiphertext: (instanceId) => getAuthClientSecretCiphertext(executor, instanceId),
-  getTenantAdminClientSecretCiphertext: (instanceId) => getTenantAdminClientSecretCiphertext(executor, instanceId),
+  listModuleActivations: (instanceId) => listModuleActivations(executor, instanceId),
+  countLocalSystemAdminAssignments: (instanceId) =>
+    countLocalSystemAdminAssignments(executor, instanceId),
+  getAuthClientSecretCiphertext: (instanceId) =>
+    getAuthClientSecretCiphertext(executor, instanceId),
+  getTenantAdminClientSecretCiphertext: (instanceId) =>
+    getTenantAdminClientSecretCiphertext(executor, instanceId),
   resolveHostname: (hostname) => resolveHostname(executor, hostname),
   resolvePrimaryHostname: (hostname) => resolvePrimaryHostname(executor, hostname),
 });

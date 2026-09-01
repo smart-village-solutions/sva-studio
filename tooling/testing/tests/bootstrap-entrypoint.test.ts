@@ -103,12 +103,14 @@ describe('bootstrap-entrypoint', () => {
       'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
     );
     expect(sql).toContain(
-      'GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) TO "sva_app";'
+      'GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) TO iam_app;'
     );
     expect(sql).not.toContain(
       'GRANT EXECUTE ON FUNCTION graphile_worker.add_job(text, json, text, timestamptz, integer, text, integer, text[], text) TO "sva_app";'
     );
-    expect(sql).toContain('SET LOCAL ROLE "sva_app";');
+    expect(sql).toContain('REVOKE ALL ON SCHEMA graphile_worker FROM "sva_app";');
+    expect(sql).toContain('REVOKE ALL ON SCHEMA graphile_worker FROM iam_app;');
+    expect(sql).toContain('SET LOCAL ROLE iam_app;');
     expect(sql).toContain("'studio-job:bootstrap-contract'");
     expect(sql).toContain('ROLLBACK;');
     expect(sql).toContain(

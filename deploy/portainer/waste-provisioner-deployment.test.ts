@@ -80,6 +80,20 @@ describe('waste tenant database provisioning deployment', () => {
     ]);
   });
 
+  it('keeps the privileged provisioner fail-closed and privately restartable', () => {
+    expect(provisionerSection).toContain("SVA_PLUGIN_OPERATION_WORKER_LANE: 'privileged'");
+    expect(provisionerSection).toContain(
+      "fetch('http://127.0.0.1:3000/health/ready').then((r)=>process.exit(r.ok?0:1))"
+    );
+    expect(provisionerSection).toContain('restart_policy:');
+    expect(provisionerSection).toContain('condition: any');
+    expect(provisionerSection).toContain('max_attempts: 5');
+    expect(provisionerSection).toContain('window: 120s');
+    expect(provisionerSection).toContain('- internal');
+    expect(provisionerSection).not.toContain('traefik.enable');
+    expect(provisionerSection).not.toContain('ports:');
+  });
+
   it('reconciles the least-privileged role before supervising both existing workers', () => {
     expect(entrypoint).toContain('NOSUPERUSER CREATEDB CREATEROLE NOREPLICATION NOINHERIT');
     expect(entrypoint).toContain('iam-instance-registry/worker.js');

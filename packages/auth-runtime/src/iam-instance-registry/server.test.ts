@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   getSingleInstanceAuditRunInternal: vi.fn(async () => new Response('detail', { status: 200 })),
   authenticateRegistryServiceToken: vi.fn(),
   markAuthenticatedRegistryServiceRequest: vi.fn(),
+  resolvePluginTenantLifecycleServiceAction: vi.fn(),
   prepareInstanceConfirmationInternal: vi.fn(
     async () => new Response('confirmation', { status: 200 })
   ),
@@ -87,6 +88,37 @@ vi.mock('./core-keycloak.js', () => ({
   rotateInstanceSecretInternal: vi.fn(async () => new Response('rotate', { status: 200 })),
 }));
 
+vi.mock('../plugin-tenant-lifecycle/http.js', () => ({
+  getPluginTenantReadinessInternal: vi.fn(
+    async () => new Response('plugin-readiness', { status: 200 })
+  ),
+  startPluginTenantLifecycleInternal: vi.fn(
+    async () => new Response('plugin-lifecycle', { status: 200 })
+  ),
+  resolvePluginTenantLifecycleServiceAction: state.resolvePluginTenantLifecycleServiceAction,
+}));
+
+const lifecycleEndpointActions = [
+  { operation: undefined, actionId: 'instance.pluginLifecycle.read' },
+  { operation: 'provision', actionId: 'instance.pluginLifecycle.provision' },
+  { operation: 'readiness', actionId: 'instance.pluginLifecycle.readiness' },
+  { operation: 'reconcile', actionId: 'instance.pluginLifecycle.reconcile' },
+  { operation: 'suspend', actionId: 'instance.pluginLifecycle.suspend' },
+  { operation: 'reactivate', actionId: 'instance.pluginLifecycle.reactivate' },
+] as const;
+
+const lifecycleEndpointActionMatrix = lifecycleEndpointActions.flatMap((endpoint) =>
+  lifecycleEndpointActions.map(
+    ({ actionId: credentialAction }) =>
+      [
+        endpoint.operation ?? 'read',
+        credentialAction,
+        endpoint,
+        endpoint.actionId === credentialAction,
+      ] as const
+  )
+);
+
 describe('iam-instance-registry/server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -102,6 +134,9 @@ describe('iam-instance-registry/server', () => {
         user: { id: 'service-1', roles: ['instance_registry_admin'] },
       },
     });
+    state.resolvePluginTenantLifecycleServiceAction.mockResolvedValue(
+      'instance.pluginLifecycle.reconcile'
+    );
   });
 
   it('gives Bearer authentication precedence and binds the route action statically', async () => {
@@ -132,6 +167,127 @@ describe('iam-instance-registry/server', () => {
 
     expect(response.status).toBe(401);
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
+  it('binds readiness reads and lifecycle mutations to separate service actions', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const readinessRequest = new Request(
+      'https://studio.example.org/api/v1/iam/instances/tenant-a/plugin-readiness',
+      { headers: { authorization: 'Bearer read-token' } }
+    );
+    const lifecycleRequest = new Request(
+      'https://studio.example.org/api/v1/iam/instances/tenant-a/plugin-readiness',
+      {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer operation-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pluginId: 'speech', operation: 'suspend' }),
+      }
+    );
+    state.resolvePluginTenantLifecycleServiceAction.mockResolvedValueOnce(
+      'instance.pluginLifecycle.suspend'
+    );
+
+    await instanceRegistryHandlers.getPluginTenantReadiness(readinessRequest);
+    await instanceRegistryHandlers.startPluginTenantLifecycle(lifecycleRequest);
+
+    expect(state.authenticateRegistryServiceToken).toHaveBeenNthCalledWith(
+      1,
+      'read-token',
+      'instance.pluginLifecycle.read'
+    );
+    expect(state.resolvePluginTenantLifecycleServiceAction).toHaveBeenCalledWith(lifecycleRequest);
+    expect(state.authenticateRegistryServiceToken).toHaveBeenNthCalledWith(
+      2,
+      'operation-token',
+      'instance.pluginLifecycle.suspend'
+    );
+  });
+
+  it.each(lifecycleEndpointActionMatrix)(
+    'binds %s endpoint against credential %s',
+    async (_endpointName, credentialAction, endpoint, expectedAccepted) => {
+      state.authenticateRegistryServiceToken.mockImplementation(
+        async (_token: string, requiredAction: string) =>
+          requiredAction === credentialAction
+            ? {
+                kind: 'authenticated',
+                context: {
+                  authKind: 'keycloak_service',
+                  actionId: requiredAction,
+                  user: { id: 'service-1', roles: ['instance_registry_admin'] },
+                },
+              }
+            : {
+                kind: 'response',
+                response: new Response(
+                  JSON.stringify({ error: { code: 'missing_action_scope' } }),
+                  { status: 403 }
+                ),
+              }
+      );
+      if (endpoint.operation) {
+        state.resolvePluginTenantLifecycleServiceAction.mockResolvedValueOnce(endpoint.actionId);
+      }
+      const { instanceRegistryHandlers } = await import('./server.js');
+      const request = new Request(
+        'https://studio.example.org/api/v1/iam/instances/tenant-a/plugin-readiness',
+        endpoint.operation
+          ? {
+              method: 'POST',
+              headers: {
+                authorization: `Bearer ${credentialAction}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ pluginId: 'speech', operation: endpoint.operation }),
+            }
+          : { headers: { authorization: `Bearer ${credentialAction}` } }
+      );
+
+      const response = endpoint.operation
+        ? await instanceRegistryHandlers.startPluginTenantLifecycle(request)
+        : await instanceRegistryHandlers.getPluginTenantReadiness(request);
+
+      expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith(
+        credentialAction,
+        endpoint.actionId
+      );
+      expect(response.status).toBe(expectedAccepted ? 200 : 403);
+      expect(state.markAuthenticatedRegistryServiceRequest).toHaveBeenCalledTimes(
+        expectedAccepted ? 1 : 0
+      );
+      if (endpoint.operation) {
+        expect(state.resolvePluginTenantLifecycleServiceAction).toHaveBeenCalledWith(request);
+      } else {
+        expect(state.resolvePluginTenantLifecycleServiceAction).not.toHaveBeenCalled();
+      }
+      if (!expectedAccepted) {
+        await expect(response.json()).resolves.toMatchObject({
+          error: { code: 'missing_action_scope' },
+        });
+      }
+    }
+  );
+
+  it('rejects invalid lifecycle bodies before selecting or authenticating an action', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const invalidResponse = new Response(null, { status: 400 });
+    state.resolvePluginTenantLifecycleServiceAction.mockResolvedValueOnce(invalidResponse);
+    const request = new Request(
+      'https://studio.example.org/api/v1/iam/instances/tenant-a/plugin-readiness',
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer operation-token' },
+        body: 'invalid',
+      }
+    );
+
+    const response = await instanceRegistryHandlers.startPluginTenantLifecycle(request);
+
+    expect(response).toBe(invalidResponse);
+    expect(state.authenticateRegistryServiceToken).not.toHaveBeenCalled();
   });
 
   it('routes audit requests through the authenticated registry handler', async () => {
@@ -166,9 +322,9 @@ describe('iam-instance-registry/server', () => {
       )
     );
 
-    expect(responses).toHaveLength(23);
+    expect(responses).toHaveLength(25);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(23);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(25);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

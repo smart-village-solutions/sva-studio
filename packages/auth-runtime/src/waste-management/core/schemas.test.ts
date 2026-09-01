@@ -11,6 +11,17 @@ describe('waste-management schemas', () => {
     deletedPresetFallbacks: {},
   };
 
+  it('preserves omitted disruption switches for backward-compatible callers', () => {
+    const result = wasteManagementSettingsSchemas.updateWasteSettingsSchema.safeParse(
+      baseSettingsPayload
+    );
+
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error('expected_valid_settings_payload');
+    expect(result.data).not.toHaveProperty('disruptionLocationEnabled');
+    expect(result.data).not.toHaveProperty('disruptionAllLocationsEnabled');
+  });
+
   it('rejects reminder slots whose default lead days exceed the configured maximum', () => {
     const result = wasteManagementMasterDataSchemas.createWasteFractionSchema.safeParse({
       id: 'fraction-1',

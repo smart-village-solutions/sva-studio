@@ -43,6 +43,7 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     parentDomain: 'studio.example.org',
     primaryHostname: 'demo.studio.example.org',
     assignedModules: [],
+    moduleActivations: [],
     realmMode: 'new',
     authRealm: 'demo',
     authClientId: 'sva-studio-login',
@@ -112,7 +113,7 @@ describe('instance detail split helpers', () => {
         code: 'internal_error',
         message: 'läuft',
         diagnosticStatus: 'recovery_laeuft',
-      } as never),
+      } as never)
     ).toContain('wiederhergestellt');
     expect(
       getErrorMessage({
@@ -121,7 +122,7 @@ describe('instance detail split helpers', () => {
         code: 'conflict',
         message: 'drift',
         classification: 'database_or_schema_drift',
-      } as never),
+      } as never)
     ).toContain('Datenbank');
     expect(
       getErrorMessage({
@@ -129,7 +130,7 @@ describe('instance detail split helpers', () => {
         status: 502,
         code: 'tenant_admin_client_secret_missing',
         message: 'fehlt',
-      }),
+      })
     ).toContain('Tenant-Admin-Client-Secret');
     expect(
       getErrorMessage({
@@ -138,7 +139,7 @@ describe('instance detail split helpers', () => {
         code: 'internal_error',
         message: 'drift',
         classification: 'registry_or_provisioning_drift',
-      } as never),
+      } as never)
     ).toContain('Registry');
     expect(
       getErrorMessage({
@@ -147,7 +148,7 @@ describe('instance detail split helpers', () => {
         code: 'internal_error',
         message: 'reconcile',
         classification: 'keycloak_reconcile',
-      } as never),
+      } as never)
     ).toContain('Abgleich');
     for (const code of [
       'unauthorized',
@@ -168,14 +169,16 @@ describe('instance detail split helpers', () => {
           status: 500,
           code,
           message: code,
-        } as never),
+        } as never)
       ).toEqual(expect.any(String));
     }
     expect(getErrorMessage(null)).toBe('Die Instanzverwaltung konnte nicht geladen werden.');
   });
 
   it('derives tenant iam status from keycloak facts and falls back safely without evidence', () => {
-    expect(getEffectiveTenantIamStatus(createDetailFixture({ tenantIamStatus: undefined }))).toBeUndefined();
+    expect(
+      getEffectiveTenantIamStatus(createDetailFixture({ tenantIamStatus: undefined }))
+    ).toBeUndefined();
 
     const readyStatus = getEffectiveTenantIamStatus(
       createDetailFixture({
@@ -197,12 +200,17 @@ describe('instance detail split helpers', () => {
           runtimeSecretSource: 'tenant',
         },
         tenantIamStatus: {
-          configuration: { status: 'blocked', summary: 'Alt', source: 'registry', requestId: 'req-config' },
+          configuration: {
+            status: 'blocked',
+            summary: 'Alt',
+            source: 'registry',
+            requestId: 'req-config',
+          },
           access: { status: 'ready', summary: 'ok', source: 'access_probe' },
           reconcile: { status: 'ready', summary: 'ok', source: 'role_reconcile' },
           overall: { status: 'blocked', summary: 'Alt', source: 'registry' },
         },
-      }),
+      })
     );
 
     expect(readyStatus).toMatchObject({
@@ -260,7 +268,7 @@ describe('instance detail split helpers', () => {
         code: 'database_unavailable',
         message: 'db',
         requestId: 'req-db',
-      },
+      }
     );
 
     expect(blockedState.overallStatus).toBe('blocked');
@@ -271,7 +279,7 @@ describe('instance detail split helpers', () => {
         expect.objectContaining({ key: 'configuration', status: 'degraded' }),
         expect.objectContaining({ key: 'latest-run', requestId: 'req-run' }),
         expect.objectContaining({ key: 'mutation_error', requestId: 'req-db', status: 'degraded' }),
-      ]),
+      ])
     );
 
     const registryState = buildCockpitState(
@@ -296,7 +304,7 @@ describe('instance detail split helpers', () => {
         blockingIssues: [],
         warningIssues: [],
       },
-      null,
+      null
     );
 
     expect(registryState.dominantEvidence.source).toBe('registry');
@@ -324,8 +332,8 @@ describe('instance detail split helpers', () => {
             overall: { status: 'ready', summary: 'ok', source: 'registry' },
           },
         }),
-        null,
-      ).primaryAction.action,
+        null
+      ).primaryAction.action
     ).toBe('activate_instance');
 
     expect(
@@ -338,8 +346,8 @@ describe('instance detail split helpers', () => {
             overall: { status: 'degraded', summary: 'Probe ausstehend', source: 'access_probe' },
           },
         }),
-        null,
-      ).primaryAction.action,
+        null
+      ).primaryAction.action
     ).toBe('probeTenantIamAccess');
 
     expect(
@@ -352,8 +360,8 @@ describe('instance detail split helpers', () => {
             overall: { status: 'blocked', summary: 'Drift', source: 'role_reconcile' },
           },
         }),
-        null,
-      ).primaryAction.action,
+        null
+      ).primaryAction.action
     ).toBe('reconcileKeycloak');
   });
 
@@ -401,7 +409,7 @@ describe('instance detail split helpers', () => {
           secretConfigured: false,
         },
       }),
-      null,
+      null
     );
 
     expect(newRealmSteps.find((step) => step.key === 'tenantSecret')).toMatchObject({
@@ -426,7 +434,7 @@ describe('instance detail split helpers', () => {
           steps: [],
         },
       }),
-      { name: 'IamHttpError', status: 502, code: 'keycloak_unavailable', message: 'kaputt' },
+      { name: 'IamHttpError', status: 502, code: 'keycloak_unavailable', message: 'kaputt' }
     );
 
     expect(activatedSteps.find((step) => step.key === 'keycloakAccess')).toMatchObject({
@@ -462,8 +470,7 @@ describe('instance detail split helpers', () => {
             { checkKey: 'realm_mode', status: 'ready', title: '', summary: '' },
           ],
         },
-        keycloakStatus: createKeycloakStatusFixture({
-        }),
+        keycloakStatus: createKeycloakStatusFixture({}),
         latestKeycloakProvisioningRun: {
           id: 'run-success',
           intent: 'provision',
@@ -473,15 +480,21 @@ describe('instance detail split helpers', () => {
           steps: [],
         },
       }),
-      null,
+      null
     );
 
     expect(readySteps.find((step) => step.key === 'realm')).toMatchObject({ status: 'done' });
     expect(readySteps.find((step) => step.key === 'client')).toMatchObject({ status: 'done' });
-    expect(readySteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({ status: 'done' });
-    expect(readySteps.find((step) => step.key === 'tenantSecret')).toMatchObject({ status: 'done' });
+    expect(readySteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({
+      status: 'done',
+    });
+    expect(readySteps.find((step) => step.key === 'tenantSecret')).toMatchObject({
+      status: 'done',
+    });
     expect(readySteps.find((step) => step.key === 'tenantAdmin')).toMatchObject({ status: 'done' });
-    expect(readySteps.find((step) => step.key === 'provisioning')).toMatchObject({ status: 'done' });
+    expect(readySteps.find((step) => step.key === 'provisioning')).toMatchObject({
+      status: 'done',
+    });
     expect(readySteps.find((step) => step.key === 'activation')).toMatchObject({
       status: 'done',
       action: 'activate_instance',
@@ -497,7 +510,9 @@ describe('instance detail split helpers', () => {
         },
         keycloakPreflight: {
           overallStatus: 'ready',
-          checks: [{ checkKey: 'keycloak_admin_access', status: 'blocked', title: '', summary: '' }],
+          checks: [
+            { checkKey: 'keycloak_admin_access', status: 'blocked', title: '', summary: '' },
+          ],
         },
         keycloakStatus: createKeycloakStatusFixture({
           realmExists: false,
@@ -519,15 +534,23 @@ describe('instance detail split helpers', () => {
           steps: [],
         },
       }),
-      null,
+      null
     );
 
-    expect(runningSteps.find((step) => step.key === 'keycloakAccess')).toMatchObject({ status: 'current' });
+    expect(runningSteps.find((step) => step.key === 'keycloakAccess')).toMatchObject({
+      status: 'current',
+    });
     expect(runningSteps.find((step) => step.key === 'realm')).toMatchObject({ status: 'pending' });
     expect(runningSteps.find((step) => step.key === 'client')).toMatchObject({ status: 'pending' });
-    expect(runningSteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({ status: 'current' });
-    expect(runningSteps.find((step) => step.key === 'tenantSecret')).toMatchObject({ status: 'current' });
-    expect(runningSteps.find((step) => step.key === 'tenantAdmin')).toMatchObject({ status: 'current' });
+    expect(runningSteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({
+      status: 'current',
+    });
+    expect(runningSteps.find((step) => step.key === 'tenantSecret')).toMatchObject({
+      status: 'current',
+    });
+    expect(runningSteps.find((step) => step.key === 'tenantAdmin')).toMatchObject({
+      status: 'current',
+    });
     expect(runningSteps.find((step) => step.key === 'provisioning')).toMatchObject({
       status: 'current',
       action: 'execute_provisioning',
@@ -566,17 +589,25 @@ describe('instance detail split helpers', () => {
         status: 502,
         code: 'keycloak_unavailable',
         message: 'kaputt',
-      },
+      }
     );
 
     expect(failedSteps.find((step) => step.key === 'realm')).toMatchObject({ status: 'blocked' });
-    expect(failedSteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({ status: 'blocked' });
-    expect(failedSteps.find((step) => step.key === 'tenantSecret')).toMatchObject({ status: 'blocked' });
-    expect(failedSteps.find((step) => step.key === 'tenantAdmin')).toMatchObject({ status: 'blocked' });
+    expect(failedSteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({
+      status: 'blocked',
+    });
+    expect(failedSteps.find((step) => step.key === 'tenantSecret')).toMatchObject({
+      status: 'blocked',
+    });
+    expect(failedSteps.find((step) => step.key === 'tenantAdmin')).toMatchObject({
+      status: 'blocked',
+    });
     expect(failedSteps.find((step) => step.key === 'provisioning')).toMatchObject({
       status: 'blocked',
       action: 'plan_provisioning',
     });
-    expect(failedSteps.find((step) => step.key === 'activation')).toMatchObject({ status: 'pending' });
+    expect(failedSteps.find((step) => step.key === 'activation')).toMatchObject({
+      status: 'pending',
+    });
   });
 });

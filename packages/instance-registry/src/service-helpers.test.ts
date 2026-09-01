@@ -35,22 +35,34 @@ describe('service-helpers', () => {
       expect.objectContaining({
         instanceId: 'demo',
         latestProvisioningRun,
-      }),
+      })
     );
 
     expect(
-      buildInstanceDetail(instance as never, [latestProvisioningRun] as never, [{ id: 'audit-1' }] as never, {
-        status: 'ready',
-      } as never, undefined, undefined, [], undefined, undefined, {
-        instanceId: 'demo',
-        provider: 'supabase',
-        projectUrl: 'https://tenant-a.supabase.co',
-        schemaName: 'public',
-        enabled: true,
-        databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
-        visibleStatus: 'ok',
-      }),
+      buildInstanceDetail(
+        instance as never,
+        [latestProvisioningRun] as never,
+        [{ id: 'audit-1' }] as never,
+        [],
+        {
+          status: 'ready',
+        } as never,
+        undefined,
+        undefined,
+        [],
+        undefined,
+        undefined,
+        {
+          instanceId: 'demo',
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'public',
+          enabled: true,
+          databaseUrlConfigured: true,
+          serviceRoleKeyConfigured: true,
+          visibleStatus: 'ok',
+        }
+      )
     ).toEqual(
       expect.objectContaining({
         hostnames: [
@@ -65,7 +77,7 @@ describe('service-helpers', () => {
           provider: 'supabase',
           visibleStatus: 'ok',
         }),
-      }),
+      })
     );
   });
 
@@ -92,14 +104,14 @@ describe('service-helpers', () => {
         actorId: 'actor-1',
         requestId: 'req-1',
       },
-      'active',
+      'active'
     );
 
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: 'archive',
         status: 'archived',
-      }),
+      })
     );
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -108,7 +120,7 @@ describe('service-helpers', () => {
           previousStatus: 'active',
           nextStatus: 'archived',
         },
-      }),
+      })
     );
   });
 

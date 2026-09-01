@@ -13,6 +13,10 @@ import {
   logPluginWorkerBootstrapFailure,
   type PluginWorkerBootstrapLogger,
 } from './lib/plugin-worker-bootstrap-logging.server';
+import {
+  ensurePluginActivationPoliciesConfigured,
+  startPluginActivationPolicyFleetReconcileInBackground,
+} from './lib/plugin-activation-policy-bootstrap.server';
 import type {
   RequestContextSdk,
   RouteDispatchDescriptor,
@@ -33,7 +37,12 @@ const loggerPromises = new Map<ServerTransportComponent, Promise<PluginWorkerBoo
 let dispatchAuthRouteRequestPromise: Promise<
   (typeof import('@sva/routing/server'))['dispatchAuthRouteRequest']
 > | null = null;
-let ensureStudioJobWorkerStartedPromise: Promise<() => Promise<void>> | null = null;
+let pluginServerHandlerDispatcherPromise: Promise<
+  (request: Request) => Promise<Response | null>
+> | null = null;
+let ensureStudioJobWorkerStartedPromise: Promise<
+  (typeof import('@sva/auth-runtime/server'))['ensureStudioJobWorkerStarted']
+> | null = null;
 let registerStudioPluginOperationHandlersPromise: Promise<
   (typeof import('./lib/plugin-operation-runtime.server'))['registerStudioPluginOperationHandlers']
 > | null = null;
@@ -49,6 +58,17 @@ const getDispatchAuthRouteRequest = async () => {
     (mod) => mod.dispatchAuthRouteRequest
   );
   return dispatchAuthRouteRequestPromise;
+};
+const getPluginServerHandlerDispatcher = async () => {
+  if (devRuntimeRefreshEnabled) {
+    return (
+      await import('./lib/plugin-server-runtime.server')
+    ).createStudioPluginServerHandlerDispatcher();
+  }
+  pluginServerHandlerDispatcherPromise ??= import('./lib/plugin-server-runtime.server').then(
+    (mod) => mod.createStudioPluginServerHandlerDispatcher()
+  );
+  return pluginServerHandlerDispatcherPromise;
 };
 const getEnsureStudioJobWorkerStarted = async () => {
   ensureStudioJobWorkerStartedPromise ??= import('@sva/auth-runtime/server').then((mod) =>
@@ -96,11 +116,9 @@ const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
 const reportPluginWorkerBootstrapFailure = async (error: unknown): Promise<void> =>
   logPluginWorkerBootstrapFailure(await getLogger('server-entry-transport'), error);
 
-const startPluginOperationWorkerInBackground = (): void => {
-  if (!studioJobWorkerEnabled) {
-    return;
-  }
+const terminateAfterTerminalWorkerFailure = (): never => process.exit(1);
 
+const startPluginOperationWorkerInBackground = (): void => {
   if (pluginOperationWorkerBootstrapPromise) {
     if (devRuntimeRefreshEnabled) {
       void ensurePluginOperationHandlersRegistered().catch((error) =>
@@ -113,9 +131,14 @@ const startPluginOperationWorkerInBackground = (): void => {
 
   pluginOperationWorkerBootstrapPromise = (async () => {
     try {
+      await ensurePluginActivationPoliciesConfigured();
       await ensurePluginOperationHandlersRegistered();
+      startPluginActivationPolicyFleetReconcileInBackground();
+      if (!studioJobWorkerEnabled) return;
       const startWorker = await getEnsureStudioJobWorkerStarted();
-      await startWorker();
+      await startWorker({
+        onTerminalFailure: terminateAfterTerminalWorkerFailure,
+      });
     } catch (error) {
       await reportPluginWorkerBootstrapFailure(error);
     } finally {
@@ -176,8 +199,13 @@ const dispatchKnownServerEntryRoutes = async (
   return null;
 };
 
+if (studioJobWorkerEnabled) {
+  startPluginOperationWorkerInBackground();
+}
+
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
+  await ensurePluginActivationPoliciesConfigured();
   const sdk = await getSdk();
   sdk.runWithoutWorkspaceContext(startPluginOperationWorkerInBackground);
   return sdk.withRequestContext({ request, fallbackWorkspaceId: 'platform' }, async () => {
@@ -202,9 +230,18 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       return routedResponse;
     }
 
-    if (studioJobWorkerEnabled) {
-      await ensurePluginOperationHandlersRegistered();
+    if (new URL(request.url).pathname.startsWith('/api/v1/plugins/')) {
+      const dispatchPluginServerHandler = await getPluginServerHandlerDispatcher();
+      const pluginServerResponse = await dispatchPluginServerHandler(request);
+      if (pluginServerResponse) {
+        await logServerEntryDebug('Server entry plugin route dispatched', {
+          status: pluginServerResponse.status,
+        });
+        return pluginServerResponse;
+      }
     }
+
+    await ensurePluginOperationHandlersRegistered();
 
     const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();
     const authResponse = await dispatchAuthRouteRequest(request);

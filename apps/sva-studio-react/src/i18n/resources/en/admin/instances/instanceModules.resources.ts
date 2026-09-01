@@ -23,12 +23,31 @@ export const instanceModulesInstancesAdminENResources = {
     table: {
       module: 'Module',
       status: 'Status',
+      policy: 'Policy',
+      origin: 'Origin',
+      override: 'Manual override',
       description: 'Description',
     },
     status: {
       active: 'Active',
       inactive: 'Inactive',
     },
+    policy: {
+      optional: 'Optional',
+      automatic: 'Automatic',
+      required: 'Required',
+    },
+    origin: {
+      manual: 'Manual change',
+      policyReconcile: 'Policy reconcile',
+      migration: 'Existing-data migration',
+    },
+    override: {
+      enabled: 'Enabled',
+      disabled: 'Disabled',
+      none: 'None',
+    },
+    notMaterialized: 'Not materialized yet',
     descriptionFallback: 'No module description available.',
   },
   guidance: {

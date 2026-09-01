@@ -37,6 +37,17 @@ describe('waste management job definitions', () => {
         errors: { detailKeys: ['failed-step', 'error-code'] },
       },
       {
+        jobTypeId: 'waste-management.tenant-readiness',
+        queue: 'plugin-operations',
+        displayName: 'Waste-Tenant-Datenbank prüfen',
+        progress: {
+          phaseKeys: ['waste-management.tenant-readiness', 'waste-management.completed'],
+          stepKeys: ['load-provisioning-state', 'complete-operation'],
+        },
+        result: undefined,
+        errors: { detailKeys: ['failed-step', 'error-code'] },
+      },
+      {
         jobTypeId: 'waste-management.initialize-data-source',
         queue: 'plugin-operations',
         displayName: 'Abfall-Initialisierung',

@@ -1,3 +1,5 @@
 export * from './export-profile-definitions.js';
 export * from './import-profile-definitions.js';
 export * from './job-definitions.js';
+export * from './tenant-lifecycle.js';
+export * from './tenant-readiness-job-definition.js';

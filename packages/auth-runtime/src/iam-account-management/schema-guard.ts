@@ -46,44 +46,60 @@ export type GraphileWorkerReadinessReport = {
 };
 
 const GRAPHILE_WORKER_READINESS_SQL = `
-WITH worker_principal AS (
-  SELECT to_regrole($2) AS role_oid
+WITH principals AS (
+  SELECT to_regrole($1) AS app_role_oid,
+    to_regrole($2) AS app_login_oid,
+    to_regrole($3) AS worker_role_oid
 )
 SELECT
   to_regnamespace('graphile_worker') IS NOT NULL AS graphile_schema_exists,
-  worker_principal.role_oid IS NOT NULL AS worker_role_exists,
+  principals.app_role_oid IS NOT NULL AS effective_app_role_exists,
+  principals.worker_role_oid IS NOT NULL AS worker_role_exists,
   COALESCE(has_function_privilege(
-    $1,
+    principals.app_role_oid,
     to_regprocedure('graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamp with time zone)'),
     'EXECUTE'
-  ), false) AS app_can_enqueue,
-  NOT has_database_privilege($1, current_database(), 'CREATE')
-    AND NOT has_schema_privilege($1, 'public', 'CREATE') AS app_cannot_create,
+  ), false)
+    AND COALESCE(has_schema_privilege(principals.app_role_oid, 'graphile_worker', 'USAGE'), false)
+    AS effective_app_can_enqueue,
+  NOT COALESCE(has_table_privilege(
+    principals.app_role_oid,
+    to_regclass('graphile_worker._private_jobs'),
+    'SELECT,INSERT,UPDATE,DELETE'
+  ), false) AS effective_app_cannot_process,
+  NOT COALESCE(has_schema_privilege(principals.app_login_oid, 'graphile_worker', 'USAGE'), false)
+    AND NOT COALESCE(has_function_privilege(
+      principals.app_login_oid,
+      to_regprocedure('graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamp with time zone)'),
+      'EXECUTE'
+    ), false) AS app_login_cannot_enqueue_directly,
+  NOT has_database_privilege(principals.app_role_oid, current_database(), 'CREATE')
+    AND NOT has_schema_privilege(principals.app_role_oid, 'public', 'CREATE') AS app_cannot_create,
   COALESCE(has_table_privilege(
-    worker_principal.role_oid,
+    principals.worker_role_oid,
     to_regclass('graphile_worker._private_jobs'),
     'SELECT,INSERT,UPDATE,DELETE'
   ), false)
     AND COALESCE(
-      has_schema_privilege(worker_principal.role_oid, 'graphile_worker', 'USAGE'),
+      has_schema_privilege(principals.worker_role_oid, 'graphile_worker', 'USAGE'),
       false
     ) AS worker_can_process,
-  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
+  principals.worker_role_oid IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'graphile_worker'
-      AND NOT has_function_privilege(worker_principal.role_oid, p.oid, 'EXECUTE')
+      AND NOT has_function_privilege(principals.worker_role_oid, p.oid, 'EXECUTE')
   ) AS worker_functions_complete,
-  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
+  principals.worker_role_oid IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM pg_sequences sequence
     WHERE sequence.schemaname = 'graphile_worker'
       AND NOT has_sequence_privilege(
-        worker_principal.role_oid,
+        principals.worker_role_oid,
         format('%I.%I', sequence.schemaname, sequence.sequencename),
         'USAGE,SELECT,UPDATE'
       )
   ) AS worker_sequences_complete,
-  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
+  principals.worker_role_oid IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'graphile_worker'
@@ -94,18 +110,21 @@ SELECT
         WHERE policy.schemaname = 'graphile_worker'
           AND policy.tablename = c.relname
           AND policy.policyname = 'sva_job_worker_access'
-          AND $2 = ANY(policy.roles)
+          AND $3 = ANY(policy.roles)
           AND COALESCE(policy.qual, '') IN ('true', '(true)')
           AND COALESCE(policy.with_check, '') IN ('true', '(true)')
       )
   ) AS worker_policies_complete
-FROM worker_principal;
+FROM principals;
 `;
 
 const GRAPHILE_WORKER_READINESS_FIELDS = [
   'graphile_schema_exists',
   'worker_role_exists',
-  'app_can_enqueue',
+  'effective_app_role_exists',
+  'effective_app_can_enqueue',
+  'effective_app_cannot_process',
+  'app_login_cannot_enqueue_directly',
   'app_cannot_create',
   'worker_can_process',
   'worker_functions_complete',
@@ -768,6 +787,7 @@ export const runIamDatabaseReadinessForConnection = async (
 
 export const runGraphileWorkerReadinessForConnection = async (
   config: ClientConfig,
+  effectiveAppRole: string,
   appDbUser: string,
   workerDbUser: string
 ): Promise<GraphileWorkerReadinessReport> => {
@@ -775,6 +795,7 @@ export const runGraphileWorkerReadinessForConnection = async (
   try {
     await client.connect();
     const result = await client.query<Record<string, unknown>>(GRAPHILE_WORKER_READINESS_SQL, [
+      effectiveAppRole,
       appDbUser,
       workerDbUser,
     ]);

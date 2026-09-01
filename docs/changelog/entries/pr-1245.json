@@ -1,0 +1,4 @@
+{
+  "prNumber": 1245,
+  "body": "Manuell eingetragene Medien-URLs lassen sich zuverlässig speichern.\n\n- Sichere HTTPS-Adressen werden direkt übernommen oder automatisch ergänzt.\n- Falls eine ausdrücklich angegebene HTTP-Adresse nicht über HTTPS erreichbar ist, bleibt sie mit einem sichtbaren Sicherheitshinweis speicherbar.\n- Medien aus der zentralen Bibliothek bleiben weiterhin ausschließlich über dauerhaft speicherbare HTTPS-Adressen zulässig."
+}

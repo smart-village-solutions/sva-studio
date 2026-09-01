@@ -53,6 +53,10 @@ import type {
   RuntimeDependencyHealth,
   RuntimeHealthResponse,
 } from '@sva/iam-core';
+import type {
+  PluginTenantLifecycleOperation,
+  PluginTenantReadinessReadModel,
+} from '@sva/plugin-sdk';
 import {
   createMutationHeaders,
   createJsonMutationRequestInit,
@@ -973,6 +977,23 @@ export const getInstance = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
   requestJson<ApiItemResponse<IamInstanceDetail>>(`/api/v1/iam/instances/${instanceId}`);
+
+export const getInstancePluginReadiness = async (
+  instanceId: string
+): Promise<ApiItemResponse<readonly PluginTenantReadinessReadModel[]>> =>
+  requestJson<ApiItemResponse<readonly PluginTenantReadinessReadModel[]>>(
+    `/api/v1/iam/instances/${instanceId}/plugin-readiness`
+  );
+
+export const startInstancePluginLifecycle = async (
+  instanceId: string,
+  pluginId: string,
+  operation: PluginTenantLifecycleOperation
+): Promise<ApiItemResponse<unknown>> =>
+  postJson<
+    ApiItemResponse<unknown>,
+    { readonly pluginId: string; readonly operation: PluginTenantLifecycleOperation }
+  >(`/api/v1/iam/instances/${instanceId}/plugin-readiness`, { pluginId, operation }, true);
 
 export const getInstanceAuditRun = async (
   query: {

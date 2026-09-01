@@ -48,6 +48,8 @@ const persistEmailReminderSettings = async ({
     calendarWebUrl: settings.calendarWebUrl,
     pdfBrandingAssetUrl: compactOptionalString(brandingAssetUrl),
     pdfContactBlock: compactOptionalString(contactBlock),
+    disruptionLocationEnabled: settings.disruptionLocationEnabled,
+    disruptionAllLocationsEnabled: settings.disruptionAllLocationsEnabled,
     emailReminderConfig: normalizeEmailReminderConfig({
       config: emailReminderConfig,
       calendarWebUrl: settings.calendarWebUrl,
@@ -57,7 +59,7 @@ const persistEmailReminderSettings = async ({
     customRecurrencePresets: settings.customRecurrencePresets ?? [],
     deletedPresetFallbacks: {},
   });
-  return result ?? getWasteManagementSettings();
+  return result?.data ?? getWasteManagementSettings();
 };
 
 export const WasteOutputPanel = () => {
@@ -130,12 +132,14 @@ export const WasteOutputPanel = () => {
         calendarWebUrl: settings.calendarWebUrl,
         pdfBrandingAssetUrl: compactBrandingAssetUrl,
         pdfContactBlock: compactOptionalString(contactBlock),
+        disruptionLocationEnabled: settings.disruptionLocationEnabled,
+        disruptionAllLocationsEnabled: settings.disruptionAllLocationsEnabled,
         emailReminderConfig: settings.emailReminderConfig ?? undefined,
         holidayStateCode: settings.holidayStateCode,
         customRecurrencePresets: settings.customRecurrencePresets ?? [],
         deletedPresetFallbacks: {},
       });
-      const nextSettings = result ?? (await getWasteManagementSettings());
+      const nextSettings = result?.data ?? (await getWasteManagementSettings());
       setSettings(nextSettings);
       setBrandingAssetUrl(nextSettings?.pdfBrandingAssetUrl ?? '');
       setContactBlock(nextSettings?.pdfContactBlock ?? '');

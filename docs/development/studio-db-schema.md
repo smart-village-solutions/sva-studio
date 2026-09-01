@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-07`
+- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-31`
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -38,7 +38,7 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0082_iam_waste_postal_code_enrichment_active_job_unique.sql`
+- Repo-Migrationen vorhanden bis: `0091_iam_plugin_lifecycle_observability.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0077`:
 
@@ -72,7 +72,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0079_iam_organization_mainserver_provisioning.sql`; `0077` ergänzt automatische DataProvider-Bindungen, Mutation-Journal und die readiness-gesteuerte Projektionsautorisierung, `0078` die monotonen instanz- und benutzerbezogenen Permission-Cache-Revisionen und `0079` technische Accounts sowie das Organisations-Provisioning
+- Enthält strukturell den Repo-Sollstand bis `0091_iam_plugin_lifecycle_observability.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle. `0090` ergänzt Recheck-, Vertrags- und Recovery-Evidenz sowie den eindeutigen Terminalevent-Vertrag pro Job-Attempt. `0091` ergänzt den parameterlosen, ausschließlich aggregierenden Lifecycle-Observability-Snapshot. Sein NOLOGIN-/NOBYPASSRLS-Definer besitzt nur spaltenbegrenzte Leserechte und eigene `FOR SELECT`-Policies; `iam_app` erhält ausschließlich `EXECUTE` auf die Funktion.
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -244,6 +244,7 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 - `iam.instance_waste_data_sources`
 - `iam.instance_waste_provisioning`
 - `iam.instance_modules`
+- `iam.instance_plugin_lifecycle`
 - `iam.instance_hostnames`
 - `iam.instance_provisioning_runs`
 - `iam.instance_audit_events`
@@ -254,6 +255,14 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 Kernidee:
 
 - Diese Tabellen modellieren die technische Betriebs- und Provisioning-Ebene pro Instanz.
+- `iam.instance_modules` ist die einzige persistente Wahrheit für Plugin-Zuordnung und Tenant-Aktivierung. Neben `optional`, `automatic` und `required` werden der wirksame Zustand, eine dauerhafte manuelle Übersteuerung, Manifest- und Policy-Revision sowie der letzte Reconcile-Nachweis gespeichert.
+- Bestehende Modulzuordnungen werden bei der Migration als manuell aktiviert übernommen. Automatisch aktivierte Plugins dürfen dauerhaft deaktiviert werden; bei Pflicht-Plugins erzwingen Datenbank-Constraints einen aktiven Zustand ohne manuelle Übersteuerung.
+- Schlägt die IAM-Synchronisierung nach einer manuellen Aktivierungsänderung oder während des Admin-Bootstraps fehl, stellt der Repository-Rollback den zuvor gelesenen Aktivierungsursprung, den wirksamen Zustand und die manuelle Übersteuerung revisionsgebunden wieder her; eine bestehende Policy-Zuordnung erhält dadurch keine dauerhafte `disabled`-Übersteuerung. Nicht erworbene Advisory Locks werden als `plugin_activation_state_conflict` propagiert und nicht mit einer idempotenten, unveränderten Zuweisung gleichgesetzt.
+- `iam.instance_plugin_lifecycle` hält pro Instanz und Plugin ausschließlich den generischen Sollzustand: reversible Zugriffssperre, Lifecycle-Operation, Soll-, Claim- und Abschlussgeneration, aktiver Studio-Job sowie Readiness-, Fehler-, Retry-, Vertrags- und Recheck-Evidenz. `pending` erfordert einen persistenten `next_recheck_at`. Plugin-Fachschema, Migrationen, Repositories und Secrets werden dort nicht gespeichert.
+- Ein Claim bindet genau einen Studio-Job an die aktuelle Sollgeneration. Abschluss- und Fehler-Updates müssen Job, Instanz, Plugin und Generation vergleichen; ein älterer Lauf kann dadurch die Evidenz einer neueren Sollgeneration nicht überschreiben.
+- `iam.studio_jobs` ist die hostlesbare Lease-Evidenz. Heartbeat, Fortschritt und Abschluss vergleichen Status, Attempt und Worker; nach 120 Sekunden ohne Heartbeat kann der alte Owner nicht mehr schreiben. Der partielle Eindeutigkeitsindex auf `iam.studio_job_events(job_id, attempts)` erlaubt höchstens ein terminales Event pro Attempt. Migration `0090` bereinigt vor dem Anlegen des Index mögliche Alt-Duplikate deterministisch und behält pro Attempt das jüngste Event nach `created_at` und `id`.
+- `iam.plugin_tenant_lifecycle_observability_snapshot()` liefert fleetweit ausschließlich fünf stabile Reason-Codes und deren Counts. Die parameterlose `SECURITY DEFINER`-Funktion verwendet einen festen `search_path`, einen zehnsekündigen Statement-Timeout und den dedizierten NOLOGIN-Principal `iam_observability`. Die Runtime ruft sie innerhalb einer Transaktion unter `iam_app` auf; der direkte `NOINHERIT`-Login erhält kein Ausführungsrecht. Ein fälliger Pending-Recheck gilt nur ohne aktiven Lifecycle-Job als Stall. Weder IDs noch Payloads gehören zum Rückgabetyp; der Runtime-Principal kann die Definer-Rolle nicht annehmen.
+- `readiness_checks` ist ein JSON-Array namespaced Plugin-Prüfungen. Der Host aggregiert daraus nur `pending`, `ready`, `degraded` oder `blocked`; die fachliche Diagnose bleibt unter Plugin-Ownership.
 - `iam.instance_waste_provisioning` hält ausschließlich Zustand, Generation, Datenbankname sowie Job- und Interface-Korrelation. Zugangsdaten und Waste-Fachdaten liegen dort nicht.
 - Der tenantgebundene Datenbankname ist der kanonische Inventarpfad für Backup und Restore; sowohl `ready` als auch `disabled` bleiben sicherungsrelevant.
 - Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.
@@ -327,7 +336,7 @@ Kernidee:
 
 Kernidee:
 
-- `idempotency_keys` schützt mutierende Abläufe gegen Wiederholung.
+- `idempotency_keys` schützt mutierende Abläufe gegen Wiederholung. Create-Retries der Instanz-Provisionierung binden den Idempotency-Key zusätzlich über einen kanonischen SHA-256-Fingerprint an den ursprünglichen fachlichen Payload; Secret-Werte bleiben daraus ausgeschlossen, ihre ursprüngliche Anwesenheit ist jedoch gebunden. Abweichende oder historisch nicht belegbare Payloads werden fail-closed als Wiederverwendung abgelehnt.
 - `goose_db_version` dokumentiert den tatsächlich angewendeten Migrationsstand.
 
 ### 9. Externe Waste-Fachdatenbank
@@ -355,6 +364,8 @@ Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 - Das Sollschema für Neuprovisionierungen liegt unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`; versionierte Bestandsmigrationen liegen getrennt unter `deploy/portainer/migrate-waste-tenants.mjs`.
 - `calendarWebUrl` bleibt Teil von `iam.instance_external_interfaces.public_config` in der zentralen Studio-DB.
 - Die PDF-Stamminhalte `pdfBrandingAssetUrl` und `pdfContactBlock` haben ihre führende Quelle im tenantbezogenen PostgreSQL-Waste-Schema in `waste_settings`; die zentrale Studio-DB dient dafür nur noch als Legacy-Fallback älterer Bestandsdaten. Diese externe Tabelle gehört bewusst nicht zum IAM-/Goose-Migrationspfad der Studio-DB, sondern nur zum runtime-nahen Waste-Migrationspfad.
+- Dieselbe externe Tabelle enthält `disruption_location_enabled BOOLEAN NOT NULL DEFAULT FALSE` und `disruption_all_locations_enabled BOOLEAN NOT NULL DEFAULT FALSE`. Beide Optionen sind unabhängig, Bestandsmandanten bleiben durch die Defaults deaktiviert. Neuprovisionierungen erhalten die Spalten über den Runtime-Schema-Builder; bestehende Tenant-Datenbanken über die verifizierte Migration `20260901_01_add_waste_disruption_settings`.
+- Der zentrale Snapshot `studio-db-schema-final.sql` erhält dafür keine fachliche Tabelle oder Spalte: Er dokumentiert weiterhin ausschließlich die zentrale Studio-Datenbank und weist die externe Schemaänderung nur als Abgrenzungskommentar aus.
 
 ## Wichtige Beziehungen
 

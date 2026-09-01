@@ -247,6 +247,8 @@ describe('waste-management low coverage views', () => {
           enabled: true,
           selectedInterfaceId: 'supabase-1',
           calendarWebUrl: '',
+          disruptionLocationEnabled: false,
+          disruptionAllLocationsEnabled: false,
           holidayStateCode: '',
           databaseUrl: 'postgresql://db',
           serviceRoleKey: 'secret',
@@ -293,6 +295,36 @@ describe('waste-management low coverage views', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(screen.getByText('settings.messages.customRecurrencesTitle')).toBeTruthy();
     expect(screen.getByText('settings.messages.interfaceSelectionTitle')).toBeTruthy();
+
+    onChange.mockClear();
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'settings.fields.disruptionLocationEnabled' })
+    );
+    const updateLocationDisruption = onChange.mock.calls[0]?.[0];
+    expect(
+      updateLocationDisruption({
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
+      })
+    ).toEqual({
+      disruptionLocationEnabled: true,
+      disruptionAllLocationsEnabled: false,
+    });
+
+    onChange.mockClear();
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'settings.fields.disruptionAllLocationsEnabled' })
+    );
+    const updateAllLocationsDisruption = onChange.mock.calls[0]?.[0];
+    expect(
+      updateAllLocationsDisruption({
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
+      })
+    ).toEqual({
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: true,
+    });
   });
 
   it('updates the holiday state selection through the settings form reducer without saving immediately', () => {

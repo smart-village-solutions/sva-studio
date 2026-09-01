@@ -104,7 +104,8 @@ export const ContentMediaUrlField = (props: ContentMediaUrlFieldProps) => {
     <StudioField id={fieldId} label={props.labels.fields.url} error={error}>
       <Input
         id={fieldId}
-        type="url"
+        type="text"
+        inputMode="url"
         aria-busy={feedback === 'checking' || undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={joinIds(

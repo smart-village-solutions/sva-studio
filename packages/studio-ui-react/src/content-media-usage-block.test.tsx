@@ -216,12 +216,14 @@ describe('ContentMediaUsageBlock', () => {
         ]}
       />
     );
-    fireEvent.blur(screen.getByLabelText('URL'));
+    const input = screen.getByLabelText('URL') as HTMLInputElement;
+    expect(input.type).toBe('text');
+    expect(input.inputMode).toBe('url');
+    expect(input.checkValidity()).toBe(true);
+    fireEvent.blur(input);
 
     expect(await screen.findByText('Keine funktionierende HTTPS-Version gefunden.')).toBeTruthy();
-    expect((screen.getByLabelText('URL') as HTMLInputElement).value).toBe(
-      'cdn.example.test/image.jpg'
-    );
+    expect(input.value).toBe('cdn.example.test/image.jpg');
     expect(screen.queryByText('Unsichere HTTP-URL; das Bild kann blockiert werden.')).toBeNull();
     vi.stubGlobal('Image', OriginalImage);
   });

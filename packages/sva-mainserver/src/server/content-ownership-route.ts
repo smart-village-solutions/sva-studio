@@ -6,7 +6,6 @@ import {
   type AuthenticatedRequestContext,
   type ResolvedMainserverOwnershipSource,
 } from '@sva/auth-runtime/server';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverProjectionContentType } from '../types.js';
 import { errorJson, isResponse, json } from './content-route-core.js';
@@ -21,9 +20,8 @@ import {
   handleContentOwnershipTransfer,
   type MainserverOwnershipTransferReconciler,
 } from './content-ownership-transfer-route.js';
+import { ownershipRouteFailureResponse } from './content-ownership-route-failure.js';
 import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
-import { SvaMainserverError } from './errors.js';
-import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
   resolveMainserverMutationActor,
   resolveMainserverResourceAccess,
@@ -33,10 +31,6 @@ import { projectSourceReferenceInput } from './projects-route-transport.js';
 import { getSvaMainserverSurvey } from './service.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
-const logger = createSdkLogger({
-  component: 'sva-mainserver-content-ownership-route',
-  level: 'info',
-});
 const supportedContentTypes = new Set<SvaMainserverProjectionContentType>([
   'news.article',
   'events.event-record',
@@ -225,27 +219,6 @@ const handleSurveyAuthorization = async (
         current.dataProvider?.name?.trim() || resolvedSource?.dataProviderName || dataProviderId,
     },
   });
-};
-
-const ownershipRouteFailureResponse = (
-  error: unknown,
-  actor: MainserverMutationActor,
-  route: ContentOwnershipRouteMatch,
-  fallbackMessage: string
-): Response => {
-  const context = getWorkspaceContext();
-  logger.warn('Mainserver content ownership route failed', {
-    operation: 'mainserver_content_ownership',
-    request_id: context.requestId,
-    trace_id: context.traceId,
-    instance_id: actor.instanceId,
-    content_type: route.contentType,
-    content_id: route.contentId,
-    route_operation: route.operation,
-    error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
-    error_message: error instanceof Error ? error.message : String(error),
-  });
-  return toMainserverErrorResponse(error, fallbackMessage);
 };
 
 const dispatchAuthenticated = async (

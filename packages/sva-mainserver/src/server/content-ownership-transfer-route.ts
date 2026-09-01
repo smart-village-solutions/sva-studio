@@ -1,5 +1,4 @@
 import {
-  hasUnresolvedMainserverOwnershipTransfer,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -16,6 +15,10 @@ import {
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
+import {
+  hasBlockingOwnershipTransferReconciliation,
+  type MainserverOwnershipTransferReconciler,
+} from './content-ownership-transfer-reconciliation.js';
 import { resolveTargetForMutation } from './content-ownership-target-verification.js';
 import {
   ownershipTargetErrorResponse,
@@ -27,12 +30,7 @@ import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { finalizeMainserverMutation, type MainserverMutationActor } from './mutation-principal.js';
 import { transferSvaMainserverContentOwnership } from './service.js';
 
-export type MainserverOwnershipTransferReconciler = (input: {
-  readonly instanceId: string;
-  readonly contentType: SupportedContentOwnershipRouteMatch['contentType'];
-  readonly contentId: string;
-  readonly currentDataProviderId: string;
-}) => Promise<void>;
+export type { MainserverOwnershipTransferReconciler } from './content-ownership-transfer-reconciliation.js';
 
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
@@ -185,21 +183,15 @@ const executeLockedTransfer = async (input: {
   const source = await resolveAuthorizedTransferSource(input);
   if (!source.ok) return source.response;
   const sourceDataProviderId = source.dataProviderId;
-  try {
-    await input.reconcilePreviousTransfer?.({
+  if (
+    await hasBlockingOwnershipTransferReconciliation({
       instanceId: input.actor.instanceId,
       contentType: input.route.contentType,
       contentId: input.route.contentId,
       currentDataProviderId: sourceDataProviderId,
-    });
-  } catch {
-    // The unresolved journal remains the fail-closed barrier below.
-  }
-  if (
-    await hasUnresolvedMainserverOwnershipTransfer({
-      instanceId: input.actor.instanceId,
-      contentType: input.route.contentType,
-      contentId: input.route.contentId,
+      ...(input.reconcilePreviousTransfer
+        ? { reconcilePreviousTransfer: input.reconcilePreviousTransfer }
+        : {}),
     })
   ) {
     return errorJson(

@@ -17,13 +17,13 @@
 - [x] 3.2 Negative Tests für fehlenden, veralteten oder Fremd-SHA-Scope, fehlenden Required-Job und unzulässige PR-Cache-Übernahme nach `main` ergänzen.
 - [x] 3.3 Mindestens 20 repräsentative Shadow-Läufe SHA-genau auf identische Scope-Pläne und terminale Endergebnisse auswerten.
 - [x] 3.4 Für die parallele Shadow-Phase eine gepaarte Median-Regression grüner Unit-/Coverage-Endzeiten von höchstens 90 Sekunden nachweisen.
-- [ ] 3.5 Nach dem Cutover an zehn repräsentativen PR-Läufen nachweisen, dass kein App-Build- oder Gate-Vertrag für denselben Event-/SHA-Kontext doppelt läuft und der Unit-/Coverage-Median höchstens 90 Sekunden über der akzeptierten Baseline liegt.
+- [ ] 3.5 Nach dem Cutover an zehn repräsentativen PR-Läufen nachweisen, dass kein App-Build- oder Gate-Vertrag für denselben Event-/SHA-Kontext doppelt läuft und der Unit-/Coverage-Median höchstens 90 Sekunden über der akzeptierten Baseline liegt. Die erste Zehn-Läufe-Stichprobe belegt fehlende Doppelarbeit, verfehlt mit 445 Sekunden aber die Grenze von 438 Sekunden. Nach Entfernung der unbegründeten Workspace-Installation aus dem Scope-Job ist eine neue Zehn-Läufe-Stichprobe erforderlich.
 
 ## 4. Atomarer Cutover und Löschung
 
 - [x] 4.1 Vor dem Cutover das aktive Ruleset erneut lesen und bei jeder Abweichung von den sieben vereinbarten Kontexten stoppen.
-- [ ] 4.2 Die sieben Required-Kontexte atomar auf die neue Topologie umschalten, ohne Ruleset-Namen zu verändern.
-- [ ] 4.3 Am exakten Cutover-Head alle Required-Kontexte und die vollständige Main-/Release-Abgrenzung verifizieren; erst danach die vier Alt-Orchestrierungsworkflows löschen.
+- [x] 4.2 Die sieben Required-Kontexte atomar auf die neue Topologie umschalten, ohne Ruleset-Namen zu verändern. PR `#1234` veröffentlichte die produktive Topologie; Ruleset `11600196` blieb unverändert bei exakt sieben Required-Kontexten.
+- [x] 4.3 Am exakten Cutover-Head alle Required-Kontexte und die vollständige Main-/Release-Abgrenzung verifizieren; erst danach die vier Alt-Orchestrierungsworkflows löschen. Der exakte PR-Head bestand alle Required-Kontexte; die Altworkflows wurden im selben Merge entfernt. Nach dem isolierten SonarCloud-Fix in PR `#1244` bestand Main-Run `33545756366` die vollständige Main-Topologie einschließlich Coverage und SonarCloud.
 - [x] 4.4 Eine produktive YAML-Summe von höchstens 840 Zeilen und keine Nettozunahme produktiver CI-Orchestrierungs-TS-Zeilen nachweisen.
 
 ## 5. Dokumentation und Abschluss

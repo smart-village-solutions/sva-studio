@@ -37,13 +37,15 @@ jobs:
           filter: tree:0
           fetch-depth: 0
 
-      - name: Setup workspace
-        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Setup Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
 
       - name: Determine canonical PR scope once
         id: scope
         run: >-
-          pnpm exec tsx scripts/ci/pr-scope.cli.ts
+          node --no-warnings --experimental-strip-types scripts/ci/pr-scope.cli.ts
           --base ${{ github.event.pull_request.base.sha }}
           --head ${{ github.event.pull_request.head.sha }}
           --github-output

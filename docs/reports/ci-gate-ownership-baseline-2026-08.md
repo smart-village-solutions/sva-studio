@@ -192,9 +192,45 @@ Jobs und Laufzeitverhalten sind produktiv.
 - Noch offen: zehn repräsentative Post-Cutover-Läufe für Doppelarbeits- und
   Laufzeitnachweis.
 
+## Erste Post-Cutover-Messung zum 1. September 2026
+
+Die ersten zehn nach PR `#1234` abgeschlossenen grünen PR-Läufe wurden in
+chronologischer Reihenfolge ausgewertet. Die terminale Zeit beginnt mit
+`run_started_at` und endet, sobald die stabilen Required-Kontexte `Unit` und
+`Coverage` beide abgeschlossen sind. Die Stichprobe umfasst einen vollständigen
+Coverage-Lauf, zwei affected Coverage-Läufe und sieben explizite Coverage-Skips.
+
+|                                                                                           Run | Coverage-Modus | Terminale Zeit |
+| --------------------------------------------------------------------------------------------: | -------------- | -------------: |
+| [33531486409](https://github.com/smart-village-solutions/sva-studio/actions/runs/33531486409) | `full`         |          935 s |
+| [33532450335](https://github.com/smart-village-solutions/sva-studio/actions/runs/33532450335) | `affected`     |          952 s |
+| [33533194990](https://github.com/smart-village-solutions/sva-studio/actions/runs/33533194990) | `skip`         |          451 s |
+| [33533849372](https://github.com/smart-village-solutions/sva-studio/actions/runs/33533849372) | `skip`         |          387 s |
+| [33534404917](https://github.com/smart-village-solutions/sva-studio/actions/runs/33534404917) | `skip`         |          798 s |
+| [33534602283](https://github.com/smart-village-solutions/sva-studio/actions/runs/33534602283) | `affected`     |          959 s |
+| [33534723361](https://github.com/smart-village-solutions/sva-studio/actions/runs/33534723361) | `skip`         |          340 s |
+| [33535764780](https://github.com/smart-village-solutions/sva-studio/actions/runs/33535764780) | `skip`         |          439 s |
+| [33536752586](https://github.com/smart-village-solutions/sva-studio/actions/runs/33536752586) | `skip`         |          407 s |
+| [33537675696](https://github.com/smart-village-solutions/sva-studio/actions/runs/33537675696) | `skip`         |          398 s |
+
+Der Median beträgt 445 Sekunden und liegt damit sieben Sekunden über der
+verbindlichen Grenze von 438 Sekunden. Für keinen der zehn Event-/SHA-Kontexte
+lief ein abgelöster allgemeiner Gate-Workflow oder ein zweiter App-Build; die
+Doppelarbeitsgrenze ist erfüllt.
+
+Der gemeinsame Scope-Job dauerte in derselben Stichprobe im Median 50 Sekunden;
+allein die vollständige pnpm-Workspace-Einrichtung darin beanspruchte median
+38 Sekunden. Der Scope-Controller verwendet jedoch ausschließlich Node-
+Standardbibliothek und Git. Die Workspace-Installation wird deshalb durch die
+direkte `.nvmrc`-gebundene Node-Ausführung ersetzt. Der Laufzeitnachweis bleibt
+bis zu zehn repräsentativen grünen Läufen auf diesem korrigierten Stand offen.
+Nach dem SonarCloud-Fix und dieser Korrektur umfasst die produktive Topologie
+710 YAML-Zeilen und bleibt damit deutlich unter der Grenze von 840 Zeilen.
+
 ## Proof-Limits
 
 Die Baseline beweist den Stand des genannten Repository-Commits und das live
-gelesene Ruleset am Erhebungstag. Der ergänzte Cutover-Stand belegt die lokale
-Zieltopologie und Löschbilanz, aber noch nicht den Merge oder die zehn
-repräsentativen produktiven Post-Cutover-Läufe.
+gelesene Ruleset am Erhebungstag. Cutover, Löschbilanz und fehlende doppelte
+Gate-/App-Build-Ausführungen sind live belegt. Die erste produktive
+Post-Cutover-Stichprobe verfehlt das Laufzeitziel knapp; der abschließende
+Zehn-Läufe-Nachweis muss deshalb auf dem korrigierten Scope-Setup erfolgen.

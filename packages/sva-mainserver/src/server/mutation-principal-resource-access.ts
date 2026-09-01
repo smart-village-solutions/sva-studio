@@ -44,7 +44,7 @@ export const resolveMainserverResourceAccess = async (input: {
             'all'
           )
         : permissions.permissions;
-      if (actionPermissions.length === 0) {
+      if (requireAllScopeActions.has(action) && actionPermissions.length === 0) {
         return [action, false] as const;
       }
       const decision = await authorizeMainserverDataProviderAccess({

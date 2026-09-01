@@ -25,8 +25,9 @@ Evidenzgrenzen abzuschwächen.
 - Bestehende Root-/Nx-Skripte, Changed-first-Planer, Unit-/Coverage-Phasen,
   Evidenzvalidatoren und Aggregatoren bleiben die fachliche Source of Truth;
   Workflow-YAML implementiert keine zweite Pfad- oder Gate-Policy.
-- Die Migration erfolgt über nicht blockierende Topologie-Parität, danach
-  atomaren Cutover und erst anschließend Löschung der Alt-Orchestrierung.
+- Die Migration erfolgt über nicht blockierende Topologie-Parität und danach
+  einen atomaren Cutover-PR, der die Required-Kontexte produktiv veröffentlicht
+  und die Alt-Orchestrierung sowie reine Paritätslogik im selben Merge entfernt.
 - Die vier abgelösten Orchestrierungsworkflows werden von aktuell 1.050 auf
   höchstens 840 produktive YAML-Zeilen nach dem Cutover reduziert;
   ausschließlich temporäre Shadow-Paritätsjobs zählen nicht zur produktiven
@@ -61,7 +62,11 @@ Evidenzgrenzen abzuschwächen.
   `.github/workflows/quality-gates.yml`,
   `.github/workflows/runtime-gates.yml`, `.github/workflows/main-build.yml`,
   `.github/workflows/repository-hygiene.yml`, deren konsolidierte Nachfolger
-  sowie eng begrenzte Workflow-Contract-Tests
+  `.github/workflows/ci-gates-pr-shadow.yml` und
+  `.github/workflows/ci-gates-main-shadow.yml` sowie eng begrenzte
+  Workflow-Contract-Tests. Die Nachfolger behalten ihre historischen
+  Dateipfade beim Cutover als GitHub-Triggeranker; ihre Workflownamen und ihr
+  Verhalten sind produktiv.
 - Wiederverwendete Verträge: `scripts/ci/pr-scope.ts`,
   `changed-project-plan.ts`, `affected-unit-gate.ts`,
   `affected-coverage-gate.ts`, `coverage-plan.ts`,
@@ -76,6 +81,5 @@ Evidenzgrenzen abzuschwächen.
 
 ## Freigabegrenze
 
-Dieses Proposal autorisiert noch keine produktive Workflow-, Script- oder
-Ruleset-Änderung. Plan 035 beginnt erst nach ausdrücklicher menschlicher
-Freigabe dieses OpenSpec-Changes.
+Der Change ist ausdrücklich freigegeben. Plan 035 ist abgeschlossen; Plan 036
+setzt den produktiven Cutover ohne Ruleset-Mutation um.

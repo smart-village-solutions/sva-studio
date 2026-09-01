@@ -82,8 +82,9 @@ Das Monorepo SHALL die vier abgelösten allgemeinen Orchestrierungsworkflows dur
 #### Scenario: Cutover ist bereit
 
 - **WHEN** die Shadow-Parität vollständig und ohne ungeklärte Abweichung nachgewiesen ist
-- **THEN** erfolgt der Wechsel aller sieben Required-Kontexte atomar
-- **AND** werden Altworkflows erst nach erfolgreicher Veröffentlichung am exakten Cutover-Head gelöscht
+- **THEN** veröffentlicht der Cutover-PR alle sieben Required-Kontexte für seinen exakten Head-SHA
+- **AND** erfolgt der Wechsel mit dem Merge dieses Heads atomar
+- **AND** entfernt derselbe Merge die Altworkflows und reine Paritätslogik
 
 #### Scenario: Löschbilanz wird geprüft
 

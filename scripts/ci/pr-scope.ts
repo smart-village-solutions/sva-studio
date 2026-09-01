@@ -37,7 +37,7 @@ const qualityEscalationPatterns = [
 const coverageFullEscalationPatterns = [
   ...qualityEscalationPatterns,
   /^package\.json$/u,
-  /^\.github\/workflows\/(?:runtime-gates|quality-gates)\.yml$/u,
+  /^\.github\/workflows\/ci-gates-(?:pr|main)-shadow\.yml$/u,
 ];
 
 const coverageAffectedPatterns = [/^scripts\/ci\//u];
@@ -51,7 +51,7 @@ const integrationEscalationPatterns = [
   /^apps\/sva-studio-react\/(?:package\.json|playwright\.config\.ts|vite\.config\.ts|vitest\.config\.ts)$/u,
   /^packages\/(?:auth-runtime|core|data|data-repositories|instance-registry|routing|server-runtime|sva-mainserver)\/(?:package\.json|vite\.config\.ts|vitest\.config\.ts)$/u,
   /^scripts\/ci\//u,
-  /^\.github\/workflows\/(?:runtime-gates|quality-gates)\.yml$/u,
+  /^\.github\/workflows\/ci-gates-(?:pr|main)-shadow\.yml$/u,
 ];
 
 const pluginUiBuildRelevantPatterns = [
@@ -83,7 +83,7 @@ const a11yEscalationPatterns = [
   /^apps\/sva-studio-react\/(?:package\.json|vitest\.a11y\.config\.ts|vitest\.config\.ts)$/u,
   /^packages\/studio-ui-react\/(?:package\.json|vite\.config\.ts|vitest\.config\.ts)$/u,
   /^scripts\/ci\//u,
-  /^\.github\/workflows\/quality-gates\.yml$/u,
+  /^\.github\/workflows\/ci-gates-(?:pr|main)-shadow\.yml$/u,
 ];
 
 const runtimeVerifyRelevantPatterns = [
@@ -95,7 +95,7 @@ const runtimeVerifyRelevantPatterns = [
 
 const runtimeVerifyEscalationPatterns = [
   /^scripts\/ci\/verify-runtime-artifact\.sh$/u,
-  /^\.github\/workflows\/main-build\.yml$/u,
+  /^\.github\/workflows\/ci-gates-pr-shadow\.yml$/u,
 ];
 
 const appBuildRelevantPatterns = [
@@ -125,7 +125,7 @@ const documentationCatalogRelevantPatterns = [
   /^packages\/routing\/src\//u,
   /^scripts\/ci\/generate-documentation-page-catalog\.ts$/u,
   /^docs\/user-documentation\/page-catalog\.json$/u,
-  /^\.github\/workflows\/repository-hygiene\.yml$/u,
+  /^\.github\/workflows\/ci-gates-pr-shadow\.yml$/u,
 ];
 
 const dbSchemaRelevantPatterns = [
@@ -134,7 +134,7 @@ const dbSchemaRelevantPatterns = [
   /^docs\/development\/studio-db-schema\.md$/u,
   /^scripts\/ci\/check-db-schema-snapshot\.ts$/u,
   /^scripts\/ops\/runtime\/db-schema-snapshot\.ts$/u,
-  /^\.github\/workflows\/repository-hygiene\.yml$/u,
+  /^\.github\/workflows\/ci-gates-pr-shadow\.yml$/u,
 ];
 
 const matchesAnyPattern = (filePath: string, patterns: readonly RegExp[]): boolean =>

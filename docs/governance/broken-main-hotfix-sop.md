@@ -21,12 +21,12 @@ Die Rollen in dieser SOP sind funktionsbasiert definiert. In fruehen Projektphas
 
 ## Runbook: Broken Main (deterministische Kette)
 
-| Schritt | Max. Zeit ab Detection | Verantwortlich | Aktion | Ergebnisnachweis |
-| --- | ---: | --- | --- | --- |
-| 1. Detection | 5 Minuten | CI-Monitoring + Merge-Verursacher:in | Detection über fehlschlagende Required Checks auf `main` oder manuelle Eskalation in `#incident-main` | Incident-Issue angelegt/verlinkt |
-| 2. Owner-Übernahme | 10 Minuten | L1: Merge-Verursacher:in | Incident-Owner bestätigen, Merge-Freeze für `main` ausrufen, betroffene SHA markieren | PR-Kommentar mit Owner, SHA, Startzeit |
-| 3. Mitigation | 25 Minuten | L1, bei Übergabe L2: On-Call Maintainer | Standard: Revert des auslösenden Merges; Ausnahme: Forward-Fix nur bei erfüllten Kriterien (siehe unten) | Revert-PR oder Fix-PR mit Incident-Referenz |
-| 4. Verification | 30 Minuten | Incident-Owner | Nach Mitigation alle Required Checks auf `main` erneut grün verifizieren | Check-Status und Abschlusskommentar im Incident |
+| Schritt            | Max. Zeit ab Detection | Verantwortlich                          | Aktion                                                                                                   | Ergebnisnachweis                                |
+| ------------------ | ---------------------: | --------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 1. Detection       |              5 Minuten | CI-Monitoring + Merge-Verursacher:in    | Detection über fehlschlagende Required Checks auf `main` oder manuelle Eskalation in `#incident-main`    | Incident-Issue angelegt/verlinkt                |
+| 2. Owner-Übernahme |             10 Minuten | L1: Merge-Verursacher:in                | Incident-Owner bestätigen, Merge-Freeze für `main` ausrufen, betroffene SHA markieren                    | PR-Kommentar mit Owner, SHA, Startzeit          |
+| 3. Mitigation      |             25 Minuten | L1, bei Übergabe L2: On-Call Maintainer | Standard: Revert des auslösenden Merges; Ausnahme: Forward-Fix nur bei erfüllten Kriterien (siehe unten) | Revert-PR oder Fix-PR mit Incident-Referenz     |
+| 4. Verification    |             30 Minuten | Incident-Owner                          | Nach Mitigation alle Required Checks auf `main` erneut grün verifizieren                                 | Check-Status und Abschlusskommentar im Incident |
 
 ## Detection-Regeln
 
@@ -36,11 +36,11 @@ Die Rollen in dieser SOP sind funktionsbasiert definiert. In fruehen Projektphas
 
 ## Eskalationskette (fest, numerisch)
 
-| Level | Trigger | Reaktionszeit | Rolle | Pflichtaktion |
-| --- | --- | ---: | --- | --- |
-| L1 | Detection erfolgt | 15 Minuten | Merge-Verursacher:in | Incident übernehmen, Revert vorbereiten/einspielen |
-| L2 | L1 nicht aktiv oder keine grüne Tendenz | weitere 15 Minuten | On-Call Maintainer bzw. zuständige Verantwortungsgruppe | Entscheidung Revert vs. Forward-Fix, Umsetzung steuern |
-| L3 | SLA-Risiko oder Blockade durch Protection | sofort nach Minute 30 oder früher bei P0/P1 | Admin (Emergency) | nur bei P0/P1: kontrollierter Bypass gemäß Audit-Pflichten |
+| Level | Trigger                                   |                               Reaktionszeit | Rolle                                                   | Pflichtaktion                                              |
+| ----- | ----------------------------------------- | ------------------------------------------: | ------------------------------------------------------- | ---------------------------------------------------------- |
+| L1    | Detection erfolgt                         |                                  15 Minuten | Merge-Verursacher:in                                    | Incident übernehmen, Revert vorbereiten/einspielen         |
+| L2    | L1 nicht aktiv oder keine grüne Tendenz   |                          weitere 15 Minuten | On-Call Maintainer bzw. zuständige Verantwortungsgruppe | Entscheidung Revert vs. Forward-Fix, Umsetzung steuern     |
+| L3    | SLA-Risiko oder Blockade durch Protection | sofort nach Minute 30 oder früher bei P0/P1 | Admin (Emergency)                                       | nur bei P0/P1: kontrollierter Bypass gemäß Audit-Pflichten |
 
 ## Mitigationsentscheidung: Revert-first
 
@@ -68,13 +68,16 @@ Fehlt eine Bedingung, ist unverzüglich auf Revert zurückzuschalten.
 
 Vor Aufhebung des Merge-Freeze müssen auf `main` grün sein:
 
-1. `Quality Gates / Lint`
-2. `Quality Gates / Unit`
-3. `Quality Gates / Types`
-4. `Runtime Gates / Coverage`
-5. `Runtime Gates / Complexity`
-6. `Runtime Gates / PR Integration` (wenn PR-bezogener Integrationsscope betroffen ist)
-7. `App E2E / App E2E` (wenn `apps/` betroffen ist)
+1. `Lint`
+2. `Unit`
+3. `Types`
+4. `Complexity`
+5. `PR Integration`
+6. `File Placement`
+7. `Coverage`
+
+Wenn `apps/` betroffen ist, muss zusätzlich die eigenständige Main-Evidenz
+`App E2E / App E2E` grün sein.
 
 Zusätzlich verpflichtend:
 

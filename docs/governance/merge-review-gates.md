@@ -12,17 +12,23 @@ Die Regeln in diesem Dokument sind auf kleine Teams und wachsende Maintainer-Str
 
 Die folgenden Status-Checks muessen im Branch-Schutz fuer `main` als **required** eingetragen sein:
 
-| Check-Run-Name (Branch Protection) | Quelle | Muss gruen sein, wenn ... |
-| --- | --- | --- |
-| `Quality Gates / Lint` | Root-Command `pnpm test:eslint` | immer |
-| `Quality Gates / Unit` | Root-Command `pnpm test:unit` | immer |
-| `Quality Gates / Types` | Root-Command `pnpm test:types` | immer |
-| `Runtime Gates / Coverage` | Workflow `.github/workflows/runtime-gates.yml`, Job `coverage` | immer |
-| `Runtime Gates / Complexity` | Workflow `.github/workflows/runtime-gates.yml`, Job `complexity` | immer |
-| `Runtime Gates / PR Integration` | Workflow `.github/workflows/runtime-gates.yml`, Job `integration-pr` | Pull Requests |
-| `App E2E / App E2E` | Workflow `.github/workflows/app-e2e.yml`, Job `e2e` | immer required. Der Workflow laeuft fuer alle PRs und endet bei Nicht-Relevanz bewusst frueh mit `success`. |
+| Check-Run-Name (Branch Protection) | Quelle                                                                    | Muss gruen sein, wenn ...                                    |
+| ---------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `Lint`                             | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `lint`           | immer                                                        |
+| `Unit`                             | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `unit`           | immer                                                        |
+| `Types`                            | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `types`          | immer                                                        |
+| `Complexity`                       | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `complexity`     | immer                                                        |
+| `PR Integration`                   | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `integration-pr` | immer; bei expliziter Nicht-Relevanz als erfolgreicher No-op |
+| `File Placement`                   | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `file-placement` | immer                                                        |
+| `Coverage`                         | Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `coverage`       | immer; bei expliziter Nicht-Relevanz als erfolgreicher No-op |
 
 Verbindliche Regel: Kein unspezifisches "CI ist gruen". Entscheidend sind genau die oben genannten Check-Namen.
+
+Der Dateiname des PR-Workflows enthält während des atomaren Cutovers weiterhin
+`-shadow`, damit GitHub den bereits auf dem Default-Branch registrierten
+`pull_request`-Trigger verwendet. Workflow- und Jobnamen sowie das
+Laufzeitverhalten sind produktiv. `App E2E / App E2E` bleibt eigenständige
+Main-/Staging-Release-Evidenz und ist kein Required-Kontext des PR-Rulesets.
 
 Die PR-Gates folgen einem einheitlichen `affected-first`-Modell: Normale Paketänderungen laufen affected, echte globale Workspace-Dateien eskalieren gezielt auf volle Läufe, Workflow-/CI-Dateien werden über `tooling-testing` targeted abgesichert und irrelevante PRs enden bewusst als No-op-Erfolg.
 
@@ -48,13 +54,13 @@ Fuer Aenderungen in kritischen Pfaden muss der PR-Text ausserdem erkennen lassen
 
 ## Merge-Methode pro Branch-Typ
 
-| Branch-Typ | Erlaubte Merge-Methode | Regel |
-| --- | --- | --- |
-| `feature/*` | `Squash merge` | Standard nach `main`, linearer Verlauf |
-| `fix/*` | `Squash merge` | Standard nach `main`, kleine reversible Changes |
-| `chore/*` | `Squash merge` | Standard nach `main`, Wartung ohne Merge-Commit-Rauschen |
-| `stack/*` | `Rebase and merge` in den direkten Parent-Branch | Kein Direktmerge nach `main`, solange Child-PRs offen sind |
-| `epic/*` | kein Direktmerge nach `main` | Epic wird ueber untergeordnete PRs integriert; verbleibender Rest nur via `Squash merge` nach explizitem Maintainer-Entscheid |
+| Branch-Typ  | Erlaubte Merge-Methode                           | Regel                                                                                                                         |
+| ----------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `feature/*` | `Squash merge`                                   | Standard nach `main`, linearer Verlauf                                                                                        |
+| `fix/*`     | `Squash merge`                                   | Standard nach `main`, kleine reversible Changes                                                                               |
+| `chore/*`   | `Squash merge`                                   | Standard nach `main`, Wartung ohne Merge-Commit-Rauschen                                                                      |
+| `stack/*`   | `Rebase and merge` in den direkten Parent-Branch | Kein Direktmerge nach `main`, solange Child-PRs offen sind                                                                    |
+| `epic/*`    | kein Direktmerge nach `main`                     | Epic wird ueber untergeordnete PRs integriert; verbleibender Rest nur via `Squash merge` nach explizitem Maintainer-Entscheid |
 
 ## Merge-Queue-Policy
 
@@ -80,13 +86,13 @@ Queue-Verhalten:
 
 ### Verbindliche Aktionen und Zeitbudget
 
-| Schritt | Aktion | Owner | Max. Reaktionszeit |
-| --- | --- | --- | --- |
-| 1 | Incident ausrufen, Merge-Freeze auf `main` setzen | Primaerer Owner | 10 Minuten ab erstem roten Required Check auf `main` |
-| 2 | Letzten fehlerausloesenden Merge **revertieren** (Standardpfad) | Primaerer Owner | 30 Minuten ab Detection |
-| 3 | Falls Revert technisch unmoeglich: eng begrenzter Forward-Fix mit identischen Gates | Sekundaerer Owner | 45 Minuten ab Detection |
-| 4 | Required Checks erneut ausfuehren (`Quality Gates / Lint`, `Quality Gates / Unit`, `Quality Gates / Types`, `Runtime Gates / Coverage`, `Runtime Gates / Complexity`, ggf. `Runtime Gates / PR Integration`, ggf. `App E2E / App E2E`) | Incident Owner | 60 Minuten ab Detection |
-| 5 | Incident-Notiz mit Ursache, SHA, Aktion und Follow-up veroeffentlichen | Incident Owner | 90 Minuten ab Detection |
+| Schritt | Aktion                                                                                                                   | Owner             | Max. Reaktionszeit                                   |
+| ------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------- | ---------------------------------------------------- |
+| 1       | Incident ausrufen, Merge-Freeze auf `main` setzen                                                                        | Primaerer Owner   | 10 Minuten ab erstem roten Required Check auf `main` |
+| 2       | Letzten fehlerausloesenden Merge **revertieren** (Standardpfad)                                                          | Primaerer Owner   | 30 Minuten ab Detection                              |
+| 3       | Falls Revert technisch unmoeglich: eng begrenzter Forward-Fix mit identischen Gates                                      | Sekundaerer Owner | 45 Minuten ab Detection                              |
+| 4       | Required Checks erneut ausführen (`Lint`, `Unit`, `Types`, `Complexity`, `PR Integration`, `File Placement`, `Coverage`) | Incident Owner    | 60 Minuten ab Detection                              |
+| 5       | Incident-Notiz mit Ursache, SHA, Aktion und Follow-up veroeffentlichen                                                   | Incident Owner    | 90 Minuten ab Detection                              |
 
 SLA: `main` muss spaetestens nach **30 Minuten** wieder gruene Required Checks haben (Revert-first-Prinzip).
 

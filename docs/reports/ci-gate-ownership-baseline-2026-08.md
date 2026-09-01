@@ -175,9 +175,26 @@ offen. Quelle:
   438 Sekunden Unit-/Coverage-Median gegenüber der akzeptierten Baseline von
   348 Sekunden.
 
+## Cutover-Ergebnis zum 1. September 2026
+
+Der implementierte Cutover ersetzt die vier Baseline-Workflows durch
+`CI Gates (PR)` und `CI Gates (Main and Nightly)`. Ihre historischen
+`-shadow`-Dateipfade bleiben zunächst als GitHub-Triggeranker erhalten; Namen,
+Jobs und Laufzeitverhalten sind produktiv.
+
+- Produktive YAML-Zeilen: 714 statt 1.050, damit 336 Zeilen beziehungsweise
+  32 Prozent weniger.
+- Produktive CI-Orchestrierungs-TypeScript-Bilanz: netto minus 696 Zeilen.
+- Required-Kontexte: unverändert exakt sieben.
+- Allgemeine PR-Scope-Entscheidung: genau einmal pro Run.
+- Doppelter PR-Coverage-/App-Build und reine Paritätsjobs: entfernt.
+- Kanonischer `build.yml`- und Releasepfad: unverändert.
+- Noch offen: zehn repräsentative Post-Cutover-Läufe für Doppelarbeits- und
+  Laufzeitnachweis.
+
 ## Proof-Limits
 
 Die Baseline beweist den Stand des genannten Repository-Commits und das live
-gelesene Ruleset am Erhebungstag. Sie beweist noch keine Zieltopologie, keinen
-Shadow-Lauf und keinen Cutover. Vor Plan 035 und erneut vor Plan 036 müssen
-Workflow-Drift, aktive parallele Changes und das Ruleset aktualisiert werden.
+gelesene Ruleset am Erhebungstag. Der ergänzte Cutover-Stand belegt die lokale
+Zieltopologie und Löschbilanz, aber noch nicht den Merge oder die zehn
+repräsentativen produktiven Post-Cutover-Läufe.

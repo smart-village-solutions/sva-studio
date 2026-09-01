@@ -55,11 +55,11 @@ Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance
 
 ## Betrachtete Optionen
 
-| Option | Kriterien | Bewertung | Kommentar |
-|---|---|---|---|
-| **A: Interne Gates + Codecov (empfohlen)** | Verbindlichkeit, Transparenz, Integrationsaufwand | 9/10 | Klare Trennung von Freigaberegeln und Reporting, gute PR-Sichtbarkeit |
-| B: Nur interne Gates und Artefakte | Robustheit, Einfachheit | 7/10 | Weniger externer Aufwand, aber schwache Trend-/PR-Visualisierung |
-| C: Externe Plattform als alleiniges Gate | Zentralisierung | 5/10 | Höhere Abhängigkeit von einem einzelnen Anbieter, weniger Kontrolle im Repo |
+| Option                                     | Kriterien                                         | Bewertung | Kommentar                                                                   |
+| ------------------------------------------ | ------------------------------------------------- | --------- | --------------------------------------------------------------------------- |
+| **A: Interne Gates + Codecov (empfohlen)** | Verbindlichkeit, Transparenz, Integrationsaufwand | 9/10      | Klare Trennung von Freigaberegeln und Reporting, gute PR-Sichtbarkeit       |
+| B: Nur interne Gates und Artefakte         | Robustheit, Einfachheit                           | 7/10      | Weniger externer Aufwand, aber schwache Trend-/PR-Visualisierung            |
+| C: Externe Plattform als alleiniges Gate   | Zentralisierung                                   | 5/10      | Höhere Abhängigkeit von einem einzelnen Anbieter, weniger Kontrolle im Repo |
 
 ### Warum Option A?
 
@@ -73,11 +73,13 @@ Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance
 ## Trade-offs & Limitierungen
 
 ### Pros
+
 - ✅ Bessere Sichtbarkeit auf Coverage-Trends und Auswirkungen einzelner Pull Requests.
 - ✅ Klare Trennung zwischen internen Freigaberegeln und externer Visualisierung.
 - ✅ Geringe Umstellung, da bestehende Coverage-Targets unverändert bleiben.
 
 ### Cons
+
 - ❌ Zusätzliche externe Abhängigkeit (Service + Zugangsverwaltung).
 - ❌ Potentielle Verwirrung, wenn Codecov-Darstellung und interne Gate-Werte unterschiedlich wirken.
 - ❌ Wartungsaufwand für Workflow-/Codecov-Konfiguration.
@@ -89,7 +91,9 @@ Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance
 ## Implementierung / Ausblick
 
 - [x] CI erzeugt Coverage-Reports via `pnpm test:coverage`/`pnpm nx affected --target=test:coverage`.
-- [x] Upload zu Codecov erfolgt in `.github/workflows/runtime-gates.yml`.
+- [x] Upload zu Codecov erfolgt je PR-/Main-Coverage-Lauf genau einmal in
+      `.github/workflows/ci-gates-pr-shadow.yml` beziehungsweise
+      `.github/workflows/ci-gates-main-shadow.yml`.
 - [x] Grundkonfiguration liegt in `codecov.yml`.
 - [x] Codecov-Statuschecks `project` und `patch` sind informational und dienen nur der Transparenz.
 - [x] Codecov-Flag-Scope ist auf Projekte mit echtem LCOV-Upload begrenzt; coverage-exempt Projekte bleiben ausgeschlossen.
@@ -112,7 +116,9 @@ Damit ist ein Exit ohne Änderungen an den Test-Targets oder den Governance-Rege
 ---
 
 **Links:**
-- [Coverage Workflow](../../.github/workflows/runtime-gates.yml)
+
+- [PR-Coverage-Workflow](../../.github/workflows/ci-gates-pr-shadow.yml)
+- [Main-/Nightly-Coverage-Workflow](../../.github/workflows/ci-gates-main-shadow.yml)
 - [Codecov Konfiguration](../../codecov.yml)
 - [Testing & Coverage Governance](../development/testing-coverage.md)
 - [Dokumentations-Integritätsgate](../development/dokumentations-integritaetsgate.md)

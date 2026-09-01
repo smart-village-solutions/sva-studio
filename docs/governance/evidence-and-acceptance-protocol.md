@@ -21,24 +21,27 @@ Dieses Protokoll definiert den verbindlichen Standard für Evidence-Dateien in G
 ### 2.1 Dateinamensformat
 
 **Pattern**:
+
 ```
 task-{N}-{scenario-slug}.{ext}
 ```
 
 **Komponenten**:
 
-| Komponente | Beschreibung | Beispiel |
-|------------|--------------|----------|
-| `{N}` | Aufgabennummer (1-999, keine Zero-Padding-Pflicht) | `4`, `10`, `16` |
-| `{scenario-slug}` | Kebab-case-Slug aus QA-Szenario-Beschreibung | `gate-matrix`, `required-checks`, `preview-cleanup-error` |
-| `{ext}` | Dateierweiterung nach Artefakttyp (siehe 2.2) | `txt`, `json`, `log`, `md` |
+| Komponente        | Beschreibung                                       | Beispiel                                                  |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------------- |
+| `{N}`             | Aufgabennummer (1-999, keine Zero-Padding-Pflicht) | `4`, `10`, `16`                                           |
+| `{scenario-slug}` | Kebab-case-Slug aus QA-Szenario-Beschreibung       | `gate-matrix`, `required-checks`, `preview-cleanup-error` |
+| `{ext}`           | Dateierweiterung nach Artefakttyp (siehe 2.2)      | `txt`, `json`, `log`, `md`                                |
 
 **Regex** (für Validierung):
+
 ```regex
 ^task-\d{1,3}-[a-z0-9]+(-[a-z0-9]+)*\.(txt|json|log|md)$
 ```
 
 **Valide Beispiele**:
+
 ```
 .sisyphus/evidence/task-4-gate-matrix.txt
 .sisyphus/evidence/task-10-branch-protection.json
@@ -46,6 +49,7 @@ task-{N}-{scenario-slug}.{ext}
 ```
 
 **Invalide Beispiele**:
+
 ```
 .sisyphus/evidence/task4_check.txt          (Unterstrich statt Bindestrich)
 .sisyphus/evidence/branch-protection.txt    (Aufgabennummer fehlt)
@@ -55,14 +59,15 @@ task-{N}-{scenario-slug}.{ext}
 
 ### 2.2 Dateierweiterungen und Verwendung
 
-| Extension | Verwendung | Typische Inhalte | Beispiel |
-|-----------|------------|------------------|----------|
-| `.txt` | Plain-Text-Output, Grep-Ergebnisse, Validierungslogs, einfache Assertions | Command-Output, Counts, Boolean-Checks | `task-8-concurrency-cap.txt` |
-| `.json` | Strukturierte Daten, API-Responses, Konfigurationssnapshots | GitHub API Response, Parsed Config | `task-10-branch-protection.json` |
-| `.log` | Vollständige Command-Logs mit Zeitstempeln, Debug-Output | CI-Run-Logs, Multi-Command-Execution | `task-12-migration-coverage.log` |
-| `.md` | Strukturierte Reports, Tabellen, mehrseitige Analysen | Vergleichsmatrizen, Feature-Analysen | `task-6-comparison-matrix.md` |
+| Extension | Verwendung                                                                | Typische Inhalte                       | Beispiel                         |
+| --------- | ------------------------------------------------------------------------- | -------------------------------------- | -------------------------------- |
+| `.txt`    | Plain-Text-Output, Grep-Ergebnisse, Validierungslogs, einfache Assertions | Command-Output, Counts, Boolean-Checks | `task-8-concurrency-cap.txt`     |
+| `.json`   | Strukturierte Daten, API-Responses, Konfigurationssnapshots               | GitHub API Response, Parsed Config     | `task-10-branch-protection.json` |
+| `.log`    | Vollständige Command-Logs mit Zeitstempeln, Debug-Output                  | CI-Run-Logs, Multi-Command-Execution   | `task-12-migration-coverage.log` |
+| `.md`     | Strukturierte Reports, Tabellen, mehrseitige Analysen                     | Vergleichsmatrizen, Feature-Analysen   | `task-6-comparison-matrix.md`    |
 
 #### Beispiel: `.txt` (Plain Text)
+
 ```
 Datei: task-8-concurrency-cap.txt
 
@@ -73,25 +78,27 @@ destroy_ttl_days: 14
 ```
 
 #### Beispiel: `.json` (Strukturierte Daten)
+
 ```json
 // Datei: task-10-branch-protection.json
 {
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "Quality Gates / Lint",
-      "Quality Gates / Unit",
-      "Quality Gates / Types",
-      "Runtime Gates / Coverage",
-      "Runtime Gates / Complexity",
-      "Runtime Gates / PR Integration",
-      "App E2E / App E2E"
+      "Lint",
+      "Unit",
+      "Types",
+      "Complexity",
+      "PR Integration",
+      "File Placement",
+      "Coverage"
     ]
   }
 }
 ```
 
 #### Beispiel: `.log` (Full Log)
+
 ```
 Datei: task-12-migration-coverage.log
 
@@ -103,11 +110,12 @@ Datei: task-12-migration-coverage.log
 ```
 
 #### Beispiel: `.md` (Strukturierter Report)
+
 ```markdown
 <!-- Datei: task-6-comparison-matrix.md -->
 
 | Kriterium | Vercel | Self-Hosted |
-|-----------|--------|-------------|
+| --------- | ------ | ----------- |
 | Setup     | 5      | 3           |
 | Security  | 4      | 5           |
 | Isolation | 4      | 5           |
@@ -138,6 +146,7 @@ Eine Aufgabe gilt als **NICHT ABGESCHLOSSEN**, wenn nicht für jedes QA-Szenario
 ### 3.4 Beispiel: Task 4 (Merge/Review Gates)
 
 **QA-Szenarien**:
+
 1. Gate-Matrix vollständig → `.sisyphus/evidence/task-4-gate-matrix.txt` (ERFORDERLICH)
 2. Broken-Main-Error-Handling dokumentiert → `.sisyphus/evidence/task-4-broken-main-error.txt` (ERFORDERLICH)
 
@@ -160,6 +169,7 @@ Eine Aufgabe gilt als **NICHT ABGESCHLOSSEN**, wenn nicht für jedes QA-Szenario
 3. **Stagen**: Evidence-Datei mit `git add` zu Deliverables hinzufügen.
 
 **Beispiel**:
+
 ```bash
 # Szenario: Concurrency Cap validieren
 grep -E "max_active_previews|priority_queue_max" docs/governance/preview-cost-capacity-guardrails.md \
@@ -179,6 +189,7 @@ git add .sisyphus/evidence/task-8-concurrency-cap.txt
    - **FAIL**: Subagent-Session wiederaufnehmen, Nachbesserung verlangen.
 
 **Beispiel**:
+
 ```bash
 # Prüfen, ob task-8-concurrency-cap.txt existiert und relevante Werte enthält
 test -f .sisyphus/evidence/task-8-concurrency-cap.txt && \
@@ -204,6 +215,7 @@ test -f .sisyphus/evidence/task-8-concurrency-cap.txt && \
 **Pfad**: `.sisyphus/evidence/` (flat structure), sofern dieses Evidence-Schema im Projekt initialisiert wurde; andernfalls ist die im Projekt definierte gleichwertige Ablage zu verwenden.
 
 **Rationale**:
+
 - Einfache Glob-Patterns (`task-*.txt`)
 - Keine verschachtelten Ordner pro Task (verhindert Fragmentierung)
 - Alle Evidence-Dateien eines Plans an einem Ort
@@ -213,6 +225,7 @@ test -f .sisyphus/evidence/task-8-concurrency-cap.txt && \
 **Regel**: Evidence-Dateien werden **niemals gelöscht** nach Commit.
 
 **Begründung**:
+
 - Audit-Trail für Governance-Compliance
 - Reproduzierbarkeit für zukünftige Reviews
 - Git-Historie als Single Source of Truth
@@ -223,22 +236,22 @@ test -f .sisyphus/evidence/task-8-concurrency-cap.txt && \
 
 ### 6.1 Übersicht
 
-| Task | QA-Szenarien | Evidence-Dateien | Format |
-|------|--------------|------------------|--------|
-| T1 | 2 | `task-1-scope-baseline.txt`<br>`task-1-ambiguity-check-error.txt` | `.txt` |
-| T2 | 2 | `task-2-qa-prefix-alignment.txt`<br>`task-2-qa-invalid-examples.txt` | `.txt` |
-| T3 | 2 | `task-3-qa-depth-ttl-rebase.txt`<br>`task-3-qa-rebase-trigger.txt` | `.txt` |
-| T4 | 2 | `task-4-gate-matrix.txt`<br>`task-4-broken-main-error.txt` | `.txt` |
-| T5 | 2 | `task-5-codeowners-strategy.txt`<br>`task-5-unowned-path-error.txt` (geplant) | `.txt` |
-| T6 | 2 | `task-6-matrix-readiness.txt`<br>`task-6-tie-breaker-error.txt` | `.txt` |
-| T7 | 2 | `task-7-create-preview.txt`<br>`task-7-destroy-preview-error.txt` | `.txt` |
-| T8 | 3 | `task-8-concurrency-cap.txt`<br>`task-8-idle-cleanup-error.txt`<br>`task-8-summary.txt` | `.txt` |
-| T9 | 2 | `task-9-secrets-policy.txt`<br>`task-9-pii-error.txt` | `.txt` |
-| T10 | 2 | `task-10-branch-protection.json`<br>`task-10-merge-queue-error.txt` | `.json`, `.txt` |
-| T11 | 2 | `task-11-rollout-phases.txt`<br>`task-11-pilot-failure-error.txt` | `.txt` |
-| T12 | 2 | `task-12-migration-coverage.txt`<br>`task-12-cutover-error.txt` | `.txt` |
-| T13 | 2 | `task-13-broken-main-sop.txt`<br>`task-13-hotfix-audit-error.txt` | `.txt` |
-| T14 | 2 | `task-14-kpi-integrity.txt`<br>`task-14-kpi-source-error.txt` | `.txt` |
+| Task | QA-Szenarien | Evidence-Dateien                                                                        | Format          |
+| ---- | ------------ | --------------------------------------------------------------------------------------- | --------------- |
+| T1   | 2            | `task-1-scope-baseline.txt`<br>`task-1-ambiguity-check-error.txt`                       | `.txt`          |
+| T2   | 2            | `task-2-qa-prefix-alignment.txt`<br>`task-2-qa-invalid-examples.txt`                    | `.txt`          |
+| T3   | 2            | `task-3-qa-depth-ttl-rebase.txt`<br>`task-3-qa-rebase-trigger.txt`                      | `.txt`          |
+| T4   | 2            | `task-4-gate-matrix.txt`<br>`task-4-broken-main-error.txt`                              | `.txt`          |
+| T5   | 2            | `task-5-codeowners-strategy.txt`<br>`task-5-unowned-path-error.txt` (geplant)           | `.txt`          |
+| T6   | 2            | `task-6-matrix-readiness.txt`<br>`task-6-tie-breaker-error.txt`                         | `.txt`          |
+| T7   | 2            | `task-7-create-preview.txt`<br>`task-7-destroy-preview-error.txt`                       | `.txt`          |
+| T8   | 3            | `task-8-concurrency-cap.txt`<br>`task-8-idle-cleanup-error.txt`<br>`task-8-summary.txt` | `.txt`          |
+| T9   | 2            | `task-9-secrets-policy.txt`<br>`task-9-pii-error.txt`                                   | `.txt`          |
+| T10  | 2            | `task-10-branch-protection.json`<br>`task-10-merge-queue-error.txt`                     | `.json`, `.txt` |
+| T11  | 2            | `task-11-rollout-phases.txt`<br>`task-11-pilot-failure-error.txt`                       | `.txt`          |
+| T12  | 2            | `task-12-migration-coverage.txt`<br>`task-12-cutover-error.txt`                         | `.txt`          |
+| T13  | 2            | `task-13-broken-main-sop.txt`<br>`task-13-hotfix-audit-error.txt`                       | `.txt`          |
+| T14  | 2            | `task-14-kpi-integrity.txt`<br>`task-14-kpi-source-error.txt`                           | `.txt`          |
 
 **Gesamt**: 28 Evidence-Dateien (14 Tasks × 2 Szenarien durchschnittlich)  
 **Format-Verteilung**: 27× `.txt`, 1× `.json`
@@ -246,6 +259,7 @@ test -f .sisyphus/evidence/task-8-concurrency-cap.txt && \
 ### 6.2 Pattern-Analyse
 
 **Beobachtungen**:
+
 - Alle Dateinamen folgen `task-{N}-{slug}.{ext}` (100% Konformität)
 - Extensions: Überwiegend `.txt` (einfache Validierungen), `.json` für GitHub API Response (T10)
 - Szenarien pro Task: Mindestens 2 (1× positive Validierung, 1× Error/Edge-Case)
@@ -257,6 +271,7 @@ test -f .sisyphus/evidence/task-8-concurrency-cap.txt && \
 ### 7.1 Validierung (Naming)
 
 **Regex-basierte Prüfung**:
+
 ```bash
 # Alle Evidence-Dateien prüfen
 for file in .sisyphus/evidence/task-*.*; do
@@ -269,6 +284,7 @@ done
 ### 7.2 Vollständigkeitsprüfung
 
 **Beispiel** (für Plan mit 2 Szenarien pro Task):
+
 ```bash
 # Erwartete Evidence-Dateien für Task 4
 expected_files=(
@@ -295,6 +311,7 @@ done
 ### 8.1 Template für QA-Szenarien
 
 **Format**:
+
 ```markdown
 ## QA-Szenarien
 
@@ -308,12 +325,13 @@ done
 ```
 
 **Beispiel** (Task 10):
+
 ```markdown
 ## QA-Szenarien
 
 1. **Branch-Protection Required Checks vollständig**
    - Evidence: `.sisyphus/evidence/task-10-branch-protection.json`
-   - Muss: JSON enthält die konfigurierten Required Checks inkl. `Runtime Gates / Coverage`
+   - Muss: JSON enthält die konfigurierten Required Checks inkl. `Coverage`
 
 2. **Merge-Queue Bypass-Regel dokumentiert**
    - Evidence: `.sisyphus/evidence/task-10-merge-queue-error.txt`
@@ -329,6 +347,7 @@ done
 **Problem**: `"Branch Protection Required Checks"` → `required-checks` oder `branch-protection`?
 
 **Lösung**: Slug sollte aus den **relevanten Keywords** des Szenarios abgeleitet werden, die das **spezifische Artefakt** beschreiben:
+
 - `"Branch Protection Required Checks"` → `branch-protection` (da JSON = Branch-Protection-Snapshot)
 - `"Merge-Queue Bypass-Regel"` → `merge-queue-error` (da Fehlerfall = Bypass-Regel)
 
@@ -353,6 +372,7 @@ done
 Für `.json`-Evidence-Dateien kann ein JSON-Schema definiert werden, um strukturierte Validierung zu ermöglichen.
 
 **Beispiel**:
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -377,6 +397,7 @@ Für `.json`-Evidence-Dateien kann ein JSON-Schema definiert werden, um struktur
 ### 10.2 Evidence-Metadaten
 
 Optionale Header in Evidence-Dateien für bessere Nachvollziehbarkeit:
+
 ```
 # Evidence Metadata
 # Task: T10
@@ -392,16 +413,19 @@ Optionale Header in Evidence-Dateien für bessere Nachvollziehbarkeit:
 ## 11. Zusammenfassung
 
 **Kernanforderungen**:
+
 1. **Naming**: `task-{N}-{scenario-slug}.{ext}` (deterministisch, Regex-validierbar)
 2. **Extensions**: `.txt`, `.json`, `.log`, `.md` (nach Artefakttyp)
 3. **Completion Rule**: Keine Evidence → Keine Aufgabe als abgeschlossen markierbar
 4. **Lifecycle**: Erstellung → Validierung → Archivierung (permanent)
 
 **Erfolgsmetriken**:
+
 - 100% Evidence-Coverage für alle QA-Szenarien
 - 0% Tasks mit fehlenden Evidence-Dateien nach Completion
 - 0% Evidence-Dateien mit ungültigem Naming
 
 **Nächste Schritte**:
+
 - Orchestrator-Integration: Automatisierte Existenzprüfung vor Checkbox-Markierung
 - Git-Hooks: Optional Pre-Commit-Hook für Evidence-Vollständigkeit

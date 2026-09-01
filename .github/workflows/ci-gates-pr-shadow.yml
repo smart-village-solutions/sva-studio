@@ -1,7 +1,7 @@
-name: CI Gate Topology Shadow (PR)
+name: CI Gates (PR)
 
 concurrency:
-  group: ci-gates-pr-shadow-${{ github.ref }}
+  group: ci-gates-pr-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -9,13 +9,12 @@ on:
 
 permissions:
   actions: read
-  checks: read
   contents: read
   pull-requests: read
 
 jobs:
   scope:
-    name: CI Shadow / Scope
+    name: CI Scope
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -46,22 +45,19 @@ jobs:
           --base ${{ github.event.pull_request.base.sha }}
           --head ${{ github.event.pull_request.head.sha }}
           --github-output
-          --evidence-path artifacts/ci-shadow/pr-scope.json
-          --legacy-evidence-path artifacts/ci-shadow/legacy-pr-scope.json
+          --evidence-path artifacts/ci-gates/pr-scope.json
 
       - name: Upload canonical scope evidence
         uses: actions/upload-artifact@v7
         with:
-          name: ci-gate-shadow-scope-${{ github.run_id }}
-          path: |
-            artifacts/ci-shadow/pr-scope.json
-            artifacts/ci-shadow/legacy-pr-scope.json
+          name: ci-gate-scope-${{ github.run_id }}
+          path: artifacts/ci-gates/pr-scope.json
           if-no-files-found: error
           overwrite: true
-          retention-days: 30
+          retention-days: 7
 
   lint:
-    name: CI Shadow / Lint
+    name: Lint
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -86,7 +82,7 @@ jobs:
           fi
 
   unit-direct:
-    name: CI Shadow / Unit Direct
+    name: Unit Fast Feedback
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -110,14 +106,14 @@ jobs:
         if: always() && needs.scope.outputs.code_relevant == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: ci-gate-shadow-unit-direct-${{ github.run_id }}
+          name: unit-feedback-direct-${{ github.run_id }}
           path: artifacts/ci-feedback/unit-unit-direct.json
           if-no-files-found: error
           overwrite: true
-          retention-days: 30
+          retention-days: 7
 
   unit-remaining:
-    name: CI Shadow / Unit Remaining
+    name: Unit Complete
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -141,14 +137,14 @@ jobs:
         if: always() && needs.scope.outputs.code_relevant == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: ci-gate-shadow-unit-remaining-${{ github.run_id }}
+          name: unit-feedback-remaining-${{ github.run_id }}
           path: artifacts/ci-feedback/unit-unit-remaining.json
           if-no-files-found: error
           overwrite: true
-          retention-days: 30
+          retention-days: 7
 
   unit:
-    name: CI Shadow / Unit
+    name: Unit
     if: always()
     needs:
       - scope
@@ -172,10 +168,10 @@ jobs:
         if: needs.scope.outputs.code_relevant == 'true'
         uses: actions/download-artifact@v8
         with:
-          pattern: ci-gate-shadow-unit-*-${{ github.run_id }}
+          pattern: unit-feedback-*-${{ github.run_id }}
           path: artifacts/downloaded-unit-feedback
           merge-multiple: true
-      - name: Aggregate shadow Unit status
+      - name: Aggregate required Unit status
         env:
           EVIDENCE_REQUIRED: ${{ needs.scope.outputs.code_relevant }}
           SCOPE_RESULT: ${{ needs.scope.result }}
@@ -197,7 +193,7 @@ jobs:
             --evidence-dir artifacts/downloaded-unit-feedback
 
   types:
-    name: CI Shadow / Types
+    name: Types
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -222,11 +218,12 @@ jobs:
           fi
 
   coverage:
-    name: CI Shadow / Coverage Complete
+    name: Coverage Complete
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Checkout
@@ -239,13 +236,13 @@ jobs:
         uses: ./.github/actions/setup-pnpm-workspace
       - name: Start Redis
         if: needs.scope.outputs.coverage_mode != 'skip'
-        run: docker run -d --name sva-studio-redis-ci-shadow -p 6379:6379 redis:7-alpine
+        run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
       - name: Wait for Redis readiness
         if: needs.scope.outputs.coverage_mode != 'skip'
         run: |
           set -euo pipefail
           for i in {1..30}; do
-            if docker exec sva-studio-redis-ci-shadow redis-cli -p 6379 ping | grep -q PONG; then
+            if docker exec sva-studio-redis-coverage redis-cli -p 6379 ping | grep -q PONG; then
               exit 0
             fi
             sleep 2
@@ -264,12 +261,22 @@ jobs:
           pnpm coverage-gate
       - name: Stop Redis
         if: always() && needs.scope.outputs.coverage_mode != 'skip'
-        run: docker rm -f sva-studio-redis-ci-shadow || true
+        run: docker rm -f sva-studio-redis-coverage || true
+      - name: Upload to Codecov
+        if: always() && env.CODECOV_TOKEN != '' && needs.scope.outputs.coverage_mode != 'skip'
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ./apps/**/coverage/lcov.info,./packages/**/coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: false
+          flags: unittests
+          name: coverage-${{ github.run_id }}
       - name: Upload Coverage evidence
         if: always() && needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip'
         uses: actions/upload-artifact@v7
         with:
-          name: ci-gate-shadow-coverage-${{ github.run_id }}
+          name: coverage-reports-${{ github.run_id }}
           path: |
             **/coverage/coverage-summary.json
             **/coverage/lcov.info
@@ -278,10 +285,10 @@ jobs:
             tooling/testing/coverage-policy.json
           if-no-files-found: error
           overwrite: true
-          retention-days: 30
+          retention-days: 7
 
   coverage-aggregate:
-    name: CI Shadow / Coverage
+    name: Coverage
     if: always()
     needs:
       - scope
@@ -304,9 +311,9 @@ jobs:
         if: needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip'
         uses: actions/download-artifact@v8
         with:
-          name: ci-gate-shadow-coverage-${{ github.run_id }}
+          name: coverage-reports-${{ github.run_id }}
           path: artifacts/downloaded-coverage
-      - name: Aggregate shadow Coverage status
+      - name: Aggregate required Coverage status
         env:
           EVIDENCE_REQUIRED: ${{ needs.scope.outputs.code_relevant == 'true' && needs.scope.outputs.coverage_mode != 'skip' }}
           SCOPE_RESULT: ${{ needs.scope.result }}
@@ -327,7 +334,7 @@ jobs:
           node scripts/ci/validate-downloaded-coverage.ts artifacts/downloaded-coverage "$HEAD_SHA"
 
   complexity:
-    name: CI Shadow / Complexity
+    name: Complexity
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -350,7 +357,7 @@ jobs:
           fi
 
   integration:
-    name: CI Shadow / PR Integration
+    name: PR Integration
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -379,7 +386,7 @@ jobs:
           fi
 
   file-placement:
-    name: CI Shadow / File Placement
+    name: File Placement
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -396,7 +403,7 @@ jobs:
           pnpm check:rollout-docs
 
   a11y:
-    name: CI Shadow / A11y
+    name: A11y
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -413,7 +420,7 @@ jobs:
         run: pnpm test:a11y
 
   app-build:
-    name: CI Shadow / App Build
+    name: App Build
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -434,7 +441,7 @@ jobs:
         run: pnpm verify:runtime-artifact
 
   documentation-integrity:
-    name: CI Shadow / Documentation Integrity
+    name: Documentation Integrity
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -449,7 +456,7 @@ jobs:
         run: pnpm check:docs
 
   documentation-catalog:
-    name: CI Shadow / Documentation Catalog (advisory)
+    name: Documentation Catalog (advisory)
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -467,7 +474,7 @@ jobs:
         run: pnpm nx run sva-studio-react:check:documentation-catalog
 
   db-schema:
-    name: CI Shadow / DB Schema Snapshot
+    name: DB Schema Snapshot
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -483,101 +490,3 @@ jobs:
       - name: Run DB Schema Snapshot contract
         if: needs.scope.outputs.db_schema_mode != 'skip'
         run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts
-
-  parity:
-    name: CI Shadow / Parity
-    if: always()
-    needs:
-      - scope
-      - lint
-      - unit
-      - types
-      - coverage-aggregate
-      - complexity
-      - integration
-      - file-placement
-      - a11y
-      - app-build
-      - documentation-integrity
-      - documentation-catalog
-      - db-schema
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - name: Checkout parity validator
-        uses: actions/checkout@v7
-        with:
-          filter: blob:none
-          sparse-checkout: |
-            .nvmrc
-            scripts/ci
-      - name: Setup repository Node.js runtime
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-      - name: Download canonical scope evidence
-        id: scope-evidence
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          name: ci-gate-shadow-scope-${{ github.run_id }}
-          path: artifacts/ci-shadow
-      - name: Wait for exact-head terminal checks and compare parity
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          SCOPE_RESULT: ${{ needs.scope.result }}
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/ci-shadow
-          comparison_started_at=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
-          parity_poll_started_epoch=$(date -u +%s)
-          comparison_deadline_epoch=$((parity_poll_started_epoch + 32 * 60))
-          while true; do
-            gh api \
-              -H 'Accept: application/vnd.github+json' \
-              "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?filter=latest&per_page=100" \
-              > artifacts/ci-shadow/check-runs.json
-            set +e
-            node scripts/ci/ci-gate-shadow-parity.cli.ts \
-              --checks artifacts/ci-shadow/check-runs.json \
-              --scope artifacts/ci-shadow/pr-scope.json \
-              --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \
-              --output artifacts/ci-shadow/parity.json \
-              --base "$BASE_SHA" \
-              --head "$HEAD_SHA" \
-              --scope-result "$SCOPE_RESULT" \
-              --comparison-started-at "$comparison_started_at"
-            parity_status=$?
-            set -e
-            if [ "$parity_status" -eq 0 ]; then
-              exit 0
-            fi
-            if [ "$parity_status" -eq 1 ]; then
-              exit 1
-            fi
-            if [ "$(date -u +%s)" -ge "$comparison_deadline_epoch" ]; then
-              break
-            fi
-            sleep 10
-          done
-          node scripts/ci/ci-gate-shadow-parity.cli.ts \
-            --checks artifacts/ci-shadow/check-runs.json \
-            --scope artifacts/ci-shadow/pr-scope.json \
-            --legacy-scope artifacts/ci-shadow/legacy-pr-scope.json \
-            --output artifacts/ci-shadow/parity.json \
-            --base "$BASE_SHA" \
-            --head "$HEAD_SHA" \
-            --scope-result "$SCOPE_RESULT" \
-            --comparison-started-at "$comparison_started_at" \
-            --fail-pending
-      - name: Upload topology parity evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: ci-gate-shadow-parity-${{ github.run_id }}
-          path: artifacts/ci-shadow/parity.json
-          if-no-files-found: error
-          overwrite: true
-          retention-days: 30

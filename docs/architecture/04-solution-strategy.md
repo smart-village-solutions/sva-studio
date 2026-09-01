@@ -236,11 +236,21 @@ Die Merge-Absicherung bleibt vollständig, wird aber nach erwarteter Reparaturwi
 
 Die öffentlichen Required-Check-Namen `Unit` und `Coverage` bleiben stabil. Parallele Fast-Feedback-, Rest- und Coverage-Teiljobs veröffentlichen versionierte Evidenz für exakt den PR-Head; ausschließlich finale Aggregatoren entscheiden fail-closed über Vollständigkeit, Disjunktheit und Ergebnis. Vollständiges App-E2E ist kein PR-Gate mehr: Ein automatischer Lauf pro `main`-Commit attestiert den Quellstand, während die OCI-Revision den davon getrennten Image-Nachweis liefert. Staging verlangt beide Verträge vor jeder Mutation.
 
-### Ergänzung 2026-08: Konsolidierte CI-Topologie im Shadow-Modus
+### Ergänzung 2026-09: Konsolidierte CI-Topologie
 
-Zwei zusätzliche, nicht blockierende Workflows bilden die geplante Zieltopologie ab: ein PR-Shadow mit genau einer allgemeinen Scope-Entscheidung sowie ein vollständiger Main-/Nightly-Shadow ohne PR-Scope- oder PR-Cache-Übernahme. Der PR-Scope wird als versionierte, an Base- und Head-SHA gebundene Evidenz veröffentlicht. Alle Shadow-Jobs tragen eigene `CI Shadow / ...`-Namen; die sieben Required-Kontexte, das aktive Ruleset und die bestehenden Workflow-Entscheidungen bleiben unverändert.
+Ein produktiver PR-Workflow besitzt genau eine allgemeine Scope-Entscheidung;
+ein getrennter Main-/Nightly-Workflow führt die vollständige Diagnostik ohne
+PR-Scope oder PR-Cache aus. Der PR-Scope wird als versionierte, an Base- und
+Head-SHA gebundene Evidenz veröffentlicht. Die sieben Required-Kontexte und
+das aktive Ruleset bleiben unverändert.
 
-Der Shadow ist Migrationscode und kein dauerhafter zweiter Betriebsweg. Die Head-SHA-genaue PR-Auswertung belegt `20/20` repräsentative Läufe ohne ungeklärte Scope- oder Ergebnisabweichung. Die atomare Umschaltung bleibt dennoch ein eigener Change: Zuvor muss die verlängerte PR-Sammler-Deadline live grün sein; danach werden Altworkflows und Paritätsjobs entfernt und zehn repräsentative produktive Läufe nachgemessen.
+Die Shadow-Abnahme belegte `20/20` repräsentative PR-Läufe ohne ungeklärte
+Scope- oder Ergebnisabweichung. Beim Cutover wurden die vier alten
+Orchestrierungsworkflows, beide Paritätsjobs und ihre reine
+Migrationsimplementierung entfernt. Codecov und SonarCloud besitzen wieder
+genau einen produktiven Schreibpfad; `Build`, `App E2E` und `Promote` bleiben
+außerhalb der Gate-Konsolidierung. Zehn repräsentative PR-Läufe nach dem
+Cutover liefern die noch offene produktive Laufzeitnachmessung.
 
 ### Ergänzung 2026-08: Route-owned Anwenderdokumentation
 

@@ -50,6 +50,25 @@ WITH principals AS (
   SELECT to_regrole($1) AS app_role_oid,
     to_regrole($2) AS app_login_oid,
     to_regrole($3) AS worker_role_oid
+), graphile_objects AS (
+  SELECT
+    (
+      SELECT p.oid
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'graphile_worker'
+        AND p.proname = 'sva_enqueue_job'
+        AND pg_get_function_identity_arguments(p.oid) =
+          'identifier text, payload json, queue_name text, max_attempts integer, job_key text, run_at timestamp with time zone'
+    ) AS enqueue_function_oid,
+    (
+      SELECT c.oid
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'graphile_worker'
+        AND c.relname = '_private_jobs'
+        AND c.relkind IN ('r', 'p')
+    ) AS jobs_table_oid
 )
 SELECT
   to_regnamespace('graphile_worker') IS NOT NULL AS graphile_schema_exists,
@@ -57,27 +76,27 @@ SELECT
   principals.worker_role_oid IS NOT NULL AS worker_role_exists,
   COALESCE(has_function_privilege(
     principals.app_role_oid,
-    to_regprocedure('graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamp with time zone)'),
+    graphile_objects.enqueue_function_oid,
     'EXECUTE'
   ), false)
     AND COALESCE(has_schema_privilege(principals.app_role_oid, 'graphile_worker', 'USAGE'), false)
     AS effective_app_can_enqueue,
   NOT COALESCE(has_table_privilege(
     principals.app_role_oid,
-    to_regclass('graphile_worker._private_jobs'),
+    graphile_objects.jobs_table_oid,
     'SELECT,INSERT,UPDATE,DELETE'
   ), false) AS effective_app_cannot_process,
   NOT COALESCE(has_schema_privilege(principals.app_login_oid, 'graphile_worker', 'USAGE'), false)
     AND NOT COALESCE(has_function_privilege(
       principals.app_login_oid,
-      to_regprocedure('graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamp with time zone)'),
+      graphile_objects.enqueue_function_oid,
       'EXECUTE'
     ), false) AS app_login_cannot_enqueue_directly,
   NOT has_database_privilege(principals.app_role_oid, current_database(), 'CREATE')
     AND NOT has_schema_privilege(principals.app_role_oid, 'public', 'CREATE') AS app_cannot_create,
   COALESCE(has_table_privilege(
     principals.worker_role_oid,
-    to_regclass('graphile_worker._private_jobs'),
+    graphile_objects.jobs_table_oid,
     'SELECT,INSERT,UPDATE,DELETE'
   ), false)
     AND COALESCE(
@@ -91,11 +110,13 @@ SELECT
       AND NOT has_function_privilege(principals.worker_role_oid, p.oid, 'EXECUTE')
   ) AS worker_functions_complete,
   principals.worker_role_oid IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM pg_sequences sequence
-    WHERE sequence.schemaname = 'graphile_worker'
+    SELECT 1 FROM pg_class sequence
+    JOIN pg_namespace n ON n.oid = sequence.relnamespace
+    WHERE n.nspname = 'graphile_worker'
+      AND sequence.relkind = 'S'
       AND NOT has_sequence_privilege(
         principals.worker_role_oid,
-        format('%I.%I', sequence.schemaname, sequence.sequencename),
+        sequence.oid,
         'USAGE,SELECT,UPDATE'
       )
   ) AS worker_sequences_complete,
@@ -115,7 +136,8 @@ SELECT
           AND COALESCE(policy.with_check, '') IN ('true', '(true)')
       )
   ) AS worker_policies_complete
-FROM principals;
+FROM principals
+CROSS JOIN graphile_objects;
 `;
 
 const GRAPHILE_WORKER_READINESS_FIELDS = [

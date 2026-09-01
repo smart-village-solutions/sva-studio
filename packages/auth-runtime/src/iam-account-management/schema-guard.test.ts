@@ -52,6 +52,13 @@ describe('schema guard helpers', () => {
       expect.stringContaining('effective_app_can_enqueue'),
       ['iam_app', 'sva_app', 'sva_job_worker']
     );
+    const readinessSql = postgresState.query.mock.calls[0]?.[0] as string;
+    expect(readinessSql).toContain("p.proname = 'sva_enqueue_job'");
+    expect(readinessSql).toContain("c.relname = '_private_jobs'");
+    expect(readinessSql).toContain('has_sequence_privilege');
+    expect(readinessSql).not.toContain("to_regprocedure('graphile_worker.");
+    expect(readinessSql).not.toContain("to_regclass('graphile_worker.");
+    expect(readinessSql).not.toContain("format('%I.%I', sequence.schemaname");
     expect(postgresState.query).toHaveBeenCalledWith(expect.stringContaining('to_regrole($3)'), [
       'iam_app',
       'sva_app',

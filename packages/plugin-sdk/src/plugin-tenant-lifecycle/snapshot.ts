@@ -1,5 +1,6 @@
 import { normalizePluginIdentifier, normalizePluginNamespace } from '../plugin-identifiers.js';
 import { assertOwnedNamespacedIdentifier } from './identifiers.js';
+import { isPluginTenantLifecycleJsonSafe } from './json-safe.js';
 import { encodePluginTenantReadinessRevision } from './revision.js';
 import type {
   PluginTenantLifecycleDefinition,
@@ -14,20 +15,6 @@ const readinessStatusPriority: Readonly<Record<PluginTenantReadinessStatus, numb
   degraded: 1,
   pending: 2,
   blocked: 3,
-};
-
-const isJsonSafe = (value: unknown, ancestors = new Set<object>()): boolean => {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (typeof value !== 'object') return false;
-  if (ancestors.has(value)) return false;
-  ancestors.add(value);
-  const safe = Array.isArray(value)
-    ? value.every((entry) => isJsonSafe(entry, ancestors))
-    : Object.getPrototypeOf(value) === Object.prototype &&
-      Object.values(value).every((entry) => isJsonSafe(entry, ancestors));
-  ancestors.delete(value);
-  return safe;
 };
 
 export const reducePluginTenantReadinessStatus = (
@@ -86,7 +73,7 @@ export const createPluginTenantReadinessSnapshot = (input: {
         (typeof check.details !== 'object' ||
           check.details === null ||
           Array.isArray(check.details) ||
-          !isJsonSafe(check.details)))
+          !isPluginTenantLifecycleJsonSafe(check.details)))
     ) {
       throw new Error(`invalid_plugin_tenant_readiness_check_result:${checkId}`);
     }

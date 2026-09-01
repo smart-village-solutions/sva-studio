@@ -98,12 +98,13 @@ describe('runtime wiring', () => {
 
     expect(result).toBe(repository);
     expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(client.query).toHaveBeenNthCalledWith(2, 'SELECT set_config($1, $2, true);', [
+    expect(client.query).toHaveBeenNthCalledWith(2, 'SET LOCAL ROLE iam_app;');
+    expect(client.query).toHaveBeenNthCalledWith(3, 'SELECT set_config($1, $2, true);', [
       'app.instance_id',
       'tenant-a',
     ]);
-    expect(client.query).toHaveBeenNthCalledWith(3, 'select 1', ['demo']);
-    expect(client.query).toHaveBeenNthCalledWith(4, 'COMMIT');
+    expect(client.query).toHaveBeenNthCalledWith(4, 'select 1', ['demo']);
+    expect(client.query).toHaveBeenNthCalledWith(5, 'COMMIT');
     expect(client.release).toHaveBeenCalledOnce();
   });
 

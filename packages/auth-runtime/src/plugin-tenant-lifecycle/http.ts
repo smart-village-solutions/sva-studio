@@ -104,6 +104,8 @@ const readLifecycleError = (
     case 'plugin_tenant_lifecycle_handler_missing':
     case 'plugin_tenant_lifecycle_cancellation_mismatch':
     case 'plugin_tenant_lifecycle_claim_conflict':
+    case 'plugin_tenant_lifecycle_invalid_transition':
+    case 'plugin_tenant_lifecycle_request_conflict':
       return { code, status: 409 };
     default:
       return { code: 'plugin_tenant_lifecycle_start_failed', status: 500 };

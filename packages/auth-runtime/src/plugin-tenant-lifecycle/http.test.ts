@@ -179,6 +179,27 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     });
   });
 
+  it.each([
+    'plugin_tenant_lifecycle_invalid_transition',
+    'plugin_tenant_lifecycle_request_conflict',
+  ] as const)('maps %s to a stable conflict response', async (errorCode) => {
+    state.startConfiguredPluginTenantLifecycle.mockRejectedValue(
+      new Error(`${errorCode}:speech:reconcile`)
+    );
+    const { startPluginTenantLifecycleInternal } = await import('./http.js');
+    const response = await startPluginTenantLifecycleInternal(
+      new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pluginId: 'speech', operation: 'reconcile' }),
+      }),
+      context as never
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: errorCode } });
+  });
+
   it('localizes invalid lifecycle requests for English administrators', async () => {
     const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const response = await startPluginTenantLifecycleInternal(

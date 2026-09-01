@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { TenantModuleActivationPolicySnapshot } from '@sva/core';
 import type { PluginTenantLifecycleRegistryEntry } from '@sva/plugin-sdk';
 
@@ -29,6 +31,17 @@ let configuredModuleIamRegistry: ReadonlyMap<string, InstanceRegistryModuleIamSn
   new Map();
 let configuredTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry> =
   new Map();
+
+const readLifecycleContractDigest = (lifecycle: PluginTenantLifecycleRegistryEntry): string =>
+  createHash('sha256')
+    .update(
+      JSON.stringify({
+        contractVersion: lifecycle.contractVersion,
+        operations: lifecycle.operations,
+        readinessChecks: lifecycle.readinessChecks,
+      })
+    )
+    .digest('hex');
 
 const copySnapshot = (
   snapshot: TenantModuleActivationPolicySnapshot
@@ -137,7 +150,7 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
         lifecycle.pluginId,
         Object.freeze({
           ...lifecycle,
-          contractRevision: `${activationPolicy.policyRevision}:${lifecycle.contractVersion}`,
+          contractRevision: `${activationPolicy.policyRevision}:${readLifecycleContractDigest(lifecycle)}`,
           operations: Object.freeze(
             lifecycle.operations.map((operation) => Object.freeze({ ...operation }))
           ),

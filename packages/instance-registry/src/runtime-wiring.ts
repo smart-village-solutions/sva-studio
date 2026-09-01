@@ -88,6 +88,15 @@ const completeActivationPolicyFollowUp = async (
   runActivationPolicyFollowUp(deps, input);
 };
 
+const beginScopedTransaction = async (
+  client: InstanceRegistryQueryClient,
+  instanceId: string
+): Promise<void> => {
+  await client.query('BEGIN');
+  await client.query('SET LOCAL ROLE iam_app;');
+  await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
+};
+
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
   const withScopedClient = async <T>(
     instanceId: string,
@@ -99,8 +108,7 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     }
     const client = await pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
+      await beginScopedTransaction(client, instanceId);
       const result = await work(client);
       await client.query('COMMIT');
       return result;

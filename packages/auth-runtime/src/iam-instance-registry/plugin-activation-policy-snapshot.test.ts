@@ -122,7 +122,7 @@ describe('instance registry plugin activation policy snapshot', () => {
     expect(Object.isFrozen(readInstanceRegistryModuleIamRegistry().get('ssf'))).toBe(true);
     expect(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')).toEqual({
       pluginId: 'ssf',
-      contractRevision: 'ssf-1:1',
+      contractRevision: expect.stringMatching(/^ssf-1:[a-f0-9]{64}$/),
       contractVersion: 1,
       operations: [{ operation: 'provision', jobTypeId: 'ssf.provisionTenant' }],
       readinessChecks: [
@@ -131,6 +131,43 @@ describe('instance registry plugin activation policy snapshot', () => {
     });
     expect(Object.isFrozen(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf'))).toBe(
       true
+    );
+  });
+
+  it('changes the lifecycle revision when contract contents change', () => {
+    const activationPolicies = {
+      revision: 'ssf-catalog-1',
+      modules: [
+        {
+          moduleId: 'ssf',
+          activationPolicy: 'automatic' as const,
+          manifestVersion: 1,
+          policyRevision: 'ssf-1',
+        },
+      ],
+    };
+    const configure = (jobTypeId: string) =>
+      configureInstanceRegistryPluginRuntimeSnapshot({
+        activationPolicies,
+        moduleIamContracts: [{ moduleId: 'ssf', permissionIds: [] }],
+        tenantLifecycles: [
+          {
+            pluginId: 'ssf',
+            contractVersion: 1,
+            operations: [{ operation: 'provision', jobTypeId }],
+            readinessChecks: [],
+          },
+        ],
+      });
+
+    configure('ssf.provisionTenant');
+    const firstRevision = readInstanceRegistryPluginTenantLifecycleRegistry().get(
+      'ssf'
+    )?.contractRevision;
+    configure('ssf.provisionTenantV2');
+
+    expect(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')?.contractRevision).not.toBe(
+      firstRevision
     );
   });
 

@@ -290,6 +290,15 @@ describe('plugin tenant lifecycle contracts', () => {
     ).toThrow(
       'plugin_tenant_lifecycle_error_namespace_mismatch:speech:waste:waste.databaseUnavailable'
     );
+
+    expect(() =>
+      definePluginTenantLifecycleError('speech', {
+        code: 'speech.databaseUnavailable',
+        messageKey: 'speech.errors.databaseUnavailable',
+        retry: { kind: 'terminal' },
+        details: { revision: 3n },
+      })
+    ).toThrow('invalid_plugin_tenant_lifecycle_error:speech.databaseUnavailable');
   });
 
   it('derives readiness fail-closed from declared required and optional checks', () => {

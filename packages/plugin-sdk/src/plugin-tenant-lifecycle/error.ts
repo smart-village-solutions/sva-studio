@@ -1,6 +1,7 @@
 import { assertPluginContributionAllowedKeys } from '../guardrails.js';
 import { normalizePluginIdentifier, normalizePluginNamespace } from '../plugin-identifiers.js';
 import { assertOwnedNamespacedIdentifier } from './identifiers.js';
+import { isPluginTenantLifecycleJsonSafe } from './json-safe.js';
 import type { PluginTenantLifecycleError } from './types.js';
 
 const errorAllowedKeys = new Set(['code', 'messageKey', 'retry', 'details'] as const);
@@ -36,7 +37,8 @@ export const definePluginTenantLifecycleError = (
     (error.retry.kind === 'terminal' && 'retryAfterMs' in error.retry) ||
     (error.retry.kind === 'retryable' &&
       error.retry.retryAfterMs !== undefined &&
-      (!Number.isSafeInteger(error.retry.retryAfterMs) || error.retry.retryAfterMs <= 0))
+      (!Number.isSafeInteger(error.retry.retryAfterMs) || error.retry.retryAfterMs <= 0)) ||
+    (error.details !== undefined && !isPluginTenantLifecycleJsonSafe(error.details))
   ) {
     throw new Error(`invalid_plugin_tenant_lifecycle_error:${code}`);
   }

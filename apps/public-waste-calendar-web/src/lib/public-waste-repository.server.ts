@@ -296,10 +296,10 @@ export const createPublicWasteRepository = (input: {
         `,
       });
 
-      let effectiveRegionId = query.selection.regionId;
+      let effectiveRegionId = query.selection.regionId?.toLowerCase();
       if (
         effectiveRegionId &&
-        !regionsResult.rows.some((region) => region.id === effectiveRegionId)
+        !regionsResult.rows.some((region) => region.id.toLowerCase() === effectiveRegionId)
       ) {
         return { step: 'city', options: [] };
       }

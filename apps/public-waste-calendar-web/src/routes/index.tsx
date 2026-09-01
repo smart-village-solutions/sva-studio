@@ -22,10 +22,10 @@ import {
   serializeClearedPublicWastePreferenceCookie,
   serializePublicWastePreferenceCookie,
 } from '../lib/public-waste-preferences.shared.js';
+import { createPublicWasteTranslator } from '../lib/public-waste-translations.js';
 
 const REFERENCE_DATE = new Date().toISOString().slice(0, 10);
-const REGION_BINDING_ERROR_MESSAGE =
-  'Die angegebene Region ist ungültig oder für den öffentlichen Abfallkalender nicht verfügbar.';
+const BOUND_REGION_UNAVAILABLE_ERROR = 'public_waste_bound_region_unavailable';
 
 type PublicWasteRegionBinding =
   | { readonly status: 'unbound' }
@@ -150,12 +150,11 @@ const resolveSelectionState = async (
     const response = await requestPublicWasteSelection(selection);
 
     if (response.options.length === 0) {
+      if (boundRegionId && response.step === 'city') {
+        throw new Error(BOUND_REGION_UNAVAILABLE_ERROR);
+      }
       if (!selection.cityId || !selection.streetId) {
-        throw new Error(
-          boundRegionId
-            ? 'public_waste_bound_region_unavailable'
-            : 'public_waste_selection_unresolved'
-        );
+        throw new Error('public_waste_selection_unresolved');
       }
 
       const calendar = await requestPublicWasteCalendar({
@@ -224,17 +223,24 @@ const trimSelectionToStep = (
 };
 
 export function PublicWasteIndexPage() {
+  const [t] = React.useState(() =>
+    createPublicWasteTranslator(document.documentElement.lang || 'de')
+  );
   const [regionBinding] = React.useState<PublicWasteRegionBinding>(() =>
     readPublicWasteRegionBinding(window.location.search)
   );
   const [pageState, setPageState] = React.useState<PageState>({ status: 'loading' });
+  const toLoadErrorMessage = (error: unknown): string =>
+    error instanceof Error && error.message === BOUND_REGION_UNAVAILABLE_ERROR
+      ? t('errors.boundRegionUnavailable')
+      : 'Die öffentlichen Abfallkalender-Daten konnten nicht geladen werden.';
 
   React.useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       if (regionBinding.status === 'invalid') {
-        setPageState({ status: 'error', message: REGION_BINDING_ERROR_MESSAGE });
+        setPageState({ status: 'error', message: t('errors.boundRegionUnavailable') });
         return;
       }
 
@@ -242,7 +248,10 @@ export function PublicWasteIndexPage() {
         const restoredSelection = readStoredLocationSelection();
         const boundRegionId = regionBinding.status === 'bound' ? regionBinding.regionId : undefined;
         const preferredSelection =
-          restoredSelection && (!boundRegionId || restoredSelection.regionId === boundRegionId)
+          restoredSelection &&
+          (!boundRegionId ||
+            !restoredSelection.regionId ||
+            restoredSelection.regionId.toLowerCase() === boundRegionId)
             ? restoredSelection
             : undefined;
         const nextState = await resolveSelectionState(
@@ -273,10 +282,7 @@ export function PublicWasteIndexPage() {
         if (!cancelled) {
           setPageState({
             status: 'error',
-            message:
-              error instanceof Error && error.message === 'public_waste_bound_region_unavailable'
-                ? REGION_BINDING_ERROR_MESSAGE
-                : 'Die öffentlichen Abfallkalender-Daten konnten nicht geladen werden.',
+            message: toLoadErrorMessage(error),
           });
         }
       }
@@ -319,10 +325,10 @@ export function PublicWasteIndexPage() {
       React.startTransition(() => {
         setPageState(nextState);
       });
-    } catch {
+    } catch (error) {
       setPageState({
         status: 'error',
-        message: 'Die öffentlichen Abfallkalender-Daten konnten nicht geladen werden.',
+        message: toLoadErrorMessage(error),
       });
     }
   };
@@ -346,10 +352,10 @@ export function PublicWasteIndexPage() {
       React.startTransition(() => {
         setPageState(nextState);
       });
-    } catch {
+    } catch (error) {
       setPageState({
         status: 'error',
-        message: 'Die öffentlichen Abfallkalender-Daten konnten nicht geladen werden.',
+        message: toLoadErrorMessage(error),
       });
     }
   };
@@ -367,10 +373,10 @@ export function PublicWasteIndexPage() {
       React.startTransition(() => {
         setPageState(nextState);
       });
-    } catch {
+    } catch (error) {
       setPageState({
         status: 'error',
-        message: 'Die öffentlichen Abfallkalender-Daten konnten nicht geladen werden.',
+        message: toLoadErrorMessage(error),
       });
     }
   };

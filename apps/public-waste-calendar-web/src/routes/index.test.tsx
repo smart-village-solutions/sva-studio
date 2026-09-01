@@ -205,6 +205,65 @@ describe('PublicWasteIndexPage', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts a regionless stored location for a bound region and fails closed if that region disappears', async () => {
+    window.history.replaceState({}, '', `/?regionId=${BOUND_REGION_ID}`);
+    document.cookie =
+      'sva_public_waste_location=~%3A22222222-2222-4222-8222-222222222222%3A33333333-3333-4333-8333-333333333333%3A44444444-4444-4444-8444-444444444444; Path=/';
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+        window.location.origin
+      );
+
+      expect(url.searchParams.get('regionId')).toBe(BOUND_REGION_ID);
+      if (!url.searchParams.has('cityId')) {
+        return new Response(JSON.stringify(selectionPayloads.root));
+      }
+      if (!url.searchParams.has('streetId')) {
+        return new Response(JSON.stringify(selectionPayloads.city));
+      }
+      return new Response(
+        JSON.stringify({ status: 'incomplete', step: 'city', options: [] })
+      );
+    });
+
+    render(<PublicWasteIndexPage />);
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Die angegebene Region ist ungültig'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(
+      fetchMock.mock.calls.some(([input]) => {
+        const url = new URL(
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+          window.location.origin
+        );
+        return url.pathname === '/api/public-waste/calendar';
+      })
+    ).toBe(false);
+  });
+
+  it('preserves the bound-region error after a selection interaction', async () => {
+    window.history.replaceState({}, '', `/?regionId=${BOUND_REGION_ID}`);
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify(selectionPayloads.root)))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'incomplete', step: 'city', options: [] }))
+      );
+
+    render(<PublicWasteIndexPage />);
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Ort suchen' }), {
+      target: { value: 'Rat' },
+    });
+    fireEvent.click(await screen.findByRole('option', { name: 'Rathenow' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Die angegebene Region ist ungültig'
+    );
+  });
+
   it('loads selection and calendar data from the public api, stores the cookie, and restores it on the next render', async () => {
     fetchMock.mockImplementation(async (input) => {
       const url =

@@ -100,7 +100,7 @@ BEGIN
   END IF;
 END
 $bootstrap$;`,
-  `GRANT iam_app TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT iam_app TO ${sqlIdentifier(appDbUser)} WITH INHERIT FALSE;`,
   `GRANT CONNECT ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
   `REVOKE CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} FROM ${sqlIdentifier(appDbUser)};`,
   `REVOKE CREATE ON SCHEMA public FROM PUBLIC;`,

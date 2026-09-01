@@ -93,6 +93,7 @@ const handleTargets = async (
     dataProviderId: string;
     displayName: string;
     principal?: ResolvedMainserverOwnershipSource['principal'];
+    principalResolution: 'resolved' | 'unresolved' | 'failed';
   }>
 ): Promise<Response> => {
   const url = new URL(request.url);
@@ -122,6 +123,7 @@ const handleTargets = async (
     contentType: route.contentType,
     currentOwner: {
       ...(source.principal ? { principal: source.principal } : {}),
+      principalResolution: source.principalResolution,
       displayName: source.displayName,
     },
   });
@@ -172,12 +174,14 @@ const handleAuthorizedTargets = async (
     displayName:
       current.dataProvider?.name?.trim() || resolvedSource?.dataProviderName || dataProviderId,
     ...(resolvedSource ? { principal: resolvedSource.principal } : {}),
+    principalResolution: sourceEnrichment.status,
   };
   return route.operation === 'authorization'
     ? json({
         data: { canTransfer: true },
         currentOwner: {
           ...(source.principal ? { principal: source.principal } : {}),
+          principalResolution: source.principalResolution,
           displayName: source.displayName,
         },
       })

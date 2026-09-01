@@ -153,6 +153,9 @@ export const contentDEResources = {
     title: 'Inhaber',
     currentOwner: 'Aktueller Inhaber',
     noOwner: 'Kein eindeutiger Inhaber zugeordnet',
+    ownerUnresolved: 'Keinem Account oder keiner Organisation eindeutig zugeordnet.',
+    ownerResolutionFailed:
+      'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
     account: 'Persönlicher Account',
     organization: 'Organisation',
     verificationRequired:

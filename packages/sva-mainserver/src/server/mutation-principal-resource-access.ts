@@ -38,7 +38,7 @@ export const resolveMainserverResourceAccess = async (input: {
     input.actions.map(async (action) => {
       if (
         requireAllScopeActions.has(action) &&
-        !hasMainserverActionAccessScope(permissions.permissions, action, 'all')
+        !hasMainserverActionAccessScope(permissions.permissions, action, 'content', 'all')
       ) {
         return [action, false] as const;
       }

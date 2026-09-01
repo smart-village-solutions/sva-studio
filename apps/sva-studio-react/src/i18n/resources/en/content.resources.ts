@@ -149,6 +149,8 @@ export const contentENResources = {
     title: 'Owner',
     currentOwner: 'Current owner',
     noOwner: 'No unambiguous owner assigned',
+    ownerUnresolved: 'Not unambiguously assigned to an account or organization.',
+    ownerResolutionFailed: 'The account or organization assignment could not be checked.',
     account: 'Personal account',
     organization: 'Organization',
     verificationRequired:

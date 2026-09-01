@@ -224,7 +224,7 @@ export const authorizeMainserverExistingContent = async (input: {
   }
   if (
     input.requiredAccessScope === 'all' &&
-    !hasMainserverActionAccessScope(permissions.permissions, input.action, 'all')
+    !hasMainserverActionAccessScope(permissions.permissions, input.action, 'content', 'all')
   ) {
     await emitMainserverMutationAuthorizationAudit({
       actor: input.actor,

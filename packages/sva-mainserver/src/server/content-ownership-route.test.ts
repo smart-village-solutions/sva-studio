@@ -228,7 +228,7 @@ describe('Mainserver content ownership route', () => {
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({
       data: { canTransfer: true },
-      currentOwner: { displayName: 'Quelle' },
+      currentOwner: { displayName: 'Quelle', principalResolution: 'resolved' },
     });
     expect(state.listTargets).not.toHaveBeenCalled();
   });
@@ -562,7 +562,7 @@ describe('Mainserver content ownership route', () => {
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({
       data: { canTransfer: true },
-      currentOwner: { displayName: 'Quelle' },
+      currentOwner: { displayName: 'Quelle', principalResolution: 'unresolved' },
     });
     expect(state.resolveResourceAccess).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -597,7 +597,7 @@ describe('Mainserver content ownership route', () => {
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({
       data: { canTransfer: true },
-      currentOwner: { displayName: 'Quelle' },
+      currentOwner: { displayName: 'Quelle', principalResolution: 'failed' },
     });
   });
 

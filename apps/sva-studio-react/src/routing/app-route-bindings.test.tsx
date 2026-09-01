@@ -43,9 +43,16 @@ vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
     currentOwner,
   }: {
     canTransfer: boolean;
-    currentOwner: { displayName: string };
+    currentOwner: {
+      displayName: string;
+      principalResolution?: 'resolved' | 'unresolved' | 'failed';
+    };
   }) => (
-    <div data-can-transfer={String(canTransfer)} data-testid="content-ownership-panel">
+    <div
+      data-can-transfer={String(canTransfer)}
+      data-principal-resolution={currentOwner.principalResolution}
+      data-testid="content-ownership-panel"
+    >
       {currentOwner.displayName}
     </div>
   ),
@@ -869,6 +876,7 @@ describe('appRouteBindings', () => {
         data: { canTransfer: true },
         currentOwner: {
           principal: { type: 'account', id: 'account-1' },
+          principalResolution: 'resolved',
           displayName: 'Aktueller Account',
         },
       });
@@ -882,6 +890,9 @@ describe('appRouteBindings', () => {
       );
     });
     expect(screen.getByTestId('content-ownership-panel').textContent).toBe('Aktueller Account');
+    expect(
+      screen.getByTestId('content-ownership-panel').getAttribute('data-principal-resolution')
+    ).toBe('resolved');
     expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
       expect.objectContaining({
         url: '/api/v1/mainserver/content-ownership/news.article/content-1/authorization',

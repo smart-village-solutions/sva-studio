@@ -52,6 +52,11 @@ export function ContentOwnershipPanel({
             <span className="text-muted-foreground"> · {currentType}</span>
           ) : null}
         </p>
+        {currentOwner.principalResolution === 'unresolved' ? (
+          <p className="text-sm text-muted-foreground">{labels.ownerUnresolved}</p>
+        ) : currentOwner.principalResolution === 'failed' ? (
+          <p className="text-sm text-muted-foreground">{labels.ownerResolutionFailed}</p>
+        ) : null}
         <p className="text-sm text-muted-foreground">{labels.saveKeepsOwner}</p>
       </div>
       {success ? (

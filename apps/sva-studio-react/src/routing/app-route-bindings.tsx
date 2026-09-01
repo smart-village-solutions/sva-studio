@@ -200,6 +200,7 @@ type MainserverResourcePrincipalResolution =
 
 type MainserverResolvedOwner = Readonly<{
   principal?: IamContentOwnerPrincipal;
+  principalResolution: 'resolved' | 'unresolved' | 'failed';
   displayName: string;
 }>;
 
@@ -245,6 +246,8 @@ const resolveOwnershipTransferError = (error: unknown): string => {
 const ownershipPanelLabels = (): ContentOwnershipPanelLabels => ({
   title: t('content.ownership.title'),
   currentOwner: t('content.ownership.currentOwner'),
+  ownerUnresolved: t('content.ownership.ownerUnresolved'),
+  ownerResolutionFailed: t('content.ownership.ownerResolutionFailed'),
   account: t('content.ownership.account'),
   organization: t('content.ownership.organization'),
   verificationRequired: t('content.ownership.verificationRequired'),
@@ -457,6 +460,7 @@ const MainserverResourcePrincipalBoundary = ({
         resolvedOwner
           ? {
               principal: resolvedOwner.principal,
+              principalResolution: resolvedOwner.principalResolution,
               displayName: resolvedOwner.displayName,
             }
           : resolution.owner
@@ -488,7 +492,11 @@ const MainserverResourcePrincipalBoundary = ({
           const confirmedName =
             detail.data.dataProvider?.name?.trim() || detail.data.dataProvider?.id?.trim();
           if (!confirmedName) throw new Error('content_transfer_owner_missing');
-          setResolvedOwner({ principal: target.principal, displayName: confirmedName });
+          setResolvedOwner({
+            principal: target.principal,
+            principalResolution: 'resolved',
+            displayName: confirmedName,
+          });
         } catch {
           await navigate({ to: '/content' });
         }

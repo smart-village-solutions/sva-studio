@@ -237,4 +237,28 @@ export const wasteTenantMigrations = Object.freeze([
       values: Object.freeze([mainserverRevisionTriggerSpecs.length * 2]),
     }),
   }),
+  Object.freeze({
+    id: '20260901_01_add_waste_disruption_settings',
+    statements: Object.freeze([
+      'ALTER TABLE public.waste_settings ADD COLUMN IF NOT EXISTS disruption_location_enabled BOOLEAN NOT NULL DEFAULT FALSE;',
+      'ALTER TABLE public.waste_settings ADD COLUMN IF NOT EXISTS disruption_all_locations_enabled BOOLEAN NOT NULL DEFAULT FALSE;',
+    ]),
+    verification: Object.freeze({
+      sql: `
+        SELECT COUNT(*) = 2
+          AND BOOL_AND(data_type = 'boolean')
+          AND BOOL_AND(is_nullable = 'NO')
+          AND BOOL_AND(column_default = 'false') AS satisfied
+        FROM information_schema.columns
+        WHERE table_schema = $1
+          AND table_name = $2
+          AND column_name = ANY($3::text[]);
+      `,
+      values: Object.freeze([
+        'public',
+        'waste_settings',
+        ['disruption_location_enabled', 'disruption_all_locations_enabled'],
+      ]),
+    }),
+  }),
 ]);

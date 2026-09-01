@@ -127,6 +127,8 @@ const createSettings = (
   calendarWebUrl: 'https://calendar.example',
   pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
   pdfContactBlock: 'Abfallberatung',
+  disruptionLocationEnabled: false,
+  disruptionAllLocationsEnabled: false,
   databaseUrlConfigured: true,
   visibleStatus: 'ok',
   holidayStateCode: 'BY',
@@ -394,6 +396,8 @@ describe('waste-management settings write support', () => {
     expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
       pdfBrandingAssetUrl: 'https://cdn.example/next.svg',
       pdfContactBlock: 'Kontakt neu',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
     });
     expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
       nextItems: [{ id: 'preset-1', name: '10 Tage', intervalDays: 10 }],
@@ -476,6 +480,160 @@ describe('waste-management settings write support', () => {
     expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
       pdfBrandingAssetUrl: undefined,
       pdfContactBlock: undefined,
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+    });
+  });
+
+  it('persists independent disruption settings and queues the wasteTypes sync when they change', async () => {
+    const saved = createSettings({ disruptionLocationEnabled: true });
+    const saveWastePdfStaticSettings = vi.fn(async () => undefined);
+    const startPluginOperationJob = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'job-waste-types-1' } }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(saved);
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings,
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+        resolveActorInfo: vi.fn(async () => ({
+          actor: {
+            instanceId: 'tenant-a',
+            actorAccountId: 'account-1',
+            requestId: 'req-sync',
+            traceId: 'trace-sync',
+          },
+        })),
+        startPluginOperationJob,
+      },
+      ctx: actor,
+      request: new Request('https://studio.test/api/v1/waste-management/settings', {
+        method: 'PUT',
+      }),
+      instanceId: 'tenant-a',
+      requestId: 'req-sync',
+      input: {
+        schemaName: 'wm',
+        enabled: true,
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: false,
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
+      pdfBrandingAssetUrl: undefined,
+      pdfContactBlock: undefined,
+      disruptionLocationEnabled: true,
+      disruptionAllLocationsEnabled: false,
+    });
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+        instanceId: 'tenant-a',
+        actorAccountId: 'account-1',
+        data: expect.objectContaining({
+          input: expect.objectContaining({ operation: 'sync-waste-types' }),
+        }),
+      })
+    );
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: false,
+      },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-waste-types-1' },
+    });
+  });
+
+  it('does not queue a wasteTypes sync when disruption settings stay unchanged', async () => {
+    const startPluginOperationJob = vi.fn();
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(createSettings());
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings: vi.fn(async () => undefined),
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+        startPluginOperationJob,
+      },
+      ctx: actor,
+      request: new Request('https://studio.test/api/v1/waste-management/settings', {
+        method: 'PUT',
+      }),
+      instanceId: 'tenant-a',
+      requestId: 'req-no-sync',
+      input: {
+        schemaName: 'wm',
+        enabled: true,
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(startPluginOperationJob).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.not.toHaveProperty('syncStatus');
+  });
+
+  it('keeps a verified settings save successful when the wasteTypes job cannot be queued', async () => {
+    const saved = createSettings({ disruptionAllLocationsEnabled: true });
+    loadConfiguredWasteSettingsMock
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(saved);
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [createInterfaceRecord()]),
+        saveExternalInterfaceRecord: vi.fn(async () => undefined),
+        saveWastePdfStaticSettings: vi.fn(async () => undefined),
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+        resolveActorInfo: vi.fn(async () => ({
+          actor: {
+            instanceId: 'tenant-a',
+            actorAccountId: 'account-1',
+            requestId: 'req-failed-sync',
+            traceId: 'trace-failed-sync',
+          },
+        })),
+        startPluginOperationJob: vi.fn(async () => new Response(null, { status: 503 })),
+      },
+      ctx: actor,
+      request: new Request('https://studio.test/api/v1/waste-management/settings', {
+        method: 'PUT',
+      }),
+      instanceId: 'tenant-a',
+      requestId: 'req-failed-sync',
+      input: {
+        schemaName: 'wm',
+        enabled: true,
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: true,
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { disruptionAllLocationsEnabled: true },
+      syncStatus: 'failed',
     });
   });
 
@@ -634,6 +792,8 @@ describe('waste-management settings write support', () => {
     expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
       pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
       pdfContactBlock: 'Abfallberatung',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
     });
     expect(emitWasteAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -707,6 +867,8 @@ describe('waste-management settings write support', () => {
     expect(saveWastePdfStaticSettings).toHaveBeenCalledWith('tenant-a', {
       pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
       pdfContactBlock: 'Abfallberatung',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
     });
   });
 

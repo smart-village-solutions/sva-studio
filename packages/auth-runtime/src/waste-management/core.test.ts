@@ -170,6 +170,8 @@ describe('waste-management auth runtime handlers', () => {
         ],
         databaseUrlConfigured: true,
         visibleStatus: 'unknown',
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
         holidayStateCode: 'NW',
         lastHolidaySyncStatus: 'success',
         customRecurrencePresets: [],

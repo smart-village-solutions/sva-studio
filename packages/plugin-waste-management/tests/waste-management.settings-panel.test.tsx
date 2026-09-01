@@ -7,6 +7,8 @@ import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
 const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
 const updateWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
 const retryWasteTenantProvisioningMock = vi.hoisted(() => vi.fn());
+const startWasteManagementSyncWasteTypesMock = vi.hoisted(() => vi.fn());
+const useWasteTrackedJobMock = vi.hoisted(() => vi.fn());
 const capturedForms = vi.hoisted(() => [] as unknown[]);
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -29,11 +31,36 @@ vi.mock('../src/waste-management.api.js', () => ({
   getWasteManagementSettings: getWasteManagementSettingsMock,
   updateWasteManagementSettings: updateWasteManagementSettingsMock,
   retryWasteTenantProvisioning: retryWasteTenantProvisioningMock,
+  startWasteManagementSyncWasteTypes: startWasteManagementSyncWasteTypesMock,
+}));
+
+vi.mock('../src/waste-management.tools.job-state.js', () => ({
+  useWasteTrackedJob: useWasteTrackedJobMock,
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
-    message ? <div>{message.text}</div> : null,
+  StatusNotice: ({
+    message,
+    onRetry,
+  }: {
+    readonly message: { text: string; retryAction?: string } | null;
+    readonly onRetry?: (action: string) => void;
+  }) =>
+    message ? (
+      <div>
+        {message.text}
+        {message.retryAction ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (message.retryAction) onRetry?.(message.retryAction);
+            }}
+          >
+            retry-waste-types-sync
+          </button>
+        ) : null}
+      </div>
+    ) : null,
   compactOptionalString: (value: string | undefined) => {
     const trimmed = value?.trim();
     return trimmed ? trimmed : undefined;
@@ -71,6 +98,8 @@ vi.mock('../src/waste-management.settings-form.js', () => ({
       holidayStateCode?: string;
       calendarWebUrl?: string;
       selectedInterfaceId?: string;
+      disruptionLocationEnabled: boolean;
+      disruptionAllLocationsEnabled: boolean;
     };
     readonly onChange: (next: unknown) => void;
     readonly onSubmit: () => void;
@@ -81,6 +110,8 @@ vi.mock('../src/waste-management.settings-form.js', () => ({
       <div>
         <div>{form.holidayStateCode ?? 'unset'}</div>
         <div>{form.calendarWebUrl ?? 'unset-url'}</div>
+        <div>location-disruption:{String(form.disruptionLocationEnabled)}</div>
+        <div>all-locations-disruption:{String(form.disruptionAllLocationsEnabled)}</div>
         <button
           type="button"
           onClick={() =>
@@ -91,6 +122,28 @@ vi.mock('../src/waste-management.settings-form.js', () => ({
           }
         >
           change-holiday-state
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onChange((current: typeof form) => ({
+              ...current,
+              disruptionLocationEnabled: !current.disruptionLocationEnabled,
+            }))
+          }
+        >
+          toggle-location-disruption
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onChange((current: typeof form) => ({
+              ...current,
+              disruptionAllLocationsEnabled: !current.disruptionAllLocationsEnabled,
+            }))
+          }
+        >
+          toggle-all-locations-disruption
         </button>
         <button type="button" onClick={onSubmit}>
           {saveStatus === 'saved' ? 'settings.actions.saved' : 'save-settings'}
@@ -106,6 +159,8 @@ afterEach(() => {
   getWasteManagementSettingsMock.mockReset();
   updateWasteManagementSettingsMock.mockReset();
   retryWasteTenantProvisioningMock.mockReset();
+  startWasteManagementSyncWasteTypesMock.mockReset();
+  useWasteTrackedJobMock.mockReset();
 });
 
 describe('WasteSettingsPanel', () => {
@@ -184,19 +239,21 @@ describe('WasteSettingsPanel', () => {
       customRecurrencePresets: [],
     });
     updateWasteManagementSettingsMock.mockResolvedValueOnce({
-      instanceId: 'tenant-a',
-      provider: 'supabase',
-      projectUrl: 'https://tenant-a.supabase.co',
-      schemaName: 'wm',
-      enabled: true,
-      selectedInterfaceId: 'supabase-1',
-      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
-      databaseUrlConfigured: true,
-      serviceRoleKeyConfigured: true,
-      visibleStatus: 'ok',
-      holidayStateCode: 'NW',
-      lastHolidaySyncStatus: 'partial_success',
-      customRecurrencePresets: [],
+      data: {
+        instanceId: 'tenant-a',
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'wm',
+        enabled: true,
+        selectedInterfaceId: 'supabase-1',
+        calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        visibleStatus: 'ok',
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'partial_success',
+        customRecurrencePresets: [],
+      },
     });
 
     render(<WasteSettingsPanel />);
@@ -241,19 +298,21 @@ describe('WasteSettingsPanel', () => {
       customRecurrencePresets: [],
     });
     updateWasteManagementSettingsMock.mockResolvedValueOnce({
-      instanceId: 'tenant-a',
-      provider: 'supabase',
-      projectUrl: 'https://tenant-a.supabase.co',
-      schemaName: 'wm',
-      enabled: true,
-      selectedInterfaceId: 'supabase-1',
-      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
-      databaseUrlConfigured: true,
-      serviceRoleKeyConfigured: true,
-      visibleStatus: 'ok',
-      holidayStateCode: 'BB',
-      lastHolidaySyncStatus: 'success',
-      customRecurrencePresets: [],
+      data: {
+        instanceId: 'tenant-a',
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'wm',
+        enabled: true,
+        selectedInterfaceId: 'supabase-1',
+        calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        visibleStatus: 'ok',
+        holidayStateCode: 'BB',
+        lastHolidaySyncStatus: 'success',
+        customRecurrencePresets: [],
+      },
     });
 
     render(<WasteSettingsPanel />);
@@ -277,5 +336,88 @@ describe('WasteSettingsPanel', () => {
       );
     });
     expect(await screen.findByRole('button', { name: 'settings.actions.saved' })).toBeTruthy();
+  });
+
+  it('keeps both disruption switches independent and offers a retry when synchronization fails', async () => {
+    const settings = {
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'postgresql-1',
+      databaseUrlConfigured: true,
+      visibleStatus: 'ok',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    };
+    getWasteManagementSettingsMock.mockResolvedValueOnce(settings);
+    updateWasteManagementSettingsMock.mockResolvedValueOnce({
+      data: { ...settings, disruptionLocationEnabled: true },
+      syncStatus: 'failed',
+    });
+    startWasteManagementSyncWasteTypesMock.mockResolvedValueOnce({ id: 'job-retry-1' });
+
+    render(<WasteSettingsPanel />);
+
+    expect(await screen.findByText('location-disruption:false')).toBeTruthy();
+    expect(screen.getByText('all-locations-disruption:false')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-location-disruption' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
+
+    await waitFor(() => {
+      expect(updateWasteManagementSettingsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          disruptionLocationEnabled: true,
+          disruptionAllLocationsEnabled: false,
+        })
+      );
+    });
+    expect(await screen.findByText('settings.messages.wasteTypesSyncWarning')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'retry-waste-types-sync' }));
+    await waitFor(() => {
+      expect(startWasteManagementSyncWasteTypesMock).toHaveBeenCalledOnce();
+      expect(screen.getByText('settings.messages.wasteTypesSyncStarted')).toBeTruthy();
+    });
+  });
+
+  it('tracks an accepted wasteTypes job and exposes terminal failures through the same retry notice', async () => {
+    const settings = {
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'postgresql-1',
+      databaseUrlConfigured: true,
+      visibleStatus: 'ok',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    };
+    const syncJob = { id: 'job-waste-types-1', status: 'queued' };
+    getWasteManagementSettingsMock.mockResolvedValueOnce(settings);
+    updateWasteManagementSettingsMock.mockResolvedValueOnce({
+      data: { ...settings, disruptionAllLocationsEnabled: true },
+      syncStatus: 'queued',
+      syncJob,
+    });
+
+    render(<WasteSettingsPanel />);
+    await screen.findByText('all-locations-disruption:false');
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-all-locations-disruption' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
+
+    await waitFor(() => {
+      expect(useWasteTrackedJobMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ lastJob: syncJob })
+      );
+    });
+    const trackedJobOptions = useWasteTrackedJobMock.mock.calls.at(-1)?.[0];
+    if (!trackedJobOptions) throw new Error('missing_tracked_job_options');
+    trackedJobOptions.onTerminalJob({ ...syncJob, status: 'failed' });
+
+    expect(await screen.findByText('settings.messages.wasteTypesSyncWarning')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'retry-waste-types-sync' })).toBeTruthy();
   });
 });

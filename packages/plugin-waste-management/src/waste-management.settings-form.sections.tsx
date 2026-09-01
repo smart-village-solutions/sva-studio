@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import { WasteSettingsTechnicalConfigFields } from './waste-management.settings-managed-fields.js';
 import type { SettingsFormState } from './waste-management.settings.shared.js';
+import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 
 type WasteSettingsSectionProps = {
   readonly title: string;
@@ -12,7 +13,11 @@ type WasteSettingsSectionProps = {
   readonly children: ReactNode;
 };
 
-const WasteSettingsSection = ({ title, description, children }: Readonly<WasteSettingsSectionProps>) => (
+const WasteSettingsSection = ({
+  title,
+  description,
+  children,
+}: Readonly<WasteSettingsSectionProps>) => (
   <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
     <div className="space-y-1">
       <h3 className="text-sm font-semibold">{title}</h3>
@@ -24,8 +29,9 @@ const WasteSettingsSection = ({ title, description, children }: Readonly<WasteSe
 
 const createVisuallyHiddenLabel = (label: string) => <span className="sr-only">{label}</span>;
 
-const interfaceOptionLabel = (option: NonNullable<WasteManagementSettingsRecord['availableInterfaces']>[number]) =>
-  `${option.name} (${option.typeKey})`;
+const interfaceOptionLabel = (
+  option: NonNullable<WasteManagementSettingsRecord['availableInterfaces']>[number]
+) => `${option.name} (${option.typeKey})`;
 
 type WasteSettingsFieldUpdater = (
   next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)
@@ -101,11 +107,7 @@ export const WasteHolidayStateSection = ({
   );
 };
 
-export const WasteCalendarWebUrlSection = ({
-  form,
-  saving,
-  onChange,
-}: SharedSectionProps) => {
+export const WasteCalendarWebUrlSection = ({ form, saving, onChange }: SharedSectionProps) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -123,10 +125,75 @@ export const WasteCalendarWebUrlSection = ({
             type="url"
             value={form.calendarWebUrl}
             disabled={saving}
-            onChange={(event) => onChange((current) => ({ ...current, calendarWebUrl: event.target.value }))}
+            onChange={(event) =>
+              onChange((current) => ({ ...current, calendarWebUrl: event.target.value }))
+            }
             placeholder="https://abfall.example.de"
           />
         </StudioField>
+      </div>
+    </WasteSettingsSection>
+  );
+};
+
+const WasteDisruptionOption = ({
+  checked,
+  disabled,
+  label,
+  description,
+  onChange,
+}: Readonly<{
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  description: string;
+  onChange: (checked: boolean) => void;
+}>) => (
+  <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/70 p-3">
+    <WasteManagementFormSwitch
+      checked={checked}
+      disabled={disabled}
+      ariaLabel={label}
+      onChange={onChange}
+    />
+    <div className="space-y-1">
+      <p className="text-sm font-medium">{label}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+  </div>
+);
+
+export const WasteDisruptionNotificationsSection = ({
+  form,
+  saving,
+  onChange,
+}: SharedSectionProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+
+  return (
+    <WasteSettingsSection
+      title={pt('settings.messages.disruptionNotificationsTitle')}
+      description={pt('settings.messages.disruptionNotificationsDescription')}
+    >
+      <div className="grid gap-3">
+        <WasteDisruptionOption
+          checked={form.disruptionLocationEnabled}
+          disabled={saving}
+          label={pt('settings.fields.disruptionLocationEnabled')}
+          description={pt('settings.messages.disruptionLocationHelp')}
+          onChange={(disruptionLocationEnabled) =>
+            onChange((current) => ({ ...current, disruptionLocationEnabled }))
+          }
+        />
+        <WasteDisruptionOption
+          checked={form.disruptionAllLocationsEnabled}
+          disabled={saving}
+          label={pt('settings.fields.disruptionAllLocationsEnabled')}
+          description={pt('settings.messages.disruptionAllLocationsHelp')}
+          onChange={(disruptionAllLocationsEnabled) =>
+            onChange((current) => ({ ...current, disruptionAllLocationsEnabled }))
+          }
+        />
       </div>
     </WasteSettingsSection>
   );
@@ -157,7 +224,12 @@ export const WasteInterfaceSelectionSection = ({
             id="waste-settings-selected-interface-id"
             value={form.selectedInterfaceId}
             disabled={availableInterfaces.length === 0 || saving}
-            onChange={(event) => onChange((current) => ({ ...current, selectedInterfaceId: event.currentTarget.value }))}
+            onChange={(event) =>
+              onChange((current) => ({
+                ...current,
+                selectedInterfaceId: event.currentTarget.value,
+              }))
+            }
           >
             <option value="">{pt('settings.fields.selectedInterfacePlaceholder')}</option>
             {availableInterfaces.map((option) => (
@@ -169,7 +241,9 @@ export const WasteInterfaceSelectionSection = ({
         </StudioField>
       </div>
       {availableInterfaces.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{pt('settings.messages.noInterfacesAvailable')}</p>
+        <p className="text-sm text-muted-foreground">
+          {pt('settings.messages.noInterfacesAvailable')}
+        </p>
       ) : null}
     </WasteSettingsSection>
   );

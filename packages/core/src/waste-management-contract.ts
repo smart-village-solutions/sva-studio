@@ -49,12 +49,16 @@ export type WasteManagementSettingsInterfaceOption = Readonly<{
 export type WastePdfStaticSettingsRecord = Readonly<{
   pdfBrandingAssetUrl?: string;
   pdfContactBlock?: string;
+  disruptionLocationEnabled: boolean;
+  disruptionAllLocationsEnabled: boolean;
   updatedAt?: string;
 }>;
 
 export type WastePdfStaticSettingsWriteInput = Readonly<{
   pdfBrandingAssetUrl?: string;
   pdfContactBlock?: string;
+  disruptionLocationEnabled?: boolean;
+  disruptionAllLocationsEnabled?: boolean;
 }>;
 
 export const wasteManagementDataSourceContract = {
@@ -87,6 +91,8 @@ export type WasteManagementSettingsRecord = {
   readonly calendarWebUrl?: string;
   readonly pdfBrandingAssetUrl?: string;
   readonly pdfContactBlock?: string;
+  readonly disruptionLocationEnabled: boolean;
+  readonly disruptionAllLocationsEnabled: boolean;
   readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
   readonly databaseUrlConfigured: boolean;
   readonly visibleStatus: WasteManagementDataSourceStatus;

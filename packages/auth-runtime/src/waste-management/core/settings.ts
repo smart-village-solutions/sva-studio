@@ -3,7 +3,11 @@ import { wasteManagementOperationsContract } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { validateCsrf } from '../../shared/request-security.js';
-import { createApiError, parseRequestBody, requireIdempotencyKey } from '../../shared/request-helpers.js';
+import {
+  createApiError,
+  parseRequestBody,
+  requireIdempotencyKey,
+} from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
 import { wasteManagementSettingsSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
@@ -51,9 +55,11 @@ export const wasteManagementSettingsHandlers = {
         requestId
       );
     }
-    const actorResolution = await (deps.resolveActorInfo ??
+    const actorResolution = await (
+      deps.resolveActorInfo ??
       ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-        resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true })))(request, ctx);
+        resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
+    )(request, ctx);
     if ('error' in actorResolution) return actorResolution.error;
     if (!actorResolution.actor.actorAccountId) {
       return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', requestId);
@@ -102,7 +108,12 @@ export const wasteManagementSettingsHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.settings.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.settings.manage',
+      deps,
+      requestId
+    );
     if (authError) return authError;
 
     const instanceId = requireActorInstanceId(ctx, requestId);
@@ -115,7 +126,14 @@ export const wasteManagementSettingsHandlers = {
     if (!parsed.ok) return createApiError(400, 'invalid_request', parsed.message, requestId);
 
     try {
-      return await updateWasteManagementSettingsAfterValidation({ deps, ctx, instanceId, requestId, input: parsed.data });
+      return await updateWasteManagementSettingsAfterValidation({
+        deps,
+        ctx,
+        request,
+        instanceId,
+        requestId,
+        input: parsed.data,
+      });
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
         throw error;
@@ -131,7 +149,12 @@ export const wasteManagementSettingsHandlers = {
         resourceId: instanceId,
       });
       await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-      return createApiError(503, 'database_unavailable', 'Die Waste-Einstellungen konnten nicht gespeichert werden.', requestId);
+      return createApiError(
+        503,
+        'database_unavailable',
+        'Die Waste-Einstellungen konnten nicht gespeichert werden.',
+        requestId
+      );
     }
   },
   runWasteManagementHolidaySyncInternal: async (
@@ -140,7 +163,12 @@ export const wasteManagementSettingsHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.settings.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.settings.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -156,7 +184,12 @@ export const wasteManagementSettingsHandlers = {
     }
 
     try {
-      return await runWasteManagementHolidaySyncAfterValidation({ deps, ctx, instanceId, requestId });
+      return await runWasteManagementHolidaySyncAfterValidation({
+        deps,
+        ctx,
+        instanceId,
+        requestId,
+      });
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
         throw error;

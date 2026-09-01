@@ -10,20 +10,21 @@ import { startPluginOperationJobFromFacade } from './operations-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireDeps } from './utils.js';
 
-type WasteFractionSyncStatus = 'queued' | 'failed';
+export type WasteTypesSyncStatus = 'queued' | 'failed';
 
-type WasteFractionSyncMetadata = Readonly<{
-  syncStatus?: WasteFractionSyncStatus;
+export type WasteTypesSyncMetadata = Readonly<{
+  syncStatus?: WasteTypesSyncStatus;
   syncJob?: StudioJobRecord;
 }>;
 
-type WasteFractionMutationApiResponse<T> = ApiItemResponse<T> & WasteFractionSyncMetadata;
+type WasteFractionMutationApiResponse<T> = ApiItemResponse<T> & WasteTypesSyncMetadata;
 
-export const normalizeWasteFractionShortLabel = (value: string): string => value.trim().toUpperCase();
+export const normalizeWasteFractionShortLabel = (value: string): string =>
+  value.trim().toUpperCase();
 
 export const withWasteFractionSyncMetadata = async <T>(
   response: Response,
-  syncMetadata: WasteFractionSyncMetadata
+  syncMetadata: WasteTypesSyncMetadata
 ): Promise<Response> => {
   const payload = (await response.json()) as ApiItemResponse<T>;
 
@@ -44,7 +45,7 @@ export const createWasteFractionMutationResponse = <T>(
   status: number,
   data: T,
   requestId: string | undefined,
-  syncMetadata: WasteFractionSyncMetadata
+  syncMetadata: WasteTypesSyncMetadata
 ): Response =>
   new Response(
     JSON.stringify({
@@ -64,7 +65,10 @@ const findConflictingActiveFraction = async (
   shortLabel: string,
   currentFractionId?: string
 ): Promise<WasteFractionRecord | null> => {
-  const overview = await requireDeps(deps.loadMasterDataFractionsOverview, 'loadMasterDataFractionsOverview')(instanceId);
+  const overview = await requireDeps(
+    deps.loadMasterDataFractionsOverview,
+    'loadMasterDataFractionsOverview'
+  )(instanceId);
 
   return (
     overview.fractions.find((fraction) => {
@@ -89,7 +93,12 @@ export const validateUniqueActiveWasteFractionShortLabel = async (
     return null;
   }
 
-  const conflictingFraction = await findConflictingActiveFraction(deps, instanceId, shortLabel, currentFractionId);
+  const conflictingFraction = await findConflictingActiveFraction(
+    deps,
+    instanceId,
+    shortLabel,
+    currentFractionId
+  );
   if (!conflictingFraction) {
     return null;
   }
@@ -102,15 +111,17 @@ export const validateUniqueActiveWasteFractionShortLabel = async (
   );
 };
 
-export const enqueueWasteTypesSyncAfterFractionMutation = async (
+export const enqueueWasteTypesSyncAfterMutation = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
   deps: WasteManagementHandlerDeps,
   instanceId: string
-): Promise<WasteFractionSyncMetadata> => {
-  const actorResolution = await (deps.resolveActorInfo ??
+): Promise<WasteTypesSyncMetadata> => {
+  const actorResolution = await (
+    deps.resolveActorInfo ??
     ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true })))(request, ctx);
+      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
+  )(request, ctx);
   if ('error' in actorResolution || !actorResolution.actor.actorAccountId) {
     return { syncStatus: 'failed' };
   }
@@ -192,10 +203,24 @@ export const normalizeWasteFractionReminderConfig = (
   return {
     reminderCount: input.reminderCount,
     channels,
-    ...(channels.push ? { push: normalizeWasteFractionReminderChannel(true, slotCount, input.push) ?? { slots: [] } } : {}),
-    ...(channels.email ? { email: normalizeWasteFractionReminderChannel(true, slotCount, input.email) ?? { slots: [] } } : {}),
+    ...(channels.push
+      ? {
+          push: normalizeWasteFractionReminderChannel(true, slotCount, input.push) ?? { slots: [] },
+        }
+      : {}),
+    ...(channels.email
+      ? {
+          email: normalizeWasteFractionReminderChannel(true, slotCount, input.email) ?? {
+            slots: [],
+          },
+        }
+      : {}),
     ...(channels.calendar
-      ? { calendar: normalizeWasteFractionReminderChannel(true, slotCount, input.calendar) ?? { slots: [] } }
+      ? {
+          calendar: normalizeWasteFractionReminderChannel(true, slotCount, input.calendar) ?? {
+            slots: [],
+          },
+        }
       : {}),
   };
 };

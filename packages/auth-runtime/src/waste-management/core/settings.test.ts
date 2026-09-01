@@ -164,7 +164,10 @@ describe('waste-management settings handlers', () => {
       actor,
       {
         ...createDeps(),
-        loadWasteTenantProvisioning: vi.fn(async () => ({ ...failedProvisioning, status: 'ready' })),
+        loadWasteTenantProvisioning: vi.fn(async () => ({
+          ...failedProvisioning,
+          status: 'ready',
+        })),
         requestWasteTenantProvisioning: vi.fn(),
       }
     );
@@ -180,24 +183,26 @@ describe('waste-management settings handlers', () => {
       requestWasteTenantProvisioning: vi.fn(),
     };
 
-    const errorResponse = await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
-      createRetryRequest('retry-error'),
-      actor,
-      {
-        ...baseDeps,
-        resolveActorInfo: vi.fn(async () => ({ error: actorError })),
-      }
-    );
-    const missingActorResponse = await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
-      createRetryRequest('retry-missing-actor'),
-      actor,
-      {
-        ...baseDeps,
-        resolveActorInfo: vi.fn(async () => ({
-          actor: { instanceId: 'tenant-a', actorAccountId: null },
-        })),
-      }
-    );
+    const errorResponse =
+      await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+        createRetryRequest('retry-error'),
+        actor,
+        {
+          ...baseDeps,
+          resolveActorInfo: vi.fn(async () => ({ error: actorError })),
+        }
+      );
+    const missingActorResponse =
+      await wasteManagementSettingsHandlers.retryWasteTenantProvisioningInternal(
+        createRetryRequest('retry-missing-actor'),
+        actor,
+        {
+          ...baseDeps,
+          resolveActorInfo: vi.fn(async () => ({
+            actor: { instanceId: 'tenant-a', actorAccountId: null },
+          })),
+        }
+      );
 
     expect(errorResponse).toBe(actorError);
     expect(missingActorResponse.status).toBe(403);
@@ -350,6 +355,8 @@ describe('waste-management settings handlers', () => {
           },
         ],
         calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+        disruptionLocationEnabled: false,
+        disruptionAllLocationsEnabled: false,
         databaseUrlConfigured: true,
         visibleStatus: 'ok',
         holidayStateCode: 'NW',

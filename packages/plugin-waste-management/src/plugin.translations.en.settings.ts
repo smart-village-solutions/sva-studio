@@ -24,6 +24,8 @@ export const wasteManagementPluginTranslationsENSettings =
       customRecurrenceDescription: 'Description',
       customRecurrenceIntervalDays: 'Interval in days',
       customRecurrenceFallback: 'Fallback on delete',
+      disruptionLocationEnabled: 'Enable notices for my street',
+      disruptionAllLocationsEnabled: 'Enable notices for all streets',
     },
     meta: {
       visibleStatus: 'Status: {{value}}',
@@ -101,5 +103,14 @@ export const wasteManagementPluginTranslationsENSettings =
       retryProvisioningSuccess: 'Provisioning was restarted.',
       retryProvisioningError: 'Provisioning could not be restarted.',
       retryProvisioningForbidden: 'Missing permission to retry provisioning.',
+      disruptionNotificationsTitle: 'Disruption notices in the app',
+      disruptionNotificationsDescription:
+        'Choose which exceptional waste notices are provided for this tenant by the next wasteTypes synchronization.',
+      disruptionLocationHelp:
+        'Enables notices for the selected collection location or “My street”.',
+      disruptionAllLocationsHelp: 'Enables notices for all collection locations or “All streets”.',
+      wasteTypesSyncStarted: 'Waste type synchronization was started.',
+      wasteTypesSyncWarning:
+        'The settings were saved, but wasteTypes could not be synchronized with the mainserver.',
     },
   });

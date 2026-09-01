@@ -4831,4 +4831,8 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
+-- Externe Waste-Tenant-Schemata sind bewusst nicht Bestandteil dieses zentralen Snapshots.
+-- Die Störungsoptionen in public.waste_settings werden über die versionierte Tenant-Migration
+-- 20260901_01_add_waste_disruption_settings gepflegt; siehe studio-db-schema.md, Abschnitt 9.
+
 \unrestrict a6pcZv047R1ijqVkcXgaInH7kse8w6qcOb4bkLKvZ47wVFMhVUR2FqDOhwnl3BG

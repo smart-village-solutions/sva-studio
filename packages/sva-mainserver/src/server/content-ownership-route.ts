@@ -2,7 +2,6 @@ import {
   listMainserverOwnershipTargets,
   loadExternalContentReferenceByContentId,
   resolveActorInfo,
-  resolveMainserverOwnershipSource,
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
   type ResolvedMainserverOwnershipSource,
@@ -19,6 +18,7 @@ import {
   type SupportedContentOwnershipRouteMatch,
 } from './content-ownership-route-contract.js';
 import { handleContentOwnershipTransfer } from './content-ownership-transfer-route.js';
+import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
@@ -144,20 +144,28 @@ const handleAuthorizedTargets = async (
       'content_transfer_source_changed',
       'Der aktuelle Inhaber ist nicht eindeutig.'
     );
+  const sourceEnrichment = await resolveOwnershipSourceEnrichment({
+    actor,
+    contentType: route.contentType,
+    contentId: route.contentId,
+    dataProviderId,
+    operation: route.operation,
+  });
   const access = await resolveMainserverResourceAccess({
     actor,
     actions: ['content.transferOwnership'],
     contentType: route.contentType,
     contentId: route.contentId,
     item: current,
+    ...(sourceEnrichment.status === 'resolved'
+      ? {}
+      : { requireAllScopeActions: ['content.transferOwnership'] }),
   });
   if (access['content.transferOwnership'] !== true) {
     return errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
   }
-  const resolvedSource = await resolveMainserverOwnershipSource({
-    instanceId: actor.instanceId,
-    dataProviderId,
-  }).catch(() => undefined);
+  const resolvedSource =
+    sourceEnrichment.status === 'resolved' ? sourceEnrichment.source : undefined;
   const source = {
     dataProviderId,
     displayName:

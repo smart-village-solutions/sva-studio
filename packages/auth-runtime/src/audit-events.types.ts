@@ -51,7 +51,7 @@ export type PluginActionAuditPayload = {
     reconciliationStatus?: 'complete' | 'failed' | 'pending' | 'reconciliation_required';
     ownershipTransfer?: Readonly<{
       coverage: 'studio_mutations';
-      sourcePrincipalResolution: 'resolved' | 'unresolved';
+      sourcePrincipalResolution: 'resolved' | 'unresolved' | 'failed';
       sourcePrincipalType?: 'account' | 'organization';
       sourcePrincipalId?: string;
       targetPrincipalType: 'account' | 'organization';

@@ -40,8 +40,8 @@ const verifyTransferResult = async (input: {
     // The source read below provides the second independent observation.
   }
   try {
-    const sourceItem = await loadOwnershipItem(input.actor, input.content);
-    if (sourceItem.dataProvider?.id === input.sourceDataProviderId) return 'source';
+    const actorItem = await loadOwnershipItem(input.actor, input.content);
+    if (actorItem.dataProvider?.id === input.sourceDataProviderId) return 'source';
   } catch {
     // Neither credential context produced conclusive evidence.
   }
@@ -89,7 +89,7 @@ const finalizeUnclearTransfer = async (input: {
       actor: input.actor,
       providerOutcome: 'failed',
       reconciliationStatus: 'complete',
-      completedSteps: ['source_reread_confirmed'],
+      completedSteps: ['actor_reread_confirmed'],
       contentId: input.route.contentId,
       observedDataProviderId: input.sourceDataProviderId,
       lastErrorCode: errorCode,
@@ -110,7 +110,7 @@ const finalizeUnclearTransfer = async (input: {
     actor: input.actor,
     providerOutcome: 'unknown',
     reconciliationStatus: 'reconciliation_required',
-    completedSteps: ['target_reread', 'source_reread'],
+    completedSteps: ['target_reread', 'actor_reread'],
     contentId: input.route.contentId,
     lastErrorCode: 'content_transfer_reconciliation_required',
     ownershipTransfer: input.ownershipTransfer,
@@ -234,7 +234,7 @@ const executeLockedTransfer = async (input: {
   }
   const ownershipTransfer: OwnershipTransferAudit = {
     coverage: 'studio_mutations',
-    sourcePrincipalResolution: source.principal ? 'resolved' : 'unresolved',
+    sourcePrincipalResolution: source.principalResolution,
     ...(source.principal
       ? {
           sourcePrincipalType: source.principal.type,

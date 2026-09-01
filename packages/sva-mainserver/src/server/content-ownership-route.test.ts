@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   loadIdentity: vi.fn(),
   listTargets: vi.fn(),
   recordObservation: vi.fn(),
+  recordTransferOutcome: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveSource: vi.fn(),
   resolveTarget: vi.fn(),
@@ -50,6 +51,9 @@ vi.mock('./mutation-principal.js', () => ({
   finalizeMainserverMutation: state.finalize,
   resolveMainserverMutationActor: state.resolveMutationActor,
   resolveMainserverResourceAccess: state.resolveResourceAccess,
+}));
+vi.mock('./content-ownership-telemetry.js', () => ({
+  recordOwnershipTransferOutcome: state.recordTransferOutcome,
 }));
 vi.mock('./service.js', () => ({
   getSvaMainserverNews: state.getNews,
@@ -560,6 +564,22 @@ describe('Mainserver content ownership route', () => {
       data: { canTransfer: true },
       currentOwner: { displayName: 'Quelle' },
     });
+    expect(state.resolveResourceAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ requireAllScopeActions: ['content.transferOwnership'] })
+    );
+  });
+
+  it('fails closed for scoped transfer access when source enrichment fails', async () => {
+    state.resolveSource.mockRejectedValueOnce(new Error('database unavailable'));
+    state.resolveResourceAccess.mockResolvedValueOnce({ 'content.transferOwnership': false });
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(403);
   });
 
   it('keeps source-principal enrichment failures out of the authorization gate', async () => {
@@ -600,6 +620,9 @@ describe('Mainserver content ownership route', () => {
         targetDataProviderId: 'provider-target',
       })
     );
+    expect(state.authorize).toHaveBeenCalledWith(
+      expect.objectContaining({ requiredAccessScope: 'all' })
+    );
     expect(state.annotateJournal).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.not.objectContaining({
@@ -612,6 +635,53 @@ describe('Mainserver content ownership route', () => {
       expect.objectContaining({
         metadata: expect.objectContaining({ sourcePrincipalResolution: 'unresolved' }),
       })
+    );
+  });
+
+  it('distinguishes failed source enrichment in the transfer audit', async () => {
+    state.resolveSource.mockRejectedValueOnce(new Error('database unavailable'));
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.annotateJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ sourcePrincipalResolution: 'failed' }),
+      })
+    );
+  });
+
+  it('records the actual authorization error instead of a permission denial', async () => {
+    state.authorize.mockResolvedValueOnce(
+      Response.json(
+        { error: 'database_unavailable', message: 'Berechtigungen konnten nicht geprüft werden.' },
+        { status: 503 }
+      )
+    );
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ targetPrincipal: target.principal }),
+        }
+      )
+    );
+
+    expect(response?.status).toBe(503);
+    expect(state.recordTransferOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'rejected', errorCode: 'database_unavailable' })
     );
   });
 
@@ -903,7 +973,7 @@ describe('Mainserver content ownership route', () => {
     expect(response?.status).toBe(200);
   });
 
-  it('returns the provider error when the source reread confirms no transfer', async () => {
+  it('returns the provider error when the actor reread confirms no transfer', async () => {
     state.transfer.mockRejectedValueOnce(
       new SvaMainserverError({ code: 'graphql_error', message: 'rejected', statusCode: 502 })
     );
@@ -920,7 +990,7 @@ describe('Mainserver content ownership route', () => {
     );
     expect(response?.status).toBe(502);
     expect(state.finalize).toHaveBeenCalledWith(
-      expect.objectContaining({ completedSteps: ['source_reread_confirmed'] })
+      expect.objectContaining({ completedSteps: ['actor_reread_confirmed'] })
     );
   });
 });

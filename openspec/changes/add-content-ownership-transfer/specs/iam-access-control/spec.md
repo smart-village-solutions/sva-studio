@@ -26,6 +26,7 @@ Das System SHALL die fully-qualified Action `content.transferOwnership` als eige
 - **WHEN** er einen Transfer anfordert
 - **THEN** verweigert die Autorisierung den Transfer fail-closed
 - **AND** benötigt der Actor Scope `all`, um einen ownerlosen Inhalt zuzuweisen
+- **AND** darf ein Kompatibilitäts- oder Shadow-Resolver einen engeren Scope nicht als `all` behandeln
 
 #### Scenario: Globaler Scope ist unabhängig vom Lifecycle des bisherigen Inhabers
 

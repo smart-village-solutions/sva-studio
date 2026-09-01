@@ -13,6 +13,7 @@ import type {
   MainserverMutationActor,
   MainserverMutationAuthorization,
 } from './mutation-principal-types.js';
+import { hasMainserverActionAccessScope } from './mutation-principal-permission-scope.js';
 
 const logger = createSdkLogger({ component: 'sva-mainserver-mutation-principal', level: 'info' });
 
@@ -279,10 +280,32 @@ export const authorizeMainserverExistingContent = async (input: {
   readonly contentId: string;
   readonly item: DataProviderBearingItem | undefined;
   readonly additionalActions?: readonly string[];
+  readonly requiredAccessScope?: 'all';
 }): Promise<MainserverMutationAuthorization | Response> => {
   const permissions = await loadMutationPermissions(input.actor);
   if (!permissions.ok) {
     return errorJson(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.');
+  }
+  if (
+    input.requiredAccessScope === 'all' &&
+    !hasMainserverActionAccessScope(permissions.permissions, input.action, 'all')
+  ) {
+    await emitMainserverMutationAuthorizationAudit({
+      actor: input.actor,
+      action: input.action,
+      contentType: input.contentType,
+      contentId: input.contentId,
+      dataProviderId: input.item?.dataProvider?.id?.trim(),
+      authorizationMode: 'exact',
+      resolverMode: 'automatic',
+      allowed: false,
+      reasonCode: 'access_scope_mismatch',
+    });
+    return errorJson(
+      403,
+      'content_transfer_permission_missing',
+      'Für Inhalte ohne auflösbaren Inhaber ist die globale Transferberechtigung erforderlich.'
+    );
   }
   const dataProviderId = input.item?.dataProvider?.id?.trim() ?? '';
   const actions = [...new Set([input.action, ...(input.additionalActions ?? [])])];

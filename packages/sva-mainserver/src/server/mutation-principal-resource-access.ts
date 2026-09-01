@@ -7,6 +7,7 @@ import type {
   DataProviderBearingItem,
   MainserverMutationActor,
 } from './mutation-principal-types.js';
+import { hasMainserverActionAccessScope } from './mutation-principal-permission-scope.js';
 
 export type MainserverResourceAccess = Readonly<Record<string, boolean>>;
 
@@ -16,6 +17,7 @@ export const resolveMainserverResourceAccess = async (input: {
   readonly contentId?: string;
   readonly contentType: string;
   readonly item: DataProviderBearingItem | undefined;
+  readonly requireAllScopeActions?: readonly string[];
 }): Promise<MainserverResourceAccess> => {
   const denied = Object.fromEntries(input.actions.map((action) => [action, false]));
   const permissions = await resolveEffectivePermissions({
@@ -27,9 +29,17 @@ export const resolveMainserverResourceAccess = async (input: {
   });
   if (!permissions.ok) return denied;
 
+  const requireAllScopeActions = new Set(input.requireAllScopeActions ?? []);
+
   const dataProviderId = input.item?.dataProvider?.id?.trim() ?? '';
   const decisions = await Promise.all(
     input.actions.map(async (action) => {
+      if (
+        requireAllScopeActions.has(action) &&
+        !hasMainserverActionAccessScope(permissions.permissions, action, 'all')
+      ) {
+        return [action, false] as const;
+      }
       const decision = await authorizeMainserverDataProviderAccess({
         instanceId: input.actor.instanceId,
         keycloakSubject: input.actor.keycloakSubject,

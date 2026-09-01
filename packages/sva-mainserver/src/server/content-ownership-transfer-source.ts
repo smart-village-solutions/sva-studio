@@ -1,8 +1,10 @@
 import {
   resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
+  type ResolvedMainserverOwnershipSource,
 } from '@sva/auth-runtime/server';
 import { isUuid, type IamContentOwnerPrincipal } from '@sva/core';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverOwnershipTransferContent } from '../types.js';
 import { errorJson, isRecord, isResponse } from './content-route-core.js';
@@ -16,6 +18,55 @@ import {
   authorizeMainserverExistingContent,
   type MainserverMutationActor,
 } from './mutation-principal.js';
+
+const logger = createSdkLogger({
+  component: 'sva-mainserver-content-ownership-route',
+  level: 'info',
+});
+
+export type OwnershipSourceEnrichment =
+  | Readonly<{ status: 'resolved'; source: ResolvedMainserverOwnershipSource }>
+  | Readonly<{ status: 'unresolved' | 'failed' }>;
+
+export const resolveOwnershipSourceEnrichment = async (input: {
+  actor: MainserverMutationActor;
+  contentType: string;
+  contentId: string;
+  dataProviderId: string;
+  operation: 'authorization' | 'targets' | 'transfer';
+}): Promise<OwnershipSourceEnrichment> => {
+  try {
+    const source = await resolveMainserverOwnershipSource({
+      instanceId: input.actor.instanceId,
+      dataProviderId: input.dataProviderId,
+    });
+    return source ? { status: 'resolved', source } : { status: 'unresolved' };
+  } catch (error) {
+    const context = getWorkspaceContext();
+    logger.warn('Mainserver ownership source enrichment failed', {
+      operation: 'mainserver_content_ownership_source_enrichment',
+      request_id: context.requestId,
+      trace_id: context.traceId,
+      instance_id: input.actor.instanceId,
+      content_type: input.contentType,
+      content_id: input.contentId,
+      data_provider_id: input.dataProviderId,
+      route_operation: input.operation,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return { status: 'failed' };
+  }
+};
+
+const readAuthorizationErrorCode = async (response: Response): Promise<string> => {
+  const payload = (await response
+    .clone()
+    .json()
+    .catch(() => undefined)) as unknown;
+  return isRecord(payload) && typeof payload.error === 'string'
+    ? payload.error
+    : 'content_transfer_authorization_failed';
+};
 
 export const parseOwnershipTargetPrincipal = async (
   request: Request
@@ -59,6 +110,7 @@ type SourceResolution =
   | Readonly<{
       ok: true;
       principal?: IamContentOwnerPrincipal;
+      principalResolution: OwnershipSourceEnrichment['status'];
       dataProviderId: string;
     }>
   | Readonly<{ ok: false; response: Response }>;
@@ -83,29 +135,35 @@ export const resolveAuthorizedTransferSource = async (input: {
       ),
     };
   }
+  const source = await resolveOwnershipSourceEnrichment({
+    actor: input.actor,
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
+    dataProviderId: initialDataProviderId,
+    operation: 'transfer',
+  });
   const authorization = await authorizeMainserverExistingContent({
     actor: input.actor,
     action: 'content.transferOwnership',
     contentType: input.route.contentType,
     contentId: input.route.contentId,
     item: actorVisibleCurrent,
+    ...(source.status === 'resolved' ? {} : { requiredAccessScope: 'all' }),
   });
   if (isResponse(authorization)) {
+    const errorCode = await readAuthorizationErrorCode(authorization);
     recordOwnershipTransferOutcome({
       actor: input.actor,
       contentType: input.route.contentType,
-      outcome: 'denied',
-      errorCode: 'content_transfer_permission_missing',
+      outcome: authorization.status === 403 ? 'denied' : 'rejected',
+      errorCode,
     });
     return { ok: false, response: authorization };
   }
-  const source = await resolveMainserverOwnershipSource({
-    instanceId: input.actor.instanceId,
-    dataProviderId: initialDataProviderId,
-  }).catch(() => undefined);
   return {
     ok: true,
-    ...(source ? { principal: source.principal } : {}),
+    ...(source.status === 'resolved' ? { principal: source.source.principal } : {}),
+    principalResolution: source.status,
     dataProviderId: initialDataProviderId,
   };
 };

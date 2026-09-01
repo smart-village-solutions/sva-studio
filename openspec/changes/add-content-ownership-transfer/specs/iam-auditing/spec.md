@@ -27,6 +27,14 @@ Die Auditspur SHALL ihre Abdeckung als `studio_mutations` kennzeichnen. Sie SHAL
 - **THEN** kennzeichnet es die Source-Principal-Auflösung als `unresolved`
 - **AND** bleibt der tatsächlich gelesene Quell-DataProvider im Audit erhalten
 
+#### Scenario: Source-Principal-Anreicherung schlägt technisch fehl
+
+- **GIVEN** Scope `all` autorisiert den Transfer unabhängig vom Source-Principal
+- **AND** die optionale Source-Principal-Anreicherung endet mit einem technischen Fehler
+- **WHEN** Studio den Transfer auditiert
+- **THEN** kennzeichnet es die Source-Principal-Auflösung als `failed`
+- **AND** bleibt der tatsächlich gelesene Quell-DataProvider im Audit erhalten
+
 #### Scenario: Transfer wird vor dem Provider-Write abgelehnt
 
 - **WHEN** Permission, Source-Scope, Zielvalidierung, Binding, Credentials oder Typ-Capability den Transfer verweigern

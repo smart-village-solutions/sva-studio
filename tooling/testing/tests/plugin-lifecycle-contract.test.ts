@@ -66,6 +66,20 @@ describe('plugin lifecycle database contract gate', () => {
     expect(migration).not.toMatch(/EXECUTE\s+format|EXECUTE\s+[^;]*\|\|/i);
   });
 
+  it('reconciles legacy terminal event duplicates before enforcing uniqueness', () => {
+    const migration = read('packages/data/migrations/0090_iam_plugin_lifecycle_linearization.sql');
+    const cleanupPosition = migration.indexOf('WITH ranked_terminal_events AS');
+    const indexPosition = migration.indexOf(
+      'CREATE UNIQUE INDEX idx_studio_job_events_terminal_attempt'
+    );
+
+    expect(cleanupPosition).toBeGreaterThan(-1);
+    expect(indexPosition).toBeGreaterThan(cleanupPosition);
+    expect(migration).toContain('PARTITION BY job_id, attempts');
+    expect(migration).toContain('ORDER BY created_at DESC, id DESC');
+    expect(migration).toContain('ranked.terminal_event_rank > 1');
+  });
+
   it('executes the direct login denial for the allowlisted enqueue function', () => {
     const graphileContract = read('scripts/ci/verify-graphile-worker-database-contract.ts');
     expect(graphileContract).toContain("psqlStatus(\n      'sva_app'");

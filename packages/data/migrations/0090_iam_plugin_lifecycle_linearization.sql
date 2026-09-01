@@ -20,6 +20,21 @@ CREATE INDEX idx_instance_plugin_lifecycle_recheck
   ON iam.instance_plugin_lifecycle(next_recheck_at, instance_id, plugin_id)
   WHERE next_recheck_at IS NOT NULL;
 
+WITH ranked_terminal_events AS (
+  SELECT
+    id,
+    ROW_NUMBER() OVER (
+      PARTITION BY job_id, attempts
+      ORDER BY created_at DESC, id DESC
+    ) AS terminal_event_rank
+  FROM iam.studio_job_events
+  WHERE event_type IN ('job.succeeded', 'job.failed', 'job.cancelled')
+)
+DELETE FROM iam.studio_job_events AS event
+USING ranked_terminal_events AS ranked
+WHERE event.id = ranked.id
+  AND ranked.terminal_event_rank > 1;
+
 CREATE UNIQUE INDEX idx_studio_job_events_terminal_attempt
   ON iam.studio_job_events(job_id, attempts)
   WHERE event_type IN ('job.succeeded', 'job.failed', 'job.cancelled');

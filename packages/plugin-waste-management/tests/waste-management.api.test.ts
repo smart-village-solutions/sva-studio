@@ -93,6 +93,8 @@ describe('waste-management api client', () => {
             projectUrl: 'https://tenant-a.supabase.co',
             schemaName: 'wm',
             enabled: true,
+            disruptionLocationEnabled: true,
+            disruptionAllLocationsEnabled: false,
             databaseUrlConfigured: true,
             serviceRoleKeyConfigured: true,
             visibleStatus: 'ok',
@@ -1664,21 +1666,27 @@ describe('waste-management api client', () => {
             projectUrl: 'https://tenant-a.supabase.co',
             schemaName: 'wm',
             enabled: true,
+            disruptionLocationEnabled: true,
+            disruptionAllLocationsEnabled: false,
             databaseUrlConfigured: true,
             serviceRoleKeyConfigured: true,
             visibleStatus: 'ok',
             customRecurrencePresets: [],
           },
+          syncStatus: 'queued',
+          syncJob: { id: 'job-waste-types-1' },
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       )
     );
 
-    await updateWasteManagementSettings({
+    const result = await updateWasteManagementSettings({
       provider: 'supabase',
       projectUrl: 'https://tenant-a.supabase.co',
       schemaName: 'wm',
       enabled: true,
+      disruptionLocationEnabled: true,
+      disruptionAllLocationsEnabled: false,
       databaseUrl: 'postgres://db',
       serviceRoleKey: 'srv-key',
       customRecurrencePresets: [],
@@ -1694,6 +1702,8 @@ describe('waste-management api client', () => {
           projectUrl: 'https://tenant-a.supabase.co',
           schemaName: 'wm',
           enabled: true,
+          disruptionLocationEnabled: true,
+          disruptionAllLocationsEnabled: false,
           databaseUrl: 'postgres://db',
           serviceRoleKey: 'srv-key',
           customRecurrencePresets: [],
@@ -1708,6 +1718,14 @@ describe('waste-management api client', () => {
     const headers = init?.headers as Headers;
     expect(headers.get('Content-Type')).toBe('application/json');
     expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+    expect(result).toMatchObject({
+      data: {
+        disruptionLocationEnabled: true,
+        disruptionAllLocationsEnabled: false,
+      },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-waste-types-1' },
+    });
   });
 
   it('starts the waste holiday sync through the host facade', async () => {

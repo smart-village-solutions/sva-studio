@@ -1,146 +1,25 @@
-import { startTransition, useEffect, useRef, useState } from 'react';
-import { usePluginTranslation, wasteManagementMasterDataContract } from '@sva/plugin-sdk';
+import { startTransition, useState } from 'react';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState, useStudioSaveFeedback } from '@sva/studio-ui-react';
 import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
 import {
   getWasteManagementSettings,
   retryWasteTenantProvisioning,
-  updateWasteManagementSettings,
-  type WasteManagementSettingsInput,
 } from './waste-management.api.js';
 import {
   StatusNotice,
-  compactOptionalString,
   resolveApiErrorCode,
   type StatusMessage,
 } from './waste-management.page.support.js';
 import { WasteSettingsForm } from './waste-management.settings-form.js';
 import { WasteSettingsStatusPanel } from './waste-management.settings-status-panel.js';
-import type {
-  CustomRecurrencePresetInputState,
-  SettingsFormState,
-} from './waste-management.settings-form.js';
-
-const createDefaultSettingsForm = (): SettingsFormState => ({
-  provider: 'postgresql',
-  schemaName: 'public',
-  enabled: false,
-  selectedInterfaceId: '',
-  calendarWebUrl: '',
-  pdfBrandingAssetUrl: '',
-  pdfContactBlock: '',
-  holidayStateCode: '',
-  customRecurrencePresets: [],
-  deletedPresetFallbacks: {},
-});
-
-const mapSettingsToForm = (settings: WasteManagementSettingsRecord | null): SettingsFormState =>
-  settings
-    ? {
-        provider: settings.provider,
-        schemaName: settings.schemaName ?? 'public',
-        enabled: settings.enabled,
-        selectedInterfaceId: settings.selectedInterfaceId ?? '',
-        calendarWebUrl: settings.calendarWebUrl ?? '',
-        pdfBrandingAssetUrl: settings.pdfBrandingAssetUrl ?? '',
-        pdfContactBlock: settings.pdfContactBlock ?? '',
-        holidayStateCode: settings.holidayStateCode ?? '',
-        customRecurrencePresets: (
-          settings.customRecurrencePresets ?? []
-        ).map<CustomRecurrencePresetInputState>((preset) => ({
-          id: preset.id,
-          name: preset.name,
-          description: preset.description ?? '',
-          intervalDays: preset.intervalDays,
-        })),
-        deletedPresetFallbacks: {},
-      }
-    : createDefaultSettingsForm();
-
-const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput => ({
-  provider: form.provider,
-  schemaName: compactOptionalString(form.schemaName),
-  enabled: form.enabled,
-  selectedInterfaceId: compactOptionalString(form.selectedInterfaceId),
-  calendarWebUrl: compactOptionalString(form.calendarWebUrl),
-  pdfBrandingAssetUrl: compactOptionalString(form.pdfBrandingAssetUrl),
-  pdfContactBlock: compactOptionalString(form.pdfContactBlock),
-  holidayStateCode: wasteManagementMasterDataContract.isWasteHolidayStateCode(form.holidayStateCode)
-    ? form.holidayStateCode
-    : undefined,
-  customRecurrencePresets: form.customRecurrencePresets.map((preset) => ({
-    id: preset.id,
-    name: preset.name.trim(),
-    description: compactOptionalString(preset.description),
-    intervalDays: preset.intervalDays,
-  })),
-  deletedPresetFallbacks: form.deletedPresetFallbacks,
-});
-
-const useWasteSettingsState = (pt: ReturnType<typeof usePluginTranslation>) => {
-  const ptRef = useRef(pt);
-  ptRef.current = pt;
-  const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState<WasteManagementSettingsRecord | null>(null);
-  const [form, setForm] = useState<SettingsFormState>(createDefaultSettingsForm());
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    void (async () => {
-      try {
-        const response = await getWasteManagementSettings();
-        if (!active) {
-          return;
-        }
-        setSettings(response);
-        setForm(mapSettingsToForm(response));
-        setError(null);
-      } catch (loadError) {
-        if (!active) {
-          return;
-        }
-        const code = resolveApiErrorCode(loadError);
-        setError(
-          code === 'forbidden'
-            ? ptRef.current('settings.messages.loadForbidden')
-            : ptRef.current('settings.messages.loadError')
-        );
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return { error, form, loading, setForm, setSettings, settings };
-};
-
-const persistWasteSettings = async (
-  form: SettingsFormState,
-  pt: ReturnType<typeof usePluginTranslation>
-): Promise<WasteManagementSettingsRecord | null> => {
-  try {
-    const response = await updateWasteManagementSettings(toSettingsInput(form));
-    return response;
-  } catch (saveError) {
-    const code = resolveApiErrorCode(saveError);
-    const error = new Error(
-      code === 'forbidden'
-        ? pt('settings.messages.saveForbidden')
-        : pt('settings.messages.saveError')
-    );
-    (error as Error & { cause?: unknown }).cause = saveError;
-    throw error;
-  }
-};
+import {
+  mapWasteSettingsToForm,
+  persistWasteSettings,
+  useWasteSettingsState,
+} from './waste-management.settings-panel.support.js';
+import { useWasteSettingsSyncFeedback } from './waste-management.settings-panel.sync.js';
 
 export const WasteSettingsPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
@@ -148,6 +27,7 @@ export const WasteSettingsPanel = () => {
   const [retrying, setRetrying] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const { error, form, loading, setForm, setSettings, settings } = useWasteSettingsState(pt);
+  const syncFeedback = useWasteSettingsSyncFeedback(pt, setMessage);
 
   if (loading) {
     return <StudioLoadingState>{pt('settings.messages.loading')}</StudioLoadingState>;
@@ -160,7 +40,7 @@ export const WasteSettingsPanel = () => {
   const applyPersistedSettings = (result: WasteManagementSettingsRecord | null) => {
     startTransition(() => {
       setSettings(result);
-      setForm(mapSettingsToForm(result));
+      setForm(mapWasteSettingsToForm(result));
     });
   };
 
@@ -171,22 +51,24 @@ export const WasteSettingsPanel = () => {
 
     try {
       const result = await persistWasteSettings(form, pt);
-      applyPersistedSettings(result);
+      applyPersistedSettings(result.data);
+      syncFeedback.applyMutationFeedback(result);
       if (
         holidaySyncTriggered &&
-        result?.lastHolidaySyncStatus &&
-        result.lastHolidaySyncStatus !== 'success'
+        result.data.lastHolidaySyncStatus &&
+        result.data.lastHolidaySyncStatus !== 'success'
       ) {
-        setMessage({
-          kind: result.lastHolidaySyncStatus === 'failed' ? 'error' : 'warning',
-          text: pt('settings.messages.saveSuccessWithHolidaySync', {
-            status: result.lastHolidaySyncStatus,
-          }),
-        });
+        if (result.syncStatus !== 'failed') {
+          setMessage({
+            kind: result.data.lastHolidaySyncStatus === 'failed' ? 'error' : 'warning',
+            text: pt('settings.messages.saveSuccessWithHolidaySync', {
+              status: result.data.lastHolidaySyncStatus,
+            }),
+          });
+        }
         saveFeedback.markFailed(operationId);
         return;
       }
-      setMessage(null);
       saveFeedback.markSaved(operationId);
     } catch (saveError) {
       setMessage({
@@ -205,7 +87,7 @@ export const WasteSettingsPanel = () => {
       const refreshed = await getWasteManagementSettings();
       startTransition(() => {
         setSettings(refreshed);
-        setForm(mapSettingsToForm(refreshed));
+        setForm(mapWasteSettingsToForm(refreshed));
         setMessage({ kind: 'success', text: pt('settings.messages.retryProvisioningSuccess') });
       });
     } catch (retryError) {
@@ -224,7 +106,12 @@ export const WasteSettingsPanel = () => {
 
   return (
     <div className="space-y-4">
-      <StatusNotice message={message} />
+      <StatusNotice
+        message={message}
+        onRetry={(action) => {
+          if (action === 'sync-waste-types') void syncFeedback.retrySync();
+        }}
+      />
       <WasteSettingsStatusPanel
         settings={settings}
         retrying={retrying}

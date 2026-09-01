@@ -18,6 +18,8 @@ export type SettingsFormState = {
   readonly calendarWebUrl: string;
   readonly pdfBrandingAssetUrl: string;
   readonly pdfContactBlock: string;
+  readonly disruptionLocationEnabled: boolean;
+  readonly disruptionAllLocationsEnabled: boolean;
   readonly holidayStateCode: string;
   readonly customRecurrencePresets: readonly CustomRecurrencePresetInputState[];
   readonly deletedPresetFallbacks: Readonly<Record<string, DeletedPresetFallbackState>>;

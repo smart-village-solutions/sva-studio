@@ -165,6 +165,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx run public-waste-calendar-web:test:types` bleibt Pflichtgate für alle app-lokalen Verträge
   - Auswahlbuttons, Fraktionsfilter, Exportlinks und Dialog müssen per Rolle oder zugänglichem Namen testbar bleiben
   - Die Oberfläche muss eingebettet und auf kleinen Viewports ohne horizontale Zwangsinteraktion benutzbar bleiben
+- Waste-`wasteTypes`-Synchronisation:
+  - Builder-Tests müssen alle vier Kombinationen der beiden Störungsoptionen, die exakten reservierten Schlüssel und Labels sowie `notification_kind: "disruption"` abdecken
+  - `fractionCount` darf ausschließlich aktive reguläre Fraktionen zählen; reservierte Schlüssel dürfen nicht durch Fraktionskürzel überschrieben werden
+  - Der Versionshash muss vom vollständigen deterministisch sortierten Dokument abhängen, damit Aktivierung und Deaktivierung eines Sondertyps zuverlässig eine neue Version erzeugen
+  - Settings-Tests müssen sichere `false`-Defaults für Bestandsdaten, unabhängige Speicherung, automatisches Enqueue bei Änderungen sowie Warnung und Retry bei Sync-Fehlern nachweisen
 - Mainserver-Plugin-Listen:
   - News-, Events- und POI-Listen müssen `page` und `pageSize` typsicher über URL/Search-Params führen
   - die erste Listenanfrage lädt höchstens eine Seite plus notwendiges Overfetching für sichtbarkeitsbasierte `hasNextPage`-Entscheidungen

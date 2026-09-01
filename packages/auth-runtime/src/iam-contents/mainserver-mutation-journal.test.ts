@@ -8,6 +8,7 @@ import {
 } from './mainserver-mutation-journal.js';
 import {
   hasUnresolvedMainserverOwnershipTransfer,
+  loadRecoverableMainserverOwnershipTransfers,
   markMainserverMutationReconciliationRequired,
 } from './mainserver-ownership-transfer-reconciliation.js';
 
@@ -184,16 +185,58 @@ describe('Mainserver mutation journal', () => {
         instanceId: 'de-musterhausen',
         contentType: 'news.article',
         contentId: 'news-1',
+        excludeOperationExternalId: 'operation-current',
       })
     ).resolves.toBe(true);
 
     expect(state.query).toHaveBeenCalledWith(
       expect.stringContaining("action_id = 'content.transferOwnership'"),
-      ['de-musterhausen', 'news.article', 'news-1']
+      ['de-musterhausen', 'news.article', 'news-1', 'operation-current']
     );
     expect(state.query.mock.calls[0]?.[0]).toContain(
       "reconciliation_status IN ('pending', 'reconciliation_required')"
     );
+    expect(state.query.mock.calls[0]?.[0]).toContain('operation_external_id <> $4');
+  });
+
+  it('loads provider-confirmed pending and unknown transfers for projection reconciliation', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [
+        {
+          operation_external_id: 'operation-1',
+          expected_data_provider_id: 'provider-target',
+          target_principal_type: 'organization',
+          target_principal_id: '22222222-2222-4222-8222-222222222222',
+        },
+      ],
+    });
+
+    await expect(
+      loadRecoverableMainserverOwnershipTransfers({
+        instanceId: 'de-musterhausen',
+        contentType: 'news.article',
+        contentId: 'news-1',
+        currentDataProviderId: 'provider-target',
+      })
+    ).resolves.toEqual([
+      {
+        operationExternalId: 'operation-1',
+        expectedDataProviderId: 'provider-target',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('expected_data_provider_id = $4'),
+      ['de-musterhausen', 'news.article', 'news-1', 'provider-target']
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "provider_outcome IN ('pending', 'unknown', 'succeeded')"
+    );
+    expect(state.query.mock.calls[0]?.[0]).not.toContain('UPDATE');
   });
 
   it('marks a confirmed provider result for local reconciliation', async () => {
@@ -215,5 +258,7 @@ describe('Mainserver mutation journal', () => {
         'content_transfer_projection_refresh_failed',
       ]
     );
+    expect(state.query.mock.calls[0]?.[0]).toContain('SELECT DISTINCT');
+    expect(state.query.mock.calls[0]?.[0]).toContain('jsonb_agg(step ORDER BY step)');
   });
 });

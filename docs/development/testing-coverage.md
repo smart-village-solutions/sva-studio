@@ -179,6 +179,7 @@ zur abgeschlossenen Shadow-Abnahme stehen in
 - Workflow- und CI-Dateiänderungen werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf den vollen Produkt-Workspace
 - Main + Nightly:
   - Job `Coverage`: `test:coverage` (voll)
+  - Der Coverage-Job lädt die vollständige Git-Historie bereits beim Checkout mit `fetch-depth: 0`; SonarCloud darf keinen nachgelagerten `git fetch --unshallow` benötigen
   - Job `Complexity`: blockierend
   - Job `Integration`: voller, verpflichtender Integrationslauf
 

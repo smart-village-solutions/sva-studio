@@ -102,6 +102,8 @@ export const buildWasteManagementSettingsRecord = async (
     provider: input.provider,
     schemaName: input.schemaName?.trim() || 'public',
     enabled: input.enabled,
+    disruptionLocationEnabled: existing?.disruptionLocationEnabled ?? false,
+    disruptionAllLocationsEnabled: existing?.disruptionAllLocationsEnabled ?? false,
     databaseUrlConfigured: Boolean(nextDatabaseUrlCiphertext),
     databaseUrlCiphertext: nextDatabaseUrlCiphertext,
     visibleStatus: nextDatabaseUrlCiphertext ? 'unknown' : 'not_configured',

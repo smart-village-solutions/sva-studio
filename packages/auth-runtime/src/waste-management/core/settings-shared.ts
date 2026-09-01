@@ -1,7 +1,5 @@
 import { Pool } from 'pg';
-import {
-  loadDefaultExternalInterfaceRecord,
-} from '@sva/data-repositories/server';
+import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 import {
   resolveWasteDataSource,
   runWasteConnectionCheck,
@@ -46,15 +44,20 @@ const canLoadWastePdfStaticSettings = (settings: WasteManagementSettingsRecord):
 const applyWastePdfStaticSettings = (
   settings: WasteManagementSettingsRecord,
   wastePdfStaticSettings: WastePdfStaticSettingsRecord | null | undefined
-): WasteManagementSettingsRecord =>
-  hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
+): WasteManagementSettingsRecord => ({
+  ...settings,
+  disruptionLocationEnabled:
+    wastePdfStaticSettings?.disruptionLocationEnabled ?? settings.disruptionLocationEnabled,
+  disruptionAllLocationsEnabled:
+    wastePdfStaticSettings?.disruptionAllLocationsEnabled ?? settings.disruptionAllLocationsEnabled,
+  ...(hasWastePdfStaticSettingsValue(wastePdfStaticSettings)
     ? {
-        ...settings,
         pdfBrandingAssetUrl:
           wastePdfStaticSettings.pdfBrandingAssetUrl ?? settings.pdfBrandingAssetUrl,
         pdfContactBlock: wastePdfStaticSettings.pdfContactBlock ?? settings.pdfContactBlock,
       }
-    : settings;
+    : {}),
+});
 
 const mapExternalInterfaceToWasteSettings = (
   instanceId: string,
@@ -67,6 +70,8 @@ const mapExternalInterfaceToWasteSettings = (
       provider: 'postgresql',
       schemaName: 'public',
       enabled: false,
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
       availableInterfaces,
       databaseUrlConfigured: false,
       visibleStatus: 'not_configured',
@@ -86,6 +91,8 @@ const mapExternalInterfaceToWasteSettings = (
         ? record.publicConfig.schemaName
         : 'public',
     enabled: record.enabled,
+    disruptionLocationEnabled: false,
+    disruptionAllLocationsEnabled: false,
     selectedInterfaceId: record.id,
     selectedInterfaceName: record.displayName,
     selectedInterfaceTypeKey: record.typeKey,
@@ -184,6 +191,8 @@ export const sanitizeWasteSettings = (
     calendarWebUrl: record.calendarWebUrl,
     pdfBrandingAssetUrl: record.pdfBrandingAssetUrl,
     pdfContactBlock: record.pdfContactBlock,
+    disruptionLocationEnabled: record.disruptionLocationEnabled,
+    disruptionAllLocationsEnabled: record.disruptionAllLocationsEnabled,
     databaseUrlConfigured: record.databaseUrlConfigured,
     visibleStatus: record.visibleStatus,
     provisioningStatus: record.provisioningStatus,

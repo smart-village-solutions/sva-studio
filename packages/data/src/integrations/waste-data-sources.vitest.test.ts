@@ -8,6 +8,8 @@ const record = {
   provider: 'postgresql' as const,
   schemaName: 'public',
   enabled: true,
+  disruptionLocationEnabled: false,
+  disruptionAllLocationsEnabled: false,
   databaseUrlConfigured: true,
   databaseUrlCiphertext: 'db-cipher',
   visibleStatus: 'ok' as const,

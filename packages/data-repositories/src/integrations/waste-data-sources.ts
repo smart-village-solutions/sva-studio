@@ -33,6 +33,8 @@ const mapRow = (row: WasteDataSourceRow): WasteManagementDataSourceRecord => ({
   provider: row.provider_key,
   schemaName: row.schema_name,
   enabled: row.enabled,
+  disruptionLocationEnabled: false,
+  disruptionAllLocationsEnabled: false,
   databaseUrlConfigured: Boolean(row.database_url_ciphertext),
   databaseUrlCiphertext: row.database_url_ciphertext ?? undefined,
   visibleStatus: row.visible_status,

@@ -267,7 +267,11 @@ export const createSyncWasteTypesOperation =
     const details = await withWasteClient(deps, instanceId, async ({ client, repository }) => {
       await client.query(buildWasteFractionShortLabelBackfillStatement('waste_fractions'));
       const fractions = await repository.listWasteFractions();
-      const artifact = await buildWasteTypesStaticContent(fractions);
+      const settings = await repository.getWastePdfStaticSettings();
+      const artifact = await buildWasteTypesStaticContent(fractions, {
+        disruptionLocationEnabled: settings?.disruptionLocationEnabled ?? false,
+        disruptionAllLocationsEnabled: settings?.disruptionAllLocationsEnabled ?? false,
+      });
       const writeResult = await createOrUpdateSvaMainserverStaticContent({
         instanceId,
         keycloakSubject: normalizeOptionalText(input.keycloakSubject) ?? 'plugin-operation-runtime',

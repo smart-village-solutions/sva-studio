@@ -342,6 +342,8 @@ Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 - Das Sollschema für Neuprovisionierungen liegt unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`; versionierte Bestandsmigrationen liegen getrennt unter `deploy/portainer/migrate-waste-tenants.mjs`.
 - `calendarWebUrl` bleibt Teil von `iam.instance_external_interfaces.public_config` in der zentralen Studio-DB.
 - Die PDF-Stamminhalte `pdfBrandingAssetUrl` und `pdfContactBlock` haben ihre führende Quelle im tenantbezogenen PostgreSQL-Waste-Schema in `waste_settings`; die zentrale Studio-DB dient dafür nur noch als Legacy-Fallback älterer Bestandsdaten. Diese externe Tabelle gehört bewusst nicht zum IAM-/Goose-Migrationspfad der Studio-DB, sondern nur zum runtime-nahen Waste-Migrationspfad.
+- Dieselbe externe Tabelle enthält `disruption_location_enabled BOOLEAN NOT NULL DEFAULT FALSE` und `disruption_all_locations_enabled BOOLEAN NOT NULL DEFAULT FALSE`. Beide Optionen sind unabhängig, Bestandsmandanten bleiben durch die Defaults deaktiviert. Neuprovisionierungen erhalten die Spalten über den Runtime-Schema-Builder; bestehende Tenant-Datenbanken über die verifizierte Migration `20260901_01_add_waste_disruption_settings`.
+- Der zentrale Snapshot `studio-db-schema-final.sql` erhält dafür keine fachliche Tabelle oder Spalte: Er dokumentiert weiterhin ausschließlich die zentrale Studio-Datenbank und weist die externe Schemaänderung nur als Abgrenzungskommentar aus.
 
 ## Wichtige Beziehungen
 

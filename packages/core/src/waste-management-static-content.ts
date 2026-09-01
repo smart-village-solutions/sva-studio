@@ -13,7 +13,7 @@ type WasteReminderChannelConfig = {
   readonly slots: readonly WasteReminderSlot[];
 };
 
-export type WasteTypeStaticContentEntry = {
+export type WasteFractionStaticContentEntry = {
   readonly label: string;
   readonly color: string;
   readonly selected_color: string;
@@ -31,6 +31,19 @@ export type WasteTypeStaticContentEntry = {
     readonly calendar?: WasteReminderChannelConfig;
   };
 };
+
+export type WasteDisruptionNotificationSettings = Readonly<{
+  disruptionLocationEnabled: boolean;
+  disruptionAllLocationsEnabled: boolean;
+}>;
+
+export type WasteDisruptionStaticContentEntry = Readonly<{
+  label: 'Meine Straße' | 'Alle Straßen';
+  notification_kind: 'disruption';
+}>;
+
+export type WasteTypeStaticContentEntry =
+  WasteFractionStaticContentEntry | WasteDisruptionStaticContentEntry;
 
 export type WasteTypesStaticContentArtifact = {
   readonly name: 'wasteTypes';
@@ -75,8 +88,12 @@ const normalizeReminderConfigForStaticContent = (
     reminderCount: reminderConfig.reminderCount,
     channels: reminderConfig.channels,
     ...(reminderConfig.channels.push && reminderConfig.push ? { push: reminderConfig.push } : {}),
-    ...(reminderConfig.channels.email && reminderConfig.email ? { email: reminderConfig.email } : {}),
-    ...(reminderConfig.channels.calendar && reminderConfig.calendar ? { calendar: reminderConfig.calendar } : {}),
+    ...(reminderConfig.channels.email && reminderConfig.email
+      ? { email: reminderConfig.email }
+      : {}),
+    ...(reminderConfig.channels.calendar && reminderConfig.calendar
+      ? { calendar: reminderConfig.calendar }
+      : {}),
   };
 };
 
@@ -88,7 +105,10 @@ const compareWasteTypeKeys = (leftKey: string, rightKey: string): number => {
   return leftKey < rightKey ? -1 : 1;
 };
 
-const toWasteTypeEntry = (fraction: WasteFractionRecord, shortLabel: string): WasteTypeStaticContentEntry => ({
+const toWasteTypeEntry = (
+  fraction: WasteFractionRecord,
+  shortLabel: string
+): WasteFractionStaticContentEntry => ({
   label: fraction.name,
   color: fraction.color,
   selected_color: fraction.color,
@@ -121,14 +141,20 @@ const hashContent = async (value: string): Promise<`sha256:${string}`> => {
   }
 
   const buffer = await subtle.digest('SHA-256', new TextEncoder().encode(value));
-  const hash = Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const hash = Array.from(new Uint8Array(buffer), (byte) =>
+    byte.toString(16).padStart(2, '0')
+  ).join('');
   return `sha256:${hash}`;
 };
 
 export const buildWasteTypesStaticContent = async (
-  fractions: readonly WasteFractionRecord[]
+  fractions: readonly WasteFractionRecord[],
+  disruptionSettings: WasteDisruptionNotificationSettings = {
+    disruptionLocationEnabled: false,
+    disruptionAllLocationsEnabled: false,
+  }
 ): Promise<WasteTypesStaticContentArtifact> => {
-  const entries = fractions
+  const fractionEntries = fractions
     .filter((fraction) => fraction.active)
     .map((fraction) => {
       if (!fraction.pdfShortLabel?.trim()) {
@@ -138,9 +164,37 @@ export const buildWasteTypesStaticContent = async (
       if (key.length === 0) {
         throw new Error(`invalid_waste_type_key:${fraction.id}`);
       }
+      if (
+        key.toLowerCase() === 'disruption_location' ||
+        key.toLowerCase() === 'disruption_all_locations'
+      ) {
+        throw new Error(`reserved_waste_type_key:${key}`);
+      }
       return [key, toWasteTypeEntry(fraction, key)] as const;
-    })
-    .sort(([leftKey], [rightKey]) => compareWasteTypeKeys(leftKey, rightKey));
+    });
+
+  const disruptionEntries: ReadonlyArray<readonly [string, WasteDisruptionStaticContentEntry]> = [
+    ...(disruptionSettings.disruptionLocationEnabled
+      ? [
+          [
+            'disruption_location',
+            { label: 'Meine Straße', notification_kind: 'disruption' },
+          ] as const,
+        ]
+      : []),
+    ...(disruptionSettings.disruptionAllLocationsEnabled
+      ? [
+          [
+            'disruption_all_locations',
+            { label: 'Alle Straßen', notification_kind: 'disruption' },
+          ] as const,
+        ]
+      : []),
+  ];
+
+  const entries = [...fractionEntries, ...disruptionEntries].sort(([leftKey], [rightKey]) =>
+    compareWasteTypeKeys(leftKey, rightKey)
+  );
 
   const payload: Record<string, WasteTypeStaticContentEntry> = {};
   for (const [key, entry] of entries) {
@@ -157,6 +211,6 @@ export const buildWasteTypesStaticContent = async (
     dataType: 'JSON',
     version: await hashContent(content),
     content,
-    fractionCount: entries.length,
+    fractionCount: fractionEntries.length,
   };
 };

@@ -302,6 +302,8 @@ const updateWasteSettingsSchema = z.object({
   calendarWebUrl: optionalWasteUrlSchema.optional(),
   pdfBrandingAssetUrl: optionalWasteUrlSchema.optional(),
   pdfContactBlock: z.string().trim().max(2_000).optional(),
+  disruptionLocationEnabled: z.boolean().optional(),
+  disruptionAllLocationsEnabled: z.boolean().optional(),
   emailReminderConfig: wasteEmailReminderConfigSchema.optional(),
   holidayStateCode: wasteHolidayStateCodeSchema.optional(),
   customRecurrencePresets: z.array(wasteCustomRecurrencePresetSchema).default([]),

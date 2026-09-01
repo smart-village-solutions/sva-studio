@@ -1,5 +1,6 @@
 import type {
   StudioJobDetail,
+  StudioJobResponse,
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
   WasteLocationTourPickupDateRecord,
@@ -37,6 +38,7 @@ import {
   requestWasteManagementJobDetail,
   requestLatestWasteManagementJob,
   requestWasteManagementMutation,
+  requestWasteManagementMutationResponse,
 } from './waste-management.api.shared.js';
 
 export const createWasteManagementTour = async (
@@ -164,10 +166,17 @@ export const deleteWasteManagementLocationTourPickupDate = async (
     'DELETE'
   );
 
+export type WasteManagementSettingsMutationResponse = Readonly<{
+  data: WasteManagementSettingsRecord;
+  requestId?: string;
+  syncStatus?: 'queued' | 'failed';
+  syncJob?: StudioJobResponse['data'];
+}>;
+
 export const updateWasteManagementSettings = async (
   input: WasteManagementSettingsInput
-): Promise<WasteManagementSettingsRecord | null> =>
-  requestWasteManagementMutation('/api/v1/waste-management/settings', input, 'PUT');
+): Promise<WasteManagementSettingsMutationResponse> =>
+  requestWasteManagementMutationResponse('/api/v1/waste-management/settings', input, 'PUT');
 
 export const startWasteManagementHolidaySync =
   async (): Promise<WasteManagementSettingsRecord | null> =>

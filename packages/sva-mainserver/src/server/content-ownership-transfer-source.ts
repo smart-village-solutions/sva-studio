@@ -15,6 +15,7 @@ import {
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import {
+  authorizeMainserverActionPreflight,
   authorizeMainserverExistingContent,
   type MainserverMutationActor,
 } from './mutation-principal.js';
@@ -115,11 +116,44 @@ type SourceResolution =
     }>
   | Readonly<{ ok: false; response: Response }>;
 
-export const resolveAuthorizedTransferSource = async (input: {
+type TransferSourceObservation =
+  | Readonly<{
+      ok: true;
+      item: Awaited<ReturnType<typeof loadOwnershipItem>>;
+      principal?: IamContentOwnerPrincipal;
+      principalResolution: OwnershipSourceEnrichment['status'];
+      dataProviderId: string;
+    }>
+  | Readonly<{ ok: false; response: Response }>;
+
+const preflightTransferPermission = async (input: {
+  actor: MainserverMutationActor;
+  route: SupportedContentOwnershipRouteMatch;
+}): Promise<Response | null> => {
+  const response = await authorizeMainserverActionPreflight({
+    actor: input.actor,
+    action: 'content.transferOwnership',
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
+  });
+  if (response) {
+    recordOwnershipTransferOutcome({
+      actor: input.actor,
+      contentType: input.route.contentType,
+      outcome: response.status === 403 ? 'denied' : 'rejected',
+      errorCode: await readAuthorizationErrorCode(response),
+    });
+  }
+  return response;
+};
+
+export const observeTransferSource = async (input: {
   actor: MainserverMutationActor;
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
-}): Promise<SourceResolution> => {
+}): Promise<TransferSourceObservation> => {
+  const permissionError = await preflightTransferPermission(input);
+  if (permissionError) return { ok: false, response: permissionError };
   const actorVisibleCurrent = await loadOwnershipItem(input.actor, input.content);
   if (!matchesOwnershipContentType(input.route.contentType, actorVisibleCurrent)) {
     return { ok: false, response: errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.') };
@@ -142,14 +176,28 @@ export const resolveAuthorizedTransferSource = async (input: {
     dataProviderId: initialDataProviderId,
     operation: 'transfer',
   });
+  return {
+    ok: true,
+    item: actorVisibleCurrent,
+    ...(source.status === 'resolved' ? { principal: source.source.principal } : {}),
+    principalResolution: source.status,
+    dataProviderId: initialDataProviderId,
+  };
+};
+
+export const authorizeObservedTransferSource = async (input: {
+  actor: MainserverMutationActor;
+  route: SupportedContentOwnershipRouteMatch;
+  observation: Extract<TransferSourceObservation, { ok: true }>;
+}): Promise<SourceResolution> => {
   const authorization = await authorizeMainserverExistingContent({
     actor: input.actor,
     action: 'content.transferOwnership',
     contentType: input.route.contentType,
     contentId: input.route.contentId,
-    item: actorVisibleCurrent,
+    item: input.observation.item,
     forceExactScopeAuthorization: true,
-    ...(source.status === 'resolved' ? {} : { requiredAccessScope: 'all' }),
+    ...(input.observation.principalResolution === 'resolved' ? {} : { requiredAccessScope: 'all' }),
   });
   if (isResponse(authorization)) {
     const errorCode = await readAuthorizationErrorCode(authorization);
@@ -163,8 +211,8 @@ export const resolveAuthorizedTransferSource = async (input: {
   }
   return {
     ok: true,
-    ...(source.status === 'resolved' ? { principal: source.source.principal } : {}),
-    principalResolution: source.status,
-    dataProviderId: initialDataProviderId,
+    ...(input.observation.principal ? { principal: input.observation.principal } : {}),
+    principalResolution: input.observation.principalResolution,
+    dataProviderId: input.observation.dataProviderId,
   };
 };

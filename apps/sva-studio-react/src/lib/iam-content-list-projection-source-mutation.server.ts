@@ -210,8 +210,16 @@ export const enrichMutationProjectionRowWithBinding = async (
   row: MainserverProjectionRowInput
 ): Promise<MainserverProjectionRowInput> => {
   const principalContext = requireMutationProjectionPrincipalContext(target);
+  const transferredAuthorDisplayMode = target.ownershipPrincipal
+    ? target.ownershipPrincipal.type === 'account'
+      ? 'user'
+      : 'organization'
+    : undefined;
   const rowWithoutSyntheticOwner = {
     ...row,
+    ...(transferredAuthorDisplayMode
+      ? { authorDisplayMode: transferredAuthorDisplayMode }
+      : {}),
     ownerUserId: undefined,
     ownerOrganizationId: undefined,
     credentialSource: principalContext.actingPrincipalType,

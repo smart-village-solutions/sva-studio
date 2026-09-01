@@ -86,6 +86,7 @@ export const authorizeMainserverCreateForPrincipal = async (input: {
   });
   return toMutationAuthorization(input.actor, decision);
 };
+
 type AuthorizationAggregate = {
   authorizationMode: MainserverMutationAuthorization['authorizationMode'];
   resolverMode: MainserverMutationAuthorization['resolverMode'];

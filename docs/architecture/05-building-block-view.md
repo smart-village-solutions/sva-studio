@@ -41,7 +41,7 @@ Abhängigkeiten des aktuellen Systems.
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
    - kanonisches Inhaltsmodell für `Content`, Statusmodell und JSON-Payload-Validierung
    - generische Plattformverträge für Studio-Jobs wie Jobstatus, Jobdetail, Jobstart, Jobquelle (`plugin|host`) und Importphasen
-   - baut framework-agnostisch das `wasteTypes`-Static-Content-Artefakt aus aktiven Fraktionen, inklusive stabiler Key-Normalisierung und inhaltsbasiertem Versionshash
+   - baut framework-agnostisch das vollständige `wasteTypes`-Static-Content-Artefakt aus aktiven Fraktionen und den beiden explizit aktivierten Störungstypen, inklusive reservierter Schlüssel, stabiler Sortierung und inhaltsbasiertem Versionshash
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary

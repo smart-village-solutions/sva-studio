@@ -25,6 +25,8 @@ export const wasteManagementPluginTranslationsDESettings =
       customRecurrenceDescription: 'Beschreibung',
       customRecurrenceIntervalDays: 'Abstand in Tagen',
       customRecurrenceFallback: 'Fallback beim Löschen',
+      disruptionLocationEnabled: 'Hinweise für meine Straße aktivieren',
+      disruptionAllLocationsEnabled: 'Hinweise für alle Straßen aktivieren',
     },
     meta: {
       visibleStatus: 'Status: {{value}}',
@@ -105,5 +107,15 @@ export const wasteManagementPluginTranslationsDESettings =
       retryProvisioningError: 'Die Bereitstellung konnte nicht erneut gestartet werden.',
       retryProvisioningForbidden:
         'Für den erneuten Start der Bereitstellung fehlt die Berechtigung.',
+      disruptionNotificationsTitle: 'Störungshinweise in der App',
+      disruptionNotificationsDescription:
+        'Legen Sie fest, welche außerordentlichen Abfallhinweise im nächsten wasteTypes-Abgleich für diesen Mandanten bereitgestellt werden.',
+      disruptionLocationHelp:
+        'Ermöglicht Hinweise für den ausgewählten Abholort beziehungsweise „Meine Straße“.',
+      disruptionAllLocationsHelp:
+        'Ermöglicht Hinweise für alle Abholorte beziehungsweise „Alle Straßen“.',
+      wasteTypesSyncStarted: 'Die Synchronisierung der Abfallarten wurde gestartet.',
+      wasteTypesSyncWarning:
+        'Die Einstellungen wurden gespeichert, aber wasteTypes konnte nicht mit dem Mainserver synchronisiert werden.',
     },
   });

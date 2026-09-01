@@ -59,7 +59,11 @@ const withTenantTransaction = async <T>(
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Preserve the operation failure; a broken connection may also reject ROLLBACK.
+    }
     throw error;
   } finally {
     client.release();

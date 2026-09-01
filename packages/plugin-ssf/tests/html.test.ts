@@ -21,6 +21,16 @@ describe('sanitizeSsfHtmlV1', () => {
     expect(result).toBe('<p>Text</p><a>Link</a><img />');
   });
 
+  it('prevents tabnabbing for links that open a new browsing context', () => {
+    const result = sanitizeSsfHtmlV1(
+      '<a href="https://example.org" target="_blank" rel="external">Extern</a>'
+    );
+
+    expect(result).toBe(
+      '<a href="https://example.org" target="_blank" rel="external noopener noreferrer">Extern</a>'
+    );
+  });
+
   it('never retains injected script containers, event handlers or javascript URLs', () => {
     fc.assert(
       fc.property(fc.string({ maxLength: 200 }), (payload) => {

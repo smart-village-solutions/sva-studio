@@ -73,4 +73,26 @@ describe('SSF PostgreSQL repository', () => {
     expect(query).not.toHaveBeenCalledWith('COMMIT');
     expect(release).toHaveBeenCalledOnce();
   });
+
+  it('preserves the operation error when rollback also fails', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.startsWith('INSERT INTO')) throw new Error('constraint violation');
+      if (sql === 'ROLLBACK') throw new Error('connection lost');
+      return result([]);
+    });
+    const release = vi.fn();
+    const client = { query, release } as unknown as PoolClient;
+    const pool = { connect: vi.fn(async () => client) } as unknown as Pool;
+
+    await expect(
+      upsertSsfTenantLocale(pool, {
+        instanceId: 'tenant-b',
+        locale: 'de-DE',
+        enabled: true,
+      })
+    ).rejects.toThrow('constraint violation');
+
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(release).toHaveBeenCalledOnce();
+  });
 });

@@ -104,6 +104,19 @@ export const sanitizeSsfHtmlV1 = (html: string): string => {
     disallowedTagsMode: 'discard',
     enforceHtmlBoundary: true,
     parseStyleAttributes: true,
+    transformTags: {
+      a: (tagName, attributes) => {
+        if (attributes.target !== '_blank') return { tagName, attribs: attributes };
+
+        const relValues = new Set((attributes.rel ?? '').split(/\s+/u).filter(Boolean));
+        relValues.add('noopener');
+        relValues.add('noreferrer');
+        return {
+          tagName,
+          attribs: { ...attributes, rel: [...relValues].join(' ') },
+        };
+      },
+    },
   });
 
   const outputResult = ssfHtmlSchema.safeParse(sanitized);

@@ -61,10 +61,10 @@ Track these steps as TODOs and complete them one by one.
 2. **Read design.md** (if exists) - Review technical decisions
 3. **Read assurance.md** (if required) - Verify invariants, boundaries, failure modes, and planned evidence
 4. **Read tasks.md** - Get implementation checklist
-5. **Implement tasks sequentially** - Complete in order
-6. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
-7. **Update checklist** - After all work is done, set every task to `- [x]` so the list reflects reality
-8. **Approval gate** - Do not start implementation until the proposal and required assurance case are reviewed and approved
+5. **Approval gate** - Do not start implementation until the proposal and required assurance case are reviewed and approved
+6. **Implement tasks sequentially** - Complete in order
+7. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
+8. **Update checklist** - After all work is done, set every task to `- [x]` so the list reflects reality
 
 ### Stage 3: Archiving Changes
 

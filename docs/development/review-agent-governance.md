@@ -70,7 +70,7 @@ Empfohlene Aufrufe:
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
-- risikoreiche Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante und `assurance.md`: `System Assurance`; fehlende Nachweisplanung blockiert die Implementierung, fehlende ausgeführte Evidenz für den exakten HEAD den Merge
+- risikoreiche Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante: `System Assurance`; ein fehlender Assurance Case oder fehlende Nachweisplanung blockiert die Implementierung, fehlende ausgeführte Evidenz für den exakten HEAD den Merge
 - Aenderungen an `config/plugin-architecture-allowlist.json`, `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
 - Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` werden vor dem Merge fachlich geprüft und über den normalen GitHub-Review-Prozess abgeschlossen

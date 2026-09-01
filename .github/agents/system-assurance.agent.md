@@ -6,6 +6,7 @@ tools:
     'vscode',
     'execute',
     'read',
+    'edit',
     'search',
     'web',
     'copilot-container-tools/*',

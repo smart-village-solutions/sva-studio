@@ -17,7 +17,8 @@
 
 ## Invarianten-Evidenz
 
-Zulässige Statuswerte: `geplant`, `belegt`, `Lücke` und `Restrisiko`.
+Zulässige Statuswerte: `offen`, `geplant`, `belegt`, `Lücke` und
+`Restrisiko akzeptiert`.
 
 | Invariante | Kritikalität | Direkte Evidenz         | Gegenbeispiele geprüft | Status  |
 | ---------- | ------------ | ----------------------- | ---------------------- | ------- |

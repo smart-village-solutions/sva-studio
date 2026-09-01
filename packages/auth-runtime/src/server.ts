@@ -139,6 +139,7 @@ export {
   resolveMainserverOwnershipSource,
   resolveMainserverOwnershipTarget,
   withMainserverContentOwnershipLock,
+  type MainserverOwnershipVerificationCandidate,
   type MainserverOwnershipTargetErrorCode,
   type ResolvedMainserverOwnershipTarget,
   type ResolvedMainserverOwnershipSource,

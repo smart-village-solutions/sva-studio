@@ -11,7 +11,7 @@
 
 Das Studio behandelt den aktuellen Inhaber eines Mainserver-Inhalts als den am Datensatz frisch gelesenen `dataProvider`. Ein Transfer ist eine eigene, mit `content.transferOwnership` autorisierte Aktion und niemals ein Nebeneffekt einer normalen Inhaltsbearbeitung.
 
-Der Browser wählt ausschließlich einen typisierten Principal (`account` oder `organization`). Credentials, DataProvider-ID und aktuelle Binding-Version werden serverseitig aufgelöst und unmittelbar vor dem Provider-Write unter einer datensatzbezogenen Sperre erneut geprüft. Lokale Studio-Inhalte verwenden denselben UI- und Permission-Vertrag, ändern aber atomar genau eines der lokalen Owner-Felder.
+Der Browser wählt ausschließlich einen typisierten Principal (`account` oder `organization`). Credentials, DataProvider-ID und aktuelle Binding-Version werden serverseitig aufgelöst und unmittelbar vor dem Provider-Write unter einer datensatzbezogenen Sperre erneut geprüft. Fehlt für verwendbare Ziel-Credentials lediglich die gespeicherte Bindung, darf die Auswahl den Principal als prüfpflichtig anbieten; erst die ausdrückliche Bestätigung verifiziert genau dieses Ziel über `/data_provider.json`. Lokale Studio-Inhalte verwenden denselben UI- und Permission-Vertrag, ändern aber atomar genau eines der lokalen Owner-Felder.
 
 ## Begründung
 
@@ -24,10 +24,11 @@ Der Browser wählt ausschließlich einen typisierten Principal (`account` oder `
 
 1. Das Studio liest den aktuellen DataProvider frisch am Mainserver-Datensatz.
 2. Source-Scope und `content.transferOwnership` werden geprüft.
-3. Unter Advisory Lock werden Quell-DataProvider, Ziel-Principal, Credentials und Binding-Version erneut validiert.
-4. Das Mutationsjournal hält erwarteten Quell- und Ziel-DataProvider vor dem Write fest.
-5. Ein bestätigter Ziel-DataProvider finalisiert den Transfer. Bei verlorenem Response folgen Target- und Source-Re-Read; uneindeutige Evidenz endet in `reconciliation_required`.
-6. Das Audit enthält technische Principal-/Provider-Referenzen und Binding-Version, aber keine E-Mail-Adressen oder Secrets.
+3. Fehlt ausschließlich die Zielbindung, wird die stabile Identity-ID anlassbezogen für das bestätigte Ziel geladen und konfliktbewusst persistiert; Zielsuche und Pagination führen keine externen Identity-Aufrufe je Treffer aus.
+4. Unter Advisory Lock werden Quell-DataProvider, Ziel-Principal, Credentials und Binding-Version erneut validiert.
+5. Das Mutationsjournal hält erwarteten Quell- und Ziel-DataProvider vor dem Write fest.
+6. Ein bestätigter Ziel-DataProvider finalisiert den Transfer. Bei verlorenem Response folgen Target- und Source-Re-Read; uneindeutige Evidenz endet in `reconciliation_required`.
+7. Das Audit enthält technische Principal-/Provider-Referenzen und Binding-Version, aber keine E-Mail-Adressen oder Secrets.
 
 ## UI-Vertrag
 

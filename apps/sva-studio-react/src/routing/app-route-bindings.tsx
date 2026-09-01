@@ -221,15 +221,18 @@ const resolveOwnershipTransferError = (error: unknown): string => {
         ? 'targetInvalid'
         : error.code === 'content_transfer_target_credentials_missing'
           ? 'credentialsMissing'
-          : error.code === 'content_transfer_type_unsupported'
-            ? 'unsupported'
-            : error.code === 'content_transfer_reconciliation_required'
-              ? 'reconciliationRequired'
-              : error.code === 'content_transfer_provider_rejected'
-                ? 'providerRejected'
-                : error.code.includes('binding') || error.code === 'content_transfer_source_changed'
-                  ? 'bindingInvalid'
-                  : 'error';
+          : error.code === 'content_transfer_target_verification_failed'
+            ? 'targetVerificationFailed'
+            : error.code === 'content_transfer_type_unsupported'
+              ? 'unsupported'
+              : error.code === 'content_transfer_reconciliation_required'
+                ? 'reconciliationRequired'
+                : error.code === 'content_transfer_provider_rejected'
+                  ? 'providerRejected'
+                  : error.code.includes('binding') ||
+                      error.code === 'content_transfer_source_changed'
+                    ? 'bindingInvalid'
+                    : 'error';
   return t(`content.ownership.${key}`);
 };
 
@@ -238,6 +241,7 @@ const ownershipPanelLabels = (): ContentOwnershipPanelLabels => ({
   currentOwner: t('content.ownership.currentOwner'),
   account: t('content.ownership.account'),
   organization: t('content.ownership.organization'),
+  verificationRequired: t('content.ownership.verificationRequired'),
   saveKeepsOwner: t('content.ownership.saveKeepsOwner'),
   transferUnavailable: t('content.ownership.transferUnavailable'),
   transferForbidden: t('content.ownership.transferForbidden'),

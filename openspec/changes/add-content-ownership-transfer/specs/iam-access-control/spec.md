@@ -35,7 +35,7 @@ Das System SHALL die fully-qualified Action `content.transferOwnership` als eige
 
 ### Requirement: Transferziel wird unabhängig von der Source-Permission validiert
 
-Das System SHALL ein Transferziel als aktiven Account oder aktive Organisation derselben Instanz validieren. Für Mainserver-basierte Inhalte SHALL es zusätzlich eine eindeutige, konfliktfreie und aktuelle DataProvider-Bindung sowie verwendbare Ziel-Credentials verlangen. Die Zielvalidierung SHALL keine freie DataProvider-Auswahl und keine neue Berechtigung des Actors im Zielbereich begründen.
+Das System SHALL ein Transferziel als aktiven Account oder aktive Organisation derselben Instanz validieren. Für Mainserver-basierte Inhalte SHALL es verwendbare Ziel-Credentials und vor dem Provider-Write eine eindeutige, konfliktfreie und aktuelle DataProvider-Bindung verlangen. Fehlt bei verwendbaren Credentials ausschließlich die gespeicherte Bindung, MAY der Zielkatalog den Principal mit dem Zustand `verification_required` anbieten. Nach ausdrücklicher Transferbestätigung SHALL der Server genau diese Credential-Version über den authentifizierten Identity-Endpunkt prüfen, die Beobachtung konfliktbewusst persistieren und die Zielbindung erneut auflösen. Die Zielvalidierung SHALL keine freie DataProvider-Auswahl und keine neue Berechtigung des Actors im Zielbereich begründen.
 
 #### Scenario: Gültiger Account ist Transferziel
 
@@ -53,12 +53,30 @@ Das System SHALL ein Transferziel als aktiven Account oder aktive Organisation d
 - **THEN** kann sie als `targetPrincipal.type = organization` verwendet werden
 - **AND** erfordert dies keine Mitgliedschaft des Actors in der Zielorganisation
 
+#### Scenario: Fehlende Zielbindung wird erst bei Bestätigung geprüft
+
+- **GIVEN** ein aktiver Ziel-Principal derselben Instanz besitzt verwendbare Credentials
+- **AND** für deren aktuellen Fingerprint fehlt eine DataProvider-Bindung
+- **WHEN** der Server den Zielkatalog erstellt
+- **THEN** darf er den Principal als `verification_required` anbieten
+- **AND** ruft das Blättern oder Suchen nicht für jeden Treffer den externen Identity-Endpunkt auf
+- **WHEN** der Benutzer den Transfer zu diesem Principal ausdrücklich bestätigt
+- **THEN** prüft der Server ausschließlich dessen Credentials über `/data_provider.json`
+- **AND** persistiert die authentifizierte Beobachtung vor der erneuten Zielauflösung
+
 #### Scenario: Zielbindung ist konfliktbehaftet
 
-- **GIVEN** ein Ziel-Principal ist keinem oder mehreren DataProvidern zugeordnet oder seine Binding-Evidenz ist stale
+- **GIVEN** ein Ziel-Principal ist mehreren DataProvidern zugeordnet oder seine Binding-Evidenz ist stale
 - **WHEN** ein Mainserver-Transfer vorbereitet wird
 - **THEN** verweigert der Server die Zielvalidierung
 - **AND** offenbart er weder konkurrierende Principal-Daten noch Credentials
+
+#### Scenario: Anlassbezogene Identity-Prüfung scheitert
+
+- **GIVEN** ein ausgewähltes Ziel benötigt noch eine DataProvider-Verifikation
+- **WHEN** `/data_provider.json` keine verwendbare Identität liefert oder nicht erreichbar ist
+- **THEN** endet der Transfer mit einem stabilen, wiederholbaren Verifikationsfehler
+- **AND** führt der Server keinen Provider-Write aus
 
 #### Scenario: Browser sendet eine DataProvider-ID
 

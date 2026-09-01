@@ -35,6 +35,11 @@ export type ResolvedMainserverOwnershipTarget = Readonly<{
   }>;
 }>;
 
+export type MainserverOwnershipVerificationCandidate = Readonly<{
+  principal: IamContentOwnerPrincipal;
+  connection: ResolvedMainserverOwnershipTarget['connection'];
+}>;
+
 export type ResolvedMainserverOwnershipSource = Readonly<{
   principal: IamContentOwnerPrincipal;
   dataProviderId: string;
@@ -43,7 +48,15 @@ export type ResolvedMainserverOwnershipSource = Readonly<{
 
 export type ResolveMainserverOwnershipTargetResult =
   | Readonly<{ ok: true; target: ResolvedMainserverOwnershipTarget }>
-  | Readonly<{ ok: false; code: MainserverOwnershipTargetErrorCode }>;
+  | Readonly<{
+      ok: false;
+      code: 'content_transfer_target_binding_missing';
+      verificationCandidate: MainserverOwnershipVerificationCandidate;
+    }>
+  | Readonly<{
+      ok: false;
+      code: Exclude<MainserverOwnershipTargetErrorCode, 'content_transfer_target_binding_missing'>;
+    }>;
 
 type PrincipalRow = Readonly<{
   keycloak_subject: string | null;
@@ -211,6 +224,19 @@ export const resolveMainserverOwnershipTarget = async (input: {
     };
   }
 
+  const verificationCandidate: MainserverOwnershipVerificationCandidate = {
+    principal: input.principal,
+    connection: {
+      instanceId: input.instanceId,
+      keycloakSubject,
+      ...(input.principal.type === 'organization'
+        ? { activeOrganizationId: input.principal.id }
+        : {}),
+      actingPrincipalType,
+      credentialFingerprint: credentials.credentialFingerprint,
+    },
+  };
+
   let binding: MainserverDataProviderBinding | undefined;
   try {
     binding = await loadCurrentMainserverDataProviderBinding({
@@ -220,14 +246,14 @@ export const resolveMainserverOwnershipTarget = async (input: {
       credentialFingerprint: credentials.credentialFingerprint,
     });
     if (!binding) {
-      return {
-        ok: false,
-        code: await classifyMissingBinding({
-          instanceId: input.instanceId,
-          principal: input.principal,
-          credentialFingerprint: credentials.credentialFingerprint,
-        }),
-      };
+      const code = await classifyMissingBinding({
+        instanceId: input.instanceId,
+        principal: input.principal,
+        credentialFingerprint: credentials.credentialFingerprint,
+      });
+      return code === 'content_transfer_target_binding_missing'
+        ? { ok: false, code, verificationCandidate }
+        : { ok: false, code };
     }
   } catch {
     return { ok: false, code: 'database_unavailable' };
@@ -241,15 +267,7 @@ export const resolveMainserverOwnershipTarget = async (input: {
       ...(binding.dataProviderName ? { dataProviderName: binding.dataProviderName } : {}),
       bindingId: binding.id,
       bindingVersion: toBindingVersion(binding),
-      connection: {
-        instanceId: input.instanceId,
-        keycloakSubject,
-        ...(input.principal.type === 'organization'
-          ? { activeOrganizationId: input.principal.id }
-          : {}),
-        actingPrincipalType,
-        credentialFingerprint: credentials.credentialFingerprint,
-      },
+      connection: verificationCandidate.connection,
     },
   };
 };
@@ -281,11 +299,18 @@ export const listMainserverOwnershipTargets = async (input: {
       }),
     }))
   );
-  const items = resolved.flatMap(({ candidate, resolution }) =>
-    resolution.ok && resolution.target.dataProviderId !== input.currentDataProviderId
-      ? [candidate]
-      : []
-  );
+  const items: IamContentOwnershipTarget[] = [];
+  for (const { candidate, resolution } of resolved) {
+    if (resolution.ok) {
+      if (resolution.target.dataProviderId !== input.currentDataProviderId) {
+        items.push({ ...candidate, readiness: 'ready' });
+      }
+      continue;
+    }
+    if (resolution.code === 'content_transfer_target_binding_missing') {
+      items.push({ ...candidate, readiness: 'verification_required' });
+    }
+  }
   return {
     items,
     page: input.page,

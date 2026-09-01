@@ -39,6 +39,7 @@ describe('MainserverPrincipalControl accessibility', () => {
           currentOwner: 'Aktueller Inhaber',
           account: 'Persönlicher Account',
           organization: 'Organisation',
+          verificationRequired: 'DataProvider-Zuordnung wird beim Transfer geprüft.',
           saveKeepsOwner: 'Normales Speichern ändert den Inhaber nicht.',
           transferUnavailable: 'Nicht verfügbar',
           transferForbidden: 'Nicht berechtigt',

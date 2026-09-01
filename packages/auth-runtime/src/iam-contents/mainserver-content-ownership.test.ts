@@ -217,7 +217,18 @@ describe('Mainserver ownership targets', () => {
         actorKeycloakSubject: 'kc-actor',
         principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
       })
-    ).resolves.toEqual({ ok: false, code: 'content_transfer_target_binding_missing' });
+    ).resolves.toMatchObject({
+      ok: false,
+      code: 'content_transfer_target_binding_missing',
+      verificationCandidate: {
+        principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
+        connection: {
+          keycloakSubject: 'kc-target',
+          actingPrincipalType: 'user',
+          credentialFingerprint: 'a'.repeat(64),
+        },
+      },
+    });
 
     state.query
       .mockResolvedValueOnce({ rows: [{ keycloak_subject: 'kc-target', is_active: true }] })
@@ -232,12 +243,12 @@ describe('Mainserver ownership targets', () => {
     ).resolves.toEqual({ ok: false, code: 'content_transfer_target_binding_conflict' });
   });
 
-  it('resolves only the requested candidate page and filters unusable targets', async () => {
+  it('resolves only the requested candidate page and exposes binding-missing targets for verification', async () => {
     state.loadTargets.mockResolvedValue({
       items: [
         {
-          principal: { type: 'account', id: '11111111-1111-4111-8111-111111111111' },
-          displayName: 'Aktueller Inhaber',
+          principal: { type: 'account', id: '44444444-4444-4444-8444-444444444444' },
+          displayName: 'Prüfung erforderlich',
         },
         {
           principal: { type: 'account', id: '33333333-3333-4333-8333-333333333333' },
@@ -256,6 +267,7 @@ describe('Mainserver ownership targets', () => {
         credentialFingerprint: 'a'.repeat(64),
       })
       .mockResolvedValueOnce({ status: 'missing_credentials' });
+    state.loadBinding.mockResolvedValue(undefined);
 
     await expect(
       listMainserverOwnershipTargets({
@@ -270,7 +282,18 @@ describe('Mainserver ownership targets', () => {
         },
         currentDataProviderId: 'provider-target',
       })
-    ).resolves.toEqual({ items: [], page: 1, pageSize: 10, total: 2 });
+    ).resolves.toEqual({
+      items: [
+        {
+          principal: { type: 'account', id: '44444444-4444-4444-8444-444444444444' },
+          displayName: 'Prüfung erforderlich',
+          readiness: 'verification_required',
+        },
+      ],
+      page: 1,
+      pageSize: 10,
+      total: 2,
+    });
     expect(state.loadTargets).toHaveBeenCalledTimes(1);
     expect(state.loadTargets).toHaveBeenCalledWith(
       'instance-1',

@@ -1,8 +1,10 @@
 import {
   hasUnresolvedMainserverOwnershipTransfer,
+  recordMainserverDataProviderObservation,
   resolveMainserverOwnershipTarget,
   validateCsrf,
   withMainserverContentOwnershipLock,
+  type MainserverOwnershipVerificationCandidate,
   type ResolvedMainserverOwnershipTarget,
 } from '@sva/auth-runtime/server';
 import type { IamContentOwnerPrincipal } from '@sva/core';
@@ -25,7 +27,48 @@ import {
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { finalizeMainserverMutation, type MainserverMutationActor } from './mutation-principal.js';
-import { transferSvaMainserverContentOwnership } from './service.js';
+import {
+  loadSvaMainserverDataProviderIdentity,
+  transferSvaMainserverContentOwnership,
+} from './service.js';
+
+const verifyMissingTargetBinding = async (candidate: MainserverOwnershipVerificationCandidate) => {
+  const identity = await loadSvaMainserverDataProviderIdentity(candidate.connection);
+  return recordMainserverDataProviderObservation({
+    instanceId: candidate.connection.instanceId,
+    principalType: candidate.connection.actingPrincipalType,
+    principalId: candidate.principal.id,
+    credentialFingerprint: candidate.connection.credentialFingerprint,
+    dataProviderId: identity.dataProvider.id,
+    ...(identity.dataProvider.name ? { dataProviderName: identity.dataProvider.name } : {}),
+    evidenceKind: 'identity_endpoint',
+  });
+};
+
+const resolveTransferTarget = async (input: {
+  actor: MainserverMutationActor;
+  principal: IamContentOwnerPrincipal;
+}) => {
+  const initial = await resolveMainserverOwnershipTarget({
+    instanceId: input.actor.instanceId,
+    actorKeycloakSubject: input.actor.keycloakSubject,
+    principal: input.principal,
+  });
+  if (initial.ok || initial.code !== 'content_transfer_target_binding_missing') return initial;
+
+  const observation = await verifyMissingTargetBinding(initial.verificationCandidate);
+  if (observation.outcome === 'conflict') {
+    return { ok: false, code: 'content_transfer_target_binding_conflict' } as const;
+  }
+  return resolveMainserverOwnershipTarget({
+    instanceId: input.actor.instanceId,
+    actorKeycloakSubject: input.actor.keycloakSubject,
+    principal: input.principal,
+  });
+};
+
+const targetVerificationFailureStatus = (error: unknown): number =>
+  error instanceof SvaMainserverError && (error.statusCode ?? 500) < 500 ? 409 : 503;
 
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
@@ -193,11 +236,34 @@ const executeLockedTransfer = async (input: {
   const source = await resolveAuthorizedTransferSource(input);
   if (!source.ok) return source.response;
   const sourceDataProviderId = source.dataProviderId;
-  const targetResolution = await resolveMainserverOwnershipTarget({
-    instanceId: input.actor.instanceId,
-    actorKeycloakSubject: input.actor.keycloakSubject,
-    principal: input.principal,
-  });
+  let targetResolution: Awaited<ReturnType<typeof resolveTransferTarget>>;
+  try {
+    targetResolution = await resolveTransferTarget({
+      actor: input.actor,
+      principal: input.principal,
+    });
+  } catch (error) {
+    recordOwnershipTransferOutcome({
+      actor: input.actor,
+      contentType: input.route.contentType,
+      outcome: 'rejected',
+      errorCode: 'content_transfer_target_verification_failed',
+    });
+    await finalizeMainserverMutation({
+      actor: input.actor,
+      providerOutcome: 'failed',
+      reconciliationStatus: 'complete',
+      completedSteps: ['target_identity_verification_failed'],
+      contentId: input.route.contentId,
+      observedDataProviderId: sourceDataProviderId,
+      lastErrorCode: 'content_transfer_target_verification_failed',
+    });
+    return errorJson(
+      targetVerificationFailureStatus(error),
+      'content_transfer_target_verification_failed',
+      'Die DataProvider-Zuordnung des Zielinhabers konnte nicht bestätigt werden.'
+    );
+  }
   if (!targetResolution.ok) {
     recordOwnershipTransferOutcome({
       actor: input.actor,

@@ -85,6 +85,11 @@ const TargetOptions = ({ labels, state }: DialogPartProps) => (
             <span className="block text-sm text-muted-foreground">
               {principalTypeLabel(target.principal.type, labels)}
             </span>
+            {target.readiness === 'verification_required' ? (
+              <span className="block text-sm text-muted-foreground">
+                {labels.verificationRequired}
+              </span>
+            ) : null}
           </span>
         </label>
       );
@@ -126,6 +131,9 @@ const TransferConfirmation = ({
       </p>
       <p className="text-sm text-muted-foreground">{labels.authorEffect}</p>
       <p className="text-sm text-muted-foreground">{labels.accessWarning}</p>
+      {state.selected.readiness === 'verification_required' ? (
+        <p className="text-sm text-muted-foreground">{labels.verificationRequired}</p>
+      ) : null}
       <label className="flex min-h-11 items-center gap-3 text-sm">
         <input
           type="checkbox"

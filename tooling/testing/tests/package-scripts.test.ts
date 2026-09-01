@@ -458,14 +458,18 @@ describe('workspace package scripts', () => {
     expect(qualityWorkflow).toContain('name: CI Gates (PR)');
     expect(runtimeWorkflow).toContain('name: CI Gates (PR)');
     expect(e2eWorkflow).toContain('name: App E2E');
-    expect(qualityWorkflow).toContain('pnpm exec tsx scripts/ci/pr-scope.cli.ts');
+    expect(qualityWorkflow).toContain(
+      'node --no-warnings --experimental-strip-types scripts/ci/pr-scope.cli.ts'
+    );
     expect(qualityWorkflow).toContain(
       "NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}"
     );
     expect(qualityWorkflow).not.toContain(
       'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
-    expect(runtimeWorkflow).toContain('pnpm exec tsx scripts/ci/pr-scope.cli.ts');
+    expect(runtimeWorkflow).toContain(
+      'node --no-warnings --experimental-strip-types scripts/ci/pr-scope.cli.ts'
+    );
     expect(runtimeWorkflow).not.toContain(
       'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
@@ -501,7 +505,9 @@ describe('workspace package scripts', () => {
     const mainBuildWorkflow = loadPrGatesWorkflow();
 
     expect(mainBuildWorkflow).toContain('pull_request:');
-    expect(mainBuildWorkflow).toContain('pnpm exec tsx scripts/ci/pr-scope.cli.ts');
+    expect(mainBuildWorkflow).toContain(
+      'node --no-warnings --experimental-strip-types scripts/ci/pr-scope.cli.ts'
+    );
     expect(mainBuildWorkflow).toContain("needs.scope.outputs.app_build_mode != 'skip'");
     expect(mainBuildWorkflow).toContain("needs.scope.outputs.runtime_verify_mode != 'skip'");
     expect(mainBuildWorkflow).toContain('pnpm verify:runtime-artifact');

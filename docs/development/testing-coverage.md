@@ -218,8 +218,10 @@ Empfehlung für `main`:
 
 ### CI-Summaries und Artefakte
 
-Der Scope-Job veröffentlicht genau ein versioniertes Artefakt
-`artifacts/ci-gates/pr-scope.json`. Die parallelen Unit- und Coverage-Phasen
+Der Scope-Job läuft ohne Workspace-Installation direkt auf der in `.nvmrc`
+festgelegten Node.js-Laufzeit, weil der Controller ausschließlich Node-
+Standardbibliothek und Git verwendet. Er veröffentlicht genau ein versioniertes
+Artefakt `artifacts/ci-gates/pr-scope.json`. Die parallelen Unit- und Coverage-Phasen
 veröffentlichen ihre vorhandenen SHA-gebundenen Evidenzartefakte; ausschließlich
 die stabilen Aggregatoren `Unit` und `Coverage` treffen daraus die öffentliche,
 fail-closed Endentscheidung. Logs und Artefakte bleiben damit prüfbar, ohne eine

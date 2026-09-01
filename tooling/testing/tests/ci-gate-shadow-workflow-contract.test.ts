@@ -34,8 +34,21 @@ describe('consolidated CI gate workflows', () => {
   });
 
   it('computes the general PR scope exactly once and retains SHA-bound evidence', () => {
+    const scopeStart = prGates.indexOf('\n  scope:');
+    const lintStart = prGates.indexOf('\n  lint:', scopeStart);
+
+    expect(scopeStart).toBeGreaterThanOrEqual(0);
+    expect(lintStart).toBeGreaterThan(scopeStart);
+
+    const scopeJob = prGates.slice(scopeStart, lintStart);
+
     expect(prGates.match(/pr-scope\.cli\.ts/gu)).toHaveLength(1);
     expect(prGates).not.toContain('dorny/paths-filter');
+    expect(scopeJob).toContain('uses: actions/setup-node@v6');
+    expect(scopeJob).not.toContain('setup-pnpm-workspace');
+    expect(scopeJob).toContain(
+      'node --no-warnings --experimental-strip-types scripts/ci/pr-scope.cli.ts'
+    );
     expect(prGates).toContain('--base ${{ github.event.pull_request.base.sha }}');
     expect(prGates).toContain('--head ${{ github.event.pull_request.head.sha }}');
     expect(prGates).toContain('--evidence-path artifacts/ci-gates/pr-scope.json');
@@ -97,7 +110,9 @@ describe('consolidated CI gate workflows', () => {
     const complexityStart = mainGates.indexOf('\n  complexity:', coverageStart);
     const coverageJob = mainGates.slice(coverageStart, complexityStart);
 
-    expect(coverageJob).toContain('uses: actions/checkout@v7\n        with:\n          fetch-depth: 0');
+    expect(coverageJob).toContain(
+      'uses: actions/checkout@v7\n        with:\n          fetch-depth: 0'
+    );
     expect(coverageJob).not.toContain('filter: tree:0');
     expect(coverageJob).not.toContain('git fetch --unshallow');
     expect(coverageJob).not.toContain('git fetch --tags');

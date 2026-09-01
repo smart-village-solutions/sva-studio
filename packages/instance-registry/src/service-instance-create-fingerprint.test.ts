@@ -39,12 +39,21 @@ describe('create instance payload fingerprint', () => {
   it.each([
     ['displayName', { displayName: 'Changed' }],
     ['parentDomain', { parentDomain: 'other.example.org' }],
-    ['authClientSecret', { authClientSecret: 'different-secret' }],
     ['tenantAdminClient', { tenantAdminClient: { clientId: 'other-client' } }],
     ['featureFlags', { featureFlags: { beta: false, alpha: false } }],
   ])('changes when %s changes', (_field, override) => {
     expect(buildCreateInstancePayloadFingerprint({ ...baseInput, ...override })).not.toBe(
       buildCreateInstancePayloadFingerprint(baseInput)
     );
+  });
+
+  it('does not persist an offline verifier for submitted client secrets', () => {
+    expect(
+      buildCreateInstancePayloadFingerprint({
+        ...baseInput,
+        authClientSecret: 'different-secret',
+        tenantAdminClient: { clientId: 'tenant-admin', secret: 'different-admin-secret' },
+      })
+    ).toBe(buildCreateInstancePayloadFingerprint(baseInput));
   });
 });

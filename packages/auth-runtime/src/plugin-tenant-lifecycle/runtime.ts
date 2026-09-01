@@ -117,8 +117,11 @@ const blocksAutomaticLifecycleRetryWhileSuspended = (
   lifecycle: NonNullable<Awaited<ReturnType<PluginTenantLifecycleRepository['getLifecycle']>>>
 ): boolean =>
   lifecycle.accessState === 'suspended' &&
-  (lifecycle.retryKind !== 'retryable' ||
-    (lifecycle.desiredOperation !== 'suspend' && lifecycle.desiredOperation !== 'reactivate'));
+  !(
+    (lifecycle.retryKind === 'retryable' &&
+      (lifecycle.desiredOperation === 'suspend' || lifecycle.desiredOperation === 'reactivate')) ||
+    (lifecycle.desiredOperation === 'reactivate' && lifecycle.readinessStatus === 'pending')
+  );
 
 const resolveAutomaticProvisioningSchedule = (
   definition: PluginTenantLifecycleRegistryEntry,
@@ -157,6 +160,14 @@ const resolveAutomaticProvisioningSchedule = (
   }
   if (lifecycle.nextRecheckAt && Date.parse(lifecycle.nextRecheckAt) > now.getTime()) {
     return null;
+  }
+  if (
+    lifecycle.accessState === 'suspended' &&
+    lifecycle.readinessStatus === 'pending' &&
+    lifecycle.desiredOperation === 'reactivate' &&
+    hasOperation('reactivate')
+  ) {
+    return { operation: 'reactivate', scheduledAt: now.toISOString() };
   }
   if (
     lifecycle.desiredGeneration > lifecycle.completedGeneration &&

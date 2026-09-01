@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
 import type { InstanceRegistryRecord } from '@sva/core';
 
@@ -11,6 +13,10 @@ import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createProvisioningArtifacts } from './service-provisioning.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import {
+  loadRepositoryAuthClientSecret,
+  loadRepositoryTenantAdminClientSecret,
+} from './service-keycloak-secrets.js';
+import {
   DEFAULT_TENANT_ADMIN_CLIENT_ID,
   encryptAuthClientSecret,
   encryptTenantAdminClientSecret,
@@ -23,7 +29,8 @@ import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observ
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
-  input: CreateInstanceProvisioningInput
+  input: CreateInstanceProvisioningInput,
+  instance: InstanceRegistryRecord
 ): Promise<boolean> => {
   const matchingRun = (await deps.repository.listProvisioningRuns(input.instanceId)).find(
     (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
@@ -37,7 +44,49 @@ const assertIdempotentCreateRetry = async (
   ) {
     throw new Error('idempotency_key_reuse');
   }
+  if (!(await matchesPersistedCreateSecrets(deps, input, instance))) {
+    throw new Error('idempotency_key_reuse');
+  }
   return true;
+};
+
+const normalizeSubmittedSecret = (value: string | undefined): string | undefined =>
+  value?.trim() || undefined;
+
+const secretsEqual = (left: string, right: string): boolean => {
+  const leftBytes = Buffer.from(left);
+  const rightBytes = Buffer.from(right);
+  return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
+};
+
+const matchesPersistedSecret = async (input: {
+  readonly configured: boolean;
+  readonly submitted: string | undefined;
+  readonly load: () => Promise<string | undefined>;
+}): Promise<boolean> => {
+  const submitted = normalizeSubmittedSecret(input.submitted);
+  if (!input.configured) return submitted === undefined;
+  if (!submitted) return false;
+  const persisted = await input.load();
+  return persisted !== undefined && secretsEqual(persisted, submitted);
+};
+
+const matchesPersistedCreateSecrets = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CreateInstanceProvisioningInput,
+  instance: InstanceRegistryRecord
+): Promise<boolean> => {
+  const authClientSecretMatches = await matchesPersistedSecret({
+    configured: instance.authClientSecretConfigured,
+    submitted: input.authClientSecret,
+    load: () => loadRepositoryAuthClientSecret(deps, deps.repository, instance.instanceId),
+  });
+  if (!authClientSecretMatches) return false;
+  return matchesPersistedSecret({
+    configured: instance.tenantAdminClient?.secretConfigured === true,
+    submitted: input.tenantAdminClient?.secret,
+    load: () => loadRepositoryTenantAdminClientSecret(deps, deps.repository, instance.instanceId),
+  });
 };
 
 const resolveIdempotentCreateRetry = async (
@@ -45,7 +94,7 @@ const resolveIdempotentCreateRetry = async (
   input: CreateInstanceProvisioningInput,
   instance: InstanceRegistryRecord
 ): Promise<CreateInstanceProvisioningResult | null> => {
-  if (!(await assertIdempotentCreateRetry(deps, input))) {
+  if (!(await assertIdempotentCreateRetry(deps, input, instance))) {
     return null;
   }
   await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({

@@ -66,6 +66,12 @@ const latestRun = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+const idempotentInstance = {
+  ...baseInstance,
+  authClientSecretConfigured: false,
+  tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+};
+
 const createRepository = (
   overrides: Partial<InstanceRegistryRepository> = {}
 ): InstanceRegistryRepository =>
@@ -516,7 +522,7 @@ describe('instance registry service facade', () => {
       unchangedModuleIds: ['news'],
     }));
     const repository = createRepository({
-      getInstanceById: vi.fn(async () => baseInstance),
+      getInstanceById: vi.fn(async () => idempotentInstance),
       listProvisioningRuns: vi.fn(async () => [latestRun]),
       reconcileModuleActivationPolicies,
     });
@@ -576,7 +582,7 @@ describe('instance registry service facade', () => {
 
   it('resolves a concurrent identical create after losing the instance insert race', async () => {
     const repository = createRepository({
-      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(baseInstance),
+      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(idempotentInstance),
       createInstance: vi.fn(async () => null),
       listProvisioningRuns: vi.fn(async () => [latestRun]),
     });
@@ -603,7 +609,7 @@ describe('instance registry service facade', () => {
 
   it('waits for the winning create request to persist its idempotency evidence', async () => {
     const repository = createRepository({
-      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(baseInstance),
+      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(idempotentInstance),
       createInstance: vi.fn(async () => null),
       listProvisioningRuns: vi.fn().mockResolvedValueOnce([]).mockResolvedValue([latestRun]),
     });
@@ -650,6 +656,73 @@ describe('instance registry service facade', () => {
 
     expect(reconcileModuleActivationPolicies).not.toHaveBeenCalled();
     expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
+  it('rejects a create retry when its submitted secret differs from encrypted registry state', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'auth-cipher');
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+      })),
+      getAuthClientSecretCiphertext,
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        revealSecret: vi.fn((value) => (value === 'auth-cipher' ? 'original-secret' : undefined)),
+      })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        authClientSecret: 'different-secret',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
+
+    expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
+  });
+
+  it('accepts a create retry when its submitted secret matches encrypted registry state', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'auth-cipher');
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+      })),
+      getAuthClientSecretCiphertext,
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        revealSecret: vi.fn((value) => (value === 'auth-cipher' ? 'original-secret' : undefined)),
+      })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        authClientSecret: ' original-secret ',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
   });
 
   it('rejects a create retry when legacy evidence has no payload fingerprint', async () => {

@@ -15,10 +15,8 @@ export const buildCreateInstancePayloadFingerprint = (
     authRealm: input.authRealm,
     authClientId: input.authClientId,
     authIssuerUrl: input.authIssuerUrl,
-    authClientSecret: input.authClientSecret?.trim() || undefined,
     tenantAdminClient: {
       clientId: input.tenantAdminClient?.clientId ?? DEFAULT_TENANT_ADMIN_CLIENT_ID,
-      secret: input.tenantAdminClient?.secret?.trim() || undefined,
     },
     tenantAdminBootstrap: input.tenantAdminBootstrap,
     themeKey: input.themeKey,

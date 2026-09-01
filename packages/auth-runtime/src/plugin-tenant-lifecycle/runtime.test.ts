@@ -511,6 +511,38 @@ describe('configured plugin tenant lifecycle runtime', () => {
     );
   });
 
+  it('re-drives a due pending reactivation while keeping access suspended', async () => {
+    state.operations = [{ operation: 'reactivate', jobTypeId: 'speech.reactivateTenant' }];
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      accessState: 'suspended',
+      readinessStatus: 'pending',
+      desiredOperation: 'reactivate',
+      desiredGeneration: 3,
+      completedGeneration: 3,
+      retryKind: undefined,
+      nextRecheckAt: '2020-08-30T12:05:00.000Z',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          jobTypeId: 'speech.reactivateTenant',
+          inputPayload: {
+            studioTenantLifecycle: {
+              operation: 'reactivate',
+              generation: 3,
+              contractRevision: '1.0.0:1',
+            },
+          },
+        }),
+      })
+    );
+  });
+
   it('retries a failed suspend operation while the lifecycle remains suspended', async () => {
     state.operations = [{ operation: 'suspend', jobTypeId: 'speech.suspendTenant' }];
     state.getLifecycle.mockResolvedValue({

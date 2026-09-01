@@ -59,15 +59,32 @@ The SSF domain model uses the following names:
 | `user`          | User                 | operational use within one tenant |
 | `guest`         | Guest                | one specific SSF session          |
 
+These values are SSF personas, not renamed canonical Studio IAM roles. The
+initial integration uses this fixed mapping:
+
+| Studio IAM source                         | SSF persona or token value | Meaning                                                                    |
+| ----------------------------------------- | -------------------------- | -------------------------------------------------------------------------- |
+| root role `instance_registry_admin`       | `system_admin`             | system-wide SSF administration; never materialized in tenant tokens        |
+| tenant-local default role `system_admin`  | `tenant_admin`             | administration of exactly the active tenant                                |
+| tenant-local operational SSF role         | `user`                     | conversation use according to effective `ssf.*` permissions                |
+| validated SSF guest session               | `guest`                    | session-bound use without a Studio or regular Keycloak account             |
+
+ADR-046 remains authoritative for Studio: `instance_registry_admin` is the
+root role and Studio `system_admin` remains tenant-local. The SSF
+`system_admin` persona is created only at this integration boundary. A custom
+tenant role requires no special persona value to exercise SSF actions; only
+its effective permissions are authoritative.
+
 During a transition period, the existing values `admin` and `customer` are
 accepted as aliases for `user` and `guest`. Newly issued or materialized roles
 use only the new values.
 
-System administrators are managed in the Studio root context and do not appear
-in tenant tokens. `system_admin` and `tenant_admin` are personas and default
-roles, not direct authorization inputs. Server-side decisions use only fully
-qualified `ssf.*` actions. Custom roles can therefore receive the same rights
-without special-casing a role name. A tenant administrator does not
+SSF system administrators are represented by `instance_registry_admin` in the
+Studio root context and do not appear in tenant tokens. `system_admin` and
+`tenant_admin` are SSF personas and default roles, not direct authorization
+inputs. Server-side decisions use only fully qualified `ssf.*` actions. Custom
+roles can therefore receive the same rights without special-casing a role
+name. A tenant administrator does not
 automatically receive operational conversation permissions. If the same person
 also uses SSF operationally, that person additionally receives the `user` role
 and the corresponding operational `ssf.*` permissions.

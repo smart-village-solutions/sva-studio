@@ -599,6 +599,9 @@ Zuordnung:
   legt die gemeinsame Instanzidentität, das separate SSF-Keycloak, die
   autoritativen Claims und die einfache Service-Token-Grenze für den internen
   V1-Lesepfad fest.
+- ADR-046 bleibt für Studio-Rollenscopes maßgeblich. ADR-057 definiert nur die
+  feste Übersetzung von `instance_registry_admin` zu SSF-`system_admin` und von
+  tenantlokalem Studio-`system_admin` zu SSF-`tenant_admin`.
 - Das SSF-Plugin ist alleinige Runtime-Quelle der vollständig aufgelösten
   Konfiguration einschließlich aller versionierten Produktdefaults. SSF hält
   weder eine zweite Default-Auflösung noch eine persistente Konfigurationskopie.

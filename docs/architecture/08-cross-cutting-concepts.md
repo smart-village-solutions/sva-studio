@@ -921,9 +921,11 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   ausgeschlossen. Die angeforderte Instanz muss zum von SSF validierten Kontext
   passen.
 - SSF-Benutzertokens verwenden `studio_instance_id`, `ssf_roles` und
-  `ssf_permissions`; Permissions sind autoritativ. Systemadmins bleiben im
-  Root-Kontext, Gäste im SSF-Sessionmodell. Access-Tokens gelten standardmäßig
-  fünf und höchstens zehn Minuten.
+  `ssf_permissions`; Permissions sind autoritativ. Die Studio-Rootrolle
+  `instance_registry_admin` wird nur an der Integrationsgrenze als SSF-
+  `system_admin`, die tenantlokale Studio-Rolle `system_admin` als SSF-
+  `tenant_admin` eingeordnet. Gäste bleiben im SSF-Sessionmodell. Access-Tokens
+  gelten standardmäßig fünf und höchstens zehn Minuten.
 - Konfigurations-Reads und -Writes prüfen die festgelegten
   `ssf.configuration.*`-Actions. Systemadmin und Mandantenadmin sind Personas
   mit Default-Grants; kundenspezifische Rollen werden nicht durch Prüfungen auf

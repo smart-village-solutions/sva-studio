@@ -37,6 +37,14 @@ ausschließlich über `ssf.configuration.server.manage`,
 verlangt `ssf.configuration.tenant.provenance.read`. Kundenspezifische Rollen
 können diese Actions ohne Rollennamen-Sonderfall erhalten.
 
+Die SSF-Personas verändern das Studio-IAM-Modell aus ADR-046 nicht. Die
+Studio-Rootrolle `instance_registry_admin` wird an der SSF-Integrationsgrenze
+als `system_admin` eingeordnet, aber nie in Tenant-Tokens materialisiert. Die
+tenantlokale Studio-Defaultrolle `system_admin` wird für SSF als `tenant_admin`
+eingeordnet. Eine tenantlokale operative SSF-Rolle ergibt `user`; eine
+validierte Gäste-Session ergibt `guest`. Kundenspezifische Rollen benötigen
+keine Persona-Synthese, weil ihre effektiven `ssf.*`-Actions autoritativ sind.
+
 SSF speichert die Runtime-Antwort nicht persistent. Studio und SSF verwenden
 keine gemeinsame Fachdatenbank und greifen nicht direkt auf die Persistenz des
 jeweils anderen Systems zu.
@@ -63,6 +71,9 @@ Konfigurationen oder Revisionen berechnen.
   fehlschlagen lassen; V1 verlangt keine Offline-Kopie.
 - Service- und Benutzertoken benötigen getrennte Claims, Rollen und
   Lebenszyklen im SSF-Keycloak.
+- Die Integrationsübersetzung zwischen Studio-IAM und SSF-Personas muss bei
+  Provisionierung und Token-Materialisierung konsistent angewendet werden;
+  ADR-046 wird nicht supersediert.
 - Gesprächsinhalte, Gäste-Sessions und Auswertungsdaten bleiben außerhalb des
   Runtime-Konfigurationsvertrags.
 

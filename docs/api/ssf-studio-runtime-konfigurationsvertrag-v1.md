@@ -58,12 +58,30 @@ Das SSF-Fachmodell verwendet folgende Bezeichnungen:
 | `user`           | Benutzer             | operative Nutzung innerhalb eines Mandanten |
 | `guest`          | Gast                 | eine konkrete SSF-Session                   |
 
+Diese Werte sind SSF-Personas und keine Umbenennung der kanonischen Studio-
+IAM-Rollen. Für die erste Integration gilt folgende feste Übersetzung:
+
+| Studio-IAM-Quelle                         | SSF-Persona beziehungsweise Tokenwert | Bedeutung                                                                  |
+| ----------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| Rootrolle `instance_registry_admin`       | `system_admin`                        | systemweite SSF-Administration; wird nicht in Tenant-Tokens materialisiert |
+| tenantlokale Defaultrolle `system_admin`  | `tenant_admin`                        | Administration genau des aktiven Mandanten                                |
+| tenantlokale operative SSF-Rolle          | `user`                                | Nutzung der Gesprächsfunktionen gemäß effektiven `ssf.*`-Permissions       |
+| validierte SSF-Gäste-Session              | `guest`                               | sitzungsgebundene Nutzung ohne Studio- oder reguläres Keycloak-Konto        |
+
+ADR-046 bleibt für Studio maßgeblich: `instance_registry_admin` ist die
+Rootrolle und Studio-`system_admin` bleibt tenantlokal. Die SSF-Persona
+`system_admin` entsteht ausschließlich an dieser Integrationsgrenze. Eine
+kundenspezifische Tenant-Rolle benötigt keinen besonderen Persona-Wert, um
+SSF-Actions auszuüben; dafür sind allein ihre effektiven Permissions
+entscheidend.
+
 Die bisherigen Werte `admin` und `customer` werden während einer
 Übergangsphase als Aliase für `user` und `guest` akzeptiert. Neu ausgestellte
 beziehungsweise materialisierte Rollen verwenden nur die neuen Werte.
 
-Systemadmins werden im Root-Kontext des Studios verwaltet und erscheinen nicht
-in Tenant-Tokens. `system_admin` und `tenant_admin` sind Personas und
+SSF-Systemadmins werden über `instance_registry_admin` im Root-Kontext des
+Studios verwaltet und erscheinen nicht in Tenant-Tokens. `system_admin` und
+`tenant_admin` sind SSF-Personas und
 Defaultrollen, aber keine direkte Autorisierungsgrundlage. Serverseitige
 Entscheidungen verwenden ausschließlich vollständig qualifizierte `ssf.*`-
 Actions. Damit können kundenspezifische Rollen dieselben Rechte erhalten, ohne

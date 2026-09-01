@@ -43,6 +43,10 @@ describe('SSF runtime configuration V1 contract', () => {
 
     expect(endpoint.get.operationId).toBe('getSsfRuntimeConfigurationV1');
     expect(localization.properties.locales.maxItems).toBe(SSF_RUNTIME_LIMITS.activeLocales);
+    expect(localization.properties.locales.description).toBe(
+      'Locale entries are unique by their locale field.'
+    );
+    expect(localization.properties.locales).not.toHaveProperty('uniqueItems');
     expect(
       ssfRuntimeConfigurationV1OpenApiDocument.components.schemas.SsfMediaV1.properties.url
         .maxLength

@@ -126,7 +126,7 @@ export const ssfRuntimeConfigurationV1OpenApiDocument = {
                 type: 'array',
                 minItems: 1,
                 maxItems: SSF_RUNTIME_LIMITS.activeLocales,
-                uniqueItems: true,
+                description: 'Locale entries are unique by their locale field.',
                 items: { $ref: '#/components/schemas/SsfLocaleV1' },
               },
             },

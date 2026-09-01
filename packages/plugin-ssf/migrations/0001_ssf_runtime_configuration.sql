@@ -160,5 +160,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA ssf
 
 -- +goose Down
 -- +goose StatementBegin
+-- Roles are cluster-wide principals and may have existed before this migration or
+-- remain assigned to runtime users. The rollback removes only migration-owned schema objects.
 DROP SCHEMA IF EXISTS ssf CASCADE;
 -- +goose StatementEnd

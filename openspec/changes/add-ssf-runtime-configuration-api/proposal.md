@@ -35,16 +35,18 @@ aufzubauen.
 
 ## Dependencies and Coordination
 
-- Blockierende Voraussetzung ist
-  `extend-plugin-platform-scopes-and-activation`: Der Change benötigt dessen
-  hostvalidierte Serverbeiträge, getrennte Plattform-/Tenant-Sichten und
-  Aktivierungsrichtlinie `automatic`.
-- Die vorhandene JWT-/JWKS-Prüfung in `@sva/auth-runtime` wird zu einem
-  generischen, konfigurierbaren Service-Token-Vertrag extrahiert; die
-  MCP-spezifische Semantik bleibt unverändert.
+- `extend-plugin-platform-scopes-and-activation` und der Foundation-Slice aus
+  PR #1246 sind gemergte Baselines. Der technische Service-Zugriff bleibt eine
+  gezielte Erweiterung des Plugin-Dispatchers; er wird nicht als Tenant- oder
+  Plattformzugriff modelliert.
+- Die JWT-/JWKS-Prüfung in `@sva/auth-runtime` ist seit PR #1246 als
+  generischer, konfigurierbarer Service-Token-Vertrag verfügbar; die
+  MCP-spezifische Semantik blieb unverändert.
 - `add-plugin-tenant-lifecycle`, `add-ssf-tenant-administration` und die
-  revisionsgebundene SSF-Keycloak-Projektion sind Follow-ups. Dieser Change
-  darf ihre Zuständigkeiten nicht vorwegnehmen.
+  revisionsgebundene SSF-Keycloak-Projektion bleiben getrennte Follow-ups.
+  Der nächste Slice umfasst ausschließlich Service-Zugriff, internen
+  GET-Endpunkt, Host-Gates und deren Integrationstests. Deployment,
+  Administrationsoberflächen und Tenant-Lifecycle bleiben außerhalb.
 - Der frühere, nur auf einem separaten Branch vorhandene Entwurf mit
   Tenant-Assertion und Replay-Speicher wird nicht übernommen. Maßgeblich sind
   der freigegebene V1-Vertrag und ADR-057.

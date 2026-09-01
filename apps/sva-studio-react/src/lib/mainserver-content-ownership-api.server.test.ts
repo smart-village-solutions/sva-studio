@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   dispatch: vi.fn(),
   finalizeJournal: vi.fn(),
+  loadRecoverableTransfers: vi.fn(),
   markReconciliationRequired: vi.fn(),
   readFollowUp: vi.fn(),
   refreshProjection: vi.fn(),
@@ -11,6 +12,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   finalizeMainserverMutationJournal: state.finalizeJournal,
+  loadRecoverableMainserverOwnershipTransfers: state.loadRecoverableTransfers,
   markMainserverMutationReconciliationRequired: state.markReconciliationRequired,
   resolveMainserverOwnershipTarget: state.resolveTarget,
 }));
@@ -34,6 +36,7 @@ describe('mainserver content ownership API projection follow-up', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.finalizeJournal.mockResolvedValue(undefined);
+    state.loadRecoverableTransfers.mockResolvedValue([]);
     state.markReconciliationRequired.mockResolvedValue(undefined);
     state.readFollowUp.mockReturnValue({
       instanceId: 'instance-1',
@@ -45,6 +48,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.resolveTarget.mockResolvedValue({
       ok: true,
       target: {
+        dataProviderId: 'provider-target',
         dataProviderName: 'Zielorganisation',
         connection: {
           keycloakSubject: 'kc-actor',
@@ -65,7 +69,7 @@ describe('mainserver content ownership API projection follow-up', () => {
               type: 'organization',
               id: '22222222-2222-4222-8222-222222222222',
             },
-            targetDataProvider: { name: 'Zielorganisation' },
+            targetDataProvider: { id: 'provider-target', name: 'Zielorganisation' },
           },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
@@ -106,6 +110,38 @@ describe('mainserver content ownership API projection follow-up', () => {
     });
   });
 
+  it('keeps local and provider ids separate after a confirmed project transfer', async () => {
+    state.dispatch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            contentId: 'project-source-1',
+            targetPrincipal: {
+              type: 'organization',
+              id: '22222222-2222-4222-8222-222222222222',
+            },
+            targetDataProvider: { id: 'provider-target' },
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/projects.project/project-local-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.refreshProjection).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'project-source-1' })
+    );
+    expect(state.finalizeJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: 'project-local-1' })
+    );
+  });
+
   it('keeps the confirmed response successful when the local target projection fails', async () => {
     state.dispatch.mockResolvedValue(
       new Response(
@@ -116,6 +152,7 @@ describe('mainserver content ownership API projection follow-up', () => {
               type: 'organization',
               id: '22222222-2222-4222-8222-222222222222',
             },
+            targetDataProvider: { id: 'provider-target' },
           },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
@@ -144,6 +181,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     state.resolveTarget.mockResolvedValueOnce({
       ok: true,
       target: {
+        dataProviderId: 'provider-target',
         connection: {
           keycloakSubject: 'kc-recipient',
           actingPrincipalType: 'user',
@@ -160,6 +198,7 @@ describe('mainserver content ownership API projection follow-up', () => {
               type: 'account',
               id: '22222222-2222-4222-8222-222222222222',
             },
+            targetDataProvider: { id: 'provider-target' },
           },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } }
@@ -180,5 +219,139 @@ describe('mainserver content ownership API projection follow-up', () => {
         keycloakSubject: 'kc-recipient',
       })
     );
+  });
+
+  it('repairs a provider-confirmed projection before dispatching another transfer', async () => {
+    state.loadRecoverableTransfers.mockResolvedValueOnce([
+      {
+        operationExternalId: 'operation-previous',
+        expectedDataProviderId: 'provider-target',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+    state.dispatch.mockImplementationOnce(async (_request, options) => {
+      await options.reconcilePreviousTransfer({
+        instanceId: 'instance-1',
+        contentType: 'news.article',
+        contentId: 'news-1',
+        providerEntityId: 'news-1',
+        currentDataProviderId: 'provider-target',
+      });
+      return new Response(JSON.stringify({ error: 'content_transfer_target_invalid' }), {
+        status: 409,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.loadRecoverableTransfers).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      currentDataProviderId: 'provider-target',
+    });
+    expect(state.refreshProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutationRef: 'operation-previous',
+        ownershipPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      })
+    );
+    expect(state.finalizeJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationExternalId: 'operation-previous',
+        reconciliationStatus: 'complete',
+      })
+    );
+  });
+
+  it('repairs a projected project through its Mainserver entity id', async () => {
+    state.loadRecoverableTransfers.mockResolvedValueOnce([
+      {
+        operationExternalId: 'operation-previous',
+        expectedDataProviderId: 'provider-target',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+    state.dispatch.mockImplementationOnce(async (_request, options) => {
+      await options.reconcilePreviousTransfer({
+        instanceId: 'instance-1',
+        contentType: 'projects.project',
+        contentId: 'project-local-1',
+        providerEntityId: 'project-source-1',
+        currentDataProviderId: 'provider-target',
+      });
+      return new Response(null, { status: 409 });
+    });
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/projects.project/project-local-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.loadRecoverableTransfers).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: 'project-local-1' })
+    );
+    expect(state.refreshProjection).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'project-source-1' })
+    );
+    expect(state.finalizeJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: 'project-local-1' })
+    );
+  });
+
+  it('keeps reconciliation blocked when the recorded target binding has changed', async () => {
+    state.loadRecoverableTransfers.mockResolvedValueOnce([
+      {
+        operationExternalId: 'operation-previous',
+        expectedDataProviderId: 'provider-recorded',
+        targetPrincipal: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    ]);
+    state.dispatch.mockImplementationOnce(async (_request, options) => {
+      await expect(
+        options.reconcilePreviousTransfer({
+          instanceId: 'instance-1',
+          contentType: 'news.article',
+          contentId: 'news-1',
+          providerEntityId: 'news-1',
+          currentDataProviderId: 'provider-recorded',
+        })
+      ).rejects.toThrow('content_transfer_target_binding_changed');
+      return new Response(JSON.stringify({ error: 'content_transfer_reconciliation_required' }), {
+        status: 409,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+
+    const response = await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(response?.status).toBe(409);
+    expect(state.refreshProjection).not.toHaveBeenCalled();
+    expect(state.finalizeJournal).not.toHaveBeenCalled();
   });
 });

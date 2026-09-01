@@ -6,7 +6,6 @@ import {
   type AuthenticatedRequestContext,
   type ResolvedMainserverOwnershipSource,
 } from '@sva/auth-runtime/server';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverProjectionContentType } from '../types.js';
 import { errorJson, isResponse, json } from './content-route-core.js';
@@ -17,10 +16,12 @@ import {
   type ContentOwnershipRouteMatch,
   type SupportedContentOwnershipRouteMatch,
 } from './content-ownership-route-contract.js';
-import { handleContentOwnershipTransfer } from './content-ownership-transfer-route.js';
+import {
+  handleContentOwnershipTransfer,
+  type MainserverOwnershipTransferReconciler,
+} from './content-ownership-transfer-route.js';
+import { ownershipRouteFailureResponse } from './content-ownership-route-failure.js';
 import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
-import { SvaMainserverError } from './errors.js';
-import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
   resolveMainserverMutationActor,
   resolveMainserverResourceAccess,
@@ -30,10 +31,6 @@ import { projectSourceReferenceInput } from './projects-route-transport.js';
 import { getSvaMainserverSurvey } from './service.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
-const logger = createSdkLogger({
-  component: 'sva-mainserver-content-ownership-route',
-  level: 'info',
-});
 const supportedContentTypes = new Set<SvaMainserverProjectionContentType>([
   'news.article',
   'events.event-record',
@@ -224,31 +221,11 @@ const handleSurveyAuthorization = async (
   });
 };
 
-const ownershipRouteFailureResponse = (
-  error: unknown,
-  actor: MainserverMutationActor,
-  route: ContentOwnershipRouteMatch,
-  fallbackMessage: string
-): Response => {
-  const context = getWorkspaceContext();
-  logger.warn('Mainserver content ownership route failed', {
-    operation: 'mainserver_content_ownership',
-    request_id: context.requestId,
-    trace_id: context.traceId,
-    instance_id: actor.instanceId,
-    content_type: route.contentType,
-    content_id: route.contentId,
-    route_operation: route.operation,
-    error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
-    error_message: error instanceof Error ? error.message : String(error),
-  });
-  return toMainserverErrorResponse(error, fallbackMessage);
-};
-
 const dispatchAuthenticated = async (
   request: Request,
   route: ContentOwnershipRouteMatch,
-  ctx: AuthenticatedRequestContext
+  ctx: AuthenticatedRequestContext,
+  reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler
 ): Promise<Response> => {
   if (route.contentType === 'surveys.survey' && route.operation !== 'authorization') {
     return errorJson(
@@ -287,7 +264,13 @@ const dispatchAuthenticated = async (
   const content = toOwnershipTransferContent(supportedRoute.contentType, providerContentId);
   try {
     return supportedRoute.operation === 'transfer'
-      ? handleContentOwnershipTransfer(request, supportedRoute, actor, content)
+      ? handleContentOwnershipTransfer(
+          request,
+          supportedRoute,
+          actor,
+          content,
+          reconcilePreviousTransfer
+        )
       : handleAuthorizedTargets(request, supportedRoute, actor, content);
   } catch (error) {
     return ownershipRouteFailureResponse(
@@ -300,7 +283,10 @@ const dispatchAuthenticated = async (
 };
 
 export const dispatchSvaMainserverContentOwnershipRequest = async (
-  request: Request
+  request: Request,
+  options: Readonly<{
+    reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
+  }> = {}
 ): Promise<Response | null> => {
   const route = matchRoute(request);
   if (!route) return null;
@@ -310,5 +296,7 @@ export const dispatchSvaMainserverContentOwnershipRequest = async (
     (route.operation === 'transfer' && request.method === 'POST');
   if (!methodAllowed)
     return errorJson(405, 'method_not_allowed', 'HTTP-Methode wird nicht unterstützt.');
-  return withAuthenticatedUser(request, (ctx) => dispatchAuthenticated(request, route, ctx));
+  return withAuthenticatedUser(request, (ctx) =>
+    dispatchAuthenticated(request, route, ctx, options.reconcilePreviousTransfer)
+  );
 };

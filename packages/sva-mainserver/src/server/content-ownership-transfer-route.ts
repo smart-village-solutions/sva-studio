@@ -1,5 +1,4 @@
 import {
-  hasUnresolvedMainserverOwnershipTransfer,
   validateCsrf,
   withMainserverContentOwnershipLock,
   type ResolvedMainserverOwnershipTarget,
@@ -16,17 +15,23 @@ import {
 } from './content-ownership-route-contract.js';
 import { recordOwnershipTransferOutcome } from './content-ownership-telemetry.js';
 import { executeWithCurrentTargetBinding } from './content-ownership-target-transfer.js';
+import {
+  reconcileOrBlockOwnershipTransfer,
+  type MainserverOwnershipTransferReconciler,
+} from './content-ownership-transfer-reconciliation.js';
 import { resolveTargetForMutation } from './content-ownership-target-verification.js';
 import {
   ownershipTargetErrorResponse,
   parseOwnershipTargetPrincipal,
-  resolveAuthorizedTransferSource,
+  authorizeObservedTransferSource,
+  observeTransferSource,
 } from './content-ownership-transfer-source.js';
 import { SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { finalizeMainserverMutation, type MainserverMutationActor } from './mutation-principal.js';
 import { transferSvaMainserverContentOwnership } from './service.js';
 
+export type { MainserverOwnershipTransferReconciler } from './content-ownership-transfer-reconciliation.js';
 const verifyTransferResult = async (input: {
   actor: MainserverMutationActor;
   content: SvaMainserverOwnershipTransferContent;
@@ -173,23 +178,29 @@ const executeLockedTransfer = async (input: {
   route: SupportedContentOwnershipRouteMatch;
   content: SvaMainserverOwnershipTransferContent;
   principal: IamContentOwnerPrincipal;
+  reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler;
 }): Promise<Response> => {
-  if (
-    await hasUnresolvedMainserverOwnershipTransfer({
-      instanceId: input.actor.instanceId,
-      contentType: input.route.contentType,
-      contentId: input.route.contentId,
-    })
-  ) {
-    return errorJson(
-      409,
-      'content_transfer_reconciliation_required',
-      'Ein früherer Transfer muss zuerst abgeglichen werden.'
-    );
-  }
-  const source = await resolveAuthorizedTransferSource(input);
+  const observation = await observeTransferSource(input);
+  if (!observation.ok) return observation.response;
+  const sourceDataProviderId = observation.dataProviderId;
+  const reconciliationBlock = await reconcileOrBlockOwnershipTransfer({
+    actor: input.actor,
+    contentType: input.route.contentType,
+    contentId: input.route.contentId,
+    providerEntityId: input.content.id,
+    currentDataProviderId: sourceDataProviderId,
+    currentOperationExternalId: input.actor.operationExternalId,
+    ...(input.reconcilePreviousTransfer
+      ? { reconcilePreviousTransfer: input.reconcilePreviousTransfer }
+      : {}),
+  });
+  if (reconciliationBlock) return reconciliationBlock;
+  const source = await authorizeObservedTransferSource({
+    actor: input.actor,
+    route: input.route,
+    observation,
+  });
   if (!source.ok) return source.response;
-  const sourceDataProviderId = source.dataProviderId;
   const targetResolution = await resolveTargetForMutation({
     actor: input.actor,
     contentType: input.route.contentType,
@@ -285,7 +296,8 @@ export const handleContentOwnershipTransfer = async (
   request: Request,
   route: SupportedContentOwnershipRouteMatch,
   actor: MainserverMutationActor,
-  content: SvaMainserverOwnershipTransferContent
+  content: SvaMainserverOwnershipTransferContent,
+  reconcilePreviousTransfer?: MainserverOwnershipTransferReconciler
 ): Promise<Response> => {
   const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
   if (csrfError) return csrfError;
@@ -295,6 +307,13 @@ export const handleContentOwnershipTransfer = async (
     instanceId: actor.instanceId,
     contentType: route.contentType,
     contentId: route.contentId,
-    execute: () => executeLockedTransfer({ actor, route, content, principal }),
+    execute: () =>
+      executeLockedTransfer({
+        actor,
+        route,
+        content,
+        principal,
+        ...(reconcilePreviousTransfer ? { reconcilePreviousTransfer } : {}),
+      }),
   });
 };

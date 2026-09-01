@@ -291,7 +291,11 @@ describe('targeted content projection mutations', () => {
       }),
     ]);
     expect(state.recordSuccessfulExternalContentMutation).toHaveBeenLastCalledWith(
-      expect.objectContaining({ actorAccountId: 'account-source', mutationRef: 'transfer-1' })
+      expect.objectContaining({
+        actorAccountId: 'account-source',
+        authorDisplayMode: 'user',
+        mutationRef: 'transfer-1',
+      })
     );
   });
 

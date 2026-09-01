@@ -423,14 +423,14 @@ const MainserverResourcePrincipalBoundary = ({
       (response) => {
         if (!active) return;
         setResolvedOwner(response.currentOwner);
-        setTransferAuthorized(transferCapabilityConfirmed && response.data.canTransfer);
+        setTransferAuthorized(response.data.canTransfer);
       },
       () => active && setTransferAuthorized(false)
     );
     return () => {
       active = false;
     };
-  }, [contentId, actingPrincipalType, baseUrl, resolution.kind, transferCapabilityConfirmed]);
+  }, [contentId, actingPrincipalType, baseUrl, resolution.kind]);
   if (resolution.kind === 'loading') {
     return <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>;
   }

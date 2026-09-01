@@ -22,6 +22,8 @@ import {
   serializeClearedPublicWastePreferenceCookie,
   serializePublicWastePreferenceCookie,
 } from '../lib/public-waste-preferences.shared.js';
+import { requestPublicWasteRegions } from '../lib/public-waste-regions-api.js';
+import { normalizePublicWasteRegionSlug } from '../lib/public-waste-region-slug.js';
 import { createPublicWasteTranslator } from '../lib/public-waste-translations.js';
 
 const REFERENCE_DATE = new Date().toISOString().slice(0, 10);
@@ -30,10 +32,26 @@ const BOUND_REGION_UNAVAILABLE_ERROR = 'public_waste_bound_region_unavailable';
 type PublicWasteRegionBinding =
   | { readonly status: 'unbound' }
   | { readonly status: 'invalid' }
-  | { readonly status: 'bound'; readonly regionId: string };
+  | { readonly status: 'bound'; readonly regionId: string }
+  | { readonly status: 'slug'; readonly regionSlug: string };
 
-export const readPublicWasteRegionBinding = (search: string): PublicWasteRegionBinding => {
+export const readPublicWasteRegionBinding = (
+  search: string,
+  pathname = '/'
+): PublicWasteRegionBinding => {
   const values = new URLSearchParams(search).getAll('regionId');
+  const pathSegments = pathname.split('/').filter(Boolean);
+  if (pathSegments.length > 1 || (pathSegments.length === 1 && values.length > 0)) {
+    return { status: 'invalid' };
+  }
+  if (pathSegments.length === 1) {
+    try {
+      const regionSlug = normalizePublicWasteRegionSlug(decodeURIComponent(pathSegments[0] ?? ''));
+      return regionSlug ? { status: 'slug', regionSlug } : { status: 'invalid' };
+    } catch {
+      return { status: 'invalid' };
+    }
+  }
   if (values.length === 0) {
     return { status: 'unbound' };
   }
@@ -44,6 +62,28 @@ export const readPublicWasteRegionBinding = (search: string): PublicWasteRegionB
   }
 
   return { status: 'bound', regionId: regionId.toLowerCase() };
+};
+
+const resolveBoundRegionId = async (
+  binding: PublicWasteRegionBinding
+): Promise<string | undefined> => {
+  if (binding.status === 'unbound') {
+    return undefined;
+  }
+  if (binding.status === 'bound') {
+    return binding.regionId;
+  }
+  if (binding.status === 'invalid') {
+    throw new Error(BOUND_REGION_UNAVAILABLE_ERROR);
+  }
+
+  const regions = await requestPublicWasteRegions();
+  const matches = regions.items.filter((region) => region.slug === binding.regionSlug);
+  const matchedRegion = matches[0];
+  if (matches.length !== 1 || !matchedRegion || !isPublicWasteUuid(matchedRegion.id)) {
+    throw new Error(BOUND_REGION_UNAVAILABLE_ERROR);
+  }
+  return matchedRegion.id.toLowerCase();
 };
 
 const selectionStepLabels: Record<PublicWasteSelectionResponse['step'], string> = {
@@ -227,8 +267,9 @@ export function PublicWasteIndexPage() {
     createPublicWasteTranslator(document.documentElement.lang || 'de')
   );
   const [regionBinding] = React.useState<PublicWasteRegionBinding>(() =>
-    readPublicWasteRegionBinding(window.location.search)
+    readPublicWasteRegionBinding(window.location.search, window.location.pathname)
   );
+  const boundRegionIdRef = React.useRef<string | undefined>(undefined);
   const [pageState, setPageState] = React.useState<PageState>({ status: 'loading' });
   const toLoadErrorMessage = (error: unknown): string =>
     error instanceof Error && error.message === BOUND_REGION_UNAVAILABLE_ERROR
@@ -239,14 +280,10 @@ export function PublicWasteIndexPage() {
     let cancelled = false;
 
     const load = async () => {
-      if (regionBinding.status === 'invalid') {
-        setPageState({ status: 'error', message: t('errors.boundRegionUnavailable') });
-        return;
-      }
-
       try {
         const restoredSelection = readStoredLocationSelection();
-        const boundRegionId = regionBinding.status === 'bound' ? regionBinding.regionId : undefined;
+        const boundRegionId = await resolveBoundRegionId(regionBinding);
+        boundRegionIdRef.current = boundRegionId;
         const preferredSelection =
           restoredSelection &&
           (!boundRegionId ||
@@ -315,7 +352,7 @@ export function PublicWasteIndexPage() {
         applySelectionStep(pageState.selection, pageState.step, optionId),
         nextSelectionPath,
         undefined,
-        regionBinding.status === 'bound' ? regionBinding.regionId : undefined
+        boundRegionIdRef.current
       );
 
       if (nextState.status === 'complete') {
@@ -340,14 +377,10 @@ export function PublicWasteIndexPage() {
 
     try {
       const nextState = await resolveSelectionState(
-        trimSelectionToStep(
-          pageState.selection,
-          stepIndex,
-          regionBinding.status === 'bound' ? regionBinding.regionId : undefined
-        ),
+        trimSelectionToStep(pageState.selection, stepIndex, boundRegionIdRef.current),
         pageState.selectionPath.slice(0, stepIndex),
         undefined,
-        regionBinding.status === 'bound' ? regionBinding.regionId : undefined
+        boundRegionIdRef.current
       );
       React.startTransition(() => {
         setPageState(nextState);
@@ -363,7 +396,7 @@ export function PublicWasteIndexPage() {
   const handleResetLocation = async () => {
     document.cookie = serializeClearedPublicWastePreferenceCookie();
     try {
-      const boundRegionId = regionBinding.status === 'bound' ? regionBinding.regionId : undefined;
+      const boundRegionId = boundRegionIdRef.current;
       const nextState = await resolveSelectionState(
         boundRegionId ? { regionId: boundRegionId } : {},
         [],

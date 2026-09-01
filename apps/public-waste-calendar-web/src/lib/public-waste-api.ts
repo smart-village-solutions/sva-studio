@@ -57,7 +57,9 @@ export type PublicWasteSelectionResponse = {
   }[];
 };
 
-export type PublicWasteCalendarResponse = Awaited<ReturnType<typeof loadResolvedPublicWasteCalendar>> & {
+export type PublicWasteCalendarResponse = Awaited<
+  ReturnType<typeof loadResolvedPublicWasteCalendar>
+> & {
   readonly selectionSummary: string;
   readonly icalUrl: string;
   readonly calendarReminderOptions?: PublicWasteCalendarReminderView;
@@ -79,7 +81,10 @@ const appendFractionIds = (params: URLSearchParams, fractionIds: readonly string
   }
 };
 
-const appendReminderItems = (params: URLSearchParams, items: readonly PublicWasteReminderSelectionItem[]) => {
+const appendReminderItems = (
+  params: URLSearchParams,
+  items: readonly PublicWasteReminderSelectionItem[]
+) => {
   for (const item of items) {
     params.append('reminderItem', `${item.fractionId}|${item.slotId}`);
   }
@@ -109,8 +114,12 @@ export const buildPublicWastePdfDownloadUrl = (input: {
   return `/api/public-waste/pdf?${params.toString()}`;
 };
 
-export const requestPublicWasteSelection = async (selection: PublicWasteSelectionState): Promise<PublicWasteSelectionResponse> => {
-  const response = await fetch(`/api/public-waste/selection?${toSearchParams(selection).toString()}`);
+export const requestPublicWasteSelection = async (
+  selection: PublicWasteSelectionState
+): Promise<PublicWasteSelectionResponse> => {
+  const response = await fetch(
+    `/api/public-waste/selection?${toSearchParams(selection).toString()}`
+  );
   if (!response.ok) {
     throw new Error(`public_waste_selection_failed:${response.status}`);
   }

@@ -203,7 +203,14 @@ test('persists Kachel text and media across create, update and reload before del
   await page.locator('#cockpit-card-heading').fill('Bürgerbüro aktualisiert');
   await page.getByRole('tab', { name: 'Inhalt' }).click();
   await page.locator('#cockpit-card-text').fill('Angebote der Kreisvolkshochschule');
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname.endsWith('/card-1') &&
+      response.status() === 200
+  );
   await page.getByRole('button', { name: 'Kachel speichern' }).last().click();
+  await updateResponse;
 
   await expect.poll(() => updatedBody).toBeDefined();
   expect(updatedBody).toMatchObject({

@@ -87,7 +87,15 @@ export const isMockAuthEnabled = async () => {
 
 export const createMockRouteGuardUser = (): RouteGuardUser => ({
   instanceId: 'de-musterhausen',
-  assignedModules: ['categories', 'events', 'media', 'news', 'poi', 'waste-management'],
+  assignedModules: [
+    'categories',
+    'cockpit-cards',
+    'events',
+    'media',
+    'news',
+    'poi',
+    'waste-management',
+  ],
   roles: ['system_admin'],
   permissionActions: [
     'iam.user.read',
@@ -132,6 +140,10 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'categories.create',
     'categories.update',
     'categories.delete',
+    'cockpit-cards.read',
+    'cockpit-cards.create',
+    'cockpit-cards.update',
+    'cockpit-cards.delete',
     'news.read',
     'events.read',
     'poi.read',

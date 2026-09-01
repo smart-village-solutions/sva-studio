@@ -40,6 +40,28 @@ export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName =
   await expect(page.getByRole('button', { name: expectedTriggerPattern })).toBeVisible();
 };
 
+export const establishServerReadableAuthSession = async (
+  context: BrowserContext,
+  page: Page
+) => {
+  const origin = new URL(page.url()).origin;
+  const response = await context.request.post(
+    new URL('/auth/dev-login?returnTo=%2F', origin).toString(),
+    {
+      headers: {
+        Origin: origin,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      maxRedirects: 0,
+    }
+  );
+
+  // Credential-free suites use the server's Playwright-only dev-auth mode.
+  // With real auth credentials the endpoint stays disabled and the persisted
+  // Keycloak session already belongs to this browser context.
+  expect([302, 404]).toContain(response.status());
+};
+
 export const expectAppShellReady = async (page: Page, timeout = 20_000) => {
   const mainContent = page.locator('main#main-content');
   await expect(mainContent).toBeVisible({ timeout });

@@ -4,9 +4,15 @@
 
 Dieses Runbook beschreibt die nicht-destruktive Diagnose blockierter Plugin-Tenant-Lifecycle-Läufe. Reguläre Rollouts erfolgen ausschließlich nach dem [Studio-Rollout-Prozess](../guides/studio-rollout-process.md). Das Runbook autorisiert weder direkte Statusänderungen noch das Löschen oder manuelle Entsperren von Studio- oder Graphile-Jobs.
 
-Die produktiven Metriken sind absichtlich fleetweit aggregiert. Sie enthalten nur die begrenzten Dimensionen `lane`, `status` und `reason_code`. Instanz-, Plugin-, Job-, Request- und Korrelations-IDs erscheinen nicht als Metriklabels. Die DB-Aggregate können aus mehreren Runtime-Prozessen exportiert werden; Prometheus dedupliziert sie deshalb mit `max by (reason_code)`. Lane-Metriken beschreiben dagegen den jeweils eigenen Worker-Prozess und werden mit `min by (lane)` bewertet.
+Die Lifecycle-Metriken sind absichtlich fleetweit aggregiert. Sie enthalten nur die begrenzten Dimensionen `lane`, `status` und `reason_code`. Instanz-, Plugin-, Job-, Request- und Korrelations-IDs erscheinen nicht als Metriklabels. Die DB-Aggregate können aus mehreren Runtime-Prozessen exportiert werden; ein späterer Prometheus-Vertrag dedupliziert sie deshalb mit `max by (reason_code)`. Lane-Metriken beschreiben dagegen den jeweils eigenen Worker-Prozess und werden mit `min by (lane)` bewertet.
 
-## Alertklassen
+## Betriebsstatus der Alarmierung
+
+Die produktiven Studio-Profile exportieren derzeit keine OTEL-Metriken an einen betriebenen Collector. Lifecycle-Alerts sind deshalb bewusst nicht in der aktiven Prometheus-Regeldatei enthalten: `absent(...)` würde sonst gesunde Lanes als Ausfall melden, während Stale-Work-Metriken Prometheus nicht erreichen. [Issue #1237](https://github.com/smart-village-solutions/sva-studio/issues/1237) verfolgt den produktiven Exportpfad und die anschließende Aktivierung.
+
+Bis dahin dienen der sichere Aggregatsnapshot, Runtime-Logs und die nachfolgenden berechtigten Diagnoseabfragen als Betriebsnachweis. Die vorbereiteten Alarmklassen bleiben der Zielvertrag für Issue #1237:
+
+## Vorbereitete Alarmklassen
 
 | Alertklasse                | Sichere Aussage                                                                                           | Erste Prüfung                                                                     |
 | -------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
@@ -16,7 +22,7 @@ Die produktiven Metriken sind absichtlich fleetweit aggregiert. Sie enthalten nu
 | `GenerationWithoutOwner`   | `desired_generation > completed_generation`, aber kein aktiver öffentlicher Owner-Job ist vorhanden.      | Terminalevent und aktuellen Lifecycle-Vertrag prüfen.                             |
 | `ObservabilityUnavailable` | Der aggregierte, read-only DB-Snapshot konnte nicht erhoben werden.                                       | Datenbankverbindung, Migration `0091` und Funktionsrechte prüfen.                 |
 
-Warning wird nach 15 Sekunden, Critical nach 30 Sekunden stabiler Beobachtung ausgelöst. Mit 30 Sekunden Exportintervall, 15 Sekunden Export-Timeout, einer Sekunde Collector-Batch sowie jeweils 15 Sekunden für Scrape und Auswertung liegt das Critical-Worst-Case-Budget bei 106 Sekunden.
+Zeitbudgets für Warning und Critical werden erst mit dem real betriebenen OTEL- und Prometheus-Pfad aus Issue #1237 verbindlich aktiviert und dort durch einen gezielten Metrikfluss nachgewiesen.
 
 ## Autorisierte Korrelation
 
@@ -96,4 +102,6 @@ Ein Incident ist erst abgeschlossen, wenn:
 - `desired_generation = completed_generation` oder eine dokumentierte spätere Deadline besteht,
 - kein überalterter Claim beziehungsweise fälliger Job mehr gemessen wird,
 - Jobstatus und genau ein Terminalevent übereinstimmen,
-- der Alert nach der nächsten Export-, Scrape- und Auswertungsrunde aufgelöst ist.
+- der sichere Aggregatsnapshot keinen blockierenden Zustand mehr meldet.
+
+Nach Umsetzung von Issue #1237 gehört zusätzlich die Auflösung des zugehörigen Alerts nach der nächsten Export-, Scrape- und Auswertungsrunde zum Abschlussnachweis.

@@ -4,20 +4,19 @@ Englische Übersetzung: [Studio–SSF Runtime Configuration Contract V1](./ssf-s
 
 ## Status und Zweck
 
-Dieses Dokument beschreibt den fachlich freigegebenen Entwurf für den ersten
+Dieses Dokument beschreibt den fachlich freigegebenen Vertrag für den ersten
 Datenaustausch zwischen SVA Studio und Smart Speech Flow (SSF). Es dient als
-gemeinsame Integrationsgrundlage für beide Anwendungen. Vor einer Umsetzung
-müssen die bestehenden OpenSpec-Changes mit diesem vereinfachten Vertrag
-abgeglichen und normativ angepasst werden.
+gemeinsame Integrationsgrundlage für beide Anwendungen. Die normative
+Implementierungsplanung liegt im OpenSpec-Change
+`add-ssf-runtime-configuration-api`.
 
 Die IAM- und Runtime-Grenze ist in
 [ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
 entschieden.
 
 Die zugehörigen Zielgrenzen sind in den arc42-Abschnitten 3 bis 8 verankert.
-Eine ältere, parallel entwickelte SSF-Control-Plane-Ausarbeitung sah noch einen
-zweistufigen Authentifizierungsvertrag vor; vor der Umsetzung muss sie an den
-hier beschriebenen einfachen Service-Token-Vertrag angeglichen werden.
+Der früher parallel beschriebene zweistufige Authentifizierungsvertrag ist durch
+den hier festgelegten einfachen Service-Token-Vertrag abgelöst.
 
 V1 umfasst:
 
@@ -26,6 +25,16 @@ V1 umfasst:
 - den internen Abruf der effektiven Runtime-Konfiguration,
 - Branding, Sprachen und mandantenabhängige Erklärtexte,
 - die Steuerung der Speicherung und Verarbeitung von Gesprächsinhalten.
+
+Der erste Implementierungsslice liegt in `packages/plugin-ssf/`. Er enthält
+das feste Zod- und OpenAPI-Schema, Produktdefaults, Resolver, HTML-Policy,
+JCS-Revisionen, den fachlichen Read-Handler sowie Migrationen und Repositories
+für die getrennte SSF-Plugin-Datenbank. Der generische Service-Token-Verifier
+liegt in `packages/auth-runtime/src/service-token.ts`; die SSF-spezifische
+Claim-Prüfung in `packages/auth-runtime/src/ssf-runtime-service-token.ts`.
+Produktives Routing bleibt standardmäßig deaktiviert, bis der offene
+Plugin-Plattform-Change einen Service-Zugriffstyp und die verifizierte
+`authorizationRevision` bereitstellt.
 
 Auswertungen, Gesprächsdaten, ClickHouse, Supportzugriffe und eine
 SSF-seitige Mandantenverwaltung sind nicht Bestandteil von V1.
@@ -61,12 +70,12 @@ Das SSF-Fachmodell verwendet folgende Bezeichnungen:
 Diese Werte sind SSF-Personas und keine Umbenennung der kanonischen Studio-
 IAM-Rollen. Für die erste Integration gilt folgende feste Übersetzung:
 
-| Studio-IAM-Quelle                         | SSF-Persona beziehungsweise Tokenwert | Bedeutung                                                                  |
-| ----------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------- |
-| Rootrolle `instance_registry_admin`       | `system_admin`                        | systemweite SSF-Administration; wird nicht in Tenant-Tokens materialisiert |
-| tenantlokale Defaultrolle `system_admin`  | `tenant_admin`                        | Administration genau des aktiven Mandanten                                |
-| tenantlokale operative SSF-Rolle          | `user`                                | Nutzung der Gesprächsfunktionen gemäß effektiven `ssf.*`-Permissions       |
-| validierte SSF-Gäste-Session              | `guest`                               | sitzungsgebundene Nutzung ohne Studio- oder reguläres Keycloak-Konto        |
+| Studio-IAM-Quelle                        | SSF-Persona beziehungsweise Tokenwert | Bedeutung                                                                  |
+| ---------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| Rootrolle `instance_registry_admin`      | `system_admin`                        | systemweite SSF-Administration; wird nicht in Tenant-Tokens materialisiert |
+| tenantlokale Defaultrolle `system_admin` | `tenant_admin`                        | Administration genau des aktiven Mandanten                                 |
+| tenantlokale operative SSF-Rolle         | `user`                                | Nutzung der Gesprächsfunktionen gemäß effektiven `ssf.*`-Permissions       |
+| validierte SSF-Gäste-Session             | `guest`                               | sitzungsgebundene Nutzung ohne Studio- oder reguläres Keycloak-Konto       |
 
 ADR-046 bleibt für Studio maßgeblich: `instance_registry_admin` ist die
 Rootrolle und Studio-`system_admin` bleibt tenantlokal. Die SSF-Persona
@@ -107,10 +116,7 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
   "sub": "keycloak-user-id",
   "studio_instance_id": "01J...",
   "ssf_roles": ["tenant_admin"],
-  "ssf_permissions": [
-    "ssf.configuration.tenant.read",
-    "ssf.configuration.tenant.manage"
-  ],
+  "ssf_permissions": ["ssf.configuration.tenant.read", "ssf.configuration.tenant.manage"],
   "ssf_authorization_revision": "sha256:...",
   "preferred_username": "erika",
   "name": "Erika Muster",
@@ -311,14 +317,14 @@ wirkungslos.
 
 ## Schreibrechte im Studio
 
-| Action                                    | Scope                     | Standardzuweisung | Zulässige Änderungen                                                                                               |
-| ----------------------------------------- | ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `ssf.configuration.server.manage`         | gesamte SSF-Installation  | Systemadmin       | serverweite SSF-Werte                                                                                              |
-| `ssf.configuration.tenant-policy.manage`  | ausgewählter Mandant      | Systemadmin       | mandantenspezifische Branding- und Speicher-Policies                                                               |
-| `ssf.configuration.tenant.inspect`        | ausgewählter Mandant      | Systemadmin       | effektive Konfiguration aus dem Root-Kontext                                                                       |
-| `ssf.configuration.tenant.provenance.inspect` | ausgewählter Mandant  | Systemadmin       | Herkunft der aufgelösten Werte aus dem Root-Kontext                                                                |
-| `ssf.configuration.tenant.read`           | aktiver Mandant           | Mandantenadmin    | effektive Konfiguration im Tenant-Kontext                                                                          |
-| `ssf.configuration.tenant.manage`         | aktiver Mandant           | Mandantenadmin    | aktive Sprachen, Standardsprache, einzelne Text-Overrides, gewünschter Speichermodus und erlaubtes Tenant-Branding |
+| Action                                        | Scope                    | Standardzuweisung | Zulässige Änderungen                                                                                               |
+| --------------------------------------------- | ------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ssf.configuration.server.manage`             | gesamte SSF-Installation | Systemadmin       | serverweite SSF-Werte                                                                                              |
+| `ssf.configuration.tenant-policy.manage`      | ausgewählter Mandant     | Systemadmin       | mandantenspezifische Branding- und Speicher-Policies                                                               |
+| `ssf.configuration.tenant.inspect`            | ausgewählter Mandant     | Systemadmin       | effektive Konfiguration aus dem Root-Kontext                                                                       |
+| `ssf.configuration.tenant.provenance.inspect` | ausgewählter Mandant     | Systemadmin       | Herkunft der aufgelösten Werte aus dem Root-Kontext                                                                |
+| `ssf.configuration.tenant.read`               | aktiver Mandant          | Mandantenadmin    | effektive Konfiguration im Tenant-Kontext                                                                          |
+| `ssf.configuration.tenant.manage`             | aktiver Mandant          | Mandantenadmin    | aktive Sprachen, Standardsprache, einzelne Text-Overrides, gewünschter Speichermodus und erlaubtes Tenant-Branding |
 
 Die Plattform-Actions `ssf.configuration.server.manage` und
 `ssf.configuration.tenant-policy.manage` sowie die Root-Grants für
@@ -415,19 +421,14 @@ ist unabhängig von `contractVersion`.
 - keine ClickHouse-, Nutzungs-, Kosten- oder Reportingdaten,
 - keine direkte Datenbankverbindung zwischen Studio und SSF.
 
-## Vor der Implementierungsplanung noch zu konkretisieren
+## Nachgelagerte Integrationspunkte
 
-Die fachlichen Entscheidungen sind getroffen. Für die normative OpenSpec- und
-Implementierungsplanung bleiben folgende technische Konkretisierungen:
+Der Runtime-Konfigurationsvertrag ist technisch konkretisiert. Außerhalb dieses
+ersten Slices verbleiben:
 
 - vollständiger initialer Katalog der übrigen `ssf.*`-Permissions außerhalb
   der hier festgelegten Konfigurations-Actions,
-- konkrete Keycloak-Client-ID und Audience,
-- kanonisches Serialisierungs- und Hashverfahren für
-  `configurationRevision`,
-- konkrete HTML-Sanitizer-Bibliothek und minimale Gefahrenregeln,
-- OpenAPI-Schema einschließlich Formaten und maximalen Feldgrößen,
 - Übergangs- und Entfernungskriterien für `admin` und `customer`,
-- Abgleich des vereinfachten Service-Token-Vertrags mit der parallel
-  entwickelten Runtime-OpenSpec-Ausarbeitung, sobald diese auf dem gemeinsamen
-  Branch verfügbar ist.
+- die revisionsgebundene Keycloak-Permission-Projektion,
+- die endgültige Einbindung des Service-Endpunkts in den generischen
+  Plugin-Server-Dispatcher und das Deployment-Profil.

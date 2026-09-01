@@ -629,3 +629,17 @@ Referenzen:
 - Die Komplexität der Root-Funktion sank von 41/57 zyklomatisch/kognitiv und 809 Funktionszeilen auf 1/1 und 14 Funktionszeilen. Characterization-Tests bewahren dabei die bestehenden Formular-, Medien-, Map-, Validierungs- und Submit-Verträge.
 - Restrisiko: `EventsDetailPage` besitzt weiterhin den äußeren manuellen Validierungs- und Persistenz-Lifecycle. Dessen mögliche Resolver- oder HTTP-Test-Migration ist ein eigener fachlicher Change und darf nicht mit einer erneuten UI-Gesamtabstraktion vermischt werden.
 - Verbleibende Schuld: Große Editor-Controller anderer Plugins sind durch diesen Events-spezifischen Schnitt nicht automatisch bereinigt. Weitere Migrationen müssen dieselbe Löschbilanz, nachgewiesene Mehrfachnutzung und pluginnahe Fachlogik einhalten.
+
+### Fortschreibung 2026-09: SSF-Runtime-Konfiguration
+
+- Risiko: Eine gemeinsame Plugin-Datenbank könnte Tenantdaten vermischen.
+  Maßnahme: erzwungene RLS, getrennte Rollen, transaktionslokaler Tenantkontext,
+  zusätzliche SQL-Prädikate und echte Zwei-Tenant-Negativtests.
+- Restrisiko: Studio, SSF und Plugin-Datenbank sind im V1-Verfügbarkeitsmodell
+  gekoppelt. Maßnahme: bewusst kein persistenter Fallback; technische Ausfälle
+  werden eindeutig als nicht verfügbare Runtime-Konfiguration gemeldet.
+- Integrationsschuld: Der offene Plugin-Plattform-Change unterstützt derzeit
+  ausschließlich menschliche Plattform- und Tenant-Zugriffsanforderungen.
+  Vor produktiver Pfadfreigabe muss er um den fest definierten Service-Zugriff
+  erweitert und mit der verifizierten SSF-IAM-Projektionsrevision verbunden
+  werden. Bis dahin bleibt das Feature standardmäßig deaktiviert.

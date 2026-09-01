@@ -1,0 +1,42 @@
+{
+  "name": "@sva/plugin-ssf",
+  "license": "EUPL-1.2",
+  "version": "0.0.1",
+  "type": "module",
+  "files": [
+    "dist",
+    "migrations",
+    "plugin.manifest.json"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
+    "./plugin.manifest.json": {
+      "default": "./plugin.manifest.json"
+    }
+  },
+  "dependencies": {
+    "@sva/plugin-sdk": "workspace:*",
+    "json-canonicalize": "^3.0.0",
+    "pg": "^8.22.0",
+    "sanitize-html": "^2.17.6",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/pg": "^8.23.1",
+    "@types/sanitize-html": "^2.16.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "fast-check": "^3.23.2",
+    "vitest": "^4.1.10"
+  }
+}

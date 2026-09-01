@@ -345,3 +345,9 @@ Rollout bleiben deshalb bewusst gekoppelt; V1 verlangt keine eigenständige
 Offline-Fähigkeit eines Teilsystems.
 
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
+
+Der Repository-Zwischenstand liefert Migration, Rollen- und RLS-Vertrag der
+SSF-Plugin-Datenbank, verändert aber noch kein produktives Deployment-Profil.
+Insbesondere bleiben Endpoint-Freigabe und SSF-Datenbank-Secrets außerhalb der
+Standardkonfiguration, bis die Host-Dispatcher- und IAM-Readiness-Gates
+integriert sind.

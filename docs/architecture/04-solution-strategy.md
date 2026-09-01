@@ -290,3 +290,10 @@ fehlschlagen lassen.
 
 Details und noch offene Implementierungsparameter stehen im
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
+
+Der erste Implementierungsslice setzt diese Grenze ohne parallele
+Core-Fachlogik um: `@sva/plugin-ssf` besitzt Vertrag, Defaults, Auflösung,
+Sanitizing, Revision und PostgreSQL-Zugriff; `@sva/auth-runtime` stellt den
+generischen JOSE/JWKS-Service-Token-Baustein. Die produktive Dispatcherbindung
+bleibt bis zur servicefähigen Plugin-Plattform und einer verifizierten
+Autorisierungsrevision fail-closed.

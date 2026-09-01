@@ -77,6 +77,28 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
+### Getrennte SSF-Plugin-Datenbank
+
+Das installierte SSF-Plugin verwendet bewusst **nicht** die zentrale
+`sva_studio`-Datenbank. Pro gemeinsam betriebener Studio-/SSF-Installation
+existiert genau eine eigene, mandantenfähige PostgreSQL-Datenbank. Ihr
+reproduzierbarer Sollstand liegt in
+[`ssf-plugin-db-schema-final.sql`](./ssf-plugin-db-schema-final.sql); die Quelle
+ist `packages/plugin-ssf/migrations/`.
+
+Die SSF-Datenbank enthält ausschließlich Konfigurations-Overrides:
+
+- `ssf.server_settings` und `ssf.server_locales` für installationsweite Werte,
+- `ssf.tenant_settings` und `ssf.tenant_locales` für mandantenbezogene Werte,
+- erzwungene Row-Level Security auf allen Tenanttabellen,
+- getrennte NOLOGIN-Rollen für Migration, Root-Verwaltung und
+  tenantgebundene Runtime-Zugriffe.
+
+Gesprächsinhalte, Einwilligungen, Sessions und ClickHouse-Auswertungen gehören
+nicht in diese Datenbank. Der zentrale Snapshot
+[`studio-db-schema-final.sql`](./studio-db-schema-final.sql) wurde für diesen
+Change geprüft und bleibt strukturell unverändert.
+
 ### Datenbankweiter Sortiervertrag für Waste-Abholorte
 
 Die serverseitig paginierte Abholortliste sortiert Textfelder explizit mit

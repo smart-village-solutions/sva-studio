@@ -881,3 +881,11 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 Der genaue Payload- und Fehlervertrag ist im
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
 festgelegt.
+
+Implementiert sind die browser-sicheren V1-Verträge unter
+`packages/plugin-ssf/src/index.ts` und die serverseitigen Bausteine unter
+`packages/plugin-ssf/src/runtime.ts`. Migration und Snapshot liegen getrennt
+unter `packages/plugin-ssf/migrations/` beziehungsweise
+`docs/development/ssf-plugin-db-schema-final.sql`. Eine Plugin-Manifest- und
+Dispatcherbindung wird erst gegen den noch offenen Plattformvertrag ergänzt;
+bis dahin existiert kein konkurrierender Sonderrouter.

@@ -1176,3 +1176,10 @@ Fehlerpfad:
   Runtime-Abrufe liefern `ssf_tenant_not_ready`.
 
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
+
+Der derzeit implementierte Zwischenstand deckt die Schritte Service-Claim-
+Prüfung, transaktionalen Override-Read, Medien-Capability, Auflösung,
+HTML-Bereinigung und Revisionsbildung als getestete Bausteine ab. Die
+produktive Pfadregistrierung sowie die Host-Gates für Instanz, Aktivierung und
+verifizierte `authorizationRevision` bleiben deaktiviert, bis der gemeinsame
+Plugin-Dispatcher den Service-Zugriffstyp bereitstellt.

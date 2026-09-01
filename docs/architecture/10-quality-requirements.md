@@ -434,6 +434,20 @@ Referenzen:
 - Reference-Retry wiederholt keine Content-Mutation; ein fehlgeschlagener Retry bleibt sichtbar und ein erfolgreicher Retry setzt verknüpfte Medien auf `synced`.
 - Die produktive TypeScript-/TSX-Bilanz des Changes muss netto höchstens null bleiben und die erfassten Fallow-Fingerprints müssen verschwinden.
 
+### Qualitätsziele für die SSF-Runtime-Konfiguration
+
+- Zwei-Tenant-Integrationstests müssen Repository-Prädikate und erzwungene RLS
+  mit dem Tenant-Runtime-Principal gemeinsam nachweisen.
+- Zod und OpenAPI verwenden dieselben festen Größenkonstanten; ungültige
+  Locales, inaktive Standardsprache, unbekannte Felder und inkonsistente
+  Speicherfragen schlagen fail-closed fehl.
+- JCS-Golden-Vektoren belegen eine von Schlüssel- und Locale-Reihenfolge
+  unabhängige `configurationRevision`; unwirksame Overrides verändern sie nicht.
+- Jeder erfolgreiche Write ist beim nächsten transaktionalen Read sichtbar.
+  Weder Handler noch Repository besitzen einen fachlichen Cache.
+- Token-Tests belegen unverändertes MCP-Verhalten sowie SSF-spezifische
+  Negativfälle für Konfiguration, Issuer/JWKS, Client und Action.
+
 #### Abschlussnachweis für den Events-Inhaltseditor
 
 - `EventsDetailContentTab` ist von 809 auf 14 Funktionszeilen und von 41/57 auf 1/1 zyklomatische/kognitive Komplexität reduziert.

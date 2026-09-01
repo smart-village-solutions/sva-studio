@@ -39,21 +39,40 @@ export const isConfiguredPluginTenantEffectivelyActive = async (
 export const filterConfiguredPluginTenantAccessibleModules = async (
   instanceId: string,
   assignedModules: readonly string[]
-): Promise<readonly string[]> => {
+): Promise<readonly string[]> =>
+  (await resolveConfiguredPluginTenantModuleAccess(instanceId, assignedModules)).accessibleModules;
+
+export type ConfiguredPluginTenantModuleAccess = Readonly<{
+  accessibleModules: readonly string[];
+  hasPendingLifecycleAccess: boolean;
+}>;
+
+export const resolveConfiguredPluginTenantModuleAccess = async (
+  instanceId: string,
+  assignedModules: readonly string[]
+): Promise<ConfiguredPluginTenantModuleAccess> => {
   const lifecycleRegistry = readInstanceRegistryPluginTenantLifecycleRegistry();
   const managedModules = assignedModules.filter((moduleId) => lifecycleRegistry.has(moduleId));
   if (managedModules.length === 0) {
-    return assignedModules;
+    return { accessibleModules: assignedModules, hasPendingLifecycleAccess: false };
   }
   const readinessByPluginId = new Map(
     (await readConfiguredPluginTenantReadiness(instanceId)).map((model) => [model.pluginId, model])
   );
-  return assignedModules.filter((moduleId) => {
-    if (!lifecycleRegistry.has(moduleId)) {
-      return true;
-    }
-    return evaluatePluginTenantAccess(readinessByPluginId.get(moduleId) ?? null).allowed;
-  });
+  const decisions = new Map(
+    managedModules.map((moduleId) => [
+      moduleId,
+      evaluatePluginTenantAccess(readinessByPluginId.get(moduleId) ?? null),
+    ])
+  );
+  return {
+    accessibleModules: assignedModules.filter(
+      (moduleId) => !lifecycleRegistry.has(moduleId) || decisions.get(moduleId)?.allowed === true
+    ),
+    hasPendingLifecycleAccess: [...decisions.values()].some(
+      (decision) => !decision.allowed && decision.reason === 'pending'
+    ),
+  };
 };
 
 export const isConfiguredPluginTenantLifecycleJobType = (

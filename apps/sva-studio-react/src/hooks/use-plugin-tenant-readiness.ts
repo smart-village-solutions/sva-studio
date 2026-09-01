@@ -38,8 +38,9 @@ export const usePluginTenantReadiness = (instanceId: string) => {
       const response = await getInstancePluginReadiness(instanceId);
       if (sequence === requestSequence.current && currentInstanceId.current === instanceId) {
         const nextAccessFingerprint = response.data
-          .map((item) =>
-            `${item.pluginId}:${evaluatePluginTenantAccess(item).allowed ? 'allowed' : 'denied'}`
+          .map(
+            (item) =>
+              `${item.pluginId}:${evaluatePluginTenantAccess(item).allowed ? 'allowed' : 'denied'}`
           )
           .sort()
           .join('\u0000');
@@ -75,6 +76,7 @@ export const usePluginTenantReadiness = (instanceId: string) => {
 
   const hasPendingLifecycleWork = items.some(
     (item) =>
+      item.status === 'pending' ||
       Boolean(item.activeJobId) ||
       (item.error?.retryKind === 'retryable' &&
         Boolean(item.error.retryAfter) &&

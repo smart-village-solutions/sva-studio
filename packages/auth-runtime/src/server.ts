@@ -83,6 +83,7 @@ export { readConfiguredPluginTenantReadiness } from './plugin-tenant-lifecycle/r
 export {
   filterConfiguredPluginTenantAccessibleModules,
   readConfiguredPluginTenantAccess,
+  resolveConfiguredPluginTenantModuleAccess,
 } from './plugin-tenant-lifecycle/access.js';
 export type {
   PluginTenantLifecycleOrchestratorDependencies,

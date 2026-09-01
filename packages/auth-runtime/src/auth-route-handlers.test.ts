@@ -7,6 +7,7 @@ type SessionUser = {
   roles: string[];
   permissionStatus?: 'ok' | 'degraded';
   assignedModules?: string[];
+  moduleAccessPending?: boolean;
   groups?: readonly IamUserGroupAssignment[];
 };
 
@@ -36,6 +37,7 @@ const mocks = vi.hoisted(() => {
     ),
     withAuthenticatedUser: vi.fn(),
     resolveEffectivePermissions: vi.fn(),
+    resolveConfiguredPluginTenantModuleAccess: vi.fn(),
     withRegistryRepository: vi.fn(),
     withInstanceScopedDb: vi.fn(),
     isMockAuthEnabled: vi.fn(),
@@ -98,6 +100,10 @@ vi.mock('./iam-authorization/shared.js', () => ({
 
 vi.mock('./iam-instance-registry/repository.js', () => ({
   withRegistryRepository: mocks.withRegistryRepository,
+}));
+
+vi.mock('./plugin-tenant-lifecycle/access.js', () => ({
+  resolveConfiguredPluginTenantModuleAccess: mocks.resolveConfiguredPluginTenantModuleAccess,
 }));
 
 vi.mock('./mock-auth.js', () => ({
@@ -231,6 +237,12 @@ describe('meHandler', () => {
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
     });
+    mocks.resolveConfiguredPluginTenantModuleAccess.mockImplementation(
+      async (_instanceId: string, assignedModules: readonly string[]) => ({
+        accessibleModules: assignedModules,
+        hasPendingLifecycleAccess: false,
+      })
+    );
     mocks.withRegistryRepository.mockImplementation(
       async (
         handler: (repository: {
@@ -298,6 +310,7 @@ describe('meHandler', () => {
       user: {
         id: string;
         assignedModules: string[];
+        moduleAccessPending: boolean;
         groups: IamUserGroupAssignment[];
         instanceDisplayName?: string;
         permissionActions: string[];
@@ -306,6 +319,7 @@ describe('meHandler', () => {
 
     expect(payload.user.id).toBe('kc-user-1');
     expect(payload.user.assignedModules).toEqual(['news']);
+    expect(payload.user.moduleAccessPending).toBe(false);
     expect(payload.user.instanceDisplayName).toBe('Tenant Test');
     expect(payload.user.groups).toEqual([
       {
@@ -339,8 +353,26 @@ describe('meHandler', () => {
       expect.objectContaining({ reason_code: 'assigned_module_lookup_failed', error_type: 'Error' })
     );
 
-    const payload = (await response.json()) as { user: { assignedModules: string[] } };
+    const payload = (await response.json()) as {
+      user: { assignedModules: string[]; moduleAccessPending: boolean };
+    };
     expect(payload.user.assignedModules).toEqual([]);
+    expect(payload.user.moduleAccessPending).toBe(false);
+  });
+
+  it('exposes pending lifecycle module access for tenant session revalidation', async () => {
+    mocks.resolveConfiguredPluginTenantModuleAccess.mockResolvedValueOnce({
+      accessibleModules: [],
+      hasPendingLifecycleAccess: true,
+    });
+
+    const response = await meHandler(createAuthMeRequest());
+
+    const payload = (await response.json()) as {
+      user: { assignedModules: string[]; moduleAccessPending: boolean };
+    };
+    expect(payload.user.assignedModules).toEqual([]);
+    expect(payload.user.moduleAccessPending).toBe(true);
   });
 
   it('returns fail-closed empty groups when group lookup fails', async () => {

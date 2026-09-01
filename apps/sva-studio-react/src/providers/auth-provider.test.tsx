@@ -1000,6 +1000,68 @@ describe('AuthProvider', () => {
     }
   });
 
+  it('revalidates tenant module access while lifecycle readiness is pending', async () => {
+    let intervalCallback: (() => void) | undefined;
+    const originalSetInterval = window.setInterval;
+    const originalClearInterval = window.clearInterval;
+    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number
+    ) => {
+      if (timeout === 10_000) {
+        intervalCallback = handler as () => void;
+        return 7_777 as unknown as ReturnType<typeof window.setInterval>;
+      }
+      return originalSetInterval(handler, timeout);
+    }) as typeof window.setInterval);
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval').mockImplementation((intervalId) => {
+      if (intervalId !== (7_777 as unknown as number)) {
+        originalClearInterval(intervalId);
+      }
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+            assignedModules: [],
+            moduleAccessPending: true,
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+            assignedModules: ['waste-management'],
+            moduleAccessPending: false,
+          },
+        })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 10_000));
+
+    await act(async () => {
+      intervalCallback?.();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(clearIntervalSpy).toHaveBeenCalledWith(7_777));
+  });
+
   it('does not start a second silent revalidation while a visibility-triggered refresh is still in flight', async () => {
     let visibilityState: DocumentVisibilityState = 'hidden';
     let resolveSecondFetch: ((response: Response) => void) | null = null;

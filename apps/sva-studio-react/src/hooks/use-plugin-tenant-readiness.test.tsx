@@ -142,23 +142,22 @@ describe('usePluginTenantReadiness', () => {
     let intervalCallback: (() => void) | undefined;
     const originalSetInterval = window.setInterval;
     const originalClearInterval = window.clearInterval;
-    const setIntervalSpy = vi
-      .spyOn(window, 'setInterval')
-      .mockImplementation(((handler: TimerHandler, timeout?: number) => {
-        if (timeout === 10_000) {
-          intervalCallback = handler as () => void;
-          return 8_888 as unknown as ReturnType<typeof window.setInterval>;
-        }
+    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number
+    ) => {
+      if (timeout === 10_000) {
+        intervalCallback = handler as () => void;
+        return 8_888 as unknown as ReturnType<typeof window.setInterval>;
+      }
 
-        return originalSetInterval(handler, timeout);
-      }) as typeof window.setInterval);
-    const clearIntervalSpy = vi
-      .spyOn(window, 'clearInterval')
-      .mockImplementation((intervalId) => {
-        if (intervalId !== (8_888 as unknown as number)) {
-          originalClearInterval(intervalId);
-        }
-      });
+      return originalSetInterval(handler, timeout);
+    }) as typeof window.setInterval);
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval').mockImplementation((intervalId) => {
+      if (intervalId !== (8_888 as unknown as number)) {
+        originalClearInterval(intervalId);
+      }
+    });
     api.getInstancePluginReadiness.mockImplementation(async () =>
       retryPending
         ? {
@@ -191,6 +190,54 @@ describe('usePluginTenantReadiness', () => {
     await waitFor(() => expect(result.current.items[0]?.error).toBeUndefined());
     expect(clearIntervalSpy).toHaveBeenCalledWith(8_888 as unknown as number);
     expect(api.getInstancePluginReadiness).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps polling a completed lifecycle result while readiness remains pending', async () => {
+    let readinessPending = true;
+    let intervalCallback: (() => void) | undefined;
+    const originalSetInterval = window.setInterval;
+    const originalClearInterval = window.clearInterval;
+    const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number
+    ) => {
+      if (timeout === 10_000) {
+        intervalCallback = handler as () => void;
+        return 7_777 as unknown as ReturnType<typeof window.setInterval>;
+      }
+      return originalSetInterval(handler, timeout);
+    }) as typeof window.setInterval);
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval').mockImplementation((intervalId) => {
+      if (intervalId !== (7_777 as unknown as number)) {
+        originalClearInterval(intervalId);
+      }
+    });
+    api.getInstancePluginReadiness.mockImplementation(async () => ({
+      data: [
+        {
+          pluginId: 'speech-flow',
+          effectiveActive: true,
+          accessState: 'active',
+          evidenceState: 'valid',
+          status: readinessPending ? 'pending' : 'ready',
+        },
+      ],
+      meta: {},
+    }));
+
+    const { result } = renderHook(() => usePluginTenantReadiness('tenant-a'));
+
+    await waitFor(() => expect(result.current.items[0]?.status).toBe('pending'));
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 10_000);
+
+    await act(async () => {
+      readinessPending = false;
+      intervalCallback?.();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.items[0]?.status).toBe('ready'));
+    expect(clearIntervalSpy).toHaveBeenCalledWith(7_777);
   });
 
   it('refreshes the current tenant auth snapshot when plugin access changes', async () => {

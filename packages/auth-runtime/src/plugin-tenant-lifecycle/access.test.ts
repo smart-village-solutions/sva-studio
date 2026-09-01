@@ -22,6 +22,7 @@ import {
   isConfiguredPluginTenantEffectivelyActive,
   isConfiguredPluginTenantLifecycleJobType,
   readConfiguredPluginTenantAccess,
+  resolveConfiguredPluginTenantModuleAccess,
 } from './access.js';
 
 describe('configured plugin tenant access', () => {
@@ -93,6 +94,33 @@ describe('configured plugin tenant access', () => {
     await expect(
       filterConfiguredPluginTenantAccessibleModules('tenant-a', ['news', 'speech', 'waste'])
     ).resolves.toEqual(['news']);
+  });
+
+  it('reports pending managed module access for session revalidation', async () => {
+    state.registry.set('speech', {
+      operations: [{ jobTypeId: 'speech.readiness' }],
+    });
+    state.readiness.mockResolvedValue([
+      {
+        pluginId: 'speech',
+        activationPolicy: 'required',
+        effectiveActive: true,
+        accessState: 'active',
+        status: 'pending',
+        evidenceState: 'valid',
+        desiredGeneration: 1,
+        completedGeneration: 1,
+        checks: [],
+        updatedAt: '2026-08-30T00:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      resolveConfiguredPluginTenantModuleAccess('tenant-a', ['news', 'speech'])
+    ).resolves.toEqual({
+      accessibleModules: ['news'],
+      hasPendingLifecycleAccess: true,
+    });
   });
 
   it('recognizes lifecycle job types so the generic job endpoint cannot bypass orchestration', () => {

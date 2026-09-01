@@ -176,6 +176,34 @@ describe('plugin server handler dispatcher', () => {
   });
 
   it.each([
+    ['own-scoped', { accessScope: 'own' as const }],
+    ['resource-scoped', { resourceId: 'article-1' }],
+  ])('denies tenant collection access backed only by a %s grant', async (_name, scope) => {
+    const descriptor = tenantDescriptor();
+    const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('unexpected'));
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs(
+          { id: 'user-1', roles: [], instanceId: 'tenant-a' },
+          'organization-a'
+        ),
+        readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
+        resolvePermissions: vi.fn().mockResolvedValue({
+          ok: true,
+          permissions: [{ action: 'news.read', resourceType: 'news.article', ...scope }],
+        }),
+      },
+    });
+
+    const response = await dispatch(new Request('https://tenant.test/api/v1/plugins/news/items'));
+
+    expect(response?.status).toBe(403);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ['missing host evidence', undefined],
     [
       'foreign instance',

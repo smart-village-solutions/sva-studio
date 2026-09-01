@@ -71,6 +71,12 @@ const resolveTranslation = (
 ): NonNullable<PluginServerHandlerDispatcherDependencies['translate']> =>
   dependencies?.translate ?? translatePluginServerHandlerMessage;
 
+const isCollectionCapablePermission = (permission: EffectivePermission): boolean =>
+  permission.accessScope !== 'own' &&
+  permission.resourceId === undefined &&
+  permission.geoScope === undefined &&
+  (permission.scope === undefined || Object.keys(permission.scope).length === 0);
+
 export const assertPluginServerHandlerCoverage = (input: {
   readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
   readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
@@ -145,6 +151,10 @@ const authorizeTenantHandler = async (input: {
       'permissionCheckUnavailable'
     );
   }
+  const effectivePermissions =
+    requirement.resourceContext === 'collection'
+      ? resolved.permissions.filter(isCollectionCapablePermission)
+      : resolved.permissions;
   const resourceCapability = input.resolveResourceCapability
     ? await input.resolveResourceCapability({
         request: input.request,
@@ -171,7 +181,7 @@ const authorizeTenantHandler = async (input: {
         moduleAssignmentGeneration: 0,
       },
       assignedModules: [input.descriptor.ownerPluginId],
-      permissions: resolved.permissions as readonly EffectivePermission[],
+      permissions: effectivePermissions as readonly EffectivePermission[],
     },
   });
   return decision.status === 'allowed'

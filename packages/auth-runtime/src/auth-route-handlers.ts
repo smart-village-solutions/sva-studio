@@ -22,7 +22,7 @@ import { resolveEffectivePermissions } from './iam-authorization/permission-stor
 import { filterTenantEffectivePermissions } from './iam-authorization/root-only-permissions.js';
 import { withInstanceScopedDb } from './iam-authorization/shared.js';
 import { withRegistryRepository } from './iam-instance-registry/repository.js';
-import { filterConfiguredPluginTenantAccessibleModules } from './plugin-tenant-lifecycle/access.js';
+import { resolveConfiguredPluginTenantModuleAccess } from './plugin-tenant-lifecycle/access.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import {
   decodeLoginStateCookie,
@@ -521,6 +521,7 @@ type AuthMeResolution = {
   readonly permissionActions: string[];
   readonly permissionStatus: 'ok' | 'degraded';
   readonly assignedModules: string[];
+  readonly moduleAccessPending: boolean;
   readonly groups: readonly IamUserGroupAssignment[];
 };
 
@@ -963,9 +964,11 @@ const loadAuthMePermissionState = async (user: {
   };
 };
 
-const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Promise<string[]> => {
+const loadAssignedModulesForAuthMe = async (user: {
+  instanceId?: string;
+}): Promise<Pick<AuthMeResolution, 'assignedModules' | 'moduleAccessPending'>> => {
   if (!user.instanceId) {
-    return [];
+    return { assignedModules: [], moduleAccessPending: false };
   }
   const instanceId = user.instanceId;
 
@@ -973,9 +976,11 @@ const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Prom
     const assignedModules = Array.from(
       await withRegistryRepository((repository) => repository.listAssignedModules(instanceId))
     );
-    return Array.from(
-      await filterConfiguredPluginTenantAccessibleModules(instanceId, assignedModules)
-    );
+    const access = await resolveConfiguredPluginTenantModuleAccess(instanceId, assignedModules);
+    return {
+      assignedModules: Array.from(access.accessibleModules),
+      moduleAccessPending: access.hasPendingLifecycleAccess,
+    };
   } catch (error) {
     logger.error('Auth me assigned module lookup failed', {
       endpoint: '/auth/me',
@@ -984,7 +989,7 @@ const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Prom
       reason_code: 'assigned_module_lookup_failed',
       ...buildLogContext({ kind: 'instance', instanceId }),
     });
-    return [];
+    return { assignedModules: [], moduleAccessPending: false };
   }
 };
 
@@ -1090,13 +1095,13 @@ const resolveAuthMeState = async (user: {
   instanceId?: string;
 }): Promise<AuthMeResolution> => {
   const permissionState = await loadAuthMePermissionState(user);
-  const assignedModules = await loadAssignedModulesForAuthMe(user);
+  const moduleAccess = await loadAssignedModulesForAuthMe(user);
   const instanceDisplayName = await loadInstanceDisplayNameForAuthMe(user);
   const groups = await loadGroupsForAuthMe(user);
 
   return {
     ...permissionState,
-    assignedModules,
+    ...moduleAccess,
     groups,
     instanceDisplayName,
   };
@@ -1118,6 +1123,7 @@ const createAuthMeResponse = (
       user: {
         ...user,
         assignedModules: resolution.assignedModules,
+        moduleAccessPending: resolution.moduleAccessPending,
         groups: resolution.groups,
         ...(resolution.instanceDisplayName
           ? { instanceDisplayName: resolution.instanceDisplayName }

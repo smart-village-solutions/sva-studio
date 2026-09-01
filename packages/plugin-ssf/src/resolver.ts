@@ -69,13 +69,11 @@ export interface ResolveSsfRuntimeConfigurationInput {
 
 export class SsfRuntimeConfigurationValidationError extends Error {
   readonly code = 'runtime_configuration_unavailable';
-
   constructor(message: string) {
     super(message);
     this.name = 'SsfRuntimeConfigurationValidationError';
   }
 }
-
 const override = <T>(...values: readonly OptionalOverride<T>[]): T => {
   const value = values.find(
     (candidate): candidate is T => candidate !== null && candidate !== undefined

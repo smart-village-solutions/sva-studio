@@ -59,7 +59,7 @@ Empfohlene Aufrufe:
 - Texte, Übersetzungen, Labels: `i18n & Content`
 - UI-Flows, Erstnutzung, Fehlerzustände: `User Journey & Usability`
 - neue Logik, Verhalten, Tests, Coverage-Auswirkungen: `Test Quality`
-- verteilte Zustände, Nebenläufigkeit, Retry/Recovery, Trust Boundaries oder gekoppelte Persistenz-/Runtime-Übergänge: `System Assurance`
+- risikoreiches Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante sowie verteilten Zuständen, Nebenläufigkeit, Retry/Recovery, sicherheitsrelevanten Trust Boundaries oder gekoppelten Persistenz-/Runtime-Übergängen: `System Assurance`
 - Infra, Migrationen, Runbooks, Monitoring: `Operations`
 - APIs, Datenformate, Standards: `Interoperability`
 - Server-Code, Audit, Fehlerbehandlung: `Logging`
@@ -70,7 +70,7 @@ Empfohlene Aufrufe:
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
-- risikoreiche Großvorhaben mit `assurance.md`: `System Assurance`; fehlender oder unvollständiger Assurance Case ist ein Merge-Blocker
+- risikoreiche Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante und `assurance.md`: `System Assurance`; fehlende Nachweisplanung blockiert die Implementierung, fehlende ausgeführte Evidenz für den exakten HEAD den Merge
 - Aenderungen an `config/plugin-architecture-allowlist.json`, `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
 - Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` werden vor dem Merge fachlich geprüft und über den normalen GitHub-Review-Prozess abgeschlossen

@@ -34,8 +34,19 @@ und durch direkte Evidenz abgesichert sind.
 1. Geltungsbereich, Grenzen, Verbraucher und Zustände unabhängig vom Diff erfassen.
 2. Prüfen, ob das Invariantenregister alle kritischen Systembehauptungen abdeckt.
 3. Für jede Invariante gezielt Gegenbeispiele und Failure Modes suchen.
-4. Direkte Evidenz aus Tests, Constraints, Runtime-Guards, Integrations- oder Betriebsnachweisen verifizieren.
-5. Unbekannte, unzugeordnete oder nur durch allgemeine Checks behauptete Nachweislücken als Merge-Blocker markieren.
+4. Im Planungsreview prüfen, ob jede kritische Invariante einem konkreten Nachweistyp und geplanten Nachweisartefakt zugeordnet ist.
+5. Im Nachweisreview direkte Evidenz aus Tests, Constraints, Runtime-Guards, Integrations- oder Betriebsnachweisen für den exakten HEAD verifizieren.
+6. Unbekannte oder unzugeordnete kritische Modell- und Planungslücken als Implementierungsblocker markieren; fehlende ausgeführte Evidenz im Nachweisreview als Merge-Blocker markieren.
+
+### Prüfphase
+
+- **Planungsreview vor Implementierung:** Bewertet Invarianten, Grenzen,
+  Failure Modes und konkrete Nachweisplanung. Geplante, noch nicht ausgeführte
+  Evidenz ist in dieser Phase kein Blocker.
+- **Nachweisreview vor Merge:** Bewertet die tatsächlich ausgeführte direkte
+  Evidenz und akzeptierten Restrisiken für den exakten HEAD.
+- Ist die Prüfphase im Auftrag nicht angegeben, leite sie aus dem Kontext ab
+  und benenne die Annahme im Ergebnis.
 
 ### Arbeitsprinzipien
 
@@ -59,9 +70,11 @@ und durch direkte Evidenz abgesichert sind.
 
 ### Entscheidung
 
-- **Belegt:** Jede kritische Invariante besitzt passende direkte Evidenz.
-- **Belegt mit Restrisiko:** Verbleibende Annahmen sind explizit entschieden.
-- **Merge-Blocker:** Mindestens eine kritische Invariante oder Systemgrenze ist unbekannt, ohne Evidenz oder widersprüchlich.
+- **Planungsreif:** Jede kritische Invariante ist modelliert und besitzt eine konkrete Nachweisplanung.
+- **Nachweisreif:** Jede kritische Invariante besitzt passende ausgeführte direkte Evidenz für den exakten HEAD.
+- **Reif mit Restrisiko:** Verbleibende Annahmen sind explizit entschieden.
+- **Implementierungsblocker:** Im Planungsreview ist mindestens eine kritische Invariante, Systemgrenze oder Nachweisplanung unbekannt, unzugeordnet oder widersprüchlich.
+- **Merge-Blocker:** Im Nachweisreview fehlt für mindestens eine kritische Invariante ausgeführte Evidenz oder eine ausdrücklich akzeptierte Restrisikoentscheidung.
 
 ### Output
 

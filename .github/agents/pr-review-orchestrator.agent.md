@@ -77,26 +77,26 @@ Lies die PR oder den Diff-Kontext und ermittle:
 - `Code Quality` wird bei jeder Codeänderung aufgerufen.
 - `Test Quality` wird bei jeder Verhaltensänderung, bei neuen Tests oder bei Coverage-relevanten Änderungen aufgerufen.
 - `Test Quality` wird zusätzlich verpflichtend aufgerufen, wenn die PR-Historie wiederholte rote Test-/Coverage-Checks zeigt.
-- `System Assurance` wird bei verteilten Zuständen, Nebenläufigkeit, Retry/Recovery, Trust Boundaries oder gekoppelten Persistenz-/Runtime-Übergängen verpflichtend aufgerufen.
+- `System Assurance` wird bei risikoreichen Großvorhaben verpflichtend aufgerufen, die eine neue oder wesentlich veränderte systemübergreifende Invariante einführen und dabei verteilte Zustände, Nebenläufigkeit, Retry/Recovery, sicherheitsrelevante Trust Boundaries oder gekoppelte Persistenz-/Runtime-Übergänge betreffen.
 - Zusätzliche Reviewer nur bei erkennbarer Fachrelevanz.
 
 **Trigger-Matrix:**
 
-| Wenn die PR enthält…                                            | Dann rufe auf…                                    |
-| --------------------------------------------------------------- | ------------------------------------------------- |
-| jede PR                                                         | 📝 Documentation                                  |
-| Produktivcode / Konfig-Logik                                    | 🧪 Code Quality                                   |
-| Verhaltensänderungen, neue Tests, Coverage-Artefakte            | ✅ Test Quality                                   |
-| wiederholt fehlgeschlagene Test-/Coverage-Checks im PR-Verlauf  | ✅ Test Quality (mit Prozess-Befund „Shift-left“) |
-| risikoreiches Großvorhaben mit systemübergreifenden Invarianten | 🧭 System Assurance                               |
-| Auth, Sessions, Tokens, Rollen, PII, Secrets                    | 🔒 Security & Privacy                             |
-| UI, Formulare, Navigation, Screenreader-relevante Änderungen    | ♿ UX & Accessibility                             |
-| user-facing Texte, Labels, i18n-Keys                            | 🌐 i18n & Content                                 |
-| UI-Flows, Schrittfolgen, Statuskommunikation                    | 🧭 User Journey & Usability                       |
-| Workflows, Infra, Monitoring, Rollback, Runbooks                | ⚙️ Operations                                     |
-| API-Contracts, Datenformate, Migrationen                        | 🔌 Interoperability                               |
-| Server-Code, Fehlerbehandlung, Audit, Kontextlogs               | 📊 Logging                                        |
-| Rendering, Caching, Bundle, große Listen, Hot Paths             | 🚀 Performance                                    |
+| Wenn die PR enthält…                                                                             | Dann rufe auf…                                    |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| jede PR                                                                                          | 📝 Documentation                                  |
+| Produktivcode / Konfig-Logik                                                                     | 🧪 Code Quality                                   |
+| Verhaltensänderungen, neue Tests, Coverage-Artefakte                                             | ✅ Test Quality                                   |
+| wiederholt fehlgeschlagene Test-/Coverage-Checks im PR-Verlauf                                   | ✅ Test Quality (mit Prozess-Befund „Shift-left“) |
+| risikoreiches Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante | 🧭 System Assurance                               |
+| Auth, Sessions, Tokens, Rollen, PII, Secrets                                                     | 🔒 Security & Privacy                             |
+| UI, Formulare, Navigation, Screenreader-relevante Änderungen                                     | ♿ UX & Accessibility                             |
+| user-facing Texte, Labels, i18n-Keys                                                             | 🌐 i18n & Content                                 |
+| UI-Flows, Schrittfolgen, Statuskommunikation                                                     | 🧭 User Journey & Usability                       |
+| Workflows, Infra, Monitoring, Rollback, Runbooks                                                 | ⚙️ Operations                                     |
+| API-Contracts, Datenformate, Migrationen                                                         | 🔌 Interoperability                               |
+| Server-Code, Fehlerbehandlung, Audit, Kontextlogs                                                | 📊 Logging                                        |
+| Rendering, Caching, Bundle, große Listen, Hot Paths                                              | 🚀 Performance                                    |
 
 #### Schritt 3: Reviews orchestrieren
 
@@ -106,10 +106,11 @@ Rufe alle ausgewählten Fachreviewer parallel auf. Jeder Reviewer erhält:
 - relevante Diff- oder Dateiliste
 - klare Aufforderung, sein jeweiliges Template zu verwenden
 
-System Assurance erhält zusätzlich den Assurance Case, den exakten PR-HEAD und
-die Aufforderung, Invarianten durch konkrete Gegenbeispiele zu widerlegen oder
-ihre direkte Evidenz zu verifizieren. Grüne Checks oder ausbleibende Findings
-dürfen nicht als Vollständigkeitsnachweis konsolidiert werden.
+System Assurance erhält zusätzlich die Prüfphase `Nachweisreview`, den Assurance
+Case, den exakten PR-HEAD und die Aufforderung, Invarianten durch konkrete
+Gegenbeispiele zu widerlegen oder ihre direkte Evidenz zu verifizieren. Grüne
+Checks oder ausbleibende Findings dürfen nicht als Vollständigkeitsnachweis
+konsolidiert werden.
 
 #### Schritt 4: Ergebnisse konsolidieren
 

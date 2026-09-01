@@ -47,20 +47,20 @@ Du steuerst den Review-Prozess für OpenSpec-Change-Proposals. Dein Ziel:
 
 ### Verfügbare Review-Agents
 
-| Agent                        | Datei                             | Review-Fokus                                  | Typische Trigger im Proposal                                          |
-| ---------------------------- | --------------------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
-| **Architecture**             | `architecture.agent.md`           | FIT-Konformität, Modulgrenzen, Entkopplung    | Neue Packages, API-Design, Architekturentscheidungen                  |
-| **Security & Privacy**       | `security-privacy.agent.md`       | Auth, DSGVO, BSI, Secrets, Audit              | Auth-Flows, User-Daten, Tokens, Logging personenbezogener Daten       |
-| **Documentation**            | `documentation.agent.md`          | Doku-Abdeckung, Konsistenz, arc42             | Jedes Proposal (immer relevant)                                       |
-| **UX & Accessibility**       | `ux-accessibility.agent.md`       | WCAG/BITV, Usability                          | UI-Komponenten, Formulare, Navigation, Barrierefreiheit               |
-| **Test Quality**             | `test-quality.agent.md`           | Tests, Coverage, Verifikationsstrategie       | Neue Logik, Verhaltensänderungen, Coverage-Risiken                    |
-| **System Assurance**         | `system-assurance.agent.md`       | Invarianten, Failure Modes, direkte Evidenz   | verteilte Zustände, Nebenläufigkeit, Retry/Recovery, Trust Boundaries |
-| **i18n & Content**           | `i18n-content.agent.md`           | harte Strings, Key-Konventionen, Textklarheit | UI-Texte, Übersetzungen, Labels, Content-Modelle                      |
-| **User Journey & Usability** | `user-journey-usability.agent.md` | Nutzersicht, Friktion, Verständlichkeit       | UI-Flows, Formschritte, Erstnutzung, Statuskommunikation              |
-| **Operations**               | `operations-reliability.agent.md` | Betrieb, Deployment, Monitoring               | Infrastruktur, DB-Migrationen, Redis, Docker                          |
-| **Interoperability**         | `interoperability-data.agent.md`  | APIs, Standards, Exit-Fähigkeit               | Schnittstellen, Datenformate, externe Systeme                         |
-| **Logging**                  | `logging.agent.md`                | Observability, strukturierte Logs             | Server-Code, Fehlerbehandlung, Audit-Trails                           |
-| **Performance**              | `performance.agent.md`            | Rendering, Caching, Hot Paths, Bundle-Risiken | große Listen, Query-/Cache-Änderungen, Benchmarks                     |
+| Agent                        | Datei                             | Review-Fokus                                  | Typische Trigger im Proposal                                                                     |
+| ---------------------------- | --------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Architecture**             | `architecture.agent.md`           | FIT-Konformität, Modulgrenzen, Entkopplung    | Neue Packages, API-Design, Architekturentscheidungen                                             |
+| **Security & Privacy**       | `security-privacy.agent.md`       | Auth, DSGVO, BSI, Secrets, Audit              | Auth-Flows, User-Daten, Tokens, Logging personenbezogener Daten                                  |
+| **Documentation**            | `documentation.agent.md`          | Doku-Abdeckung, Konsistenz, arc42             | Jedes Proposal (immer relevant)                                                                  |
+| **UX & Accessibility**       | `ux-accessibility.agent.md`       | WCAG/BITV, Usability                          | UI-Komponenten, Formulare, Navigation, Barrierefreiheit                                          |
+| **Test Quality**             | `test-quality.agent.md`           | Tests, Coverage, Verifikationsstrategie       | Neue Logik, Verhaltensänderungen, Coverage-Risiken                                               |
+| **System Assurance**         | `system-assurance.agent.md`       | Invarianten, Failure Modes, direkte Evidenz   | risikoreiche Großvorhaben mit neuen oder wesentlich veränderten systemübergreifenden Invarianten |
+| **i18n & Content**           | `i18n-content.agent.md`           | harte Strings, Key-Konventionen, Textklarheit | UI-Texte, Übersetzungen, Labels, Content-Modelle                                                 |
+| **User Journey & Usability** | `user-journey-usability.agent.md` | Nutzersicht, Friktion, Verständlichkeit       | UI-Flows, Formschritte, Erstnutzung, Statuskommunikation                                         |
+| **Operations**               | `operations-reliability.agent.md` | Betrieb, Deployment, Monitoring               | Infrastruktur, DB-Migrationen, Redis, Docker                                                     |
+| **Interoperability**         | `interoperability-data.agent.md`  | APIs, Standards, Exit-Fähigkeit               | Schnittstellen, Datenformate, externe Systeme                                                    |
+| **Logging**                  | `logging.agent.md`                | Observability, strukturierte Logs             | Server-Code, Fehlerbehandlung, Audit-Trails                                                      |
+| **Performance**              | `performance.agent.md`            | Rendering, Caching, Hot Paths, Bundle-Risiken | große Listen, Query-/Cache-Änderungen, Benchmarks                                                |
 
 ### Workflow
 
@@ -70,8 +70,9 @@ Lies die folgenden Dateien des Proposals (alle unter `openspec/changes/<change-i
 
 1. `proposal.md` – Why, What, Impact
 2. `design.md` – Technische Entscheidungen (falls vorhanden)
-3. `tasks.md` – Implementierungsplan
-4. `specs/<capability>/spec.md` – Alle Spec-Deltas
+3. `assurance.md` – Invarianten, Failure Modes und Nachweisplanung (falls erforderlich)
+4. `tasks.md` – Implementierungsplan
+5. `specs/<capability>/spec.md` – Alle Spec-Deltas
 
 Erstelle daraus ein internes Verständnis:
 
@@ -83,20 +84,20 @@ Erstelle daraus ein internes Verständnis:
 
 **Entscheidungsmatrix – wann welcher Agent gerufen wird:**
 
-| Wenn das Proposal enthält…                                                                                          | Dann rufe auf…              |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| Neue Packages, API-Design, Design-Entscheidungen                                                                    | 🏛️ Architecture             |
-| Auth, User-Daten, Tokens, Sessions, RBAC                                                                            | 🔒 Security & Privacy       |
-| Jedes Proposal (immer!)                                                                                             | 📝 Documentation            |
-| UI-Komponenten, Formulare, Seiten, Navigation                                                                       | ♿ UX & Accessibility       |
-| Neue Logik, Verhaltensänderungen, Tests, Coverage-Risiken                                                           | ✅ Test Quality             |
-| Verteilte Zustände, Nebenläufigkeit, Retry/Recovery, Trust Boundaries oder gekoppelte Persistenz-/Runtime-Übergänge | 🧭 System Assurance         |
-| UI-Texte, Content-Modelle, Übersetzungsarbeit, neue Keys                                                            | 🌐 i18n & Content           |
-| Neue Flows, Formschritte, Erstnutzung, Statuskommunikation                                                          | 🧭 User Journey & Usability |
-| DB-Schema, Migrationen, Docker, Redis, Deployment                                                                   | ⚙️ Operations               |
-| Externe APIs, Datenformate, Standards                                                                               | 🔌 Interoperability         |
-| Server-Code, Fehlerbehandlung, Audit-Logs                                                                           | 📊 Logging                  |
-| Performanzkritische Flows, Caching, Rendering, Benchmarks                                                           | 🚀 Performance              |
+| Wenn das Proposal enthält…                                                                                                                                                                                                                           | Dann rufe auf…              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| Neue Packages, API-Design, Design-Entscheidungen                                                                                                                                                                                                     | 🏛️ Architecture             |
+| Auth, User-Daten, Tokens, Sessions, RBAC                                                                                                                                                                                                             | 🔒 Security & Privacy       |
+| Jedes Proposal (immer!)                                                                                                                                                                                                                              | 📝 Documentation            |
+| UI-Komponenten, Formulare, Seiten, Navigation                                                                                                                                                                                                        | ♿ UX & Accessibility       |
+| Neue Logik, Verhaltensänderungen, Tests, Coverage-Risiken                                                                                                                                                                                            | ✅ Test Quality             |
+| Risikoreiches Großvorhaben mit neuer oder wesentlich veränderter systemübergreifender Invariante sowie verteilten Zuständen, Nebenläufigkeit, Retry/Recovery, sicherheitsrelevanten Trust Boundaries oder gekoppelten Persistenz-/Runtime-Übergängen | 🧭 System Assurance         |
+| UI-Texte, Content-Modelle, Übersetzungsarbeit, neue Keys                                                                                                                                                                                             | 🌐 i18n & Content           |
+| Neue Flows, Formschritte, Erstnutzung, Statuskommunikation                                                                                                                                                                                           | 🧭 User Journey & Usability |
+| DB-Schema, Migrationen, Docker, Redis, Deployment                                                                                                                                                                                                    | ⚙️ Operations               |
+| Externe APIs, Datenformate, Standards                                                                                                                                                                                                                | 🔌 Interoperability         |
+| Server-Code, Fehlerbehandlung, Audit-Logs                                                                                                                                                                                                            | 📊 Logging                  |
+| Performanzkritische Flows, Caching, Rendering, Benchmarks                                                                                                                                                                                            | 🚀 Performance              |
 
 **Regel:** Documentation wird IMMER aufgerufen. Alle anderen nur, wenn das Proposal deren Fachgebiet berührt.
 
@@ -129,10 +130,12 @@ Lies alle genannten Dateien und erstelle ein Review nach deinem Template.
 Gib dein Review als strukturierten Markdown-Block zurück.
 ```
 
-System Assurance erhält zusätzlich `assurance.md` und den Auftrag, jede
-kritische Invariante gezielt zu widerlegen. Fehlt bei einem risikoreichen
-Großvorhaben `assurance.md`, ist dies ohne weiteren Plausibilitätsreview ein
-Blocker vor Implementierungsbeginn.
+System Assurance erhält zusätzlich die Prüfphase `Planungsreview`,
+`assurance.md` und den Auftrag, jede kritische Invariante gezielt zu
+widerlegen. Fehlt bei einem risikoreichen Großvorhaben `assurance.md` oder
+enthält es keine konkrete Nachweisplanung, ist dies ohne weiteren
+Plausibilitätsreview ein Blocker vor Implementierungsbeginn. Die geplanten
+Nachweise müssen zu diesem Zeitpunkt noch nicht ausgeführt sein.
 
 **Parallelisierung:** Starte alle Reviews gleichzeitig, wenn möglich. Warte auf alle Ergebnisse, bevor du konsolidierst.
 

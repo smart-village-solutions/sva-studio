@@ -277,7 +277,7 @@ Minimal `design.md` skeleton:
 ```
 
 6. **Create assurance.md for high-risk cross-system changes:**
-   Use the mandatory criteria and template in `docs/development/system-assurance.md`. Critical invariants without direct evidence or an explicitly accepted residual risk block implementation and merge regardless of green general checks.
+   Use the mandatory criteria and template in `docs/development/system-assurance.md`. Critical invariants without a concrete evidence plan or an explicitly accepted residual risk block implementation. Before merge, every critical invariant requires executed direct evidence for the exact HEAD or an explicitly accepted residual risk, regardless of green general checks.
 
 ## Spec File Format
 

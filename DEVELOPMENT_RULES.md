@@ -362,24 +362,39 @@ Zustandsmatrizen oder zusätzlichen OpenSpec-Changes zu erzeugen.
 
 ### Assurance Case für risikoreiche Großvorhaben
 
-Wenn ein Großvorhaben verteilte Zustände, Nebenläufigkeit, Retry/Recovery,
+System-Assurance ist verpflichtend, wenn ein risikoreiches Großvorhaben eine
+neue oder wesentlich veränderte systemübergreifende Invariante einführt und
+dabei verteilte Zustände, Nebenläufigkeit, Retry/Recovery,
 sicherheitsrelevante Trust Boundaries oder gekoppelte Persistenz-/Runtime-
-Übergänge einführt, muss der zugehörige OpenSpec-Change vor der Implementierung
+Übergänge betrifft. Der zugehörige OpenSpec-Change muss vor der Implementierung
 eine Datei `assurance.md` enthalten. Ihr verbindlicher Aufbau steht in
 `docs/development/system-assurance.md`.
+
+Das bloße Berühren eines bestehenden Retry-Pfads, einer Trust Boundary oder
+einer Persistenzgrenze löst System-Assurance nicht aus, wenn eine lokal
+begrenzte Änderung lediglich bestehendes Verhalten wiederherstellt und keine
+systemübergreifende Invariante verändert. Zeigen wiederholte Befunde dagegen
+eine unvollständige Invariante über mehrere Verbraucher oder Ausführungswege,
+greift die Review- und Fix-Stop-Regel.
 
 - Jede kritische Systembehauptung erhält eine stabile Invarianten-ID.
 - Für jede Invariante werden Systemgrenzen, Verletzungsszenarien, Prävention,
   Erkennung, Recovery und Restrisiken beschrieben.
-- Jede Invariante wird auf direkte Evidenz abgebildet. Abhängig vom Risiko sind
-  Runtime-Validierung, Zustandsmaschinen-, Negativ-, Fault-Injection-,
-  Konkurrenz-, Redelivery-, Integrations-, Topologie- oder Recovery-Tests
-  erforderlich.
+- Vor Implementierungsbeginn wird jede Invariante auf einen konkreten
+  Nachweistyp und ein geplantes Nachweisartefakt abgebildet. Abhängig vom Risiko
+  sind Runtime-Validierung,
+  Zustandsmaschinen-, Negativ-, Fault-Injection-, Konkurrenz-, Redelivery-,
+  Integrations-, Topologie- oder Recovery-Tests zu planen.
+- Während der Implementierung werden die geplanten Nachweise parallel zu den
+  betroffenen Lieferabschnitten erstellt und ausgeführt.
 - Coverage, statische Checks und allgemeine Reviews sind ergänzende Signale,
   aber kein direkter Nachweis einer Invariante.
 - Nicht automatisierbare Annahmen benötigen einen reproduzierbaren manuellen
   Nachweis oder eine ausdrücklich akzeptierte Restrisikoentscheidung.
-- Eine kritische Invariante ohne Evidenz oder akzeptiertes Restrisiko ist ein
+- Eine kritische Invariante ohne konkrete Nachweisplanung oder ausdrücklich
+  akzeptierte Restrisikoentscheidung blockiert die Implementierung. Fehlt vor
+  dem Merge die tatsächlich ausgeführte Evidenz für den exakten HEAD oder eine
+  ausdrücklich akzeptierte Restrisikoentscheidung, ist dies ein
   Merge-Blocker. „Keine weiteren Findings“ ist keine Evidenz.
 - Der System-Assurance-Review versucht dokumentierte Invarianten gezielt zu
   widerlegen. Er darf Merge-Reife nur auf Basis konkreter Gegenbeispiele,

@@ -2,7 +2,8 @@
 
 ## Entscheidung
 
-- Ergebnis: [Belegt | Belegt mit Restrisiko | Merge-Blocker]
+- Prüfphase: [Planungsreview | Nachweisreview]
+- Ergebnis: [Planungsreif | Nachweisreif | Reif mit Restrisiko | Implementierungsblocker | Merge-Blocker]
 - Bewerteter HEAD:
 - Assurance Case:
 - Begründung:
@@ -16,9 +17,11 @@
 
 ## Invarianten-Evidenz
 
+Zulässige Statuswerte: `geplant`, `belegt`, `Lücke` und `Restrisiko`.
+
 | Invariante | Kritikalität | Direkte Evidenz         | Gegenbeispiele geprüft | Status  |
 | ---------- | ------------ | ----------------------- | ---------------------- | ------- |
-| INV-01     | kritisch     | Test/Constraint/Runbook | Fehlerfälle            | [belegt | Lücke | Restrisiko] |
+| INV-01     | kritisch     | Test/Constraint/Runbook | Fehlerfälle            | geplant |
 
 ## Boundary- und Consumer-Abdeckung
 
@@ -43,9 +46,10 @@
 | ID  | Annahme/Risiko | Auswirkung | vorhandene Begrenzung | Entscheidung nötig von |
 | --- | -------------- | ---------- | --------------------- | ---------------------- |
 
-## Merge-Blocker
+## Phasenbezogene Blocker
 
-- [ ] Keine kritische Invariante ohne direkte Evidenz
+- [ ] Im Planungsreview keine kritische Invariante ohne konkrete Nachweisplanung
+- [ ] Im Nachweisreview keine kritische Invariante ohne ausgeführte direkte Evidenz für den exakten HEAD
 - [ ] Keine unbekannte oder unzugeordnete Systemgrenze
 - [ ] Keine nicht-terminale Sackgasse ohne Konvergenz/Recovery
 - [ ] Keine nur durch allgemeine CI/Coverage behauptete Evidenz

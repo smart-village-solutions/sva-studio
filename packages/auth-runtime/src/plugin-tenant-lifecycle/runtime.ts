@@ -150,13 +150,13 @@ const resolveAutomaticProvisioningSchedule = (
   if (lifecycle.retryAfter && Date.parse(lifecycle.retryAfter) > now.getTime()) {
     return null;
   }
-  if (lifecycle.nextRecheckAt && Date.parse(lifecycle.nextRecheckAt) > now.getTime()) {
-    return null;
-  }
   if (lifecycle.retryKind === 'retryable') {
     return hasOperation(lifecycle.desiredOperation)
       ? { operation: lifecycle.desiredOperation, scheduledAt: now.toISOString() }
       : null;
+  }
+  if (lifecycle.nextRecheckAt && Date.parse(lifecycle.nextRecheckAt) > now.getTime()) {
+    return null;
   }
   const readiness = createPluginTenantReadinessReadModel({
     definition,
@@ -181,6 +181,10 @@ export const startConfiguredPluginTenantLifecycle = (input: StartPluginTenantLif
     resolveActivation: (instanceId, pluginId) =>
       withRegistryRepository((instanceRegistryRepository) =>
         instanceRegistryRepository.getModuleActivationPolicy(instanceId, pluginId)
+      ),
+    resolveLifecycle: (instanceId, pluginId) =>
+      withPluginTenantLifecycleRepository(instanceId, (repository) =>
+        repository.getLifecycle(instanceId, pluginId)
       ),
     resolveJobRegistration: (jobTypeId) =>
       getRegisteredPluginOperationExecutionRegistry().get(jobTypeId),

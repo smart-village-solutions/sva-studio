@@ -12,6 +12,7 @@ import type {
 export const pluginTenantLifecycleHostErrorCodes = {
   notDeclared: 'plugin_tenant_lifecycle_not_declared',
   inactive: 'plugin_tenant_lifecycle_inactive',
+  invalidTransition: 'plugin_tenant_lifecycle_invalid_transition',
   operationNotDeclared: 'plugin_tenant_lifecycle_operation_not_declared',
   handlerMissing: 'plugin_tenant_lifecycle_handler_missing',
   cancellationMismatch: 'plugin_tenant_lifecycle_cancellation_mismatch',
@@ -34,6 +35,10 @@ type PluginTenantLifecycleOrchestratorCommonDependencies = {
     instanceId: string,
     pluginId: string
   ) => Promise<{ readonly effectiveActive: boolean } | null>;
+  readonly resolveLifecycle: (
+    instanceId: string,
+    pluginId: string
+  ) => Promise<PluginTenantLifecycleRecord | null>;
   readonly resolveJobRegistration: (
     jobTypeId: string
   ) => PluginTenantLifecycleJobRegistration | undefined;
@@ -136,6 +141,21 @@ const resolveLifecycleOperation = async (
   if (!operationDefinition) {
     throw lifecycleError(
       pluginTenantLifecycleHostErrorCodes.operationNotDeclared,
+      input.pluginId,
+      input.operation
+    );
+  }
+  const currentLifecycle = await dependencies.resolveLifecycle(input.instanceId, input.pluginId);
+  const resumesPersistedRetry =
+    currentLifecycle?.retryKind === 'retryable' &&
+    currentLifecycle.desiredOperation === input.operation;
+  const invalidTransition =
+    !resumesPersistedRetry &&
+    ((input.operation === 'suspend' && currentLifecycle?.accessState === 'suspended') ||
+      (input.operation === 'reactivate' && currentLifecycle?.accessState !== 'suspended'));
+  if (invalidTransition) {
+    throw lifecycleError(
+      pluginTenantLifecycleHostErrorCodes.invalidTransition,
       input.pluginId,
       input.operation
     );

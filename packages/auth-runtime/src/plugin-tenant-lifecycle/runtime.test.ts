@@ -434,6 +434,20 @@ describe('configured plugin tenant lifecycle runtime', () => {
     );
   });
 
+  it('honours a due retry before a later pending recheck', async () => {
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      retryKind: 'retryable',
+      retryAfter: '2020-08-30T12:05:00.000Z',
+      nextRecheckAt: '2999-08-30T12:05:00.000Z',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalled();
+  });
+
   it('retries reactivation while the lifecycle remains suspended', async () => {
     state.operations = [{ operation: 'reactivate', jobTypeId: 'speech.reactivateTenant' }];
     state.getLifecycle.mockResolvedValue({

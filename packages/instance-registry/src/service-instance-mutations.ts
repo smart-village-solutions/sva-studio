@@ -57,6 +57,23 @@ const resolveIdempotentCreateRetry = async (
   return { ok: true, instance: toListItem(instance) };
 };
 
+const concurrentCreateRetryDelaysMs = [0, 25, 100, 400] as const;
+
+const resolveConcurrentIdempotentCreateRetry = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CreateInstanceProvisioningInput,
+  instance: InstanceRegistryRecord
+): Promise<CreateInstanceProvisioningResult | null> => {
+  for (const delayMs of concurrentCreateRetryDelaysMs) {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    const retry = await resolveIdempotentCreateRetry(deps, input, instance);
+    if (retry) return retry;
+  }
+  return null;
+};
+
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
@@ -124,7 +141,7 @@ export const createProvisioningRequestHandler =
         deps.repository.getInstanceById(input.instanceId)
       );
       if (concurrentInstance) {
-        const retry = await resolveIdempotentCreateRetry(deps, input, concurrentInstance);
+        const retry = await resolveConcurrentIdempotentCreateRetry(deps, input, concurrentInstance);
         if (retry) return retry;
       }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {

@@ -123,6 +123,33 @@ describe('configured plugin tenant access', () => {
     });
   });
 
+  it('keeps blocked managed module access eligible for repair revalidation', async () => {
+    state.registry.set('speech', {
+      operations: [{ jobTypeId: 'speech.readiness' }],
+    });
+    state.readiness.mockResolvedValue([
+      {
+        pluginId: 'speech',
+        activationPolicy: 'required',
+        effectiveActive: true,
+        accessState: 'active',
+        status: 'blocked',
+        evidenceState: 'valid',
+        desiredGeneration: 1,
+        completedGeneration: 1,
+        checks: [],
+        updatedAt: '2026-08-30T00:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      resolveConfiguredPluginTenantModuleAccess('tenant-a', ['news', 'speech'])
+    ).resolves.toEqual({
+      accessibleModules: ['news'],
+      hasPendingLifecycleAccess: true,
+    });
+  });
+
   it('recognizes lifecycle job types so the generic job endpoint cannot bypass orchestration', () => {
     state.registry.set('speech', {
       operations: [{ jobTypeId: 'speech.reconcile' }],

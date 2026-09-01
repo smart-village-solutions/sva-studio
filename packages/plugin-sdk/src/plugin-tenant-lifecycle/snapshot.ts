@@ -16,6 +16,20 @@ const readinessStatusPriority: Readonly<Record<PluginTenantReadinessStatus, numb
   blocked: 3,
 };
 
+const isJsonSafe = (value: unknown, ancestors = new Set<object>()): boolean => {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value !== 'object') return false;
+  if (ancestors.has(value)) return false;
+  ancestors.add(value);
+  const safe = Array.isArray(value)
+    ? value.every((entry) => isJsonSafe(entry, ancestors))
+    : Object.getPrototypeOf(value) === Object.prototype &&
+      Object.values(value).every((entry) => isJsonSafe(entry, ancestors));
+  ancestors.delete(value);
+  return safe;
+};
+
 export const reducePluginTenantReadinessStatus = (
   definition: PluginTenantLifecycleDefinition,
   checks: PluginTenantLifecycleExecutionResult['checks']
@@ -71,7 +85,8 @@ export const createPluginTenantReadinessSnapshot = (input: {
       (check.details !== undefined &&
         (typeof check.details !== 'object' ||
           check.details === null ||
-          Array.isArray(check.details)))
+          Array.isArray(check.details) ||
+          !isJsonSafe(check.details)))
     ) {
       throw new Error(`invalid_plugin_tenant_readiness_check_result:${checkId}`);
     }

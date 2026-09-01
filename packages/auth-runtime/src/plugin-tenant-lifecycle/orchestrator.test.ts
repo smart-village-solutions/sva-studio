@@ -53,6 +53,7 @@ const createDependencies = () => ({
   },
   lifecycleRegistry: new Map([['speech', lifecycleDefinition]]),
   resolveActivation: vi.fn(async () => ({ effectiveActive: true })),
+  resolveLifecycle: vi.fn(async () => lifecycleRecord),
   repository: {
     requestLifecycle: vi.fn(async () => lifecycleRecord),
     claimLifecycle: vi.fn(async () => ({
@@ -120,6 +121,31 @@ describe('plugin tenant lifecycle orchestrator', () => {
     ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.inactive}:speech`);
     expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
     expect(dependencies.createJob).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['suspend', 'suspended'],
+    ['reactivate', 'active'],
+  ] as const)('rejects an invalid %s transition from %s access', async (operation, accessState) => {
+    const dependencies = createDependencies();
+    dependencies.lifecycleRegistry = new Map([
+      [
+        'speech',
+        {
+          ...lifecycleDefinition,
+          operations: [{ operation, jobTypeId: `speech.${operation}Tenant` }],
+        },
+      ],
+    ]);
+    dependencies.resolveLifecycle.mockResolvedValue({ ...lifecycleRecord, accessState });
+    dependencies.resolveJobRegistration.mockReturnValue({ queueName: 'plugin-operations' });
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start({ ...input, operation })
+    ).rejects.toThrow(
+      `${pluginTenantLifecycleHostErrorCodes.invalidTransition}:speech:${operation}`
+    );
+    expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
   });
 
   it('rejects missing handlers before persisting a desired generation', async () => {

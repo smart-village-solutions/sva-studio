@@ -213,9 +213,7 @@ describe('plugin tenant lifecycle contracts', () => {
         } as never,
         jobTypes
       )
-    ).toThrow(
-      'unknown_plugin_tenant_readiness_repair_operation:speech.databaseSchema:readiness'
-    );
+    ).toThrow('unknown_plugin_tenant_readiness_repair_operation:speech.databaseSchema:readiness');
   });
 
   it('requires a readiness operation when checks are declared', () => {
@@ -457,6 +455,24 @@ describe('plugin tenant lifecycle contracts', () => {
         checkId: 'speech.databaseSchema',
         status: 'ready',
         details: ['not', 'a', 'record'],
+      })
+    ).toThrow('invalid_plugin_tenant_readiness_check_result:speech.databaseSchema');
+
+    expect(() =>
+      createSnapshotWithCheck({
+        checkId: 'speech.databaseSchema',
+        status: 'ready',
+        details: { revision: 3n },
+      })
+    ).toThrow('invalid_plugin_tenant_readiness_check_result:speech.databaseSchema');
+
+    const cyclicDetails: Record<string, unknown> = {};
+    cyclicDetails.self = cyclicDetails;
+    expect(() =>
+      createSnapshotWithCheck({
+        checkId: 'speech.databaseSchema',
+        status: 'ready',
+        details: cyclicDetails,
       })
     ).toThrow('invalid_plugin_tenant_readiness_check_result:speech.databaseSchema');
   });

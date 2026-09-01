@@ -69,9 +69,7 @@ export const resolveConfiguredPluginTenantModuleAccess = async (
     accessibleModules: assignedModules.filter(
       (moduleId) => !lifecycleRegistry.has(moduleId) || decisions.get(moduleId)?.allowed === true
     ),
-    hasPendingLifecycleAccess: [...decisions.values()].some(
-      (decision) => !decision.allowed && decision.reason === 'pending'
-    ),
+    hasPendingLifecycleAccess: [...decisions.values()].some((decision) => !decision.allowed),
   };
 };
 

@@ -957,15 +957,15 @@ Tool: `bash`
 Command:
 
 ```bash
-grep -E "name: CI Gates \(PR\)|jobs:|coverage:" .github/workflows/ci-gates-pr-shadow.yml && grep -F 'Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `coverage`' docs/governance/merge-review-gates.md
+grep -E "name: CI Gates \(PR\)|jobs:|coverage-aggregate:" .github/workflows/ci-gates-pr-shadow.yml && grep -F 'Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `coverage-aggregate`' docs/governance/merge-review-gates.md
 ```
 
 Expected:
 
 ```
 name: CI Gates (PR)
-coverage:
-Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `coverage`
+coverage-aggregate:
+Workflow `.github/workflows/ci-gates-pr-shadow.yml`, Job `coverage-aggregate`
 ```
 
 Failure:

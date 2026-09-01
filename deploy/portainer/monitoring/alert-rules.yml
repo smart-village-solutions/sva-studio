@@ -127,28 +127,30 @@ groups:
     rules:
       - alert: PluginTenantLifecycleLaneUnavailableWarning
         expr: |
-          (min by (lane) (sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"}) < 1)
+          (min by (lane) (sva_plugin_tenant_lifecycle_lane_ready{lane=~"default|privileged"}) < 1)
+          or absent(sva_plugin_tenant_lifecycle_lane_ready{lane="default"})
           or absent(sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"})
         for: 15s
         labels:
           severity: warning
           component: plugin-tenant-lifecycle
         annotations:
-          summary: "Privilegierte Plugin-Lifecycle-Lane ist nicht bereit"
-          description: "Die privilegierte Worker-Lane kann persistierte Plugin-Lifecycle-Arbeit nicht sicher verarbeiten."
+          summary: "Plugin-Lifecycle-Lane ist nicht bereit"
+          description: "Mindestens eine erforderliche Worker-Lane kann persistierte Plugin-Lifecycle-Arbeit nicht sicher verarbeiten."
           runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
 
       - alert: PluginTenantLifecycleLaneUnavailableCritical
         expr: |
-          (min by (lane) (sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"}) < 1)
+          (min by (lane) (sva_plugin_tenant_lifecycle_lane_ready{lane=~"default|privileged"}) < 1)
+          or absent(sva_plugin_tenant_lifecycle_lane_ready{lane="default"})
           or absent(sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"})
         for: 30s
         labels:
           severity: critical
           component: plugin-tenant-lifecycle
         annotations:
-          summary: "Privilegierte Plugin-Lifecycle-Lane ist ausgefallen"
-          description: "Die privilegierte Worker-Lane ist über das kritische Alarmfenster hinaus nicht bereit."
+          summary: "Plugin-Lifecycle-Lane ist ausgefallen"
+          description: "Mindestens eine erforderliche Worker-Lane ist über das kritische Alarmfenster hinaus nicht bereit."
           runbook_url: "https://github.com/smart-village-solutions/sva-studio/blob/main/docs/operations/plugin-tenant-lifecycle-operations.md"
 
       - alert: PluginTenantLifecycleStaleClaimWarning

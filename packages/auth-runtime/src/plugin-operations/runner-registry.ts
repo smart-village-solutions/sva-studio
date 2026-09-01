@@ -10,6 +10,7 @@ import {
   scheduleConfiguredPluginTenantProvisioning,
 } from '../iam-instance-registry/repository.js';
 import {
+  assertPluginTenantLifecycleJobContract,
   createPluginTenantLifecycleJobCorrelation,
   readPluginTenantLifecycleJobMetadata,
 } from '../plugin-tenant-lifecycle/job-correlation.js';
@@ -115,6 +116,10 @@ const guardPluginTenantExecution = (
       if (!lifecycleMetadata) {
         throw new Error('missing_plugin_tenant_lifecycle_job_metadata');
       }
+      assertPluginTenantLifecycleJobContract(
+        readInstanceRegistryPluginTenantLifecycleRegistry(),
+        job
+      );
       const effectivelyActive = await isConfiguredPluginTenantEffectivelyActive(
         job.instanceId,
         pluginId

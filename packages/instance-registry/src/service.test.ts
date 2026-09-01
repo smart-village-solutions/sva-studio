@@ -574,6 +574,33 @@ describe('instance registry service facade', () => {
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
+  it('resolves a concurrent identical create after losing the instance insert race', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(baseInstance),
+      createInstance: vi.fn(async () => null),
+      listProvisioningRuns: vi.fn(async () => [latestRun]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(repository.createInstance).toHaveBeenCalledTimes(1);
+    expect(repository.listProvisioningRuns).toHaveBeenCalledWith('demo');
+  });
+
   it('rejects an idempotency key reused with a different create payload', async () => {
     const reconcileModuleActivationPolicies = vi.fn();
     const repository = createRepository({

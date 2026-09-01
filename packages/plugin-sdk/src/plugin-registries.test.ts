@@ -547,6 +547,36 @@ describe('plugin registries', () => {
       });
     });
 
+    it('publishes canonical access actions for server handlers and their linked actions', () => {
+      const requirement = tenantRequirement({
+        actions: { mode: 'allOf', values: [' news.read '] },
+      });
+      const plugin = pluginWithLinkedRequirements(requirement);
+      const registry = createBuildTimeRegistry({
+        plugins: [
+          {
+            ...plugin,
+            serverHandlers: [
+              {
+                id: 'news.load-items',
+                path: '/api/v1/plugins/news/items',
+                method: 'GET',
+                actionId: 'news.open',
+                accessRequirement: requirement,
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(
+        registry.pluginServerHandlerRegistry.get('news.load-items')?.accessRequirement
+      ).toMatchObject({ actions: { values: ['news.read'] } });
+      expect(registry.pluginActionRegistry.get('news.open')?.accessRequirement).toMatchObject({
+        actions: { values: ['news.read'] },
+      });
+    });
+
     it('rejects unsupported server handler methods at runtime', () => {
       const plugin = pluginWithLinkedRequirements(platformRequirement());
 

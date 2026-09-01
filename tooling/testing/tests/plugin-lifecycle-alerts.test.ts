@@ -40,6 +40,8 @@ describe('plugin tenant lifecycle alert contract', () => {
     const group = lifecycleGroup();
     expect(group).toContain('max by (reason_code)');
     expect(group).toContain('min by (lane)');
+    expect(group).toContain('sva_plugin_tenant_lifecycle_lane_ready{lane=~"default|privileged"}');
+    expect(group).toContain('absent(sva_plugin_tenant_lifecycle_lane_ready{lane="default"})');
     expect(group).toContain('absent(sva_plugin_tenant_lifecycle_lane_ready{lane="privileged"})');
     expect(group).not.toMatch(/sum\s*(?:by\s*\([^)]*\)\s*)?\(/);
   });

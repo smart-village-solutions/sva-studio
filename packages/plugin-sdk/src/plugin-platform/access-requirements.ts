@@ -9,6 +9,31 @@ import type { UiAccessRequirement } from '@sva/iam-core';
 type TenantAccessRequirement = Extract<UiAccessRequirement, { kind: 'tenant' }>;
 type PlatformAccessRequirement = Extract<UiAccessRequirement, { kind: 'platform' }>;
 
+export const normalizePluginAccessRequirement = (
+  requirement: UiAccessRequirement | undefined
+): UiAccessRequirement | undefined => {
+  if (requirement?.kind === 'tenant') {
+    return {
+      ...requirement,
+      moduleId: requirement.moduleId?.trim(),
+      actions: {
+        ...requirement.actions,
+        values: requirement.actions.values.map((action) => action.trim()),
+      },
+    };
+  }
+  if (requirement?.kind === 'platform') {
+    return {
+      ...requirement,
+      roles: {
+        ...requirement.roles,
+        values: requirement.roles.values.map((role) => role.trim()),
+      },
+    };
+  }
+  return requirement;
+};
+
 const haveEqualValues = (left: readonly string[], right: readonly string[]): boolean => {
   const leftValues = new Set(left);
   const rightValues = new Set(right);

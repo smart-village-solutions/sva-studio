@@ -105,6 +105,22 @@ export const createProvisioningRequestHandler =
       })
     );
     if (!instance) {
+      const concurrentInstance = await runInstanceRegistryStep('registry_lookup', () =>
+        deps.repository.getInstanceById(input.instanceId)
+      );
+      if (concurrentInstance && (await assertIdempotentCreateRetry(deps, input))) {
+        await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
+          instanceId: concurrentInstance.instanceId,
+          actorId: input.actorId,
+          requestId: input.requestId,
+        });
+        invalidateHostWithLog(
+          deps.invalidateHost,
+          concurrentInstance.primaryHostname,
+          concurrentInstance.instanceId
+        );
+        return { ok: true, instance: toListItem(concurrentInstance) };
+      }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
         instance_id: input.instanceId,

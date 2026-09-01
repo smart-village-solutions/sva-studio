@@ -32,6 +32,7 @@ vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => (
         {
           pluginId: 'waste-management',
           contractVersion: 1,
+          contractRevision: 'waste-1:1',
           operations: [
             {
               operation: 'provision',
@@ -86,7 +87,11 @@ describe('plugin operation runner registry', () => {
       pluginId: 'waste-management',
       jobTypeId: 'waste-management.provision-tenant-database',
       inputPayload: {
-        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+        studioTenantLifecycle: {
+          operation: 'provision',
+          generation: 3,
+          contractRevision: 'waste-1:1',
+        },
       },
     };
     const taskList = registry.createStudioJobTaskList(
@@ -111,6 +116,50 @@ describe('plugin operation runner registry', () => {
 
     await expect(resolveHandler(lifecycleJob)?.({ job: lifecycleJob })).rejects.toThrow(
       'plugin_tenant_lifecycle_claim_stale'
+    );
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('rejects a queued lifecycle job from an obsolete contract before invoking its handler', async () => {
+    const registry = await import('./runner-registry.js');
+    const handler = vi.fn(async () => ({}));
+    state.isConfiguredPluginTenantLifecycleJobType.mockReturnValue(true);
+    const lifecycleJob = {
+      id: 'obsolete-contract-job',
+      instanceId: 'tenant-a',
+      source: 'plugin' as const,
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.provision-tenant-database',
+      inputPayload: {
+        studioTenantLifecycle: {
+          operation: 'provision',
+          generation: 3,
+          contractRevision: 'waste-0:1',
+        },
+      },
+    };
+    const taskList = registry.createStudioJobTaskList(
+      () =>
+        new Map([
+          [
+            'plugin:waste-management.provision-tenant-database',
+            {
+              source: 'plugin' as const,
+              jobTypeId: 'waste-management.provision-tenant-database',
+              handler,
+              queueName: 'plugin-operations',
+            },
+          ],
+        ])
+    );
+    await taskList[registry.studioJobTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: lifecycleJob.id },
+      { job: { attempts: 1, max_attempts: 5 } } as never
+    );
+    const [{ resolveHandler }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
+
+    await expect(resolveHandler(lifecycleJob)?.({ job: lifecycleJob })).rejects.toThrow(
+      'plugin_tenant_lifecycle_job_contract_mismatch'
     );
     expect(handler).not.toHaveBeenCalled();
   });
@@ -408,7 +457,13 @@ describe('plugin operation runner registry', () => {
       jobTypeId: 'waste-management.provision-tenant-database',
       queueName: 'plugin-operations',
       status: 'running',
-      inputPayload: { studioTenantLifecycle: { operation: 'provision', generation: 3 } },
+      inputPayload: {
+        studioTenantLifecycle: {
+          operation: 'provision',
+          generation: 3,
+          contractRevision: 'waste-1:1',
+        },
+      },
       attempts: 1,
       maxAttempts: 5,
       idempotencyKey: 'waste-management:tenant-lifecycle:provision:3',
@@ -491,7 +546,11 @@ describe('plugin operation runner registry', () => {
       queueName: 'plugin-operations',
       status: 'running',
       inputPayload: {
-        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+        studioTenantLifecycle: {
+          operation: 'provision',
+          generation: 3,
+          contractRevision: 'waste-1:1',
+        },
       },
       attempts: 5,
       maxAttempts: 5,

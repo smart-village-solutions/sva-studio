@@ -26,7 +26,10 @@ import {
 } from './plugin-operations.js';
 import type { PluginTenantLifecycleDefinition } from './plugin-tenant-lifecycle.js';
 import { definePluginTenantLifecycle } from './plugin-tenant-lifecycle.js';
-import { hasMatchingPluginAccessRequirement } from './plugin-platform/access-requirements.js';
+import {
+  hasMatchingPluginAccessRequirement,
+  normalizePluginAccessRequirement,
+} from './plugin-platform/access-requirements.js';
 import {
   PLUGIN_PLATFORM_ADMIN_ROLE,
   type PluginExtensionTier,
@@ -1354,6 +1357,8 @@ export const createPluginServerHandlerRegistry = (
         id: handlerId,
         path: trimTrailingSlashes(handler.path.trim()),
         actionId: normalizePluginIdentifier(handler.actionId),
+        accessRequirement:
+          normalizePluginAccessRequirement(handler.accessRequirement) ?? handler.accessRequirement,
         ownerPluginId: normalizePluginNamespace(plugin.id),
       });
     }

@@ -102,6 +102,13 @@ const resolveLifecycleContext = (
   return { definition, metadata, pluginId: job.pluginId };
 };
 
+export const assertPluginTenantLifecycleJobContract = (
+  lifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>,
+  job: StudioJobRecord
+): void => {
+  resolveLifecycleContext({ lifecycleRegistry }, job);
+};
+
 const resolveLifecycleFailureContext = (
   dependencies: Pick<CorrelationDependencies, 'lifecycleRegistry'>,
   job: StudioJobRecord

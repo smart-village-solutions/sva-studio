@@ -30,6 +30,14 @@
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
+    },
+    "./service-token": {
+      "types": "./dist/service-token.d.ts",
+      "default": "./dist/service-token.js"
+    },
+    "./ssf-runtime-service-token": {
+      "types": "./dist/ssf-runtime-service-token.d.ts",
+      "default": "./dist/ssf-runtime-service-token.js"
     }
   },
   "dependencies": {

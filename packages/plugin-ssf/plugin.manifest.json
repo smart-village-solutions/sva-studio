@@ -1,0 +1,15 @@
+{
+  "pluginId": "ssf",
+  "manifestVersion": 1,
+  "extensionTier": "admin",
+  "tenantActivationPolicy": "automatic",
+  "version": "0.0.1",
+  "sdkVersion": "0.0.1",
+  "hostCompatibility": {
+    "studioVersionRange": "^0.0.1",
+    "requiredCapabilities": ["iam"]
+  },
+  "entryPoints": {
+    "browser": "./dist/index.js"
+  }
+}

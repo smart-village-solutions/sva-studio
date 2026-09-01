@@ -4,7 +4,6 @@ import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
 import { PLUGIN_ROUTE_SCOPE_HEADER_NAME } from '@sva/plugin-sdk';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
-
 import {
   hasActiveDevAuthSession,
   hasActiveDevAuthSessionCookie,
@@ -19,7 +18,6 @@ import {
 } from './lib/plugin-route-scope';
 import { appRouteBindings } from './routing/app-route-bindings';
 import { rootRoute } from './routes/__root';
-
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {
     const [{ getRequest }, { resolveServerPluginRouteScope }, mod] = await Promise.all([

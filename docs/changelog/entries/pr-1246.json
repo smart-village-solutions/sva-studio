@@ -1,0 +1,4 @@
+{
+  "prNumber": 1246,
+  "body": "Das Studio erhält die technische Grundlage für die mandantenabhängige SSF-Laufzeitkonfiguration.\n\n- Ein fester V1-Vertrag beschreibt Sprachen, Texte, Logos und die Einwilligung zur Gesprächsspeicherung.\n- Mandantenspezifische Werte überschreiben serverweite Einstellungen und diese wiederum die SSF-Produktdefaults.\n- Die getrennte SSF-Plugin-Datenbank schützt Konfigurationen durch mandantengebundene Zugriffsregeln.\n- Die produktive HTTP-Anbindung und Aktivierung erfolgen in einem nachgelagerten Integrationsschritt."
+}

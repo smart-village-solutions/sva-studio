@@ -38,6 +38,43 @@ vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
   readConfiguredPluginTenantAccess: pluginAccessState.readAccess,
 }));
 
+vi.mock(
+  '../iam-instance-registry/plugin-activation-policy-snapshot.js',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('../iam-instance-registry/plugin-activation-policy-snapshot.js')
+    >()),
+    readInstanceRegistryPluginTenantLifecycleRegistry: () =>
+      new Map([
+        [
+          'news',
+          {
+            pluginId: 'news',
+            contractVersion: 1,
+            contractRevision: 'news-1:1',
+            operations: [{ operation: 'provision', jobTypeId: 'news.import-articles' }],
+            readinessChecks: [],
+          },
+        ],
+        [
+          'waste-management',
+          {
+            pluginId: 'waste-management',
+            contractVersion: 1,
+            contractRevision: 'waste-1:1',
+            operations: [
+              {
+                operation: 'provision',
+                jobTypeId: 'waste-management.provision-tenant-database',
+              },
+            ],
+            readinessChecks: [],
+          },
+        ],
+      ]),
+  })
+);
+
 import {
   createPluginOperationTaskList,
   registerPluginOperationExecutionHandlers,
@@ -436,7 +473,11 @@ describe('plugin operation runner task list', () => {
       pluginId: 'waste-management',
       jobTypeId: 'waste-management.provision-tenant-database',
       inputPayload: {
-        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+        studioTenantLifecycle: {
+          operation: 'provision',
+          generation: 3,
+          contractRevision: 'waste-1:1',
+        },
       },
     };
     const { repository } = installStudioJobRepositoryDouble({ job: lifecycleJob });
@@ -496,7 +537,11 @@ describe('plugin operation runner task list', () => {
     const lifecycleJob = {
       ...baseJob,
       inputPayload: {
-        studioTenantLifecycle: { operation: 'provision', generation: 3 },
+        studioTenantLifecycle: {
+          operation: 'provision',
+          generation: 3,
+          contractRevision: 'news-1:1',
+        },
       },
     };
     const { repository } = installStudioJobRepositoryDouble({ job: lifecycleJob, updateJobState });

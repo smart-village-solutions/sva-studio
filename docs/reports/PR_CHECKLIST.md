@@ -40,11 +40,12 @@
 
 ## System-Assurance bei risikoreichen Großvorhaben
 
-- [ ] Der OpenSpec-Change enthält einen aktuellen `assurance.md` für den exakten PR-HEAD
-- [ ] Kritische Invarianten besitzen stabile IDs und direkte Evidenz oder eine ausdrücklich akzeptierte Restrisikoentscheidung
-- [ ] Systemgrenzen, Verbraucher, Zustandsübergänge sowie Failure-/Crashpunkte sind vollständig inventarisiert
-- [ ] Konkurrenz, Redelivery, Teilfehler, Prozessabbruch, Wiederanlauf und Recovery sind abhängig vom Risiko reproduzierbar geprüft
-- [ ] Der System-Assurance-Review weist keine unbekannte oder unzugeordnete Nachweislücke aus
+- [ ] Die für den konkreten Fall relevante Assurance-Argumentation ist in `assurance.md` oder einem gleichwertigen reviewbaren Artefakt für den exakten PR-HEAD auffindbar; nicht relevante Punkte sind als solche erkennbar
+- [ ] Im Proposal-Stadium besitzen kritische Behauptungen eine angemessene Nachweisplanung oder eine ausdrücklich akzeptierte Restrisikoentscheidung
+- [ ] Bei Implementierungs- oder Merge-Reife besitzen kritische Behauptungen angemessene ausgeführte Evidenz für den exakten HEAD oder eine ausdrücklich akzeptierte Restrisikoentscheidung
+- [ ] Relevante Systemgrenzen, Verbraucher, Zustandsübergänge sowie Failure-/Crashpunkte sind in einer für den Fall geeigneten Form erfasst
+- [ ] Konkurrenz, Redelivery, Teilfehler, Prozessabbruch, Wiederanlauf und Recovery wurden entsprechend ihrer tatsächlichen Relevanz bewertet
+- [ ] Der System-Assurance-Review weist keine unbehandelte kritische Risiko- oder Nachweislücke aus
 
 ## Reviewer Quick Check
 

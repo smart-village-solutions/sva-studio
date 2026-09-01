@@ -350,8 +350,8 @@ angemessene Evidenz, nicht die Einhaltung eines bestimmten Dokumentformats.
   reviewbar sind. Ein großer Einzel-PR benötigt eine nachvollziehbare
   Begründung, warum eine Trennung keine konsistenten Zwischenstände erzeugen
   würde oder das Integrationsrisiko erhöht.
-- Bei asynchroner, transaktionaler oder nebenläufiger Orchestrierung die
-  Code die Zustände, Ereignisse, persistenten Writes, Fehler- und Crashpunkte,
+- Bei asynchroner, transaktionaler oder nebenläufiger Orchestrierung vor dem
+  Coding die Zustände, Ereignisse, persistenten Writes, Fehler- und Crashpunkte,
   Retry-/Recovery-Wege sowie die beobachtbaren Endzustände beschreiben.
 - Die relevanten Sicherheits- und Ausführungsgrenzen risikobasiert inventarisieren, zum
   Beispiel HTTP-Dispatch, interne Aufrufe, Jobanlage, Queue, Worker-Ausführung,

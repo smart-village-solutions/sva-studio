@@ -49,7 +49,7 @@ Du bist der PR Review Orchestrator. Du koordinierst spezialisierte Review-Agents
 | **Code Quality**             | `code-quality-guardian.agent.md`  | Korrektheit, Typsicherheit, Architekturgrenzen | Jede Codeänderung                                  |
 | **Documentation**            | `documentation.agent.md`          | Doku-Abdeckung, Konsistenz, arc42              | Jede PR                                            |
 | **Test Quality**             | `test-quality.agent.md`           | Tests, Coverage, Nx-Targeting                  | Neue Logik, geändertes Verhalten, Coverage-Risiken |
-| **System Assurance**         | `system-assurance.agent.md`       | Invarianten, Gegenbeispiele, direkte Evidenz   | risikoreiche Großvorhaben mit `assurance.md`       |
+| **System Assurance**         | `system-assurance.agent.md`       | Invarianten, Gegenbeispiele, direkte Evidenz   | risikoreiche systemübergreifende Großvorhaben      |
 | **Security & Privacy**       | `security-privacy.agent.md`       | Auth, PII, Secrets, sichere Defaults           | Auth, Sessions, Tokens, Berechtigungen             |
 | **UX & Accessibility**       | `ux-accessibility.agent.md`       | WCAG/BITV, Tastatur, Screenreader              | UI, Formulare, Navigation                          |
 | **i18n & Content**           | `i18n-content.agent.md`           | harte Strings, Key-Konventionen, Textklarheit  | user-facing Texte, neue Keys, Labels               |

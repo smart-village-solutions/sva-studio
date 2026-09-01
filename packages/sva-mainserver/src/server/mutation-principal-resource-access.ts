@@ -7,7 +7,7 @@ import type {
   DataProviderBearingItem,
   MainserverMutationActor,
 } from './mutation-principal-types.js';
-import { hasMainserverActionAccessScope } from './mutation-principal-permission-scope.js';
+import { selectMainserverActionAccessScopePermissions } from './mutation-principal-permission-scope.js';
 
 export type MainserverResourceAccess = Readonly<Record<string, boolean>>;
 
@@ -36,10 +36,15 @@ export const resolveMainserverResourceAccess = async (input: {
   const dataProviderId = input.item?.dataProvider?.id?.trim() ?? '';
   const decisions = await Promise.all(
     input.actions.map(async (action) => {
-      if (
-        requireAllScopeActions.has(action) &&
-        !hasMainserverActionAccessScope(permissions.permissions, action, 'content', 'all')
-      ) {
+      const actionPermissions = requireAllScopeActions.has(action)
+        ? selectMainserverActionAccessScopePermissions(
+            permissions.permissions,
+            action,
+            'content',
+            'all'
+          )
+        : permissions.permissions;
+      if (actionPermissions.length === 0) {
         return [action, false] as const;
       }
       const decision = await authorizeMainserverDataProviderAccess({
@@ -57,7 +62,7 @@ export const resolveMainserverResourceAccess = async (input: {
         action,
         contentType: input.contentType,
         contentId: input.contentId ?? input.item?.id,
-        permissions: permissions.permissions,
+        permissions: actionPermissions,
         dataProviderId,
         ...(forceExactScopeActions.has(action) ? { forceExactScopeAuthorization: true } : {}),
       });

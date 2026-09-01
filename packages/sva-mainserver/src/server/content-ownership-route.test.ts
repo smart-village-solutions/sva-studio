@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   getEvent: vi.fn(),
   getPoi: vi.fn(),
   getGenericItem: vi.fn(),
+  getSurvey: vi.fn(),
   transfer: vi.fn(),
 }));
 
@@ -60,6 +61,7 @@ vi.mock('./service.js', () => ({
   getSvaMainserverEvent: state.getEvent,
   getSvaMainserverPoi: state.getPoi,
   getSvaMainserverGenericItem: state.getGenericItem,
+  getSvaMainserverSurvey: state.getSurvey,
   loadSvaMainserverDataProviderIdentity: state.loadIdentity,
   transferSvaMainserverContentOwnership: state.transfer,
 }));
@@ -131,6 +133,11 @@ describe('Mainserver content ownership route', () => {
     state.getNews.mockResolvedValue({
       id: 'news-1',
       title: 'News',
+      dataProvider: { id: 'provider-source', name: 'Quelle' },
+    });
+    state.getSurvey.mockResolvedValue({
+      id: 'survey-1',
+      contentType: 'surveys.survey',
       dataProvider: { id: 'provider-source', name: 'Quelle' },
     });
     state.listTargets.mockResolvedValue({
@@ -472,6 +479,24 @@ describe('Mainserver content ownership route', () => {
     expect(state.resolveMutationActor).not.toHaveBeenCalled();
   });
 
+  it('returns the current survey owner while keeping transfer unsupported', async () => {
+    state.resolveSource.mockResolvedValueOnce(undefined);
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/surveys.survey/survey-1/authorization'
+      )
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      data: { canTransfer: false },
+      currentOwner: { displayName: 'Quelle', principalResolution: 'unresolved' },
+    });
+    expect(state.resolveMutationActor).toHaveBeenCalled();
+    expect(state.resolveResourceAccess).not.toHaveBeenCalled();
+  });
+
   it('marks an ambiguous provider outcome for reconciliation', async () => {
     state.transfer.mockRejectedValue(new Error('network'));
     state.getNews
@@ -572,7 +597,7 @@ describe('Mainserver content ownership route', () => {
     );
   });
 
-  it('fails closed for scoped transfer access when source enrichment fails', async () => {
+  it('returns the failed owner resolution independently of scoped transfer access', async () => {
     state.resolveSource.mockRejectedValueOnce(new Error('database unavailable'));
     state.resolveResourceAccess.mockResolvedValueOnce({ 'content.transferOwnership': false });
 
@@ -582,7 +607,11 @@ describe('Mainserver content ownership route', () => {
       )
     );
 
-    expect(response?.status).toBe(403);
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      data: { canTransfer: false },
+      currentOwner: { displayName: 'Quelle', principalResolution: 'failed' },
+    });
   });
 
   it('keeps source-principal enrichment failures out of the authorization gate', async () => {

@@ -87,6 +87,8 @@ Die bestehende Auswahl „Bearbeiten als“ steuert den Mutationsprincipal und d
 
 Der Inhaberbereich steht im Bearbeitungsmodus genau einmal und am Anfang des ersten fachlichen Tabs des jeweiligen Inhaltstyps, üblicherweise „Basis“. Das gilt einheitlich für die vorhandenen Editoren für News, Events, POI, generische Inhalte, FAQ, Cockpit Cards, Featured Projects und Surveys, auch wenn ein Typ noch keinen Transfer unterstützt. Im Erstellungsmodus gibt es noch keinen bisherigen Inhaber; dort bleibt nur die getrennte Auswahl des Erstellungsprincipals sichtbar. Künftige Content-Editoren, einschließlich einer möglichen Tour-Detailansicht, müssen denselben First-Tab-Slot verwenden.
 
+Die frische Inhaberermittlung ist kein Berechtigungsnachweis für einen Transfer. Die Anzeige wird deshalb auch dann geladen, wenn `content.transferOwnership` für den Actor nicht wirksam ist oder der Inhaltstyp wie Surveys keinen Transferadapter besitzt. Der Server liefert in diesen Fällen den Inhaberstatus zusammen mit `canTransfer: false`; Zielkatalog und Mutation bleiben weiterhin gesperrt.
+
 ### Normales Speichern kommuniziert den unveränderten Inhaber
 
 Der Inhaberbereich erklärt dauerhaft und nicht blockierend, dass normale Inhaltsbearbeitung keinen neuen Inhaber erzeugt. Derselbe Sachverhalt wird kompakt in der Nähe der Speichern-Aktion wiederholt, damit er auch beim Speichern aus einem anderen Tab wahrnehmbar bleibt. Ein wiederkehrender Bestätigungsdialog bei jedem normalen Speichern ist nicht vorgesehen.

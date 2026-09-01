@@ -6,11 +6,13 @@ Der aktuelle Inhaber eines Mainserver-Datensatzes ist dessen aktuell gelesener D
 
 Normales Bearbeiten und Speichern ändert den Inhaber nicht. Auch ein abweichender Mutationsprincipal („Bearbeiten als“) ist keine Übertragung.
 
-Die wirksame Permission `content.transferOwnership` ist die einzige fachliche Freigabe für eine Übertragung. Mit Scope `all` darf der Actor jeden für ihn sichtbaren und vom Typvertrag unterstützten Inhalt übertragen. Der bisherige Inhaber muss dafür weder aktiv noch im Studio eindeutig an einen Principal gebunden sein und benötigt keine verwendbaren Credentials. Bei `own` oder `organization` bleibt eine eindeutige Bindung erforderlich, soweit sie den jeweiligen Source-Scope nachweist.
+Die wirksame Permission `content.transferOwnership` ist die einzige fachliche Freigabe für eine Übertragung. Mit Scope `all` darf der Actor jeden für ihn sichtbaren und vom Typvertrag unterstützten Inhalt übertragen. Derselbe globale oder kanonisch unscoped Permission-Kandidat muss dabei auch alle Resource-ID-, Organisations- und ABAC-Bedingungen erfüllen; verschiedene Grants werden nicht zu einer Freigabe kombiniert. Der bisherige Inhaber muss dafür weder aktiv noch im Studio eindeutig an einen Principal gebunden sein und benötigt keine verwendbaren Credentials. Bei `own` oder `organization` bleibt eine eindeutige Bindung erforderlich, soweit sie den jeweiligen Source-Scope nachweist.
 
 ## Bedienung
 
 Im Bearbeitungsmodus steht der Bereich **Inhaber** am Anfang des ersten fachlichen Tabs. Er zeigt den aktuellen Inhaber und den dauerhaften Save-Hinweis. Nutzer mit wirksamem `content.transferOwnership` können **Inhalt übertragen** wählen, persönliche Accounts seitenweise auswählen, Organisationen suchen und den Wechsel nach einer Auswirkungsprüfung ausdrücklich bestätigen. Eine neue Suche über verschlüsselte Account-Namen oder E-Mail-Adressen ist nicht Bestandteil von V1.
+
+Die Ermittlung und Anzeige des aktuellen Inhabers ist von der Transferberechtigung getrennt. Der Autorisierungs-Endpunkt liefert deshalb auch ohne wirksames `content.transferOwnership` den frisch gelesenen Inhaberstatus mit `canTransfer: false`. Das gilt ebenso für im Editor sichtbare Typen wie Surveys, deren Transfervertrag noch nicht unterstützt wird; nur Zielsuche und Transfer bleiben dort deaktiviert.
 
 Die Zielauswahl enthält nur aktive Principals derselben Instanz. Für Mainserver-Inhalte werden verwendbare Credentials verlangt. Ist deren aktuelle DataProvider-Bindung bereits eindeutig und konfliktfrei, ist das Ziel direkt bereit. Fehlt nur die gespeicherte Bindung, bleibt das Ziel auswählbar und wird mit dem Hinweis gekennzeichnet, dass die DataProvider-Zuordnung beim bestätigten Transfer sicher geprüft wird. DataProvider-IDs oder Credentials können nicht frei eingegeben werden.
 

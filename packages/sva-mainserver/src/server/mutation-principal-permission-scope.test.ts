@@ -1,16 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasMainserverActionAccessScope } from './mutation-principal-permission-scope.js';
+import { selectMainserverActionAccessScopePermissions } from './mutation-principal-permission-scope.js';
 
-describe('hasMainserverActionAccessScope', () => {
-  it('matches the explicit resource type independently of the action namespace', () => {
+describe('selectMainserverActionAccessScopePermissions', () => {
+  it('selects exact action and resource-type candidates independently of their namespaces', () => {
     expect(
-      hasMainserverActionAccessScope(
+      selectMainserverActionAccessScopePermissions(
         [{ action: 'news.update', resourceType: 'content', accessScope: 'all' }],
         'news.update',
         'content',
         'all'
       )
-    ).toBe(true);
+    ).toEqual([{ action: 'news.update', resourceType: 'content', accessScope: 'all' }]);
+  });
+
+  it('includes canonical unscoped grants and excludes narrower scopes', () => {
+    const unscoped = { action: 'content.transferOwnership', resourceType: 'content' };
+    expect(
+      selectMainserverActionAccessScopePermissions(
+        [
+          unscoped,
+          {
+            action: 'content.transferOwnership',
+            resourceType: 'content',
+            accessScope: 'organization',
+          },
+        ],
+        'content.transferOwnership',
+        'content',
+        'all'
+      )
+    ).toEqual([unscoped]);
   });
 });

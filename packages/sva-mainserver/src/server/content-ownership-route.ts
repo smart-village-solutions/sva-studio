@@ -27,6 +27,7 @@ import {
   type MainserverMutationActor,
 } from './mutation-principal.js';
 import { projectSourceReferenceInput } from './projects-route-transport.js';
+import { getSvaMainserverSurvey } from './service.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
 const logger = createSdkLogger({
@@ -164,9 +165,6 @@ const handleAuthorizedTargets = async (
       ? {}
       : { requireAllScopeActions: ['content.transferOwnership'] }),
   });
-  if (access['content.transferOwnership'] !== true) {
-    return errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
-  }
   const resolvedSource =
     sourceEnrichment.status === 'resolved' ? sourceEnrichment.source : undefined;
   const source = {
@@ -176,16 +174,75 @@ const handleAuthorizedTargets = async (
     ...(resolvedSource ? { principal: resolvedSource.principal } : {}),
     principalResolution: sourceEnrichment.status,
   };
-  return route.operation === 'authorization'
-    ? json({
-        data: { canTransfer: true },
-        currentOwner: {
-          ...(source.principal ? { principal: source.principal } : {}),
-          principalResolution: source.principalResolution,
-          displayName: source.displayName,
-        },
-      })
-    : handleTargets(request, route, actor, source);
+  if (route.operation === 'authorization') {
+    return json({
+      data: { canTransfer: access['content.transferOwnership'] === true },
+      currentOwner: {
+        ...(source.principal ? { principal: source.principal } : {}),
+        principalResolution: source.principalResolution,
+        displayName: source.displayName,
+      },
+    });
+  }
+  if (access['content.transferOwnership'] !== true) {
+    return errorJson(403, 'content_transfer_permission_missing', 'Die Transferberechtigung fehlt.');
+  }
+  return handleTargets(request, route, actor, source);
+};
+
+const handleSurveyAuthorization = async (
+  route: ContentOwnershipRouteMatch,
+  actor: MainserverMutationActor
+): Promise<Response> => {
+  const current = await getSvaMainserverSurvey({ ...actor, surveyId: route.contentId });
+  if (!current) return errorJson(404, 'not_found', 'Inhalt wurde nicht gefunden.');
+  const dataProviderId = current.dataProvider?.id?.trim();
+  if (!dataProviderId) {
+    return errorJson(
+      409,
+      'content_transfer_source_changed',
+      'Der aktuelle Inhaber ist nicht eindeutig.'
+    );
+  }
+  const sourceEnrichment = await resolveOwnershipSourceEnrichment({
+    actor,
+    contentType: route.contentType,
+    contentId: route.contentId,
+    dataProviderId,
+    operation: route.operation,
+  });
+  const resolvedSource =
+    sourceEnrichment.status === 'resolved' ? sourceEnrichment.source : undefined;
+  return json({
+    data: { canTransfer: false },
+    currentOwner: {
+      ...(resolvedSource ? { principal: resolvedSource.principal } : {}),
+      principalResolution: sourceEnrichment.status,
+      displayName:
+        current.dataProvider?.name?.trim() || resolvedSource?.dataProviderName || dataProviderId,
+    },
+  });
+};
+
+const ownershipRouteFailureResponse = (
+  error: unknown,
+  actor: MainserverMutationActor,
+  route: ContentOwnershipRouteMatch,
+  fallbackMessage: string
+): Response => {
+  const context = getWorkspaceContext();
+  logger.warn('Mainserver content ownership route failed', {
+    operation: 'mainserver_content_ownership',
+    request_id: context.requestId,
+    trace_id: context.traceId,
+    instance_id: actor.instanceId,
+    content_type: route.contentType,
+    content_id: route.contentId,
+    route_operation: route.operation,
+    error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
+    error_message: error instanceof Error ? error.message : String(error),
+  });
+  return toMainserverErrorResponse(error, fallbackMessage);
 };
 
 const dispatchAuthenticated = async (
@@ -193,19 +250,31 @@ const dispatchAuthenticated = async (
   route: ContentOwnershipRouteMatch,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  if (route.contentType === 'surveys.survey') {
+  if (route.contentType === 'surveys.survey' && route.operation !== 'authorization') {
     return errorJson(
       409,
       'content_transfer_type_unsupported',
       'Dieser Inhaltstyp unterstützt noch keinen Transfer.'
     );
   }
+  const actor = await resolveActor(request, ctx);
+  if (isResponse(actor)) return actor;
+  if (route.contentType === 'surveys.survey') {
+    try {
+      return await handleSurveyAuthorization(route, actor);
+    } catch (error) {
+      return ownershipRouteFailureResponse(
+        error,
+        actor,
+        route,
+        'Die Inhaberanzeige ist fehlgeschlagen.'
+      );
+    }
+  }
   const supportedRoute: SupportedContentOwnershipRouteMatch = {
     ...route,
     contentType: route.contentType,
   };
-  const actor = await resolveActor(request, ctx);
-  if (isResponse(actor)) return actor;
   const providerContentId =
     supportedRoute.contentType === 'projects.project'
       ? ((
@@ -221,19 +290,12 @@ const dispatchAuthenticated = async (
       ? handleContentOwnershipTransfer(request, supportedRoute, actor, content)
       : handleAuthorizedTargets(request, supportedRoute, actor, content);
   } catch (error) {
-    const context = getWorkspaceContext();
-    logger.warn('Mainserver content ownership route failed', {
-      operation: 'mainserver_content_ownership',
-      request_id: context.requestId,
-      trace_id: context.traceId,
-      instance_id: actor.instanceId,
-      content_type: route.contentType,
-      content_id: route.contentId,
-      route_operation: route.operation,
-      error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-    return toMainserverErrorResponse(error, 'Die Inhaberübertragung ist fehlgeschlagen.');
+    return ownershipRouteFailureResponse(
+      error,
+      actor,
+      route,
+      'Die Inhaberübertragung ist fehlgeschlagen.'
+    );
   }
 };
 

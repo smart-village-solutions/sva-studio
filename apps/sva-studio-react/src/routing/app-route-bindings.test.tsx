@@ -900,6 +900,67 @@ describe('appRouteBindings', () => {
     );
   });
 
+  it('shows unresolved ownership even when transfer authorization is denied', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.requestMainserverJson
+      .mockResolvedValueOnce({
+        data: { dataProvider: { id: 'provider-1', name: 'Frischer DataProvider' } },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: false },
+        currentOwner: {
+          principalResolution: 'unresolved',
+          displayName: 'Nicht zugeordneter DataProvider',
+        },
+      });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('content-ownership-panel').getAttribute('data-principal-resolution')
+      ).toBe('unresolved');
+    });
+    expect(screen.getByTestId('content-ownership-panel').getAttribute('data-can-transfer')).toBe(
+      'false'
+    );
+    expect(screen.getByTestId('content-ownership-panel').textContent).toBe(
+      'Nicht zugeordneter DataProvider'
+    );
+  });
+
+  it('loads survey ownership status although surveys cannot be transferred', async () => {
+    routeState.params = { id: 'survey-1' };
+    routeState.requestMainserverJson
+      .mockResolvedValueOnce({
+        data: { dataProvider: { id: 'provider-1', name: 'Survey DataProvider' } },
+      })
+      .mockResolvedValueOnce({
+        data: { canTransfer: false },
+        currentOwner: {
+          principalResolution: 'resolved',
+          principal: { type: 'organization', id: 'org-1' },
+          displayName: 'Survey-Organisation',
+        },
+      });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.surveysDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('content-ownership-panel').textContent).toBe('Survey-Organisation');
+    });
+    expect(routeState.requestMainserverJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/api/v1/mainserver/content-ownership/surveys.survey/survey-1/authorization',
+      })
+    );
+    expect(screen.getByTestId('content-ownership-panel').getAttribute('data-supported')).toBe(
+      'false'
+    );
+  });
+
   it('keeps an editor fail-closed when the resource principal is missing', async () => {
     routeState.params = { id: 'content-1' };
     routeState.getContent.mockResolvedValue({

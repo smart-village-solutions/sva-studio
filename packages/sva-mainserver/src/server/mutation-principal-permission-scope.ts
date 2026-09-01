@@ -4,13 +4,15 @@ type PermissionScopeCandidate = Readonly<{
   accessScope?: string;
 }>;
 
-export const hasMainserverActionAccessScope = (
-  permissions: readonly PermissionScopeCandidate[],
+export const selectMainserverActionAccessScopePermissions = <
+  TPermission extends PermissionScopeCandidate,
+>(
+  permissions: readonly TPermission[],
   action: string,
   resourceType: string,
   accessScope: 'all'
-): boolean =>
-  permissions.some(
+): readonly TPermission[] =>
+  permissions.filter(
     (permission) =>
       permission.action === action &&
       permission.resourceType === resourceType &&

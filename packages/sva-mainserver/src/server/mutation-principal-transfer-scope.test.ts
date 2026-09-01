@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   authorizeProvider: vi.fn(),
   beginJournal: vi.fn(),
   emitAudit: vi.fn(),
+  readResolverMode: vi.fn(),
   resolvePermissions: vi.fn(),
 }));
 
@@ -12,6 +13,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   authorizeMainserverDataProviderAccess: state.authorizeProvider,
   beginMainserverMutationJournal: state.beginJournal,
   emitAuthAuditEvent: state.emitAudit,
+  readMainserverScopeResolverMode: state.readResolverMode,
   resolveEffectivePermissions: state.resolvePermissions,
 }));
 
@@ -53,6 +55,7 @@ describe('Mainserver orphaned ownership transfer scope', () => {
     });
     state.beginJournal.mockResolvedValue(undefined);
     state.emitAudit.mockResolvedValue(undefined);
+    state.readResolverMode.mockReturnValue('shadow');
   });
 
   it.each(['own', 'organization'] as const)(
@@ -75,6 +78,14 @@ describe('Mainserver orphaned ownership transfer scope', () => {
       expect(result).toBeInstanceOf(Response);
       expect((result as Response).status).toBe(403);
       expect(state.authorizeProvider).not.toHaveBeenCalled();
+      expect(state.emitAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginAction: expect.objectContaining({
+            reasonCode: 'access_scope_mismatch',
+            mainserverMutation: expect.objectContaining({ resolverMode: 'shadow' }),
+          }),
+        })
+      );
     }
   );
 
@@ -136,5 +147,66 @@ describe('Mainserver orphaned ownership transfer scope', () => {
       })
     ).resolves.toEqual({ 'content.transferOwnership': false });
     expect(state.authorizeProvider).not.toHaveBeenCalled();
+  });
+
+  it('evaluates the same constrained global candidate that satisfied the scope precondition', async () => {
+    const constrainedAll = { ...permission('all'), resourceId: 'news-other' };
+    state.resolvePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [constrainedAll, permission('own')],
+    });
+    state.authorizeProvider.mockResolvedValueOnce({
+      allowed: false,
+      authorizationMode: 'exact',
+      resolverMode: 'automatic',
+      reason: 'forbidden',
+      shadowDifference: false,
+    });
+
+    const result = await authorizeMainserverExistingContent({
+      actor,
+      action: 'content.transferOwnership',
+      contentType: 'news.article',
+      contentId: 'news-1',
+      item,
+      requiredAccessScope: 'all',
+      forceExactScopeAuthorization: true,
+    });
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(403);
+    expect(state.authorizeProvider).toHaveBeenCalledWith(
+      expect.objectContaining({ permissions: [constrainedAll] })
+    );
+  });
+
+  it('does not combine a constrained global candidate with a narrower UI grant', async () => {
+    const constrainedAll = { ...permission('all'), organizationId: 'org-other' };
+    state.resolvePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [constrainedAll, permission('organization')],
+    });
+    state.authorizeProvider.mockResolvedValueOnce({
+      allowed: false,
+      authorizationMode: 'exact',
+      resolverMode: 'automatic',
+      reason: 'forbidden',
+      shadowDifference: false,
+    });
+
+    await expect(
+      resolveMainserverResourceAccess({
+        actor,
+        actions: ['content.transferOwnership'],
+        contentType: 'news.article',
+        contentId: 'news-1',
+        item,
+        requireAllScopeActions: ['content.transferOwnership'],
+        forceExactScopeActions: ['content.transferOwnership'],
+      })
+    ).resolves.toEqual({ 'content.transferOwnership': false });
+    expect(state.authorizeProvider).toHaveBeenCalledWith(
+      expect.objectContaining({ permissions: [constrainedAll] })
+    );
   });
 });

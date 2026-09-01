@@ -2,6 +2,7 @@ import {
   authorizeMainserverCreatePrincipal,
   authorizeMainserverDataProviderAccess,
   beginMainserverMutationJournal,
+  readMainserverScopeResolverMode,
   resolveEffectivePermissions,
 } from '@sva/auth-runtime/server';
 
@@ -12,7 +13,7 @@ import type {
   MainserverMutationActor,
   MainserverMutationAuthorization,
 } from './mutation-principal-types.js';
-import { hasMainserverActionAccessScope } from './mutation-principal-permission-scope.js';
+import { selectMainserverActionAccessScopePermissions } from './mutation-principal-permission-scope.js';
 
 const loadMutationPermissions = async (actor: MainserverMutationActor) =>
   resolveEffectivePermissions({
@@ -132,13 +133,23 @@ const evaluateProviderActions = async (input: {
   dataProviderId: string;
   permissions: Awaited<ReturnType<typeof loadMutationPermissions>> & { readonly ok: true };
   forceExactScopeAuthorization: boolean;
+  requireAllScopeActions?: readonly string[];
 }): Promise<AuthorizationAggregate | Response> => {
   const aggregate: AuthorizationAggregate = {
     authorizationMode: 'exact',
     resolverMode: 'automatic',
     shadowDifference: false,
   };
+  const requireAllScopeActions = new Set(input.requireAllScopeActions ?? []);
   for (const action of input.actions) {
+    const actionPermissions = requireAllScopeActions.has(action)
+      ? selectMainserverActionAccessScopePermissions(
+          input.permissions.permissions,
+          action,
+          'content',
+          'all'
+        )
+      : input.permissions.permissions;
     const decision = await authorizeMainserverDataProviderAccess({
       instanceId: input.actor.instanceId,
       keycloakSubject: input.actor.keycloakSubject,
@@ -154,7 +165,7 @@ const evaluateProviderActions = async (input: {
       action,
       contentType: input.contentType,
       contentId: input.contentId,
-      permissions: input.permissions.permissions,
+      permissions: actionPermissions,
       dataProviderId: input.dataProviderId,
       ...(input.forceExactScopeAuthorization ? { forceExactScopeAuthorization: true } : {}),
     });
@@ -224,7 +235,12 @@ export const authorizeMainserverExistingContent = async (input: {
   }
   if (
     input.requiredAccessScope === 'all' &&
-    !hasMainserverActionAccessScope(permissions.permissions, input.action, 'content', 'all')
+    selectMainserverActionAccessScopePermissions(
+      permissions.permissions,
+      input.action,
+      'content',
+      'all'
+    ).length === 0
   ) {
     await emitMainserverMutationAuthorizationAudit({
       actor: input.actor,
@@ -233,7 +249,7 @@ export const authorizeMainserverExistingContent = async (input: {
       contentId: input.contentId,
       dataProviderId: input.item?.dataProvider?.id?.trim(),
       authorizationMode: 'exact',
-      resolverMode: 'automatic',
+      resolverMode: readMainserverScopeResolverMode(),
       allowed: false,
       reasonCode: 'access_scope_mismatch',
     });
@@ -253,6 +269,7 @@ export const authorizeMainserverExistingContent = async (input: {
     dataProviderId,
     permissions,
     forceExactScopeAuthorization: input.forceExactScopeAuthorization === true,
+    ...(input.requiredAccessScope === 'all' ? { requireAllScopeActions: [input.action] } : {}),
   });
   if (authorization instanceof Response) return authorization;
 

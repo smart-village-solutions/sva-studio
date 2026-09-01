@@ -408,12 +408,7 @@ const MainserverResourcePrincipalBoundary = ({
     [actingPrincipalType, baseUrl]
   );
   React.useEffect(() => {
-    if (
-      resolution.kind !== 'ready' ||
-      !contentId ||
-      !transferSupported ||
-      !transferCapabilityConfirmed
-    ) {
+    if (resolution.kind !== 'ready' || !contentId) {
       setTransferAuthorized(false);
       return;
     }
@@ -428,21 +423,14 @@ const MainserverResourcePrincipalBoundary = ({
       (response) => {
         if (!active) return;
         setResolvedOwner(response.currentOwner);
-        setTransferAuthorized(response.data.canTransfer);
+        setTransferAuthorized(transferCapabilityConfirmed && response.data.canTransfer);
       },
       () => active && setTransferAuthorized(false)
     );
     return () => {
       active = false;
     };
-  }, [
-    contentId,
-    actingPrincipalType,
-    baseUrl,
-    resolution.kind,
-    transferCapabilityConfirmed,
-    transferSupported,
-  ]);
+  }, [contentId, actingPrincipalType, baseUrl, resolution.kind, transferCapabilityConfirmed]);
   if (resolution.kind === 'loading') {
     return <StudioLoadingState>{t('content.principal.resourceLoading')}</StudioLoadingState>;
   }

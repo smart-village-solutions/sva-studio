@@ -54,6 +54,19 @@ const editabilityLabelKey = {
   blocked: 'admin.roles.editability.blocked',
 } as const;
 
+type RoleTypeFilter = 'all' | 'studio' | 'external' | 'builtin' | 'system';
+
+const matchesRoleTypeFilter = (
+  role: { readonly isSystemRole: boolean; readonly managedBy: string },
+  filter: RoleTypeFilter
+): boolean => {
+  if (filter === 'all') return true;
+  if (filter === 'system') return role.isSystemRole;
+  if (filter === 'builtin') return role.managedBy === 'keycloak_builtin';
+  if (filter === 'external') return role.managedBy === 'external' && !role.isSystemRole;
+  return role.managedBy === 'studio' && !role.isSystemRole;
+};
+
 export const RolesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
@@ -66,6 +79,7 @@ export const RolesPage = () => {
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
 
   const [search, setSearch] = React.useState('');
+  const [roleTypeFilter, setRoleTypeFilter] = React.useState<RoleTypeFilter>('all');
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
   const deleteConfirmation = getRoleDeleteConfirmationContent();
   const visibleRoles = React.useMemo(
@@ -77,6 +91,9 @@ export const RolesPage = () => {
   const filteredRoles = React.useMemo(() => {
     const query = search.trim().toLowerCase();
     return visibleRoles.filter((role) => {
+      if (!matchesRoleTypeFilter(role, roleTypeFilter)) {
+        return false;
+      }
       if (!query) {
         return true;
       }
@@ -90,7 +107,7 @@ export const RolesPage = () => {
         )
       );
     });
-  }, [search, visibleRoles]);
+  }, [roleTypeFilter, search, visibleRoles]);
 
   const roleColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredRoles)[number]>[]>(
     () => [
@@ -242,14 +259,31 @@ export const RolesPage = () => {
             </Card>
           }
           toolbarStart={
-            <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-              <Label htmlFor="roles-search">{t('admin.roles.filters.searchLabel')}</Label>
-              <Input
-                id="roles-search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t('admin.roles.filters.searchPlaceholder')}
-              />
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="roles-search">{t('admin.roles.filters.searchLabel')}</Label>
+                <Input
+                  id="roles-search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t('admin.roles.filters.searchPlaceholder')}
+                />
+              </div>
+              <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="roles-type-filter">{t('admin.roles.filters.typeLabel')}</Label>
+                <select
+                  id="roles-type-filter"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm normal-case tracking-normal text-foreground"
+                  value={roleTypeFilter}
+                  onChange={(event) => setRoleTypeFilter(event.target.value as RoleTypeFilter)}
+                >
+                  <option value="all">{t('admin.roles.filters.typeAll')}</option>
+                  <option value="studio">{t('admin.roles.filters.typeStudio')}</option>
+                  <option value="external">{t('admin.roles.filters.typeExternal')}</option>
+                  <option value="builtin">{t('admin.roles.filters.typeBuiltin')}</option>
+                  <option value="system">{t('admin.roles.filters.typeSystem')}</option>
+                </select>
+              </div>
             </div>
           }
           rowActions={

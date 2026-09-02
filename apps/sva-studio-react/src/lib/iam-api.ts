@@ -18,6 +18,7 @@ import type {
   InstanceAuditRun,
   IamInstanceDetail,
   IamInstanceListItem,
+  IamKeycloakRoleAssignmentMutationResult,
   IamLegalTextListItem,
   IamPendingLegalTextItem,
   IamOrganizationContext,
@@ -39,6 +40,7 @@ import type {
   IamUserTimelineEvent,
   IamUserDetail,
   IamUserImportSyncReport,
+  IamUserKeycloakRoleAssignments,
   IamUserListItem,
   UpdateIamContentInput,
   TransferIamContentOwnershipInput,
@@ -613,6 +615,22 @@ export const getUserTimeline = async (
   userId: string
 ): Promise<ApiListResponse<IamUserTimelineEvent>> =>
   requestJson<ApiListResponse<IamUserTimelineEvent>>(`/api/v1/iam/users/${userId}/timeline`);
+
+export const getUserKeycloakRoles = async (
+  userRef: string
+): Promise<ApiItemResponse<IamUserKeycloakRoleAssignments>> =>
+  requestJson<ApiItemResponse<IamUserKeycloakRoleAssignments>>(
+    `/api/v1/iam/users/${encodeURIComponent(userRef)}/keycloak-roles`
+  );
+
+export const mutateUserKeycloakRole = async (
+  userRef: string,
+  payload: { readonly roleName: string; readonly operation: 'assign' | 'remove' }
+): Promise<ApiItemResponse<IamKeycloakRoleAssignmentMutationResult>> =>
+  patchJson<
+    ApiItemResponse<IamKeycloakRoleAssignmentMutationResult>,
+    { readonly roleName: string; readonly operation: 'assign' | 'remove' }
+  >(`/api/v1/iam/users/${encodeURIComponent(userRef)}/keycloak-roles`, payload);
 
 export const createUser = async (
   payload: CreateUserPayload

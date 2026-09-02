@@ -75,6 +75,11 @@ export type IdentityRoleListQuery = {
 
 export type IdentityUserAttributes = Readonly<Record<string, readonly string[]>>;
 
+export type IdentityUserRealmRoleAssignments = {
+  readonly direct: readonly IdentityRole[];
+  readonly effective: readonly IdentityRole[];
+};
+
 export interface IdentityProviderPort {
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
   executeActionsEmail?(
@@ -90,11 +95,15 @@ export interface IdentityProviderPort {
   deactivateUser(externalId: string): Promise<void>;
   deleteUser(externalId: string): Promise<void>;
   listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;
-  getUserAttributes(externalId: string, attributeNames?: readonly string[]): Promise<IdentityUserAttributes>;
+  getUserAttributes(
+    externalId: string,
+    attributeNames?: readonly string[]
+  ): Promise<IdentityUserAttributes>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;
   assignRealmRoles?(externalId: string, roles: readonly string[]): Promise<void>;
   removeRealmRoles?(externalId: string, roles: readonly string[]): Promise<void>;
   listUserRoleNames(externalId: string): Promise<readonly string[]>;
+  listUserRealmRoleAssignments?(externalId: string): Promise<IdentityUserRealmRoleAssignments>;
   countUsers?(query?: Omit<IdentityUserListQuery, 'first' | 'max'>): Promise<number>;
   listRoles(query?: IdentityRoleListQuery): Promise<readonly IdentityRole[]>;
   countRoles?(query?: Omit<IdentityRoleListQuery, 'first' | 'max'>): Promise<number>;

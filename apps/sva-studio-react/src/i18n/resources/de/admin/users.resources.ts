@@ -30,6 +30,38 @@ export const usersAdminDEResources = {
     readOnly: 'Read-only',
     blocked: 'Blockiert',
   },
+  keycloakRoles: {
+    title: 'Keycloak-Rollen',
+    description:
+      'Diese Rollen gelten für angebundene Anwendungen und verleihen keine Studio-Berechtigungen.',
+    dialogTitle: 'Keycloak-Rollen für {{name}}',
+    dialogDescription: 'Direkte und über Composite Roles geerbte Realm-Rollen getrennt verwalten.',
+    open: 'Keycloak-Rollen öffnen',
+    openForUser: 'Keycloak-Rollen für {{name}} öffnen',
+    loading: 'Keycloak-Rollen werden geladen ...',
+    empty: 'Im Tenant-Realm sind keine Rollen verfügbar.',
+    error: 'Die Keycloak-Rollen konnten nicht geladen oder geändert werden.',
+    assignSuccess: 'Die Rolle {{role}} wurde direkt zugewiesen.',
+    removeSuccess: 'Die direkte Zuweisung der Rolle {{role}} wurde entfernt.',
+    directSummary: 'Direkt: {{roles}}',
+    direct: 'Direkt',
+    inherited: 'Geerbt',
+    directHint: 'Diese Rolle ist direkt zugewiesen und kann hier entzogen werden.',
+    inheritedHint:
+      'Diese Rolle ist über eine Composite Role wirksam. Eine zusätzliche direkte Zuweisung ist möglich.',
+    unassignedHint: 'Diese Realm-Rolle kann direkt zugewiesen werden.',
+    protectedHint: 'Diese technische oder geschützte Rolle ist hier schreibgeschützt.',
+    systemAdminHint:
+      'System-Administrator wird ausschließlich über die geschützte lokale Studio-Rollenzuweisung verwaltet.',
+    category: {
+      assignable: 'Realm-Rolle',
+      systemAdmin: 'Geschützte Studio-Rolle',
+      builtin: 'Keycloak-Builtin',
+      client: 'Clientrolle',
+      service: 'Service-Rolle',
+      platform: 'Plattformrolle',
+    },
+  },
   actions: {
     create: 'Nutzer anlegen',
     creating: 'Nutzer wird angelegt ...',

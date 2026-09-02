@@ -20,7 +20,11 @@ vi.mock('../runtime-secrets.js', () => ({
   getKeycloakProvisionerClientSecret: state.getKeycloakProvisionerClientSecret,
 }));
 
-const createJsonResponse = (status: number, payload: unknown, headers?: Record<string, string>): Response =>
+const createJsonResponse = (
+  status: number,
+  payload: unknown,
+  headers?: Record<string, string>
+): Response =>
   new Response(JSON.stringify(payload), {
     status,
     headers: {
@@ -29,7 +33,10 @@ const createJsonResponse = (status: number, payload: unknown, headers?: Record<s
     },
   });
 
-const createClient = async (fetchImpl: ReturnType<typeof vi.fn>, options: Record<string, unknown> = {}) => {
+const createClient = async (
+  fetchImpl: ReturnType<typeof vi.fn>,
+  options: Record<string, unknown> = {}
+) => {
   const { KeycloakAdminClient } = await import('./core.js');
 
   return new KeycloakAdminClient({
@@ -111,6 +118,41 @@ describe('Keycloak admin client', () => {
         email: 'test@example.com',
       })
     ).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+  });
+
+  it('loads direct and effective realm roles from separate Keycloak projections', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'role-direct', name: 'news_editor', composite: false }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-direct', name: 'news_editor', composite: false },
+          { id: 'role-inherited', name: 'event_editor', composite: false },
+        ])
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.listUserRealmRoleAssignments('user-1')).resolves.toEqual({
+      direct: [expect.objectContaining({ id: 'role-direct', externalName: 'news_editor' })],
+      effective: [
+        expect.objectContaining({ id: 'role-direct', externalName: 'news_editor' }),
+        expect.objectContaining({ id: 'role-inherited', externalName: 'event_editor' }),
+      ],
+    });
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://keycloak.example/admin/realms/demo/users/user-1/role-mappings/realm',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      'https://keycloak.example/admin/realms/demo/users/user-1/role-mappings/realm/composite',
+      expect.objectContaining({ method: 'GET' })
+    );
   });
 
   it('sends execute-actions emails with optional redirect and client parameters', async () => {
@@ -244,9 +286,8 @@ describe('Keycloak admin client', () => {
     vi.stubEnv('KEYCLOAK_PROVISIONER_CLIENT_ID', 'tenant-provisioner');
     vi.stubEnv('KEYCLOAK_PROVISIONER_CLIENT_SECRET', 'provisioner-secret-from-env');
 
-    const { getKeycloakAdminClientConfigFromEnv, getKeycloakProvisionerClientConfigFromEnv } = await import(
-      './core.js'
-    );
+    const { getKeycloakAdminClientConfigFromEnv, getKeycloakProvisionerClientConfigFromEnv } =
+      await import('./core.js');
 
     expect(getKeycloakAdminClientConfigFromEnv()).toMatchObject({
       baseUrl: 'https://keycloak.example',
@@ -401,7 +442,9 @@ describe('Keycloak admin client', () => {
 
     const assignClient = await createClient(assignFetch);
 
-    await expect(assignClient.assignRealmRoles('user-1', ['missing-role'])).rejects.toMatchObject<KeycloakAdminRequestError>({
+    await expect(
+      assignClient.assignRealmRoles('user-1', ['missing-role'])
+    ).rejects.toMatchObject<KeycloakAdminRequestError>({
       code: 'unknown_role',
       statusCode: 400,
     });
@@ -412,7 +455,9 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'role-a', name: 'role-a' }]));
     const removeClient = await createClient(removeFetch);
 
-    await expect(removeClient.removeRealmRoles('user-1', ['missing-role'])).resolves.toBeUndefined();
+    await expect(
+      removeClient.removeRealmRoles('user-1', ['missing-role'])
+    ).resolves.toBeUndefined();
     expect(removeFetch).toHaveBeenCalledTimes(2);
   });
 
@@ -545,7 +590,7 @@ describe('Keycloak admin client', () => {
       expect.objectContaining({
         body: 'grant_type=client_credentials&client_id=studio&client_secret=secret',
         method: 'POST',
-      }),
+      })
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
       4,
@@ -555,7 +600,7 @@ describe('Keycloak admin client', () => {
           Authorization: 'Bearer token-2',
         }),
         method: 'GET',
-      }),
+      })
     );
   });
 
@@ -645,8 +690,9 @@ describe('Keycloak admin client', () => {
       rotateClientSecret: true,
     });
 
-    const rotateCall = fetchImpl.mock.calls.find((call) =>
-      String(call[0]).includes('/clients/client-1/client-secret') && call[1]?.method === 'POST'
+    const rotateCall = fetchImpl.mock.calls.find(
+      (call) =>
+        String(call[0]).includes('/clients/client-1/client-secret') && call[1]?.method === 'POST'
     );
     expect(rotateCall).toBeDefined();
     expect(rotateCall?.[1]?.body).toBe(JSON.stringify({ type: 'secret' }));
@@ -689,7 +735,10 @@ describe('Keycloak admin client', () => {
       webOrigins?: string[];
       attributes?: { 'post.logout.redirect.uris'?: string };
     };
-    expect(body.redirectUris).toEqual(['https://legacy.example/callback', 'https://new.example/callback']);
+    expect(body.redirectUris).toEqual([
+      'https://legacy.example/callback',
+      'https://new.example/callback',
+    ]);
     expect(body.webOrigins).toEqual(['https://legacy.example', 'https://new.example']);
     expect(body.attributes?.['post.logout.redirect.uris']?.split('##')).toEqual([
       'https://legacy.example/logout',
@@ -701,9 +750,20 @@ describe('Keycloak admin client', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }]))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'realm-management-client-id', clientId: 'realm-management' }]))
-      .mockResolvedValueOnce(createJsonResponse(200, { id: 'service-account-user-id', username: 'service-account-tenant-admin' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'realm-management-client-id', clientId: 'realm-management' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'service-account-user-id',
+          username: 'service-account-tenant-admin',
+        })
+      )
       .mockResolvedValueOnce(
         createJsonResponse(200, [
           { id: 'role-manage-users', name: 'manage-users' },
@@ -713,7 +773,9 @@ describe('Keycloak admin client', () => {
           { id: 'role-manage-clients', name: 'manage-clients' },
         ])
       )
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'role-view-users', name: 'view-users' }]))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'role-view-users', name: 'view-users' }])
+      )
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
 
     const client = await createClient(fetchImpl);
@@ -737,9 +799,20 @@ describe('Keycloak admin client', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }]))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'realm-management-client-id', clientId: 'realm-management' }]))
-      .mockResolvedValueOnce(createJsonResponse(200, { id: 'service-account-user-id', username: 'service-account-tenant-admin' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'realm-management-client-id', clientId: 'realm-management' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'service-account-user-id',
+          username: 'service-account-tenant-admin',
+        })
+      )
       .mockResolvedValueOnce(
         createJsonResponse(200, [
           { id: 'role-manage-users', name: 'manage-users' },
@@ -766,8 +839,10 @@ describe('Keycloak admin client', () => {
     expect(
       fetchImpl.mock.calls.some(
         (call) =>
-          call[1]?.method === 'POST'
-          && String(call[0]).includes('/users/service-account-user-id/role-mappings/clients/realm-management-client-id')
+          call[1]?.method === 'POST' &&
+          String(call[0]).includes(
+            '/users/service-account-user-id/role-mappings/clients/realm-management-client-id'
+          )
       )
     ).toBe(false);
   });
@@ -777,9 +852,20 @@ describe('Keycloak admin client', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }]))
-      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'realm-management-client-id', clientId: 'realm-management' }]))
-      .mockResolvedValueOnce(createJsonResponse(200, { id: 'service-account-user-id', username: 'service-account-tenant-admin' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'realm-management-client-id', clientId: 'realm-management' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'service-account-user-id',
+          username: 'service-account-tenant-admin',
+        })
+      )
       .mockResolvedValueOnce(
         createJsonResponse(200, [
           { id: 'role-manage-users', name: 'manage-users' },
@@ -792,7 +878,9 @@ describe('Keycloak admin client', () => {
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject<KeycloakAdminRequestError>({
+    await expect(
+      client.ensureTenantAdminServiceAccess('tenant-admin')
+    ).rejects.toMatchObject<KeycloakAdminRequestError>({
       code: 'realm_management_role_missing',
       statusCode: 500,
     });
@@ -841,9 +929,11 @@ describe('Keycloak admin client', () => {
       rotateClientSecret: false,
     });
 
-    expect(fetchImpl.mock.calls.some((call) => String(call[0]).includes('/client-secret') && call[1]?.method === 'POST')).toBe(
-      false
-    );
+    expect(
+      fetchImpl.mock.calls.some(
+        (call) => String(call[0]).includes('/client-secret') && call[1]?.method === 'POST'
+      )
+    ).toBe(false);
   });
 
   it('updates an existing OIDC client when only flow flags drift', async () => {
@@ -956,7 +1046,9 @@ describe('Keycloak admin client', () => {
     const client = await createClient(fetchImpl);
 
     await expect(client.findUserByUsername('alice')).resolves.toMatchObject({ id: 'user-1' });
-    await expect(client.findUserByEmail('alice@EXAMPLE.com')).resolves.toMatchObject({ id: 'user-1' });
+    await expect(client.findUserByEmail('alice@EXAMPLE.com')).resolves.toMatchObject({
+      id: 'user-1',
+    });
   });
 
   it('filters user attributes and returns null for missing client secrets or realms', async () => {
@@ -977,7 +1069,9 @@ describe('Keycloak admin client', () => {
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.getUserAttributes('user-1', ['locale'])).resolves.toEqual({ locale: ['de'] });
+    await expect(client.getUserAttributes('user-1', ['locale'])).resolves.toEqual({
+      locale: ['de'],
+    });
     await expect(client.getRealm()).resolves.toBeNull();
     await expect(client.getOidcClientSecretValue('missing-client')).resolves.toBeNull();
   });
@@ -1021,8 +1115,12 @@ describe('Keycloak admin client', () => {
       now: () => now,
     });
 
-    await expect(client.setUserRequiredActions('user-1', ['UPDATE_PASSWORD'])).resolves.toBeUndefined();
-    await expect(client.setUserPassword('user-1', 'secret', false)).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+    await expect(
+      client.setUserRequiredActions('user-1', ['UPDATE_PASSWORD'])
+    ).resolves.toBeUndefined();
+    await expect(client.setUserPassword('user-1', 'secret', false)).rejects.toBeInstanceOf(
+      KeycloakAdminRequestError
+    );
     expect(state.logger.error).toHaveBeenCalledWith(
       'reset_user_password_failed',
       expect.objectContaining({ operation: 'reset_user_password' })

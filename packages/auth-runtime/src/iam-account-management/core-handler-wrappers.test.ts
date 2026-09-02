@@ -17,6 +17,8 @@ const state = vi.hoisted(() => ({
     syncUsersFromKeycloakInternal: vi.fn(),
     updateMyProfileInternal: vi.fn(),
     updateUserInternal: vi.fn(),
+    getUserKeycloakRolesInternal: vi.fn(),
+    mutateUserKeycloakRoleInternal: vi.fn(),
   },
   roleHandlers: {
     createRoleInternal: vi.fn(),
@@ -68,6 +70,10 @@ vi.mock('./user-read-handlers.js', () => ({
 vi.mock('./user-update-handler.js', () => ({
   updateUserInternal: state.userHandlers.updateUserInternal,
 }));
+vi.mock('./user-keycloak-role-handlers.js', () => ({
+  getUserKeycloakRolesInternal: state.userHandlers.getUserKeycloakRolesInternal,
+  mutateUserKeycloakRoleInternal: state.userHandlers.mutateUserKeycloakRoleInternal,
+}));
 vi.mock('./roles-handlers.js', () => ({
   listPermissionsInternal: state.roleHandlers.listPermissionsInternal,
   listRolesInternal: state.roleHandlers.listRolesInternal,
@@ -109,6 +115,8 @@ describe('IAM core handler wrappers', () => {
     await module.syncUsersFromKeycloakHandler(request);
     await module.updateMyProfileHandler(request);
     await module.getMyProfileHandler(request);
+    await module.getUserKeycloakRolesHandler(request);
+    await module.mutateUserKeycloakRoleHandler(request);
 
     expect(state.withAuthenticatedIamHandler.mock.calls).toEqual([
       [request, state.userHandlers.listUsersInternal],
@@ -125,6 +133,8 @@ describe('IAM core handler wrappers', () => {
       [request, state.userHandlers.syncUsersFromKeycloakInternal],
       [request, state.userHandlers.updateMyProfileInternal],
       [request, state.userHandlers.getMyProfileInternal],
+      [request, state.userHandlers.getUserKeycloakRolesInternal],
+      [request, state.userHandlers.mutateUserKeycloakRoleInternal],
     ]);
   });
 

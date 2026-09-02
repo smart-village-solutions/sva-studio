@@ -57,6 +57,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-052 Create-Policy, Read-Scope und Bestandsprincipal trennen](../adr/ADR-052-create-policy-read-scope-und-bestandsprincipal.md)
 - [ADR-055 Waste-Mainserver-Abgleichsstatus über Quellrevision](../adr/ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)
 - [ADR-057 SSF-Service-Token und Runtime-Konfigurationsgrenze](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
+- [ADR-059 Administrative Keycloak-Realm-Rollenzuweisungen](../adr/ADR-059-administrative-keycloak-realm-rollenzuweisungen.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -88,6 +89,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 - Abschnitt 05/06/08/09 (Bausteine/Laufzeit/Querschnitt/Entscheidungen): ADR-055
 - Abschnitt 03/04/05/06/07/08/09 (Kontext/Strategie/Bausteine/Laufzeit/Verteilung/Querschnitt/Entscheidungen): ADR-057
+- Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-059
 
 ### Zuordnung Swarm-Deployment-ADRs
 

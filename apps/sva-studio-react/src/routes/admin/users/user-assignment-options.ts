@@ -8,8 +8,13 @@ type UserAssignableGroup = {
   readonly isActive?: boolean;
 };
 
-export const selectAssignableRoles = <TRole extends UserAssignableRole>(roles: readonly TRole[]): TRole[] =>
-  roles.filter((role) => isTenantRoleVisible(role));
+export const selectAssignableRoles = <TRole extends UserAssignableRole>(
+  roles: readonly TRole[]
+): TRole[] =>
+  roles.filter(
+    (role) => isTenantRoleVisible(role) && (!role.managedBy || role.managedBy === 'studio')
+  );
 
-export const selectAssignableGroups = <TGroup extends UserAssignableGroup>(groups: readonly TGroup[]): TGroup[] =>
-  groups.filter((group) => group.isActive !== false);
+export const selectAssignableGroups = <TGroup extends UserAssignableGroup>(
+  groups: readonly TGroup[]
+): TGroup[] => groups.filter((group) => group.isActive !== false);

@@ -12,8 +12,16 @@ import { listPermissionsInternal, listRolesInternal } from './roles-handlers.js'
 import { createRoleInternal } from './roles-handlers.create.js';
 import { deleteRoleInternal } from './roles-handlers.delete.js';
 import { updateRoleInternal } from './roles-handlers.update.js';
-import { getUserInternal, getUserTimelineInternal, listUsersInternal } from './user-read-handlers.js';
+import {
+  getUserInternal,
+  getUserTimelineInternal,
+  listUsersInternal,
+} from './user-read-handlers.js';
 import { updateUserInternal } from './user-update-handler.js';
+import {
+  getUserKeycloakRolesInternal,
+  mutateUserKeycloakRoleInternal,
+} from './user-keycloak-role-handlers.js';
 import { withAuthenticatedIamHandler } from './core-shared.js';
 
 export const listUsersHandler = async (request: Request): Promise<Response> =>
@@ -24,6 +32,12 @@ export const getUserHandler = async (request: Request): Promise<Response> =>
 
 export const getUserTimelineHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, getUserTimelineInternal);
+
+export const getUserKeycloakRolesHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, getUserKeycloakRolesInternal);
+
+export const mutateUserKeycloakRoleHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, mutateUserKeycloakRoleInternal);
 
 export const createUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, createUserInternal);

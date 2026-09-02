@@ -304,3 +304,10 @@ Sanitizing, Revision und PostgreSQL-Zugriff; `@sva/auth-runtime` stellt den
 generischen JOSE/JWKS-Service-Token-Baustein. Die produktive Dispatcherbindung
 bleibt bis zur servicefähigen Plugin-Plattform und einer verifizierten
 Autorisierungsrevision fail-closed.
+
+### Ergänzung 2026-09: Keycloak-Rollen als getrennte Interop-Sicht
+
+Lokale IAM-Rollen bleiben die normative Quelle der Studio-Autorisierung.
+Tenant-Realm-Rollen werden separat gelesen und mit `iam.role.write` als
+einzelne, serverseitig tenantgebundene Deltas verwaltet. Externe Rollennamen
+werden weder in lokale Rollen importiert noch für Studio-Fachgates ausgewertet.

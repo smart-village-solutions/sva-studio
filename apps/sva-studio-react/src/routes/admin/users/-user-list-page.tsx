@@ -31,6 +31,7 @@ import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { userErrorMessage } from './-user-error-message';
+import { UserKeycloakRolesDialog } from './-user-keycloak-roles';
 import { useUserListController } from './use-user-list-controller';
 import {
   getStatusActionDialogTranslationKeys,
@@ -174,6 +175,13 @@ const UserKeycloakCell = ({ user }: { user: UserListUser }) => {
         </Badge>
       </div>
       {renderDiagnosticCodes(user.diagnostics)}
+      {user.keycloakRoles && user.keycloakRoles.length > 0 ? (
+        <span className="block text-xs text-muted-foreground">
+          {t('admin.users.keycloakRoles.directSummary', {
+            roles: user.keycloakRoles.join(', '),
+          })}
+        </span>
+      ) : null}
     </div>
   );
 };
@@ -516,10 +524,12 @@ const hasSystemAdminTargetRole = (user: UserListUser): boolean =>
   user.roles.some((role) => role.roleKey === 'system_admin');
 
 const UserListRowActions = ({
+  canManageKeycloakRoles,
   canDeleteUsers,
   onDeleteAction,
   user,
 }: {
+  canManageKeycloakRoles: boolean;
   canDeleteUsers: boolean;
   onDeleteAction: (userId: string) => void;
   user: UserListUser;
@@ -533,6 +543,11 @@ const UserListRowActions = ({
 
   return (
     <>
+      <UserKeycloakRolesDialog
+        canWrite={canManageKeycloakRoles}
+        userName={user.displayName}
+        userRef={user.id}
+      />
       {editBlocked ? (
         <Button
           type="button"
@@ -592,11 +607,13 @@ export const UserListPage = () => {
   } = useUserListController({ usersApi });
   const { user } = useAuth();
   const access = useIamResourceAccess('user');
+  const roleAccess = useIamResourceAccess('role');
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
   const isAuthLoading = user === null;
   const canCreateUsers = isIamAccessAllowed(access.create);
   const canUpdateUsers = isIamAccessAllowed(access.update);
   const canDeleteUsers = isIamAccessAllowed(access.delete);
+  const canManageKeycloakRoles = isIamAccessAllowed(roleAccess.update);
   const statusActionDialogKeys = getStatusActionDialogTranslationKeys(statusActionDialog);
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
@@ -680,6 +697,7 @@ export const UserListPage = () => {
               ? undefined
               : (user) => (
                   <UserListRowActions
+                    canManageKeycloakRoles={canManageKeycloakRoles}
                     canDeleteUsers={canDeleteUsers}
                     onDeleteAction={setDeleteUserId}
                     user={user}

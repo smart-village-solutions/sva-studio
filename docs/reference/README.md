@@ -1,5 +1,7 @@
 # Referenz
 
+- [Keycloak-Rollenzuweisungen in der Benutzerverwaltung](./keycloak-rollenzuweisungen.md)
+
 ## Bereichsvertrag
 
 | Merkmal        | Festlegung                                                                                                                                             |

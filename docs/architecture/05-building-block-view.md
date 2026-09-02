@@ -901,3 +901,11 @@ unter `packages/plugin-ssf/migrations/` beziehungsweise
 `docs/development/ssf-plugin-db-schema-final.sql`. Eine Plugin-Manifest- und
 Dispatcherbindung wird erst gegen den noch offenen Plattformvertrag ergänzt;
 bis dahin existiert kein konkurrierender Sonderrouter.
+
+### Keycloak-Rollenzuweisungsbaustein
+
+`@sva/iam-admin` besitzt die zentrale Schutzklassifikation für Realm-Rollen.
+`@sva/auth-runtime` bindet den Identity-Provider-Port an die aktive Instanz,
+projiziert Katalog sowie direkte und effektive Zuweisungen und führt einzelne
+Assign-/Remove-Deltas aus. Die React-App stellt diese externe Sicht getrennt
+von lokalen IAM-Rollen dar und besitzt keine eigene Rollen-Allowlist.

@@ -163,6 +163,17 @@ describe('UserEditPage', () => {
     useRealUserHook.current = false;
     routerState.locationState = {};
     getUserTimelineMock.mockResolvedValue({ data: [] });
+    studioMswServer.use(
+      http.get('/api/v1/iam/users/:userId/keycloak-roles', ({ params }) =>
+        HttpResponse.json({
+          data: {
+            userRef: String(params.userId),
+            mappingStatus: 'mapped',
+            roles: [],
+          },
+        })
+      )
+    );
     useGroupsMock.mockReturnValue({
       groups: [],
       isLoading: false,

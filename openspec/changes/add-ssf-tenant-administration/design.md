@@ -87,11 +87,14 @@ und Reaktivierung erhalten Instanz-, Realm- und Datenidentität.
 ## Migration Plan
 
 1. Voraussetzungen in Plugin-Scope/Aktivierung und Lifecycle bereitstellen.
-2. SSF-Plugin und eigene Datenbank installieren, aber Fachzugriffe geschlossen
+2. Den tenantlokalen SSF-OIDC-Client als kleinen Voraussetzungsslice
+   deklarieren, idempotent provisionieren und für die IAM-Projektion auflösbar
+   machen.
+3. SSF-Plugin und eigene Datenbank installieren, aber Fachzugriffe geschlossen
    halten.
-3. SSF als `automatic` registrieren und neue Testinstanzen provisionieren.
-4. Bestandsinstanzen per Dry-Run klassifizieren und kontrolliert reconciliieren.
-5. Erst nach vollständiger Readiness zur Nutzung freigeben.
+4. SSF als `automatic` registrieren und neue Testinstanzen provisionieren.
+5. Bestandsinstanzen per Dry-Run klassifizieren und kontrolliert reconciliieren.
+6. Erst nach vollständiger Readiness zur Nutzung freigeben.
 
 Rollback sperrt SSF-Beiträge und Lifecycle-Jobs, entfernt aber weder Realms noch
 Plugin-Daten automatisch.
@@ -99,6 +102,8 @@ Plugin-Daten automatisch.
 ## Open Questions
 
 - Konkrete `ssf.*`-Permission-IDs der ersten Verwaltungsoberflächen.
-- Exakte Clientnamen, Redirect-URIs und Audience-Konventionen.
+- Exakte externe SSF-Redirect-URIs; Client-ID und Audience werden im
+  Voraussetzungsslice stabil festgelegt, Redirect-URIs bleiben bis zur
+  abgestimmten SSF-URL-Konfiguration fail-closed.
 - Tabellen- und Indexnamen des SSF-Tenant-Grundmodells.
 - Retry-Grenzen der Keycloak- und Datenbankprovisionierung.

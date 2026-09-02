@@ -14,19 +14,33 @@
 
 ## 2. Keycloak-Projektion
 
-- [ ] 2.1 Tenantgebundenen, idempotenten Reconcile des SSF-Clients im gemeinsamen Tenant-Realm implementieren
-- [ ] 2.2 Projektion nach jedem Write vollständig zurücklesen und verifizieren
-- [ ] 2.3 Teilfehler, Retry und konkurrierende Läufe fail-closed behandeln
+- [x] 2.1 Tenantgebundenen, idempotenten Projektionsadapter mit injiziertem
+      SSF-Client-Resolver für den gemeinsamen Tenant-Realm implementieren
+- [x] 2.2 Projektion nach jedem Write vollständig zurücklesen und verifizieren
+- [ ] 2.3 Den in `add-ssf-tenant-administration` deklarierten und provisionierten
+      tenantlokalen SSF-Client produktiv auflösen
+- [ ] 2.4 Lock-Schlüssel normalisieren, Primärfehler bei Unlock-Fehlern erhalten
+      und alle externen Keycloak-/SSF-Aufrufe mit nachweislich begrenzten
+      Laufzeiten ausführen
+- [ ] 2.5 Teilfehler, Retry und konkurrierende Läufe im produktiven
+      Plugin-Lifecycle fail-closed behandeln
 
 ## 3. Token und Session-Lifecycle
 
-- [ ] 3.1 Verifizierte Revision in SSF-Benutzertoken projizieren
-- [ ] 3.2 Benutzertokenclaim, Host-Readiness und Runtime-Antwort revisionsgleich prüfen
-- [ ] 3.3 Bestehende SSF-Sessions nach relevanten Permission-Änderungen widerrufen
+- [x] 3.1 Mapper und Benutzerattribute für die verifizierte Revision im
+      tenantlokalen SSF-Client-Scope idempotent projizieren
+- [ ] 3.2 Die Tokenausstellung ausschließlich des betroffenen SSF-Clients vor
+      dem ersten Projektions-Write sperren und erst nach Read-back und
+      Session-Widerruf wieder freigeben; Studio-Client und Realm-Session bleiben
+      unangetastet
+- [ ] 3.3 Benutzertokenclaim, Host-Readiness und Runtime-Antwort revisionsgleich prüfen
+- [ ] 3.4 Bestehende SSF-Sessions nach relevanten Permission-Änderungen über
+      eine tenantgebundene SSF-Schnittstelle widerrufen
 
 ## 4. Betrieb und Nachweise
 
 - [ ] 4.1 Audit, niedrig-kardinale Metriken und getrennte Readiness-Ursachen ergänzen
-- [ ] 4.2 Zwei-Tenant-, Mismatch-, Ausfall-, Retry- und Widerrufstests ergänzen
+- [ ] 4.2 Zwei-Tenant-, Mismatch-, Lock-/Unlock-, Timeout-, Client-Sperr-,
+      Ausfall-, Retry- und Widerrufstests ergänzen
 - [ ] 4.3 Staging-E2E für Projektion → Token → Runtime → Widerruf an exakten Digest binden
 - [ ] 4.4 Produktive Runtime-Freigabe erst nach grünem Staging-Nachweis aktivieren

@@ -15,9 +15,11 @@
 - [x] 0.5 Foundation-Slice aus PR #1246 als gemergte Baseline festhalten:
       Plugin-Paket, V1-Vertrag, Datenbank, Resolver, Service-Token-Prüfung und
       ihre gezielten Nachweise werden nicht erneut implementiert
-- [x] 0.6 Vor dem nächsten Codeblock den Lieferumfang auf technischen
+- [x] 0.6 Den ersten eigenständig prüfbaren Codeblock auf technischen
       Service-Zugriff, GET-Serverbeitrag, Host-Gates, Execution-Context und
-      Endpunkt-Integrationstests begrenzen; Deployment, Admin-UI,
+      Endpunkt-Integrationstests begrenzen. Die anschließend in Abschnitt 5
+      ergänzte Deployment-Integration liefert ausschließlich deaktivierte
+      Konfigurations-, Migrations-, Backup- und Restore-Verträge; Admin-UI,
       Tenant-Lifecycle und produktives Enablement bleiben Follow-ups
 
 ## 1. Plugin- und API-Verträge
@@ -88,7 +90,7 @@ Die Aufgaben 1.3, 1.4, 4.2a und 4.3 bis 4.6 bilden zusammen den nächsten
 eigenständig review- und testbaren Implementierungsslice. Vor dessen Abschluss
 wird keine Aufgabe aus Abschnitt 5 begonnen.
 
-## 5. Deployment und Betriebsgrenze
+## 5. Deaktivierte Deployment-Grundlage und Betriebsgrenze
 
 - [x] 5.1 SSF-Plugin-Datenbank, Migration, Backup-/Restore-Inventar und
       Service-Token-Konfiguration in das bestehende Deployment-Profil

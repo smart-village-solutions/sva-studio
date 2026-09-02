@@ -35,6 +35,8 @@ werden.
 
 - `add-ssf-runtime-configuration-api`
 - `add-plugin-tenant-lifecycle`
+- der aus `add-ssf-tenant-administration` vorgezogene Voraussetzungsslice für
+  den deklarativen, tenantlokal provisionierten SSF-OIDC-Client
 - der freigegebene Permission-Katalog des SSF-Plugins
 
 ## Success Criteria

@@ -176,23 +176,29 @@ export const loadKeycloakRoleCatalog = async (
   provider: IdentityProviderPort
 ): Promise<readonly IdentityRole[]> => {
   if (!provider.countRoles) {
-    return trackKeycloakCall('list_keycloak_role_catalog', () =>
-      provider.listRoles({ first: 0, max: 1000 })
-    );
+    const roles: IdentityRole[] = [];
+    for (let page = 0; ; page += 1) {
+      const pageRoles = await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
+        provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
+      );
+      roles.push(...pageRoles);
+      if (pageRoles.length < ROLE_PAGE_SIZE) return roles;
+    }
   }
   const total = await trackKeycloakCall(
     'count_keycloak_role_catalog',
     () => provider.countRoles?.() ?? Promise.resolve(0)
   );
   const pageCount = Math.ceil(total / ROLE_PAGE_SIZE);
-  const pages = await Promise.all(
-    Array.from({ length: pageCount }, (_, page) =>
-      trackKeycloakCall('list_keycloak_role_catalog_page', () =>
+  const roles: IdentityRole[] = [];
+  for (let page = 0; page < pageCount; page += 1) {
+    roles.push(
+      ...(await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
         provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
-      )
-    )
-  );
-  return pages.flat();
+      ))
+    );
+  }
+  return roles;
 };
 
 export const projectUserKeycloakRoleAssignments = async (

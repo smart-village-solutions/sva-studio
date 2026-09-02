@@ -1,9 +1,49 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  loadKeycloakRoleCatalog,
   projectKeycloakRoleAssignments,
   resolveKeycloakRoleMutationDelta,
 } from './user-keycloak-role-handlers.js';
+
+describe('Keycloak role catalog pagination', () => {
+  it('loads all pages when the provider has no role count operation', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      externalName: `role-${index}`,
+    }));
+    const listRoles = vi
+      .fn()
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce([{ externalName: 'role-100' }]);
+
+    const roles = await loadKeycloakRoleCatalog({ listRoles } as never);
+
+    expect(roles).toHaveLength(101);
+    expect(listRoles).toHaveBeenNthCalledWith(1, { first: 0, max: 100 });
+    expect(listRoles).toHaveBeenNthCalledWith(2, { first: 100, max: 100 });
+  });
+
+  it('loads counted pages sequentially to avoid unbounded Keycloak fan-out', async () => {
+    let activeRequests = 0;
+    let maximumActiveRequests = 0;
+    const listRoles = vi.fn(async ({ first }: { first: number }) => {
+      activeRequests += 1;
+      maximumActiveRequests = Math.max(maximumActiveRequests, activeRequests);
+      await Promise.resolve();
+      activeRequests -= 1;
+      return [{ externalName: `role-${first}` }];
+    });
+
+    const roles = await loadKeycloakRoleCatalog({
+      countRoles: vi.fn(async () => 201),
+      listRoles,
+    } as never);
+
+    expect(roles).toHaveLength(3);
+    expect(maximumActiveRequests).toBe(1);
+    expect(listRoles).toHaveBeenCalledTimes(3);
+  });
+});
 
 describe('Keycloak role assignment projection', () => {
   const newsRole = { id: 'news', externalName: 'news_editor' };

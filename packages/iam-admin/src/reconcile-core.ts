@@ -987,7 +987,7 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
   });
 
   reportRemainingPotentialStudioRoles({
-    idpRoles,
+    idpRoles: managedIdpRoles,
     idpByExternalName,
     dbByExternalName,
     entries,

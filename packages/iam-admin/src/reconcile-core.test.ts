@@ -243,6 +243,36 @@ describe('runRoleCatalogReconciliation', () => {
     expect(deps.setRoleDriftBacklog).toHaveBeenCalledWith('tenant-a', 0);
   });
 
+  it('does not report externally managed application roles as Studio reconciliation drift', async () => {
+    const externalRole = {
+      externalName: 'news_editor',
+      description: 'Mainserver application role',
+      clientRole: false,
+      attributes: { managed_by: ['external'] },
+    };
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: vi.fn(async () => ({
+        provider: {
+          listRoles: vi.fn(async () => [externalRole]),
+          getRoleByName: vi.fn(async () => externalRole),
+        } as never,
+      })),
+    });
+
+    const report = await runRoleCatalogReconciliation({
+      deps,
+      instanceId: 'tenant-a',
+      requestId: 'req-external-role',
+    });
+
+    expect(report).toMatchObject({
+      outcome: 'success',
+      checkedCount: 0,
+      requiresManualActionCount: 0,
+      roles: [],
+    });
+  });
+
   it('ignores root-only database roles during tenant reconciliation', async () => {
     const createRole = vi.fn(async () => undefined);
     const updateRole = vi.fn(async () => undefined);

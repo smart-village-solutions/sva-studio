@@ -1014,6 +1014,7 @@ describe('Keycloak admin client', () => {
       name: 'instance-id',
       userAttribute: 'instanceId',
       claimName: 'instanceId',
+      multivalued: true,
     });
     await client.ensureUserAttributeProtocolMapper({
       clientId: 'web-app',
@@ -1023,6 +1024,9 @@ describe('Keycloak admin client', () => {
     });
 
     expect(String(fetchImpl.mock.calls[3]?.[0])).toContain('/protocol-mappers/models');
+    expect(JSON.parse(String(fetchImpl.mock.calls[3]?.[1]?.body))).toMatchObject({
+      config: { multivalued: 'true' },
+    });
     expect(String(fetchImpl.mock.calls[7]?.[0])).toContain('/protocol-mappers/models/mapper-1');
   });
 

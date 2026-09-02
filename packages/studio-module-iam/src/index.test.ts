@@ -22,6 +22,7 @@ describe('@sva/studio-module-iam', () => {
       'projects',
       'surveys',
       'waste-management',
+      'ssf',
     ]);
     expect(studioHostModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['media']);
     expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
@@ -35,6 +36,7 @@ describe('@sva/studio-module-iam', () => {
       'projects',
       'surveys',
       'waste-management',
+      'ssf',
       'media',
     ]);
     expect(studioModuleIamRegistry.get('media')).toMatchObject({
@@ -60,6 +62,16 @@ describe('@sva/studio-module-iam', () => {
         'waste-management.seed.execute',
         'waste-management.reset.execute',
         'waste-management.settings.manage',
+      ],
+    });
+    expect(studioModuleIamRegistry.get('ssf')).toMatchObject({
+      ownerPluginId: 'ssf',
+      permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+      tenantBootstrapRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+        },
       ],
     });
   });

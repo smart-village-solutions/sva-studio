@@ -949,10 +949,16 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   `ssf.configuration.tenant.provenance.inspect`; Tenant-Reads verwenden die
   getrennte tenantverfügbare Action `ssf.configuration.tenant.read`.
 - Effektive tenantgebundene `ssf.*`-Permissions werden mit einer tenantweiten
-  Revision aus Studio-IAM in den separaten SSF-Keycloak-Client projiziert. Vor
+  Revision aus Studio-IAM in den SSF-Client des gemeinsamen Tenant-Realms
+  projiziert. Studio und SSF verwenden dort dieselbe Benutzeridentität und
+  dasselbe OIDC-`sub`. Vor
   relevanten Änderungen bleiben Client und SSF-Readiness bis zu erfolgreichem
   Reconcile, Session-Widerruf und Verifikation gesperrt. Token- und Runtime-
   Revision müssen für authentifizierte Vorgänge übereinstimmen.
+- Das installationsweite SSF-Service-Token wird im Studio-Root-Realm
+  ausgestellt und trägt keine Tenantrevision. Es weist ausschließlich
+  Backend-Identität, Audience und `ssf.runtime-configuration.read` nach; die
+  bestätigte Tenantrevision liest Studio nach der hostseitigen Tenantbindung.
 - Plattformgebundene SSF-Actions erhalten ihren Default-Grant für
   `instance_registry_admin` ausschließlich im Root-/Plattformkatalog. Sie
   erscheinen weder im Tenant-Katalog noch in SSF-Tenant-Tokens.

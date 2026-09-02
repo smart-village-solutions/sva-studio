@@ -19,8 +19,9 @@ aufzubauen.
   `GET /internal/plugins/ssf/v1/runtime-configuration` über einen
   hostvalidierten Plugin-Serverbeitrag bereit.
 - Der Endpoint authentifiziert ausschließlich ein kurzlebiges Service-Token
-  des separaten SSF-Keycloaks. Es gibt keine zusätzliche Tenant-Assertion,
-  keinen Replay-Speicher und keinen Browserzugriff.
+  des technischen SSF-Clients im Studio-Root-Realm der gemeinsam genutzten
+  Keycloak-Instanz. Es gibt keine zusätzliche Tenant-Assertion, keinen
+  Replay-Speicher und keinen Browserzugriff.
 - Die effektive Konfiguration folgt feldweise der Priorität
   Tenant-Override → serverweite Anpassung → versionierter Produktdefault und
   erhält einen deterministischen Inhaltsfingerabdruck.

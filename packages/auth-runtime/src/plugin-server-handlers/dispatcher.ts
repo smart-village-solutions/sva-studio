@@ -6,6 +6,7 @@ import {
 import type {
   PluginServerExecutionHandler,
   PluginServerHandlerRegistryEntry,
+  PluginTechnicalServiceTenantContext,
 } from '@sva/plugin-sdk';
 import { getWorkspaceContext, isCanonicalAuthHost } from '@sva/server-runtime';
 
@@ -21,6 +22,14 @@ import {
 } from './messages.js';
 
 type EffectivePermissionsResolution = Awaited<ReturnType<typeof resolveEffectivePermissions>>;
+
+export type PluginServiceAuthenticationResult =
+  | Readonly<{ kind: 'authenticated'; subject: string }>
+  | Readonly<{ kind: 'rejected'; response: Response }>;
+
+export type PluginServiceTenantBindingResult =
+  | Readonly<{ kind: 'bound'; tenant: PluginTechnicalServiceTenantContext }>
+  | Readonly<{ kind: 'rejected'; response: Response }>;
 
 export type PluginServerHandlerDispatcherDependencies = Readonly<{
   authenticate?: typeof withAuthenticatedUser;
@@ -40,6 +49,25 @@ export type PluginServerHandlerDispatcherDependencies = Readonly<{
   }) => Promise<UiResourceCapability | undefined>;
   validateCsrf?: typeof validateCsrf;
   translate?: (request: Request, key: PluginServerHandlerMessageKey) => string;
+  authenticateService?: (input: {
+    readonly request: Request;
+    readonly descriptor: PluginServerHandlerRegistryEntry;
+    readonly serviceId: string;
+  }) => Promise<PluginServiceAuthenticationResult>;
+  bindServiceTenant?: (input: {
+    readonly request: Request;
+    readonly descriptor: PluginServerHandlerRegistryEntry;
+    readonly serviceId: string;
+    readonly serviceSubject: string;
+    readonly tenantHeaderName: string;
+  }) => Promise<PluginServiceTenantBindingResult>;
+  observeServiceResponse?: (input: {
+    readonly request: Request;
+    readonly descriptor: PluginServerHandlerRegistryEntry;
+    readonly tenant: PluginTechnicalServiceTenantContext;
+    readonly response: Response;
+    readonly durationMs: number;
+  }) => Promise<void> | void;
 }>;
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -76,6 +104,8 @@ const isCollectionCapablePermission = (permission: EffectivePermission): boolean
   permission.resourceId === undefined &&
   permission.geoScope === undefined &&
   (permission.scope === undefined || Object.keys(permission.scope).length === 0);
+
+const serviceRuntimeUnavailable = (): Response => new Response(null, { status: 503 });
 
 export const assertPluginServerHandlerCoverage = (input: {
   readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
@@ -225,6 +255,54 @@ export const createPluginServerHandlerDispatcher = (input: {
     const handler = input.handlers[descriptor.id];
     if (!handler) {
       throw new Error(`missing_plugin_server_handler:${descriptor.id}`);
+    }
+
+    if (descriptor.accessRequirement.kind === 'service') {
+      const authenticateService = input.dependencies?.authenticateService;
+      const bindServiceTenant = input.dependencies?.bindServiceTenant;
+      if (!authenticateService || !bindServiceTenant) return serviceRuntimeUnavailable();
+
+      const authentication = await authenticateService({
+        request,
+        descriptor,
+        serviceId: descriptor.accessRequirement.serviceId,
+      });
+      if (authentication.kind === 'rejected') return authentication.response;
+
+      const binding = await bindServiceTenant({
+        request,
+        descriptor,
+        serviceId: descriptor.accessRequirement.serviceId,
+        serviceSubject: authentication.subject,
+        tenantHeaderName: descriptor.accessRequirement.tenantBinding.headerName,
+      });
+      if (binding.kind === 'rejected') return binding.response;
+
+      const startedAt = performance.now();
+      const response = await handler({
+        request,
+        pluginId: descriptor.ownerPluginId,
+        handlerId: descriptor.id,
+        scope: 'service',
+        service: {
+          id: descriptor.accessRequirement.serviceId,
+          subject: authentication.subject,
+          actionId: descriptor.actionId,
+        },
+        tenant: binding.tenant,
+      });
+      try {
+        await input.dependencies?.observeServiceResponse?.({
+          request,
+          descriptor,
+          tenant: binding.tenant,
+          response,
+          durationMs: performance.now() - startedAt,
+        });
+      } catch {
+        // Observability must not change an already determined service response.
+      }
+      return response;
     }
 
     return authenticate(request, async (context) => {

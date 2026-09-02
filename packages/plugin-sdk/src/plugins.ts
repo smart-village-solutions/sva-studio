@@ -62,8 +62,20 @@ export type PluginServerHandlerDefinition = {
   readonly path: string;
   readonly method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   readonly actionId: string;
-  readonly accessRequirement: UiAccessRequirement;
+  readonly accessRequirement: PluginServerHandlerAccessRequirement;
 };
+
+export type PluginTechnicalServiceAccessRequirement = Readonly<{
+  kind: 'service';
+  serviceId: string;
+  tenantBinding: Readonly<{
+    kind: 'header';
+    headerName: string;
+  }>;
+}>;
+
+export type PluginServerHandlerAccessRequirement =
+  UiAccessRequirement | PluginTechnicalServiceAccessRequirement;
 
 export type PluginNavigationItem = {
   readonly id: string;
@@ -254,7 +266,7 @@ export type PluginServerHandlerRegistryEntry = PluginServerHandlerDefinition & {
   readonly ownerPluginId: string;
 };
 
-export type PluginServerHandlerExecutionContext = Readonly<{
+type PluginUserServerHandlerExecutionContext = Readonly<{
   request: Request;
   pluginId: string;
   handlerId: string;
@@ -266,6 +278,29 @@ export type PluginServerHandlerExecutionContext = Readonly<{
     instanceId?: string;
   }>;
 }>;
+
+export type PluginTechnicalServiceTenantContext = Readonly<{
+  instanceId: string;
+  displayName: string;
+  timeZone: string;
+  authorizationRevision: string;
+}>;
+
+type PluginServiceServerHandlerExecutionContext = Readonly<{
+  request: Request;
+  pluginId: string;
+  handlerId: string;
+  scope: 'service';
+  service: Readonly<{
+    id: string;
+    subject: string;
+    actionId: string;
+  }>;
+  tenant: PluginTechnicalServiceTenantContext;
+}>;
+
+export type PluginServerHandlerExecutionContext =
+  PluginUserServerHandlerExecutionContext | PluginServiceServerHandlerExecutionContext;
 
 export type PluginServerExecutionHandler = (
   context: PluginServerHandlerExecutionContext
@@ -810,7 +845,8 @@ const assertPluginRegistryServerHandlers = ({
 }: PluginRegistryValidationContext): void => {
   const supportedMethods = new Set<string>(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
   const handlerIds = new Set<string>();
-  const pathPrefix = `/api/v1/plugins/${pluginNamespace}`;
+  const userPathPrefix = `/api/v1/plugins/${pluginNamespace}`;
+  const servicePathPrefix = `/internal/plugins/${pluginNamespace}/`;
   for (const handler of plugin.serverHandlers ?? []) {
     const handlerId = normalizePluginIdentifier(handler.id);
     assertPluginContributionAllowedKeys(
@@ -828,7 +864,11 @@ const assertPluginRegistryServerHandlers = ({
     }
     handlerIds.add(handlerId);
     const normalizedPath = trimTrailingSlashes(handler.path.trim());
-    if (normalizedPath !== pathPrefix && !normalizedPath.startsWith(`${pathPrefix}/`)) {
+    const isServiceHandler = handler.accessRequirement?.kind === 'service';
+    const hasAllowedPath = isServiceHandler
+      ? normalizedPath.startsWith(servicePathPrefix)
+      : normalizedPath === userPathPrefix || normalizedPath.startsWith(`${userPathPrefix}/`);
+    if (!hasAllowedPath) {
       throw new Error(`plugin_server_handler_path_invalid:${pluginNamespace}:${handlerId}`);
     }
     if (!supportedMethods.has(handler.method)) {
@@ -841,6 +881,42 @@ const assertPluginRegistryServerHandlers = ({
         `plugin_server_handler_access_requirement_missing:${pluginNamespace}:${handlerId}`
       );
     }
+    const actionId = normalizePluginIdentifier(handler.actionId);
+    const parsedActionId = parseNamespacedPluginIdentifier(actionId);
+    if (!parsedActionId) {
+      throw new Error(
+        `invalid_plugin_server_handler_action_id:${pluginNamespace}:${handlerId}:${actionId}`
+      );
+    }
+    if (parsedActionId.namespace !== pluginNamespace) {
+      throw new Error(
+        `plugin_server_handler_action_owner_mismatch:${pluginNamespace}:${handlerId}:${actionId}`
+      );
+    }
+    if (handler.accessRequirement.kind === 'service') {
+      if (extensionTier !== 'admin' && extensionTier !== 'platform') {
+        throw new Error(
+          `plugin_service_access_tier_forbidden:${pluginNamespace}:${handlerId}:${extensionTier}`
+        );
+      }
+      const serviceId = normalizePluginIdentifier(handler.accessRequirement.serviceId);
+      const headerName = handler.accessRequirement.tenantBinding.headerName.trim();
+      if (!serviceId) {
+        throw new Error(`plugin_service_access_id_missing:${pluginNamespace}:${handlerId}`);
+      }
+      if (handler.method !== 'GET') {
+        throw new Error(
+          `plugin_service_access_method_forbidden:${pluginNamespace}:${handlerId}:${handler.method}`
+        );
+      }
+      if (
+        handler.accessRequirement.tenantBinding.kind !== 'header' ||
+        !/^[A-Za-z0-9-]+$/u.test(headerName)
+      ) {
+        throw new Error(`plugin_service_tenant_binding_invalid:${pluginNamespace}:${handlerId}`);
+      }
+      continue;
+    }
     assertPluginAccessRequirement(
       plugin,
       pluginNamespace,
@@ -850,7 +926,6 @@ const assertPluginRegistryServerHandlers = ({
       extensionTier,
       true
     );
-    const actionId = normalizePluginIdentifier(handler.actionId);
     const action = assertOwnedPluginActionReference(
       plugin,
       pluginNamespace,
@@ -949,6 +1024,11 @@ const assertPluginRegistryRoutes = ({
       if (!serverHandler) {
         throw new Error(
           `plugin_route_server_handler_missing:${pluginNamespace}:${route.id}:${serverHandlerId}`
+        );
+      }
+      if (serverHandler.accessRequirement.kind === 'service') {
+        throw new Error(
+          `plugin_route_service_handler_forbidden:${pluginNamespace}:${route.id}:${serverHandlerId}`
         );
       }
       if (!route.accessRequirement) {
@@ -1358,7 +1438,17 @@ export const createPluginServerHandlerRegistry = (
         path: trimTrailingSlashes(handler.path.trim()),
         actionId: normalizePluginIdentifier(handler.actionId),
         accessRequirement:
-          normalizePluginAccessRequirement(handler.accessRequirement) ?? handler.accessRequirement,
+          handler.accessRequirement.kind === 'service'
+            ? {
+                kind: 'service',
+                serviceId: normalizePluginIdentifier(handler.accessRequirement.serviceId),
+                tenantBinding: {
+                  kind: 'header',
+                  headerName: handler.accessRequirement.tenantBinding.headerName.trim(),
+                },
+              }
+            : (normalizePluginAccessRequirement(handler.accessRequirement) ??
+              handler.accessRequirement),
         ownerPluginId: normalizePluginNamespace(plugin.id),
       });
     }

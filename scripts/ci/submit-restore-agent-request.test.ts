@@ -13,6 +13,14 @@ describe('submit restore agent request', () => {
       database: 'studio',
       action: 'restore-and-verify-v1',
     });
+    expect(parseRestoreMode('studio')).toEqual({
+      database: 'studio',
+      action: 'restore-and-verify-v1',
+    });
+    expect(parseRestoreMode('ssf')).toEqual({
+      database: 'ssf',
+      action: 'restore-and-verify-v1',
+    });
     expect(parseRestoreMode('waste')).toEqual({
       database: 'waste',
       action: 'restore-and-verify-v1',

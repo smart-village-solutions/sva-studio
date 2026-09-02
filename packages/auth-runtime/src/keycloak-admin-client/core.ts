@@ -1387,6 +1387,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     name: string;
     userAttribute: string;
     claimName: string;
+    multivalued?: boolean;
   }): Promise<void> {
     await this.assertWriteAvailability();
     const client = await this.getOidcClientByClientId(input.clientId);
@@ -1409,6 +1410,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         'user.attribute': input.userAttribute,
         'claim.name': input.claimName,
         'jsonType.label': 'String',
+        multivalued: input.multivalued ? 'true' : 'false',
         'id.token.claim': 'true',
         'access.token.claim': 'true',
         'userinfo.token.claim': 'true',

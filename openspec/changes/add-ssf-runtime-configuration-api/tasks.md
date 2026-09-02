@@ -29,9 +29,9 @@
       vorhandenen Plugin-Paketen kontrolliert angelegt)
 - [x] 1.2 Browser-sichere Fachtypen, Zod-Schemas, OpenAPI-V1-Schema,
       Größenkonstanten und stabile Fehlercodes definieren
-- [ ] 1.3 Den internen GET-Serverbeitrag mit festem Pfad, Methode,
+- [x] 1.3 Den internen GET-Serverbeitrag mit festem Pfad, Methode,
       Service-Action und Handler-ID deklarieren
-- [ ] 1.4 Plugin-Boundary- und Snapshot-Tests für Namespace, Tier, Scope,
+- [x] 1.4 Plugin-Boundary- und Snapshot-Tests für Namespace, Tier, Scope,
       Aktivierung und vollständige Handler-Bindung ergänzen
 
 ## 2. SSF-Plugin-Datenbank
@@ -72,16 +72,16 @@
       Service-Token-Baustein extrahieren, ohne MCP-Verhalten zu verändern
 - [x] 4.2 SSF-Konfiguration für Issuer, Audience, Client-ID, RS256, `exp`,
       `azp` und `ssf.runtime-configuration.read` anbinden
-- [ ] 4.2a Einen expliziten technischen Service-Zugriff im Plugin-Vertrag und
+- [x] 4.2a Einen expliziten technischen Service-Zugriff im Plugin-Vertrag und
       Dispatcher ergänzen, ohne ihn als Plattform- oder Tenant-Benutzerzugriff
       zu behandeln
-- [ ] 4.3 Host-Gates für Instanz, Suspendierung, Plugin-Aktivierung, Datenbank-
+- [x] 4.3 Host-Gates für Instanz, Suspendierung, Plugin-Aktivierung, Datenbank-
       Readiness und verifizierte `authorizationRevision` implementieren
-- [ ] 4.4 Tenantgebundenen Execution-Context erzeugen und den Plugin-Handler
+- [x] 4.4 Tenantgebundenen Execution-Context erzeugen und den Plugin-Handler
       ausschließlich nach allen Host-Gates ausführen
-- [ ] 4.5 Erfolgs- und Fehlerantworten, Korrelations-ID, strukturierte Metriken,
+- [x] 4.5 Erfolgs- und Fehlerantworten, Korrelations-ID, strukturierte Metriken,
       PII-arme Logs und Sicherheits-Audit implementieren
-- [ ] 4.6 Browser-, Token-, Header-, Fremdtenant-, Inaktivitäts-, Readiness- und
+- [x] 4.6 Browser-, Token-, Header-, Fremdtenant-, Inaktivitäts-, Readiness- und
       Datenbankfehlerpfade durch Integrationstests absichern
 
 Die Aufgaben 1.3, 1.4, 4.2a und 4.3 bis 4.6 bilden zusammen den nächsten
@@ -90,15 +90,15 @@ wird keine Aufgabe aus Abschnitt 5 begonnen.
 
 ## 5. Deployment und Betriebsgrenze
 
-- [ ] 5.1 SSF-Plugin-Datenbank, Migration, Backup-/Restore-Inventar und
+- [x] 5.1 SSF-Plugin-Datenbank, Migration, Backup-/Restore-Inventar und
       Service-Token-Konfiguration in das bestehende Deployment-Profil
       integrieren
-- [ ] 5.2 Endpoint-Freigabe standardmäßig deaktiviert lassen und nur für lokale
+- [x] 5.2 Endpoint-Freigabe standardmäßig deaktiviert lassen und nur für lokale
       Integrationstests einen explizit verifizierten Revisionsprovider
       konfigurieren
-- [ ] 5.3 Health-/Readiness-Befunde für Datenbank, Service-Issuer und fehlende
+- [x] 5.3 Health-/Readiness-Befunde für Datenbank, Service-Issuer und fehlende
       IAM-Projektionsrevision getrennt und ohne zweiten Rolloutpfad abbilden
-- [ ] 5.4 Ausfalltests für Studio, Plugin-Datenbank, JWKS und fehlende Medien-
+- [x] 5.4 Ausfalltests für Studio, Plugin-Datenbank, JWKS und fehlende Medien-
       Capability ergänzen; keine persistente SSF-Fallback-Schicht einführen
 
 ## 6. Dokumentation und Gates
@@ -110,13 +110,13 @@ wird keine Aufgabe aus Abschnitt 5 begonnen.
       und aktualisieren
 - [x] 6.3 ADR-057 nur bei tatsächlicher Entscheidungsabweichung fortschreiben;
       andernfalls die konforme Implementierung in Abschnitt 09 nachweisen
-- [ ] 6.4 Relevante Unit-, Type-, Server-Runtime-, PostgreSQL-Integrations-,
+- [x] 6.4 Relevante Unit-, Type-, Server-Runtime-, PostgreSQL-Integrations-,
       Plugin-Boundary-, OpenAPI-, Security- und E2E-Gates ausführen
 - [x] 6.5 `pnpm check:server-runtime`, `pnpm check:plugin-architecture-boundary`,
       `pnpm check:file-placement`, `pnpm check:docs` und den betroffenen
       Schema-Snapshot-Check erfolgreich ausführen
 - [x] 6.6 `pnpm exec openspec validate add-ssf-runtime-configuration-api --strict`
       und `git diff --check` erfolgreich ausführen
-- [ ] 6.7 Vor produktivem Enablement ein getrenntes Follow-up für die
+- [x] 6.7 Vor produktivem Enablement ein getrenntes Follow-up für die
       revisionsgebundene SSF-Keycloak-Permission-Projektion freigeben und
       dessen End-to-End-Nachweise verlangen

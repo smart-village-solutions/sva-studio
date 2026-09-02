@@ -176,6 +176,24 @@ const wasteManagementModuleIamContract: StudioModuleIamContract = {
   rootSystemRoles: [],
   systemRoles: createSystemAdminSystemRoles(wasteManagementTenantBootstrapRoles),
 };
+
+const ssfTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
+  {
+    roleName: 'system_admin',
+    permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+  },
+];
+
+const ssfModuleIamContract: StudioModuleIamContract = {
+  moduleId: 'ssf',
+  namespace: 'ssf',
+  ownerPluginId: 'ssf',
+  descriptionKey: 'plugins.ssf.description',
+  permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+  tenantBootstrapRoles: ssfTenantBootstrapRoles,
+  rootSystemRoles: [],
+  systemRoles: createSystemAdminSystemRoles(ssfTenantBootstrapRoles),
+};
 const mediaTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
   {
     roleName: 'system_admin',
@@ -219,6 +237,7 @@ export const studioPluginModuleIamContracts = [
   projectsModuleIamContract,
   surveysModuleIamContract,
   wasteManagementModuleIamContract,
+  ssfModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];
 
 export const studioHostModuleIamContracts = [

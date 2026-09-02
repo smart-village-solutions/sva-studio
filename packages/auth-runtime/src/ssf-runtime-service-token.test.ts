@@ -7,7 +7,7 @@ import {
 
 const config = {
   enabled: true,
-  issuer: 'https://id.example/realms/ssf',
+  issuer: 'https://id.example/realms/studio-root',
   audience: 'sva-studio-ssf-runtime',
   clientId: 'ssf-runtime',
 } as const;
@@ -24,7 +24,7 @@ describe('SSF runtime service token authentication', () => {
     expect(
       readSsfRuntimeServiceTokenConfig({
         SVA_STUDIO_SSF_RUNTIME_ENABLED: 'true',
-        SVA_STUDIO_SSF_RUNTIME_ISSUER: 'https://id.example/realms/ssf/',
+        SVA_STUDIO_SSF_RUNTIME_ISSUER: 'https://id.example/realms/studio-root/',
       })
     ).toEqual(config);
   });

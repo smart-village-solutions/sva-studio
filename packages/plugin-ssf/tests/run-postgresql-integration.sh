@@ -49,7 +49,7 @@ pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests \
   --config vitest.config.ts
 
 "${repo_dir}/packages/data/scripts/goosew.sh" \
-  -dir "${package_dir}/migrations" postgres "${admin_url}" down
+  -dir "${package_dir}/migrations" postgres "${admin_url}" down-to 0
 
 schema_after_down="$(docker exec "${container_name}" psql -At -U postgres -d postgres -c "SELECT to_regnamespace('ssf') IS NULL;")"
 test "${schema_after_down}" = "t"

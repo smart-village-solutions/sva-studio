@@ -108,6 +108,10 @@ const authServerMocks = vi.hoisted(() => {
     listUsersHandler: vi.fn(async () => response('listUsersHandler')),
     createUserHandler: vi.fn(async () => response('createUserHandler')),
     getUserHandler: vi.fn(async () => response('getUserHandler')),
+    getUserKeycloakRolesHandler: vi.fn(async () => response('getUserKeycloakRolesHandler')),
+    mutateUserKeycloakRoleHandler: vi.fn(async () =>
+      response('mutateUserKeycloakRoleHandler')
+    ),
     reprovisionMainserverUserHandler: vi.fn(async () =>
       response('reprovisionMainserverUserHandler')
     ),
@@ -1314,6 +1318,9 @@ describe('auth.routes.server', () => {
     expect(resolveAuthRoutePathForRequestPath('/health/live')).toBe('/health/live');
     expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/users/abc-123')).toBe(
       '/api/v1/iam/users/$userId'
+    );
+    expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/users/abc-123/keycloak-roles')).toBe(
+      '/api/v1/iam/users/$userId/keycloak-roles'
     );
     expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/groups/group-1/roles/role-1')).toBe(
       '/api/v1/iam/groups/$groupId/roles/$roleId'

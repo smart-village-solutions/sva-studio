@@ -32,6 +32,12 @@ export const rolesAdminENResources = {
   filters: {
     searchLabel: 'Search',
     searchPlaceholder: 'Search by role or permission',
+    typeLabel: 'Role type',
+    typeAll: 'All role types',
+    typeStudio: 'Studio roles',
+    typeExternal: 'External Keycloak roles',
+    typeBuiltin: 'Keycloak built-ins',
+    typeSystem: 'System roles',
   },
   labels: {
     systemRole: 'System role',

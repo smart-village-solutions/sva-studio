@@ -31,6 +31,10 @@ export const accountAuthHandlerMap = {
     PATCH: routeHandler(authRuntimeRoutes.updateUserHandler),
     DELETE: routeHandler(authRuntimeRoutes.deleteUserHandler),
   },
+  '/api/v1/iam/users/$userId/keycloak-roles': {
+    GET: routeHandler(authRuntimeRoutes.getUserKeycloakRolesHandler),
+    PATCH: routeHandler(authRuntimeRoutes.mutateUserKeycloakRoleHandler),
+  },
   '/api/v1/iam/users/$userId/deactivate': {
     POST: routeHandler(authRuntimeRoutes.deactivateUserHandler),
   },

@@ -9,6 +9,7 @@ import {
 } from './role-audit.js';
 import type { QueryClient } from './query-client.js';
 import { isTenantManageableRole, isTenantTechnicalKeycloakRole } from './role-governance.js';
+import { classifyTenantKeycloakRole } from './keycloak-role-assignment-policy.js';
 import type { ManagedRoleRow } from './types.js';
 
 type IdentityRole = Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never;
@@ -108,9 +109,6 @@ export type RoleCatalogReconciliationDeps = {
   setRoleDriftBacklog(instanceId: string, backlog: number): void;
 };
 
-const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
-const NON_TENANT_CATALOG_REALM_ROLE_NAMES = new Set(['instance_registry_admin', 'realm_account_admin']);
-
 const readRoleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
   key: string
@@ -153,25 +151,8 @@ const requiresRoleDetailHydration = (role: IdentityRole): boolean =>
   !readRoleAttribute(role.attributes, 'display_name');
 
 const isPotentialStudioManagedRealmRole = (role: IdentityRole): boolean => {
-  if (role.clientRole) {
-    return false;
-  }
-
-  if (BUILTIN_REALM_ROLE_NAMES.has(role.externalName)) {
-    return false;
-  }
-
-  // Some realm roles may exist in tenant realms for platform or Keycloak-native
-  // authorization, but they are not part of the tenant role catalog.
-  if (NON_TENANT_CATALOG_REALM_ROLE_NAMES.has(role.externalName)) {
-    return false;
-  }
-
-  if (role.externalName.startsWith('default-roles-')) {
-    return false;
-  }
-
-  return true;
+  const category = classifyTenantKeycloakRole(role).category;
+  return category === 'assignable' || category === 'system_admin';
 };
 
 const hydrateRoleDetailsForReconciliation = async (
@@ -1006,7 +987,7 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
   });
 
   reportRemainingPotentialStudioRoles({
-    idpRoles,
+    idpRoles: managedIdpRoles,
     idpByExternalName,
     dbByExternalName,
     entries,

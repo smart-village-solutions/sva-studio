@@ -16,8 +16,6 @@ import {
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Card } from '../../../components/ui/card';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
 import { useRoles } from '../../../hooks/use-roles';
 import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { useAuth } from '../../../providers/auth-provider';
@@ -27,6 +25,7 @@ import type { RoleReconcileReport } from '../../../lib/iam-api';
 import { hasPlatformInstanceAdminAccess } from '../../../lib/iam-admin-access';
 import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
+import { matchesRoleTypeFilter, RoleFilters, type RoleTypeFilter } from './-role-filters';
 import {
   getRoleDeleteConfirmationContent,
   roleErrorMessage,
@@ -66,6 +65,7 @@ export const RolesPage = () => {
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
 
   const [search, setSearch] = React.useState('');
+  const [roleTypeFilter, setRoleTypeFilter] = React.useState<RoleTypeFilter>('all');
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
   const deleteConfirmation = getRoleDeleteConfirmationContent();
   const visibleRoles = React.useMemo(
@@ -77,6 +77,9 @@ export const RolesPage = () => {
   const filteredRoles = React.useMemo(() => {
     const query = search.trim().toLowerCase();
     return visibleRoles.filter((role) => {
+      if (!matchesRoleTypeFilter(role, roleTypeFilter)) {
+        return false;
+      }
       if (!query) {
         return true;
       }
@@ -90,7 +93,7 @@ export const RolesPage = () => {
         )
       );
     });
-  }, [search, visibleRoles]);
+  }, [roleTypeFilter, search, visibleRoles]);
 
   const roleColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredRoles)[number]>[]>(
     () => [
@@ -242,15 +245,12 @@ export const RolesPage = () => {
             </Card>
           }
           toolbarStart={
-            <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-              <Label htmlFor="roles-search">{t('admin.roles.filters.searchLabel')}</Label>
-              <Input
-                id="roles-search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t('admin.roles.filters.searchPlaceholder')}
-              />
-            </div>
+            <RoleFilters
+              search={search}
+              roleType={roleTypeFilter}
+              onSearchChange={setSearch}
+              onRoleTypeChange={setRoleTypeFilter}
+            />
           }
           rowActions={
             isPlatformScope

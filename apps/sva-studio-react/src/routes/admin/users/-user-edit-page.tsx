@@ -28,6 +28,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import type { IamUserPermissionTraceItem } from '@sva/core';
 import { t } from '../../../i18n';
 import { userErrorMessage } from './-user-error-message';
+import { UserKeycloakRolesPanel } from './-user-keycloak-roles';
 import { useUserEditController } from './use-user-edit-controller';
 import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import {
@@ -114,7 +115,9 @@ export const UserEditPage = ({
   const location = useLocation();
   const navigate = useNavigate();
   const access = useIamResourceAccess('user');
+  const roleAccess = useIamResourceAccess('role');
   const canUpdateUser = isIamAccessAllowed(access.update);
+  const canManageKeycloakRoles = isIamAccessAllowed(roleAccess.update);
   const {
     activeTab,
     activateFormFieldTab,
@@ -523,6 +526,11 @@ export const UserEditPage = ({
                 })}
               </div>
             </fieldset>
+            <div className="md:col-span-2">
+              {activeTab === 'management' ? (
+                <UserKeycloakRolesPanel canWrite={canManageKeycloakRoles} userRef={userId} />
+              ) : null}
+            </div>
             <fieldset className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
               <legend>{t('admin.users.edit.groupsLabel')}</legend>
               <div className="grid gap-2 sm:grid-cols-2">

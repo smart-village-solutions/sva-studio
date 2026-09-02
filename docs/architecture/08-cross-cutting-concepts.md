@@ -985,3 +985,12 @@ Client-Action `ssf.runtime-configuration.read`, aber keine menschliche
 Plattformrolle. Das Feature ist standardmäßig deaktiviert. PostgreSQL-Runtime-
 Reads kombinieren transaktionslokales `app.instance_id`, erzwungene RLS und
 explizite Repository-Prädikate; Zwei-Tenant-Negativtests belegen diese Grenze.
+
+### Lokale Autorisierung und externe Realm-Rollen
+
+Externe Keycloak-Rollen sind Interop-Daten und keine Studio-Permissions.
+Lesen erfordert `iam.user.read` und `iam.role.read`, Schreiben
+`iam.role.write`; alle Prüfungen erfolgen serverseitig. Built-ins, Client-,
+Service- und Plattformrollen bleiben read-only. `system_admin` verwendet den
+gekoppelten lokalen Sonderpfad. Auditdaten enthalten keine rohen Subjects,
+Tokens, Secrets oder E-Mail-Adressen.

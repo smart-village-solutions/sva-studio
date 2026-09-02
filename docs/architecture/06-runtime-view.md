@@ -1247,3 +1247,13 @@ HTML-Bereinigung und Revisionsbildung als getestete Bausteine ab. Die
 produktive Pfadregistrierung sowie die Host-Gates für Instanz, Aktivierung und
 verifizierte `authorizationRevision` bleiben deaktiviert, bis der gemeinsame
 Plugin-Dispatcher den Service-Zugriffstyp bereitstellt.
+
+### Keycloak-Realm-Rollenzuweisung
+
+1. Der Server prüft aktive Instanz, Zielbenutzer und `iam.role.write`.
+2. Benutzer und Rolle werden ausschließlich über den Tenant-Admin-Provider der
+   aktiven Instanz aufgelöst und gegen die zentrale Schutzpolicy geprüft.
+3. Der Server liest direkte und effektive Rollen, schreibt höchstens ein Delta
+   und liest anschließend die direkten Rollen erneut.
+4. Nur der belegte Zielzustand wird als Erfolg bestätigt. Ein unklarer Zustand
+   liefert einen Reconciliation-Konflikt und ein pseudonymisiertes Audit-Event.

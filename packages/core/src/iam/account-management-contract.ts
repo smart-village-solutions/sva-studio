@@ -47,6 +47,8 @@ export type ApiErrorCode =
   | 'target_conflict_unacknowledged'
   | 'active_job_exists'
   | 'keycloak_unavailable'
+  | 'keycloak_request_failed'
+  | 'keycloak_role_write_rejected'
   | 'tenant_auth_client_secret_missing'
   | 'tenant_admin_client_not_configured'
   | 'tenant_admin_client_secret_missing'
@@ -58,6 +60,9 @@ export type ApiErrorCode =
   | 'mainserver_credentials_invalid'
   | 'mainserver_user_conflict'
   | 'mainserver_provisioning_failed'
+  | 'keycloak_role_protected'
+  | 'keycloak_role_assignment_not_direct'
+  | 'keycloak_role_assignment_reconciliation_required'
   | 'last_admin_protection'
   | 'self_protection'
   | 'feature_disabled'
@@ -297,6 +302,42 @@ export type IamCreateUserResult = {
 };
 
 export type IamKeycloakMappingStatus = 'mapped' | 'unmapped' | 'manual_review';
+
+export type IamKeycloakRoleCategory =
+  | 'assignable'
+  | 'system_admin'
+  | 'keycloak_builtin'
+  | 'client_role'
+  | 'service_role'
+  | 'platform_role';
+
+export type IamKeycloakRealmRoleAssignment = {
+  readonly id: string;
+  readonly roleName: string;
+  readonly description?: string;
+  readonly composite: boolean;
+  readonly managedBy: 'studio' | 'external' | 'keycloak_builtin';
+  readonly category: IamKeycloakRoleCategory;
+  readonly assignable: boolean;
+  readonly direct: boolean;
+  readonly effective: boolean;
+  readonly origin: 'direct' | 'composite' | 'unassigned';
+  readonly reasonCode?: string;
+};
+
+export type IamUserKeycloakRoleAssignments = {
+  readonly userRef: string;
+  readonly mappingStatus: IamKeycloakMappingStatus;
+  readonly roles: readonly IamKeycloakRealmRoleAssignment[];
+};
+
+export type IamKeycloakRoleAssignmentMutationResult = {
+  readonly userRef: string;
+  readonly roleName: string;
+  readonly operation: 'assign' | 'remove';
+  readonly direct: boolean;
+  readonly status: 'confirmed' | 'reconciliation_required';
+};
 
 export type IamKeycloakObjectEditability = 'editable' | 'read_only' | 'blocked';
 

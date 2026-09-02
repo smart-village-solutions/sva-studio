@@ -30,6 +30,38 @@ export const usersAdminENResources = {
     readOnly: 'Read-only',
     blocked: 'Blocked',
   },
+  keycloakRoles: {
+    title: 'Keycloak roles',
+    description: 'These roles apply to connected applications and do not grant Studio permissions.',
+    dialogTitle: 'Keycloak roles for {{name}}',
+    dialogDescription:
+      'Manage direct realm roles separately from roles inherited through composites.',
+    open: 'Open Keycloak roles',
+    openForUser: 'Open Keycloak roles for {{name}}',
+    loading: 'Loading Keycloak roles ...',
+    empty: 'No roles are available in the tenant realm.',
+    error: 'The Keycloak roles could not be loaded or changed.',
+    assignSuccess: 'The role {{role}} was assigned directly.',
+    removeSuccess: 'The direct assignment of role {{role}} was removed.',
+    directSummary: 'Direct: {{roles}}',
+    direct: 'Direct',
+    inherited: 'Inherited',
+    directHint: 'This role is assigned directly and can be removed here.',
+    inheritedHint:
+      'This role is effective through a composite role. An additional direct assignment is possible.',
+    unassignedHint: 'This realm role can be assigned directly.',
+    protectedHint: 'This technical or protected role is read-only here.',
+    systemAdminHint:
+      'System administrator is managed exclusively through the protected local Studio role assignment.',
+    category: {
+      assignable: 'Realm role',
+      systemAdmin: 'Protected Studio role',
+      builtin: 'Keycloak built-in',
+      client: 'Client role',
+      service: 'Service role',
+      platform: 'Platform role',
+    },
+  },
   actions: {
     create: 'Create user',
     creating: 'Creating user ...',

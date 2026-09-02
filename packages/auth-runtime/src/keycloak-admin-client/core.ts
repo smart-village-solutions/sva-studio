@@ -1,5 +1,8 @@
 import { createSdkLogger } from '@sva/server-runtime';
-import { getKeycloakAdminClientSecret, getKeycloakProvisionerClientSecret } from '../runtime-secrets.js';
+import {
+  getKeycloakAdminClientSecret,
+  getKeycloakProvisionerClientSecret,
+} from '../runtime-secrets.js';
 
 import type {
   CreateIdentityRoleInput,
@@ -206,8 +209,11 @@ const normalizeAttributes = (
 };
 
 const normalizeManagedRoleAttributes = (
-  attributes: Readonly<Record<string, readonly string[]> | Record<string, string | readonly string[]>>
-): Record<string, readonly string[]> => normalizeAttributes(attributes as Readonly<Record<string, string | readonly string[]>>) ?? {};
+  attributes: Readonly<
+    Record<string, readonly string[]> | Record<string, string | readonly string[]>
+  >
+): Record<string, readonly string[]> =>
+  normalizeAttributes(attributes as Readonly<Record<string, string | readonly string[]>>) ?? {};
 
 const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
 
@@ -226,16 +232,19 @@ const isStudioManagedRealmRole = (role: IdentityRole | undefined): boolean =>
   role?.clientRole !== true && readRoleAttribute(role?.attributes, 'managed_by') === 'studio';
 
 const toSortedUniqueStrings = (values: readonly string[] | undefined): string[] =>
-  [...new Set((values ?? []).map((value) => value.trim()).filter((value) => value.length > 0))].sort((left, right) =>
-    left.localeCompare(right)
-  );
+  [
+    ...new Set((values ?? []).map((value) => value.trim()).filter((value) => value.length > 0)),
+  ].sort((left, right) => left.localeCompare(right));
 
 const mergeSortedUniqueStrings = (
   left: readonly string[] | undefined,
   right: readonly string[] | undefined
 ): string[] => toSortedUniqueStrings([...(left ?? []), ...(right ?? [])]);
 
-const areStringSetsEqual = (left: readonly string[] | undefined, right: readonly string[] | undefined): boolean => {
+const areStringSetsEqual = (
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined
+): boolean => {
   const normalizedLeft = toSortedUniqueStrings(left);
   const normalizedRight = toSortedUniqueStrings(right);
   if (normalizedLeft.length !== normalizedRight.length) {
@@ -244,7 +253,9 @@ const areStringSetsEqual = (left: readonly string[] | undefined, right: readonly
   return normalizedLeft.every((value, index) => value === normalizedRight[index]);
 };
 
-const readPostLogoutRedirectUris = (attributes: Readonly<Record<string, string>> | undefined): readonly string[] => {
+const readPostLogoutRedirectUris = (
+  attributes: Readonly<Record<string, string>> | undefined
+): readonly string[] => {
   const raw = attributes?.['post.logout.redirect.uris'];
   if (!raw) {
     return [];
@@ -300,10 +311,7 @@ const readAttribute = (
   return Array.isArray(values) ? values[0] : undefined;
 };
 
-const isStudioManagedRoleConflict = (
-  role: IdentityRole,
-  input: CreateIdentityRoleInput
-): boolean =>
+const isStudioManagedRoleConflict = (role: IdentityRole, input: CreateIdentityRoleInput): boolean =>
   readAttribute(role.attributes, 'managed_by') === 'studio' &&
   readAttribute(role.attributes, 'instance_id') !== undefined &&
   readAttribute(role.attributes, 'instance_id') !== input.attributes.instanceId;
@@ -345,7 +353,11 @@ const logKeycloakWriteFailure = (
   });
 };
 
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, phase: TimeoutPhase): Promise<T> => {
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  phase: TimeoutPhase
+): Promise<T> => {
   if (timeoutMs <= 0) {
     return promise;
   }
@@ -527,7 +539,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     const currentByName = new Map(currentRoleMappings.map((role) => [role.name, role]));
     const availableByName = new Map(availableRoles.map((role) => [role.externalName, role]));
 
-    const missingRoles = [...expectedRoleNames].filter((roleName) => !availableByName.has(roleName));
+    const missingRoles = [...expectedRoleNames].filter(
+      (roleName) => !availableByName.has(roleName)
+    );
     if (missingRoles.length > 0) {
       throw new KeycloakAdminRequestError({
         message: `Unknown Keycloak roles: ${missingRoles.join(', ')}`,
@@ -541,17 +555,15 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       .filter((roleName) => !currentByName.has(roleName))
       .map((roleName) => availableByName.get(roleName))
       .filter((role): role is IdentityRole => role !== undefined)
-      .map(
-        (role): KeycloakRealmRole => ({
-          id: role.id ?? role.externalName,
-          name: role.externalName,
-          description: role.description,
-          attributes: role.attributes,
-          composite: role.composite,
-          clientRole: role.clientRole,
-          containerId: role.containerId,
-        })
-      );
+      .map((role): KeycloakRealmRole => ({
+        id: role.id ?? role.externalName,
+        name: role.externalName,
+        description: role.description,
+        attributes: role.attributes,
+        composite: role.composite,
+        clientRole: role.clientRole,
+        containerId: role.containerId,
+      }));
 
     // Keep Keycloak built-ins and any unmanaged realm roles untouched. Tenant sync only owns
     // Studio-managed realm roles, otherwise tenant-local defaults like offline_access would
@@ -630,7 +642,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     if (roleNames.size === 0) {
       return;
     }
-    const currentRoleMappings = await this.readUserRoleMappings(externalId, 'remove_realm_roles_read_current');
+    const currentRoleMappings = await this.readUserRoleMappings(
+      externalId,
+      'remove_realm_roles_read_current'
+    );
     const toRemove = currentRoleMappings.filter((role) => roleNames.has(role.name));
     if (toRemove.length === 0) {
       return;
@@ -647,6 +662,18 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   async listUserRoleNames(externalId: string): Promise<readonly string[]> {
     const currentRoleMappings = await this.readUserRoleMappings(externalId, 'list_user_roles');
     return currentRoleMappings.map((role) => role.name);
+  }
+
+  async listUserRealmRoleAssignments(externalId: string) {
+    const [direct, effective] = await Promise.all([
+      this.readUserRoleMappings(externalId, 'list_user_realm_roles_direct'),
+      this.readEffectiveUserRoleMappings(externalId),
+    ]);
+
+    return {
+      direct: direct.map(mapKeycloakRole),
+      effective: effective.map(mapKeycloakRole),
+    };
   }
 
   async ensureTenantAdminServiceAccess(clientId: string): Promise<void> {
@@ -687,13 +714,15 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     const currentRoleMappings = await this.executeWithResilience<KeycloakRoleMapping[]>({
       method: 'GET',
       path:
-        `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}`
-        + `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+        `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
+        `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
       operation: 'list_service_account_client_roles',
     });
 
     const availableRoleNames = new Set(availableRoles.map((role) => role.name));
-    const missingRequiredRoles = REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.filter((roleName) => !availableRoleNames.has(roleName));
+    const missingRequiredRoles = REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.filter(
+      (roleName) => !availableRoleNames.has(roleName)
+    );
     if (missingRequiredRoles.length > 0) {
       throw new KeycloakAdminRequestError({
         message: `Missing required Keycloak realm-management roles: ${missingRequiredRoles.join(', ')}`,
@@ -720,8 +749,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     await this.executeWithResilience<void>({
       method: 'POST',
       path:
-        `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}`
-        + `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+        `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
+        `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
       body: JSON.stringify(rolesToAdd),
       operation: 'grant_service_account_client_roles',
     });
@@ -841,13 +870,31 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     operation: string
   ): Promise<readonly KeycloakRoleMapping[]> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and user role mapping reads are temporarily disabled.');
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and user role mapping reads are temporarily disabled.'
+      );
     }
 
     return this.executeWithResilience<KeycloakRoleMapping[]>({
       method: 'GET',
       path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/role-mappings/realm`,
       operation,
+    });
+  }
+
+  private async readEffectiveUserRoleMappings(
+    externalId: string
+  ): Promise<readonly KeycloakRoleMapping[]> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and effective user role mapping reads are temporarily disabled.'
+      );
+    }
+
+    return this.executeWithResilience<KeycloakRoleMapping[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/role-mappings/realm/composite`,
+      operation: 'list_user_realm_roles_effective',
     });
   }
 
@@ -913,12 +960,14 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       operation: 'count_roles',
     });
 
-    return typeof response === 'number' ? response : response.count ?? 0;
+    return typeof response === 'number' ? response : (response.count ?? 0);
   }
 
   async getRoleByName(externalName: string): Promise<IdentityRole | null> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and role lookup is temporarily disabled.');
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and role lookup is temporarily disabled.'
+      );
     }
 
     try {
@@ -1077,7 +1126,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async getRealm(): Promise<{ realm: string } | null> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and realm lookup is temporarily disabled.');
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and realm lookup is temporarily disabled.'
+      );
     }
 
     try {
@@ -1097,7 +1148,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async getOidcClientByClientId(clientId: string): Promise<KeycloakClientRepresentation | null> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and client lookup is temporarily disabled.');
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and client lookup is temporarily disabled.'
+      );
     }
 
     const query = await this.executeWithResilience<KeycloakClientRepresentation[]>({
@@ -1213,9 +1266,17 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         operation: 'create_client',
         body: JSON.stringify(payload),
       });
-      logKeycloakWriteSuccess('create_client', { operation: 'create_client', realm: this.realm, client_id: clientId });
+      logKeycloakWriteSuccess('create_client', {
+        operation: 'create_client',
+        realm: this.realm,
+        client_id: clientId,
+      });
     } catch (error) {
-      logKeycloakWriteFailure('create_client_failed', { operation: 'create_client', realm: this.realm, client_id: clientId }, error);
+      logKeycloakWriteFailure(
+        'create_client_failed',
+        { operation: 'create_client', realm: this.realm, client_id: clientId },
+        error
+      );
       throw error;
     }
   }
@@ -1235,9 +1296,17 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           ...payload,
         }),
       });
-      logKeycloakWriteSuccess('update_client', { operation: 'update_client', realm: this.realm, client_id: clientId });
+      logKeycloakWriteSuccess('update_client', {
+        operation: 'update_client',
+        realm: this.realm,
+        client_id: clientId,
+      });
     } catch (error) {
-      logKeycloakWriteFailure('update_client_failed', { operation: 'update_client', realm: this.realm, client_id: clientId }, error);
+      logKeycloakWriteFailure(
+        'update_client_failed',
+        { operation: 'update_client', realm: this.realm, client_id: clientId },
+        error
+      );
       throw error;
     }
   }
@@ -1270,7 +1339,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       return;
     }
     const logEvent = input.rotateClientSecret ? 'rotate_client_secret' : 'sync_client_secret';
-    const logFailureEvent = input.rotateClientSecret ? 'rotate_client_secret_failed' : 'sync_client_secret_failed';
+    const logFailureEvent = input.rotateClientSecret
+      ? 'rotate_client_secret_failed'
+      : 'sync_client_secret_failed';
     try {
       await this.executeWithResilience<void>({
         method: 'POST',
@@ -1281,14 +1352,24 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           ...(input.clientSecret !== undefined ? { value: input.clientSecret } : {}),
         }),
       });
-      logKeycloakWriteSuccess(logEvent, { operation: 'rotate_client_secret', realm: this.realm, client_id: input.clientId });
+      logKeycloakWriteSuccess(logEvent, {
+        operation: 'rotate_client_secret',
+        realm: this.realm,
+        client_id: input.clientId,
+      });
     } catch (error) {
-      logKeycloakWriteFailure(logFailureEvent, { operation: 'rotate_client_secret', realm: this.realm, client_id: input.clientId }, error);
+      logKeycloakWriteFailure(
+        logFailureEvent,
+        { operation: 'rotate_client_secret', realm: this.realm, client_id: input.clientId },
+        error
+      );
       throw error;
     }
   }
 
-  async listClientProtocolMappers(clientId: string): Promise<readonly KeycloakProtocolMapperRepresentation[]> {
+  async listClientProtocolMappers(
+    clientId: string
+  ): Promise<readonly KeycloakProtocolMapperRepresentation[]> {
     const client = await this.getOidcClientByClientId(clientId);
     if (!client) {
       return [];
@@ -1383,7 +1464,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async findUserByUsername(username: string): Promise<KeycloakAdminUser | null> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and user lookup is temporarily disabled.');
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and user lookup is temporarily disabled.'
+      );
     }
 
     const users = await this.executeWithResilience<KeycloakAdminUser[]>({
@@ -1397,7 +1480,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async findUserByEmail(email: string): Promise<KeycloakAdminUser | null> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and user lookup is temporarily disabled.');
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and user lookup is temporarily disabled.'
+      );
     }
 
     const users = await this.executeWithResilience<KeycloakAdminUser[]>({
@@ -1441,7 +1526,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  async setUserRequiredActions(externalId: string, requiredActions: readonly string[]): Promise<void> {
+  async setUserRequiredActions(
+    externalId: string,
+    requiredActions: readonly string[]
+  ): Promise<void> {
     await this.assertWriteAvailability();
     await this.executeWithResilience<void>({
       method: 'PUT',
@@ -1459,7 +1547,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   private async assertWriteAvailability(): Promise<void> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable. Write operations are temporarily disabled.');
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable. Write operations are temporarily disabled.'
+      );
     }
   }
 
@@ -1637,10 +1727,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       return this.tokenRefreshPromise;
     }
 
-    this.tokenRefreshPromise = this.fetchAccessToken()
-      .finally(() => {
-        this.tokenRefreshPromise = undefined;
-      });
+    this.tokenRefreshPromise = this.fetchAccessToken().finally(() => {
+      this.tokenRefreshPromise = undefined;
+    });
     return this.tokenRefreshPromise;
   }
 
@@ -1653,12 +1742,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
 
     const response = await this.executeFetchWithTimeout(tokenEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: body.toString(),
-      });
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
 
     if (!response.ok) {
       const message = await this.buildErrorMessage(response, 'fetch_token');
@@ -1707,7 +1796,9 @@ const requireTrimmedEnv = (key: string): string => {
   return value;
 };
 
-const requireProvisionerEnvForLocalKeycloak = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string => {
+const requireProvisionerEnvForLocalKeycloak = (
+  key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'
+): string => {
   const envKey = `KEYCLOAK_PROVISIONER_${key}`;
   const value = process.env[envKey];
   if (!value) {
@@ -1716,7 +1807,9 @@ const requireProvisionerEnvForLocalKeycloak = (key: 'BASE_URL' | 'REALM' | 'CLIE
   return value;
 };
 
-export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK_ADMIN_REALM')): KeycloakAdminClientConfig => ({
+export const getKeycloakAdminClientConfigFromEnv = (
+  realm = requireEnv('KEYCLOAK_ADMIN_REALM')
+): KeycloakAdminClientConfig => ({
   baseUrl: requireTrimmedEnv('KEYCLOAK_ADMIN_BASE_URL'),
   realm,
   adminRealm: requireEnv('KEYCLOAK_ADMIN_REALM'),
@@ -1729,9 +1822,10 @@ export const getKeycloakTenantAdminClientConfigFromEnv = (input: {
   readonly clientId: string;
   readonly clientSecret: string;
 }): KeycloakAdminClientConfig => ({
-  baseUrl: process.env.KEYCLOAK_ADMIN_BASE_URL?.trim()
-    || process.env.KEYCLOAK_PROVISIONER_BASE_URL?.trim()
-    || requireTrimmedEnv('KEYCLOAK_ADMIN_BASE_URL'),
+  baseUrl:
+    process.env.KEYCLOAK_ADMIN_BASE_URL?.trim() ||
+    process.env.KEYCLOAK_PROVISIONER_BASE_URL?.trim() ||
+    requireTrimmedEnv('KEYCLOAK_ADMIN_BASE_URL'),
   realm: input.realm,
   adminRealm: input.realm,
   clientId: input.clientId,

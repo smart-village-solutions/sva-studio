@@ -460,6 +460,15 @@ Referenzen:
 - Token-Tests belegen unverändertes MCP-Verhalten sowie SSF-spezifische
   Negativfälle für Konfiguration, Issuer/JWKS, Client und Action.
 
+### Qualitätsziele für Keycloak-Rollenzuweisungen
+
+- Tenant-Scope und `iam.role.write` werden serverseitig erzwungen.
+- Klassifikationstests schützen Built-ins, Service-, Plattformrollen und den
+  `system_admin`-Sonderpfad; reguläre Realm-Rollen bleiben allowlist-frei.
+- Adaptertests unterscheiden direkte und effektive Composite-Projektionen.
+- Jede Mutation ist ein einzelnes Delta und gilt erst nach Re-Read als Erfolg.
+- UI-Zustände benennen direkt, geerbt und geschützt zusätzlich zur Farbe.
+
 #### Abschlussnachweis für den Events-Inhaltseditor
 
 - `EventsDetailContentTab` ist von 809 auf 14 Funktionszeilen und von 41/57 auf 1/1 zyklomatische/kognitive Komplexität reduziert.

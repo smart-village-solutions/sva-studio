@@ -1,5 +1,13 @@
 export const iamAdminVersion = '0.0.1';
 
+export {
+  classifyTenantKeycloakRole,
+  isTenantKeycloakRoleVisible,
+  type TenantKeycloakRoleAssignmentPolicy,
+  type TenantKeycloakRoleCategory,
+  type TenantKeycloakRoleDescriptor,
+} from './keycloak-role-assignment-policy.js';
+
 export type IamAdminPackageRole =
   'users' | 'roles' | 'groups' | 'organizations' | 'tenant-admin-client';
 

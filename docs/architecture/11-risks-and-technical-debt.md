@@ -650,3 +650,13 @@ Referenzen:
   Vor produktiver Pfadfreigabe muss er um den fest definierten Service-Zugriff
   erweitert und mit der verifizierten SSF-IAM-Projektionsrevision verbunden
   werden. Bis dahin bleibt das Feature standardmäßig deaktiviert.
+
+### Fortschreibung 2026-09: Administrative Keycloak-Rollen
+
+- Risiko: Keycloak- und Studio-Zustand können bei Timeout kurzfristig
+  auseinanderliegen. Maßnahme: kausaler Re-Read, idempotente Deltas und
+  expliziter Reconciliation-Konflikt statt Erfolg auf Verdacht.
+- Risiko: Externe Rollen könnten versehentlich Studio-Rechte verleihen.
+  Maßnahme: getrennte Verträge und ausschließlich lokale Permission-Auflösung.
+- Betriebsrisiko: Neue reservierte Keycloak- oder Plattformrollen benötigen
+  eine Ergänzung der zentralen Schutzpolicy und ihrer Tabellentests.

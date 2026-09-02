@@ -147,6 +147,16 @@ describe('RolesPage', () => {
       target: { value: '' },
     });
 
+    fireEvent.change(screen.getByLabelText('Rollentyp'), {
+      target: { value: 'system' },
+    });
+    expect(screen.getAllByText('system_admin').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('editor')).toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText('Rollentyp'), {
+      target: { value: 'all' },
+    });
+
     fireEvent.click(screen.getByRole('button', { name: 'Rolle' }));
 
     expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe(

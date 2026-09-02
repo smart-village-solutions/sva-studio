@@ -1,4 +1,3 @@
-// This file exists so client and server code can share auth routes type-safely.
 export type AuthRoutePath =
   | '/auth/login'
   | '/auth/account-action'
@@ -16,8 +15,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/authorize-performance'
   | '/api/v1/iam/users'
   | '/api/v1/iam/users/sync-keycloak'
-  | '/api/v1/iam/users/$userId'
-  | '/api/v1/iam/users/$userId/keycloak-roles'
+  | `/api/v1/iam/users/$userId${'' | '/keycloak-roles'}`
   | '/api/v1/iam/users/$userId/deactivate'
   | '/api/v1/iam/users/$userId/reprovision-mainserver'
   | '/api/v1/iam/users/$userId/send-password-setup-email'

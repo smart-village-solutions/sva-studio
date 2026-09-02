@@ -67,11 +67,6 @@ const instanceIds = (process.env.SVA_ALLOWED_INSTANCE_IDS ?? '')
   .filter((entry) => entry.length > 0);
 const parentDomain = process.env.SVA_PARENT_DOMAIN?.trim() ?? '';
 const tenantAdminClientId = process.env.SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-admin';
-const expectedHostnames = instanceIds.map((instanceId) => ({
-  hostname: `${instanceId}.${parentDomain}`,
-  instanceId,
-}));
-
 if (!appDbPassword) {
   throw new Error('APP_DB_PASSWORD fehlt fuer den Bootstrap-Job.');
 }
@@ -206,11 +201,10 @@ if (
   const hostnameRows = instanceIds
     .map(
       (instanceId) =>
-        `(${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, true, 'runtime-bootstrap')`,
+        `(${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)})`,
     )
     .join(',\n');
   const instanceIdList = instanceIds.map((instanceId) => sqlLiteral(instanceId)).join(', ');
-  const primaryHostnameList = expectedHostnames.map(({ hostname }) => sqlLiteral(hostname)).join(', ');
 
   statements.push(
     `INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id, tenant_admin_client_id)
@@ -219,10 +213,10 @@ ${instanceRows}
 ON CONFLICT (id) DO UPDATE
 SET
   status = EXCLUDED.status,
-  parent_domain = EXCLUDED.parent_domain,
-  primary_hostname = EXCLUDED.primary_hostname,
-  auth_realm = EXCLUDED.auth_realm,
-  auth_client_id = EXCLUDED.auth_client_id,
+  parent_domain = COALESCE(NULLIF(iam.instances.parent_domain, ''), EXCLUDED.parent_domain),
+  primary_hostname = COALESCE(NULLIF(iam.instances.primary_hostname, ''), EXCLUDED.primary_hostname),
+  auth_realm = COALESCE(NULLIF(iam.instances.auth_realm, ''), EXCLUDED.auth_realm),
+  auth_client_id = COALESCE(NULLIF(iam.instances.auth_client_id, ''), EXCLUDED.auth_client_id),
   tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id),
   updated_at = NOW();`,
   );
@@ -345,21 +339,31 @@ END
 $permission_catalog_reconcile$;`,
   );
   statements.push(
-    `UPDATE iam.instance_hostnames
-SET
-  is_primary = false
-WHERE instance_id IN (${instanceIdList})
-  AND is_primary = true
-  AND hostname NOT IN (${primaryHostnameList});`,
-  );
-  statements.push(
     `INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
-VALUES
+SELECT
+  expected.hostname,
+  expected.instance_id,
+  instances.primary_hostname = expected.hostname,
+  'runtime-bootstrap'
+FROM (
+  VALUES
 ${hostnameRows}
+) AS expected(hostname, instance_id)
+JOIN iam.instances AS instances
+  ON instances.id = expected.instance_id
 ON CONFLICT (hostname) DO UPDATE
 SET
   instance_id = EXCLUDED.instance_id,
-  is_primary = EXCLUDED.is_primary;`,
+  is_primary = CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM iam.instances AS instances
+      WHERE instances.id = EXCLUDED.instance_id
+        AND instances.primary_hostname = EXCLUDED.hostname
+    ) THEN EXCLUDED.is_primary
+    ELSE false
+  END,
+  created_by = EXCLUDED.created_by;`,
   );
   if ((process.env.SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD ?? 'true').trim().toLowerCase() !== 'false') {
     statements.push(
@@ -369,23 +373,15 @@ DECLARE
 BEGIN
   SELECT COALESCE(
     ARRAY(
-      SELECT expected.hostname
-      FROM (
-        VALUES ${expectedHostnames
-          .map(({ hostname, instanceId }) => `(${sqlLiteral(hostname)}, ${sqlLiteral(instanceId)})`)
-          .join(',\n        ')}
-      ) AS expected(hostname, instance_id)
-      LEFT JOIN (
-        SELECT hostname.hostname, instance.id AS instance_id
-        FROM iam.instance_hostnames hostname
-        JOIN iam.instances instance
-          ON instance.id = hostname.instance_id
-        WHERE hostname.is_primary = true
-      ) actual
-        ON actual.hostname = expected.hostname
-       AND actual.instance_id = expected.instance_id
-      WHERE actual.instance_id IS NULL
-      ORDER BY expected.hostname
+      SELECT instances.primary_hostname
+      FROM iam.instances AS instances
+      LEFT JOIN iam.instance_hostnames AS hostname
+        ON hostname.instance_id = instances.id
+       AND hostname.hostname = instances.primary_hostname
+       AND hostname.is_primary = true
+      WHERE instances.id IN (${instanceIdList})
+        AND hostname.instance_id IS NULL
+      ORDER BY instances.primary_hostname
     ),
     ARRAY[]::text[]
   )

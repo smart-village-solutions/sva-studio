@@ -285,12 +285,24 @@ export const createPostgresSsfAuthorizationProjectionStore = (
 ): SsfAuthorizationProjectionStore => ({
   async withTenantLock(instanceId, operation) {
     const client = await pool.connect();
+    let lockAcquired = false;
+    let primaryError: unknown;
     try {
       await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [instanceId]);
+      lockAcquired = true;
       return await operation(createLockedProjectionStore(client));
+    } catch (error) {
+      primaryError = error;
+      throw error;
     } finally {
       try {
-        await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [instanceId]);
+        if (lockAcquired) {
+          try {
+            await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [instanceId]);
+          } catch (unlockError) {
+            if (primaryError === undefined) throw unlockError;
+          }
+        }
       } finally {
         client.release();
       }

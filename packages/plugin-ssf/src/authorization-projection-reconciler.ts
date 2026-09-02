@@ -1,4 +1,7 @@
-import type { SsfAuthorizationProjection } from './authorization-projection.js';
+import {
+  normalizeSsfAuthorizationProjection,
+  type SsfAuthorizationProjection,
+} from './authorization-projection.js';
 import type { SsfAuthorizationProjectionState } from './authorization-projection-repository.js';
 
 export interface SsfAuthorizationProjectionLockedStore {
@@ -76,9 +79,10 @@ export const createSsfAuthorizationProjectionReconciler =
   }) =>
   async (
     desired: SsfAuthorizationProjection
-  ): Promise<SsfAuthorizationProjectionReconcileResult> =>
-    dependencies.store.withTenantLock(desired.instanceId, async (store) => {
-      const staged = await store.stage(desired);
+  ): Promise<SsfAuthorizationProjectionReconcileResult> => {
+    const normalizedDesired = normalizeSsfAuthorizationProjection(desired);
+    return dependencies.store.withTenantLock(normalizedDesired.instanceId, async (store) => {
+      const staged = await store.stage(normalizedDesired);
       if (
         staged.status === 'ready' &&
         staged.confirmedRevision === staged.desiredRevision &&
@@ -154,5 +158,5 @@ export const createSsfAuthorizationProjectionReconciler =
         });
         return { status: 'blocked', generation: staged.generation, reason };
       }
-    }
-  );
+    });
+  };

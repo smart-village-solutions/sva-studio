@@ -128,6 +128,43 @@ describe('SSF authorization projection repository', () => {
     expect(client.release).toHaveBeenCalledOnce();
   });
 
+  it('does not attempt to unlock when lock acquisition fails', async () => {
+    const acquisitionError = new Error('lock unavailable');
+    const client = {
+      query: vi.fn().mockRejectedValue(acquisitionError),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+    const store = createPostgresSsfAuthorizationProjectionStore(pool);
+
+    await expect(store.withTenantLock('tenant-a', vi.fn())).rejects.toBe(acquisitionError);
+
+    expect(client.query).toHaveBeenCalledOnce();
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('preserves the reconcile failure when unlocking also fails', async () => {
+    const reconcileError = new Error('projection failed');
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockRejectedValueOnce(new Error('unlock failed')),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+    const store = createPostgresSsfAuthorizationProjectionStore(pool);
+
+    await expect(
+      store.withTenantLock('tenant-a', async () => {
+        throw reconcileError;
+      })
+    ).rejects.toBe(reconcileError);
+
+    expect(client.query).toHaveBeenCalledTimes(2);
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
   it('blocks a mismatching Keycloak read-back without confirming it', async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1, rows: [] });
     await expect(

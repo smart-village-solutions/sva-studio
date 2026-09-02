@@ -91,6 +91,21 @@ describe('SSF authorization projection reconciler', () => {
     expect(lockedStore.markBlocked).not.toHaveBeenCalled();
   });
 
+  it('normalizes the tenant identifier before acquiring the tenant lock', async () => {
+    const normalized = projection('tenant-a');
+    const desired = { ...normalized, instanceId: ' tenant-a ' };
+    const { store, lockedStore, target, reconcile } = fixtures(normalized);
+
+    await expect(reconcile(desired)).resolves.toMatchObject({ status: 'ready' });
+
+    expect(store.withTenantLock).toHaveBeenCalledWith('tenant-a', expect.any(Function));
+    expect(lockedStore.stage).toHaveBeenCalledWith(normalized);
+    expect(target.reconcile).toHaveBeenCalledWith(
+      normalized,
+      createSsfAuthorizationRevision(normalized)
+    );
+  });
+
   it('does not touch Keycloak for an already converged projection', async () => {
     const desired = projection();
     const revision = createSsfAuthorizationRevision(desired);

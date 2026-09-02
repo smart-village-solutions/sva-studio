@@ -227,6 +227,11 @@ describe('ContentOwnershipPanel', () => {
     expect(document.activeElement).toBe(
       screen.getByRole('option', { name: 'Stadt Organisation' })
     );
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+    const targetSelect = screen.getByRole('combobox', { name: /^Neuer Inhaber/u });
+    expect(document.activeElement).toBe(targetSelect);
+    fireEvent.click(targetSelect);
     fireEvent.change(screen.getByRole('textbox', { name: 'Suchen' }), {
       target: { value: '  Stadt  ' },
     });

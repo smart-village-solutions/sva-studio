@@ -61,7 +61,14 @@ export const ContentOwnershipDialog = ({
   onSuccess: () => void;
 }>) => (
   <Dialog open={open} onOpenChange={(nextOpen) => !state.pending && setOpen(nextOpen)}>
-    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+    <DialogContent
+      className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+      onEscapeKeyDown={(event) => {
+        if (document.activeElement?.closest('[data-content-ownership-target-popover]')) {
+          event.preventDefault();
+        }
+      }}
+    >
       <DialogHeader>
         <DialogTitle>{labels.dialogTitle}</DialogTitle>
         <DialogDescription>{labels.dialogDescription}</DialogDescription>

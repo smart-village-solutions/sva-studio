@@ -24,6 +24,15 @@ export type ResolvedKeycloakRoleTarget = {
 };
 
 const ROLE_PAGE_SIZE = 100;
+const MAX_ROLE_PAGES = 1000;
+
+const createRoleCatalogPaginationError = () =>
+  new KeycloakAdminRequestError({
+    message: 'Keycloak role catalog pagination did not terminate',
+    statusCode: 502,
+    code: 'role_catalog_pagination_invalid',
+    retryable: false,
+  });
 
 const readManagedBy = (role: IdentityRole): 'studio' | 'external' | 'keycloak_builtin' => {
   const policy = classifyTenantKeycloakRole(role);
@@ -177,13 +186,18 @@ export const loadKeycloakRoleCatalog = async (
 ): Promise<readonly IdentityRole[]> => {
   if (!provider.countRoles) {
     const roles: IdentityRole[] = [];
-    for (let page = 0; ; page += 1) {
+    const pageSignatures = new Set<string>();
+    for (let page = 0; page < MAX_ROLE_PAGES; page += 1) {
       const pageRoles = await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
         provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
       );
+      if (pageRoles.length < ROLE_PAGE_SIZE) return [...roles, ...pageRoles];
+      const signature = pageRoles.map((role) => role.id ?? role.externalName).join('\u0000');
+      if (pageSignatures.has(signature)) throw createRoleCatalogPaginationError();
+      pageSignatures.add(signature);
       roles.push(...pageRoles);
-      if (pageRoles.length < ROLE_PAGE_SIZE) return roles;
     }
+    throw createRoleCatalogPaginationError();
   }
   const total = await trackKeycloakCall(
     'count_keycloak_role_catalog',

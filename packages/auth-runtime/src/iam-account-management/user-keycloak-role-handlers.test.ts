@@ -23,6 +23,20 @@ describe('Keycloak role catalog pagination', () => {
     expect(listRoles).toHaveBeenNthCalledWith(2, { first: 100, max: 100 });
   });
 
+  it('fails closed when a count-less provider repeats a full page', async () => {
+    const repeatedPage = Array.from({ length: 100 }, (_, index) => ({
+      externalName: `role-${index}`,
+    }));
+
+    await expect(
+      loadKeycloakRoleCatalog({ listRoles: vi.fn(async () => repeatedPage) } as never)
+    ).rejects.toMatchObject({
+      name: 'KeycloakAdminRequestError',
+      code: 'role_catalog_pagination_invalid',
+      statusCode: 502,
+    });
+  });
+
   it('loads counted pages sequentially to avoid unbounded Keycloak fan-out', async () => {
     let activeRequests = 0;
     let maximumActiveRequests = 0;

@@ -890,6 +890,10 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   tenantgebundene `ssf.*`-Permissions und ihre Revision in den jeweiligen
   SSF-Client des gemeinsamen Tenant-Realms. Projektionsfehler sperren Client
   und Plugin-Readiness.
+- Das SSF-Plugin enthält für den nachgelagerten Session-Widerruf einen schmalen
+  HTTP-Consumer. Basis- und Token-URL sowie die Credentials der getrennten
+  technischen Identität `sva-studio-ssf-control-plane` stammen aus dem
+  Deployment; das Plugin-SDK erhält dafür keine neue Abstraktion.
 - Root-Actions des SSF-Plugins werden getrennt als Plattformbeitrag für
   `instance_registry_admin` registriert und niemals in Tenant-Tokens projiziert.
 

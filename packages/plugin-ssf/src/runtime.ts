@@ -3,6 +3,7 @@ export * from './authorization-projection-repository.js';
 export * from './authorization-projection-reconciler.js';
 export * from './authorization-projection-runtime.js';
 export * from './keycloak-authorization-projection-target.js';
+export * from './session-revocation-client.js';
 export * from './database.js';
 export * from './html.js';
 export * from './handler.js';

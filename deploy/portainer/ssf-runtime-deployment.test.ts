@@ -15,6 +15,7 @@ describe('SSF runtime deployment contract', () => {
       expect(profile).not.toContain('SVA_STUDIO_SSF_DATABASE_URL=');
       expect(profile).not.toContain('SSF_PLUGIN_RUNTIME_DB_PASSWORD=');
       expect(profile).not.toContain('SVA_STUDIO_SSF_RUNTIME_ISSUER=');
+      expect(profile).not.toContain('SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_SECRET=');
     }
   });
 
@@ -30,6 +31,18 @@ describe('SSF runtime deployment contract', () => {
       "SVA_STUDIO_SSF_RUNTIME_ENABLED: '${SVA_STUDIO_SSF_RUNTIME_ENABLED:-false}'"
     );
     expect(compose).toContain("SVA_STUDIO_SSF_DATABASE_URL: '${SVA_STUDIO_SSF_DATABASE_URL:-}'");
+    expect(compose).toContain(
+      "SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL: '${SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL:-}'"
+    );
+    expect(compose).toContain(
+      "SVA_STUDIO_SSF_CONTROL_PLANE_TOKEN_URL: '${SVA_STUDIO_SSF_CONTROL_PLANE_TOKEN_URL:-}'"
+    );
+    expect(compose).toContain(
+      "SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_ID: '${SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_ID:-sva-studio-ssf-control-plane}'"
+    );
+    expect(compose).toContain(
+      "SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_SECRET: '${SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_SECRET:-}'"
+    );
     expect(entrypoint).toContain('node "${SSF_PLUGIN_MIGRATOR}" prepare');
     expect(entrypoint).toContain('"${GOOSE_WRAPPER}" -dir "${SSF_PLUGIN_MIGRATIONS_DIR}"');
     expect(entrypoint).toContain('node "${SSF_PLUGIN_MIGRATOR}" reconcile');

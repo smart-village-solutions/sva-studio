@@ -85,7 +85,7 @@ describe('SSF authorization projection reconciler', () => {
       readBack: desired,
       generation: 1,
     });
-    expect(target.revokeTenantSessions).toHaveBeenCalledWith('tenant-a');
+    expect(target.revokeTenantSessions).toHaveBeenCalledWith('tenant-a', revision);
     expect(target.resumeTokenIssuance).toHaveBeenCalledWith('tenant-a');
     expect(lockedStore.markSessionsRevoked).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
@@ -176,9 +176,18 @@ describe('SSF authorization projection reconciler', () => {
     await tenantA.reconcile(projection('tenant-a'));
     await tenantB.reconcile(projection('tenant-b'));
 
-    expect(tenantA.target.revokeTenantSessions).toHaveBeenCalledWith('tenant-a');
-    expect(tenantA.target.revokeTenantSessions).not.toHaveBeenCalledWith('tenant-b');
-    expect(tenantB.target.revokeTenantSessions).toHaveBeenCalledWith('tenant-b');
+    expect(tenantA.target.revokeTenantSessions).toHaveBeenCalledWith(
+      'tenant-a',
+      createSsfAuthorizationRevision(projection('tenant-a'))
+    );
+    expect(tenantA.target.revokeTenantSessions).not.toHaveBeenCalledWith(
+      'tenant-b',
+      expect.any(String)
+    );
+    expect(tenantB.target.revokeTenantSessions).toHaveBeenCalledWith(
+      'tenant-b',
+      createSsfAuthorizationRevision(projection('tenant-b'))
+    );
     expect(createSsfAuthorizationRevision(projection('tenant-a'))).not.toBe(
       createSsfAuthorizationRevision(projection('tenant-b'))
     );

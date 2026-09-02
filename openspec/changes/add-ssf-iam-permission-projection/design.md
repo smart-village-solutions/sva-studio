@@ -66,6 +66,73 @@ und erfolgreichem SSF-Session-Widerruf wieder. Der Studio-Client und die
 gemeinsame Realm-Sitzung werden dabei nicht verändert. Ein Fehler in einer
 Phase lässt den SSF-Client deaktiviert und die Projektion nicht bereit.
 
+Die noch offene produktive Clientauflösung darf weder Realm noch Client-ID aus
+einem Projektionsauftrag übernehmen. Sie muss die kanonische Instanz und deren
+Tenant-Realm aus der Instanz-Registry beziehen. Dieser Change führt dafür
+bewusst keine neue generische Plugin-SDK- oder Provisionierungsschicht ein.
+
+Die pluginseitige Widerrufsgrenze erzwingt bereits eine begrenzte Gesamtlaufzeit
+und reicht ein `AbortSignal` an den künftigen Transportadapter weiter. Der
+produktive SSF-Dienst stellt aktuell jedoch nur den sitzungsbezogenen Endpunkt
+`DELETE /api/admin/session/{session_id}/terminate` bereit; sein Sessionmodell
+kennt noch keinen Tenant. Der produktive Adapter bleibt deshalb bewusst offen,
+bis SSF im Rahmen seiner Multi-Tenant-Fähigkeit einen authentifizierten,
+idempotenten Sammelwiderruf mit expliziter Tenantbindung definiert. Aus einer
+Studio-Instanz-ID werden weder Session-IDs erraten noch realmweite
+Keycloak-Logouts abgeleitet.
+
+### Studio veröffentlicht den SSF-Widerrufsvertrag als Consumer zuerst
+
+Die fehlende Provider-Implementierung blockiert nicht den Abschluss der
+Studio-Seite. Studio implementiert und testet vorab folgenden festen
+Consumer-Vertrag:
+
+```http
+POST /internal/control-plane/v1/session-revocations
+Authorization: Bearer <service-token>
+X-Studio-Instance-Id: <canonical-instance-id>
+X-Correlation-Id: <correlation-id>
+Idempotency-Key: ssf-authorization:<sha256-of-instance-and-revision>
+Content-Type: application/json
+
+{
+  "authorizationRevision": "sha256:<lowercase-hex>"
+}
+```
+
+Der Provider antwortet mit `204 No Content` erst, wenn alle vor dem Aufruf
+bestehenden Sessions genau dieses Tenants widerrufen sind. Ein wiederholter
+Aufruf mit demselben Idempotency-Key und Payload ist erfolgreich und ebenfalls
+`204`; derselbe Schlüssel mit abweichendem Payload ist ein Konflikt. Der
+Vertrag enthält weder Benutzerkennungen noch Session-IDs und erlaubt keine
+tenantübergreifende oder realmweite Operation.
+
+Studio verwendet dafür eine eigene technische Identität
+`sva-studio-ssf-control-plane`, deren Credentials deploymentseitig
+bereitgestellt werden. Ihr Token besitzt die Audience
+`ssf-control-plane`, die Action `ssf.sessions.revoke` und repräsentiert
+ausschließlich Studio als aufrufendes Backend. Der vorhandene Client
+`ssf-runtime` bleibt der gegenläufigen Kommunikation SSF → Studio vorbehalten.
+Das installationsweite Token erhält keinen Tenantclaim; die Tenantbindung
+entsteht aus dem durch die Studio-Registry bestätigten
+`X-Studio-Instance-Id`-Wert und muss auf SSF-Seite gegen dessen eigenes
+Tenantmodell aufgelöst werden.
+
+Der serverseitige SSF-Plugin-Adapter besitzt Pfad, Request- und
+Response-Vertrag, Idempotenzschlüssel sowie fachliche Fehlerabbildung. Ein
+kleiner injizierbarer Client-Credentials-Provider liefert ihm kurzlebige
+Tokens. Basis-URL, Token-URL, Client-ID und Secret stammen ausschließlich aus
+Deploymentkonfiguration. Dafür wird weder das Plugin-SDK erweitert noch eine generische
+Root-Client-Provisionierung eingeführt.
+
+Der Aufruf respektiert das vorhandene `AbortSignal`; Timeout und Netzwerkfehler
+werden durch den bestehenden Lifecycle erneut versucht. Der Adapter selbst
+führt keine verschachtelte Retry-Schleife ein. `429` und `5xx` werden als
+retrybar klassifiziert; `400`, `401`, `403`, `404` sowie ein
+Idempotenzkonflikt bleiben blockiert. Bis ein echter SSF-Provider existiert,
+beweist ein simulierter HTTP-Provider den Consumer-Vertrag. Produktives
+Enablement und Staging-E2E bleiben gesperrt.
+
 ### Der bestehende Rolloutpfad bleibt maßgeblich
 
 Bootstrap beziehungsweise Plugin-Lifecycle führen den Reconcile aus;
@@ -80,3 +147,6 @@ kanonischen Promote-Workflow.
   erforderlichen Nachbedingungen bestätigt sind.
 - Revisionen dürfen keine PII oder frei wählbaren Tenantwerte in Logs und
   Metriklabels übertragen.
+- Consumer-first kann bis zur SSF-Implementierung nur Studio-Vertragstreue,
+  nicht die Provider-Konformität beweisen. Der exakte Staging-E2E bleibt daher
+  ein separates Freigabegate.

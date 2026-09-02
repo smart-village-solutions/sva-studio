@@ -283,7 +283,10 @@ const createLockedProjectionStore = (
 export const createPostgresSsfAuthorizationProjectionStore = (
   pool: Pool
 ): SsfAuthorizationProjectionStore => ({
-  async withTenantLock(instanceId, operation) {
+  async withTenantLock<T>(
+    instanceId: string,
+    operation: (store: SsfAuthorizationProjectionLockedStore) => Promise<T>
+  ) {
     const client = await pool.connect();
     let lockAcquired = false;
     let operationFailed = false;

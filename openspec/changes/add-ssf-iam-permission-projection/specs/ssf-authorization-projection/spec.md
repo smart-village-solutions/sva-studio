@@ -48,7 +48,10 @@ Das System SHALL nach bestätigter Änderung der effektiven SSF-Permissions alle
 betroffenen bestehenden SSF-Sessions über eine tenantgebundene SSF-
 Sessiongrenze widerrufen, bevor der neue Zustand als vollständig konvergiert
 gilt. Ein reiner SSF-Permission-Wechsel MUST NOT einen realmweiten
-Keycloak-Benutzerlogout auslösen.
+Keycloak-Benutzerlogout auslösen. Studio MUST den ausgehenden Aufruf mit einer
+eigenen technischen Service-Identität authentifizieren, an die kanonische
+Studio-Instanz und die bestätigte `authorizationRevision` binden und
+idempotent sowie mit begrenzter Laufzeit ausführen.
 
 #### Scenario: Permission-Änderung konvergiert
 
@@ -58,3 +61,17 @@ Keycloak-Benutzerlogout auslösen.
 - **AND** enthalten neu ausgestellte Tokens die neue Revision
 - **AND** bleiben Sessions anderer Tenants unverändert
 - **AND** bleiben Studio-Sessions desselben Benutzers bestehen
+
+#### Scenario: Studio wiederholt einen unbestätigten Widerruf
+
+- **GIVEN** Studio hat für einen Tenant und eine bestätigte Revision einen Widerruf angefordert, aber keine erfolgreiche Antwort erhalten
+- **WHEN** der begrenzte Retry denselben Widerruf erneut sendet
+- **THEN** verwendet Studio denselben deterministischen Idempotency-Key und denselben Payload
+- **AND** wird kein anderer Tenant adressiert
+
+#### Scenario: SSF-Provider ist noch nicht verfügbar
+
+- **GIVEN** der Studio-Consumer ist implementiert, aber SSF stellt den vereinbarten Provider noch nicht bereit
+- **WHEN** der Plugin-Lifecycle den Widerruf ausführt
+- **THEN** bleibt die Projektion außerhalb von `ready`
+- **AND** bleiben produktive Runtime-Freigabe und neue SSF-Tokenausstellung gesperrt

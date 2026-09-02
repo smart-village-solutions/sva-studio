@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createConfiguredSsfKeycloakAuthorizationProjectionTarget,
   createSsfAuthorizationRevision,
   createSsfKeycloakAuthorizationProjectionTarget,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
@@ -52,6 +53,43 @@ const createClient = () => {
 };
 
 describe('SSF Keycloak authorization projection target', () => {
+  it('fails closed when the deployment has no SSF control-plane configuration', () => {
+    const { client } = createClient();
+
+    expect(() =>
+      createConfiguredSsfKeycloakAuthorizationProjectionTarget({
+        environment: {},
+        resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
+      })
+    ).toThrow('ssf_control_plane_configuration_missing');
+  });
+
+  it('composes the configured consumer into the tenant projection target', async () => {
+    const { client } = createClient();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ access_token: 'service-token' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const target = createConfiguredSsfKeycloakAuthorizationProjectionTarget({
+      environment: {
+        SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL: 'https://ssf.example.test',
+        SVA_STUDIO_SSF_CONTROL_PLANE_TOKEN_URL:
+          'https://keycloak.example.test/realms/ssf/protocol/openid-connect/token',
+        SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_SECRET: 'secret',
+      },
+      fetchImpl,
+      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
+    });
+    const authorizationRevision = createSsfAuthorizationRevision(desiredProjection());
+
+    await target.revokeTenantSessions('tenant-a', authorizationRevision);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
+      'X-Studio-Instance-Id': 'tenant-a',
+    });
+  });
+
   it('projects claims onto the existing tenant subject and verifies a complete read-back', async () => {
     const { attributes, client } = createClient();
     const target = createSsfKeycloakAuthorizationProjectionTarget({
@@ -122,9 +160,53 @@ describe('SSF Keycloak authorization projection target', () => {
       revokeSsfTenantSessions,
     });
 
-    await target.revokeTenantSessions('tenant-a');
+    const revision = createSsfAuthorizationRevision(desiredProjection());
+    await target.revokeTenantSessions('tenant-a', revision);
 
-    expect(revokeSsfTenantSessions).toHaveBeenCalledExactlyOnceWith('tenant-a');
+    expect(revokeSsfTenantSessions).toHaveBeenCalledExactlyOnceWith(
+      'tenant-a',
+      revision,
+      expect.any(AbortSignal)
+    );
+  });
+
+  it('bounds SSF session revocation even when the downstream call ignores aborts', async () => {
+    vi.useFakeTimers();
+    try {
+      const { client } = createClient();
+      let receivedSignal: AbortSignal | undefined;
+      const target = createSsfKeycloakAuthorizationProjectionTarget({
+        resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
+        revokeSsfTenantSessions: vi.fn(async (_instanceId, _authorizationRevision, signal) => {
+          receivedSignal = signal;
+          await new Promise<void>(() => undefined);
+        }),
+        sessionRevocationTimeoutMs: 25,
+      });
+
+      const result = expect(
+        target.revokeTenantSessions('tenant-a', createSsfAuthorizationRevision(desiredProjection()))
+      ).rejects.toThrow('ssf_session_revocation_timeout');
+      await vi.advanceTimersByTimeAsync(25);
+
+      await result;
+      expect(receivedSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rejects an invalid SSF session revocation timeout', async () => {
+    const { client } = createClient();
+    const target = createSsfKeycloakAuthorizationProjectionTarget({
+      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
+      revokeSsfTenantSessions: vi.fn(async () => undefined),
+      sessionRevocationTimeoutMs: 0,
+    });
+
+    await expect(
+      target.revokeTenantSessions('tenant-a', createSsfAuthorizationRevision(desiredProjection()))
+    ).rejects.toThrow('ssf_session_revocation_timeout_invalid');
   });
 
   it('suspends and resumes only the tenant-local SSF client', async () => {

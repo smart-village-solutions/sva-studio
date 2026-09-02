@@ -21,6 +21,11 @@ werden.
   authentifiziert ausschließlich das Backend und ist nicht tenantgebunden.
 - Relevante Permission-Änderungen widerrufen bestehende SSF-Sessions und
   erzwingen eine erneute Tokenausstellung.
+- Studio authentifiziert ausgehende Control-Plane-Aufrufe mit deploymentseitig
+  bereitgestellten Credentials einer eigenen technischen Identität
+  `sva-studio-ssf-control-plane`; der gegenläufige SSF-Runtime-Client wird
+  nicht wiederverwendet. Eine neue generische Provisionierungsabstraktion ist
+  nicht Teil dieses Changes.
 - Reconcile, Retry, Audit, Readiness und Rollout-Evidenz werden im bestehenden
   Plugin-Lifecycle- und Promote-Pfad ergänzt.
 
@@ -35,14 +40,17 @@ werden.
 
 - `add-ssf-runtime-configuration-api`
 - `add-plugin-tenant-lifecycle`
-- der aus `add-ssf-tenant-administration` vorgezogene Voraussetzungsslice für
-  den deklarativen, tenantlokal provisionierten SSF-OIDC-Client
+- der tenantlokale SSF-OIDC-Client aus `add-ssf-tenant-administration`; seine
+  Provisionierung bleibt ein eigener, noch offener Lieferabschnitt
 - der freigegebene Permission-Katalog des SSF-Plugins
 
 ## Success Criteria
 
 - Claim, Host-Readiness und Runtime-Antwort verwenden für denselben Tenant
   exakt dieselbe verifizierte Revision.
+- Der Studio-Consumer für den tenantgebundenen SSF-Sammelwiderruf ist
+  produktionsfähig implementiert und gegen einen simulierten Provider
+  vertraglich getestet, bevor SSF die Provider-Seite bereitstellt.
 - Fehlende, veraltete oder gescheiterte Projektionen blockieren die
   Runtime-Konfiguration und neue SSF-Sessions.
 - Permission-Änderungen machen alte Tokens und Sessions nachweisbar unwirksam.

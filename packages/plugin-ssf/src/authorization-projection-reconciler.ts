@@ -40,7 +40,7 @@ export interface SsfAuthorizationProjectionTarget {
   suspendTokenIssuance(instanceId: string): Promise<void>;
   reconcile(projection: SsfAuthorizationProjection, authorizationRevision: string): Promise<void>;
   readBack(instanceId: string): Promise<SsfAuthorizationProjection>;
-  revokeTenantSessions(instanceId: string): Promise<void>;
+  revokeTenantSessions(instanceId: string, authorizationRevision: string): Promise<void>;
   resumeTokenIssuance(instanceId: string): Promise<void>;
 }
 
@@ -144,7 +144,7 @@ export const createSsfAuthorizationProjectionReconciler =
         }
 
         try {
-          await dependencies.target.revokeTenantSessions(staged.instanceId);
+          await dependencies.target.revokeTenantSessions(staged.instanceId, staged.desiredRevision);
         } catch {
           throw new SsfProjectionPhaseError('session_revocation_failed');
         }

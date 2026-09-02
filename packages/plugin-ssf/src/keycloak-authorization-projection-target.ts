@@ -6,6 +6,10 @@ import {
   ssfAuthorizationProjectionSchema,
 } from './authorization-projection.js';
 import type { SsfAuthorizationProjectionTarget } from './authorization-projection-reconciler.js';
+import {
+  createConfiguredSsfSessionRevocationClient,
+  readSsfControlPlaneClientConfig,
+} from './session-revocation-client.js';
 
 type KeycloakAttributes = Readonly<Record<string, readonly string[]>>;
 
@@ -41,8 +45,37 @@ export type SsfKeycloakProjectionTenant = Readonly<{
 }>;
 
 const PAGE_SIZE = 100;
+const DEFAULT_SESSION_REVOCATION_TIMEOUT_MS = 10_000;
 const CLAIM_NAMES = Object.values(SSF_TOKEN_CLAIMS);
 const CLAIM_NAME_SET = new Set<string>(CLAIM_NAMES);
+
+const withSessionRevocationTimeout = async <T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number
+): Promise<T> => {
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error('ssf_session_revocation_timeout'));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation(controller.signal), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
+const resolveSessionRevocationTimeoutMs = (configuredTimeoutMs: number | undefined): number => {
+  const timeoutMs = configuredTimeoutMs ?? DEFAULT_SESSION_REVOCATION_TIMEOUT_MS;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error('ssf_session_revocation_timeout_invalid');
+  }
+  return timeoutMs;
+};
 
 const listAllUsers = async (
   client: SsfKeycloakProjectionClient
@@ -118,7 +151,12 @@ const requireTenant = async (
 
 export const createSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
   readonly resolveTenant: (instanceId: string) => Promise<SsfKeycloakProjectionTenant | null>;
-  readonly revokeSsfTenantSessions: (instanceId: string) => Promise<void>;
+  readonly revokeSsfTenantSessions: (
+    instanceId: string,
+    authorizationRevision: string,
+    signal: AbortSignal
+  ) => Promise<void>;
+  readonly sessionRevocationTimeoutMs?: number;
 }): SsfAuthorizationProjectionTarget => ({
   async suspendTokenIssuance(instanceId) {
     const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
@@ -202,9 +240,15 @@ export const createSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
     return projection;
   },
 
-  async revokeTenantSessions(instanceId) {
+  async revokeTenantSessions(instanceId, authorizationRevision) {
+    const sessionRevocationTimeoutMs = resolveSessionRevocationTimeoutMs(
+      dependencies.sessionRevocationTimeoutMs
+    );
     await requireTenant(dependencies.resolveTenant, instanceId);
-    await dependencies.revokeSsfTenantSessions(instanceId);
+    await withSessionRevocationTimeout(
+      (signal) => dependencies.revokeSsfTenantSessions(instanceId, authorizationRevision, signal),
+      sessionRevocationTimeoutMs
+    );
   },
 
   async resumeTokenIssuance(instanceId) {
@@ -212,3 +256,26 @@ export const createSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
     await tenant.client.setOidcClientEnabled(tenant.clientId, true);
   },
 });
+
+export const createConfiguredSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
+  readonly resolveTenant: (instanceId: string) => Promise<SsfKeycloakProjectionTenant | null>;
+  readonly environment?: NodeJS.ProcessEnv;
+  readonly fetchImpl?: typeof fetch;
+  readonly sessionRevocationTimeoutMs?: number;
+}): SsfAuthorizationProjectionTarget => {
+  const config = readSsfControlPlaneClientConfig(dependencies.environment ?? process.env);
+  if (!config) throw new Error('ssf_control_plane_configuration_missing');
+  const revocationClient = createConfiguredSsfSessionRevocationClient(
+    config,
+    dependencies.fetchImpl ?? fetch
+  );
+
+  return createSsfKeycloakAuthorizationProjectionTarget({
+    resolveTenant: dependencies.resolveTenant,
+    revokeSsfTenantSessions: (instanceId, authorizationRevision, signal) =>
+      revocationClient.revoke({ instanceId, authorizationRevision, signal }),
+    ...(dependencies.sessionRevocationTimeoutMs === undefined
+      ? {}
+      : { sessionRevocationTimeoutMs: dependencies.sessionRevocationTimeoutMs }),
+  });
+};

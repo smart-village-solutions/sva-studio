@@ -838,6 +838,56 @@ const assertPluginRegistryActions = ({
   }
 };
 
+const assertPluginServerHandlerActionOwned = (
+  pluginNamespace: string,
+  handlerId: string,
+  actionId: string
+): void => {
+  const parsedActionId = parseNamespacedPluginIdentifier(actionId);
+  if (!parsedActionId) {
+    throw new Error(
+      `invalid_plugin_server_handler_action_id:${pluginNamespace}:${handlerId}:${actionId}`
+    );
+  }
+  if (parsedActionId.namespace !== pluginNamespace) {
+    throw new Error(
+      `plugin_server_handler_action_owner_mismatch:${pluginNamespace}:${handlerId}:${actionId}`
+    );
+  }
+};
+
+const assertPluginTechnicalServiceHandler = (input: {
+  accessRequirement: PluginTechnicalServiceAccessRequirement;
+  method: PluginServerHandlerDefinition['method'];
+  handlerId: string;
+  pluginNamespace: string;
+  extensionTier: PluginExtensionTier;
+}): void => {
+  if (input.extensionTier !== 'admin' && input.extensionTier !== 'platform') {
+    throw new Error(
+      `plugin_service_access_tier_forbidden:${input.pluginNamespace}:${input.handlerId}:${input.extensionTier}`
+    );
+  }
+  const serviceId = normalizePluginIdentifier(input.accessRequirement.serviceId);
+  const headerName = input.accessRequirement.tenantBinding.headerName.trim();
+  if (!serviceId) {
+    throw new Error(`plugin_service_access_id_missing:${input.pluginNamespace}:${input.handlerId}`);
+  }
+  if (input.method !== 'GET') {
+    throw new Error(
+      `plugin_service_access_method_forbidden:${input.pluginNamespace}:${input.handlerId}:${input.method}`
+    );
+  }
+  if (
+    input.accessRequirement.tenantBinding.kind !== 'header' ||
+    !/^[A-Za-z0-9-]+$/u.test(headerName)
+  ) {
+    throw new Error(
+      `plugin_service_tenant_binding_invalid:${input.pluginNamespace}:${input.handlerId}`
+    );
+  }
+};
+
 const assertPluginRegistryServerHandlers = ({
   plugin,
   pluginNamespace,
@@ -882,39 +932,15 @@ const assertPluginRegistryServerHandlers = ({
       );
     }
     const actionId = normalizePluginIdentifier(handler.actionId);
-    const parsedActionId = parseNamespacedPluginIdentifier(actionId);
-    if (!parsedActionId) {
-      throw new Error(
-        `invalid_plugin_server_handler_action_id:${pluginNamespace}:${handlerId}:${actionId}`
-      );
-    }
-    if (parsedActionId.namespace !== pluginNamespace) {
-      throw new Error(
-        `plugin_server_handler_action_owner_mismatch:${pluginNamespace}:${handlerId}:${actionId}`
-      );
-    }
+    assertPluginServerHandlerActionOwned(pluginNamespace, handlerId, actionId);
     if (handler.accessRequirement.kind === 'service') {
-      if (extensionTier !== 'admin' && extensionTier !== 'platform') {
-        throw new Error(
-          `plugin_service_access_tier_forbidden:${pluginNamespace}:${handlerId}:${extensionTier}`
-        );
-      }
-      const serviceId = normalizePluginIdentifier(handler.accessRequirement.serviceId);
-      const headerName = handler.accessRequirement.tenantBinding.headerName.trim();
-      if (!serviceId) {
-        throw new Error(`plugin_service_access_id_missing:${pluginNamespace}:${handlerId}`);
-      }
-      if (handler.method !== 'GET') {
-        throw new Error(
-          `plugin_service_access_method_forbidden:${pluginNamespace}:${handlerId}:${handler.method}`
-        );
-      }
-      if (
-        handler.accessRequirement.tenantBinding.kind !== 'header' ||
-        !/^[A-Za-z0-9-]+$/u.test(headerName)
-      ) {
-        throw new Error(`plugin_service_tenant_binding_invalid:${pluginNamespace}:${handlerId}`);
-      }
+      assertPluginTechnicalServiceHandler({
+        accessRequirement: handler.accessRequirement,
+        method: handler.method,
+        handlerId,
+        pluginNamespace,
+        extensionTier,
+      });
       continue;
     }
     assertPluginAccessRequirement(

@@ -20,6 +20,8 @@ import {
   translatePluginServerHandlerMessage,
   type PluginServerHandlerMessageKey,
 } from './messages.js';
+import { authorizePluginPlatformHandler } from './platform-authorization.js';
+import { dispatchPluginServiceHandler } from './service-execution.js';
 
 type EffectivePermissionsResolution = Awaited<ReturnType<typeof resolveEffectivePermissions>>;
 
@@ -70,21 +72,13 @@ export type PluginServerHandlerDispatcherDependencies = Readonly<{
   }) => Promise<void> | void;
 }>;
 
-const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-
 const normalizePath = (path: string): string => {
   const trimmed = path.trim();
   if (trimmed === '/') return trimmed;
   return trimmed.replace(/\/+$/, '');
 };
 
-const satisfiesSet = (
-  requirement: Readonly<{ mode: 'allOf' | 'anyOf'; values: readonly string[] }>,
-  available: ReadonlySet<string>
-): boolean =>
-  requirement.mode === 'allOf'
-    ? requirement.values.every((value) => available.has(value))
-    : requirement.values.some((value) => available.has(value));
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 const createError = (
   request: Request,
@@ -104,35 +98,6 @@ const isCollectionCapablePermission = (permission: EffectivePermission): boolean
   permission.resourceId === undefined &&
   permission.geoScope === undefined &&
   (permission.scope === undefined || Object.keys(permission.scope).length === 0);
-
-const serviceRuntimeUnavailable = (): Response => new Response(null, { status: 503 });
-
-export const assertPluginServerHandlerCoverage = (input: {
-  readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
-  readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
-}): void => {
-  const endpoints = new Map<string, string>();
-  for (const descriptor of input.descriptors.values()) {
-    const endpointKey = `${descriptor.method} ${descriptor.path}`;
-    const existingHandlerId = endpoints.get(endpointKey);
-    if (existingHandlerId) {
-      throw new Error(
-        `duplicate_plugin_server_endpoint:${endpointKey}:${existingHandlerId}:${descriptor.id}`
-      );
-    }
-    endpoints.set(endpointKey, descriptor.id);
-  }
-  const declared = [...input.descriptors.keys()].sort();
-  const registered = Object.keys(input.handlers).sort();
-  const missing = declared.filter((handlerId) => !registered.includes(handlerId));
-  if (missing.length > 0) {
-    throw new Error(`missing_plugin_server_handlers:${missing.join(',')}`);
-  }
-  const unknown = registered.filter((handlerId) => !declared.includes(handlerId));
-  if (unknown.length > 0) {
-    throw new Error(`unknown_plugin_server_handlers:${unknown.join(',')}`);
-  }
-};
 
 const authorizeTenantHandler = async (input: {
   readonly context: AuthenticatedRequestContext;
@@ -219,6 +184,33 @@ const authorizeTenantHandler = async (input: {
     : createError(input.request, input.translate, 403, 'forbidden', 'permissionDenied');
 };
 
+export const assertPluginServerHandlerCoverage = (input: {
+  readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
+  readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
+}): void => {
+  const endpoints = new Map<string, string>();
+  for (const descriptor of input.descriptors.values()) {
+    const endpointKey = `${descriptor.method} ${descriptor.path}`;
+    const existingHandlerId = endpoints.get(endpointKey);
+    if (existingHandlerId) {
+      throw new Error(
+        `duplicate_plugin_server_endpoint:${endpointKey}:${existingHandlerId}:${descriptor.id}`
+      );
+    }
+    endpoints.set(endpointKey, descriptor.id);
+  }
+  const declared = [...input.descriptors.keys()].sort();
+  const registered = Object.keys(input.handlers).sort();
+  const missing = declared.filter((handlerId) => !registered.includes(handlerId));
+  if (missing.length > 0) {
+    throw new Error(`missing_plugin_server_handlers:${missing.join(',')}`);
+  }
+  const unknown = registered.filter((handlerId) => !declared.includes(handlerId));
+  if (unknown.length > 0) {
+    throw new Error(`unknown_plugin_server_handlers:${unknown.join(',')}`);
+  }
+};
+
 export const createPluginServerHandlerDispatcher = (input: {
   readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
   readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
@@ -258,51 +250,14 @@ export const createPluginServerHandlerDispatcher = (input: {
     }
 
     if (descriptor.accessRequirement.kind === 'service') {
-      const authenticateService = input.dependencies?.authenticateService;
-      const bindServiceTenant = input.dependencies?.bindServiceTenant;
-      if (!authenticateService || !bindServiceTenant) return serviceRuntimeUnavailable();
-
-      const authentication = await authenticateService({
+      return dispatchPluginServiceHandler({
         request,
         descriptor,
+        handler,
         serviceId: descriptor.accessRequirement.serviceId,
-      });
-      if (authentication.kind === 'rejected') return authentication.response;
-
-      const binding = await bindServiceTenant({
-        request,
-        descriptor,
-        serviceId: descriptor.accessRequirement.serviceId,
-        serviceSubject: authentication.subject,
         tenantHeaderName: descriptor.accessRequirement.tenantBinding.headerName,
+        dependencies: input.dependencies,
       });
-      if (binding.kind === 'rejected') return binding.response;
-
-      const startedAt = performance.now();
-      const response = await handler({
-        request,
-        pluginId: descriptor.ownerPluginId,
-        handlerId: descriptor.id,
-        scope: 'service',
-        service: {
-          id: descriptor.accessRequirement.serviceId,
-          subject: authentication.subject,
-          actionId: descriptor.actionId,
-        },
-        tenant: binding.tenant,
-      });
-      try {
-        await input.dependencies?.observeServiceResponse?.({
-          request,
-          descriptor,
-          tenant: binding.tenant,
-          response,
-          durationMs: performance.now() - startedAt,
-        });
-      } catch {
-        // Observability must not change an already determined service response.
-      }
-      return response;
     }
 
     return authenticate(request, async (context) => {
@@ -313,12 +268,14 @@ export const createPluginServerHandlerDispatcher = (input: {
 
       const requirement = descriptor.accessRequirement;
       if (requirement.kind === 'platform') {
-        if (
-          !isPlatformHost(request) ||
-          !satisfiesSet(requirement.roles, new Set(context.user.roles))
-        ) {
-          return createError(request, translate, 403, 'forbidden', 'platformPermissionDenied');
-        }
+        const accessError = authorizePluginPlatformHandler({
+          request,
+          requirement,
+          roles: context.user.roles,
+          isPlatformHost,
+          translate,
+        });
+        if (accessError) return accessError;
       } else if (requirement.kind === 'tenant') {
         const accessError = await authorizeTenantHandler({
           context,

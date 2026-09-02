@@ -1,5 +1,7 @@
 import { composePermissionCatalog, corePermissionCatalog } from '@sva/core';
 
+import { ssfModuleIamContract } from './ssf-module-iam-contract.js';
+
 export const studioModuleIamVersion = '0.0.1';
 
 export type StudioModuleIamBootstrapRole = Readonly<{
@@ -177,23 +179,6 @@ const wasteManagementModuleIamContract: StudioModuleIamContract = {
   systemRoles: createSystemAdminSystemRoles(wasteManagementTenantBootstrapRoles),
 };
 
-const ssfTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
-  {
-    roleName: 'system_admin',
-    permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
-  },
-];
-
-const ssfModuleIamContract: StudioModuleIamContract = {
-  moduleId: 'ssf',
-  namespace: 'ssf',
-  ownerPluginId: 'ssf',
-  descriptionKey: 'plugins.ssf.description',
-  permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
-  tenantBootstrapRoles: ssfTenantBootstrapRoles,
-  rootSystemRoles: [],
-  systemRoles: createSystemAdminSystemRoles(ssfTenantBootstrapRoles),
-};
 const mediaTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
   {
     roleName: 'system_admin',

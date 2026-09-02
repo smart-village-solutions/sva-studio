@@ -81,101 +81,118 @@ class SsfProjectionPhaseError extends Error {
   }
 }
 
+type SsfAuthorizationProjectionReconcilerDependencies = Readonly<{
+  store: SsfAuthorizationProjectionStore;
+  target: SsfAuthorizationProjectionTarget;
+}>;
+
+const reconcileClaimedProjection = async (
+  dependencies: SsfAuthorizationProjectionReconcilerDependencies,
+  store: SsfAuthorizationProjectionLockedStore,
+  staged: SsfAuthorizationProjectionState
+): Promise<SsfAuthorizationProjectionReconcileResult> => {
+  let readBack: SsfAuthorizationProjection;
+  try {
+    try {
+      await dependencies.target.suspendTokenIssuance(staged.instanceId);
+    } catch {
+      throw new SsfProjectionPhaseError('token_issuance_suspend_failed');
+    }
+    try {
+      await dependencies.target.reconcile(staged.desiredProjection, staged.desiredRevision);
+    } catch {
+      throw new SsfProjectionPhaseError('target_write_failed');
+    }
+    try {
+      readBack = await dependencies.target.readBack(staged.instanceId);
+    } catch {
+      throw new SsfProjectionPhaseError('target_readback_failed');
+    }
+
+    const confirmed = await store.confirmReadBack({
+      desired: staged.desiredProjection,
+      readBack,
+      generation: staged.generation,
+    });
+    if (!confirmed) {
+      return {
+        status: 'blocked',
+        generation: staged.generation,
+        reason: 'target_readback_mismatch',
+      };
+    }
+
+    try {
+      await dependencies.target.revokeTenantSessions(staged.instanceId, staged.desiredRevision);
+    } catch {
+      throw new SsfProjectionPhaseError('session_revocation_failed');
+    }
+    try {
+      await dependencies.target.resumeTokenIssuance(staged.instanceId);
+    } catch {
+      throw new SsfProjectionPhaseError('token_issuance_resume_failed');
+    }
+    const published = await store.markSessionsRevoked({
+      instanceId: staged.instanceId,
+      generation: staged.generation,
+      authorizationRevision: staged.desiredRevision,
+    });
+    if (!published) return { status: 'stale', generation: staged.generation };
+
+    return {
+      status: 'ready',
+      authorizationRevision: staged.desiredRevision,
+      generation: staged.generation,
+      changed: true,
+    };
+  } catch (error) {
+    const reason = error instanceof SsfProjectionPhaseError ? error.reason : 'target_write_failed';
+    await store.markBlocked({
+      instanceId: staged.instanceId,
+      generation: staged.generation,
+      desiredRevision: staged.desiredRevision,
+      errorCode: reason,
+    });
+    return { status: 'blocked', generation: staged.generation, reason };
+  }
+};
+
+const reconcileLockedProjection = async (
+  dependencies: SsfAuthorizationProjectionReconcilerDependencies,
+  store: SsfAuthorizationProjectionLockedStore,
+  desired: SsfAuthorizationProjection
+): Promise<SsfAuthorizationProjectionReconcileResult> => {
+  const staged = await store.stage(desired);
+  if (
+    staged.status === 'ready' &&
+    staged.confirmedRevision === staged.desiredRevision &&
+    staged.sessionsRevokedRevision === staged.desiredRevision
+  ) {
+    return {
+      status: 'ready',
+      authorizationRevision: staged.desiredRevision,
+      generation: staged.generation,
+      changed: false,
+    };
+  }
+
+  const claimed = await store.claim({
+    instanceId: staged.instanceId,
+    generation: staged.generation,
+    desiredRevision: staged.desiredRevision,
+  });
+  return claimed
+    ? reconcileClaimedProjection(dependencies, store, staged)
+    : { status: 'busy', generation: staged.generation };
+};
+
 export const createSsfAuthorizationProjectionReconciler =
-  (dependencies: {
-    readonly store: SsfAuthorizationProjectionStore;
-    readonly target: SsfAuthorizationProjectionTarget;
-  }) =>
+  (dependencies: SsfAuthorizationProjectionReconcilerDependencies) =>
   async (
     desired: SsfAuthorizationProjection
   ): Promise<SsfAuthorizationProjectionReconcileResult> => {
     const normalizedDesired = normalizeSsfAuthorizationProjection(desired);
-    return dependencies.store.withTenantLock(normalizedDesired.instanceId, async (store) => {
-      const staged = await store.stage(normalizedDesired);
-      if (
-        staged.status === 'ready' &&
-        staged.confirmedRevision === staged.desiredRevision &&
-        staged.sessionsRevokedRevision === staged.desiredRevision
-      ) {
-        return {
-          status: 'ready',
-          authorizationRevision: staged.desiredRevision,
-          generation: staged.generation,
-          changed: false,
-        };
-      }
-
-      const claimed = await store.claim({
-        instanceId: staged.instanceId,
-        generation: staged.generation,
-        desiredRevision: staged.desiredRevision,
-      });
-      if (!claimed) return { status: 'busy', generation: staged.generation };
-
-      let readBack: SsfAuthorizationProjection;
-      try {
-        try {
-          await dependencies.target.suspendTokenIssuance(staged.instanceId);
-        } catch {
-          throw new SsfProjectionPhaseError('token_issuance_suspend_failed');
-        }
-        try {
-          await dependencies.target.reconcile(staged.desiredProjection, staged.desiredRevision);
-        } catch {
-          throw new SsfProjectionPhaseError('target_write_failed');
-        }
-        try {
-          readBack = await dependencies.target.readBack(staged.instanceId);
-        } catch {
-          throw new SsfProjectionPhaseError('target_readback_failed');
-        }
-
-        const confirmed = await store.confirmReadBack({
-          desired: staged.desiredProjection,
-          readBack,
-          generation: staged.generation,
-        });
-        if (!confirmed) {
-          return {
-            status: 'blocked',
-            generation: staged.generation,
-            reason: 'target_readback_mismatch',
-          };
-        }
-
-        try {
-          await dependencies.target.revokeTenantSessions(staged.instanceId, staged.desiredRevision);
-        } catch {
-          throw new SsfProjectionPhaseError('session_revocation_failed');
-        }
-        try {
-          await dependencies.target.resumeTokenIssuance(staged.instanceId);
-        } catch {
-          throw new SsfProjectionPhaseError('token_issuance_resume_failed');
-        }
-        const published = await store.markSessionsRevoked({
-          instanceId: staged.instanceId,
-          generation: staged.generation,
-          authorizationRevision: staged.desiredRevision,
-        });
-        if (!published) return { status: 'stale', generation: staged.generation };
-
-        return {
-          status: 'ready',
-          authorizationRevision: staged.desiredRevision,
-          generation: staged.generation,
-          changed: true,
-        };
-      } catch (error) {
-        const reason =
-          error instanceof SsfProjectionPhaseError ? error.reason : 'target_write_failed';
-        await store.markBlocked({
-          instanceId: staged.instanceId,
-          generation: staged.generation,
-          desiredRevision: staged.desiredRevision,
-          errorCode: reason,
-        });
-        return { status: 'blocked', generation: staged.generation, reason };
-      }
-    });
+    return dependencies.store.withTenantLock(normalizedDesired.instanceId, (store) =>
+      reconcileLockedProjection(dependencies, store, normalizedDesired)
+    );
   };

@@ -4,13 +4,13 @@ import {
   areSsfAuthorizationProjectionsEqual,
   createSsfAuthorizationRevision,
   normalizeSsfAuthorizationProjection,
-  ssfAuthorizationProjectionSchema,
   type SsfAuthorizationProjection,
 } from './authorization-projection.js';
-import type {
-  SsfAuthorizationProjectionLockedStore,
-  SsfAuthorizationProjectionStore,
-} from './authorization-projection-reconciler.js';
+import {
+  mapProjectionRow,
+  projectionColumns,
+  type ProjectionRow,
+} from './authorization-projection-repository-mapping.js';
 
 type ProjectionQueryClient = Pick<Pool, 'query'>;
 
@@ -28,45 +28,6 @@ export type SsfAuthorizationProjectionState = Readonly<{
   sessionsRevokedRevision: string | null;
   lastErrorCode: string | null;
 }>;
-
-type ProjectionRow = Readonly<{
-  instance_id: string;
-  generation: number | string;
-  status: SsfAuthorizationProjectionStatus;
-  desired_revision: string;
-  desired_projection: unknown;
-  confirmed_revision: string | null;
-  confirmed_projection: unknown | null;
-  sessions_revoked_revision: string | null;
-  last_error_code: string | null;
-}>;
-
-const parseGeneration = (value: number | string): number => {
-  const generation = typeof value === 'number' ? value : Number(value);
-  if (!Number.isSafeInteger(generation) || generation <= 0) {
-    throw new Error('ssf_authorization_projection_invalid_generation');
-  }
-  return generation;
-};
-
-const mapProjectionRow = (row: ProjectionRow): SsfAuthorizationProjectionState => ({
-  instanceId: row.instance_id,
-  generation: parseGeneration(row.generation),
-  status: row.status,
-  desiredRevision: row.desired_revision,
-  desiredProjection: ssfAuthorizationProjectionSchema.parse(row.desired_projection),
-  confirmedRevision: row.confirmed_revision,
-  confirmedProjection:
-    row.confirmed_projection === null
-      ? null
-      : ssfAuthorizationProjectionSchema.parse(row.confirmed_projection),
-  sessionsRevokedRevision: row.sessions_revoked_revision,
-  lastErrorCode: row.last_error_code,
-});
-
-const projectionColumns = `instance_id, generation, status, desired_revision,
-  desired_projection, confirmed_revision, confirmed_projection,
-  sessions_revoked_revision, last_error_code`;
 
 export const stageSsfAuthorizationProjection = async (
   pool: ProjectionQueryClient,
@@ -269,55 +230,3 @@ export const readReadySsfAuthorizationRevision = async (
     );
     return result.rows[0]?.confirmed_revision ?? null;
   });
-
-const createLockedProjectionStore = (
-  client: PoolClient
-): SsfAuthorizationProjectionLockedStore => ({
-  stage: (projection) => stageSsfAuthorizationProjection(client, projection),
-  claim: (input) => claimSsfAuthorizationProjection(client, input),
-  confirmReadBack: (input) => confirmSsfAuthorizationProjectionReadBack(client, input),
-  markSessionsRevoked: (input) => markSsfAuthorizationSessionsRevoked(client, input),
-  markBlocked: (input) => markSsfAuthorizationProjectionBlocked(client, input),
-});
-
-export const createPostgresSsfAuthorizationProjectionStore = (
-  pool: Pool
-): SsfAuthorizationProjectionStore => ({
-  async withTenantLock<T>(
-    instanceId: string,
-    operation: (store: SsfAuthorizationProjectionLockedStore) => Promise<T>
-  ) {
-    const client = await pool.connect();
-    let lockAcquired = false;
-    let operationFailed = false;
-    let primaryError: unknown;
-    let unlockFailed = false;
-    let unlockError: unknown;
-    let result: T | undefined;
-    try {
-      await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [instanceId]);
-      lockAcquired = true;
-      result = await operation(createLockedProjectionStore(client));
-    } catch (error) {
-      operationFailed = true;
-      primaryError = error;
-    } finally {
-      try {
-        if (lockAcquired) {
-          try {
-            await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [instanceId]);
-          } catch (error) {
-            unlockFailed = true;
-            unlockError = error;
-          }
-        }
-      } finally {
-        client.release();
-      }
-    }
-
-    if (operationFailed) throw primaryError;
-    if (unlockFailed) throw unlockError;
-    return result as T;
-  },
-});

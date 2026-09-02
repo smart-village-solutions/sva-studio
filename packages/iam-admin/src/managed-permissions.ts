@@ -47,6 +47,9 @@ const ORGANIZATION_CONTEXT_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(
 const isRecordScopedPermission = (permissionKey: string): boolean =>
   RECORD_SCOPED_PERMISSION_KEY_SET.has(permissionKey);
 
+const includesPermission = (permissionIds: readonly string[], permissionKey: string): boolean =>
+  permissionIds.includes(permissionKey);
+
 const resolveManagedPermissionRuntimeScope = (permissionKey: string): IamPermissionRuntimeScope => {
   if (ORGANIZATION_CONTEXT_PERMISSION_KEY_SET.has(permissionKey)) {
     return 'organization_context';
@@ -122,7 +125,9 @@ const managedPermissionMetadata = [
   ),
   ...RECORD_SCOPED_PERMISSION_KEYS.filter(
     (permissionKey) =>
-      !studioModuleIamContracts.some((contract) => contract.permissionIds.includes(permissionKey))
+      !studioModuleIamContracts.some((contract) =>
+        includesPermission(contract.permissionIds, permissionKey)
+      )
   ).map(
     (permissionKey) =>
       ({

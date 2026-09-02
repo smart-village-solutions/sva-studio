@@ -1,5 +1,5 @@
 export * from './authorization-projection.js';
-export * from './authorization-projection-repository.js';
+export * from './authorization-projection-persistence.js';
 export * from './authorization-projection-reconciler.js';
 export * from './authorization-projection-runtime.js';
 export * from './keycloak-authorization-projection-target.js';

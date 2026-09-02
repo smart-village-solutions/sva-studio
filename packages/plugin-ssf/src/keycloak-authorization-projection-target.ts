@@ -4,261 +4,164 @@ import {
   SSF_AUTHORIZATION_PROJECTION_VERSION,
   SSF_TOKEN_CLAIMS,
   ssfAuthorizationProjectionSchema,
+  type SsfAuthorizationProjection,
 } from './authorization-projection.js';
+import type {
+  ProjectedSubject,
+  SsfKeycloakProjectionTargetDependencies,
+} from './keycloak-authorization-projection-contract.js';
+import {
+  areAttributesEqual,
+  ensureClaimMappers,
+  hasProjectionAttributes,
+  listAllUsers,
+  readSingleAttribute,
+  requireTenant,
+  resolveSessionRevocationTimeoutMs,
+  withSessionRevocationTimeout,
+  withoutProjectionAttributes,
+} from './keycloak-authorization-projection-support.js';
 import type { SsfAuthorizationProjectionTarget } from './authorization-projection-reconciler.js';
 import {
   createConfiguredSsfSessionRevocationClient,
   readSsfControlPlaneClientConfig,
 } from './session-revocation-client.js';
 
-type KeycloakAttributes = Readonly<Record<string, readonly string[]>>;
+export type {
+  SsfKeycloakProjectionClient,
+  SsfKeycloakProjectionTenant,
+} from './keycloak-authorization-projection-contract.js';
 
-type KeycloakProjectionUser = Readonly<{
-  externalId: string;
-  attributes?: KeycloakAttributes;
-}>;
+const suspendTokenIssuance = async (
+  dependencies: SsfKeycloakProjectionTargetDependencies,
+  instanceId: string
+): Promise<void> => {
+  const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+  await tenant.client.setOidcClientEnabled(tenant.clientId, false);
+};
 
-export interface SsfKeycloakProjectionClient {
-  listUsers(query?: {
-    readonly first?: number;
-    readonly max?: number;
-  }): Promise<readonly KeycloakProjectionUser[]>;
-  getUserAttributes(externalId: string): Promise<KeycloakAttributes>;
-  updateUser(
-    externalId: string,
-    input: { readonly attributes: Readonly<Record<string, readonly string[]>> }
-  ): Promise<void>;
-  ensureUserAttributeProtocolMapper(input: {
-    readonly clientId: string;
-    readonly name: string;
-    readonly userAttribute: string;
-    readonly claimName: string;
-    readonly multivalued?: boolean;
-  }): Promise<void>;
-  setOidcClientEnabled(clientId: string, enabled: boolean): Promise<void>;
-}
+const reconcileProjection = async (
+  dependencies: SsfKeycloakProjectionTargetDependencies,
+  projection: SsfAuthorizationProjection,
+  authorizationRevision: string
+): Promise<void> => {
+  const desired = normalizeSsfAuthorizationProjection(projection);
+  if (createSsfAuthorizationRevision(desired) !== authorizationRevision) {
+    throw new Error('ssf_keycloak_projection_revision_mismatch');
+  }
 
-export type SsfKeycloakProjectionTenant = Readonly<{
-  instanceId: string;
-  clientId: string;
-  client: SsfKeycloakProjectionClient;
-}>;
+  const tenant = await requireTenant(dependencies.resolveTenant, desired.instanceId);
+  const users = await listAllUsers(tenant.client);
+  const usersBySubject = new Map(users.map((user) => [user.externalId, user]));
+  const desiredBySubject = new Map(desired.subjects.map((subject) => [subject.subject, subject]));
+  if (desired.subjects.some((subject) => !usersBySubject.has(subject.subject))) {
+    throw new Error('ssf_keycloak_projection_subject_missing');
+  }
+  await ensureClaimMappers(tenant);
 
-const PAGE_SIZE = 100;
-const DEFAULT_SESSION_REVOCATION_TIMEOUT_MS = 10_000;
-const CLAIM_NAMES = Object.values(SSF_TOKEN_CLAIMS);
-const CLAIM_NAME_SET = new Set<string>(CLAIM_NAMES);
-
-const withSessionRevocationTimeout = async <T>(
-  operation: (signal: AbortSignal) => Promise<T>,
-  timeoutMs: number
-): Promise<T> => {
-  const controller = new AbortController();
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      controller.abort();
-      reject(new Error('ssf_session_revocation_timeout'));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([operation(controller.signal), timeout]);
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
+  for (const user of users) {
+    const currentAttributes = await tenant.client.getUserAttributes(user.externalId);
+    const desiredSubject = desiredBySubject.get(user.externalId);
+    const nextAttributes = withoutProjectionAttributes(currentAttributes);
+    if (desiredSubject) {
+      nextAttributes[SSF_TOKEN_CLAIMS.instanceId] = [desired.instanceId];
+      nextAttributes[SSF_TOKEN_CLAIMS.roles] = desiredSubject.roles;
+      nextAttributes[SSF_TOKEN_CLAIMS.permissions] = desiredSubject.permissions;
+      nextAttributes[SSF_TOKEN_CLAIMS.authorizationRevision] = [authorizationRevision];
+    }
+    if (!areAttributesEqual(currentAttributes, nextAttributes)) {
+      await tenant.client.updateUser(user.externalId, { attributes: nextAttributes });
+    }
   }
 };
 
-const resolveSessionRevocationTimeoutMs = (configuredTimeoutMs: number | undefined): number => {
-  const timeoutMs = configuredTimeoutMs ?? DEFAULT_SESSION_REVOCATION_TIMEOUT_MS;
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    throw new Error('ssf_session_revocation_timeout_invalid');
-  }
-  return timeoutMs;
+const readProjectedSubjects = async (
+  dependencies: SsfKeycloakProjectionTargetDependencies,
+  instanceId: string
+): Promise<readonly ProjectedSubject[]> => {
+  const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+  const users = await listAllUsers(tenant.client);
+  const projectedUsers = await Promise.all(
+    users.map(async (user) => ({
+      subject: user.externalId,
+      attributes: await tenant.client.getUserAttributes(user.externalId),
+    }))
+  );
+  return projectedUsers
+    .filter(({ attributes }) => hasProjectionAttributes(attributes))
+    .map(({ subject, attributes }) => {
+      if (readSingleAttribute(attributes, SSF_TOKEN_CLAIMS.instanceId) !== instanceId) {
+        throw new Error('ssf_keycloak_projection_foreign_instance');
+      }
+      return {
+        subject,
+        roles: [...(attributes[SSF_TOKEN_CLAIMS.roles] ?? [])],
+        permissions: [...(attributes[SSF_TOKEN_CLAIMS.permissions] ?? [])],
+        authorizationRevision: readSingleAttribute(
+          attributes,
+          SSF_TOKEN_CLAIMS.authorizationRevision
+        ),
+      };
+    });
 };
 
-const listAllUsers = async (
-  client: SsfKeycloakProjectionClient
-): Promise<readonly KeycloakProjectionUser[]> => {
-  const users: KeycloakProjectionUser[] = [];
-  for (let first = 0; ; first += PAGE_SIZE) {
-    const page = await client.listUsers({ first, max: PAGE_SIZE });
-    users.push(...page);
-    if (page.length < PAGE_SIZE) return users;
+const readBackProjection = async (
+  dependencies: SsfKeycloakProjectionTargetDependencies,
+  instanceId: string
+): Promise<SsfAuthorizationProjection> => {
+  const subjects = await readProjectedSubjects(dependencies, instanceId);
+  const projection = normalizeSsfAuthorizationProjection(
+    ssfAuthorizationProjectionSchema.parse({
+      contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+      instanceId,
+      subjects: subjects.map(({ subject, roles, permissions }) => ({
+        subject,
+        roles,
+        permissions,
+      })),
+    })
+  );
+  const revision = createSsfAuthorizationRevision(projection);
+  if (subjects.some((subject) => subject.authorizationRevision !== revision)) {
+    throw new Error('ssf_keycloak_projection_revision_mismatch');
   }
+  return projection;
 };
 
-const areAttributesEqual = (
-  left: Readonly<Record<string, readonly string[]>>,
-  right: Readonly<Record<string, readonly string[]>>
-): boolean => {
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  return (
-    leftKeys.length === rightKeys.length &&
-    leftKeys.every(
-      (key, index) =>
-        key === rightKeys[index] &&
-        (left[key]?.length ?? 0) === (right[key]?.length ?? 0) &&
-        left[key]?.every((value, valueIndex) => value === right[key]?.[valueIndex]) === true
-    )
+const revokeTenantSessions = async (
+  dependencies: SsfKeycloakProjectionTargetDependencies,
+  instanceId: string,
+  authorizationRevision: string
+): Promise<void> => {
+  const timeoutMs = resolveSessionRevocationTimeoutMs(dependencies.sessionRevocationTimeoutMs);
+  await requireTenant(dependencies.resolveTenant, instanceId);
+  await withSessionRevocationTimeout(
+    (signal) => dependencies.revokeSsfTenantSessions(instanceId, authorizationRevision, signal),
+    timeoutMs
   );
 };
 
-const withoutProjectionAttributes = (
-  attributes: KeycloakAttributes
-): Record<string, readonly string[]> =>
-  Object.fromEntries(Object.entries(attributes).filter(([name]) => !CLAIM_NAME_SET.has(name)));
-
-const hasProjectionAttributes = (attributes: KeycloakAttributes): boolean =>
-  CLAIM_NAMES.some((name) => attributes[name] !== undefined);
-
-const readSingleAttribute = (attributes: KeycloakAttributes, name: string): string => {
-  const values = attributes[name];
-  if (values?.length !== 1 || !values[0]) {
-    throw new Error(`ssf_keycloak_projection_invalid_attribute:${name}`);
-  }
-  return values[0];
-};
-
-const ensureClaimMappers = async (tenant: SsfKeycloakProjectionTenant): Promise<void> => {
-  for (const [claimName, multivalued] of [
-    [SSF_TOKEN_CLAIMS.instanceId, false],
-    [SSF_TOKEN_CLAIMS.roles, true],
-    [SSF_TOKEN_CLAIMS.permissions, true],
-    [SSF_TOKEN_CLAIMS.authorizationRevision, false],
-  ] as const) {
-    await tenant.client.ensureUserAttributeProtocolMapper({
-      clientId: tenant.clientId,
-      name: `studio-${claimName.replace(/_/gu, '-')}`,
-      userAttribute: claimName,
-      claimName,
-      multivalued,
-    });
-  }
-};
-
-const requireTenant = async (
-  resolveTenant: (instanceId: string) => Promise<SsfKeycloakProjectionTenant | null>,
+const resumeTokenIssuance = async (
+  dependencies: SsfKeycloakProjectionTargetDependencies,
   instanceId: string
-): Promise<SsfKeycloakProjectionTenant> => {
-  const tenant = await resolveTenant(instanceId);
-  if (!tenant || tenant.instanceId !== instanceId) {
-    throw new Error('ssf_keycloak_projection_tenant_unavailable');
-  }
-  return tenant;
+): Promise<void> => {
+  const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+  await tenant.client.setOidcClientEnabled(tenant.clientId, true);
 };
 
-export const createSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
-  readonly resolveTenant: (instanceId: string) => Promise<SsfKeycloakProjectionTenant | null>;
-  readonly revokeSsfTenantSessions: (
-    instanceId: string,
-    authorizationRevision: string,
-    signal: AbortSignal
-  ) => Promise<void>;
-  readonly sessionRevocationTimeoutMs?: number;
-}): SsfAuthorizationProjectionTarget => ({
-  async suspendTokenIssuance(instanceId) {
-    const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
-    await tenant.client.setOidcClientEnabled(tenant.clientId, false);
-  },
-
-  async reconcile(projection, authorizationRevision) {
-    const desired = normalizeSsfAuthorizationProjection(projection);
-    if (createSsfAuthorizationRevision(desired) !== authorizationRevision) {
-      throw new Error('ssf_keycloak_projection_revision_mismatch');
-    }
-
-    const tenant = await requireTenant(dependencies.resolveTenant, desired.instanceId);
-    const users = await listAllUsers(tenant.client);
-    const usersBySubject = new Map(users.map((user) => [user.externalId, user]));
-    const desiredBySubject = new Map(desired.subjects.map((subject) => [subject.subject, subject]));
-
-    for (const subject of desired.subjects) {
-      if (!usersBySubject.has(subject.subject)) {
-        throw new Error('ssf_keycloak_projection_subject_missing');
-      }
-    }
-    await ensureClaimMappers(tenant);
-
-    for (const user of users) {
-      const currentAttributes = await tenant.client.getUserAttributes(user.externalId);
-      const desiredSubject = desiredBySubject.get(user.externalId);
-      const nextAttributes = withoutProjectionAttributes(currentAttributes);
-      if (desiredSubject) {
-        nextAttributes[SSF_TOKEN_CLAIMS.instanceId] = [desired.instanceId];
-        nextAttributes[SSF_TOKEN_CLAIMS.roles] = desiredSubject.roles;
-        nextAttributes[SSF_TOKEN_CLAIMS.permissions] = desiredSubject.permissions;
-        nextAttributes[SSF_TOKEN_CLAIMS.authorizationRevision] = [authorizationRevision];
-      }
-      if (!areAttributesEqual(currentAttributes, nextAttributes)) {
-        await tenant.client.updateUser(user.externalId, { attributes: nextAttributes });
-      }
-    }
-  },
-
-  async readBack(instanceId) {
-    const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
-    const users = await listAllUsers(tenant.client);
-    const projectedUsers = await Promise.all(
-      users.map(async (user) => ({
-        subject: user.externalId,
-        attributes: await tenant.client.getUserAttributes(user.externalId),
-      }))
-    );
-    const subjects = projectedUsers
-      .filter(({ attributes }) => hasProjectionAttributes(attributes))
-      .map(({ subject, attributes }) => {
-        if (readSingleAttribute(attributes, SSF_TOKEN_CLAIMS.instanceId) !== instanceId) {
-          throw new Error('ssf_keycloak_projection_foreign_instance');
-        }
-        return {
-          subject,
-          roles: [...(attributes[SSF_TOKEN_CLAIMS.roles] ?? [])],
-          permissions: [...(attributes[SSF_TOKEN_CLAIMS.permissions] ?? [])],
-          authorizationRevision: readSingleAttribute(
-            attributes,
-            SSF_TOKEN_CLAIMS.authorizationRevision
-          ),
-        };
-      });
-    const projection = normalizeSsfAuthorizationProjection(
-      ssfAuthorizationProjectionSchema.parse({
-        contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
-        instanceId,
-        subjects: subjects.map((subject) => ({
-          subject: subject.subject,
-          roles: subject.roles,
-          permissions: subject.permissions,
-        })),
-      })
-    );
-    const revision = createSsfAuthorizationRevision(projection);
-    if (subjects.some((subject) => subject.authorizationRevision !== revision)) {
-      throw new Error('ssf_keycloak_projection_revision_mismatch');
-    }
-    return projection;
-  },
-
-  async revokeTenantSessions(instanceId, authorizationRevision) {
-    const sessionRevocationTimeoutMs = resolveSessionRevocationTimeoutMs(
-      dependencies.sessionRevocationTimeoutMs
-    );
-    await requireTenant(dependencies.resolveTenant, instanceId);
-    await withSessionRevocationTimeout(
-      (signal) => dependencies.revokeSsfTenantSessions(instanceId, authorizationRevision, signal),
-      sessionRevocationTimeoutMs
-    );
-  },
-
-  async resumeTokenIssuance(instanceId) {
-    const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
-    await tenant.client.setOidcClientEnabled(tenant.clientId, true);
-  },
+export const createSsfKeycloakAuthorizationProjectionTarget = (
+  dependencies: SsfKeycloakProjectionTargetDependencies
+): SsfAuthorizationProjectionTarget => ({
+  suspendTokenIssuance: (instanceId) => suspendTokenIssuance(dependencies, instanceId),
+  reconcile: (projection, revision) => reconcileProjection(dependencies, projection, revision),
+  readBack: (instanceId) => readBackProjection(dependencies, instanceId),
+  revokeTenantSessions: (instanceId, revision) =>
+    revokeTenantSessions(dependencies, instanceId, revision),
+  resumeTokenIssuance: (instanceId) => resumeTokenIssuance(dependencies, instanceId),
 });
 
 export const createConfiguredSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
-  readonly resolveTenant: (instanceId: string) => Promise<SsfKeycloakProjectionTenant | null>;
+  readonly resolveTenant: SsfKeycloakProjectionTargetDependencies['resolveTenant'];
   readonly environment?: NodeJS.ProcessEnv;
   readonly fetchImpl?: typeof fetch;
   readonly sessionRevocationTimeoutMs?: number;

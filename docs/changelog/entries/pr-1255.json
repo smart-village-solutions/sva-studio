@@ -1,4 +1,4 @@
 {
   "prNumber": 1255,
-  "body": "Keycloak-Realm-Rollen lassen sich jetzt direkt im SVA Studio verwalten.\n\n- Berechtigte Personen können App-Nutzern beliebige Realm-Rollen zuweisen oder entziehen.\n- Direkte und geerbte Rollenzuweisungen werden getrennt und nachvollziehbar angezeigt.\n- Die Verwaltung ist mit `iam.role.write`, Tenant-Prüfung und Audit abgesichert; auch `system_admin` bleibt bewusst zuweisbar."
+  "body": "Keycloak-Rollen lassen sich jetzt direkt im SVA Studio einsehen und verwalten.\n\n- Berechtigte Personen können App-Nutzern reguläre anwendungsbezogene Realm-Rollen zuweisen oder entziehen.\n- Direkte, geerbte und geschützte Rollenzuweisungen werden getrennt und nachvollziehbar angezeigt.\n- `system_admin` bleibt über den gekoppelten Studio-Sonderpfad zuweisbar; technische Keycloak-, Client- und Plattformrollen bleiben read-only."
 }

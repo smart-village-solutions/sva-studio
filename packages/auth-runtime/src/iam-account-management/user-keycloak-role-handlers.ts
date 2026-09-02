@@ -12,7 +12,7 @@ import { resolveMutationActorWithAccount } from './mutation-request-context.shar
 import { logger } from './shared-observability.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 import {
-  createKeycloakRoleDependencyError,
+  createKeycloakRoleOperationError,
   projectUserKeycloakRoleAssignments,
   readKeycloakRoleUserRef,
   requireKeycloakRoleProvider,
@@ -87,7 +87,7 @@ export const getUserKeycloakRolesInternal = async (
       error_type: error instanceof Error ? error.name : typeof error,
       request_id: requestContext.requestId,
     });
-    return createKeycloakRoleDependencyError(requestContext.requestId);
+    return createKeycloakRoleOperationError(error, requestContext.requestId);
   }
 };
 
@@ -143,6 +143,6 @@ export const mutateUserKeycloakRoleInternal = async (
       request_id: requestContext.requestId,
       trace_id: requestContext.traceId,
     });
-    return createKeycloakRoleDependencyError(requestContext.requestId);
+    return createKeycloakRoleOperationError(error, requestContext.requestId);
   }
 };

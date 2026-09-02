@@ -38,14 +38,21 @@ describe('Keycloak role assignment projection', () => {
     ]);
   });
 
-  it('does not project client roles into the tenant realm catalog', () => {
+  it('projects client roles as visible but protected entries', () => {
     expect(
       projectKeycloakRoleAssignments({
         catalog: [{ id: 'client', externalName: 'manage-users', clientRole: true }],
         direct: [],
         effective: [],
       })
-    ).toEqual([]);
+    ).toEqual([
+      expect.objectContaining({
+        roleName: 'manage-users',
+        category: 'client_role',
+        assignable: false,
+        reasonCode: 'client_role_not_supported',
+      }),
+    ]);
   });
 });
 

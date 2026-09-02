@@ -47,6 +47,8 @@ export type ApiErrorCode =
   | 'target_conflict_unacknowledged'
   | 'active_job_exists'
   | 'keycloak_unavailable'
+  | 'keycloak_request_failed'
+  | 'keycloak_role_write_rejected'
   | 'tenant_auth_client_secret_missing'
   | 'tenant_admin_client_not_configured'
   | 'tenant_admin_client_secret_missing'

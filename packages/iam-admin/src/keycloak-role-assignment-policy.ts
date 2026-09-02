@@ -56,4 +56,4 @@ export const classifyTenantKeycloakRole = (
 };
 
 export const isTenantKeycloakRoleVisible = (role: TenantKeycloakRoleDescriptor): boolean =>
-  role.clientRole !== true;
+  Boolean(role.externalName);

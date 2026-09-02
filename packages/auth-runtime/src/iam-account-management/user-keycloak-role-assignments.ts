@@ -4,6 +4,10 @@ import { z } from 'zod';
 
 import type { IdentityProviderPort, IdentityRole } from '../identity-provider-port.js';
 import type { QueryClient } from '../db.js';
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from '../keycloak-admin-client/errors.js';
 
 import { createApiError, readPathSegment } from './api-helpers.js';
 import { trackKeycloakCall } from './shared-observability.js';
@@ -18,6 +22,8 @@ export type ResolvedKeycloakRoleTarget = {
   readonly externalId: string;
   readonly mappingStatus: 'mapped' | 'unmapped';
 };
+
+const ROLE_PAGE_SIZE = 100;
 
 const readManagedBy = (role: IdentityRole): 'studio' | 'external' | 'keycloak_builtin' => {
   const policy = classifyTenantKeycloakRole(role);
@@ -161,11 +167,32 @@ export const loadKeycloakRoleAssignments = async (
   const directNames = await trackKeycloakCall('list_user_keycloak_role_names', () =>
     provider.listUserRoleNames(externalId)
   );
-  const roles = await trackKeycloakCall('list_keycloak_roles_for_user_fallback', () =>
-    provider.listRoles()
-  );
+  const roles = await loadKeycloakRoleCatalog(provider);
   const direct = roles.filter((role) => directNames.includes(role.externalName));
   return { direct, effective: direct };
+};
+
+export const loadKeycloakRoleCatalog = async (
+  provider: IdentityProviderPort
+): Promise<readonly IdentityRole[]> => {
+  if (!provider.countRoles) {
+    return trackKeycloakCall('list_keycloak_role_catalog', () =>
+      provider.listRoles({ first: 0, max: 1000 })
+    );
+  }
+  const total = await trackKeycloakCall(
+    'count_keycloak_role_catalog',
+    () => provider.countRoles?.() ?? Promise.resolve(0)
+  );
+  const pageCount = Math.ceil(total / ROLE_PAGE_SIZE);
+  const pages = await Promise.all(
+    Array.from({ length: pageCount }, (_, page) =>
+      trackKeycloakCall('list_keycloak_role_catalog_page', () =>
+        provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
+      )
+    )
+  );
+  return pages.flat();
 };
 
 export const projectUserKeycloakRoleAssignments = async (
@@ -174,7 +201,7 @@ export const projectUserKeycloakRoleAssignments = async (
   target: ResolvedKeycloakRoleTarget
 ): Promise<IamUserKeycloakRoleAssignments> => {
   const [catalog, assignments] = await Promise.all([
-    trackKeycloakCall('list_keycloak_role_catalog_for_user', () => provider.listRoles()),
+    loadKeycloakRoleCatalog(provider),
     loadKeycloakRoleAssignments(provider, target.externalId),
   ]);
   const roles = projectKeycloakRoleAssignments({
@@ -193,3 +220,25 @@ export const createKeycloakRoleDependencyError = (requestId?: string): Response 
     requestId,
     { dependency: 'keycloak' }
   );
+
+export const createKeycloakRoleOperationError = (error: unknown, requestId?: string): Response => {
+  if (error instanceof KeycloakAdminUnavailableError) {
+    return createKeycloakRoleDependencyError(requestId);
+  }
+  if (error instanceof KeycloakAdminRequestError) {
+    return createApiError(
+      502,
+      'keycloak_request_failed',
+      'Die Keycloak-Anfrage wurde nicht erfolgreich ausgeführt.',
+      requestId,
+      { dependency: 'keycloak', reason_code: 'keycloak_request_failed' }
+    );
+  }
+  return createApiError(
+    500,
+    'internal_error',
+    'Die Keycloak-Rollenzuweisung konnte intern nicht verarbeitet werden.',
+    requestId,
+    { reason_code: 'unexpected_internal_error' }
+  );
+};

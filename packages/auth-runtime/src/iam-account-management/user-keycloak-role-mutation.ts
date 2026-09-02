@@ -5,10 +5,14 @@ import type { IamKeycloakRoleAssignmentMutationResult } from '@sva/core';
 
 import type { IdentityProviderPort, IdentityRole } from '../identity-provider-port.js';
 import { jsonResponse } from '../db.js';
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from '../keycloak-admin-client/errors.js';
 
 import { asApiItem, createApiError } from './api-helpers.js';
 import { emitActivityLog } from './shared-activity.js';
-import { trackKeycloakCall } from './shared-observability.js';
+import { logger, trackKeycloakCall } from './shared-observability.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 import {
   loadKeycloakRoleAssignments,
@@ -31,23 +35,36 @@ const auditMutation = async (input: {
   result: 'success' | 'failure';
   outcome: string;
   metadata: RequestMetadata;
-}) =>
-  withInstanceScopedDb(input.actor.instanceId, (client) =>
-    emitActivityLog(client, {
-      instanceId: input.actor.instanceId,
-      accountId: input.actor.actorAccountId,
-      eventType: 'keycloak.role_assignment.changed',
-      result: input.result,
-      payload: {
-        operation: input.payload.operation,
-        role_name: input.payload.roleName,
-        outcome: input.outcome,
-        target_ref: createHash('sha256').update(input.targetExternalId).digest('hex'),
-      },
-      requestId: input.metadata.requestId,
-      traceId: input.metadata.traceId,
-    })
-  );
+}): Promise<boolean> => {
+  try {
+    await withInstanceScopedDb(input.actor.instanceId, (client) =>
+      emitActivityLog(client, {
+        instanceId: input.actor.instanceId,
+        accountId: input.actor.actorAccountId,
+        eventType: 'keycloak.role_assignment.changed',
+        result: input.result,
+        payload: {
+          operation: input.payload.operation,
+          role_name: input.payload.roleName,
+          outcome: input.outcome,
+          target_ref: createHash('sha256').update(input.targetExternalId).digest('hex'),
+        },
+        requestId: input.metadata.requestId,
+        traceId: input.metadata.traceId,
+      })
+    );
+    return true;
+  } catch (error) {
+    logger.warn('Keycloak role assignment audit log write failed', {
+      operation: 'audit_keycloak_role_assignment',
+      instance_id: input.actor.instanceId,
+      error_type: error instanceof Error ? error.name : typeof error,
+      request_id: input.metadata.requestId,
+      trace_id: input.metadata.traceId,
+    });
+    return false;
+  }
+};
 
 const resolveRole = async (
   provider: IdentityProviderPort,
@@ -57,9 +74,7 @@ const resolveRole = async (
   const role = await trackKeycloakCall('get_keycloak_role_for_assignment', () =>
     provider.getRoleByName(roleName)
   );
-  return role && role.clientRole !== true
-    ? role
-    : createApiError(404, 'not_found', 'Realm-Rolle nicht gefunden.', requestId);
+  return role ? role : createApiError(404, 'not_found', 'Realm-Rolle nicht gefunden.', requestId);
 };
 
 const rejectProtectedRole = async (input: {
@@ -131,6 +146,14 @@ const rejectInheritedMutation = async (input: {
   );
 };
 
+type RoleWriteFailure = 'unavailable' | 'rejected' | 'unknown' | null;
+
+const classifyRoleWriteFailure = (error: unknown): Exclude<RoleWriteFailure, null> => {
+  if (error instanceof KeycloakAdminUnavailableError) return 'unavailable';
+  if (error instanceof KeycloakAdminRequestError) return 'rejected';
+  return 'unknown';
+};
+
 const writeRoleDelta = async (input: {
   needsWrite: boolean;
   provider: IdentityProviderPort;
@@ -138,18 +161,63 @@ const writeRoleDelta = async (input: {
   targetExternalId: string;
   roleName: string;
   operation: RoleMutationPayload['operation'];
-}): Promise<boolean> => {
-  if (!input.needsWrite) return false;
+  actor: MutationActor;
+  metadata: RequestMetadata;
+}): Promise<RoleWriteFailure> => {
+  if (!input.needsWrite) return null;
   try {
     await trackKeycloakCall(`keycloak_role_${input.operation}`, () =>
       input.operation === 'assign'
         ? input.writers.assign.call(input.provider, input.targetExternalId, [input.roleName])
         : input.writers.remove.call(input.provider, input.targetExternalId, [input.roleName])
     );
-    return false;
-  } catch {
-    return true;
+    return null;
+  } catch (error) {
+    const failure = classifyRoleWriteFailure(error);
+    logger.warn('Keycloak role write failed; verifying resulting state', {
+      operation: `keycloak_role_${input.operation}`,
+      instance_id: input.actor.instanceId,
+      failure_kind: failure,
+      error_type: error instanceof Error ? error.name : typeof error,
+      request_id: input.metadata.requestId,
+      trace_id: input.metadata.traceId,
+    });
+    return failure;
   }
+};
+
+const createUnconfirmedMutationError = (
+  failure: RoleWriteFailure,
+  requestId?: string
+): Response => {
+  if (failure === 'unavailable') {
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Keycloak ist derzeit nicht verfügbar.',
+      requestId,
+      {
+        dependency: 'keycloak',
+        reason_code: 'role_write_unavailable',
+      }
+    );
+  }
+  if (failure === 'rejected') {
+    return createApiError(
+      502,
+      'keycloak_role_write_rejected',
+      'Keycloak hat die Rollenzuweisung abgelehnt.',
+      requestId,
+      { dependency: 'keycloak', reason_code: 'role_write_rejected' }
+    );
+  }
+  return createApiError(
+    409,
+    'keycloak_role_assignment_reconciliation_required',
+    'Die Keycloak-Rollenzuweisung konnte nicht eindeutig bestätigt werden.',
+    requestId,
+    { reason_code: failure ? 'write_failed_state_unconfirmed' : 'post_write_state_unconfirmed' }
+  );
 };
 
 const createMutationResult = (input: {
@@ -190,13 +258,15 @@ export const executeKeycloakRoleMutation = async (input: {
   });
   const inheritedError = await rejectInheritedMutation({ ...input, ...delta });
   if (inheritedError) return inheritedError;
-  const writeFailed = await writeRoleDelta({
+  const writeFailure = await writeRoleDelta({
     needsWrite: delta.needsWrite,
     provider: input.provider,
     writers,
     targetExternalId: input.target.externalId,
     roleName: role.externalName,
     operation: input.payload.operation,
+    actor: input.actor,
+    metadata: input.metadata,
   });
 
   const after = await loadKeycloakRoleAssignments(input.provider, input.target.externalId);
@@ -209,7 +279,7 @@ export const executeKeycloakRoleMutation = async (input: {
     direct,
     confirmed,
   });
-  await auditMutation({
+  const audited = await auditMutation({
     actor: input.actor,
     targetExternalId: input.target.externalId,
     payload: input.payload,
@@ -222,17 +292,16 @@ export const executeKeycloakRoleMutation = async (input: {
     metadata: input.metadata,
   });
 
+  if (!audited && confirmed) {
+    return createApiError(
+      409,
+      'keycloak_role_assignment_reconciliation_required',
+      'Die Rollenzuweisung ist bestätigt, konnte aber nicht vollständig auditiert werden.',
+      input.metadata.requestId,
+      { reason_code: 'audit_write_failed_state_confirmed' }
+    );
+  }
   return confirmed
     ? jsonResponse(200, asApiItem(result, input.metadata.requestId))
-    : createApiError(
-        409,
-        'keycloak_role_assignment_reconciliation_required',
-        'Die Keycloak-Rollenzuweisung konnte nicht eindeutig bestätigt werden.',
-        input.metadata.requestId,
-        {
-          reason_code: writeFailed
-            ? 'write_failed_state_unconfirmed'
-            : 'post_write_state_unconfirmed',
-        }
-      );
+    : createUnconfirmedMutationError(writeFailure, input.metadata.requestId);
 };

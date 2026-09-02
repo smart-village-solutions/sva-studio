@@ -74,6 +74,7 @@ const createRoleProvider = () => {
     { id: 'news-id', externalName: 'news_editor' },
     { id: 'system-id', externalName: 'system_admin', attributes: { managed_by: ['studio'] } },
     { id: 'builtin-id', externalName: 'offline_access' },
+    { id: 'client-id', externalName: 'manage-users', clientRole: true },
   ] as const;
 
   return {
@@ -238,5 +239,66 @@ describe('user Keycloak role handlers integration boundary', () => {
     expect(response).toBe(denied);
     expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
     expect(provider.assignRealmRoles).not.toHaveBeenCalled();
+  });
+
+  it('rejects client-role mutations through the protected policy path', async () => {
+    const provider = createRoleProvider();
+    state.resolveIdentityProviderForInstance.mockResolvedValue({ provider });
+
+    const response = await mutateUserKeycloakRoleInternal(
+      new Request(
+        'https://tenant.example.test/api/v1/iam/users/11111111-1111-4111-8111-111111111112/keycloak-roles',
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ roleName: 'manage-users', operation: 'assign' }),
+        }
+      ),
+      createContext()
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'keycloak_role_protected',
+          details: expect.objectContaining({ reason_code: 'client_role_not_supported' }),
+        }),
+      })
+    );
+    expect(provider.assignRealmRoles).not.toHaveBeenCalled();
+    expect(state.emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ result: 'failure' })
+    );
+  });
+
+  it('reports a confirmed role state as reconciliation-required when audit persistence fails', async () => {
+    const provider = createRoleProvider();
+    state.resolveIdentityProviderForInstance.mockResolvedValue({ provider });
+    state.emitActivityLog.mockRejectedValueOnce(new Error('audit unavailable'));
+
+    const response = await mutateUserKeycloakRoleInternal(
+      new Request(
+        'https://tenant.example.test/api/v1/iam/users/11111111-1111-4111-8111-111111111112/keycloak-roles',
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ roleName: 'news_editor', operation: 'assign' }),
+        }
+      ),
+      createContext()
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'keycloak_role_assignment_reconciliation_required',
+          details: expect.objectContaining({ reason_code: 'audit_write_failed_state_confirmed' }),
+        }),
+      })
+    );
+    expect(provider.assignRealmRoles).toHaveBeenCalledTimes(1);
   });
 });

@@ -15,18 +15,24 @@ function TargetIcon({ type }: Readonly<{ type: IamContentOwnershipTarget['princi
 }
 
 export function TargetSelectValue({
+  id,
   labels,
   selected,
 }: Readonly<{
+  id: string;
   labels: ContentOwnershipPanelLabels;
   selected: IamContentOwnershipTarget | null;
 }>) {
   if (!selected) {
-    return <span className="truncate text-muted-foreground">{labels.targetPlaceholder}</span>;
+    return (
+      <span id={id} className="min-w-0 flex-1 truncate text-muted-foreground">
+        {labels.targetPlaceholder}
+      </span>
+    );
   }
 
   return (
-    <span className="flex min-w-0 items-center gap-2">
+    <span id={id} className="flex min-w-0 flex-1 items-center gap-2">
       <TargetIcon type={selected.principal.type} />
       <span className="truncate">{selected.displayName}</span>
       <span className="shrink-0 text-xs text-muted-foreground">

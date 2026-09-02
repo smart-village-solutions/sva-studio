@@ -86,7 +86,7 @@ describe('MainserverPrincipalControl accessibility', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
-    const targetSelect = await screen.findByRole('combobox', { name: 'Neuer Inhaber' });
+    const targetSelect = await screen.findByRole('combobox', { name: /^Neuer Inhaber/u });
     fireEvent.click(targetSelect);
     await screen.findByRole('option', { name: 'Stadt Musterhausen' });
 

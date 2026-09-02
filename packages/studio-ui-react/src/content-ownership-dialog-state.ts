@@ -48,12 +48,16 @@ const useTransferSubmission = (input: {
   return { pending, submitTransfer };
 };
 
-const useRefreshWhenOpen = (open: boolean, refreshTargets: () => Promise<void>): void => {
+const useRefreshWhenOpen = (
+  open: boolean,
+  search: string,
+  loadTargets: (search: string) => Promise<void>
+): void => {
   React.useEffect(() => {
     if (!open) return;
-    const timeout = window.setTimeout(() => void refreshTargets(), 250);
+    const timeout = window.setTimeout(() => void loadTargets(search), 250);
     return () => window.clearTimeout(timeout);
-  }, [open, refreshTargets]);
+  }, [loadTargets, open, search]);
 };
 
 const resetTargetSelection = (
@@ -80,14 +84,14 @@ export const useContentOwnershipDialogState = (input: {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const latestRequest = React.useRef(0);
-  const refreshTargets = React.useCallback(async () => {
+  const loadTargets = React.useCallback(async (searchValue: string) => {
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
     setLoading(true);
     resetTargetSelection(setSelected, setConfirmed);
     setError(null);
     try {
-      const query = search.trim();
+      const query = searchValue.trim();
       const [accounts, organizations] = await Promise.all(
         (['account', 'organization'] as const).map((type) =>
           input.loadTargets({
@@ -109,8 +113,9 @@ export const useContentOwnershipDialogState = (input: {
     } finally {
       if (latestRequest.current === requestId) setLoading(false);
     }
-  }, [input.labels.loadError, input.loadTargets, input.pageSize, search]);
-  useRefreshWhenOpen(input.open, refreshTargets);
+  }, [input.labels.loadError, input.loadTargets, input.pageSize]);
+  const refreshTargets = React.useCallback(() => loadTargets(search), [loadTargets, search]);
+  useRefreshWhenOpen(input.open, search, loadTargets);
   const submission = useTransferSubmission({
     selected,
     confirmed,

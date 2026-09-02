@@ -36,6 +36,7 @@ export function ContentOwnershipTargetSelect({
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
   const listboxId = `${id}-options`;
   const labelId = `${id}-label`;
+  const valueId = `${id}-value`;
 
   React.useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -69,11 +70,11 @@ export function ContentOwnershipTargetSelect({
         aria-controls={open ? listboxId : undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-labelledby={labelId}
+        aria-labelledby={`${labelId} ${valueId}`}
         disabled={disabled}
         onClick={() => setOpen((value) => !value)}
       >
-        <TargetSelectValue labels={labels} selected={selected} />
+        <TargetSelectValue id={valueId} labels={labels} selected={selected} />
         <ChevronsUpDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
       </Button>
       {open ? (

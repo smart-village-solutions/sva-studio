@@ -110,12 +110,17 @@ describe('ContentOwnershipPanel', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
-    fireEvent.click(screen.getByRole('combobox', { name: 'Neuer Inhaber' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
     expect(await screen.findByText('Zielorganisation')).toBeTruthy();
     expect(screen.getAllByText('DataProvider-Zuordnung wird beim Transfer geprüft.')).toHaveLength(
       1
     );
     fireEvent.click(screen.getByRole('option', { name: /Zielorganisation/u }));
+    expect(
+      screen.getByRole('combobox', {
+        name: 'Neuer Inhaber Zielorganisation Organisation',
+      })
+    ).toBeTruthy();
     expect(screen.getAllByText('DataProvider-Zuordnung wird beim Transfer geprüft.')).toHaveLength(
       1
     );
@@ -161,7 +166,7 @@ describe('ContentOwnershipPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
     expect(await screen.findByText('Laden fehlgeschlagen')).toBeTruthy();
-    fireEvent.click(screen.getByRole('combobox', { name: 'Neuer Inhaber' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Suchen' }), {
       target: { value: 'Zielperson' },
     });
@@ -210,7 +215,7 @@ describe('ContentOwnershipPanel', () => {
       expect.objectContaining({ type: 'organization', page: 1 })
     );
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Neuer Inhaber' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
     expect(screen.getByRole('group', { name: 'Persönlicher Account' })).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Organisation' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Stadt Account' })).toBeTruthy();
@@ -267,7 +272,7 @@ describe('ContentOwnershipPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
     await waitFor(() => expect(loadTargets).toHaveBeenCalledTimes(2));
-    fireEvent.click(screen.getByRole('combobox', { name: 'Neuer Inhaber' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Suchen' }), {
       target: { value: 'Aktuell' },
     });

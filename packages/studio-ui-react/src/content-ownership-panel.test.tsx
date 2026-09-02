@@ -220,6 +220,13 @@ describe('ContentOwnershipPanel', () => {
     expect(screen.getByRole('group', { name: 'Organisation' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Stadt Account' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Stadt Organisation' })).toBeTruthy();
+    const searchInput = screen.getByRole('textbox', { name: 'Suchen' });
+    fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(screen.getByRole('option', { name: 'Stadt Account' }));
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(
+      screen.getByRole('option', { name: 'Stadt Organisation' })
+    );
     fireEvent.change(screen.getByRole('textbox', { name: 'Suchen' }), {
       target: { value: '  Stadt  ' },
     });
@@ -230,6 +237,39 @@ describe('ContentOwnershipPanel', () => {
     expect(loadTargets).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'organization', page: 1, search: 'Stadt' })
     );
+  });
+
+  it('keeps successful target results when the other target type fails', async () => {
+    const organization = {
+      principal: {
+        type: 'organization' as const,
+        id: '77777777-7777-4777-8777-777777777777',
+      },
+      displayName: 'Verfügbare Organisation',
+    };
+    const loadTargets = vi
+      .fn()
+      .mockImplementation(({ type }: { type: 'account' | 'organization' }) =>
+        type === 'account'
+          ? Promise.reject(new Error('account unavailable'))
+          : Promise.resolve({ items: [organization], total: 1 })
+      );
+
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    expect(await screen.findByText('Laden fehlgeschlagen')).toBeTruthy();
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
+    expect(screen.getByRole('option', { name: 'Verfügbare Organisation' })).toBeTruthy();
   });
 
   it('ignores stale target responses after the search changes', async () => {

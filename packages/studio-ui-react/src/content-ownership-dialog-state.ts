@@ -18,7 +18,6 @@ export type ContentOwnershipDialogState = Readonly<{
   loading: boolean;
   pending: boolean;
   error: string | null;
-  refreshTargets: () => Promise<void>;
   submitTransfer: () => Promise<boolean>;
 }>;
 
@@ -92,7 +91,7 @@ export const useContentOwnershipDialogState = (input: {
     setError(null);
     try {
       const query = searchValue.trim();
-      const [accounts, organizations] = await Promise.all(
+      const results = await Promise.allSettled(
         (['account', 'organization'] as const).map((type) =>
           input.loadTargets({
             type,
@@ -103,8 +102,12 @@ export const useContentOwnershipDialogState = (input: {
         )
       );
       if (latestRequest.current !== requestId) return;
-      setTargets([...accounts.items, ...organizations.items]);
-      setTotal(accounts.total + organizations.total);
+      const successfulResults = results.flatMap((result) =>
+        result.status === 'fulfilled' ? [result.value] : []
+      );
+      setTargets(successfulResults.flatMap((result) => result.items));
+      setTotal(successfulResults.reduce((sum, result) => sum + result.total, 0));
+      setError(results.some((result) => result.status === 'rejected') ? input.labels.loadError : null);
     } catch {
       if (latestRequest.current !== requestId) return;
       setTargets([]);
@@ -114,7 +117,6 @@ export const useContentOwnershipDialogState = (input: {
       if (latestRequest.current === requestId) setLoading(false);
     }
   }, [input.labels.loadError, input.loadTargets, input.pageSize]);
-  const refreshTargets = React.useCallback(() => loadTargets(search), [loadTargets, search]);
   useRefreshWhenOpen(input.open, search, loadTargets);
   const submission = useTransferSubmission({
     selected,
@@ -139,7 +141,6 @@ export const useContentOwnershipDialogState = (input: {
     loading,
     pending: submission.pending,
     error,
-    refreshTargets,
     submitTransfer: submission.submitTransfer,
   };
 };

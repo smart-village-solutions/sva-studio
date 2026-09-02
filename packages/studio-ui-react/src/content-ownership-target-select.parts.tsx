@@ -1,6 +1,6 @@
 import type { IamContentOwnershipTarget } from '@sva/core';
 import { Building2, Check, Search, UserRound } from 'lucide-react';
-import type { RefObject } from 'react';
+import { useRef, type KeyboardEvent, type RefObject } from 'react';
 
 import { Input } from './input.js';
 import type { ContentOwnershipPanelLabels } from './content-ownership-types.js';
@@ -8,6 +8,24 @@ import { cn } from './utils.js';
 
 const targetKey = (target: IamContentOwnershipTarget) =>
   `${target.principal.type}:${target.principal.id}`;
+
+const getOptionButtons = (listbox: HTMLDivElement | null): HTMLButtonElement[] =>
+  Array.from(listbox?.querySelectorAll<HTMLButtonElement>('button[role="option"]') ?? []);
+
+const focusBoundaryOption = (listbox: HTMLDivElement | null, last: boolean): void => {
+  const options = getOptionButtons(listbox);
+  options[last ? options.length - 1 : 0]?.focus();
+};
+
+const moveOptionFocus = (event: KeyboardEvent<HTMLDivElement>): void => {
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+  const options = getOptionButtons(event.currentTarget);
+  const currentIndex = options.indexOf(document.activeElement as HTMLButtonElement);
+  if (currentIndex < 0 || options.length === 0) return;
+  event.preventDefault();
+  const offset = event.key === 'ArrowDown' ? 1 : -1;
+  options[(currentIndex + offset + options.length) % options.length]?.focus();
+};
 
 function TargetIcon({ type }: Readonly<{ type: IamContentOwnershipTarget['principal']['type'] }>) {
   const Icon = type === 'organization' ? Building2 : UserRound;
@@ -195,6 +213,8 @@ export function TargetSelectPopover({
   selected: IamContentOwnershipTarget | null;
   targets: readonly IamContentOwnershipTarget[];
 }>) {
+  const listboxRef = useRef<HTMLDivElement | null>(null);
+
   return (
     <div className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-lg border border-border bg-popover shadow-shell">
       <div className="relative border-b border-border p-2">
@@ -206,17 +226,28 @@ export function TargetSelectPopover({
           ref={inputRef}
           value={search}
           className="pl-9"
+          aria-controls={listboxId}
           aria-label={labels.search}
           placeholder={labels.search}
           onChange={(event) => onSearchChange(event.currentTarget.value)}
           onKeyDown={(event) => {
-            if (event.key !== 'Escape') return;
-            event.preventDefault();
-            onClose();
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              focusBoundaryOption(listboxRef.current, event.key === 'ArrowUp');
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              onClose();
+            }
           }}
         />
       </div>
-      <div id={listboxId} role="listbox" className="max-h-72 overflow-y-auto p-1.5">
+      <div
+        ref={listboxRef}
+        id={listboxId}
+        role="listbox"
+        className="max-h-72 overflow-y-auto p-1.5"
+        onKeyDown={moveOptionFocus}
+      >
         <TargetResults labels={labels} onSelect={onSelect} {...resultsProps} />
       </div>
     </div>

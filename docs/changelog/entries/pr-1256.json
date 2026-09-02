@@ -1,0 +1,4 @@
+{
+  "prNumber": 1256,
+  "body": "Der Runtime-Bootstrap bewahrt jetzt bestehende Tenant-Identitätsdaten.\n\n- Abweichende Auth-Realms wie `saas-hb-meinquartier` werden bei einem Bootstrap nicht mehr durch die Tenant-ID ersetzt.\n- Bestehende Auth-Clients, Domains und primäre Hostnamen bleiben ebenfalls erhalten.\n- Neue oder noch unvollständige Tenants erhalten weiterhin die vorgesehenen Standardwerte."
+}

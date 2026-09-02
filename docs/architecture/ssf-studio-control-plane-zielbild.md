@@ -6,13 +6,22 @@ Dieses Dokument hält die abgestimmte Architekturgrundlage für die Nutzung des
 SVA Studios als administrative Control Plane einer Smart-Speech-Flow-
 Installation (SSF) fest. Es beschreibt weiterhin das übergreifende Zielbild;
 der aktuelle Implementierungsstand ist in den verlinkten OpenSpec-Changes und
-den arc42-Abschnitten festgehalten. Die normative Ausarbeitung ist
-in vier aufeinander aufbauende OpenSpec-Changes gegliedert:
+den arc42-Abschnitten festgehalten. Die normative Ausarbeitung ist in fünf
+aufeinander aufbauende OpenSpec-Changes gegliedert:
 
 1. [`extend-plugin-platform-scopes-and-activation`](../../openspec/changes/extend-plugin-platform-scopes-and-activation/proposal.md)
 2. [`add-plugin-tenant-lifecycle`](../../openspec/changes/add-plugin-tenant-lifecycle/proposal.md)
 3. [`add-ssf-tenant-administration`](../../openspec/changes/add-ssf-tenant-administration/proposal.md)
 4. [`add-ssf-runtime-configuration-api`](../../openspec/changes/add-ssf-runtime-configuration-api/proposal.md)
+5. [`add-ssf-iam-permission-projection`](../../openspec/changes/add-ssf-iam-permission-projection/proposal.md)
+
+Der aktuelle Studio-Zwischenstand umfasst den fail-closed Runtime-Lesepfad,
+die Studio-seitige Projektionslogik und den getesteten Consumer für den
+tenantgebundenen SSF-Session-Widerruf. Bewusst offen bleiben der produktive
+tenantlokale SSF-OIDC-Client einschließlich exakter Callback-URIs, die
+Anbindung an den Plugin-Lifecycle und den Host-Readiness-Provider sowie die
+SSF-seitige Implementierung des Sammelwiderrufs. Bis diese Verträge gemeinsam
+im Staging nachgewiesen sind, bleibt das produktive Enablement gesperrt.
 
 Die erste Ausbaustufe konzentriert sich auf die Anlage und Verwaltung von
 Mandanten und Benutzern. Auswertungen aus ClickHouse, eine mögliche separate

@@ -54,6 +54,10 @@
 
 ## 5. Verbindliche Reihenfolge für den verbleibenden Lieferpfad
 
+Der Studio-Zwischen-PR endet nach 5.2. Die Aufgaben 2.3, 2.5, 3.3, 3.4, 4.1
+bis 4.4 sowie 5.3 bis 5.6 bleiben bewusst offen; Consumer-Vertragstests ersetzen
+weder den SSF-Provider noch den gemeinsamen Staging-Nachweis.
+
 - [x] 5.1 Den minimalen Studio→SSF-Widerrufsvertrag sowie die
       Deploymentkonfiguration für eine separat verwaltete technische Identität
       `sva-studio-ssf-control-plane` festlegen; keine Plugin-SDK-Erweiterung und

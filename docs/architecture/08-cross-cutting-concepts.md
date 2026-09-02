@@ -982,8 +982,9 @@ Der vollständige V1-Vertrag ist unter
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
 dokumentiert. Die IAM- und Runtime-Grenze ist in
 [ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
-entschieden; der normative Implementierungsabgleich liegt im OpenSpec-Change
-`add-ssf-runtime-configuration-api`.
+entschieden. Der normative Implementierungsabgleich liegt in den OpenSpec-
+Changes `add-ssf-runtime-configuration-api` und
+`add-ssf-iam-permission-projection`.
 
 Der generische Verifier erzwingt bereits RS256, Issuer, Audience und `exp`.
 Die SSF-spezifische Prüfung verlangt zusätzlich `azp = ssf-runtime` und die

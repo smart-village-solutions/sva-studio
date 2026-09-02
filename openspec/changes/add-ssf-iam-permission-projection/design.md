@@ -60,6 +60,12 @@ keinen realmweiten Keycloak-Benutzerlogout auslösen, weil derselbe Benutzer
 auch Studio verwendet. Neue Tokens enthalten die neue Revision. Retry und
 Teilfehler bleiben tenantgebunden, idempotent und auditierbar.
 
+Der Projektionsadapter deaktiviert dafür vor dem ersten Keycloak-Write nur den
+tenantlokalen SSF-OIDC-Client und aktiviert ihn erst nach bestätigtem Read-back
+und erfolgreichem SSF-Session-Widerruf wieder. Der Studio-Client und die
+gemeinsame Realm-Sitzung werden dabei nicht verändert. Ein Fehler in einer
+Phase lässt den SSF-Client deaktiviert und die Projektion nicht bereit.
+
 ### Der bestehende Rolloutpfad bleibt maßgeblich
 
 Bootstrap beziehungsweise Plugin-Lifecycle führen den Reconcile aus;

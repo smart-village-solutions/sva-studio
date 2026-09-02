@@ -51,9 +51,11 @@ const fixtures = (desired = projection()) => {
     withTenantLock: vi.fn(async (_instanceId, operation) => operation(lockedStore)),
   } satisfies SsfAuthorizationProjectionStore;
   const target = {
+    suspendTokenIssuance: vi.fn(async () => undefined),
     reconcile: vi.fn(async () => undefined),
     readBack: vi.fn(async () => desired),
     revokeTenantSessions: vi.fn(async () => undefined),
+    resumeTokenIssuance: vi.fn(async () => undefined),
   } satisfies SsfAuthorizationProjectionTarget;
   return {
     store,
@@ -76,6 +78,7 @@ describe('SSF authorization projection reconciler', () => {
       changed: true,
     });
     expect(target.reconcile).toHaveBeenCalledWith(desired, revision);
+    expect(target.suspendTokenIssuance).toHaveBeenCalledWith('tenant-a');
     expect(target.readBack).toHaveBeenCalledWith('tenant-a');
     expect(lockedStore.confirmReadBack).toHaveBeenCalledWith({
       desired,
@@ -83,6 +86,7 @@ describe('SSF authorization projection reconciler', () => {
       generation: 1,
     });
     expect(target.revokeTenantSessions).toHaveBeenCalledWith('tenant-a');
+    expect(target.resumeTokenIssuance).toHaveBeenCalledWith('tenant-a');
     expect(lockedStore.markSessionsRevoked).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       generation: 1,
@@ -125,6 +129,7 @@ describe('SSF authorization projection reconciler', () => {
     });
     expect(lockedStore.claim).not.toHaveBeenCalled();
     expect(target.reconcile).not.toHaveBeenCalled();
+    expect(target.suspendTokenIssuance).not.toHaveBeenCalled();
   });
 
   it('lets only one concurrent generation own the external write', async () => {
@@ -138,9 +143,11 @@ describe('SSF authorization projection reconciler', () => {
   });
 
   it.each([
+    ['token_issuance_suspend_failed', 'suspendTokenIssuance'],
     ['target_write_failed', 'reconcile'],
     ['target_readback_failed', 'readBack'],
     ['session_revocation_failed', 'revokeTenantSessions'],
+    ['token_issuance_resume_failed', 'resumeTokenIssuance'],
   ] as const)('blocks the exact generation after %s', async (reason, method) => {
     const desired = projection();
     const { lockedStore, target, reconcile } = fixtures(desired);

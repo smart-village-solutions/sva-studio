@@ -37,9 +37,11 @@ export interface SsfAuthorizationProjectionStore {
 }
 
 export interface SsfAuthorizationProjectionTarget {
+  suspendTokenIssuance(instanceId: string): Promise<void>;
   reconcile(projection: SsfAuthorizationProjection, authorizationRevision: string): Promise<void>;
   readBack(instanceId: string): Promise<SsfAuthorizationProjection>;
   revokeTenantSessions(instanceId: string): Promise<void>;
+  resumeTokenIssuance(instanceId: string): Promise<void>;
 }
 
 export type SsfAuthorizationProjectionReconcileResult =
@@ -57,15 +59,22 @@ export type SsfAuthorizationProjectionReconcileResult =
       status: 'blocked';
       generation: number;
       reason:
+        | 'token_issuance_suspend_failed'
         | 'target_write_failed'
         | 'target_readback_failed'
         | 'target_readback_mismatch'
-        | 'session_revocation_failed';
+        | 'session_revocation_failed'
+        | 'token_issuance_resume_failed';
     }>;
 
 class SsfProjectionPhaseError extends Error {
   constructor(
-    readonly reason: 'target_write_failed' | 'target_readback_failed' | 'session_revocation_failed'
+    readonly reason:
+      | 'token_issuance_suspend_failed'
+      | 'target_write_failed'
+      | 'target_readback_failed'
+      | 'session_revocation_failed'
+      | 'token_issuance_resume_failed'
   ) {
     super(reason);
     this.name = 'SsfProjectionPhaseError';
@@ -106,6 +115,11 @@ export const createSsfAuthorizationProjectionReconciler =
       let readBack: SsfAuthorizationProjection;
       try {
         try {
+          await dependencies.target.suspendTokenIssuance(staged.instanceId);
+        } catch {
+          throw new SsfProjectionPhaseError('token_issuance_suspend_failed');
+        }
+        try {
           await dependencies.target.reconcile(staged.desiredProjection, staged.desiredRevision);
         } catch {
           throw new SsfProjectionPhaseError('target_write_failed');
@@ -133,6 +147,11 @@ export const createSsfAuthorizationProjectionReconciler =
           await dependencies.target.revokeTenantSessions(staged.instanceId);
         } catch {
           throw new SsfProjectionPhaseError('session_revocation_failed');
+        }
+        try {
+          await dependencies.target.resumeTokenIssuance(staged.instanceId);
+        } catch {
+          throw new SsfProjectionPhaseError('token_issuance_resume_failed');
         }
         const published = await store.markSessionsRevoked({
           instanceId: staged.instanceId,

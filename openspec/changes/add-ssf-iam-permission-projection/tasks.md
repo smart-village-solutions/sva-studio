@@ -29,7 +29,7 @@
 
 - [x] 3.1 Mapper und Benutzerattribute für die verifizierte Revision im
       tenantlokalen SSF-Client-Scope idempotent projizieren
-- [ ] 3.2 Die Tokenausstellung ausschließlich des betroffenen SSF-Clients vor
+- [x] 3.2 Die Tokenausstellung ausschließlich des betroffenen SSF-Clients vor
       dem ersten Projektions-Write sperren und erst nach Read-back und
       Session-Widerruf wieder freigeben; Studio-Client und Realm-Session bleiben
       unangetastet

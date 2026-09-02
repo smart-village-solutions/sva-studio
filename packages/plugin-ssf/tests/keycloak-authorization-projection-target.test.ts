@@ -46,6 +46,7 @@ const createClient = () => {
       }
     ),
     ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
+    setOidcClientEnabled: vi.fn(async () => undefined),
   } satisfies SsfKeycloakProjectionClient;
   return { attributes, client };
 };
@@ -124,6 +125,20 @@ describe('SSF Keycloak authorization projection target', () => {
     await target.revokeTenantSessions('tenant-a');
 
     expect(revokeSsfTenantSessions).toHaveBeenCalledExactlyOnceWith('tenant-a');
+  });
+
+  it('suspends and resumes only the tenant-local SSF client', async () => {
+    const { client } = createClient();
+    const target = createSsfKeycloakAuthorizationProjectionTarget({
+      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
+      revokeSsfTenantSessions: vi.fn(async () => undefined),
+    });
+
+    await target.suspendTokenIssuance('tenant-a');
+    await target.resumeTokenIssuance('tenant-a');
+
+    expect(client.setOidcClientEnabled).toHaveBeenNthCalledWith(1, 'ssf', false);
+    expect(client.setOidcClientEnabled).toHaveBeenNthCalledWith(2, 'ssf', true);
   });
 
   it('rejects a read-back whose stored revision does not match projected claims', async () => {

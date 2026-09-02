@@ -31,6 +31,7 @@ export interface SsfKeycloakProjectionClient {
     readonly claimName: string;
     readonly multivalued?: boolean;
   }): Promise<void>;
+  setOidcClientEnabled(clientId: string, enabled: boolean): Promise<void>;
 }
 
 export type SsfKeycloakProjectionTenant = Readonly<{
@@ -119,6 +120,11 @@ export const createSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
   readonly resolveTenant: (instanceId: string) => Promise<SsfKeycloakProjectionTenant | null>;
   readonly revokeSsfTenantSessions: (instanceId: string) => Promise<void>;
 }): SsfAuthorizationProjectionTarget => ({
+  async suspendTokenIssuance(instanceId) {
+    const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+    await tenant.client.setOidcClientEnabled(tenant.clientId, false);
+  },
+
   async reconcile(projection, authorizationRevision) {
     const desired = normalizeSsfAuthorizationProjection(projection);
     if (createSsfAuthorizationRevision(desired) !== authorizationRevision) {
@@ -199,5 +205,10 @@ export const createSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
   async revokeTenantSessions(instanceId) {
     await requireTenant(dependencies.resolveTenant, instanceId);
     await dependencies.revokeSsfTenantSessions(instanceId);
+  },
+
+  async resumeTokenIssuance(instanceId) {
+    const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+    await tenant.client.setOidcClientEnabled(tenant.clientId, true);
   },
 });

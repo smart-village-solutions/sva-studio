@@ -660,6 +660,30 @@ describe('Keycloak admin client', () => {
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
   });
 
+  it('changes an OIDC client enabled state idempotently', async () => {
+    const enabledClient = { id: 'client-1', clientId: 'ssf', enabled: true };
+    const disabledClient = { ...enabledClient, enabled: false };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [enabledClient]))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [disabledClient]));
+    const client = await createClient(fetchImpl);
+
+    await client.setOidcClientEnabled('ssf', false);
+    await client.setOidcClientEnabled('ssf', false);
+
+    const updateCalls = fetchImpl.mock.calls.filter(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
+    );
+    expect(updateCalls).toHaveLength(1);
+    expect(JSON.parse(String(updateCalls[0]?.[1]?.body))).toMatchObject({
+      clientId: 'ssf',
+      enabled: false,
+    });
+  });
+
   it('sends an explicit recovery rotation request without a secret value when the registry secret is missing', async () => {
     const existingClient = {
       id: 'client-1',

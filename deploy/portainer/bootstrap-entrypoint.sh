@@ -354,16 +354,7 @@ JOIN iam.instances AS instances
 ON CONFLICT (hostname) DO UPDATE
 SET
   instance_id = EXCLUDED.instance_id,
-  is_primary = CASE
-    WHEN EXISTS (
-      SELECT 1
-      FROM iam.instances AS instances
-      WHERE instances.id = EXCLUDED.instance_id
-        AND instances.primary_hostname = EXCLUDED.hostname
-    ) THEN EXCLUDED.is_primary
-    ELSE false
-  END,
-  created_by = EXCLUDED.created_by;`,
+  is_primary = EXCLUDED.is_primary;`,
   );
   if ((process.env.SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD ?? 'true').trim().toLowerCase() !== 'false') {
     statements.push(

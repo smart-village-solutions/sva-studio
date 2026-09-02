@@ -86,10 +86,7 @@ test('bootstrap script validates usernames and uses identifier-safe grants', () 
 });
 
 test('runtime bootstrap preserves existing tenant identity fields', () => {
-  const script = readFileSync(
-    resolve(testDirectory, '..', '..', '..', 'deploy/portainer/bootstrap-entrypoint.sh'),
-    'utf8'
-  );
+  const script = readRepoFile('../deploy/portainer/bootstrap-entrypoint.sh');
 
   for (const field of ['parent_domain', 'primary_hostname', 'auth_realm', 'auth_client_id']) {
     expect(script).toContain(
@@ -101,6 +98,7 @@ test('runtime bootstrap preserves existing tenant identity fields', () => {
   expect(script).not.toMatch(/UPDATE iam\.instance_hostnames\s+SET\s+is_primary = false/);
   expect(script).toContain('instances.primary_hostname = expected.hostname');
   expect(script).toContain('hostname.hostname = instances.primary_hostname');
+  expect(script).not.toContain('created_by = EXCLUDED.created_by');
 });
 
 test('migration script supports profile-specific postgres targets', () => {

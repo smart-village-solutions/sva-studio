@@ -276,24 +276,25 @@ describe('ContentEditorPage', () => {
       permissionActions: ['content.transferOwnership'],
     });
     studioMswServer.use(
-      http.get('/api/v1/iam/contents/content-1', () =>
-        HttpResponse.json({ data: ownerContent })
-      ),
+      http.get('/api/v1/iam/contents/content-1', () => HttpResponse.json({ data: ownerContent })),
       http.get('/api/v1/iam/contents/content-1/history', () => HttpResponse.json({ data: [] })),
-      http.get('/api/v1/iam/contents/content-1/ownership-targets', () =>
-        HttpResponse.json({
-          data: [
-            {
-              principal: {
-                type: 'account',
-                id: '00000000-0000-4000-8000-000000000020',
-              },
-              displayName: 'Neuer Account',
-            },
-          ],
-          pagination: { page: 1, pageSize: 10, total: 1 },
-        })
-      ),
+      http.get('/api/v1/iam/contents/content-1/ownership-targets', ({ request }) => {
+        const isAccountQuery = new URL(request.url).searchParams.get('type') === 'account';
+        return HttpResponse.json({
+          data: isAccountQuery
+            ? [
+                {
+                  principal: {
+                    type: 'account',
+                    id: '00000000-0000-4000-8000-000000000020',
+                  },
+                  displayName: 'Neuer Account',
+                },
+              ]
+            : [],
+          pagination: { page: 1, pageSize: 10, total: isAccountQuery ? 1 : 0 },
+        });
+      }),
       http.post('/api/v1/iam/contents/content-1/transfer-ownership', async ({ request }) => {
         transferPayload = await request.json();
         return HttpResponse.json({
@@ -316,11 +317,10 @@ describe('ContentEditorPage', () => {
     expect(
       screen.getAllByText('Normales Speichern ändert den Inhaber nicht.').length
     ).toBeGreaterThan(1);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Inhalt übertragen' })
-    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(screen.getByRole('combobox', { name: 'Neuer Inhaber' }));
     await waitFor(() => expect(screen.getByText('Neuer Account')).toBeTruthy());
-    fireEvent.click(screen.getByRole('radio', { name: /Neuer Account/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Neuer Account/ }));
     fireEvent.click(
       screen.getByRole('checkbox', {
         name: 'Ich bestätige die Übertragung an den ausgewählten Inhaber.',
@@ -335,9 +335,9 @@ describe('ContentEditorPage', () => {
           id: '00000000-0000-4000-8000-000000000020',
         },
       });
-      expect(screen.getAllByText('Der Inhalt wurde erfolgreich übertragen.').length).toBeGreaterThan(
-        0
-      );
+      expect(
+        screen.getAllByText('Der Inhalt wurde erfolgreich übertragen.').length
+      ).toBeGreaterThan(0);
     });
   });
 
@@ -356,20 +356,24 @@ describe('ContentEditorPage', () => {
         })
       ),
       http.get('/api/v1/iam/contents/content-1/history', () => HttpResponse.json({ data: [] })),
-      http.get('/api/v1/iam/contents/content-1/ownership-targets', () =>
-        HttpResponse.json({
-          data: [
-            {
-              principal: {
-                type: 'organization',
-                id: '00000000-0000-4000-8000-000000000020',
-              },
-              displayName: 'Neue Organisation',
-            },
-          ],
-          pagination: { page: 1, pageSize: 10, total: 1 },
-        })
-      ),
+      http.get('/api/v1/iam/contents/content-1/ownership-targets', ({ request }) => {
+        const isOrganizationQuery =
+          new URL(request.url).searchParams.get('type') === 'organization';
+        return HttpResponse.json({
+          data: isOrganizationQuery
+            ? [
+                {
+                  principal: {
+                    type: 'organization',
+                    id: '00000000-0000-4000-8000-000000000020',
+                  },
+                  displayName: 'Neue Organisation',
+                },
+              ]
+            : [],
+          pagination: { page: 1, pageSize: 10, total: isOrganizationQuery ? 1 : 0 },
+        });
+      }),
       http.post('/api/v1/iam/contents/content-1/transfer-ownership', () =>
         HttpResponse.json({ error: { code: 'conflict', message: 'conflict' } }, { status: 409 })
       )
@@ -377,14 +381,10 @@ describe('ContentEditorPage', () => {
 
     render(<ContentEditorPage mode="edit" contentId="content-1" />);
     await waitFor(() => expect(screen.getByText('Bisherige Organisation')).toBeTruthy());
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Inhalt übertragen' })
-    );
-    fireEvent.change(screen.getByRole('combobox', { name: 'Art des Zielinhabers' }), {
-      target: { value: 'organization' },
-    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(screen.getByRole('combobox', { name: 'Neuer Inhaber' }));
     await waitFor(() => expect(screen.getByText('Neue Organisation')).toBeTruthy());
-    fireEvent.click(screen.getByRole('radio', { name: /Neue Organisation/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Neue Organisation/ }));
     fireEvent.click(
       screen.getByRole('checkbox', {
         name: 'Ich bestätige die Übertragung an den ausgewählten Inhaber.',
@@ -393,9 +393,9 @@ describe('ContentEditorPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt übertragen' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Der Inhalt konnte nicht übertragen werden.').length).toBeGreaterThan(
-        0
-      );
+      expect(
+        screen.getAllByText('Der Inhalt konnte nicht übertragen werden.').length
+      ).toBeGreaterThan(0);
     });
   });
 

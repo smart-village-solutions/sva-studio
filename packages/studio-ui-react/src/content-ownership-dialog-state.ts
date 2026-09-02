@@ -7,13 +7,10 @@ import type {
 } from './content-ownership-types.js';
 
 export type ContentOwnershipDialogState = Readonly<{
-  targetType: 'account' | 'organization';
-  setTargetType: (value: 'account' | 'organization') => void;
   search: string;
   setSearch: (value: string) => void;
-  page: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
   targets: readonly IamContentOwnershipTarget[];
+  hasMoreTargets: boolean;
   selected: IamContentOwnershipTarget | null;
   selectTarget: (target: IamContentOwnershipTarget) => void;
   confirmed: boolean;
@@ -21,7 +18,6 @@ export type ContentOwnershipDialogState = Readonly<{
   loading: boolean;
   pending: boolean;
   error: string | null;
-  totalPages: number;
   refreshTargets: () => Promise<void>;
   submitTransfer: () => Promise<boolean>;
 }>;
@@ -54,7 +50,9 @@ const useTransferSubmission = (input: {
 
 const useRefreshWhenOpen = (open: boolean, refreshTargets: () => Promise<void>): void => {
   React.useEffect(() => {
-    if (open) void refreshTargets();
+    if (!open) return;
+    const timeout = window.setTimeout(() => void refreshTargets(), 250);
+    return () => window.clearTimeout(timeout);
   }, [open, refreshTargets]);
 };
 
@@ -74,9 +72,7 @@ export const useContentOwnershipDialogState = (input: {
   onTransfer: (target: IamContentOwnershipTarget) => Promise<void>;
   resolveTransferError?: (error: unknown) => string;
 }): ContentOwnershipDialogState => {
-  const [targetType, setTargetTypeState] = React.useState<'account' | 'organization'>('account');
   const [search, setSearch] = React.useState('');
-  const [page, setPage] = React.useState(1);
   const [targets, setTargets] = React.useState<readonly IamContentOwnershipTarget[]>([]);
   const [total, setTotal] = React.useState(0);
   const [selected, setSelected] = React.useState<IamContentOwnershipTarget | null>(null);
@@ -91,15 +87,20 @@ export const useContentOwnershipDialogState = (input: {
     resetTargetSelection(setSelected, setConfirmed);
     setError(null);
     try {
-      const result = await input.loadTargets({
-        type: targetType,
-        page,
-        pageSize: input.pageSize,
-        ...(search.trim() ? { search: search.trim() } : {}),
-      });
+      const query = search.trim();
+      const [accounts, organizations] = await Promise.all(
+        (['account', 'organization'] as const).map((type) =>
+          input.loadTargets({
+            type,
+            page: 1,
+            pageSize: input.pageSize,
+            ...(query ? { search: query } : {}),
+          })
+        )
+      );
       if (latestRequest.current !== requestId) return;
-      setTargets(result.items);
-      setTotal(result.total);
+      setTargets([...accounts.items, ...organizations.items]);
+      setTotal(accounts.total + organizations.total);
     } catch {
       if (latestRequest.current !== requestId) return;
       setTargets([]);
@@ -108,7 +109,7 @@ export const useContentOwnershipDialogState = (input: {
     } finally {
       if (latestRequest.current === requestId) setLoading(false);
     }
-  }, [input.labels.loadError, input.loadTargets, input.pageSize, page, search, targetType]);
+  }, [input.labels.loadError, input.loadTargets, input.pageSize, search]);
   useRefreshWhenOpen(input.open, refreshTargets);
   const submission = useTransferSubmission({
     selected,
@@ -119,17 +120,10 @@ export const useContentOwnershipDialogState = (input: {
     setError,
   });
   return {
-    targetType,
-    setTargetType: (value) => {
-      setTargetTypeState(value);
-      setSearch('');
-      setPage(1);
-    },
     search,
     setSearch,
-    page,
-    setPage,
     targets,
+    hasMoreTargets: total > targets.length,
     selected,
     selectTarget: (target) => {
       setSelected(target);
@@ -140,7 +134,6 @@ export const useContentOwnershipDialogState = (input: {
     loading,
     pending: submission.pending,
     error,
-    totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
     refreshTargets,
     submitTransfer: submission.submitTransfer,
   };

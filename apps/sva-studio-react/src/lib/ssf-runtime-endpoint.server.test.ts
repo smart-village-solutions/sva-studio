@@ -14,7 +14,7 @@ import {
   SSF_RUNTIME_SERVICE_ID,
   type SsfRuntimeConfiguration,
 } from '../../../../packages/plugin-ssf/src/index.js';
-import { createSsfPluginServerHandlers } from '../../../../packages/plugin-ssf/src/server.js';
+import { createSsfPluginServerHandlers } from '../../../../packages/plugin-ssf/src/server/index.js';
 
 const authorizationRevision = `sha256:${'a'.repeat(64)}` as const;
 const configurationRevision = `sha256:${'b'.repeat(64)}` as const;

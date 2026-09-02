@@ -487,6 +487,18 @@ export const pluginDrift = authorize;
     await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
   });
 
+  it('accepts a plugin server entry below the canonical server directory', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createPluginPackage(workspaceRoot, 'plugin-server-entry', {
+      packageName: '@sva/plugin-server-entry',
+      sourceFiles: {
+        'src/server/index.ts': 'export const createPluginServerHandlers = () => ({});\n',
+      },
+    });
+
+    await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
+  });
+
   it('parses the markdown baseline and filters documented brownfield violations', () => {
     const baseline = parsePluginArchitectureBaseline(`# Plugin Architecture Boundary Baseline
 

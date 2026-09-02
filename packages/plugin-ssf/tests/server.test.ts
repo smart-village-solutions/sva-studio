@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { SSF_RUNTIME_SERVER_HANDLER_ID } from '../src/constants.js';
 import type { SsfRuntimeConfiguration } from '../src/contracts.js';
-import { createSsfPluginServerHandlers } from '../src/server.js';
+import { createSsfPluginServerHandlers } from '../src/server/index.js';
 
 const revision = `sha256:${'a'.repeat(64)}` as const;
 const configurationRevision = `sha256:${'b'.repeat(64)}` as const;

@@ -11,6 +11,6 @@
   },
   "entryPoints": {
     "browser": "./dist/index.js",
-    "server": "./dist/server.js"
+    "server": "./dist/server/index.js"
   }
 }

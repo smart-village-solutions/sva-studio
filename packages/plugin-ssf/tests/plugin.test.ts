@@ -46,7 +46,7 @@ describe('SSF plugin metadata', () => {
     });
     expect(manifest['entryPoints']).toEqual({
       browser: './dist/index.js',
-      server: './dist/server.js',
+      server: './dist/server/index.js',
     });
   });
 });

@@ -908,7 +908,7 @@ unter `packages/plugin-ssf/migrations/` beziehungsweise
 `docs/development/ssf-plugin-db-schema-final.sql`. Der technische
 Service-Zugriff ist als generischer Plugin-Vertrag umgesetzt; der zentrale
 Dispatcher authentisiert ihn vor der Tenant-Bindung und delegiert anschließend
-an `packages/plugin-ssf/src/server.ts`. Ohne produktive Readiness- und
+an `packages/plugin-ssf/src/server/index.ts`. Ohne produktive Readiness- und
 IAM-Revisionsprovider bleibt der Pfad fail-closed.
 
 ### Keycloak-Rollenzuweisungsbaustein

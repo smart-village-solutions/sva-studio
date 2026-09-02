@@ -7,14 +7,14 @@ import {
   SSF_RUNTIME_CONTRACT_VERSION,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   type SsfRuntimeErrorCode,
-} from './constants.js';
-import { createSsfDatabasePool, readSsfDatabaseConfig } from './database.js';
+} from '../constants.js';
+import { createSsfDatabasePool, readSsfDatabaseConfig } from '../database.js';
 import {
   createSsfRuntimeConfigurationHandler,
   type SsfRuntimeConfigurationHandler,
-} from './handler.js';
-import { readSsfConfigurationOverrides } from './repository.js';
-import { SsfRuntimeConfigurationValidationError, type SsfMediaResolver } from './resolver.js';
+} from '../handler.js';
+import { readSsfConfigurationOverrides } from '../repository.js';
+import { SsfRuntimeConfigurationValidationError, type SsfMediaResolver } from '../resolver.js';
 
 const CORRELATION_HEADER = 'X-Correlation-Id';
 

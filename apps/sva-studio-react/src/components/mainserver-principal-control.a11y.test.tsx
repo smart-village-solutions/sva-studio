@@ -1,5 +1,5 @@
 import { ContentOwnershipPanel, MainserverPrincipalControl } from '@sva/studio-ui-react';
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { expectNoA11yViolations } from '../test/a11y.js';
@@ -29,7 +29,7 @@ describe('MainserverPrincipalControl accessibility', () => {
   });
 
   it('keeps the ownership display and transfer entry point accessible', async () => {
-    const { container } = render(
+    render(
       <ContentOwnershipPanel
         currentOwner={{ displayName: 'Stadt Musterhausen', principalType: 'organization' }}
         supported
@@ -49,14 +49,13 @@ describe('MainserverPrincipalControl accessibility', () => {
           transferAction: 'Inhalt übertragen',
           dialogTitle: 'Inhalt übertragen',
           dialogDescription: 'Ziel auswählen und Auswirkung prüfen.',
-          targetType: 'Zieltyp',
+          targetOwner: 'Neuer Inhaber',
+          targetPlaceholder: 'Account oder Organisation auswählen',
           search: 'Suchen',
-          searchAction: 'Suche starten',
           loading: 'Lädt',
           loadError: 'Laden fehlgeschlagen',
           noTargets: 'Keine Ziele',
-          previousPage: 'Zurück',
-          nextPage: 'Weiter',
+          refineSearch: 'Suche genauer',
           confirmation: 'Übertragung bestätigen',
           accessWarning: 'Zugriff kann verloren gehen.',
           authorEffect: 'Autorenangabe bleibt unverändert.',
@@ -66,11 +65,31 @@ describe('MainserverPrincipalControl accessibility', () => {
           success: 'Erfolgreich übertragen',
           transferError: 'Übertragung fehlgeschlagen',
         }}
-        loadTargets={vi.fn().mockResolvedValue({ items: [], total: 0 })}
+        loadTargets={vi.fn().mockImplementation(({ type }: { type: string }) =>
+          Promise.resolve({
+            items: [
+              type === 'organization'
+                ? {
+                    principal: { type: 'organization', id: 'organization-1' },
+                    displayName: 'Stadt Musterhausen',
+                  }
+                : {
+                    principal: { type: 'account', id: 'account-1' },
+                    displayName: 'Redakteurin Muster',
+                  },
+            ],
+            total: 2,
+          })
+        )}
         onTransfer={vi.fn()}
       />
     );
 
-    await expect(expectNoA11yViolations(container)).resolves.toBeUndefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    const targetSelect = await screen.findByRole('combobox', { name: /^Neuer Inhaber/u });
+    fireEvent.click(targetSelect);
+    await screen.findByRole('option', { name: 'Stadt Musterhausen' });
+
+    await expect(expectNoA11yViolations(screen.getByRole('dialog'))).resolves.toBeUndefined();
   });
 });

@@ -7,13 +7,10 @@ import type {
 } from './content-ownership-types.js';
 
 export type ContentOwnershipDialogState = Readonly<{
-  targetType: 'account' | 'organization';
-  setTargetType: (value: 'account' | 'organization') => void;
   search: string;
   setSearch: (value: string) => void;
-  page: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
   targets: readonly IamContentOwnershipTarget[];
+  hasMoreTargets: boolean;
   selected: IamContentOwnershipTarget | null;
   selectTarget: (target: IamContentOwnershipTarget) => void;
   confirmed: boolean;
@@ -21,8 +18,6 @@ export type ContentOwnershipDialogState = Readonly<{
   loading: boolean;
   pending: boolean;
   error: string | null;
-  totalPages: number;
-  refreshTargets: () => Promise<void>;
   submitTransfer: () => Promise<boolean>;
 }>;
 
@@ -52,10 +47,16 @@ const useTransferSubmission = (input: {
   return { pending, submitTransfer };
 };
 
-const useRefreshWhenOpen = (open: boolean, refreshTargets: () => Promise<void>): void => {
+const useRefreshWhenOpen = (
+  open: boolean,
+  search: string,
+  loadTargets: (search: string) => Promise<void>
+): void => {
   React.useEffect(() => {
-    if (open) void refreshTargets();
-  }, [open, refreshTargets]);
+    if (!open) return;
+    const timeout = window.setTimeout(() => void loadTargets(search), 250);
+    return () => window.clearTimeout(timeout);
+  }, [loadTargets, open, search]);
 };
 
 const resetTargetSelection = (
@@ -74,9 +75,7 @@ export const useContentOwnershipDialogState = (input: {
   onTransfer: (target: IamContentOwnershipTarget) => Promise<void>;
   resolveTransferError?: (error: unknown) => string;
 }): ContentOwnershipDialogState => {
-  const [targetType, setTargetTypeState] = React.useState<'account' | 'organization'>('account');
   const [search, setSearch] = React.useState('');
-  const [page, setPage] = React.useState(1);
   const [targets, setTargets] = React.useState<readonly IamContentOwnershipTarget[]>([]);
   const [total, setTotal] = React.useState(0);
   const [selected, setSelected] = React.useState<IamContentOwnershipTarget | null>(null);
@@ -84,22 +83,31 @@ export const useContentOwnershipDialogState = (input: {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const latestRequest = React.useRef(0);
-  const refreshTargets = React.useCallback(async () => {
+  const loadTargets = React.useCallback(async (searchValue: string) => {
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
     setLoading(true);
     resetTargetSelection(setSelected, setConfirmed);
     setError(null);
     try {
-      const result = await input.loadTargets({
-        type: targetType,
-        page,
-        pageSize: input.pageSize,
-        ...(search.trim() ? { search: search.trim() } : {}),
-      });
+      const query = searchValue.trim();
+      const results = await Promise.allSettled(
+        (['account', 'organization'] as const).map((type) =>
+          input.loadTargets({
+            type,
+            page: 1,
+            pageSize: input.pageSize,
+            ...(query ? { search: query } : {}),
+          })
+        )
+      );
       if (latestRequest.current !== requestId) return;
-      setTargets(result.items);
-      setTotal(result.total);
+      const successfulResults = results.flatMap((result) =>
+        result.status === 'fulfilled' ? [result.value] : []
+      );
+      setTargets(successfulResults.flatMap((result) => result.items));
+      setTotal(successfulResults.reduce((sum, result) => sum + result.total, 0));
+      setError(results.some((result) => result.status === 'rejected') ? input.labels.loadError : null);
     } catch {
       if (latestRequest.current !== requestId) return;
       setTargets([]);
@@ -108,8 +116,8 @@ export const useContentOwnershipDialogState = (input: {
     } finally {
       if (latestRequest.current === requestId) setLoading(false);
     }
-  }, [input.labels.loadError, input.loadTargets, input.pageSize, page, search, targetType]);
-  useRefreshWhenOpen(input.open, refreshTargets);
+  }, [input.labels.loadError, input.loadTargets, input.pageSize]);
+  useRefreshWhenOpen(input.open, search, loadTargets);
   const submission = useTransferSubmission({
     selected,
     confirmed,
@@ -119,17 +127,10 @@ export const useContentOwnershipDialogState = (input: {
     setError,
   });
   return {
-    targetType,
-    setTargetType: (value) => {
-      setTargetTypeState(value);
-      setSearch('');
-      setPage(1);
-    },
     search,
     setSearch,
-    page,
-    setPage,
     targets,
+    hasMoreTargets: total > targets.length,
     selected,
     selectTarget: (target) => {
       setSelected(target);
@@ -140,8 +141,6 @@ export const useContentOwnershipDialogState = (input: {
     loading,
     pending: submission.pending,
     error,
-    totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
-    refreshTargets,
     submitTransfer: submission.submitTransfer,
   };
 };

@@ -135,17 +135,21 @@ test.describe('news plugin', () => {
           });
         }
         if (path.endsWith('/targets')) {
+          const isAccountQuery =
+            new URL(route.request().url()).searchParams.get('type') === 'account';
           return route.fulfill({
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-              data: [
-                {
-                  principal: { type: 'account', id: 'account-target' },
-                  displayName: 'Zielredaktion',
-                },
-              ],
-              pagination: { page: 1, pageSize: 10, total: 1 },
+              data: isAccountQuery
+                ? [
+                    {
+                      principal: { type: 'account', id: 'account-target' },
+                      displayName: 'Zielredaktion',
+                    },
+                  ]
+                : [],
+              pagination: { page: 1, pageSize: 10, total: isAccountQuery ? 1 : 0 },
               currentOwner: {
                 principal: { type: 'organization', id: 'organization-source' },
                 displayName: ownershipTransferred ? 'Zielredaktion' : 'Redaktion Musterhausen',
@@ -268,7 +272,8 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('heading', { name: /Inhaber|Owner/ })).toHaveCount(1);
     await expect(page.getByText('Redaktion Musterhausen').first()).toBeVisible();
     await page.getByRole('button', { name: /Inhalt übertragen|Transfer content/ }).click();
-    await page.getByRole('radio', { name: /Zielredaktion/ }).check();
+    await page.getByRole('combobox', { name: /Neuer Inhaber|New owner/ }).click();
+    await page.getByRole('option', { name: /Zielredaktion/ }).click();
     await page
       .getByRole('checkbox', { name: /Ich bestätige die Übertragung|I confirm the transfer/i })
       .check();

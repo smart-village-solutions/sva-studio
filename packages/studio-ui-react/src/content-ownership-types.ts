@@ -21,14 +21,13 @@ export type ContentOwnershipPanelLabels = Readonly<{
   transferAction: string;
   dialogTitle: string;
   dialogDescription: string;
-  targetType: string;
+  targetOwner: string;
+  targetPlaceholder: string;
   search: string;
-  searchAction: string;
   loading: string;
   loadError: string;
   noTargets: string;
-  previousPage: string;
-  nextPage: string;
+  refineSearch: string;
   confirmation: string;
   accessWarning: string;
   authorEffect: string;

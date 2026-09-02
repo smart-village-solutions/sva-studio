@@ -2,11 +2,11 @@ import type {
   PluginServerHandlerExecutionContext,
   PluginTechnicalServiceTenantContext,
 } from '@sva/plugin-sdk';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SSF_RUNTIME_SERVER_HANDLER_ID } from '../src/constants.js';
 import type { SsfRuntimeConfiguration } from '../src/contracts.js';
-import { createSsfPluginServerHandlers } from '../src/server/index.js';
+import { createPluginServerHandlers, createSsfPluginServerHandlers } from '../src/server/index.js';
 
 const revision = `sha256:${'a'.repeat(64)}` as const;
 const configurationRevision = `sha256:${'b'.repeat(64)}` as const;
@@ -54,6 +54,10 @@ const successfulConfiguration: SsfRuntimeConfiguration = {
 };
 
 describe('SSF plugin server handler', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('binds the declared handler id and maps the verified service context', async () => {
     const runtimeHandler = vi.fn().mockResolvedValue(successfulConfiguration);
     const handlers = createSsfPluginServerHandlers({ runtimeHandler });
@@ -100,5 +104,18 @@ describe('SSF plugin server handler', () => {
     expect(body).toContain('runtime_configuration_unavailable');
     expect(body).not.toContain('postgres secret details');
     expect(response?.headers.get('X-Correlation-Id')).toBe('correlation-1');
+  });
+
+  it('keeps the default server binding unavailable without an explicit database', async () => {
+    vi.stubEnv('SVA_STUDIO_SSF_DATABASE_URL', '');
+
+    const response =
+      await createPluginServerHandlers()[SSF_RUNTIME_SERVER_HANDLER_ID]?.(serviceContext());
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      contractVersion: '1.0',
+      error: { code: 'runtime_configuration_unavailable', retryable: true },
+    });
   });
 });

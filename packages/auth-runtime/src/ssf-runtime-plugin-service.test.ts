@@ -256,6 +256,28 @@ describe('SSF runtime plugin service host gates', () => {
     }
   });
 
+  it('fails closed while the tenant is still provisioning', async () => {
+    readInstance.mockResolvedValue(instance('provisioning'));
+    const access = createAccess();
+
+    const result = await access.bindServiceTenant?.({
+      request: request(),
+      descriptor: descriptor(),
+      serviceId: 'ssf-runtime',
+      serviceSubject: 'service-subject',
+      tenantHeaderName: 'X-Studio-Instance-Id',
+    });
+
+    expect(result?.kind).toBe('rejected');
+    if (result?.kind === 'rejected') {
+      expect(result.response.status).toBe(409);
+      await expect(readBody(result.response)).resolves.toMatchObject({
+        error: { code: 'ssf_tenant_not_ready', retryable: true },
+      });
+    }
+    expect(readPluginAccess).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['missing correlation', { headers: { 'X-Correlation-Id': '' } }],
     ['foreign query tenant', { query: '?instanceId=tenant-b' }],
@@ -299,5 +321,84 @@ describe('SSF runtime plugin service host gates', () => {
       expect(body).toContain('runtime_configuration_unavailable');
       expect(body).not.toContain('postgres secret details');
     }
+  });
+
+  it('does not let a security-audit outage replace the authentication rejection', async () => {
+    emitSecurityAudit.mockRejectedValue(new Error('audit unavailable'));
+    const access = createAccess();
+
+    const result = await access.authenticateService?.({
+      request: request({ headers: { Authorization: '' } }),
+      descriptor: descriptor(),
+      serviceId: 'ssf-runtime',
+    });
+
+    expect(result?.kind).toBe('rejected');
+    if (result?.kind === 'rejected') expect(result.response.status).toBe(401);
+  });
+
+  it('observes successful revisions without consuming the response body', async () => {
+    const access = createAccess();
+    const responseBody = {
+      configurationRevision: `sha256:${'b'.repeat(64)}`,
+      authorizationRevision: revision,
+    };
+    const response = Response.json(responseBody);
+
+    await access.observeServiceResponse?.({
+      request: request(),
+      descriptor: descriptor(),
+      tenant: {
+        instanceId: 'tenant-a',
+        displayName: 'Tenant A',
+        timeZone: 'Europe/Berlin',
+        authorizationRevision: revision,
+      },
+      response,
+      durationMs: 12,
+    });
+
+    await expect(response.json()).resolves.toEqual(responseBody);
+  });
+
+  it('observes failed and malformed responses without throwing', async () => {
+    const access = createAccess();
+    const tenant = {
+      instanceId: 'tenant-a',
+      displayName: 'Tenant A',
+      timeZone: 'Europe/Berlin',
+      authorizationRevision: revision,
+    };
+
+    await expect(
+      access.observeServiceResponse?.({
+        request: request(),
+        descriptor: descriptor(),
+        tenant,
+        response: new Response(null, { status: 503 }),
+        durationMs: 12,
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      access.observeServiceResponse?.({
+        request: request(),
+        descriptor: descriptor(),
+        tenant,
+        response: new Response('{', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+        durationMs: 12,
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      access.observeServiceResponse?.({
+        request: request(),
+        descriptor: { ...descriptor(), ownerPluginId: 'other' },
+        tenant,
+        response: Response.json({}),
+        durationMs: 12,
+      })
+    ).resolves.toBeUndefined();
   });
 });

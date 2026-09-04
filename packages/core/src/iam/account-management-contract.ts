@@ -734,10 +734,31 @@ export const iamTenantIamSources = [
 
 export type IamTenantIamSource = (typeof iamTenantIamSources)[number];
 
+export const iamKeycloakServiceIdentities = [
+  'sva-studio-provisioner',
+  'sva-studio-tenant-iam',
+] as const;
+
+export type IamKeycloakServiceIdentity = (typeof iamKeycloakServiceIdentities)[number];
+
+export const iamTenantIamEvidenceClassifications = [
+  'ready',
+  'missing',
+  'forbidden',
+  'unknown',
+  'unavailable',
+  'misconfigured',
+] as const;
+
+export type IamTenantIamEvidenceClassification =
+  (typeof iamTenantIamEvidenceClassifications)[number];
+
 export type IamTenantIamAxis = {
   readonly status: IamTenantIamAxisStatus;
   readonly summary: string;
   readonly source: IamTenantIamSource;
+  readonly serviceIdentity?: IamKeycloakServiceIdentity;
+  readonly classification?: IamTenantIamEvidenceClassification;
   readonly checkedAt?: string;
   readonly errorCode?: string;
   readonly requestId?: string;

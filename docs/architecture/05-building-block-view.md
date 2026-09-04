@@ -361,6 +361,25 @@ Abhängigkeiten des aktuellen Systems.
    - rendert auf `/admin/instances/$instanceId` einen separaten Tenant-IAM-Bereich mit Statusachsen, Korrelation und kontextbezogenen Aktionen.
    - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.
    - leitet dafür in der React-Schicht ein kanonisches Cockpit-Modell aus bestehenden Datenquellen wie `tenantIamStatus`, Keycloak-Preflight, Provisioning-Vorschau, letztem Run und Mutationsdiagnostik ab, ohne den Backend-Vertrag zu ändern.
+
+### Ergänzung 2026-09: Servicegebundene Doctor-Evidenz
+
+1. `packages/auth-runtime`
+   - führt die Access-Probe ausschließlich mit der tenantgebundenen
+     Tenant-IAM-Identität aus und klassifiziert eine mehrdeutige leere
+     Clientsuche als `AUTH_CLIENT_VISIBILITY_UNCONFIRMED`.
+   - gleicht den Tenant-IAM-Service-Account auf `view-clients` ohne
+     `manage-clients` ab.
+2. `packages/instance-registry`
+   - ordnet Struktur-Snapshots dem Provisioner sowie Access- und
+     Rollen-Reconcile-Evidenz dem Tenant IAM Service zu.
+   - leitet `overall` ausschließlich aus den drei Fachachsen ab.
+3. `packages/core`
+   - veröffentlicht die logische `serviceIdentity` additiv im
+     `IamTenantIamAxis`-Vertrag.
+4. `apps/sva-studio-react`
+   - zeigt im Doctor neben Quelle und Korrelation auch die für den Befund
+     verwendete logische Serviceidentität an.
 6. Öffentlicher Abfallkalender (`apps/public-waste-calendar-web`)
 
 - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell

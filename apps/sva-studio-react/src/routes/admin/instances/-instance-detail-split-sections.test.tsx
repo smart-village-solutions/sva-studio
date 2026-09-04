@@ -529,6 +529,7 @@ describe('instance detail split sections', () => {
               summary: 'Konfiguration ok',
               status: 'ready',
               sourceLabel: 'Quelle: Registry',
+              serviceIdentity: 'sva-studio-provisioner',
             },
             {
               key: 'tenant-reconcile',
@@ -536,6 +537,11 @@ describe('instance detail split sections', () => {
               summary: 'Drift vorhanden',
               status: 'blocked',
               sourceLabel: 'Quelle: Rollenabgleich',
+              serviceIdentity: 'sva-studio-tenant-iam',
+              classification: 'forbidden',
+              classificationLabel: 'Recht fehlt',
+              remediation:
+                'Prüfen Sie den Rollenvertrag von sva-studio-tenant-iam; verwenden Sie keine Provisioner-Credentials als Ersatz.',
             },
           ],
           recommendedAction: {
@@ -568,6 +574,16 @@ describe('instance detail split sections', () => {
     expect(screen.getByText('Reparatur ausführen')).toBeTruthy();
     expect(screen.getByText('Validieren')).toBeTruthy();
     expect(screen.getByText('Konfiguration ok')).toBeTruthy();
+    expect(screen.getByText('Service: sva-studio-provisioner')).toBeTruthy();
+    expect(screen.getByText('Befund: Recht fehlt')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Prüfen Sie den Rollenvertrag von sva-studio-tenant-iam; verwenden Sie keine Provisioner-Credentials als Ersatz.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByTestId('instance-doctor-overview').tagName).toBe('UL');
+    expect(screen.getByTestId('instance-doctor-overview').classList.contains('m-0')).toBe(true);
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Drift vorhanden').length).toBeGreaterThan(0);
     expect(screen.getByText('Historischer Fehler')).toBeTruthy();
 

@@ -18,6 +18,8 @@ const buildTenantIamAxis = (
   status,
   summary,
   source,
+  ...(current?.serviceIdentity ? { serviceIdentity: current.serviceIdentity } : {}),
+  ...(current?.classification ? { classification: current.classification } : {}),
   ...(current?.checkedAt ? { checkedAt: current.checkedAt } : {}),
   ...(current?.errorCode ? { errorCode: current.errorCode } : {}),
   ...(current?.requestId ? { requestId: current.requestId } : {}),

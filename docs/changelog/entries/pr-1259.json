@@ -1,0 +1,4 @@
+{
+  "prNumber": 1259,
+  "body": "Der Tenant-IAM-Doctor unterscheidet jetzt zuverlässig zwischen fehlenden Objekten, fehlenden Zugriffsrechten und nicht erreichbaren Diensten.\n\n- Eine fehlende Clientsicht wird nicht mehr fälschlich als fehlender Keycloak-Client gemeldet.\n- Diagnosebefunde zeigen die zuständige Studio-Serviceidentität und eine konkrete Abhilfe an.\n- Die Berechtigungen für Provisionierung und laufenden Tenant-IAM-Abgleich sind klar getrennt dokumentiert."
+}

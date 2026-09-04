@@ -9,6 +9,8 @@ import {
   iamRuntimeDiagnosticClassifications,
   iamRuntimeDiagnosticStatuses,
   iamRuntimeRecommendedActions,
+  iamKeycloakServiceIdentities,
+  iamTenantIamEvidenceClassifications,
   iamTenantIamAxisStatuses,
   iamTenantIamSources,
   type IamTenantIamStatus,
@@ -76,6 +78,18 @@ describe('account-management-contract runtime diagnostics exports', () => {
       'role_reconcile',
       'access_probe',
     ]);
+    expect(iamKeycloakServiceIdentities).toEqual([
+      'sva-studio-provisioner',
+      'sva-studio-tenant-iam',
+    ]);
+    expect(iamTenantIamEvidenceClassifications).toEqual([
+      'ready',
+      'missing',
+      'forbidden',
+      'unknown',
+      'unavailable',
+      'misconfigured',
+    ]);
   });
 
   it('supports correlated tenant IAM detail shapes', () => {
@@ -84,15 +98,19 @@ describe('account-management-contract runtime diagnostics exports', () => {
         status: 'ready',
         summary: 'Tenant-Admin-Client und Strukturartefakte sind vorhanden.',
         source: 'registry',
+        classification: 'ready',
         checkedAt: '2026-04-29T09:00:00.000Z',
+        serviceIdentity: 'sva-studio-provisioner',
       },
       access: {
         status: 'degraded',
         summary: 'Rechteprobe meldet fehlende Rollen-Leserechte.',
         source: 'access_probe',
+        classification: 'forbidden',
         checkedAt: '2026-04-29T09:01:00.000Z',
         errorCode: 'IDP_FORBIDDEN',
         requestId: 'req-access-1',
+        serviceIdentity: 'sva-studio-tenant-iam',
       },
       reconcile: {
         status: 'unknown',

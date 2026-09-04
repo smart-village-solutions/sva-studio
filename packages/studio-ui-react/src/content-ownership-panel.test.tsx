@@ -277,6 +277,32 @@ describe('ContentOwnershipPanel', () => {
     );
   });
 
+  it('bounds empty-page scanning and asks for a narrower search', async () => {
+    const loadTargets = vi
+      .fn()
+      .mockImplementation(({ type }: { type: 'account' | 'organization' }) =>
+        Promise.resolve({ items: [], total: type === 'account' ? 1_000 : 0 })
+      );
+
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
+
+    expect(await screen.findByText('Suche genauer')).toBeTruthy();
+    expect(loadTargets).toHaveBeenCalledTimes(6);
+    expect(loadTargets).not.toHaveBeenCalledWith(expect.objectContaining({ page: 6 }));
+  });
+
   it('keeps successful target results when the other target type fails', async () => {
     const organization = {
       principal: {

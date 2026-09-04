@@ -21,6 +21,17 @@ export type ContentOwnershipDialogState = Readonly<{
   submitTransfer: () => Promise<boolean>;
 }>;
 
+type ContentOwnershipDialogStateInput = Readonly<{
+  open: boolean;
+  pageSize: number;
+  labels: ContentOwnershipPanelLabels;
+  loadTargets: ContentOwnershipTargetLoader;
+  onTransfer: (target: IamContentOwnershipTarget) => Promise<void>;
+  resolveTransferError?: (error: unknown) => string;
+}>;
+
+const MAX_EMPTY_TARGET_PAGES = 5;
+
 const useTransferSubmission = (input: {
   selected: IamContentOwnershipTarget | null;
   confirmed: boolean;
@@ -80,7 +91,11 @@ const loadFirstAvailableTargetPage = async (input: {
     pageSize: input.pageSize,
     ...(input.search ? { search: input.search } : {}),
   });
-  while (result.items.length === 0 && page * input.pageSize < result.total) {
+  while (
+    result.items.length === 0 &&
+    page < MAX_EMPTY_TARGET_PAGES &&
+    page * input.pageSize < result.total
+  ) {
     page += 1;
     result = await input.loadTargets({
       type: input.type,
@@ -92,14 +107,9 @@ const loadFirstAvailableTargetPage = async (input: {
   return result;
 };
 
-export const useContentOwnershipDialogState = (input: {
-  open: boolean;
-  pageSize: number;
-  labels: ContentOwnershipPanelLabels;
-  loadTargets: ContentOwnershipTargetLoader;
-  onTransfer: (target: IamContentOwnershipTarget) => Promise<void>;
-  resolveTransferError?: (error: unknown) => string;
-}): ContentOwnershipDialogState => {
+export const useContentOwnershipDialogState = (
+  input: ContentOwnershipDialogStateInput
+): ContentOwnershipDialogState => {
   const [search, setSearch] = React.useState('');
   const [targets, setTargets] = React.useState<readonly IamContentOwnershipTarget[]>([]);
   const [total, setTotal] = React.useState(0);

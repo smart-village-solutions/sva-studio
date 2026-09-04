@@ -21,6 +21,17 @@ export type ContentOwnershipDialogState = Readonly<{
   submitTransfer: () => Promise<boolean>;
 }>;
 
+type ContentOwnershipDialogStateInput = Readonly<{
+  open: boolean;
+  pageSize: number;
+  labels: ContentOwnershipPanelLabels;
+  loadTargets: ContentOwnershipTargetLoader;
+  onTransfer: (target: IamContentOwnershipTarget) => Promise<void>;
+  resolveTransferError?: (error: unknown) => string;
+}>;
+
+const MAX_EMPTY_TARGET_PAGES = 5;
+
 const useTransferSubmission = (input: {
   selected: IamContentOwnershipTarget | null;
   confirmed: boolean;
@@ -67,14 +78,38 @@ const resetTargetSelection = (
   setConfirmed(false);
 };
 
-export const useContentOwnershipDialogState = (input: {
-  open: boolean;
-  pageSize: number;
-  labels: ContentOwnershipPanelLabels;
-  loadTargets: ContentOwnershipTargetLoader;
-  onTransfer: (target: IamContentOwnershipTarget) => Promise<void>;
-  resolveTransferError?: (error: unknown) => string;
-}): ContentOwnershipDialogState => {
+const loadFirstAvailableTargetPage = async (input: {
+  readonly loadTargets: ContentOwnershipTargetLoader;
+  readonly pageSize: number;
+  readonly search?: string;
+  readonly type: 'account' | 'organization';
+}) => {
+  let page = 1;
+  let result = await input.loadTargets({
+    type: input.type,
+    page,
+    pageSize: input.pageSize,
+    ...(input.search ? { search: input.search } : {}),
+  });
+  while (
+    result.items.length === 0 &&
+    page < MAX_EMPTY_TARGET_PAGES &&
+    page * input.pageSize < result.total
+  ) {
+    page += 1;
+    result = await input.loadTargets({
+      type: input.type,
+      page,
+      pageSize: input.pageSize,
+      ...(input.search ? { search: input.search } : {}),
+    });
+  }
+  return result;
+};
+
+export const useContentOwnershipDialogState = (
+  input: ContentOwnershipDialogStateInput
+): ContentOwnershipDialogState => {
   const [search, setSearch] = React.useState('');
   const [targets, setTargets] = React.useState<readonly IamContentOwnershipTarget[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -83,40 +118,45 @@ export const useContentOwnershipDialogState = (input: {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const latestRequest = React.useRef(0);
-  const loadTargets = React.useCallback(async (searchValue: string) => {
-    const requestId = latestRequest.current + 1;
-    latestRequest.current = requestId;
-    setLoading(true);
-    resetTargetSelection(setSelected, setConfirmed);
-    setError(null);
-    try {
-      const query = searchValue.trim();
-      const results = await Promise.allSettled(
-        (['account', 'organization'] as const).map((type) =>
-          input.loadTargets({
-            type,
-            page: 1,
-            pageSize: input.pageSize,
-            ...(query ? { search: query } : {}),
-          })
-        )
-      );
-      if (latestRequest.current !== requestId) return;
-      const successfulResults = results.flatMap((result) =>
-        result.status === 'fulfilled' ? [result.value] : []
-      );
-      setTargets(successfulResults.flatMap((result) => result.items));
-      setTotal(successfulResults.reduce((sum, result) => sum + result.total, 0));
-      setError(results.some((result) => result.status === 'rejected') ? input.labels.loadError : null);
-    } catch {
-      if (latestRequest.current !== requestId) return;
-      setTargets([]);
-      setTotal(0);
-      setError(input.labels.loadError);
-    } finally {
-      if (latestRequest.current === requestId) setLoading(false);
-    }
-  }, [input.labels.loadError, input.loadTargets, input.pageSize]);
+  const loadTargets = React.useCallback(
+    async (searchValue: string) => {
+      const requestId = latestRequest.current + 1;
+      latestRequest.current = requestId;
+      setLoading(true);
+      resetTargetSelection(setSelected, setConfirmed);
+      setError(null);
+      try {
+        const query = searchValue.trim();
+        const results = await Promise.allSettled(
+          (['account', 'organization'] as const).map((type) =>
+            loadFirstAvailableTargetPage({
+              loadTargets: input.loadTargets,
+              type,
+              pageSize: input.pageSize,
+              ...(query ? { search: query } : {}),
+            })
+          )
+        );
+        if (latestRequest.current !== requestId) return;
+        const successfulResults = results.flatMap((result) =>
+          result.status === 'fulfilled' ? [result.value] : []
+        );
+        setTargets(successfulResults.flatMap((result) => result.items));
+        setTotal(successfulResults.reduce((sum, result) => sum + result.total, 0));
+        setError(
+          results.some((result) => result.status === 'rejected') ? input.labels.loadError : null
+        );
+      } catch {
+        if (latestRequest.current !== requestId) return;
+        setTargets([]);
+        setTotal(0);
+        setError(input.labels.loadError);
+      } finally {
+        if (latestRequest.current === requestId) setLoading(false);
+      }
+    },
+    [input.labels.loadError, input.loadTargets, input.pageSize]
+  );
   useRefreshWhenOpen(input.open, search, loadTargets);
   const submission = useTransferSubmission({
     selected,

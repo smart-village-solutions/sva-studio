@@ -147,7 +147,7 @@ function TargetResults({
   if (targets.length === 0) {
     return (
       <p role="option" aria-disabled="true" className="px-3 py-4 text-sm text-muted-foreground">
-        {labels.noTargets}
+        {hasMoreTargets ? labels.refineSearch : labels.noTargets}
       </p>
     );
   }

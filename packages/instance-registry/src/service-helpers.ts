@@ -125,6 +125,7 @@ export const buildTenantIamStatus = (input: {
       status: overallStatus,
       summary: overallSummary,
       source: overallStatus === 'unknown' ? 'registry' : dominantAxis.source,
+      classification: dominantAxis.classification,
       checkedAt: dominantAxis.checkedAt,
       errorCode: dominantAxis.errorCode,
       requestId: dominantAxis.requestId,

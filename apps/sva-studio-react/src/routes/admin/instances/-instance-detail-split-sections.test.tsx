@@ -582,6 +582,7 @@ describe('instance detail split sections', () => {
       )
     ).toBeTruthy();
     expect(screen.getByTestId('instance-doctor-overview').tagName).toBe('UL');
+    expect(screen.getByTestId('instance-doctor-overview').classList.contains('m-0')).toBe(true);
     expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Drift vorhanden').length).toBeGreaterThan(0);
     expect(screen.getByText('Historischer Fehler')).toBeTruthy();

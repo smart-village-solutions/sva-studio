@@ -51,7 +51,7 @@ export const InstanceDetailDoctorSection = ({
       title={t('admin.instances.doctor.steps.overview.title')}
       subtitle={t('admin.instances.doctor.steps.overview.subtitle')}
     >
-      <ul data-testid="instance-doctor-overview" className="grid list-none gap-3 p-0">
+      <ul data-testid="instance-doctor-overview" className="m-0 grid list-none gap-3 p-0">
         {doctorModel.checks.map((check) => (
           <li key={check.key} className="rounded-xl border border-border/70 bg-background/85 p-4">
             <div className="flex items-start justify-between gap-3">

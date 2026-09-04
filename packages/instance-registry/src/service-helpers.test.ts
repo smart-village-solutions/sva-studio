@@ -267,11 +267,11 @@ describe('service-helpers', () => {
       runtimeSecretSource: 'tenant' as const,
     };
 
-    expect(
-      buildTenantIamStatus({
-        keycloakStatus: { ...completeStatus, tenantAdminClientExists: false },
-      }).configuration.classification
-    ).toBe('missing');
+    const missingStructure = buildTenantIamStatus({
+      keycloakStatus: { ...completeStatus, tenantAdminClientExists: false },
+    });
+    expect(missingStructure.configuration.classification).toBe('missing');
+    expect(missingStructure.overall.classification).toBe('missing');
     expect(
       buildTenantIamStatus({
         keycloakStatus: { ...completeStatus, tenantAdminClientSecretAligned: false },

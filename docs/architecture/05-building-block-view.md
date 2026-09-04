@@ -900,12 +900,19 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 - SSF konsumiert nur die aufgelöste Antwort. Es kennt keine Override-Herkunft,
   greift nicht auf Studio-Datenbanken zu und hält keine persistente Kopie der
   Konfiguration.
-- Der separate SSF-Keycloak stellt Benutzer- und Service-Tokens aus. Gäste
-  verbleiben im SSF-Sessionmodell und werden nicht als Studio-Benutzer
-  materialisiert.
+- Die gemeinsam genutzte Keycloak-Instanz stellt das installationsweite
+  Service-Token aus dem Studio-Root-Realm und Studio-/SSF-Benutzertokens aus
+  dem jeweiligen Tenant-Realm aus. Studio und SSF verwenden dort dieselbe
+  Benutzeridentität und dasselbe OIDC-`sub`. Gäste verbleiben im
+  SSF-Sessionmodell und werden nicht als Studio-Benutzer materialisiert.
 - Eine Studio-owned SSF-IAM-Projektion materialisiert ausschließlich effektive
   tenantgebundene `ssf.*`-Permissions und ihre Revision in den jeweiligen
-  SSF-Keycloak-Client. Projektionsfehler sperren Client und Plugin-Readiness.
+  SSF-Client des gemeinsamen Tenant-Realms. Projektionsfehler sperren Client
+  und Plugin-Readiness.
+- Das SSF-Plugin enthält für den nachgelagerten Session-Widerruf einen schmalen
+  HTTP-Consumer. Basis- und Token-URL sowie die Credentials der getrennten
+  technischen Identität `sva-studio-ssf-control-plane` stammen aus dem
+  Deployment; das Plugin-SDK erhält dafür keine neue Abstraktion.
 - Root-Actions des SSF-Plugins werden getrennt als Plattformbeitrag für
   `instance_registry_admin` registriert und niemals in Tenant-Tokens projiziert.
 
@@ -917,9 +924,11 @@ Implementiert sind die browser-sicheren V1-Verträge unter
 `packages/plugin-ssf/src/index.ts` und die serverseitigen Bausteine unter
 `packages/plugin-ssf/src/runtime.ts`. Migration und Snapshot liegen getrennt
 unter `packages/plugin-ssf/migrations/` beziehungsweise
-`docs/development/ssf-plugin-db-schema-final.sql`. Eine Plugin-Manifest- und
-Dispatcherbindung wird erst gegen den noch offenen Plattformvertrag ergänzt;
-bis dahin existiert kein konkurrierender Sonderrouter.
+`docs/development/ssf-plugin-db-schema-final.sql`. Der technische
+Service-Zugriff ist als generischer Plugin-Vertrag umgesetzt; der zentrale
+Dispatcher authentisiert ihn vor der Tenant-Bindung und delegiert anschließend
+an `packages/plugin-ssf/src/server/index.ts`. Ohne produktive Readiness- und
+IAM-Revisionsprovider bleibt der Pfad fail-closed.
 
 ### Keycloak-Rollenzuweisungsbaustein
 

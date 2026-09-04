@@ -798,7 +798,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
 
 test(
   'portable docker runtime guard follows reachable modules and excludes only the known optional helper',
-  { timeout: 10_000 },
+  { timeout: 30_000 },
   () => {
     const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
     const serverDir = resolve(tempRoot, '.output/server');

@@ -1,6 +1,9 @@
 export const SSF_RUNTIME_CONTRACT_VERSION = '1.0' as const;
 export const SSF_RUNTIME_ENDPOINT_PATH = '/internal/plugins/ssf/v1/runtime-configuration' as const;
 export const SSF_RUNTIME_SERVICE_ACTION = 'ssf.runtime-configuration.read' as const;
+export const SSF_RUNTIME_SERVER_HANDLER_ID = 'ssf.runtime-configuration' as const;
+export const SSF_RUNTIME_SERVICE_ID = 'ssf-runtime' as const;
+export const SSF_RUNTIME_INSTANCE_HEADER = 'X-Studio-Instance-Id' as const;
 
 export const SSF_RUNTIME_LIMITS = {
   activeLocales: 20,

@@ -1,5 +1,6 @@
 import {
   createPluginServerHandlerDispatcher,
+  createSsfRuntimePluginServiceAccess,
   type PluginServerHandlerDispatcherDependencies,
 } from '@sva/auth-runtime/server';
 import type {
@@ -127,9 +128,13 @@ export const createStudioPluginServerHandlerDispatcher = async (
   const handlers = await createPluginServerExecutionHandlersFromSnapshot({
     pluginSources: studioPluginSnapshot.pluginSources as readonly StudioPluginServerSource[],
   });
+  const ssfRuntimeServiceAccess = createSsfRuntimePluginServiceAccess();
   return createPluginServerHandlerDispatcher({
     descriptors: studioPluginSnapshot.registry.pluginServerHandlerRegistry,
     handlers,
-    dependencies: input.dependencies,
+    dependencies: {
+      ...ssfRuntimeServiceAccess,
+      ...input.dependencies,
+    },
   });
 };

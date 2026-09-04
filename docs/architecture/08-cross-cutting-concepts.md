@@ -964,10 +964,16 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   `ssf.configuration.tenant.provenance.inspect`; Tenant-Reads verwenden die
   getrennte tenantverfügbare Action `ssf.configuration.tenant.read`.
 - Effektive tenantgebundene `ssf.*`-Permissions werden mit einer tenantweiten
-  Revision aus Studio-IAM in den separaten SSF-Keycloak-Client projiziert. Vor
+  Revision aus Studio-IAM in den SSF-Client des gemeinsamen Tenant-Realms
+  projiziert. Studio und SSF verwenden dort dieselbe Benutzeridentität und
+  dasselbe OIDC-`sub`. Vor
   relevanten Änderungen bleiben Client und SSF-Readiness bis zu erfolgreichem
   Reconcile, Session-Widerruf und Verifikation gesperrt. Token- und Runtime-
   Revision müssen für authentifizierte Vorgänge übereinstimmen.
+- Das installationsweite SSF-Service-Token wird im Studio-Root-Realm
+  ausgestellt und trägt keine Tenantrevision. Es weist ausschließlich
+  Backend-Identität, Audience und `ssf.runtime-configuration.read` nach; die
+  bestätigte Tenantrevision liest Studio nach der hostseitigen Tenantbindung.
 - Plattformgebundene SSF-Actions erhalten ihren Default-Grant für
   `instance_registry_admin` ausschließlich im Root-/Plattformkatalog. Sie
   erscheinen weder im Tenant-Katalog noch in SSF-Tenant-Tokens.
@@ -991,8 +997,9 @@ Der vollständige V1-Vertrag ist unter
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)
 dokumentiert. Die IAM- und Runtime-Grenze ist in
 [ADR-057](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
-entschieden; der normative Implementierungsabgleich liegt im OpenSpec-Change
-`add-ssf-runtime-configuration-api`.
+entschieden. Der normative Implementierungsabgleich liegt in den OpenSpec-
+Changes `add-ssf-runtime-configuration-api` und
+`add-ssf-iam-permission-projection`.
 
 Der generische Verifier erzwingt bereits RS256, Issuer, Audience und `exp`.
 Die SSF-spezifische Prüfung verlangt zusätzlich `azp = ssf-runtime` und die

@@ -77,7 +77,11 @@ const hasValidSourceObject = (
 ) => {
   const isWasteImport = action === 'import-waste-data-v1';
   const databasePrefix =
-    database === 'waste' ? `/waste/${tenantInstanceId}/${isWasteImport ? 'import/' : ''}` : '/';
+    database === 'waste'
+      ? `/waste/${tenantInstanceId}/${isWasteImport ? 'import/' : ''}`
+      : database === 'ssf'
+        ? '/ssf/'
+        : '/';
   const prefix = `${restoreEnvironmentConfig(environment).objectPrefix}${databasePrefix}`;
   return (
     typeof sourceObjectKey === 'string' &&
@@ -110,7 +114,10 @@ const hasValidEnvelope = (request: Partial<RestoreRequest>): request is RestoreR
   request.version === 1 &&
   (request.action === 'restore-and-verify-v1' || request.action === 'import-waste-data-v1') &&
   (request.environment === 'staging' || request.environment === 'prod') &&
-  (request.database === undefined || request.database === 'studio' || request.database === 'waste');
+  (request.database === undefined ||
+    request.database === 'ssf' ||
+    request.database === 'studio' ||
+    request.database === 'waste');
 
 const hasValidTenantBinding = (request: RestoreRequestEnvelope): boolean =>
   request.database === 'waste'

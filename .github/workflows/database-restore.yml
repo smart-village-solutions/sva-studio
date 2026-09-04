@@ -9,6 +9,11 @@ on:
         required: true
         type: choice
         options: [staging, prod]
+      database:
+        description: 'Persistent database target'
+        required: true
+        type: choice
+        options: [studio, ssf]
       source_object_key:
         description: 'Exact environment-bound MinIO custom-dump object key'
         required: true
@@ -150,7 +155,7 @@ jobs:
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_ENDPOINT: https://fileserver.smart-village.app
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-        run: pnpm exec tsx scripts/ci/submit-restore-agent-request.ts "${{ inputs.environment }}"
+        run: pnpm exec tsx scripts/ci/submit-restore-agent-request.ts "${{ inputs.environment }}" "${{ inputs.database }}"
 
       - name: migrate restored database to the selected image schema
         id: restored_database_migration

@@ -27,10 +27,14 @@ const parseEnvironment = (value: string | undefined): BackupEnvironment => {
 export const parseRestoreMode = (
   value: string | undefined
 ): Readonly<{ database: BackupDatabase; action: RestoreRequest['action'] }> => {
-  if (value === undefined) return { database: 'studio', action: 'restore-and-verify-v1' };
+  if (value === undefined || value === 'studio')
+    return { database: 'studio', action: 'restore-and-verify-v1' };
+  if (value === 'ssf') return { database: 'ssf', action: 'restore-and-verify-v1' };
   if (value === 'waste') return { database: 'waste', action: 'restore-and-verify-v1' };
   if (value === 'waste-import') return { database: 'waste', action: 'import-waste-data-v1' };
-  throw new Error('Der Restore-Agent akzeptiert nur die Modi studio, waste oder waste-import.');
+  throw new Error(
+    'Der Restore-Agent akzeptiert nur die Modi studio, ssf, waste oder waste-import.'
+  );
 };
 
 export const buildRestoreAgentRequest = (input: {
@@ -175,7 +179,7 @@ const waitForRestoreResult = async (
 
 const main = async () => {
   const target = parseEnvironment(process.argv[2]);
-  const { database, action } = parseRestoreMode(process.argv[3]);
+  const { database, action } = parseRestoreMode(process.argv[3] || undefined);
   const request = buildRestoreAgentRequest({
     action,
     environment: target,
@@ -187,7 +191,7 @@ const main = async () => {
     requestId: `${action === 'import-waste-data-v1' ? 'waste-import' : 'restore'}-gha-${required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID')}-${required(
       process.env.GITHUB_RUN_ATTEMPT,
       'GITHUB_RUN_ATTEMPT'
-    )}${database === 'waste' && action === 'restore-and-verify-v1' ? '-waste' : ''}`,
+    )}${database !== 'studio' && action === 'restore-and-verify-v1' ? `-${database}` : ''}`,
     sourceObjectKey: required(process.env.RESTORE_SOURCE_OBJECT_KEY, 'RESTORE_SOURCE_OBJECT_KEY'),
     sourceSha256: required(process.env.RESTORE_SOURCE_SHA256, 'RESTORE_SOURCE_SHA256'),
     database,

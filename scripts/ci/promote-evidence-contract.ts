@@ -61,10 +61,12 @@ const gateNames = new Set<PromoteGateName>([
   'staging-parity',
   'backup-capabilities',
   'studio-backup-request',
+  'ssf-backup-request',
   'waste-backup-request',
   // Historical Evidence-v2 artifacts remain readable; new runs no longer emit this gate.
   'temporary-backup',
   'studio-backup-verification',
+  'ssf-backup-verification',
   'waste-backup-verification',
   'migration',
   'bootstrap',

@@ -86,10 +86,13 @@ reproduzierbarer Sollstand liegt in
 [`ssf-plugin-db-schema-final.sql`](./ssf-plugin-db-schema-final.sql); die Quelle
 ist `packages/plugin-ssf/migrations/`.
 
-Die SSF-Datenbank enthält ausschließlich Konfigurations-Overrides:
+Die SSF-Datenbank enthält Konfigurations-Overrides und den plugin-eigenen
+Konvergenznachweis der SSF-IAM-Projektion:
 
 - `ssf.server_settings` und `ssf.server_locales` für installationsweite Werte,
 - `ssf.tenant_settings` und `ssf.tenant_locales` für mandantenbezogene Werte,
+- `ssf.authorization_projections` für getrennten Soll-, Read-back- und
+  Session-Widerrufszustand je Mandant,
 - erzwungene Row-Level Security auf allen Tenanttabellen,
 - getrennte NOLOGIN-Rollen für Migration, Root-Verwaltung und
   tenantgebundene Runtime-Zugriffe.

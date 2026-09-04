@@ -171,6 +171,8 @@ export {
   resolveMainserverGenericItemContentType,
 } from './mainserver-generic-type-registry.js';
 export type { MainserverGenericItemOwnershipDefinition } from './mainserver-generic-type-registry.js';
+// prettier-ignore
+export type { PluginServerHandlerAccessRequirement, PluginTechnicalServiceAccessRequirement, PluginTechnicalServiceTenantContext } from './plugins.js';
 export type {
   PluginActionDefinition,
   PluginActionRegistryEntry,

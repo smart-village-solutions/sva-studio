@@ -1234,8 +1234,9 @@ Fehlerpfad:
 ### Szenario 20: SSF-Runtime-Konfiguration laden
 
 1. Für angemeldete Benutzer hat Studio zuvor die effektiven tenantgebundenen
-   `ssf.*`-Permissions mit einer tenantweiten Revision in den SSF-Keycloak-
-   Client projiziert. Ein Fehler hält Client und Plugin-Readiness gesperrt.
+   `ssf.*`-Permissions mit einer tenantweiten Revision in den SSF-Client des
+   gemeinsamen Tenant-Realms projiziert. Ein Fehler hält Client und Plugin-
+   Readiness gesperrt.
 2. Ein angemeldeter Benutzer oder eine Gäste-Session stellt SSF einen von SSF
    validierten Mandantenkontext bereit.
 3. SSF leitet daraus die kanonische Studio-Instanz-ID ab und ruft den internen
@@ -1261,14 +1262,23 @@ Fehlerpfad:
 - Scheitert die IAM-Projektion, werden keine neuen Tenant-Tokens ausgestellt und
   Runtime-Abrufe liefern `ssf_tenant_not_ready`.
 
+Bei einer geänderten bestätigten Permission-Projektion ruft Studio den festen
+SSF-Control-Plane-Endpunkt mit einer getrennten technischen Identität auf. Der
+Request enthält nur die kanonische Instanz-ID, die bestätigte Revision und einen
+daraus deterministisch abgeleiteten Idempotency-Key. Derselbe `AbortSignal`
+begrenzt Tokenabruf und Widerrufsrequest. Erst `204 No Content` erlaubt dem
+Reconciler den Übergang zu `ready`; ohne implementierten SSF-Provider bleibt der
+Tenant fail-closed. Der Adapter implementiert keine eigene Retry-Schleife.
+
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
 
-Der derzeit implementierte Zwischenstand deckt die Schritte Service-Claim-
-Prüfung, transaktionalen Override-Read, Medien-Capability, Auflösung,
-HTML-Bereinigung und Revisionsbildung als getestete Bausteine ab. Die
-produktive Pfadregistrierung sowie die Host-Gates für Instanz, Aktivierung und
-verifizierte `authorizationRevision` bleiben deaktiviert, bis der gemeinsame
-Plugin-Dispatcher den Service-Zugriffstyp bereitstellt.
+Der derzeit implementierte Zwischenstand deckt Service-Claim-Prüfung,
+authentisierungsseitig nachgelagerte Tenant-Bindung, Instanz-, Aktivierungs- und
+Readiness-Gates, tenantgebundenen Execution-Context sowie den fachlichen
+Plugin-Handler ab. Der produktive Pfad bleibt deaktiviert, bis Deployment und
+IAM-Projektion echte Datenbank-, Zeitzonen-, Medien- und verifizierte
+Revisionsprovider bereitstellen; ohne sie endet der Ablauf vor dem Handler mit
+`ssf_tenant_not_ready`.
 
 ### Keycloak-Realm-Rollenzuweisung
 

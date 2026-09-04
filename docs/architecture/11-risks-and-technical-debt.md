@@ -645,11 +645,11 @@ Referenzen:
 - Restrisiko: Studio, SSF und Plugin-Datenbank sind im V1-Verfügbarkeitsmodell
   gekoppelt. Maßnahme: bewusst kein persistenter Fallback; technische Ausfälle
   werden eindeutig als nicht verfügbare Runtime-Konfiguration gemeldet.
-- Integrationsschuld: Der offene Plugin-Plattform-Change unterstützt derzeit
-  ausschließlich menschliche Plattform- und Tenant-Zugriffsanforderungen.
-  Vor produktiver Pfadfreigabe muss er um den fest definierten Service-Zugriff
-  erweitert und mit der verifizierten SSF-IAM-Projektionsrevision verbunden
-  werden. Bis dahin bleibt das Feature standardmäßig deaktiviert.
+- Integrationsschuld: Der Plugin-Plattformvertrag unterstützt den fest
+  definierten technischen Service-Zugriff und bindet den Tenant erst nach
+  erfolgreicher Authentisierung. Vor produktiver Pfadfreigabe fehlen weiterhin
+  die Deployment-Provider und die verifizierte SSF-IAM-Projektionsrevision.
+  Bis dahin bleibt das Feature standardmäßig deaktiviert und fail-closed.
 
 ### Fortschreibung 2026-09: Administrative Keycloak-Rollen
 

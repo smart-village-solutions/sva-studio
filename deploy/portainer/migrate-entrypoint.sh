@@ -77,4 +77,34 @@ case "${WASTE_TENANT_MIGRATIONS_ENABLED:-false}" in
     ;;
 esac
 
+case "${SSF_PLUGIN_DATABASE_ENABLED:-false}" in
+  true)
+    require_env SSF_PLUGIN_RUNTIME_DB_PASSWORD
+    SSF_PLUGIN_MIGRATOR="${SSF_PLUGIN_MIGRATOR:-./migrate-ssf-plugin.mjs}"
+    SSF_PLUGIN_MIGRATIONS_DIR="${SSF_PLUGIN_MIGRATIONS_DIR:-packages/plugin-ssf/migrations}"
+    SSF_PLUGIN_DATABASE_NAME="${SSF_PLUGIN_DATABASE_NAME:-sva_studio_ssf}"
+    if [ ! -f "${SSF_PLUGIN_MIGRATOR}" ] || [ ! -d "${SSF_PLUGIN_MIGRATIONS_DIR}" ]; then
+      log "SSF-Plugin-Migrator oder Migrationsverzeichnis fehlt"
+      exit 31
+    fi
+    export SSF_PLUGIN_DATABASE_NAME
+    log "Bereite getrennte SSF-Plugin-Datenbank vor"
+    node "${SSF_PLUGIN_MIGRATOR}" prepare || exit 37
+    ssf_db_string="postgres://${POSTGRES_USER}@${POSTGRES_HOST}:${POSTGRES_PORT}/${SSF_PLUGIN_DATABASE_NAME}?sslmode=disable"
+    log "Wende versionierte SSF-Plugin-Migrationen an"
+    "${GOOSE_WRAPPER}" -dir "${SSF_PLUGIN_MIGRATIONS_DIR}" postgres "${ssf_db_string}" up || exit 38
+    log "Lese finalen SSF-Plugin-Goose-Status"
+    "${GOOSE_WRAPPER}" -dir "${SSF_PLUGIN_MIGRATIONS_DIR}" postgres "${ssf_db_string}" status || exit 38
+    log "Reconciliere den minimalen SSF-Runtime-Datenbankprincipal"
+    node "${SSF_PLUGIN_MIGRATOR}" reconcile || exit 39
+    ;;
+  false|'')
+    log "SSF-Plugin-Datenbankmigrationen sind für dieses Laufzeitprofil deaktiviert"
+    ;;
+  *)
+    log "Ungültiger Wert für SSF_PLUGIN_DATABASE_ENABLED"
+    exit 30
+    ;;
+esac
+
 log "Migrationsjob erfolgreich abgeschlossen"

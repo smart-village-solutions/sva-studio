@@ -32,9 +32,11 @@ JCS-Revisionen, den fachlichen Read-Handler sowie Migrationen und Repositories
 für die getrennte SSF-Plugin-Datenbank. Der generische Service-Token-Verifier
 liegt in `packages/auth-runtime/src/service-token.ts`; die SSF-spezifische
 Claim-Prüfung in `packages/auth-runtime/src/ssf-runtime-service-token.ts`.
-Produktives Routing bleibt standardmäßig deaktiviert, bis der offene
-Plugin-Plattform-Change einen Service-Zugriffstyp und die verifizierte
-`authorizationRevision` bereitstellt.
+Produktives Routing bleibt standardmäßig deaktiviert, bis der
+IAM-Projektionspfad eine verifizierte `authorizationRevision` und das
+Deployment die SSF-Datenbank-, Zeitzonen- und Medienprovider bereitstellt. Der
+technische Plugin-Service-Zugriff, die Host-Gates und die Handler-Bindung sind
+implementiert und bleiben ohne diese Provider fail-closed.
 
 Auswertungen, Gesprächsdaten, ClickHouse, Supportzugriffe und eine
 SSF-seitige Mandantenverwaltung sind nicht Bestandteil von V1.
@@ -45,12 +47,12 @@ Eine Studio-Installation läuft gemeinsam mit genau einer SSF-Installation.
 Eine Studio-Instanz entspricht genau einem SSF-Mandanten. SSF ist bewusst von
 dieser Studio-Installation abhängig und führt keinen eigenen Mandantenbestand.
 
-| Verantwortlicher Baustein | Führende Daten und Aufgaben                                                                                                                          |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Studio Core               | kanonische `instanceId`, Mandantenname, Zeitzone, Keycloak-Provisionierung, Benutzer, IAM, Medienverwaltung, Plugin-Aktivierung, Readiness und Audit |
-| SSF-Plugin im Studio      | serverweite und tenantbezogene SSF-Konfiguration, Richtlinien, Texte, Sprachen und Auflösung der effektiven Runtime-Konfiguration                    |
-| SSF                       | Anmeldung und Sessions, Gäste, Gesprächsablauf sowie später Laufzeit-, Session- und Gesprächsdaten                                                   |
-| SSF-Keycloak              | authentifizierte Benutzeridentitäten und signierte Claims für Mandant, Rollen und Permissions                                                        |
+| Verantwortlicher Baustein   | Führende Daten und Aufgaben                                                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Studio Core                 | kanonische `instanceId`, Mandantenname, Zeitzone, Keycloak-Provisionierung, Benutzer, IAM, Medienverwaltung, Plugin-Aktivierung, Readiness und Audit |
+| SSF-Plugin im Studio        | serverweite und tenantbezogene SSF-Konfiguration, Richtlinien, Texte, Sprachen und Auflösung der effektiven Runtime-Konfiguration                    |
+| SSF                         | Anmeldung und Sessions, Gäste, Gesprächsablauf sowie später Laufzeit-, Session- und Gesprächsdaten                                                   |
+| gemeinsame Keycloak-Instanz | Root- und Tenant-Identitäten sowie signierte Claims für Mandant, Rollen und Permissions                                                              |
 
 Studio und SSF verwenden keine gemeinsame Fachdatenbank und greifen nicht
 direkt auf die Persistenz des jeweils anderen Systems zu. SSF hält keinen
@@ -105,6 +107,14 @@ Gesprächsdaten werden nicht an Studio übertragen.
 
 ## Keycloak-Vertrag für Tenant-Benutzer
 
+Studio und SSF verwenden dieselbe Keycloak-Instanz. Der Realm `master` dient
+ausschließlich der Keycloak-Administration, ein Studio-Root-Realm enthält die
+plattformweiten Identitäten und technischen Clients, und jeder Mandant besitzt
+einen eigenen Tenant-Realm. Studio und SSF verwenden in diesem Tenant-Realm
+getrennte OIDC-Clients, aber denselben Benutzer. Daher ist das OIDC-`sub` in
+beiden Anwendungen identisch; eine zusätzliche Zuordnung über E-Mail,
+Benutzername oder eine zweite Subject-ID ist weder erforderlich noch zulässig.
+
 Die kanonische Studio-`instanceId` ist der gemeinsame technische
 Mandantenschlüssel. Sie wird bei der Realm- und Client-Provisionierung als
 signierter Claim materialisiert.
@@ -131,23 +141,27 @@ und Auditierung. Eine E-Mail-Adresse ist nicht Teil des SSF-Tokenvertrags.
 Studio-IAM bleibt die führende Quelle der effektiven `ssf.*`-Permissions. Ein
 dedizierter SSF-Projektionslauf materialisiert ausschließlich diese effektiven
 Permissions, die SSF-Personas und eine tenantweite
-`ssf_authorization_revision` in den Client-Scope des separaten SSF-Keycloaks.
-Die Projektion wertet Default- und kundenspezifische Rollen gleich aus; rohe
-Studio-Rollennamen werden nicht zur SSF-Autorisierung verwendet.
+`ssf_authorization_revision` in den SSF-Client-Scope des gemeinsamen
+Tenant-Realms. Die Projektion wertet Default- und kundenspezifische Rollen
+gleich aus; rohe Studio-Rollennamen werden nicht zur SSF-Autorisierung
+verwendet.
 
 Vor einer relevanten Rollen-, Zuweisungs- oder Permission-Änderung markiert
 Studio die SSF-IAM-Projektion des Mandanten als nicht bereit und sperrt die
-Tokenausstellung des betroffenen Tenant-Clients. Danach werden Projektion und
-Revision reconciled und betroffene Sessions widerrufen. Erst nach erfolgreicher
-Verifikation wird der Client mit der neuen Revision wieder freigegeben. Ein
-Fehler lässt Client und Runtime-Konfiguration fail-closed im Zustand
-`ssf_tenant_not_ready`; ein alter oder fehlender Revisionsclaim wird von SSF
-abgelehnt. Dadurch kann eine fehlerhafte Projektion weder veraltete Rechte
-fortschreiben noch gültige kundenspezifische Grants stillschweigend auslassen.
+Tokenausstellung des betroffenen SSF-Clients. Danach werden Projektion und
+Revision reconciled und betroffene SSF-Sessions über die SSF-seitige
+Sessiongrenze widerrufen. Ein reiner SSF-Permission-Wechsel führt ausdrücklich
+nicht zu einem realmweiten Keycloak-Logout, der auch Studio-Sitzungen beenden
+würde. Erst nach erfolgreicher Verifikation wird der SSF-Client mit der neuen
+Revision wieder freigegeben. Ein Fehler lässt Client und Runtime-Konfiguration
+fail-closed im Zustand `ssf_tenant_not_ready`; ein alter oder fehlender
+Revisionsclaim wird von SSF abgelehnt. Dadurch kann eine fehlerhafte Projektion
+weder veraltete Rechte fortschreiben noch gültige kundenspezifische Grants
+stillschweigend auslassen.
 
 SSF-Access-Token haben standardmäßig eine Laufzeit von fünf Minuten und dürfen
-höchstens zehn Minuten gültig sein. Bei Deaktivierung oder einer kritischen
-Rollenänderung widerruft Studio zusätzlich die Keycloak-Sessions. Langlebige
+höchstens zehn Minuten gültig sein. Bei einer kontoweiten Deaktivierung
+widerruft Studio zusätzlich die Keycloak-Sessions. Langlebige
 WebSocket-Verbindungen müssen spätestens beim Ablauf des Tokens erneut
 authentifiziert oder beendet werden.
 
@@ -180,8 +194,11 @@ X-Correlation-Id: <correlation-id>
 
 Der Endpoint ist ausschließlich im internen Netz erreichbar. Das
 installationsweite SSF-Service-Token muss die vorgesehene Audience und die
-Permission `ssf.runtime-configuration.read` besitzen. Studio vertraut der
-Tenant-Angabe nur als Aussage des authentifizierten SSF-Backends; eine direkte
+Permission `ssf.runtime-configuration.read` besitzen. Es wird durch einen
+technischen Client im Studio-Root-Realm ausgestellt und trägt keine
+tenantbezogene `ssf_authorization_revision`. Studio vertraut der Tenant-Angabe
+nur als Aussage des authentifizierten SSF-Backends, bindet sie hostseitig und
+liest die bestätigte Revision des so bestimmten Tenants; eine direkte
 Browseranfrage ist nicht zulässig.
 
 Für diesen lesenden, idempotenten Vertrag gibt es keine zusätzliche

@@ -1,7 +1,7 @@
 // prettier-ignore
 export { pluginSdkPackageRoles, pluginSdkVersion, type PluginSdkPackageRole } from './sdk-metadata.js';
 // prettier-ignore
-export type { PluginServerHandlerExecutionContext, PluginServerHandlerModuleFactory, PluginServerExecutionHandler } from './plugins.js';
+export type { PluginServerHandlerAccessRequirement, PluginServerHandlerExecutionContext, PluginServerHandlerModuleFactory, PluginServerExecutionHandler, PluginTechnicalServiceAccessRequirement, PluginTechnicalServiceTenantContext } from './plugins.js';
 export type {
   AdminResourceDefinition,
   AdminResourceBulkActionSelectionMode,

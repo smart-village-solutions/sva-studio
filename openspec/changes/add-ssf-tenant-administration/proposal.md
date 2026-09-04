@@ -44,11 +44,12 @@ Benutzerverwaltung aufzubauen.
 - Affected specs:
   - `ssf-tenant-administration` (neu)
 - Affected code:
-  - neues SSF-Plugin mit Browser-, Server- und Job-Beiträgen
+  - bestehendes SSF-Plugin mit zusätzlichen Browser-, Server- und Job-Beiträgen
   - Keycloak- und Instanz-Provisionierung
   - bestehende Instanz-, Nutzer-, Rollen- und Gruppenoberflächen
   - SSF-plugin-eigene PostgreSQL-Datenbank
-  - Deployment-Konfiguration für SSF-Keycloak und Plugin-Datenbank
+  - Deployment-Konfiguration für tenantlokale SSF-Clients in der gemeinsam
+    genutzten Keycloak-Instanz und die Plugin-Datenbank
 - Affected arc42 sections:
   - `docs/architecture/03-context-and-scope.md`
   - `docs/architecture/04-solution-strategy.md`

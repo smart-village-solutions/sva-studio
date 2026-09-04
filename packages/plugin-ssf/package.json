@@ -17,6 +17,10 @@
       "default": "./dist/index.js"
     },
     "./server": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./runtime": {
       "types": "./dist/runtime.d.ts",
       "default": "./dist/runtime.js"
     },

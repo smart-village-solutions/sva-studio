@@ -1188,13 +1188,14 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     standardFlowEnabled?: boolean;
     directAccessGrantsEnabled?: boolean;
     serviceAccountsEnabled?: boolean;
+    enabled?: boolean;
   }): Promise<void> {
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
     const payload = {
       clientId: input.clientId,
       name: input.clientId,
-      enabled: true,
+      enabled: input.enabled ?? true,
       protocol: 'openid-connect',
       publicClient: false,
       standardFlowEnabled: input.standardFlowEnabled ?? true,
@@ -1243,6 +1244,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       return;
     }
     const requiresUpdate =
+      existing.enabled !== payload.enabled ||
       existing.rootUrl !== payload.rootUrl ||
       existing.standardFlowEnabled !== payload.standardFlowEnabled ||
       existing.directAccessGrantsEnabled !== payload.directAccessGrantsEnabled ||
@@ -1256,6 +1258,22 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     if (requiresUpdate) {
       await this.updateOidcClient(existing, payload, clientId);
     }
+  }
+
+  async setOidcClientEnabled(clientId: string, enabled: boolean): Promise<void> {
+    await this.assertWriteAvailability();
+    const existing = await this.getOidcClientByClientId(clientId);
+    if (!existing?.id) {
+      throw new KeycloakAdminRequestError({
+        message: `Keycloak client ${clientId} is missing.`,
+        statusCode: 404,
+        code: 'client_not_found',
+        retryable: false,
+      });
+    }
+    if (existing.enabled === enabled) return;
+
+    await this.updateOidcClient(existing, { ...existing, enabled }, clientId);
   }
 
   private async createOidcClient(payload: object, clientId: string): Promise<void> {
@@ -1387,6 +1405,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     name: string;
     userAttribute: string;
     claimName: string;
+    multivalued?: boolean;
   }): Promise<void> {
     await this.assertWriteAvailability();
     const client = await this.getOidcClientByClientId(input.clientId);
@@ -1409,6 +1428,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         'user.attribute': input.userAttribute,
         'claim.name': input.claimName,
         'jsonType.label': 'String',
+        multivalued: input.multivalued ? 'true' : 'false',
         'id.token.claim': 'true',
         'access.token.claim': 'true',
         'userinfo.token.claim': 'true',

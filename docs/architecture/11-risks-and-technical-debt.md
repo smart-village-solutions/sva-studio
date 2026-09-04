@@ -660,3 +660,16 @@ Referenzen:
   Maßnahme: getrennte Verträge und ausschließlich lokale Permission-Auflösung.
 - Betriebsrisiko: Neue reservierte Keycloak- oder Plattformrollen benötigen
   eine Ergänzung der zentralen Schutzpolicy und ihrer Tabellentests.
+
+### Fortschreibung 2026-09: Tenant-IAM-Doctor und Serviceidentitäten
+
+- Risiko: Keycloak kann eine nicht sichtbare Ressource wie eine fehlende
+  Ressource erscheinen lassen. Maßnahme: negative Existenzaussagen nur bei
+  belastbarer Lesesicht; mehrdeutige Antworten bleiben `unknown`.
+- Risiko: Der Entzug von `manage-clients` deckt einen bislang verdeckten
+  Tenant-IAM-Schreibpfad auf. Maßnahme: `view-clients` zuerst ergänzen,
+  Tenant-IAM-Smokes auf Staging ausführen und Clientmutationen ausschließlich
+  dem Provisioner zuordnen.
+- Restrisiko: Bereits ausgestellte Service-Tokens können alte Rollen bis zu
+  ihrem Ablauf tragen. Maßnahme: Rollenänderung erst mit neu bezogenem Token
+  bewerten und den negativen Mutationsnachweis nach Token-Erneuerung führen.

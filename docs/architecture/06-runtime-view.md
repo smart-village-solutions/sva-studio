@@ -522,6 +522,28 @@ Fehlerpfad:
 - `IDP_FORBIDDEN` bleibt als Berechtigungsfehler sichtbar; temporäre Erreichbarkeitsstörungen werden als `IDP_UNAVAILABLE` eingeordnet.
 - ohne bisherige Probe-Evidenz bleibt `access` explizit `unknown`; die Detailseite erzeugt daraus keinen künstlichen Erfolgszustand.
 
+### Szenario 2i: Tenant-IAM-Client ist für die Access-Probe nicht eindeutig sichtbar
+
+1. Der Root-Operator startet die explizite Tenant-IAM-Rechteprobe.
+2. Rollen- und Benutzerreads laufen mit der Tenant-IAM-Serviceidentität des
+   Ziel-Tenants.
+3. Die Probe sucht den in der Registry referenzierten Login-Client read-only.
+4. Liefert Keycloak kein Clientobjekt, ohne dass daraus eine eindeutige
+   Existenzaussage möglich ist, entsteht
+   `AUTH_CLIENT_VISIBILITY_UNCONFIRMED` mit Status `unknown`.
+5. Die Strukturachse bleibt davon unabhängig und verwendet den letzten
+   Provisioning-Snapshot.
+6. Beim expliziten Provisioning-Abgleich wird zuerst `view-clients` ergänzt und
+   danach ein vorhandenes `manage-clients` entzogen.
+
+Fehlerpfad:
+
+- Ein Keycloak-`403` bleibt `IDP_FORBIDDEN`; ein Transportfehler bleibt
+  `IDP_UNAVAILABLE`.
+- Die Probe führt keine Client-, Rollen-, Benutzer- oder Secret-Mutation aus.
+- Fehlende Tenant-IAM-Credentials werden nicht durch Provisioner-Credentials
+  ersetzt.
+
 ### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
 
 1. Ein Instanzbenutzer ruft `/auth/me` auf.

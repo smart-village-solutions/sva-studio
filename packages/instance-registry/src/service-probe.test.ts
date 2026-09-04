@@ -79,11 +79,21 @@ describe('service-probe', () => {
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'tenant_iam_access_probed',
+        details: expect.objectContaining({
+          serviceIdentity: 'sva-studio-tenant-iam',
+          classification: 'ready',
+        }),
       })
     );
     expect(result).toMatchObject({
       access: expect.objectContaining({
         status: 'ready',
+        serviceIdentity: 'sva-studio-tenant-iam',
+        classification: 'ready',
+      }),
+      configuration: expect.objectContaining({
+        serviceIdentity: 'sva-studio-provisioner',
+        classification: 'missing',
       }),
     });
   });

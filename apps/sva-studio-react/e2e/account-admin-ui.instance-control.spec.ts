@@ -62,6 +62,7 @@ test('root control plane exposes tenant IAM reconcile for platform admins', asyn
       realmExists: true,
       clientExists: true,
       tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
       tenantAdminHasInstanceRegistryAdmin: false,
@@ -90,16 +91,22 @@ test('root control plane exposes tenant IAM reconcile for platform admins', asyn
         status: 'ready',
         summary: 'Tenant-IAM-Struktur ist vollständig vorhanden.',
         source: 'registry',
+        serviceIdentity: 'sva-studio-provisioner',
+        classification: 'ready',
       },
       access: {
         status: 'ready',
         summary: 'Tenant-IAM-Zugriff ist verifiziert.',
         source: 'access_probe',
+        serviceIdentity: 'sva-studio-tenant-iam',
+        classification: 'ready',
       },
       reconcile: {
         status: 'degraded',
         summary: '1 Legacy-Admin-Artefakt erfordert manuelle Bereinigung.',
         source: 'role_reconcile',
+        serviceIdentity: 'sva-studio-tenant-iam',
+        classification: 'misconfigured',
       },
       overall: {
         status: 'degraded',
@@ -146,6 +153,18 @@ test('root control plane exposes tenant IAM reconcile for platform admins', asyn
   await expect(newsModuleRow).toContainText('Aktiv');
   await expect(newsModuleRow).toContainText('Automatisch');
   await expect(newsModuleRow).toContainText('Richtlinienabgleich');
+  const doctorTab = page.getByRole('tab', { name: 'Doctor' });
+  await doctorTab.focus();
+  await doctorTab.press('Enter');
+  await expect(doctorTab).toHaveAttribute('data-state', 'active');
+  const doctorOverview = page.getByTestId('instance-doctor-overview');
+  await expect(doctorOverview).toHaveRole('list');
+  expect(await doctorOverview.getByRole('listitem').count()).toBeGreaterThanOrEqual(3);
+  await expect(doctorOverview).toContainText('Service: sva-studio-tenant-iam');
+  await expect(doctorOverview).toContainText('Befund: Konfiguration fehlerhaft');
+  await expect(doctorOverview).toContainText(
+    'Prüfen Sie die tenantgebundene Konfiguration von sva-studio-tenant-iam'
+  );
   await page.getByRole('tab', { name: 'Einstellungen' }).click();
   await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
 });

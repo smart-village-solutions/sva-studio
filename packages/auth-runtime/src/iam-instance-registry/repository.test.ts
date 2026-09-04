@@ -260,6 +260,7 @@ describe('iam instance registry repository wiring', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         status: 'blocked',
+        classification: 'misconfigured',
         summary: 'Tenant-Admin-Client ist für diese Instanz noch nicht konfiguriert.',
         source: 'access_probe',
         errorCode: 'tenant_admin_client_not_configured',
@@ -293,6 +294,7 @@ describe('iam instance registry repository wiring', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         status: 'ready',
+        classification: 'ready',
         summary:
           'Tenant-Admin-Client kann Nutzer lesen und Passwort-Setup-Mails über den Login-Client sva-studio anstoßen.',
         source: 'access_probe',
@@ -301,7 +303,7 @@ describe('iam instance registry repository wiring', () => {
     );
   });
 
-  it('reports blocked tenant IAM access when the referenced login client is missing in the tenant realm', async () => {
+  it('does not report a referenced login client as missing from an ambiguous empty lookup', async () => {
     resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
       provider: {
         listRoles: vi.fn(async () => []),
@@ -325,10 +327,12 @@ describe('iam instance registry repository wiring', () => {
       })
     ).resolves.toEqual(
       expect.objectContaining({
-        status: 'blocked',
-        summary: 'Der referenzierte Login-Client sva-studio fehlt im Tenant-Realm.',
+        status: 'unknown',
+        classification: 'unknown',
+        summary:
+          'Tenant-Admin-Client konnte die Sichtbarkeit des Login-Clients sva-studio nicht bestätigen.',
         source: 'access_probe',
-        errorCode: 'AUTH_CLIENT_MISSING',
+        errorCode: 'AUTH_CLIENT_VISIBILITY_UNCONFIRMED',
         requestId: 'req-probe-3',
       })
     );
@@ -361,6 +365,7 @@ describe('iam instance registry repository wiring', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         status: 'blocked',
+        classification: 'forbidden',
         summary: 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.',
         source: 'access_probe',
         errorCode: 'IDP_FORBIDDEN',
@@ -401,10 +406,46 @@ describe('iam instance registry repository wiring', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         status: 'blocked',
+        classification: 'forbidden',
         summary: 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.',
         source: 'access_probe',
         errorCode: 'IDP_FORBIDDEN',
         requestId: 'req-probe-structured-403',
+      })
+    );
+  });
+
+  it('classifies a Keycloak transport failure as unavailable', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => {
+          throw new KeycloakAdminRequestError({
+            message: 'connection refused',
+            code: 'network_error',
+            retryable: true,
+          });
+        }),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => ({ id: 'client-1', clientId: 'sva-studio' })),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockResolvedValueOnce({ clientId: 'sva-studio' });
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-unavailable',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'degraded',
+        classification: 'unavailable',
+        errorCode: 'IDP_UNAVAILABLE',
+        requestId: 'req-probe-unavailable',
       })
     );
   });

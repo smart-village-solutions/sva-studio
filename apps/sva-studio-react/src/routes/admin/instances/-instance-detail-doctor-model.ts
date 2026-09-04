@@ -12,7 +12,12 @@ import type {
   DetailWorkflowAction,
   InstanceConfigurationAssessment,
 } from './-instances-shared-types';
-import type { IamInstanceDetail, IamTenantIamAxisStatus } from '@sva/core';
+import type {
+  IamInstanceDetail,
+  IamKeycloakServiceIdentity,
+  IamTenantIamAxisStatus,
+  IamTenantIamEvidenceClassification,
+} from '@sva/core';
 import type {
   OperationsPrimaryAction,
   RealmOperationsModel,
@@ -25,6 +30,10 @@ export type InstanceDoctorCheck = {
   readonly summary: string;
   readonly status: IamTenantIamAxisStatus;
   readonly sourceLabel: string;
+  readonly serviceIdentity?: IamKeycloakServiceIdentity;
+  readonly classification?: IamTenantIamEvidenceClassification;
+  readonly classificationLabel?: string;
+  readonly remediation?: string;
   readonly checkedAt?: string;
   readonly requestId?: string;
 };
@@ -85,6 +94,59 @@ const dedupeActions = (actions: readonly InstanceDoctorAction[]) => {
   });
 };
 
+const getClassificationLabel = (
+  classification: IamTenantIamEvidenceClassification | undefined
+): string | undefined => {
+  switch (classification) {
+    case 'ready':
+      return t('admin.instances.doctor.classifications.ready');
+    case 'missing':
+      return t('admin.instances.doctor.classifications.missing');
+    case 'forbidden':
+      return t('admin.instances.doctor.classifications.forbidden');
+    case 'unknown':
+      return t('admin.instances.doctor.classifications.unknown');
+    case 'unavailable':
+      return t('admin.instances.doctor.classifications.unavailable');
+    case 'misconfigured':
+      return t('admin.instances.doctor.classifications.misconfigured');
+    default:
+      return undefined;
+  }
+};
+
+const getRemediation = (
+  classification: IamTenantIamEvidenceClassification | undefined,
+  serviceIdentity: IamKeycloakServiceIdentity | undefined
+): string | undefined => {
+  if (!classification || classification === 'ready') {
+    return undefined;
+  }
+  switch (classification) {
+    case 'missing':
+      return t('admin.instances.doctor.remediation.missing');
+    case 'forbidden':
+      return t('admin.instances.doctor.remediation.forbidden');
+    case 'unknown':
+      return t('admin.instances.doctor.remediation.unknown');
+    case 'unavailable':
+      return t('admin.instances.doctor.remediation.unavailable');
+    case 'misconfigured':
+      return serviceIdentity === 'sva-studio-provisioner'
+        ? t('admin.instances.doctor.remediation.misconfiguredProvisioner')
+        : t('admin.instances.doctor.remediation.misconfiguredTenantIam');
+  }
+};
+
+const getEvidencePresentation = (
+  classification: IamTenantIamEvidenceClassification | undefined,
+  serviceIdentity: IamKeycloakServiceIdentity | undefined
+) => ({
+  classification,
+  classificationLabel: getClassificationLabel(classification),
+  remediation: getRemediation(classification, serviceIdentity),
+});
+
 const buildChecks = (
   instance: IamInstanceDetail,
   configurationAssessment: InstanceConfigurationAssessment,
@@ -101,6 +163,11 @@ const buildChecks = (
       status: mapConfigurationStatusToCockpitStatus(configurationAssessment.overallStatus),
       sourceLabel: getCockpitSourceLabel(
         instance.keycloakStatus ? 'keycloak_status_snapshot' : 'registry'
+      ),
+      serviceIdentity: tenantIamStatus?.configuration.serviceIdentity,
+      ...getEvidencePresentation(
+        tenantIamStatus?.configuration.classification,
+        tenantIamStatus?.configuration.serviceIdentity
       ),
     },
   ];
@@ -122,6 +189,11 @@ const buildChecks = (
       summary: tenantIamStatus.access.summary,
       status: tenantIamStatus.access.status,
       sourceLabel: getCockpitSourceLabel(tenantIamStatus.access.source),
+      serviceIdentity: tenantIamStatus.access.serviceIdentity,
+      ...getEvidencePresentation(
+        tenantIamStatus.access.classification,
+        tenantIamStatus.access.serviceIdentity
+      ),
       checkedAt: tenantIamStatus.access.checkedAt,
       requestId: tenantIamStatus.access.requestId,
     });
@@ -134,6 +206,11 @@ const buildChecks = (
       summary: tenantIamStatus.reconcile.summary,
       status: tenantIamStatus.reconcile.status,
       sourceLabel: getCockpitSourceLabel(tenantIamStatus.reconcile.source),
+      serviceIdentity: tenantIamStatus.reconcile.serviceIdentity,
+      ...getEvidencePresentation(
+        tenantIamStatus.reconcile.classification,
+        tenantIamStatus.reconcile.serviceIdentity
+      ),
       checkedAt: tenantIamStatus.reconcile.checkedAt,
       requestId: tenantIamStatus.reconcile.requestId,
     });
@@ -150,6 +227,7 @@ const buildChecks = (
       status: mapPreflightStatus(instance.keycloakPreflight.overallStatus),
       sourceLabel: getCockpitSourceLabel('keycloak_status_snapshot'),
       checkedAt: instance.keycloakPreflight.checkedAt,
+      serviceIdentity: 'sva-studio-provisioner',
     });
   }
 
@@ -162,6 +240,7 @@ const buildChecks = (
       sourceLabel: getCockpitSourceLabel('keycloak_provisioning_run'),
       checkedAt: latestRun.updatedAt ?? latestRun.createdAt,
       requestId: latestRun.requestId ?? undefined,
+      serviceIdentity: 'sva-studio-provisioner',
     });
   }
 

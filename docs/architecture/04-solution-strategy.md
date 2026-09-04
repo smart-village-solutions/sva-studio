@@ -195,6 +195,18 @@ Referenzen:
 - Tenant-IAM-Diagnostik bleibt on-demand und fail-closed: die Detailseite löst keine automatische Rechteprobe aus, erlaubt aber eine explizite read-only Access-Probe gegen den tenantlokalen Admin-Client.
 - Normale Tenant-Reconcile-Läufe verwenden strategisch keinen Plattform- oder Root-Fallback mehr; fehlende Tenant-Admin-Rechte oder Konfigurationsdrift bleiben als eigener Tenant-IAM-Befund sichtbar.
 
+### Fortschreibung 2026-09: Eindeutige Serviceidentitäten im Tenant-IAM-Doctor
+
+- Der Doctor aggregiert Fachbefunde, führt aber keine Keycloak-Prüfung unter
+  einer eigenen Superidentität aus.
+- Strukturstatus gehört zum Provisioning Service; die Access-Probe verwendet
+  ausschließlich den tenantgebundenen Tenant IAM Service. Reconcile bleibt als
+  dritte Evidenzachse getrennt.
+- Fehlende Sichtbarkeit ist kein Existenzbeweis. Ein leeres Client-Suchergebnis
+  ohne belastbare Lesesicht bleibt `unknown` statt `missing`.
+- Tenant-IAM besitzt `view-clients`, aber kein `manage-clients`; die
+  Schreibhoheit über Realm- und Clientstrukturen bleibt beim Provisioner.
+
 ### Fortschreibung 2026-04: Registrierungsvertrag für Admin-Ressourcen
 
 - CRUD-artige Admin-Flächen werden strategisch nicht mehr als lose Einzelrouten im Host verdrahtet, sondern über einen deklarativen Admin-Ressourcenvertrag aus Workspace-Packages beschrieben.

@@ -79,7 +79,7 @@ const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'view-users',
   'view-realm',
   'manage-realm',
-  'manage-clients',
+  'view-clients',
 ] as const;
 
 type KeycloakClientRepresentation = {

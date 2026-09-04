@@ -15,6 +15,11 @@ import type {
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ChangeInstanceStatusInput } from './mutation-types.js';
+import {
+  classifyTenantIamAxis,
+  classifyTenantIamConfiguration,
+  getTenantIamServiceIdentity,
+} from './tenant-iam-evidence.js';
 
 type InstanceRecord = Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number];
 type ProvisioningRun = Awaited<
@@ -26,19 +31,25 @@ type TenantIamEvidence = Omit<IamTenantIamAxis, 'source'> & {
   readonly source: IamTenantIamAxis['source'];
 };
 
-const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => ({
-  status: input.status,
-  summary: input.summary,
-  source: input.source,
-  ...(input.checkedAt ? { checkedAt: input.checkedAt } : {}),
-  ...(input.errorCode ? { errorCode: input.errorCode } : {}),
-  ...(input.requestId ? { requestId: input.requestId } : {}),
-});
-
 const isConfigurationReady = (
   keycloakStatus: NonNullable<IamInstanceDetail['keycloakStatus']> | undefined
 ): boolean =>
   Boolean(keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus));
+
+const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => {
+  const serviceIdentity = input.serviceIdentity ?? getTenantIamServiceIdentity(input.source);
+  const classification = input.classification ?? classifyTenantIamAxis(input);
+  return {
+    status: input.status,
+    summary: input.summary,
+    source: input.source,
+    ...(serviceIdentity ? { serviceIdentity } : {}),
+    classification,
+    ...(input.checkedAt ? { checkedAt: input.checkedAt } : {}),
+    ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+    ...(input.requestId ? { requestId: input.requestId } : {}),
+  };
+};
 
 const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = [
   'blocked',
@@ -59,6 +70,7 @@ export const buildTenantIamStatus = (input: {
           ? 'Tenant-IAM-Struktur ist vollständig vorhanden.'
           : 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
         source: 'keycloak_status_snapshot',
+        classification: classifyTenantIamConfiguration(input.keycloakStatus),
       })
     : createTenantIamAxis({
         status: 'unknown',
@@ -116,6 +128,7 @@ export const buildTenantIamStatus = (input: {
       checkedAt: dominantAxis.checkedAt,
       errorCode: dominantAxis.errorCode,
       requestId: dominantAxis.requestId,
+      serviceIdentity: dominantAxis.serviceIdentity,
     }),
   };
 };

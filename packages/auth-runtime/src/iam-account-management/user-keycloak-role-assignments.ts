@@ -184,35 +184,19 @@ export const loadKeycloakRoleAssignments = async (
 export const loadKeycloakRoleCatalog = async (
   provider: IdentityProviderPort
 ): Promise<readonly IdentityRole[]> => {
-  if (!provider.countRoles) {
-    const roles: IdentityRole[] = [];
-    const pageSignatures = new Set<string>();
-    for (let page = 0; page < MAX_ROLE_PAGES; page += 1) {
-      const pageRoles = await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
-        provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
-      );
-      if (pageRoles.length < ROLE_PAGE_SIZE) return [...roles, ...pageRoles];
-      const signature = pageRoles.map((role) => role.id ?? role.externalName).join('\u0000');
-      if (pageSignatures.has(signature)) throw createRoleCatalogPaginationError();
-      pageSignatures.add(signature);
-      roles.push(...pageRoles);
-    }
-    throw createRoleCatalogPaginationError();
-  }
-  const total = await trackKeycloakCall(
-    'count_keycloak_role_catalog',
-    () => provider.countRoles?.() ?? Promise.resolve(0)
-  );
-  const pageCount = Math.ceil(total / ROLE_PAGE_SIZE);
   const roles: IdentityRole[] = [];
-  for (let page = 0; page < pageCount; page += 1) {
-    roles.push(
-      ...(await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
-        provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
-      ))
+  const pageSignatures = new Set<string>();
+  for (let page = 0; page < MAX_ROLE_PAGES; page += 1) {
+    const pageRoles = await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
+      provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
     );
+    if (pageRoles.length < ROLE_PAGE_SIZE) return [...roles, ...pageRoles];
+    const signature = pageRoles.map((role) => role.id ?? role.externalName).join('\u0000');
+    if (pageSignatures.has(signature)) throw createRoleCatalogPaginationError();
+    pageSignatures.add(signature);
+    roles.push(...pageRoles);
   }
-  return roles;
+  throw createRoleCatalogPaginationError();
 };
 
 export const projectUserKeycloakRoleAssignments = async (

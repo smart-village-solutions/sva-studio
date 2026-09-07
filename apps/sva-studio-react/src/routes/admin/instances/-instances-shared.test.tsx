@@ -838,6 +838,7 @@ describe('instances shared helpers', () => {
           source: 'registry',
           checkedAt: '2026-01-01T00:00:00.000Z',
           requestId: 'req-config-1',
+          serviceIdentity: 'sva-studio-provisioner',
         },
         access: {
           status: 'ready',
@@ -864,6 +865,7 @@ describe('instances shared helpers', () => {
           source: 'keycloak_status_snapshot',
           checkedAt: '2026-01-01T00:00:00.000Z',
           requestId: 'req-config-1',
+          serviceIdentity: 'sva-studio-provisioner',
         }),
         overall: expect.objectContaining({
           status: 'unknown',

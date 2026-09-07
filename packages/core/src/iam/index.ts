@@ -53,6 +53,8 @@ export type {
   IamInstanceProvisioningRun,
   IamTenantIamAxis,
   IamTenantIamAxisStatus,
+  IamTenantIamEvidenceClassification,
+  IamKeycloakServiceIdentity,
   IamTenantIamSource,
   IamTenantIamStatus,
   IamLegalTextListItem,
@@ -118,4 +120,6 @@ export {
   instanceAuditCheckStatuses,
   iamTenantIamAxisStatuses,
   iamTenantIamSources,
+  iamKeycloakServiceIdentities,
+  iamTenantIamEvidenceClassifications,
 } from './account-management-contract.js';

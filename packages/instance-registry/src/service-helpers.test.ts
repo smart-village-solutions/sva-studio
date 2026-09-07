@@ -9,6 +9,7 @@ import {
   getStatusOperation,
   toListItem,
 } from './service-helpers.js';
+import { classifyTenantIamAxis } from './tenant-iam-evidence.js';
 
 describe('service-helpers', () => {
   it('maps list items and instance details including the latest provisioning run', () => {
@@ -131,6 +132,7 @@ describe('service-helpers', () => {
           realmExists: true,
           clientExists: true,
           tenantAdminClientExists: true,
+          systemAdminRoleExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
           redirectUrisMatch: true,
@@ -166,6 +168,8 @@ describe('service-helpers', () => {
         status: 'ready',
         summary: 'Tenant-IAM-Struktur ist vollständig vorhanden.',
         source: 'keycloak_status_snapshot',
+        serviceIdentity: 'sva-studio-provisioner',
+        classification: 'ready',
         checkedAt: undefined,
         errorCode: undefined,
         requestId: undefined,
@@ -177,6 +181,8 @@ describe('service-helpers', () => {
         checkedAt: '2026-04-29T10:01:00.000Z',
         errorCode: 'IDP_FORBIDDEN',
         requestId: 'req-access-1',
+        serviceIdentity: 'sva-studio-tenant-iam',
+        classification: 'forbidden',
       },
       reconcile: {
         status: 'degraded',
@@ -185,6 +191,8 @@ describe('service-helpers', () => {
         checkedAt: '2026-04-29T10:00:00.000Z',
         errorCode: 'IDP_CONFLICT',
         requestId: 'req-reconcile-1',
+        serviceIdentity: 'sva-studio-tenant-iam',
+        classification: 'misconfigured',
       },
       overall: {
         status: 'blocked',
@@ -193,6 +201,8 @@ describe('service-helpers', () => {
         checkedAt: '2026-04-29T10:01:00.000Z',
         errorCode: 'IDP_FORBIDDEN',
         requestId: 'req-access-1',
+        serviceIdentity: 'sva-studio-tenant-iam',
+        classification: 'forbidden',
       },
     });
   });
@@ -210,13 +220,62 @@ describe('service-helpers', () => {
           status: 'unknown',
           summary: 'Noch keine tenantlokale Rechteprobe vorhanden.',
           source: 'access_probe',
+          serviceIdentity: 'sva-studio-tenant-iam',
+          classification: 'unknown',
         },
         overall: {
           status: 'unknown',
           summary: 'Tenant-IAM-Befund ist unvollständig.',
           source: 'registry',
+          classification: 'unknown',
         },
       })
     );
+  });
+
+  it.each([
+    ['ready', undefined, 'ready'],
+    ['degraded', 'AUTH_CLIENT_MISSING', 'missing'],
+    ['blocked', 'IDP_FORBIDDEN', 'forbidden'],
+    ['unknown', 'AUTH_CLIENT_VISIBILITY_UNCONFIRMED', 'unknown'],
+    ['degraded', 'IDP_UNAVAILABLE', 'unavailable'],
+    ['blocked', 'tenant_admin_client_not_configured', 'misconfigured'],
+  ] as const)(
+    'classifies tenant IAM evidence with status %s and error %s as %s',
+    (status, errorCode, classification) => {
+      expect(classifyTenantIamAxis({ status, errorCode })).toBe(classification);
+    }
+  );
+
+  it('distinguishes missing Tenant-IAM structure from configuration drift', () => {
+    const completeStatus = {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant' as const,
+    };
+
+    const missingStructure = buildTenantIamStatus({
+      keycloakStatus: { ...completeStatus, tenantAdminClientExists: false },
+    });
+    expect(missingStructure.configuration.classification).toBe('missing');
+    expect(missingStructure.overall.classification).toBe('missing');
+    expect(
+      buildTenantIamStatus({
+        keycloakStatus: { ...completeStatus, tenantAdminClientSecretAligned: false },
+      }).configuration.classification
+    ).toBe('misconfigured');
   });
 });

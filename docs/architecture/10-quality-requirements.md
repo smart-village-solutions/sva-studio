@@ -469,6 +469,19 @@ Referenzen:
 - Jede Mutation ist ein einzelnes Delta und gilt erst nach Re-Read als Erfolg.
 - UI-Zustände benennen direkt, geerbt und geschützt zusätzlich zur Farbe.
 
+### Qualitätsziele für Tenant-IAM-Doctor-Evidenz
+
+- Ein Regressionstest belegt, dass ein leeres Client-Suchergebnis im
+  Tenant-IAM-Access-Pfad niemals `AUTH_CLIENT_MISSING` erzeugt.
+- Unit-Tests unterscheiden mehrdeutige Sichtbarkeit, `403` und technische
+  Nichtverfügbarkeit.
+- Der Provisioning-Test belegt `view-clients` als Pflichtrecht und den Entzug
+  von `manage-clients`; ein Übergangstest erzwingt Hinzufügen vor Entzug.
+- Status-, Audit- und UI-Tests belegen die logische Serviceidentität für
+  Struktur-, Access- und Reconcile-Evidenz.
+- Vor Production müssen eine echte Tenant-IAM-Rechteprobe und eine abgelehnte
+  Clientmutation mit derselben Serviceidentität auf Staging nachgewiesen sein.
+
 #### Abschlussnachweis für den Events-Inhaltseditor
 
 - `EventsDetailContentTab` ist von 809 auf 14 Funktionszeilen und von 41/57 auf 1/1 zyklomatische/kognitive Komplexität reduziert.

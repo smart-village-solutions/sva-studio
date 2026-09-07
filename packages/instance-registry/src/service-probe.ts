@@ -1,5 +1,6 @@
 import { buildTenantIamStatus } from './service-helpers.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak.js';
+import { classifyTenantIamAxis } from './tenant-iam-evidence.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
 export const createProbeTenantIamAccessHandler =
@@ -18,6 +19,9 @@ export const createProbeTenantIamAccessHandler =
       actorId: input.actorId,
       requestId: input.requestId,
     });
+    const accessServiceIdentity =
+      access.serviceIdentity ?? ('sva-studio-tenant-iam' as const);
+    const accessClassification = access.classification ?? classifyTenantIamAxis(access);
 
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
@@ -29,6 +33,8 @@ export const createProbeTenantIamAccessHandler =
         summary: access.summary,
         checkedAt: access.checkedAt,
         errorCode: access.errorCode,
+        serviceIdentity: accessServiceIdentity,
+        classification: accessClassification,
         requestId: access.requestId ?? input.requestId,
       },
     });
@@ -40,7 +46,12 @@ export const createProbeTenantIamAccessHandler =
 
     return buildTenantIamStatus({
       keycloakStatus: keycloakStatus ?? undefined,
-      accessEvidence: access,
+      accessEvidence: {
+        ...access,
+        source: 'access_probe',
+        serviceIdentity: accessServiceIdentity,
+        classification: accessClassification,
+      },
       reconcileEvidence: reconcileEvidence
         ? {
             status: reconcileEvidence.status,

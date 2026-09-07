@@ -114,8 +114,8 @@ const probePasswordSetupEmailCapability = async (input: {
   if (!targetClient) {
     return {
       ok: false as const,
-      errorCode: 'AUTH_CLIENT_MISSING',
-      summary: `Der referenzierte Login-Client ${authConfig.clientId} fehlt im Tenant-Realm.`,
+      errorCode: 'AUTH_CLIENT_VISIBILITY_UNCONFIRMED',
+      summary: `Tenant-Admin-Client konnte die Sichtbarkeit des Login-Clients ${authConfig.clientId} nicht bestätigen.`,
     };
   }
 
@@ -123,6 +123,16 @@ const probePasswordSetupEmailCapability = async (input: {
     ok: true as const,
     loginClientId: authConfig.clientId,
   };
+};
+
+const classifyPasswordSetupCapabilityFailure = (input: {
+  readonly errorCode: string;
+  readonly summary: string;
+}) => {
+  if (input.errorCode === 'AUTH_CLIENT_VISIBILITY_UNCONFIRMED') {
+    return { ...input, status: 'unknown', classification: 'unknown' } as const;
+  }
+  return { ...input, status: 'blocked', classification: 'misconfigured' } as const;
 };
 
 const probeTenantIamAccess = async (input: { instanceId: string; requestId?: string }) => {
@@ -135,6 +145,8 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
       status: 'blocked',
       summary: 'Tenant-Admin-Client ist für diese Instanz noch nicht konfiguriert.',
       source: 'access_probe',
+      serviceIdentity: 'sva-studio-tenant-iam',
+      classification: 'misconfigured',
       checkedAt: new Date().toISOString(),
       errorCode: 'tenant_admin_client_not_configured',
       requestId: input.requestId,
@@ -168,12 +180,12 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
     const passwordSetupEmailCapability = capabilityResult.value;
 
     if (!passwordSetupEmailCapability.ok) {
+      const failure = classifyPasswordSetupCapabilityFailure(passwordSetupEmailCapability);
       return {
-        status: 'blocked',
-        summary: passwordSetupEmailCapability.summary,
+        ...failure,
         source: 'access_probe',
+        serviceIdentity: 'sva-studio-tenant-iam',
         checkedAt: new Date().toISOString(),
-        errorCode: passwordSetupEmailCapability.errorCode,
         requestId: input.requestId,
       } as const;
     }
@@ -184,6 +196,8 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
         ? `Tenant-Admin-Client kann Nutzer lesen und Passwort-Setup-Mails über den Login-Client ${passwordSetupEmailCapability.loginClientId} anstoßen.`
         : 'Tenant-Admin-Client kann Nutzer lesen und Passwort-Setup-Mails anstoßen.',
       source: 'access_probe',
+      serviceIdentity: 'sva-studio-tenant-iam',
+      classification: 'ready',
       checkedAt: new Date().toISOString(),
       requestId: input.requestId,
     } as const;
@@ -203,6 +217,8 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
           ? 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.'
           : 'Tenant-Admin-Rechteprobe konnte nicht abgeschlossen werden.',
       source: 'access_probe',
+      serviceIdentity: 'sva-studio-tenant-iam',
+      classification: errorCode === 'IDP_FORBIDDEN' ? 'forbidden' : 'unavailable',
       checkedAt: new Date().toISOString(),
       errorCode,
       requestId: input.requestId,

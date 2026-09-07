@@ -1,4 +1,26 @@
 export const doctorInstancesAdminDEResources = {
+  serviceIdentity: 'Service: {{value}}',
+  classification: 'Befund: {{value}}',
+  classifications: {
+    ready: 'betriebsbereit',
+    missing: 'Objekt fehlt',
+    forbidden: 'Recht fehlt',
+    unknown: 'Evidenz unzureichend',
+    unavailable: 'Dienst nicht erreichbar',
+    misconfigured: 'Konfiguration fehlerhaft',
+  },
+  remediation: {
+    missing: 'Der Studio Provisioner muss die fehlende Keycloak-Struktur gezielt reparieren.',
+    forbidden:
+      'Prüfen Sie den Rollenvertrag von sva-studio-tenant-iam; verwenden Sie keine Provisioner-Credentials als Ersatz.',
+    unknown:
+      'Wiederholen Sie die Rechteprobe mit sva-studio-tenant-iam oder prüfen Sie die Strukturevidenz des Provisioners.',
+    unavailable: 'Stellen Sie die Keycloak-Erreichbarkeit wieder her und wiederholen Sie danach die Probe.',
+    misconfiguredProvisioner:
+      'Der Studio Provisioner muss die abweichende technische Konfiguration gezielt abgleichen.',
+    misconfiguredTenantIam:
+      'Prüfen Sie die tenantgebundene Konfiguration von sva-studio-tenant-iam und wiederholen Sie die Probe.',
+  },
   warning: {
     title: 'Doctor erkennt aktuell Handlungsbedarf.',
   },

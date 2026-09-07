@@ -514,10 +514,16 @@ export declare const iamTenantIamAxisStatuses: readonly ["ready", "degraded", "b
 export type IamTenantIamAxisStatus = (typeof iamTenantIamAxisStatuses)[number];
 export declare const iamTenantIamSources: readonly ["registry", "keycloak_status_snapshot", "keycloak_provisioning_run", "role_reconcile", "access_probe"];
 export type IamTenantIamSource = (typeof iamTenantIamSources)[number];
+export declare const iamKeycloakServiceIdentities: readonly ["sva-studio-provisioner", "sva-studio-tenant-iam"];
+export type IamKeycloakServiceIdentity = (typeof iamKeycloakServiceIdentities)[number];
+export declare const iamTenantIamEvidenceClassifications: readonly ["ready", "missing", "forbidden", "unknown", "unavailable", "misconfigured"];
+export type IamTenantIamEvidenceClassification = (typeof iamTenantIamEvidenceClassifications)[number];
 export type IamTenantIamAxis = {
     readonly status: IamTenantIamAxisStatus;
     readonly summary: string;
     readonly source: IamTenantIamSource;
+    readonly serviceIdentity?: IamKeycloakServiceIdentity;
+    readonly classification?: IamTenantIamEvidenceClassification;
     readonly checkedAt?: string;
     readonly errorCode?: string;
     readonly requestId?: string;

@@ -268,7 +268,13 @@ Referenzen:
 
 Für den produktiven Betrieb der Account-/Admin-UI sind zusätzlich erforderlich:
 
-- Keycloak Service-Account `sva-studio-iam-service` mit Minimalrechten (`manage-users`, `view-users`, `view-realm`, `manage-realm`).
+- Getrennte Keycloak-Serviceidentitäten gemäß Zielbild:
+  `sva-studio-platform-iam` im Plattform-Realm,
+  `sva-studio-tenant-iam` je Tenant-Realm und
+  `sva-studio-provisioner` im Master Realm.
+- Der Tenant-IAM-Sollvertrag umfasst `manage-users`, `view-users`,
+  `view-realm`, `manage-realm` und `view-clients`, aber ausdrücklich kein
+  `manage-clients`.
 - Secret-Injektion für `KEYCLOAK_ADMIN_CLIENT_SECRET` über Secrets-Manager (nicht im Repository).
 - Feature-Flags auf Backend-Seite:
   - `IAM_UI_ENABLED`
@@ -285,7 +291,10 @@ Für den produktiven Betrieb der Account-/Admin-UI sind zusätzlich erforderlich
 Rollout-Reihenfolge:
 
 1. Datenbankmigrationen (`0004` bis `0007`) ausrollen.
-2. Keycloak-Service-Account inklusive `manage-realm` prüfen und Secret-Injektion verifizieren.
+2. Service-Accounts getrennt prüfen, beim Tenant IAM Service zunächst
+   `view-clients` ergänzen und erst nach erfolgreicher Rechteprobe
+   `manage-clients` entziehen; Secret-Injektion für jede Identität separat
+   verifizieren.
 3. Backend mit Keycloak-Admin-Credentials deployen.
 4. Feature-Flags initial auf `false` verifizieren (Kill-Switch).
 5. Stufenweise aktivieren: UI -> Admin -> Bulk.

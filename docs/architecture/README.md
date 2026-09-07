@@ -42,6 +42,7 @@ Der einzige normative Bedienablauf für Studio-Rollouts nach Dev, Staging und Pr
 - [Session-Analyse](./session-management-analysis.md)
 - [IAM-Service-Architektur](./iam-service-architektur.md)
 - [IAM-Autorisierungsmodell: Zielbild](./iam-autorisierungsmodell-zielbild.md)
+- [Keycloak-Serviceidentitäten und Berechtigungen: Zielbild](./keycloak-serviceidentitaeten-und-berechtigungen.md)
 - [IAM-Datenklassifizierung](./iam-datenklassifizierung.md)
 - [Datenbankschema-Übersicht](../development/studio-db-schema.md)
 - [Datenbankschema-Snapshot (Soll-Stand)](../development/studio-db-schema-final.sql)

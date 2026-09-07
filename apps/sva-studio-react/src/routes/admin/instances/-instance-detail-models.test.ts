@@ -101,9 +101,26 @@ describe('instance detail split module exports', () => {
       },
       keycloakProvisioningRuns: [],
       tenantIamStatus: {
-        configuration: { status: 'ready', summary: 'Konfiguration ok', source: 'registry' },
-        access: { status: 'degraded', summary: 'Probe ausstehend', source: 'access_probe' },
-        reconcile: { status: 'blocked', summary: 'Drift vorhanden', source: 'role_reconcile' },
+        configuration: {
+          status: 'ready',
+          summary: 'Konfiguration ok',
+          source: 'keycloak_status_snapshot',
+          serviceIdentity: 'sva-studio-provisioner',
+        },
+        access: {
+          status: 'degraded',
+          summary: 'Probe ausstehend',
+          source: 'access_probe',
+          serviceIdentity: 'sva-studio-tenant-iam',
+          classification: 'unknown',
+        },
+        reconcile: {
+          status: 'blocked',
+          summary: 'Drift vorhanden',
+          source: 'role_reconcile',
+          serviceIdentity: 'sva-studio-tenant-iam',
+          classification: 'misconfigured',
+        },
         overall: { status: 'blocked', summary: 'Handlungsbedarf', source: 'role_reconcile' },
       },
     } as any;
@@ -134,6 +151,16 @@ describe('instance detail split module exports', () => {
       expect.objectContaining({
         key: 'required-plugin-readiness',
         status: 'blocked',
+      })
+    );
+    expect(doctorModel.checks).toContainEqual(
+      expect.objectContaining({
+        key: 'tenant-access',
+        serviceIdentity: 'sva-studio-tenant-iam',
+        classification: 'unknown',
+        classificationLabel: 'Evidenz unzureichend',
+        remediation:
+          'Wiederholen Sie die Rechteprobe mit sva-studio-tenant-iam oder prüfen Sie die Strukturevidenz des Provisioners.',
       })
     );
     expect(doctorModel.warning?.title).toBe('Doctor erkennt aktuell Handlungsbedarf.');

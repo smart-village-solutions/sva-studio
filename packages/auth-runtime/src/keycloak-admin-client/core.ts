@@ -79,7 +79,7 @@ const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'view-users',
   'view-realm',
   'manage-realm',
-  'manage-clients',
+  'view-clients',
 ] as const;
 
 type KeycloakClientRepresentation = {
@@ -938,29 +938,6 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       }
       throw error;
     }
-  }
-
-  async countRoles(query?: Omit<KeycloakListRolesQuery, 'first' | 'max'>): Promise<number> {
-    if (this.isCircuitOpen()) {
-      logger.error('Keycloak read blocked because circuit breaker is open', {
-        operation: 'count_roles',
-        mode: 'fail_fast',
-      });
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable; role count cannot be loaded.');
-    }
-
-    const searchParams = new URLSearchParams();
-    if (query?.search) {
-      searchParams.set('search', query.search);
-    }
-    const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
-    const response = await this.executeWithResilience<number | { count?: number }>({
-      method: 'GET',
-      path: `/admin/realms/${encodePathSegment(this.realm)}/roles/count${querySuffix}`,
-      operation: 'count_roles',
-    });
-
-    return typeof response === 'number' ? response : (response.count ?? 0);
   }
 
   async getRoleByName(externalName: string): Promise<IdentityRole | null> {

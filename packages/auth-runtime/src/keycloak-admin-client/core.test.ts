@@ -461,18 +461,20 @@ describe('Keycloak admin client', () => {
     expect(removeFetch).toHaveBeenCalledTimes(2);
   });
 
-  it('counts roles from numeric and object responses and maps missing role lookups to null', async () => {
+  it('does not expose the unsupported realm role count endpoint', async () => {
+    const client = await createClient(vi.fn());
+
+    expect('countRoles' in client).toBe(false);
+  });
+
+  it('maps missing role lookups to null', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, 12))
-      .mockResolvedValueOnce(createJsonResponse(200, { count: 3 }))
       .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }));
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.countRoles({ search: 'editor' })).resolves.toBe(12);
-    await expect(client.countRoles()).resolves.toBe(3);
     await expect(client.getRoleByName('missing')).resolves.toBeNull();
   });
 
@@ -795,6 +797,7 @@ describe('Keycloak admin client', () => {
           { id: 'role-view-realm', name: 'view-realm' },
           { id: 'role-manage-realm', name: 'manage-realm' },
           { id: 'role-manage-clients', name: 'manage-clients' },
+          { id: 'role-view-clients', name: 'view-clients' },
         ])
       )
       .mockResolvedValueOnce(
@@ -815,11 +818,11 @@ describe('Keycloak admin client', () => {
       { id: 'role-manage-users', name: 'manage-users' },
       { id: 'role-view-realm', name: 'view-realm' },
       { id: 'role-manage-realm', name: 'manage-realm' },
-      { id: 'role-manage-clients', name: 'manage-clients' },
+      { id: 'role-view-clients', name: 'view-clients' },
     ]);
   });
 
-  it('skips tenant admin service role updates when all required roles are already assigned', async () => {
+  it('keeps legacy client write access during the additive role rollout', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -844,6 +847,56 @@ describe('Keycloak admin client', () => {
           { id: 'role-view-realm', name: 'view-realm' },
           { id: 'role-manage-realm', name: 'manage-realm' },
           { id: 'role-manage-clients', name: 'manage-clients' },
+          { id: 'role-view-clients', name: 'view-clients' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
+          { id: 'role-view-clients', name: 'view-clients' },
+        ])
+      );
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).resolves.toBeUndefined();
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(fetchImpl).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ method: 'DELETE' })
+    );
+  });
+
+  it('adds client read access without revoking legacy client write access', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'realm-management-client-id', clientId: 'realm-management' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'service-account-user-id',
+          username: 'service-account-tenant-admin',
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
+          { id: 'role-view-clients', name: 'view-clients' },
         ])
       )
       .mockResolvedValueOnce(
@@ -854,21 +907,53 @@ describe('Keycloak admin client', () => {
           { id: 'role-manage-realm', name: 'manage-realm' },
           { id: 'role-manage-clients', name: 'manage-clients' },
         ])
-      );
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const client = await createClient(fetchImpl);
+
+    await client.ensureTenantAdminServiceAccess('tenant-admin');
+
+    expect(fetchImpl.mock.calls[6]?.[1]?.method).toBe('POST');
+    expect(fetchImpl).toHaveBeenCalledTimes(7);
+    expect(fetchImpl).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ method: 'DELETE' })
+    );
+  });
+
+  it('skips tenant admin service role updates when the exact required roles are assigned', async () => {
+    const exactRoles = [
+      { id: 'role-manage-users', name: 'manage-users' },
+      { id: 'role-view-users', name: 'view-users' },
+      { id: 'role-view-realm', name: 'view-realm' },
+      { id: 'role-manage-realm', name: 'manage-realm' },
+      { id: 'role-view-clients', name: 'view-clients' },
+    ];
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'realm-management-client-id', clientId: 'realm-management' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'service-account-user-id',
+          username: 'service-account-tenant-admin',
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, exactRoles))
+      .mockResolvedValueOnce(createJsonResponse(200, exactRoles));
 
     const client = await createClient(fetchImpl);
 
     await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).resolves.toBeUndefined();
     expect(fetchImpl).toHaveBeenCalledTimes(6);
-    expect(
-      fetchImpl.mock.calls.some(
-        (call) =>
-          call[1]?.method === 'POST' &&
-          String(call[0]).includes(
-            '/users/service-account-user-id/role-mappings/clients/realm-management-client-id'
-          )
-      )
-    ).toBe(false);
   });
 
   it('fails tenant admin service access provisioning when a required realm-management role is missing', async () => {
@@ -896,6 +981,7 @@ describe('Keycloak admin client', () => {
           { id: 'role-view-users', name: 'view-users' },
           { id: 'role-view-realm', name: 'view-realm' },
           { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
         ])
       )
       .mockResolvedValueOnce(createJsonResponse(200, []));

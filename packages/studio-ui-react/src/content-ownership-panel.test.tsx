@@ -224,9 +224,7 @@ describe('ContentOwnershipPanel', () => {
     fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
     expect(document.activeElement).toBe(screen.getByRole('option', { name: 'Stadt Account' }));
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(
-      screen.getByRole('option', { name: 'Stadt Organisation' })
-    );
+    expect(document.activeElement).toBe(screen.getByRole('option', { name: 'Stadt Organisation' }));
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
     expect(screen.queryByRole('listbox')).toBeNull();
     const targetSelect = screen.getByRole('combobox', { name: /^Neuer Inhaber/u });
@@ -242,6 +240,67 @@ describe('ContentOwnershipPanel', () => {
     expect(loadTargets).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'organization', page: 1, search: 'Stadt' })
     );
+  });
+
+  it('continues past an empty filtered page to find available targets', async () => {
+    const target = {
+      principal: { type: 'account' as const, id: '88888888-8888-4888-8888-888888888888' },
+      displayName: 'Erreichbarer Account',
+    };
+    const loadTargets = vi
+      .fn()
+      .mockImplementation(({ page, type }: { page: number; type: 'account' | 'organization' }) => {
+        if (type === 'organization') return Promise.resolve({ items: [], total: 0 });
+        return Promise.resolve({
+          items: page === 2 ? [target] : [],
+          total: 11,
+        });
+      });
+
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
+
+    expect(await screen.findByRole('option', { name: 'Erreichbarer Account' })).toBeTruthy();
+    expect(loadTargets).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'account', page: 2, pageSize: 10 })
+    );
+  });
+
+  it('bounds empty-page scanning and asks for a narrower search', async () => {
+    const loadTargets = vi
+      .fn()
+      .mockImplementation(({ type }: { type: 'account' | 'organization' }) =>
+        Promise.resolve({ items: [], total: type === 'account' ? 1_000 : 0 })
+      );
+
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
+
+    expect(await screen.findByText('Suche genauer')).toBeTruthy();
+    expect(loadTargets).toHaveBeenCalledTimes(6);
+    expect(loadTargets).not.toHaveBeenCalledWith(expect.objectContaining({ page: 6 }));
   });
 
   it('keeps successful target results when the other target type fails', async () => {

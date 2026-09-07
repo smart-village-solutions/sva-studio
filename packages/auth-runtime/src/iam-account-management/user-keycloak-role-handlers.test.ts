@@ -7,7 +7,7 @@ import {
 } from './user-keycloak-role-handlers.js';
 
 describe('Keycloak role catalog pagination', () => {
-  it('loads all pages when the provider has no role count operation', async () => {
+  it('loads all pages through the supported paginated role endpoint', async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => ({
       externalName: `role-${index}`,
     }));
@@ -23,7 +23,7 @@ describe('Keycloak role catalog pagination', () => {
     expect(listRoles).toHaveBeenNthCalledWith(2, { first: 100, max: 100 });
   });
 
-  it('fails closed when a count-less provider repeats a full page', async () => {
+  it('fails closed when a provider repeats a full page', async () => {
     const repeatedPage = Array.from({ length: 100 }, (_, index) => ({
       externalName: `role-${index}`,
     }));
@@ -35,27 +35,6 @@ describe('Keycloak role catalog pagination', () => {
       code: 'role_catalog_pagination_invalid',
       statusCode: 502,
     });
-  });
-
-  it('loads counted pages sequentially to avoid unbounded Keycloak fan-out', async () => {
-    let activeRequests = 0;
-    let maximumActiveRequests = 0;
-    const listRoles = vi.fn(async ({ first }: { first: number }) => {
-      activeRequests += 1;
-      maximumActiveRequests = Math.max(maximumActiveRequests, activeRequests);
-      await Promise.resolve();
-      activeRequests -= 1;
-      return [{ externalName: `role-${first}` }];
-    });
-
-    const roles = await loadKeycloakRoleCatalog({
-      countRoles: vi.fn(async () => 201),
-      listRoles,
-    } as never);
-
-    expect(roles).toHaveLength(3);
-    expect(maximumActiveRequests).toBe(1);
-    expect(listRoles).toHaveBeenCalledTimes(3);
   });
 });
 

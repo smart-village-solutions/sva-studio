@@ -99,6 +99,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 057 | [SSF-Service-Token und Runtime-Konfigurationsgrenze](./ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)                                                         | ✅     | 2026-09-01         | SSF / IAM / Plugins / Runtime     |
 | 058 | [Generischer Plugin-Tenant-Lifecycle und Readiness-Gate](./ADR-058-generischer-plugin-tenant-lifecycle-und-readiness-gate.md)                                                 | ✅     | 2026-08-30         | Plugins / Runtime / IAM           |
 | 059 | [Administrative Keycloak-Realm-Rollenzuweisungen](./ADR-059-administrative-keycloak-realm-rollenzuweisungen.md)                                                               | ✅     | 2026-09-02         | IAM / Keycloak / Authorization    |
+| 060 | [Keycloak-Serviceidentitäten und Doctor-Evidenz trennen](./ADR-060-keycloak-serviceidentitaeten-und-doctor-evidenz.md)                                                         | ✅     | 2026-09-02         | IAM / Keycloak / Diagnose         |
 
 ### Kanonischer Ablageort
 

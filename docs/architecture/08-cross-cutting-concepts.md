@@ -455,6 +455,21 @@ gleichzeitig beeinflussen.
 - Die Access-Probe wird nie automatisch beim Seitenladen ausgeführt, um unnötige IdP-Last, irreführende Zeitpunktevidenz und verdeckte Schreibnebenwirkungen zu vermeiden.
 - `seedIamBaseline` rekonstruiert ausschließlich `Core + zugewiesene Module` und erzeugt keine Rollenmitgliedschaften für den ausführenden Benutzer.
 
+### Fortschreibung 2026-09: Negative Evidenz und Least Privilege
+
+- `missing` setzt eine erfolgreiche, kausal zugeordnete Abfrage mit
+  nachgewiesener Lesesicht voraus. `FORBIDDEN`, `UNAVAILABLE`,
+  `MISCONFIGURED`, `UNKNOWN` und eine mehrdeutige leere Antwort dürfen nicht in
+  `missing` umgedeutet werden.
+- Tenant-IAM-Diagnosen tragen die logische Serviceidentität
+  `sva-studio-tenant-iam`; Provisioning-Snapshots tragen
+  `sva-studio-provisioner`. Tokens, Secrets und rohe Keycloak-Antworten bleiben
+  aus Diagnosepayload und Audit ausgeschlossen.
+- Der Rollenabgleich für Tenant-IAM ist ein exakter Sollvertrag: benötigte
+  Leserechte werden ergänzt, das nicht erlaubte `manage-clients` wird explizit
+  entzogen. Hinzufügen erfolgt vor Entzug, damit die Lesefähigkeit während der
+  Migration erhalten bleibt.
+
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
 - `apps/sva-studio-react` nutzt dedizierte Nx-Executor für Vite (`build`, `serve`, `preview`), Vitest (`test:unit`, `test:unit:ui`, `test:unit:routes`, `test:unit:hooks`, `test:unit:server`, `test:coverage`) und Playwright (`test:e2e`)

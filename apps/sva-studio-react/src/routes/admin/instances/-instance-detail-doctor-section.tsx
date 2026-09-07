@@ -51,9 +51,9 @@ export const InstanceDetailDoctorSection = ({
       title={t('admin.instances.doctor.steps.overview.title')}
       subtitle={t('admin.instances.doctor.steps.overview.subtitle')}
     >
-      <div data-testid="instance-doctor-overview" className="grid gap-3">
+      <ul data-testid="instance-doctor-overview" className="m-0 grid list-none gap-3 p-0">
         {doctorModel.checks.map((check) => (
-          <div key={check.key} className="rounded-xl border border-border/70 bg-background/85 p-4">
+          <li key={check.key} className="rounded-xl border border-border/70 bg-background/85 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <div className="font-medium text-foreground">{check.title}</div>
@@ -63,12 +63,29 @@ export const InstanceDetailDoctorSection = ({
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>{check.sourceLabel}</span>
+              {check.serviceIdentity ? (
+                <span>
+                  {t('admin.instances.doctor.serviceIdentity', {
+                    value: check.serviceIdentity,
+                  })}
+                </span>
+              ) : null}
+              {check.classificationLabel ? (
+                <span>
+                  {t('admin.instances.doctor.classification', {
+                    value: check.classificationLabel,
+                  })}
+                </span>
+              ) : null}
               {check.checkedAt ? <span>{formatDateTime(check.checkedAt)}</span> : null}
               {check.requestId ? <span>{t('admin.instances.tenantIam.requestId', { value: check.requestId })}</span> : null}
             </div>
-          </div>
+            {check.remediation ? (
+              <p className="mt-3 text-sm text-foreground">{check.remediation}</p>
+            ) : null}
+          </li>
         ))}
-      </div>
+      </ul>
     </DoctorStepCard>
 
     <DoctorStepCard

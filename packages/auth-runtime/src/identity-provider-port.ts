@@ -105,7 +105,6 @@ export interface IdentityProviderPort {
   listUserRealmRoleAssignments?(externalId: string): Promise<IdentityUserRealmRoleAssignments>;
   countUsers?(query?: Omit<IdentityUserListQuery, 'first' | 'max'>): Promise<number>;
   listRoles(query?: IdentityRoleListQuery): Promise<readonly IdentityRole[]>;
-  countRoles?(query?: Omit<IdentityRoleListQuery, 'first' | 'max'>): Promise<number>;
   getRoleByName(externalName: string): Promise<IdentityRole | null>;
   createRole(input: CreateIdentityRoleInput): Promise<IdentityRole>;
   updateRole(externalName: string, input: UpdateIdentityRoleInput): Promise<IdentityRole>;

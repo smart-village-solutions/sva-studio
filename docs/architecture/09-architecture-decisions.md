@@ -58,6 +58,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-055 Waste-Mainserver-Abgleichsstatus über Quellrevision](../adr/ADR-055-waste-mainserver-abgleichsstatus-ueber-quellrevision.md)
 - [ADR-057 SSF-Service-Token und Runtime-Konfigurationsgrenze](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
 - [ADR-059 Administrative Keycloak-Realm-Rollenzuweisungen](../adr/ADR-059-administrative-keycloak-realm-rollenzuweisungen.md)
+- [ADR-060 Keycloak-Serviceidentitäten und Doctor-Evidenz trennen](../adr/ADR-060-keycloak-serviceidentitaeten-und-doctor-evidenz.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -68,6 +69,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 05/06/07/08 (Bausteine/Laufzeit/Deployment/Querschnitt): ADR-016
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-017
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
+- Abschnitt 04/05/06/07/08/10/11 (Serviceidentitäten, Doctor-Evidenz und Least Privilege): ADR-060
 - Abschnitt 04/06/08/09/10/11 (Strategie/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-023
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
 - Abschnitt 03/05/06/08/09/10/11 (Kontext/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-051

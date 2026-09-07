@@ -23,7 +23,7 @@ describe('SSF plugin schema snapshot', () => {
       )
       .join('\n\n');
     const expected = [
-      '-- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration V1',
+      '-- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration und IAM-Projektion V1',
       '-- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0002_*.sql',
       '-- Diese Datenbank ist getrennt von sva_studio.',
       '',

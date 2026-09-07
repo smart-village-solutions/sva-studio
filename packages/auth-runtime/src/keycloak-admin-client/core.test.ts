@@ -1165,6 +1165,23 @@ describe('Keycloak admin client', () => {
     });
   });
 
+  it('requests full user representations when explicitly required', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'user-1', attributes: { locale: ['de'] } }])
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.listUsers({ first: 0, max: 100, briefRepresentation: false })
+    ).resolves.toEqual([
+      expect.objectContaining({ externalId: 'user-1', attributes: { locale: ['de'] } }),
+    ]);
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain('briefRepresentation=false');
+  });
+
   it('filters user attributes and returns null for missing client secrets or realms', async () => {
     const fetchImpl = vi
       .fn()

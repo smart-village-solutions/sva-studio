@@ -47,7 +47,7 @@ export const listAllUsers = async (
 ): Promise<readonly KeycloakProjectionUser[]> => {
   const users: KeycloakProjectionUser[] = [];
   for (let first = 0; ; first += PAGE_SIZE) {
-    const page = await client.listUsers({ first, max: PAGE_SIZE });
+    const page = await client.listUsers({ first, max: PAGE_SIZE, briefRepresentation: false });
     users.push(...page);
     if (page.length < PAGE_SIZE) return users;
   }

@@ -9,8 +9,8 @@ export interface SsfKeycloakProjectionClient {
   listUsers(query?: {
     readonly first?: number;
     readonly max?: number;
+    readonly briefRepresentation?: boolean;
   }): Promise<readonly KeycloakProjectionUser[]>;
-  getUserAttributes(externalId: string): Promise<KeycloakAttributes>;
   updateUser(
     externalId: string,
     input: { readonly attributes: Readonly<Record<string, readonly string[]>> }

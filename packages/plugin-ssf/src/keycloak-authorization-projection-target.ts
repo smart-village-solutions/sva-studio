@@ -60,7 +60,7 @@ const reconcileProjection = async (
   await ensureClaimMappers(tenant);
 
   for (const user of users) {
-    const currentAttributes = await tenant.client.getUserAttributes(user.externalId);
+    const currentAttributes = user.attributes ?? {};
     const desiredSubject = desiredBySubject.get(user.externalId);
     const nextAttributes = withoutProjectionAttributes(currentAttributes);
     if (desiredSubject) {
@@ -81,13 +81,8 @@ const readProjectedSubjects = async (
 ): Promise<readonly ProjectedSubject[]> => {
   const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
   const users = await listAllUsers(tenant.client);
-  const projectedUsers = await Promise.all(
-    users.map(async (user) => ({
-      subject: user.externalId,
-      attributes: await tenant.client.getUserAttributes(user.externalId),
-    }))
-  );
-  return projectedUsers
+  return users
+    .map((user) => ({ subject: user.externalId, attributes: user.attributes ?? {} }))
     .filter(({ attributes }) => hasProjectionAttributes(attributes))
     .map(({ subject, attributes }) => {
       if (readSingleAttribute(attributes, SSF_TOKEN_CLAIMS.instanceId) !== instanceId) {

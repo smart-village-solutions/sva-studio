@@ -21,7 +21,7 @@ const compatible = {
 };
 
 describe('backup agent capabilities', () => {
-  it('accepts the current v2 Studio and Waste contract', () => {
+  it('accepts the current v2 Studio, Waste, and SSF contract', () => {
     expect(validateBackupAgentCapabilities('staging', compatible, true, true)).toEqual(compatible);
   });
 

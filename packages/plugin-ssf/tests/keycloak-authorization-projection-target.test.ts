@@ -38,9 +38,11 @@ const createClient = () => {
   ]);
   const client = {
     listUsers: vi.fn(async ({ first = 0, max = 100 } = {}) =>
-      [...attributes.keys()].slice(first, first + max).map((externalId) => ({ externalId }))
+      [...attributes.entries()].slice(first, first + max).map(([externalId, userAttributes]) => ({
+        externalId,
+        attributes: userAttributes,
+      }))
     ),
-    getUserAttributes: vi.fn(async (externalId: string) => attributes.get(externalId) ?? {}),
     updateUser: vi.fn(
       async (externalId: string, input: { attributes: Record<string, readonly string[]> }) => {
         attributes.set(externalId, { ...input.attributes });
@@ -100,6 +102,12 @@ describe('SSF Keycloak authorization projection target', () => {
     const revision = createSsfAuthorizationRevision(desired);
 
     await target.reconcile(desired, revision);
+
+    expect(client.listUsers).toHaveBeenCalledWith({
+      first: 0,
+      max: 100,
+      briefRepresentation: false,
+    });
 
     expect(attributes.get('user-1')).toEqual({
       locale: ['de'],

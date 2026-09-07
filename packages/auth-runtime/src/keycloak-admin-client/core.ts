@@ -112,7 +112,9 @@ type KeycloakUserCreateResponse = {
   readonly location: string | null;
 };
 
-export type KeycloakListUsersQuery = IdentityUserListQuery;
+export type KeycloakListUsersQuery = IdentityUserListQuery & {
+  readonly briefRepresentation?: boolean;
+};
 export type KeycloakListRolesQuery = IdentityRoleListQuery;
 
 export type KeycloakAdminUser = {
@@ -787,6 +789,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       ['first', query?.first],
       ['max', query?.max],
       ['enabled', query?.enabled],
+      ['briefRepresentation', query?.briefRepresentation],
     ] as const) {
       if (value !== undefined) {
         searchParams.set(key, String(value));

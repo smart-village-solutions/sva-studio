@@ -43,13 +43,13 @@ const runPsql = (database, sql) => {
       postgresUser,
       '-d',
       database,
-      '-c',
-      sql,
+      '--file=-',
     ],
     {
       encoding: 'utf8',
       env: { ...process.env, PGPASSWORD: postgresPassword },
-      stdio: ['ignore', 'pipe', 'inherit'],
+      input: sql,
+      stdio: ['pipe', 'pipe', 'inherit'],
     }
   );
   if (result.status !== 0) throw new Error('ssf_psql_failed');

@@ -44,6 +44,7 @@ import {
   type UiAccessRequirement,
   type PluginDefinition,
   type PluginServerHandlerDefinition,
+  type PluginTechnicalServiceAccessRequirement,
 } from './index.js';
 
 const component = () => null;
@@ -63,6 +64,12 @@ const platformRequirement = (
 ): Extract<UiAccessRequirement, { kind: 'platform' }> => ({
   kind: 'platform',
   roles: { mode, values },
+});
+
+const serviceRequirement = (): PluginTechnicalServiceAccessRequirement => ({
+  kind: 'service',
+  serviceId: 'ssf-runtime',
+  tenantBinding: { kind: 'header', headerName: 'X-Studio-Instance-Id' },
 });
 
 const pluginWithLinkedRequirements = (
@@ -575,6 +582,97 @@ describe('plugin registries', () => {
       expect(registry.pluginActionRegistry.get('news.open')?.accessRequirement).toMatchObject({
         actions: { values: ['news.read'] },
       });
+    });
+
+    it('materializes a technical service handler without publishing a user action', () => {
+      const registry = createBuildTimeRegistry({
+        plugins: [
+          {
+            id: 'ssf',
+            displayName: 'Smart Speech Flow',
+            routes: [],
+            serverHandlers: [
+              {
+                id: 'ssf.runtime-configuration',
+                path: '/internal/plugins/ssf/v1/runtime-configuration',
+                method: 'GET',
+                actionId: 'ssf.runtime-configuration.read',
+                accessRequirement: serviceRequirement(),
+              },
+            ],
+          },
+        ],
+        pluginExtensionTiers: new Map([['ssf', 'admin']]),
+      });
+
+      expect(registry.pluginActionRegistry.has('ssf.runtime-configuration.read')).toBe(false);
+      expect(registry.pluginServerHandlerRegistry.get('ssf.runtime-configuration')).toMatchObject({
+        ownerPluginId: 'ssf',
+        path: '/internal/plugins/ssf/v1/runtime-configuration',
+        actionId: 'ssf.runtime-configuration.read',
+        accessRequirement: serviceRequirement(),
+      });
+    });
+
+    it('keeps technical service handlers outside feature plugins and browser routes', () => {
+      const serviceHandler = {
+        id: 'ssf.runtime-configuration',
+        path: '/internal/plugins/ssf/v1/runtime-configuration',
+        method: 'GET' as const,
+        actionId: 'ssf.runtime-configuration.read',
+        accessRequirement: serviceRequirement(),
+      };
+      expect(() =>
+        createPluginRegistry([
+          { id: 'ssf', displayName: 'SSF', routes: [], serverHandlers: [serviceHandler] },
+        ])
+      ).toThrow('plugin_service_access_tier_forbidden:ssf:ssf.runtime-configuration:feature');
+
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              id: 'ssf',
+              displayName: 'SSF',
+              routes: [
+                {
+                  id: 'ssf-runtime',
+                  path: '/plugins/ssf/runtime',
+                  serverHandlerId: serviceHandler.id,
+                  accessRequirement: platformRequirement(),
+                  component,
+                },
+              ],
+              serverHandlers: [serviceHandler],
+            },
+          ],
+          { extensionTiers: new Map([['ssf', 'admin']]) }
+        )
+      ).toThrow('plugin_route_service_handler_forbidden:ssf:ssf-runtime:ssf.runtime-configuration');
+    });
+
+    it('keeps technical service handlers read-only', () => {
+      expect(() =>
+        createPluginRegistry(
+          [
+            {
+              id: 'ssf',
+              displayName: 'SSF',
+              routes: [],
+              serverHandlers: [
+                {
+                  id: 'ssf.runtime-configuration',
+                  path: '/internal/plugins/ssf/v1/runtime-configuration',
+                  method: 'POST',
+                  actionId: 'ssf.runtime-configuration.read',
+                  accessRequirement: serviceRequirement(),
+                },
+              ],
+            },
+          ],
+          { extensionTiers: new Map([['ssf', 'admin']]) }
+        )
+      ).toThrow('plugin_service_access_method_forbidden:ssf:ssf.runtime-configuration:POST');
     });
 
     it('rejects unsupported server handler methods at runtime', () => {

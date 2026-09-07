@@ -313,9 +313,10 @@ Details und noch offene Implementierungsparameter stehen im
 Der erste Implementierungsslice setzt diese Grenze ohne parallele
 Core-Fachlogik um: `@sva/plugin-ssf` besitzt Vertrag, Defaults, Auflösung,
 Sanitizing, Revision und PostgreSQL-Zugriff; `@sva/auth-runtime` stellt den
-generischen JOSE/JWKS-Service-Token-Baustein. Die produktive Dispatcherbindung
-bleibt bis zur servicefähigen Plugin-Plattform und einer verifizierten
-Autorisierungsrevision fail-closed.
+generischen JOSE/JWKS-Service-Token-Baustein. Technischer Plugin-Service-
+Zugriff, Dispatcherbindung und Host-Gates sind implementiert. Der produktive
+Pfad bleibt ohne Deployment-Provider und eine verifizierte
+Autorisierungsrevision deaktiviert und fail-closed.
 
 ### Ergänzung 2026-09: Keycloak-Rollen als getrennte Interop-Sicht
 

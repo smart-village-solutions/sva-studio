@@ -7,9 +7,10 @@
   "sdkVersion": "0.0.1",
   "hostCompatibility": {
     "studioVersionRange": "^0.0.1",
-    "requiredCapabilities": ["iam"]
+    "requiredCapabilities": ["iam", "server"]
   },
   "entryPoints": {
-    "browser": "./dist/index.js"
+    "browser": "./dist/index.js",
+    "server": "./dist/server/index.js"
   }
 }

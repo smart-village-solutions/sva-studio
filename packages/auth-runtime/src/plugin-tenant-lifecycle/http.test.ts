@@ -39,6 +39,12 @@ vi.mock('./runtime.js', () => ({
   startConfiguredPluginTenantLifecycle: state.startConfiguredPluginTenantLifecycle,
 }));
 
+import {
+  getPluginTenantReadinessInternal,
+  resolvePluginTenantLifecycleServiceAction,
+  startPluginTenantLifecycleInternal,
+} from './http.js';
+
 const context = {
   authKind: 'service' as const,
   user: { id: 'system-admin', roles: ['system_admin'] },
@@ -66,7 +72,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     ['suspend', 'instance.pluginLifecycle.suspend'],
     ['reactivate', 'instance.pluginLifecycle.reactivate'],
   ] as const)('maps %s to its dedicated service action', async (operation, expectedAction) => {
-    const { resolvePluginTenantLifecycleServiceAction } = await import('./http.js');
     const result = await resolvePluginTenantLifecycleServiceAction(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
@@ -79,7 +84,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
   });
 
   it('rejects an invalid operation before selecting a service action', async () => {
-    const { resolvePluginTenantLifecycleServiceAction } = await import('./http.js');
     const result = await resolvePluginTenantLifecycleServiceAction(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
@@ -95,7 +99,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
   });
 
   it('returns the generic readiness model for an existing instance', async () => {
-    const { getPluginTenantReadinessInternal } = await import('./http.js');
     const response = await getPluginTenantReadinessInternal(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness'),
       context as never
@@ -110,7 +113,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
   });
 
   it('starts a declared repair operation in the authenticated actor context', async () => {
-    const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const response = await startPluginTenantLifecycleInternal(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
@@ -136,7 +138,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     state.isServiceRequest = false;
     const csrfResponse = new Response(null, { status: 403 });
     state.validateSessionCsrf.mockReturnValueOnce(csrfResponse);
-    const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const request = new Request(
       'https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness',
       {
@@ -160,7 +161,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     state.startConfiguredPluginTenantLifecycle.mockRejectedValue(
       new Error('plugin_tenant_lifecycle_inactive:speech:reconcile')
     );
-    const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const response = await startPluginTenantLifecycleInternal(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
@@ -186,7 +186,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     state.startConfiguredPluginTenantLifecycle.mockRejectedValue(
       new Error(`${errorCode}:speech:reconcile`)
     );
-    const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const response = await startPluginTenantLifecycleInternal(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
@@ -201,7 +200,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
   });
 
   it('localizes invalid lifecycle requests for English administrators', async () => {
-    const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const response = await startPluginTenantLifecycleInternal(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
@@ -224,7 +222,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
     state.startConfiguredPluginTenantLifecycle.mockRejectedValue(
       new Error(`${errorCode}:speech:reconcile`)
     );
-    const { startPluginTenantLifecycleInternal } = await import('./http.js');
     const response = await startPluginTenantLifecycleInternal(
       new Request('https://studio.test/api/v1/iam/instances/tenant-a/plugin-readiness', {
         method: 'POST',
@@ -242,7 +239,6 @@ describe('plugin tenant lifecycle HTTP handlers', () => {
 
   it('does not expose readiness for an unknown instance', async () => {
     state.getInstanceById.mockResolvedValue(null);
-    const { getPluginTenantReadinessInternal } = await import('./http.js');
     const response = await getPluginTenantReadinessInternal(
       new Request('https://studio.test/api/v1/iam/instances/missing/plugin-readiness', {
         headers: { 'Accept-Language': 'en-GB' },

@@ -341,8 +341,10 @@ behoben.
 ### Zielbild 2026-09: Gemeinsames Serverprofil für Studio und SSF
 
 Eine SSF-fähige Installation betreibt SVA Studio, das installierte SSF-Plugin,
-SSF und einen separaten SSF-Keycloak auf demselben Server beziehungsweise in
-derselben kontrollierten Betriebsumgebung. Die Plugin-Auswahl beim Studio-
+SSF und eine gemeinsam genutzte Keycloak-Instanz auf demselben Server
+beziehungsweise in derselben kontrollierten Betriebsumgebung. Sie enthält den
+Realm `master` ausschließlich zur Keycloak-Administration, einen Studio-Root-
+Realm und je einen gemeinsamen Studio-/SSF-Realm pro Tenant. Die Plugin-Auswahl beim Studio-
 Rollout kennzeichnet das Serverprofil; das installierte SSF-Plugin kann nach
 seiner Lifecycle-Klasse automatisch aktiviert sein.
 
@@ -355,8 +357,11 @@ Offline-Fähigkeit eines Teilsystems.
 
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
 
-Der Repository-Zwischenstand liefert Migration, Rollen- und RLS-Vertrag der
-SSF-Plugin-Datenbank, verändert aber noch kein produktives Deployment-Profil.
-Insbesondere bleiben Endpoint-Freigabe und SSF-Datenbank-Secrets außerhalb der
-Standardkonfiguration, bis die Host-Dispatcher- und IAM-Readiness-Gates
-integriert sind.
+Der Repository-Zwischenstand integriert Migration, Rollen, RLS sowie getrennte
+Backup-/Restore-Inventare in den bestehenden Build-/Promote-Pfad. Die
+getrackten Remote-Profile lassen `SSF_PLUGIN_DATABASE_ENABLED` und
+`SVA_STUDIO_SSF_RUNTIME_ENABLED` dennoch auf `false`; Secrets bleiben im
+geschützten Override-Bundle. Vor dem ersten SSF-fähigen Promote muss der
+Backup-Agent seine `ssf`-Capability live ausweisen. Die produktive
+Endpoint-Freigabe bleibt zusätzlich bis zur revisionsgebundenen
+SSF-IAM-Projektion fail-closed.

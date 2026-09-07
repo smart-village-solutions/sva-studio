@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export type BackupEnvironment = 'staging' | 'prod';
-export type BackupDatabase = 'studio' | 'waste';
+export type BackupDatabase = 'ssf' | 'studio' | 'waste';
 
 export type BackupRequest = Readonly<{
   version: 2;
@@ -27,46 +27,79 @@ const environments = {
   },
 } as const;
 
-export const backupEnvironmentConfig = (environment: BackupEnvironment) => environments[environment];
+export const backupEnvironmentConfig = (environment: BackupEnvironment) =>
+  environments[environment];
 
-export const canonicalBackupRequest = (request: BackupRequest) => JSON.stringify({
-  action: request.action,
-  deployImageDigest: request.deployImageDigest,
-  environment: request.environment,
-  expiresAt: request.expiresAt,
-  ...(request.database ? { database: request.database } : {}),
-  ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
-  requestId: request.requestId,
-  version: request.version,
-});
+export const canonicalBackupRequest = (request: BackupRequest) =>
+  JSON.stringify({
+    action: request.action,
+    deployImageDigest: request.deployImageDigest,
+    environment: request.environment,
+    expiresAt: request.expiresAt,
+    ...(request.database ? { database: request.database } : {}),
+    ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
+    requestId: request.requestId,
+    version: request.version,
+  });
 
 export const signBackupRequest = (request: BackupRequest, key: string) =>
   createHmac('sha256', key).update(canonicalBackupRequest(request)).digest('hex');
 
-export const isValidBackupRequest = (value: unknown, now = new Date()) : value is BackupRequest => {
+export const isValidBackupRequest = (value: unknown, now = new Date()): value is BackupRequest => {
   if (!value || typeof value !== 'object') return false;
   const request = value as Partial<BackupRequest>;
-  const allowedKeys = new Set(['action', 'database', 'deployImageDigest', 'environment', 'expiresAt', 'requestId', 'tenantInstanceId', 'version']);
+  const allowedKeys = new Set([
+    'action',
+    'database',
+    'deployImageDigest',
+    'environment',
+    'expiresAt',
+    'requestId',
+    'tenantInstanceId',
+    'version',
+  ]);
   if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
   if (request.version !== 2 || request.action !== 'backup-and-verify') return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
-  if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste') return false;
   if (
-    (request.database === 'waste' && request.tenantInstanceId !== undefined && !/^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId))
-    || (request.database !== 'waste' && request.tenantInstanceId !== undefined)
-  ) return false;
-  if (typeof request.requestId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)) return false;
-  if (typeof request.deployImageDigest !== 'string' || !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)) return false;
+    request.database !== undefined &&
+    request.database !== 'ssf' &&
+    request.database !== 'studio' &&
+    request.database !== 'waste'
+  )
+    return false;
   if (
-    typeof request.expiresAt !== 'string'
-    || Number.isNaN(Date.parse(request.expiresAt))
-    || Date.parse(request.expiresAt) <= now.getTime()
-    || Date.parse(request.expiresAt) > now.getTime() + 10 * 60_000
-  ) return false;
+    (request.database === 'waste' &&
+      request.tenantInstanceId !== undefined &&
+      !/^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId)) ||
+    (request.database !== 'waste' && request.tenantInstanceId !== undefined)
+  )
+    return false;
+  if (
+    typeof request.requestId !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
+  )
+    return false;
+  if (
+    typeof request.deployImageDigest !== 'string' ||
+    !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)
+  )
+    return false;
+  if (
+    typeof request.expiresAt !== 'string' ||
+    Number.isNaN(Date.parse(request.expiresAt)) ||
+    Date.parse(request.expiresAt) <= now.getTime() ||
+    Date.parse(request.expiresAt) > now.getTime() + 10 * 60_000
+  )
+    return false;
   return true;
 };
 
-export const verifyBackupRequestSignature = (request: BackupRequest, key: string, signature: string) => {
+export const verifyBackupRequestSignature = (
+  request: BackupRequest,
+  key: string,
+  signature: string
+) => {
   const actual = Buffer.from(signBackupRequest(request, key), 'hex');
   const expected = Buffer.from(signature, 'hex');
   return actual.length === expected.length && timingSafeEqual(actual, expected);

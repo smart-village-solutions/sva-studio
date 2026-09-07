@@ -18,13 +18,25 @@ versionierter Bestandteil dieses Plugins ausgeliefert. Damit kann das Plugin
 Tenant-Overrides, serverweite Anpassungen und Produktdefaults vollständig
 auflösen und eine inhaltsbasierte `configurationRevision` bilden.
 
+Studio und SSF verwenden dieselbe Keycloak-Instanz. Der Realm `master` bleibt
+der Keycloak-Administration vorbehalten, ein Studio-Root-Realm enthält
+plattformweite Identitäten und technische Clients, und jeder Tenant besitzt
+einen eigenen gemeinsamen Studio-/SSF-Realm. Studio und SSF verwenden dort
+getrennte OIDC-Clients, aber denselben Benutzer und dasselbe OIDC-`sub`.
+
 SSF ruft die effektive Konfiguration über einen internen, lesenden V1-Endpunkt
-ab. Es authentisiert sich mit einem installationsweiten Service-Token des
-separaten SSF-Keycloaks. Studio prüft Signatur, Issuer, Audience, Zeitbindung und
+ab. Es authentisiert sich mit einem installationsweiten Service-Token eines
+technischen Clients im Studio-Root-Realm. Studio prüft Signatur, Issuer,
+Audience, Zeitbindung und
 die vollständig qualifizierte Action `ssf.runtime-configuration.read`. Die
 angeforderte `studio_instance_id` stammt aus einem von SSF validierten Benutzer-
 oder Sessionkontext. Für diesen idempotenten Read gibt es keine zweite Tenant-
 Signatur, keine Browserfreigabe und keinen Replay-Speicher.
+
+Das Service-Token trägt keine tenantbezogene `ssf_authorization_revision`.
+Studio bindet zuerst den angeforderten Tenant und liest anschließend dessen
+bestätigte Revision. Für authentifizierte Vorgänge vergleicht SSF diese
+Runtime-Revision mit dem Claim des Tenant-Benutzertokens.
 
 Benutzertokens tragen den kanonischen Mandantenclaim `studio_instance_id` sowie
 `ssf_roles`, die autoritativen `ssf_permissions` und eine tenantweite
@@ -50,12 +62,15 @@ validierte Gäste-Session ergibt `guest`. Kundenspezifische Rollen benötigen
 keine Persona-Synthese, weil ihre effektiven `ssf.*`-Actions autoritativ sind.
 
 Studio-IAM projiziert die effektiven `ssf.*`-Permissions aus Default- und
-kundenspezifischen Rollen in den Client-Scope des separaten SSF-Keycloaks. Vor
-einer relevanten IAM-Änderung wird der betroffene Tenant-Client gesperrt und die
+kundenspezifischen Rollen in den SSF-Client-Scope des gemeinsamen
+Tenant-Realms. Vor
+einer relevanten IAM-Änderung wird der betroffene SSF-Client gesperrt und die
 Projektion als nicht bereit markiert. Nach Reconcile, Revisionsverifikation und
-Session-Widerruf wird der Client wieder freigegeben. Fehler verbleiben
-fail-closed; SSF vergleicht den Tokenclaim mit der vom Runtime-Endpunkt
-gelieferten `authorizationRevision`.
+SSF-seitigem Session-Widerruf wird der Client wieder freigegeben. Ein
+Permission-Wechsel führt nicht zu einem realmweiten Keycloak-Logout, der auch
+Studio-Sitzungen beenden würde. Fehler verbleiben fail-closed; SSF vergleicht
+den Tokenclaim mit der vom Runtime-Endpunkt gelieferten
+`authorizationRevision`.
 
 Root-Actions werden nicht in diesen Tenant-Pfad projiziert. Das SSF-Plugin
 registriert `ssf.configuration.server.manage`,
@@ -88,7 +103,8 @@ Konfigurationen oder Revisionen berechnen.
 - Ein Studio-, Plugin- oder interner API-Ausfall darf einen SSF-Vorgang
   fehlschlagen lassen; V1 verlangt keine Offline-Kopie.
 - Service- und Benutzertoken benötigen getrennte Claims, Rollen und
-  Lebenszyklen im SSF-Keycloak.
+  Lebenszyklen innerhalb derselben Keycloak-Instanz. Das Service-Token stammt
+  aus dem Studio-Root-Realm, Benutzertokens aus dem jeweiligen Tenant-Realm.
 - Die Integrationsübersetzung zwischen Studio-IAM und SSF-Personas muss bei
   Provisionierung und Token-Materialisierung konsistent angewendet werden;
   ADR-046 wird nicht supersediert.

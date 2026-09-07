@@ -64,4 +64,32 @@ describe('SSF runtime configuration handler', () => {
     ).rejects.toThrow('authorization revision is invalid');
     expect(readOverrides).not.toHaveBeenCalled();
   });
+
+  it('does not return a previously successful configuration after the database becomes unavailable', async () => {
+    const readOverrides = vi
+      .fn()
+      .mockResolvedValueOnce({
+        serverSettings: null,
+        serverLocales: [],
+        tenantSettings: null,
+        tenantLocales: [],
+      })
+      .mockRejectedValueOnce(new Error('database_unavailable'));
+    const handler = createSsfRuntimeConfigurationHandler({
+      readOverrides,
+      mediaResolver: {
+        resolve: async () => {
+          throw new Error('No media reference expected.');
+        },
+      },
+    });
+    const input = {
+      tenant: { id: 'tenant-1', displayName: 'Tenant', timeZone: 'Europe/Berlin' },
+      authorizationRevision,
+    };
+
+    await expect(handler(input)).resolves.toMatchObject({ contractVersion: '1.0' });
+    await expect(handler(input)).rejects.toThrow('database_unavailable');
+    expect(readOverrides).toHaveBeenCalledTimes(2);
+  });
 });

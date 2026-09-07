@@ -85,6 +85,20 @@ describe('restore agent contract', () => {
     );
   });
 
+  it('binds SSF restores to the separate plugin database prefix', () => {
+    const now = new Date('2026-08-01T10:00:00.000Z');
+    const ssfRequest: RestoreRequest = {
+      ...request,
+      database: 'ssf',
+      sourceObjectKey: `staging/ssf/2026-08-01/${'a'.repeat(64)}/gha-12345678-ssf.dump`,
+    };
+    expect(isValidRestoreRequest(ssfRequest, now)).toBe(true);
+    expect(
+      isValidRestoreRequest({ ...ssfRequest, sourceObjectKey: request.sourceObjectKey }, now)
+    ).toBe(false);
+    expect(isValidRestoreRequest({ ...ssfRequest, tenantInstanceId: 'tenant-a' }, now)).toBe(false);
+  });
+
   it('binds the one-time Waste import to production bb-prignitz SQL', () => {
     const now = new Date('2026-08-01T10:00:00.000Z');
     const importRequest: RestoreRequest = {

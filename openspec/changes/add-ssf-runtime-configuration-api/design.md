@@ -101,6 +101,14 @@ die genannten Werte sind die V1-Defaults. Der SSF-Service-Account benötigt
 keine menschliche Plattformrolle. Ein fehlender oder unvollständiger Vertrag
 ist kein Fallback, sondern `503 runtime_configuration_unavailable`.
 
+Der installationsweite Service-Client liegt im Studio-Root-Realm der gemeinsam
+von Studio und SSF verwendeten Keycloak-Instanz. Sein Token ist nicht
+tenantgebunden und enthält keine `ssf_authorization_revision`. Der Host liest
+die bestätigte Revision erst nach der Bindung von
+`X-Studio-Instance-Id`. Tenant-Benutzertokens stammen dagegen aus dem
+gemeinsamen Tenant-Realm und tragen die Revision für den SSF-seitigen Vergleich
+beim Sessionaufbau.
+
 `X-Studio-Instance-Id` wird erst nach erfolgreicher Service-Authentisierung
 verwendet und gegen die kanonische Instanz-Registry aufgelöst. Pfad, Query und
 Body dürfen keinen konkurrierenden Tenantwert liefern. Direkte Browserrequests

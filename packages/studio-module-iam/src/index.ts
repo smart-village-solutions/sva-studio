@@ -1,5 +1,7 @@
 import { composePermissionCatalog, corePermissionCatalog } from '@sva/core';
 
+import { ssfModuleIamContract } from './ssf-module-iam-contract.js';
+
 export const studioModuleIamVersion = '0.0.1';
 
 export type StudioModuleIamBootstrapRole = Readonly<{
@@ -176,6 +178,7 @@ const wasteManagementModuleIamContract: StudioModuleIamContract = {
   rootSystemRoles: [],
   systemRoles: createSystemAdminSystemRoles(wasteManagementTenantBootstrapRoles),
 };
+
 const mediaTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
   {
     roleName: 'system_admin',
@@ -219,6 +222,7 @@ export const studioPluginModuleIamContracts = [
   projectsModuleIamContract,
   surveysModuleIamContract,
   wasteManagementModuleIamContract,
+  ssfModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];
 
 export const studioHostModuleIamContracts = [

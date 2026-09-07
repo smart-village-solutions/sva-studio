@@ -89,8 +89,23 @@ export const targets = {
 
 export const resolveDatabaseTarget = (environment, database = 'studio', operation = 'backup') => {
   const target = targets[environment];
-  if (!target || database !== 'studio' || (operation !== 'backup' && operation !== 'restore'))
+  if (
+    !target ||
+    !['ssf', 'studio'].includes(database) ||
+    (operation !== 'backup' && operation !== 'restore')
+  )
     throw new Error('database_target_invalid');
+  if (database === 'ssf') {
+    const prefix = environment === 'staging' ? 'BACKUP_STAGING' : 'BACKUP_PROD';
+    return {
+      ...target,
+      database: 'ssf',
+      prefix: `${target.prefix}/ssf`,
+      postgresDatabase: process.env[`${prefix}_SSF_POSTGRES_DB`] || 'sva_studio_ssf',
+      runtimeRole: 'ssf_plugin_tenant_runtime',
+      runtimeUser: process.env[`${prefix}_SSF_RUNTIME_USER`] || 'sva_ssf_runtime',
+    };
+  }
   return { ...target, database: 'studio' };
 };
 
@@ -645,7 +660,7 @@ export const executeBackupForIntegration = async (request) => {
     if (request.database !== 'waste') {
       const result = await executeBackupTargetForIntegration(
         request,
-        resolveDatabaseTarget(request.environment, 'studio')
+        resolveDatabaseTarget(request.environment, request.database ?? 'studio')
       );
       await uploadJson(controlTarget, resultKey, result);
       return;
@@ -732,8 +747,11 @@ const sqlIdentifier = (value) => `"${String(value).replaceAll('"', '""')}"`;
 const sqlLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
 const assertRuntimePrincipalTarget = (target) => {
-  const studioTarget = Object.keys(targets)
-    .map((environment) => resolveDatabaseTarget(environment, 'studio'))
+  const configuredTarget = Object.keys(targets)
+    .flatMap((environment) => [
+      resolveDatabaseTarget(environment, 'studio'),
+      resolveDatabaseTarget(environment, 'ssf'),
+    ])
     .some(
       (candidate) =>
         candidate.postgresDatabase === target.postgresDatabase &&
@@ -752,12 +770,13 @@ const assertRuntimePrincipalTarget = (target) => {
     target.runtimeRole === `${target.sourceDatabase.slice(0, -3)}_app` &&
     target.runtimeUser === target.runtimeRole &&
     target.publicRuntimeUser === `${target.sourceDatabase.slice(0, -3)}_public`;
-  if (!studioTarget && !dynamicWasteTarget) throw new Error('runtime_principal_target_invalid');
+  if (!configuredTarget && !dynamicWasteTarget) throw new Error('runtime_principal_target_invalid');
 };
 
 export const buildRuntimePrincipalReconciliationSql = (target) => {
   assertRuntimePrincipalTarget(target);
   if (target.database === 'waste') return buildWasteRuntimePrincipalReconciliationSql(target);
+  if (target.database === 'ssf') return buildSsfRuntimePrincipalReconciliationSql(target);
   const database = sqlIdentifier(target.postgresDatabase);
   const runtimeRole = sqlIdentifier(target.runtimeRole);
   const runtimeUser = sqlIdentifier(target.runtimeUser);
@@ -784,6 +803,34 @@ ALTER DEFAULT PRIVILEGES FOR ROLE ${schemaOwner} IN SCHEMA iam
 ALTER DEFAULT PRIVILEGES FOR ROLE ${schemaOwner} IN SCHEMA iam
   GRANT USAGE, SELECT ON SEQUENCES TO ${runtimeRole}, ${runtimeUser};
 RESET ROLE;
+`;
+};
+
+export const buildSsfRuntimePrincipalReconciliationSql = (target) => {
+  assertRuntimePrincipalTarget(target);
+  if (target.database !== 'ssf') throw new Error('runtime_principal_target_invalid');
+  const database = sqlIdentifier(target.postgresDatabase);
+  const runtimeRole = sqlIdentifier(target.runtimeRole);
+  const runtimeUser = sqlIdentifier(target.runtimeUser);
+  return `
+DO $restore_principal_guard$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.runtimeRole)})
+    OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(target.runtimeUser)}) THEN
+    RAISE EXCEPTION 'restore_runtime_principal_missing';
+  END IF;
+END
+$restore_principal_guard$;
+
+GRANT ${runtimeRole} TO ${runtimeUser} WITH INHERIT FALSE;
+GRANT CONNECT ON DATABASE ${database} TO ${runtimeUser};
+GRANT USAGE ON SCHEMA ssf TO ${runtimeRole};
+GRANT SELECT ON ssf.server_settings, ssf.server_locales TO ${runtimeRole};
+GRANT SELECT, INSERT, UPDATE, DELETE ON ssf.tenant_settings, ssf.tenant_locales TO ${runtimeRole};
+GRANT SELECT (
+  instance_id, generation, status, desired_revision, confirmed_revision,
+  sessions_revoked_revision, last_error_code
+) ON ssf.authorization_projections TO ${runtimeRole};
 `;
 };
 
@@ -824,6 +871,7 @@ RESET ROLE;
 export const runtimePrincipalProbeSql = (target) => {
   assertRuntimePrincipalTarget(target);
   if (target.database === 'waste') return wasteRuntimePrincipalProbeSql(target);
+  if (target.database === 'ssf') return ssfRuntimePrincipalProbeSql(target);
   const database = sqlLiteral(target.postgresDatabase);
   const runtimeRole = sqlLiteral(target.runtimeRole);
   const runtimeUser = sqlLiteral(target.runtimeUser);
@@ -885,6 +933,26 @@ SELECT json_build_object(
     ),
     true
   )
+)::text;
+`;
+};
+
+export const ssfRuntimePrincipalProbeSql = (target) => {
+  assertRuntimePrincipalTarget(target);
+  if (target.database !== 'ssf') throw new Error('runtime_principal_target_invalid');
+  const database = sqlLiteral(target.postgresDatabase);
+  const runtimeRole = sqlLiteral(target.runtimeRole);
+  const runtimeUser = sqlLiteral(target.runtimeUser);
+  return `
+SELECT json_build_object(
+  'databaseConnect', has_database_privilege(${runtimeUser}, ${database}, 'CONNECT'),
+  'roleMembership', pg_has_role(${runtimeUser}, ${runtimeRole}, 'MEMBER'),
+  'runtimeUserSchemaUsage', has_schema_privilege(${runtimeUser}, 'ssf', 'USAGE'),
+  'runtimeRoleSchemaUsage', has_schema_privilege(${runtimeRole}, 'ssf', 'USAGE'),
+  'runtimeUserTablesReady', has_table_privilege(${runtimeUser}, 'ssf.tenant_settings', 'SELECT'),
+  'runtimeRoleTablesReady', has_table_privilege(${runtimeRole}, 'ssf.tenant_settings', 'SELECT'),
+  'runtimeUserSequencesReady', true,
+  'runtimeRoleSequencesReady', true
 )::text;
 `;
 };
@@ -1159,6 +1227,18 @@ export const wasteRestoreSchemaResetSql = (schemaOwner) => {
   return `SET ROLE ${owner}; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION ${owner};`;
 };
 
+export const ssfRestoreSchemaResetSql = (schemaOwner) => {
+  const owner = sqlIdentifier(schemaOwner);
+  return `SET ROLE ${owner}; DROP SCHEMA IF EXISTS ssf CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION ${owner};`;
+};
+
+export const ssfArchiveSchemaCompatible = (listing) =>
+  listing.includes('TABLE ssf server_settings') &&
+  listing.includes('TABLE ssf server_locales') &&
+  listing.includes('TABLE ssf tenant_settings') &&
+  listing.includes('TABLE ssf tenant_locales') &&
+  listing.includes('TABLE ssf authorization_projections');
+
 const verifyArchiveSchema = async (archive, database = 'studio') => {
   const listing = await runCapture('pg_restore', ['--list', archive], {
     maxOutputBytes: 10 * 1024 * 1024,
@@ -1166,7 +1246,9 @@ const verifyArchiveSchema = async (archive, database = 'studio') => {
   if (
     database === 'waste'
       ? !wasteArchiveSchemaCompatible(listing)
-      : !archiveSchemaCompatible(listing)
+      : database === 'ssf'
+        ? !ssfArchiveSchemaCompatible(listing)
+        : !archiveSchemaCompatible(listing)
   )
     throw new Error('archive_schema_incompatible');
 };
@@ -1520,7 +1602,7 @@ export const executeRestoreForIntegration = async (request) => {
           (await discoverWasteInventory(request.environment, request.tenantInstanceId))[0],
           'restore'
         )
-      : resolveDatabaseTarget(request.environment, 'studio', 'restore');
+      : resolveDatabaseTarget(request.environment, request.database ?? 'studio', 'restore');
   const keys = restoreControlKeysFor(request.requestId);
   const workdir = join(tmpdir(), `restore-agent-${request.requestId}-${randomUUID()}`);
   const sourceDump = join(workdir, 'source.dump');
@@ -1570,12 +1652,12 @@ export const executeRestoreForIntegration = async (request) => {
     if ((await sha256(sourceDump)) !== request.sourceSha256) throw new Error('checksum_mismatch');
     complete('source-object-and-checksum-verify');
     await verifyArchiveSchema(sourceDump, target.database);
-    const sourceGooseVersion =
-      target.database === 'studio' ? await readArchiveGooseVersion(sourceDump) : null;
-    if (target.database === 'studio' && !Number.isSafeInteger(sourceGooseVersion))
+    const hasGooseLedger = target.database === 'studio' || target.database === 'ssf';
+    const sourceGooseVersion = hasGooseLedger ? await readArchiveGooseVersion(sourceDump) : null;
+    if (hasGooseLedger && !Number.isSafeInteger(sourceGooseVersion))
       throw new Error('archive_schema_incompatible');
     complete('archive-and-schema-preflight', {
-      ...(target.database === 'studio' ? { sourceGooseVersion } : { database: 'waste' }),
+      ...(hasGooseLedger ? { sourceGooseVersion } : { database: 'waste' }),
     });
 
     const pgEnv = {
@@ -1593,7 +1675,7 @@ export const executeRestoreForIntegration = async (request) => {
     await waitForSessionDrain(target, pgEnv);
     complete('app-session-drain');
     complete('exclusive-agent-restore-slot');
-    if (target.database === 'studio') {
+    if (hasGooseLedger) {
       const targetGooseVersion = Number(
         await runSqlAsSchemaOwner(
           target,
@@ -1673,7 +1755,9 @@ export const executeRestoreForIntegration = async (request) => {
       pgEnv,
       target.database === 'waste'
         ? wasteRestoreSchemaResetSql(target.schemaOwner)
-        : restoreSchemaResetSql(target.schemaOwner)
+        : target.database === 'ssf'
+          ? ssfRestoreSchemaResetSql(target.schemaOwner)
+          : restoreSchemaResetSql(target.schemaOwner)
     );
     complete('application-schema-reset');
     await runCommand(
@@ -1726,6 +1810,20 @@ export const executeRestoreForIntegration = async (request) => {
       );
       validateWasteDatabasePostchecks({ requiredTables, regionsTable, toursTable });
       complete('database-postchecks', { requiredTables: Number(requiredTables) });
+    } else if (target.database === 'ssf') {
+      const gooseVersion = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        'SELECT max(version_id) FROM public.goose_db_version WHERE is_applied'
+      );
+      const requiredTables = await runSqlAsSchemaOwner(
+        target,
+        pgEnv,
+        `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'ssf' AND table_name = ANY (ARRAY['server_settings', 'server_locales', 'tenant_settings', 'tenant_locales', 'authorization_projections'])`
+      );
+      if (!Number.isSafeInteger(Number(gooseVersion)) || Number(requiredTables) !== 5)
+        throw new Error('ssf_database_postcheck_failed');
+      complete('database-postchecks', { gooseVersion: Number(gooseVersion), requiredTables: 5 });
     } else {
       const gooseVersion = await runSqlAsSchemaOwner(
         target,
@@ -1809,7 +1907,7 @@ export const createBackupAgentServer = () =>
         return respond(response, 200, {
           protocolVersions: [2],
           agentRevision,
-          databaseTargets: ['studio', 'waste'],
+          databaseTargets: ['ssf', 'studio', 'waste'],
           resultFields: [
             'bytes',
             'database',

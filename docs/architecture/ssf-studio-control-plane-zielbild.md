@@ -4,14 +4,24 @@
 
 Dieses Dokument hält die abgestimmte Architekturgrundlage für die Nutzung des
 SVA Studios als administrative Control Plane einer Smart-Speech-Flow-
-Installation (SSF) fest. Es beschreibt ein Zielbild und keinen bereits
-implementierten oder ausgerollten Systemstand. Die normative Ausarbeitung ist
-in vier aufeinander aufbauende OpenSpec-Changes gegliedert:
+Installation (SSF) fest. Es beschreibt weiterhin das übergreifende Zielbild;
+der aktuelle Implementierungsstand ist in den verlinkten OpenSpec-Changes und
+den arc42-Abschnitten festgehalten. Die normative Ausarbeitung ist in fünf
+aufeinander aufbauende OpenSpec-Changes gegliedert:
 
 1. [`extend-plugin-platform-scopes-and-activation`](../../openspec/changes/extend-plugin-platform-scopes-and-activation/proposal.md)
 2. [`add-plugin-tenant-lifecycle`](../../openspec/changes/add-plugin-tenant-lifecycle/proposal.md)
 3. [`add-ssf-tenant-administration`](../../openspec/changes/add-ssf-tenant-administration/proposal.md)
 4. [`add-ssf-runtime-configuration-api`](../../openspec/changes/add-ssf-runtime-configuration-api/proposal.md)
+5. [`add-ssf-iam-permission-projection`](../../openspec/changes/add-ssf-iam-permission-projection/proposal.md)
+
+Der aktuelle Studio-Zwischenstand umfasst den fail-closed Runtime-Lesepfad,
+die Studio-seitige Projektionslogik und den getesteten Consumer für den
+tenantgebundenen SSF-Session-Widerruf. Bewusst offen bleiben der produktive
+tenantlokale SSF-OIDC-Client einschließlich exakter Callback-URIs, die
+Anbindung an den Plugin-Lifecycle und den Host-Readiness-Provider sowie die
+SSF-seitige Implementierung des Sammelwiderrufs. Bis diese Verträge gemeinsam
+im Staging nachgewiesen sind, bleibt das produktive Enablement gesperrt.
 
 Die erste Ausbaustufe konzentriert sich auf die Anlage und Verwaltung von
 Mandanten und Benutzern. Auswertungen aus ClickHouse, eine mögliche separate
@@ -27,7 +37,7 @@ Studio-Instanz entspricht genau einem SSF-Mandanten.
 ```text
 SSF-Server beziehungsweise Deployment
 ├── Smart Speech Flow
-├── SSF-Keycloak
+├── gemeinsame Keycloak-Instanz
 ├── SVA Studio
 └── PostgreSQL-Datenbank des SSF-Plugins
 ```
@@ -45,8 +55,12 @@ Die fachlichen SSF-Rollen und die technischen Studio-Rollen bleiben getrennt:
 | -------------- | ------------------------------------------------------------------------ |
 | `system_admin` | Root-Scope mit `instance_registry_admin`                                 |
 | `tenant_admin` | tenantlokaler Studio-`system_admin` im Realm der Studio-Instanz          |
-| `admin`        | tenantlokaler Benutzer mit gezielten `ssf.*`-Permissions                 |
-| `customer`     | keine reguläre Studio-Identität; Zugriff über eine begrenzte SSF-Session |
+| `user`         | tenantlokaler Benutzer mit gezielten `ssf.*`-Permissions                 |
+| `guest`        | keine reguläre Studio-Identität; Zugriff über eine begrenzte SSF-Session |
+
+Die früher verwendeten Werte `admin` und `customer` sind ausschließlich
+Übergangsaliase für `user` und `guest`; neue Projektionen verwenden die
+kanonischen Werte.
 
 Der Root-System-Admin legt einen Mandanten und dessen initialen Tenant-Admin an.
 Danach verwaltet der Tenant-Admin die Benutzer und Rollen seines eigenen
@@ -110,19 +124,24 @@ Vorgang und löscht weder Plugin-Daten noch Historie automatisch.
 
 ## Keycloak- und Identitätsmodell
 
-Studio und SSF verwenden das separate Keycloak des SSF-Servers. Die
-Realm-Grenzen bilden die organisatorischen Mandantengrenzen ab:
+Studio und SSF verwenden dieselbe Keycloak-Instanz. Die Realm-Grenzen bilden
+Plattform- und Mandantengrenzen ab:
 
 ```text
-SSF-Keycloak
-├── Root-Realm
-│   └── System-Admins
+gemeinsame Keycloak-Instanz
+├── master
+│   └── ausschließlich Keycloak-Administration
+├── Studio-Root-Realm
+│   ├── System-Admins
+│   └── installationsweiter SSF-Runtime-Service-Client
 ├── Tenant-Realm A
-│   ├── Tenant-Admins
-│   └── operative Admins
+│   ├── Studio-Client
+│   ├── SSF-Client
+│   └── gemeinsame Tenant-Benutzer
 └── Tenant-Realm B
-    ├── Tenant-Admins
-    └── operative Admins
+    ├── Studio-Client
+    ├── SSF-Client
+    └── gemeinsame Tenant-Benutzer
 ```
 
 Für jeden Mandanten wird ein eigener Realm provisioniert. Ein Benutzer gehört
@@ -130,9 +149,12 @@ genau einem Mandanten. Dieselbe natürliche Person benötigt für zwei Mandanten
 zwei getrennte Identitäten; gleiche E-Mail-Adressen führen nicht zu einer
 automatischen Kontoverknüpfung.
 
-Studio und SSF verwenden getrennte OIDC-Clients und Audiences. Root-Benutzer
-werden nicht in Tenant-Realms kopiert. Customer mit SSF-Session-Token bleiben
-außerhalb des Studio-IAM.
+Innerhalb eines Tenant-Realms verwenden Studio und SSF getrennte OIDC-Clients
+und Audiences, aber dieselbe Benutzeridentität mit demselben OIDC-`sub`. Eine
+zweite Subject-ID oder eine Korrelation über E-Mail beziehungsweise
+Benutzername existiert nicht. Root-Benutzer werden nicht in Tenant-Realms
+kopiert. Der Realm `master` ist kein Anwendungsrealm. Gäste mit
+SSF-Session-Token bleiben außerhalb des Studio-IAM.
 
 ## SSF-Plugin-Datenbank
 
@@ -161,14 +183,22 @@ autorisierte beziehungsweise geeignete Auslieferungsreferenzen an SSF.
 
 SSF bestimmt den Mandanten aus einem gültigen Session-Token oder einer
 Keycloak-Anmeldung. Anschließend ruft das SSF-Backend die interne Studio-API mit
-einer eigenen Service-Identität und einer kurzlebigen, signierten
-Tenant-Assertion auf. Eine frei übergebene `instanceId` ist keine
-Vertrauensgrundlage.
+einer eigenen Service-Identität und der daraus abgeleiteten kanonischen
+`instanceId` im Header `X-Studio-Instance-Id` auf.
 
-Der Studio-Host prüft technische Identität, Audience, Gültigkeit, Replay-Schutz
-und Tenant-Bindung. Erst danach führt er den SSF-Plugin-Handler im gebundenen
-Tenant-Kontext aus. Browser erhalten weder Datenbank-Credentials noch direkten
-Zugriff auf diese interne API.
+Der Studio-Host prüft zuerst das Service-Token einschließlich Audience,
+Authorized Party und `ssf.runtime-configuration.read`. Erst danach wertet er
+den Header aus und bindet ihn über die Instanz-Registry, Aktivierungs- und
+Readiness-Gates an den Execution-Context. Für diesen idempotenten Read gibt es
+keine zweite Tenant-Signatur und keinen Replay-Speicher. Browser erhalten weder
+Datenbank-Credentials noch direkten Zugriff auf diese interne API.
+
+Das installationsweite Service-Token stammt vom technischen Client im
+Studio-Root-Realm. Es ist nicht an einen einzelnen Tenant gebunden und enthält
+deshalb keine `ssf_authorization_revision`. Bei einem authentifizierten
+Benutzervorgang vergleicht SSF stattdessen die Revision aus dem
+Tenant-Benutzertoken mit der vom Runtime-Endpunkt für genau diesen Tenant
+gelieferten bestätigten Revision.
 
 ## Laufzeitablauf der ersten Ausbaustufe
 
@@ -219,7 +249,8 @@ Tenant-Grunddaten, bevor der Status erneut `ready` wird.
 ### Erste nutzbare SSF-Ausbaustufe
 
 - Installation und automatische Tenant-Aktivierung des SSF-Plugins,
-- Root- und Tenant-Realm-Provisionierung im vorhandenen SSF-Keycloak,
+- Studio-Root- und Tenant-Realm-Provisionierung in der gemeinsam genutzten
+  Keycloak-Instanz,
 - initialer Tenant-Admin,
 - Tenant-Anlage, Sperrung und Reaktivierung,
 - tenantlokale Benutzer- und Rollenverwaltung,
@@ -229,9 +260,9 @@ Tenant-Grunddaten, bevor der Status erneut `ready` wird.
 ### SSF-Runtime-Konfiguration
 
 - generischer interner Plugin-Servicevertrag,
-- SSF-Service-Identität und signierte Tenant-Assertion,
+- SSF-Service-Identität und hostvalidierte Tenant-Bindung,
 - minimale interne SSF-Konfigurations-API,
-- Replay-Schutz sowie Aktivierungs-, Suspendierungs- und Readiness-Gates.
+- Aktivierungs-, Suspendierungs- und Readiness-Gates.
 
 ### Spätere Ausbaustufen
 

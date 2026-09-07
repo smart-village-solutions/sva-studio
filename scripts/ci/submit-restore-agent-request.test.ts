@@ -13,6 +13,14 @@ describe('submit restore agent request', () => {
       database: 'studio',
       action: 'restore-and-verify-v1',
     });
+    expect(parseRestoreMode('studio')).toEqual({
+      database: 'studio',
+      action: 'restore-and-verify-v1',
+    });
+    expect(parseRestoreMode('ssf')).toEqual({
+      database: 'ssf',
+      action: 'restore-and-verify-v1',
+    });
     expect(parseRestoreMode('waste')).toEqual({
       database: 'waste',
       action: 'restore-and-verify-v1',
@@ -21,6 +29,7 @@ describe('submit restore agent request', () => {
       database: 'waste',
       action: 'import-waste-data-v1',
     });
+    expect(() => parseRestoreMode('')).toThrow('akzeptiert nur die Modi');
     expect(() => parseRestoreMode('waste-improt')).toThrow('akzeptiert nur die Modi');
   });
 

@@ -9,6 +9,7 @@ import {
   canonicalRequest,
   canonicalRestoreRequest,
   buildRuntimePrincipalReconciliationSql,
+  buildSsfRuntimePrincipalReconciliationSql,
   buildWasteRuntimePrincipalReconciliationSql,
   deriveWasteDatabaseName,
   deriveWasteInventoryTarget,
@@ -22,6 +23,9 @@ import {
   restoreControlKeysFor,
   runtimePrincipalProbeSql,
   restoreSchemaResetSql,
+  ssfArchiveSchemaCompatible,
+  ssfRestoreSchemaResetSql,
+  ssfRuntimePrincipalProbeSql,
   resolveDatabaseTarget,
   resolveCapabilityEnvironment,
   runCommand,
@@ -324,9 +328,11 @@ describe('backup agent runtime contract', () => {
   it('accepts only allowlisted database targets while preserving the legacy studio signature', () => {
     const now = Date.parse('2026-07-30T10:00:00.000Z');
     expect(validRequest({ ...request, database: 'waste' }, now)).toBe(true);
+    expect(validRequest({ ...request, database: 'ssf' }, now)).toBe(true);
     expect(validRequest({ ...request, database: 'other' }, now)).toBe(false);
     expect(canonicalRequest(request)).not.toContain('database');
     expect(canonicalRequest({ ...request, database: 'waste' })).toContain('"database":"waste"');
+    expect(canonicalRequest({ ...request, database: 'ssf' })).toContain('"database":"ssf"');
     const versionTwoWasteRequest = {
       ...request,
       version: 2 as const,
@@ -340,6 +346,35 @@ describe('backup agent runtime contract', () => {
       validRequest({ ...request, database: 'waste', tenantInstanceId: 'bb-prignitz' }, now)
     ).toBe(true);
     expect(validRequest({ ...request, tenantInstanceId: 'bb-prignitz' }, now)).toBe(false);
+  });
+
+  it('resolves the SSF plugin database as a separate static persistence target', () => {
+    expect(resolveDatabaseTarget('staging', 'ssf')).toMatchObject({
+      database: 'ssf',
+      postgresDatabase: 'sva_studio_ssf',
+      postgresHost: 'studio-staging_postgres',
+      prefix: 'staging/ssf',
+      runtimeRole: 'ssf_plugin_tenant_runtime',
+      runtimeUser: 'sva_ssf_runtime',
+    });
+  });
+
+  it('uses SSF-specific restore schemas, principals and archive checks', () => {
+    const target = resolveDatabaseTarget('prod', 'ssf', 'restore');
+    expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain(
+      'GRANT "ssf_plugin_tenant_runtime" TO "sva_ssf_runtime"'
+    );
+    expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain(
+      'ON ssf.authorization_projections'
+    );
+    expect(ssfRuntimePrincipalProbeSql(target)).toContain("'ssf.tenant_settings'");
+    expect(ssfRestoreSchemaResetSql('sva')).toContain('DROP SCHEMA IF EXISTS ssf CASCADE');
+    expect(
+      ssfArchiveSchemaCompatible(
+        'TABLE ssf server_settings\nTABLE ssf server_locales\nTABLE ssf tenant_settings\nTABLE ssf tenant_locales\nTABLE ssf authorization_projections'
+      )
+    ).toBe(true);
+    expect(ssfArchiveSchemaCompatible('TABLE ssf tenant_settings')).toBe(false);
   });
 
   it('derives dynamic Waste targets only from validated central inventory', () => {

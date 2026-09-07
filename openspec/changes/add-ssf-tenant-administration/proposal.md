@@ -26,6 +26,10 @@ Benutzerverwaltung aufzubauen.
   produktive interne Endpoint bleibt Bestandteil von
   `add-ssf-runtime-configuration-api`; dieser Change baut weder ein zweites
   SSF-Plugin noch eine zweite Plugin-Datenbank auf.
+- Die Studio-seitige Vorbereitung wird ohne Eingriffe in den SSF-Provider bis
+  zu einer expliziten Integrationsgrenze geliefert. Tenantlokaler SSF-Client,
+  IAM-Projektion und Lifecycle bleiben bis zum späteren gemeinsamen
+  Provider-E2E deaktiviert beziehungsweise nicht bereit.
 
 ## Dependencies and Coordination
 
@@ -38,17 +42,21 @@ Benutzerverwaltung aufzubauen.
   Datenbank-Ownership, bleiben aber getrennte Lieferstränge: Runtime-Read-Pfad
   im Runtime-Change; Provisionierung, Lifecycle und Administration in diesem
   Change.
+- Providerseitiger Sammelwiderruf, SSF-Sessionmodell, produktive Callback-URIs
+  und der gemeinsame Staging-E2E werden später mit dem SSF-System abgestimmt;
+  ein simulierter Provider ist ausschließlich ein Consumer-Vertragstest.
 
 ## Impact
 
 - Affected specs:
   - `ssf-tenant-administration` (neu)
 - Affected code:
-  - neues SSF-Plugin mit Browser-, Server- und Job-Beiträgen
+  - bestehendes SSF-Plugin mit zusätzlichen Browser-, Server- und Job-Beiträgen
   - Keycloak- und Instanz-Provisionierung
   - bestehende Instanz-, Nutzer-, Rollen- und Gruppenoberflächen
   - SSF-plugin-eigene PostgreSQL-Datenbank
-  - Deployment-Konfiguration für SSF-Keycloak und Plugin-Datenbank
+  - Deployment-Konfiguration für tenantlokale SSF-Clients in der gemeinsam
+    genutzten Keycloak-Instanz und die Plugin-Datenbank
 - Affected arc42 sections:
   - `docs/architecture/03-context-and-scope.md`
   - `docs/architecture/04-solution-strategy.md`

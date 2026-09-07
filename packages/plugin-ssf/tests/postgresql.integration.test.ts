@@ -2,9 +2,17 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  claimSsfAuthorizationProjection,
+  confirmSsfAuthorizationProjectionReadBack,
+  createPostgresSsfAuthorizationProjectionStore,
   createSsfConfigurationRevision,
+  createSsfAuthorizationRevision,
+  markSsfAuthorizationSessionsRevoked,
   readSsfConfigurationOverrides,
+  readReadySsfAuthorizationRevision,
   resolveSsfRuntimeConfiguration,
+  stageSsfAuthorizationProjection,
+  SSF_AUTHORIZATION_PROJECTION_VERSION,
   upsertSsfTenantLocale,
   upsertSsfTenantSettings,
 } from '../src/runtime.js';
@@ -141,5 +149,88 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       '<p>Unmittelbar geändert</p>'
     );
     expect(createSsfConfigurationRevision(after)).not.toBe(createSsfConfigurationRevision(before));
+  });
+
+  it('publishes an authorization revision only after read-back and session revocation', async () => {
+    const desired = {
+      contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+      instanceId: 'tenant-a',
+      subjects: [
+        {
+          subject: 'user-a',
+          roles: ['user' as const],
+          permissions: ['ssf.configuration.tenant.read' as const],
+        },
+      ],
+    };
+    const state = await stageSsfAuthorizationProjection(rootPool, desired);
+    const revision = createSsfAuthorizationRevision(desired);
+
+    await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
+    expect(
+      await claimSsfAuthorizationProjection(rootPool, {
+        instanceId: 'tenant-a',
+        generation: state.generation,
+        desiredRevision: revision,
+      })
+    ).toBe(true);
+    expect(
+      await confirmSsfAuthorizationProjectionReadBack(rootPool, {
+        desired,
+        readBack: desired,
+        generation: state.generation,
+      })
+    ).toBe(true);
+    await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
+    expect(
+      await markSsfAuthorizationSessionsRevoked(rootPool, {
+        instanceId: 'tenant-a',
+        generation: state.generation,
+        authorizationRevision: revision,
+      })
+    ).toBe(true);
+    await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBe(revision);
+    await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-b')).resolves.toBeNull();
+
+    const desiredSubject = desired.subjects[0];
+    if (!desiredSubject) throw new Error('projection fixture requires a subject');
+    await stageSsfAuthorizationProjection(rootPool, {
+      ...desired,
+      subjects: [{ ...desiredSubject, permissions: [] }],
+    });
+    await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
+  });
+
+  it('serializes projection work per tenant while allowing another tenant to proceed', async () => {
+    const store = createPostgresSsfAuthorizationProjectionStore(rootPool);
+    let releaseTenantA: (() => void) | undefined;
+    const tenantAGate = new Promise<void>((resolve) => {
+      releaseTenantA = resolve;
+    });
+    let tenantAEntered = false;
+    let secondTenantAEntered = false;
+    let tenantBEntered = false;
+
+    const firstTenantA = store.withTenantLock('tenant-a', async () => {
+      tenantAEntered = true;
+      await tenantAGate;
+    });
+    while (!tenantAEntered) await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const secondTenantA = store.withTenantLock('tenant-a', async () => {
+      secondTenantAEntered = true;
+    });
+    const tenantB = store.withTenantLock('tenant-b', async () => {
+      tenantBEntered = true;
+    });
+    await tenantB;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    expect(tenantBEntered).toBe(true);
+    expect(secondTenantAEntered).toBe(false);
+
+    releaseTenantA?.();
+    await Promise.all([firstTenantA, secondTenantA]);
+    expect(secondTenantAEntered).toBe(true);
   });
 });

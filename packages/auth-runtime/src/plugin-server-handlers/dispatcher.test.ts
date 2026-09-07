@@ -52,6 +52,19 @@ const itemDescriptor = (): PluginServerHandlerRegistryEntry => ({
   },
 });
 
+const serviceDescriptor = (): PluginServerHandlerRegistryEntry => ({
+  id: 'ssf.runtime-configuration',
+  ownerPluginId: 'ssf',
+  path: '/internal/plugins/ssf/v1/runtime-configuration',
+  method: 'GET',
+  actionId: 'ssf.runtime-configuration.read',
+  accessRequirement: {
+    kind: 'service',
+    serviceId: 'ssf-runtime',
+    tenantBinding: { kind: 'header', headerName: 'X-Studio-Instance-Id' },
+  },
+});
+
 const authenticateAs = (
   user: { id: string; roles: string[]; instanceId?: string },
   activeOrganizationId?: string
@@ -111,6 +124,102 @@ describe('plugin server handler dispatcher', () => {
     expect(response?.status).toBe(405);
     expect(response?.headers.get('Allow')).toBe('GET');
     expect(authenticate).not.toHaveBeenCalled();
+  });
+
+  it('authenticates a technical service before binding tenant context and invoking the handler', async () => {
+    const descriptor = serviceDescriptor();
+    const calls: string[] = [];
+    const handler = vi.fn<PluginServerExecutionHandler>(() => {
+      calls.push('handler');
+      return new Response('ok');
+    });
+    const authenticate = vi.fn(async () => {
+      calls.push('authenticate');
+      return { kind: 'authenticated' as const, subject: 'service-account-subject' };
+    });
+    const bindServiceTenant = vi.fn(async () => {
+      calls.push('bind');
+      return {
+        kind: 'bound' as const,
+        tenant: {
+          instanceId: 'tenant-a',
+          displayName: 'Tenant A',
+          timeZone: 'Europe/Berlin',
+          authorizationRevision: `sha256:${'a'.repeat(64)}`,
+        },
+      };
+    });
+    const observeServiceResponse = vi.fn(async () => {
+      calls.push('observe');
+    });
+    const userAuthenticate = authenticateAs({ id: 'user-1', roles: [] });
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: userAuthenticate,
+        authenticateService: authenticate,
+        bindServiceTenant,
+        observeServiceResponse,
+      },
+    });
+    const request = new Request(
+      'https://studio.test/internal/plugins/ssf/v1/runtime-configuration'
+    );
+
+    expect((await dispatch(request))?.status).toBe(200);
+    expect(calls).toEqual(['authenticate', 'bind', 'handler', 'observe']);
+    expect(userAuthenticate).not.toHaveBeenCalled();
+    expect(bindServiceTenant).toHaveBeenCalledWith({
+      request,
+      descriptor,
+      serviceId: 'ssf-runtime',
+      serviceSubject: 'service-account-subject',
+      tenantHeaderName: 'X-Studio-Instance-Id',
+    });
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: 'service',
+        service: {
+          id: 'ssf-runtime',
+          subject: 'service-account-subject',
+          actionId: 'ssf.runtime-configuration.read',
+        },
+        tenant: expect.objectContaining({ instanceId: 'tenant-a' }),
+      })
+    );
+    expect(observeServiceResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request,
+        descriptor,
+        tenant: expect.objectContaining({ instanceId: 'tenant-a' }),
+        response: expect.objectContaining({ status: 200 }),
+        durationMs: expect.any(Number),
+      })
+    );
+  });
+
+  it('never binds or invokes service handlers after failed service authentication', async () => {
+    const descriptor = serviceDescriptor();
+    const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('unexpected'));
+    const bindServiceTenant = vi.fn();
+    const rejection = new Response('unauthorized', { status: 401 });
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticateService: vi.fn().mockResolvedValue({ kind: 'rejected', response: rejection }),
+        bindServiceTenant,
+      },
+    });
+
+    expect(
+      await dispatch(
+        new Request('https://studio.test/internal/plugins/ssf/v1/runtime-configuration')
+      )
+    ).toBe(rejection);
+    expect(bindServiceTenant).not.toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('authorizes tenant activation and permissions before invoking the handler', async () => {

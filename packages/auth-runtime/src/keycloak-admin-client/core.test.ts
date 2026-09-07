@@ -662,6 +662,30 @@ describe('Keycloak admin client', () => {
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
   });
 
+  it('changes an OIDC client enabled state idempotently', async () => {
+    const enabledClient = { id: 'client-1', clientId: 'ssf', enabled: true };
+    const disabledClient = { ...enabledClient, enabled: false };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [enabledClient]))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [disabledClient]));
+    const client = await createClient(fetchImpl);
+
+    await client.setOidcClientEnabled('ssf', false);
+    await client.setOidcClientEnabled('ssf', false);
+
+    const updateCalls = fetchImpl.mock.calls.filter(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
+    );
+    expect(updateCalls).toHaveLength(1);
+    expect(JSON.parse(String(updateCalls[0]?.[1]?.body))).toMatchObject({
+      clientId: 'ssf',
+      enabled: false,
+    });
+  });
+
   it('sends an explicit recovery rotation request without a secret value when the registry secret is missing', async () => {
     const existingClient = {
       id: 'client-1',
@@ -1100,6 +1124,7 @@ describe('Keycloak admin client', () => {
       name: 'instance-id',
       userAttribute: 'instanceId',
       claimName: 'instanceId',
+      multivalued: true,
     });
     await client.ensureUserAttributeProtocolMapper({
       clientId: 'web-app',
@@ -1109,6 +1134,9 @@ describe('Keycloak admin client', () => {
     });
 
     expect(String(fetchImpl.mock.calls[3]?.[0])).toContain('/protocol-mappers/models');
+    expect(JSON.parse(String(fetchImpl.mock.calls[3]?.[1]?.body))).toMatchObject({
+      config: { multivalued: 'true' },
+    });
     expect(String(fetchImpl.mock.calls[7]?.[0])).toContain('/protocol-mappers/models/mapper-1');
   });
 
@@ -1135,6 +1163,23 @@ describe('Keycloak admin client', () => {
     await expect(client.findUserByEmail('alice@EXAMPLE.com')).resolves.toMatchObject({
       id: 'user-1',
     });
+  });
+
+  it('requests full user representations when explicitly required', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'user-1', attributes: { locale: ['de'] } }])
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.listUsers({ first: 0, max: 100, briefRepresentation: false })
+    ).resolves.toEqual([
+      expect.objectContaining({ externalId: 'user-1', attributes: { locale: ['de'] } }),
+    ]);
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain('briefRepresentation=false');
   });
 
   it('filters user attributes and returns null for missing client secrets or realms', async () => {

@@ -422,6 +422,7 @@ jobs:
         env:
           PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
           WASTE_POSTGRES_BACKUP_ENABLED: ${{ vars.WASTE_POSTGRES_BACKUP_ENABLED }}
+          SSF_POSTGRES_BACKUP_ENABLED: ${{ vars.SSF_POSTGRES_BACKUP_ENABLED }}
         run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-backup-agent-capabilities.ts" "${{ inputs.environment }}"
 
       - name: run read-only candidate preflight
@@ -463,6 +464,17 @@ jobs:
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/submit-backup-agent-request.ts "${{ inputs.environment }}" waste
 
+      - name: create SSF plugin database backup before deployment
+        id: ssf_backup_job
+        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.SSF_POSTGRES_BACKUP_ENABLED == 'true' }}
+        env:
+          BACKUP_AGENT_SIGNING_KEY: ${{ secrets.BACKUP_AGENT_SIGNING_KEY }}
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/ci/submit-backup-agent-request.ts "${{ inputs.environment }}" ssf
+
       - name: verify database backup object
         id: backup_verification
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
@@ -482,6 +494,17 @@ jobs:
           S3_BUCKET: ${{ steps.waste_backup_job.outputs.waste_backup_bucket }}
           S3_ENDPOINT: https://fileserver.smart-village.app
           S3_OBJECT_KEY: ${{ steps.waste_backup_job.outputs.waste_backup_object }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/ci/verify-promote-backup.ts
+
+      - name: verify SSF plugin database backup object
+        id: ssf_backup_verification
+        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.SSF_POSTGRES_BACKUP_ENABLED == 'true' }}
+        env:
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_BUCKET: ${{ steps.ssf_backup_job.outputs.ssf_backup_bucket }}
+          S3_ENDPOINT: https://fileserver.smart-village.app
+          S3_OBJECT_KEY: ${{ steps.ssf_backup_job.outputs.ssf_backup_object }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/verify-promote-backup.ts
 
@@ -698,8 +721,10 @@ jobs:
           PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: 'true'
           PROMOTE_GATE_BACKUP_REQUEST: ${{ steps.backup_job.outcome }}
           PROMOTE_GATE_WASTE_BACKUP_REQUEST: ${{ steps.waste_backup_job.outcome }}
+          PROMOTE_GATE_SSF_BACKUP_REQUEST: ${{ steps.ssf_backup_job.outcome }}
           PROMOTE_GATE_BACKUP: ${{ steps.backup_verification.outcome }}
           PROMOTE_GATE_WASTE_BACKUP: ${{ steps.waste_backup_verification.outcome }}
+          PROMOTE_GATE_SSF_BACKUP: ${{ steps.ssf_backup_verification.outcome }}
           PROMOTE_GATE_MIGRATION: ${{ steps.migration_job.outcome }}
           PROMOTE_GATE_BOOTSTRAP: ${{ steps.bootstrap_job.outcome }}
           PROMOTE_GATE_POSTCONDITIONS: ${{ steps.postconditions.outcome }}

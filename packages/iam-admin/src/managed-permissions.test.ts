@@ -80,4 +80,12 @@ describe('managed-permissions', () => {
       expect(permission.runtimeScope).toMatch(/^(instance|record|organization_context)$/);
     }
   });
+
+  it('does not duplicate record-scoped permissions declared by module contracts', () => {
+    const newsReadPermissions = listManagedPermissionMetadata().filter(
+      (permission) => permission.permissionKey === 'news.read'
+    );
+
+    expect(newsReadPermissions).toHaveLength(1);
+  });
 });

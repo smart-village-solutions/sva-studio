@@ -81,7 +81,7 @@ const validateEnvironment = (request) =>
     : validationFailure('environment');
 
 /** @param {unknown} database */
-const validDatabase = (database) => [undefined, 'studio', 'waste'].includes(database);
+const validDatabase = (database) => [undefined, 'ssf', 'studio', 'waste'].includes(database);
 
 /** @param {unknown} tenantInstanceId @param {boolean} tenantRequired */
 const validateWasteTenant = (tenantInstanceId, tenantRequired) => {
@@ -197,6 +197,7 @@ const validateWasteImportContract = (request, contract) => {
 const restoreObjectPrefix = (request, contract) => {
   const environment = /** @type {'staging' | 'prod'} */ (request.environment);
   const environmentPrefix = contract.environmentPrefixes[environment];
+  if (request.database === 'ssf') return `${environmentPrefix}/ssf/`;
   if (request.database !== 'waste') return `${environmentPrefix}/`;
   const importPrefix = request.action === 'import-waste-data-v1' ? 'import/' : '';
   return `${environmentPrefix}/waste/${request.tenantInstanceId}/${importPrefix}`;

@@ -57,6 +57,76 @@ ${ROLE_ASSIGNMENT_SOURCE_SQL}
   ON source.account_id = a.id
 `;
 
+export type TenantPermissionProjectionSubject = Readonly<{
+  keycloakSubject: string;
+  roleNames: readonly string[];
+  permissionIds: readonly string[];
+}>;
+
+type TenantPermissionProjectionRow = Readonly<{
+  keycloak_subject: string;
+  role_name: string;
+  permission_key: string;
+}>;
+
+export const loadTenantPermissionProjectionSubjectsWithClient = async (
+  client: QueryClient,
+  input: Readonly<{
+    instanceId: string;
+    permissionIds: readonly string[];
+  }>
+): Promise<readonly TenantPermissionProjectionSubject[]> => {
+  if (input.permissionIds.length === 0) return [];
+
+  const result = await client.query<TenantPermissionProjectionRow>(
+    `
+SELECT DISTINCT
+  a.keycloak_subject,
+  r.role_name,
+  p.permission_key
+${ROLE_PERMISSION_JOIN_SQL}
+ AND source.instance_id = $1
+JOIN iam.roles r
+  ON r.instance_id = source.instance_id
+ AND r.id = source.role_id
+JOIN iam.role_permissions rp
+  ON rp.instance_id = source.instance_id
+ AND rp.role_id = source.role_id
+JOIN iam.permissions p
+  ON p.instance_id = rp.instance_id
+ AND p.id = rp.permission_id
+LEFT JOIN iam.instance_modules permission_module
+  ON permission_module.instance_id = p.instance_id
+ AND permission_module.module_id = split_part(p.permission_key, '.', 1)
+WHERE a.instance_id = $1
+  AND a.status = 'active'
+  AND p.permission_key = ANY($2::text[])
+  AND (permission_module.module_id IS NULL OR permission_module.effective_active = true)
+ORDER BY a.keycloak_subject, r.role_name, p.permission_key
+`,
+    [input.instanceId, [...new Set(input.permissionIds)].sort()]
+  );
+
+  const projectionBySubject = new Map<
+    string,
+    { roleNames: Set<string>; permissionIds: Set<string> }
+  >();
+  for (const row of result.rows) {
+    const projection = projectionBySubject.get(row.keycloak_subject) ?? {
+      roleNames: new Set<string>(),
+      permissionIds: new Set<string>(),
+    };
+    projection.roleNames.add(row.role_name);
+    projection.permissionIds.add(row.permission_key);
+    projectionBySubject.set(row.keycloak_subject, projection);
+  }
+  return [...projectionBySubject].map(([keycloakSubject, projection]) => ({
+    keycloakSubject,
+    roleNames: [...projection.roleNames].sort(),
+    permissionIds: [...projection.permissionIds].sort(),
+  }));
+};
+
 const listScopedPermissionRows = async (
   client: QueryClient,
   input: PermissionLookupInput & { organizationId: string }

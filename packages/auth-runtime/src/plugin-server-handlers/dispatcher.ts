@@ -6,6 +6,7 @@ import {
 import type {
   PluginServerExecutionHandler,
   PluginServerHandlerRegistryEntry,
+  PluginTechnicalServiceTenantContext,
 } from '@sva/plugin-sdk';
 import { getWorkspaceContext, isCanonicalAuthHost } from '@sva/server-runtime';
 
@@ -19,8 +20,18 @@ import {
   translatePluginServerHandlerMessage,
   type PluginServerHandlerMessageKey,
 } from './messages.js';
+import { authorizePluginPlatformHandler } from './platform-authorization.js';
+import { dispatchPluginServiceHandler } from './service-execution.js';
 
 type EffectivePermissionsResolution = Awaited<ReturnType<typeof resolveEffectivePermissions>>;
+
+export type PluginServiceAuthenticationResult =
+  | Readonly<{ kind: 'authenticated'; subject: string }>
+  | Readonly<{ kind: 'rejected'; response: Response }>;
+
+export type PluginServiceTenantBindingResult =
+  | Readonly<{ kind: 'bound'; tenant: PluginTechnicalServiceTenantContext }>
+  | Readonly<{ kind: 'rejected'; response: Response }>;
 
 export type PluginServerHandlerDispatcherDependencies = Readonly<{
   authenticate?: typeof withAuthenticatedUser;
@@ -40,9 +51,26 @@ export type PluginServerHandlerDispatcherDependencies = Readonly<{
   }) => Promise<UiResourceCapability | undefined>;
   validateCsrf?: typeof validateCsrf;
   translate?: (request: Request, key: PluginServerHandlerMessageKey) => string;
+  authenticateService?: (input: {
+    readonly request: Request;
+    readonly descriptor: PluginServerHandlerRegistryEntry;
+    readonly serviceId: string;
+  }) => Promise<PluginServiceAuthenticationResult>;
+  bindServiceTenant?: (input: {
+    readonly request: Request;
+    readonly descriptor: PluginServerHandlerRegistryEntry;
+    readonly serviceId: string;
+    readonly serviceSubject: string;
+    readonly tenantHeaderName: string;
+  }) => Promise<PluginServiceTenantBindingResult>;
+  observeServiceResponse?: (input: {
+    readonly request: Request;
+    readonly descriptor: PluginServerHandlerRegistryEntry;
+    readonly tenant: PluginTechnicalServiceTenantContext;
+    readonly response: Response;
+    readonly durationMs: number;
+  }) => Promise<void> | void;
 }>;
-
-const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 const normalizePath = (path: string): string => {
   const trimmed = path.trim();
@@ -50,13 +78,7 @@ const normalizePath = (path: string): string => {
   return trimmed.replace(/\/+$/, '');
 };
 
-const satisfiesSet = (
-  requirement: Readonly<{ mode: 'allOf' | 'anyOf'; values: readonly string[] }>,
-  available: ReadonlySet<string>
-): boolean =>
-  requirement.mode === 'allOf'
-    ? requirement.values.every((value) => available.has(value))
-    : requirement.values.some((value) => available.has(value));
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 const createError = (
   request: Request,
@@ -76,33 +98,6 @@ const isCollectionCapablePermission = (permission: EffectivePermission): boolean
   permission.resourceId === undefined &&
   permission.geoScope === undefined &&
   (permission.scope === undefined || Object.keys(permission.scope).length === 0);
-
-export const assertPluginServerHandlerCoverage = (input: {
-  readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
-  readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
-}): void => {
-  const endpoints = new Map<string, string>();
-  for (const descriptor of input.descriptors.values()) {
-    const endpointKey = `${descriptor.method} ${descriptor.path}`;
-    const existingHandlerId = endpoints.get(endpointKey);
-    if (existingHandlerId) {
-      throw new Error(
-        `duplicate_plugin_server_endpoint:${endpointKey}:${existingHandlerId}:${descriptor.id}`
-      );
-    }
-    endpoints.set(endpointKey, descriptor.id);
-  }
-  const declared = [...input.descriptors.keys()].sort();
-  const registered = Object.keys(input.handlers).sort();
-  const missing = declared.filter((handlerId) => !registered.includes(handlerId));
-  if (missing.length > 0) {
-    throw new Error(`missing_plugin_server_handlers:${missing.join(',')}`);
-  }
-  const unknown = registered.filter((handlerId) => !declared.includes(handlerId));
-  if (unknown.length > 0) {
-    throw new Error(`unknown_plugin_server_handlers:${unknown.join(',')}`);
-  }
-};
 
 const authorizeTenantHandler = async (input: {
   readonly context: AuthenticatedRequestContext;
@@ -189,6 +184,33 @@ const authorizeTenantHandler = async (input: {
     : createError(input.request, input.translate, 403, 'forbidden', 'permissionDenied');
 };
 
+export const assertPluginServerHandlerCoverage = (input: {
+  readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
+  readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
+}): void => {
+  const endpoints = new Map<string, string>();
+  for (const descriptor of input.descriptors.values()) {
+    const endpointKey = `${descriptor.method} ${descriptor.path}`;
+    const existingHandlerId = endpoints.get(endpointKey);
+    if (existingHandlerId) {
+      throw new Error(
+        `duplicate_plugin_server_endpoint:${endpointKey}:${existingHandlerId}:${descriptor.id}`
+      );
+    }
+    endpoints.set(endpointKey, descriptor.id);
+  }
+  const declared = [...input.descriptors.keys()].sort();
+  const registered = Object.keys(input.handlers).sort();
+  const missing = declared.filter((handlerId) => !registered.includes(handlerId));
+  if (missing.length > 0) {
+    throw new Error(`missing_plugin_server_handlers:${missing.join(',')}`);
+  }
+  const unknown = registered.filter((handlerId) => !declared.includes(handlerId));
+  if (unknown.length > 0) {
+    throw new Error(`unknown_plugin_server_handlers:${unknown.join(',')}`);
+  }
+};
+
 export const createPluginServerHandlerDispatcher = (input: {
   readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
   readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
@@ -227,6 +249,17 @@ export const createPluginServerHandlerDispatcher = (input: {
       throw new Error(`missing_plugin_server_handler:${descriptor.id}`);
     }
 
+    if (descriptor.accessRequirement.kind === 'service') {
+      return dispatchPluginServiceHandler({
+        request,
+        descriptor,
+        handler,
+        serviceId: descriptor.accessRequirement.serviceId,
+        tenantHeaderName: descriptor.accessRequirement.tenantBinding.headerName,
+        dependencies: input.dependencies,
+      });
+    }
+
     return authenticate(request, async (context) => {
       if (MUTATING_METHODS.has(descriptor.method)) {
         const csrfError = validateRequestCsrf(request, getWorkspaceContext().requestId);
@@ -235,12 +268,14 @@ export const createPluginServerHandlerDispatcher = (input: {
 
       const requirement = descriptor.accessRequirement;
       if (requirement.kind === 'platform') {
-        if (
-          !isPlatformHost(request) ||
-          !satisfiesSet(requirement.roles, new Set(context.user.roles))
-        ) {
-          return createError(request, translate, 403, 'forbidden', 'platformPermissionDenied');
-        }
+        const accessError = authorizePluginPlatformHandler({
+          request,
+          requirement,
+          roles: context.user.roles,
+          isPlatformHost,
+          translate,
+        });
+        if (accessError) return accessError;
       } else if (requirement.kind === 'tenant') {
         const accessError = await authorizeTenantHandler({
           context,

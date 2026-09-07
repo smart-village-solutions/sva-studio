@@ -52,6 +52,49 @@ deklariert die zusätzlich benötigten Studio-/SSF-Clients und Audiences. Login-
 Tenant-Admin- und spätere Service-Clients bleiben getrennt und werden im
 Instanzvertrag nachgewiesen.
 
+Der erste Voraussetzungsslice erweitert dafür ausschließlich den vorhandenen
+Provisionierungsweg um einen engen, versionierten und allowlist-basierten
+Client-Vertrag. Er erlaubt keine freien Keycloak-Admin-Operationen aus Plugins,
+keine zweite Tenant-Registry und keinen alternativen Provisionierungsdienst.
+Realm und Tenant werden ausschließlich aus der kanonischen Instanz-Registry
+aufgelöst. Die stabile Client-ID und Audience dürfen nicht aus einem
+Projektionsauftrag oder einem Request übernommen werden.
+
+Der tenantlokale SSF-Client bleibt standardmäßig deaktiviert. Ohne später
+abgestimmten Client-Typ, exakte Callback-URIs und SSF-URL-Konfiguration darf die
+Provisionierung keine nutzbare Anmeldung freigeben. Wildcard-Redirects sind
+nicht zulässig. Read-back und Driftprüfung müssen Client und Realm nach jedem
+Write erneut über den Core verifizieren; Secrets gelangen weder in die
+Plugin-Datenbank noch in API-Antworten, Audit oder Logs.
+
+### Studio-seitige Integrationsreife endet an der Providergrenze
+
+Der erste Lieferabschnitt macht das Studio ohne Änderungen am SSF-Provider
+integrationsbereit. Er umfasst den tenantlokalen Client-Vertrag, idempotente
+Provisionierung, kanonische Clientauflösung für die IAM-Projektion sowie
+Zwei-Tenant-, Drift-, Secret- und Teilfehlernachweise. Ein Fehler lässt den
+SSF-Client deaktiviert und darf weder den Studio-Client noch Studio-Login oder
+die gemeinsame Realm-Sitzung verändern.
+
+Die bestehende Lifecycle- und Readiness-Plattform bildet fehlende
+Provider-Konfiguration fail-closed als nicht bereit ab. Dafür entsteht keine
+zweite Zustandsmaschine, kein neuer Jobtyp und keine eigene Retry-Schleife. Die
+versionierten Runtime- und Datenbank-Aktivierungsflags bleiben bis zum späteren
+gemeinsamen Nachweis deaktiviert.
+
+Nicht Bestandteil dieses Lieferabschnitts sind:
+
+- produktive Anbindung des Projektions-Reconcilers an den Plugin-Lifecycle,
+- Aktivierung des SSF-OIDC-Clients,
+- providerseitiger tenantgebundener Sammelwiderruf,
+- revisionsgleiche Abnahme von Benutzertoken, Host-Readiness und Runtime,
+- gemeinsamer Staging-E2E und Production-Aktivierung,
+- eine über vorhandene generische Statusflächen hinausgehende SSF-Admin-UI.
+
+Diese Punkte bilden später zusammen mit dem SSF-Provider einen vertikalen
+End-to-End-Slice. Ein simulierter Provider weist bis dahin nur die
+Studio-seitige Vertragstreue nach und ist kein Produktionsnachweis.
+
 ### Eine gemeinsame SSF-Datenbank bleibt plugin-owned
 
 Pro SSF-Installation existiert eine SSF-Plugin-Datenbank. Tenanttabellen führen
@@ -87,11 +130,21 @@ und Reaktivierung erhalten Instanz-, Realm- und Datenidentität.
 ## Migration Plan
 
 1. Voraussetzungen in Plugin-Scope/Aktivierung und Lifecycle bereitstellen.
-2. SSF-Plugin und eigene Datenbank installieren, aber Fachzugriffe geschlossen
-   halten.
-3. SSF als `automatic` registrieren und neue Testinstanzen provisionieren.
-4. Bestandsinstanzen per Dry-Run klassifizieren und kontrolliert reconciliieren.
-5. Erst nach vollständiger Readiness zur Nutzung freigeben.
+2. Den laufenden Runtime-/IAM-Foundation-PR ohne zusätzliche Fachfunktion auf
+   aktuellem `main` review- und mergebereit abschließen.
+3. Den tenantlokalen SSF-OIDC-Client als kleinen, rein Studio-seitigen Slice
+   deklarieren, idempotent provisionieren und für die IAM-Projektion kanonisch
+   auflösbar machen; der Client bleibt deaktiviert.
+4. An der Providergrenze bewusst stoppen. SSF-Plugin-Datenbank und Runtime
+   bleiben in den Remote-Profilen deaktiviert; fehlende Provider-Konfiguration
+   bleibt ein nicht bereiter Zustand.
+5. Später gemeinsam mit SSF die exakten Callback-/Clientparameter, den
+   tenantgebundenen Sammelwiderruf und die produktive Lifecycle-Anbindung
+   umsetzen.
+6. Projektion, Tokenclaim, Runtime-Antwort und Widerruf im Staging-E2E an
+   denselben Digest binden.
+7. Erst nach vollständiger Readiness über den kanonischen Promote-Workflow zur
+   Nutzung freigeben.
 
 Rollback sperrt SSF-Beiträge und Lifecycle-Jobs, entfernt aber weder Realms noch
 Plugin-Daten automatisch.
@@ -99,6 +152,8 @@ Plugin-Daten automatisch.
 ## Open Questions
 
 - Konkrete `ssf.*`-Permission-IDs der ersten Verwaltungsoberflächen.
-- Exakte Clientnamen, Redirect-URIs und Audience-Konventionen.
+- Exakte externe SSF-Redirect-URIs; Client-ID und Audience werden im
+  Voraussetzungsslice stabil festgelegt, Redirect-URIs bleiben bis zur
+  abgestimmten SSF-URL-Konfiguration fail-closed.
 - Tabellen- und Indexnamen des SSF-Tenant-Grundmodells.
 - Retry-Grenzen der Keycloak- und Datenbankprovisionierung.

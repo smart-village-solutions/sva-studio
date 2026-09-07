@@ -1,6 +1,16 @@
 import type { PluginManifest, PluginServerExecutionHandler } from '@sva/plugin-sdk';
 import { describe, expect, it, vi } from 'vitest';
 
+const authRuntimeMocks = vi.hoisted(() => ({
+  createPluginServerHandlerDispatcher: vi.fn(() => async () => null),
+  createSsfRuntimePluginServiceAccess: vi.fn(() => ({
+    authenticateService: vi.fn(),
+    bindServiceTenant: vi.fn(),
+  })),
+}));
+
+vi.mock('@sva/auth-runtime/server', () => authRuntimeMocks);
+
 vi.mock('./plugins.js', () => ({
   studioPluginSnapshot: {
     pluginSources: [],
@@ -8,7 +18,10 @@ vi.mock('./plugins.js', () => ({
   },
 }));
 
-import { createPluginServerExecutionHandlersFromSnapshot } from './plugin-server-runtime.server.js';
+import {
+  createPluginServerExecutionHandlersFromSnapshot,
+  createStudioPluginServerHandlerDispatcher,
+} from './plugin-server-runtime.server.js';
 
 const source = (pluginId: string) => ({
   pluginId,
@@ -63,5 +76,23 @@ describe('plugin server runtime loader', () => {
         }),
       })
     ).rejects.toThrow('invalid_plugin_server_handler_binding:news:news.list');
+  });
+
+  it('installs fail-closed SSF service access while preserving explicit test overrides', async () => {
+    const authenticateService = vi.fn();
+
+    await createStudioPluginServerHandlerDispatcher({
+      dependencies: { authenticateService },
+    });
+
+    expect(authRuntimeMocks.createSsfRuntimePluginServiceAccess).toHaveBeenCalledTimes(1);
+    expect(authRuntimeMocks.createPluginServerHandlerDispatcher).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dependencies: expect.objectContaining({
+          authenticateService,
+          bindServiceTenant: expect.any(Function),
+        }),
+      })
+    );
   });
 });

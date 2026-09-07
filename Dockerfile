@@ -28,6 +28,7 @@ ENV NODE_ENV=production
 RUN pnpm nx run core:build --skip-nx-cache
 RUN pnpm nx run monitoring-client:build --skip-nx-cache
 RUN pnpm nx run plugin-sdk:build --skip-nx-cache
+RUN pnpm nx run plugin-ssf:build --skip-nx-cache
 RUN pnpm nx run data:build --skip-nx-cache
 RUN pnpm nx run auth-runtime:build --skip-nx-cache
 RUN pnpm nx run sva-mainserver:build --skip-nx-cache
@@ -114,6 +115,7 @@ RUN apk add --no-cache aws-cli bash curl ca-certificates postgresql-client \
   && pg_dump --version \
   && pg_restore --version
 RUN mkdir -p artifacts/tools/goose packages/data/scripts packages/data/migrations
+RUN mkdir -p packages/plugin-ssf/migrations
 
 COPY --from=build --chown=node:node /workspace/.deploy/sva-studio-react/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/apps/sva-studio-react/.output ./.output
@@ -123,6 +125,7 @@ COPY --from=build --chown=node:node /workspace/migrate-entrypoint.sh ./migrate-e
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-graphile-worker.mjs ./migrate-graphile-worker.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/verify-iam-schema.mjs ./verify-iam-schema.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-tenants.mjs ./migrate-waste-tenants.mjs
+COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-ssf-plugin.mjs ./migrate-ssf-plugin.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/waste-tenant-migration-catalog.mjs ./waste-tenant-migration-catalog.mjs
 COPY --from=build --chown=node:node /workspace/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs
@@ -130,6 +133,7 @@ COPY --from=build --chown=node:node /workspace/otel-bootstrap.mjs ./otel-bootstr
 COPY --from=build --chown=node:node /workspace/packages/data/goose.config.json ./packages/data/goose.config.json
 COPY --from=build --chown=node:node /workspace/packages/data/scripts/goosew.sh ./packages/data/scripts/goosew.sh
 COPY --from=build --chown=node:node /workspace/packages/data/migrations ./packages/data/migrations
+COPY --from=build --chown=node:node /workspace/packages/plugin-ssf/migrations ./packages/plugin-ssf/migrations
 RUN chmod +x entrypoint.sh bootstrap-entrypoint.sh migrate-entrypoint.sh provisioner-entrypoint.sh packages/data/scripts/goosew.sh
 RUN chown -R node:node /app
 

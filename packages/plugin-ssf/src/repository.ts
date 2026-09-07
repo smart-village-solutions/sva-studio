@@ -13,6 +13,44 @@ import type {
   SsfTenantSettings,
 } from './resolver.js';
 
+export type SsfTenantRecord = Readonly<{
+  instanceId: string;
+  status: 'prepared';
+  revision: number;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+type SsfTenantRow = {
+  instance_id: string;
+  status: string;
+  revision: string | number;
+  created_at: Date;
+  updated_at: Date;
+};
+
+const normalizeInstanceId = (instanceId: string): string => {
+  const normalized = instanceId.trim();
+  if (normalized.length === 0 || normalized.length > 128) {
+    throw new Error('ssf_tenant_instance_id_invalid');
+  }
+  return normalized;
+};
+
+const mapSsfTenantRow = (row: SsfTenantRow): SsfTenantRecord => {
+  const revision = Number(row.revision);
+  if (row.status !== 'prepared' || !Number.isSafeInteger(revision) || revision <= 0) {
+    throw new Error('ssf_tenant_state_invalid');
+  }
+  return {
+    instanceId: row.instance_id,
+    status: row.status,
+    revision,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
 export interface SsfConfigurationOverrides {
   readonly serverSettings: SsfServerSettings | null;
   readonly serverLocales: readonly SsfServerLocaleOverride[];
@@ -68,6 +106,49 @@ const withTenantTransaction = async <T>(
   } finally {
     client.release();
   }
+};
+
+const tenantColumns = 'instance_id, status, revision, created_at, updated_at';
+
+export const provisionSsfTenant = async (
+  pool: Pool,
+  instanceId: string
+): Promise<SsfTenantRecord> => {
+  const normalizedInstanceId = normalizeInstanceId(instanceId);
+  return withTenantTransaction(pool, normalizedInstanceId, false, async (client) => {
+    await client.query(
+      `INSERT INTO ssf.tenants (instance_id)
+       VALUES ($1)
+       ON CONFLICT (instance_id) DO NOTHING`,
+      [normalizedInstanceId]
+    );
+    const result = await client.query<SsfTenantRow>(
+      `SELECT ${tenantColumns}
+         FROM ssf.tenants
+        WHERE instance_id = $1`,
+      [normalizedInstanceId]
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error('ssf_tenant_readback_failed');
+    return mapSsfTenantRow(row);
+  });
+};
+
+export const readSsfTenant = async (
+  pool: Pool,
+  instanceId: string
+): Promise<SsfTenantRecord | null> => {
+  const normalizedInstanceId = normalizeInstanceId(instanceId);
+  return withTenantTransaction(pool, normalizedInstanceId, true, async (client) => {
+    const result = await client.query<SsfTenantRow>(
+      `SELECT ${tenantColumns}
+         FROM ssf.tenants
+        WHERE instance_id = $1`,
+      [normalizedInstanceId]
+    );
+    const row = result.rows[0];
+    return row ? mapSsfTenantRow(row) : null;
+  });
 };
 
 export const readSsfConfigurationOverrides = async (

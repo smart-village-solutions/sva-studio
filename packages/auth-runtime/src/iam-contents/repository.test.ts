@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   mapContentListItemMock: vi.fn(),
   loadOrganizationListMock: vi.fn(),
   loadOrganizationByIdMock: vi.fn(),
+  loadContentOwnershipAccountTargetsMock: vi.fn(),
   resolveUserDetailMock: vi.fn(),
   resolveUsersWithPaginationMock: vi.fn(),
   queryMock: vi.fn(),
@@ -43,6 +44,11 @@ vi.mock('@sva/iam-admin', () => ({
 
 vi.mock('../iam-account-management/shared.js', () => ({
   withInstanceScopedDb: (...args: unknown[]) => state.withInstanceScopedDbMock(...args),
+}));
+
+vi.mock('./ownership-account-targets.js', () => ({
+  loadContentOwnershipAccountTargets: (...args: unknown[]) =>
+    state.loadContentOwnershipAccountTargetsMock(...args),
 }));
 
 vi.mock('./repository-shared.js', () => ({
@@ -477,7 +483,7 @@ describe('iam content repository', () => {
   });
 
   it('lists paged ownership targets and excludes the matching current owner', async () => {
-    state.resolveUsersWithPaginationMock.mockResolvedValueOnce({
+    state.loadContentOwnershipAccountTargetsMock.mockResolvedValueOnce({
       users: [{ id: 'account-target', displayName: 'Account Target' }],
       total: 1,
     });
@@ -516,14 +522,46 @@ describe('iam content repository', () => {
       items: [{ principal: { type: 'organization', id: 'organization-target' } }],
       total: 1,
     });
-    expect(state.resolveUsersWithPaginationMock).toHaveBeenCalledWith(
-      { query: state.queryMock },
-      expect.objectContaining({ excludeAccountId: 'account-owner', search: 'target' })
+    expect(state.loadContentOwnershipAccountTargetsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        client: { query: state.queryMock },
+        excludeAccountId: 'account-owner',
+        instanceId: 'instance-1',
+        search: 'target',
+      })
     );
     expect(state.loadOrganizationListMock).toHaveBeenCalledWith(
       { query: state.queryMock },
       expect.objectContaining({ excludeOrganizationId: 'organization-owner', isActive: true })
     );
+  });
+
+  it('keeps the initial account target page on the local database path', async () => {
+    state.resolveUsersWithPaginationMock.mockResolvedValueOnce({
+      users: [{ id: 'account-target', displayName: 'Account Target' }],
+      total: 1,
+    });
+
+    await expect(
+      loadContentOwnershipTargets('instance-1', {
+        type: 'account',
+        page: 1,
+        pageSize: 10,
+      })
+    ).resolves.toMatchObject({
+      items: [{ principal: { type: 'account', id: 'account-target' } }],
+      total: 1,
+    });
+
+    expect(state.resolveUsersWithPaginationMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      expect.objectContaining({
+        activeLifecycleOnly: true,
+        includeTechnicalAccounts: false,
+        status: 'active',
+      })
+    );
+    expect(state.loadContentOwnershipAccountTargetsMock).not.toHaveBeenCalled();
   });
 
   it('creates content, persists history and emits the created activity', async () => {

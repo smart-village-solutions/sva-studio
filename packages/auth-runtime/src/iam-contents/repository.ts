@@ -15,6 +15,7 @@ import {
 } from '@sva/iam-admin';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { loadContentOwnershipAccountTargets } from './ownership-account-targets.js';
 import {
   insertContentHistory,
   isContentMutationFinalized,
@@ -364,18 +365,26 @@ export const loadContentOwnershipTargets = async (
 ): Promise<IamContentOwnershipTargetList> =>
   withInstanceScopedDb(instanceId, async (client) => {
     if (input.type === 'account') {
-      const result = await resolveUsersWithPagination(client, {
+      const accountInput = {
         instanceId,
         page: input.page,
         pageSize: input.pageSize,
-        status: 'active',
-        activeLifecycleOnly: true,
-        search: input.search,
-        includeTechnicalAccounts: false,
         ...(input.currentOwner?.type === 'account'
           ? { excludeAccountId: input.currentOwner.id }
           : {}),
-      });
+      };
+      const result = input.search
+        ? await loadContentOwnershipAccountTargets({
+            client,
+            ...accountInput,
+            search: input.search,
+          })
+        : await resolveUsersWithPagination(client, {
+            ...accountInput,
+            status: 'active',
+            activeLifecycleOnly: true,
+            includeTechnicalAccounts: false,
+          });
       const items = result.users.map((user) => ({
         principal: { type: 'account' as const, id: user.id },
         displayName: user.displayName,

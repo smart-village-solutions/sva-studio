@@ -97,16 +97,30 @@ Das System SHALL in der Bearbeitungsansicht dauerhaft erklären, dass normales S
 
 ### Requirement: Transferziel unterscheidet persönliche Accounts und Organisationen
 
-Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Organisationen SHALL über ihre Anzeige suchbar sein. Persönliche Accounts SHALL in V1 ohne zusätzliche Suche über verschlüsselte Namens- oder E-Mail-Felder paginiert auswählbar sein. Eine exakte Gesamtzahl ist nicht erforderlich, sofern die Navigation keine verfügbaren Treffer ausblendet. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein. Ein Mainserver-Ziel, dessen verwendbare Credentials erst bei Bestätigung an einen DataProvider gebunden werden müssen, SHALL einen verständlichen Hinweis auf diese sichere Prüfung tragen.
+Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Accounts und Organisationen gliedern oder explizit danach filtern. Organisationen SHALL über ihre Anzeige suchbar sein. Persönliche Accounts SHALL über ihren in Keycloak geführten Namen oder ihre E-Mail-Adresse suchbar sein, ohne verschlüsselte Studio-Felder zu durchsuchen. Keycloak-Treffer SHALL serverseitig auf lokal zugeordnete, aktive, nicht technische und fachlich zulässige Principals derselben Instanz begrenzt werden. Eine exakte Gesamtzahl ist nicht erforderlich, sofern die Navigation keine verfügbaren Treffer ausblendet oder eine fehlgeschlagene Suche als leeres Ergebnis darstellt. Jeder Treffer SHALL einen textlich wahrnehmbaren Typ und einen verständlichen Namen besitzen. Der aktuelle Inhaber und serverseitig nicht transferfähige Ziele SHALL nicht auswählbar sein. Ein Mainserver-Ziel, dessen verwendbare Credentials erst bei Bestätigung an einen DataProvider gebunden werden müssen, SHALL einen verständlichen Hinweis auf diese sichere Prüfung tragen.
 
 #### Scenario: Benutzer durchsucht mögliche Zielinhaber
 
 - **WHEN** ein berechtigter Benutzer die Zielauswahl für „Inhalt übertragen“ öffnet
 - **THEN** kann er zwischen „Persönliche Accounts“ und „Organisationen“ unterscheiden
-- **AND** kann er Organisationen suchen und persönliche Accounts seitenweise auswählen
+- **AND** kann er Organisationen und persönliche Accounts über Namen suchen
+- **AND** kann eine E-Mail-Adresse als Suchschlüssel für persönliche Accounts verwenden, ohne dass sie im Treffer angezeigt wird
 - **AND** bleibt der Principal-Typ im gewählten `targetPrincipal` erhalten
 - **AND** zeigt die Oberfläche keine technische DataProvider-ID
 - **AND** zeigt sie keine E-Mail-Adresse
+
+#### Scenario: Account-Suche bleibt an den Tenant gebunden
+
+- **GIVEN** Keycloak liefert Treffer für eine Namens- oder E-Mail-Suche
+- **WHEN** der Server daraus mögliche Zielinhaber bildet
+- **THEN** enthält das Ergebnis ausschließlich lokal zugeordnete, aktive und nicht technische Accounts derselben Instanz
+- **AND** bleibt der aktuelle Inhaber ausgeschlossen
+
+#### Scenario: Keycloak-Suche ist nicht verfügbar
+
+- **WHEN** der tenantgebundene Keycloak-Provider die Account-Suche nicht ausführen kann
+- **THEN** meldet der Account-Zweig einen Ladefehler
+- **AND** stellt die Oberfläche den technischen Ausfall nicht als abschließend leere Treffermenge dar
 
 #### Scenario: Noch nicht gebundenes Mainserver-Ziel erklärt die Verifikation
 

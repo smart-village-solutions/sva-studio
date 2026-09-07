@@ -380,7 +380,7 @@ Abhängigkeiten des aktuellen Systems.
 4. `apps/sva-studio-react`
    - zeigt im Doctor neben Quelle und Korrelation auch die für den Befund
      verwendete logische Serviceidentität an.
-6. Öffentlicher Abfallkalender (`apps/public-waste-calendar-web`)
+5. Öffentlicher Abfallkalender (`apps/public-waste-calendar-web`)
 
 - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
 - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
@@ -875,7 +875,7 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 ### Ergänzung 2026-08: Bausteine des Inhabertransfers
 
 - `@sva/core` besitzt Action, Capability und typisierte Principal-/Zielverträge.
-- `@sva/auth-runtime` besitzt lokalen atomaren Transfer, Zielkatalog, Mainserver-Zielauflösung, Lock und Journalanreicherung.
+- `@sva/auth-runtime` besitzt lokalen atomaren Transfer, Zielkatalog, die tenantgebundene Keycloak-Suche nach persönlichen Zielaccounts, Mainserver-Zielauflösung, Lock und Journalanreicherung. Keycloak-Suchergebnisse werden dort mit aktiven, nicht technischen lokalen Account-Projektionen derselben Instanz geschnitten.
 - `@sva/sva-mainserver` besitzt typspezifische Pre-Reads, Provider-Write, Ergebnisvalidierung und Reconciliation.
 - `@sva/studio-ui-react` besitzt das gemeinsame Inhaberpanel sowie Editor- und Save-Slots; Plugins enthalten keine eigene Zielauflösung.
 

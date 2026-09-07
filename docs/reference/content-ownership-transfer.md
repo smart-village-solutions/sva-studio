@@ -10,7 +10,9 @@ Die wirksame Permission `content.transferOwnership` ist die einzige fachliche Fr
 
 ## Bedienung
 
-Im Bearbeitungsmodus steht der Bereich **Inhaber** am Anfang des ersten fachlichen Tabs. Er zeigt den aktuellen Inhaber und den dauerhaften Save-Hinweis. Nutzer mit wirksamem `content.transferOwnership` können **Inhalt übertragen** wählen, persönliche Accounts seitenweise auswählen, Organisationen suchen und den Wechsel nach einer Auswirkungsprüfung ausdrücklich bestätigen. Eine neue Suche über verschlüsselte Account-Namen oder E-Mail-Adressen ist nicht Bestandteil von V1.
+Im Bearbeitungsmodus steht der Bereich **Inhaber** am Anfang des ersten fachlichen Tabs. Er zeigt den aktuellen Inhaber und den dauerhaften Save-Hinweis. Nutzer mit wirksamem `content.transferOwnership` können **Inhalt übertragen** wählen, persönliche Accounts und Organisationen in einem gemeinsamen Feld suchen und den Wechsel nach einer Auswirkungsprüfung ausdrücklich bestätigen. Die Account-Suche läuft über den tenantgebundenen Keycloak-Provider und kann Namen oder E-Mail-Adressen als Suchschlüssel verwenden. Der Server übernimmt ausschließlich aktive, nicht technische und lokal derselben Instanz zugeordnete Accounts; E-Mail-Adressen werden nicht in der Trefferliste ausgegeben.
+
+Ohne Suchtext lädt die Auswahl weiterhin eine lokale erste Account-Seite. Ein Keycloak-Ausfall verhindert deshalb nicht das Öffnen der Auswahl. Schlägt eine eingegebene Account-Suche fehl, wird der technische Fehler kenntlich gemacht und nicht als abschließend leere Treffermenge dargestellt.
 
 Die Ermittlung und Anzeige des aktuellen Inhabers ist von der Transferberechtigung getrennt. Der Autorisierungs-Endpunkt liefert deshalb auch ohne wirksames `content.transferOwnership` den frisch gelesenen Inhaberstatus mit `canTransfer: false`. Das gilt ebenso für im Editor sichtbare Typen wie Surveys, deren Transfervertrag noch nicht unterstützt wird; nur Zielsuche und Transfer bleiben dort deaktiviert.
 

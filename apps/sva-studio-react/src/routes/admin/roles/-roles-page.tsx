@@ -67,7 +67,7 @@ export const RolesPage = () => {
 
     return sourceRoles.filter(
       (role) =>
-        matchesRoleTypeFilter(role, roleTypeFilter) &&
+        (isPlatformScope || matchesRoleTypeFilter(role, roleTypeFilter)) &&
         (!query ||
           role.roleName.toLowerCase().includes(query) ||
           role.roleKey.toLowerCase().includes(query) ||

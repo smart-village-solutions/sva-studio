@@ -88,7 +88,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - Rollenobjekte können additiv `permissionAssignments[]` enthalten. Jeder Eintrag trägt mindestens `permissionId` und optional `accessScope`.
   - Einträge in `permissions[]` können additiv `isScopeAssignable`, `supportedAccessScopes` und `accessScope` liefern, damit die Rollen-UI die Scope-Auswahl ohne zweiten Katalogvertrag rendern kann.
 - `GET /api/v1/iam/keycloak-roles`
-  - liefert im Tenant-Scope den vollständigen, paginierten Realm-Rollenkatalog direkt aus Keycloak.
+  - liefert im Tenant-Scope den vollständigen Realm-Rollenkatalog direkt aus Keycloak; die Runtime lädt ihn intern seitenweise über die Keycloak Admin API.
   - hält externe Rollen und Keycloak-Built-ins als read-only Interop-Sicht getrennt von lokalen IAM-Rollen.
   - verlangt wie die lokale Rollenliste `iam.role.read` und verwendet ausschließlich den tenantgebundenen Admin-Client.
 - `POST /api/v1/iam/roles`

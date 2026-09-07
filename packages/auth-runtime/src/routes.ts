@@ -1,5 +1,4 @@
-export type AuthRoutePath =
-  | '/auth/login'
+export type AuthRoutePath = '/auth/login'
   | '/auth/account-action'
   | '/auth/dev-login'
   | '/auth/callback'
@@ -190,7 +189,8 @@ export const authRoutePaths = [
   '/api/v1/iam/organizations/$organizationId/memberships/$accountId',
   '/api/v1/iam/me/context',
   '/api/v1/iam/permissions',
-  '/api/v1/iam/keycloak-roles', '/api/v1/iam/roles',
+  '/api/v1/iam/keycloak-roles',
+  '/api/v1/iam/roles',
   '/api/v1/iam/roles/$roleId',
   '/api/v1/iam/groups',
   '/api/v1/iam/groups/$groupId',

@@ -21,6 +21,7 @@ import { loadRoleListItems } from './role-query.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 import {
+  createKeycloakRoleOperationError,
   loadKeycloakRoleCatalog,
   projectKeycloakRoleCatalog,
   requireKeycloakRoleProvider,
@@ -103,10 +104,14 @@ const roleReadHandlers = createRoleReadHandlers({
   },
   listPlatformRolesInternal,
   loadKeycloakRoleListItems: async (instanceId, requestId) => {
-    const provider = await requireKeycloakRoleProvider(instanceId, requestId);
-    return provider instanceof Response
-      ? provider
-      : projectKeycloakRoleCatalog(await loadKeycloakRoleCatalog(provider));
+    try {
+      const provider = await requireKeycloakRoleProvider(instanceId, requestId);
+      return provider instanceof Response
+        ? provider
+        : projectKeycloakRoleCatalog(await loadKeycloakRoleCatalog(provider));
+    } catch (error) {
+      return createKeycloakRoleOperationError(error, requestId);
+    }
   },
   loadPermissions: (instanceId) =>
     withInstanceScopedDb(instanceId, (client) => loadPermissions(client, instanceId)),

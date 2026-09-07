@@ -423,6 +423,7 @@ describe('RolesPage', () => {
     render(<RolesPage />);
 
     expect(screen.getByRole('heading', { name: 'Plattform-Rollen' })).toBeTruthy();
+    expect(screen.getAllByText('instance_registry_admin').length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Rolle anlegen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rolle bearbeiten' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();

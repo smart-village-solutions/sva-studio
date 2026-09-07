@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   loadOrganizationListMock: vi.fn(),
   loadOrganizationByIdMock: vi.fn(),
   loadContentOwnershipAccountTargetsMock: vi.fn(),
+  loadMappedUsersBySubjectMock: vi.fn(),
   resolveUserDetailMock: vi.fn(),
   resolveUsersWithPaginationMock: vi.fn(),
   queryMock: vi.fn(),
@@ -38,6 +39,7 @@ const state = vi.hoisted(() => ({
 vi.mock('@sva/iam-admin', () => ({
   loadOrganizationById: (...args: unknown[]) => state.loadOrganizationByIdMock(...args),
   loadOrganizationList: (...args: unknown[]) => state.loadOrganizationListMock(...args),
+  loadMappedUsersBySubject: (...args: unknown[]) => state.loadMappedUsersBySubjectMock(...args),
   resolveUserDetail: (...args: unknown[]) => state.resolveUserDetailMock(...args),
   resolveUsersWithPagination: (...args: unknown[]) => state.resolveUsersWithPaginationMock(...args),
 }));
@@ -511,6 +513,21 @@ describe('iam content repository', () => {
       pageSize: 10,
       total: 1,
     });
+    expect(state.withInstanceScopedDbMock).not.toHaveBeenCalled();
+    const accountSearchInput = state.loadContentOwnershipAccountTargetsMock.mock.calls[0]?.[0] as {
+      loadMappedAccounts: (subjects: readonly string[]) => Promise<unknown>;
+    };
+    state.loadMappedUsersBySubjectMock.mockResolvedValueOnce(new Map());
+    await accountSearchInput.loadMappedAccounts(['subject-target']);
+    expect(state.loadMappedUsersBySubjectMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      {
+        instanceId: 'instance-1',
+        subjects: ['subject-target'],
+        activeLifecycleOnly: true,
+        includeTechnicalAccounts: false,
+      }
+    );
     await expect(
       loadContentOwnershipTargets('instance-1', {
         type: 'organization',
@@ -524,9 +541,9 @@ describe('iam content repository', () => {
     });
     expect(state.loadContentOwnershipAccountTargetsMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        client: { query: state.queryMock },
         excludeAccountId: 'account-owner',
         instanceId: 'instance-1',
+        loadMappedAccounts: expect.any(Function),
         search: 'target',
       })
     );

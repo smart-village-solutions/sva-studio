@@ -34,6 +34,7 @@ vi.mock('./request-context.js', () => ({
 }));
 
 const { listContentOwnershipTargetsInternal } = await import('./ownership-targets-route.js');
+const { ContentOwnershipAccountSearchError } = await import('./ownership-account-targets.js');
 
 const actor = {
   instanceId: 'instance-1',
@@ -94,6 +95,19 @@ describe('content ownership target route', () => {
     );
 
     expect(response.status).toBe(400);
+    expect(state.loadTargets).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized search terms before querying the repository', async () => {
+    const response = await listContentOwnershipTargetsInternal(
+      request(`?type=account&q=${'a'.repeat(201)}`),
+      {} as never
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request' },
+    });
     expect(state.loadTargets).not.toHaveBeenCalled();
   });
 
@@ -162,6 +176,20 @@ describe('content ownership target route', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'database_unavailable' },
+    });
+  });
+
+  it('preserves the Keycloak failure classification for account searches', async () => {
+    state.loadTargets.mockRejectedValueOnce(new ContentOwnershipAccountSearchError());
+
+    const response = await listContentOwnershipTargetsInternal(
+      request('?type=account&q=Ada'),
+      {} as never
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'keycloak_unavailable' },
     });
   });
 });

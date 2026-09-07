@@ -122,6 +122,13 @@ Das System SHALL die serverseitig paginierte Zielauswahl in persönliche Account
 - **THEN** meldet der Account-Zweig einen Ladefehler
 - **AND** stellt die Oberfläche den technischen Ausfall nicht als abschließend leere Treffermenge dar
 
+#### Scenario: Breite Account-Suche erreicht die Scan-Grenze
+
+- **WHEN** die begrenzte Keycloak-Suche vor einem vollständigen Scan endet
+- **THEN** liefert der Account-Zweig bereits bestätigte lokale Treffer aus
+- **AND** signalisiert die Pagination weitere mögliche Ergebnisse
+- **AND** fordert die Oberfläche dazu auf, den Suchbegriff weiter einzugrenzen
+
 #### Scenario: Noch nicht gebundenes Mainserver-Ziel erklärt die Verifikation
 
 - **GIVEN** ein auswählbarer Ziel-Principal besitzt den Zustand `verification_required`

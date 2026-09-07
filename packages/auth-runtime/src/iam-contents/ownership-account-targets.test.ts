@@ -16,10 +16,6 @@ vi.mock('../iam-account-management/shared-observability.js', () => ({
   trackKeycloakCall: vi.fn((_operation: string, work: () => unknown) => work()),
 }));
 
-vi.mock('@sva/iam-admin', () => ({
-  loadMappedUsersBySubject: (...args: unknown[]) => state.loadMappedUsersBySubject(...args),
-}));
-
 const { loadContentOwnershipAccountTargets } = await import('./ownership-account-targets.js');
 
 const mappedUser = (overrides: Record<string, unknown> = {}) => ({
@@ -67,12 +63,12 @@ describe('content ownership account targets', () => {
 
     await expect(
       loadContentOwnershipAccountTargets({
-        client: {} as never,
         instanceId: 'instance-1',
         page: 1,
         pageSize: 10,
         search: 'ada@example.org',
         excludeAccountId: 'account-current',
+        loadMappedAccounts: state.loadMappedUsersBySubject,
       })
     ).resolves.toEqual({ users: [mappedUser()], total: 1 });
 
@@ -86,18 +82,13 @@ describe('content ownership account targets', () => {
       first: 0,
       max: 100,
     });
-    expect(state.loadMappedUsersBySubject).toHaveBeenCalledWith(expect.anything(), {
-      instanceId: 'instance-1',
-      subjects: [
-        'subject-target',
-        'subject-unmapped',
-        'subject-inactive',
-        'subject-technical',
-        'subject-current',
-      ],
-      activeLifecycleOnly: true,
-      includeTechnicalAccounts: false,
-    });
+    expect(state.loadMappedUsersBySubject).toHaveBeenCalledWith([
+      'subject-target',
+      'subject-unmapped',
+      'subject-inactive',
+      'subject-technical',
+      'subject-current',
+    ]);
   });
 
   it('scans beyond unmapped Keycloak results before paginating eligible accounts', async () => {
@@ -114,11 +105,11 @@ describe('content ownership account targets', () => {
 
     await expect(
       loadContentOwnershipAccountTargets({
-        client: {} as never,
         instanceId: 'instance-1',
         page: 1,
         pageSize: 10,
         search: 'Ada',
+        loadMappedAccounts: state.loadMappedUsersBySubject,
       })
     ).resolves.toEqual({ users: [mappedUser()], total: 1 });
 
@@ -145,11 +136,11 @@ describe('content ownership account targets', () => {
     state.loadMappedUsersBySubject.mockResolvedValueOnce(mappedAccounts);
 
     const result = await loadContentOwnershipAccountTargets({
-      client: {} as never,
       instanceId: 'instance-1',
       page: 2,
       pageSize: 5,
       search: 'Ada',
+      loadMappedAccounts: state.loadMappedUsersBySubject,
     });
 
     expect(result.total).toBe(12);
@@ -167,16 +158,44 @@ describe('content ownership account targets', () => {
 
     await expect(
       loadContentOwnershipAccountTargets({
-        client: {} as never,
         instanceId: 'instance-1',
         page: 1,
         pageSize: 10,
         search: 'Ada',
+        loadMappedAccounts: state.loadMappedUsersBySubject,
       })
-    ).rejects.toThrow('tenant_admin_client_not_configured');
+    ).rejects.toMatchObject({ code: 'keycloak_unavailable' });
   });
 
-  it('fails closed when Keycloak keeps returning full unmapped windows', async () => {
+  it('classifies Keycloak request failures without masking local database failures', async () => {
+    state.countUsers.mockResolvedValueOnce(1);
+    state.listUsers.mockRejectedValueOnce(new Error('Keycloak timeout'));
+
+    await expect(
+      loadContentOwnershipAccountTargets({
+        instanceId: 'instance-1',
+        page: 1,
+        pageSize: 10,
+        search: 'Ada',
+        loadMappedAccounts: state.loadMappedUsersBySubject,
+      })
+    ).rejects.toMatchObject({ code: 'keycloak_unavailable' });
+
+    state.listUsers.mockResolvedValueOnce([{ externalId: 'subject-target' }]);
+    const databaseError = new Error('database unavailable');
+    state.loadMappedUsersBySubject.mockRejectedValueOnce(databaseError);
+    await expect(
+      loadContentOwnershipAccountTargets({
+        instanceId: 'instance-1',
+        page: 1,
+        pageSize: 10,
+        search: 'Ada',
+        loadMappedAccounts: state.loadMappedUsersBySubject,
+      })
+    ).rejects.toBe(databaseError);
+  });
+
+  it('returns a refine-search total when the bounded scan keeps finding no local accounts', async () => {
     state.listUsers.mockResolvedValue(
       Array.from({ length: 100 }, (_, index) => ({ externalId: `unmapped-${index}` }))
     );
@@ -184,13 +203,13 @@ describe('content ownership account targets', () => {
 
     await expect(
       loadContentOwnershipAccountTargets({
-        client: {} as never,
         instanceId: 'instance-1',
         page: 1,
         pageSize: 10,
         search: 'Ada',
+        loadMappedAccounts: state.loadMappedUsersBySubject,
       })
-    ).rejects.toThrow('content_ownership_account_search_limit_exceeded');
+    ).resolves.toEqual({ users: [], total: 11 });
 
     expect(state.listUsers).toHaveBeenCalledTimes(10);
   });

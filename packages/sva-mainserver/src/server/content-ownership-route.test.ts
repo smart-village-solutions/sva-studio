@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ContentOwnershipAccountSearchError } from '@sva/auth-runtime/server';
 
 const state = vi.hoisted(() => ({
   annotateJournal: vi.fn(),
@@ -226,6 +227,33 @@ describe('Mainserver content ownership route', () => {
     expect(state.listTargets).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'organization', currentDataProviderId: 'provider-source' })
     );
+  });
+
+  it('rejects oversized target searches before querying Keycloak-backed candidates', async () => {
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        `https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets?type=account&q=${'a'.repeat(201)}`
+      )
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
+    expect(state.listTargets).not.toHaveBeenCalled();
+  });
+
+  it('maps Keycloak-backed target search failures to the identity provider contract', async () => {
+    state.listTargets.mockRejectedValueOnce(new ContentOwnershipAccountSearchError());
+
+    const response = await dispatchSvaMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/targets?type=account&q=Ada'
+      )
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'identity_provider_unavailable',
+    });
   });
 
   it('checks transfer authorization without resolving a target page', async () => {

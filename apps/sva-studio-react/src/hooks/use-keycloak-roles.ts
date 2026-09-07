@@ -1,4 +1,5 @@
 import type { IamKeycloakRealmRole } from '@sva/core';
+import React from 'react';
 
 import { listKeycloakRoles, type IamHttpError } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
@@ -14,10 +15,15 @@ export const useKeycloakRoles = (
 }> => {
   const { refreshSession } = useAuth();
   const list = useIamAdminList(listKeycloakRoles, refreshSession, { enabled });
+  const [hasStartedEnabledLoad, setHasStartedEnabledLoad] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasStartedEnabledLoad(enabled);
+  }, [enabled]);
 
   return {
     roles: list.items,
-    isLoading: list.isLoading,
+    isLoading: enabled && (list.isLoading || !hasStartedEnabledLoad),
     error: list.error,
     refetch: list.refetch,
   };

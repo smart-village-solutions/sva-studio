@@ -22,6 +22,8 @@ const state = vi.hoisted(() => ({
   mapContentListItemMock: vi.fn(),
   loadOrganizationListMock: vi.fn(),
   loadOrganizationByIdMock: vi.fn(),
+  loadContentOwnershipAccountTargetsMock: vi.fn(),
+  loadMappedUsersBySubjectMock: vi.fn(),
   resolveUserDetailMock: vi.fn(),
   resolveUsersWithPaginationMock: vi.fn(),
   queryMock: vi.fn(),
@@ -37,12 +39,18 @@ const state = vi.hoisted(() => ({
 vi.mock('@sva/iam-admin', () => ({
   loadOrganizationById: (...args: unknown[]) => state.loadOrganizationByIdMock(...args),
   loadOrganizationList: (...args: unknown[]) => state.loadOrganizationListMock(...args),
+  loadMappedUsersBySubject: (...args: unknown[]) => state.loadMappedUsersBySubjectMock(...args),
   resolveUserDetail: (...args: unknown[]) => state.resolveUserDetailMock(...args),
   resolveUsersWithPagination: (...args: unknown[]) => state.resolveUsersWithPaginationMock(...args),
 }));
 
 vi.mock('../iam-account-management/shared.js', () => ({
   withInstanceScopedDb: (...args: unknown[]) => state.withInstanceScopedDbMock(...args),
+}));
+
+vi.mock('./ownership-account-targets.js', () => ({
+  loadContentOwnershipAccountTargets: (...args: unknown[]) =>
+    state.loadContentOwnershipAccountTargetsMock(...args),
 }));
 
 vi.mock('./repository-shared.js', () => ({
@@ -477,7 +485,7 @@ describe('iam content repository', () => {
   });
 
   it('lists paged ownership targets and excludes the matching current owner', async () => {
-    state.resolveUsersWithPaginationMock.mockResolvedValueOnce({
+    state.loadContentOwnershipAccountTargetsMock.mockResolvedValueOnce({
       users: [{ id: 'account-target', displayName: 'Account Target' }],
       total: 1,
     });
@@ -505,6 +513,21 @@ describe('iam content repository', () => {
       pageSize: 10,
       total: 1,
     });
+    expect(state.withInstanceScopedDbMock).not.toHaveBeenCalled();
+    const accountSearchInput = state.loadContentOwnershipAccountTargetsMock.mock.calls[0]?.[0] as {
+      loadMappedAccounts: (subjects: readonly string[]) => Promise<unknown>;
+    };
+    state.loadMappedUsersBySubjectMock.mockResolvedValueOnce(new Map());
+    await accountSearchInput.loadMappedAccounts(['subject-target']);
+    expect(state.loadMappedUsersBySubjectMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      {
+        instanceId: 'instance-1',
+        subjects: ['subject-target'],
+        activeLifecycleOnly: true,
+        includeTechnicalAccounts: false,
+      }
+    );
     await expect(
       loadContentOwnershipTargets('instance-1', {
         type: 'organization',
@@ -516,14 +539,46 @@ describe('iam content repository', () => {
       items: [{ principal: { type: 'organization', id: 'organization-target' } }],
       total: 1,
     });
-    expect(state.resolveUsersWithPaginationMock).toHaveBeenCalledWith(
-      { query: state.queryMock },
-      expect.objectContaining({ excludeAccountId: 'account-owner', search: 'target' })
+    expect(state.loadContentOwnershipAccountTargetsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        excludeAccountId: 'account-owner',
+        instanceId: 'instance-1',
+        loadMappedAccounts: expect.any(Function),
+        search: 'target',
+      })
     );
     expect(state.loadOrganizationListMock).toHaveBeenCalledWith(
       { query: state.queryMock },
       expect.objectContaining({ excludeOrganizationId: 'organization-owner', isActive: true })
     );
+  });
+
+  it('keeps the initial account target page on the local database path', async () => {
+    state.resolveUsersWithPaginationMock.mockResolvedValueOnce({
+      users: [{ id: 'account-target', displayName: 'Account Target' }],
+      total: 1,
+    });
+
+    await expect(
+      loadContentOwnershipTargets('instance-1', {
+        type: 'account',
+        page: 1,
+        pageSize: 10,
+      })
+    ).resolves.toMatchObject({
+      items: [{ principal: { type: 'account', id: 'account-target' } }],
+      total: 1,
+    });
+
+    expect(state.resolveUsersWithPaginationMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      expect.objectContaining({
+        activeLifecycleOnly: true,
+        includeTechnicalAccounts: false,
+        status: 'active',
+      })
+    );
+    expect(state.loadContentOwnershipAccountTargetsMock).not.toHaveBeenCalled();
   });
 
   it('creates content, persists history and emits the created activity', async () => {

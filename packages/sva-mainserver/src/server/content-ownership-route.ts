@@ -1,4 +1,5 @@
 import {
+  ContentOwnershipAccountSearchError,
   listMainserverOwnershipTargets,
   loadExternalContentReferenceByContentId,
   resolveActorInfo,
@@ -21,6 +22,7 @@ import {
   type MainserverOwnershipTransferReconciler,
 } from './content-ownership-transfer-route.js';
 import { ownershipRouteFailureResponse } from './content-ownership-route-failure.js';
+import { SvaMainserverError } from './errors.js';
 import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
 import {
   resolveMainserverMutationActor,
@@ -31,6 +33,7 @@ import { projectSourceReferenceInput } from './projects-route-transport.js';
 import { getSvaMainserverSurvey } from './service.js';
 
 const routePrefix = '/api/v1/mainserver/content-ownership/';
+const MAX_OWNERSHIP_TARGET_SEARCH_LENGTH = 200;
 const supportedContentTypes = new Set<SvaMainserverProjectionContentType>([
   'news.article',
   'events.event-record',
@@ -41,7 +44,6 @@ const supportedContentTypes = new Set<SvaMainserverProjectionContentType>([
   'projects.project',
   'surveys.survey',
 ]);
-
 const isProjectionContentType = (value: string): value is SvaMainserverProjectionContentType =>
   supportedContentTypes.has(value as SvaMainserverProjectionContentType);
 
@@ -105,6 +107,9 @@ const handleTargets = async (
     Math.max(1, Number.parseInt(url.searchParams.get('pageSize') ?? '10', 10) || 10)
   );
   const search = url.searchParams.get('q')?.trim() || undefined;
+  if (search && search.length > MAX_OWNERSHIP_TARGET_SEARCH_LENGTH) {
+    return errorJson(400, 'invalid_request', 'Der Suchbegriff ist zu lang.');
+  }
   const result = await listMainserverOwnershipTargets({
     instanceId: actor.instanceId,
     actorKeycloakSubject: actor.keycloakSubject,
@@ -263,7 +268,7 @@ const dispatchAuthenticated = async (
       : supportedRoute.contentId;
   const content = toOwnershipTransferContent(supportedRoute.contentType, providerContentId);
   try {
-    return supportedRoute.operation === 'transfer'
+    return await (supportedRoute.operation === 'transfer'
       ? handleContentOwnershipTransfer(
           request,
           supportedRoute,
@@ -271,8 +276,20 @@ const dispatchAuthenticated = async (
           content,
           reconcilePreviousTransfer
         )
-      : handleAuthorizedTargets(request, supportedRoute, actor, content);
+      : handleAuthorizedTargets(request, supportedRoute, actor, content));
   } catch (error) {
+    if (error instanceof ContentOwnershipAccountSearchError) {
+      return ownershipRouteFailureResponse(
+        new SvaMainserverError({
+          code: 'identity_provider_unavailable',
+          message: 'Die Account-Suche ist derzeit nicht verfügbar.',
+          statusCode: 503,
+        }),
+        actor,
+        route,
+        'Die Inhaberübertragung ist fehlgeschlagen.'
+      );
+    }
     return ownershipRouteFailureResponse(
       error,
       actor,

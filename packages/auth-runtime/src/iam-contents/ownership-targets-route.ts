@@ -9,16 +9,28 @@ import {
 } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { loadContentById, loadContentOwnershipTargets } from './repository.js';
+import { ContentOwnershipAccountSearchError } from './ownership-account-targets.js';
 import { resolveContentOwnerPrincipal } from './ownership-principal.js';
 import { authorizeContentAction, resolveContentActor } from './request-context.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
+const MAX_OWNERSHIP_TARGET_SEARCH_LENGTH = 200;
 
 const resolveCurrentOwner = (content: {
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;
 }): IamContentOwnerPrincipal | undefined => {
   return resolveContentOwnerPrincipal(content);
+};
+
+const readOwnershipTargetSearch = (
+  request: Request,
+  requestId: string | undefined
+): string | undefined | Response => {
+  const search = new URL(request.url).searchParams.get('q')?.trim() || undefined;
+  return search && search.length > MAX_OWNERSHIP_TARGET_SEARCH_LENGTH
+    ? createApiError(400, 'invalid_request', 'Der Suchbegriff ist zu lang.', requestId)
+    : search;
 };
 
 export const listContentOwnershipTargetsInternal = async (
@@ -68,7 +80,8 @@ export const listContentOwnershipTargetsInternal = async (
     );
   }
   const { page, pageSize } = readPage(request);
-  const search = url.searchParams.get('q')?.trim() || undefined;
+  const search = readOwnershipTargetSearch(request, actorResolution.actor.requestId);
+  if (search instanceof Response) return search;
   const currentOwner = resolveCurrentOwner(content);
   try {
     const result = await loadContentOwnershipTargets(actorResolution.actor.instanceId, {
@@ -98,6 +111,14 @@ export const listContentOwnershipTargetsInternal = async (
       target_principal_type: type,
       error: error instanceof Error ? error.message : String(error),
     });
+    if (error instanceof ContentOwnershipAccountSearchError) {
+      return createApiError(
+        503,
+        'keycloak_unavailable',
+        'Die Account-Suche ist derzeit nicht verfügbar.',
+        actorResolution.actor.requestId
+      );
+    }
     return createApiError(
       503,
       'database_unavailable',

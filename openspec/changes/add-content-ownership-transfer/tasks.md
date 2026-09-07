@@ -16,12 +16,14 @@
 
 ## 2. Ziel-Principal-Auflösung
 
-- [x] 2.1 Einen serverseitigen, paginierten Zielkatalog für aktive Accounts und Organisationen derselben Instanz mit PII-minimiertem Anzeigemodell bereitstellen; Organisationen sind suchbar, Accounts werden in V1 ohne neue Suche über verschlüsselte PII paginiert.
+- [x] 2.1 Einen serverseitigen, paginierten Zielkatalog für aktive Accounts und Organisationen derselben Instanz mit PII-minimiertem Anzeigemodell bereitstellen.
 - [x] 2.2 Für Mainserver-Inhalte Ziele mit eindeutiger, konfliktfreier, aktueller DataProvider-Bindung und verwendbaren persönlichen beziehungsweise organisatorischen Credentials direkt zulassen; bei verwendbaren Credentials ohne gespeicherte Bindung den Kandidaten als `verification_required` anbieten.
 - [x] 2.3 Ziel-Principal und Binding-Version unmittelbar vor der Mutation unter dem bestehenden DataProvider-Lock erneut prüfen.
 - [x] 2.4 Freie DataProvider-, Credential-, Account- oder Organisationswerte außerhalb des typisierten Ziel-Principal-Vertrags im Request-Schema ablehnen.
 - [x] 2.5 Tests für gelöschte, gesperrte, instanzfremde, credential-lose, mehrdeutige und konfliktbehaftete Ziele ergänzen.
 - [x] 2.6 Fehlende Zielbindungen erst nach ausdrücklicher Transferbestätigung für genau den gewählten Principal über `/data_provider.json` verifizieren, konfliktbewusst persistieren und erneut auflösen; Zielkatalog und Pagination lösen keine externen Identity-Aufrufe je Treffer aus.
+- [x] 2.7 Die Suche nach persönlichen Accounts an die tenantgebundene Keycloak-Namens-/E-Mail-Suche anbinden und Treffer über das Subject auf aktive, nicht technische, lokal zugeordnete Principals derselben Instanz begrenzen.
+- [x] 2.8 Pagination, Ausschluss des aktuellen Inhabers und unterscheidbare Fehlerzustände für nicht verfügbares Keycloak bei der Account-Suche absichern.
 
 ## 3. Lokaler Content-Transfer
 
@@ -48,7 +50,7 @@
 - [x] 5.2 Den Inhaberbereich im Bearbeitungsmodus der vorhandenen Editoren für News, Events, POI, generische Inhalte, FAQ, Cockpit Cards, Featured Projects und Surveys genau einmal am Anfang des ersten fachlichen Tabs integrieren; im Create-Modus nur den getrennten Erstellungsprincipal zeigen.
 - [x] 5.3 Die einheitliche Anzeige auch für nicht transferfähige Typen bereitstellen und dort die fehlende Transferunterstützung verständlich kennzeichnen, ohne eine aktive Aktion anzubieten.
 - [x] 5.4 Einen dauerhaften Ownership-Hinweis im Inhaberbereich und eine kompakte Wiederholung an der Speichern-Aktion ergänzen: normales Speichern ändert den Inhaber nicht; Transferberechtigung und abweichender Mutationsprincipal werden verständlich erklärt.
-- [x] 5.5 Eine gemeinsame shadcn/ui-basierte Aktion „Inhalt übertragen“ mit serverseitig paginierter Zielauswahl implementieren; persönliche Accounts und Organisationen klar filtern, Organisationen suchbar machen und jeden Treffer textlich typisieren, ohne für Accounts eine neue PII-Suchinfrastruktur oder für Mainserver-Kandidaten exakte Gesamtzahlen vorauszusetzen.
+- [x] 5.5 Eine gemeinsame shadcn/ui-basierte Aktion „Inhalt übertragen“ mit serverseitig paginierter Zielauswahl implementieren; persönliche Accounts und Organisationen klar filtern und jeden Treffer textlich typisieren, ohne für Mainserver-Kandidaten exakte Gesamtzahlen vorauszusetzen.
 - [x] 5.6 Aktuellen Inhaber sowie inaktive, gelöschte, konfliktbehaftete und credential-lose Ziele aus der Auswahl ausschließen; keine freie DataProvider-ID und standardmäßig keine E-Mail-Adresse darstellen.
 - [x] 5.7 Einen Prüfschritt „Aktueller Inhaber → Neuer Inhaber“ mit Typ, Name, Auswirkung auf die Autorenanzeige, möglichem Zugriffsverlust und expliziter Bestätigung umsetzen.
 - [x] 5.8 Die Aktion ausschließlich bei effektiver `content.transferOwnership`-Permission und positiver serverseitiger Typ-Capability aktivieren; V1-Plugins ohne pluginlokale Zielauflösung oder Transferlogik anbinden.
@@ -57,6 +59,7 @@
 - [x] 5.11 Fokusführung, Tastaturbedienung, Screenreader-Namen, Lade-/Disabled-State und 44×44-Zielgrößen mit Unit-, Axe- und E2E-Tests absichern.
 - [x] 5.12 Konformitätstests ergänzen, die je registriertem Content-Editor genau eine Inhaberanzeige im ersten Tab, den Save-Hinweis und die permission-/capability-gesteuerte Transferaktion nachweisen.
 - [x] 5.13 Ziele mit anlassbezogener Binding-Prüfung in Auswahl und Bestätigung lokalisiert kennzeichnen.
+- [x] 5.14 Die gemeinsame Suche so anbinden, dass Account-Namen und E-Mail-Suchschlüssel serverseitig ausgewertet werden, ohne E-Mail-Adressen oder technische Identitäten in der Trefferliste offenzulegen.
 
 ## 6. Audit, Observability und Dokumentation
 
@@ -67,6 +70,7 @@
 - [x] 6.5 Prüfen und dokumentieren, dass keine Studio-Datenbankschemaänderung erforderlich ist; falls die Implementierung doch Schemaänderungen benötigt, `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` im selben Änderungsblock fortschreiben.
 - [x] 6.6 Nutzerverständlichen Studio-Changelog-Eintrag ergänzen.
 - [x] 6.7 Dokumentieren und testen, dass der aktuelle Inhaber nie aus Audit oder History rekonstruiert wird und eine optionale Historienanzeige auf potenziell fehlende externe Änderungen hinweist.
+- [x] 6.8 Content-Ownership-Referenz und betroffene Architekturabschnitte auf den Keycloak-gestützten, tenantgebundenen Account-Suchvertrag aktualisieren.
 
 ## 7. Abnahme und Rollout
 

@@ -10,11 +10,13 @@ import type {
 import {
   loadOrganizationById,
   loadOrganizationList,
+  loadMappedUsersBySubject,
   resolveUserDetail,
   resolveUsersWithPagination,
 } from '@sva/iam-admin';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { loadContentOwnershipAccountTargets } from './ownership-account-targets.js';
 import {
   insertContentHistory,
   isContentMutationFinalized,
@@ -361,34 +363,52 @@ export const loadContentOwnershipTargets = async (
     readonly search?: string;
     readonly currentOwner?: IamContentOwnerPrincipal;
   }
-): Promise<IamContentOwnershipTargetList> =>
-  withInstanceScopedDb(instanceId, async (client) => {
-    if (input.type === 'account') {
-      const result = await resolveUsersWithPagination(client, {
-        instanceId,
-        page: input.page,
-        pageSize: input.pageSize,
-        status: 'active',
-        activeLifecycleOnly: true,
-        search: input.search,
-        includeTechnicalAccounts: false,
-        ...(input.currentOwner?.type === 'account'
-          ? { excludeAccountId: input.currentOwner.id }
-          : {}),
-      });
-      const items = result.users.map((user) => ({
-        principal: { type: 'account' as const, id: user.id },
-        displayName: user.displayName,
-      }));
-      return {
-        items,
-        page: input.page,
-        pageSize: input.pageSize,
-        total: result.total,
-      };
-    }
+): Promise<IamContentOwnershipTargetList> => {
+  if (input.type === 'account') {
+    const accountInput = {
+      instanceId,
+      page: input.page,
+      pageSize: input.pageSize,
+      ...(input.currentOwner?.type === 'account'
+        ? { excludeAccountId: input.currentOwner.id }
+        : {}),
+    };
+    const result = input.search
+      ? await loadContentOwnershipAccountTargets({
+          ...accountInput,
+          search: input.search,
+          loadMappedAccounts: (subjects) =>
+            withInstanceScopedDb(instanceId, (client) =>
+              loadMappedUsersBySubject(client, {
+                instanceId,
+                subjects,
+                activeLifecycleOnly: true,
+                includeTechnicalAccounts: false,
+              })
+            ),
+        })
+      : await withInstanceScopedDb(instanceId, (client) =>
+          resolveUsersWithPagination(client, {
+            ...accountInput,
+            status: 'active',
+            activeLifecycleOnly: true,
+            includeTechnicalAccounts: false,
+          })
+        );
+    const items = result.users.map((user) => ({
+      principal: { type: 'account' as const, id: user.id },
+      displayName: user.displayName,
+    }));
+    return {
+      items,
+      page: input.page,
+      pageSize: input.pageSize,
+      total: result.total,
+    };
+  }
 
-    const result = await loadOrganizationList(client, {
+  const result = await withInstanceScopedDb(instanceId, (client) =>
+    loadOrganizationList(client, {
       instanceId,
       page: input.page,
       pageSize: input.pageSize,
@@ -399,18 +419,19 @@ export const loadContentOwnershipTargets = async (
         : {}),
       sortBy: 'displayName',
       sortDirection: 'asc',
-    });
-    const items = result.items.map((organization) => ({
-      principal: { type: 'organization' as const, id: organization.id },
-      displayName: organization.displayName,
-    }));
-    return {
-      items,
-      page: input.page,
-      pageSize: input.pageSize,
-      total: result.total,
-    };
-  });
+    })
+  );
+  const items = result.items.map((organization) => ({
+    principal: { type: 'organization' as const, id: organization.id },
+    displayName: organization.displayName,
+  }));
+  return {
+    items,
+    page: input.page,
+    pageSize: input.pageSize,
+    total: result.total,
+  };
+};
 
 export const createContent = async (input: CreateContentInput): Promise<string> =>
   withInstanceScopedDb(input.instanceId, async (client) => {

@@ -66,7 +66,12 @@ const mapRoleRows = (roleRows: AccountProjectionRow['role_rows']): readonly IamR
 
 export const loadMappedUsersBySubject = async (
   client: QueryClient,
-  input: { instanceId: string; subjects: readonly string[] }
+  input: {
+    instanceId: string;
+    subjects: readonly string[];
+    activeLifecycleOnly?: boolean;
+    includeTechnicalAccounts?: boolean;
+  }
 ): Promise<ReadonlyMap<string, IamUserListItem>> => {
   if (input.subjects.length === 0) {
     return new Map();
@@ -117,9 +122,24 @@ LEFT JOIN iam.activity_logs al
  AND al.account_id = a.id
  AND al.event_type = 'login'
 WHERE a.keycloak_subject = ANY($2::text[])
+  AND (
+    $3::boolean = FALSE OR (
+      a.status = 'active'
+      AND a.is_blocked = FALSE
+      AND a.soft_deleted_at IS NULL
+      AND a.permanently_deleted_at IS NULL
+      AND a.deletion_lifecycle_state = 'active'
+    )
+  )
+  AND ($4::boolean = TRUE OR a.is_technical_account = FALSE)
 GROUP BY a.id;
 `,
-    [input.instanceId, input.subjects]
+    [
+      input.instanceId,
+      input.subjects,
+      input.activeLifecycleOnly ?? false,
+      input.includeTechnicalAccounts ?? true,
+    ]
   );
 
   return new Map(

@@ -280,7 +280,7 @@ eine begrenzte Same-Origin-Fassade; eine Release- oder Versionsmatrix wird nicht
 
 ### Ergänzung 2026-08: Expliziter Inhabertransfer
 
-Inhaltsupdates und Inhaberwechsel sind getrennte Befehle. Ein gemeinsamer Editorvertrag zeigt den frisch gelesenen Inhaber und wiederholt am Save, dass Bearbeitung keine Übertragung auslöst. Der Transfer löst Ziel-Principal, Credentials und DataProvider-Binding serverseitig auf und revalidiert sie unter Lock.
+Inhaltsupdates und Inhaberwechsel sind getrennte Befehle. Ein gemeinsamer Editorvertrag zeigt den frisch gelesenen Inhaber und wiederholt am Save, dass Bearbeitung keine Übertragung auslöst. Der Transfer löst Ziel-Principal, Credentials und DataProvider-Binding serverseitig auf und revalidiert sie unter Lock. Die Suche nach persönlichen Zielaccounts verwendet die tenantgebundene Keycloak-Suche und schneidet deren Ergebnisse serverseitig mit aktiven, nicht technischen lokalen Account-Projektionen derselben Instanz; verschlüsselte Studio-PII erhält keinen zusätzlichen Suchindex.
 
 ### Ergänzung 2026-08: Lokale Dokumentationsarchitektur
 

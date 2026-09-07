@@ -150,6 +150,7 @@ export {
   type ContentPrimitiveAuthorizationResource,
   type ContentPrimitiveAuthorizationResult,
 } from './iam-contents/server-authorization.js';
+export { ContentOwnershipAccountSearchError } from './iam-contents/ownership-account-targets.js';
 export {
   bindExternalContentReference,
   createExternalContentReference,

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1262,
+  "body": "Beim Übertragen von Inhalten lassen sich persönliche Zielinhaber jetzt zuverlässig über ihren Namen oder ihre E-Mail-Adresse finden.\n\n- Die Suche verwendet den Tenant-Keycloak und berücksichtigt nur aktive, lokal zugeordnete Accounts derselben Instanz.\n- Technische, inaktive und fremde Accounts sowie der aktuelle Inhaber bleiben ausgeschlossen.\n- E-Mail-Adressen werden nicht in der Trefferliste angezeigt."
+}

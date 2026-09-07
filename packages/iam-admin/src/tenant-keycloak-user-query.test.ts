@@ -76,10 +76,10 @@ describe('tenant-keycloak-user-query', () => {
       subjects: ['kc-user-1'],
     });
 
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('WHERE a.keycloak_subject = ANY($2::text[])'), [
-      'de-musterhausen',
-      ['kc-user-1'],
-    ]);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE a.keycloak_subject = ANY($2::text[])'),
+      ['de-musterhausen', ['kc-user-1'], false, true]
+    );
     expect(result.get('kc-user-1')).toMatchObject({
       id: 'account-1',
       keycloakSubject: 'kc-user-1',
@@ -94,5 +94,25 @@ describe('tenant-keycloak-user-query', () => {
         },
       ],
     });
+  });
+
+  it('can restrict mapped subjects to active lifecycle human accounts', async () => {
+    const client = {
+      query: vi.fn(async () => ({ rows: [] })),
+    };
+
+    await loadMappedUsersBySubject(client, {
+      instanceId: 'de-musterhausen',
+      subjects: ['kc-user-1'],
+      activeLifecycleOnly: true,
+      includeTechnicalAccounts: false,
+    });
+
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("a.deletion_lifecycle_state = 'active'"),
+      ['de-musterhausen', ['kc-user-1'], true, false]
+    );
+    expect(client.query.mock.calls[0]?.[0]).toContain('a.is_blocked = FALSE');
+    expect(client.query.mock.calls[0]?.[0]).toContain('a.is_technical_account = FALSE');
   });
 });

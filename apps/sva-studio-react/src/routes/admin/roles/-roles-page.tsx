@@ -49,7 +49,7 @@ export const RolesPage = () => {
 
   const [search, setSearch] = React.useState('');
   const [roleTypeFilter, setRoleTypeFilter] = React.useState<RoleTypeFilter>('studio');
-  const keycloakRolesApi = useKeycloakRoles(!isPlatformScope && roleTypeFilter !== 'studio');
+  const keycloakRolesApi = useKeycloakRoles(!isPlatformScope);
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
   const deleteConfirmation = getRoleDeleteConfirmationContent();
   const visibleRoles = React.useMemo(
@@ -60,9 +60,16 @@ export const RolesPage = () => {
 
   const filteredRoles = React.useMemo<readonly RoleRow[]>(() => {
     const query = search.trim().toLowerCase();
+    const localRoleNames = new Set(
+      visibleRoles.flatMap((role) => [role.roleKey, role.roleName, role.externalRoleName])
+    );
+    const localRows = visibleRoles.map(toLocalRoleRow);
+    const orphanedStudioRows = keycloakRolesApi.roles
+      .filter((role) => role.managedBy === 'studio' && !localRoleNames.has(role.roleName))
+      .map(toKeycloakRoleRow);
     const sourceRoles =
       isPlatformScope || roleTypeFilter === 'studio'
-        ? visibleRoles.map(toLocalRoleRow)
+        ? [...localRows, ...orphanedStudioRows]
         : keycloakRolesApi.roles.map(toKeycloakRoleRow);
 
     return sourceRoles.filter(
@@ -86,6 +93,8 @@ export const RolesPage = () => {
   );
 
   const selectedApi = roleTypeFilter === 'studio' || isPlatformScope ? rolesApi : keycloakRolesApi;
+  const keepsFiltersWhileLoading =
+    !isPlatformScope && roleTypeFilter !== 'studio' && selectedApi.isLoading;
 
   return (
     <section className="space-y-5" aria-busy={selectedApi.isLoading}>
@@ -142,14 +151,18 @@ export const RolesPage = () => {
           sorting={{ mode: 'client', labels: studioDataTableSortingLabels }}
           getRowId={(role) => role.id}
           selectionMode="none"
-          isLoading={selectedApi.isLoading}
+          isLoading={selectedApi.isLoading && !keepsFiltersWhileLoading}
           loadingState={t('content.messages.loading')}
           emptyState={
             <Card
               className="border-none p-0 text-sm text-muted-foreground shadow-none"
               role="status"
             >
-              {t('admin.roles.messages.emptyState')}
+              {t(
+                keepsFiltersWhileLoading
+                  ? 'content.messages.loading'
+                  : 'admin.roles.messages.emptyState'
+              )}
             </Card>
           }
           toolbarStart={

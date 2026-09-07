@@ -513,7 +513,6 @@ export function StudioDataTable<TData extends RowData>({
   if (isLoading) {
     return (
       <div className="rounded-xl border border-border bg-card shadow-shell" aria-busy="true">
-        {toolbarContent}
         <div className="p-6 text-sm text-muted-foreground" role="status" aria-live="polite">
           {loadingState ?? labels.loading}
         </div>

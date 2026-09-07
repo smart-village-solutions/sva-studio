@@ -9,7 +9,7 @@ export const matchesRoleTypeFilter = (
   filter: RoleTypeFilter
 ): boolean => {
   if (filter === 'builtin') return role.managedBy === 'keycloak_builtin';
-  if (filter === 'external') return role.managedBy === 'external' && !role.isSystemRole;
+  if (filter === 'external') return role.managedBy === 'external';
   return role.managedBy === 'studio';
 };
 

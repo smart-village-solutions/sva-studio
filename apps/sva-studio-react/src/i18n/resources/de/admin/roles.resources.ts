@@ -42,6 +42,8 @@ export const rolesAdminDEResources = {
     customRole: 'Benutzerdefinierte Rolle',
     externalRole: 'Externe Rolle',
     builtInRole: 'Keycloak-Built-in-Rolle',
+    protectedRole: 'Geschützte Keycloak-Rolle',
+    protectionReason: 'Schutzgrund: {{reason}}',
     temporaryNotice: 'Rollen sind vorläufig und werden weiterentwickelt.',
   },
   editability: {

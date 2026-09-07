@@ -42,6 +42,8 @@ export const rolesAdminENResources = {
     customRole: 'Custom role',
     externalRole: 'External role',
     builtInRole: 'Keycloak built-in role',
+    protectedRole: 'Protected Keycloak role',
+    protectionReason: 'Protection reason: {{reason}}',
     temporaryNotice: 'Role names are temporary and will evolve.',
   },
   editability: {

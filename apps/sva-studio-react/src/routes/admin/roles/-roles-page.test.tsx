@@ -232,6 +232,23 @@ describe('RolesPage', () => {
           assignable: false,
           reasonCode: 'keycloak_builtin_role',
         },
+        {
+          id: 'realm:orphaned-studio-role',
+          roleName: 'orphaned_studio_role',
+          managedBy: 'studio',
+          composite: false,
+          category: 'assignable',
+          assignable: true,
+        },
+        {
+          id: 'realm:platform-role',
+          roleName: 'instance_registry_admin',
+          managedBy: 'external',
+          composite: false,
+          category: 'platform_role',
+          assignable: false,
+          reasonCode: 'platform_role',
+        },
       ],
       isLoading: false,
       error: null,
@@ -240,11 +257,14 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
+    expect(screen.getAllByText('orphaned_studio_role').length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText('Rollentyp'), {
       target: { value: 'external' },
     });
     expect(screen.getAllByText('news_editor').length).toBeGreaterThan(0);
     expect(screen.queryByText('default-roles-de-musterhausen')).toBeNull();
+    expect(screen.getAllByText('Geschützte Keycloak-Rolle').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Schutzgrund: platform_role').length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText('Rollentyp'), {
       target: { value: 'builtin' },

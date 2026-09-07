@@ -1,4 +1,4 @@
-import type { IamKeycloakRealmRole, IamRoleListItem } from '@sva/core';
+import type { IamKeycloakRealmRole, IamKeycloakRoleCategory, IamRoleListItem } from '@sva/core';
 import type { StudioColumnDef } from '@sva/studio-ui-react';
 
 import { Badge } from '../../../components/ui/badge';
@@ -25,6 +25,8 @@ export type RoleRow = Readonly<{
   managedBy: 'studio' | 'external' | 'keycloak_builtin';
   isSystemRole: boolean;
   editability: 'editable' | 'read_only' | 'blocked';
+  keycloakCategory?: IamKeycloakRoleCategory;
+  reasonCode?: string;
   localRole?: IamRoleListItem;
 }>;
 
@@ -45,8 +47,10 @@ export const toKeycloakRoleRow = (role: IamKeycloakRealmRole): RoleRow => ({
   roleKey: role.roleName,
   ...(role.description ? { description: role.description } : {}),
   managedBy: role.managedBy,
-  isSystemRole: false,
-  editability: 'read_only',
+  isSystemRole: ['system_admin', 'service_role', 'platform_role'].includes(role.category),
+  editability: role.assignable || role.category === 'keycloak_builtin' ? 'read_only' : 'blocked',
+  keycloakCategory: role.category,
+  ...(role.reasonCode ? { reasonCode: role.reasonCode } : {}),
 });
 
 export const createRoleListColumns = (
@@ -77,7 +81,12 @@ export const createRoleListColumns = (
       cell: (role) => (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{roleTypeLabel(role)}</span>
+            <span className="font-medium">
+              {role.keycloakCategory &&
+              !['assignable', 'keycloak_builtin'].includes(role.keycloakCategory)
+                ? t('admin.roles.labels.protectedRole')
+                : roleTypeLabel(role)}
+            </span>
             <Badge
               className={`rounded-full ${editabilityClassByValue[role.editability]}`}
               variant="outline"
@@ -85,6 +94,11 @@ export const createRoleListColumns = (
               {t(editabilityLabelKey[role.editability])}
             </Badge>
           </div>
+          {role.reasonCode ? (
+            <p className="text-xs text-muted-foreground">
+              {t('admin.roles.labels.protectionReason', { reason: role.reasonCode })}
+            </p>
+          ) : null}
         </div>
       ),
     },

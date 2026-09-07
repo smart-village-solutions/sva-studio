@@ -65,6 +65,7 @@ export const createInstanceKeycloakPlanReader =
         authClientSecret: input.authClientSecret,
         tenantAdminClient: input.tenantAdminClient,
         tenantAdminClientSecret: input.tenantAdminClientSecret,
+        pluginOidcClients: input.pluginOidcClients,
         preflight,
         state,
       });
@@ -75,6 +76,7 @@ export const createInstanceKeycloakPlanReader =
         authClientSecret: input.authClientSecret,
         tenantAdminClient: input.tenantAdminClient,
         tenantAdminClientSecret: input.tenantAdminClientSecret,
+        pluginOidcClients: input.pluginOidcClients,
         preflight,
       });
     }

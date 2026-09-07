@@ -7,6 +7,14 @@ import {
 } from './provisioning-auth.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 
+const ssfClientRequirement = {
+  contractVersion: '1.0',
+  pluginId: 'ssf',
+  clientId: 'ssf',
+  audience: 'ssf',
+  enabled: false,
+} as const;
+
 const input: KeycloakProvisioningInput = {
   instanceId: 'demo',
   primaryHostname: 'demo.example.org',
@@ -23,6 +31,7 @@ const input: KeycloakProvisioningInput = {
   tenantAdminBootstrap: {
     username: 'tenant-admin',
   },
+  pluginOidcClients: [ssfClientRequirement],
 };
 
 const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
@@ -66,6 +75,34 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
     directAccessGrantsEnabled: true,
     serviceAccountsEnabled: true,
   },
+  pluginOidcClients: [{
+    requirement: ssfClientRequirement,
+    clientRepresentation: {
+      id: 'ssf-client-1',
+      clientId: 'ssf',
+      enabled: false,
+      rootUrl: '',
+      redirectUris: [],
+      webOrigins: [],
+      standardFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      attributes: { 'post.logout.redirect.uris': '' },
+    },
+    protocolMappers: [{
+      name: 'studio-ssf-audience',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-audience-mapper',
+      config: {
+        'included.client.audience': 'ssf',
+        'included.custom.audience': '',
+        'id.token.claim': 'false',
+        'access.token.claim': 'true',
+        'lightweight.claim': 'false',
+        'introspection.token.claim': 'true',
+      },
+    }],
+  }],
   protocolMappers: [
     {
       name: 'instanceId',
@@ -183,6 +220,46 @@ describe('provisioning-auth readers', () => {
               standardFlowEnabledMatch: false,
             }),
           }),
+        ]),
+      })
+    );
+  });
+
+  it('reports SSF client drift and verifies the exact disabled state after reconciliation', async () => {
+    const currentState = await readState(input);
+    const ssfClientState = currentState.pluginOidcClients[0];
+    if (!ssfClientState) throw new Error('missing_ssf_client_state');
+    const driftedReadState = vi.fn(async (): Promise<KeycloakReadState> => ({
+      ...currentState,
+      pluginOidcClients: [{
+        ...ssfClientState,
+        clientRepresentation: {
+          ...ssfClientState.clientRepresentation,
+          enabled: true,
+          redirectUris: ['https://provider.example/callback'],
+        },
+      }],
+    }));
+    const driftedPlan = createInstanceKeycloakPlanReader(
+      driftedReadState,
+      createInstanceKeycloakPreflightReader(driftedReadState)
+    );
+    const alignedPlan = createInstanceKeycloakPlanReader(
+      readState,
+      createInstanceKeycloakPreflightReader(readState)
+    );
+
+    await expect(driftedPlan(input)).resolves.toEqual(
+      expect.objectContaining({
+        steps: expect.arrayContaining([
+          expect.objectContaining({ stepKey: 'plugin_client_ssf', action: 'update' }),
+        ]),
+      })
+    );
+    await expect(alignedPlan(input)).resolves.toEqual(
+      expect.objectContaining({
+        steps: expect.arrayContaining([
+          expect.objectContaining({ stepKey: 'plugin_client_ssf', action: 'verify' }),
         ]),
       })
     );

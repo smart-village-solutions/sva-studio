@@ -4,6 +4,7 @@ import {
   createReadKeycloakState,
 } from '@sva/instance-registry/provisioning-auth-state';
 import type { KeycloakProvisioningInput } from '@sva/instance-registry';
+import { SSF_TENANT_OIDC_CLIENT_REQUIREMENT } from '@sva/plugin-ssf/provisioning';
 
 import {
   KeycloakAdminClient,
@@ -35,8 +36,17 @@ const provisionerAdapters = createKeycloakProvisioningAdapters(
   createAuthKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv)
 );
 
-export const readKeycloakState = adminAdapters.readKeycloakState;
-export const readKeycloakStateViaProvisioner = provisionerAdapters.readKeycloakState;
+const withInstalledPluginOidcClients = <T extends object>(
+  input: T
+): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> => ({
+  ...input,
+  pluginOidcClients: [SSF_TENANT_OIDC_CLIENT_REQUIREMENT],
+});
+
+export const readKeycloakState = (input: KeycloakProvisioningInput) =>
+  adminAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
+export const readKeycloakStateViaProvisioner = (input: KeycloakProvisioningInput) =>
+  provisionerAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
 export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisioningInput) => {
   const clientId = input.tenantAdminClient?.clientId;
   const secretConfigured = input.tenantAdminClient?.secretConfigured === true;
@@ -53,7 +63,13 @@ export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisionin
         clientSecret,
       })
     )
-  )(input);
+  )(withInstalledPluginOidcClients(input));
 };
-export const provisionInstanceAuthArtifacts = adminAdapters.provisionInstanceAuthArtifacts;
-export const provisionInstanceAuthArtifactsViaProvisioner = provisionerAdapters.provisionInstanceAuthArtifacts;
+export const provisionInstanceAuthArtifacts = (
+  input: Parameters<typeof adminAdapters.provisionInstanceAuthArtifacts>[0]
+) =>
+  adminAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
+export const provisionInstanceAuthArtifactsViaProvisioner = (
+  input: Parameters<typeof provisionerAdapters.provisionInstanceAuthArtifacts>[0]
+) =>
+  provisionerAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));

@@ -1169,6 +1169,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     directAccessGrantsEnabled?: boolean;
     serviceAccountsEnabled?: boolean;
     enabled?: boolean;
+    uriPolicy?: 'merge' | 'replace';
   }): Promise<void> {
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
@@ -1181,13 +1182,21 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       standardFlowEnabled: input.standardFlowEnabled ?? true,
       directAccessGrantsEnabled: input.directAccessGrantsEnabled ?? false,
       serviceAccountsEnabled: input.serviceAccountsEnabled ?? false,
-      redirectUris: mergeSortedUniqueStrings(existing?.redirectUris, input.redirectUris),
-      webOrigins: mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
+      redirectUris: input.uriPolicy === 'replace'
+        ? [...input.redirectUris]
+        : mergeSortedUniqueStrings(existing?.redirectUris, input.redirectUris),
+      webOrigins: input.uriPolicy === 'replace'
+        ? [...input.webOrigins]
+        : mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
       attributes: {
         ...existing?.attributes,
-        'post.logout.redirect.uris': mergeSortedUniqueStrings(
-          readPostLogoutRedirectUris(existing?.attributes),
-          input.postLogoutRedirectUris
+        'post.logout.redirect.uris': (
+          input.uriPolicy === 'replace'
+            ? [...input.postLogoutRedirectUris]
+            : mergeSortedUniqueStrings(
+                readPostLogoutRedirectUris(existing?.attributes),
+                input.postLogoutRedirectUris
+              )
         ).join('##'),
       },
       rootUrl: input.rootUrl,
@@ -1387,20 +1396,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     claimName: string;
     multivalued?: boolean;
   }): Promise<void> {
-    await this.assertWriteAvailability();
-    const client = await this.getOidcClientByClientId(input.clientId);
-    if (!client) {
-      throw new KeycloakAdminRequestError({
-        message: `Keycloak client ${input.clientId} is missing.`,
-        statusCode: 404,
-        code: 'client_not_found',
-        retryable: false,
-      });
-    }
-
-    const existingMappers = await this.listClientProtocolMappers(input.clientId);
-    const existingMapper = existingMappers.find((mapper) => mapper.name === input.name);
-    const payload = {
+    await this.ensureProtocolMapper(input.clientId, {
       name: input.name,
       protocol: 'openid-connect',
       protocolMapper: 'oidc-usermodel-attribute-mapper',
@@ -1413,7 +1409,51 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         'access.token.claim': 'true',
         'userinfo.token.claim': 'true',
       },
-    };
+    });
+  }
+
+  async ensureAudienceProtocolMapper(input: {
+    clientId: string;
+    name: string;
+    audience: string;
+  }): Promise<void> {
+    await this.ensureProtocolMapper(input.clientId, {
+      name: input.name,
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-audience-mapper',
+      config: {
+        'included.client.audience': input.audience,
+        'included.custom.audience': '',
+        'id.token.claim': 'false',
+        'access.token.claim': 'true',
+        'lightweight.claim': 'false',
+        'introspection.token.claim': 'true',
+      },
+    });
+  }
+
+  private async ensureProtocolMapper(
+    clientId: string,
+    payload: {
+      name: string;
+      protocol: string;
+      protocolMapper: string;
+      config: Readonly<Record<string, string>>;
+    }
+  ): Promise<void> {
+    await this.assertWriteAvailability();
+    const client = await this.getOidcClientByClientId(clientId);
+    if (!client) {
+      throw new KeycloakAdminRequestError({
+        message: `Keycloak client ${clientId} is missing.`,
+        statusCode: 404,
+        code: 'client_not_found',
+        retryable: false,
+      });
+    }
+
+    const existingMappers = await this.listClientProtocolMappers(clientId);
+    const existingMapper = existingMappers.find((mapper) => mapper.name === payload.name);
 
     if (!existingMapper) {
       await this.executeWithResilience<void>({

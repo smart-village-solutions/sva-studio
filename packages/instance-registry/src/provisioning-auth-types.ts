@@ -4,6 +4,8 @@ import { buildExpectedClientConfig, buildExpectedTenantAdminClientConfig } from 
 
 export type KeycloakClientRepresentation = {
   readonly id?: string;
+  readonly clientId?: string;
+  readonly enabled?: boolean;
   readonly rootUrl?: string;
   readonly redirectUris?: readonly string[];
   readonly webOrigins?: readonly string[];
@@ -12,6 +14,25 @@ export type KeycloakClientRepresentation = {
   readonly serviceAccountsEnabled?: boolean;
   readonly attributes?: Readonly<Record<string, string>>;
 } | null;
+
+export type PluginOidcClientRequirement = Readonly<{
+  contractVersion: '1.0';
+  pluginId: string;
+  clientId: string;
+  audience: string;
+  enabled: false;
+}>;
+
+export type PluginOidcClientState = Readonly<{
+  requirement: PluginOidcClientRequirement;
+  clientRepresentation: KeycloakClientRepresentation;
+  protocolMappers: readonly {
+    readonly name: string;
+    readonly protocol?: string;
+    readonly protocolMapper?: string;
+    readonly config?: Readonly<Record<string, string>>;
+  }[];
+}>;
 
 export type KeycloakRoleRepresentation = {
   readonly id?: string;
@@ -37,6 +58,7 @@ export type KeycloakReadState = {
   readonly realm: { realm: string } | null;
   readonly clientRepresentation: KeycloakClientRepresentation;
   readonly tenantAdminClientRepresentation: KeycloakClientRepresentation;
+  readonly pluginOidcClients: readonly PluginOidcClientState[];
   readonly protocolMappers: readonly { name: string }[];
   readonly tenantAdminStatus: TenantAdminStatus;
   readonly keycloakClientSecret: string | null;
@@ -59,4 +81,5 @@ export type KeycloakProvisioningInput = {
   };
   tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
+  pluginOidcClients?: readonly PluginOidcClientRequirement[];
 };

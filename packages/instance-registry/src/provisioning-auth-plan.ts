@@ -1,8 +1,16 @@
 import type { InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
-import type { KeycloakReadState } from './provisioning-auth-types.js';
+import type {
+  KeycloakProvisioningInput,
+  KeycloakReadState,
+  PluginOidcClientRequirement,
+} from './provisioning-auth-types.js';
 import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
+import {
+  findPluginOidcClientState,
+  readPluginOidcClientAlignment,
+} from './provisioning-auth-plugin-clients.js';
 
 const buildRealmStep = (
   realmMode: InstanceRealmMode,
@@ -133,6 +141,37 @@ const buildTenantAdminClientStep = (input: {
   };
 };
 
+const buildPluginOidcClientStep = (
+  requirement: PluginOidcClientRequirement,
+  state: KeycloakReadState | undefined,
+  blocked: boolean
+): KeycloakTenantPlan['steps'][number] => {
+  const alignment = readPluginOidcClientAlignment(
+    requirement,
+    findPluginOidcClientState(requirement, state)
+  );
+  const clientExists = Boolean(alignment.client);
+
+  return {
+    stepKey: `plugin_client_${requirement.pluginId}`,
+    title: `Plugin-Client ${requirement.pluginId} abgleichen`,
+    action: !clientExists ? 'create' : alignment.aligned ? 'verify' : 'update',
+    status: blocked ? 'blocked' : 'ready',
+    summary: !clientExists
+      ? 'Der deaktivierte Plugin-Client wird ohne Callback- oder Origin-Freigaben angelegt.'
+      : alignment.aligned
+        ? 'Der Plugin-Client entspricht dem deaktivierten, callbackfreien Sollzustand.'
+        : 'Der Plugin-Client und sein Audience-Mapper werden auf den sicheren Sollzustand abgeglichen.',
+    details: {
+      pluginId: requirement.pluginId,
+      clientId: requirement.clientId,
+      clientExists,
+      clientEnabled: alignment.client?.enabled,
+      audienceMapperMatches: alignment.audienceMapperMatches,
+    },
+  };
+};
+
 const buildSecretStep = (blocked: boolean, secretAligned: boolean): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'secret',
   title: 'Tenant-Secret abgleichen',
@@ -230,6 +269,7 @@ export const buildPlan = (input: {
     secretConfigured?: boolean;
   };
   tenantAdminClientSecret?: string;
+  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
   preflight: KeycloakTenantPreflight;
   state?: KeycloakReadState;
 }): KeycloakTenantPlan => {
@@ -246,6 +286,10 @@ export const buildPlan = (input: {
       input.state?.tenantAdminClientSecret &&
       input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
   );
+  const pluginOidcClients =
+    input.pluginOidcClients ??
+    input.state?.pluginOidcClients.map(({ requirement }) => requirement) ??
+    [];
 
   const steps: KeycloakTenantPlan['steps'] = [
     buildRealmStep(input.realmMode, input.state, blocked),
@@ -267,6 +311,9 @@ export const buildPlan = (input: {
       standardFlowEnabledMatch: tenantAdminClientAlignment.standardFlowEnabledMatch,
       webOriginsMatch: tenantAdminClientAlignment.webOriginsMatch,
     }),
+    ...pluginOidcClients.map((requirement) =>
+      buildPluginOidcClientStep(requirement, input.state, blocked)
+    ),
     buildSecretStep(blocked, secretAligned),
     buildTenantAdminClientSecretStep(
       blocked,

@@ -772,6 +772,49 @@ describe('Keycloak admin client', () => {
     ]);
   });
 
+  it('removes existing callback access when strict URI replacement is requested', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{
+          id: 'client-1',
+          clientId: 'ssf',
+          enabled: true,
+          rootUrl: 'https://legacy.example',
+          redirectUris: ['https://legacy.example/callback'],
+          webOrigins: ['https://legacy.example'],
+          attributes: { 'post.logout.redirect.uris': 'https://legacy.example/logout' },
+        }])
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'ssf',
+      redirectUris: [],
+      postLogoutRedirectUris: [],
+      webOrigins: [],
+      rootUrl: '',
+      enabled: false,
+      standardFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      uriPolicy: 'replace',
+    });
+
+    const updateCall = fetchImpl.mock.calls.find(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
+    );
+    expect(JSON.parse(String(updateCall?.[1]?.body))).toMatchObject({
+      enabled: false,
+      rootUrl: '',
+      redirectUris: [],
+      webOrigins: [],
+      attributes: { 'post.logout.redirect.uris': '' },
+    });
+  });
+
   it('grants required realm-management client roles to the tenant admin service account', async () => {
     const fetchImpl = vi
       .fn()
@@ -1138,6 +1181,57 @@ describe('Keycloak admin client', () => {
       config: { multivalued: 'true' },
     });
     expect(String(fetchImpl.mock.calls[7]?.[0])).toContain('/protocol-mappers/models/mapper-1');
+  });
+
+  it('creates an SSF audience mapper once and then verifies it idempotently', async () => {
+    const keycloakClient = { id: 'client-1', clientId: 'ssf' };
+    const audienceMapper = {
+      id: 'mapper-1',
+      name: 'studio-ssf-audience',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-audience-mapper',
+      config: {
+        'included.client.audience': 'ssf',
+        'included.custom.audience': '',
+        'id.token.claim': 'false',
+        'access.token.claim': 'true',
+        'lightweight.claim': 'false',
+        'introspection.token.claim': 'true',
+      },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [keycloakClient]))
+      .mockResolvedValueOnce(createJsonResponse(200, [keycloakClient]))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [keycloakClient]))
+      .mockResolvedValueOnce(createJsonResponse(200, [keycloakClient]))
+      .mockResolvedValueOnce(createJsonResponse(200, [audienceMapper]));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureAudienceProtocolMapper({
+      clientId: 'ssf',
+      name: 'studio-ssf-audience',
+      audience: 'ssf',
+    });
+    await client.ensureAudienceProtocolMapper({
+      clientId: 'ssf',
+      name: 'studio-ssf-audience',
+      audience: 'ssf',
+    });
+
+    const mapperWrites = fetchImpl.mock.calls.filter(
+      (call) => String(call[0]).includes('/protocol-mappers/models') && call[1]?.method !== 'GET'
+    );
+    expect(mapperWrites).toHaveLength(1);
+    expect(JSON.parse(String(mapperWrites[0]?.[1]?.body))).toEqual(
+      expect.objectContaining({
+        protocolMapper: 'oidc-audience-mapper',
+        config: expect.objectContaining({ 'included.client.audience': 'ssf' }),
+      })
+    );
   });
 
   it('finds users by exact username and case-insensitive email', async () => {

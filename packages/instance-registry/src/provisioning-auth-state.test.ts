@@ -8,6 +8,57 @@ import {
   type KeycloakProvisioningClient,
 } from './provisioning-auth-state.js';
 
+const ssfClientRequirement = {
+  contractVersion: '1.0',
+  pluginId: 'ssf',
+  clientId: 'ssf',
+  audience: 'ssf',
+  enabled: false,
+} as const;
+
+const createClientWithAlignedSsf = () => createClient({
+  getOidcClientByClientId: vi.fn(async (clientId: string) =>
+    clientId === 'ssf'
+      ? {
+          id: 'ssf-id',
+          clientId: 'ssf',
+          enabled: false,
+          rootUrl: '',
+          redirectUris: [],
+          webOrigins: [],
+          standardFlowEnabled: false,
+          directAccessGrantsEnabled: false,
+          serviceAccountsEnabled: false,
+          attributes: { 'post.logout.redirect.uris': '' },
+        }
+      : {
+          id: `${clientId}-id`,
+          clientId,
+          redirectUris: ['https://demo.example.org/*'],
+          attributes: { 'post.logout.redirect.uris': 'https://demo.example.org/*' },
+          webOrigins: ['https://demo.example.org'],
+          rootUrl: 'https://demo.example.org',
+        }
+  ),
+  listClientProtocolMappers: vi.fn(async (clientId: string) =>
+    clientId === 'ssf'
+      ? [{
+          name: 'studio-ssf-audience',
+          protocol: 'openid-connect',
+          protocolMapper: 'oidc-audience-mapper',
+          config: {
+            'included.client.audience': 'ssf',
+            'included.custom.audience': '',
+            'id.token.claim': 'false',
+            'access.token.claim': 'true',
+            'lightweight.claim': 'false',
+            'introspection.token.claim': 'true',
+          },
+        }]
+      : [{ name: 'instanceId' }]
+  ),
+});
+
 const createClient = (overrides?: Partial<KeycloakProvisioningClient>): KeycloakProvisioningClient => ({
   ensureRealm: vi.fn(async () => undefined),
   getRealm: vi.fn(async () => ({ realm: 'demo' })),
@@ -25,6 +76,7 @@ const createClient = (overrides?: Partial<KeycloakProvisioningClient>): Keycloak
   ensureTenantAdminServiceAccess: vi.fn(async () => undefined),
   listClientProtocolMappers: vi.fn(async () => [{ name: 'instanceId' }]),
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
+  ensureAudienceProtocolMapper: vi.fn(async () => undefined),
   ensureRealmRole: vi.fn(async () => undefined),
   getRoleByName: vi.fn(async (externalName: string) => ({ externalName })),
   findUserByUsername: vi.fn(async () => null),
@@ -121,6 +173,97 @@ describe('provisioning-auth-state', () => {
     expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin');
     expect(client.ensureRealmRole).not.toHaveBeenCalledWith('instance_registry_admin');
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
+  });
+
+  it('provisions the disabled SSF client independently for two tenant realms', async () => {
+    const clients = new Map([
+      ['tenant-a', createClientWithAlignedSsf()],
+      ['tenant-b', createClientWithAlignedSsf()],
+    ]);
+    const provision = createProvisionInstanceAuthArtifacts((realm) => {
+      const client = realm ? clients.get(realm) : undefined;
+      if (!client) throw new Error('unexpected_realm');
+      return client;
+    });
+
+    for (const authRealm of clients.keys()) {
+      await provision({
+        instanceId: authRealm,
+        primaryHostname: `${authRealm}.example.org`,
+        realmMode: 'existing',
+        authRealm,
+        authClientId: 'sva-studio',
+        pluginOidcClients: [ssfClientRequirement],
+      });
+    }
+
+    for (const client of clients.values()) {
+      expect(client.ensureOidcClient).toHaveBeenCalledWith({
+        clientId: 'ssf',
+        redirectUris: [],
+        postLogoutRedirectUris: [],
+        webOrigins: [],
+        rootUrl: '',
+        enabled: false,
+        standardFlowEnabled: false,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+        uriPolicy: 'replace',
+      });
+      expect(client.ensureAudienceProtocolMapper).toHaveBeenCalledWith({
+        clientId: 'ssf',
+        name: 'studio-ssf-audience',
+        audience: 'ssf',
+      });
+    }
+  });
+
+  it('rejects plugin OIDC declarations outside the versioned allowlist', async () => {
+    const client = createClient();
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        pluginOidcClients: [
+          {
+            ...ssfClientRequirement,
+            redirectUris: ['https://provider.example/callback'],
+          } as typeof ssfClientRequirement,
+        ],
+      })
+    ).rejects.toThrow('plugin_oidc_client_requirement_invalid');
+
+    expect(client.ensureOidcClient).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the SSF client read-back does not match the declared state', async () => {
+    const client = createClient({
+      getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+        id: `${clientId}-id`,
+        clientId,
+        enabled: clientId === 'ssf',
+      })),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(provision({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      pluginOidcClients: [ssfClientRequirement],
+    })).rejects.toThrow('plugin_oidc_client_readback_failed');
+
+    expect(client.ensureOidcClient).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 'ssf', enabled: false, uriPolicy: 'replace' })
+    );
+    expect(client.ensureAudienceProtocolMapper).toHaveBeenCalledOnce();
   });
 
   it('rejects existing-realm provisioning when the target realm is missing', async () => {

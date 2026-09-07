@@ -11,6 +11,10 @@ import {
   buildExpectedTenantAdminClientConfig,
   SYSTEM_ADMIN_ROLE,
 } from './provisioning-auth-utils.js';
+import {
+  readPluginOidcClientAlignment,
+  readPluginOidcClientRequirements,
+} from './provisioning-auth-plugin-clients.js';
 
 type KeycloakAdminUser = {
   readonly id: string;
@@ -38,14 +42,28 @@ export type KeycloakProvisioningClient = {
     standardFlowEnabled?: boolean;
     directAccessGrantsEnabled?: boolean;
     serviceAccountsEnabled?: boolean;
+    enabled?: boolean;
+    uriPolicy?: 'merge' | 'replace';
   }): Promise<void>;
   ensureTenantAdminServiceAccess(clientId: string): Promise<void>;
-  listClientProtocolMappers(clientId: string): Promise<readonly { name: string }[]>;
+  listClientProtocolMappers(clientId: string): Promise<
+    readonly {
+      name: string;
+      protocol?: string;
+      protocolMapper?: string;
+      config?: Readonly<Record<string, string>>;
+    }[]
+  >;
   ensureUserAttributeProtocolMapper(input: {
     clientId: string;
     name: string;
     userAttribute: string;
     claimName: string;
+  }): Promise<void>;
+  ensureAudienceProtocolMapper(input: {
+    clientId: string;
+    name: string;
+    audience: string;
   }): Promise<void>;
   ensureRealmRole(externalName: string): Promise<void>;
   getRoleByName(externalName: string): Promise<KeycloakRoleRepresentation>;
@@ -118,6 +136,7 @@ type ProvisionInstanceAuthArtifactsInput = {
   rotateClientSecret?: boolean;
   reconcileAuthClient?: boolean;
   reconcileTenantAdminClient?: boolean;
+  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
 
 const isConflictRequestError = (error: unknown): boolean =>
@@ -216,6 +235,7 @@ export const createReadKeycloakState =
   async (
     input: KeycloakProvisioningInput,
   ): Promise<KeycloakReadState> => {
+    const pluginOidcClientRequirements = readPluginOidcClientRequirements(input);
     const client = createClient(input.authRealm);
     const expectedClient = buildExpectedClientConfig(input.primaryHostname);
     const expectedTenantAdminClient = input.tenantAdminClient
@@ -231,6 +251,7 @@ export const createReadKeycloakState =
         realm,
         clientRepresentation: null,
         tenantAdminClientRepresentation: null,
+        pluginOidcClients: [],
         protocolMappers: [],
         tenantAdminStatus: {
           tenantAdminExists: false,
@@ -246,6 +267,15 @@ export const createReadKeycloakState =
     const tenantAdminClientRepresentation = input.tenantAdminClient?.clientId
       ? await client.getOidcClientByClientId(input.tenantAdminClient.clientId)
       : null;
+    const pluginOidcClients = await Promise.all(
+      pluginOidcClientRequirements.map(async (requirement) => {
+        const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);
+        const protocolMappers = clientRepresentation
+          ? await client.listClientProtocolMappers(requirement.clientId)
+          : [];
+        return { requirement, clientRepresentation, protocolMappers };
+      })
+    );
     const protocolMappers = clientRepresentation ? await client.listClientProtocolMappers(input.authClientId) : [];
     const tenantAdminStatus = await readTenantAdminStatus(client, {
       username: input.tenantAdminBootstrap?.username,
@@ -263,6 +293,7 @@ export const createReadKeycloakState =
       realm,
       clientRepresentation,
       tenantAdminClientRepresentation,
+      pluginOidcClients,
       protocolMappers,
       tenantAdminStatus,
       keycloakClientSecret,
@@ -276,6 +307,7 @@ export const createProvisionInstanceAuthArtifacts =
   async (
     input: ProvisionInstanceAuthArtifactsInput,
   ): Promise<void> => {
+    const pluginOidcClientRequirements = readPluginOidcClientRequirements(input);
     const client = createClient(input.authRealm);
     const expectedClient = buildExpectedClientConfig(input.primaryHostname);
     const reconcileAuthClient = input.reconcileAuthClient ?? true;
@@ -315,6 +347,35 @@ export const createProvisionInstanceAuthArtifacts =
         serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
       });
       await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
+    }
+    for (const requirement of pluginOidcClientRequirements) {
+      await client.ensureOidcClient({
+        clientId: requirement.clientId,
+        redirectUris: [],
+        postLogoutRedirectUris: [],
+        webOrigins: [],
+        rootUrl: '',
+        enabled: false,
+        standardFlowEnabled: false,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+        uriPolicy: 'replace',
+      });
+      await client.ensureAudienceProtocolMapper({
+        clientId: requirement.clientId,
+        name: `studio-${requirement.pluginId}-audience`,
+        audience: requirement.audience,
+      });
+      const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);
+      const protocolMappers = clientRepresentation
+        ? await client.listClientProtocolMappers(requirement.clientId)
+        : [];
+      if (!readPluginOidcClientAlignment(requirement, {
+        clientRepresentation,
+        protocolMappers,
+      }).aligned) {
+        throw new Error('plugin_oidc_client_readback_failed');
+      }
     }
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {

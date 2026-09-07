@@ -112,6 +112,36 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     expect(subject.provisionInstanceAuthArtifactsViaProvisioner).toBeDefined();
   });
 
+  it('injects the installed SSF client declaration at the auth-runtime composition boundary', async () => {
+    const subject = await import('./provisioning-auth-state.js');
+    const input = {
+      instanceId: 'demo',
+      primaryHostname: 'demo.studio.example',
+      realmMode: 'existing' as const,
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+    };
+
+    await subject.readKeycloakState(input);
+    await subject.provisionInstanceAuthArtifacts(input);
+
+    const adminAdapters = state.createKeycloakProvisioningAdapters.mock.results[0]?.value;
+    expect(adminAdapters.readKeycloakState).toHaveBeenCalledWith({
+      ...input,
+      pluginOidcClients: [{
+        contractVersion: '1.0',
+        pluginId: 'ssf',
+        clientId: 'ssf',
+        audience: 'ssf',
+        enabled: false,
+      }],
+    });
+    expect(adminAdapters.provisionInstanceAuthArtifacts).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginOidcClients: [expect.objectContaining({ pluginId: 'ssf' })] })
+    );
+  });
+
   it('reads audit state with the tenant-local admin credentials from the registry input', async () => {
     const subject = await import('./provisioning-auth-state.js');
 

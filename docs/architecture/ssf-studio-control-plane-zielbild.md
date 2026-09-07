@@ -16,12 +16,17 @@ aufeinander aufbauende OpenSpec-Changes gegliedert:
 5. [`add-ssf-iam-permission-projection`](../../openspec/changes/add-ssf-iam-permission-projection/proposal.md)
 
 Der aktuelle Studio-Zwischenstand umfasst den fail-closed Runtime-Lesepfad,
-die Studio-seitige Projektionslogik und den getesteten Consumer für den
-tenantgebundenen SSF-Session-Widerruf. Bewusst offen bleiben der produktive
-tenantlokale SSF-OIDC-Client einschließlich exakter Callback-URIs, die
-Anbindung an den Plugin-Lifecycle und den Host-Readiness-Provider sowie die
-SSF-seitige Implementierung des Sammelwiderrufs. Bis diese Verträge gemeinsam
-im Staging nachgewiesen sind, bleibt das produktive Enablement gesperrt.
+die Studio-seitige Projektionslogik, den getesteten Consumer für den
+tenantgebundenen SSF-Session-Widerruf und den tenantlokalen SSF-OIDC-Client als
+deaktiviertes Integrationsartefakt. Das Plugin deklariert dafür ausschließlich
+die feste Client-ID und Audience `ssf`; die generische Keycloak-Provisionierung
+entfernt Callback-, Logout- und Origin-Freigaben, deaktiviert alle Flows und
+prüft Client sowie Audience-Mapper per Read-back. Bewusst offen bleiben der
+später gemeinsam mit SSF festzulegende Client-Typ, exakte Callback-URIs, die
+Aktivierung sowie die Anbindung an Plugin-Lifecycle und Host-Readiness-Provider
+und die SSF-seitige Implementierung des Sammelwiderrufs. Bis diese Verträge
+gemeinsam im Staging nachgewiesen sind, bleibt das produktive Enablement
+gesperrt.
 
 Die erste Ausbaustufe konzentriert sich auf die Anlage und Verwaltung von
 Mandanten und Benutzern. Auswertungen aus ClickHouse, eine mögliche separate
@@ -155,6 +160,13 @@ zweite Subject-ID oder eine Korrelation über E-Mail beziehungsweise
 Benutzername existiert nicht. Root-Benutzer werden nicht in Tenant-Realms
 kopiert. Der Realm `master` ist kein Anwendungsrealm. Gäste mit
 SSF-Session-Token bleiben außerhalb des Studio-IAM.
+
+Der Studio-seitig provisionierte Client `ssf` bleibt bis zur gemeinsamen
+Providerintegration deaktiviert und besitzt keine Redirect-, Logout- oder
+Web-Origin-Freigaben. Sein Audience-Mapper schreibt `ssf` in Access- und
+Introspection-Tokens, nicht in ID-Tokens. Der Vertrag ist versioniert und
+allowlist-basiert; zusätzliche, vom Plugin
+eingeschleuste Keycloak-Felder werden vor jedem Read oder Write abgelehnt.
 
 ## SSF-Plugin-Datenbank
 

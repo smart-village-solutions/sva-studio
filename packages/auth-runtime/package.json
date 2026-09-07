@@ -52,6 +52,7 @@
     "@sva/instance-registry": "workspace:*",
     "@sva/media": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
+    "@sva/plugin-ssf": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/studio-module-iam": "workspace:*",
     "cookie-es": "^3.1.1",

@@ -25,8 +25,13 @@ export const readKeycloakAccessError = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
 
-const createAuthKeycloakClientFactory = (resolveConfig: typeof getKeycloakAdminClientConfigFromEnv) =>
-  createKeycloakProvisioningClientFactory(resolveConfig, (config) => new KeycloakAdminClient(config));
+const createAuthKeycloakClientFactory = (
+  resolveConfig: typeof getKeycloakAdminClientConfigFromEnv
+) =>
+  createKeycloakProvisioningClientFactory(
+    resolveConfig,
+    (config) => new KeycloakAdminClient(config)
+  );
 
 const adminAdapters = createKeycloakProvisioningAdapters(
   createAuthKeycloakClientFactory(getKeycloakAdminClientConfigFromEnv)
@@ -36,12 +41,19 @@ const provisionerAdapters = createKeycloakProvisioningAdapters(
   createAuthKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv)
 );
 
-const withInstalledPluginOidcClients = <T extends object>(
+const withInstalledPluginOidcClients = <
+  T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,
+>(
   input: T
-): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> => ({
-  ...input,
-  pluginOidcClients: [SSF_TENANT_OIDC_CLIENT_REQUIREMENT],
-});
+): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> => {
+  const callerRequirements = (input.pluginOidcClients ?? []).filter(
+    ({ clientId }) => clientId !== SSF_TENANT_OIDC_CLIENT_REQUIREMENT.clientId
+  );
+  return {
+    ...input,
+    pluginOidcClients: [...callerRequirements, SSF_TENANT_OIDC_CLIENT_REQUIREMENT],
+  };
+};
 
 export const readKeycloakState = (input: KeycloakProvisioningInput) =>
   adminAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
@@ -56,20 +68,19 @@ export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisionin
   }
 
   return createReadKeycloakState(
-    () => new KeycloakAdminClient(
-      getKeycloakTenantAdminClientConfigFromEnv({
-        realm: input.authRealm,
-        clientId,
-        clientSecret,
-      })
-    )
+    () =>
+      new KeycloakAdminClient(
+        getKeycloakTenantAdminClientConfigFromEnv({
+          realm: input.authRealm,
+          clientId,
+          clientSecret,
+        })
+      )
   )(withInstalledPluginOidcClients(input));
 };
 export const provisionInstanceAuthArtifacts = (
   input: Parameters<typeof adminAdapters.provisionInstanceAuthArtifacts>[0]
-) =>
-  adminAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
+) => adminAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
 export const provisionInstanceAuthArtifactsViaProvisioner = (
   input: Parameters<typeof provisionerAdapters.provisionInstanceAuthArtifacts>[0]
-) =>
-  provisionerAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
+) => provisionerAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));

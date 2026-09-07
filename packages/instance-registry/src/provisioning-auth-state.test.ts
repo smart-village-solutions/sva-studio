@@ -16,50 +16,54 @@ const ssfClientRequirement = {
   enabled: false,
 } as const;
 
-const createClientWithAlignedSsf = () => createClient({
-  getOidcClientByClientId: vi.fn(async (clientId: string) =>
-    clientId === 'ssf'
-      ? {
-          id: 'ssf-id',
-          clientId: 'ssf',
-          enabled: false,
-          rootUrl: '',
-          redirectUris: [],
-          webOrigins: [],
-          standardFlowEnabled: false,
-          directAccessGrantsEnabled: false,
-          serviceAccountsEnabled: false,
-          attributes: { 'post.logout.redirect.uris': '' },
-        }
-      : {
-          id: `${clientId}-id`,
-          clientId,
-          redirectUris: ['https://demo.example.org/*'],
-          attributes: { 'post.logout.redirect.uris': 'https://demo.example.org/*' },
-          webOrigins: ['https://demo.example.org'],
-          rootUrl: 'https://demo.example.org',
-        }
-  ),
-  listClientProtocolMappers: vi.fn(async (clientId: string) =>
-    clientId === 'ssf'
-      ? [{
-          name: 'studio-ssf-audience',
-          protocol: 'openid-connect',
-          protocolMapper: 'oidc-audience-mapper',
-          config: {
-            'included.client.audience': 'ssf',
-            'included.custom.audience': '',
-            'id.token.claim': 'false',
-            'access.token.claim': 'true',
-            'lightweight.claim': 'false',
-            'introspection.token.claim': 'true',
-          },
-        }]
-      : [{ name: 'instanceId' }]
-  ),
-});
+const createClientWithAlignedSsf = () =>
+  createClient({
+    getOidcClientByClientId: vi.fn(async (clientId: string) =>
+      clientId === 'ssf'
+        ? {
+            id: 'ssf-id',
+            clientId: 'ssf',
+            enabled: false,
+            rootUrl: '',
+            redirectUris: [],
+            webOrigins: [],
+            standardFlowEnabled: false,
+            directAccessGrantsEnabled: false,
+            serviceAccountsEnabled: false,
+            attributes: { 'post.logout.redirect.uris': '' },
+          }
+        : {
+            id: `${clientId}-id`,
+            clientId,
+            redirectUris: ['https://demo.example.org/*'],
+            attributes: { 'post.logout.redirect.uris': 'https://demo.example.org/*' },
+            webOrigins: ['https://demo.example.org'],
+            rootUrl: 'https://demo.example.org',
+          }
+    ),
+    listClientProtocolMappers: vi.fn(async (clientId: string) =>
+      clientId === 'ssf'
+        ? [
+            {
+              name: 'studio-ssf-audience',
+              protocol: 'openid-connect',
+              protocolMapper: 'oidc-audience-mapper',
+              config: {
+                'included.client.audience': 'ssf',
+                'id.token.claim': 'false',
+                'access.token.claim': 'true',
+                'lightweight.claim': 'false',
+                'introspection.token.claim': 'true',
+              },
+            },
+          ]
+        : [{ name: 'instanceId' }]
+    ),
+  });
 
-const createClient = (overrides?: Partial<KeycloakProvisioningClient>): KeycloakProvisioningClient => ({
+const createClient = (
+  overrides?: Partial<KeycloakProvisioningClient>
+): KeycloakProvisioningClient => ({
   ensureRealm: vi.fn(async () => undefined),
   getRealm: vi.fn(async () => ({ realm: 'demo' })),
   getOidcClientByClientId: vi.fn(async (clientId: string) => ({
@@ -161,8 +165,12 @@ describe('provisioning-auth-state', () => {
     });
 
     expect(client.ensureRealm).toHaveBeenCalledWith({ displayName: 'demo' });
-    expect(client.ensureOidcClient).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'sva-studio' }));
-    expect(client.ensureOidcClient).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'tenant-admin' }));
+    expect(client.ensureOidcClient).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 'sva-studio' })
+    );
+    expect(client.ensureOidcClient).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 'tenant-admin' })
+    );
     expect(client.ensureTenantAdminServiceAccess).toHaveBeenCalledWith('tenant-admin');
     expect(client.ensureUserAttributeProtocolMapper).not.toHaveBeenCalled();
     expect(client.createUser).toHaveBeenCalledWith(
@@ -251,14 +259,16 @@ describe('provisioning-auth-state', () => {
     });
     const provision = createProvisionInstanceAuthArtifacts(() => client);
 
-    await expect(provision({
-      instanceId: 'demo',
-      primaryHostname: 'demo.example.org',
-      realmMode: 'existing',
-      authRealm: 'demo',
-      authClientId: 'sva-studio',
-      pluginOidcClients: [ssfClientRequirement],
-    })).rejects.toThrow('plugin_oidc_client_readback_failed');
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        pluginOidcClients: [ssfClientRequirement],
+      })
+    ).rejects.toThrow('plugin_oidc_client_readback_failed:ssf:ssf');
 
     expect(client.ensureOidcClient).toHaveBeenCalledWith(
       expect.objectContaining({ clientId: 'ssf', enabled: false, uriPolicy: 'replace' })
@@ -353,13 +363,10 @@ describe('provisioning-auth-state', () => {
   it('recovers from conflicting tenant admin creation by updating the matching email user', async () => {
     const client = createClient({
       findUserByUsername: vi.fn(async () => null),
-      findUserByEmail: vi
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: 'user-2',
-          enabled: true,
-        }),
+      findUserByEmail: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'user-2',
+        enabled: true,
+      }),
       createUser: vi.fn(async () => {
         throw Object.assign(new Error('conflict'), { statusCode: 409 });
       }),

@@ -9,10 +9,12 @@ const state = vi.hoisted(() => ({
     readKeycloakState: vi.fn(async () => ({ factory, kind: 'state' })),
     provisionInstanceAuthArtifacts: vi.fn(async () => ({ factory, kind: 'provision' })),
   })),
-  createReadKeycloakState: vi.fn((factory) => vi.fn(async (input) => ({
-    client: factory(input.authRealm),
-    kind: 'tenant-state',
-  }))),
+  createReadKeycloakState: vi.fn((factory) =>
+    vi.fn(async (input) => ({
+      client: factory(input.authRealm),
+      kind: 'tenant-state',
+    }))
+  ),
   createInstanceKeycloakPreflightReader: vi.fn((readState, readError) => ({
     kind: 'preflight',
     readState,
@@ -48,7 +50,10 @@ const state = vi.hoisted(() => ({
   KeycloakAdminUnavailableError: class extends Error {},
   getKeycloakAdminClientConfigFromEnv: vi.fn(() => ({ realm: 'admin' })),
   getKeycloakProvisionerClientConfigFromEnv: vi.fn(() => ({ realm: 'provisioner' })),
-  getKeycloakTenantAdminClientConfigFromEnv: vi.fn((input) => ({ ...input, adminRealm: input.realm })),
+  getKeycloakTenantAdminClientConfigFromEnv: vi.fn((input) => ({
+    ...input,
+    adminRealm: input.realm,
+  })),
 }));
 
 vi.mock('@sva/instance-registry/provisioning-auth-state', () => ({
@@ -97,7 +102,8 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     const subject = await import('./provisioning-auth-state.js');
 
     expect(state.createKeycloakProvisioningClientFactory).toHaveBeenCalledTimes(2);
-    const [adminFactoryCall, provisionerFactoryCall] = state.createKeycloakProvisioningClientFactory.mock.calls;
+    const [adminFactoryCall, provisionerFactoryCall] =
+      state.createKeycloakProvisioningClientFactory.mock.calls;
     expect(adminFactoryCall?.[0]).toBe(state.getKeycloakAdminClientConfigFromEnv);
     expect(provisionerFactoryCall?.[0]).toBe(state.getKeycloakProvisionerClientConfigFromEnv);
 
@@ -129,17 +135,58 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     const adminAdapters = state.createKeycloakProvisioningAdapters.mock.results[0]?.value;
     expect(adminAdapters.readKeycloakState).toHaveBeenCalledWith({
       ...input,
-      pluginOidcClients: [{
-        contractVersion: '1.0',
-        pluginId: 'ssf',
-        clientId: 'ssf',
-        audience: 'ssf',
-        enabled: false,
-      }],
+      pluginOidcClients: [
+        {
+          contractVersion: '1.0',
+          pluginId: 'ssf',
+          clientId: 'ssf',
+          audience: 'ssf',
+          enabled: false,
+        },
+      ],
     });
     expect(adminAdapters.provisionInstanceAuthArtifacts).toHaveBeenCalledWith(
       expect.objectContaining({ pluginOidcClients: [expect.objectContaining({ pluginId: 'ssf' })] })
     );
+  });
+
+  it('preserves caller plugin declarations while keeping the installed SSF declaration authoritative', async () => {
+    const subject = await import('./provisioning-auth-state.js');
+    const input = {
+      instanceId: 'demo',
+      primaryHostname: 'demo.studio.example',
+      realmMode: 'existing' as const,
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+      pluginOidcClients: [
+        {
+          contractVersion: '1.0' as const,
+          pluginId: 'example',
+          clientId: 'example',
+          audience: 'example',
+          enabled: false as const,
+        },
+        {
+          contractVersion: '1.0' as const,
+          pluginId: 'ssf',
+          clientId: 'ssf',
+          audience: 'ssf',
+          enabled: false as const,
+        },
+      ],
+    };
+
+    await subject.readKeycloakState(input);
+
+    const adminAdapters = state.createKeycloakProvisioningAdapters.mock.results[0]?.value;
+    expect(adminAdapters.readKeycloakState).toHaveBeenCalledWith({
+      ...input,
+      pluginOidcClients: [
+        expect.objectContaining({ pluginId: 'example' }),
+        expect.objectContaining({ pluginId: 'ssf' }),
+      ],
+    });
   });
 
   it('reads audit state with the tenant-local admin credentials from the registry input', async () => {
@@ -167,16 +214,18 @@ describe('iam-instance-registry provisioning auth wiring', () => {
   it('fails closed when tenant-admin credentials are incomplete', async () => {
     const subject = await import('./provisioning-auth-state.js');
 
-    await expect(subject.readKeycloakStateViaTenantAdmin({
-      instanceId: 'demo',
-      primaryHostname: 'demo.studio.example',
-      realmMode: 'existing',
-      authRealm: 'demo',
-      authClientId: 'sva-studio',
-      authClientSecretConfigured: true,
-      tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: false },
-      tenantAdminClientSecret: 'stale-tenant-secret',
-    })).rejects.toThrow('Tenant admin client credentials are not configured');
+    await expect(
+      subject.readKeycloakStateViaTenantAdmin({
+        instanceId: 'demo',
+        primaryHostname: 'demo.studio.example',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: false },
+        tenantAdminClientSecret: 'stale-tenant-secret',
+      })
+    ).rejects.toThrow('Tenant admin client credentials are not configured');
 
     expect(state.getKeycloakTenantAdminClientConfigFromEnv).not.toHaveBeenCalled();
     expect(state.createReadKeycloakState).not.toHaveBeenCalled();

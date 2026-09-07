@@ -52,15 +52,19 @@ export const readPluginOidcClientRequirements = (
 const isAudienceMapperAligned = (
   requirement: PluginOidcClientRequirement,
   mapper: PluginOidcClientState['protocolMappers'][number] | undefined
-): boolean =>
-  mapper?.protocol === 'openid-connect' &&
-  mapper.protocolMapper === 'oidc-audience-mapper' &&
-  mapper.config?.['included.client.audience'] === requirement.audience &&
-  mapper.config['included.custom.audience'] === '' &&
-  mapper.config['id.token.claim'] === 'false' &&
-  mapper.config['access.token.claim'] === 'true' &&
-  mapper.config['lightweight.claim'] === 'false' &&
-  mapper.config['introspection.token.claim'] === 'true';
+): boolean => {
+  const config = mapper?.config;
+  return (
+    mapper?.protocol === 'openid-connect' &&
+    mapper.protocolMapper === 'oidc-audience-mapper' &&
+    config?.['included.client.audience'] === requirement.audience &&
+    (config?.['included.custom.audience'] ?? '') === '' &&
+    config?.['id.token.claim'] === 'false' &&
+    config?.['access.token.claim'] === 'true' &&
+    config?.['lightweight.claim'] === 'false' &&
+    config?.['introspection.token.claim'] === 'true'
+  );
+};
 
 const isPluginClientAligned = (
   requirement: PluginOidcClientRequirement,

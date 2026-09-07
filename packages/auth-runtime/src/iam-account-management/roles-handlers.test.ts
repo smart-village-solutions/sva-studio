@@ -211,7 +211,8 @@ describe('roles-handlers listPermissionsInternal', () => {
     expect(response.status).toBe(503);
     expect(mocks.createKeycloakRoleOperationError).toHaveBeenCalledWith(
       keycloakError,
-      'req-roles'
+      'req-roles',
+      'Der Keycloak-Rollenkatalog konnte intern nicht geladen werden.'
     );
   });
 });

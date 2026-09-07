@@ -238,7 +238,11 @@ export const createKeycloakRoleDependencyError = (requestId?: string): Response 
     { dependency: 'keycloak' }
   );
 
-export const createKeycloakRoleOperationError = (error: unknown, requestId?: string): Response => {
+export const createKeycloakRoleOperationError = (
+  error: unknown,
+  requestId?: string,
+  unexpectedErrorMessage = 'Die Keycloak-Rollenzuweisung konnte intern nicht verarbeitet werden.'
+): Response => {
   if (error instanceof KeycloakAdminUnavailableError) {
     return createKeycloakRoleDependencyError(requestId);
   }
@@ -254,7 +258,7 @@ export const createKeycloakRoleOperationError = (error: unknown, requestId?: str
   return createApiError(
     500,
     'internal_error',
-    'Die Keycloak-Rollenzuweisung konnte intern nicht verarbeitet werden.',
+    unexpectedErrorMessage,
     requestId,
     { reason_code: 'unexpected_internal_error' }
   );

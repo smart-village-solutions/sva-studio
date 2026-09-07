@@ -427,6 +427,10 @@ describe('RolesPage', () => {
     expect(screen.queryByRole('link', { name: 'Rolle anlegen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rolle bearbeiten' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Rollentyp'), {
+      target: { value: 'external' },
+    });
+    expect(screen.getAllByText('instance_registry_admin').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'Plattform-Rollen abgleichen' }));
     expect(reconcile).toHaveBeenCalledTimes(1);
   });

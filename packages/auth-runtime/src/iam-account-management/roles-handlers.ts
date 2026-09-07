@@ -110,7 +110,11 @@ const roleReadHandlers = createRoleReadHandlers({
         ? provider
         : projectKeycloakRoleCatalog(await loadKeycloakRoleCatalog(provider));
     } catch (error) {
-      return createKeycloakRoleOperationError(error, requestId);
+      return createKeycloakRoleOperationError(
+        error,
+        requestId,
+        'Der Keycloak-Rollenkatalog konnte intern nicht geladen werden.'
+      );
     }
   },
   loadPermissions: (instanceId) =>

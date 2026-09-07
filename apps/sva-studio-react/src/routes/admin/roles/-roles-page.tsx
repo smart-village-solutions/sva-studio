@@ -95,7 +95,8 @@ export const RolesPage = () => {
           isPlatformScope ? 'admin.roles.page.platformSubtitle' : 'admin.roles.page.subtitle'
         )}
         primaryAction={
-          roleTypeFilter === 'studio' && (canUpdateRoles || (!isPlatformScope && canCreateRoles))
+          (isPlatformScope || roleTypeFilter === 'studio') &&
+          (canUpdateRoles || (!isPlatformScope && canCreateRoles))
             ? {
                 label: t(
                   isPlatformScope

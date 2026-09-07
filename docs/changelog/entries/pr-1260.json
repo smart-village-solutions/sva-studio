@@ -1,0 +1,4 @@
+{
+  "prNumber": 1260,
+  "body": "Die Keycloak-Rollen eines Benutzers können wieder zuverlässig geladen und geändert werden.\n\n- Der Rollenkatalog wird über die von Keycloak unterstützte paginierte Rollenabfrage geladen.\n- Studio setzt keinen separaten, nicht unterstützten Rollen-Count-Endpunkt mehr voraus.\n- Dafür ist weder ein Keycloak-Update noch ein erneutes Bootstrap erforderlich."
+}

@@ -17,3 +17,7 @@ Technische und geschützte Rollen sind read-only. `system_admin` wird weiterhin
 über die lokale Studio-Rollenzuweisung verwaltet, damit Letztadmin- und
 Hierarchieschutz erhalten bleiben. Rollendefinitionen werden im Studio nicht
 angelegt, geändert oder gelöscht.
+
+Der Realm-Rollenkatalog wird über den von Keycloak unterstützten, paginierten
+Rollen-Endpunkt geladen. Studio setzt keinen separaten Rollen-Count-Endpunkt
+voraus und bleibt damit mit Keycloak-Versionen ohne `/roles/count` kompatibel.

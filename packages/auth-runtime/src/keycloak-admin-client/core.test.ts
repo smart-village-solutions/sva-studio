@@ -461,18 +461,20 @@ describe('Keycloak admin client', () => {
     expect(removeFetch).toHaveBeenCalledTimes(2);
   });
 
-  it('counts roles from numeric and object responses and maps missing role lookups to null', async () => {
+  it('does not expose the unsupported realm role count endpoint', async () => {
+    const client = await createClient(vi.fn());
+
+    expect('countRoles' in client).toBe(false);
+  });
+
+  it('maps missing role lookups to null', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, 12))
-      .mockResolvedValueOnce(createJsonResponse(200, { count: 3 }))
       .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }));
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.countRoles({ search: 'editor' })).resolves.toBe(12);
-    await expect(client.countRoles()).resolves.toBe(3);
     await expect(client.getRoleByName('missing')).resolves.toBeNull();
   });
 

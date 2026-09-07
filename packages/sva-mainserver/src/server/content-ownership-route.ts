@@ -22,6 +22,7 @@ import {
   type MainserverOwnershipTransferReconciler,
 } from './content-ownership-transfer-route.js';
 import { ownershipRouteFailureResponse } from './content-ownership-route-failure.js';
+import { SvaMainserverError } from './errors.js';
 import { resolveOwnershipSourceEnrichment } from './content-ownership-transfer-source.js';
 import {
   resolveMainserverMutationActor,
@@ -279,10 +280,15 @@ const dispatchAuthenticated = async (
       : handleAuthorizedTargets(request, supportedRoute, actor, content));
   } catch (error) {
     if (error instanceof ContentOwnershipAccountSearchError) {
-      return errorJson(
-        503,
-        'identity_provider_unavailable',
-        'Die Account-Suche ist derzeit nicht verfügbar.'
+      return ownershipRouteFailureResponse(
+        new SvaMainserverError({
+          code: 'identity_provider_unavailable',
+          message: 'Die Account-Suche ist derzeit nicht verfügbar.',
+          statusCode: 503,
+        }),
+        actor,
+        route,
+        'Die Inhaberübertragung ist fehlgeschlagen.'
       );
     }
     return ownershipRouteFailureResponse(

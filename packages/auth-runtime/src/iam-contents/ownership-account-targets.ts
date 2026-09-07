@@ -9,8 +9,8 @@ const MAX_KEYCLOAK_SEARCH_WINDOWS = 10;
 export class ContentOwnershipAccountSearchError extends Error {
   readonly code = 'keycloak_unavailable' as const;
 
-  constructor() {
-    super('keycloak_unavailable');
+  constructor(cause?: unknown) {
+    super('keycloak_unavailable', { cause });
     this.name = 'ContentOwnershipAccountSearchError';
   }
 }
@@ -18,8 +18,8 @@ export class ContentOwnershipAccountSearchError extends Error {
 const keycloakCall = async <T>(work: () => Promise<T>): Promise<T> => {
   try {
     return await work();
-  } catch {
-    throw new ContentOwnershipAccountSearchError();
+  } catch (cause) {
+    throw new ContentOwnershipAccountSearchError(cause);
   }
 };
 

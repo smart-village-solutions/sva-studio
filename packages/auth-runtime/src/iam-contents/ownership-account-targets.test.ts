@@ -169,7 +169,8 @@ describe('content ownership account targets', () => {
 
   it('classifies Keycloak request failures without masking local database failures', async () => {
     state.countUsers.mockResolvedValueOnce(1);
-    state.listUsers.mockRejectedValueOnce(new Error('Keycloak timeout'));
+    const keycloakError = new Error('Keycloak timeout');
+    state.listUsers.mockRejectedValueOnce(keycloakError);
 
     await expect(
       loadContentOwnershipAccountTargets({
@@ -179,7 +180,7 @@ describe('content ownership account targets', () => {
         search: 'Ada',
         loadMappedAccounts: state.loadMappedUsersBySubject,
       })
-    ).rejects.toMatchObject({ code: 'keycloak_unavailable' });
+    ).rejects.toMatchObject({ code: 'keycloak_unavailable', cause: keycloakError });
 
     state.listUsers.mockResolvedValueOnce([{ externalId: 'subject-target' }]);
     const databaseError = new Error('database unavailable');

@@ -179,7 +179,7 @@ const waitForRestoreResult = async (
 
 const main = async () => {
   const target = parseEnvironment(process.argv[2]);
-  const { database, action } = parseRestoreMode(process.argv[3] || undefined);
+  const { database, action } = parseRestoreMode(process.argv[3]);
   const request = buildRestoreAgentRequest({
     action,
     environment: target,

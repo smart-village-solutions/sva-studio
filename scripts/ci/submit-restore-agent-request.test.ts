@@ -29,6 +29,7 @@ describe('submit restore agent request', () => {
       database: 'waste',
       action: 'import-waste-data-v1',
     });
+    expect(() => parseRestoreMode('')).toThrow('akzeptiert nur die Modi');
     expect(() => parseRestoreMode('waste-improt')).toThrow('akzeptiert nur die Modi');
   });
 

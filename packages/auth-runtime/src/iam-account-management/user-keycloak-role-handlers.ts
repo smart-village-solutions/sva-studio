@@ -25,6 +25,7 @@ import { resolveUserReadAccess } from './user-read-shared.js';
 
 export {
   loadKeycloakRoleCatalog,
+  projectKeycloakRoleCatalog,
   projectKeycloakRoleAssignments,
   resolveKeycloakRoleMutationDelta,
 } from './user-keycloak-role-assignments.js';

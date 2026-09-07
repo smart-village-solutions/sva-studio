@@ -33,11 +33,9 @@ export const rolesAdminDEResources = {
     searchLabel: 'Suche',
     searchPlaceholder: 'Nach Rolle oder Berechtigung suchen',
     typeLabel: 'Rollentyp',
-    typeAll: 'Alle Rollentypen',
     typeStudio: 'Studio-Rollen',
     typeExternal: 'Externe Keycloak-Rollen',
     typeBuiltin: 'Keycloak-Built-ins',
-    typeSystem: 'Systemrollen',
   },
   labels: {
     systemRole: 'Systemrolle',

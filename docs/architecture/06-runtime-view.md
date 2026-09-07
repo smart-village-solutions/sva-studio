@@ -587,7 +587,7 @@ Fehlerfälle:
 
 ### Szenario 2f: IAM-User- und Rollenverwaltung mit technischem Keycloak-Schnitt
 
-1. `/admin/users` verbindet Keycloak-Identität mit der IAM-DB-Projektion; `/admin/roles` lädt tenantlokale Fachrollen kanonisch aus der IAM-Datenbank.
+1. `/admin/users` verbindet Keycloak-Identität mit der IAM-DB-Projektion; `/admin/roles` zeigt standardmäßig tenantlokale Fachrollen aus der IAM-Datenbank und schaltet für externe Rollen oder Built-ins auf den getrennten Keycloak-Katalog um.
 2. Im Platform-Scope wird nur der Platform-Admin-Keycloak-Client verwendet.
 3. Im Tenant-Scope wird nur der Tenant-Admin-Keycloak-Client der Instanz verwendet; fehlt dieser, endet der Request mit `tenant_admin_client_not_configured`.
 4. Tenant-Userlisten lesen den vollständigen Realm-Ausschnitt aus Keycloak und verbinden ihn anschließend mit Studio-Read-Models.

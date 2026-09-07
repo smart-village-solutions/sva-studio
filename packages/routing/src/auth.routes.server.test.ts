@@ -109,9 +109,7 @@ const authServerMocks = vi.hoisted(() => {
     createUserHandler: vi.fn(async () => response('createUserHandler')),
     getUserHandler: vi.fn(async () => response('getUserHandler')),
     getUserKeycloakRolesHandler: vi.fn(async () => response('getUserKeycloakRolesHandler')),
-    mutateUserKeycloakRoleHandler: vi.fn(async () =>
-      response('mutateUserKeycloakRoleHandler')
-    ),
+    mutateUserKeycloakRoleHandler: vi.fn(async () => response('mutateUserKeycloakRoleHandler')),
     reprovisionMainserverUserHandler: vi.fn(async () =>
       response('reprovisionMainserverUserHandler')
     ),
@@ -352,6 +350,7 @@ const authServerMocks = vi.hoisted(() => {
       response('updateMyOrganizationContextHandler')
     ),
     listPermissionsHandler: vi.fn(async () => response('listPermissionsHandler')),
+    listKeycloakRolesHandler: vi.fn(async () => response('listKeycloakRolesHandler')),
     listRolesHandler: vi.fn(async () => response('listRolesHandler')),
     createRoleHandler: vi.fn(async () => response('createRoleHandler')),
     updateRoleHandler: vi.fn(async () => response('updateRoleHandler')),

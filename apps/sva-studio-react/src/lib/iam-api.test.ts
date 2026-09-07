@@ -62,6 +62,7 @@ import {
   listContentOwnershipTargets,
   listContents,
   listInstances,
+  listKeycloakRoles,
   listOrganizations,
   listPluginOperationJobs,
   startAuthorizePerformanceRun,
@@ -184,9 +185,11 @@ describe('iam-api organization helpers', () => {
   });
 
   it('lists and transfers typed content ownership targets', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      createJsonResponse({ data: [], pagination: { page: 3, pageSize: 10, total: 0 } })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async () =>
+        createJsonResponse({ data: [], pagination: { page: 3, pageSize: 10, total: 0 } })
+      );
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'ownership-transfer-1' });
 
@@ -1281,6 +1284,31 @@ describe('iam-api user sync helper', () => {
       code: 'internal_error',
     });
     expect(browserLoggerMock.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('iam-api Keycloak role helpers', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.stubEnv('NODE_ENV', 'test');
+  });
+
+  it('loads the separate Keycloak role catalog', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [], pagination: { page: 1, pageSize: 1, total: 0 } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listKeycloakRoles();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/keycloak-roles',
+      expect.objectContaining({ credentials: 'include' })
+    );
   });
 });
 

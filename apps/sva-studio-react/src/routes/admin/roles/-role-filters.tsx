@@ -2,17 +2,15 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { t } from '../../../i18n';
 
-export type RoleTypeFilter = 'all' | 'studio' | 'external' | 'builtin' | 'system';
+export type RoleTypeFilter = 'studio' | 'external' | 'builtin';
 
 export const matchesRoleTypeFilter = (
   role: { readonly isSystemRole: boolean; readonly managedBy: string },
   filter: RoleTypeFilter
 ): boolean => {
-  if (filter === 'all') return true;
-  if (filter === 'system') return role.isSystemRole;
   if (filter === 'builtin') return role.managedBy === 'keycloak_builtin';
   if (filter === 'external') return role.managedBy === 'external' && !role.isSystemRole;
-  return role.managedBy === 'studio' && !role.isSystemRole;
+  return role.managedBy === 'studio';
 };
 
 export const RoleFilters = ({
@@ -44,11 +42,9 @@ export const RoleFilters = ({
         value={roleType}
         onChange={(event) => onRoleTypeChange(event.target.value as RoleTypeFilter)}
       >
-        <option value="all">{t('admin.roles.filters.typeAll')}</option>
         <option value="studio">{t('admin.roles.filters.typeStudio')}</option>
         <option value="external">{t('admin.roles.filters.typeExternal')}</option>
         <option value="builtin">{t('admin.roles.filters.typeBuiltin')}</option>
-        <option value="system">{t('admin.roles.filters.typeSystem')}</option>
       </select>
     </div>
   </div>

@@ -1,5 +1,9 @@
 import { classifyTenantKeycloakRole, isTenantKeycloakRoleVisible } from '@sva/iam-admin';
-import type { IamKeycloakRealmRoleAssignment, IamUserKeycloakRoleAssignments } from '@sva/core';
+import type {
+  IamKeycloakRealmRole,
+  IamKeycloakRealmRoleAssignment,
+  IamUserKeycloakRoleAssignments,
+} from '@sva/core';
 import { z } from 'zod';
 
 import type { IdentityProviderPort, IdentityRole } from '../identity-provider-port.js';
@@ -40,19 +44,13 @@ const readManagedBy = (role: IdentityRole): 'studio' | 'external' | 'keycloak_bu
   return role.attributes?.managed_by?.[0] === 'studio' ? 'studio' : 'external';
 };
 
-export const projectKeycloakRoleAssignments = (input: {
-  readonly catalog: readonly IdentityRole[];
-  readonly direct: readonly IdentityRole[];
-  readonly effective: readonly IdentityRole[];
-}): readonly IamKeycloakRealmRoleAssignment[] => {
-  const directNames = new Set(input.direct.map((role) => role.externalName));
-  const effectiveNames = new Set(input.effective.map((role) => role.externalName));
-  return input.catalog
+export const projectKeycloakRoleCatalog = (
+  catalog: readonly IdentityRole[]
+): readonly IamKeycloakRealmRole[] =>
+  catalog
     .filter(isTenantKeycloakRoleVisible)
-    .map((role): IamKeycloakRealmRoleAssignment => {
+    .map((role): IamKeycloakRealmRole => {
       const policy = classifyTenantKeycloakRole(role);
-      const direct = directNames.has(role.externalName);
-      const effective = effectiveNames.has(role.externalName);
       return {
         id: role.id ?? role.externalName,
         roleName: role.externalName,
@@ -61,13 +59,28 @@ export const projectKeycloakRoleAssignments = (input: {
         managedBy: readManagedBy(role),
         category: policy.category,
         assignable: policy.assignable,
-        direct,
-        effective,
-        origin: direct ? 'direct' : effective ? 'composite' : 'unassigned',
         ...(policy.reasonCode ? { reasonCode: policy.reasonCode } : {}),
       };
     })
     .sort((left, right) => left.roleName.localeCompare(right.roleName));
+
+export const projectKeycloakRoleAssignments = (input: {
+  readonly catalog: readonly IdentityRole[];
+  readonly direct: readonly IdentityRole[];
+  readonly effective: readonly IdentityRole[];
+}): readonly IamKeycloakRealmRoleAssignment[] => {
+  const directNames = new Set(input.direct.map((role) => role.externalName));
+  const effectiveNames = new Set(input.effective.map((role) => role.externalName));
+  return projectKeycloakRoleCatalog(input.catalog).map((role) => {
+    const direct = directNames.has(role.roleName);
+    const effective = effectiveNames.has(role.roleName);
+    return {
+      ...role,
+      direct,
+      effective,
+      origin: direct ? 'direct' : effective ? 'composite' : 'unassigned',
+    };
+  });
 };
 
 export const resolveKeycloakRoleMutationDelta = (input: {

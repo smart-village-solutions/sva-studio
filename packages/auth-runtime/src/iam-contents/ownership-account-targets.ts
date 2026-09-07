@@ -8,10 +8,12 @@ const MAX_KEYCLOAK_SEARCH_WINDOWS = 10;
 
 export class ContentOwnershipAccountSearchError extends Error {
   readonly code = 'keycloak_unavailable' as const;
+  readonly cause: unknown;
 
   constructor(cause?: unknown) {
-    super('keycloak_unavailable', { cause });
+    super('keycloak_unavailable');
     this.name = 'ContentOwnershipAccountSearchError';
+    this.cause = cause;
   }
 }
 

@@ -60,7 +60,7 @@ export type RoleReadHandlerDeps<
     request: Request,
     ctx: RoleReadAuthenticatedRequestContext,
     requestId: string | undefined,
-    options: { readonly allowPlatformRoles: boolean }
+    options: { readonly allowPlatformRoles: boolean; readonly instanceId?: string }
   ) => Promise<Response | null> | Response | null;
   readonly listPlatformRolesInternal: (
     ctx: RoleReadAuthenticatedRequestContext,
@@ -118,15 +118,13 @@ const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags, TKeycloak
   if (featureCheck) {
     return featureCheck;
   }
-  const accessCheck = deps.authorizeRoleReadAccess
-    ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, options)
-    : !ctx.user.instanceId && options.allowPlatformRoles
-      ? deps.requireRoles(ctx, ROOT_ADMIN_ROLES, requestContext.requestId)
-      : createMissingRoleReadAuthorizerResponse(deps, requestContext.requestId);
-  if (accessCheck) {
-    return accessCheck;
-  }
   if (!ctx.user.instanceId && options.allowPlatformRoles) {
+    const accessCheck = deps.authorizeRoleReadAccess
+      ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, options)
+      : deps.requireRoles(ctx, ROOT_ADMIN_ROLES, requestContext.requestId);
+    if (accessCheck) {
+      return accessCheck;
+    }
     return deps.listPlatformRolesInternal(ctx, requestContext.requestId, requestContext.traceId);
   }
   const actorResolution = await deps.resolveActorInfo(request, ctx, {
@@ -134,6 +132,15 @@ const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags, TKeycloak
   });
   if ('error' in actorResolution) {
     return actorResolution.error;
+  }
+  const accessCheck = deps.authorizeRoleReadAccess
+    ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, {
+        ...options,
+        instanceId: actorResolution.actor.instanceId,
+      })
+    : createMissingRoleReadAuthorizerResponse(deps, requestContext.requestId);
+  if (accessCheck) {
+    return accessCheck;
   }
 
   const rateLimit = deps.consumeRateLimit({

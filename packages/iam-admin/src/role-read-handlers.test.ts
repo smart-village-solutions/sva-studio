@@ -114,7 +114,7 @@ describe('createRoleReadHandlers', () => {
       expect.any(Request),
       expect.objectContaining({ user: expect.objectContaining({ roles: ['custom_role'] }) }),
       'req-workspace',
-      { allowPlatformRoles: true }
+      { allowPlatformRoles: true, instanceId: 'de-musterhausen' }
     );
     expect(deps.requireRoles).not.toHaveBeenCalled();
   });
@@ -139,8 +139,38 @@ describe('createRoleReadHandlers', () => {
       expect.any(Request),
       ctx,
       'req-workspace',
-      { allowPlatformRoles: false }
+      { allowPlatformRoles: false, instanceId: 'de-musterhausen' }
     );
+  });
+
+  it('authorizes the resolved tenant before loading its Keycloak catalog', async () => {
+    const denied = createJsonResponse(403, {
+      error: { code: 'forbidden', message: 'forbidden' },
+    });
+    const authorizeRoleReadAccess = vi.fn(async (_request, _ctx, _requestId, options) =>
+      options.instanceId === 'tenant-b' ? denied : null
+    );
+    const deps = createDeps({
+      authorizeRoleReadAccess,
+      resolveActorInfo: vi.fn(async () => ({
+        actor: { instanceId: 'tenant-b', requestId: 'req-tenant-b' },
+      })),
+    });
+    const handlers = createRoleReadHandlers(deps);
+
+    const response = await handlers.listKeycloakRolesInternal(
+      new Request('http://localhost/api/v1/iam/keycloak-roles?instanceId=tenant-b'),
+      ctx
+    );
+
+    expect(response.status).toBe(403);
+    expect(authorizeRoleReadAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      ctx,
+      'req-workspace',
+      { allowPlatformRoles: false, instanceId: 'tenant-b' }
+    );
+    expect(deps.loadKeycloakRoleListItems).not.toHaveBeenCalled();
   });
 
   it('delegates platform role lists when no instance scope is present', async () => {

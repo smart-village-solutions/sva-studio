@@ -90,7 +90,11 @@ const roleReadHandlers = createRoleReadHandlers({
     if (!ctx.user.instanceId && options.allowPlatformRoles) {
       return requireRoles(ctx, new Set(['instance_registry_admin']), requestId);
     }
-    return authorizeInstancePermissionForUser({ ctx, action: 'iam.role.read' }).then((result) =>
+    return authorizeInstancePermissionForUser({
+      ctx,
+      action: 'iam.role.read',
+      instanceId: options.instanceId,
+    }).then((result) =>
       result.ok
         ? null
         : createApiError(

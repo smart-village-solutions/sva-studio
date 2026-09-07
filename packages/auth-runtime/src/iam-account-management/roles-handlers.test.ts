@@ -189,6 +189,7 @@ describe('roles-handlers listPermissionsInternal', () => {
         user: expect.objectContaining({ id: 'kc-actor-1', instanceId: 'de-musterhausen' }),
       }),
       action: 'iam.role.read',
+      instanceId: 'de-musterhausen',
     });
   });
 

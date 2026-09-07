@@ -257,6 +257,37 @@ describe('RolesPage', () => {
     expect(useKeycloakRolesMock).toHaveBeenCalledWith(true);
   });
 
+  it('keeps the role type filter available while the Keycloak catalog loads', () => {
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+    useKeycloakRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.change(screen.getByLabelText('Rollentyp'), {
+      target: { value: 'external' },
+    });
+    expect(screen.getByLabelText('Rollentyp')).toBeTruthy();
+    expect(screen.getByText('Inhalte werden geladen ...')).toBeTruthy();
+  });
+
   it('triggers delete confirmation for custom roles', () => {
     const deleteRole = vi.fn().mockResolvedValue(true);
 
@@ -424,13 +455,10 @@ describe('RolesPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Plattform-Rollen' })).toBeTruthy();
     expect(screen.getAllByText('instance_registry_admin').length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText('Rollentyp')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rolle anlegen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rolle bearbeiten' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
-    fireEvent.change(screen.getByLabelText('Rollentyp'), {
-      target: { value: 'external' },
-    });
-    expect(screen.getAllByText('instance_registry_admin').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'Plattform-Rollen abgleichen' }));
     expect(reconcile).toHaveBeenCalledTimes(1);
   });

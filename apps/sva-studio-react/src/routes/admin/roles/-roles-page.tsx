@@ -156,6 +156,7 @@ export const RolesPage = () => {
             <RoleFilters
               search={search}
               roleType={roleTypeFilter}
+              showRoleType={!isPlatformScope}
               onSearchChange={setSearch}
               onRoleTypeChange={setRoleTypeFilter}
             />

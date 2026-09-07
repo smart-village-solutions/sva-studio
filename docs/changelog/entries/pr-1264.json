@@ -1,0 +1,4 @@
+{
+  "prNumber": 1264,
+  "body": "Die Studio-seitige Vorbereitung der Smart-Speech-Flow-Anbindung wurde erweitert.\n\n- Das Studio kann je Mandant einen deaktivierten SSF-OIDC-Client mit festem Audience-Vertrag sicherstellen.\n- Callback-, Logout- und Origin-Freigaben bleiben gesperrt, bis die SSF-Gegenseite gemeinsam integriert und geprüft wird."
+}

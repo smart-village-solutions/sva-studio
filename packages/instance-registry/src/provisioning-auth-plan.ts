@@ -1,16 +1,12 @@
 import type { InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
-import type {
-  KeycloakProvisioningInput,
-  KeycloakReadState,
-  PluginOidcClientRequirement,
-} from './provisioning-auth-types.js';
-import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
+import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import {
-  findPluginOidcClientState,
-  readPluginOidcClientAlignment,
-} from './provisioning-auth-plugin-clients.js';
+  readClientAlignment,
+  readTenantAdminClientAlignment,
+} from './provisioning-auth-client-alignment.js';
+import { buildPluginOidcClientStep } from './provisioning-auth-plugin-clients.js';
 
 const buildRealmStep = (
   realmMode: InstanceRealmMode,
@@ -37,38 +33,6 @@ const resolveRealmSummary = (realmMode: InstanceRealmMode, realmExists: boolean)
   }
 
   return realmExists ? 'Der vorhandene Realm wird verwendet.' : 'Der vorhandene Realm fehlt.';
-};
-
-const readClientAlignment = (state: KeycloakReadState | undefined) => {
-  const expectedClient = state?.expectedClient;
-  const clientRepresentation = state?.clientRepresentation;
-  return {
-    clientRepresentation,
-    redirectUrisMatch: expectedClient
-      ? equalSets(clientRepresentation?.redirectUris ?? [], expectedClient.redirectUris)
-      : false,
-    logoutUrisMatch: expectedClient
-      ? equalSets(readPostLogoutUris(clientRepresentation?.attributes), expectedClient.postLogoutRedirectUris)
-      : false,
-    webOriginsMatch: expectedClient
-      ? equalSets(clientRepresentation?.webOrigins ?? [], expectedClient.webOrigins)
-      : false,
-  };
-};
-
-const readTenantAdminClientAlignment = (state: KeycloakReadState | undefined) => {
-  const expectedClient = state?.expectedTenantAdminClient;
-  const clientRepresentation = state?.tenantAdminClientRepresentation;
-  return {
-    clientRepresentation,
-    directAccessGrantsEnabledMatch: expectedClient ? clientRepresentation?.directAccessGrantsEnabled === expectedClient.directAccessGrantsEnabled : false,
-    rootUrlMatch: expectedClient ? clientRepresentation?.rootUrl === expectedClient.rootUrl : false,
-    redirectUrisMatch: expectedClient ? equalSets(clientRepresentation?.redirectUris ?? [], expectedClient.redirectUris) : false,
-    serviceAccountsEnabledMatch: expectedClient ? clientRepresentation?.serviceAccountsEnabled === expectedClient.serviceAccountsEnabled : false,
-    standardFlowEnabledMatch: expectedClient ? clientRepresentation?.standardFlowEnabled === expectedClient.standardFlowEnabled : false,
-    logoutUrisMatch: expectedClient ? equalSets(readPostLogoutUris(clientRepresentation?.attributes), expectedClient.postLogoutRedirectUris) : false,
-    webOriginsMatch: expectedClient ? equalSets(clientRepresentation?.webOrigins ?? [], expectedClient.webOrigins) : false,
-  };
 };
 
 const buildClientStep = (input: {
@@ -116,7 +80,14 @@ const buildTenantAdminClientStep = (input: {
   standardFlowEnabledMatch: boolean;
   webOriginsMatch: boolean;
 }): KeycloakTenantPlan['steps'][number] => {
-  const fullyAligned = input.rootUrlMatch && input.redirectUrisMatch && input.logoutUrisMatch && input.webOriginsMatch && input.standardFlowEnabledMatch && input.directAccessGrantsEnabledMatch && input.serviceAccountsEnabledMatch;
+  const fullyAligned =
+    input.rootUrlMatch &&
+    input.redirectUrisMatch &&
+    input.logoutUrisMatch &&
+    input.webOriginsMatch &&
+    input.standardFlowEnabledMatch &&
+    input.directAccessGrantsEnabledMatch &&
+    input.serviceAccountsEnabledMatch;
 
   return {
     stepKey: 'tenant_admin_client',
@@ -141,38 +112,10 @@ const buildTenantAdminClientStep = (input: {
   };
 };
 
-const buildPluginOidcClientStep = (
-  requirement: PluginOidcClientRequirement,
-  state: KeycloakReadState | undefined,
-  blocked: boolean
-): KeycloakTenantPlan['steps'][number] => {
-  const alignment = readPluginOidcClientAlignment(
-    requirement,
-    findPluginOidcClientState(requirement, state)
-  );
-  const clientExists = Boolean(alignment.client);
-
-  return {
-    stepKey: `plugin_client_${requirement.pluginId}`,
-    title: `Plugin-Client ${requirement.pluginId} abgleichen`,
-    action: !clientExists ? 'create' : alignment.aligned ? 'verify' : 'update',
-    status: blocked ? 'blocked' : 'ready',
-    summary: !clientExists
-      ? 'Der deaktivierte Plugin-Client wird ohne Callback- oder Origin-Freigaben angelegt.'
-      : alignment.aligned
-        ? 'Der Plugin-Client entspricht dem deaktivierten, callbackfreien Sollzustand.'
-        : 'Der Plugin-Client und sein Audience-Mapper werden auf den sicheren Sollzustand abgeglichen.',
-    details: {
-      pluginId: requirement.pluginId,
-      clientId: requirement.clientId,
-      clientExists,
-      clientEnabled: alignment.client?.enabled,
-      audienceMapperMatches: alignment.audienceMapperMatches,
-    },
-  };
-};
-
-const buildSecretStep = (blocked: boolean, secretAligned: boolean): KeycloakTenantPlan['steps'][number] => ({
+const buildSecretStep = (
+  blocked: boolean,
+  secretAligned: boolean
+): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'secret',
   title: 'Tenant-Secret abgleichen',
   action: secretAligned ? 'skip' : 'update',
@@ -228,10 +171,9 @@ const buildRoleStep = (
   title: 'Realm-Rollen sicherstellen',
   action: state?.systemAdminRole ? 'verify' : 'create',
   status: blocked ? 'blocked' : 'ready',
-  summary:
-    state?.systemAdminRole
-      ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
-      : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
+  summary: state?.systemAdminRole
+    ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
+    : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
   details: {
     systemAdminRoleExists: Boolean(state?.systemAdminRole),
   },
@@ -258,8 +200,7 @@ const buildTenantAdminStep = (
 
 const hasTenantAdminMinimalProfile = (
   adminStatus: KeycloakReadState['tenantAdminStatus'] | undefined
-): boolean =>
-  Boolean(adminStatus?.tenantAdminExists && adminStatus.tenantAdminHasSystemAdmin);
+): boolean => Boolean(adminStatus?.tenantAdminExists && adminStatus.tenantAdminHasSystemAdmin);
 
 export const buildPlan = (input: {
   realmMode: InstanceRealmMode;
@@ -278,13 +219,13 @@ export const buildPlan = (input: {
   const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
   const secretAligned = Boolean(
     input.authClientSecret &&
-      input.state?.keycloakClientSecret &&
-      input.authClientSecret === input.state.keycloakClientSecret
+    input.state?.keycloakClientSecret &&
+    input.authClientSecret === input.state.keycloakClientSecret
   );
   const tenantAdminClientSecretAligned = Boolean(
     input.tenantAdminClientSecret &&
-      input.state?.tenantAdminClientSecret &&
-      input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
+    input.state?.tenantAdminClientSecret &&
+    input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
   );
   const pluginOidcClients =
     input.pluginOidcClients ??
@@ -341,7 +282,10 @@ const resolveDriftSummary = (
     return 'Provisioning ist blockiert, bis die Vorbedingungen erfüllt sind.';
   }
 
-  const requiresChanges = steps.some((step: KeycloakTenantPlan['steps'][number]) => step.action !== 'verify' && step.action !== 'skip');
+  const requiresChanges = steps.some(
+    (step: KeycloakTenantPlan['steps'][number]) =>
+      step.action !== 'verify' && step.action !== 'skip'
+  );
   return requiresChanges
     ? 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.'
     : 'Keycloak entspricht bereits dem im Studio gepflegten Sollzustand.';

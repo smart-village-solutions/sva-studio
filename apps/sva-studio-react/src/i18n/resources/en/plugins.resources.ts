@@ -28,6 +28,9 @@ export const pluginsENResources = {
     description:
       'Enables waste management with master data, route planning, and operations tooling.',
   },
+  ssf: {
+    description: 'Provides Smart Speech Flow for the tenant.',
+  },
   empty: {
     description: '',
   },

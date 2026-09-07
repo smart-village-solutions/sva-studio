@@ -16,6 +16,8 @@ import { shellDEResources } from './resources/de/shell.resources.js';
 import { shellENResources } from './resources/en/shell.resources.js';
 import { interfacesDEResources } from './resources/de/interfaces.resources.js';
 import { interfacesENResources } from './resources/en/interfaces.resources.js';
+import { pluginsDEResources } from './resources/de/plugins.resources.js';
+import { pluginsENResources } from './resources/en/plugins.resources.js';
 
 describe('i18n resource structure', () => {
   it('exports locale feature resources from explicit resource filenames', () => {
@@ -43,5 +45,12 @@ describe('i18n resource structure', () => {
     expect(interfacesDEResources.edit.deleteConfirmDescription).toContain('unwiderruflich');
     expect(interfacesENResources.edit.deleteConfirmDescription).toContain('permanently');
     expect(interfacesENResources.edit.deleteConfirm).toBe('Delete permanently');
+  });
+
+  it('provides the SSF module description in both supported locales', () => {
+    expect(deResources.plugins).toBe(pluginsDEResources);
+    expect(enResources.plugins).toBe(pluginsENResources);
+    expect(pluginsDEResources.ssf.description).not.toBe('');
+    expect(pluginsENResources.ssf.description).not.toBe('');
   });
 });

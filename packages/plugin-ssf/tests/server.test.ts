@@ -18,9 +18,11 @@ const tenant: PluginTechnicalServiceTenantContext = {
   authorizationRevision: revision,
 };
 
-const serviceContext = (): PluginServerHandlerExecutionContext => ({
+const serviceContext = (
+  correlationId: string | null = 'correlation-1'
+): PluginServerHandlerExecutionContext => ({
   request: new Request('https://studio.test/internal/plugins/ssf/v1/runtime-configuration', {
-    headers: { 'X-Correlation-Id': 'correlation-1' },
+    headers: correlationId === null ? {} : { 'X-Correlation-Id': correlationId },
   }),
   pluginId: 'ssf',
   handlerId: SSF_RUNTIME_SERVER_HANDLER_ID,
@@ -104,6 +106,22 @@ describe('SSF plugin server handler', () => {
     expect(body).toContain('runtime_configuration_unavailable');
     expect(body).not.toContain('postgres secret details');
     expect(response?.headers.get('X-Correlation-Id')).toBe('correlation-1');
+  });
+
+  it.each([
+    ['missing', null],
+    ['oversized', 'a'.repeat(129)],
+    ['non-printable', 'correlation\u007f'],
+  ])('does not reflect a %s correlation id', async (_case, correlationId) => {
+    const runtimeHandler = vi.fn().mockResolvedValue(successfulConfiguration);
+    const handlers = createSsfPluginServerHandlers({ runtimeHandler });
+
+    const response = await handlers[SSF_RUNTIME_SERVER_HANDLER_ID]?.(
+      serviceContext(correlationId)
+    );
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get('X-Correlation-Id')).toBe('unavailable');
   });
 
   it('keeps the default server binding unavailable without an explicit database', async () => {

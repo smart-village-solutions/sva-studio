@@ -28,6 +28,9 @@ export const pluginsDEResources = {
     description:
       'Aktiviert die Abfallwirtschaft mit Stammdaten, Tourenplanung und Betriebswerkzeugen.',
   },
+  ssf: {
+    description: 'Stellt Smart Speech Flow für den Mandanten bereit.',
+  },
   empty: {
     description: '',
   },

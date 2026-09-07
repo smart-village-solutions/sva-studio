@@ -5,6 +5,7 @@ import type {
 
 import {
   SSF_RUNTIME_CONTRACT_VERSION,
+  SSF_RUNTIME_LIMITS,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   type SsfRuntimeErrorCode,
 } from '../constants.js';
@@ -17,6 +18,16 @@ import { readSsfConfigurationOverrides } from '../repository.js';
 import { SsfRuntimeConfigurationValidationError, type SsfMediaResolver } from '../resolver.js';
 
 const CORRELATION_HEADER = 'X-Correlation-Id';
+const PRINTABLE_ASCII_PATTERN = /^[\x20-\x7e]+$/u;
+
+const readCorrelationId = (request: Request): string => {
+  const value = request.headers.get(CORRELATION_HEADER)?.trim();
+  return value &&
+    value.length <= SSF_RUNTIME_LIMITS.correlationIdCharacters &&
+    PRINTABLE_ASCII_PATTERN.test(value)
+    ? value
+    : 'unavailable';
+};
 
 export interface SsfPluginServerHandlerDependencies {
   readonly runtimeHandler: SsfRuntimeConfigurationHandler;
@@ -52,7 +63,7 @@ export const createSsfPluginServerHandlers = (
   dependencies: SsfPluginServerHandlerDependencies
 ): ReturnType<PluginServerHandlerModuleFactory> => {
   const handler: PluginServerExecutionHandler = async (context) => {
-    const correlationId = context.request.headers.get(CORRELATION_HEADER) ?? 'unavailable';
+    const correlationId = readCorrelationId(context.request);
     if (context.scope !== 'service') {
       return unavailableResponse(correlationId);
     }

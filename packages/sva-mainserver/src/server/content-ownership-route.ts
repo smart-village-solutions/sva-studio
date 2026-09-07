@@ -44,7 +44,6 @@ const supportedContentTypes = new Set<SvaMainserverProjectionContentType>([
   'projects.project',
   'surveys.survey',
 ]);
-
 const isProjectionContentType = (value: string): value is SvaMainserverProjectionContentType =>
   supportedContentTypes.has(value as SvaMainserverProjectionContentType);
 

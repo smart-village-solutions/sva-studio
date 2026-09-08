@@ -242,6 +242,63 @@ describe('ContentOwnershipPanel', () => {
     );
   });
 
+  it('supports reverse and wrapping keyboard navigation and closes from the search field', async () => {
+    const targets = [
+      {
+        principal: { type: 'account' as const, id: '77777777-7777-4777-8777-777777777777' },
+        displayName: 'Erster Account',
+      },
+      {
+        principal: {
+          type: 'organization' as const,
+          id: '88888888-8888-4888-8888-888888888888',
+        },
+        displayName: 'Letzte Organisation',
+      },
+    ];
+    const loadTargets = vi
+      .fn()
+      .mockImplementation(({ type }: { type: 'account' | 'organization' }) =>
+        Promise.resolve({
+          items: targets.filter((target) => target.principal.type === type),
+          total: 1,
+        })
+      );
+
+    render(
+      <ContentOwnershipPanel
+        currentOwner={currentOwner}
+        supported
+        canTransfer
+        labels={labels}
+        loadTargets={loadTargets}
+        onTransfer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalt übertragen' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
+    await waitFor(() => expect(loadTargets).toHaveBeenCalledTimes(2));
+
+    const searchInput = screen.getByRole('textbox', { name: 'Suchen' });
+    const firstOption = screen.getByRole('option', { name: 'Erster Account' });
+    const lastOption = screen.getByRole('option', { name: 'Letzte Organisation' });
+
+    fireEvent.keyDown(searchInput, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(lastOption);
+    fireEvent.keyDown(lastOption, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(firstOption);
+    fireEvent.keyDown(firstOption, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(lastOption);
+
+    searchInput.focus();
+    fireEvent.keyDown(searchInput, { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('combobox', { name: /^Neuer Inhaber/u })
+    );
+  });
+
   it('continues past an empty filtered page to find available targets', async () => {
     const target = {
       principal: { type: 'account' as const, id: '88888888-8888-4888-8888-888888888888' },

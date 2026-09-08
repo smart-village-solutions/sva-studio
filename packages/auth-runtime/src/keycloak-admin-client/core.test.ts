@@ -1316,7 +1316,7 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, [
-          { id: 'user-1', username: 'alice', email: 'Alice@example.com' },
+          { id: 'user-1', username: 'ALICE', email: 'Alice@example.com' },
           { id: 'user-2', username: 'bob', email: 'bob@example.com' },
         ])
       )
@@ -1367,6 +1367,21 @@ describe('Keycloak admin client', () => {
     expect(requestUrl).toContain('username=tenant.admin');
     expect(requestUrl).toContain('exact=true');
     expect(requestUrl).toContain('max=1');
+  });
+
+  it('forwards exact user matching to the Keycloak count endpoint', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, 1));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.countUsers({ username: 'tenant.admin', exact: true })).resolves.toBe(1);
+
+    const requestUrl = String(fetchImpl.mock.calls[1]?.[0]);
+    expect(requestUrl).toContain('/users/count?');
+    expect(requestUrl).toContain('username=tenant.admin');
+    expect(requestUrl).toContain('exact=true');
   });
 
   it('filters user attributes and returns null for missing client secrets or realms', async () => {

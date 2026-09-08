@@ -12,7 +12,7 @@ import {
 import { SsfSystemConfigurationPage, SsfTenantConfigurationPage } from './admin.page.js';
 import {
   SSF_RUNTIME_ENDPOINT_PATH,
-  SSF_RUNTIME_INSTANCE_HEADER,
+  SSF_RUNTIME_TENANT_HEADER,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVICE_ACTION,
   SSF_RUNTIME_SERVICE_ID,
@@ -148,7 +148,7 @@ export const ssfPlugin = {
       accessRequirement: {
         kind: 'service',
         serviceId: SSF_RUNTIME_SERVICE_ID,
-        tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_INSTANCE_HEADER },
+        tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER },
       },
     },
     {

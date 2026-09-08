@@ -31,7 +31,7 @@ const projection = (instanceId = 'tenant-a'): SsfAuthorizationProjection => ({
 describe('SSF authorization projection contract', () => {
   it('publishes the fixed V1 claim names and tenant permission catalog', () => {
     expect(SSF_TOKEN_CLAIMS).toEqual({
-      instanceId: 'studio_instance_id',
+      instanceId: 'studio_tenant_id',
       roles: 'ssf_roles',
       permissions: 'ssf_permissions',
       authorizationRevision: 'ssf_authorization_revision',

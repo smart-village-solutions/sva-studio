@@ -123,7 +123,7 @@ In addition to the standard OIDC claims, an SSF tenant token contains at least:
 ```json
 {
   "sub": "keycloak-user-id",
-  "studio_instance_id": "01J...",
+  "studio_tenant_id": "01J...",
   "ssf_roles": ["tenant_admin"],
   "ssf_permissions": ["ssf.configuration.tenant.read", "ssf.configuration.tenant.manage"],
   "ssf_authorization_revision": "sha256:...",
@@ -167,7 +167,7 @@ expiration.
 ```text
 Studio provisions the instance, realm, users, and SSF plugin data
   -> a user signs in through Keycloak or a guest uses an SSF session
-  -> SSF derives the canonical studio_instance_id from the validated context
+  -> SSF derives the canonical studio_tenant_id from the validated context
   -> SSF calls the Studio API using its technical service identity
   -> Studio validates service token, tenant, activation, and readiness
   -> the SSF plugin resolves the effective configuration
@@ -185,7 +185,7 @@ synchronization or persistent cache is planned.
 ```http
 GET /internal/plugins/ssf/v1/runtime-configuration
 Authorization: Bearer <keycloak-service-token>
-X-Studio-Instance-Id: <instance-id-from-validated-SSF-context>
+X-Studio-Tenant-Id: <tenant-id-from-validated-SSF-context>
 X-Correlation-Id: <correlation-id>
 ```
 
@@ -197,6 +197,10 @@ in the Studio root realm and does not carry a tenant-specific
 statement made by the authenticated SSF backend, binds it on the host side,
 and reads the confirmed revision of the resulting tenant; direct browser
 requests are not permitted.
+
+`X-Studio-Instance-Id`, `X-Tenant-Id`, and tenant selectors in the query are
+rejected. In a successful response, `tenant.id` exactly matches the value from
+`X-Studio-Tenant-Id`.
 
 This read-only, idempotent contract does not require an additional tenant
 assertion, a second signing key, or replay storage.

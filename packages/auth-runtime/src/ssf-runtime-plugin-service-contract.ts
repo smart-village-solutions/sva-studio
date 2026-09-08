@@ -9,7 +9,7 @@ import {
 export const SSF_RUNTIME_CONTRACT_VERSION = '1.0';
 export const SSF_RUNTIME_PLUGIN_ID = 'ssf';
 export const SSF_RUNTIME_SERVICE_ID = 'ssf-runtime';
-export const SSF_RUNTIME_INSTANCE_HEADER = 'X-Studio-Instance-Id';
+export const SSF_RUNTIME_TENANT_HEADER = 'X-Studio-Tenant-Id';
 export const SSF_RUNTIME_CORRELATION_HEADER = 'X-Correlation-Id';
 export const SSF_RUNTIME_CORRELATION_LIMIT = 128;
 export const SSF_REVISION_PATTERN = /^sha256:[0-9a-f]{64}$/u;
@@ -95,4 +95,4 @@ export const hasExpectedSsfDescriptorContract = (input: {
   input.descriptor.actionId === SSF_RUNTIME_REQUIRED_ACTION &&
   input.descriptor.accessRequirement.kind === 'service' &&
   input.descriptor.accessRequirement.tenantBinding.headerName.toLowerCase() ===
-    SSF_RUNTIME_INSTANCE_HEADER.toLowerCase();
+    SSF_RUNTIME_TENANT_HEADER.toLowerCase();

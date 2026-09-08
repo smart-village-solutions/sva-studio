@@ -27,7 +27,7 @@ export const ssfRuntimeConfigurationV1OpenApiDocument = {
         security: [{ bearerAuth: [] }],
         parameters: [
           {
-            name: 'X-Studio-Instance-Id',
+            name: 'X-Studio-Tenant-Id',
             in: 'header',
             required: true,
             schema: { type: 'string', minLength: 1, maxLength: 128 },

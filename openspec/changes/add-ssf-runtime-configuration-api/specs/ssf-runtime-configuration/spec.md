@@ -13,6 +13,7 @@ Autorisierungsrevision enthalten.
 - **GIVEN** Service-Identität, Tenant, Plugin-Aktivierung, Readiness und `authorizationRevision` sind gültig
 - **WHEN** SSF die Runtime-Konfiguration abruft
 - **THEN** enthält die Antwort ausschließlich `contractVersion`, `configurationRevision`, `authorizationRevision`, Tenantprofil, Branding, Lokalisierung und Gesprächsspeichermodus
+- **AND** entspricht `tenant.id` exakt dem über `X-Studio-Tenant-Id` gebundenen Wert
 - **AND** entsprechen Typen, Nullwerte, Formate und Größen dem veröffentlichten OpenAPI-Schema
 - **AND** enthält sie keine Secrets, Studio-IAM-Interna oder Fremdtenantdaten
 

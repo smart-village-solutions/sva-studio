@@ -50,7 +50,7 @@ Reauthentifizierungsfall, kein Fallback. Das installationsweite
 SSF-Service-Token wird vom technischen Client im Studio-Root-Realm ausgestellt
 und weist nur Backend-Identität, Audience und Action nach. Es trägt keine
 tenantbezogene Autorisierungsrevision; der angeforderte Tenant wird erst über
-`X-Studio-Instance-Id` gebunden und Studio liest dessen bestätigte Revision
+`X-Studio-Tenant-Id` gebunden und Studio liest dessen bestätigte Revision
 hostseitig.
 
 ### Alte Rechte laufen innerhalb von 15 Minuten aus

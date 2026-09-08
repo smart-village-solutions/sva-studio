@@ -6,7 +6,7 @@ import { ssfPlugin } from '../src/index.js';
 import { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID } from '../src/plugin.js';
 import {
   SSF_RUNTIME_ENDPOINT_PATH,
-  SSF_RUNTIME_INSTANCE_HEADER,
+  SSF_RUNTIME_TENANT_HEADER,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVICE_ACTION,
   SSF_RUNTIME_SERVICE_ID,
@@ -39,7 +39,7 @@ describe('SSF plugin metadata', () => {
           accessRequirement: {
             kind: 'service',
             serviceId: SSF_RUNTIME_SERVICE_ID,
-            tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_INSTANCE_HEADER },
+            tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER },
           },
         },
       ]),

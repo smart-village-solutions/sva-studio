@@ -6,7 +6,7 @@ import { z } from 'zod';
 export const SSF_AUTHORIZATION_PROJECTION_VERSION = '1.0' as const;
 
 export const SSF_TOKEN_CLAIMS = {
-  instanceId: 'studio_instance_id',
+  instanceId: 'studio_tenant_id',
   roles: 'ssf_roles',
   permissions: 'ssf_permissions',
   authorizationRevision: 'ssf_authorization_revision',

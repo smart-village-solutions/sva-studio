@@ -5,6 +5,9 @@ import { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID, ssfPlugin } from './plugin.js'
 
 export { ssfPlugin };
 
+const lifecycleError = (message: string, cause: Readonly<Record<string, unknown>>): Error =>
+  Object.assign(new Error(message), { cause });
+
 export const createPluginJobExecutionHandlers = (
   runtime: SsfAuthorizationProjectionRuntime
 ): Readonly<Record<string, PluginJobExecutionHandler>> => ({
@@ -13,18 +16,33 @@ export const createPluginJobExecutionHandlers = (
       context.tenantLifecycle?.operation !== 'provision' &&
       context.tenantLifecycle?.operation !== 'reconcile'
     ) {
-      throw new Error('invalid_ssf_authorization_reconcile_context');
+      throw lifecycleError('invalid_ssf_authorization_reconcile_context', {
+        code: 'ssf.invalid-authorization-reconcile-context',
+        messageKey: 'ssf.errors.invalidAuthorizationReconcileContext',
+        retry: { kind: 'terminal' },
+      });
     }
 
     await context.throwIfCancellationRequested();
-    const result = await runtime.reconcile(context.job.instanceId);
+    let result: Awaited<ReturnType<SsfAuthorizationProjectionRuntime['reconcile']>>;
+    try {
+      result = await runtime.reconcile(context.job.instanceId);
+    } catch {
+      throw lifecycleError('ssf_authorization_reconcile_unavailable', {
+        code: 'ssf.authorization-reconcile-unavailable',
+        messageKey: 'ssf.errors.authorizationReconcileUnavailable',
+        retry: { kind: 'retryable' },
+      });
+    }
     if (result.status !== 'ready') {
-      throw Object.assign(new Error(`ssf_authorization_reconcile_${result.status}`), {
-        cause: {
-          code: 'ssf.authorization-reconcile-unavailable',
-          messageKey: 'ssf.errors.authorizationReconcileUnavailable',
-          retry: { kind: 'retryable' },
-          details: { status: result.status, generation: result.generation },
+      throw lifecycleError(`ssf_authorization_reconcile_${result.status}`, {
+        code: 'ssf.authorization-reconcile-unavailable',
+        messageKey: 'ssf.errors.authorizationReconcileUnavailable',
+        retry: { kind: 'retryable' },
+        details: {
+          status: result.status,
+          generation: result.generation,
+          ...(result.status === 'blocked' ? { reason: result.reason } : {}),
         },
       });
     }

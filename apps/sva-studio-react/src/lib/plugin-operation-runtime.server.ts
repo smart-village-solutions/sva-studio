@@ -1,26 +1,16 @@
 import {
   dsrExportStudioJobRegistration,
   mediaContentSaveRecoveryStudioJobRegistration,
-  readTenantPermissionProjectionSubjects,
   registerPluginOperationExecutionHandlers,
   registerStudioJobExecutionHandlers,
-  resolveInstanceKeycloakProjectionTenant,
   type PluginOperationExecutionRegistration,
 } from '@sva/auth-runtime/server';
-import {
-  createConfiguredSsfKeycloakAuthorizationProjectionTarget,
-  createPostgresSsfAuthorizationProjectionStore,
-  createSsfAuthorizationProjectionRuntime,
-  resolveSsfRootDatabasePool,
-} from '@sva/plugin-ssf/runtime';
-import { SSF_TENANT_OIDC_CLIENT_REQUIREMENT } from '@sva/plugin-ssf/provisioning';
 import {
   wasteManagementOperationsContract,
   type PluginCatalogEntry,
   type PluginManifest,
 } from '@sva/plugin-sdk';
 import studioPluginCatalogConfig from '../../plugin-catalog.json';
-
 import {
   createPluginBuildRegistries,
   resolvePluginModuleFromRegistry,
@@ -35,11 +25,11 @@ import { createNodemailerMailDispatcher } from '@sva/mail-runtime';
 import { protectField, revealField } from '@sva/auth-runtime/server';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
 import { createMapPostalCodeResolver } from './map-geocoding-api.operations.js';
+import { createStudioSsfAuthorizationProjectionRuntime } from './ssf-authorization-projection-runtime.server.js';
 import {
   createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
   type WasteManagementOperationRuntime,
 } from '@sva/waste-management-runtime/server';
-
 type PluginOperationExecutionHandler =
   import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
 type PluginJobModuleFactory = (
@@ -252,22 +242,7 @@ const resolvePluginJobModule = (input: {
 };
 
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
-  'ssf.authorization-projection': () => {
-    const pool = resolveSsfRootDatabasePool();
-    if (!pool) throw new Error('ssf_root_database_not_configured');
-
-    return createSsfAuthorizationProjectionRuntime({
-      source: { readSubjects: readTenantPermissionProjectionSubjects },
-      store: createPostgresSsfAuthorizationProjectionStore(pool),
-      target: createConfiguredSsfKeycloakAuthorizationProjectionTarget({
-        resolveTenant: (instanceId) =>
-          resolveInstanceKeycloakProjectionTenant(
-            instanceId,
-            SSF_TENANT_OIDC_CLIENT_REQUIREMENT.clientId
-          ),
-      }),
-    });
-  },
+  'ssf.authorization-projection': createStudioSsfAuthorizationProjectionRuntime,
   'waste-management.operations': () =>
     createWasteManagementOperationRuntime({
       dispatchMail: createNodemailerMailDispatcher({}),

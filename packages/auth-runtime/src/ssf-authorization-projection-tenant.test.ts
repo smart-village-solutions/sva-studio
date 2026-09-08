@@ -1,44 +1,49 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { provider, resolveIdentityProviderForInstance, isKeycloakIdentityProvider } = vi.hoisted(
-  () => ({
-    provider: {},
-    resolveIdentityProviderForInstance: vi.fn(),
-    isKeycloakIdentityProvider: vi.fn(),
-  })
-);
+const { client, loadInstanceById, getKeycloakProvisionerClientConfigFromEnv, KeycloakAdminClient } =
+  vi.hoisted(() => ({
+    client: {},
+    loadInstanceById: vi.fn(),
+    getKeycloakProvisionerClientConfigFromEnv: vi.fn(),
+    KeycloakAdminClient: vi.fn(),
+  }));
 
-vi.mock('./iam-account-management/shared-runtime.js', () => ({
-  resolveIdentityProviderForInstance,
-  isKeycloakIdentityProvider,
+vi.mock('@sva/data-repositories/server', () => ({ loadInstanceById }));
+vi.mock('./keycloak-admin-client.js', () => ({
+  getKeycloakProvisionerClientConfigFromEnv,
+  KeycloakAdminClient,
 }));
 
 import { resolveInstanceKeycloakProjectionTenant } from './ssf-authorization-projection-tenant.js';
 
 describe('SSF Keycloak projection tenant resolver', () => {
   beforeEach(() => {
-    resolveIdentityProviderForInstance.mockReset();
-    isKeycloakIdentityProvider.mockReset();
+    loadInstanceById.mockReset();
+    getKeycloakProvisionerClientConfigFromEnv.mockReset();
+    KeycloakAdminClient.mockReset();
+    getKeycloakProvisionerClientConfigFromEnv.mockReturnValue({ realm: 'tenant-realm' });
+    KeycloakAdminClient.mockImplementation(
+      class {
+        constructor() {
+          return client;
+        }
+      }
+    );
   });
 
   it('binds the configured SSF client to the canonical instance provider', async () => {
-    resolveIdentityProviderForInstance.mockResolvedValue({ provider });
-    isKeycloakIdentityProvider.mockReturnValue(true);
+    loadInstanceById.mockResolvedValue({ authRealm: 'tenant-realm' });
 
     await expect(resolveInstanceKeycloakProjectionTenant('tenant-a', 'ssf')).resolves.toEqual({
       instanceId: 'tenant-a',
       clientId: 'ssf',
-      client: provider,
+      client,
     });
-    expect(resolveIdentityProviderForInstance).toHaveBeenCalledWith('tenant-a');
+    expect(getKeycloakProvisionerClientConfigFromEnv).toHaveBeenCalledWith('tenant-realm');
   });
 
-  it('fails closed when the tenant provider is unavailable or not Keycloak', async () => {
-    resolveIdentityProviderForInstance.mockResolvedValueOnce(null);
-    await expect(resolveInstanceKeycloakProjectionTenant('tenant-a', 'ssf')).resolves.toBeNull();
-
-    resolveIdentityProviderForInstance.mockResolvedValueOnce({ provider });
-    isKeycloakIdentityProvider.mockReturnValue(false);
+  it('fails closed when the tenant is unavailable', async () => {
+    loadInstanceById.mockResolvedValue(null);
     await expect(resolveInstanceKeycloakProjectionTenant('tenant-a', 'ssf')).resolves.toBeNull();
   });
 });

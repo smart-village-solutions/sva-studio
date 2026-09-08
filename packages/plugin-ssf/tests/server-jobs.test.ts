@@ -32,7 +32,11 @@ describe('SSF authorization lifecycle job', () => {
 
   it('keeps non-ready projections in the lifecycle retry path', async () => {
     const handler = createPluginJobExecutionHandlers({
-      reconcile: vi.fn().mockResolvedValue({ status: 'blocked', generation: 4 }),
+      reconcile: vi.fn().mockResolvedValue({
+        status: 'blocked',
+        generation: 4,
+        reason: 'target_readback_failed',
+      }),
     })[SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID];
 
     const execution = expect(
@@ -47,7 +51,36 @@ describe('SSF authorization lifecycle job', () => {
       cause: {
         code: 'ssf.authorization-reconcile-unavailable',
         retry: { kind: 'retryable' },
+        details: { reason: 'target_readback_failed' },
       },
     });
+  });
+
+  it('classifies runtime failures as retryable', async () => {
+    const handler = createPluginJobExecutionHandlers({
+      reconcile: vi.fn().mockRejectedValue(new Error('database unavailable')),
+    })[SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID];
+
+    await expect(
+      handler?.({
+        job: { instanceId: 'tenant-a' },
+        tenantLifecycle: { operation: 'reconcile', generation: 4 },
+        throwIfCancellationRequested: vi.fn(),
+      } as never)
+    ).rejects.toMatchObject({ cause: { retry: { kind: 'retryable' } } });
+  });
+
+  it('classifies an invalid lifecycle invocation as terminal', async () => {
+    const handler = createPluginJobExecutionHandlers({ reconcile: vi.fn() })[
+      SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID
+    ];
+
+    await expect(
+      handler?.({
+        job: { instanceId: 'tenant-a' },
+        tenantLifecycle: { operation: 'suspend', generation: 4 },
+        throwIfCancellationRequested: vi.fn(),
+      } as never)
+    ).rejects.toMatchObject({ cause: { retry: { kind: 'terminal' } } });
   });
 });

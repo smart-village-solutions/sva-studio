@@ -1,18 +1,20 @@
+import { loadInstanceById } from '@sva/data-repositories/server';
+
 import {
-  isKeycloakIdentityProvider,
-  resolveIdentityProviderForInstance,
-} from './iam-account-management/shared-runtime.js';
+  KeycloakAdminClient,
+  getKeycloakProvisionerClientConfigFromEnv,
+} from './keycloak-admin-client.js';
 
 export const resolveInstanceKeycloakProjectionTenant = async (
   instanceId: string,
   clientId: string
 ) => {
-  const resolution = await resolveIdentityProviderForInstance(instanceId);
-  if (!resolution || !isKeycloakIdentityProvider(resolution.provider)) return null;
+  const instance = await loadInstanceById(instanceId);
+  if (!instance) return null;
 
   return {
     instanceId,
     clientId,
-    client: resolution.provider,
+    client: new KeycloakAdminClient(getKeycloakProvisionerClientConfigFromEnv(instance.authRealm)),
   };
 };

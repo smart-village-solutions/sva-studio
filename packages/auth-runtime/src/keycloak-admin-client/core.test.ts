@@ -1352,6 +1352,23 @@ describe('Keycloak admin client', () => {
     expect(String(fetchImpl.mock.calls[1]?.[0])).toContain('briefRepresentation=false');
   });
 
+  it('forwards exact user matching to Keycloak', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.listUsers({ username: 'tenant.admin', exact: true, max: 1 })
+    ).resolves.toEqual([]);
+
+    const requestUrl = String(fetchImpl.mock.calls[1]?.[0]);
+    expect(requestUrl).toContain('username=tenant.admin');
+    expect(requestUrl).toContain('exact=true');
+    expect(requestUrl).toContain('max=1');
+  });
+
   it('filters user attributes and returns null for missing client secrets or realms', async () => {
     const fetchImpl = vi
       .fn()

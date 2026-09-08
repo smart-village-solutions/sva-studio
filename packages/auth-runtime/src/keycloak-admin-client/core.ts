@@ -790,6 +790,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       ['first', query?.first],
       ['max', query?.max],
       ['enabled', query?.enabled],
+      ['exact', query?.exact],
       ['briefRepresentation', query?.briefRepresentation],
     ] as const) {
       if (value !== undefined) {

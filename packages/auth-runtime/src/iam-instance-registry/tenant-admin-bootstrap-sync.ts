@@ -63,7 +63,8 @@ const resolveTenantAdminIdentityUser = async (input: {
   const bootstrapUsername = input.tenantAdminBootstrap.username.trim();
   const usernameMatches = await identityProvider.provider.listUsers({
     username: bootstrapUsername,
-    max: 100,
+    exact: true,
+    max: 1,
   });
   const normalizedBootstrapUsername = bootstrapUsername.toLowerCase();
   const user = usernameMatches.find(

@@ -41,6 +41,7 @@ export type IdentityUserListQuery = IdentityListWindow &
     readonly email?: string;
     readonly username?: string;
     readonly enabled?: boolean;
+    readonly exact?: boolean;
   };
 
 export type IdentityListedUser = IdentityUser &

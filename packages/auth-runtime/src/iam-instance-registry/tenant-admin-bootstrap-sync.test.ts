@@ -40,12 +40,9 @@ describe('tenant admin bootstrap sync', () => {
     state.withInstanceScopedDb.mockImplementation(async (_instanceId, work) => work(state.client));
     state.resolveIdentityProviderForInstance.mockResolvedValue({
       provider: {
-        listUsers: vi.fn(async (query?: { username?: string; email?: string }) => {
+        listUsers: vi.fn(async (query?: { username?: string; email?: string; exact?: boolean }) => {
           if (query?.username === 'tenant.admin') {
-            return [
-              { externalId: 'similar-user', username: 'tenant.admin-old' },
-              { externalId: 'kc-user-1', username: 'TENANT.ADMIN' },
-            ];
+            return [{ externalId: 'kc-user-1', username: 'TENANT.ADMIN' }];
           }
           return [];
         }),
@@ -124,15 +121,17 @@ describe('tenant admin bootstrap sync', () => {
   });
 
   it('does not link a different tenant identity by matching email', async () => {
-    const listUsers = vi.fn(async (query?: { username?: string; email?: string }) => {
-      if (query?.username === 'tenant.admin') {
+    const listUsers = vi.fn(
+      async (query?: { username?: string; email?: string; exact?: boolean }) => {
+        if (query?.username === 'tenant.admin') {
+          return [];
+        }
+        if (query?.email === 'tenant.admin@example.test') {
+          return [{ externalId: 'root-user', email: 'tenant.admin@example.test' }];
+        }
         return [];
       }
-      if (query?.email === 'tenant.admin@example.test') {
-        return [{ externalId: 'root-user', email: 'tenant.admin@example.test' }];
-      }
-      return [];
-    });
+    );
     state.resolveIdentityProviderForInstance.mockResolvedValueOnce({
       provider: {
         listUsers,
@@ -153,11 +152,33 @@ describe('tenant admin bootstrap sync', () => {
 
     expect(listUsers).toHaveBeenNthCalledWith(1, {
       username: 'tenant.admin',
-      max: 100,
+      exact: true,
+      max: 1,
     });
     expect(listUsers).toHaveBeenCalledTimes(1);
     expect(state.jitProvisionAccountWithClient).not.toHaveBeenCalled();
     expect(state.notifyPermissionInvalidation).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-exact provider result instead of adopting a similar username', async () => {
+    state.resolveIdentityProviderForInstance.mockResolvedValueOnce({
+      provider: {
+        listUsers: vi
+          .fn()
+          .mockResolvedValue([{ externalId: 'similar-user', username: 'tenant.admin-old' }]),
+      },
+    });
+
+    const { syncTenantAdminBootstrapAccount } = await import('./tenant-admin-bootstrap-sync.js');
+
+    await expect(
+      syncTenantAdminBootstrapAccount({
+        instanceId: 'tenant-a',
+        tenantAdminBootstrap: { username: 'tenant.admin' },
+      })
+    ).rejects.toThrow('tenant_admin_bootstrap_user_not_found');
+
+    expect(state.jitProvisionAccountWithClient).not.toHaveBeenCalled();
   });
 
   it('keeps the sync idempotent when system_admin is already assigned directly', async () => {

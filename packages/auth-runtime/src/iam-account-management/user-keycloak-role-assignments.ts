@@ -201,7 +201,11 @@ export const loadKeycloakRoleCatalog = async (
   const pageSignatures = new Set<string>();
   for (let page = 0; page < MAX_ROLE_PAGES; page += 1) {
     const pageRoles = await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
-      provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
+      provider.listRoles({
+        first: page * ROLE_PAGE_SIZE,
+        max: ROLE_PAGE_SIZE,
+        briefRepresentation: false,
+      })
     );
     if (pageRoles.length < ROLE_PAGE_SIZE) return [...roles, ...pageRoles];
     const signature = pageRoles.map((role) => role.id ?? role.externalName).join('\u0000');

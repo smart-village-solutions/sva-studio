@@ -308,6 +308,45 @@ describe('RolesPage', () => {
     expect(screen.getByText('Inhalte werden geladen ...')).toBeTruthy();
   });
 
+  it('surfaces Keycloak catalog failures in the Studio view', () => {
+    const refetch = vi.fn();
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+    useKeycloakRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: {
+        name: 'IamHttpError',
+        message: 'keycloak unavailable',
+        status: 503,
+        code: 'keycloak_unavailable',
+      },
+      refetch,
+    });
+
+    render(<RolesPage />);
+
+    expect(
+      screen.getByText(
+        'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
+      )
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
   it('triggers delete confirmation for custom roles', () => {
     const deleteRole = vi.fn().mockResolvedValue(true);
 

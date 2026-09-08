@@ -93,11 +93,17 @@ export const RolesPage = () => {
   );
 
   const selectedApi = roleTypeFilter === 'studio' || isPlatformScope ? rolesApi : keycloakRolesApi;
-  const keepsFiltersWhileLoading =
-    !isPlatformScope && roleTypeFilter !== 'studio' && selectedApi.isLoading;
+  const pageIsLoading =
+    selectedApi.isLoading ||
+    (!isPlatformScope && roleTypeFilter === 'studio' && keycloakRolesApi.isLoading);
+  const keepsFiltersWhileLoading = !isPlatformScope && keycloakRolesApi.isLoading && !rolesApi.isLoading;
+  const errorApi =
+    selectedApi.error || isPlatformScope || roleTypeFilter !== 'studio'
+      ? selectedApi
+      : keycloakRolesApi;
 
   return (
-    <section className="space-y-5" aria-busy={selectedApi.isLoading}>
+    <section className="space-y-5" aria-busy={pageIsLoading}>
       <StudioListPageTemplate
         title={t(isPlatformScope ? 'admin.roles.page.platformTitle' : 'admin.roles.page.title')}
         description={t(
@@ -151,7 +157,7 @@ export const RolesPage = () => {
           sorting={{ mode: 'client', labels: studioDataTableSortingLabels }}
           getRowId={(role) => role.id}
           selectionMode="none"
-          isLoading={selectedApi.isLoading && !keepsFiltersWhileLoading}
+          isLoading={pageIsLoading && !keepsFiltersWhileLoading}
           loadingState={t('content.messages.loading')}
           emptyState={
             <Card
@@ -267,22 +273,22 @@ export const RolesPage = () => {
         </Alert>
       ) : null}
 
-      {selectedApi.error ? (
+      {errorApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>
-              {roleErrorMessage(selectedApi.error, 'admin.roles.messages.error', {
+              {roleErrorMessage(errorApi.error, 'admin.roles.messages.error', {
                 includeKeycloakReconcileError: true,
                 includeRecoveryRunningError: true,
               })}
             </span>
-            <IamRuntimeDiagnosticDetails error={selectedApi.error} />
+            <IamRuntimeDiagnosticDetails error={errorApi.error} />
             <div>
               <Button
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={() => void selectedApi.refetch()}
+                onClick={() => void errorApi.refetch()}
               >
                 {t('admin.roles.actions.retry')}
               </Button>

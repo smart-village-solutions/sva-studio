@@ -71,7 +71,10 @@ export type IdentityRole = {
   readonly containerId?: string;
 };
 
-export type IdentityRoleListQuery = IdentityListWindow & IdentitySearchQuery;
+export type IdentityRoleListQuery = IdentityListWindow &
+  IdentitySearchQuery & {
+    readonly briefRepresentation?: boolean;
+  };
 
 export type IdentityUserAttributes = IdentityReadableAttributes;
 

@@ -20,8 +20,16 @@ describe('Keycloak role catalog pagination', () => {
     const roles = await loadKeycloakRoleCatalog({ listRoles } as never);
 
     expect(roles).toHaveLength(101);
-    expect(listRoles).toHaveBeenNthCalledWith(1, { first: 0, max: 100 });
-    expect(listRoles).toHaveBeenNthCalledWith(2, { first: 100, max: 100 });
+    expect(listRoles).toHaveBeenNthCalledWith(1, {
+      first: 0,
+      max: 100,
+      briefRepresentation: false,
+    });
+    expect(listRoles).toHaveBeenNthCalledWith(2, {
+      first: 100,
+      max: 100,
+      briefRepresentation: false,
+    });
   });
 
   it('fails closed when a provider repeats a full page', async () => {

@@ -105,10 +105,8 @@ export const ssfEffectiveTenantConfigurationSchema = z
 
 export type SsfSystemConfigurationInput = z.infer<typeof ssfSystemConfigurationInputSchema>;
 export type SsfTenantConfigurationInput = z.infer<typeof ssfTenantConfigurationInputSchema>;
-export type SsfEffectiveTenantConfiguration = z.infer<typeof ssfEffectiveTenantConfigurationSchema>;
-
 export type SsfTenantConfigurationView = Readonly<{
   system: SsfSystemConfigurationInput;
   overrides: SsfTenantConfigurationInput;
-  effective: SsfEffectiveTenantConfiguration;
+  effective: z.infer<typeof ssfEffectiveTenantConfigurationSchema>;
 }>;

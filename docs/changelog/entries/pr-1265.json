@@ -1,0 +1,4 @@
+{
+  "prNumber": 1265,
+  "body": "Die Studio-seitige Vorbereitung von Smart Speech Flow wurde um eine mandantengetrennte Persistenzgrundlage erweitert.\n\n- SSF-Mandanten werden idempotent vorbereitet und mit einem eindeutigen Status zurückgelesen.\n- Datenbankzugriffe binden den kanonischen Mandantenbezug transaktionslokal und verhindern mandantenübergreifende Zugriffe."
+}

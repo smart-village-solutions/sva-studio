@@ -27,7 +27,7 @@ describe('SSF PostgreSQL repository', () => {
     const client = { query, release } as unknown as PoolClient;
     const pool = { connect: vi.fn(async () => client) } as unknown as Pool;
 
-    const first = await provisionSsfTenant(pool, ' tenant-a ');
+    const first = await provisionSsfTenant(pool, 'tenant-a');
     const second = await provisionSsfTenant(pool, 'tenant-a');
 
     expect(first).toEqual({
@@ -86,6 +86,15 @@ describe('SSF PostgreSQL repository', () => {
 
     const connectionsBeforeInvalidInput = vi.mocked(pool.connect).mock.calls.length;
     await expect(readSsfTenant(pool, ' '.repeat(3))).rejects.toThrow(
+      'ssf_tenant_instance_id_invalid'
+    );
+    await expect(readSsfTenant(pool, ' tenant-b ')).rejects.toThrow(
+      'ssf_tenant_instance_id_invalid'
+    );
+    await expect(readSsfTenant(pool, 'Tenant-B')).rejects.toThrow(
+      'ssf_tenant_instance_id_invalid'
+    );
+    await expect(readSsfTenant(pool, 'xn--tenant-b')).rejects.toThrow(
       'ssf_tenant_instance_id_invalid'
     );
     expect(vi.mocked(pool.connect)).toHaveBeenCalledTimes(connectionsBeforeInvalidInput);

@@ -1042,6 +1042,14 @@ test('sva-studio-react vite SSR config resolves mail-runtime from workspace sour
   assert.doesNotMatch(viteConfig, /lvh\.me/);
 });
 
+test('sva-studio-react resolves the SSF runtime through one workspace module graph', () => {
+  const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
+
+  expect(viteConfig).toMatch(
+    /'@sva\/plugin-ssf\/runtime': resolveAppPath\('\.\.\/\.\.\/packages\/plugin-ssf\/src\/runtime\.ts'\)/
+  );
+});
+
 test('sva-studio-react vite SSR config resolves DSR persistence from workspace source', () => {
   const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
 

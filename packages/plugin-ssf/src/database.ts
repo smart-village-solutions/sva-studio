@@ -45,5 +45,10 @@ export const resolveSsfDatabasePool = (
 export const closeSsfDatabasePoolForShutdown = async (): Promise<void> => {
   const pool = configuredPool;
   configuredPool = undefined;
-  await pool?.end();
+  try {
+    await pool?.end();
+  } catch (error) {
+    configuredPool ??= pool;
+    throw error;
+  }
 };

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   closeSsfDatabasePoolForShutdown,
@@ -29,6 +29,20 @@ describe('SSF database configuration', () => {
     };
 
     expect(resolveSsfDatabasePool(environment)).toBe(resolveSsfDatabasePool(environment));
+
+    await closeSsfDatabasePoolForShutdown();
+  });
+
+  it('keeps a pool reachable when shutdown fails', async () => {
+    const environment = {
+      SVA_STUDIO_SSF_DATABASE_URL: 'postgresql://ssf-runtime:secret@postgres/ssf',
+    };
+    const pool = resolveSsfDatabasePool(environment);
+    if (!pool) throw new Error('missing_ssf_database_pool');
+    vi.spyOn(pool, 'end').mockRejectedValueOnce(new Error('shutdown_failed'));
+
+    await expect(closeSsfDatabasePoolForShutdown()).rejects.toThrow('shutdown_failed');
+    expect(resolveSsfDatabasePool(environment)).toBe(pool);
 
     await closeSsfDatabasePoolForShutdown();
   });

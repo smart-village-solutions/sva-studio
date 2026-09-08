@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { ssfPlugin } from '../src/index.js';
+import { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID } from '../src/plugin.js';
 import {
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_INSTANCE_HEADER,
@@ -43,6 +44,17 @@ describe('SSF plugin metadata', () => {
         },
       ]),
       contentHistory: { mode: 'none', reasonCode: 'infrastructure_only' },
+      jobTypes: [
+        expect.objectContaining({ jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID }),
+      ],
+      tenantLifecycle: {
+        contractVersion: 1,
+        operations: [
+          { operation: 'provision', jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID },
+          { operation: 'reconcile', jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID },
+        ],
+        readinessChecks: [],
+      },
     });
     expect(manifest).toMatchObject({
       pluginId: 'ssf',
@@ -51,11 +63,15 @@ describe('SSF plugin metadata', () => {
       tenantActivationPolicy: 'automatic',
     });
     expect(manifest['hostCompatibility']).toMatchObject({
-      requiredCapabilities: ['iam', 'server'],
+      requiredCapabilities: ['iam', 'server', 'jobs'],
     });
     expect(manifest['entryPoints']).toEqual({
       browser: './dist/browser.js',
       server: './dist/server/index.js',
+      jobs: './dist/server.js',
+    });
+    expect(manifest['runtimeRequirements']).toEqual({
+      jobs: 'ssf.authorization-projection',
     });
   });
 });

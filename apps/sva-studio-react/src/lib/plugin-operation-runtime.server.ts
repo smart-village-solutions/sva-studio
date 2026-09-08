@@ -1,10 +1,19 @@
 import {
   dsrExportStudioJobRegistration,
   mediaContentSaveRecoveryStudioJobRegistration,
+  readTenantPermissionProjectionSubjects,
   registerPluginOperationExecutionHandlers,
   registerStudioJobExecutionHandlers,
+  resolveInstanceKeycloakProjectionTenant,
   type PluginOperationExecutionRegistration,
 } from '@sva/auth-runtime/server';
+import {
+  createConfiguredSsfKeycloakAuthorizationProjectionTarget,
+  createPostgresSsfAuthorizationProjectionStore,
+  createSsfAuthorizationProjectionRuntime,
+  resolveSsfRootDatabasePool,
+} from '@sva/plugin-ssf/runtime';
+import { SSF_TENANT_OIDC_CLIENT_REQUIREMENT } from '@sva/plugin-ssf/provisioning';
 import {
   wasteManagementOperationsContract,
   type PluginCatalogEntry,
@@ -243,6 +252,22 @@ const resolvePluginJobModule = (input: {
 };
 
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
+  'ssf.authorization-projection': () => {
+    const pool = resolveSsfRootDatabasePool();
+    if (!pool) throw new Error('ssf_root_database_not_configured');
+
+    return createSsfAuthorizationProjectionRuntime({
+      source: { readSubjects: readTenantPermissionProjectionSubjects },
+      store: createPostgresSsfAuthorizationProjectionStore(pool),
+      target: createConfiguredSsfKeycloakAuthorizationProjectionTarget({
+        resolveTenant: (instanceId) =>
+          resolveInstanceKeycloakProjectionTenant(
+            instanceId,
+            SSF_TENANT_OIDC_CLIENT_REQUIREMENT.clientId
+          ),
+      }),
+    });
+  },
   'waste-management.operations': () =>
     createWasteManagementOperationRuntime({
       dispatchMail: createNodemailerMailDispatcher({}),

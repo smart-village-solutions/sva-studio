@@ -17,7 +17,7 @@
 - [x] 2.1 Tenantgebundenen, idempotenten Projektionsadapter mit injiziertem
       SSF-Client-Resolver für den gemeinsamen Tenant-Realm implementieren
 - [x] 2.2 Projektion nach jedem Write vollständig zurücklesen und verifizieren
-- [ ] 2.3 Den in `add-ssf-tenant-administration` vorgesehenen
+- [x] 2.3 Den in `add-ssf-tenant-administration` vorgesehenen
       tenantlokalen SSF-Client produktiv auflösen
 - [x] 2.4a Lock-Schlüssel normalisieren und Primärfehler bei Unlock-Fehlern erhalten
 - [x] 2.4b Externe Keycloak-Aufrufe mit nachweislich begrenzten Connect- und
@@ -26,7 +26,7 @@
       nachweislich begrenzten Gesamtlaufzeit absichern
 - [x] 2.4d Die Laufzeitbegrenzung im produktiven
       SSF-Widerrufsclient bis zum Netzwerktransport durchreichen
-- [ ] 2.5 Teilfehler, Retry und konkurrierende Läufe im produktiven
+- [x] 2.5 Teilfehler, Retry und konkurrierende Läufe im produktiven
       Plugin-Lifecycle fail-closed behandeln
 
 ## 3. Token und Session-Lifecycle
@@ -53,9 +53,11 @@
 
 ## 5. Verbindliche Reihenfolge für den verbleibenden Lieferpfad
 
-Der Studio-Zwischen-PR endet nach 5.2. Die Aufgaben 2.3, 2.5, 3.3, 4.1 bis 4.4
-sowie 5.3 bis 5.5 bleiben bewusst offen. Der optionale Widerrufsconsumer ersetzt
-weder den Tokenlaufzeit- noch den gemeinsamen Staging-Nachweis.
+Der MVP-Slice bis 5.3 verbindet jetzt echte Studio-Permissions mit dem
+tenantlokalen SSF-Client. Audit-Ausbau, zusätzliche Statusoberflächen,
+Komfortdiagnosen und optionale Sitzungswiderrufe bleiben nachgelagert. Als
+nächster Freigabeblock folgen 5.4 und 5.5; der optionale Widerrufsconsumer
+ersetzt weder den Tokenlaufzeit- noch den gemeinsamen Staging-Nachweis.
 
 - [x] 5.1 Den minimalen Studio→SSF-Widerrufsvertrag sowie die
       Deploymentkonfiguration für eine separat verwaltete technische Identität
@@ -66,7 +68,7 @@ weder den Tokenlaufzeit- noch den gemeinsamen Staging-Nachweis.
       deterministischem Idempotency-Key, Timeout, Fehlerklassifizierung und
       simuliertem Provider implementieren. Retries bleiben Eigentum des
       vorhandenen Lifecycles; danach 2.4d auf Studio-Seite abschließen
-- [ ] 5.3 Den vorhandenen Reconciler als schmalen Beitrag an den bestehenden
+- [x] 5.3 Den vorhandenen Reconciler als schmalen Beitrag an den bestehenden
       Plugin-Lifecycle anbinden und 2.5 abschließen; bis dahin keine
       zusätzlichen Jobtypen oder Host-Abstraktionen einführen
 - [ ] 5.4 Danach den bestätigten Projektionsstand als produktiven

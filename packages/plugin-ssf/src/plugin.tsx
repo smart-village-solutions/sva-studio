@@ -62,11 +62,36 @@ const permissions = definePluginPermissions('ssf', [
   { id: SSF_ADMIN_ACTIONS.tenantManage, titleKey: 'ssf.permissions.tenantManage' },
 ]);
 
+export const SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID = 'ssf.reconcile-authorization' as const;
+
+const jobTypes = [
+  {
+    jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID,
+    queue: 'plugin-operations',
+    displayName: 'SSF authorization reconcile',
+  },
+] as const;
+
 export const ssfPlugin = {
   id: 'ssf',
   displayName: 'Smart Speech Flow',
   actions,
   permissions,
+  jobTypes,
+  tenantLifecycle: {
+    contractVersion: 1,
+    operations: [
+      {
+        operation: 'provision',
+        jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID,
+      },
+      {
+        operation: 'reconcile',
+        jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID,
+      },
+    ],
+    readinessChecks: [],
+  },
   translations: ssfPluginTranslations,
   routes: [
     {

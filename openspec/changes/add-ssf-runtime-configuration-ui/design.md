@@ -37,8 +37,10 @@ Der Root-Editor enthält Standardsprache, verfügbare Sprachen, je Sprache die
 drei Erklärungstexte sowie Gesprächsspeicherung `ask` oder `disabled`.
 
 Der Tenant-Editor zeigt dafür Systemstandard, optionalen Tenant-Override und
-wirksamen Wert. Overrides können einzeln gesetzt oder über „Systemstandard
-verwenden“ entfernt werden. Die Standardsprache muss aktiv sein. Bei
+die daraus erkennbare Vererbung. Overrides können einzeln gesetzt oder über
+„Systemstandard verwenden“ entfernt werden. Eine zusätzliche Darstellung der
+vollständig aufgelösten Runtime-Antwort und ihrer Revision ist für den MVP
+nicht erforderlich. Die Standardsprache muss aktiv sein. Bei
 `disabled` ist die Speicherfrage nicht erforderlich und wird wirksam `null`.
 Branding-Felder werden weder angezeigt noch in UI-Verträgen mitgeführt.
 
@@ -47,7 +49,8 @@ Branding-Felder werden weder angezeigt noch in UI-Verträgen mitgeführt.
 Die Root-API liefert und ändert Systemstandards. Die Tenant-API liefert
 Systemstandards, Tenant-Overrides und die mit dem Runtime-Resolver aufgelöste
 wirksame Konfiguration. Nach erfolgreichem Speichern laden beide UIs den
-bestätigten Stand erneut; die Tenant-UI zeigt die `configurationRevision`.
+bestätigten Stand erneut. Die `configurationRevision` bleibt Bestandteil der
+API und kann später in einer Betriebs- oder Diagnoseansicht erscheinen.
 
 ### HTML und Persistenz bleiben serverseitig abgesichert
 

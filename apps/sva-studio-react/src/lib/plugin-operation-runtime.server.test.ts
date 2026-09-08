@@ -14,8 +14,21 @@ vi.mock('@sva/auth-runtime/server', () => ({
     jobTypeId: 'media.content-save-recovery',
   },
   protectField: vi.fn((value: string) => value),
+  readTenantPermissionProjectionSubjects: vi.fn(),
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
+  resolveInstanceKeycloakProjectionTenant: vi.fn(),
+}));
+
+vi.mock('@sva/plugin-ssf/runtime', () => ({
+  createConfiguredSsfKeycloakAuthorizationProjectionTarget: vi.fn(() => ({})),
+  createPostgresSsfAuthorizationProjectionStore: vi.fn(() => ({})),
+  createSsfAuthorizationProjectionRuntime: vi.fn(() => ({ reconcile: vi.fn() })),
+  resolveSsfRootDatabasePool: vi.fn(() => ({})),
+}));
+
+vi.mock('@sva/plugin-ssf/provisioning', () => ({
+  SSF_TENANT_OIDC_CLIENT_REQUIREMENT: { clientId: 'ssf' },
 }));
 
 const createPluginJobExecutionHandlersMock = vi.fn(() => ({
@@ -108,6 +121,7 @@ describe('plugin operation runtime registration', () => {
     const handlers = await mod.registerStudioPluginOperationHandlers();
 
     expect(Object.keys(handlers).sort()).toEqual([
+      'ssf.reconcile-authorization',
       'waste-management.apply-migrations',
       'waste-management.import-data',
       'waste-management.initialize-data-source',

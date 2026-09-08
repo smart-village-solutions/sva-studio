@@ -1262,23 +1262,22 @@ Fehlerpfad:
 - Scheitert die IAM-Projektion, werden keine neuen Tenant-Tokens ausgestellt und
   Runtime-Abrufe liefern `ssf_tenant_not_ready`.
 
-Bei einer geänderten bestätigten Permission-Projektion ruft Studio den festen
-SSF-Control-Plane-Endpunkt mit einer getrennten technischen Identität auf. Der
-Request enthält nur die kanonische Instanz-ID, die bestätigte Revision und einen
-daraus deterministisch abgeleiteten Idempotency-Key. Derselbe `AbortSignal`
-begrenzt Tokenabruf und Widerrufsrequest. Erst `204 No Content` erlaubt dem
-Reconciler den Übergang zu `ready`; ohne implementierten SSF-Provider bleibt der
-Tenant fail-closed. Der Adapter implementiert keine eigene Retry-Schleife.
+Ein tenantgebundener Sitzungswiderruf über den SSF-Control-Plane-Endpunkt bleibt
+optionale Härtung. Für den MVP wird die Projektion nach identischem Keycloak-
+Read-back und erneuter Aktivierung des tenantlokalen SSF-Clients bereit. Bereits
+ausgestellte Rechte werden stattdessen durch die vor dem produktiven Enablement
+nachzuweisende maximale Access-Token-Laufzeit begrenzt.
 
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
 
-Der derzeit implementierte Zwischenstand deckt Service-Claim-Prüfung,
-authentisierungsseitig nachgelagerte Tenant-Bindung, Instanz-, Aktivierungs- und
-Readiness-Gates, tenantgebundenen Execution-Context sowie den fachlichen
-Plugin-Handler ab. Der produktive Pfad bleibt deaktiviert, bis Deployment und
-IAM-Projektion echte Datenbank-, Zeitzonen-, Medien- und verifizierte
-Revisionsprovider bereitstellen; ohne sie endet der Ablauf vor dem Handler mit
-`ssf_tenant_not_ready`.
+Der implementierte Studio-Pfad registriert die SSF-Projektion als generische
+Tenant-Lifecycle-Operation für Provisionierung und Reconcile. Der Handler liest
+die effektiven Studio-Permissions, verwendet den kanonisch aufgelösten
+Tenant-Realm und SSF-Client, materialisiert die Projektion und veröffentlicht nur
+die bestätigte Revision. Nicht bereite Ergebnisse bleiben im vorhandenen
+Lifecycle-Retry; eine zweite Job- oder Retry-Implementierung existiert nicht.
+Das produktive Enablement bleibt bis zum revisionsgleichen Token-/Runtime-
+Nachweis gesperrt.
 
 ### Keycloak-Realm-Rollenzuweisung
 

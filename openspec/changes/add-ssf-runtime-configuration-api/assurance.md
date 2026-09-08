@@ -16,6 +16,7 @@ geplanten Nachweise fest. Detailtests verbleiben in den jeweiligen Tasks.
 | `SSF-RT-09` | Ein erfolgreicher Write ist beim nächsten Read sichtbar; V1 besitzt keinen fachlichen Cache.                                     | `packages/plugin-ssf/tests/postgresql.integration.test.ts`                                                                                                                                                                             |
 | `SSF-RT-10` | Logs, Metriken und Audit enthalten weder Token noch HTML noch Fremdtenantdaten.                                                  | `packages/auth-runtime/src/ssf-runtime-plugin-service.test.ts` prüft stabile Fehler und minimale Auditdaten; die Host-Response-Observability übernimmt nur validierte Revisionen und niedrig-kardinale Metrikattribute.                |
 | `SSF-RT-11` | SSF-Persistenz nutzt im kanonischen Rollout ein getrenntes Migrations-, Backup- und Restore-Ziel und bleibt standardmäßig aus.   | `deploy/portainer/ssf-runtime-deployment.test.ts`, `deploy/backup-agent/agent.test.ts`, `scripts/ci/{backup-agent-contract,restore-agent-contract,submit-backup-agent-request,verify-backup-agent-capabilities}.test.ts`               |
+| `SSF-RT-12` | Jede Umgebung besitzt genau eine lokale, minimal berechtigte SSF-Runtime-Service-Identität; ihr Secret erscheint nie in Ausgabe oder Repository. | `scripts/ops/{ssf-runtime-service-client.sh,ssf-runtime-service-client.test.ts}`, geschützter Umgebungsnachweis nach `docs/operations/ssf-runtime-service-identitaet.md` |
 
 ## Liefergrenze
 

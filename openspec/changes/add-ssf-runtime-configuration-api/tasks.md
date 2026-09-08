@@ -105,6 +105,11 @@ wird keine Aufgabe aus Abschnitt 5 begonnen.
       IAM-Projektionsrevision getrennt und ohne zweiten Rolloutpfad abbilden
 - [x] 5.4 Ausfalltests für Studio, Plugin-Datenbank, JWKS und fehlende Medien-
       Capability ergänzen; keine persistente SSF-Fallback-Schicht einführen
+- [x] 5.5 Idempotenten Keycloak-Operator für den minimal berechtigten
+      `ssf-runtime`-Client und eine geheimnisfreie Rotations-/Rollback-Anleitung
+      bereitstellen
+- [ ] 5.6 Getrennte Umgebungscredentials provisionieren und den authentifizierten
+      Runtime-Aufruf mit positiven und negativen Tokenfällen auf Staging nachweisen
 
 ## 6. Dokumentation und Gates
 

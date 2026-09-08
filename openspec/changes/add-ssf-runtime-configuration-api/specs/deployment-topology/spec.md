@@ -29,3 +29,26 @@ Tenantdaten über die kanonische Studio-`instanceId` isolieren.
 - **WHEN** der bestehende Backup-/Restore-Vertrag sein Inventar bildet
 - **THEN** behandelt er zentrale Studio-Datenbank und SSF-Plugin-Datenbank als getrennte persistente Ziele
 - **AND** vermischt er sie nicht mit ClickHouse-, Session- oder Gesprächsdaten
+
+### Requirement: Jede Umgebung besitzt eine getrennte SSF-Runtime-Service-Identität
+
+Das System SHALL im Studio-Root-Realm jeder Umgebung genau einen vertraulichen
+Client `ssf-runtime` für Runtime Configuration V1 betreiben. Der Client MUST
+ausschließlich die Audience `sva-studio-ssf-runtime` und die Action
+`ssf.runtime-configuration.read` erhalten; sein Secret MUST außerhalb von Git,
+Logs und API-Antworten an das SSF-Deployment übergeben werden.
+
+#### Scenario: Der technische Client wird idempotent abgeglichen
+
+- **GIVEN** ein authentifizierter Operator hat Zugriff auf den Studio-Root-Realm
+- **WHEN** er den SSF-Runtime-Service-Client abgleicht
+- **THEN** sind Service-Account und Client-Authentisierung aktiviert
+- **AND** bleiben Standard-, Implicit- und Direct-Access-Grant-Flows deaktiviert
+- **AND** besitzt der Service-Account ausschließlich die vorgesehene Client-Action
+
+#### Scenario: Umgebungen teilen kein Client-Secret
+
+- **GIVEN** Entwicklung, Staging und Produktion betreiben getrennte Studio-Umgebungen
+- **WHEN** ihre SSF-Runtime-Identitäten provisioniert oder rotiert werden
+- **THEN** verwendet jede Umgebung einen lokalen Issuer und ein eigenes Secret
+- **AND** wird kein Secret zwischen Umgebungen oder Studio-Installationen wiederverwendet

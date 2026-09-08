@@ -14,6 +14,7 @@ aufeinander aufbauende OpenSpec-Changes gegliedert:
 3. [`add-ssf-tenant-administration`](../../openspec/changes/add-ssf-tenant-administration/proposal.md)
 4. [`add-ssf-runtime-configuration-api`](../../openspec/changes/add-ssf-runtime-configuration-api/proposal.md)
 5. [`add-ssf-iam-permission-projection`](../../openspec/changes/add-ssf-iam-permission-projection/proposal.md)
+6. [`wire-ssf-runtime-real-data`](../../openspec/changes/wire-ssf-runtime-real-data/proposal.md)
 
 Der aktuelle Studio-Zwischenstand umfasst den fail-closed Runtime-Lesepfad,
 die Studio-seitige Projektionslogik, den getesteten Consumer für den
@@ -235,6 +236,12 @@ den Header aus und bindet ihn über die Instanz-Registry, Aktivierungs- und
 Readiness-Gates an den Execution-Context. Für diesen idempotenten Read gibt es
 keine zweite Tenant-Signatur und keinen Replay-Speicher. Browser erhalten weder
 Datenbank-Credentials noch direkten Zugriff auf diese interne API.
+
+Datenbankbereitschaft und `authorizationRevision` liest der Host aus demselben
+prozesslokalen SSF-Datenbankpool, den auch der Plugin-Handler verwendet. Die
+Zeitzone stammt aus dem bereits hostvalidierten generischen Instanzprofil;
+dadurch entsteht weder eine zweite Tenant-Auflösung noch eine SSF-spezifische
+Kopie der Instanzstammdaten.
 
 Das installationsweite Service-Token stammt vom technischen Client im
 Studio-Root-Realm. Es ist nicht an einen einzelnen Tenant gebunden und enthält

@@ -40,6 +40,7 @@ const originalEnv = {
 const createInstanceRecord = (overrides: Partial<InstanceRegistryRecord> = {}): InstanceRegistryRecord => ({
   instanceId: 'tenant-a',
   displayName: 'Tenant A',
+  timeZone: 'Europe/Berlin',
   status: 'active',
   parentDomain: 'example.test',
   primaryHostname: 'tenant-a.example.test',

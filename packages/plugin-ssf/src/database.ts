@@ -30,3 +30,20 @@ export const createSsfDatabasePool = (
     application_name: config.applicationName,
     max: config.max,
   });
+
+let configuredPool: Pool | undefined;
+
+export const resolveSsfDatabasePool = (
+  environment: NodeJS.ProcessEnv = process.env
+): Pool | null => {
+  const config = readSsfDatabaseConfig(environment);
+  if (!config) return null;
+  configuredPool ??= createSsfDatabasePool(config);
+  return configuredPool;
+};
+
+export const closeSsfDatabasePoolForShutdown = async (): Promise<void> => {
+  const pool = configuredPool;
+  configuredPool = undefined;
+  await pool?.end();
+};

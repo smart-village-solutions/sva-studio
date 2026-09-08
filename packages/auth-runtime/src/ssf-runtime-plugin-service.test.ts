@@ -24,6 +24,7 @@ const descriptor = () => ({
 const instance = (status: InstanceRegistryRecord['status'] = 'active'): InstanceRegistryRecord => ({
   instanceId: 'tenant-a',
   displayName: 'Tenant A',
+  timeZone: 'Europe/Berlin',
   status,
   parentDomain: 'studio.test',
   primaryHostname: 'tenant-a.studio.test',
@@ -62,7 +63,6 @@ describe('SSF runtime plugin service host gates', () => {
   const readPluginAccess = vi.fn();
   const readDatabaseReadiness = vi.fn();
   const readAuthorizationRevision = vi.fn();
-  const readTimeZone = vi.fn();
   const emitSecurityAudit = vi.fn();
 
   beforeEach(() => {
@@ -74,7 +74,6 @@ describe('SSF runtime plugin service host gates', () => {
     readPluginAccess.mockReset().mockResolvedValue({ allowed: true, reason: 'ready' });
     readDatabaseReadiness.mockReset().mockResolvedValue(true);
     readAuthorizationRevision.mockReset().mockResolvedValue(revision);
-    readTimeZone.mockReset().mockResolvedValue('Europe/Berlin');
     emitSecurityAudit.mockReset().mockResolvedValue(undefined);
   });
 
@@ -85,7 +84,6 @@ describe('SSF runtime plugin service host gates', () => {
       readPluginAccess,
       readDatabaseReadiness,
       readAuthorizationRevision,
-      readTimeZone,
       emitSecurityAudit,
     });
 
@@ -228,13 +226,13 @@ describe('SSF runtime plugin service host gates', () => {
     ],
     [
       'missing tenant timezone',
-      () => readTimeZone.mockResolvedValue(null),
+      () => readInstance.mockResolvedValue({ ...instance(), timeZone: '' }),
       409,
       'ssf_tenant_not_ready',
     ],
     [
       'invalid tenant timezone',
-      () => readTimeZone.mockResolvedValue('Mars/Olympus'),
+      () => readInstance.mockResolvedValue({ ...instance(), timeZone: 'Mars/Olympus' }),
       409,
       'ssf_tenant_not_ready',
     ],

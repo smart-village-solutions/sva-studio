@@ -6,7 +6,7 @@ import {
   confirmSsfAuthorizationProjectionReadBack,
   createPostgresSsfAuthorizationProjectionStore,
   createSsfAuthorizationRevision,
-  markSsfAuthorizationSessionsRevoked,
+  markSsfAuthorizationProjectionReady,
   readReadySsfAuthorizationRevision,
   stageSsfAuthorizationProjection,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
@@ -71,7 +71,7 @@ describe('SSF authorization projection repository', () => {
     ).resolves.toBe(true);
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining(
-        "status IN ('pending', 'projecting', 'revocation_pending', 'blocked')"
+        "status IN ('pending', 'projecting', 'activation_pending', 'revocation_pending', 'blocked')"
       ),
       ['tenant-a', 3, `sha256:${'a'.repeat(64)}`]
     );
@@ -183,7 +183,7 @@ describe('SSF authorization projection repository', () => {
     ]);
   });
 
-  it('requires confirmed read-back and session revocation before readiness', async () => {
+  it('requires confirmed read-back before the repository can publish readiness', async () => {
     const desired = projection();
     const revision = createSsfAuthorizationRevision(desired);
     const query = vi.fn().mockResolvedValue({ rowCount: 1, rows: [] });
@@ -198,12 +198,12 @@ describe('SSF authorization projection repository', () => {
     ).resolves.toBe(true);
     expect(query).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining("SET status = 'revocation_pending'"),
+      expect.stringContaining("SET status = 'activation_pending'"),
       ['tenant-a', 4, revision, JSON.stringify(desired)]
     );
 
     await expect(
-      markSsfAuthorizationSessionsRevoked(pool, {
+      markSsfAuthorizationProjectionReady(pool, {
         instanceId: 'tenant-a',
         generation: 4,
         authorizationRevision: revision,
@@ -236,7 +236,7 @@ describe('SSF authorization projection repository', () => {
     ]);
     expect(client.query).toHaveBeenNthCalledWith(
       3,
-      expect.stringContaining('confirmed_revision = sessions_revoked_revision'),
+      expect.not.stringContaining('sessions_revoked_revision'),
       ['tenant-a']
     );
     expect(client.release).toHaveBeenCalledOnce();

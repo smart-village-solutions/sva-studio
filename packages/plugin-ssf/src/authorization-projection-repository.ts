@@ -15,7 +15,12 @@ import {
 type ProjectionQueryClient = Pick<Pool, 'query'>;
 
 export type SsfAuthorizationProjectionStatus =
-  'pending' | 'projecting' | 'revocation_pending' | 'ready' | 'blocked';
+  | 'pending'
+  | 'projecting'
+  | 'activation_pending'
+  | 'revocation_pending'
+  | 'ready'
+  | 'blocked';
 
 export type SsfAuthorizationProjectionState = Readonly<{
   instanceId: string;
@@ -101,7 +106,7 @@ export const claimSsfAuthorizationProjection = async (
       WHERE instance_id = $1
         AND generation = $2
         AND desired_revision = $3
-        AND status IN ('pending', 'projecting', 'revocation_pending', 'blocked')`,
+        AND status IN ('pending', 'projecting', 'activation_pending', 'revocation_pending', 'blocked')`,
     [input.instanceId, input.generation, input.desiredRevision]
   );
   return result.rowCount === 1;
@@ -130,7 +135,7 @@ export const confirmSsfAuthorizationProjectionReadBack = async (
 
   const result = await pool.query(
     `UPDATE ssf.authorization_projections
-        SET status = 'revocation_pending',
+        SET status = 'activation_pending',
             confirmed_revision = $3,
             confirmed_projection = $4::jsonb,
             confirmed_at = now(),
@@ -147,22 +152,20 @@ export const confirmSsfAuthorizationProjectionReadBack = async (
   return result.rowCount === 1;
 };
 
-export const markSsfAuthorizationSessionsRevoked = async (
+export const markSsfAuthorizationProjectionReady = async (
   pool: ProjectionQueryClient,
   input: Readonly<{ instanceId: string; generation: number; authorizationRevision: string }>
 ): Promise<boolean> => {
   const result = await pool.query(
     `UPDATE ssf.authorization_projections
         SET status = 'ready',
-            sessions_revoked_revision = $3,
-            sessions_revoked_at = now(),
             last_error_code = NULL,
             updated_at = now()
       WHERE instance_id = $1
         AND generation = $2
         AND desired_revision = $3
         AND confirmed_revision = $3
-        AND status = 'revocation_pending'`,
+        AND status = 'activation_pending'`,
     [input.instanceId, input.generation, input.authorizationRevision]
   );
   return result.rowCount === 1;
@@ -224,7 +227,6 @@ export const readReadySsfAuthorizationRevision = async (
         WHERE instance_id = $1
           AND status = 'ready'
           AND desired_revision = confirmed_revision
-          AND confirmed_revision = sessions_revoked_revision
           AND last_error_code IS NULL`,
       [instanceId]
     );

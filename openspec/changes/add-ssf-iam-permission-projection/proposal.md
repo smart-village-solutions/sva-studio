@@ -5,9 +5,9 @@
 Der interne SSF-Runtime-Konfigurationsendpunkt ist implementiert, bleibt aber
 absichtlich fail-closed, solange Studio keine verifizierte tenantweite
 `authorizationRevision` bereitstellen kann. Für ein produktives Enablement
-müssen Studio-IAM, die SSF-Claims im gemeinsamen Tenant-Realm und laufende
-SSF-Sessions auf dieselbe materialisierte Permission-Projektion gebunden
-werden.
+müssen Studio-IAM und die SSF-Claims im gemeinsamen Tenant-Realm auf dieselbe
+materialisierte Permission-Projektion gebunden werden. Bereits ausgestellte
+Access-Tokens dürfen alte Rechte höchstens 15 Minuten weitertragen.
 
 ## What Changes
 
@@ -19,8 +19,10 @@ werden.
 - SSF-Benutzertoken tragen diese Revision; der Runtime-Endpunkt liefert sie nur
   nach verifizierter Projektion aus. Das installationsweite SSF-Service-Token
   authentifiziert ausschließlich das Backend und ist nicht tenantgebunden.
-- Relevante Permission-Änderungen widerrufen bestehende SSF-Sessions und
-  erzwingen eine erneute Tokenausstellung.
+- Nach erfolgreichem Keycloak-Write und Read-back wird die Projektion bereit.
+  Ein verpflichtender Session-Widerruf ist nicht Teil dieser Konvergenz;
+  stattdessen begrenzt eine maximale Access-Token-Laufzeit von 15 Minuten die
+  Nachwirkung alter Rechte.
 - Studio authentifiziert ausgehende Control-Plane-Aufrufe mit deploymentseitig
   bereitgestellten Credentials einer eigenen technischen Identität
   `sva-studio-ssf-control-plane`; der gegenläufige SSF-Runtime-Client wird
@@ -48,11 +50,11 @@ werden.
 
 - Claim, Host-Readiness und Runtime-Antwort verwenden für denselben Tenant
   exakt dieselbe verifizierte Revision.
-- Der Studio-Consumer für den tenantgebundenen SSF-Sammelwiderruf ist
-  produktionsfähig implementiert und gegen einen simulierten Provider
-  vertraglich getestet, bevor SSF die Provider-Seite bereitstellt.
+- Der vorhandene Studio-Consumer für einen späteren tenantgebundenen
+  SSF-Sammelwiderruf bleibt optionale Härtung und blockiert die Readiness nicht.
 - Fehlende, veraltete oder gescheiterte Projektionen blockieren die
   Runtime-Konfiguration und neue SSF-Sessions.
-- Permission-Änderungen machen alte Tokens und Sessions nachweisbar unwirksam.
+- Permission-Änderungen sind nach Write und Read-back bereit; alte
+  Access-Token-Rechte laufen nachweisbar spätestens nach 15 Minuten aus.
 - Zwei Tenant-Projektionen können sich weder in Keycloak noch in Studio
   gegenseitig beeinflussen.

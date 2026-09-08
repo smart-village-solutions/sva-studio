@@ -44,7 +44,7 @@ const fixtures = (desired = projection()) => {
     stage: vi.fn(async () => state(desired)),
     claim: vi.fn(async () => true),
     confirmReadBack: vi.fn(async () => true),
-    markSessionsRevoked: vi.fn(async () => true),
+    markReady: vi.fn(async () => true),
     markBlocked: vi.fn(async () => true),
   } satisfies SsfAuthorizationProjectionLockedStore;
   const store = {
@@ -66,7 +66,7 @@ const fixtures = (desired = projection()) => {
 };
 
 describe('SSF authorization projection reconciler', () => {
-  it('writes, reads back and revokes sessions before publishing readiness', async () => {
+  it('publishes readiness after write, read-back and client reactivation', async () => {
     const desired = projection();
     const { lockedStore, target, reconcile } = fixtures(desired);
     const revision = createSsfAuthorizationRevision(desired);
@@ -85,9 +85,9 @@ describe('SSF authorization projection reconciler', () => {
       readBack: desired,
       generation: 1,
     });
-    expect(target.revokeTenantSessions).toHaveBeenCalledWith('tenant-a', revision);
+    expect(target.revokeTenantSessions).not.toHaveBeenCalled();
     expect(target.resumeTokenIssuance).toHaveBeenCalledWith('tenant-a');
-    expect(lockedStore.markSessionsRevoked).toHaveBeenCalledWith({
+    expect(lockedStore.markReady).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       generation: 1,
       authorizationRevision: revision,
@@ -119,7 +119,7 @@ describe('SSF authorization projection reconciler', () => {
         status: 'ready',
         confirmedRevision: revision,
         confirmedProjection: desired,
-        sessionsRevokedRevision: revision,
+        sessionsRevokedRevision: null,
       })
     );
 
@@ -146,7 +146,6 @@ describe('SSF authorization projection reconciler', () => {
     ['token_issuance_suspend_failed', 'suspendTokenIssuance'],
     ['target_write_failed', 'reconcile'],
     ['target_readback_failed', 'readBack'],
-    ['session_revocation_failed', 'revokeTenantSessions'],
     ['token_issuance_resume_failed', 'resumeTokenIssuance'],
   ] as const)('blocks the exact generation after %s', async (reason, method) => {
     const desired = projection();
@@ -169,25 +168,15 @@ describe('SSF authorization projection reconciler', () => {
     );
   });
 
-  it('keeps two tenant projections and revocations isolated', async () => {
+  it('keeps two tenant projections isolated without requiring session revocation', async () => {
     const tenantA = fixtures(projection('tenant-a'));
     const tenantB = fixtures(projection('tenant-b'));
 
     await tenantA.reconcile(projection('tenant-a'));
     await tenantB.reconcile(projection('tenant-b'));
 
-    expect(tenantA.target.revokeTenantSessions).toHaveBeenCalledWith(
-      'tenant-a',
-      createSsfAuthorizationRevision(projection('tenant-a'))
-    );
-    expect(tenantA.target.revokeTenantSessions).not.toHaveBeenCalledWith(
-      'tenant-b',
-      expect.any(String)
-    );
-    expect(tenantB.target.revokeTenantSessions).toHaveBeenCalledWith(
-      'tenant-b',
-      createSsfAuthorizationRevision(projection('tenant-b'))
-    );
+    expect(tenantA.target.revokeTenantSessions).not.toHaveBeenCalled();
+    expect(tenantB.target.revokeTenantSessions).not.toHaveBeenCalled();
     expect(createSsfAuthorizationRevision(projection('tenant-a'))).not.toBe(
       createSsfAuthorizationRevision(projection('tenant-b'))
     );

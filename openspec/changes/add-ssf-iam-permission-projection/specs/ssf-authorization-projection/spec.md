@@ -42,36 +42,33 @@ Benutzertokenclaims MUST fail-closed behandelt werden.
 - **THEN** wird der Zugriff abgewiesen
 - **AND** ist eine erneute Tokenausstellung erforderlich
 
-### Requirement: Permission-Änderungen widerrufen bestehende SSF-Sessions
+### Requirement: Alte Rechte laufen begrenzt aus
 
-Das System SHALL nach bestätigter Änderung der effektiven SSF-Permissions alle
-betroffenen bestehenden SSF-Sessions über eine tenantgebundene SSF-
-Sessiongrenze widerrufen, bevor der neue Zustand als vollständig konvergiert
-gilt. Ein reiner SSF-Permission-Wechsel MUST NOT einen realmweiten
-Keycloak-Benutzerlogout auslösen. Studio MUST den ausgehenden Aufruf mit einer
-eigenen technischen Service-Identität authentifizieren, an die kanonische
-Studio-Instanz und die bestätigte `authorizationRevision` binden und
-idempotent sowie mit begrenzter Laufzeit ausführen.
+Das System SHALL die Projektion nach erfolgreichem Keycloak-Write, identischem
+Read-back und erneuter Aktivierung des tenantlokalen SSF-Clients als `ready`
+veröffentlichen. Ein Session-Widerruf MUST dafür nicht erforderlich sein. Für
+ein produktives Enablement MUST nachgewiesen sein, dass SSF-Benutzer-Access-
+Tokens höchstens 15 Minuten gültig sind. Refresh oder Neuausstellung MUST die
+aktuell projizierten Claims verwenden.
 
-#### Scenario: Permission-Änderung konvergiert
+#### Scenario: Permission-Änderung konvergiert ohne Session-Widerruf
 
 - **GIVEN** eine effektive SSF-Permission eines Tenants ändert sich
-- **WHEN** die neue Projektion bestätigt wurde
-- **THEN** werden bestehende SSF-Sessions dieses Tenants widerrufen
+- **WHEN** Write und Read-back die neue Projektion bestätigen und der SSF-Client wieder aktiviert ist
+- **THEN** wird die bestätigte Revision als `ready` veröffentlicht
 - **AND** enthalten neu ausgestellte Tokens die neue Revision
-- **AND** bleiben Sessions anderer Tenants unverändert
-- **AND** bleiben Studio-Sessions desselben Benutzers bestehen
+- **AND** wird kein erfolgreicher Session-Widerruf behauptet
 
-#### Scenario: Studio wiederholt einen unbestätigten Widerruf
+#### Scenario: Bereits ausgestellter Token trägt alte Rechte
 
-- **GIVEN** Studio hat für einen Tenant und eine bestätigte Revision einen Widerruf angefordert, aber keine erfolgreiche Antwort erhalten
-- **WHEN** der begrenzte Retry denselben Widerruf erneut sendet
-- **THEN** verwendet Studio denselben deterministischen Idempotency-Key und denselben Payload
-- **AND** wird kein anderer Tenant adressiert
+- **GIVEN** ein vor der Permission-Änderung ausgestellter SSF-Benutzer-Access-Token ist noch gültig
+- **WHEN** die neue Projektion als `ready` veröffentlicht wird
+- **THEN** darf der alte Token nur bis zu seinem Ablauf weiterwirken
+- **AND** beträgt diese Nachwirkung höchstens 15 Minuten
 
-#### Scenario: SSF-Provider ist noch nicht verfügbar
+#### Scenario: Optionale spätere Härtung ist nicht verfügbar
 
-- **GIVEN** der Studio-Consumer ist implementiert, aber SSF stellt den vereinbarten Provider noch nicht bereit
-- **WHEN** der Plugin-Lifecycle den Widerruf ausführt
-- **THEN** bleibt die Projektion außerhalb von `ready`
-- **AND** bleiben produktive Runtime-Freigabe und neue SSF-Tokenausstellung gesperrt
+- **GIVEN** der tenantgebundene SSF-Session-Widerruf ist nicht konfiguriert oder nicht erreichbar
+- **WHEN** Write, Read-back und erneute Client-Aktivierung erfolgreich sind
+- **THEN** blockiert das die Projektionsreadiness nicht
+- **AND** bleiben vorhandene Widerrufsfelder ohne falsche Erfolgsbestätigung leer

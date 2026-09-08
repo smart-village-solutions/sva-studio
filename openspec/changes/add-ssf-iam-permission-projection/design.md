@@ -16,10 +16,11 @@ anschließender Read-back bestätigt die Revision als bereit. Gewünschter und
 bestätigter Zustand bleiben getrennt.
 
 Der plugin-eigene Zustand verwendet dafür eine monotone Generation und die
-Phasen `pending`, `projecting`, `revocation_pending`, `ready` und `blocked`.
-Eine neue Sollprojektion entfernt jede zuvor veröffentlichte Readiness sofort.
-`ready` ist nur zulässig, wenn Sollrevision, Read-back-Revision und die Revision
-des bestätigten Session-Widerrufs identisch sind.
+Phasen `pending`, `projecting`, `activation_pending`, `ready` und `blocked`.
+`revocation_pending` bleibt zur Kompatibilität mit persistierten
+Entwicklungsständen lesbar. Eine neue Sollprojektion entfernt jede zuvor
+veröffentlichte Readiness sofort. `ready` ist nur zulässig, wenn Sollrevision
+und Read-back-Revision identisch sind und der SSF-Client wieder aktiviert wurde.
 
 Die IAM-Auslese bleibt eine generische Host-Capability. Das SSF-Plugin fordert
 nur seine feste Permission-Allowlist an und übersetzt den zurückgegebenen,
@@ -29,10 +30,11 @@ Rollen bleiben auch mit Verwaltungs-Permissions fachlich `user`.
 
 Der vollständige externe Reconcile läuft unter einer tenantgebundenen
 PostgreSQL-Advisory-Lock der SSF-Plugin-Datenbank. Damit können verschiedene
-Tenants parallel verarbeitet werden, während Write, Read-back und Widerruf für
+Tenants parallel verarbeitet werden, während Write, Read-back und Aktivierung für
 denselben Tenant serialisiert bleiben. Endet ein Worker oder seine Verbindung,
 wird die Sperre automatisch freigegeben; ein Folgelauf darf deshalb auch einen
-verwaisten Zustand `projecting` oder `revocation_pending` erneut idempotent
+verwaisten Zustand `projecting`, `activation_pending` oder
+`revocation_pending` erneut idempotent
 beanspruchen.
 
 ### Token und Runtime-Konfiguration müssen revisionsgleich sein
@@ -51,18 +53,19 @@ tenantbezogene Autorisierungsrevision; der angeforderte Tenant wird erst über
 `X-Studio-Instance-Id` gebunden und Studio liest dessen bestätigte Revision
 hostseitig.
 
-### Änderungen widerrufen alte Sessions
+### Alte Rechte laufen innerhalb von 15 Minuten aus
 
-Nach einer relevanten Permission-Änderung wird die neue Projektion bestätigt,
-danach werden bestehende SSF-Sessions des Tenants über eine SSF-seitige,
-tenantgebundene Sessiongrenze widerrufen. Ein reiner Permission-Wechsel darf
-keinen realmweiten Keycloak-Benutzerlogout auslösen, weil derselbe Benutzer
-auch Studio verwendet. Neue Tokens enthalten die neue Revision. Retry und
-Teilfehler bleiben tenantgebunden, idempotent und auditierbar.
+Nach einer relevanten Permission-Änderung wird die Projektion nach
+erfolgreichem Write und identischem Read-back bereit. Bereits ausgestellte
+Access-Tokens dürfen ihre alten Rechte bis zu ihrem Ablauf weitertragen. Das
+produktive Enablement setzt deshalb eine nachgewiesene maximale
+Access-Token-Laufzeit von 15 Minuten voraus; Refresh und Neuausstellung lesen
+die aktuell projizierten Claims. Ein sofortiger Session-Widerruf ist eine
+spätere Härtung und keine Readiness-Voraussetzung.
 
 Der Projektionsadapter deaktiviert dafür vor dem ersten Keycloak-Write nur den
-tenantlokalen SSF-OIDC-Client und aktiviert ihn erst nach bestätigtem Read-back
-und erfolgreichem SSF-Session-Widerruf wieder. Der Studio-Client und die
+tenantlokalen SSF-OIDC-Client und aktiviert ihn nach bestätigtem Read-back
+wieder. Erst danach publiziert Studio den Zustand als `ready`. Der Studio-Client und die
 gemeinsame Realm-Sitzung werden dabei nicht verändert. Ein Fehler in einer
 Phase lässt den SSF-Client deaktiviert und die Projektion nicht bereit.
 
@@ -71,7 +74,7 @@ einem Projektionsauftrag übernehmen. Sie muss die kanonische Instanz und deren
 Tenant-Realm aus der Instanz-Registry beziehen. Dieser Change führt dafür
 bewusst keine neue generische Plugin-SDK- oder Provisionierungsschicht ein.
 
-Die pluginseitige Widerrufsgrenze erzwingt bereits eine begrenzte Gesamtlaufzeit
+Die vorhandene optionale Widerrufsgrenze erzwingt eine begrenzte Gesamtlaufzeit
 und reicht ein `AbortSignal` an den künftigen Transportadapter weiter. Der
 produktive SSF-Dienst stellt aktuell jedoch nur den sitzungsbezogenen Endpunkt
 `DELETE /api/admin/session/{session_id}/terminate` bereit; sein Sessionmodell
@@ -81,11 +84,11 @@ idempotenten Sammelwiderruf mit expliziter Tenantbindung definiert. Aus einer
 Studio-Instanz-ID werden weder Session-IDs erraten noch realmweite
 Keycloak-Logouts abgeleitet.
 
-### Studio veröffentlicht den SSF-Widerrufsvertrag als Consumer zuerst
+### Der vorhandene Widerrufsvertrag bleibt optionale Härtung
 
-Die fehlende Provider-Implementierung blockiert nicht den Abschluss der
-Studio-Seite. Studio implementiert und testet vorab folgenden festen
-Consumer-Vertrag:
+Die fehlende Provider-Implementierung blockiert weder den Abschluss der
+Studio-Seite noch die Projektionsreadiness. Der bereits implementierte und
+getestete Consumer-Vertrag bleibt für eine spätere Härtung erhalten:
 
 ```http
 POST /internal/control-plane/v1/session-revocations
@@ -130,23 +133,24 @@ werden durch den bestehenden Lifecycle erneut versucht. Der Adapter selbst
 führt keine verschachtelte Retry-Schleife ein. `429` und `5xx` werden als
 retrybar klassifiziert; `400`, `401`, `403`, `404` sowie ein
 Idempotenzkonflikt bleiben blockiert. Bis ein echter SSF-Provider existiert,
-beweist ein simulierter HTTP-Provider den Consumer-Vertrag. Produktives
-Enablement und Staging-E2E bleiben gesperrt.
+beweist ein simulierter HTTP-Provider nur den Consumer-Vertrag. Das produktive
+Enablement hängt davon nicht ab; führend ist der Staging-Nachweis der maximal
+15-minütigen Access-Token-Laufzeit.
 
 ### Der bestehende Rolloutpfad bleibt maßgeblich
 
 Bootstrap beziehungsweise Plugin-Lifecycle führen den Reconcile aus;
-Staging-E2E weist Projektion, Tokenclaim, Runtime-Antwort und Widerruf für den
+Staging-E2E weist Projektion, Tokenclaim, Runtime-Antwort und Tokenlaufzeit für den
 exakten Image-Digest nach. Production verwendet denselben Digest über den
 kanonischen Promote-Workflow.
 
 ## Risks
 
-- Ein Fehler zwischen Keycloak-Write, Read-back und Session-Widerruf kann einen
+- Ein Fehler zwischen Keycloak-Write, Read-back und erneuter Client-Aktivierung kann einen
   Zwischenzustand erzeugen. Der Zustand bleibt deshalb nicht bereit, bis alle
   erforderlichen Nachbedingungen bestätigt sind.
 - Revisionen dürfen keine PII oder frei wählbaren Tenantwerte in Logs und
   Metriklabels übertragen.
-- Consumer-first kann bis zur SSF-Implementierung nur Studio-Vertragstreue,
-  nicht die Provider-Konformität beweisen. Der exakte Staging-E2E bleibt daher
-  ein separates Freigabegate.
+- Ohne wirksame Begrenzung der Access-Token-Laufzeit können entzogene Rechte
+  länger nachwirken. Der exakte Staging-E2E bleibt daher ein separates
+  Freigabegate.

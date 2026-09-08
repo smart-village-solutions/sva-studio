@@ -183,7 +183,7 @@ describe('SSF authorization projection repository', () => {
     ]);
   });
 
-  it('requires confirmed read-back and client reactivation before readiness', async () => {
+  it('requires confirmed read-back before the repository can publish readiness', async () => {
     const desired = projection();
     const revision = createSsfAuthorizationRevision(desired);
     const query = vi.fn().mockResolvedValue({ rowCount: 1, rows: [] });

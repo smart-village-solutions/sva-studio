@@ -162,16 +162,18 @@ export const createConfiguredSsfKeycloakAuthorizationProjectionTarget = (depende
   readonly sessionRevocationTimeoutMs?: number;
 }): SsfAuthorizationProjectionTarget => {
   const config = readSsfControlPlaneClientConfig(dependencies.environment ?? process.env);
-  if (!config) throw new Error('ssf_control_plane_configuration_missing');
-  const revocationClient = createConfiguredSsfSessionRevocationClient(
-    config,
-    dependencies.fetchImpl ?? fetch
-  );
+  const revocationClient = config
+    ? createConfiguredSsfSessionRevocationClient(config, dependencies.fetchImpl ?? fetch)
+    : null;
 
   return createSsfKeycloakAuthorizationProjectionTarget({
     resolveTenant: dependencies.resolveTenant,
-    revokeSsfTenantSessions: (instanceId, authorizationRevision, signal) =>
-      revocationClient.revoke({ instanceId, authorizationRevision, signal }),
+    revokeSsfTenantSessions: (instanceId, authorizationRevision, signal) => {
+      if (!revocationClient) {
+        throw new Error('ssf_control_plane_configuration_missing');
+      }
+      return revocationClient.revoke({ instanceId, authorizationRevision, signal });
+    },
     ...(dependencies.sessionRevocationTimeoutMs === undefined
       ? {}
       : { sessionRevocationTimeoutMs: dependencies.sessionRevocationTimeoutMs }),

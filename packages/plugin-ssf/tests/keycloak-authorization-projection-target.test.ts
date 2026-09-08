@@ -55,15 +55,20 @@ const createClient = () => {
 };
 
 describe('SSF Keycloak authorization projection target', () => {
-  it('fails closed when the deployment has no SSF control-plane configuration', () => {
+  it('allows projection without SSF control-plane configuration', async () => {
     const { client } = createClient();
+    const target = createConfiguredSsfKeycloakAuthorizationProjectionTarget({
+      environment: {},
+      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
+    });
+    const projection = desiredProjection();
+    const revision = createSsfAuthorizationRevision(projection);
 
-    expect(() =>
-      createConfiguredSsfKeycloakAuthorizationProjectionTarget({
-        environment: {},
-        resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
-      })
-    ).toThrow('ssf_control_plane_configuration_missing');
+    await expect(target.reconcile(projection, revision)).resolves.toBeUndefined();
+    await expect(target.readBack('tenant-a')).resolves.toEqual(projection);
+    await expect(target.revokeTenantSessions('tenant-a', revision)).rejects.toThrow(
+      'ssf_control_plane_configuration_missing'
+    );
   });
 
   it('composes the configured consumer into the tenant projection target', async () => {

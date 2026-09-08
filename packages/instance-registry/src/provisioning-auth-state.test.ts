@@ -644,6 +644,37 @@ describe('provisioning-auth-state', () => {
     );
   });
 
+  it('preserves the raced username identity email when no bootstrap email is configured', async () => {
+    const client = createClient({
+      findUserByUsername: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 'tenant-user',
+          email: 'preserved@example.org',
+          enabled: true,
+        }),
+      createUser: vi.fn(async () => {
+        throw Object.assign(new Error('conflict'), { statusCode: 409 });
+      }),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await provision({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      tenantAdminBootstrap: { username: 'tenant-admin' },
+    });
+
+    expect(client.updateUser).toHaveBeenCalledWith(
+      'tenant-user',
+      expect.objectContaining({ email: 'preserved@example.org' })
+    );
+  });
+
   it('builds provisioning adapters from an injected config resolver and client constructor', async () => {
     const client = createClient();
     const resolveConfig = vi.fn((realm?: string) => ({ realm: realm ?? 'master' }));

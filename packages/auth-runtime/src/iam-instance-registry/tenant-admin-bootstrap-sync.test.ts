@@ -42,7 +42,10 @@ describe('tenant admin bootstrap sync', () => {
       provider: {
         listUsers: vi.fn(async (query?: { username?: string; email?: string }) => {
           if (query?.username === 'tenant.admin') {
-            return [{ externalId: 'kc-user-1', username: 'tenant.admin' }];
+            return [
+              { externalId: 'similar-user', username: 'tenant.admin-old' },
+              { externalId: 'kc-user-1', username: 'TENANT.ADMIN' },
+            ];
           }
           return [];
         }),
@@ -150,7 +153,7 @@ describe('tenant admin bootstrap sync', () => {
 
     expect(listUsers).toHaveBeenNthCalledWith(1, {
       username: 'tenant.admin',
-      max: 1,
+      max: 100,
     });
     expect(listUsers).toHaveBeenCalledTimes(1);
     expect(state.jitProvisionAccountWithClient).not.toHaveBeenCalled();

@@ -207,7 +207,7 @@ const ensureTenantAdmin = async (
 
       await updateExisting({
         id: conflictingUser.id,
-        email: resolvedEmail,
+        email: conflictingUser.email,
         enabled: conflictingUser.enabled,
       });
       return;

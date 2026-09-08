@@ -61,11 +61,14 @@ const resolveTenantAdminIdentityUser = async (input: {
   }
 
   const bootstrapUsername = input.tenantAdminBootstrap.username.trim();
-  const [usernameMatch] = await identityProvider.provider.listUsers({
+  const usernameMatches = await identityProvider.provider.listUsers({
     username: bootstrapUsername,
-    max: 1,
+    max: 100,
   });
-  const user = usernameMatch ?? null;
+  const normalizedBootstrapUsername = bootstrapUsername.toLowerCase();
+  const user = usernameMatches.find(
+    (candidate) => candidate.username?.toLowerCase() === normalizedBootstrapUsername
+  ) ?? null;
 
   if (!user) {
     throw new Error('tenant_admin_bootstrap_user_not_found');

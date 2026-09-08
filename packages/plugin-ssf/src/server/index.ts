@@ -17,6 +17,7 @@ import {
   readSsfSystemOverrides,
   replaceSsfSystemConfiguration,
   replaceSsfTenantConfiguration,
+  SsfTenantDefaultLocaleUnavailableError,
 } from '../admin-repository.js';
 import {
   createSsfSystemConfigurationView,
@@ -143,77 +144,73 @@ export const createSsfAdminServerHandlers = (
   dependencies: SsfAdminServerHandlerDependencies
 ): ReturnType<PluginServerHandlerModuleFactory> => ({
   'ssf.system-configuration.read': async (context) => {
+    const correlationId = readCorrelationId(context.request);
     if (context.scope !== 'platform')
-      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
     try {
       return jsonResponse(
         200,
         createSsfSystemConfigurationView(await dependencies.readSystem()),
-        'unavailable'
+        correlationId
       );
     } catch {
-      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
     }
   },
   'ssf.system-configuration.write': async (context) => {
+    const correlationId = readCorrelationId(context.request);
     if (context.scope !== 'platform')
-      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
     const parsed = ssfSystemConfigurationInputSchema.safeParse(
       await context.request.json().catch(() => null)
     );
     if (!parsed.success)
-      return jsonResponse(422, { error: 'invalid_configuration' }, 'unavailable');
+      return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
     try {
       await dependencies.writeSystem(parsed.data);
       return jsonResponse(
         200,
         createSsfSystemConfigurationView(await dependencies.readSystem()),
-        'unavailable'
+        correlationId
       );
     } catch {
-      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
     }
   },
   'ssf.tenant-configuration.read': async (context) => {
+    const correlationId = readCorrelationId(context.request);
     if (context.scope !== 'tenant' || !context.actor.instanceId)
-      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
     try {
       return jsonResponse(
         200,
         createSsfTenantConfigurationView(await dependencies.readTenant(context.actor.instanceId)),
-        'unavailable'
+        correlationId
       );
     } catch {
-      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
     }
   },
   'ssf.tenant-configuration.write': async (context) => {
+    const correlationId = readCorrelationId(context.request);
     if (context.scope !== 'tenant' || !context.actor.instanceId)
-      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+      return jsonResponse(403, { error: 'forbidden' }, correlationId);
     const parsed = ssfTenantConfigurationInputSchema.safeParse(
       await context.request.json().catch(() => null)
     );
     if (!parsed.success)
-      return jsonResponse(422, { error: 'invalid_configuration' }, 'unavailable');
+      return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
     try {
-      const current = createSsfTenantConfigurationView(
-        await dependencies.readTenant(context.actor.instanceId)
-      );
-      if (
-        parsed.data.defaultLocale !== null &&
-        current.system.locales.find((entry) => entry.locale === parsed.data.defaultLocale)
-          ?.available !== true
-      ) {
-        return jsonResponse(422, { error: 'invalid_configuration' }, 'unavailable');
-      }
       await dependencies.writeTenant(context.actor.instanceId, parsed.data);
       return jsonResponse(
         200,
         createSsfTenantConfigurationView(await dependencies.readTenant(context.actor.instanceId)),
-        'unavailable'
+        correlationId
       );
-    } catch {
-      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+    } catch (error) {
+      return error instanceof SsfTenantDefaultLocaleUnavailableError
+        ? jsonResponse(422, { error: 'invalid_configuration' }, correlationId)
+        : jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
     }
   },
 });

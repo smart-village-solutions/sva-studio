@@ -121,6 +121,18 @@ export const replaceSsfTenantConfiguration = async (
   input: SsfTenantConfigurationInput
 ) =>
   withTenantTransaction(pool, instanceId, false, async (client) => {
+    if (input.defaultLocale !== null) {
+      const availability = await client.query<{ available: boolean }>(
+        `SELECT available
+           FROM ssf.server_locales
+          WHERE locale = $1
+          FOR SHARE`,
+        [input.defaultLocale]
+      );
+      if (availability.rows[0]?.available !== true) {
+        throw new SsfTenantDefaultLocaleUnavailableError();
+      }
+    }
     await client.query(
       `INSERT INTO ssf.tenant_settings (instance_id, default_locale, conversation_content_storage_allowed, conversation_content_storage_mode)
      VALUES ($1, $2, $3, $4)
@@ -138,3 +150,10 @@ export const replaceSsfTenantConfiguration = async (
     );
     await writeLocales(client, 'tenant_locales', instanceId, input.locales);
   });
+
+export class SsfTenantDefaultLocaleUnavailableError extends Error {
+  public constructor() {
+    super('ssf_tenant_default_locale_unavailable');
+    this.name = 'SsfTenantDefaultLocaleUnavailableError';
+  }
+}

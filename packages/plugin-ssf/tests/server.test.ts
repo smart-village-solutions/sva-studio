@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SSF_RUNTIME_SERVER_HANDLER_ID } from '../src/constants.js';
 import type { SsfRuntimeConfiguration } from '../src/contracts.js';
+import { SsfTenantDefaultLocaleUnavailableError } from '../src/admin-repository.js';
 import {
   createPluginServerHandlers,
   createSsfAdminServerHandlers,
@@ -73,7 +74,10 @@ const adminContext = (
 ): PluginServerHandlerExecutionContext => ({
   request: new Request('https://studio.test/api/v1/plugins/ssf/configuration', {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers: {
+      'X-Correlation-Id': 'admin-correlation-1',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   }),
   pluginId: 'ssf',
@@ -177,6 +181,7 @@ describe('SSF plugin server handler', () => {
     const denied = await handlers['ssf.system-configuration.read']?.(adminContext('tenant', 'GET'));
 
     expect(allowed?.status).toBe(200);
+    expect(allowed?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
     await expect(allowed?.json()).resolves.toMatchObject({ defaultLocale: 'de-DE' });
     expect(denied?.status).toBe(403);
     expect(dependencies.readSystem).toHaveBeenCalledTimes(1);
@@ -213,5 +218,30 @@ describe('SSF plugin server handler', () => {
     expect(dependencies.writeTenant).toHaveBeenCalledWith('tenant-a', validInput);
     expect(rejected?.status).toBe(422);
     expect(dependencies.writeTenant).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps a transaction-local tenant default validation failure to 422', async () => {
+    const handlers = createSsfAdminServerHandlers({
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn(),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn().mockRejectedValue(new SsfTenantDefaultLocaleUnavailableError()),
+    });
+    const response = await handlers['ssf.tenant-configuration.write']?.(
+      adminContext('tenant', 'PUT', {
+        defaultLocale: 'en',
+        conversationContentStorageMode: null,
+        locales: ['de-DE', 'en'].map((locale) => ({
+          locale,
+          enabled: null,
+          authenticatedHomeExplanationHtml: null,
+          guestExplanationHtml: null,
+          conversationContentStorageQuestionHtml: null,
+        })),
+      })
+    );
+
+    expect(response?.status).toBe(422);
+    expect(response?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
   });
 });

@@ -72,6 +72,11 @@ export const ssfPlugin = {
     {
       id: 'ssf-system-configuration',
       path: '/plugins/ssf/system-configuration',
+      documentation: {
+        kind: 'page',
+        id: 'ssf.system-configuration',
+        pageType: 'setup',
+      },
       actionId: SSF_ADMIN_ACTIONS.systemRead,
       serverHandlerId: 'ssf.system-configuration.read',
       accessRequirement: platformAccess,
@@ -80,6 +85,11 @@ export const ssfPlugin = {
     {
       id: 'ssf-tenant-configuration',
       path: '/plugins/ssf/configuration',
+      documentation: {
+        kind: 'page',
+        id: 'ssf.tenant-configuration',
+        pageType: 'setup',
+      },
       actionId: SSF_ADMIN_ACTIONS.tenantRead,
       serverHandlerId: 'ssf.tenant-configuration.read',
       accessRequirement: tenantReadAccess,

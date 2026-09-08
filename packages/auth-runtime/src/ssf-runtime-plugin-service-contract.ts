@@ -53,7 +53,6 @@ export type SsfRuntimePluginServiceDependencies = Readonly<{
   readPluginAccess?: typeof import('./plugin-tenant-lifecycle/access.js').readConfiguredPluginTenantAccess;
   readDatabaseReadiness?: (instanceId: string) => Promise<boolean>;
   readAuthorizationRevision?: (instanceId: string) => Promise<string | null>;
-  readTimeZone?: (instanceId: string) => Promise<string | null>;
   emitSecurityAudit?: typeof import('./audit-events.js').emitAuthAuditEvent;
 }>;
 

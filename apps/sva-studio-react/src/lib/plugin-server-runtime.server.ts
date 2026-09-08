@@ -9,6 +9,11 @@ import type {
   PluginServerExecutionHandler,
   PluginServerHandlerModuleFactory,
 } from '@sva/plugin-sdk';
+import {
+  readReadySsfAuthorizationRevision,
+  readSsfTenant,
+  resolveSsfDatabasePool,
+} from '@sva/plugin-ssf/runtime';
 
 import {
   createPluginBuildRegistries,
@@ -128,7 +133,16 @@ export const createStudioPluginServerHandlerDispatcher = async (
   const handlers = await createPluginServerExecutionHandlersFromSnapshot({
     pluginSources: studioPluginSnapshot.pluginSources as readonly StudioPluginServerSource[],
   });
-  const ssfRuntimeServiceAccess = createSsfRuntimePluginServiceAccess();
+  const ssfRuntimeServiceAccess = createSsfRuntimePluginServiceAccess({
+    readDatabaseReadiness: async (instanceId) => {
+      const pool = resolveSsfDatabasePool();
+      return pool ? (await readSsfTenant(pool, instanceId)) !== null : false;
+    },
+    readAuthorizationRevision: async (instanceId) => {
+      const pool = resolveSsfDatabasePool();
+      return pool ? readReadySsfAuthorizationRevision(pool, instanceId) : null;
+    },
+  });
   return createPluginServerHandlerDispatcher({
     descriptors: studioPluginSnapshot.registry.pluginServerHandlerRegistry,
     handlers,

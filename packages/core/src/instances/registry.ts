@@ -20,6 +20,7 @@ export type TrafficEnabledInstanceStatus = (typeof trafficEnabledInstanceStatuse
 export type InstanceRegistryRecord = {
   readonly instanceId: string;
   readonly displayName: string;
+  readonly timeZone: string;
   readonly status: InstanceStatus;
   readonly parentDomain: string;
   readonly primaryHostname: string;

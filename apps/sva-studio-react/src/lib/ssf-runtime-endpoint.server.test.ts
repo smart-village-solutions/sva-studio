@@ -35,6 +35,7 @@ const descriptor: PluginServerHandlerRegistryEntry = {
 const instance: InstanceRegistryRecord = {
   instanceId: 'tenant-a',
   displayName: 'Tenant A',
+  timeZone: 'Europe/Berlin',
   status: 'active',
   parentDomain: 'studio.test',
   primaryHostname: 'tenant-a.studio.test',
@@ -78,7 +79,6 @@ const createEndpoint = (runtimeHandler = vi.fn().mockResolvedValue(configuration
     readPluginAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
     readDatabaseReadiness: vi.fn().mockResolvedValue(true),
     readAuthorizationRevision: vi.fn().mockResolvedValue(authorizationRevision),
-    readTimeZone: vi.fn().mockResolvedValue('Europe/Berlin'),
     emitSecurityAudit: vi.fn().mockResolvedValue(undefined),
   });
   return {

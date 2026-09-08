@@ -33,7 +33,6 @@ type TenantAccessDependencies = Required<
     | 'readPluginAccess'
     | 'readDatabaseReadiness'
     | 'readAuthorizationRevision'
-    | 'readTimeZone'
   >
 >;
 
@@ -143,6 +142,7 @@ type ReadinessResolution =
 const resolveTenantReadiness = async (input: {
   readonly request: Request;
   readonly instanceId: string;
+  readonly timeZone: string;
   readonly correlationId: string;
   readonly startedAt: number;
   readonly dependencies: TenantAccessDependencies;
@@ -168,12 +168,11 @@ const resolveTenantReadiness = async (input: {
     };
   }
 
-  const [databaseReady, authorizationRevision, timeZone] = await Promise.all([
+  const [databaseReady, authorizationRevision] = await Promise.all([
     input.dependencies.readDatabaseReadiness(input.instanceId),
     input.dependencies.readAuthorizationRevision(input.instanceId),
-    input.dependencies.readTimeZone(input.instanceId),
   ]);
-  const readiness = { databaseReady, authorizationRevision, timeZone };
+  const readiness = { databaseReady, authorizationRevision, timeZone: input.timeZone };
   if (!isReadySsfTenant(readiness)) {
     return {
       kind: 'rejected',
@@ -236,6 +235,7 @@ export const createSsfRuntimeBindServiceTenant =
       const readinessResolution = await resolveTenantReadiness({
         request,
         instanceId,
+        timeZone: instanceResolution.instance.timeZone,
         correlationId,
         startedAt,
         dependencies: input.dependencies,

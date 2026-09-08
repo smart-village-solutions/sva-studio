@@ -1375,10 +1375,12 @@ CREATE TABLE iam.instances (
     realm_mode text DEFAULT 'new'::text NOT NULL,
     tenant_admin_client_id text NOT NULL,
     tenant_admin_client_secret_ciphertext text,
+    time_zone text DEFAULT 'Europe/Berlin'::text NOT NULL,
     CONSTRAINT instances_audit_retention_days_positive_chk CHECK ((audit_retention_days > 0)),
     CONSTRAINT instances_realm_mode_chk CHECK ((realm_mode = ANY (ARRAY['new'::text, 'existing'::text]))),
     CONSTRAINT instances_retention_days_positive_chk CHECK ((retention_days > 0)),
-    CONSTRAINT instances_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])))
+    CONSTRAINT instances_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text]))),
+    CONSTRAINT instances_time_zone_nonempty_chk CHECK (((char_length(btrim(time_zone)) >= 1) AND (char_length(btrim(time_zone)) <= 100)))
 );
 
 

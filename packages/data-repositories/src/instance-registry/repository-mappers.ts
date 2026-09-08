@@ -17,6 +17,7 @@ import type {
 export const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
   instanceId: row.instance_id,
   displayName: row.display_name,
+  timeZone: row.time_zone,
   status: row.status,
   parentDomain: row.parent_domain,
   primaryHostname: row.primary_hostname,

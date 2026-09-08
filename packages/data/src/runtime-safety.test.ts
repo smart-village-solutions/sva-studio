@@ -544,6 +544,23 @@ test('plugin activation policy migration preserves existing module assignments a
   }
 });
 
+test('instance time-zone migration and schema snapshot provide a safe generic default', () => {
+  const sql = readRepoFile('data/migrations/0093_iam_instance_time_zone.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+  const downSql = sql.split('-- +goose Down')[1] ?? '';
+
+  for (const source of [upSql, schemaSnapshot]) {
+    expect(source).toMatch(
+      /time_zone text (?:DEFAULT 'Europe\/Berlin'::text NOT NULL|NOT NULL DEFAULT 'Europe\/Berlin')/
+    );
+    expect(source).toMatch(/instances_time_zone_nonempty_chk/);
+    expect(source).toMatch(/char_length\(btrim\(time_zone\)\)/i);
+  }
+
+  expect(downSql).toMatch(/DROP COLUMN time_zone/);
+});
+
 test('organization type migration and schema snapshot support associations and institutions', () => {
   const sql = readRepoFile(
     'data/migrations/0084_iam_organization_types_association_institution.sql'
@@ -1025,6 +1042,14 @@ test('sva-studio-react vite SSR config resolves mail-runtime from workspace sour
   assert.doesNotMatch(viteConfig, /lvh\.me/);
 });
 
+test('sva-studio-react resolves the SSF runtime through one workspace module graph', () => {
+  const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
+
+  expect(viteConfig).toMatch(
+    /'@sva\/plugin-ssf\/runtime': resolveAppPath\('\.\.\/\.\.\/packages\/plugin-ssf\/src\/runtime\.ts'\)/
+  );
+});
+
 test('sva-studio-react vite SSR config resolves DSR persistence from workspace source', () => {
   const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
 
@@ -1038,5 +1063,13 @@ test('sva-studio-react vitest shared config resolves mail-runtime from workspace
 
   expect(vitestSharedConfig).toMatch(
     /'@sva\/mail-runtime': fileURLToPath\(\s*new URL\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts', import\.meta\.url\)\s*\)/
+  );
+});
+
+test('sva-studio-react vitest shared config resolves the SSF runtime from workspace source', () => {
+  const vitestConfig = readRepoFile('../apps/sva-studio-react/vitest.shared.ts');
+
+  expect(vitestConfig).toMatch(
+    /'@sva\/plugin-ssf\/runtime': fileURLToPath\(\s*new URL\('\.\.\/\.\.\/packages\/plugin-ssf\/src\/runtime\.ts', import\.meta\.url\)\s*\)/
   );
 });

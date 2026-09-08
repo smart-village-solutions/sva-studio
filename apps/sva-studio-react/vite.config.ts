@@ -134,6 +134,7 @@ const config = defineConfig({
       ),
       '@sva/data-repositories': resolveAppPath('../../packages/data-repositories/src/index.ts'),
       '@sva/mail-runtime': resolveAppPath('../../packages/mail-runtime/src/index.ts'),
+      '@sva/plugin-ssf/runtime': resolveAppPath('../../packages/plugin-ssf/src/runtime.ts'),
       '@sva/iam-admin/encryption': resolveAppPath('../../packages/iam-admin/src/encryption.ts'),
       '@sva/iam-admin': resolveAppPath('../../packages/iam-admin/src/index.ts'),
       '@sva/iam-core': resolveAppPath('../../packages/iam-core/src/index.ts'),

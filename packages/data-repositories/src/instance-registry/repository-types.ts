@@ -10,6 +10,7 @@ import type {
 export type InstanceListRow = {
   instance_id: string;
   display_name: string;
+  time_zone: string;
   status: InstanceStatus;
   parent_domain: string;
   primary_hostname: string;

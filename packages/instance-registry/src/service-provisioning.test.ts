@@ -30,6 +30,7 @@ describe('service-provisioning', () => {
   const baseInstance: InstanceRegistryRecord = {
     instanceId: 'de-test',
     displayName: 'Test Instance',
+    timeZone: 'Europe/Berlin',
     primaryHostname: 'de-test.studio.smart-village.app',
     parentDomain: 'studio.smart-village.app',
     realmMode: 'new',

@@ -9,7 +9,7 @@ import {
   SSF_RUNTIME_SERVER_HANDLER_ID,
   type SsfRuntimeErrorCode,
 } from '../constants.js';
-import { createSsfDatabasePool, readSsfDatabaseConfig } from '../database.js';
+import { resolveSsfDatabasePool } from '../database.js';
 import {
   createSsfRuntimeConfigurationHandler,
   type SsfRuntimeConfigurationHandler,
@@ -98,13 +98,12 @@ const unavailableMediaResolver: SsfMediaResolver = {
 
 const getDefaultRuntimeHandler = (): SsfRuntimeConfigurationHandler => {
   if (defaultHandler) return defaultHandler;
-  const databaseConfig = readSsfDatabaseConfig();
-  if (!databaseConfig) {
+  const pool = resolveSsfDatabasePool();
+  if (!pool) {
     return async () => {
       throw new SsfRuntimeConfigurationValidationError('The SSF database is not configured.');
     };
   }
-  const pool = createSsfDatabasePool(databaseConfig);
   defaultHandler = createSsfRuntimeConfigurationHandler({
     readOverrides: (instanceId) => readSsfConfigurationOverrides(pool, instanceId),
     mediaResolver: unavailableMediaResolver,

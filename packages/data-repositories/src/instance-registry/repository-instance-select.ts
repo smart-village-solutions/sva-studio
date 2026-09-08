@@ -6,6 +6,7 @@ export const buildInstanceSelectColumns = (alias?: string): string => {
   return `
   ${id} AS instance_id,
   ${qualify(alias, 'display_name')},
+  ${qualify(alias, 'time_zone')},
   ${qualify(alias, 'status')},
   ${qualify(alias, 'parent_domain')},
   ${qualify(alias, 'primary_hostname')},

@@ -142,6 +142,42 @@ describe('SSF configuration pages', () => {
     expect(screen.getByDisplayValue('<p>Angemeldet</p>')).toBeTruthy();
   });
 
+  it('edits, discards and saves system defaults', async () => {
+    const savedConfiguration = { ...systemConfiguration, defaultLocale: 'en' as const };
+    state.writeSystem.mockResolvedValue(savedConfiguration);
+    const { SsfSystemConfigurationPage } = await import('../src/admin.page.js');
+    render(<SsfSystemConfigurationPage />);
+
+    const defaultLocale = (await screen.findByLabelText(
+      'fields.defaultLocale'
+    )) as HTMLSelectElement;
+    fireEvent.change(defaultLocale, { target: { value: 'en' } });
+    fireEvent.click(screen.getByRole('button', { name: 'actions.discard' }));
+    expect(defaultLocale.value).toBe('de-DE');
+
+    fireEvent.change(defaultLocale, { target: { value: 'en' } });
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+
+    await waitFor(() =>
+      expect(state.writeSystem).toHaveBeenCalledWith({
+        ...systemConfiguration,
+        defaultLocale: 'en',
+      })
+    );
+    expect(await screen.findByText('status.saved')).toBeTruthy();
+  });
+
+  it('retries a failed system configuration load', async () => {
+    state.readSystem.mockRejectedValueOnce(new Error('read failed'));
+    const { SsfSystemConfigurationPage } = await import('../src/admin.page.js');
+    render(<SsfSystemConfigurationPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'status.loadError' }));
+
+    expect(await screen.findByDisplayValue('<p>Angemeldet</p>')).toBeTruthy();
+    expect(state.readSystem).toHaveBeenCalledTimes(2);
+  });
+
   it('renders inherited tenant values read-only without a manage permission', async () => {
     state.accessSnapshot.permissionActions = ['ssf.configuration.tenant.read'];
     const { SsfTenantConfigurationPage } = await import('../src/admin.page.js');
@@ -165,5 +201,53 @@ describe('SSF configuration pages', () => {
 
     await waitFor(() => expect(state.writeTenant).toHaveBeenCalledWith(tenantView.overrides));
     expect(await screen.findByText('status.saved')).toBeTruthy();
+  });
+
+  it('writes edited tenant locale and inheritance controls', async () => {
+    state.writeTenant.mockResolvedValue(tenantView);
+    const { SsfTenantConfigurationPage } = await import('../src/admin.page.js');
+    render(<SsfTenantConfigurationPage />);
+
+    await screen.findByDisplayValue('<p>Angemeldet</p>');
+    fireEvent.change(screen.getByLabelText('fields.defaultLocale'), { target: { value: 'en' } });
+    fireEvent.change(screen.getByLabelText('fields.storageMode'), { target: { value: 'ask' } });
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]!);
+    fireEvent.click(checkboxes[1]!);
+    fireEvent.click(checkboxes[2]!);
+    fireEvent.change(screen.getAllByRole('textbox')[0]!, {
+      target: { value: '<p>Eigener Text</p>' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+
+    await waitFor(() =>
+      expect(state.writeTenant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultLocale: 'en',
+          conversationContentStorageMode: 'ask',
+          locales: expect.arrayContaining([
+            expect.objectContaining({
+              locale: 'de-DE',
+              enabled: null,
+              authenticatedHomeExplanationHtml: '<p>Eigener Text</p>',
+            }),
+          ]),
+        })
+      )
+    );
+  });
+
+  it('reports tenant load and save failures without losing the draft', async () => {
+    state.readTenant.mockRejectedValueOnce(new Error('read failed'));
+    state.writeTenant.mockRejectedValue(new Error('write failed'));
+    const { SsfTenantConfigurationPage } = await import('../src/admin.page.js');
+    render(<SsfTenantConfigurationPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'status.loadError' }));
+    await screen.findByDisplayValue('<p>Angemeldet</p>');
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+
+    expect(await screen.findByText('status.saveError')).toBeTruthy();
+    expect(screen.getByDisplayValue('<p>Angemeldet</p>')).toBeTruthy();
   });
 });

@@ -89,16 +89,23 @@ export const ssfTenantConfigurationInputSchema = z
     }
   });
 
+export const ssfEffectiveTenantConfigurationSchema = z
+  .object({
+    defaultLocale: ssfAdminLocaleSchema,
+    conversationContentStorageMode: z.enum(['ask', 'disabled']),
+    locales: z
+      .array(
+        ssfSystemLocaleInputSchema.extend({
+          conversationContentStorageQuestionHtml: nullableHtml,
+        })
+      )
+      .length(supportedLocales.length),
+  })
+  .strict();
+
 export type SsfSystemConfigurationInput = z.infer<typeof ssfSystemConfigurationInputSchema>;
 export type SsfTenantConfigurationInput = z.infer<typeof ssfTenantConfigurationInputSchema>;
-export type SsfEffectiveTenantConfiguration = Omit<SsfSystemConfigurationInput, 'locales'> & {
-  locales: readonly (Omit<
-    SsfSystemConfigurationInput['locales'][number],
-    'conversationContentStorageQuestionHtml'
-  > & {
-    conversationContentStorageQuestionHtml: string | null;
-  })[];
-};
+export type SsfEffectiveTenantConfiguration = z.infer<typeof ssfEffectiveTenantConfigurationSchema>;
 
 export type SsfTenantConfigurationView = Readonly<{
   system: SsfSystemConfigurationInput;

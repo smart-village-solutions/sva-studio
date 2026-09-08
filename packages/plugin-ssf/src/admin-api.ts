@@ -3,6 +3,7 @@ import { createMainserverJsonRequestHeaders } from '@sva/plugin-sdk';
 import {
   SSF_SYSTEM_CONFIGURATION_PATH,
   SSF_TENANT_CONFIGURATION_PATH,
+  ssfEffectiveTenantConfigurationSchema,
   ssfSystemConfigurationInputSchema,
   ssfTenantConfigurationInputSchema,
   type SsfSystemConfigurationInput,
@@ -35,7 +36,7 @@ export const readSsfTenantConfiguration = async (): Promise<SsfTenantConfigurati
   return {
     system: ssfSystemConfigurationInputSchema.parse(value.system),
     overrides: ssfTenantConfigurationInputSchema.parse(value.overrides),
-    effective: ssfSystemConfigurationInputSchema.parse(value.effective),
+    effective: ssfEffectiveTenantConfigurationSchema.parse(value.effective),
   };
 };
 
@@ -50,6 +51,6 @@ export const writeSsfTenantConfiguration = async (
   return {
     system: ssfSystemConfigurationInputSchema.parse(value.system),
     overrides: ssfTenantConfigurationInputSchema.parse(value.overrides),
-    effective: ssfSystemConfigurationInputSchema.parse(value.effective),
+    effective: ssfEffectiveTenantConfigurationSchema.parse(value.effective),
   };
 };

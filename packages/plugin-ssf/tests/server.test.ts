@@ -70,6 +70,14 @@ const emptyOverrides = {
   serverLocales: [],
 } as const;
 
+const systemConfigurationLocales = ['de-DE', 'en'].map((locale) => ({
+  locale,
+  available: true,
+  authenticatedHomeExplanationHtml: '<p>Home</p>',
+  guestExplanationHtml: '<p>Guest</p>',
+  conversationContentStorageQuestionHtml: '<p>Store?</p>',
+}));
+
 const adminContext = (
   scope: 'platform' | 'tenant',
   method: 'GET' | 'PUT',
@@ -281,5 +289,66 @@ describe('SSF plugin server handler', () => {
     expect(response?.status).toBe(409);
     expect(response?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
     await expect(response?.json()).resolves.toEqual({ error: 'locale_in_use' });
+  });
+
+  it('covers the remaining administration success and failure responses', async () => {
+    const dependencies = {
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn().mockResolvedValue(undefined),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn().mockRejectedValue(new Error('database unavailable')),
+    };
+    const handlers = createSsfAdminServerHandlers(dependencies);
+    const systemInput = {
+      defaultLocale: 'de-DE',
+      conversationContentStorageMode: 'ask',
+      locales: systemConfigurationLocales,
+    };
+
+    expect(
+      (await handlers['ssf.system-configuration.write']?.(
+        adminContext('platform', 'PUT', systemInput)
+      ))?.status
+    ).toBe(200);
+    expect(
+      (await handlers['ssf.system-configuration.write']?.(
+        adminContext('platform', 'PUT', { ...systemInput, locales: [] })
+      ))?.status
+    ).toBe(422);
+    expect(
+      (await handlers['ssf.system-configuration.write']?.(
+        adminContext('tenant', 'PUT', systemInput)
+      ))?.status
+    ).toBe(403);
+    expect(
+      (await handlers['ssf.tenant-configuration.read']?.(adminContext('tenant', 'GET')))?.status
+    ).toBe(200);
+    expect(
+      (await handlers['ssf.tenant-configuration.read']?.(adminContext('platform', 'GET')))?.status
+    ).toBe(403);
+
+    dependencies.readSystem.mockRejectedValueOnce(new Error('database unavailable'));
+    dependencies.readTenant.mockRejectedValueOnce(new Error('database unavailable'));
+    expect(
+      (await handlers['ssf.system-configuration.read']?.(adminContext('platform', 'GET')))?.status
+    ).toBe(503);
+    expect(
+      (await handlers['ssf.tenant-configuration.read']?.(adminContext('tenant', 'GET')))?.status
+    ).toBe(503);
+    expect(
+      (await handlers['ssf.tenant-configuration.write']?.(
+        adminContext('tenant', 'PUT', {
+          defaultLocale: null,
+          conversationContentStorageMode: null,
+          locales: systemConfigurationLocales.map(({ locale }) => ({
+            locale,
+            enabled: null,
+            authenticatedHomeExplanationHtml: null,
+            guestExplanationHtml: null,
+            conversationContentStorageQuestionHtml: null,
+          })),
+        })
+      ))?.status
+    ).toBe(503);
   });
 });

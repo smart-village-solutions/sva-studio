@@ -49,7 +49,7 @@ export const ssfRevisionSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
 
 const ssfResolvedMediaSchema = z
   .object({
-    url: z.url().max(SSF_RUNTIME_LIMITS.urlCharacters),
+    url: z.string().url().max(SSF_RUNTIME_LIMITS.urlCharacters),
     alternativeText: z.string().max(SSF_RUNTIME_LIMITS.alternativeTextCharacters),
   })
   .strict();

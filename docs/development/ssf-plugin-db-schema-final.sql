@@ -1,5 +1,5 @@
 -- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration, IAM-Projektion und Tenant-Grunddaten V1
--- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0004_*.sql
+-- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0005_*.sql
 -- Diese Datenbank ist getrennt von sva_studio.
 
 DO $$
@@ -279,4 +279,12 @@ ALTER TABLE ssf.authorization_projections
       confirmed_revision = desired_revision
       AND last_error_code IS NULL
     )
+  );
+
+ALTER TABLE ssf.server_settings
+  ADD COLUMN conversation_content_storage_allowed boolean,
+  ADD COLUMN conversation_content_storage_mode varchar(16),
+  ADD CONSTRAINT server_settings_storage_mode_check CHECK (
+    conversation_content_storage_mode IS NULL
+    OR conversation_content_storage_mode IN ('ask', 'disabled')
   );

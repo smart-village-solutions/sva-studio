@@ -18,6 +18,8 @@ export interface SsfTenantProfile {
 
 export interface SsfServerSettings {
   readonly defaultLocale?: string | null;
+  readonly conversationContentStorageAllowed?: boolean | null;
+  readonly conversationContentStorageMode?: 'ask' | 'disabled' | null;
   readonly logoMediaReference?: string | null;
   readonly iconMediaReference?: string | null;
 }
@@ -202,15 +204,22 @@ export const resolveSsfRuntimeConfiguration = async (
   );
   const conversationContentStorageAllowed = override(
     tenantSettings.conversationContentStorageAllowed,
+    serverSettings.conversationContentStorageAllowed,
     defaults.conversationContentStorageAllowed
   );
   const desiredStorageMode = override(
     tenantSettings.conversationContentStorageMode,
+    serverSettings.conversationContentStorageMode,
     defaults.conversationContentStorageMode
   );
   const effectiveStorageMode = conversationContentStorageAllowed ? desiredStorageMode : 'disabled';
 
-  const locales = resolveLocales(productLocales, serverLocales, tenantLocales, effectiveStorageMode);
+  const locales = resolveLocales(
+    productLocales,
+    serverLocales,
+    tenantLocales,
+    effectiveStorageMode
+  );
 
   const defaultLocale = normalizeSsfLocale(
     override(tenantSettings.defaultLocale, serverSettings.defaultLocale, defaults.defaultLocale)

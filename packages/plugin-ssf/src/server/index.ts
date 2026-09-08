@@ -9,12 +9,26 @@ import {
   SSF_RUNTIME_SERVER_HANDLER_ID,
   type SsfRuntimeErrorCode,
 } from '../constants.js';
+import {
+  ssfSystemConfigurationInputSchema,
+  ssfTenantConfigurationInputSchema,
+} from '../admin-contracts.js';
+import {
+  readSsfSystemOverrides,
+  replaceSsfSystemConfiguration,
+  replaceSsfTenantConfiguration,
+} from '../admin-repository.js';
+import {
+  createSsfSystemConfigurationView,
+  createSsfTenantConfigurationView,
+} from '../admin-service.js';
 import { resolveSsfDatabasePool } from '../database.js';
 import {
   createSsfRuntimeConfigurationHandler,
   type SsfRuntimeConfigurationHandler,
 } from '../handler.js';
 import { readSsfConfigurationOverrides } from '../repository.js';
+import type { SsfConfigurationOverrides } from '../repository.js';
 import { SsfRuntimeConfigurationValidationError, type SsfMediaResolver } from '../resolver.js';
 
 const CORRELATION_HEADER = 'X-Correlation-Id';
@@ -31,6 +45,20 @@ const readCorrelationId = (request: Request): string => {
 
 export interface SsfPluginServerHandlerDependencies {
   readonly runtimeHandler: SsfRuntimeConfigurationHandler;
+}
+
+export interface SsfAdminServerHandlerDependencies {
+  readonly readSystem: () => Promise<
+    Pick<SsfConfigurationOverrides, 'serverSettings' | 'serverLocales'>
+  >;
+  readonly writeSystem: (
+    input: Parameters<typeof replaceSsfSystemConfiguration>[1]
+  ) => Promise<void>;
+  readonly readTenant: (instanceId: string) => Promise<SsfConfigurationOverrides>;
+  readonly writeTenant: (
+    instanceId: string,
+    input: Parameters<typeof replaceSsfTenantConfiguration>[2]
+  ) => Promise<void>;
 }
 
 const jsonResponse = (status: number, body: unknown, correlationId: string): Response =>
@@ -111,7 +139,106 @@ const getDefaultRuntimeHandler = (): SsfRuntimeConfigurationHandler => {
   return defaultHandler;
 };
 
-export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () =>
-  createSsfPluginServerHandlers({
+export const createSsfAdminServerHandlers = (
+  dependencies: SsfAdminServerHandlerDependencies
+): ReturnType<PluginServerHandlerModuleFactory> => ({
+  'ssf.system-configuration.read': async (context) => {
+    if (context.scope !== 'platform')
+      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+    try {
+      return jsonResponse(
+        200,
+        createSsfSystemConfigurationView(await dependencies.readSystem()),
+        'unavailable'
+      );
+    } catch {
+      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+    }
+  },
+  'ssf.system-configuration.write': async (context) => {
+    if (context.scope !== 'platform')
+      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+    const parsed = ssfSystemConfigurationInputSchema.safeParse(
+      await context.request.json().catch(() => null)
+    );
+    if (!parsed.success)
+      return jsonResponse(422, { error: 'invalid_configuration' }, 'unavailable');
+    try {
+      await dependencies.writeSystem(parsed.data);
+      return jsonResponse(
+        200,
+        createSsfSystemConfigurationView(await dependencies.readSystem()),
+        'unavailable'
+      );
+    } catch {
+      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+    }
+  },
+  'ssf.tenant-configuration.read': async (context) => {
+    if (context.scope !== 'tenant' || !context.actor.instanceId)
+      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+    try {
+      return jsonResponse(
+        200,
+        createSsfTenantConfigurationView(await dependencies.readTenant(context.actor.instanceId)),
+        'unavailable'
+      );
+    } catch {
+      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+    }
+  },
+  'ssf.tenant-configuration.write': async (context) => {
+    if (context.scope !== 'tenant' || !context.actor.instanceId)
+      return jsonResponse(403, { error: 'forbidden' }, 'unavailable');
+    const parsed = ssfTenantConfigurationInputSchema.safeParse(
+      await context.request.json().catch(() => null)
+    );
+    if (!parsed.success)
+      return jsonResponse(422, { error: 'invalid_configuration' }, 'unavailable');
+    try {
+      const current = createSsfTenantConfigurationView(
+        await dependencies.readTenant(context.actor.instanceId)
+      );
+      if (
+        parsed.data.defaultLocale !== null &&
+        current.system.locales.find((entry) => entry.locale === parsed.data.defaultLocale)
+          ?.available !== true
+      ) {
+        return jsonResponse(422, { error: 'invalid_configuration' }, 'unavailable');
+      }
+      await dependencies.writeTenant(context.actor.instanceId, parsed.data);
+      return jsonResponse(
+        200,
+        createSsfTenantConfigurationView(await dependencies.readTenant(context.actor.instanceId)),
+        'unavailable'
+      );
+    } catch {
+      return jsonResponse(503, { error: 'configuration_unavailable' }, 'unavailable');
+    }
+  },
+});
+
+export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () => {
+  const runtimeHandlers = createSsfPluginServerHandlers({
     runtimeHandler: (input) => getDefaultRuntimeHandler()(input),
   });
+  const pool = resolveSsfDatabasePool();
+  const databaseUnavailable = async (): Promise<never> => {
+    throw new Error('ssf_database_unavailable');
+  };
+  return {
+    ...runtimeHandlers,
+    ...createSsfAdminServerHandlers({
+      readSystem: pool ? () => readSsfSystemOverrides(pool) : databaseUnavailable,
+      writeSystem: pool
+        ? (input) => replaceSsfSystemConfiguration(pool, input)
+        : databaseUnavailable,
+      readTenant: pool
+        ? (instanceId) => readSsfConfigurationOverrides(pool, instanceId)
+        : databaseUnavailable,
+      writeTenant: pool
+        ? (instanceId, input) => replaceSsfTenantConfiguration(pool, instanceId, input)
+        : databaseUnavailable,
+    }),
+  };
+};

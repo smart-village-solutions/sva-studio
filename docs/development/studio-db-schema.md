@@ -95,6 +95,8 @@ Konvergenznachweis der SSF-IAM-Projektion:
   besitzt weder Löschrecht noch Änderungsrechte an `instance_id` und
   `created_at`,
 - `ssf.server_settings` und `ssf.server_locales` für installationsweite Werte,
+  einschließlich Standardsprache, verfügbarer Sprachen, Erklärungstexten und
+  Vorgabe zur Gesprächsspeicherung,
 - `ssf.tenant_settings` und `ssf.tenant_locales` für mandantenbezogene Werte,
 - `ssf.authorization_projections` für getrennten Soll- und bestätigten
   Read-back-Zustand je Mandant; die vorhandenen Session-Widerrufsfelder bleiben

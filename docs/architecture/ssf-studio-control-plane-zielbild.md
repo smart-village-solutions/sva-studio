@@ -15,11 +15,13 @@ aufeinander aufbauende OpenSpec-Changes gegliedert:
 4. [`add-ssf-runtime-configuration-api`](../../openspec/changes/add-ssf-runtime-configuration-api/proposal.md)
 5. [`add-ssf-iam-permission-projection`](../../openspec/changes/add-ssf-iam-permission-projection/proposal.md)
 6. [`wire-ssf-runtime-real-data`](../../openspec/changes/wire-ssf-runtime-real-data/proposal.md)
+7. [`add-ssf-runtime-configuration-ui`](../../openspec/changes/add-ssf-runtime-configuration-ui/proposal.md)
 
 Der aktuelle Studio-Zwischenstand umfasst den fail-closed Runtime-Lesepfad,
 die Studio-seitige Projektionslogik, den getesteten Consumer für den
 tenantgebundenen SSF-Session-Widerruf und den tenantlokalen SSF-OIDC-Client als
-deaktiviertes Integrationsartefakt. Das Plugin deklariert dafür ausschließlich
+deaktiviertes Integrationsartefakt sowie getrennte Root- und Tenant-Editoren für
+die Runtime-Konfiguration. Das Plugin deklariert dafür ausschließlich
 die feste Client-ID und Audience `ssf`; die generische Keycloak-Provisionierung
 entfernt Callback-, Logout- und Origin-Freigaben, deaktiviert alle Flows und
 prüft Client sowie Audience-Mapper per Read-back. Bewusst offen bleiben der
@@ -212,10 +214,34 @@ gebunden und durch Row-Level Security abgesichert. Root-Zugriffe verwenden
 einen getrennten, ausdrücklich autorisierten Datenbankpfad. Datenbankmigrationen,
 fachliche Repositories und Schema-Ownership liegen beim SSF-Plugin.
 
+## Administrationsoberflächen für die Runtime-Konfiguration
+
+Das installierte SSF-Plugin stellt zwei bewusst getrennte Studio-Oberflächen
+bereit:
+
+- Root-`system_admin`: `System → SSF-Standards` für installationsweite
+  Standards.
+- Tenant-`system_admin`: `Anwendungen → SSF-Konfiguration` für geerbte Werte
+  und tenantbezogene Overrides.
+
+Die Root-Oberfläche ist an den Plattform-Scope und die Rolle
+`instance_registry_admin` gebunden. Die Tenant-Oberfläche trennt Lesen und
+Schreiben über `ssf.configuration.tenant.read` und
+`ssf.configuration.tenant.manage`; die `instanceId` stammt ausschließlich aus
+dem verifizierten Plugin-Ausführungskontext. Beide Schreibpfade validieren den
+vollständigen Request, bereinigen HTML nach der vorhandenen SSF-Policy und
+speichern die Konfiguration in einer Transaktion.
+
+Die Oberflächen verwalten Standardsprache, Sprachaktivierung, die drei
+lokalisierten Erklärungstexte und den Modus der Gesprächsspeicherung. Branding,
+Logo, Icon, Tenantname und Zeitzone gehören ausdrücklich nicht zu diesen
+Schreibverträgen. Die Runtime-API bleibt die kanonische Sicht auf die vollständig
+aufgelöste Konfiguration einschließlich ihrer Revision.
+
 Die Datenbank kann später insbesondere enthalten:
 
 - installationsweite Modell-, Integrations- und Standardkonfiguration,
-- tenantbezogene Logos, Icons, Texte, Sprachen und Optionen,
+- tenantbezogene Texte, Sprachen und Optionen,
 - Quoten und tenantbezogene Konfigurationsrevisionen,
 - SSF-spezifische Readiness- und Synchronisationszustände.
 

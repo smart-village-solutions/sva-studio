@@ -54,6 +54,12 @@
     "sourceRef": "packages/plugin-surveys"
   },
   {
+    "pluginId": "ssf",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-ssf"
+  },
+  {
     "pluginId": "waste-management",
     "sourceType": "workspace",
     "enabled": true,

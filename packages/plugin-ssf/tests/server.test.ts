@@ -6,7 +6,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SSF_RUNTIME_SERVER_HANDLER_ID } from '../src/constants.js';
 import type { SsfRuntimeConfiguration } from '../src/contracts.js';
-import { createPluginServerHandlers, createSsfPluginServerHandlers } from '../src/server/index.js';
+import {
+  createPluginServerHandlers,
+  createSsfAdminServerHandlers,
+  createSsfPluginServerHandlers,
+} from '../src/server/index.js';
 
 const revision = `sha256:${'a'.repeat(64)}` as const;
 const configurationRevision = `sha256:${'b'.repeat(64)}` as const;
@@ -54,6 +58,29 @@ const successfulConfiguration: SsfRuntimeConfiguration = {
   configurationRevision,
   authorizationRevision: revision,
 };
+
+const emptyOverrides = {
+  tenantSettings: null,
+  tenantLocales: [],
+  serverSettings: null,
+  serverLocales: [],
+} as const;
+
+const adminContext = (
+  scope: 'platform' | 'tenant',
+  method: 'GET' | 'PUT',
+  body?: unknown
+): PluginServerHandlerExecutionContext => ({
+  request: new Request('https://studio.test/api/v1/plugins/ssf/configuration', {
+    method,
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  }),
+  pluginId: 'ssf',
+  handlerId: 'ssf.configuration',
+  scope,
+  actor: { id: 'user-a', roles: [], ...(scope === 'tenant' ? { instanceId: 'tenant-a' } : {}) },
+});
 
 describe('SSF plugin server handler', () => {
   afterEach(() => {
@@ -116,9 +143,7 @@ describe('SSF plugin server handler', () => {
     const runtimeHandler = vi.fn().mockResolvedValue(successfulConfiguration);
     const handlers = createSsfPluginServerHandlers({ runtimeHandler });
 
-    const response = await handlers[SSF_RUNTIME_SERVER_HANDLER_ID]?.(
-      serviceContext(correlationId)
-    );
+    const response = await handlers[SSF_RUNTIME_SERVER_HANDLER_ID]?.(serviceContext(correlationId));
 
     expect(response?.status).toBe(200);
     expect(response?.headers.get('X-Correlation-Id')).toBe('unavailable');
@@ -135,5 +160,58 @@ describe('SSF plugin server handler', () => {
       contractVersion: '1.0',
       error: { code: 'runtime_configuration_unavailable', retryable: true },
     });
+  });
+
+  it('reads system defaults only in the platform scope', async () => {
+    const dependencies = {
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn(),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn(),
+    };
+    const handlers = createSsfAdminServerHandlers(dependencies);
+
+    const allowed = await handlers['ssf.system-configuration.read']?.(
+      adminContext('platform', 'GET')
+    );
+    const denied = await handlers['ssf.system-configuration.read']?.(adminContext('tenant', 'GET'));
+
+    expect(allowed?.status).toBe(200);
+    await expect(allowed?.json()).resolves.toMatchObject({ defaultLocale: 'de-DE' });
+    expect(denied?.status).toBe(403);
+    expect(dependencies.readSystem).toHaveBeenCalledTimes(1);
+  });
+
+  it('binds tenant writes to the verified actor tenant and rejects invalid input atomically', async () => {
+    const dependencies = {
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn(),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn().mockResolvedValue(undefined),
+    };
+    const handlers = createSsfAdminServerHandlers(dependencies);
+    const validInput = {
+      defaultLocale: null,
+      conversationContentStorageMode: null,
+      locales: ['de-DE', 'en'].map((locale) => ({
+        locale,
+        enabled: null,
+        authenticatedHomeExplanationHtml: null,
+        guestExplanationHtml: null,
+        conversationContentStorageQuestionHtml: null,
+      })),
+    };
+
+    const accepted = await handlers['ssf.tenant-configuration.write']?.(
+      adminContext('tenant', 'PUT', validInput)
+    );
+    const rejected = await handlers['ssf.tenant-configuration.write']?.(
+      adminContext('tenant', 'PUT', { ...validInput, locales: [] })
+    );
+
+    expect(accepted?.status).toBe(200);
+    expect(dependencies.writeTenant).toHaveBeenCalledWith('tenant-a', validInput);
+    expect(rejected?.status).toBe(422);
+    expect(dependencies.writeTenant).toHaveBeenCalledTimes(1);
   });
 });

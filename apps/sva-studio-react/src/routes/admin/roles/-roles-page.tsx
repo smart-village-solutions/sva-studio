@@ -60,12 +60,12 @@ export const RolesPage = () => {
 
   const filteredRoles = React.useMemo<readonly RoleRow[]>(() => {
     const query = search.trim().toLowerCase();
-    const localRoleNames = new Set(
-      visibleRoles.flatMap((role) => [role.roleKey, role.roleName, role.externalRoleName])
-    );
+    const localExternalRoleNames = new Set(visibleRoles.map((role) => role.externalRoleName));
     const localRows = visibleRoles.map(toLocalRoleRow);
     const orphanedStudioRows = keycloakRolesApi.roles
-      .filter((role) => role.managedBy === 'studio' && !localRoleNames.has(role.roleName))
+      .filter(
+        (role) => role.managedBy === 'studio' && !localExternalRoleNames.has(role.roleName)
+      )
       .map(toKeycloakRoleRow);
     const sourceRoles =
       isPlatformScope || roleTypeFilter === 'studio'

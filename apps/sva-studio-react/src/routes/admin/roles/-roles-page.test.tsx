@@ -199,7 +199,21 @@ describe('RolesPage', () => {
 
   it('switches from Studio roles to external and built-in Keycloak roles', () => {
     useRolesMock.mockReturnValue({
-      roles: [],
+      roles: [
+        {
+          id: 'local-role-with-colliding-display-name',
+          roleKey: 'local_role',
+          roleName: 'orphaned_studio_role',
+          externalRoleName: 'local_role',
+          managedBy: 'studio',
+          description: 'Local role with a colliding display name',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+      ],
       isLoading: false,
       error: null,
       mutationError: null,
@@ -257,7 +271,11 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    expect(screen.getAllByText('orphaned_studio_role').length).toBeGreaterThan(0);
+    expect(
+      screen
+        .getAllByRole('row')
+        .filter((row) => within(row).queryByText('orphaned_studio_role') !== null)
+    ).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('Rollentyp'), {
       target: { value: 'external' },
     });

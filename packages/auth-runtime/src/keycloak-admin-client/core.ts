@@ -827,7 +827,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  async countUsers(query?: Omit<KeycloakListUsersQuery, 'first' | 'max'>): Promise<number> {
+  async countUsers(
+    query?: Omit<KeycloakListUsersQuery, 'first' | 'max' | 'exact'>
+  ): Promise<number> {
     if (this.isCircuitOpen()) {
       logger.error('Keycloak read blocked because circuit breaker is open', {
         operation: 'count_users',
@@ -837,13 +839,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
 
     const searchParams = new URLSearchParams();
-    for (const [key, value] of [
-      ['enabled', query?.enabled],
-      ['exact', query?.exact],
-    ] as const) {
-      if (value !== undefined) {
-        searchParams.set(key, String(value));
-      }
+    if (query?.enabled !== undefined) {
+      searchParams.set('enabled', String(query.enabled));
     }
     for (const [key, value] of [
       ['search', query?.search],

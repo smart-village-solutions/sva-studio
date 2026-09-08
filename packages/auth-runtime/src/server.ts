@@ -122,6 +122,7 @@ export {
   type PluginServerHandlerDispatcherDependencies,
 } from './plugin-server-handlers/dispatcher.js';
 export { createSsfRuntimePluginServiceAccess } from './ssf-runtime-plugin-service.js';
+export { resolveInstanceKeycloakProjectionTenant } from './ssf-authorization-projection-tenant.js';
 export { ensureFeature, getFeatureFlags } from './iam-account-management/feature-flags.js';
 export { withInstanceScopedDb } from './iam-account-management/shared.js';
 export { resolveActorAccountId } from './iam-account-management/shared.js';

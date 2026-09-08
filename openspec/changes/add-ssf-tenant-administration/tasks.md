@@ -17,6 +17,14 @@
       Zwei-Tenant-/Drift-Nachweise; UI und Tenant-Grunddatensatz bleiben danach
       in diesem Change
 
+## MVP-Priorität
+
+Der erste nutzbare Stand umfasst die vorhandene Tenant-Konfiguration, den
+tenantlokalen SSF-OIDC-Client und die automatische IAM-Projektion. Zusätzliche
+Statusaktionen, Suspend-/Reactivate-Komfort, umfassende Betriebsdokumentation
+und eine eigene SSF-Status-UI sind nachgelagert. Bis zur revisionsgleichen
+Abnahme bleibt das produktive Enablement fail-closed.
+
 ## 1. SSF-Plugin und Verträge
 
 - [ ] 1.1 Root- und Tenant-Contributions für Provisionierung, Lifecycle und

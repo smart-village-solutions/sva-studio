@@ -17,7 +17,10 @@ für die bereits vereinbarten Texte, Sprachen und die Gesprächsspeicherung.
   gezielt für seinen Tenant überschreiben oder auf Vererbung zurücksetzen.
 - Schmale Plugin-Admin-APIs verwenden bestehende SSF-Repositories,
   Validierungsgrenzen und getrennte Root-/Tenant-Berechtigungen.
-- Die Tenant-Oberfläche zeigt die wirksame Konfiguration und Revision.
+- Die Tenant-API liefert weiterhin die wirksame Konfiguration und Revision. Die
+  erste nutzbare Tenant-Oberfläche konzentriert sich auf Systemstandard,
+  Override und Vererbung; eine separate Revisionsanzeige ist ein späteres
+  Betriebsdetail.
 - Branding, Logo, Icon, Tenantname und Zeitzone sind nicht Teil dieses Changes.
   Tenantname und Zeitzone bleiben in der allgemeinen Instanzverwaltung;
   Branding wird nicht vorbereitet.

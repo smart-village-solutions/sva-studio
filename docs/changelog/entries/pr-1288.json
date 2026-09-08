@@ -1,0 +1,4 @@
+{
+  "prNumber": 1288,
+  "body": "Die SSF-Autorisierungsprojektion ist jetzt an den bestehenden Plugin-Lifecycle angebunden.\n\n- Provisionierung und manueller Reconcile verwenden denselben idempotenten Abgleich.\n- Keycloak-Änderungen laufen über die dafür vorgesehene Provisioner-Identität.\n- Eine fehlende optionale SSF-Datenbankkonfiguration beeinträchtigt andere Studio-Jobs nicht."
+}

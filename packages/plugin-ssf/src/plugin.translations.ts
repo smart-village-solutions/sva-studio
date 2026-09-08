@@ -31,6 +31,11 @@ const de = {
       saved: 'Konfiguration wurde gespeichert.',
       saveError: 'Konfiguration konnte nicht gespeichert werden.',
     },
+    errors: {
+      authorizationReconcileUnavailable: 'Die SSF-Berechtigungen konnten nicht abgeglichen werden.',
+      invalidAuthorizationReconcileContext:
+        'Der SSF-Berechtigungsabgleich wurde ungültig aufgerufen.',
+    },
     richText: {
       mode: 'Bearbeitungsmodus',
       visual: 'Visuell',
@@ -90,6 +95,11 @@ const en = {
       loadError: 'Configuration could not be loaded.',
       saved: 'Configuration saved.',
       saveError: 'Configuration could not be saved.',
+    },
+    errors: {
+      authorizationReconcileUnavailable: 'SSF permissions could not be reconciled.',
+      invalidAuthorizationReconcileContext:
+        'The SSF permission reconciliation was invoked incorrectly.',
     },
     richText: {
       mode: 'Editing mode',

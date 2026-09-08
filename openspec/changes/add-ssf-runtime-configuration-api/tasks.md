@@ -122,3 +122,13 @@ wird keine Aufgabe aus Abschnitt 5 begonnen.
 - [x] 6.7 Vor produktivem Enablement ein getrenntes Follow-up für die
       revisionsgebundene SSF-Keycloak-Permission-Projektion freigeben und
       dessen End-to-End-Nachweise verlangen
+
+## 7. Nachgelagerte Runtime-Härtung
+
+Die folgenden Randfälle bleiben sichtbar, blockieren aber nicht die
+MVP-Integration aus Konfiguration, IAM-Projektion und Runtime-Endpunkt.
+
+- [ ] 7.1 Partielles Fehlschlagen beim Schließen getrennter Root- und
+      Tenant-Pools ohne Wiederveröffentlichung bereits geschlossener Pools behandeln
+- [ ] 7.2 Root-Rollenvererbung und root-only Lesezugriff zusätzlich durch
+      gezielte Negativtests absichern

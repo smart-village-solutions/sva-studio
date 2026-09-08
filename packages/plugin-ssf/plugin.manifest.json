@@ -7,10 +7,14 @@
   "sdkVersion": "0.0.1",
   "hostCompatibility": {
     "studioVersionRange": "^0.0.1",
-    "requiredCapabilities": ["iam", "server"]
+    "requiredCapabilities": ["iam", "server", "jobs"]
   },
   "entryPoints": {
     "browser": "./dist/browser.js",
-    "server": "./dist/server/index.js"
+    "server": "./dist/server/index.js",
+    "jobs": "./dist/server.js"
+  },
+  "runtimeRequirements": {
+    "jobs": "ssf.authorization-projection"
   }
 }

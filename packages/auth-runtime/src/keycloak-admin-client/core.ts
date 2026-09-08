@@ -90,6 +90,7 @@ type KeycloakClientRepresentation = {
   readonly protocol?: string;
   readonly publicClient?: boolean;
   readonly standardFlowEnabled?: boolean;
+  readonly implicitFlowEnabled?: boolean;
   readonly directAccessGrantsEnabled?: boolean;
   readonly serviceAccountsEnabled?: boolean;
   readonly redirectUris?: readonly string[];
@@ -1074,7 +1075,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
-  async ensureRealm(input: { displayName?: string }): Promise<void> {
+  async ensureRealm(input: { displayName?: string }): Promise<boolean> {
     await this.assertWriteAvailability();
     try {
       await this.executeWithResilience<void>({
@@ -1092,6 +1093,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         operation: 'create_realm',
         realm: this.realm,
       });
+      return true;
     } catch (error) {
       if (!(error instanceof KeycloakAdminRequestError) || error.statusCode !== 409) {
         logKeycloakWriteFailure(
@@ -1104,6 +1106,33 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         );
         throw error;
       }
+      return false;
+    }
+  }
+
+  async deleteRealm(): Promise<void> {
+    await this.assertWriteAvailability();
+    try {
+      await this.executeWithResilience<void>({
+        method: 'DELETE',
+        path: `/admin/realms/${encodePathSegment(this.realm)}`,
+        operation: 'delete_realm',
+      });
+      this.invalidateAccessTokenCache();
+      logKeycloakWriteSuccess('delete_realm', {
+        operation: 'delete_realm',
+        realm: this.realm,
+      });
+    } catch (error) {
+      if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {
+        return;
+      }
+      logKeycloakWriteFailure(
+        'delete_realm_failed',
+        { operation: 'delete_realm', realm: this.realm },
+        error
+      );
+      throw error;
     }
   }
 
@@ -1169,9 +1198,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     clientSecret?: string;
     rotateClientSecret?: boolean;
     standardFlowEnabled?: boolean;
+    implicitFlowEnabled?: boolean;
     directAccessGrantsEnabled?: boolean;
     serviceAccountsEnabled?: boolean;
     enabled?: boolean;
+    uriPolicy?: 'merge' | 'replace';
   }): Promise<void> {
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
@@ -1182,15 +1213,25 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       protocol: 'openid-connect',
       publicClient: false,
       standardFlowEnabled: input.standardFlowEnabled ?? true,
+      implicitFlowEnabled: input.implicitFlowEnabled ?? existing?.implicitFlowEnabled ?? false,
       directAccessGrantsEnabled: input.directAccessGrantsEnabled ?? false,
       serviceAccountsEnabled: input.serviceAccountsEnabled ?? false,
-      redirectUris: mergeSortedUniqueStrings(existing?.redirectUris, input.redirectUris),
-      webOrigins: mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
+      redirectUris:
+        input.uriPolicy === 'replace'
+          ? [...input.redirectUris]
+          : mergeSortedUniqueStrings(existing?.redirectUris, input.redirectUris),
+      webOrigins:
+        input.uriPolicy === 'replace'
+          ? [...input.webOrigins]
+          : mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
       attributes: {
         ...existing?.attributes,
-        'post.logout.redirect.uris': mergeSortedUniqueStrings(
-          readPostLogoutRedirectUris(existing?.attributes),
-          input.postLogoutRedirectUris
+        'post.logout.redirect.uris': (input.uriPolicy === 'replace'
+          ? [...input.postLogoutRedirectUris]
+          : mergeSortedUniqueStrings(
+              readPostLogoutRedirectUris(existing?.attributes),
+              input.postLogoutRedirectUris
+            )
         ).join('##'),
       },
       rootUrl: input.rootUrl,
@@ -1211,6 +1252,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       protocol: string;
       publicClient: boolean;
       standardFlowEnabled: boolean;
+      implicitFlowEnabled: boolean;
       directAccessGrantsEnabled: boolean;
       serviceAccountsEnabled: boolean;
       redirectUris: string[];
@@ -1228,8 +1270,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
     const requiresUpdate =
       existing.enabled !== payload.enabled ||
+      existing.protocol !== payload.protocol ||
+      existing.publicClient !== payload.publicClient ||
       existing.rootUrl !== payload.rootUrl ||
       existing.standardFlowEnabled !== payload.standardFlowEnabled ||
+      existing.implicitFlowEnabled !== payload.implicitFlowEnabled ||
       existing.directAccessGrantsEnabled !== payload.directAccessGrantsEnabled ||
       existing.serviceAccountsEnabled !== payload.serviceAccountsEnabled ||
       !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
@@ -1390,20 +1435,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     claimName: string;
     multivalued?: boolean;
   }): Promise<void> {
-    await this.assertWriteAvailability();
-    const client = await this.getOidcClientByClientId(input.clientId);
-    if (!client) {
-      throw new KeycloakAdminRequestError({
-        message: `Keycloak client ${input.clientId} is missing.`,
-        statusCode: 404,
-        code: 'client_not_found',
-        retryable: false,
-      });
-    }
-
-    const existingMappers = await this.listClientProtocolMappers(input.clientId);
-    const existingMapper = existingMappers.find((mapper) => mapper.name === input.name);
-    const payload = {
+    await this.ensureProtocolMapper(input.clientId, {
       name: input.name,
       protocol: 'openid-connect',
       protocolMapper: 'oidc-usermodel-attribute-mapper',
@@ -1416,7 +1448,51 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         'access.token.claim': 'true',
         'userinfo.token.claim': 'true',
       },
-    };
+    });
+  }
+
+  async ensureAudienceProtocolMapper(input: {
+    clientId: string;
+    name: string;
+    audience: string;
+  }): Promise<void> {
+    await this.ensureProtocolMapper(input.clientId, {
+      name: input.name,
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-audience-mapper',
+      config: {
+        'included.client.audience': input.audience,
+        'included.custom.audience': '',
+        'id.token.claim': 'false',
+        'access.token.claim': 'true',
+        'lightweight.claim': 'false',
+        'introspection.token.claim': 'true',
+      },
+    });
+  }
+
+  private async ensureProtocolMapper(
+    clientId: string,
+    payload: {
+      name: string;
+      protocol: string;
+      protocolMapper: string;
+      config: Readonly<Record<string, string>>;
+    }
+  ): Promise<void> {
+    await this.assertWriteAvailability();
+    const client = await this.getOidcClientByClientId(clientId);
+    if (!client) {
+      throw new KeycloakAdminRequestError({
+        message: `Keycloak client ${clientId} is missing.`,
+        statusCode: 404,
+        code: 'client_not_found',
+        retryable: false,
+      });
+    }
+
+    const existingMappers = await this.listClientProtocolMappers(clientId);
+    const existingMapper = existingMappers.find((mapper) => mapper.name === payload.name);
 
     if (!existingMapper) {
       await this.executeWithResilience<void>({

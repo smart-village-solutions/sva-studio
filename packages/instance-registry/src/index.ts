@@ -122,6 +122,8 @@ export type {
   KeycloakProvisioningInput,
   KeycloakReadState,
   KeycloakRoleRepresentation,
+  PluginOidcClientRequirement,
+  PluginOidcClientState,
   TenantAdminBootstrap,
   TenantAdminStatus,
 } from './provisioning-auth-types.js';

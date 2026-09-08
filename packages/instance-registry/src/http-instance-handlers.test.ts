@@ -10,21 +10,26 @@ describe('http-instance-handlers', () => {
   const service = {
     listInstances: vi.fn(async () => [{ instanceId: 'demo', status: 'active' }]),
     getInstanceDetail: vi.fn(async () => ({ instanceId: 'demo', status: 'active' })),
-    createProvisioningRequest: vi.fn(async () => ({ ok: true, instance: { instanceId: 'demo', status: 'validated' } })),
+    createProvisioningRequest: vi.fn(async () => ({
+      ok: true,
+      instance: { instanceId: 'demo', status: 'validated' },
+    })),
     updateInstance: vi.fn(async () => ({ instanceId: 'demo', status: 'active' })),
   } as unknown as InstanceRegistryService;
 
   const deps = {
     getRequestId: vi.fn(() => 'req-1'),
     getActor: vi.fn((context: typeof ctx) => ({ id: context.user.id })),
-    createApiError: vi.fn((status: number, code: string, message: string, requestId?: string) =>
-      new Response(JSON.stringify({ code, message, requestId }), { status })
+    createApiError: vi.fn(
+      (status: number, code: string, message: string, requestId?: string) =>
+        new Response(JSON.stringify({ code, message, requestId }), { status })
     ),
-    jsonResponse: vi.fn((status: number, payload: unknown) =>
-      new Response(JSON.stringify(payload), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      })
+    jsonResponse: vi.fn(
+      (status: number, payload: unknown) =>
+        new Response(JSON.stringify(payload), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        })
     ),
     asApiItem: vi.fn((value: unknown) => value),
     asApiList: vi.fn((value: readonly unknown[], pagination: unknown, requestId?: string) => ({
@@ -34,13 +39,16 @@ describe('http-instance-handlers', () => {
     })),
     parseRequestBody: vi.fn(async () => ({ ok: true, data: {} })),
     requireIdempotencyKey: vi.fn(() => ({ key: 'idem-1' })),
-    mapMutationError: vi.fn(() => new Response(JSON.stringify({ code: 'mapped' }), { status: 502 })),
+    mapMutationError: vi.fn(
+      () => new Response(JSON.stringify({ code: 'mapped' }), { status: 502 })
+    ),
     ensurePlatformAccess: vi.fn(() => null),
     validateCsrf: vi.fn(() => null),
     requireFreshReauth: vi.fn(() => null),
-    withRegistryService: vi.fn(async (work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
-      work(service)
+    withRegistryService: vi.fn(
+      async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     ),
+    reservedOidcClientIds: ['ssf'],
     onInstanceProvisioningRequested: vi.fn(),
   };
 
@@ -52,16 +60,24 @@ describe('http-instance-handlers', () => {
     deps.requireFreshReauth.mockReturnValue(null);
     deps.requireIdempotencyKey.mockReturnValue({ key: 'idem-1' });
     deps.parseRequestBody.mockResolvedValue({ ok: true, data: {} });
-    deps.withRegistryService.mockImplementation(async (work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
-      work(service)
+    deps.withRegistryService.mockImplementation(
+      async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     );
-    vi.mocked(service.listInstances).mockResolvedValue([{ instanceId: 'demo', status: 'active' }] as never);
-    vi.mocked(service.getInstanceDetail).mockResolvedValue({ instanceId: 'demo', status: 'active' } as never);
+    vi.mocked(service.listInstances).mockResolvedValue([
+      { instanceId: 'demo', status: 'active' },
+    ] as never);
+    vi.mocked(service.getInstanceDetail).mockResolvedValue({
+      instanceId: 'demo',
+      status: 'active',
+    } as never);
     vi.mocked(service.createProvisioningRequest).mockResolvedValue({
       ok: true,
       instance: { instanceId: 'demo', status: 'validated' },
     } as never);
-    vi.mocked(service.updateInstance).mockResolvedValue({ instanceId: 'demo', status: 'active' } as never);
+    vi.mocked(service.updateInstance).mockResolvedValue({
+      instanceId: 'demo',
+      status: 'active',
+    } as never);
   });
 
   it('lists instances with pagination metadata', async () => {
@@ -136,6 +152,79 @@ describe('http-instance-handlers', () => {
     expect(service.createProvisioningRequest).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ['create auth client', 'create', { authClientId: 'ssf' }],
+    [
+      'create tenant admin client',
+      'create',
+      { authClientId: 'sva-studio', tenantAdminClient: { clientId: 'ssf' } },
+    ],
+    ['update auth client', 'update', { authClientId: 'ssf' }],
+    [
+      'update tenant admin client',
+      'update',
+      { authClientId: 'sva-studio', tenantAdminClient: { clientId: 'ssf' } },
+    ],
+  ])('rejects the reserved SSF ID for the %s', async (_label, operation, clientConfig) => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        ...clientConfig,
+      },
+    });
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+    const response =
+      operation === 'create'
+        ? await handlers.createInstance(
+            new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+            ctx
+          )
+        : await handlers.updateInstance(
+            new Request('https://studio.example.org/api/v1/iam/instances/demo', {
+              method: 'PATCH',
+            }),
+            ctx
+          );
+
+    expect(response.status).toBe(400);
+    expect(await readBody(response)).toMatchObject({ code: 'oidc_client_id_reserved' });
+    expect(service.createProvisioningRequest).not.toHaveBeenCalled();
+    expect(service.updateInstance).not.toHaveBeenCalled();
+  });
+
+  it('resolves reserved plugin client IDs at request time', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'ssf',
+      },
+    });
+    const readReservedOidcClientIds = vi.fn(() => ['ssf']);
+    const handlers = createInstanceRegistryHttpHandlers({
+      ...deps,
+      reservedOidcClientIds: readReservedOidcClientIds,
+    });
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(400);
+    expect(await readBody(response)).toMatchObject({ code: 'oidc_client_id_reserved' });
+    expect(readReservedOidcClientIds).toHaveBeenCalledOnce();
+  });
+
   it('maps create errors through the injected mapper', async () => {
     const thrown = new Error('unexpected create failure');
     vi.mocked(service.createProvisioningRequest).mockRejectedValueOnce(thrown);
@@ -159,7 +248,9 @@ describe('http-instance-handlers', () => {
 
     expect(response.status).toBe(502);
     expect(deps.mapMutationError).toHaveBeenCalledWith(thrown, {
-      operation: 'create_instance', requestId: 'req-1', instanceId: 'demo',
+      operation: 'create_instance',
+      requestId: 'req-1',
+      instanceId: 'demo',
     });
     expect(deps.onInstanceProvisioningRequested).not.toHaveBeenCalled();
   });
@@ -186,7 +277,9 @@ describe('http-instance-handlers', () => {
 
     expect(response.status).toBe(502);
     expect(deps.mapMutationError).toHaveBeenCalledWith(thrown, {
-      operation: 'update_instance', requestId: 'req-1', instanceId: 'demo',
+      operation: 'update_instance',
+      requestId: 'req-1',
+      instanceId: 'demo',
     });
   });
 

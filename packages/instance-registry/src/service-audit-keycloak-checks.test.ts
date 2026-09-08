@@ -12,6 +12,7 @@ const baseStatus = {
   redirectUrisMatch: true,
   logoutUrisMatch: true,
   webOriginsMatch: true,
+  pluginOidcClientsAligned: true,
   clientSecretConfigured: true,
   tenantClientSecretReadable: true,
   clientSecretAligned: true,
@@ -162,6 +163,21 @@ describe('service-audit-keycloak-checks', () => {
         }),
       ])
     );
+  });
+
+  it('reports plugin OIDC client drift explicitly', () => {
+    const checks = buildKeycloakChecks({
+      keycloakStatus: { ...baseStatus, pluginOidcClientsAligned: false },
+      keycloakEvidenceSource: 'keycloak_live',
+    });
+
+    expect(checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        checkId: 'keycloak.client.pluginOidc.aligned',
+        status: 'fail',
+        actual: 'abweichend',
+      }),
+    ]));
   });
 
   it('distinguishes between missing role, missing user and user without system_admin', () => {

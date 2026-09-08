@@ -49,6 +49,7 @@ export const KEYCLOAK_STATUS_LABELS = {
   redirectUrisMatch: 'admin.instances.keycloakStatus.redirectUrisMatch',
   logoutUrisMatch: 'admin.instances.keycloakStatus.logoutUrisMatch',
   webOriginsMatch: 'admin.instances.keycloakStatus.webOriginsMatch',
+  pluginOidcClientsAligned: 'admin.instances.keycloakStatus.pluginOidcClientsAligned',
   clientSecretConfigured: 'admin.instances.keycloakStatus.clientSecretConfigured',
   tenantClientSecretReadable: 'admin.instances.keycloakStatus.tenantClientSecretReadable',
   clientSecretAligned: 'admin.instances.keycloakStatus.clientSecretAligned',

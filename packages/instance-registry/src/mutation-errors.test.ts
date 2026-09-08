@@ -46,6 +46,13 @@ describe('mutation-errors', () => {
     });
   });
 
+  it('classifies reserved OIDC client ids as invalid requests', () => {
+    expect(classifyInstanceMutationError(new Error('oidc_client_id_reserved'))).toEqual({
+      status: 400,
+      code: 'oidc_client_id_reserved',
+    });
+  });
+
   it('classifies concurrent plugin activation reconciliation as conflict', () => {
     expect(
       classifyInstanceMutationError(new Error('plugin_activation_state_conflict:events'))

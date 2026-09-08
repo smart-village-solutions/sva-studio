@@ -1,3 +1,5 @@
+import { SSF_TENANT_OIDC_CLIENT_REQUIREMENT } from '@sva/plugin-ssf/provisioning';
+
 let configuredRevision: string | undefined;
 let reconciledRevision: string | undefined;
 let latestConfiguration: PluginActivationPolicyConfiguration | undefined;
@@ -23,8 +25,14 @@ const configurePluginActivationPolicies =
     );
     const activationPolicies = studioPluginSnapshot.tenantActivationPolicySnapshot;
     if (configuredRevision !== activationPolicies.revision) {
+      const pluginOidcClientRequirements = studioPluginSnapshot.pluginSources.some(
+        ({ pluginId }) => pluginId === SSF_TENANT_OIDC_CLIENT_REQUIREMENT.pluginId
+      )
+        ? [SSF_TENANT_OIDC_CLIENT_REQUIREMENT]
+        : [];
       authRuntime.configureInstanceRegistryPluginRuntimeSnapshot({
         activationPolicies,
+        pluginOidcClientRequirements,
         tenantLifecycles: studioPluginSnapshot.registry.tenantLifecycles,
         moduleIamContracts: [
           ...studioPluginSnapshot.registry.pluginModuleIamContracts,

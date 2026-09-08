@@ -16,6 +16,7 @@ Das System SHALL ein Studio-Deployment innerhalb derselben Deployment-Grenze wie
 - **GIVEN** die SSF-Plugin-Distribution ist nicht installiert
 - **WHEN** das Studio startet
 - **THEN** enthält der Core weder SSF-Routen noch SSF-Fachfelder oder einen SSF-Betriebsmodus
+- **AND** der IAM-Pfad provisioniert oder reserviert keinen SSF-OIDC-Client und bewertet keinen SSF-Client als Drift
 - **AND** bestehende generische Studio-Funktionen bleiben nutzbar
 
 ### Requirement: SSF-Rollen werden strikt auf Root- und Tenant-Scope abgebildet
@@ -46,6 +47,28 @@ Das System SHALL das Keycloak der SSF-Installation mit einem Root-Realm und gena
 - **THEN** erzeugt oder reconciliiert das System idempotent ihren eigenen Tenant-Realm
 - **AND** erzeugt oder validiert es getrennte Studio- und SSF-Clients sowie die erforderlichen technischen Admin-Clients
 - **AND** bindet alle Artefakte eindeutig an die Instanz-Registry
+
+#### Scenario: Fehlgeschlagener initialer SSF-Client wird vor Secrets kompensiert
+
+- **GIVEN** derselbe Provisionierungsaufruf hat ein Tenant-Realm gerade neu erzeugt
+- **WHEN** der unmittelbar folgende SSF-Client-Abgleich vor der Anlage geheimnistragender Studio- oder Tenant-Admin-Clients fehlschlägt
+- **THEN** entfernt das System ausschließlich dieses neu erzeugte Realm kompensierend
+- **AND** löscht es kein vorbestehendes Realm
+- **AND** weist es einen fehlgeschlagenen Cleanup als fail-closed und manuell zu bereinigen aus
+
+#### Scenario: Plugin-Client-ID bleibt an jeder Mutation reserviert
+
+- **GIVEN** der validierte Host-Katalog deklariert eine Plugin-OIDC-Client-ID
+- **WHEN** ein HTTP- oder direkter Service-Aufruf dieselbe ID als Studio-Login- oder Tenant-Admin-Client speichern will
+- **THEN** lehnt die Service-/Mutation-Trust-Boundary die Mutation vor jeder Persistenz ab
+- **AND** ist eine zusätzliche frühe HTTP-Prüfung nicht die autoritative Sicherheitsgrenze
+
+#### Scenario: Plugin-Client-Drift verhindert falsche Betriebsbereitschaft
+
+- **GIVEN** mindestens ein deklarativer Plugin-OIDC-Client weicht vom Sollzustand ab
+- **WHEN** das System Provisionierungsabschluss, Tenant-Konfiguration oder Cockpit-Status bewertet
+- **THEN** meldet es den aggregierten Keycloak-Sollzustand nicht als vollständig oder betriebsbereit
+- **AND** blockiert diese Abweichung für sich allein nicht die Studio-Login-Bereitschaft
 
 #### Scenario: Benutzeridentitäten werden nicht realmübergreifend verknüpft
 

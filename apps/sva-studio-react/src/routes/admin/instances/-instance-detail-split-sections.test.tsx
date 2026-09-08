@@ -155,6 +155,7 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
       tenantAdminClientSecretConfigured: true,
       tenantAdminClientSecretReadable: true,
       tenantAdminClientSecretAligned: true,
+      pluginOidcClientsAligned: true,
       runtimeSecretSource: 'tenant',
     },
     latestKeycloakProvisioningRun: {

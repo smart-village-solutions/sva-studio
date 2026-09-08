@@ -11,7 +11,7 @@
       Muster für alle neuen Tenant-Administrationstabellen übernehmen
 - [x] 0.4 V1-Runtime-Vertrag, Produktdefaults, Resolver und Service-Token-Code
       bleiben im Runtime-Change; dieser Change erweitert sie nicht nebenläufig
-- [ ] 0.5 Als Voraussetzung für `add-ssf-iam-permission-projection` zuerst einen
+- [x] 0.5 Als Voraussetzung für `add-ssf-iam-permission-projection` zuerst einen
       eigenständig prüfbaren Slice aus 1.3, 3.1 und 3.4 liefern: fester
       tenantlokaler SSF-Client-Vertrag, idempotente Provisionierung und
       Zwei-Tenant-/Drift-Nachweise; UI und Tenant-Grunddatensatz bleiben danach
@@ -23,7 +23,7 @@
       Administration im bestehenden Plugin registrieren
 - [ ] 1.2 Konkrete `ssf.*`-Actions, Audit-Events und Fehlercodes für diese
       Contributions definieren
-- [ ] 1.3 Zusätzliche Keycloak-Client-Anforderungen deklarativ festlegen; der
+- [x] 1.3 Zusätzliche Keycloak-Client-Anforderungen deklarativ festlegen; der
       erste Vertrag umfasst getrennte Studio- und SSF-Clients im selben
       Tenant-Realm sowie die zur IAM-Projektion erforderliche Audience und
       Aktivierungssteuerung
@@ -41,12 +41,12 @@
 
 ## 3. Keycloak und initialer Tenant-Admin
 
-- [ ] 3.1 Provisionierung um deklarierte Studio-/SSF-Clients und Audiences
+- [x] 3.1 Provisionierung um deklarierte Studio-/SSF-Clients und Audiences
       erweitern und den kanonischen SSF-Client für nachgelagerte
       Projektionsläufe auflösbar machen
 - [ ] 3.2 Initialen Tenant-Admin mit tenantlokalem `system_admin` integrieren
 - [ ] 3.3 Kopieren von Root-Benutzern und automatische E-Mail-Verknüpfung ausschließen
-- [ ] 3.4 Idempotenz-, Drift-, Secret- und Teilfehlertests für Realm und Clients ergänzen
+- [x] 3.4 Idempotenz-, Drift-, Secret- und Teilfehlertests für Realm und Clients ergänzen
 
 ## 4. Tenant-Lifecycle
 

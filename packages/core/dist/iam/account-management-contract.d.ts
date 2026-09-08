@@ -416,6 +416,7 @@ export type IamInstanceKeycloakStatus = {
     readonly redirectUrisMatch: boolean;
     readonly logoutUrisMatch: boolean;
     readonly webOriginsMatch: boolean;
+    readonly pluginOidcClientsAligned: boolean;
     readonly clientSecretConfigured: boolean;
     readonly tenantClientSecretReadable: boolean;
     readonly clientSecretAligned: boolean;

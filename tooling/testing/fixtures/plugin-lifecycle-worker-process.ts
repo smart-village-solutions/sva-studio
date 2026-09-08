@@ -32,6 +32,7 @@ snapshot.configureInstanceRegistryPluginRuntimeSnapshot({
     ],
   },
   moduleIamContracts: [],
+  pluginOidcClientRequirements: [],
   tenantLifecycles: [
     {
       pluginId,

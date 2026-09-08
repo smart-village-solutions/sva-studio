@@ -127,6 +127,7 @@
         "packages/plugin-waste-management/src/waste-management.job-definitions.ts"
       ],
       "@sva/plugin-ssf": ["packages/plugin-ssf/src/index.ts"],
+      "@sva/plugin-ssf/provisioning": ["packages/plugin-ssf/src/provisioning.ts"],
       "@sva/plugin-ssf/server": ["packages/plugin-ssf/src/runtime.ts"],
       "@sva/plugin-poi/poi.pages": ["packages/plugin-poi/src/poi.pages.tsx"],
       "@sva/studio-ui-react": ["packages/studio-ui-react/src/index.ts"],

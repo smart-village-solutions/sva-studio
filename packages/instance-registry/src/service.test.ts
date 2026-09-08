@@ -529,6 +529,42 @@ describe('instance registry service facade', () => {
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
+  it('rejects dynamically reserved OIDC client ids at the service mutation boundary', async () => {
+    const repository = createRepository();
+    const reservedOidcClientIds = vi.fn(() => ['ssf']);
+    const service = createInstanceRegistryService(
+      createDeps(repository, { reservedOidcClientIds })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'ssf',
+        idempotencyKey: 'idem-reserved-create',
+      })
+    ).rejects.toThrow('oidc_client_id_reserved');
+    await expect(
+      service.updateInstance({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        tenantAdminClient: { clientId: 'ssf' },
+      })
+    ).rejects.toThrow('oidc_client_id_reserved');
+
+    expect(reservedOidcClientIds).toHaveBeenCalledTimes(2);
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.createInstance).not.toHaveBeenCalled();
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
   it('resumes policy reconciliation for an idempotent create retry', async () => {
     const reconcileModuleActivationPolicies = vi.fn(async () => ({
       changedModuleIds: [],
@@ -2158,6 +2194,7 @@ describe('instance registry service facade', () => {
       clientSecretConfigured: false,
       tenantClientSecretReadable: false,
       clientSecretAligned: false,
+      pluginOidcClientsAligned: false,
       tenantAdminClientSecretConfigured: false,
       tenantAdminClientSecretReadable: false,
       tenantAdminClientSecretAligned: false,
@@ -2199,6 +2236,7 @@ describe('instance registry service facade', () => {
       clientSecretConfigured: true,
       tenantClientSecretReadable: false,
       clientSecretAligned: false,
+      pluginOidcClientsAligned: false,
       tenantAdminClientSecretConfigured: true,
       tenantAdminClientSecretReadable: false,
       tenantAdminClientSecretAligned: false,

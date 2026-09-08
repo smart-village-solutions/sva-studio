@@ -5,6 +5,7 @@ import {
   configureInstanceRegistryPluginRuntimeSnapshot,
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginOidcClientRequirements,
   readInstanceRegistryPluginTenantLifecycleRegistry,
   resetInstanceRegistryPluginActivationPoliciesForTests,
 } from './plugin-activation-policy-snapshot.js';
@@ -76,6 +77,13 @@ describe('instance registry plugin activation policy snapshot', () => {
 
   it('publishes activation policies and IAM contracts as one copied runtime snapshot', () => {
     const permissionIds = ['ssf.read'];
+    const pluginOidcClientRequirement = {
+      contractVersion: '1.0' as const,
+      pluginId: 'ssf',
+      clientId: 'ssf',
+      audience: 'ssf',
+      enabled: false as const,
+    };
     configureInstanceRegistryPluginRuntimeSnapshot({
       activationPolicies: {
         revision: 'ssf-catalog-1',
@@ -97,6 +105,7 @@ describe('instance registry plugin activation policy snapshot', () => {
           systemRoles: [{ roleName: 'system_admin', permissionIds }],
         },
       ],
+      pluginOidcClientRequirements: [pluginOidcClientRequirement],
       tenantLifecycles: [
         {
           pluginId: 'ssf',
@@ -110,6 +119,7 @@ describe('instance registry plugin activation policy snapshot', () => {
     });
 
     permissionIds.push('ssf.update');
+    pluginOidcClientRequirement.clientId = 'changed';
 
     expect(readInstanceRegistryPluginActivationPolicies().revision).toBe('ssf-catalog-1');
     expect(readInstanceRegistryModuleIamRegistry().get('ssf')).toEqual({
@@ -132,6 +142,11 @@ describe('instance registry plugin activation policy snapshot', () => {
     expect(Object.isFrozen(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf'))).toBe(
       true
     );
+    expect(readInstanceRegistryPluginOidcClientRequirements()).toEqual([
+      expect.objectContaining({ pluginId: 'ssf', clientId: 'ssf' }),
+    ]);
+    expect(Object.isFrozen(readInstanceRegistryPluginOidcClientRequirements())).toBe(true);
+    expect(Object.isFrozen(readInstanceRegistryPluginOidcClientRequirements()[0])).toBe(true);
   });
 
   it('changes the lifecycle revision when contract contents change', () => {
@@ -150,6 +165,7 @@ describe('instance registry plugin activation policy snapshot', () => {
       configureInstanceRegistryPluginRuntimeSnapshot({
         activationPolicies,
         moduleIamContracts: [{ moduleId: 'ssf', permissionIds: [] }],
+        pluginOidcClientRequirements: [],
         tenantLifecycles: [
           {
             pluginId: 'ssf',
@@ -161,20 +177,20 @@ describe('instance registry plugin activation policy snapshot', () => {
       });
 
     configure('ssf.provisionTenant');
-    const firstRevision = readInstanceRegistryPluginTenantLifecycleRegistry().get(
-      'ssf'
-    )?.contractRevision;
+    const firstRevision =
+      readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')?.contractRevision;
     configure('ssf.provisionTenantV2');
 
-    expect(readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')?.contractRevision).not.toBe(
-      firstRevision
-    );
+    expect(
+      readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')?.contractRevision
+    ).not.toBe(firstRevision);
   });
 
   it('rejects duplicate module IAM contracts without replacing the current snapshot', () => {
     expect(() =>
       configureInstanceRegistryPluginRuntimeSnapshot({
         activationPolicies: { revision: 'invalid', modules: [] },
+        pluginOidcClientRequirements: [],
         tenantLifecycles: [],
         moduleIamContracts: [
           { moduleId: 'ssf', permissionIds: [], systemRoles: [] },
@@ -188,5 +204,33 @@ describe('instance registry plugin activation policy snapshot', () => {
       modules: [],
     });
     expect(readInstanceRegistryModuleIamRegistry().size).toBe(0);
+  });
+
+  it('rejects duplicate plugin OIDC client IDs without replacing the current snapshot', () => {
+    expect(() =>
+      configureInstanceRegistryPluginRuntimeSnapshot({
+        activationPolicies: { revision: 'invalid', modules: [] },
+        moduleIamContracts: [],
+        tenantLifecycles: [],
+        pluginOidcClientRequirements: [
+          {
+            contractVersion: '1.0',
+            pluginId: 'first',
+            clientId: 'shared',
+            audience: 'first',
+            enabled: false,
+          },
+          {
+            contractVersion: '1.0',
+            pluginId: 'second',
+            clientId: 'shared',
+            audience: 'second',
+            enabled: false,
+          },
+        ],
+      })
+    ).toThrow('plugin_oidc_client_duplicate_client_id');
+
+    expect(readInstanceRegistryPluginOidcClientRequirements()).toEqual([]);
   });
 });

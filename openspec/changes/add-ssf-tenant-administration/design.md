@@ -148,6 +148,22 @@ und Reaktivierung erhalten Instanz-, Realm- und Datenidentität.
 
 Rollback sperrt SSF-Beiträge und Lifecycle-Jobs, entfernt aber weder Realms noch
 Plugin-Daten automatisch.
+Davon getrennt ist die enge Kompensation innerhalb desselben initialen
+Provisionierungsaufrufs: Hat genau dieser Aufruf das Realm neu erzeugt und
+scheitert der unmittelbar folgende SSF-Client-Abgleich noch vor der Anlage
+geheimnistragender Studio- oder Tenant-Admin-Clients, darf er dieses Realm
+entfernen. Vorbestehende Realms sind ausgeschlossen; ein Cleanup-Fehler verlangt
+eine explizite manuelle Bereinigung und darf keine Retryfähigkeit vortäuschen.
+Nach der Erzeugung oder Rotation von Client-Secrets verwendet deren
+Registry-Synchronisierung ausschließlich den schmalen Secret-Read und führt
+keinen weiteren SSF-Client- oder Mapper-Read aus. Die Composition Root leitet
+die deklarativen Plugin-OIDC-Anforderungen aus den tatsächlich geladenen
+Plugin-Quellen des validierten Host-Katalogs ab; dieselbe Liste steuert
+Provisionierung und Client-ID-Reservierung. Die Reservierung wird an der
+Service-/Mutation-Trust-Boundary erzwungen; HTTP validiert nur ergänzend früh.
+Vor der späteren Aufnahme von SSF in den Host-Katalog muss auch der direkte
+Instance-Registry-CLI dieselbe kanonische Requirement-Quelle erhalten oder
+plugin-aware Mutationen fail-closed ablehnen.
 
 ## Open Questions
 

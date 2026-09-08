@@ -10,6 +10,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import {
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginOidcClientRequirements,
   readInstanceRegistryPluginTenantLifecycleRegistry,
 } from './plugin-activation-policy-snapshot.js';
 
@@ -51,6 +52,9 @@ const readPersistablePluginTenantLifecycleRegistry = () =>
         : []
     )
   );
+
+const readReservedPluginOidcClientIds = (): readonly string[] =>
+  readInstanceRegistryPluginOidcClientRequirements().map(({ clientId }) => clientId);
 
 export const runConfiguredPluginTenantProvisioningSchedule = async (
   instanceId: string
@@ -251,6 +255,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    reservedOidcClientIds: readReservedPluginOidcClientIds,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
     get moduleIamRegistry() {
       return readInstanceRegistryModuleIamRegistry();
@@ -270,6 +275,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     runConfiguredPluginTenantProvisioningSchedule(instanceId),
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    reservedOidcClientIds: readReservedPluginOidcClientIds,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
     get moduleIamRegistry() {
       return readInstanceRegistryModuleIamRegistry();

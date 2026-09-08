@@ -509,6 +509,7 @@ type RuntimeModules = {
       }[];
     };
     moduleIamContracts: readonly [];
+    pluginOidcClientRequirements: readonly [];
     tenantLifecycles: readonly {
       pluginId: string;
       contractVersion: 1;
@@ -583,6 +584,7 @@ const configureRuntime = (
       ],
     },
     moduleIamContracts: [],
+    pluginOidcClientRequirements: [],
     tenantLifecycles: [
       {
         pluginId,

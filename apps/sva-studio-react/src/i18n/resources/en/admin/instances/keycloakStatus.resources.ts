@@ -10,6 +10,7 @@ export const keycloakStatusInstancesAdminENResources = {
   redirectUrisMatch: 'Redirect URIs match',
   logoutUrisMatch: 'Logout URIs match',
   webOriginsMatch: 'Web origins match',
+  pluginOidcClientsAligned: 'Plugin OIDC clients match',
   clientSecretConfigured: 'Tenant client secret configured',
   tenantClientSecretReadable: 'Tenant client secret readable',
   tenantAdminClientSecretConfigured: 'Tenant admin client secret configured',

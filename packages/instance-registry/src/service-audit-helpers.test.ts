@@ -43,6 +43,7 @@ describe('service-audit helpers', () => {
     redirectUrisMatch: true,
     logoutUrisMatch: true,
     webOriginsMatch: true,
+    pluginOidcClientsAligned: true,
     clientSecretConfigured: true,
     tenantClientSecretReadable: true,
     clientSecretAligned: true,
@@ -341,6 +342,21 @@ describe('service-audit helpers', () => {
         }),
       ]),
     );
+  });
+
+  it('reports plugin OIDC client drift in the tenant audit', () => {
+    const checks = buildKeycloakChecks({
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakStatus: { ...baseKeycloakStatus, pluginOidcClientsAligned: false },
+    });
+
+    expect(checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        checkId: 'keycloak.client.pluginOidc.aligned',
+        status: 'fail',
+        actual: 'abweichend',
+      }),
+    ]));
   });
 
   it('distinguishes between missing system-admin role, missing tenant admin user, and missing role assignment', () => {

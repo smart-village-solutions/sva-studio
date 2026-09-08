@@ -322,6 +322,9 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
+      '@sva/plugin-ssf':
+        specifier: workspace:*
+        version: link:../../packages/plugin-ssf
       '@sva/plugin-surveys':
         specifier: workspace:*
         version: link:../../packages/plugin-surveys

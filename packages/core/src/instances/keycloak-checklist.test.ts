@@ -15,6 +15,7 @@ describe('instance keycloak checklist', () => {
       'redirect_uris',
       'logout_uris',
       'web_origins',
+      'plugin_oidc_clients',
       'tenant_secret',
       'tenant_admin_client_secret',
       'tenant_admin',
@@ -22,7 +23,7 @@ describe('instance keycloak checklist', () => {
     ]);
   });
 
-  it('evaluates login-blocking requirements against the shared status contract', () => {
+  it('evaluates all requirements while preserving the login-readiness metadata', () => {
     const status = {
       realmExists: true,
       clientExists: true,
@@ -32,6 +33,7 @@ describe('instance keycloak checklist', () => {
       redirectUrisMatch: true,
       logoutUrisMatch: true,
       webOriginsMatch: true,
+      pluginOidcClientsAligned: true,
       clientSecretConfigured: true,
       tenantClientSecretReadable: true,
       clientSecretAligned: true,
@@ -43,6 +45,10 @@ describe('instance keycloak checklist', () => {
 
     expect(areAllInstanceKeycloakRequirementsSatisfied(status)).toBe(true);
     expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, clientExists: false })).toBe(false);
+    expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, pluginOidcClientsAligned: false })).toBe(false);
+    expect(
+      INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'plugin_oidc_clients')
+    ).toMatchObject({ statusField: 'pluginOidcClientsAligned', blocksLoginReadiness: false });
     expect(
       isInstanceKeycloakRequirementSatisfied(
         { ...status, tenantAdminHasSystemAdmin: false },

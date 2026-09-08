@@ -94,6 +94,7 @@ describe('provisioning-auth-evaluation', () => {
             'post.logout.redirect.uris': expectedClient.postLogoutRedirectUris.join('##'),
           },
         } as never,
+        pluginOidcClients: [],
         protocolMappers: [],
         tenantAdminStatus: {
           tenantAdminExists: true,
@@ -109,7 +110,37 @@ describe('provisioning-auth-evaluation', () => {
     expect(status.redirectUrisMatch).toBe(true);
     expect(status.logoutUrisMatch).toBe(true);
     expect(status.webOriginsMatch).toBe(true);
+    expect(status.pluginOidcClientsAligned).toBe(true);
     expect(status.clientSecretAligned).toBe(true);
     expect(status.runtimeSecretSource).toBe('tenant');
+  });
+
+  it('reports plugin OIDC client drift in the operational status', () => {
+    const expectedClient = buildExpectedClientConfig('demo.example.org');
+    const status = buildKeycloakStatus({
+      authClientSecretConfigured: true,
+      authClientSecret: 'tenant-secret',
+      instanceId: 'demo',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      realmMode: 'existing',
+      state: {
+        expectedClient,
+        clientRepresentation: null,
+        pluginOidcClients: [{
+          requirement: {
+            contractVersion: '1.0',
+            pluginId: 'ssf',
+            clientId: 'ssf',
+            audience: 'ssf',
+            enabled: false,
+          },
+          clientRepresentation: { clientId: 'ssf', enabled: true },
+          protocolMappers: [],
+        }],
+      } as never,
+    });
+
+    expect(status.pluginOidcClientsAligned).toBe(false);
   });
 });

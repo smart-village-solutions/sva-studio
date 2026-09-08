@@ -4,6 +4,7 @@ const configureMock = vi.fn();
 const reconcileMock = vi.fn();
 const loggerWarnMock = vi.fn();
 const loggerErrorMock = vi.fn();
+const pluginSources: { pluginId: string }[] = [];
 const pluginModuleIamContract = {
   moduleId: 'news',
   namespace: 'news',
@@ -40,6 +41,7 @@ const tenantLifecycle = {
 vi.mock('./plugins', () => ({
   studioHostModuleIamContracts: [hostModuleIamContract],
   studioPluginSnapshot: {
+    pluginSources,
     tenantActivationPolicySnapshot: snapshot,
     registry: {
       pluginModuleIamContracts: [pluginModuleIamContract],
@@ -68,6 +70,7 @@ beforeEach(() => {
   reconcileMock.mockReset();
   loggerWarnMock.mockReset();
   loggerErrorMock.mockReset();
+  pluginSources.splice(0, pluginSources.length, { pluginId: 'news' });
   reconcileMock.mockResolvedValue({ status: 'ready' });
   resetPluginActivationPolicyBootstrapForTests();
 });
@@ -85,10 +88,25 @@ describe('plugin activation policy bootstrap', () => {
     expect(configureMock).toHaveBeenCalledWith({
       activationPolicies: snapshot,
       moduleIamContracts: [pluginModuleIamContract, hostModuleIamContract],
+      pluginOidcClientRequirements: [],
       tenantLifecycles: [tenantLifecycle],
     });
     await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(1));
     expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' });
+  });
+
+  it('derives SSF OIDC requirements only from the loaded host plugin sources', async () => {
+    pluginSources.push({ pluginId: 'ssf' });
+
+    await ensurePluginActivationPoliciesConfigured();
+
+    expect(configureMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginOidcClientRequirements: [
+          expect.objectContaining({ pluginId: 'ssf', clientId: 'ssf' }),
+        ],
+      })
+    );
   });
 
   it('schedules an autonomous retry after a degraded fleet reconcile', async () => {

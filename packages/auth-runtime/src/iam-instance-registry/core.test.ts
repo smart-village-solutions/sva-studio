@@ -30,12 +30,17 @@ const state = vi.hoisted(() => {
     assignInstanceModuleMutation: vi.fn(async () => new Response('assign')),
     bootstrapInstanceAdminStructureMutation: vi.fn(async () => new Response('bootstrap')),
     mapInstanceMutationError: vi.fn(),
-    mutateInstanceStatus: vi.fn(async (_request, _ctx, nextStatus: string) => new Response(nextStatus)),
+    mutateInstanceStatus: vi.fn(
+      async (_request, _ctx, nextStatus: string) => new Response(nextStatus)
+    ),
     revokeInstanceModuleMutation: vi.fn(async () => new Response('revoke')),
     seedInstanceIamBaselineMutation: vi.fn(async () => new Response('seed')),
     parseRegistryRequestBody: vi.fn(),
     scheduleConfiguredPluginTenantProvisioning: vi.fn(),
     withRegistryService: vi.fn(),
+    readInstanceRegistryPluginOidcClientRequirements: vi.fn<() => readonly { clientId: string }[]>(
+      () => []
+    ),
   };
 });
 
@@ -90,9 +95,15 @@ vi.mock('./repository.js', () => ({
   withRegistryService: state.withRegistryService,
 }));
 
+vi.mock('./plugin-activation-policy-snapshot.js', () => ({
+  readInstanceRegistryPluginOidcClientRequirements:
+    state.readInstanceRegistryPluginOidcClientRequirements,
+}));
+
 describe('iam-instance-registry core handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([]);
     vi.resetModules();
   });
 
@@ -112,6 +123,9 @@ describe('iam-instance-registry core handlers', () => {
     expect(config.requireFreshReauth).toBe(state.requireFreshReauth);
     expect(config.withRegistryService).toBe(state.withRegistryService);
     expect(config.mapMutationError).toBe(state.mapInstanceMutationError);
+    expect(config.reservedOidcClientIds()).toEqual([]);
+    state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([{ clientId: 'ssf' }]);
+    expect(config.reservedOidcClientIds()).toEqual(['ssf']);
 
     config.onInstanceProvisioningRequested({
       instanceId: 'instance-1',

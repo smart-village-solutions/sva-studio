@@ -185,6 +185,39 @@ describe('service-keycloak-execution-finalize', () => {
     );
   });
 
+  it('does not complete provisioning while an aggregated Keycloak requirement drifts', async () => {
+    const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const repository = {
+      setInstanceRealmMode: vi.fn(),
+      setInstanceStatus: vi.fn(),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+    state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.buildFinalRunSteps.mockReturnValue([
+      { stepKey: 'status', title: 'Status', ok: true, summary: 'ok' },
+    ]);
+    state.areAllRequirementsSatisfied.mockReturnValue(false);
+    state.appendRunStep.mockResolvedValue(undefined);
+
+    await expect(
+      completeRun(
+        {
+          repository: repository as never,
+          getKeycloakStatus: vi.fn().mockResolvedValue({ pluginOidcClientsAligned: false }),
+        } as never,
+        {
+          loaded: {
+            instance: { instanceId: 'instance-2', status: 'draft', realmMode: 'new' },
+          } as never,
+          runId: 'run-plugin-drift',
+          intent: 'provision',
+        }
+      )
+    ).resolves.toBe('failed');
+    expect(repository.setInstanceRealmMode).not.toHaveBeenCalled();
+    expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+  });
+
   it('keeps reset_tenant_admin runs successful when unrelated client drift remains', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const status = {

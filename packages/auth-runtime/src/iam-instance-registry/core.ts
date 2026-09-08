@@ -1,4 +1,9 @@
-import { asApiItem, asApiList, createApiError, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
+import {
+  asApiItem,
+  asApiList,
+  createApiError,
+  requireIdempotencyKey,
+} from '../iam-account-management/api-helpers.js';
 import { validateCsrf as validateSessionCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../db.js';
 import { buildLogContext } from '../log-context.js';
@@ -17,6 +22,7 @@ import {
   seedInstanceIamBaselineMutation,
 } from './core-mutations.js';
 import { parseRegistryRequestBody } from './request-parsing.js';
+import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 import { scheduleConfiguredPluginTenantProvisioning, withRegistryService } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
@@ -25,7 +31,13 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
   getRequestId: () => getWorkspaceContext().requestId,
   getActor: (ctx) => ({ id: ctx.user.id }),
   createApiError: (status, code, message, requestId, details) =>
-    createApiError(status, code as Parameters<typeof createApiError>[1], message, requestId, details),
+    createApiError(
+      status,
+      code as Parameters<typeof createApiError>[1],
+      message,
+      requestId,
+      details
+    ),
   jsonResponse,
   asApiItem,
   asApiList,
@@ -37,6 +49,8 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
     isAuthenticatedRegistryServiceRequest(request) ? null : validateSessionCsrf(request, requestId),
   requireFreshReauth,
   withRegistryService,
+  reservedOidcClientIds: () =>
+    readInstanceRegistryPluginOidcClientRequirements().map(({ clientId }) => clientId),
   onInstanceProvisioningRequested: ({ instanceId, primaryHostname, actorId }) => {
     scheduleConfiguredPluginTenantProvisioning(instanceId);
     logger.info('Instance provisioning requested', {
@@ -49,30 +63,48 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
   },
 });
 
-export const listInstancesInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
+export const listInstancesInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => {
   return instanceHttpHandlers.listInstances(request, ctx);
 };
 
-export const getInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
+export const getInstanceInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => {
   return instanceHttpHandlers.getInstance(request, ctx);
 };
 
-export const createInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
+export const createInstanceInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => {
   return instanceHttpHandlers.createInstance(request, ctx);
 };
 
-export const updateInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> => {
+export const updateInstanceInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => {
   return instanceHttpHandlers.updateInstance(request, ctx);
 };
 
-export const activateInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> =>
-  mutateInstanceStatus(request, ctx, 'active');
+export const activateInstanceInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => mutateInstanceStatus(request, ctx, 'active');
 
-export const suspendInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> =>
-  mutateInstanceStatus(request, ctx, 'suspended');
+export const suspendInstanceInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => mutateInstanceStatus(request, ctx, 'suspended');
 
-export const archiveInstanceInternal = async (request: Request, ctx: RegistryRequestContext): Promise<Response> =>
-  mutateInstanceStatus(request, ctx, 'archived');
+export const archiveInstanceInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => mutateInstanceStatus(request, ctx, 'archived');
 
 export const assignInstanceModuleInternal = async (
   request: Request,

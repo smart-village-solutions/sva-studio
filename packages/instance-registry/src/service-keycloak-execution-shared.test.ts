@@ -173,15 +173,17 @@ describe('service-keycloak-execution-shared', () => {
     const repository = {
       updateInstance: vi.fn(async () => undefined),
     };
-    const readKeycloakStateViaProvisioner = vi.fn(async () => ({
+    const readKeycloakClientSecretsViaProvisioner = vi.fn(async () => ({
       keycloakClientSecret: 'actual-auth-secret',
       tenantAdminClientSecret: 'actual-tenant-admin-secret',
     }));
+    const readKeycloakStateViaProvisioner = vi.fn();
     const protectSecret = vi.fn((value: string, aad: string) => `protected:${aad}:${value}`);
 
     await syncProvisionedClientSecretToRegistry(
       {
         repository: repository as never,
+        readKeycloakClientSecretsViaProvisioner,
         readKeycloakStateViaProvisioner,
         protectSecret,
       } as never,
@@ -192,7 +194,8 @@ describe('service-keycloak-execution-shared', () => {
       }
     );
 
-    expect(readKeycloakStateViaProvisioner).toHaveBeenCalledTimes(1);
+    expect(readKeycloakClientSecretsViaProvisioner).toHaveBeenCalledTimes(1);
+    expect(readKeycloakStateViaProvisioner).not.toHaveBeenCalled();
     expect(repository.updateInstance).toHaveBeenCalledWith(
       expect.objectContaining({
         authClientSecretCiphertext:
@@ -212,14 +215,16 @@ describe('service-keycloak-execution-shared', () => {
     const repository = {
       updateInstance: vi.fn(async () => undefined),
     };
-    const readKeycloakStateViaProvisioner = vi.fn(async () => ({
+    const readKeycloakClientSecretsViaProvisioner = vi.fn(async () => ({
       keycloakClientSecret: 'auth-secret',
       tenantAdminClientSecret: 'tenant-admin-secret',
     }));
+    const readKeycloakStateViaProvisioner = vi.fn();
 
     await syncProvisionedClientSecretToRegistry(
       {
         repository: repository as never,
+        readKeycloakClientSecretsViaProvisioner,
         readKeycloakStateViaProvisioner,
       } as never,
       {
@@ -228,6 +233,7 @@ describe('service-keycloak-execution-shared', () => {
     );
 
     expect(repository.updateInstance).not.toHaveBeenCalled();
+    expect(readKeycloakStateViaProvisioner).not.toHaveBeenCalled();
   });
 
   it('rejects a new realm when Keycloak secrets cannot be read after provisioning', async () => {
@@ -239,7 +245,7 @@ describe('service-keycloak-execution-shared', () => {
       syncProvisionedClientSecretToRegistry(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi.fn(async () => ({})),
+          readKeycloakClientSecretsViaProvisioner: vi.fn(async () => ({})),
           waitForProvisionedSecretRead: vi.fn(async () => undefined),
           protectSecret: vi.fn(),
         } as never,
@@ -256,23 +262,26 @@ describe('service-keycloak-execution-shared', () => {
     loaded.authClientSecret = undefined;
     loaded.tenantAdminClientSecret = undefined;
     const repository = { updateInstance: vi.fn(async () => undefined) };
-    const readKeycloakStateViaProvisioner = vi
+    const readKeycloakClientSecretsViaProvisioner = vi
       .fn()
       .mockResolvedValueOnce({})
-      .mockResolvedValue({ keycloakClientSecret: 'actual-auth-secret', tenantAdminClientSecret: 'actual-tenant-admin-secret' });
+      .mockResolvedValue({
+        keycloakClientSecret: 'actual-auth-secret',
+        tenantAdminClientSecret: 'actual-tenant-admin-secret',
+      });
     const waitForProvisionedSecretRead = vi.fn(async () => undefined);
 
     await syncProvisionedClientSecretToRegistry(
       {
         repository: repository as never,
-        readKeycloakStateViaProvisioner,
+        readKeycloakClientSecretsViaProvisioner,
         waitForProvisionedSecretRead,
         protectSecret: vi.fn((value: string) => `protected:${value}`),
       } as never,
       { loaded: loaded as never }
     );
 
-    expect(readKeycloakStateViaProvisioner).toHaveBeenCalledTimes(2);
+    expect(readKeycloakClientSecretsViaProvisioner).toHaveBeenCalledTimes(2);
     expect(waitForProvisionedSecretRead).toHaveBeenCalledWith(100);
     expect(repository.updateInstance).toHaveBeenCalledTimes(1);
   });
@@ -282,7 +291,7 @@ describe('service-keycloak-execution-shared', () => {
     const repository = {
       updateInstance: vi.fn(async () => undefined),
     };
-    const readKeycloakStateViaProvisioner = vi.fn(async () => ({
+    const readKeycloakClientSecretsViaProvisioner = vi.fn(async () => ({
       keycloakClientSecret: 'actual-auth-secret',
       tenantAdminClientSecret: 'actual-tenant-admin-secret',
     }));
@@ -291,7 +300,7 @@ describe('service-keycloak-execution-shared', () => {
     await syncRotatedClientSecretToRegistry(
       {
         repository: repository as never,
-        readKeycloakStateViaProvisioner,
+        readKeycloakClientSecretsViaProvisioner,
         protectSecret,
       } as never,
       {
@@ -314,5 +323,6 @@ describe('service-keycloak-execution-shared', () => {
     );
     expect(loaded.authClientSecret).toBe('actual-auth-secret');
     expect(loaded.tenantAdminClientSecret).toBe('actual-tenant-admin-secret');
+    expect(readKeycloakClientSecretsViaProvisioner).toHaveBeenCalledTimes(1);
   });
 });

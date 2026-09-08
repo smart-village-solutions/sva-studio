@@ -67,7 +67,12 @@ describe('SSF authorization lifecycle job', () => {
         tenantLifecycle: { operation: 'reconcile', generation: 4 },
         throwIfCancellationRequested: vi.fn(),
       } as never)
-    ).rejects.toMatchObject({ cause: { retry: { kind: 'retryable' } } });
+    ).rejects.toMatchObject({
+      cause: {
+        retry: { kind: 'retryable' },
+        details: { errorType: 'Error' },
+      },
+    });
   });
 
   it('classifies an invalid lifecycle invocation as terminal', async () => {

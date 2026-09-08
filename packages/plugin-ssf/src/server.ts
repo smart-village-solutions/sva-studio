@@ -27,11 +27,14 @@ export const createPluginJobExecutionHandlers = (
     let result: Awaited<ReturnType<SsfAuthorizationProjectionRuntime['reconcile']>>;
     try {
       result = await runtime.reconcile(context.job.instanceId);
-    } catch {
+    } catch (error) {
       throw lifecycleError('ssf_authorization_reconcile_unavailable', {
         code: 'ssf.authorization-reconcile-unavailable',
         messageKey: 'ssf.errors.authorizationReconcileUnavailable',
         retry: { kind: 'retryable' },
+        details: {
+          errorType: error instanceof Error ? error.name : typeof error,
+        },
       });
     }
     if (result.status !== 'ready') {

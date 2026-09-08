@@ -91,9 +91,17 @@ export const ssfTenantConfigurationInputSchema = z
 
 export type SsfSystemConfigurationInput = z.infer<typeof ssfSystemConfigurationInputSchema>;
 export type SsfTenantConfigurationInput = z.infer<typeof ssfTenantConfigurationInputSchema>;
+export type SsfEffectiveTenantConfiguration = Omit<SsfSystemConfigurationInput, 'locales'> & {
+  locales: readonly (Omit<
+    SsfSystemConfigurationInput['locales'][number],
+    'conversationContentStorageQuestionHtml'
+  > & {
+    conversationContentStorageQuestionHtml: string | null;
+  })[];
+};
 
 export type SsfTenantConfigurationView = Readonly<{
   system: SsfSystemConfigurationInput;
   overrides: SsfTenantConfigurationInput;
-  effective: SsfSystemConfigurationInput;
+  effective: SsfEffectiveTenantConfiguration;
 }>;

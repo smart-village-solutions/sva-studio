@@ -7,67 +7,16 @@ import {
 } from './contracts.js';
 import { SSF_PRODUCT_DEFAULTS_V1, type SsfProductDefaults } from './defaults.js';
 import { sanitizeSsfHtmlV1 } from './html.js';
+import type {
+  ResolveSsfRuntimeConfigurationInput,
+  SsfMediaResolver,
+  SsfServerLocaleOverride,
+  SsfTenantLocaleOverride,
+} from './resolver-types.js';
+
+export type * from './resolver-types.js';
 
 type OptionalOverride<T> = T | null | undefined;
-
-export interface SsfTenantProfile {
-  readonly id: string;
-  readonly displayName: string;
-  readonly timeZone: string;
-}
-
-export interface SsfServerSettings {
-  readonly defaultLocale?: string | null;
-  readonly conversationContentStorageAllowed?: boolean | null;
-  readonly conversationContentStorageMode?: 'ask' | 'disabled' | null;
-  readonly logoMediaReference?: string | null;
-  readonly iconMediaReference?: string | null;
-}
-
-export interface SsfServerLocaleOverride {
-  readonly locale: string;
-  readonly available?: boolean | null;
-  readonly authenticatedHomeExplanationHtml?: string | null;
-  readonly guestExplanationHtml?: string | null;
-  readonly conversationContentStorageQuestionHtml?: string | null;
-}
-
-export interface SsfTenantSettings {
-  readonly defaultLocale?: string | null;
-  readonly customBrandingAllowed?: boolean | null;
-  readonly conversationContentStorageAllowed?: boolean | null;
-  readonly conversationContentStorageMode?: 'ask' | 'disabled' | null;
-  readonly logoMediaReference?: string | null;
-  readonly iconMediaReference?: string | null;
-}
-
-export interface SsfTenantLocaleOverride {
-  readonly locale: string;
-  readonly enabled?: boolean | null;
-  readonly authenticatedHomeExplanationHtml?: string | null;
-  readonly guestExplanationHtml?: string | null;
-  readonly conversationContentStorageQuestionHtml?: string | null;
-}
-
-export interface SsfMediaResolutionRequest {
-  readonly instanceId: string;
-  readonly reference: string;
-  readonly purpose: 'logo' | 'icon';
-}
-
-export interface SsfMediaResolver {
-  resolve(request: SsfMediaResolutionRequest): Promise<SsfResolvedMedia>;
-}
-
-export interface ResolveSsfRuntimeConfigurationInput {
-  readonly tenant: SsfTenantProfile;
-  readonly serverSettings?: SsfServerSettings | null;
-  readonly serverLocales?: readonly SsfServerLocaleOverride[];
-  readonly tenantSettings?: SsfTenantSettings | null;
-  readonly tenantLocales?: readonly SsfTenantLocaleOverride[];
-  readonly productDefaults?: SsfProductDefaults;
-  readonly mediaResolver: SsfMediaResolver;
-}
 
 export class SsfRuntimeConfigurationValidationError extends Error {
   readonly code = 'runtime_configuration_unavailable';

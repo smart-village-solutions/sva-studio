@@ -1,0 +1,4 @@
+{
+  "prNumber": 1270,
+  "body": "Der interne SSF-Runtime-Endpunkt liest Tenant-Bereitschaft, Autorisierungsrevision und Zeitzone jetzt aus den echten Studio-Datenquellen.\n\n- Ohne konfigurierte oder bereite SSF-Datenbank bleibt der Endpunkt weiterhin geschlossen.\n- Bestehende Instanzen erhalten zunächst Europe/Berlin als Zeitzone; eine Administrationsoberfläche folgt in einem späteren Slice."
+}

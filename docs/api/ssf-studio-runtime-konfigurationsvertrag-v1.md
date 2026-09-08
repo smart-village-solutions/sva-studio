@@ -135,6 +135,14 @@ Studio-verwalteten Client-Secrets; eine erneute Plugin-Client- oder
 Mapper-Inspektion darf das Speichern des bereits rotierten Secrets nicht
 verhindern. Der operative Keycloak-Status und der Instanz-Audit weisen
 Abweichungen deklarierter Plugin-OIDC-Clients aggregiert aus.
+
+Die Reserved-ID-Prüfung gilt autoritativ an der Service-/Mutation-Trust-Boundary;
+HTTP darf denselben Vertrag lediglich früher ablehnen. Vor einer späteren
+Aktivierung von SSF im Host-Katalog muss auch die Composition Root des direkten
+Instance-Registry-CLI dieselbe kanonische Requirement-Quelle erhalten oder
+plugin-aware Mutationen fail-closed ablehnen. Bis dahin bleibt der CLI-Pfad im
+SSF-neutralen Katalog ohne eine zweite, abweichende ID-Ableitung.
+
 Der deaktivierte vertrauliche OIDC-Plugin-Client schaltet Standard-, Implicit-
 und Direct-Access-Flow sowie Service Accounts explizit ab und bestätigt
 Protokoll, Vertraulichkeitsmodus und alle vier Schalter per Read-back. Scheitert

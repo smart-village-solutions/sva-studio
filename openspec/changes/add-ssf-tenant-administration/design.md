@@ -159,7 +159,11 @@ Registry-Synchronisierung ausschließlich den schmalen Secret-Read und führt
 keinen weiteren SSF-Client- oder Mapper-Read aus. Die Composition Root leitet
 die deklarativen Plugin-OIDC-Anforderungen aus den tatsächlich geladenen
 Plugin-Quellen des validierten Host-Katalogs ab; dieselbe Liste steuert
-Provisionierung und Client-ID-Reservierung.
+Provisionierung und Client-ID-Reservierung. Die Reservierung wird an der
+Service-/Mutation-Trust-Boundary erzwungen; HTTP validiert nur ergänzend früh.
+Vor der späteren Aufnahme von SSF in den Host-Katalog muss auch der direkte
+Instance-Registry-CLI dieselbe kanonische Requirement-Quelle erhalten oder
+plugin-aware Mutationen fail-closed ablehnen.
 
 ## Open Questions
 

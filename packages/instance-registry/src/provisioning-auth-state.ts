@@ -403,6 +403,8 @@ export const createProvisionInstanceAuthArtifacts =
           operation: 'delete_newly_created_realm',
           result: 'failed',
           realm: input.authRealm,
+          reconciliation_error_type: error instanceof Error ? error.name : typeof error,
+          reconciliation_error_message: error instanceof Error ? error.message : 'unknown',
           error_type: cleanupError instanceof Error ? cleanupError.name : typeof cleanupError,
           error_code: cleanupErrorRecord?.code ?? 'unknown',
           http_status: cleanupErrorRecord?.statusCode,

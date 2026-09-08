@@ -8,6 +8,8 @@ export const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = 
   tenant_auth_client_secret_missing:
     'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
   idempotency_key_reuse: 'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
+  oidc_client_id_reserved:
+    'Die OIDC-Client-ID ist für einen installierten Plugin-Vertrag reserviert.',
   database_unavailable:
     'Die Instanzverwaltung konnte wegen eines Datenbank- oder Schemafehlers nicht abgeschlossen werden.',
   encryption_not_configured: 'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',

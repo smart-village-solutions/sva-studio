@@ -103,6 +103,10 @@ Die Composition Root leitet aus den tatsächlich geladenen `pluginSources`
 genau eine Liste deklarativer Plugin-OIDC-Anforderungen ab. Provisionierung,
 Statusprüfung und Reservierung von Client-IDs konsumieren dieselbe Liste. Ohne
 geladenes SSF-Plugin bleibt auch der IAM- und Keycloak-Pfad SSF-neutral.
+Die Reserved-ID-Invariante liegt an der Service-/Mutation-Trust-Boundary. Vor
+dem späteren SSF-Catalog-Wiring muss der eigenständige Instance-Registry-CLI
+dieselbe kanonische Requirement-Quelle erhalten oder plugin-aware Mutationen
+fail-closed verweigern; eine zweite CLI-spezifische SSF-Liste ist unzulässig.
 
 Der generische Plugin-Vertrag unterscheidet drei tenantbezogene
 Aktivierungsrichtlinien:

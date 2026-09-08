@@ -1,4 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const loggerErrorMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => ({ error: loggerErrorMock }),
+}));
 
 import {
   createKeycloakProvisioningAdapters,
@@ -16,6 +22,10 @@ const ssfClientRequirement = {
   audience: 'ssf',
   enabled: false,
 } as const;
+
+beforeEach(() => {
+  loggerErrorMock.mockReset();
+});
 
 const createClientWithAlignedSsf = () =>
   createClient({
@@ -470,6 +480,17 @@ describe('provisioning-auth-state', () => {
       'plugin_oidc_client_reconciliation_failed_realm_cleanup_failed_requires_manual_action'
     );
     await expect(result).rejects.toMatchObject({ cause: cleanupError });
+
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      'realm_cleanup_failed',
+      expect.objectContaining({
+        reconciliation_error_type: 'Error',
+        reconciliation_error_message: 'plugin_oidc_client_readback_failed:ssf:ssf',
+        error_type: 'Error',
+        error_code: 'http_403',
+        http_status: 403,
+      })
+    );
 
     expect(client.ensureOidcClient).toHaveBeenCalledOnce();
     expect(client.deleteRealm).toHaveBeenCalledOnce();

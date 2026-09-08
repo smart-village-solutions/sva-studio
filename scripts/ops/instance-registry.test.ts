@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createInstanceRegistryService } from '@sva/instance-registry/service';
 
 import {
   createExecutor,
@@ -9,6 +10,7 @@ import {
 } from './instance-registry/command-context.ts';
 import { renderResult } from './instance-registry/formatters.ts';
 import { parseInstanceRegistryCliOptions } from './instance-registry/parse-options.ts';
+import { runMutationCommand } from './instance-registry/mutation-commands.ts';
 import { deriveTenantAdminClientId } from './instance-registry/shared.ts';
 import { runInstanceRegistryCli } from './instance-registry.ts';
 
@@ -143,6 +145,32 @@ describe('runInstanceRegistryCli', () => {
     expect(withTransactionSpy).toHaveBeenCalled();
     expect(createProvisioningRequest).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+});
+
+describe('runMutationCommand', () => {
+  it('cannot bypass the service boundary for a dynamically reserved plugin client id', async () => {
+    const repository = {
+      getInstanceById: vi.fn(),
+      createInstance: vi.fn(),
+    };
+    const service = createInstanceRegistryService({
+      repository: repository as never,
+      invalidateHost: vi.fn(),
+      reservedOidcClientIds: () => ['ssf'],
+    });
+    const options = parseInstanceRegistryCliOptions([
+      'create',
+      '--instance-id=demo',
+      '--display-name=Demo',
+      '--parent-domain=example.test',
+      '--auth-client-id=ssf',
+      '--auth-realm=demo',
+    ]);
+
+    await expect(runMutationCommand(service, options)).rejects.toThrow('oidc_client_id_reserved');
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.createInstance).not.toHaveBeenCalled();
   });
 });
 

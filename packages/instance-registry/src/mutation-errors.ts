@@ -6,6 +6,7 @@ export type BlockedDriftErrorCode =
 export type InstanceMutationErrorCode =
   | BlockedDriftErrorCode
   | 'idempotency_key_reuse'
+  | 'oidc_client_id_reserved'
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
@@ -13,7 +14,7 @@ export type InstanceMutationErrorCode =
   | 'internal_unclassified';
 
 export type InstanceMutationErrorClassification = {
-  readonly status: 409 | 500 | 502 | 503;
+  readonly status: 400 | 409 | 500 | 502 | 503;
   readonly code: InstanceMutationErrorCode;
   readonly details?: {
     readonly dependency: 'keycloak';
@@ -59,6 +60,12 @@ export const classifyInstanceMutationError = (
     return {
       status: 409,
       code: 'idempotency_key_reuse',
+    };
+  }
+  if (message.includes('oidc_client_id_reserved')) {
+    return {
+      status: 400,
+      code: 'oidc_client_id_reserved',
     };
   }
   if (message.startsWith('plugin_activation_state_conflict:')) {

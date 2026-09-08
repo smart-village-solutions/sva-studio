@@ -24,6 +24,26 @@ import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './ser
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 
+const assertOidcClientIdsNotReserved = (
+  deps: InstanceRegistryServiceDeps,
+  input: Pick<
+    CreateInstanceProvisioningInput | UpdateInstanceInput,
+    'authClientId' | 'tenantAdminClient'
+  >
+): void => {
+  const reservedClientIds =
+    typeof deps.reservedOidcClientIds === 'function'
+      ? deps.reservedOidcClientIds()
+      : deps.reservedOidcClientIds;
+  if (
+    reservedClientIds?.includes(input.authClientId) ||
+    (input.tenantAdminClient?.clientId &&
+      reservedClientIds?.includes(input.tenantAdminClient.clientId))
+  ) {
+    throw new Error('oidc_client_id_reserved');
+  }
+};
+
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
   input: CreateInstanceProvisioningInput,
@@ -84,6 +104,7 @@ const resolveConcurrentIdempotentCreateRetry = async (
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
+    assertOidcClientIdsNotReserved(deps, input);
     instanceRegistryServiceLogger.info('instance_create_requested', {
       operation: 'create_instance',
       instance_id: input.instanceId,
@@ -225,6 +246,7 @@ export const createChangeStatusHandler =
 export const createUpdateInstanceHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['updateInstance'] =>
   async (input: UpdateInstanceInput) => {
+    assertOidcClientIdsNotReserved(deps, input);
     instanceRegistryServiceLogger.info('instance_update_started', {
       operation: 'update_instance',
       instance_id: input.instanceId,

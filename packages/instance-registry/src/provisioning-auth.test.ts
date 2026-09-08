@@ -147,6 +147,34 @@ describe('provisioning-auth readers', () => {
     );
   });
 
+  it('keeps plugin OIDC alignment neutral for a missing realm without requirements', async () => {
+    const status = createInstanceKeycloakStatusReader(
+      vi.fn(async (): Promise<KeycloakReadState> => ({ realm: null }) as KeycloakReadState)
+    );
+
+    await expect(status({ ...input, pluginOidcClients: [] })).resolves.toMatchObject({
+      realmExists: false,
+      pluginOidcClientsAligned: true,
+    });
+    await expect(
+      status({
+        ...input,
+        pluginOidcClients: [
+          {
+            contractVersion: '1.0',
+            pluginId: 'ssf',
+            clientId: 'ssf',
+            audience: 'ssf',
+            enabled: false,
+          },
+        ],
+      })
+    ).resolves.toMatchObject({
+      realmExists: false,
+      pluginOidcClientsAligned: false,
+    });
+  });
+
   it('maps state reader failures into blocked preflight and fallback plans', async () => {
     const failingReadState = vi.fn(async (): Promise<KeycloakReadState> => {
       throw new Error('keycloak unavailable');

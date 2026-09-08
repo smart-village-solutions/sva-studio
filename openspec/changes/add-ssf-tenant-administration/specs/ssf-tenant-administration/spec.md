@@ -56,6 +56,13 @@ Das System SHALL das Keycloak der SSF-Installation mit einem Root-Realm und gena
 - **AND** löscht es kein vorbestehendes Realm
 - **AND** weist es einen fehlgeschlagenen Cleanup als fail-closed und manuell zu bereinigen aus
 
+#### Scenario: Plugin-Client-ID bleibt an jeder Mutation reserviert
+
+- **GIVEN** der validierte Host-Katalog deklariert eine Plugin-OIDC-Client-ID
+- **WHEN** ein HTTP- oder direkter Service-Aufruf dieselbe ID als Studio-Login- oder Tenant-Admin-Client speichern will
+- **THEN** lehnt die Service-/Mutation-Trust-Boundary die Mutation vor jeder Persistenz ab
+- **AND** ist eine zusätzliche frühe HTTP-Prüfung nicht die autoritative Sicherheitsgrenze
+
 #### Scenario: Benutzeridentitäten werden nicht realmübergreifend verknüpft
 
 - **GIVEN** dieselbe E-Mail-Adresse existiert in zwei Tenant-Realms

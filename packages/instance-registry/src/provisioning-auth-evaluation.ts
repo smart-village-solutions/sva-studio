@@ -9,7 +9,8 @@ export const buildMissingRealmStatus = (
   authClientSecretConfigured: boolean,
   authClientSecret?: string,
   tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'],
-  tenantAdminClientSecret?: string
+  tenantAdminClientSecret?: string,
+  pluginOidcClientsAligned = false
 ): KeycloakTenantStatus => ({
   realmExists: false,
   clientExists: false,
@@ -20,7 +21,7 @@ export const buildMissingRealmStatus = (
   redirectUrisMatch: false,
   logoutUrisMatch: false,
   webOriginsMatch: false,
-  pluginOidcClientsAligned: false,
+  pluginOidcClientsAligned,
   clientSecretConfigured: authClientSecretConfigured,
   tenantClientSecretReadable: Boolean(authClientSecret),
   clientSecretAligned: false,

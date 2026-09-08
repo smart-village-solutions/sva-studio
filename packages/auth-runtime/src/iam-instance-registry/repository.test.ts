@@ -164,7 +164,15 @@ describe('iam instance registry repository wiring', () => {
     configureInstanceRegistryPluginRuntimeSnapshot({
       activationPolicies: { revision: 'catalog-1', modules: [] },
       moduleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
-      pluginOidcClientRequirements: [],
+      pluginOidcClientRequirements: [
+        {
+          contractVersion: '1.0',
+          pluginId: 'ssf',
+          clientId: 'ssf',
+          audience: 'ssf',
+          enabled: false,
+        },
+      ],
       tenantLifecycles: [],
     });
     await import('./repository.js');
@@ -214,6 +222,8 @@ describe('iam instance registry repository wiring', () => {
         ]),
       })
     );
+    expect(runtimeConfig?.serviceDeps.reservedOidcClientIds()).toEqual(['ssf']);
+    expect(runtimeConfig?.provisioningWorkerServiceDeps.reservedOidcClientIds()).toEqual(['ssf']);
 
     expect(createInstanceRegistryRuntimeMock).toHaveBeenCalledWith(
       expect.objectContaining({

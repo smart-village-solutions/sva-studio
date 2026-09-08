@@ -91,7 +91,8 @@ export const createInstanceKeycloakStatusReader =
         input.authClientSecretConfigured,
         input.authClientSecret,
         input.tenantAdminClient,
-        input.tenantAdminClientSecret
+        input.tenantAdminClientSecret,
+        (input.pluginOidcClients?.length ?? 0) === 0
       );
     }
 

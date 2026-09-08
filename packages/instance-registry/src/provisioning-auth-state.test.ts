@@ -331,6 +331,36 @@ describe('provisioning-auth-state', () => {
     );
   });
 
+  it('does not create secret-bearing clients when plugin reconciliation fails for a new realm', async () => {
+    const client = createClient({
+      getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+        id: `${clientId}-id`,
+        clientId,
+        enabled: clientId === 'ssf',
+      })),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        tenantAdminClient: { clientId: 'tenant-admin' },
+        pluginOidcClients: [ssfClientRequirement],
+      })
+    ).rejects.toThrow('plugin_oidc_client_readback_failed:ssf:ssf');
+
+    expect(client.ensureRealm).toHaveBeenCalledOnce();
+    expect(client.ensureOidcClient).toHaveBeenCalledOnce();
+    expect(client.ensureOidcClient).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 'ssf' })
+    );
+    expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
+  });
+
   it('rejects existing-realm provisioning when the target realm is missing', async () => {
     const client = createClient({
       getRealm: vi.fn(async () => null),

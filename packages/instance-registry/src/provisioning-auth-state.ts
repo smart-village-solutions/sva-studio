@@ -378,9 +378,7 @@ export const createProvisionInstanceAuthArtifacts =
         throw new Error(`Keycloak realm ${input.authRealm} does not exist`);
       }
     }
-    if (input.rotateClientSecret) {
-      await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
-    }
+    await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
     if (reconcileAuthClient) {
       await client.ensureOidcClient({
         clientId: input.authClientId,
@@ -407,9 +405,6 @@ export const createProvisionInstanceAuthArtifacts =
         serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
       });
       await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
-    }
-    if (!input.rotateClientSecret) {
-      await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
     }
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {

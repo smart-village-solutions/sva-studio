@@ -78,6 +78,7 @@ const isPluginClientAligned = (
   equalSets(readPostLogoutUris(client.attributes), []) &&
   equalSets(client.webOrigins ?? [], []) &&
   client.standardFlowEnabled === false &&
+  client.implicitFlowEnabled === false &&
   client.directAccessGrantsEnabled === false &&
   client.serviceAccountsEnabled === false;
 

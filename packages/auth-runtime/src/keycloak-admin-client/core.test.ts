@@ -565,8 +565,8 @@ describe('Keycloak admin client', () => {
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBeUndefined();
-    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBeUndefined();
+    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBe(true);
+    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBe(false);
     expect(state.logger.info).toHaveBeenCalledWith(
       'create_realm',
       expect.objectContaining({ operation: 'create_realm', realm: 'demo' })
@@ -583,7 +583,7 @@ describe('Keycloak admin client', () => {
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBeUndefined();
+    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBe(true);
     await expect(client.getOidcClientByClientId('sva-studio-login')).resolves.toBeNull();
 
     expect(fetchImpl).toHaveBeenNthCalledWith(
@@ -603,6 +603,29 @@ describe('Keycloak admin client', () => {
         }),
         method: 'GET',
       })
+    );
+  });
+
+  it('deletes a created realm and accepts an already missing realm as cleaned up', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-2', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.deleteRealm()).resolves.toBeUndefined();
+    await expect(client.deleteRealm()).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://keycloak.example/admin/realms/demo',
+      expect.objectContaining({ method: 'DELETE' })
+    );
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'delete_realm',
+      expect.objectContaining({ operation: 'delete_realm', realm: 'demo' })
     );
   });
 
@@ -777,15 +800,17 @@ describe('Keycloak admin client', () => {
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
-        createJsonResponse(200, [{
-          id: 'client-1',
-          clientId: 'ssf',
-          enabled: true,
-          rootUrl: 'https://legacy.example',
-          redirectUris: ['https://legacy.example/callback'],
-          webOrigins: ['https://legacy.example'],
-          attributes: { 'post.logout.redirect.uris': 'https://legacy.example/logout' },
-        }])
+        createJsonResponse(200, [
+          {
+            id: 'client-1',
+            clientId: 'ssf',
+            enabled: true,
+            rootUrl: 'https://legacy.example',
+            redirectUris: ['https://legacy.example/callback'],
+            webOrigins: ['https://legacy.example'],
+            attributes: { 'post.logout.redirect.uris': 'https://legacy.example/logout' },
+          },
+        ])
       )
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const client = await createClient(fetchImpl);
@@ -798,6 +823,7 @@ describe('Keycloak admin client', () => {
       rootUrl: '',
       enabled: false,
       standardFlowEnabled: false,
+      implicitFlowEnabled: false,
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
       uriPolicy: 'replace',
@@ -808,6 +834,7 @@ describe('Keycloak admin client', () => {
     );
     expect(JSON.parse(String(updateCall?.[1]?.body))).toMatchObject({
       enabled: false,
+      implicitFlowEnabled: false,
       rootUrl: '',
       redirectUris: [],
       webOrigins: [],
@@ -1102,6 +1129,7 @@ describe('Keycloak admin client', () => {
             redirectUris: ['https://new.example/callback'],
             webOrigins: ['https://new.example'],
             standardFlowEnabled: true,
+            implicitFlowEnabled: true,
             directAccessGrantsEnabled: true,
             serviceAccountsEnabled: false,
             attributes: { 'post.logout.redirect.uris': 'https://new.example/logout' },
@@ -1121,6 +1149,7 @@ describe('Keycloak admin client', () => {
       rootUrl: 'https://new.example',
       clientSecret: 'stable-secret',
       standardFlowEnabled: false,
+      implicitFlowEnabled: false,
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: true,
     });
@@ -1129,6 +1158,9 @@ describe('Keycloak admin client', () => {
       (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
     );
     expect(updateCall).toBeDefined();
+    expect(JSON.parse(String(updateCall?.[1]?.body))).toMatchObject({
+      implicitFlowEnabled: false,
+    });
   });
 
   it('creates and updates protocol mappers only when configuration changed', async () => {

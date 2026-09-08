@@ -75,34 +75,39 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
     directAccessGrantsEnabled: true,
     serviceAccountsEnabled: true,
   },
-  pluginOidcClients: [{
-    requirement: ssfClientRequirement,
-    clientRepresentation: {
-      id: 'ssf-client-1',
-      clientId: 'ssf',
-      enabled: false,
-      rootUrl: '',
-      redirectUris: [],
-      webOrigins: [],
-      standardFlowEnabled: false,
-      directAccessGrantsEnabled: false,
-      serviceAccountsEnabled: false,
-      attributes: { 'post.logout.redirect.uris': '' },
-    },
-    protocolMappers: [{
-      name: 'studio-ssf-audience',
-      protocol: 'openid-connect',
-      protocolMapper: 'oidc-audience-mapper',
-      config: {
-        'included.client.audience': 'ssf',
-        'included.custom.audience': '',
-        'id.token.claim': 'false',
-        'access.token.claim': 'true',
-        'lightweight.claim': 'false',
-        'introspection.token.claim': 'true',
+  pluginOidcClients: [
+    {
+      requirement: ssfClientRequirement,
+      clientRepresentation: {
+        id: 'ssf-client-1',
+        clientId: 'ssf',
+        enabled: false,
+        rootUrl: '',
+        redirectUris: [],
+        webOrigins: [],
+        standardFlowEnabled: false,
+        implicitFlowEnabled: false,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+        attributes: { 'post.logout.redirect.uris': '' },
       },
-    }],
-  }],
+      protocolMappers: [
+        {
+          name: 'studio-ssf-audience',
+          protocol: 'openid-connect',
+          protocolMapper: 'oidc-audience-mapper',
+          config: {
+            'included.client.audience': 'ssf',
+            'included.custom.audience': '',
+            'id.token.claim': 'false',
+            'access.token.claim': 'true',
+            'lightweight.claim': 'false',
+            'introspection.token.claim': 'true',
+          },
+        },
+      ],
+    },
+  ],
   protocolMappers: [
     {
       name: 'instanceId',
@@ -128,7 +133,9 @@ describe('provisioning-auth readers', () => {
     const preflight = createInstanceKeycloakPreflightReader(readState);
     const status = createInstanceKeycloakStatusReader(readState);
 
-    await expect(preflight(input)).resolves.toEqual(expect.objectContaining({ overallStatus: 'ready' }));
+    await expect(preflight(input)).resolves.toEqual(
+      expect.objectContaining({ overallStatus: 'ready' })
+    );
     await expect(status(input)).resolves.toEqual(
       expect.objectContaining({
         realmExists: true,
@@ -142,7 +149,10 @@ describe('provisioning-auth readers', () => {
     const failingReadState = vi.fn(async (): Promise<KeycloakReadState> => {
       throw new Error('keycloak unavailable');
     });
-    const preflight = createInstanceKeycloakPreflightReader(failingReadState, () => 'mapped access error');
+    const preflight = createInstanceKeycloakPreflightReader(
+      failingReadState,
+      () => 'mapped access error'
+    );
     const plan = createInstanceKeycloakPlanReader(failingReadState, preflight);
 
     await expect(preflight(input)).resolves.toEqual(
@@ -156,7 +166,9 @@ describe('provisioning-auth readers', () => {
         ]),
       })
     );
-    await expect(plan(input)).resolves.toEqual(expect.objectContaining({ overallStatus: 'blocked' }));
+    await expect(plan(input)).resolves.toEqual(
+      expect.objectContaining({ overallStatus: 'blocked' })
+    );
   });
 
   it('marks tenant admin client drift as an update in the plan preview', async () => {
@@ -231,14 +243,16 @@ describe('provisioning-auth readers', () => {
     if (!ssfClientState) throw new Error('missing_ssf_client_state');
     const driftedReadState = vi.fn(async (): Promise<KeycloakReadState> => ({
       ...currentState,
-      pluginOidcClients: [{
-        ...ssfClientState,
-        clientRepresentation: {
-          ...ssfClientState.clientRepresentation,
-          enabled: true,
-          redirectUris: ['https://provider.example/callback'],
+      pluginOidcClients: [
+        {
+          ...ssfClientState,
+          clientRepresentation: {
+            ...ssfClientState.clientRepresentation,
+            enabled: true,
+            redirectUris: ['https://provider.example/callback'],
+          },
         },
-      }],
+      ],
     }));
     const driftedPlan = createInstanceKeycloakPlanReader(
       driftedReadState,

@@ -78,20 +78,40 @@ describe('service-keycloak-execution-failures', () => {
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
 
-    await failRun(
-      { repository: repository as never } as never,
-      {
-        runId: 'run-3',
-        instanceId: 'demo',
-        intent: 'provision',
-        error: new Error('tenant_client_secrets_missing_after_provisioning'),
-      }
-    );
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-3',
+      instanceId: 'demo',
+      intent: 'provision',
+      error: new Error('tenant_client_secrets_missing_after_provisioning'),
+    });
 
     expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
       expect.objectContaining({
         details: { reasonCode: 'TENANT_CLIENT_SECRETS_MISSING' },
         summary: 'Die nach dem Provisioning erwarteten Tenant-Client-Secrets sind nicht lesbar.',
+      })
+    );
+  });
+
+  it('marks failed realm compensation as requiring manual cleanup', async () => {
+    const repository = {
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-4',
+      instanceId: 'demo',
+      intent: 'provision',
+      error: new Error(
+        'plugin_oidc_client_reconciliation_failed_realm_cleanup_failed_requires_manual_action'
+      ),
+    });
+
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: { reasonCode: 'REALM_CLEANUP_FAILED_REQUIRES_MANUAL_ACTION' },
+        summary: expect.stringContaining('Manuelle Bereinigung ist erforderlich'),
       })
     );
   });

@@ -29,6 +29,7 @@ const createClientWithAlignedSsf = () =>
             redirectUris: [],
             webOrigins: [],
             standardFlowEnabled: false,
+            implicitFlowEnabled: false,
             directAccessGrantsEnabled: false,
             serviceAccountsEnabled: false,
             attributes: { 'post.logout.redirect.uris': '' },
@@ -65,7 +66,8 @@ const createClientWithAlignedSsf = () =>
 const createClient = (
   overrides?: Partial<KeycloakProvisioningClient>
 ): KeycloakProvisioningClient => ({
-  ensureRealm: vi.fn(async () => undefined),
+  ensureRealm: vi.fn(async () => true),
+  deleteRealm: vi.fn(async () => undefined),
   getRealm: vi.fn(async () => ({ realm: 'demo' })),
   getOidcClientByClientId: vi.fn(async (clientId: string) => ({
     id: `${clientId}-id`,
@@ -149,16 +151,18 @@ describe('provisioning-auth-state', () => {
     });
     const readSecrets = createReadKeycloakClientSecrets(() => client);
 
-    await expect(readSecrets({
-      instanceId: 'demo',
-      primaryHostname: 'demo.example.org',
-      realmMode: 'existing',
-      authRealm: 'demo',
-      authClientId: 'sva-studio',
-      authClientSecretConfigured: true,
-      tenantAdminClient: { clientId: 'tenant-admin' },
-      pluginOidcClients: [ssfClientRequirement],
-    })).resolves.toEqual({
+    await expect(
+      readSecrets({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminClient: { clientId: 'tenant-admin' },
+        pluginOidcClients: [ssfClientRequirement],
+      })
+    ).resolves.toEqual({
       keycloakClientSecret: 'sva-studio-secret',
       tenantAdminClientSecret: 'tenant-admin-secret',
     });
@@ -191,6 +195,7 @@ describe('provisioning-auth-state', () => {
     });
 
     expect(client.ensureRealm).toHaveBeenCalledWith({ displayName: 'demo' });
+    expect(client.deleteRealm).not.toHaveBeenCalled();
     expect(client.ensureOidcClient).toHaveBeenCalledWith(
       expect.objectContaining({ clientId: 'sva-studio' })
     );
@@ -240,6 +245,7 @@ describe('provisioning-auth-state', () => {
         rootUrl: '',
         enabled: false,
         standardFlowEnabled: false,
+        implicitFlowEnabled: false,
         directAccessGrantsEnabled: false,
         serviceAccountsEnabled: false,
         uriPolicy: 'replace',
@@ -300,6 +306,41 @@ describe('provisioning-auth-state', () => {
       expect.objectContaining({ clientId: 'ssf', enabled: false, uriPolicy: 'replace' })
     );
     expect(client.ensureAudienceProtocolMapper).toHaveBeenCalledOnce();
+    expect(client.deleteRealm).not.toHaveBeenCalled();
+  });
+
+  it('disables implicit flow and rejects read-back while it remains enabled', async () => {
+    const client = createClientWithAlignedSsf();
+    vi.mocked(client.getOidcClientByClientId).mockResolvedValue({
+      id: 'ssf-id',
+      clientId: 'ssf',
+      enabled: false,
+      rootUrl: '',
+      redirectUris: [],
+      webOrigins: [],
+      standardFlowEnabled: false,
+      implicitFlowEnabled: true,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      attributes: { 'post.logout.redirect.uris': '' },
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        pluginOidcClients: [ssfClientRequirement],
+      })
+    ).rejects.toThrow('plugin_oidc_client_readback_failed:ssf:ssf');
+
+    expect(client.ensureOidcClient).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 'ssf', implicitFlowEnabled: false })
+    );
+    expect(client.deleteRealm).not.toHaveBeenCalled();
   });
 
   it('reconciles plugin clients before rotating the Studio client secret', async () => {
@@ -359,6 +400,37 @@ describe('provisioning-auth-state', () => {
       expect.objectContaining({ clientId: 'ssf' })
     );
     expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
+    expect(client.deleteRealm).toHaveBeenCalledOnce();
+  });
+
+  it('requires manual cleanup when compensating a newly created realm fails', async () => {
+    const client = createClient({
+      deleteRealm: vi.fn(async () => {
+        throw new Error('keycloak_delete_failed');
+      }),
+      getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+        id: `${clientId}-id`,
+        clientId,
+        enabled: clientId === 'ssf',
+      })),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        pluginOidcClients: [ssfClientRequirement],
+      })
+    ).rejects.toThrow(
+      'plugin_oidc_client_reconciliation_failed_realm_cleanup_failed_requires_manual_action'
+    );
+
+    expect(client.ensureOidcClient).toHaveBeenCalledOnce();
+    expect(client.deleteRealm).toHaveBeenCalledOnce();
   });
 
   it('rejects existing-realm provisioning when the target realm is missing', async () => {

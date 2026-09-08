@@ -10,10 +10,18 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
   if (error instanceof Error) {
     const message = error.message || '';
 
+    if (message.includes('realm_cleanup_failed_requires_manual_action')) {
+      return {
+        reasonCode: 'REALM_CLEANUP_FAILED_REQUIRES_MANUAL_ACTION',
+        safeSummary:
+          'Das neu angelegte Keycloak-Realm konnte nach fehlgeschlagener Plugin-Client-Provisionierung nicht entfernt werden. Manuelle Bereinigung ist erforderlich.',
+      };
+    }
     if (message.includes('tenant_client_secrets_missing_after_provisioning')) {
       return {
         reasonCode: 'TENANT_CLIENT_SECRETS_MISSING',
-        safeSummary: 'Die nach dem Provisioning erwarteten Tenant-Client-Secrets sind nicht lesbar.',
+        safeSummary:
+          'Die nach dem Provisioning erwarteten Tenant-Client-Secrets sind nicht lesbar.',
       };
     }
     if (message.includes('Keycloak') || message.includes('keycloak')) {
@@ -22,7 +30,11 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
         safeSummary: 'Provisioning bei externer Abhängigkeit (Keycloak) fehlgeschlagen.',
       };
     }
-    if (message.includes('Postgres') || message.includes('postgres') || message.includes('database')) {
+    if (
+      message.includes('Postgres') ||
+      message.includes('postgres') ||
+      message.includes('database')
+    ) {
       return {
         reasonCode: 'DATABASE_EXECUTION_FAILED',
         safeSummary: 'Provisioning bei Datenbankzugriff fehlgeschlagen.',
@@ -54,24 +66,32 @@ export const failRun = async (
 ) => {
   const { reasonCode, safeSummary } = classifyError(input.error);
   const stepKey = readInstanceRegistryStepKey(input.error) ?? 'keycloak_execution';
-  const dependency = stepKey === 'keycloak_execution'
-    ? 'keycloak'
-    : stepKey === 'secret_sync' || stepKey === 'admin_bootstrap'
-      ? 'instance_registry'
-      : undefined;
+  const dependency =
+    stepKey === 'keycloak_execution'
+      ? 'keycloak'
+      : stepKey === 'secret_sync' || stepKey === 'admin_bootstrap'
+        ? 'instance_registry'
+        : undefined;
 
-  logger.error('provisioning_run_failed', buildInstanceRegistryFailureLog(input.error, {
-    operation: 'process_keycloak_provisioning_run',
-    requestId: input.requestId,
-    instanceId: input.instanceId,
-    runId: input.runId,
-    intent: input.intent,
-    stepKey,
-    dependency,
-  }, {
-    code: 'internal_unclassified',
-    status: 500,
-  }));
+  logger.error(
+    'provisioning_run_failed',
+    buildInstanceRegistryFailureLog(
+      input.error,
+      {
+        operation: 'process_keycloak_provisioning_run',
+        requestId: input.requestId,
+        instanceId: input.instanceId,
+        runId: input.runId,
+        intent: input.intent,
+        stepKey,
+        dependency,
+      },
+      {
+        code: 'internal_unclassified',
+        status: 500,
+      }
+    )
+  );
 
   await appendRunStep(deps, {
     runId: input.runId,
@@ -100,9 +120,10 @@ export const failClaimedRun = async (
     details?: Readonly<Record<string, unknown>>;
   }
 ) => {
-  const reasonCode = typeof input.details?.reason === 'string'
-    ? input.details.reason.toUpperCase()
-    : 'WORKER_PRECONDITION_FAILED';
+  const reasonCode =
+    typeof input.details?.reason === 'string'
+      ? input.details.reason.toUpperCase()
+      : 'WORKER_PRECONDITION_FAILED';
   logger.error('provisioning_run_failed', {
     operation: 'process_keycloak_provisioning_run',
     result: 'failed',

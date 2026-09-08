@@ -163,7 +163,9 @@ SSF-Session-Token bleiben außerhalb des Studio-IAM.
 
 Der Studio-seitig provisionierte Client `ssf` bleibt bis zur gemeinsamen
 Providerintegration deaktiviert und besitzt keine Redirect-, Logout- oder
-Web-Origin-Freigaben. Sein Audience-Mapper schreibt `ssf` in Access- und
+Web-Origin-Freigaben; Standard-, Implicit- und Direct-Access-Flow sowie Service
+Accounts sind explizit abgeschaltet und Bestandteil des Read-backs. Sein
+Audience-Mapper schreibt `ssf` in Access- und
 Introspection-Tokens, nicht in ID-Tokens. Der Vertrag ist versioniert und
 allowlist-basiert; zusätzliche, vom Plugin
 eingeschleuste Keycloak-Felder werden vor jedem Read oder Write abgelehnt.
@@ -172,6 +174,11 @@ aller deklarierten Plugin-OIDC-Clients in einen gemeinsamen Alignment-Befund.
 Nach einer Studio-Client-Secret-Rotation verwendet der Registry-Abgleich einen
 separaten schmalen Secret-Read, damit eine erneute Plugin-Inspektion nicht
 zwischen erfolgreicher Rotation und persistierter Secret-Aktualisierung liegt.
+Scheitert der SSF-Client-Abgleich direkt nach der nachweislich durch denselben
+Aufruf erfolgten Realm-Anlage, wird nur dieses noch client-secret-freie Realm
+kompensierend entfernt. Ein vorbestehendes Realm wird nie gelöscht; ein
+fehlgeschlagener Cleanup erzeugt einen fail-closed Befund mit erforderlicher
+manueller Bereinigung.
 
 ## SSF-Plugin-Datenbank
 

@@ -47,6 +47,14 @@ Das System SHALL das Keycloak der SSF-Installation mit einem Root-Realm und gena
 - **AND** erzeugt oder validiert es getrennte Studio- und SSF-Clients sowie die erforderlichen technischen Admin-Clients
 - **AND** bindet alle Artefakte eindeutig an die Instanz-Registry
 
+#### Scenario: Fehlgeschlagener initialer SSF-Client wird vor Secrets kompensiert
+
+- **GIVEN** derselbe Provisionierungsaufruf hat ein Tenant-Realm gerade neu erzeugt
+- **WHEN** der unmittelbar folgende SSF-Client-Abgleich vor der Anlage geheimnistragender Studio- oder Tenant-Admin-Clients fehlschlägt
+- **THEN** entfernt das System ausschließlich dieses neu erzeugte Realm kompensierend
+- **AND** löscht es kein vorbestehendes Realm
+- **AND** weist es einen fehlgeschlagenen Cleanup als fail-closed und manuell zu bereinigen aus
+
 #### Scenario: Benutzeridentitäten werden nicht realmübergreifend verknüpft
 
 - **GIVEN** dieselbe E-Mail-Adresse existiert in zwei Tenant-Realms

@@ -148,6 +148,12 @@ und Reaktivierung erhalten Instanz-, Realm- und Datenidentität.
 
 Rollback sperrt SSF-Beiträge und Lifecycle-Jobs, entfernt aber weder Realms noch
 Plugin-Daten automatisch.
+Davon getrennt ist die enge Kompensation innerhalb desselben initialen
+Provisionierungsaufrufs: Hat genau dieser Aufruf das Realm neu erzeugt und
+scheitert der unmittelbar folgende SSF-Client-Abgleich noch vor der Anlage
+geheimnistragender Studio- oder Tenant-Admin-Clients, darf er dieses Realm
+entfernen. Vorbestehende Realms sind ausgeschlossen; ein Cleanup-Fehler verlangt
+eine explizite manuelle Bereinigung und darf keine Retryfähigkeit vortäuschen.
 
 ## Open Questions
 

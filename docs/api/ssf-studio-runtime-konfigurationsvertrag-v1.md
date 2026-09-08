@@ -130,6 +130,14 @@ Studio-verwalteten Client-Secrets; eine erneute Plugin-Client- oder
 Mapper-Inspektion darf das Speichern des bereits rotierten Secrets nicht
 verhindern. Der operative Keycloak-Status und der Instanz-Audit weisen
 Abweichungen deklarierter Plugin-OIDC-Clients aggregiert aus.
+Der deaktivierte Plugin-Client schaltet Standard-, Implicit- und Direct-Access-
+Flow sowie Service Accounts explizit ab und bestätigt alle vier Schalter per
+Read-back. Scheitert der SSF-Client-Abgleich unmittelbar nach der Anlage eines
+neuen Realms, entfernt derselbe Provisionierungsaufruf ausschließlich dieses
+gerade selbst erzeugte Realm, solange noch keine Studio- oder Tenant-Admin-
+Clients mit Secrets angelegt wurden. Vorbestehende Realms werden nie
+kompensierend gelöscht. Scheitert auch die Kompensation, wird der Lauf mit
+`REALM_CLEANUP_FAILED_REQUIRES_MANUAL_ACTION` fail-closed ausgewiesen.
 
 Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 

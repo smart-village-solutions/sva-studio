@@ -1,6 +1,9 @@
 import type { InstanceRealmMode } from '@sva/core';
 
-import { buildExpectedClientConfig, buildExpectedTenantAdminClientConfig } from './provisioning-auth-utils.js';
+import {
+  buildExpectedClientConfig,
+  buildExpectedTenantAdminClientConfig,
+} from './provisioning-auth-utils.js';
 
 export type KeycloakClientRepresentation = {
   readonly id?: string;
@@ -10,6 +13,7 @@ export type KeycloakClientRepresentation = {
   readonly redirectUris?: readonly string[];
   readonly webOrigins?: readonly string[];
   readonly standardFlowEnabled?: boolean;
+  readonly implicitFlowEnabled?: boolean;
   readonly directAccessGrantsEnabled?: boolean;
   readonly serviceAccountsEnabled?: boolean;
   readonly attributes?: Readonly<Record<string, string>>;
@@ -54,7 +58,9 @@ export type TenantAdminStatus = {
 export type KeycloakReadState = {
   readonly client: unknown;
   readonly expectedClient: ReturnType<typeof buildExpectedClientConfig>;
-  readonly expectedTenantAdminClient: ReturnType<typeof buildExpectedTenantAdminClientConfig> | null;
+  readonly expectedTenantAdminClient: ReturnType<
+    typeof buildExpectedTenantAdminClientConfig
+  > | null;
   readonly realm: { realm: string } | null;
   readonly clientRepresentation: KeycloakClientRepresentation;
   readonly tenantAdminClientRepresentation: KeycloakClientRepresentation;

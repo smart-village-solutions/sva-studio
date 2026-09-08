@@ -28,7 +28,8 @@ type KeycloakAdminUser = {
 };
 
 export type KeycloakProvisioningClient = {
-  ensureRealm(input: { displayName?: string }): Promise<void>;
+  ensureRealm(input: { displayName?: string }): Promise<boolean>;
+  deleteRealm(): Promise<void>;
   getRealm(): Promise<{ realm: string } | null>;
   getOidcClientByClientId(clientId: string): Promise<KeycloakClientRepresentation>;
   getOidcClientSecretValue(clientId: string): Promise<string | null>;
@@ -41,6 +42,7 @@ export type KeycloakProvisioningClient = {
     clientSecret?: string;
     rotateClientSecret?: boolean;
     standardFlowEnabled?: boolean;
+    implicitFlowEnabled?: boolean;
     directAccessGrantsEnabled?: boolean;
     serviceAccountsEnabled?: boolean;
     enabled?: boolean;
@@ -335,6 +337,7 @@ const reconcilePluginOidcClients = async (
       rootUrl: '',
       enabled: false,
       standardFlowEnabled: false,
+      implicitFlowEnabled: false,
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
       uriPolicy: 'replace',
@@ -370,15 +373,30 @@ export const createProvisionInstanceAuthArtifacts =
     const reconcileAuthClient = input.reconcileAuthClient ?? true;
     const reconcileTenantAdminClient = input.reconcileTenantAdminClient ?? true;
 
+    let createdRealm = false;
     if (input.realmMode === 'new') {
-      await client.ensureRealm({ displayName: input.instanceId });
+      createdRealm = await client.ensureRealm({ displayName: input.instanceId });
     } else {
       const realm = await client.getRealm();
       if (!realm) {
         throw new Error(`Keycloak realm ${input.authRealm} does not exist`);
       }
     }
-    await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
+    try {
+      await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
+    } catch (error) {
+      if (!createdRealm) {
+        throw error;
+      }
+      try {
+        await client.deleteRealm();
+      } catch {
+        throw new Error(
+          'plugin_oidc_client_reconciliation_failed_realm_cleanup_failed_requires_manual_action'
+        );
+      }
+      throw error;
+    }
     if (reconcileAuthClient) {
       await client.ensureOidcClient({
         clientId: input.authClientId,

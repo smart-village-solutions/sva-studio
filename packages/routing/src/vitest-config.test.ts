@@ -24,4 +24,15 @@ describe('routing vitest config', () => {
       ])
     );
   });
+
+  it('resolves SSF provisioning from source for auth-runtime coverage', () => {
+    expect(vitestConfig.resolve?.alias).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          find: /^@sva\/plugin-ssf\/provisioning$/,
+          replacement: expect.stringContaining('/packages/plugin-ssf/src/provisioning.ts'),
+        }),
+      ])
+    );
+  });
 });

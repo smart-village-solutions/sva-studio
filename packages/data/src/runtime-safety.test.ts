@@ -1065,3 +1065,11 @@ test('sva-studio-react vitest shared config resolves mail-runtime from workspace
     /'@sva\/mail-runtime': fileURLToPath\(\s*new URL\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts', import\.meta\.url\)\s*\)/
   );
 });
+
+test('sva-studio-react vitest shared config resolves the SSF runtime from workspace source', () => {
+  const vitestConfig = readRepoFile('../apps/sva-studio-react/vitest.shared.ts');
+
+  expect(vitestConfig).toMatch(
+    /'@sva\/plugin-ssf\/runtime': fileURLToPath\(\s*new URL\('\.\.\/\.\.\/packages\/plugin-ssf\/src\/runtime\.ts', import\.meta\.url\)\s*\)/
+  );
+});

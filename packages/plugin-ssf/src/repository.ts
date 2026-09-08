@@ -4,10 +4,7 @@ export {
   readSsfConfigurationOverrides,
   type SsfConfigurationOverrides,
 } from './repository.overrides.js';
-import {
-  validateInstanceIdOrThrow,
-  withTenantTransaction,
-} from './repository.transaction.js';
+import { withTenantTransaction } from './repository.transaction.js';
 import type {
   SsfServerLocaleOverride,
   SsfTenantLocaleOverride,
@@ -68,19 +65,18 @@ export const provisionSsfTenant = async (
   pool: Pool,
   instanceId: string
 ): Promise<SsfTenantRecord> => {
-  const validatedInstanceId = validateInstanceIdOrThrow(instanceId);
-  return withTenantTransaction(pool, validatedInstanceId, false, async (client) => {
+  return withTenantTransaction(pool, instanceId, false, async (client) => {
     await client.query(
       `INSERT INTO ssf.tenants (instance_id)
        VALUES ($1)
        ON CONFLICT (instance_id) DO NOTHING`,
-      [validatedInstanceId]
+      [instanceId]
     );
     const result = await client.query<SsfTenantRow>(
       `SELECT ${tenantColumns}
          FROM ssf.tenants
         WHERE instance_id = $1`,
-      [validatedInstanceId]
+      [instanceId]
     );
     const row = result.rows[0];
     if (!row) throw new Error('ssf_tenant_readback_failed');
@@ -92,13 +88,12 @@ export const readSsfTenant = async (
   pool: Pool,
   instanceId: string
 ): Promise<SsfTenantRecord | null> => {
-  const validatedInstanceId = validateInstanceIdOrThrow(instanceId);
-  return withTenantTransaction(pool, validatedInstanceId, true, async (client) => {
+  return withTenantTransaction(pool, instanceId, true, async (client) => {
     const result = await client.query<SsfTenantRow>(
       `SELECT ${tenantColumns}
          FROM ssf.tenants
         WHERE instance_id = $1`,
-      [validatedInstanceId]
+      [instanceId]
     );
     const row = result.rows[0];
     return row ? mapSsfTenantRow(row) : null;

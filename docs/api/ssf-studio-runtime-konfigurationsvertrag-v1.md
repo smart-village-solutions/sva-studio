@@ -125,6 +125,11 @@ gespeichert werden. Bei einer Rotation des Studio-Login-Client-Secrets wird der
 deaktivierte SSF-Client zuerst reconciled und per Read-back verifiziert. Erst
 danach darf die Secret-Rotation beginnen; schlägt der SSF-Abgleich fehl,
 bleiben Keycloak- und Registry-Secret unverändert.
+Nach erfolgreicher Rotation liest der Registry-Sync ausschließlich die beiden
+Studio-verwalteten Client-Secrets; eine erneute Plugin-Client- oder
+Mapper-Inspektion darf das Speichern des bereits rotierten Secrets nicht
+verhindern. Der operative Keycloak-Status und der Instanz-Audit weisen
+Abweichungen deklarierter Plugin-OIDC-Clients aggregiert aus.
 
 Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 

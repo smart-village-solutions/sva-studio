@@ -307,6 +307,21 @@ export const createReadKeycloakState =
     };
   };
 
+export const createReadKeycloakClientSecrets =
+  (createClient: KeycloakProvisioningClientFactory) =>
+  async (
+    input: KeycloakProvisioningInput
+  ): Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>> => {
+    const client = createClient(input.authRealm);
+    const [keycloakClientSecret, tenantAdminClientSecret] = await Promise.all([
+      client.getOidcClientSecretValue(input.authClientId),
+      input.tenantAdminClient?.clientId
+        ? client.getOidcClientSecretValue(input.tenantAdminClient.clientId)
+        : Promise.resolve(null),
+    ]);
+    return { keycloakClientSecret, tenantAdminClientSecret };
+  };
+
 const reconcilePluginOidcClients = async (
   client: KeycloakProvisioningClient,
   requirements: readonly PluginOidcClientRequirement[]

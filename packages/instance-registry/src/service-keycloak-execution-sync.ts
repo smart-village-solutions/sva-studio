@@ -131,10 +131,10 @@ export const syncRotatedClientSecretToRegistry = async (
     actorId?: string;
   }
 ) => {
-  if (!deps.readKeycloakStateViaProvisioner) {
-    throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
+  if (!deps.readKeycloakClientSecretsViaProvisioner) {
+    throw new Error('dependency_missing_readKeycloakClientSecretsViaProvisioner');
   }
-  const state = await deps.readKeycloakStateViaProvisioner(buildProvisioningInput(input.loaded));
+  const state = await deps.readKeycloakClientSecretsViaProvisioner(buildProvisioningInput(input.loaded));
   const rotatedSecret = state.keycloakClientSecret;
   if (!rotatedSecret) {
     throw new Error('tenant_auth_client_secret_missing_after_rotation');

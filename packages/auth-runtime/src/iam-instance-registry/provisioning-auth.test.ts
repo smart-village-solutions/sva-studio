@@ -15,6 +15,9 @@ const state = vi.hoisted(() => ({
       kind: 'tenant-state',
     }))
   ),
+  createReadKeycloakClientSecrets: vi.fn((factory) =>
+    vi.fn(async () => ({ factory, keycloakClientSecret: 'secret', tenantAdminClientSecret: null }))
+  ),
   createInstanceKeycloakPreflightReader: vi.fn((readState, readError) => ({
     kind: 'preflight',
     readState,
@@ -59,6 +62,7 @@ const state = vi.hoisted(() => ({
 vi.mock('@sva/instance-registry/provisioning-auth-state', () => ({
   createKeycloakProvisioningAdapters: state.createKeycloakProvisioningAdapters,
   createKeycloakProvisioningClientFactory: state.createKeycloakProvisioningClientFactory,
+  createReadKeycloakClientSecrets: state.createReadKeycloakClientSecrets,
   createReadKeycloakState: state.createReadKeycloakState,
 }));
 
@@ -113,6 +117,7 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     expect(state.createKeycloakProvisioningAdapters).toHaveBeenCalledTimes(2);
     expect(subject.readKeycloakState).toBeDefined();
     expect(subject.readKeycloakStateViaProvisioner).toBeDefined();
+    expect(subject.readKeycloakClientSecretsViaProvisioner).toBeDefined();
     expect(subject.readKeycloakStateViaTenantAdmin).toBeDefined();
     expect(subject.provisionInstanceAuthArtifacts).toBeDefined();
     expect(subject.provisionInstanceAuthArtifactsViaProvisioner).toBeDefined();

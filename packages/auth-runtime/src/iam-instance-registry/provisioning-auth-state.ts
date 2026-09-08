@@ -1,6 +1,7 @@
 import {
   createKeycloakProvisioningAdapters,
   createKeycloakProvisioningClientFactory,
+  createReadKeycloakClientSecrets,
   createReadKeycloakState,
 } from '@sva/instance-registry/provisioning-auth-state';
 import type { KeycloakProvisioningInput } from '@sva/instance-registry';
@@ -33,13 +34,12 @@ const createAuthKeycloakClientFactory = (
     (config) => new KeycloakAdminClient(config)
   );
 
-const adminAdapters = createKeycloakProvisioningAdapters(
-  createAuthKeycloakClientFactory(getKeycloakAdminClientConfigFromEnv)
-);
+const adminClientFactory = createAuthKeycloakClientFactory(getKeycloakAdminClientConfigFromEnv);
+const provisionerClientFactory = createAuthKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv);
+const adminAdapters = createKeycloakProvisioningAdapters(adminClientFactory);
+const provisionerAdapters = createKeycloakProvisioningAdapters(provisionerClientFactory);
 
-const provisionerAdapters = createKeycloakProvisioningAdapters(
-  createAuthKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv)
-);
+export const readKeycloakClientSecretsViaProvisioner = createReadKeycloakClientSecrets(provisionerClientFactory);
 
 const withInstalledPluginOidcClients = <
   T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,

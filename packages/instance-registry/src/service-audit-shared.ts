@@ -17,6 +17,7 @@ export const CHECK_IDS = {
   keycloakRealmExists: 'keycloak.realm.exists',
   keycloakLoginClientExists: 'keycloak.client.login.exists',
   keycloakLoginSecretAligned: 'keycloak.client.login.secretAligned',
+  keycloakPluginOidcClientsAligned: 'keycloak.client.pluginOidc.aligned',
   keycloakTenantAdminClientExists: 'keycloak.client.tenantAdmin.exists',
   keycloakTenantAdminSecretAligned: 'keycloak.client.tenantAdmin.secretAligned',
   keycloakSystemAdminRoleExists: 'keycloak.role.systemAdmin.exists',

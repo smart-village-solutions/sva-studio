@@ -21,7 +21,7 @@ export {
 };
 
 export type IamInstanceKeycloakStatus = NonNullable<IamInstanceDetail['keycloakStatus']>;
-export type InstanceKeycloakStatusField = Exclude<keyof IamInstanceKeycloakStatus, 'runtimeSecretSource'>;
+export type InstanceKeycloakStatusField = Exclude<keyof IamInstanceKeycloakStatus, 'pluginOidcClientsAligned' | 'runtimeSecretSource'>;
 
 const CONFIGURATION_STATUS_LABELS = {
   complete: 'admin.instances.configuration.overall.complete',

@@ -4,6 +4,7 @@ import {
   createKeycloakProvisioningAdapters,
   createKeycloakProvisioningClientFactory,
   createProvisionInstanceAuthArtifacts,
+  createReadKeycloakClientSecrets,
   createReadKeycloakState,
   type KeycloakProvisioningClient,
 } from './provisioning-auth-state.js';
@@ -140,6 +141,31 @@ describe('provisioning-auth-state', () => {
     expect(state.protocolMappers).toEqual([]);
     expect(state.keycloakClientSecret).toBeNull();
     expect(client.getOidcClientByClientId).not.toHaveBeenCalled();
+  });
+
+  it('reads rotated secrets without inspecting plugin clients or mappers', async () => {
+    const client = createClient({
+      getOidcClientSecretValue: vi.fn(async (clientId: string) => `${clientId}-secret`),
+    });
+    const readSecrets = createReadKeycloakClientSecrets(() => client);
+
+    await expect(readSecrets({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { clientId: 'tenant-admin' },
+      pluginOidcClients: [ssfClientRequirement],
+    })).resolves.toEqual({
+      keycloakClientSecret: 'sva-studio-secret',
+      tenantAdminClientSecret: 'tenant-admin-secret',
+    });
+
+    expect(client.getOidcClientSecretValue).toHaveBeenCalledTimes(2);
+    expect(client.getOidcClientByClientId).not.toHaveBeenCalled();
+    expect(client.listClientProtocolMappers).not.toHaveBeenCalled();
   });
 
   it('provisions realm, clients, mapper and tenant admin through the injected client', async () => {

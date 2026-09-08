@@ -167,6 +167,11 @@ Web-Origin-Freigaben. Sein Audience-Mapper schreibt `ssf` in Access- und
 Introspection-Tokens, nicht in ID-Tokens. Der Vertrag ist versioniert und
 allowlist-basiert; zusätzliche, vom Plugin
 eingeschleuste Keycloak-Felder werden vor jedem Read oder Write abgelehnt.
+Der operative Keycloak-Status und der Instanz-Audit verdichten den Read-back
+aller deklarierten Plugin-OIDC-Clients in einen gemeinsamen Alignment-Befund.
+Nach einer Studio-Client-Secret-Rotation verwendet der Registry-Abgleich einen
+separaten schmalen Secret-Read, damit eine erneute Plugin-Inspektion nicht
+zwischen erfolgreicher Rotation und persistierter Secret-Aktualisierung liegt.
 
 ## SSF-Plugin-Datenbank
 

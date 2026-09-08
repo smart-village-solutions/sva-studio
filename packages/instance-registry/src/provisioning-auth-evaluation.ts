@@ -1,6 +1,7 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import { readPluginOidcClientAlignment } from './provisioning-auth-plugin-clients.js';
 import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
 export { buildPlan } from './provisioning-auth-plan.js';
 
@@ -19,6 +20,7 @@ export const buildMissingRealmStatus = (
   redirectUrisMatch: false,
   logoutUrisMatch: false,
   webOriginsMatch: false,
+  pluginOidcClientsAligned: false,
   clientSecretConfigured: authClientSecretConfigured,
   tenantClientSecretReadable: Boolean(authClientSecret),
   clientSecretAligned: false,
@@ -273,6 +275,9 @@ export const buildKeycloakStatus = (
       input.state.expectedClient.postLogoutRedirectUris
     ),
     webOriginsMatch: equalSets(input.state.clientRepresentation?.webOrigins ?? [], input.state.expectedClient.webOrigins),
+    pluginOidcClientsAligned: input.state.pluginOidcClients.every(({ requirement, ...state }) =>
+      readPluginOidcClientAlignment(requirement, state).aligned
+    ),
     clientSecretConfigured: input.authClientSecretConfigured,
     tenantClientSecretReadable: Boolean(input.authClientSecret),
     clientSecretAligned,

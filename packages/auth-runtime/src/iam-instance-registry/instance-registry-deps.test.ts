@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   protectField: vi.fn(),
   revealField: vi.fn(),
+  readKeycloakClientSecretsViaProvisioner: vi.fn(),
   readKeycloakStateViaProvisioner: vi.fn(),
   loadWasteDataSourceRecord: vi.fn(),
   saveWasteDataSourceRecord: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 }));
 
 vi.mock('./provisioning-auth-state.js', () => ({
+  readKeycloakClientSecretsViaProvisioner: mocks.readKeycloakClientSecretsViaProvisioner,
   readKeycloakStateViaProvisioner: mocks.readKeycloakStateViaProvisioner,
 }));
 
@@ -35,6 +37,7 @@ describe('withAuthInstanceRegistryDeps', () => {
     expect(enriched.invalidateHost).toBe(custom.invalidateHost);
     expect(enriched.protectSecret).toBe(mocks.protectField);
     expect(enriched.revealSecret).toBe(mocks.revealField);
+    expect(enriched.readKeycloakClientSecretsViaProvisioner).toBe(mocks.readKeycloakClientSecretsViaProvisioner);
     expect(enriched.readKeycloakStateViaProvisioner).toBe(mocks.readKeycloakStateViaProvisioner);
     expect(enriched.loadWasteDataSourceRecord).toBe(mocks.loadWasteDataSourceRecord);
     expect(enriched.saveWasteDataSourceRecord).toBe(mocks.saveWasteDataSourceRecord);

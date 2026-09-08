@@ -282,7 +282,7 @@ describe('service-keycloak-execution-shared', () => {
     const repository = {
       updateInstance: vi.fn(async () => undefined),
     };
-    const readKeycloakStateViaProvisioner = vi.fn(async () => ({
+    const readKeycloakClientSecretsViaProvisioner = vi.fn(async () => ({
       keycloakClientSecret: 'actual-auth-secret',
       tenantAdminClientSecret: 'actual-tenant-admin-secret',
     }));
@@ -291,7 +291,7 @@ describe('service-keycloak-execution-shared', () => {
     await syncRotatedClientSecretToRegistry(
       {
         repository: repository as never,
-        readKeycloakStateViaProvisioner,
+        readKeycloakClientSecretsViaProvisioner,
         protectSecret,
       } as never,
       {
@@ -314,5 +314,6 @@ describe('service-keycloak-execution-shared', () => {
     );
     expect(loaded.authClientSecret).toBe('actual-auth-secret');
     expect(loaded.tenantAdminClientSecret).toBe('actual-tenant-admin-secret');
+    expect(readKeycloakClientSecretsViaProvisioner).toHaveBeenCalledTimes(1);
   });
 });

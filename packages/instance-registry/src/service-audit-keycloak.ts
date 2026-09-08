@@ -185,6 +185,14 @@ const createRealmUnavailableChecks = (input: RealmUnavailableInput): readonly In
     'Wird erst geprüft, wenn Tenant-Realm und Login-Client live gelesen werden können.'
   ),
   createSkipCheck(
+    CHECK_IDS.keycloakPluginOidcClientsAligned,
+    'Plugin-OIDC-Clients abgeglichen',
+    'keycloak',
+    'Deklarierte Plugin-OIDC-Clients entsprechen dem Sollzustand',
+    input.evidenceSource,
+    'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'
+  ),
+  createSkipCheck(
     CHECK_IDS.keycloakTenantAdminClientExists,
     'Keycloak-Tenant-Admin-Client vorhanden',
     'keycloak',
@@ -307,6 +315,14 @@ const createRealmChecks = (status: KeycloakTenantStatus, evidenceSource: string)
       'Wird erst geprüft, wenn der Login-Client vorhanden ist.'
     ),
     createSkipCheck(
+      CHECK_IDS.keycloakPluginOidcClientsAligned,
+      'Plugin-OIDC-Clients abgeglichen',
+      'keycloak',
+      'Deklarierte Plugin-OIDC-Clients entsprechen dem Sollzustand',
+      evidenceSource,
+      'Wird erst geprüft, wenn der Realm vorhanden ist.'
+    ),
+    createSkipCheck(
       CHECK_IDS.keycloakTenantAdminClientExists,
       'Keycloak-Tenant-Admin-Client vorhanden',
       'keycloak',
@@ -396,6 +412,19 @@ const createTenantAdminClientChecks = (
   return [clientCheck, secretCheck];
 };
 
+const createPluginOidcClientCheck = (status: KeycloakTenantStatus, evidenceSource: string): InstanceAuditCheck =>
+  createCheck({
+    checkId: CHECK_IDS.keycloakPluginOidcClientsAligned,
+    title: 'Plugin-OIDC-Clients abgeglichen',
+    scope: 'keycloak',
+    status: status.pluginOidcClientsAligned ? 'pass' : 'fail',
+    expected: 'Deklarierte Plugin-OIDC-Clients entsprechen dem Sollzustand',
+    actual: status.pluginOidcClientsAligned ? 'konsistent' : 'abweichend',
+    evidenceSource,
+    message: status.pluginOidcClientsAligned ? 'Die deklarierten Plugin-OIDC-Clients entsprechen dem sicheren Sollzustand.' : 'Mindestens ein deklarierter Plugin-OIDC-Client weicht vom sicheren Sollzustand ab.',
+    remediationHint: status.pluginOidcClientsAligned ? undefined : 'Plugin-OIDC-Clients über die Keycloak-Reconciliation erneut abgleichen.',
+  });
+
 const createSystemAdminChecks = (status: KeycloakTenantStatus, evidenceSource: string): readonly InstanceAuditCheck[] => {
   const roleCheck = createCheck({
     checkId: CHECK_IDS.keycloakSystemAdminRoleExists,
@@ -472,6 +501,7 @@ export const buildKeycloakChecks = (input: {
   return [
     ...realmChecks,
     ...createLoginClientChecks(input.keycloakStatus, input.keycloakEvidenceSource),
+    createPluginOidcClientCheck(input.keycloakStatus, input.keycloakEvidenceSource),
     ...createTenantAdminClientChecks(input.keycloakStatus, input.keycloakEvidenceSource),
     ...createSystemAdminChecks(input.keycloakStatus, input.keycloakEvidenceSource),
   ];

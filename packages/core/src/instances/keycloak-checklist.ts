@@ -1,6 +1,6 @@
 import type { IamInstanceKeycloakStatus } from '../iam/account-management-contract.js';
 
-type InstanceKeycloakBooleanStatusField = Exclude<keyof IamInstanceKeycloakStatus, 'runtimeSecretSource'>;
+type InstanceKeycloakBooleanStatusField = Exclude<keyof IamInstanceKeycloakStatus, 'pluginOidcClientsAligned' | 'runtimeSecretSource'>;
 
 export type InstanceKeycloakRequirementKey =
   | 'realm'

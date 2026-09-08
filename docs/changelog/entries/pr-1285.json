@@ -1,0 +1,4 @@
+{
+  "prNumber": 1285,
+  "body": "System- und Tenant-Administratoren können die SSF-Laufzeitkonfiguration jetzt im Studio verwalten.\n\n- Systemadministratoren pflegen die verfügbaren Sprachen und systemweiten Vorgaben unter Anwendungen.\n- Tenant-Administratoren übernehmen diese Vorgaben oder konfigurieren zulässige tenantbezogene Abweichungen.\n- Der Runtime-Endpunkt liefert die wirksame Konfiguration aus den gespeicherten Studio-Daten."
+}

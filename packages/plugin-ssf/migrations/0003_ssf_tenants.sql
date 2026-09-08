@@ -25,7 +25,8 @@ CREATE POLICY tenants_tenant_read_policy
   TO ssf_plugin_tenant_runtime
   USING (instance_id = (SELECT ssf.current_instance_id()));
 
-GRANT SELECT, INSERT, UPDATE ON ssf.tenants TO ssf_plugin_root;
+GRANT SELECT, INSERT ON ssf.tenants TO ssf_plugin_root;
+GRANT UPDATE (status, revision, updated_at) ON ssf.tenants TO ssf_plugin_root;
 REVOKE DELETE ON ssf.tenants FROM ssf_plugin_root;
 GRANT SELECT (instance_id, status, revision, created_at, updated_at)
   ON ssf.tenants TO ssf_plugin_tenant_runtime;

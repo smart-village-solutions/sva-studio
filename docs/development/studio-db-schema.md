@@ -92,7 +92,8 @@ Konvergenznachweis der SSF-IAM-Projektion:
 - `ssf.tenants` für den idempotent angelegten Tenant-Grunddatensatz mit
   kanonischer `instanceId`, Status `prepared` und positiver Revision; die
   Tenant-Runtime darf den eigenen Datensatz nur lesen, und die Root-Rolle
-  besitzt bewusst kein Löschrecht,
+  besitzt weder Löschrecht noch Änderungsrechte an `instance_id` und
+  `created_at`,
 - `ssf.server_settings` und `ssf.server_locales` für installationsweite Werte,
 - `ssf.tenant_settings` und `ssf.tenant_locales` für mandantenbezogene Werte,
 - `ssf.authorization_projections` für getrennten Soll-, Read-back- und

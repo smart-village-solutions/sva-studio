@@ -4,6 +4,7 @@ import {
   definePluginActions,
   definePluginModuleIamContract,
   definePluginPermissions,
+  isValidInstanceId,
   pluginSdkPackageRoles,
   pluginSdkVersion,
   registerPluginTranslationResolver,
@@ -34,6 +35,11 @@ describe('@sva/plugin-sdk package scaffold', () => {
       },
     ]);
     expect(permissions).toEqual([{ id: 'news.create', titleKey: 'news.permissions.create' }]);
+  });
+
+  it('exposes the canonical Studio instance ID validator', () => {
+    expect(isValidInstanceId('tenant-a')).toBe(true);
+    expect(isValidInstanceId('Tenant_A')).toBe(false);
   });
 
   it('exposes plugin module IAM contracts through the target package edge', () => {

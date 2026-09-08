@@ -79,6 +79,12 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       rootPool.query("UPDATE ssf.tenants SET status = 'active' WHERE instance_id = 'tenant-a'")
     ).rejects.toMatchObject({ code: '23514' });
     await expect(
+      rootPool.query("UPDATE ssf.tenants SET instance_id = 'tenant-renamed' WHERE instance_id = 'tenant-a'")
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      rootPool.query("UPDATE ssf.tenants SET created_at = now() WHERE instance_id = 'tenant-a'")
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
       rootPool.query("DELETE FROM ssf.tenants WHERE instance_id = 'tenant-a'")
     ).rejects.toMatchObject({ code: '42501' });
   });

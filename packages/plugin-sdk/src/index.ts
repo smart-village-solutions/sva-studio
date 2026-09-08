@@ -190,7 +190,7 @@ export * from './media-content-save-client.js';
 export * from './list-pagination.js';
 export * from './content-media-permissions.js';
 export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
-export { buildWasteStreetKey, resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
+export { buildWasteStreetKey, isValidInstanceId, resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,

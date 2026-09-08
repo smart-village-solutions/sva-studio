@@ -1,9 +1,8 @@
+import { isValidInstanceId } from '@sva/plugin-sdk';
 import type { Pool, PoolClient } from 'pg';
 
-const instanceIdPattern = /^(?!xn--)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
-
 export const readCanonicalInstanceId = (instanceId: string): string => {
-  if (instanceId !== instanceId.trim() || !instanceIdPattern.test(instanceId)) {
+  if (!isValidInstanceId(instanceId)) {
     throw new Error('ssf_tenant_instance_id_invalid');
   }
   return instanceId;

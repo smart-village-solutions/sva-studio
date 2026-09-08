@@ -13,14 +13,7 @@ import type {
   SsfTenantLocaleOverride,
   SsfTenantSettings,
 } from './resolver.js';
-
-type SsfTenantRecord = Readonly<{
-  instanceId: string;
-  status: 'prepared';
-  revision: number;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
+import type { SsfTenantRecord } from './repository.types.js';
 
 type SsfTenantRow = {
   instance_id: string;

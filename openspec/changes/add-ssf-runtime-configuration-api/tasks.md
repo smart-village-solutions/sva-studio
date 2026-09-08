@@ -85,6 +85,9 @@
       PII-arme Logs und Sicherheits-Audit implementieren
 - [x] 4.6 Browser-, Token-, Header-, Fremdtenant-, Inaktivitäts-, Readiness- und
       Datenbankfehlerpfade durch Integrationstests absichern
+- [x] 4.7 Externe Tenantgrenze auf `studio_tenant_id`,
+      `X-Studio-Tenant-Id` und `tenant.id` vereinheitlichen; Legacy-Header,
+      Alias-Header und Queryselektoren vor dem Registry-Lookup abweisen
 
 Die Aufgaben 1.3, 1.4, 4.2a und 4.3 bis 4.6 bilden zusammen den nächsten
 eigenständig review- und testbaren Implementierungsslice. Vor dessen Abschluss

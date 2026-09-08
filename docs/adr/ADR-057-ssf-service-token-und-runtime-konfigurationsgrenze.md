@@ -29,7 +29,7 @@ ab. Es authentisiert sich mit einem installationsweiten Service-Token eines
 technischen Clients im Studio-Root-Realm. Studio prüft Signatur, Issuer,
 Audience, Zeitbindung und
 die vollständig qualifizierte Action `ssf.runtime-configuration.read`. Die
-angeforderte `studio_instance_id` stammt aus einem von SSF validierten Benutzer-
+angeforderte `studio_tenant_id` stammt aus einem von SSF validierten Benutzer-
 oder Sessionkontext. Für diesen idempotenten Read gibt es keine zweite Tenant-
 Signatur, keine Browserfreigabe und keinen Replay-Speicher.
 
@@ -38,7 +38,7 @@ Studio bindet zuerst den angeforderten Tenant und liest anschließend dessen
 bestätigte Revision. Für authentifizierte Vorgänge vergleicht SSF diese
 Runtime-Revision mit dem Claim des Tenant-Benutzertokens.
 
-Benutzertokens tragen den kanonischen Mandantenclaim `studio_instance_id` sowie
+Benutzertokens tragen den kanonischen Mandantenclaim `studio_tenant_id` sowie
 `ssf_roles`, die autoritativen `ssf_permissions` und eine tenantweite
 `ssf_authorization_revision`. Systemadmins bleiben im Studio-Root-Kontext;
 Mandantenadmins und Benutzer gehören genau einem Tenant.

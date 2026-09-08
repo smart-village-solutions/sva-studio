@@ -950,7 +950,7 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   Audience und `ssf.runtime-configuration.read`; Browserzugriffe sind
   ausgeschlossen. Die angeforderte Instanz muss zum von SSF validierten Kontext
   passen.
-- SSF-Benutzertokens verwenden `studio_instance_id`, `ssf_roles` und
+- SSF-Benutzertokens verwenden `studio_tenant_id`, `ssf_roles` und
   `ssf_permissions`; Permissions sind autoritativ. Die Studio-Rootrolle
   `instance_registry_admin` wird nur an der Integrationsgrenze als SSF-
   `system_admin`, die tenantlokale Studio-Rolle `system_admin` als SSF-

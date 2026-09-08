@@ -1,0 +1,4 @@
+{
+  "prNumber": 1289,
+  "body": "Die Tenant-Grenze der SSF-Runtime-API verwendet jetzt durchgängig die für SSF vorgesehenen Namen.\n\n- Der Request nutzt ausschließlich `X-Studio-Tenant-Id`.\n- SSF-Benutzertokens verwenden den Claim `studio_tenant_id`.\n- Alte Header, Alias-Header und Tenantselektoren in der Query werden vor dem Registry-Zugriff abgewiesen."
+}

@@ -164,7 +164,7 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 ```json
 {
   "sub": "keycloak-user-id",
-  "studio_instance_id": "01J...",
+  "studio_tenant_id": "tenant-kassel",
   "ssf_roles": ["tenant_admin"],
   "ssf_permissions": ["ssf.configuration.tenant.read", "ssf.configuration.tenant.manage"],
   "ssf_authorization_revision": "sha256:...",
@@ -210,7 +210,7 @@ authentifiziert oder beendet werden.
 ```text
 Studio provisioniert Instanz, Realm, Benutzer und SSF-Plugin-Daten
   -> Benutzer meldet sich über Keycloak an oder Gast nutzt eine SSF-Session
-  -> SSF leitet die kanonische studio_instance_id aus dem validierten Kontext ab
+  -> SSF leitet die kanonische studio_tenant_id aus dem validierten Kontext ab
   -> SSF ruft mit seiner technischen Service-Identität die Studio-API auf
   -> Studio prüft Service-Token, Mandant, Aktivierung und Readiness
   -> SSF-Plugin ermittelt die effektive Konfiguration
@@ -228,7 +228,7 @@ zusätzliche Synchronisations- oder Cache-Persistenz ist nicht vorgesehen.
 ```http
 GET /internal/plugins/ssf/v1/runtime-configuration
 Authorization: Bearer <keycloak-service-token>
-X-Studio-Instance-Id: <instance-id-aus-validiertem-SSF-Kontext>
+X-Studio-Tenant-Id: <tenant-id-aus-validiertem-SSF-Kontext>
 X-Correlation-Id: <correlation-id>
 ```
 
@@ -241,6 +241,10 @@ nur als Aussage des authentifizierten SSF-Backends, bindet sie hostseitig und
 liest die bestätigte Revision des so bestimmten Tenants; eine direkte
 Browseranfrage ist nicht zulässig.
 
+`X-Studio-Instance-Id`, `X-Tenant-Id` und Tenantselektoren in der Query werden
+abgewiesen. In einer erfolgreichen Antwort entspricht `tenant.id` exakt dem
+Wert aus `X-Studio-Tenant-Id`.
+
 Für diesen lesenden, idempotenten Vertrag gibt es keine zusätzliche
 Tenant-Assertion, keinen zweiten Signaturschlüssel und keinen Replay-Speicher.
 
@@ -252,7 +256,7 @@ Tenant-Assertion, keinen zweiten Signaturschlüssel und keinen Replay-Speicher.
   "configurationRevision": "sha256:...",
   "authorizationRevision": "sha256:...",
   "tenant": {
-    "id": "01J...",
+    "id": "tenant-kassel",
     "displayName": "Beispielkommune",
     "timeZone": "Europe/Berlin"
   },

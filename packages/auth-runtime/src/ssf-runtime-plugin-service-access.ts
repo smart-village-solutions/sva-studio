@@ -20,6 +20,8 @@ import {
   recordSsfRuntimeDecision,
 } from './ssf-runtime-plugin-service-observability.js';
 
+const REJECTED_SSF_RUNTIME_TENANT_HEADERS = ['X-Studio-Instance-Id', 'X-Tenant-Id'] as const;
+
 type AuditDenial = (input: {
   readonly request: Request;
   readonly reasonCode: SsfRuntimeErrorCode;
@@ -199,11 +201,15 @@ export const createSsfRuntimeBindServiceTenant =
     const correlationId = readSsfCorrelationId(request);
     const instanceId = request.headers.get(tenantHeaderName)?.trim();
     const url = new URL(request.url);
+    const hasRejectedTenantHeader = REJECTED_SSF_RUNTIME_TENANT_HEADERS.some((headerName) =>
+      request.headers.has(headerName)
+    );
     if (
       !hasExpectedSsfDescriptorContract({ descriptor, serviceId }) ||
       !correlationId ||
       !instanceId ||
       !isValidInstanceId(instanceId) ||
+      hasRejectedTenantHeader ||
       url.search.length > 0
     ) {
       return rejectTenant({

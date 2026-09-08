@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   SSF_RUNTIME_ENDPOINT_PATH,
-  SSF_RUNTIME_INSTANCE_HEADER,
+  SSF_RUNTIME_TENANT_HEADER,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVICE_ACTION,
   SSF_RUNTIME_SERVICE_ID,
@@ -28,7 +28,7 @@ const descriptor: PluginServerHandlerRegistryEntry = {
   accessRequirement: {
     kind: 'service',
     serviceId: SSF_RUNTIME_SERVICE_ID,
-    tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_INSTANCE_HEADER },
+    tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER },
   },
 };
 
@@ -95,7 +95,7 @@ const request = (overrides: { authorization?: string; query?: string } = {}) =>
   new Request(`https://studio.test${SSF_RUNTIME_ENDPOINT_PATH}${overrides.query ?? ''}`, {
     headers: {
       Authorization: overrides.authorization ?? 'Bearer valid-token',
-      [SSF_RUNTIME_INSTANCE_HEADER]: 'tenant-a',
+      [SSF_RUNTIME_TENANT_HEADER]: 'tenant-a',
       'X-Correlation-Id': 'correlation-1',
     },
   });
@@ -107,7 +107,9 @@ describe('SSF runtime endpoint integration', () => {
     const response = await endpoint.dispatch(request());
 
     expect(response?.status).toBe(200);
-    await expect(response?.json()).resolves.toEqual(configuration);
+    const body = await response?.json();
+    expect(body).toEqual(configuration);
+    expect(body.tenant.id).toBe('tenant-a');
     expect(endpoint.runtimeHandler).toHaveBeenCalledOnce();
   });
 

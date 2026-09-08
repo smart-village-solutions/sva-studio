@@ -83,7 +83,7 @@ Der interne Endpoint lautet fest:
 ```http
 GET /internal/plugins/ssf/v1/runtime-configuration
 Authorization: Bearer <service-token>
-X-Studio-Instance-Id: <canonical-instance-id>
+X-Studio-Tenant-Id: <canonical-tenant-id>
 X-Correlation-Id: <correlation-id>
 ```
 
@@ -105,13 +105,14 @@ Der installationsweite Service-Client liegt im Studio-Root-Realm der gemeinsam
 von Studio und SSF verwendeten Keycloak-Instanz. Sein Token ist nicht
 tenantgebunden und enthält keine `ssf_authorization_revision`. Der Host liest
 die bestätigte Revision erst nach der Bindung von
-`X-Studio-Instance-Id`. Tenant-Benutzertokens stammen dagegen aus dem
+`X-Studio-Tenant-Id`. Tenant-Benutzertokens stammen dagegen aus dem
 gemeinsamen Tenant-Realm und tragen die Revision für den SSF-seitigen Vergleich
 beim Sessionaufbau.
 
-`X-Studio-Instance-Id` wird erst nach erfolgreicher Service-Authentisierung
-verwendet und gegen die kanonische Instanz-Registry aufgelöst. Pfad, Query und
-Body dürfen keinen konkurrierenden Tenantwert liefern. Direkte Browserrequests
+`X-Studio-Tenant-Id` wird erst nach erfolgreicher Service-Authentisierung
+verwendet und gegen die kanonische Instanz-Registry aufgelöst. Die Alias-Header
+`X-Studio-Instance-Id` und `X-Tenant-Id` sowie Tenantselektoren in Query oder
+Body werden abgewiesen. Direkte Browserrequests
 und SSF-Gast-/Benutzertokens werden nicht als Studio-Service-Identität
 akzeptiert.
 

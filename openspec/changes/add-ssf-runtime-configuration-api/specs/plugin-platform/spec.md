@@ -38,7 +38,8 @@ Das System SHALL einen vom authentifizierten Backend übermittelten
 Tenant-Identifier erst nach erfolgreicher Service-Authentisierung gegen die
 kanonische Instanz-Registry auflösen. Konkurrierende Tenantangaben und
 unbekannte, suspendierte oder nicht bereite Instanzen MUST vor Ausführung der
-Plugin-Logik abgewiesen werden.
+Plugin-Logik abgewiesen werden. Der SSF-Runtime-Endpunkt MUST ausschließlich
+den Header `X-Studio-Tenant-Id` als externen Tenantselektor akzeptieren.
 
 #### Scenario: Authentifizierter Service bindet eine bekannte Instanz
 
@@ -47,6 +48,13 @@ Plugin-Logik abgewiesen werden.
 - **WHEN** der Host Aktivierung und Readiness erfolgreich geprüft hat
 - **THEN** bindet er genau diese `instanceId` unveränderlich an den Execution-Context
 - **AND** ignoriert keine widersprüchliche Tenantangabe zugunsten eines Fallbacks
+
+#### Scenario: Legacy- und Alias-Selektoren werden abgewiesen
+
+- **GIVEN** ein Request enthält `X-Studio-Instance-Id`, `X-Tenant-Id` oder einen Tenantselektor in der Query
+- **WHEN** der authentifizierte Service den SSF-Runtime-Endpunkt aufruft
+- **THEN** weist der Host den Request vor dem Registry-Lookup mit dem stabilen Fehler `tenant_not_found` ab
+- **AND** verwendet ausschließlich `X-Studio-Tenant-Id` als kanonischen externen Selektor
 
 #### Scenario: Freier Tenantwert ohne Service-Authentisierung bleibt unvertraut
 

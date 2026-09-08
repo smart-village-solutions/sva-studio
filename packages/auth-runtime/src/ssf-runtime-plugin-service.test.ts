@@ -17,7 +17,7 @@ const descriptor = () => ({
   accessRequirement: {
     kind: 'service' as const,
     serviceId: 'ssf-runtime',
-    tenantBinding: { kind: 'header' as const, headerName: 'X-Studio-Instance-Id' },
+    tenantBinding: { kind: 'header' as const, headerName: 'X-Studio-Tenant-Id' },
   },
 });
 
@@ -44,7 +44,7 @@ const request = (overrides: { headers?: HeadersInit; query?: string } = {}) =>
     {
       headers: {
         Authorization: 'Bearer valid-token',
-        'X-Studio-Instance-Id': 'tenant-a',
+        'X-Studio-Tenant-Id': 'tenant-a',
         'X-Correlation-Id': 'correlation-1',
         ...overrides.headers,
       },
@@ -145,7 +145,7 @@ describe('SSF runtime plugin service host gates', () => {
       if (result) authenticateToken.mockResolvedValue(result);
       const access = createAccess();
       const authRequest = request(
-        result ? {} : { headers: { Authorization: '', 'X-Studio-Instance-Id': 'tenant-a' } }
+        result ? {} : { headers: { Authorization: '', 'X-Studio-Tenant-Id': 'tenant-a' } }
       );
       const authentication = await access.authenticateService?.({
         request: authRequest,
@@ -177,7 +177,7 @@ describe('SSF runtime plugin service host gates', () => {
       descriptor: descriptor(),
       serviceId: 'ssf-runtime',
       serviceSubject: 'service-subject',
-      tenantHeaderName: 'X-Studio-Instance-Id',
+      tenantHeaderName: 'X-Studio-Tenant-Id',
     });
 
     expect(result).toEqual({
@@ -244,7 +244,7 @@ describe('SSF runtime plugin service host gates', () => {
       descriptor: descriptor(),
       serviceId: 'ssf-runtime',
       serviceSubject: 'service-subject',
-      tenantHeaderName: 'X-Studio-Instance-Id',
+      tenantHeaderName: 'X-Studio-Tenant-Id',
     });
 
     expect(result?.kind).toBe('rejected');
@@ -263,7 +263,7 @@ describe('SSF runtime plugin service host gates', () => {
       descriptor: descriptor(),
       serviceId: 'ssf-runtime',
       serviceSubject: 'service-subject',
-      tenantHeaderName: 'X-Studio-Instance-Id',
+      tenantHeaderName: 'X-Studio-Tenant-Id',
     });
 
     expect(result?.kind).toBe('rejected');
@@ -278,8 +278,11 @@ describe('SSF runtime plugin service host gates', () => {
 
   it.each([
     ['missing correlation', { headers: { 'X-Correlation-Id': '' } }],
-    ['foreign query tenant', { query: '?instanceId=tenant-b' }],
-    ['invalid tenant id', { headers: { 'X-Studio-Instance-Id': 'Tenant A' } }],
+    ['foreign query tenant', { query: '?tenantId=tenant-b' }],
+    ['legacy instance query', { query: '?instanceId=tenant-b' }],
+    ['legacy instance header', { headers: { 'X-Studio-Instance-Id': 'tenant-b' } }],
+    ['generic tenant header', { headers: { 'X-Tenant-Id': 'tenant-b' } }],
+    ['invalid tenant id', { headers: { 'X-Studio-Tenant-Id': 'Tenant A' } }],
   ])('rejects %s without reading the registry', async (_name, requestOverrides) => {
     const access = createAccess();
     const result = await access.bindServiceTenant?.({
@@ -287,7 +290,7 @@ describe('SSF runtime plugin service host gates', () => {
       descriptor: descriptor(),
       serviceId: 'ssf-runtime',
       serviceSubject: 'service-subject',
-      tenantHeaderName: 'X-Studio-Instance-Id',
+      tenantHeaderName: 'X-Studio-Tenant-Id',
     });
 
     expect(result?.kind).toBe('rejected');
@@ -309,7 +312,7 @@ describe('SSF runtime plugin service host gates', () => {
       descriptor: descriptor(),
       serviceId: 'ssf-runtime',
       serviceSubject: 'service-subject',
-      tenantHeaderName: 'X-Studio-Instance-Id',
+      tenantHeaderName: 'X-Studio-Tenant-Id',
     });
 
     expect(result?.kind).toBe('rejected');

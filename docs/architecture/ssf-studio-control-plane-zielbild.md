@@ -254,7 +254,8 @@ autorisierte beziehungsweise geeignete Auslieferungsreferenzen an SSF.
 SSF bestimmt den Mandanten aus einem gültigen Session-Token oder einer
 Keycloak-Anmeldung. Anschließend ruft das SSF-Backend die interne Studio-API mit
 einer eigenen Service-Identität und der daraus abgeleiteten kanonischen
-`instanceId` im Header `X-Studio-Instance-Id` auf.
+Tenant-ID im Header `X-Studio-Tenant-Id` auf. Studio löst diese externe ID auf
+den internen Registry-Datensatz mit seiner `instanceId` auf.
 
 Der Studio-Host prüft zuerst das Service-Token einschließlich Audience,
 Authorized Party und `ssf.runtime-configuration.read`. Erst danach wertet er

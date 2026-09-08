@@ -120,13 +120,13 @@ describe('tenant admin bootstrap sync', () => {
     });
   });
 
-  it('falls back to email lookup when the configured username is not found', async () => {
+  it('does not link a different tenant identity by matching email', async () => {
     const listUsers = vi.fn(async (query?: { username?: string; email?: string }) => {
       if (query?.username === 'tenant.admin') {
         return [];
       }
       if (query?.email === 'tenant.admin@example.test') {
-        return [{ externalId: 'kc-user-2', email: 'tenant.admin@example.test' }];
+        return [{ externalId: 'root-user', email: 'tenant.admin@example.test' }];
       }
       return [];
     });
@@ -146,21 +146,15 @@ describe('tenant admin bootstrap sync', () => {
           email: 'tenant.admin@example.test',
         },
       })
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow('tenant_admin_bootstrap_user_not_found');
 
     expect(listUsers).toHaveBeenNthCalledWith(1, {
       username: 'tenant.admin',
       max: 1,
     });
-    expect(listUsers).toHaveBeenNthCalledWith(2, {
-      email: 'tenant.admin@example.test',
-      max: 1,
-    });
-    expect(state.notifyPermissionInvalidation).toHaveBeenCalledWith(state.client, {
-      instanceId: 'tenant-a',
-      keycloakSubject: 'kc-user-2',
-      trigger: 'tenant_admin_bootstrap_sync',
-    });
+    expect(listUsers).toHaveBeenCalledTimes(1);
+    expect(state.jitProvisionAccountWithClient).not.toHaveBeenCalled();
+    expect(state.notifyPermissionInvalidation).not.toHaveBeenCalled();
   });
 
   it('keeps the sync idempotent when system_admin is already assigned directly', async () => {

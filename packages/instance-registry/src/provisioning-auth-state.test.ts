@@ -580,13 +580,44 @@ describe('provisioning-auth-state', () => {
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
   });
 
-  it('recovers from conflicting tenant admin creation by updating the matching email user', async () => {
+  it('does not adopt an existing user solely because the email matches', async () => {
     const client = createClient({
       findUserByUsername: vi.fn(async () => null),
-      findUserByEmail: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
-        id: 'user-2',
+      findUserByEmail: vi.fn(async () => ({
+        id: 'root-user',
         enabled: true,
+      })),
+      createUser: vi.fn(async () => {
+        throw Object.assign(new Error('conflict'), { statusCode: 409 });
       }),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: 'tenant-admin@example.org',
+        },
+      })
+    ).rejects.toThrow('conflict');
+
+    expect(client.findUserByEmail).not.toHaveBeenCalled();
+    expect(client.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('recovers an idempotent create conflict only by re-reading the configured username', async () => {
+    const findUserByUsername = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'tenant-user', enabled: true });
+    const client = createClient({
+      findUserByUsername,
       createUser: vi.fn(async () => {
         throw Object.assign(new Error('conflict'), { statusCode: 409 });
       }),
@@ -605,11 +636,11 @@ describe('provisioning-auth-state', () => {
       },
     });
 
+    expect(findUserByUsername).toHaveBeenCalledTimes(2);
+    expect(client.findUserByEmail).not.toHaveBeenCalled();
     expect(client.updateUser).toHaveBeenCalledWith(
-      'user-2',
-      expect.objectContaining({
-        email: 'tenant-admin@example.org',
-      })
+      'tenant-user',
+      expect.objectContaining({ username: 'tenant-admin' })
     );
   });
 

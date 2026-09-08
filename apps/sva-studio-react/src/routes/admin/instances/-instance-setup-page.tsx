@@ -34,10 +34,14 @@ const adminBootstrapModuleLabels = {
   media: 'admin.instances.adminBootstrap.modules.media',
   surveys: 'admin.instances.adminBootstrap.modules.surveys',
   'waste-management': 'admin.instances.adminBootstrap.modules.wasteManagement',
-} as const;
+  ssf: 'admin.instances.adminBootstrap.modules.ssf',
+} as const satisfies Partial<Record<string, string>>;
 
-const getModuleLabel = (moduleId: keyof typeof adminBootstrapModuleLabels) =>
-  t(adminBootstrapModuleLabels[moduleId]);
+const getModuleLabel = (moduleId: string) => {
+  const translationKey =
+    adminBootstrapModuleLabels[moduleId as keyof typeof adminBootstrapModuleLabels];
+  return translationKey ? t(translationKey) : moduleId;
+};
 
 export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
   const instancesApi = useInstances();
@@ -336,7 +340,7 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
                     />
                     <span className="space-y-1">
                       <span id={titleId} className="block font-medium text-foreground">
-                        {getModuleLabel(module.moduleId as keyof typeof adminBootstrapModuleLabels)}
+                        {getModuleLabel(module.moduleId)}
                       </span>
                       <span id={hintId} className="block text-muted-foreground">
                         {t('admin.instances.adminBootstrap.moduleHint', {

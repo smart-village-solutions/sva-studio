@@ -1,0 +1,4 @@
+{
+  "prNumber": 1261,
+  "body": "In der Rollenverwaltung können jetzt neben Studio-Rollen auch externe und integrierte Keycloak-Rollen angezeigt werden.\n\n- Die Standardansicht bleibt auf Studio-Rollen fokussiert.\n- Das vorhandene Dropdown wechselt zu externen oder integrierten Keycloak-Rollen.\n- Keycloak-Rollen werden als schreibgeschützter Katalog dargestellt."
+}

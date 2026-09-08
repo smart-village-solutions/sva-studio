@@ -8,7 +8,11 @@ import { sendPasswordSetupEmailInternal } from './user-password-setup-email-hand
 import { reprovisionMainserverUserInternal } from './user-reprovision-mainserver-handler.js';
 import { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers.js';
 import { reconcilePlaceholderInternal } from './reconcile-handler.js';
-import { listPermissionsInternal, listRolesInternal } from './roles-handlers.js';
+import {
+  listKeycloakRolesInternal,
+  listPermissionsInternal,
+  listRolesInternal,
+} from './roles-handlers.js';
 import { createRoleInternal } from './roles-handlers.create.js';
 import { deleteRoleInternal } from './roles-handlers.delete.js';
 import { updateRoleInternal } from './roles-handlers.update.js';
@@ -74,6 +78,9 @@ export const getMyProfileHandler = async (request: Request): Promise<Response> =
 
 export const listRolesHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, listRolesInternal);
+
+export const listKeycloakRolesHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, listKeycloakRolesInternal);
 
 export const listPermissionsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, listPermissionsInternal);

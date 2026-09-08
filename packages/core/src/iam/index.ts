@@ -27,6 +27,7 @@ export type {
   IamGroupMembershipOrigin,
   IamGroupType,
   IamKeycloakMappingStatus,
+  IamKeycloakRealmRole,
   IamKeycloakRealmRoleAssignment,
   IamKeycloakRoleAssignmentMutationResult,
   IamKeycloakRoleCategory,

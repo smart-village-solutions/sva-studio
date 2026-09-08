@@ -20,6 +20,12 @@ import { consumeRateLimit } from './rate-limit.js';
 import { loadRoleListItems } from './role-query.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
+import {
+  createKeycloakRoleOperationError,
+  loadKeycloakRoleCatalog,
+  projectKeycloakRoleCatalog,
+  requireKeycloakRoleProvider,
+} from './user-keycloak-role-assignments.js';
 
 const loadPermissions = async (
   client: QueryClient,
@@ -51,7 +57,10 @@ ORDER BY p.permission_key ASC;
       instanceId: row.instance_id,
       permissionKey: row.permission_key,
       ...((row.description ?? getManagedPermissionMetadata(row.permission_key)?.description)
-        ? { description: row.description ?? getManagedPermissionMetadata(row.permission_key)?.description }
+        ? {
+            description:
+              row.description ?? getManagedPermissionMetadata(row.permission_key)?.description,
+          }
         : {}),
       ...(getManagedPermissionMetadata(row.permission_key)?.runtimeScope
         ? {
@@ -61,7 +70,8 @@ ORDER BY p.permission_key ASC;
       ...(getManagedPermissionMetadata(row.permission_key)?.isScopeAssignable
         ? {
             isScopeAssignable: true,
-            supportedAccessScopes: getManagedPermissionMetadata(row.permission_key)?.supportedAccessScopes,
+            supportedAccessScopes: getManagedPermissionMetadata(row.permission_key)
+              ?.supportedAccessScopes,
           }
         : {}),
     }));
@@ -80,7 +90,11 @@ const roleReadHandlers = createRoleReadHandlers({
     if (!ctx.user.instanceId && options.allowPlatformRoles) {
       return requireRoles(ctx, new Set(['instance_registry_admin']), requestId);
     }
-    return authorizeInstancePermissionForUser({ ctx, action: 'iam.role.read' }).then((result) =>
+    return authorizeInstancePermissionForUser({
+      ctx,
+      action: 'iam.role.read',
+      instanceId: options.instanceId,
+    }).then((result) =>
       result.ok
         ? null
         : createApiError(
@@ -93,10 +107,27 @@ const roleReadHandlers = createRoleReadHandlers({
     );
   },
   listPlatformRolesInternal,
-  loadPermissions: (instanceId) => withInstanceScopedDb(instanceId, (client) => loadPermissions(client, instanceId)),
-  loadRoleListItems: (instanceId) => withInstanceScopedDb(instanceId, (client) => loadRoleListItems(client, instanceId)),
+  loadKeycloakRoleListItems: async (instanceId, requestId) => {
+    try {
+      const provider = await requireKeycloakRoleProvider(instanceId, requestId);
+      return provider instanceof Response
+        ? provider
+        : projectKeycloakRoleCatalog(await loadKeycloakRoleCatalog(provider));
+    } catch (error) {
+      return createKeycloakRoleOperationError(
+        error,
+        requestId,
+        'Der Keycloak-Rollenkatalog konnte intern nicht geladen werden.'
+      );
+    }
+  },
+  loadPermissions: (instanceId) =>
+    withInstanceScopedDb(instanceId, (client) => loadPermissions(client, instanceId)),
+  loadRoleListItems: (instanceId) =>
+    withInstanceScopedDb(instanceId, (client) => loadRoleListItems(client, instanceId)),
   requireRoles,
   resolveActorInfo,
 });
 
-export const { listPermissionsInternal, listRolesInternal } = roleReadHandlers;
+export const { listKeycloakRolesInternal, listPermissionsInternal, listRolesInternal } =
+  roleReadHandlers;

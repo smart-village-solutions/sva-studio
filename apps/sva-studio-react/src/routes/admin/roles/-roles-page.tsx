@@ -1,10 +1,5 @@
 import { IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
-import {
-  Button,
-  type StudioColumnDef,
-  StudioDataTable,
-  StudioListPageTemplate,
-} from '@sva/studio-ui-react';
+import { Button, StudioDataTable, StudioListPageTemplate } from '@sva/studio-ui-react';
 import React from 'react';
 import { Link } from '@tanstack/react-router';
 
@@ -14,8 +9,8 @@ import {
   createStudioDataTableSortingLabels,
 } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Badge } from '../../../components/ui/badge';
 import { Card } from '../../../components/ui/card';
+import { useKeycloakRoles } from '../../../hooks/use-keycloak-roles';
 import { useRoles } from '../../../hooks/use-roles';
 import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { useAuth } from '../../../providers/auth-provider';
@@ -27,12 +22,12 @@ import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { matchesRoleTypeFilter, RoleFilters, type RoleTypeFilter } from './-role-filters';
 import {
-  getRoleDeleteConfirmationContent,
-  roleErrorMessage,
-  roleStatusLabel,
-  roleStatusTone,
-  roleTypeLabel,
-} from './-roles-shared';
+  createRoleListColumns,
+  toKeycloakRoleRow,
+  toLocalRoleRow,
+  type RoleRow,
+} from './-role-list-columns';
+import { getRoleDeleteConfirmationContent, roleErrorMessage } from './-roles-shared';
 
 const RECONCILE_OUTCOME_LABEL_KEYS = {
   success: 'admin.roles.messages.reconcileOutcome.success',
@@ -40,18 +35,6 @@ const RECONCILE_OUTCOME_LABEL_KEYS = {
   blocked: 'admin.roles.messages.reconcileOutcome.blocked',
   failed: 'admin.roles.messages.reconcileOutcome.failed',
 } as const satisfies Record<RoleReconcileReport['outcome'], TranslationKey>;
-
-const editabilityClassByValue = {
-  editable: 'border-primary/40 bg-primary/10 text-primary',
-  read_only: 'border-secondary/40 bg-secondary/10 text-secondary',
-  blocked: 'border-destructive/40 bg-destructive/10 text-destructive',
-} as const;
-
-const editabilityLabelKey = {
-  editable: 'admin.roles.editability.editable',
-  read_only: 'admin.roles.editability.readOnly',
-  blocked: 'admin.roles.editability.blocked',
-} as const;
 
 export const RolesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
@@ -65,7 +48,8 @@ export const RolesPage = () => {
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
 
   const [search, setSearch] = React.useState('');
-  const [roleTypeFilter, setRoleTypeFilter] = React.useState<RoleTypeFilter>('all');
+  const [roleTypeFilter, setRoleTypeFilter] = React.useState<RoleTypeFilter>('studio');
+  const keycloakRolesApi = useKeycloakRoles(!isPlatformScope);
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
   const deleteConfirmation = getRoleDeleteConfirmationContent();
   const visibleRoles = React.useMemo(
@@ -74,121 +58,60 @@ export const RolesPage = () => {
     [isPlatformScope, rolesApi.roles]
   );
 
-  const filteredRoles = React.useMemo(() => {
+  const filteredRoles = React.useMemo<readonly RoleRow[]>(() => {
     const query = search.trim().toLowerCase();
-    return visibleRoles.filter((role) => {
-      if (!matchesRoleTypeFilter(role, roleTypeFilter)) {
-        return false;
-      }
-      if (!query) {
-        return true;
-      }
+    const localExternalRoleNames = new Set(visibleRoles.map((role) => role.externalRoleName));
+    const localRows = visibleRoles.map(toLocalRoleRow);
+    const orphanedStudioRows = keycloakRolesApi.roles
+      .filter(
+        (role) => role.managedBy === 'studio' && !localExternalRoleNames.has(role.roleName)
+      )
+      .map(toKeycloakRoleRow);
+    const sourceRoles =
+      isPlatformScope || roleTypeFilter === 'studio'
+        ? [...localRows, ...orphanedStudioRows]
+        : keycloakRolesApi.roles.map(toKeycloakRoleRow);
 
-      return (
-        role.roleName.toLowerCase().includes(query) ||
-        role.roleKey.toLowerCase().includes(query) ||
-        role.description?.toLowerCase().includes(query) ||
-        role.permissions.some((permission) =>
-          permission.permissionKey.toLowerCase().includes(query)
-        )
-      );
-    });
-  }, [roleTypeFilter, search, visibleRoles]);
+    return sourceRoles.filter(
+      (role) =>
+        (isPlatformScope || matchesRoleTypeFilter(role, roleTypeFilter)) &&
+        (!query ||
+          role.roleName.toLowerCase().includes(query) ||
+          role.roleKey.toLowerCase().includes(query) ||
+          role.description?.toLowerCase().includes(query) ||
+          role.localRole?.permissions.some((permission) =>
+            permission.permissionKey.toLowerCase().includes(query)
+          ))
+    );
+  }, [isPlatformScope, keycloakRolesApi.roles, roleTypeFilter, search, visibleRoles]);
 
-  const roleColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredRoles)[number]>[]>(
-    () => [
-      {
-        id: 'roleName',
-        header: t('admin.roles.table.headerName'),
-        cell: (role) => (
-          <div className="space-y-1">
-            <span className="block font-semibold">{role.roleName}</span>
-            <span className="block text-xs text-muted-foreground">{role.roleKey}</span>
-            <span className="block text-xs text-muted-foreground">
-              {role.description?.trim() || t('admin.roles.messages.noDescription')}
-            </span>
-          </div>
-        ),
-        sortable: true,
-        sortLabel: t('admin.roles.table.headerName'),
-        sortValue: (role) => role.roleName.toLowerCase(),
-      },
-      {
-        id: 'type',
-        header: t('admin.roles.table.headerType'),
-        cell: (role) => {
-          const editability = role.editability ?? 'editable';
-          return (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{roleTypeLabel(role)}</span>
-                <Badge
-                  className={`rounded-full ${editabilityClassByValue[editability]}`}
-                  variant="outline"
-                >
-                  {t(editabilityLabelKey[editability])}
-                </Badge>
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        id: 'sync',
-        header: t('admin.roles.table.headerSync'),
-        cell: (role) => (
-          <div className="space-y-2">
-            <Badge
-              className={`rounded-full ${roleStatusTone(role.syncState)}`}
-              aria-label={`${t('admin.roles.table.headerSync')}: ${roleStatusLabel(role.syncState)}`}
-              variant="outline"
-            >
-              {roleStatusLabel(role.syncState)}
-            </Badge>
-            {role.syncError ? (
-              <p className="text-xs text-destructive" role="status">
-                {t('admin.roles.messages.syncErrorCode', { code: role.syncError.code })}
-              </p>
-            ) : null}
-            {!role.syncError && role.diagnostics && role.diagnostics.length > 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {t('admin.roles.messages.diagnosticCodes', {
-                  codes: role.diagnostics.map((diagnostic) => diagnostic.code).join(', '),
-                })}
-              </p>
-            ) : null}
-          </div>
-        ),
-      },
-      {
-        id: 'permissions',
-        header: t('admin.roles.table.headerPermissions'),
-        cell: (role) => String(role.permissions.length),
-        sortable: true,
-        sortLabel: t('admin.roles.table.headerPermissions'),
-        sortValue: (role) => role.permissions.length,
-      },
-      {
-        id: 'memberCount',
-        header: t('admin.roles.table.headerUserCount'),
-        cell: (role) => String(role.memberCount),
-        sortable: true,
-        sortLabel: t('admin.roles.table.headerUserCount'),
-        sortValue: (role) => role.memberCount,
-      },
-    ],
-    [filteredRoles]
+  const showsStudioRoleDetails = isPlatformScope || roleTypeFilter === 'studio';
+
+  const roleColumns = React.useMemo(
+    () => createRoleListColumns(showsStudioRoleDetails),
+    [showsStudioRoleDetails]
   );
 
+  const selectedApi = roleTypeFilter === 'studio' || isPlatformScope ? rolesApi : keycloakRolesApi;
+  const pageIsLoading =
+    selectedApi.isLoading ||
+    (!isPlatformScope && roleTypeFilter === 'studio' && keycloakRolesApi.isLoading);
+  const keepsFiltersWhileLoading = !isPlatformScope && keycloakRolesApi.isLoading && !rolesApi.isLoading;
+  const errorApi =
+    selectedApi.error || isPlatformScope || roleTypeFilter !== 'studio'
+      ? selectedApi
+      : keycloakRolesApi;
+
   return (
-    <section className="space-y-5" aria-busy={rolesApi.isLoading}>
+    <section className="space-y-5" aria-busy={pageIsLoading}>
       <StudioListPageTemplate
         title={t(isPlatformScope ? 'admin.roles.page.platformTitle' : 'admin.roles.page.title')}
         description={t(
           isPlatformScope ? 'admin.roles.page.platformSubtitle' : 'admin.roles.page.subtitle'
         )}
         primaryAction={
-          canUpdateRoles || (!isPlatformScope && canCreateRoles)
+          (isPlatformScope || roleTypeFilter === 'studio') &&
+          (canUpdateRoles || (!isPlatformScope && canCreateRoles))
             ? {
                 label: t(
                   isPlatformScope
@@ -234,20 +157,25 @@ export const RolesPage = () => {
           sorting={{ mode: 'client', labels: studioDataTableSortingLabels }}
           getRowId={(role) => role.id}
           selectionMode="none"
-          isLoading={rolesApi.isLoading}
+          isLoading={pageIsLoading && !keepsFiltersWhileLoading}
           loadingState={t('content.messages.loading')}
           emptyState={
             <Card
               className="border-none p-0 text-sm text-muted-foreground shadow-none"
               role="status"
             >
-              {t('admin.roles.messages.emptyState')}
+              {t(
+                keepsFiltersWhileLoading
+                  ? 'content.messages.loading'
+                  : 'admin.roles.messages.emptyState'
+              )}
             </Card>
           }
           toolbarStart={
             <RoleFilters
               search={search}
               roleType={roleTypeFilter}
+              showRoleType={!isPlatformScope}
               onSearchChange={setSearch}
               onRoleTypeChange={setRoleTypeFilter}
             />
@@ -256,7 +184,9 @@ export const RolesPage = () => {
             isPlatformScope
               ? undefined
               : (role) => {
-                  const isReadOnly = isTenantRoleReadOnly(role);
+                  if (!role.localRole) return null;
+                  const localRole = role.localRole;
+                  const isReadOnly = isTenantRoleReadOnly(localRole);
 
                   return (
                     <>
@@ -270,12 +200,12 @@ export const RolesPage = () => {
                           <IconEdit aria-hidden="true" className="h-4 w-4" />
                         </Link>
                       </Button>
-                      {canUpdateRoles && role.syncState === 'failed' ? (
+                      {canUpdateRoles && localRole.syncState === 'failed' ? (
                         <Button
                           type="button"
                           size="icon"
                           variant="secondary"
-                          disabled={role.managedBy !== 'studio'}
+                          disabled={localRole.managedBy !== 'studio'}
                           aria-label={t('admin.roles.actions.retrySync')}
                           title={t('admin.roles.actions.retrySync')}
                           onClick={() => void rolesApi.retryRoleSync(role.id)}
@@ -343,22 +273,22 @@ export const RolesPage = () => {
         </Alert>
       ) : null}
 
-      {rolesApi.error ? (
+      {errorApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>
-              {roleErrorMessage(rolesApi.error, 'admin.roles.messages.error', {
+              {roleErrorMessage(errorApi.error, 'admin.roles.messages.error', {
                 includeKeycloakReconcileError: true,
                 includeRecoveryRunningError: true,
               })}
             </span>
-            <IamRuntimeDiagnosticDetails error={rolesApi.error} />
+            <IamRuntimeDiagnosticDetails error={errorApi.error} />
             <div>
               <Button
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={() => void rolesApi.refetch()}
+                onClick={() => void errorApi.refetch()}
               >
                 {t('admin.roles.actions.retry')}
               </Button>

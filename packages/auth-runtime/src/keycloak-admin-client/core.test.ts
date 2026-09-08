@@ -233,7 +233,8 @@ describe('Keycloak admin client', () => {
       sleep,
     });
 
-    await expect(client.listRoles()).resolves.toEqual([]);
+    await expect(client.listRoles({ briefRepresentation: false })).resolves.toEqual([]);
+    expect(fetchImpl.mock.calls[1]?.[0]).toContain('briefRepresentation=false');
     expect(sleep).toHaveBeenCalledWith(1000);
     expect(state.logger.warn).toHaveBeenCalledWith(
       'Retrying Keycloak request',

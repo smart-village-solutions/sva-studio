@@ -1,5 +1,9 @@
 import { classifyTenantKeycloakRole, isTenantKeycloakRoleVisible } from '@sva/iam-admin';
-import type { IamKeycloakRealmRoleAssignment, IamUserKeycloakRoleAssignments } from '@sva/core';
+import type {
+  IamKeycloakRealmRole,
+  IamKeycloakRealmRoleAssignment,
+  IamUserKeycloakRoleAssignments,
+} from '@sva/core';
 import { z } from 'zod';
 
 import type { IdentityProviderPort, IdentityRole } from '../identity-provider-port.js';
@@ -40,19 +44,13 @@ const readManagedBy = (role: IdentityRole): 'studio' | 'external' | 'keycloak_bu
   return role.attributes?.managed_by?.[0] === 'studio' ? 'studio' : 'external';
 };
 
-export const projectKeycloakRoleAssignments = (input: {
-  readonly catalog: readonly IdentityRole[];
-  readonly direct: readonly IdentityRole[];
-  readonly effective: readonly IdentityRole[];
-}): readonly IamKeycloakRealmRoleAssignment[] => {
-  const directNames = new Set(input.direct.map((role) => role.externalName));
-  const effectiveNames = new Set(input.effective.map((role) => role.externalName));
-  return input.catalog
+export const projectKeycloakRoleCatalog = (
+  catalog: readonly IdentityRole[]
+): readonly IamKeycloakRealmRole[] =>
+  catalog
     .filter(isTenantKeycloakRoleVisible)
-    .map((role): IamKeycloakRealmRoleAssignment => {
+    .map((role): IamKeycloakRealmRole => {
       const policy = classifyTenantKeycloakRole(role);
-      const direct = directNames.has(role.externalName);
-      const effective = effectiveNames.has(role.externalName);
       return {
         id: role.id ?? role.externalName,
         roleName: role.externalName,
@@ -61,13 +59,28 @@ export const projectKeycloakRoleAssignments = (input: {
         managedBy: readManagedBy(role),
         category: policy.category,
         assignable: policy.assignable,
-        direct,
-        effective,
-        origin: direct ? 'direct' : effective ? 'composite' : 'unassigned',
         ...(policy.reasonCode ? { reasonCode: policy.reasonCode } : {}),
       };
     })
     .sort((left, right) => left.roleName.localeCompare(right.roleName));
+
+export const projectKeycloakRoleAssignments = (input: {
+  readonly catalog: readonly IdentityRole[];
+  readonly direct: readonly IdentityRole[];
+  readonly effective: readonly IdentityRole[];
+}): readonly IamKeycloakRealmRoleAssignment[] => {
+  const directNames = new Set(input.direct.map((role) => role.externalName));
+  const effectiveNames = new Set(input.effective.map((role) => role.externalName));
+  return projectKeycloakRoleCatalog(input.catalog).map((role) => {
+    const direct = directNames.has(role.roleName);
+    const effective = effectiveNames.has(role.roleName);
+    return {
+      ...role,
+      direct,
+      effective,
+      origin: direct ? 'direct' : effective ? 'composite' : 'unassigned',
+    };
+  });
 };
 
 export const resolveKeycloakRoleMutationDelta = (input: {
@@ -188,7 +201,11 @@ export const loadKeycloakRoleCatalog = async (
   const pageSignatures = new Set<string>();
   for (let page = 0; page < MAX_ROLE_PAGES; page += 1) {
     const pageRoles = await trackKeycloakCall('list_keycloak_role_catalog_page', () =>
-      provider.listRoles({ first: page * ROLE_PAGE_SIZE, max: ROLE_PAGE_SIZE })
+      provider.listRoles({
+        first: page * ROLE_PAGE_SIZE,
+        max: ROLE_PAGE_SIZE,
+        briefRepresentation: false,
+      })
     );
     if (pageRoles.length < ROLE_PAGE_SIZE) return [...roles, ...pageRoles];
     const signature = pageRoles.map((role) => role.id ?? role.externalName).join('\u0000');
@@ -225,7 +242,11 @@ export const createKeycloakRoleDependencyError = (requestId?: string): Response 
     { dependency: 'keycloak' }
   );
 
-export const createKeycloakRoleOperationError = (error: unknown, requestId?: string): Response => {
+export const createKeycloakRoleOperationError = (
+  error: unknown,
+  requestId?: string,
+  unexpectedErrorMessage = 'Die Keycloak-Rollenzuweisung konnte intern nicht verarbeitet werden.'
+): Response => {
   if (error instanceof KeycloakAdminUnavailableError) {
     return createKeycloakRoleDependencyError(requestId);
   }
@@ -241,7 +262,7 @@ export const createKeycloakRoleOperationError = (error: unknown, requestId?: str
   return createApiError(
     500,
     'internal_error',
-    'Die Keycloak-Rollenzuweisung konnte intern nicht verarbeitet werden.',
+    unexpectedErrorMessage,
     requestId,
     { reason_code: 'unexpected_internal_error' }
   );

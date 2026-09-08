@@ -18,6 +18,7 @@ import type {
   InstanceAuditRun,
   IamInstanceDetail,
   IamInstanceListItem,
+  IamKeycloakRealmRole,
   IamKeycloakRoleAssignmentMutationResult,
   IamLegalTextListItem,
   IamPendingLegalTextItem,
@@ -732,6 +733,9 @@ export const updateMyProfile = async (
 
 export const listRoles = async (): Promise<ApiListResponse<IamRoleListItem>> =>
   requestJson<ApiListResponse<IamRoleListItem>>('/api/v1/iam/roles');
+
+export const listKeycloakRoles = async (): Promise<ApiListResponse<IamKeycloakRealmRole>> =>
+  requestJson<ApiListResponse<IamKeycloakRealmRole>>('/api/v1/iam/keycloak-roles');
 
 export const listGroups = async (): Promise<ApiListResponse<IamAdminGroupListItem>> =>
   requestJson<ApiListResponse<IamAdminGroupListItem>>('/api/v1/iam/groups');

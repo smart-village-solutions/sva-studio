@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   loadKeycloakRoleCatalog,
+  projectKeycloakRoleCatalog,
   projectKeycloakRoleAssignments,
   resolveKeycloakRoleMutationDelta,
 } from './user-keycloak-role-handlers.js';
@@ -19,8 +20,16 @@ describe('Keycloak role catalog pagination', () => {
     const roles = await loadKeycloakRoleCatalog({ listRoles } as never);
 
     expect(roles).toHaveLength(101);
-    expect(listRoles).toHaveBeenNthCalledWith(1, { first: 0, max: 100 });
-    expect(listRoles).toHaveBeenNthCalledWith(2, { first: 100, max: 100 });
+    expect(listRoles).toHaveBeenNthCalledWith(1, {
+      first: 0,
+      max: 100,
+      briefRepresentation: false,
+    });
+    expect(listRoles).toHaveBeenNthCalledWith(2, {
+      first: 100,
+      max: 100,
+      briefRepresentation: false,
+    });
   });
 
   it('fails closed when a provider repeats a full page', async () => {
@@ -41,6 +50,18 @@ describe('Keycloak role catalog pagination', () => {
 describe('Keycloak role assignment projection', () => {
   const newsRole = { id: 'news', externalName: 'news_editor' };
   const eventRole = { id: 'event', externalName: 'event_editor' };
+
+  it('classifies catalog entries independently from user assignments', () => {
+    expect(
+      projectKeycloakRoleCatalog([
+        { id: 'external', externalName: 'news_editor' },
+        { id: 'builtin', externalName: 'offline_access' },
+      ])
+    ).toEqual([
+      expect.objectContaining({ roleName: 'news_editor', managedBy: 'external' }),
+      expect.objectContaining({ roleName: 'offline_access', managedBy: 'keycloak_builtin' }),
+    ]);
+  });
 
   it('separates direct, inherited and unassigned realm roles', () => {
     const result = projectKeycloakRoleAssignments({

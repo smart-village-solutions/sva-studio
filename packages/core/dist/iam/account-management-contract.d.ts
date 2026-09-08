@@ -164,7 +164,7 @@ export type IamCreateUserResult = {
 };
 export type IamKeycloakMappingStatus = 'mapped' | 'unmapped' | 'manual_review';
 export type IamKeycloakRoleCategory = 'assignable' | 'system_admin' | 'keycloak_builtin' | 'client_role' | 'service_role' | 'platform_role';
-export type IamKeycloakRealmRoleAssignment = {
+export type IamKeycloakRealmRole = {
     readonly id: string;
     readonly roleName: string;
     readonly description?: string;
@@ -172,10 +172,12 @@ export type IamKeycloakRealmRoleAssignment = {
     readonly managedBy: 'studio' | 'external' | 'keycloak_builtin';
     readonly category: IamKeycloakRoleCategory;
     readonly assignable: boolean;
+    readonly reasonCode?: string;
+};
+export type IamKeycloakRealmRoleAssignment = IamKeycloakRealmRole & {
     readonly direct: boolean;
     readonly effective: boolean;
     readonly origin: 'direct' | 'composite' | 'unassigned';
-    readonly reasonCode?: string;
 };
 export type IamUserKeycloakRoleAssignments = {
     readonly userRef: string;

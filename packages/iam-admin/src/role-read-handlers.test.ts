@@ -26,36 +26,47 @@ const actor = {
 };
 
 const roles = [{ id: 'role-1', roleKey: 'editor' }];
+const keycloakRoles = [{ id: 'kc-role-1', roleName: 'news.editor' }];
 const permissions = [{ id: 'perm-1', permissionKey: 'contents.read' }];
 
 const createDeps = createTestDepsBuilder<
   RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>
 >(() => ({
-    asApiList: vi.fn((data, pagination, requestId) => ({ data, pagination, ...(requestId ? { requestId } : {}) })),
-    classifyIamDiagnosticError: vi.fn(() => ({
-      status: 503,
-      code: 'database_unavailable',
-      message: 'IAM-Datenbank ist nicht erreichbar.',
-    })),
-    consumeRateLimit: vi.fn(() => null),
-    createApiError: vi.fn((status, code, message, requestId, details) =>
-      createJsonResponse(status, { error: { code, message, ...(details ? { details } : {}) }, requestId })
-    ),
-    ensureFeature: vi.fn(() => null),
-    getFeatureFlags: vi.fn(() => ({})),
-    getWorkspaceContext: vi.fn(() => ({ requestId: 'req-workspace', traceId: 'trace-workspace' })),
-    jsonResponse: vi.fn(createJsonResponse),
-    authorizeRoleReadAccess: vi.fn(async () => null),
-    listPlatformRolesInternal: vi.fn(async () => createJsonResponse(200, { data: [{ id: 'platform-role' }] })),
-    loadPermissions: vi.fn(async () => permissions),
-    loadRoleListItems: vi.fn(async () => roles),
-    requireRoles: vi.fn((requestContext, roles, requestId) =>
-      requestContext.user.roles.some((role) => roles.has(role))
-        ? null
-        : createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' }, requestId })
-    ),
-    resolveActorInfo: vi.fn(async () => ({ actor })),
-  })) satisfies RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>;
+  asApiList: vi.fn((data, pagination, requestId) => ({
+    data,
+    pagination,
+    ...(requestId ? { requestId } : {}),
+  })),
+  classifyIamDiagnosticError: vi.fn(() => ({
+    status: 503,
+    code: 'database_unavailable',
+    message: 'IAM-Datenbank ist nicht erreichbar.',
+  })),
+  consumeRateLimit: vi.fn(() => null),
+  createApiError: vi.fn((status, code, message, requestId, details) =>
+    createJsonResponse(status, {
+      error: { code, message, ...(details ? { details } : {}) },
+      requestId,
+    })
+  ),
+  ensureFeature: vi.fn(() => null),
+  getFeatureFlags: vi.fn(() => ({})),
+  getWorkspaceContext: vi.fn(() => ({ requestId: 'req-workspace', traceId: 'trace-workspace' })),
+  jsonResponse: vi.fn(createJsonResponse),
+  authorizeRoleReadAccess: vi.fn(async () => null),
+  listPlatformRolesInternal: vi.fn(async () =>
+    createJsonResponse(200, { data: [{ id: 'platform-role' }] })
+  ),
+  loadKeycloakRoleListItems: vi.fn(async () => keycloakRoles),
+  loadPermissions: vi.fn(async () => permissions),
+  loadRoleListItems: vi.fn(async () => roles),
+  requireRoles: vi.fn((requestContext, roles, requestId) =>
+    requestContext.user.roles.some((role) => roles.has(role))
+      ? null
+      : createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' }, requestId })
+  ),
+  resolveActorInfo: vi.fn(async () => ({ actor })),
+})) satisfies RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>;
 
 describe('createRoleReadHandlers', () => {
   beforeEach(() => {
@@ -66,7 +77,10 @@ describe('createRoleReadHandlers', () => {
     const deps = createDeps();
     const handlers = createRoleReadHandlers(deps);
 
-    const response = await handlers.listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), ctx);
+    const response = await handlers.listRolesInternal(
+      new Request('http://localhost/api/v1/iam/roles'),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -81,30 +95,92 @@ describe('createRoleReadHandlers', () => {
     const authorizeRoleReadAccess = vi.fn(async () => null);
     const deps = createDeps({
       authorizeRoleReadAccess,
-      requireRoles: vi.fn(() => createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' } })),
+      requireRoles: vi.fn(() =>
+        createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' } })
+      ),
     });
     const handlers = createRoleReadHandlers(deps);
 
-    const response = await handlers.listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), {
-      ...ctx,
-      user: { ...ctx.user, roles: ['custom_role'] },
-    });
+    const response = await handlers.listRolesInternal(
+      new Request('http://localhost/api/v1/iam/roles'),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['custom_role'] },
+      }
+    );
 
     expect(response.status).toBe(200);
     expect(authorizeRoleReadAccess).toHaveBeenCalledWith(
       expect.any(Request),
       expect.objectContaining({ user: expect.objectContaining({ roles: ['custom_role'] }) }),
       'req-workspace',
-      { allowPlatformRoles: true }
+      { allowPlatformRoles: true, instanceId: 'de-musterhausen' }
     );
     expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
+  it('lists tenant Keycloak roles through the separate catalog', async () => {
+    const deps = createDeps();
+    const handlers = createRoleReadHandlers(deps);
+
+    const response = await handlers.listKeycloakRolesInternal(
+      new Request('http://localhost/api/v1/iam/keycloak-roles'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: keycloakRoles,
+      pagination: { page: 1, pageSize: 1, total: 1 },
+      requestId: 'req-roles',
+    });
+    expect(deps.loadKeycloakRoleListItems).toHaveBeenCalledWith('de-musterhausen', 'req-roles');
+    expect(deps.authorizeRoleReadAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      ctx,
+      'req-workspace',
+      { allowPlatformRoles: false, instanceId: 'de-musterhausen' }
+    );
+  });
+
+  it('authorizes the resolved tenant before loading its Keycloak catalog', async () => {
+    const denied = createJsonResponse(403, {
+      error: { code: 'forbidden', message: 'forbidden' },
+    });
+    const authorizeRoleReadAccess = vi.fn(async (_request, _ctx, _requestId, options) =>
+      options.instanceId === 'tenant-b' ? denied : null
+    );
+    const deps = createDeps({
+      authorizeRoleReadAccess,
+      resolveActorInfo: vi.fn(async () => ({
+        actor: { instanceId: 'tenant-b', requestId: 'req-tenant-b' },
+      })),
+    });
+    const handlers = createRoleReadHandlers(deps);
+
+    const response = await handlers.listKeycloakRolesInternal(
+      new Request('http://localhost/api/v1/iam/keycloak-roles?instanceId=tenant-b'),
+      ctx
+    );
+
+    expect(response.status).toBe(403);
+    expect(authorizeRoleReadAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      ctx,
+      'req-workspace',
+      { allowPlatformRoles: false, instanceId: 'tenant-b' }
+    );
+    expect(deps.loadKeycloakRoleListItems).not.toHaveBeenCalled();
   });
 
   it('delegates platform role lists when no instance scope is present', async () => {
     const deps = createDeps();
     const handlers = createRoleReadHandlers(deps);
 
-    const response = await handlers.listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), platformCtx);
+    const response = await handlers.listRolesInternal(
+      new Request('http://localhost/api/v1/iam/roles'),
+      platformCtx
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ data: [{ id: 'platform-role' }] });
@@ -117,10 +193,13 @@ describe('createRoleReadHandlers', () => {
     });
     const handlers = createRoleReadHandlers(deps);
 
-    const response = await handlers.listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), {
-      ...ctx,
-      user: { ...ctx.user, roles: ['system_admin'] },
-    });
+    const response = await handlers.listRolesInternal(
+      new Request('http://localhost/api/v1/iam/roles'),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['system_admin'] },
+      }
+    );
 
     expect(response.status).toBe(403);
     expect(deps.loadRoleListItems).not.toHaveBeenCalled();
@@ -139,7 +218,10 @@ describe('createRoleReadHandlers', () => {
     });
     const handlers = createRoleReadHandlers(deps);
 
-    const response = await handlers.listPermissionsInternal(new Request('http://localhost/api/v1/iam/permissions'), ctx);
+    const response = await handlers.listPermissionsInternal(
+      new Request('http://localhost/api/v1/iam/permissions'),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -156,7 +238,10 @@ describe('createRoleReadHandlers', () => {
     });
     const handlers = createRoleReadHandlers(deps);
 
-    const response = await handlers.listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), ctx);
+    const response = await handlers.listRolesInternal(
+      new Request('http://localhost/api/v1/iam/roles'),
+      ctx
+    );
 
     expect(response.status).toBe(503);
     expect(deps.classifyIamDiagnosticError).toHaveBeenCalledWith(

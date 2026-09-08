@@ -2,7 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authorizeInstancePermissionForUser: vi.fn(async () => ({ ok: true as const })),
+  createKeycloakRoleOperationError: vi.fn(),
+  loadKeycloakRoleCatalog: vi.fn(),
+  projectKeycloakRoleCatalog: vi.fn(),
   query: vi.fn(),
+  requireKeycloakRoleProvider: vi.fn(),
   resolveActorInfo: vi.fn(async () => ({
     actor: {
       instanceId: 'de-musterhausen',
@@ -95,15 +99,35 @@ vi.mock('./shared-runtime.js', () => ({
     callback({ query: mocks.query }),
 }));
 
+vi.mock('./user-keycloak-role-assignments.js', () => ({
+  createKeycloakRoleOperationError: (...args: unknown[]) =>
+    mocks.createKeycloakRoleOperationError(...args),
+  loadKeycloakRoleCatalog: (...args: unknown[]) => mocks.loadKeycloakRoleCatalog(...args),
+  projectKeycloakRoleCatalog: (...args: unknown[]) => mocks.projectKeycloakRoleCatalog(...args),
+  requireKeycloakRoleProvider: (...args: unknown[]) =>
+    mocks.requireKeycloakRoleProvider(...args),
+}));
+
 describe('roles-handlers listPermissionsInternal', () => {
+  let listKeycloakRolesInternal: typeof import('./roles-handlers.js').listKeycloakRolesInternal;
   let listPermissionsInternal: typeof import('./roles-handlers.js').listPermissionsInternal;
 
   beforeAll(async () => {
-    ({ listPermissionsInternal } = await import('./roles-handlers.js'));
+    ({ listKeycloakRolesInternal, listPermissionsInternal } = await import('./roles-handlers.js'));
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.requireKeycloakRoleProvider.mockResolvedValue({});
+    mocks.loadKeycloakRoleCatalog.mockResolvedValue([]);
+    mocks.projectKeycloakRoleCatalog.mockReturnValue([]);
+    mocks.createKeycloakRoleOperationError.mockImplementation(
+      () =>
+        new Response(JSON.stringify({ error: { code: 'keycloak_unavailable' } }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        })
+    );
     mocks.query.mockResolvedValue({
       rows: [
         {
@@ -165,6 +189,31 @@ describe('roles-handlers listPermissionsInternal', () => {
         user: expect.objectContaining({ id: 'kc-actor-1', instanceId: 'de-musterhausen' }),
       }),
       action: 'iam.role.read',
+      instanceId: 'de-musterhausen',
     });
+  });
+
+  it('preserves Keycloak-specific errors when the role catalog cannot be loaded', async () => {
+    const keycloakError = new Error('keycloak unavailable');
+    mocks.loadKeycloakRoleCatalog.mockRejectedValueOnce(keycloakError);
+
+    const response = await listKeycloakRolesInternal(
+      new Request('http://localhost/api/v1/iam/keycloak-roles'),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'de-musterhausen',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(503);
+    expect(mocks.createKeycloakRoleOperationError).toHaveBeenCalledWith(
+      keycloakError,
+      'req-roles',
+      'Der Keycloak-Rollenkatalog konnte intern nicht geladen werden.'
+    );
   });
 });

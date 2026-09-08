@@ -5,6 +5,7 @@ import React from 'react';
 import { RolesPage } from './-roles-page';
 
 const useRolesMock = vi.fn();
+const useKeycloakRolesMock = vi.fn();
 const useAuthMock = vi.fn();
 const iamAccessAllowedMock = vi.fn();
 
@@ -51,6 +52,10 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+vi.mock('../../../hooks/use-keycloak-roles', () => ({
+  useKeycloakRoles: (enabled: boolean) => useKeycloakRolesMock(enabled),
+}));
+
 vi.mock('../../../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
@@ -60,6 +65,13 @@ describe('RolesPage', () => {
     iamAccessAllowedMock.mockReset();
     iamAccessAllowedMock.mockReturnValue(true);
     useRolesMock.mockReset();
+    useKeycloakRolesMock.mockReset();
+    useKeycloakRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
     useAuthMock.mockReset();
     useAuthMock.mockReturnValue({
       user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] },
@@ -135,6 +147,7 @@ describe('RolesPage', () => {
     expect(screen.queryByText('instance_registry_admin')).toBeNull();
     expect(screen.getAllByText('system_admin').length).toBeGreaterThan(0);
     expect(screen.getAllByText('editor').length).toBeGreaterThan(0);
+    expect((screen.getByLabelText('Rollentyp') as HTMLSelectElement).value).toBe('studio');
 
     fireEvent.change(screen.getByPlaceholderText('Nach Rolle oder Berechtigung suchen'), {
       target: { value: 'payload' },
@@ -145,16 +158,6 @@ describe('RolesPage', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Nach Rolle oder Berechtigung suchen'), {
       target: { value: '' },
-    });
-
-    fireEvent.change(screen.getByLabelText('Rollentyp'), {
-      target: { value: 'system' },
-    });
-    expect(screen.getAllByText('system_admin').length).toBeGreaterThan(0);
-    expect(screen.queryAllByText('editor')).toHaveLength(0);
-
-    fireEvent.change(screen.getByLabelText('Rollentyp'), {
-      target: { value: 'all' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Rolle' }));
@@ -194,24 +197,20 @@ describe('RolesPage', () => {
     expect(reconcile).toHaveBeenCalledTimes(1);
   });
 
-  it('shows built-in role diagnostics as read-only state', () => {
+  it('switches from Studio roles to external and built-in Keycloak roles', () => {
     useRolesMock.mockReturnValue({
       roles: [
         {
-          id: 'realm:default-roles',
-          roleKey: 'default-roles-de-musterhausen',
-          roleName: 'default-roles-de-musterhausen',
-          externalRoleName: 'default-roles-de-musterhausen',
-          managedBy: 'keycloak_builtin',
-          description: 'Default roles',
+          id: 'local-role-with-colliding-display-name',
+          roleKey: 'local_role',
+          roleName: 'orphaned_studio_role',
+          externalRoleName: 'local_role',
+          managedBy: 'studio',
+          description: 'Local role with a colliding display name',
           isSystemRole: false,
-          roleLevel: 0,
+          roleLevel: 20,
           memberCount: 0,
           syncState: 'synced',
-          editability: 'read_only',
-          diagnostics: [
-            { code: 'built_in_role', objectId: 'realm:default-roles', objectType: 'role' },
-          ],
           permissions: [],
         },
       ],
@@ -227,15 +226,143 @@ describe('RolesPage', () => {
       retryRoleSync: vi.fn(),
       reconcile: vi.fn(),
     });
+    useKeycloakRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'external:news-editor',
+          roleName: 'news_editor',
+          managedBy: 'external',
+          composite: false,
+          category: 'assignable',
+          assignable: true,
+        },
+        {
+          id: 'realm:default-roles',
+          roleName: 'default-roles-de-musterhausen',
+          managedBy: 'keycloak_builtin',
+          description: 'Default roles',
+          composite: true,
+          category: 'keycloak_builtin',
+          assignable: false,
+          reasonCode: 'keycloak_builtin_role',
+        },
+        {
+          id: 'realm:orphaned-studio-role',
+          roleName: 'orphaned_studio_role',
+          managedBy: 'studio',
+          composite: false,
+          category: 'assignable',
+          assignable: true,
+        },
+        {
+          id: 'realm:platform-role',
+          roleName: 'instance_registry_admin',
+          managedBy: 'external',
+          composite: false,
+          category: 'platform_role',
+          assignable: false,
+          reasonCode: 'platform_role',
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
 
     render(<RolesPage />);
 
+    expect(
+      screen
+        .getAllByRole('row')
+        .filter((row) => within(row).queryByText('orphaned_studio_role') !== null)
+    ).toHaveLength(2);
+    fireEvent.change(screen.getByLabelText('Rollentyp'), {
+      target: { value: 'external' },
+    });
+    expect(screen.getAllByText('news_editor').length).toBeGreaterThan(0);
+    expect(screen.queryByText('default-roles-de-musterhausen')).toBeNull();
+    expect(screen.getAllByText('Geschützte Keycloak-Rolle').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Schutzgrund: platform_role').length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('Rollentyp'), {
+      target: { value: 'builtin' },
+    });
+
     expect(screen.getAllByText('Keycloak-Built-in-Rolle').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Read-only').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Diagnose: built_in_role').length).toBeGreaterThan(0);
-    screen
-      .getAllByRole('button', { name: 'Rolle löschen' })
-      .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
+    expect(screen.queryByText('Synchronisierung')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
+    expect(useKeycloakRolesMock).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps the role type filter available while the Keycloak catalog loads', () => {
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+    useKeycloakRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.change(screen.getByLabelText('Rollentyp'), {
+      target: { value: 'external' },
+    });
+    expect(screen.getByLabelText('Rollentyp')).toBeTruthy();
+    expect(screen.getByText('Inhalte werden geladen ...')).toBeTruthy();
+  });
+
+  it('surfaces Keycloak catalog failures in the Studio view', () => {
+    const refetch = vi.fn();
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+    useKeycloakRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: {
+        name: 'IamHttpError',
+        message: 'keycloak unavailable',
+        status: 503,
+        code: 'keycloak_unavailable',
+      },
+      refetch,
+    });
+
+    render(<RolesPage />);
+
+    expect(
+      screen.getByText(
+        'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
+      )
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('triggers delete confirmation for custom roles', () => {
@@ -404,6 +531,8 @@ describe('RolesPage', () => {
     render(<RolesPage />);
 
     expect(screen.getByRole('heading', { name: 'Plattform-Rollen' })).toBeTruthy();
+    expect(screen.getAllByText('instance_registry_admin').length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText('Rollentyp')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rolle anlegen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rolle bearbeiten' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();

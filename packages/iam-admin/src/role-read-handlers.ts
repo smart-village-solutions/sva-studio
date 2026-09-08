@@ -14,7 +14,12 @@ export type RoleReadActor = {
   readonly requestId?: string;
 };
 
-export type RoleReadHandlerDeps<TRole = unknown, TPermission = unknown, TFeatureFlags = unknown> = {
+export type RoleReadHandlerDeps<
+  TRole = unknown,
+  TPermission = unknown,
+  TFeatureFlags = unknown,
+  TKeycloakRole = unknown,
+> = {
   readonly asApiList: (
     data: readonly unknown[],
     pagination: { readonly page: number; readonly pageSize: number; readonly total: number },
@@ -55,13 +60,17 @@ export type RoleReadHandlerDeps<TRole = unknown, TPermission = unknown, TFeature
     request: Request,
     ctx: RoleReadAuthenticatedRequestContext,
     requestId: string | undefined,
-    options: { readonly allowPlatformRoles: boolean }
+    options: { readonly allowPlatformRoles: boolean; readonly instanceId?: string }
   ) => Promise<Response | null> | Response | null;
   readonly listPlatformRolesInternal: (
     ctx: RoleReadAuthenticatedRequestContext,
     requestId?: string,
     traceId?: string
   ) => Promise<Response>;
+  readonly loadKeycloakRoleListItems: (
+    instanceId: string,
+    requestId?: string
+  ) => Promise<readonly TKeycloakRole[] | Response>;
   readonly loadPermissions: (instanceId: string) => Promise<readonly TPermission[]>;
   readonly loadRoleListItems: (instanceId: string) => Promise<readonly TRole[]>;
   readonly requireRoles: (
@@ -80,39 +89,58 @@ export type RoleReadApiErrorCode = ApiErrorCode;
 
 const ROOT_ADMIN_ROLES = new Set(['instance_registry_admin']);
 
-const createMissingRoleReadAuthorizerResponse = <TRole, TPermission, TFeatureFlags>(
-  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,
+const createMissingRoleReadAuthorizerResponse = <TRole, TPermission, TFeatureFlags, TKeycloakRole>(
+  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags, TKeycloakRole>,
   requestId?: string
 ): Response =>
-  deps.createApiError(403, 'forbidden', 'Autorisierungsstrategie für Rollenlesezugriffe ist nicht konfiguriert.', requestId, {
-    reason_code: 'missing_role_read_authorizer',
-  });
+  deps.createApiError(
+    403,
+    'forbidden',
+    'Autorisierungsstrategie für Rollenlesezugriffe ist nicht konfiguriert.',
+    requestId,
+    {
+      reason_code: 'missing_role_read_authorizer',
+    }
+  );
 
-const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags>(
-  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,
+const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags, TKeycloakRole>(
+  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags, TKeycloakRole>,
   request: Request,
   ctx: RoleReadAuthenticatedRequestContext,
   options: { readonly allowPlatformRoles: boolean }
 ): Promise<{ actor: RoleReadActor; requestId?: string; traceId?: string } | Response> => {
   const requestContext = deps.getWorkspaceContext();
-  const featureCheck = deps.ensureFeature(deps.getFeatureFlags(), 'iam_admin', requestContext.requestId);
+  const featureCheck = deps.ensureFeature(
+    deps.getFeatureFlags(),
+    'iam_admin',
+    requestContext.requestId
+  );
   if (featureCheck) {
     return featureCheck;
   }
-  const accessCheck = deps.authorizeRoleReadAccess
-    ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, options)
-    : !ctx.user.instanceId && options.allowPlatformRoles
-      ? deps.requireRoles(ctx, ROOT_ADMIN_ROLES, requestContext.requestId)
-      : createMissingRoleReadAuthorizerResponse(deps, requestContext.requestId);
-  if (accessCheck) {
-    return accessCheck;
-  }
   if (!ctx.user.instanceId && options.allowPlatformRoles) {
+    const accessCheck = deps.authorizeRoleReadAccess
+      ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, options)
+      : deps.requireRoles(ctx, ROOT_ADMIN_ROLES, requestContext.requestId);
+    if (accessCheck) {
+      return accessCheck;
+    }
     return deps.listPlatformRolesInternal(ctx, requestContext.requestId, requestContext.traceId);
   }
-  const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await deps.resolveActorInfo(request, ctx, {
+    requireActorMembership: true,
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
+  }
+  const accessCheck = deps.authorizeRoleReadAccess
+    ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, {
+        ...options,
+        instanceId: actorResolution.actor.instanceId,
+      })
+    : createMissingRoleReadAuthorizerResponse(deps, requestContext.requestId);
+  if (accessCheck) {
+    return accessCheck;
   }
 
   const rateLimit = deps.consumeRateLimit({
@@ -125,15 +153,20 @@ const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags>(
     return rateLimit;
   }
 
-  return { actor: actorResolution.actor, requestId: requestContext.requestId, traceId: requestContext.traceId };
+  return {
+    actor: actorResolution.actor,
+    requestId: requestContext.requestId,
+    traceId: requestContext.traceId,
+  };
 };
 
-const mapRoleReadError = <TRole, TPermission, TFeatureFlags>(
-  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,
+const mapRoleReadError = <TRole, TPermission, TFeatureFlags, TKeycloakRole>(
+  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags, TKeycloakRole>,
   error: unknown,
-  requestId?: string
+  requestId?: string,
+  fallbackMessage = 'IAM-Datenbank ist nicht erreichbar.'
 ): Response => {
-  const classified = deps.classifyIamDiagnosticError(error, 'IAM-Datenbank ist nicht erreichbar.', requestId);
+  const classified = deps.classifyIamDiagnosticError(error, fallbackMessage, requestId);
   return deps.createApiError(
     classified.status,
     classified.code,
@@ -143,54 +176,95 @@ const mapRoleReadError = <TRole, TPermission, TFeatureFlags>(
   );
 };
 
-export const createRoleReadHandlers =
-  <TRole, TPermission, TFeatureFlags>(deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>) => {
-    const listRolesInternal = async (
-      request: Request,
-      ctx: RoleReadAuthenticatedRequestContext
-    ): Promise<Response> => {
-      const resolved = await resolveRoleReadActor(deps, request, ctx, { allowPlatformRoles: true });
-      if (resolved instanceof Response) {
-        return resolved;
-      }
+export const createRoleReadHandlers = <TRole, TPermission, TFeatureFlags, TKeycloakRole>(
+  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags, TKeycloakRole>
+) => {
+  const listRolesInternal = async (
+    request: Request,
+    ctx: RoleReadAuthenticatedRequestContext
+  ): Promise<Response> => {
+    const resolved = await resolveRoleReadActor(deps, request, ctx, { allowPlatformRoles: true });
+    if (resolved instanceof Response) {
+      return resolved;
+    }
 
-      try {
-        const roles = await deps.loadRoleListItems(resolved.actor.instanceId);
-        return deps.jsonResponse(
-          200,
-          deps.asApiList(roles, { page: 1, pageSize: roles.length, total: roles.length }, resolved.actor.requestId)
-        );
-      } catch (error) {
-        return mapRoleReadError(deps, error, resolved.actor.requestId);
-      }
-    };
-
-    const listPermissionsInternal = async (
-      request: Request,
-      ctx: RoleReadAuthenticatedRequestContext
-    ): Promise<Response> => {
-      const resolved = await resolveRoleReadActor(deps, request, ctx, { allowPlatformRoles: false });
-      if (resolved instanceof Response) {
-        return resolved;
-      }
-
-      try {
-        const permissions = await deps.loadPermissions(resolved.actor.instanceId);
-        return deps.jsonResponse(
-          200,
-          deps.asApiList(
-            permissions,
-            { page: 1, pageSize: Math.max(1, permissions.length), total: permissions.length },
-            resolved.actor.requestId
-          )
-        );
-      } catch (error) {
-        return mapRoleReadError(deps, error, resolved.actor.requestId);
-      }
-    };
-
-    return {
-      listPermissionsInternal,
-      listRolesInternal,
-    };
+    try {
+      const roles = await deps.loadRoleListItems(resolved.actor.instanceId);
+      return deps.jsonResponse(
+        200,
+        deps.asApiList(
+          roles,
+          { page: 1, pageSize: roles.length, total: roles.length },
+          resolved.actor.requestId
+        )
+      );
+    } catch (error) {
+      return mapRoleReadError(deps, error, resolved.actor.requestId);
+    }
   };
+
+  const listKeycloakRolesInternal = async (
+    request: Request,
+    ctx: RoleReadAuthenticatedRequestContext
+  ): Promise<Response> => {
+    const resolved = await resolveRoleReadActor(deps, request, ctx, { allowPlatformRoles: false });
+    if (resolved instanceof Response) {
+      return resolved;
+    }
+
+    try {
+      const roles = await deps.loadKeycloakRoleListItems(
+        resolved.actor.instanceId,
+        resolved.actor.requestId
+      );
+      if (roles instanceof Response) {
+        return roles;
+      }
+      return deps.jsonResponse(
+        200,
+        deps.asApiList(
+          roles,
+          { page: 1, pageSize: Math.max(1, roles.length), total: roles.length },
+          resolved.actor.requestId
+        )
+      );
+    } catch (error) {
+      return mapRoleReadError(
+        deps,
+        error,
+        resolved.actor.requestId,
+        'Keycloak-Rollen konnten nicht geladen werden.'
+      );
+    }
+  };
+
+  const listPermissionsInternal = async (
+    request: Request,
+    ctx: RoleReadAuthenticatedRequestContext
+  ): Promise<Response> => {
+    const resolved = await resolveRoleReadActor(deps, request, ctx, { allowPlatformRoles: false });
+    if (resolved instanceof Response) {
+      return resolved;
+    }
+
+    try {
+      const permissions = await deps.loadPermissions(resolved.actor.instanceId);
+      return deps.jsonResponse(
+        200,
+        deps.asApiList(
+          permissions,
+          { page: 1, pageSize: Math.max(1, permissions.length), total: permissions.length },
+          resolved.actor.requestId
+        )
+      );
+    } catch (error) {
+      return mapRoleReadError(deps, error, resolved.actor.requestId);
+    }
+  };
+
+  return {
+    listKeycloakRolesInternal,
+    listPermissionsInternal,
+    listRolesInternal,
+  };
+};

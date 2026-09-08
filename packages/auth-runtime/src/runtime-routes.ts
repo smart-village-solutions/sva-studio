@@ -95,6 +95,7 @@ export {
   getUserHandler,
   getUserKeycloakRolesHandler,
   getUserTimelineHandler,
+  listKeycloakRolesHandler,
   listPermissionsHandler,
   listRolesHandler,
   listUsersHandler,

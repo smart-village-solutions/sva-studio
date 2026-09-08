@@ -84,6 +84,9 @@ export const accountAuthHandlerMap = {
     PUT: routeHandler(authRuntimeRoutes.updateMyOrganizationContextHandler),
   },
   '/api/v1/iam/permissions': { GET: routeHandler(authRuntimeRoutes.listPermissionsHandler) },
+  '/api/v1/iam/keycloak-roles': {
+    GET: routeHandler(authRuntimeRoutes.listKeycloakRolesHandler),
+  },
   '/api/v1/iam/roles': {
     GET: routeHandler(authRuntimeRoutes.listRolesHandler),
     POST: routeHandler(authRuntimeRoutes.createRoleHandler),

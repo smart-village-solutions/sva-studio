@@ -922,6 +922,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     if (query?.search) {
       searchParams.set('search', query.search);
     }
+    if (query?.briefRepresentation !== undefined) {
+      searchParams.set('briefRepresentation', String(query.briefRepresentation));
+    }
     const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
 
     try {

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1266,
+  "body": "Der Setup-Flow für neue Instanzen zeigt das SSF-Modul zuverlässig an\n\n- SSF-Konfigurationen können bei der initialen Tenant-Admin-Struktur als Modul ausgewählt werden.\n- Noch nicht übersetzte künftige Module werden mit ihrer Modul-ID angezeigt, statt die Setup-Seite zu blockieren."
+}

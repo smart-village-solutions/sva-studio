@@ -25,5 +25,6 @@ export const adminBootstrapInstancesAdminENResources = {
     media: 'Media',
     surveys: 'Surveys',
     wasteManagement: 'Waste management',
+    ssf: 'SSF configuration',
   },
 } as const;

@@ -41,7 +41,7 @@ describe('SSF authorization projection runtime', () => {
       }),
       claim: vi.fn(async () => false),
       confirmReadBack: vi.fn(async () => false),
-      markSessionsRevoked: vi.fn(async () => false),
+      markReady: vi.fn(async () => false),
       markBlocked: vi.fn(async () => false),
     } satisfies SsfAuthorizationProjectionLockedStore;
     const store = {

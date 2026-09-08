@@ -7,7 +7,7 @@ import {
   createPostgresSsfAuthorizationProjectionStore,
   createSsfConfigurationRevision,
   createSsfAuthorizationRevision,
-  markSsfAuthorizationSessionsRevoked,
+  markSsfAuthorizationProjectionReady,
   provisionSsfTenant,
   readSsfConfigurationOverrides,
   readReadySsfAuthorizationRevision,
@@ -211,7 +211,7 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     expect(createSsfConfigurationRevision(after)).not.toBe(createSsfConfigurationRevision(before));
   });
 
-  it('publishes an authorization revision only after read-back and session revocation', async () => {
+  it('publishes an authorization revision after read-back without claiming session revocation', async () => {
     const desired = {
       contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
       instanceId: 'tenant-a',
@@ -243,7 +243,7 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     ).toBe(true);
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
     expect(
-      await markSsfAuthorizationSessionsRevoked(rootPool, {
+      await markSsfAuthorizationProjectionReady(rootPool, {
         instanceId: 'tenant-a',
         generation: state.generation,
         authorizationRevision: revision,
@@ -251,6 +251,19 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     ).toBe(true);
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBe(revision);
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-b')).resolves.toBeNull();
+    const persisted = await rootPool.query<{
+      sessions_revoked_revision: string | null;
+      sessions_revoked_at: Date | null;
+    }>(
+      `SELECT sessions_revoked_revision, sessions_revoked_at
+         FROM ssf.authorization_projections
+        WHERE instance_id = $1`,
+      ['tenant-a']
+    );
+    expect(persisted.rows[0]).toEqual({
+      sessions_revoked_revision: null,
+      sessions_revoked_at: null,
+    });
 
     const desiredSubject = desired.subjects[0];
     if (!desiredSubject) throw new Error('projection fixture requires a subject');

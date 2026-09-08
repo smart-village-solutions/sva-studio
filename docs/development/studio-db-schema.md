@@ -96,8 +96,10 @@ Konvergenznachweis der SSF-IAM-Projektion:
   `created_at`,
 - `ssf.server_settings` und `ssf.server_locales` für installationsweite Werte,
 - `ssf.tenant_settings` und `ssf.tenant_locales` für mandantenbezogene Werte,
-- `ssf.authorization_projections` für getrennten Soll-, Read-back- und
-  Session-Widerrufszustand je Mandant,
+- `ssf.authorization_projections` für getrennten Soll- und bestätigten
+  Read-back-Zustand je Mandant; die vorhandenen Session-Widerrufsfelder bleiben
+  für eine spätere Härtung reserviert und sind keine Voraussetzung für
+  `ready`,
 - erzwungene Row-Level Security auf allen Tenanttabellen,
 - getrennte NOLOGIN-Rollen für Migration, Root-Verwaltung und
   tenantgebundene Runtime-Zugriffe.

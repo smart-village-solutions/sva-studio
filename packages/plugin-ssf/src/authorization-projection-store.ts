@@ -8,7 +8,7 @@ import {
   claimSsfAuthorizationProjection,
   confirmSsfAuthorizationProjectionReadBack,
   markSsfAuthorizationProjectionBlocked,
-  markSsfAuthorizationSessionsRevoked,
+  markSsfAuthorizationProjectionReady,
   stageSsfAuthorizationProjection,
 } from './authorization-projection-repository.js';
 
@@ -18,7 +18,7 @@ const createLockedProjectionStore = (
   stage: (projection) => stageSsfAuthorizationProjection(client, projection),
   claim: (input) => claimSsfAuthorizationProjection(client, input),
   confirmReadBack: (input) => confirmSsfAuthorizationProjectionReadBack(client, input),
-  markSessionsRevoked: (input) => markSsfAuthorizationSessionsRevoked(client, input),
+  markReady: (input) => markSsfAuthorizationProjectionReady(client, input),
   markBlocked: (input) => markSsfAuthorizationProjectionBlocked(client, input),
 });
 

@@ -16,7 +16,7 @@ export interface SsfAuthorizationProjectionLockedStore {
     readBack: SsfAuthorizationProjection;
     generation: number;
   }): Promise<boolean>;
-  markSessionsRevoked(input: {
+  markReady(input: {
     instanceId: string;
     generation: number;
     authorizationRevision: string;
@@ -63,7 +63,6 @@ export type SsfAuthorizationProjectionReconcileResult =
         | 'target_write_failed'
         | 'target_readback_failed'
         | 'target_readback_mismatch'
-        | 'session_revocation_failed'
         | 'token_issuance_resume_failed';
     }>;
 
@@ -73,7 +72,6 @@ class SsfProjectionPhaseError extends Error {
       | 'token_issuance_suspend_failed'
       | 'target_write_failed'
       | 'target_readback_failed'
-      | 'session_revocation_failed'
       | 'token_issuance_resume_failed'
   ) {
     super(reason);
@@ -123,16 +121,11 @@ const reconcileClaimedProjection = async (
     }
 
     try {
-      await dependencies.target.revokeTenantSessions(staged.instanceId, staged.desiredRevision);
-    } catch {
-      throw new SsfProjectionPhaseError('session_revocation_failed');
-    }
-    try {
       await dependencies.target.resumeTokenIssuance(staged.instanceId);
     } catch {
       throw new SsfProjectionPhaseError('token_issuance_resume_failed');
     }
-    const published = await store.markSessionsRevoked({
+    const published = await store.markReady({
       instanceId: staged.instanceId,
       generation: staged.generation,
       authorizationRevision: staged.desiredRevision,
@@ -165,8 +158,7 @@ const reconcileLockedProjection = async (
   const staged = await store.stage(desired);
   if (
     staged.status === 'ready' &&
-    staged.confirmedRevision === staged.desiredRevision &&
-    staged.sessionsRevokedRevision === staged.desiredRevision
+    staged.confirmedRevision === staged.desiredRevision
   ) {
     return {
       status: 'ready',

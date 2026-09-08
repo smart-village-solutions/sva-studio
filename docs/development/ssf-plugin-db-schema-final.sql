@@ -1,5 +1,5 @@
 -- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration, IAM-Projektion und Tenant-Grunddaten V1
--- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0003_*.sql
+-- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0004_*.sql
 -- Diese Datenbank ist getrennt von sva_studio.
 
 DO $$
@@ -259,3 +259,24 @@ GRANT UPDATE (status, revision, updated_at) ON ssf.tenants TO ssf_plugin_root;
 REVOKE DELETE ON ssf.tenants FROM ssf_plugin_root;
 GRANT SELECT (instance_id, status, revision, created_at, updated_at)
   ON ssf.tenants TO ssf_plugin_tenant_runtime;
+
+ALTER TABLE ssf.authorization_projections
+  DROP CONSTRAINT authorization_projections_status_check,
+  ADD CONSTRAINT authorization_projections_status_check CHECK (
+    status IN (
+      'pending',
+      'projecting',
+      'activation_pending',
+      'revocation_pending',
+      'ready',
+      'blocked'
+    )
+  ),
+  DROP CONSTRAINT authorization_projections_ready_check,
+  ADD CONSTRAINT authorization_projections_ready_check CHECK (
+    status <> 'ready'
+    OR (
+      confirmed_revision = desired_revision
+      AND last_error_code IS NULL
+    )
+  );

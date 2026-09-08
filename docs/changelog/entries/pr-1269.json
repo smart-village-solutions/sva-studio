@@ -1,0 +1,4 @@
+{
+  "prNumber": 1269,
+  "body": "Die SSF-Autorisierungsprojektion wird nach erfolgreichem Keycloak-Abgleich ohne verpflichtenden Session-Widerruf bereitgestellt.\n\n- Studio veröffentlicht die Autorisierungsrevision erst nach Write, Read-back und erneuter Client-Aktivierung.\n- Alte Access-Token-Rechte werden im Produktivbetrieb durch eine maximale Laufzeit von 15 Minuten begrenzt; der optionale Session-Widerruf kann später ergänzt werden."
+}

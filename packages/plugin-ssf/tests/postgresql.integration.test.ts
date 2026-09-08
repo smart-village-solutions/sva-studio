@@ -8,8 +8,10 @@ import {
   createSsfConfigurationRevision,
   createSsfAuthorizationRevision,
   markSsfAuthorizationSessionsRevoked,
+  provisionSsfTenant,
   readSsfConfigurationOverrides,
   readReadySsfAuthorizationRevision,
+  readSsfTenant,
   resolveSsfRuntimeConfiguration,
   stageSsfAuthorizationProjection,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
@@ -26,6 +28,8 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
   const tenantPool = new Pool({ connectionString: tenantDatabaseUrl });
 
   beforeAll(async () => {
+    await provisionSsfTenant(rootPool, 'tenant-a');
+    await provisionSsfTenant(rootPool, 'tenant-b');
     await upsertSsfTenantSettings(rootPool, {
       instanceId: 'tenant-a',
       defaultLocale: 'de-DE',
@@ -54,6 +58,62 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       locale: 'en',
       enabled: true,
     });
+  });
+
+  it('provisions exactly one stable tenant record for repeated requests', async () => {
+    const first = await provisionSsfTenant(rootPool, 'tenant-a');
+    const second = await provisionSsfTenant(rootPool, 'tenant-a');
+
+    expect(second).toEqual(first);
+    expect(first).toMatchObject({
+      instanceId: 'tenant-a',
+      status: 'prepared',
+      revision: 1,
+    });
+    const count = await rootPool.query<{ count: string }>(
+      'SELECT count(*) FROM ssf.tenants WHERE instance_id = $1',
+      ['tenant-a']
+    );
+    expect(count.rows[0]?.count).toBe('1');
+    await expect(
+      rootPool.query("UPDATE ssf.tenants SET status = 'active' WHERE instance_id = 'tenant-a'")
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      rootPool.query("UPDATE ssf.tenants SET instance_id = 'tenant-renamed' WHERE instance_id = 'tenant-a'")
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      rootPool.query("UPDATE ssf.tenants SET created_at = now() WHERE instance_id = 'tenant-a'")
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      rootPool.query("DELETE FROM ssf.tenants WHERE instance_id = 'tenant-a'")
+    ).rejects.toMatchObject({ code: '42501' });
+  });
+
+  it('isolates tenant records through read-only RLS access', async () => {
+    await expect(readSsfTenant(tenantPool, 'tenant-a')).resolves.toMatchObject({
+      instanceId: 'tenant-a',
+      status: 'prepared',
+    });
+    await expect(readSsfTenant(tenantPool, 'tenant-b')).resolves.toMatchObject({
+      instanceId: 'tenant-b',
+      status: 'prepared',
+    });
+
+    const client = await tenantPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']);
+      const visible = await client.query<{ instance_id: string }>(
+        'SELECT instance_id FROM ssf.tenants ORDER BY instance_id'
+      );
+      expect(visible.rows).toEqual([{ instance_id: 'tenant-a' }]);
+      await expect(
+        client.query("INSERT INTO ssf.tenants (instance_id) VALUES ('tenant-b')")
+      ).rejects.toMatchObject({ code: '42501' });
+      await client.query('ROLLBACK');
+    } finally {
+      client.release();
+    }
   });
 
   afterAll(async () => {

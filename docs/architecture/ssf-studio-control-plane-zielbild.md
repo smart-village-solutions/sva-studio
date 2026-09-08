@@ -197,6 +197,14 @@ Das SSF-Plugin besitzt eine einzige PostgreSQL-Datenbank pro SSF-Installation.
 Sie enthält sowohl installationsweite als auch tenantbezogene Konfiguration.
 Der Studio Core kennt keine SSF-Tabellen oder SSF-Fachfelder.
 
+Für jede vorbereitete Studio-Instanz enthält `ssf.tenants` genau einen
+Tenant-Grunddatensatz mit kanonischer `instanceId`, Status `prepared` und
+positiver Revision. Dieser Zustand besagt ausschließlich, dass die lokale
+Plugin-Ressource angelegt wurde; die generische Lifecycle-Plattform bleibt die
+führende Quelle für Readiness, Jobs und Retry. Die Root-Rolle kann den
+Grunddatensatz anlegen und aktualisieren, aber nicht löschen. Die
+tenantgebundene Runtime darf ausschließlich den eigenen Datensatz lesen.
+
 Tenantbezogene Datensätze führen die kanonische Studio-`instanceId` als
 Mandantenschlüssel. Tenantzugriffe werden serverseitig an diesen Kontext
 gebunden und durch Row-Level Security abgesichert. Root-Zugriffe verwenden

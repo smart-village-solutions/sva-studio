@@ -105,6 +105,14 @@ Plugin besitzt Schema, Migrationen, Repositories und eigene Sollschema-Doku.
 Die gemeinsame Lifecycle-Plattform stellt nur Job, Claim, Audit, Progress und
 Readiness bereit. Sie vereinheitlicht nicht die Datenbanktopologie mit Waste.
 
+Der lokale Tenant-Grunddatensatz liegt in `ssf.tenants`. Seine `instance_id`
+ist Primärschlüssel und übernimmt unverändert die kanonische Studio-Instanz-ID.
+Der anfängliche Status `prepared` bestätigt ausschließlich die lokale
+Plugin-Ressource; er dupliziert weder Readiness noch Job- oder Retry-Zustände.
+Die positive Revision beginnt bei `1`. Root darf den Datensatz anlegen, lesen
+und aktualisieren, aber nicht löschen; die Tenant-Runtime darf nur den durch
+den serverseitigen Transaktionskontext gebundenen Datensatz lesen.
+
 ### Tenant-Anlage nutzt den generischen Lifecycle
 
 1. Studio-Instanz anlegen.
@@ -171,5 +179,4 @@ plugin-aware Mutationen fail-closed ablehnen.
 - Exakte externe SSF-Redirect-URIs; Client-ID und Audience werden im
   Voraussetzungsslice stabil festgelegt, Redirect-URIs bleiben bis zur
   abgestimmten SSF-URL-Konfiguration fail-closed.
-- Tabellen- und Indexnamen des SSF-Tenant-Grundmodells.
 - Retry-Grenzen der Keycloak- und Datenbankprovisionierung.

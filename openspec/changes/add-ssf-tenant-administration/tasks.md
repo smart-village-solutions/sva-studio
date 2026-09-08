@@ -30,13 +30,13 @@
 
 ## 2. SSF-Plugin-Datenbank
 
-- [ ] 2.1 Die bestehende SSF-Datenbank um den Tenant-Grunddatensatz mit
+- [x] 2.1 Die bestehende SSF-Datenbank um den Tenant-Grunddatensatz mit
       `instanceId`, Status und Revision erweitern
-- [ ] 2.2 Neue Tabellen in den vorhandenen Tenant-Kontext, die RLS-Policies und
+- [x] 2.2 Neue Tabellen in den vorhandenen Tenant-Kontext, die RLS-Policies und
       die bestehenden Root-/Tenant-Principals integrieren
-- [ ] 2.3 Den vorhandenen Sollschema-Snapshot und die Migrationen ausschließlich
+- [x] 2.3 Den vorhandenen Sollschema-Snapshot und die Migrationen ausschließlich
       um die neuen Lifecycle-Objekte erweitern
-- [ ] 2.4 PostgreSQL-Integrationstests um Lifecycle-, Root-/Tenant-Negativ- und
+- [x] 2.4 PostgreSQL-Integrationstests um Lifecycle-, Root-/Tenant-Negativ- und
       Migrationsfälle der neuen Objekte ergänzen
 
 ## 3. Keycloak und initialer Tenant-Admin

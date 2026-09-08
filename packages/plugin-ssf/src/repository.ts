@@ -1,24 +1,38 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 
-import type {
-  ServerLocaleRow,
-  ServerSettingsRow,
-  TenantLocaleRow,
-  TenantSettingsRow,
-} from './repository.rows.js';
+export {
+  readSsfConfigurationOverrides,
+  type SsfConfigurationOverrides,
+} from './repository.overrides.js';
+import { withTenantTransaction } from './repository.transaction.js';
 import type {
   SsfServerLocaleOverride,
-  SsfServerSettings,
   SsfTenantLocaleOverride,
   SsfTenantSettings,
 } from './resolver.js';
+import type { SsfTenantRecord } from './repository.types.js';
 
-export interface SsfConfigurationOverrides {
-  readonly serverSettings: SsfServerSettings | null;
-  readonly serverLocales: readonly SsfServerLocaleOverride[];
-  readonly tenantSettings: SsfTenantSettings | null;
-  readonly tenantLocales: readonly SsfTenantLocaleOverride[];
-}
+type SsfTenantRow = {
+  instance_id: string;
+  status: string;
+  revision: string | number;
+  created_at: Date;
+  updated_at: Date;
+};
+
+const mapSsfTenantRow = (row: SsfTenantRow): SsfTenantRecord => {
+  const revision = Number(row.revision);
+  if (row.status !== 'prepared' || !Number.isSafeInteger(revision) || revision <= 0) {
+    throw new Error('ssf_tenant_state_invalid');
+  }
+  return {
+    instanceId: row.instance_id,
+    status: 'prepared',
+    revision,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
 
 export interface SsfServerSettingsWrite {
   readonly defaultLocale: string | null;
@@ -45,101 +59,46 @@ export interface SsfTenantLocaleWrite extends SsfTenantLocaleOverride {
   readonly enabled: boolean | null;
 }
 
-const withTenantTransaction = async <T>(
-  pool: Pool,
-  instanceId: string,
-  readOnly: boolean,
-  operation: (client: PoolClient) => Promise<T>
-): Promise<T> => {
-  const client = await pool.connect();
-  try {
-    await client.query(readOnly ? 'BEGIN READ ONLY' : 'BEGIN');
-    await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
-    const result = await operation(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    try {
-      await client.query('ROLLBACK');
-    } catch {
-      // Preserve the operation failure; a broken connection may also reject ROLLBACK.
-    }
-    throw error;
-  } finally {
-    client.release();
-  }
-};
+const tenantColumns = 'instance_id, status, revision, created_at, updated_at';
 
-export const readSsfConfigurationOverrides = async (
+export const provisionSsfTenant = async (
   pool: Pool,
   instanceId: string
-): Promise<SsfConfigurationOverrides> =>
-  withTenantTransaction(pool, instanceId, true, async (client) => {
-    const serverSettingsResult = await client.query<ServerSettingsRow>(
-      `SELECT default_locale, logo_media_reference, icon_media_reference
-         FROM ssf.server_settings
-        WHERE singleton = true`
+): Promise<SsfTenantRecord> => {
+  return withTenantTransaction(pool, instanceId, false, async (client) => {
+    await client.query(
+      `INSERT INTO ssf.tenants (instance_id)
+       VALUES ($1)
+       ON CONFLICT (instance_id) DO NOTHING`,
+      [instanceId]
     );
-    const serverLocalesResult = await client.query<ServerLocaleRow>(
-      `SELECT locale, available, authenticated_home_explanation_html,
-              guest_explanation_html, conversation_content_storage_question_html
-         FROM ssf.server_locales
-        ORDER BY locale`
-    );
-    const tenantSettingsResult = await client.query<TenantSettingsRow>(
-      `SELECT default_locale, custom_branding_allowed,
-              conversation_content_storage_allowed, conversation_content_storage_mode,
-              logo_media_reference, icon_media_reference
-         FROM ssf.tenant_settings
+    const result = await client.query<SsfTenantRow>(
+      `SELECT ${tenantColumns}
+         FROM ssf.tenants
         WHERE instance_id = $1`,
       [instanceId]
     );
-    const tenantLocalesResult = await client.query<TenantLocaleRow>(
-      `SELECT locale, enabled, authenticated_home_explanation_html,
-              guest_explanation_html, conversation_content_storage_question_html
-         FROM ssf.tenant_locales
-        WHERE instance_id = $1
-        ORDER BY locale`,
+    const row = result.rows[0];
+    if (!row) throw new Error('ssf_tenant_readback_failed');
+    return mapSsfTenantRow(row);
+  });
+};
+
+export const readSsfTenant = async (
+  pool: Pool,
+  instanceId: string
+): Promise<SsfTenantRecord | null> => {
+  return withTenantTransaction(pool, instanceId, true, async (client) => {
+    const result = await client.query<SsfTenantRow>(
+      `SELECT ${tenantColumns}
+         FROM ssf.tenants
+        WHERE instance_id = $1`,
       [instanceId]
     );
-
-    const serverSettingsRow = serverSettingsResult.rows[0];
-    const tenantSettingsRow = tenantSettingsResult.rows[0];
-    return {
-      serverSettings: serverSettingsRow
-        ? {
-            defaultLocale: serverSettingsRow.default_locale,
-            logoMediaReference: serverSettingsRow.logo_media_reference,
-            iconMediaReference: serverSettingsRow.icon_media_reference,
-          }
-        : null,
-      serverLocales: serverLocalesResult.rows.map((row) => ({
-        locale: row.locale,
-        available: row.available,
-        authenticatedHomeExplanationHtml: row.authenticated_home_explanation_html,
-        guestExplanationHtml: row.guest_explanation_html,
-        conversationContentStorageQuestionHtml: row.conversation_content_storage_question_html,
-      })),
-      tenantSettings: tenantSettingsRow
-        ? {
-            defaultLocale: tenantSettingsRow.default_locale,
-            customBrandingAllowed: tenantSettingsRow.custom_branding_allowed,
-            conversationContentStorageAllowed:
-              tenantSettingsRow.conversation_content_storage_allowed,
-            conversationContentStorageMode: tenantSettingsRow.conversation_content_storage_mode,
-            logoMediaReference: tenantSettingsRow.logo_media_reference,
-            iconMediaReference: tenantSettingsRow.icon_media_reference,
-          }
-        : null,
-      tenantLocales: tenantLocalesResult.rows.map((row) => ({
-        locale: row.locale,
-        enabled: row.enabled,
-        authenticatedHomeExplanationHtml: row.authenticated_home_explanation_html,
-        guestExplanationHtml: row.guest_explanation_html,
-        conversationContentStorageQuestionHtml: row.conversation_content_storage_question_html,
-      })),
-    };
+    const row = result.rows[0];
+    return row ? mapSsfTenantRow(row) : null;
   });
+};
 
 export const upsertSsfServerSettings = async (
   pool: Pool,

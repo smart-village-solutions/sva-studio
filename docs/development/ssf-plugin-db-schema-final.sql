@@ -1,5 +1,5 @@
--- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration und IAM-Projektion V1
--- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0002_*.sql
+-- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration, IAM-Projektion und Tenant-Grunddaten V1
+-- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0003_*.sql
 -- Diese Datenbank ist getrennt von sva_studio.
 
 DO $$
@@ -227,3 +227,35 @@ GRANT SELECT (
   sessions_revoked_revision,
   last_error_code
 ) ON ssf.authorization_projections TO ssf_plugin_tenant_runtime;
+
+CREATE TABLE ssf.tenants (
+  instance_id varchar(128) PRIMARY KEY,
+  status varchar(16) NOT NULL DEFAULT 'prepared',
+  revision bigint NOT NULL DEFAULT 1,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT tenants_instance_id_check CHECK (char_length(instance_id) > 0),
+  CONSTRAINT tenants_status_check CHECK (status = 'prepared'),
+  CONSTRAINT tenants_revision_check CHECK (revision > 0)
+);
+
+ALTER TABLE ssf.tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssf.tenants FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenants_root_policy
+  ON ssf.tenants
+  FOR ALL
+  TO ssf_plugin_root
+  USING (true)
+  WITH CHECK (true);
+CREATE POLICY tenants_tenant_read_policy
+  ON ssf.tenants
+  FOR SELECT
+  TO ssf_plugin_tenant_runtime
+  USING (instance_id = ssf.current_instance_id());
+
+GRANT SELECT, INSERT ON ssf.tenants TO ssf_plugin_root;
+REVOKE UPDATE ON ssf.tenants FROM ssf_plugin_root;
+GRANT UPDATE (status, revision, updated_at) ON ssf.tenants TO ssf_plugin_root;
+REVOKE DELETE ON ssf.tenants FROM ssf_plugin_root;
+GRANT SELECT (instance_id, status, revision, created_at, updated_at)
+  ON ssf.tenants TO ssf_plugin_tenant_runtime;

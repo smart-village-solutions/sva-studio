@@ -77,6 +77,14 @@ vi.mock('../../../lib/plugins', async (importOriginal) => ({
       permissionIds: ['ssf.configuration.tenant.read'],
       systemRoles: [],
     },
+    {
+      moduleId: 'future-module',
+      namespace: 'future-module',
+      ownerPluginId: 'future-module',
+      descriptionKey: 'plugins.future-module.description',
+      permissionIds: ['future-module.read'],
+      systemRoles: [],
+    },
   ],
 }));
 
@@ -231,6 +239,7 @@ describe('InstanceSetupPage', () => {
     expect(screen.getByRole('checkbox', { name: /Umfragen/u })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: /Generische Inhalte/u })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: /SSF-Konfiguration/u })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /future-module/u })).toBeTruthy();
     expect(screen.getByText('Setup-Status')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Struktur')).toBeTruthy();
     expect(screen.queryByRole('tab')).toBeNull();

@@ -123,7 +123,7 @@ In addition to the standard OIDC claims, an SSF tenant token contains at least:
 ```json
 {
   "sub": "keycloak-user-id",
-  "studio_tenant_id": "01J...",
+  "studio_tenant_id": "tenant-kassel",
   "ssf_roles": ["tenant_admin"],
   "ssf_permissions": ["ssf.configuration.tenant.read", "ssf.configuration.tenant.manage"],
   "ssf_authorization_revision": "sha256:...",
@@ -213,7 +213,7 @@ assertion, a second signing key, or replay storage.
   "configurationRevision": "sha256:...",
   "authorizationRevision": "sha256:...",
   "tenant": {
-    "id": "01J...",
+    "id": "tenant-kassel",
     "displayName": "Example Municipality",
     "timeZone": "Europe/Berlin"
   },

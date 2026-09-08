@@ -164,7 +164,7 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 ```json
 {
   "sub": "keycloak-user-id",
-  "studio_tenant_id": "01J...",
+  "studio_tenant_id": "tenant-kassel",
   "ssf_roles": ["tenant_admin"],
   "ssf_permissions": ["ssf.configuration.tenant.read", "ssf.configuration.tenant.manage"],
   "ssf_authorization_revision": "sha256:...",
@@ -256,7 +256,7 @@ Tenant-Assertion, keinen zweiten Signaturschlüssel und keinen Replay-Speicher.
   "configurationRevision": "sha256:...",
   "authorizationRevision": "sha256:...",
   "tenant": {
-    "id": "01J...",
+    "id": "tenant-kassel",
     "displayName": "Beispielkommune",
     "timeZone": "Europe/Berlin"
   },

@@ -24,7 +24,10 @@ export type InstanceKeycloakRequirement = {
   readonly keycloakArtifacts: readonly string[];
   readonly workerStepKey: string;
   readonly uiStepKey: string;
-  /** Descriptive metadata for login-specific consumers; generic operational readiness evaluates every requirement. */
+  /**
+   * Currently unevaluated metadata reserved for future login-specific consumers.
+   * Operational readiness evaluates every requirement.
+   */
   readonly blocksLoginReadiness?: boolean;
 };
 

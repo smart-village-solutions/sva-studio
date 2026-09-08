@@ -63,6 +63,13 @@ Das System SHALL das Keycloak der SSF-Installation mit einem Root-Realm und gena
 - **THEN** lehnt die Service-/Mutation-Trust-Boundary die Mutation vor jeder Persistenz ab
 - **AND** ist eine zusätzliche frühe HTTP-Prüfung nicht die autoritative Sicherheitsgrenze
 
+#### Scenario: Plugin-Client-Drift verhindert falsche Betriebsbereitschaft
+
+- **GIVEN** mindestens ein deklarativer Plugin-OIDC-Client weicht vom Sollzustand ab
+- **WHEN** das System Provisionierungsabschluss, Tenant-Konfiguration oder Cockpit-Status bewertet
+- **THEN** meldet es den aggregierten Keycloak-Sollzustand nicht als vollständig oder betriebsbereit
+- **AND** blockiert diese Abweichung für sich allein nicht die Studio-Login-Bereitschaft
+
 #### Scenario: Benutzeridentitäten werden nicht realmübergreifend verknüpft
 
 - **GIVEN** dieselbe E-Mail-Adresse existiert in zwei Tenant-Realms

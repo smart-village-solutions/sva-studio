@@ -12,6 +12,7 @@ import {
   requireMutationGuards,
   type InstanceRegistryHttpDeps,
 } from './http-instance-shared.js';
+import { mutationErrorMessages } from './http-mutation-error-messages.js';
 import type { InstanceRegistryService } from './service-types.js';
 
 const findReservedOidcClientId = (
@@ -34,8 +35,8 @@ const rejectReservedOidcClientId = <TContext>(
   return clientId
     ? deps.createApiError(
         400,
-        'invalid_request',
-        'OIDC-Client-ID ist für ein installiertes Plugin reserviert.',
+        'oidc_client_id_reserved',
+        mutationErrorMessages.oidc_client_id_reserved,
         deps.getRequestId(),
         { clientId }
       )

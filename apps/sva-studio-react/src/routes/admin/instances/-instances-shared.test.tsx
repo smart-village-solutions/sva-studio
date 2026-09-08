@@ -353,6 +353,7 @@ describe('instances shared helpers', () => {
         clientSecretConfigured: true,
         tenantClientSecretReadable: true,
         clientSecretAligned: true,
+        pluginOidcClientsAligned: true,
         runtimeSecretSource: 'tenant',
       },
     } as never);
@@ -481,6 +482,39 @@ describe('instances shared helpers', () => {
     expect(assessment.blockingIssues.map((issue) => issue.key)).toEqual([
       'tenant_admin_client',
       'tenant_admin_client_secret',
+    ]);
+  });
+
+  it('reports aggregated plugin OIDC drift as incomplete configuration', () => {
+    const assessment = evaluateInstanceConfiguration(
+      createDetailFixture({
+        realmMode: 'existing',
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          systemAdminRoleExists: true,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          pluginOidcClientsAligned: false,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+      }) as never,
+      null
+    );
+
+    expect(assessment.overallStatus).toBe('incomplete');
+    expect(assessment.blockingIssues).toEqual([
+      expect.objectContaining({ key: 'plugin_oidc_clients', severity: 'blocking' }),
     ]);
   });
 
@@ -833,6 +867,7 @@ describe('instances shared helpers', () => {
         tenantAdminClientSecretConfigured: true,
         tenantAdminClientSecretReadable: true,
         tenantAdminClientSecretAligned: true,
+        pluginOidcClientsAligned: true,
         runtimeSecretSource: 'tenant',
       },
       tenantIamStatus: {
@@ -1125,6 +1160,7 @@ describe('instances shared helpers', () => {
           tenantAdminClientSecretConfigured: false,
           tenantAdminClientSecretReadable: false,
           tenantAdminClientSecretAligned: false,
+          pluginOidcClientsAligned: false,
           runtimeSecretSource: 'platform',
         },
         latestKeycloakProvisioningRun: undefined,
@@ -1198,6 +1234,7 @@ describe('instances shared helpers', () => {
           tenantAdminClientSecretConfigured: true,
           tenantAdminClientSecretReadable: true,
           tenantAdminClientSecretAligned: true,
+          pluginOidcClientsAligned: true,
           runtimeSecretSource: 'tenant',
         },
         latestKeycloakProvisioningRun: {
@@ -1273,6 +1310,7 @@ describe('instances shared helpers', () => {
           tenantAdminClientSecretConfigured: true,
           tenantAdminClientSecretReadable: true,
           tenantAdminClientSecretAligned: false,
+          pluginOidcClientsAligned: true,
           runtimeSecretSource: 'tenant',
         },
       }),
@@ -1325,6 +1363,7 @@ describe('instances shared helpers', () => {
           tenantAdminClientSecretConfigured: true,
           tenantAdminClientSecretReadable: true,
           tenantAdminClientSecretAligned: true,
+          pluginOidcClientsAligned: true,
           runtimeSecretSource: 'tenant',
         },
       }),
@@ -1474,6 +1513,7 @@ const incompleteKeycloakStatus = {
   tenantAdminClientSecretConfigured: false,
   tenantAdminClientSecretReadable: false,
   tenantAdminClientSecretAligned: false,
+  pluginOidcClientsAligned: false,
   runtimeSecretSource: 'platform',
 } as const;
 
@@ -1494,6 +1534,7 @@ const completeKeycloakStatus = {
   tenantAdminClientSecretConfigured: true,
   tenantAdminClientSecretReadable: true,
   tenantAdminClientSecretAligned: true,
+  pluginOidcClientsAligned: true,
   runtimeSecretSource: 'tenant',
 } as const;
 

@@ -134,7 +134,10 @@ Nach erfolgreicher Rotation liest der Registry-Sync ausschließlich die beiden
 Studio-verwalteten Client-Secrets; eine erneute Plugin-Client- oder
 Mapper-Inspektion darf das Speichern des bereits rotierten Secrets nicht
 verhindern. Der operative Keycloak-Status und der Instanz-Audit weisen
-Abweichungen deklarierter Plugin-OIDC-Clients aggregiert aus.
+Abweichungen deklarierter Plugin-OIDC-Clients aggregiert aus. Dieselbe
+aggregierte Anforderung verhindert einen erfolgreichen Provisionierungsabschluss
+und einen betriebsbereiten Konfigurationsstatus, blockiert für sich allein aber
+nicht die Studio-Login-Bereitschaft.
 
 Die Reserved-ID-Prüfung gilt autoritativ an der Service-/Mutation-Trust-Boundary;
 HTTP darf denselben Vertrag lediglich früher ablehnen. Vor einer späteren

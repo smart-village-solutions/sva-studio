@@ -86,6 +86,7 @@ describe('instance detail split module exports', () => {
         tenantAdminClientSecretConfigured: true,
         tenantAdminClientSecretReadable: true,
         tenantAdminClientSecretAligned: true,
+        pluginOidcClientsAligned: true,
         runtimeSecretSource: 'tenant',
       },
       latestKeycloakProvisioningRun: {

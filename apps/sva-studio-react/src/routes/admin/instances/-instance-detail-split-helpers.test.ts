@@ -28,6 +28,7 @@ const createKeycloakStatusFixture = (overrides: Record<string, unknown> = {}) =>
     tenantAdminClientSecretConfigured: true,
     tenantAdminClientSecretReadable: true,
     tenantAdminClientSecretAligned: true,
+    pluginOidcClientsAligned: true,
     runtimeSecretSource: 'tenant',
     ...overrides,
   }) as const;
@@ -197,6 +198,7 @@ describe('instance detail split helpers', () => {
           tenantAdminClientSecretConfigured: true,
           tenantAdminClientSecretReadable: true,
           tenantAdminClientSecretAligned: true,
+          pluginOidcClientsAligned: true,
           runtimeSecretSource: 'tenant',
         },
         tenantIamStatus: {
@@ -376,6 +378,10 @@ describe('instance detail split helpers', () => {
 
     expect(keycloakEntries).toContainEqual([
       'admin.instances.keycloakStatus.tenantAdminHasSystemAdmin',
+      true,
+    ]);
+    expect(keycloakEntries).toContainEqual([
+      'admin.instances.keycloakStatus.pluginOidcClientsAligned',
       true,
     ]);
     expect(keycloakEntries).toContainEqual([

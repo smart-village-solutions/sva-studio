@@ -1,6 +1,6 @@
 import type { IamInstanceKeycloakStatus } from '../iam/account-management-contract.js';
 
-type InstanceKeycloakBooleanStatusField = Exclude<keyof IamInstanceKeycloakStatus, 'pluginOidcClientsAligned' | 'runtimeSecretSource'>;
+type InstanceKeycloakBooleanStatusField = Exclude<keyof IamInstanceKeycloakStatus, 'runtimeSecretSource'>;
 
 export type InstanceKeycloakRequirementKey =
   | 'realm'
@@ -9,6 +9,7 @@ export type InstanceKeycloakRequirementKey =
   | 'redirect_uris'
   | 'logout_uris'
   | 'web_origins'
+  | 'plugin_oidc_clients'
   | 'tenant_secret'
   | 'tenant_admin_client_secret'
   | 'tenant_admin'
@@ -88,6 +89,20 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     uiStepKey: 'client',
   },
   {
+    key: 'plugin_oidc_clients',
+    statusField: 'pluginOidcClientsAligned',
+    expectedValue: true,
+    sourceFields: ['pluginSources[].oidcClient'],
+    dbFields: [],
+    keycloakArtifacts: [
+      'plugin-client:<pluginOidcClient.clientId>',
+      'plugin-client-audience-mapper:<pluginOidcClient.audience>',
+    ],
+    workerStepKey: 'plugin_oidc_clients',
+    uiStepKey: 'pluginOidcClients',
+    blocksLoginReadiness: false,
+  },
+  {
     key: 'tenant_secret',
     statusField: 'clientSecretAligned',
     expectedValue: true,
@@ -145,6 +160,6 @@ export const isInstanceKeycloakRequirementSatisfied = (
 ): boolean => status[requirement.statusField] === requirement.expectedValue;
 
 export const areAllInstanceKeycloakRequirementsSatisfied = (status: IamInstanceKeycloakStatus): boolean =>
-  INSTANCE_KEYCLOAK_REQUIREMENTS.filter((requirement) => requirement.blocksLoginReadiness !== false).every(
-    (requirement) => isInstanceKeycloakRequirementSatisfied(status, requirement)
+  INSTANCE_KEYCLOAK_REQUIREMENTS.every((requirement) =>
+    isInstanceKeycloakRequirementSatisfied(status, requirement)
   );

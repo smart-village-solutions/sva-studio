@@ -149,6 +149,7 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     tenantAdminClientSecretConfigured: true,
     tenantAdminClientSecretReadable: true,
     tenantAdminClientSecretAligned: true,
+    pluginOidcClientsAligned: true,
     runtimeSecretSource: 'tenant',
   },
   latestKeycloakProvisioningRun: {

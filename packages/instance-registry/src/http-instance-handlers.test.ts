@@ -192,7 +192,7 @@ describe('http-instance-handlers', () => {
           );
 
     expect(response.status).toBe(400);
-    expect(await readBody(response)).toMatchObject({ code: 'invalid_request' });
+    expect(await readBody(response)).toMatchObject({ code: 'oidc_client_id_reserved' });
     expect(service.createProvisioningRequest).not.toHaveBeenCalled();
     expect(service.updateInstance).not.toHaveBeenCalled();
   });
@@ -221,6 +221,7 @@ describe('http-instance-handlers', () => {
     );
 
     expect(response.status).toBe(400);
+    expect(await readBody(response)).toMatchObject({ code: 'oidc_client_id_reserved' });
     expect(readReservedOidcClientIds).toHaveBeenCalledOnce();
   });
 

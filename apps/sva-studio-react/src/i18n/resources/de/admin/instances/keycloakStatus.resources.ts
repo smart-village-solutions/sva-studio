@@ -10,6 +10,7 @@ export const keycloakStatusInstancesAdminDEResources = {
   redirectUrisMatch: 'Redirect-URIs stimmen',
   logoutUrisMatch: 'Logout-URIs stimmen',
   webOriginsMatch: 'Web-Origins stimmen',
+  pluginOidcClientsAligned: 'Plugin-OIDC-Clients stimmen',
   clientSecretConfigured: 'Tenant-Client-Secret konfiguriert',
   tenantClientSecretReadable: 'Tenant-Client-Secret lesbar',
   tenantAdminClientSecretConfigured: 'Tenant-Admin-Client-Secret konfiguriert',

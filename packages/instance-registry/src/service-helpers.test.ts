@@ -138,6 +138,7 @@ describe('service-helpers', () => {
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
+          pluginOidcClientsAligned: true,
           clientSecretConfigured: true,
           tenantClientSecretReadable: true,
           clientSecretAligned: true,
@@ -258,6 +259,7 @@ describe('service-helpers', () => {
       redirectUrisMatch: true,
       logoutUrisMatch: true,
       webOriginsMatch: true,
+      pluginOidcClientsAligned: true,
       clientSecretConfigured: true,
       tenantClientSecretReadable: true,
       clientSecretAligned: true,
@@ -277,5 +279,10 @@ describe('service-helpers', () => {
         keycloakStatus: { ...completeStatus, tenantAdminClientSecretAligned: false },
       }).configuration.classification
     ).toBe('misconfigured');
+    expect(
+      buildTenantIamStatus({
+        keycloakStatus: { ...completeStatus, pluginOidcClientsAligned: false },
+      }).configuration.status
+    ).toBe('degraded');
   });
 });

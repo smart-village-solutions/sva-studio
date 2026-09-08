@@ -25,13 +25,15 @@ const htmlSchema = z.string().superRefine((value, context) => {
 });
 const nullableHtml = htmlSchema.nullable();
 
-export const ssfSystemLocaleInputSchema = z.object({
-  locale: ssfAdminLocaleSchema,
-  available: z.boolean(),
-  authenticatedHomeExplanationHtml: htmlSchema,
-  guestExplanationHtml: htmlSchema,
-  conversationContentStorageQuestionHtml: htmlSchema,
-});
+export const ssfSystemLocaleInputSchema = z
+  .object({
+    locale: ssfAdminLocaleSchema,
+    available: z.boolean(),
+    authenticatedHomeExplanationHtml: htmlSchema,
+    guestExplanationHtml: htmlSchema,
+    conversationContentStorageQuestionHtml: htmlSchema,
+  })
+  .strict();
 
 export const ssfSystemConfigurationInputSchema = z
   .object({
@@ -39,6 +41,7 @@ export const ssfSystemConfigurationInputSchema = z
     conversationContentStorageMode: z.enum(['ask', 'disabled']),
     locales: z.array(ssfSystemLocaleInputSchema).length(supportedLocales.length),
   })
+  .strict()
   .superRefine((value, context) => {
     const active = value.locales.filter((entry) => entry.available);
     if (!active.some((entry) => entry.locale === value.defaultLocale)) {
@@ -53,13 +56,15 @@ export const ssfSystemConfigurationInputSchema = z
     }
   });
 
-export const ssfTenantLocaleInputSchema = z.object({
-  locale: ssfAdminLocaleSchema,
-  enabled: z.boolean().nullable(),
-  authenticatedHomeExplanationHtml: nullableHtml,
-  guestExplanationHtml: nullableHtml,
-  conversationContentStorageQuestionHtml: nullableHtml,
-});
+export const ssfTenantLocaleInputSchema = z
+  .object({
+    locale: ssfAdminLocaleSchema,
+    enabled: z.boolean().nullable(),
+    authenticatedHomeExplanationHtml: nullableHtml,
+    guestExplanationHtml: nullableHtml,
+    conversationContentStorageQuestionHtml: nullableHtml,
+  })
+  .strict();
 
 export const ssfTenantConfigurationInputSchema = z
   .object({
@@ -67,6 +72,7 @@ export const ssfTenantConfigurationInputSchema = z
     conversationContentStorageMode: z.enum(['ask', 'disabled']).nullable(),
     locales: z.array(ssfTenantLocaleInputSchema).length(supportedLocales.length),
   })
+  .strict()
   .superRefine((value, context) => {
     if (
       value.defaultLocale !== null &&

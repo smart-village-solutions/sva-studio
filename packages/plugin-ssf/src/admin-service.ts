@@ -56,13 +56,14 @@ export const createSsfTenantConfigurationView = (
       };
     }),
   };
+  const effectiveStorageMode =
+    tenantOverrides.conversationContentStorageMode ?? system.conversationContentStorageMode;
   return {
     system,
     overrides: tenantOverrides,
     effective: {
       defaultLocale: tenantOverrides.defaultLocale ?? system.defaultLocale,
-      conversationContentStorageMode:
-        tenantOverrides.conversationContentStorageMode ?? system.conversationContentStorageMode,
+      conversationContentStorageMode: effectiveStorageMode,
       locales: system.locales.map((entry) => {
         const stored = tenantOverrides.locales.find((locale) => locale.locale === entry.locale);
         return {
@@ -72,8 +73,10 @@ export const createSsfTenantConfigurationView = (
             stored?.authenticatedHomeExplanationHtml ?? entry.authenticatedHomeExplanationHtml,
           guestExplanationHtml: stored?.guestExplanationHtml ?? entry.guestExplanationHtml,
           conversationContentStorageQuestionHtml:
-            stored?.conversationContentStorageQuestionHtml ??
-            entry.conversationContentStorageQuestionHtml,
+            effectiveStorageMode === 'disabled'
+              ? null
+              : (stored?.conversationContentStorageQuestionHtml ??
+                entry.conversationContentStorageQuestionHtml),
         };
       }),
     },

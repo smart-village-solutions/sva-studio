@@ -17,13 +17,14 @@ import {
   readSsfSystemOverrides,
   replaceSsfSystemConfiguration,
   replaceSsfTenantConfiguration,
+  SsfSystemLocaleInUseError,
   SsfTenantDefaultLocaleUnavailableError,
 } from '../admin-repository.js';
 import {
   createSsfSystemConfigurationView,
   createSsfTenantConfigurationView,
 } from '../admin-service.js';
-import { resolveSsfDatabasePool } from '../database.js';
+import { resolveSsfDatabasePool, resolveSsfRootDatabasePool } from '../database.js';
 import {
   createSsfRuntimeConfigurationHandler,
   type SsfRuntimeConfigurationHandler,
@@ -173,8 +174,10 @@ export const createSsfAdminServerHandlers = (
         createSsfSystemConfigurationView(await dependencies.readSystem()),
         correlationId
       );
-    } catch {
-      return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
+    } catch (error) {
+      return error instanceof SsfSystemLocaleInUseError
+        ? jsonResponse(409, { error: 'locale_in_use' }, correlationId)
+        : jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
     }
   },
   'ssf.tenant-configuration.read': async (context) => {
@@ -220,6 +223,7 @@ export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () =
     runtimeHandler: (input) => getDefaultRuntimeHandler()(input),
   });
   const pool = resolveSsfDatabasePool();
+  const rootPool = resolveSsfRootDatabasePool();
   const databaseUnavailable = async (): Promise<never> => {
     throw new Error('ssf_database_unavailable');
   };
@@ -227,8 +231,8 @@ export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () =
     ...runtimeHandlers,
     ...createSsfAdminServerHandlers({
       readSystem: pool ? () => readSsfSystemOverrides(pool) : databaseUnavailable,
-      writeSystem: pool
-        ? (input) => replaceSsfSystemConfiguration(pool, input)
+      writeSystem: rootPool
+        ? (input) => replaceSsfSystemConfiguration(rootPool, input)
         : databaseUnavailable,
       readTenant: pool
         ? (instanceId) => readSsfConfigurationOverrides(pool, instanceId)

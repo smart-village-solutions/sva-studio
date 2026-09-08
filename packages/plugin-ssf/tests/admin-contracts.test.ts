@@ -18,6 +18,12 @@ describe('SSF administration contracts', () => {
     expect(systemInput).not.toHaveProperty('branding');
   });
 
+  it('rejects unknown administration fields', () => {
+    expect(() =>
+      ssfSystemConfigurationInputSchema.parse({ ...systemInput, branding: {} })
+    ).toThrow();
+  });
+
   it('rejects an inactive default language', () => {
     expect(() =>
       ssfSystemConfigurationInputSchema.parse({

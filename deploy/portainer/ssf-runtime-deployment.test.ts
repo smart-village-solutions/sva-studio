@@ -14,6 +14,7 @@ describe('SSF runtime deployment contract', () => {
       expect(profile).toContain('SVA_STUDIO_SSF_RUNTIME_ENABLED=false');
       expect(profile).not.toContain('SVA_STUDIO_SSF_DATABASE_URL=');
       expect(profile).not.toContain('SSF_PLUGIN_RUNTIME_DB_PASSWORD=');
+      expect(profile).not.toContain('SSF_PLUGIN_ROOT_DB_PASSWORD=');
       expect(profile).not.toContain('SVA_STUDIO_SSF_RUNTIME_ISSUER=');
       expect(profile).not.toContain('SVA_STUDIO_SSF_CONTROL_PLANE_CLIENT_SECRET=');
     }
@@ -31,6 +32,12 @@ describe('SSF runtime deployment contract', () => {
       "SVA_STUDIO_SSF_RUNTIME_ENABLED: '${SVA_STUDIO_SSF_RUNTIME_ENABLED:-false}'"
     );
     expect(compose).toContain("SVA_STUDIO_SSF_DATABASE_URL: '${SVA_STUDIO_SSF_DATABASE_URL:-}'");
+    expect(compose).toContain(
+      "SVA_STUDIO_SSF_ROOT_DATABASE_URL: '${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'"
+    );
+    expect(compose).toContain(
+      "SSF_PLUGIN_ROOT_DB_USER: '${SSF_PLUGIN_ROOT_DB_USER:-sva_ssf_root}'"
+    );
     expect(compose).toContain(
       "SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL: '${SVA_STUDIO_SSF_CONTROL_PLANE_BASE_URL:-}'"
     );

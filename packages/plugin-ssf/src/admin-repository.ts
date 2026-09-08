@@ -95,6 +95,22 @@ export const replaceSsfSystemConfiguration = async (
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query('SELECT locale FROM ssf.server_locales FOR UPDATE');
+    const unavailableLocales = input.locales
+      .filter((locale) => !locale.available)
+      .map((locale) => locale.locale);
+    if (unavailableLocales.length > 0) {
+      const tenantDefault = await client.query(
+        `SELECT 1
+           FROM ssf.tenant_settings
+          WHERE default_locale = ANY($1::text[])
+          LIMIT 1`,
+        [unavailableLocales]
+      );
+      if (tenantDefault.rows.length > 0) {
+        throw new SsfSystemLocaleInUseError();
+      }
+    }
     await client.query(
       `INSERT INTO ssf.server_settings (singleton, default_locale, conversation_content_storage_allowed, conversation_content_storage_mode)
        VALUES (true, $1, true, $2)
@@ -114,6 +130,13 @@ export const replaceSsfSystemConfiguration = async (
     client.release();
   }
 };
+
+export class SsfSystemLocaleInUseError extends Error {
+  public constructor() {
+    super('ssf_system_locale_in_use');
+    this.name = 'SsfSystemLocaleInUseError';
+  }
+}
 
 export const replaceSsfTenantConfiguration = async (
   pool: Pool,

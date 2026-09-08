@@ -66,17 +66,31 @@ const prepare = () => {
 };
 
 const reconcile = () => {
-  const login = identifier(
-    process.env.SSF_PLUGIN_RUNTIME_DB_USER || 'sva_ssf_runtime',
-    'SSF_PLUGIN_RUNTIME_DB_USER'
-  );
-  const password = required(
-    process.env.SSF_PLUGIN_RUNTIME_DB_PASSWORD,
-    'SSF_PLUGIN_RUNTIME_DB_PASSWORD'
-  );
-  runPsql(
-    targetDatabase,
-    `DO $ssf_runtime_role$
+  const principals = [
+    {
+      login: identifier(
+        process.env.SSF_PLUGIN_RUNTIME_DB_USER || 'sva_ssf_runtime',
+        'SSF_PLUGIN_RUNTIME_DB_USER'
+      ),
+      password: required(
+        process.env.SSF_PLUGIN_RUNTIME_DB_PASSWORD,
+        'SSF_PLUGIN_RUNTIME_DB_PASSWORD'
+      ),
+      role: 'ssf_plugin_tenant_runtime',
+    },
+    {
+      login: identifier(
+        process.env.SSF_PLUGIN_ROOT_DB_USER || 'sva_ssf_root',
+        'SSF_PLUGIN_ROOT_DB_USER'
+      ),
+      password: required(process.env.SSF_PLUGIN_ROOT_DB_PASSWORD, 'SSF_PLUGIN_ROOT_DB_PASSWORD'),
+      role: 'ssf_plugin_root',
+    },
+  ];
+  for (const { login, password, role } of principals) {
+    runPsql(
+      targetDatabase,
+      `DO $ssf_login_role$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(login)}) THEN
     EXECUTE format(
@@ -92,11 +106,12 @@ BEGIN
     );
   END IF;
 END
-$ssf_runtime_role$;
-GRANT ssf_plugin_tenant_runtime TO ${sqlIdentifier(login)} WITH INHERIT FALSE;
+$ssf_login_role$;
+GRANT ${sqlIdentifier(role)} TO ${sqlIdentifier(login)} WITH INHERIT FALSE;
 REVOKE CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} FROM PUBLIC;
 GRANT CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} TO ${sqlIdentifier(login)};`
-  );
+    );
+  }
 };
 
 const mode = process.argv[2];

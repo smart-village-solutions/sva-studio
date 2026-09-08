@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SSF_RUNTIME_SERVER_HANDLER_ID } from '../src/constants.js';
 import type { SsfRuntimeConfiguration } from '../src/contracts.js';
-import { SsfTenantDefaultLocaleUnavailableError } from '../src/admin-repository.js';
+import {
+  SsfSystemLocaleInUseError,
+  SsfTenantDefaultLocaleUnavailableError,
+} from '../src/admin-repository.js';
 import {
   createPluginServerHandlers,
   createSsfAdminServerHandlers,
@@ -243,5 +246,40 @@ describe('SSF plugin server handler', () => {
 
     expect(response?.status).toBe(422);
     expect(response?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
+  });
+
+  it('rejects disabling a locale that is still a tenant default', async () => {
+    const handlers = createSsfAdminServerHandlers({
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn().mockRejectedValue(new SsfSystemLocaleInUseError()),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn(),
+    });
+    const response = await handlers['ssf.system-configuration.write']?.(
+      adminContext('platform', 'PUT', {
+        defaultLocale: 'de-DE',
+        conversationContentStorageMode: 'ask',
+        locales: [
+          {
+            locale: 'de-DE',
+            available: true,
+            authenticatedHomeExplanationHtml: '<p>Start</p>',
+            guestExplanationHtml: '<p>Gast</p>',
+            conversationContentStorageQuestionHtml: '<p>Speichern?</p>',
+          },
+          {
+            locale: 'en',
+            available: false,
+            authenticatedHomeExplanationHtml: '<p>Home</p>',
+            guestExplanationHtml: '<p>Guest</p>',
+            conversationContentStorageQuestionHtml: '<p>Store?</p>',
+          },
+        ],
+      })
+    );
+
+    expect(response?.status).toBe(409);
+    expect(response?.headers.get('X-Correlation-Id')).toBe('admin-correlation-1');
+    await expect(response?.json()).resolves.toEqual({ error: 'locale_in_use' });
   });
 });

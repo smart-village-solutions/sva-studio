@@ -24,4 +24,25 @@ describe('SSF administration view', () => {
     expect(view.overrides.locales[0]?.guestExplanationHtml).toBeNull();
     expect(view).not.toHaveProperty('branding');
   });
+
+  it('hides the storage question when storage is effectively disabled', () => {
+    const view = createSsfTenantConfigurationView({
+      serverSettings: {
+        defaultLocale: 'de-DE',
+        conversationContentStorageAllowed: true,
+        conversationContentStorageMode: 'ask',
+      },
+      serverLocales: [
+        {
+          locale: 'de-DE',
+          available: true,
+          conversationContentStorageQuestionHtml: '<p>Speichern?</p>',
+        },
+      ],
+      tenantSettings: { defaultLocale: null, conversationContentStorageMode: 'disabled' },
+      tenantLocales: [],
+    });
+
+    expect(view.effective.locales[0]?.conversationContentStorageQuestionHtml).toBeNull();
+  });
 });

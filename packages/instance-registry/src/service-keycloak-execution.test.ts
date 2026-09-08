@@ -235,6 +235,30 @@ describe('service-keycloak-execution', () => {
     expect(state.completeRun).toHaveBeenCalled();
   });
 
+  it('does not sync a rotated secret when provisioning fails before rotation', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth: vi.fn().mockRejectedValue(new Error('plugin_oidc_client_readback_failed:ssf:ssf')),
+          getKeycloakStatus: vi.fn(),
+          getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+        } as never,
+        createRun({ intent: 'rotate_client_secret', mode: 'existing' })
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'failed' });
+
+    expect(state.syncRotatedClientSecretToRegistry).not.toHaveBeenCalled();
+    expect(state.completeRun).not.toHaveBeenCalled();
+  });
+
   it('recovers a missing tenant secret even when the derived plan remains blocked', async () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);

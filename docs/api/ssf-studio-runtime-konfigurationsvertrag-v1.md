@@ -119,6 +119,13 @@ Die kanonische Studio-`instanceId` ist der gemeinsame technische
 Mandantenschlüssel. Sie wird bei der Realm- und Client-Provisionierung als
 signierter Claim materialisiert.
 
+Die Client-ID `ssf` ist durch das installierte SSF-Plugin reserviert und darf
+weder als Studio-Login-Client noch als Tenant-Admin-Client einer Instanz
+gespeichert werden. Bei einer Rotation des Studio-Login-Client-Secrets wird der
+deaktivierte SSF-Client zuerst reconciled und per Read-back verifiziert. Erst
+danach darf die Secret-Rotation beginnen; schlägt der SSF-Abgleich fehl,
+bleiben Keycloak- und Registry-Secret unverändert.
+
 Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 
 ```json

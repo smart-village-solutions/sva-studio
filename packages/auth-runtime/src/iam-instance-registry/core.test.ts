@@ -112,6 +112,7 @@ describe('iam-instance-registry core handlers', () => {
     expect(config.requireFreshReauth).toBe(state.requireFreshReauth);
     expect(config.withRegistryService).toBe(state.withRegistryService);
     expect(config.mapMutationError).toBe(state.mapInstanceMutationError);
+    expect(config.reservedOidcClientIds).toEqual(['ssf']);
 
     config.onInstanceProvisioningRequested({
       instanceId: 'instance-1',

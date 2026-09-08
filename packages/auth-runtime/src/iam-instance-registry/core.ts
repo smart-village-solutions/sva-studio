@@ -4,6 +4,7 @@ import { jsonResponse } from '../db.js';
 import { buildLogContext } from '../log-context.js';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { createInstanceRegistryHttpHandlers } from '@sva/instance-registry/http-instance-handlers';
+import { SSF_TENANT_OIDC_CLIENT_REQUIREMENT } from '@sva/plugin-ssf/provisioning';
 
 import type { RegistryRequestContext } from './auth-context.js';
 import { isAuthenticatedRegistryServiceRequest } from './service-token.js';
@@ -37,6 +38,7 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
     isAuthenticatedRegistryServiceRequest(request) ? null : validateSessionCsrf(request, requestId),
   requireFreshReauth,
   withRegistryService,
+  reservedOidcClientIds: [SSF_TENANT_OIDC_CLIENT_REQUIREMENT.clientId],
   onInstanceProvisioningRequested: ({ instanceId, primaryHostname, actorId }) => {
     scheduleConfiguredPluginTenantProvisioning(instanceId);
     logger.info('Instance provisioning requested', {

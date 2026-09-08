@@ -5,6 +5,30 @@ import { buildCreateInstanceProvisioningInput, buildUpdateInstanceInput, type Cr
 import { readInstanceIdOrError, requireMutationGuards, type InstanceRegistryHttpDeps } from './http-instance-shared.js';
 import type { InstanceRegistryService } from './service-types.js';
 
+const findReservedOidcClientId = (
+  input: Pick<CreateInstancePayload, 'authClientId' | 'tenantAdminClient'>,
+  reservedClientIds: readonly string[] | undefined
+): string | undefined =>
+  reservedClientIds?.find(
+    (clientId) => clientId === input.authClientId || clientId === input.tenantAdminClient?.clientId
+  );
+
+const rejectReservedOidcClientId = <TContext>(
+  deps: InstanceRegistryHttpDeps<TContext>,
+  input: Pick<CreateInstancePayload, 'authClientId' | 'tenantAdminClient'>
+): Response | null => {
+  const clientId = findReservedOidcClientId(input, deps.reservedOidcClientIds);
+  return clientId
+    ? deps.createApiError(
+        400,
+        'invalid_request',
+        'OIDC-Client-ID ist für ein installiertes Plugin reserviert.',
+        deps.getRequestId(),
+        { clientId }
+      )
+    : null;
+};
+
 export const createCreateInstanceHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
   async (request: Request, ctx: TContext): Promise<Response> => {
@@ -21,6 +45,10 @@ export const createCreateInstanceHandler =
     const payloadResult = await deps.parseRequestBody<CreateInstancePayload>(request, createInstanceSchema);
     if (!payloadResult.ok) {
       return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
+    }
+    const reservedClientError = rejectReservedOidcClientId(deps, payloadResult.data);
+    if (reservedClientError) {
+      return reservedClientError;
     }
 
     const actor = deps.getActor(ctx);
@@ -70,6 +98,10 @@ export const createUpdateInstanceHandler =
     const payloadResult = await deps.parseRequestBody<UpdateInstancePayload>(request, updateInstanceSchema);
     if (!payloadResult.ok) {
       return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
+    }
+    const reservedClientError = rejectReservedOidcClientId(deps, payloadResult.data);
+    if (reservedClientError) {
+      return reservedClientError;
     }
 
     try {

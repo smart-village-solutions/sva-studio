@@ -47,6 +47,7 @@ export type InstanceRegistryHttpDeps<TContext> = {
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;
   readonly withRegistryService: <T>(work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
+  readonly reservedOidcClientIds?: readonly string[];
   readonly onInstanceProvisioningRequested?: (event: {
     readonly instanceId: string;
     readonly primaryHostname: string;

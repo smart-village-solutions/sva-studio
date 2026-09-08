@@ -41,6 +41,7 @@ describe('http-instance-handlers', () => {
     withRegistryService: vi.fn(async (work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
       work(service)
     ),
+    reservedOidcClientIds: ['ssf'],
     onInstanceProvisioningRequested: vi.fn(),
   };
 
@@ -134,6 +135,40 @@ describe('http-instance-handlers', () => {
     expect(response.status).toBe(201);
     expect(deps.requireFreshReauth).not.toHaveBeenCalled();
     expect(service.createProvisioningRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['create auth client', 'create', { authClientId: 'ssf' }],
+    ['create tenant admin client', 'create', { authClientId: 'sva-studio', tenantAdminClient: { clientId: 'ssf' } }],
+    ['update auth client', 'update', { authClientId: 'ssf' }],
+    ['update tenant admin client', 'update', { authClientId: 'sva-studio', tenantAdminClient: { clientId: 'ssf' } }],
+  ])('rejects the reserved SSF ID for the %s', async (_label, operation, clientConfig) => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        ...clientConfig,
+      },
+    });
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+    const response = operation === 'create'
+      ? await handlers.createInstance(
+          new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+          ctx
+        )
+      : await handlers.updateInstance(
+          new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+          ctx
+        );
+
+    expect(response.status).toBe(400);
+    expect(await readBody(response)).toMatchObject({ code: 'invalid_request' });
+    expect(service.createProvisioningRequest).not.toHaveBeenCalled();
+    expect(service.updateInstance).not.toHaveBeenCalled();
   });
 
   it('maps create errors through the injected mapper', async () => {

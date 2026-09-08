@@ -3,6 +3,7 @@ import type {
   KeycloakProvisioningInput,
   KeycloakReadState,
   KeycloakRoleRepresentation,
+  PluginOidcClientRequirement,
   TenantAdminBootstrap,
   TenantAdminStatus,
 } from './provisioning-auth-types.js';
@@ -306,6 +307,45 @@ export const createReadKeycloakState =
     };
   };
 
+const reconcilePluginOidcClients = async (
+  client: KeycloakProvisioningClient,
+  requirements: readonly PluginOidcClientRequirement[]
+): Promise<void> => {
+  for (const requirement of requirements) {
+    await client.ensureOidcClient({
+      clientId: requirement.clientId,
+      redirectUris: [],
+      postLogoutRedirectUris: [],
+      webOrigins: [],
+      rootUrl: '',
+      enabled: false,
+      standardFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      uriPolicy: 'replace',
+    });
+    await client.ensureAudienceProtocolMapper({
+      clientId: requirement.clientId,
+      name: `studio-${requirement.pluginId}-audience`,
+      audience: requirement.audience,
+    });
+    const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);
+    const protocolMappers = clientRepresentation
+      ? await client.listClientProtocolMappers(requirement.clientId)
+      : [];
+    if (
+      !readPluginOidcClientAlignment(requirement, {
+        clientRepresentation,
+        protocolMappers,
+      }).aligned
+    ) {
+      throw new Error(
+        `plugin_oidc_client_readback_failed:${requirement.pluginId}:${requirement.clientId}`
+      );
+    }
+  }
+};
+
 export const createProvisionInstanceAuthArtifacts =
   (createClient: KeycloakProvisioningClientFactory) =>
   async (input: ProvisionInstanceAuthArtifactsInput): Promise<void> => {
@@ -322,6 +362,9 @@ export const createProvisionInstanceAuthArtifacts =
       if (!realm) {
         throw new Error(`Keycloak realm ${input.authRealm} does not exist`);
       }
+    }
+    if (input.rotateClientSecret) {
+      await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
     }
     if (reconcileAuthClient) {
       await client.ensureOidcClient({
@@ -350,38 +393,8 @@ export const createProvisionInstanceAuthArtifacts =
       });
       await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
     }
-    for (const requirement of pluginOidcClientRequirements) {
-      await client.ensureOidcClient({
-        clientId: requirement.clientId,
-        redirectUris: [],
-        postLogoutRedirectUris: [],
-        webOrigins: [],
-        rootUrl: '',
-        enabled: false,
-        standardFlowEnabled: false,
-        directAccessGrantsEnabled: false,
-        serviceAccountsEnabled: false,
-        uriPolicy: 'replace',
-      });
-      await client.ensureAudienceProtocolMapper({
-        clientId: requirement.clientId,
-        name: `studio-${requirement.pluginId}-audience`,
-        audience: requirement.audience,
-      });
-      const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);
-      const protocolMappers = clientRepresentation
-        ? await client.listClientProtocolMappers(requirement.clientId)
-        : [];
-      if (
-        !readPluginOidcClientAlignment(requirement, {
-          clientRepresentation,
-          protocolMappers,
-        }).aligned
-      ) {
-        throw new Error(
-          `plugin_oidc_client_readback_failed:${requirement.pluginId}:${requirement.clientId}`
-        );
-      }
+    if (!input.rotateClientSecret) {
+      await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
     }
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {

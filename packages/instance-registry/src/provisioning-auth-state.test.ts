@@ -276,6 +276,35 @@ describe('provisioning-auth-state', () => {
     expect(client.ensureAudienceProtocolMapper).toHaveBeenCalledOnce();
   });
 
+  it('reconciles plugin clients before rotating the Studio client secret', async () => {
+    const client = createClient({
+      getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+        id: `${clientId}-id`,
+        clientId,
+        enabled: true,
+      })),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecret: 'current-secret',
+        rotateClientSecret: true,
+        pluginOidcClients: [ssfClientRequirement],
+      })
+    ).rejects.toThrow('plugin_oidc_client_readback_failed:ssf:ssf');
+
+    expect(client.ensureOidcClient).toHaveBeenCalledOnce();
+    expect(client.ensureOidcClient).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 'ssf' })
+    );
+  });
+
   it('rejects existing-realm provisioning when the target realm is missing', async () => {
     const client = createClient({
       getRealm: vi.fn(async () => null),

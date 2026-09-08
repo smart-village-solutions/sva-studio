@@ -1,7 +1,7 @@
 import { isValidInstanceId } from '@sva/plugin-sdk';
 import type { Pool, PoolClient } from 'pg';
 
-export const readCanonicalInstanceId = (instanceId: string): string => {
+export const validateInstanceIdOrThrow = (instanceId: string): string => {
   if (!isValidInstanceId(instanceId)) {
     throw new Error('ssf_tenant_instance_id_invalid');
   }
@@ -14,13 +14,13 @@ export const withTenantTransaction = async <T>(
   readOnly: boolean,
   operation: (client: PoolClient) => Promise<T>
 ): Promise<T> => {
-  const canonicalInstanceId = readCanonicalInstanceId(instanceId);
+  const validatedInstanceId = validateInstanceIdOrThrow(instanceId);
   const client = await pool.connect();
   try {
     await client.query(readOnly ? 'BEGIN READ ONLY' : 'BEGIN');
     await client.query('SELECT set_config($1, $2, true);', [
       'app.instance_id',
-      canonicalInstanceId,
+      validatedInstanceId,
     ]);
     const result = await operation(client);
     await client.query('COMMIT');

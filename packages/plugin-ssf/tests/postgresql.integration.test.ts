@@ -18,6 +18,11 @@ import {
   upsertSsfTenantLocale,
   upsertSsfTenantSettings,
 } from '../src/runtime.js';
+import {
+  readSsfSystemOverrides,
+  replaceSsfSystemConfiguration,
+  replaceSsfTenantConfiguration,
+} from '../src/admin-repository.js';
 
 const rootDatabaseUrl = process.env['SSF_TEST_ROOT_DATABASE_URL'];
 const tenantDatabaseUrl = process.env['SSF_TEST_TENANT_DATABASE_URL'];
@@ -128,6 +133,55 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     expect(tenantA.tenantLocales.map((entry) => entry.locale)).toEqual(['de-DE']);
     expect(tenantB.tenantSettings?.defaultLocale).toBe('en');
     expect(tenantB.tenantLocales.map((entry) => entry.locale)).toEqual(['en']);
+  });
+
+  it('atomically persists system defaults and tenant inheritance markers', async () => {
+    const systemInput = {
+      defaultLocale: 'de-DE' as const,
+      conversationContentStorageMode: 'ask' as const,
+      locales: [
+        {
+          locale: 'de-DE' as const,
+          available: true,
+          authenticatedHomeExplanationHtml: '<p>System</p>',
+          guestExplanationHtml: '<p>Gast</p>',
+          conversationContentStorageQuestionHtml: '<p>Speichern?</p>',
+        },
+        {
+          locale: 'en' as const,
+          available: true,
+          authenticatedHomeExplanationHtml: '<p>System</p>',
+          guestExplanationHtml: '<p>Guest</p>',
+          conversationContentStorageQuestionHtml: '<p>Store?</p>',
+        },
+      ],
+    };
+    await replaceSsfSystemConfiguration(rootPool, systemInput);
+    await replaceSsfTenantConfiguration(rootPool, 'tenant-b', {
+      defaultLocale: null,
+      conversationContentStorageMode: null,
+      locales: systemInput.locales.map(({ locale }) => ({
+        locale,
+        enabled: null,
+        authenticatedHomeExplanationHtml: null,
+        guestExplanationHtml: null,
+        conversationContentStorageQuestionHtml: null,
+      })),
+    });
+
+    const [system, tenant] = await Promise.all([
+      readSsfSystemOverrides(rootPool),
+      readSsfConfigurationOverrides(tenantPool, 'tenant-b'),
+    ]);
+    expect(system.serverSettings).toMatchObject({
+      defaultLocale: 'de-DE',
+      conversationContentStorageMode: 'ask',
+    });
+    expect(tenant.tenantSettings).toMatchObject({
+      defaultLocale: null,
+      conversationContentStorageMode: null,
+    });
+    expect(tenant.tenantLocales).toHaveLength(2);
   });
 
   it('enforces RLS even when a query omits the repository predicate', async () => {

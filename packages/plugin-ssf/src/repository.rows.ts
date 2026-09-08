@@ -1,5 +1,7 @@
 export interface ServerSettingsRow {
   readonly default_locale: string | null;
+  readonly conversation_content_storage_allowed: boolean | null;
+  readonly conversation_content_storage_mode: 'ask' | 'disabled' | null;
   readonly logo_media_reference: string | null;
   readonly icon_media_reference: string | null;
 }

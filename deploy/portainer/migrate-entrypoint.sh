@@ -80,6 +80,7 @@ esac
 case "${SSF_PLUGIN_DATABASE_ENABLED:-false}" in
   true)
     require_env SSF_PLUGIN_RUNTIME_DB_PASSWORD
+    require_env SSF_PLUGIN_ROOT_DB_PASSWORD
     SSF_PLUGIN_MIGRATOR="${SSF_PLUGIN_MIGRATOR:-./migrate-ssf-plugin.mjs}"
     SSF_PLUGIN_MIGRATIONS_DIR="${SSF_PLUGIN_MIGRATIONS_DIR:-packages/plugin-ssf/migrations}"
     SSF_PLUGIN_DATABASE_NAME="${SSF_PLUGIN_DATABASE_NAME:-sva_studio_ssf}"
@@ -95,7 +96,7 @@ case "${SSF_PLUGIN_DATABASE_ENABLED:-false}" in
     "${GOOSE_WRAPPER}" -dir "${SSF_PLUGIN_MIGRATIONS_DIR}" postgres "${ssf_db_string}" up || exit 38
     log "Lese finalen SSF-Plugin-Goose-Status"
     "${GOOSE_WRAPPER}" -dir "${SSF_PLUGIN_MIGRATIONS_DIR}" postgres "${ssf_db_string}" status || exit 38
-    log "Reconciliere den minimalen SSF-Runtime-Datenbankprincipal"
+    log "Reconciliere getrennte SSF-Runtime- und Root-Datenbankprincipals"
     node "${SSF_PLUGIN_MIGRATOR}" reconcile || exit 39
     ;;
   false|'')

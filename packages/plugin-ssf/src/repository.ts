@@ -36,6 +36,8 @@ const mapSsfTenantRow = (row: SsfTenantRow): SsfTenantRecord => {
 
 export interface SsfServerSettingsWrite {
   readonly defaultLocale: string | null;
+  readonly conversationContentStorageAllowed: boolean | null;
+  readonly conversationContentStorageMode: 'ask' | 'disabled' | null;
   readonly logoMediaReference: string | null;
   readonly iconMediaReference: string | null;
 }
@@ -106,14 +108,23 @@ export const upsertSsfServerSettings = async (
 ): Promise<void> => {
   await pool.query(
     `INSERT INTO ssf.server_settings (
-       singleton, default_locale, logo_media_reference, icon_media_reference
-     ) VALUES (true, $1, $2, $3)
+       singleton, default_locale, conversation_content_storage_allowed,
+       conversation_content_storage_mode, logo_media_reference, icon_media_reference
+     ) VALUES (true, $1, $2, $3, $4, $5)
      ON CONFLICT (singleton) DO UPDATE SET
        default_locale = EXCLUDED.default_locale,
+       conversation_content_storage_allowed = EXCLUDED.conversation_content_storage_allowed,
+       conversation_content_storage_mode = EXCLUDED.conversation_content_storage_mode,
        logo_media_reference = EXCLUDED.logo_media_reference,
        icon_media_reference = EXCLUDED.icon_media_reference,
        updated_at = now()`,
-    [settings.defaultLocale, settings.logoMediaReference, settings.iconMediaReference]
+    [
+      settings.defaultLocale,
+      settings.conversationContentStorageAllowed,
+      settings.conversationContentStorageMode,
+      settings.logoMediaReference,
+      settings.iconMediaReference,
+    ]
   );
 };
 

@@ -48,6 +48,8 @@ const workspaceManifestModules = import.meta.glob(
   }
 ) as Record<string, PluginManifest>;
 const workspacePluginModuleLoaders = {
+  ...import.meta.glob('../../../../packages/plugin-*/src/browser.ts'),
+  ...import.meta.glob('../../../../packages/plugin-*/src/browser.tsx'),
   ...import.meta.glob('../../../../packages/plugin-*/src/index.ts'),
   ...import.meta.glob('../../../../packages/plugin-*/src/index.tsx'),
 } as Record<string, () => Promise<Record<string, unknown>>>;

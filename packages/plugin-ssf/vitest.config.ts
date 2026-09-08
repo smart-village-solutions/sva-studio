@@ -9,17 +9,20 @@ export default mergeConfig(
   sharedConfig,
   defineConfig({
     resolve: {
-      alias: [
-        {
-          find: /^@sva\/plugin-sdk$/,
-          replacement: resolve(currentDir, '../plugin-sdk/src/index.ts'),
-        },
-      ],
+      alias: {
+        '@sva/core/rich-text-html-policy': resolve(
+          currentDir,
+          '../core/src/rich-text-html-policy.ts'
+        ),
+        '@sva/core': resolve(currentDir, '../core/src/index.ts'),
+        '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
+        '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),
+      },
     },
     test: {
       name: 'plugin-ssf',
       environment: 'node',
-      include: ['tests/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.ts'],
+      include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
       pool: 'threads',
       fileParallelism: false,
       maxWorkers: 1,

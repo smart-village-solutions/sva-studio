@@ -6,10 +6,11 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"],
+    "types": ["node", "react", "react-dom"],
     "paths": {
-      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"]
+      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"],
+      "@sva/studio-ui-react": ["packages/studio-ui-react/dist/index.d.ts"]
     }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

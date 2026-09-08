@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   closeSsfDatabasePoolForShutdown,
   readSsfDatabaseConfig,
+  readSsfRootDatabaseConfig,
   resolveSsfDatabasePool,
+  resolveSsfRootDatabasePool,
 } from '../src/runtime.js';
 
 describe('SSF database configuration', () => {
@@ -23,12 +25,35 @@ describe('SSF database configuration', () => {
     });
   });
 
+  it('configures the privileged pool only from its separate URL', () => {
+    expect(readSsfRootDatabaseConfig({})).toBeNull();
+    expect(
+      readSsfRootDatabaseConfig({
+        SVA_STUDIO_SSF_ROOT_DATABASE_URL: ' postgresql://ssf-root:secret@postgres/ssf ',
+      })
+    ).toEqual({
+      connectionString: 'postgresql://ssf-root:secret@postgres/ssf',
+      applicationName: 'sva-studio-ssf-root',
+      max: 10,
+    });
+  });
+
   it('shares one configured runtime pool until shutdown', async () => {
     const environment = {
       SVA_STUDIO_SSF_DATABASE_URL: 'postgresql://ssf-runtime:secret@postgres/ssf',
     };
 
     expect(resolveSsfDatabasePool(environment)).toBe(resolveSsfDatabasePool(environment));
+
+    await closeSsfDatabasePoolForShutdown();
+  });
+
+  it('shares a separate configured root pool until shutdown', async () => {
+    const environment = {
+      SVA_STUDIO_SSF_ROOT_DATABASE_URL: 'postgresql://ssf-root:secret@postgres/ssf',
+    };
+
+    expect(resolveSsfRootDatabasePool(environment)).toBe(resolveSsfRootDatabasePool(environment));
 
     await closeSsfDatabasePoolForShutdown();
   });

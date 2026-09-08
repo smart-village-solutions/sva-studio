@@ -27,7 +27,8 @@ export const readSsfConfigurationOverrides = async (
 ): Promise<SsfConfigurationOverrides> =>
   withTenantTransaction(pool, instanceId, true, async (client) => {
     const serverSettingsResult = await client.query<ServerSettingsRow>(
-      `SELECT default_locale, logo_media_reference, icon_media_reference
+      `SELECT default_locale, conversation_content_storage_allowed,
+              conversation_content_storage_mode, logo_media_reference, icon_media_reference
          FROM ssf.server_settings
         WHERE singleton = true`
     );
@@ -60,6 +61,9 @@ export const readSsfConfigurationOverrides = async (
       serverSettings: serverSettingsRow
         ? {
             defaultLocale: serverSettingsRow.default_locale,
+            conversationContentStorageAllowed:
+              serverSettingsRow.conversation_content_storage_allowed,
+            conversationContentStorageMode: serverSettingsRow.conversation_content_storage_mode,
             logoMediaReference: serverSettingsRow.logo_media_reference,
             iconMediaReference: serverSettingsRow.icon_media_reference,
           }

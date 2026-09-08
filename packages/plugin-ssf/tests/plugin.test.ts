@@ -12,15 +12,24 @@ import {
 } from '../src/constants.js';
 
 describe('SSF plugin metadata', () => {
-  it('uses the approved namespace and declares only the internal V1 service contribution', () => {
+  it('keeps the runtime service and adds separated Root and Tenant administration', () => {
     const manifest = JSON.parse(
       readFileSync(new URL('../plugin.manifest.json', import.meta.url), 'utf8')
     ) as Record<string, unknown>;
 
     expect(ssfPlugin).toMatchObject({
       id: 'ssf',
-      routes: [],
-      serverHandlers: [
+      routes: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'ssf-system-configuration',
+          accessRequirement: expect.objectContaining({ kind: 'platform' }),
+        }),
+        expect.objectContaining({
+          id: 'ssf-tenant-configuration',
+          accessRequirement: expect.objectContaining({ kind: 'tenant', moduleId: 'ssf' }),
+        }),
+      ]),
+      serverHandlers: expect.arrayContaining([
         {
           id: SSF_RUNTIME_SERVER_HANDLER_ID,
           path: SSF_RUNTIME_ENDPOINT_PATH,
@@ -32,7 +41,7 @@ describe('SSF plugin metadata', () => {
             tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_INSTANCE_HEADER },
           },
         },
-      ],
+      ]),
       contentHistory: { mode: 'none', reasonCode: 'infrastructure_only' },
     });
     expect(manifest).toMatchObject({
@@ -45,7 +54,7 @@ describe('SSF plugin metadata', () => {
       requiredCapabilities: ['iam', 'server'],
     });
     expect(manifest['entryPoints']).toEqual({
-      browser: './dist/index.js',
+      browser: './dist/browser.js',
       server: './dist/server/index.js',
     });
   });

@@ -10,7 +10,7 @@
     "requiredCapabilities": ["iam", "server"]
   },
   "entryPoints": {
-    "browser": "./dist/index.js",
+    "browser": "./dist/browser.js",
     "server": "./dist/server/index.js"
   }
 }

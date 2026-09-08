@@ -44,8 +44,8 @@
 - [x] 3.1 Provisionierung um deklarierte Studio-/SSF-Clients und Audiences
       erweitern und den kanonischen SSF-Client für nachgelagerte
       Projektionsläufe auflösbar machen
-- [ ] 3.2 Initialen Tenant-Admin mit tenantlokalem `system_admin` integrieren
-- [ ] 3.3 Kopieren von Root-Benutzern und automatische E-Mail-Verknüpfung ausschließen
+- [x] 3.2 Initialen Tenant-Admin mit tenantlokalem `system_admin` integrieren
+- [x] 3.3 Kopieren von Root-Benutzern und automatische E-Mail-Verknüpfung ausschließen
 - [x] 3.4 Idempotenz-, Drift-, Secret- und Teilfehlertests für Realm und Clients ergänzen
 
 ## 4. Tenant-Lifecycle

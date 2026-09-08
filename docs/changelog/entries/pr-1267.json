@@ -1,0 +1,4 @@
+{
+  "prNumber": 1267,
+  "body": "Der initiale Tenant-Admin wird strikt als eigene tenantlokale Identität behandelt.\n\n- Die Rolle `system_admin` wird dem konfigurierten Benutzer im Tenant-Realm idempotent zugewiesen.\n- Gleiche E-Mail-Adressen führen weder zur Verknüpfung mit Root-Benutzern noch zur Übernahme einer anderen Identität."
+}

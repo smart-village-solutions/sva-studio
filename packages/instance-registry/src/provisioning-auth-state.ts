@@ -183,9 +183,7 @@ const ensureTenantAdmin = async (
 
   await client.ensureRealmRole(SYSTEM_ADMIN_ROLE);
 
-  const existing =
-    (await client.findUserByUsername(input.username)) ??
-    (resolvedEmail ? await client.findUserByEmail(resolvedEmail) : null);
+  const existing = await client.findUserByUsername(input.username);
   if (!existing) {
     try {
       const created = await client.createUser({
@@ -202,14 +200,14 @@ const ensureTenantAdmin = async (
         throw error;
       }
 
-      const conflictingUser = await client.findUserByEmail(resolvedEmail);
+      const conflictingUser = await client.findUserByUsername(input.username);
       if (!conflictingUser) {
         throw error;
       }
 
       await updateExisting({
         id: conflictingUser.id,
-        email: resolvedEmail,
+        email: conflictingUser.email,
         enabled: conflictingUser.enabled,
       });
       return;

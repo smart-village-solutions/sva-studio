@@ -233,6 +233,11 @@ Optional und weiter diagnostizierbar:
 - `instance_registry_admin` ist eine Plattformrolle und bleibt Root-Host-exklusiv.
 - `system_admin` ist die minimale Tenant-Admin-Rolle für tenant-lokale Admin-Funktionen.
 - Tenant-Admins erhalten im Bootstrap nicht automatisch `instance_registry_admin`.
+- Der Bootstrap löst den initialen Tenant-Admin ausschließlich über den im
+  Tenant-Realm konfigurierten Benutzernamen auf. Eine gleiche E-Mail-Adresse
+  verknüpft weder einen Root-Benutzer noch einen Benutzer eines anderen Realms;
+  Konflikte werden sichtbar abgebrochen, statt eine fremde Identität zu
+  übernehmen.
 - Weitere tenantlokale Rollen werden individuell verwaltet; der Root-Bootstrap erzeugt keine zusätzlichen Default-Admin-Rollen mehr.
 
 ## Secret-Policy

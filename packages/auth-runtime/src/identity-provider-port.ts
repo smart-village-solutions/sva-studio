@@ -41,6 +41,7 @@ export type IdentityUserListQuery = IdentityListWindow &
     readonly email?: string;
     readonly username?: string;
     readonly enabled?: boolean;
+    readonly exact?: boolean;
   };
 
 export type IdentityListedUser = IdentityUser &
@@ -106,7 +107,7 @@ export interface IdentityProviderPort {
   removeRealmRoles?(externalId: string, roles: readonly string[]): Promise<void>;
   listUserRoleNames(externalId: string): Promise<readonly string[]>;
   listUserRealmRoleAssignments?(externalId: string): Promise<IdentityUserRealmRoleAssignments>;
-  countUsers?(query?: Omit<IdentityUserListQuery, 'first' | 'max'>): Promise<number>;
+  countUsers?(query?: Omit<IdentityUserListQuery, 'first' | 'max' | 'exact'>): Promise<number>;
   listRoles(query?: IdentityRoleListQuery): Promise<readonly IdentityRole[]>;
   getRoleByName(externalName: string): Promise<IdentityRole | null>;
   createRole(input: CreateIdentityRoleInput): Promise<IdentityRole>;

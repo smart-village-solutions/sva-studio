@@ -790,6 +790,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       ['first', query?.first],
       ['max', query?.max],
       ['enabled', query?.enabled],
+      ['exact', query?.exact],
       ['briefRepresentation', query?.briefRepresentation],
     ] as const) {
       if (value !== undefined) {
@@ -826,7 +827,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  async countUsers(query?: Omit<KeycloakListUsersQuery, 'first' | 'max'>): Promise<number> {
+  async countUsers(
+    query?: Omit<KeycloakListUsersQuery, 'first' | 'max' | 'exact'>
+  ): Promise<number> {
     if (this.isCircuitOpen()) {
       logger.error('Keycloak read blocked because circuit breaker is open', {
         operation: 'count_users',
@@ -1554,7 +1557,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       operation: 'find_user_by_username',
     });
 
-    return users.find((user) => user.username === username) ?? null;
+    const normalizedUsername = username.toLowerCase();
+    return users.find((user) => user.username?.toLowerCase() === normalizedUsername) ?? null;
   }
 
   async findUserByEmail(email: string): Promise<KeycloakAdminUser | null> {

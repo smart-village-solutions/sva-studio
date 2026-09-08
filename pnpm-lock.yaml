@@ -322,6 +322,9 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
+      '@sva/plugin-ssf':
+        specifier: workspace:*
+        version: link:../../packages/plugin-ssf
       '@sva/plugin-surveys':
         specifier: workspace:*
         version: link:../../packages/plugin-surveys
@@ -509,9 +512,6 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
-      '@sva/plugin-ssf':
-        specifier: workspace:*
-        version: link:../plugin-ssf
       '@sva/server-runtime':
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))

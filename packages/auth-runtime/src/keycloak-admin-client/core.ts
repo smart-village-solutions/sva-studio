@@ -1267,6 +1267,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
     const requiresUpdate =
       existing.enabled !== payload.enabled ||
+      existing.protocol !== payload.protocol ||
+      existing.publicClient !== payload.publicClient ||
       existing.rootUrl !== payload.rootUrl ||
       existing.standardFlowEnabled !== payload.standardFlowEnabled ||
       existing.implicitFlowEnabled !== payload.implicitFlowEnabled ||

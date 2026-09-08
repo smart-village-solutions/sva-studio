@@ -121,7 +121,12 @@ signierter Claim materialisiert.
 
 Die Client-ID `ssf` ist durch das installierte SSF-Plugin reserviert und darf
 weder als Studio-Login-Client noch als Tenant-Admin-Client einer Instanz
-gespeichert werden. Bei einer Rotation des Studio-Login-Client-Secrets wird der
+gespeichert werden. Die Composition Root leitet die deklarativen
+Plugin-OIDC-Anforderungen ausschließlich aus den tatsächlich geladenen
+`pluginSources` des validierten Host-Katalogs ab und verwendet dieselbe Liste
+für Provisionierung, Statusprüfung und ID-Reservierung. Ist SSF nicht geladen,
+werden weder sein Client angelegt noch seine ID reserviert oder sein Zustand als
+Drift bewertet. Bei einer Rotation des Studio-Login-Client-Secrets wird der
 deaktivierte SSF-Client zuerst reconciled und per Read-back verifiziert. Erst
 danach darf die Secret-Rotation beginnen; schlägt der SSF-Abgleich fehl,
 bleiben Keycloak- und Registry-Secret unverändert.
@@ -130,14 +135,18 @@ Studio-verwalteten Client-Secrets; eine erneute Plugin-Client- oder
 Mapper-Inspektion darf das Speichern des bereits rotierten Secrets nicht
 verhindern. Der operative Keycloak-Status und der Instanz-Audit weisen
 Abweichungen deklarierter Plugin-OIDC-Clients aggregiert aus.
-Der deaktivierte Plugin-Client schaltet Standard-, Implicit- und Direct-Access-
-Flow sowie Service Accounts explizit ab und bestätigt alle vier Schalter per
-Read-back. Scheitert der SSF-Client-Abgleich unmittelbar nach der Anlage eines
+Der deaktivierte vertrauliche OIDC-Plugin-Client schaltet Standard-, Implicit-
+und Direct-Access-Flow sowie Service Accounts explizit ab und bestätigt
+Protokoll, Vertraulichkeitsmodus und alle vier Schalter per Read-back. Scheitert
+der SSF-Client-Abgleich unmittelbar nach der Anlage eines
 neuen Realms, entfernt derselbe Provisionierungsaufruf ausschließlich dieses
 gerade selbst erzeugte Realm, solange noch keine Studio- oder Tenant-Admin-
 Clients mit Secrets angelegt wurden. Vorbestehende Realms werden nie
 kompensierend gelöscht. Scheitert auch die Kompensation, wird der Lauf mit
 `REALM_CLEANUP_FAILED_REQUIRES_MANUAL_ACTION` fail-closed ausgewiesen.
+Nach jeder Erzeugung oder Rotation geheimnistragender Clients liest der
+Registry-Sync ausschließlich deren Secrets über den schmalen Secret-Port; er
+inspiziert in diesem kritischen Abschnitt weder SSF-Client noch Mapper erneut.
 
 Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 

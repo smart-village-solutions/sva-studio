@@ -154,6 +154,12 @@ scheitert der unmittelbar folgende SSF-Client-Abgleich noch vor der Anlage
 geheimnistragender Studio- oder Tenant-Admin-Clients, darf er dieses Realm
 entfernen. Vorbestehende Realms sind ausgeschlossen; ein Cleanup-Fehler verlangt
 eine explizite manuelle Bereinigung und darf keine Retryfähigkeit vortäuschen.
+Nach der Erzeugung oder Rotation von Client-Secrets verwendet deren
+Registry-Synchronisierung ausschließlich den schmalen Secret-Read und führt
+keinen weiteren SSF-Client- oder Mapper-Read aus. Die Composition Root leitet
+die deklarativen Plugin-OIDC-Anforderungen aus den tatsächlich geladenen
+Plugin-Quellen des validierten Host-Katalogs ab; dieselbe Liste steuert
+Provisionierung und Client-ID-Reservierung.
 
 ## Open Questions
 

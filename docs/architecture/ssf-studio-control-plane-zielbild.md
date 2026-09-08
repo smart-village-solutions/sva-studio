@@ -99,6 +99,10 @@ in das Deployment aufgenommen werden. Ein Studio gilt als SSF-fähig, wenn das
 SSF-Plugin im installierten und hostvalidierten Plugin-Katalog enthalten ist.
 Der Core benötigt dafür keinen fachspezifischen Betriebsmodus wie
 `isSsfStudio`.
+Die Composition Root leitet aus den tatsächlich geladenen `pluginSources`
+genau eine Liste deklarativer Plugin-OIDC-Anforderungen ab. Provisionierung,
+Statusprüfung und Reservierung von Client-IDs konsumieren dieselbe Liste. Ohne
+geladenes SSF-Plugin bleibt auch der IAM- und Keycloak-Pfad SSF-neutral.
 
 Der generische Plugin-Vertrag unterscheidet drei tenantbezogene
 Aktivierungsrichtlinien:
@@ -163,8 +167,9 @@ SSF-Session-Token bleiben außerhalb des Studio-IAM.
 
 Der Studio-seitig provisionierte Client `ssf` bleibt bis zur gemeinsamen
 Providerintegration deaktiviert und besitzt keine Redirect-, Logout- oder
-Web-Origin-Freigaben; Standard-, Implicit- und Direct-Access-Flow sowie Service
-Accounts sind explizit abgeschaltet und Bestandteil des Read-backs. Sein
+Web-Origin-Freigaben; OIDC-Protokoll, vertraulicher Client-Modus sowie die
+explizit abgeschalteten Standard-, Implicit- und Direct-Access-Flows und Service
+Accounts sind Bestandteil des Read-backs. Sein
 Audience-Mapper schreibt `ssf` in Access- und
 Introspection-Tokens, nicht in ID-Tokens. Der Vertrag ist versioniert und
 allowlist-basiert; zusätzliche, vom Plugin
@@ -172,8 +177,10 @@ eingeschleuste Keycloak-Felder werden vor jedem Read oder Write abgelehnt.
 Der operative Keycloak-Status und der Instanz-Audit verdichten den Read-back
 aller deklarierten Plugin-OIDC-Clients in einen gemeinsamen Alignment-Befund.
 Nach einer Studio-Client-Secret-Rotation verwendet der Registry-Abgleich einen
-separaten schmalen Secret-Read, damit eine erneute Plugin-Inspektion nicht
-zwischen erfolgreicher Rotation und persistierter Secret-Aktualisierung liegt.
+separaten schmalen Secret-Read. Derselbe Port wird nach der initialen
+Secret-Erzeugung verwendet, damit keine erneute Plugin- oder Mapper-Inspektion
+zwischen erfolgreicher Erzeugung beziehungsweise Rotation und persistierter
+Secret-Aktualisierung liegt.
 Scheitert der SSF-Client-Abgleich direkt nach der nachweislich durch denselben
 Aufruf erfolgten Realm-Anlage, wird nur dieses noch client-secret-freie Realm
 kompensierend entfernt. Ein vorbestehendes Realm wird nie gelöscht; ein

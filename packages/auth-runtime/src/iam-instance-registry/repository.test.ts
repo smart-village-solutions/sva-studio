@@ -164,6 +164,7 @@ describe('iam instance registry repository wiring', () => {
     configureInstanceRegistryPluginRuntimeSnapshot({
       activationPolicies: { revision: 'catalog-1', modules: [] },
       moduleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
+      pluginOidcClientRequirements: [],
       tenantLifecycles: [],
     });
     await import('./repository.js');

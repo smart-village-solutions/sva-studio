@@ -1163,6 +1163,49 @@ describe('Keycloak admin client', () => {
     });
   });
 
+  it('updates an existing OIDC client when only protocol or confidentiality mode drift', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          {
+            id: 'client-1',
+            clientId: 'web-app',
+            enabled: true,
+            protocol: 'saml',
+            publicClient: true,
+            rootUrl: 'https://new.example',
+            redirectUris: ['https://new.example/callback'],
+            webOrigins: ['https://new.example'],
+            standardFlowEnabled: true,
+            implicitFlowEnabled: false,
+            directAccessGrantsEnabled: false,
+            serviceAccountsEnabled: false,
+            attributes: { 'post.logout.redirect.uris': 'https://new.example/logout' },
+          },
+        ])
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'web-app',
+      redirectUris: ['https://new.example/callback'],
+      postLogoutRedirectUris: ['https://new.example/logout'],
+      webOrigins: ['https://new.example'],
+      rootUrl: 'https://new.example',
+    });
+
+    const updateCall = fetchImpl.mock.calls.find(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
+    );
+    expect(JSON.parse(String(updateCall?.[1]?.body))).toMatchObject({
+      protocol: 'openid-connect',
+      publicClient: false,
+    });
+  });
+
   it('creates and updates protocol mappers only when configuration changed', async () => {
     const fetchImpl = vi
       .fn()

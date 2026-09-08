@@ -1,7 +1,12 @@
 import { createHash } from 'node:crypto';
 
 import type { TenantModuleActivationPolicySnapshot } from '@sva/core';
+import type { KeycloakProvisioningInput } from '@sva/instance-registry';
 import type { PluginTenantLifecycleRegistryEntry } from '@sva/plugin-sdk';
+
+type PluginOidcClientRequirement = NonNullable<
+  KeycloakProvisioningInput['pluginOidcClients']
+>[number];
 
 export type InstanceRegistryModuleIamSnapshotEntry = Readonly<{
   moduleId: string;
@@ -31,6 +36,9 @@ let configuredModuleIamRegistry: ReadonlyMap<string, InstanceRegistryModuleIamSn
   new Map();
 let configuredTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry> =
   new Map();
+let configuredPluginOidcClientRequirements: readonly PluginOidcClientRequirement[] = Object.freeze(
+  []
+);
 
 const readLifecycleContractDigest = (lifecycle: PluginTenantLifecycleRegistryEntry): string =>
   createHash('sha256')
@@ -134,6 +142,7 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
   activationPolicies: TenantModuleActivationPolicySnapshot;
   moduleIamContracts: readonly InstanceRegistryModuleIamSnapshotEntry[];
   tenantLifecycles: readonly PluginTenantLifecycleRegistryEntry[];
+  pluginOidcClientRequirements: readonly PluginOidcClientRequirement[];
 }): void => {
   const activationPolicies = copySnapshot(input.activationPolicies);
   const moduleIamRegistry = copyModuleIamRegistry(input.moduleIamContracts);
@@ -164,10 +173,20 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
   if (tenantLifecycleRegistry.size !== input.tenantLifecycles.length) {
     throw new Error('plugin_tenant_lifecycle_duplicate_plugin');
   }
+  const pluginOidcClientRequirements = Object.freeze(
+    input.pluginOidcClientRequirements.map((requirement) => Object.freeze({ ...requirement }))
+  );
+  if (
+    new Set(pluginOidcClientRequirements.map(({ clientId }) => clientId)).size !==
+    pluginOidcClientRequirements.length
+  ) {
+    throw new Error('plugin_oidc_client_duplicate_client_id');
+  }
 
   configuredSnapshot = activationPolicies;
   configuredModuleIamRegistry = moduleIamRegistry;
   configuredTenantLifecycleRegistry = tenantLifecycleRegistry;
+  configuredPluginOidcClientRequirements = pluginOidcClientRequirements;
 };
 
 export const readInstanceRegistryPluginActivationPolicies =
@@ -183,8 +202,12 @@ export const readInstanceRegistryPluginTenantLifecycleRegistry = (): ReadonlyMap
   PluginTenantLifecycleRegistryEntry
 > => configuredTenantLifecycleRegistry;
 
+export const readInstanceRegistryPluginOidcClientRequirements =
+  (): readonly PluginOidcClientRequirement[] => configuredPluginOidcClientRequirements;
+
 export const resetInstanceRegistryPluginActivationPoliciesForTests = (): void => {
   configuredSnapshot = emptySnapshot;
   configuredModuleIamRegistry = new Map();
   configuredTenantLifecycleRegistry = new Map();
+  configuredPluginOidcClientRequirements = Object.freeze([]);
 };

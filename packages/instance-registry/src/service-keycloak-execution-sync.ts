@@ -4,7 +4,10 @@ import { buildProvisioningInput } from './service-keycloak-execution-payload.js'
 
 const provisionedSecretReadDelaysMs = [100, 250] as const;
 
-const waitForProvisionedSecretRead = async (deps: InstanceRegistryServiceDeps, delayMs: number): Promise<void> => {
+const waitForProvisionedSecretRead = async (
+  deps: InstanceRegistryServiceDeps,
+  delayMs: number
+): Promise<void> => {
   if (deps.waitForProvisionedSecretRead) {
     await deps.waitForProvisionedSecretRead(delayMs);
     return;
@@ -12,11 +15,16 @@ const waitForProvisionedSecretRead = async (deps: InstanceRegistryServiceDeps, d
   await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 };
 
-const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;
+const buildAuthClientSecretAad = (instanceId: string): string =>
+  `iam.instances.auth_client_secret:${instanceId}`;
 const buildTenantAdminClientSecretAad = (instanceId: string): string =>
   `iam.instances.tenant_admin_client_secret:${instanceId}`;
 
-const protectSecret = (deps: InstanceRegistryServiceDeps, value: string, aad: string): string | undefined => {
+const protectSecret = (
+  deps: InstanceRegistryServiceDeps,
+  value: string,
+  aad: string
+): string | undefined => {
   if (!deps.protectSecret) {
     throw new Error('dependency_missing_protectSecret');
   }
@@ -48,12 +56,16 @@ const encryptTenantAdminClientSecret = (
 };
 
 const hasRequiredProvisionedSecrets = (
-  state: Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['readKeycloakStateViaProvisioner']>>>,
+  state: Awaited<
+    ReturnType<NonNullable<InstanceRegistryServiceDeps['readKeycloakClientSecretsViaProvisioner']>>
+  >,
   tenantAdminClientConfigured: boolean
 ): boolean => {
   const authClientSecretPresent = Boolean(state.keycloakClientSecret?.trim());
   const tenantAdminClientSecretPresent = Boolean(state.tenantAdminClientSecret?.trim());
-  return authClientSecretPresent && (!tenantAdminClientConfigured || tenantAdminClientSecretPresent);
+  return (
+    authClientSecretPresent && (!tenantAdminClientConfigured || tenantAdminClientSecretPresent)
+  );
 };
 
 const readProvisionedSecrets = async (
@@ -61,18 +73,18 @@ const readProvisionedSecrets = async (
   input: Parameters<typeof buildProvisioningInput>[0],
   tenantAdminClientConfigured: boolean
 ) => {
-  if (!deps.readKeycloakStateViaProvisioner) {
-    throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
+  if (!deps.readKeycloakClientSecretsViaProvisioner) {
+    throw new Error('dependency_missing_readKeycloakClientSecretsViaProvisioner');
   }
 
   const provisioningInput = buildProvisioningInput(input);
-  let state = await deps.readKeycloakStateViaProvisioner(provisioningInput);
+  let state = await deps.readKeycloakClientSecretsViaProvisioner(provisioningInput);
   for (const delayMs of provisionedSecretReadDelaysMs) {
     if (hasRequiredProvisionedSecrets(state, tenantAdminClientConfigured)) {
       return state;
     }
     await waitForProvisionedSecretRead(deps, delayMs);
-    state = await deps.readKeycloakStateViaProvisioner(provisioningInput);
+    state = await deps.readKeycloakClientSecretsViaProvisioner(provisioningInput);
   }
   return state;
 };
@@ -86,10 +98,10 @@ const readStateForRegistrySync = async (
   if (realmMode === 'new') {
     return readProvisionedSecrets(deps, input, tenantAdminClientConfigured);
   }
-  if (!deps.readKeycloakStateViaProvisioner) {
-    throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
+  if (!deps.readKeycloakClientSecretsViaProvisioner) {
+    throw new Error('dependency_missing_readKeycloakClientSecretsViaProvisioner');
   }
-  return deps.readKeycloakStateViaProvisioner(buildProvisioningInput(input));
+  return deps.readKeycloakClientSecretsViaProvisioner(buildProvisioningInput(input));
 };
 
 const assertProvisionedSecretsAvailable = (
@@ -101,7 +113,10 @@ const assertProvisionedSecretsAvailable = (
   if (realmMode !== 'new') {
     return;
   }
-  if (provisionedSecret?.trim() && (!tenantAdminClientConfigured || provisionedTenantAdminSecret?.trim())) {
+  if (
+    provisionedSecret?.trim() &&
+    (!tenantAdminClientConfigured || provisionedTenantAdminSecret?.trim())
+  ) {
     return;
   }
   throw new Error('tenant_client_secrets_missing_after_provisioning');
@@ -117,9 +132,11 @@ const updateLoadedSecrets = (
   tenantAdminSecretDrift: boolean,
   provisionedTenantAdminSecret: string | null | undefined
 ): void => {
-  loaded.authClientSecret = authSecretDrift ? provisionedSecret ?? undefined : loaded.authClientSecret;
+  loaded.authClientSecret = authSecretDrift
+    ? (provisionedSecret ?? undefined)
+    : loaded.authClientSecret;
   loaded.tenantAdminClientSecret = tenantAdminSecretDrift
-    ? provisionedTenantAdminSecret ?? undefined
+    ? (provisionedTenantAdminSecret ?? undefined)
     : loaded.tenantAdminClientSecret;
 };
 
@@ -134,7 +151,9 @@ export const syncRotatedClientSecretToRegistry = async (
   if (!deps.readKeycloakClientSecretsViaProvisioner) {
     throw new Error('dependency_missing_readKeycloakClientSecretsViaProvisioner');
   }
-  const state = await deps.readKeycloakClientSecretsViaProvisioner(buildProvisioningInput(input.loaded));
+  const state = await deps.readKeycloakClientSecretsViaProvisioner(
+    buildProvisioningInput(input.loaded)
+  );
   const rotatedSecret = state.keycloakClientSecret;
   if (!rotatedSecret) {
     throw new Error('tenant_auth_client_secret_missing_after_rotation');
@@ -149,7 +168,11 @@ export const syncRotatedClientSecretToRegistry = async (
     authRealm: input.loaded.instance.authRealm,
     authClientId: input.loaded.instance.authClientId,
     authIssuerUrl: input.loaded.instance.authIssuerUrl,
-    authClientSecretCiphertext: encryptAuthClientSecret(deps, input.loaded.instance.instanceId, rotatedSecret),
+    authClientSecretCiphertext: encryptAuthClientSecret(
+      deps,
+      input.loaded.instance.instanceId,
+      rotatedSecret
+    ),
     keepExistingAuthClientSecret: false,
     tenantAdminClient: input.loaded.instance.tenantAdminClient
       ? {
@@ -161,7 +184,8 @@ export const syncRotatedClientSecretToRegistry = async (
           ),
         }
       : undefined,
-    keepExistingTenantAdminClientSecret: !state.tenantAdminClientSecret && !input.loaded.tenantAdminClientSecret,
+    keepExistingTenantAdminClientSecret:
+      !state.tenantAdminClientSecret && !input.loaded.tenantAdminClientSecret,
     tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
     actorId: input.actorId,
     requestId: input.requestId,
@@ -171,7 +195,8 @@ export const syncRotatedClientSecretToRegistry = async (
   });
 
   input.loaded.authClientSecret = rotatedSecret;
-  input.loaded.tenantAdminClientSecret = state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret;
+  input.loaded.tenantAdminClientSecret =
+    state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret;
 };
 
 export const syncProvisionedClientSecretToRegistry = async (
@@ -198,9 +223,11 @@ export const syncProvisionedClientSecretToRegistry = async (
     provisionedTenantAdminSecret,
     tenantAdminClientConfigured
   );
-  const authSecretDrift = Boolean(provisionedSecret) && provisionedSecret !== loaded.authClientSecret;
-  const tenantAdminSecretDrift = Boolean(provisionedTenantAdminSecret)
-    && provisionedTenantAdminSecret !== loaded.tenantAdminClientSecret;
+  const authSecretDrift =
+    Boolean(provisionedSecret) && provisionedSecret !== loaded.authClientSecret;
+  const tenantAdminSecretDrift =
+    Boolean(provisionedTenantAdminSecret) &&
+    provisionedTenantAdminSecret !== loaded.tenantAdminClientSecret;
   if (!authSecretDrift && !tenantAdminSecretDrift) {
     return;
   }
@@ -217,7 +244,7 @@ export const syncProvisionedClientSecretToRegistry = async (
     authClientSecretCiphertext: encryptAuthClientSecret(
       deps,
       loaded.instance.instanceId,
-      authSecretDrift ? provisionedSecret ?? undefined : loaded.authClientSecret
+      authSecretDrift ? (provisionedSecret ?? undefined) : loaded.authClientSecret
     ),
     keepExistingAuthClientSecret: false,
     tenantAdminClient: loaded.instance.tenantAdminClient
@@ -226,11 +253,15 @@ export const syncProvisionedClientSecretToRegistry = async (
           secretCiphertext: encryptTenantAdminClientSecret(
             deps,
             loaded.instance.instanceId,
-            tenantAdminSecretDrift ? provisionedTenantAdminSecret ?? undefined : loaded.tenantAdminClientSecret
+            tenantAdminSecretDrift
+              ? (provisionedTenantAdminSecret ?? undefined)
+              : loaded.tenantAdminClientSecret
           ),
         }
       : undefined,
-    keepExistingTenantAdminClientSecret: !(tenantAdminSecretDrift || loaded.tenantAdminClientSecret),
+    keepExistingTenantAdminClientSecret: !(
+      tenantAdminSecretDrift || loaded.tenantAdminClientSecret
+    ),
     tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
     actorId: input.actorId,
     requestId: input.requestId,

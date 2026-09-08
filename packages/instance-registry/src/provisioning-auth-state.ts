@@ -1,3 +1,5 @@
+import { createSdkLogger } from '@sva/server-runtime';
+
 import type {
   KeycloakClientRepresentation,
   KeycloakProvisioningInput,
@@ -16,6 +18,8 @@ import {
   readPluginOidcClientAlignment,
   readPluginOidcClientRequirements,
 } from './provisioning-auth-plugin-clients.js';
+
+const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
 type KeycloakAdminUser = {
   readonly id: string;
@@ -390,10 +394,24 @@ export const createProvisionInstanceAuthArtifacts =
       }
       try {
         await client.deleteRealm();
-      } catch {
-        throw new Error(
+      } catch (cleanupError) {
+        const cleanupErrorRecord =
+          cleanupError !== null && typeof cleanupError === 'object'
+            ? (cleanupError as { code?: unknown; statusCode?: unknown })
+            : undefined;
+        logger.error('realm_cleanup_failed', {
+          operation: 'delete_newly_created_realm',
+          result: 'failed',
+          realm: input.authRealm,
+          error_type: cleanupError instanceof Error ? cleanupError.name : typeof cleanupError,
+          error_code: cleanupErrorRecord?.code ?? 'unknown',
+          http_status: cleanupErrorRecord?.statusCode,
+        });
+        const manualActionError = new Error(
           'plugin_oidc_client_reconciliation_failed_realm_cleanup_failed_requires_manual_action'
-        );
+        ) as Error & { cause?: unknown };
+        manualActionError.cause = cleanupError;
+        throw manualActionError;
       }
       throw error;
     }

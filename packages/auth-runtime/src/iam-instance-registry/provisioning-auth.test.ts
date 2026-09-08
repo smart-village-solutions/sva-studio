@@ -57,6 +57,15 @@ const state = vi.hoisted(() => ({
     ...input,
     adminRealm: input.realm,
   })),
+  readInstanceRegistryPluginOidcClientRequirements: vi.fn<
+    () => readonly {
+      contractVersion: '1.0';
+      pluginId: string;
+      clientId: string;
+      audience: string;
+      enabled: false;
+    }[]
+  >(() => []),
 }));
 
 vi.mock('@sva/instance-registry/provisioning-auth-state', () => ({
@@ -81,9 +90,15 @@ vi.mock('../keycloak-admin-client.js', () => ({
   getKeycloakTenantAdminClientConfigFromEnv: state.getKeycloakTenantAdminClientConfigFromEnv,
 }));
 
+vi.mock('./plugin-activation-policy-snapshot.js', () => ({
+  readInstanceRegistryPluginOidcClientRequirements:
+    state.readInstanceRegistryPluginOidcClientRequirements,
+}));
+
 describe('iam-instance-registry provisioning auth wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([]);
     vi.resetModules();
   });
 
@@ -124,6 +139,15 @@ describe('iam-instance-registry provisioning auth wiring', () => {
   });
 
   it('injects the installed SSF client declaration at the auth-runtime composition boundary', async () => {
+    state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([
+      {
+        contractVersion: '1.0',
+        pluginId: 'ssf',
+        clientId: 'ssf',
+        audience: 'ssf',
+        enabled: false,
+      },
+    ]);
     const subject = await import('./provisioning-auth-state.js');
     const input = {
       instanceId: 'demo',
@@ -155,7 +179,36 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     );
   });
 
+  it('keeps provisioning neutral when the host snapshot has no plugin OIDC requirements', async () => {
+    const subject = await import('./provisioning-auth-state.js');
+    const input = {
+      instanceId: 'demo',
+      primaryHostname: 'demo.studio.example',
+      realmMode: 'existing' as const,
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+    };
+
+    await subject.provisionInstanceAuthArtifacts(input);
+
+    const adminAdapters = state.createKeycloakProvisioningAdapters.mock.results[0]?.value;
+    expect(adminAdapters.provisionInstanceAuthArtifacts).toHaveBeenCalledWith({
+      ...input,
+      pluginOidcClients: [],
+    });
+  });
+
   it('preserves caller plugin declarations while keeping the installed SSF declaration authoritative', async () => {
+    state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([
+      {
+        contractVersion: '1.0',
+        pluginId: 'ssf',
+        clientId: 'ssf',
+        audience: 'ssf',
+        enabled: false,
+      },
+    ]);
     const subject = await import('./provisioning-auth-state.js');
     const input = {
       instanceId: 'demo',

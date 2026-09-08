@@ -73,6 +73,8 @@ const isPluginClientAligned = (
   Boolean(client) &&
   client?.clientId === requirement.clientId &&
   client.enabled === false &&
+  client.protocol === 'openid-connect' &&
+  client.publicClient === false &&
   (client.rootUrl === undefined || client.rootUrl === '') &&
   equalSets(client.redirectUris ?? [], []) &&
   equalSets(readPostLogoutUris(client.attributes), []) &&

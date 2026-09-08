@@ -5,7 +5,6 @@ import {
   createReadKeycloakState,
 } from '@sva/instance-registry/provisioning-auth-state';
 import type { KeycloakProvisioningInput } from '@sva/instance-registry';
-import { SSF_TENANT_OIDC_CLIENT_REQUIREMENT } from '@sva/plugin-ssf/provisioning';
 
 import {
   KeycloakAdminClient,
@@ -15,6 +14,7 @@ import {
   getKeycloakProvisionerClientConfigFromEnv,
   getKeycloakTenantAdminClientConfigFromEnv,
 } from '../keycloak-admin-client.js';
+import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 
 export const readKeycloakAccessError = (error: unknown): string => {
   if (error instanceof KeycloakAdminUnavailableError) {
@@ -35,23 +35,28 @@ const createAuthKeycloakClientFactory = (
   );
 
 const adminClientFactory = createAuthKeycloakClientFactory(getKeycloakAdminClientConfigFromEnv);
-const provisionerClientFactory = createAuthKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv);
+const provisionerClientFactory = createAuthKeycloakClientFactory(
+  getKeycloakProvisionerClientConfigFromEnv
+);
 const adminAdapters = createKeycloakProvisioningAdapters(adminClientFactory);
 const provisionerAdapters = createKeycloakProvisioningAdapters(provisionerClientFactory);
 
-export const readKeycloakClientSecretsViaProvisioner = createReadKeycloakClientSecrets(provisionerClientFactory);
+export const readKeycloakClientSecretsViaProvisioner =
+  createReadKeycloakClientSecrets(provisionerClientFactory);
 
 const withInstalledPluginOidcClients = <
   T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,
 >(
   input: T
 ): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> => {
+  const installedRequirements = readInstanceRegistryPluginOidcClientRequirements();
+  const installedClientIds = new Set(installedRequirements.map(({ clientId }) => clientId));
   const callerRequirements = (input.pluginOidcClients ?? []).filter(
-    ({ clientId }) => clientId !== SSF_TENANT_OIDC_CLIENT_REQUIREMENT.clientId
+    ({ clientId }) => !installedClientIds.has(clientId)
   );
   return {
     ...input,
-    pluginOidcClients: [...callerRequirements, SSF_TENANT_OIDC_CLIENT_REQUIREMENT],
+    pluginOidcClients: [...callerRequirements, ...installedRequirements],
   };
 };
 

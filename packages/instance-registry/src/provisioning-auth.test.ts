@@ -82,6 +82,8 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
         id: 'ssf-client-1',
         clientId: 'ssf',
         enabled: false,
+        protocol: 'openid-connect',
+        publicClient: false,
         rootUrl: '',
         redirectUris: [],
         webOrigins: [],

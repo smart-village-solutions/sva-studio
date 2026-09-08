@@ -39,6 +39,7 @@
     "@sva/plugin-poi": "workspace:*",
     "@sva/plugin-projects": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
+    "@sva/plugin-ssf": "workspace:*",
     "@sva/plugin-surveys": "workspace:*",
     "@sva/routing": "workspace:*",
     "@sva/server-runtime": "workspace:*",

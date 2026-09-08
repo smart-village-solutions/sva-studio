@@ -25,6 +25,8 @@ const createClientWithAlignedSsf = () =>
             id: 'ssf-id',
             clientId: 'ssf',
             enabled: false,
+            protocol: 'openid-connect',
+            publicClient: false,
             rootUrl: '',
             redirectUris: [],
             webOrigins: [],
@@ -315,6 +317,8 @@ describe('provisioning-auth-state', () => {
       id: 'ssf-id',
       clientId: 'ssf',
       enabled: false,
+      protocol: 'openid-connect',
+      publicClient: false,
       rootUrl: '',
       redirectUris: [],
       webOrigins: [],
@@ -340,6 +344,39 @@ describe('provisioning-auth-state', () => {
     expect(client.ensureOidcClient).toHaveBeenCalledWith(
       expect.objectContaining({ clientId: 'ssf', implicitFlowEnabled: false })
     );
+    expect(client.deleteRealm).not.toHaveBeenCalled();
+  });
+
+  it('rejects read-back when the plugin client is public or not OIDC', async () => {
+    const client = createClientWithAlignedSsf();
+    vi.mocked(client.getOidcClientByClientId).mockResolvedValue({
+      id: 'ssf-id',
+      clientId: 'ssf',
+      enabled: false,
+      protocol: 'saml',
+      publicClient: true,
+      rootUrl: '',
+      redirectUris: [],
+      webOrigins: [],
+      standardFlowEnabled: false,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      attributes: { 'post.logout.redirect.uris': '' },
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        pluginOidcClients: [ssfClientRequirement],
+      })
+    ).rejects.toThrow('plugin_oidc_client_readback_failed:ssf:ssf');
+
     expect(client.deleteRealm).not.toHaveBeenCalled();
   });
 
@@ -404,9 +441,13 @@ describe('provisioning-auth-state', () => {
   });
 
   it('requires manual cleanup when compensating a newly created realm fails', async () => {
+    const cleanupError = Object.assign(new Error('keycloak_delete_failed'), {
+      code: 'http_403',
+      statusCode: 403,
+    });
     const client = createClient({
       deleteRealm: vi.fn(async () => {
-        throw new Error('keycloak_delete_failed');
+        throw cleanupError;
       }),
       getOidcClientByClientId: vi.fn(async (clientId: string) => ({
         id: `${clientId}-id`,
@@ -416,18 +457,19 @@ describe('provisioning-auth-state', () => {
     });
     const provision = createProvisionInstanceAuthArtifacts(() => client);
 
-    await expect(
-      provision({
-        instanceId: 'demo',
-        primaryHostname: 'demo.example.org',
-        realmMode: 'new',
-        authRealm: 'demo',
-        authClientId: 'sva-studio',
-        pluginOidcClients: [ssfClientRequirement],
-      })
-    ).rejects.toThrow(
+    const result = provision({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      pluginOidcClients: [ssfClientRequirement],
+    });
+
+    await expect(result).rejects.toThrow(
       'plugin_oidc_client_reconciliation_failed_realm_cleanup_failed_requires_manual_action'
     );
+    await expect(result).rejects.toMatchObject({ cause: cleanupError });
 
     expect(client.ensureOidcClient).toHaveBeenCalledOnce();
     expect(client.deleteRealm).toHaveBeenCalledOnce();

@@ -16,6 +16,7 @@ Das System SHALL ein Studio-Deployment innerhalb derselben Deployment-Grenze wie
 - **GIVEN** die SSF-Plugin-Distribution ist nicht installiert
 - **WHEN** das Studio startet
 - **THEN** enthält der Core weder SSF-Routen noch SSF-Fachfelder oder einen SSF-Betriebsmodus
+- **AND** der IAM-Pfad provisioniert oder reserviert keinen SSF-OIDC-Client und bewertet keinen SSF-Client als Drift
 - **AND** bestehende generische Studio-Funktionen bleiben nutzbar
 
 ### Requirement: SSF-Rollen werden strikt auf Root- und Tenant-Scope abgebildet

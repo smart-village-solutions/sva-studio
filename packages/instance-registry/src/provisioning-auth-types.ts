@@ -9,6 +9,8 @@ export type KeycloakClientRepresentation = {
   readonly id?: string;
   readonly clientId?: string;
   readonly enabled?: boolean;
+  readonly protocol?: string;
+  readonly publicClient?: boolean;
   readonly rootUrl?: string;
   readonly redirectUris?: readonly string[];
   readonly webOrigins?: readonly string[];

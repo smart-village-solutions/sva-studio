@@ -3,6 +3,7 @@ export {
   configureInstanceRegistryPluginRuntimeSnapshot,
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginOidcClientRequirements,
   readInstanceRegistryPluginTenantLifecycleRegistry,
   type InstanceRegistryModuleIamSnapshotEntry,
 } from './iam-instance-registry/plugin-activation-policy-snapshot.js';

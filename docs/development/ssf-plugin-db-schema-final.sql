@@ -251,7 +251,7 @@ CREATE POLICY tenants_tenant_read_policy
   ON ssf.tenants
   FOR SELECT
   TO ssf_plugin_tenant_runtime
-  USING (instance_id = (SELECT ssf.current_instance_id()));
+  USING (instance_id = ssf.current_instance_id());
 
 GRANT SELECT, INSERT ON ssf.tenants TO ssf_plugin_root;
 REVOKE UPDATE ON ssf.tenants FROM ssf_plugin_root;

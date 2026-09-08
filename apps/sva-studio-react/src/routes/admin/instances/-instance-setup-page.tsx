@@ -40,7 +40,7 @@ const adminBootstrapModuleLabels = {
 const getModuleLabel = (moduleId: string) => {
   const translationKey =
     adminBootstrapModuleLabels[moduleId as keyof typeof adminBootstrapModuleLabels];
-  return translationKey ? t(translationKey) : moduleId;
+  return typeof translationKey === 'string' ? t(translationKey) : moduleId;
 };
 
 export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {

@@ -399,10 +399,56 @@ describe('EventsDetailPage', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Startdatum') as HTMLInputElement).value).toBe('2026-06-11');
+      expect((screen.getByLabelText('Startdatum') as HTMLInputElement).value).toBe('11.06.2026');
     });
 
-    expect((screen.getByLabelText('Enddatum') as HTMLInputElement).value).toBe('2026-06-12');
+    expect((screen.getByLabelText('Enddatum') as HTMLInputElement).value).toBe('12.06.2026');
+  });
+
+  it('retains other dates and input identity when changing the first date', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1280',
+      title: 'Mehrere Termine',
+      dates: [
+        { dateStart: '2026-09-09', dateEnd: '2026-09-10' },
+        { dateStart: '2026-10-09', dateEnd: '2026-10-10' },
+      ],
+    } as never);
+    render(<EventsDetailPage mode="edit" contentId="1280" />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+    const first = await screen.findByLabelText('Startdatum', { selector: '#event-date-start' });
+    first.focus();
+    fireEvent.change(first, { target: { value: '8.9.2026' } });
+    expect(screen.getByLabelText('Startdatum', { selector: '#event-date-start' })).toBe(first);
+    expect(document.activeElement).toBe(first);
+    expect(
+      (screen.getByLabelText('Startdatum', { selector: '#event-date-start-1' }) as HTMLInputElement)
+        .value
+    ).toBe('09.10.2026');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    await waitFor(() => expect(updateEvent).toHaveBeenCalled());
+    expect(vi.mocked(updateEvent).mock.calls[0]?.[1].dates).toEqual([
+      expect.objectContaining({ dateStart: '2026-09-08', dateEnd: '2026-09-10' }),
+      expect.objectContaining({ dateStart: '2026-10-09', dateEnd: '2026-10-10' }),
+    ]);
+  });
+
+  it('blocks an invalid second date from another tab and focuses its preserved draft', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1280',
+      title: 'Mehrere Termine',
+      dates: [{ dateStart: '2026-09-09' }, { dateStart: '2026-10-09' }],
+    } as never);
+    render(<EventsDetailPage mode="edit" contentId="1280" />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+    const input = await screen.findByLabelText('Startdatum', { selector: '#event-date-start-1' });
+    fireEvent.change(input, { target: { value: '31.02.' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Basis' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    await waitFor(() => expect(document.activeElement).toBe(input));
+    expect(updateEvent).not.toHaveBeenCalled();
+    expect((input as HTMLInputElement).value).toBe('31.02.');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 
   it('blocks submission on invalid title, invalid date input, and non-https links', async () => {

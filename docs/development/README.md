@@ -85,3 +85,7 @@ Die vollständige Alt-/Neu-Pfadzuordnung steht im [Migrationsnachweis](../govern
 ## Benachbarte Bereiche
 
 [Dokumentationsübersicht](../README.md) · [Betrieb](../operations/README.md) · [Referenz](../reference/README.md) · [Governance](../governance/README.md) · [Architektur](../architecture/README.md)
+
+## Gemeinsame Formularbausteine
+
+- [Datumseingabe mit Tastatur und Kalender](./datumseingabe.md)

@@ -5,6 +5,22 @@ const createEventsLocaleTranslations = <TEvents extends Readonly<Record<string, 
 ) => ({ events }) as const;
 
 const eventsTranslationsDe = createEventsLocaleTranslations({
+  datePicker: {
+    openCalendar: 'Kalender öffnen',
+    calendar: 'Datum auswählen',
+    navigation: 'Kalendernavigation',
+    previousMonth: 'Vorheriger Monat',
+    nextMonth: 'Nächster Monat',
+    formatHint: 'TT.MM.JJJJ, zum Beispiel 09.09.2026',
+    today: 'Heute',
+    selected: 'Ausgewählt',
+    errors: {
+      invalid: 'Bitte ein gültiges Datum eingeben, zum Beispiel 09.09.2026.',
+      required: 'Bitte ein Datum eingeben.',
+      min: 'Das Enddatum darf nicht vor dem Startdatum liegen.',
+      max: 'Das Datum liegt nach dem spätesten zulässigen Datum.',
+    },
+  },
   navigation: { title: 'Veranstaltungen' },
   list: { title: 'Veranstaltungen', description: 'Veranstaltungen aus dem Mainserver bearbeiten.' },
   detail: {
@@ -403,6 +419,22 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
 });
 
 const eventsTranslationsEn = createEventsLocaleTranslations({
+  datePicker: {
+    openCalendar: 'Open calendar',
+    calendar: 'Choose date',
+    navigation: 'Calendar navigation',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    formatHint: 'DD/MM/YYYY, for example 09/09/2026',
+    today: 'Today',
+    selected: 'Selected',
+    errors: {
+      invalid: 'Enter a valid date, for example 09/09/2026.',
+      required: 'Enter a date.',
+      min: 'The end date must not be before the start date.',
+      max: 'The date is after the latest allowed date.',
+    },
+  },
   navigation: { title: 'Events' },
   list: { title: 'Events', description: 'Edit Mainserver event records.' },
   detail: {

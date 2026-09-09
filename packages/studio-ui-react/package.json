@@ -21,7 +21,7 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "@sva/core": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
-    "@tanstack/react-table": "^9.1.2",
+    "@tanstack/react-table": "^9.2.4",
     "@tiptap/extension-link": "^3.27.1",
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",

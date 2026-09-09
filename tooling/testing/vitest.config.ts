@@ -3,11 +3,12 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
 
-import { sharedCoverageConfig } from '../../vitest.config';
+import sharedConfig, { sharedCoverageConfig } from '../../vitest.config';
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  resolve: sharedConfig.resolve,
   root: projectRoot,
   test: {
     include: [
@@ -59,11 +60,13 @@ export default defineConfig({
       '../../scripts/ci/iam-acceptance.test.ts',
       '../../scripts/ci/run-iam-acceptance.test.ts',
       '../../scripts/ci/test-runner-standardization.test.ts',
+      '../../scripts/ops/instance-registry.test.ts',
       '../../scripts/ops/runtime-env-guardrails.test.ts',
       '../../scripts/ops/runtime-env.test.ts',
       '../../scripts/ops/runtime-env.remote.test.ts',
       '../../scripts/ops/runtime/acceptance-deploy.test.ts',
       '../../scripts/ops/runtime/acceptance-runtime-checks.test.ts',
+      '../../scripts/ops/runtime/acceptance-runtime-checks.live-spec.test.ts',
       '../../scripts/ops/runtime/doctor.test.ts',
       '../../scripts/ops/runtime/local-command.test.ts',
       '../../scripts/ops/runtime/one-shot-job-compose.test.ts',

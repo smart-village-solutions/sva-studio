@@ -112,8 +112,14 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
   }
 
   const classification = classifyHost(host, config.parentDomain, config.canonicalAuthHost);
-  if (classification.kind !== 'tenant') {
+  if (classification.kind === 'root') {
     return null;
+  }
+  if (classification.kind === 'invalid') {
+    return forbiddenTenantHost({
+      reasonCode: 'tenant_host_invalid',
+      requestId: getWorkspaceContext().requestId,
+    });
   }
 
   if (isActiveTenantHostCached(host)) {

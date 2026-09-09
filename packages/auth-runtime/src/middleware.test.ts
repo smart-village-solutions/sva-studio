@@ -178,6 +178,17 @@ describe('auth-runtime withAuthenticatedUser', () => {
     );
   });
 
+  it('rejects an invalid host before using a retained platform session', async () => {
+    authServerMocks.validateTenantHost.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    const handler = vi.fn(() => new Response('platform data'));
+    const response = await withAuthenticatedUser(new Request('https://dialog.kassel.de/api/iam/platform/users', {
+      headers: { cookie: 'sva_auth_session=retained-platform-session' },
+    }), handler);
+    expect(response.status).toBe(403);
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid sessions', async () => {
     getSessionUserMock.mockResolvedValue({ kind: 'invalid', reason: 'invalid_session' });
     const request = new Request('http://localhost/auth/me', {

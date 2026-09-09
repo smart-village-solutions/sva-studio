@@ -17,6 +17,6 @@ Die Texte liegen in den deutschen und englischen Übersetzungsressourcen. Die Pr
 
 ## Konfiguration
 
-Lokal kann `SVA_STUDIO_BRANDING=kassel-dialog` in der Server-Umgebung gesetzt werden. Für verwaltete Umgebungen wird der Wert im zuständigen Profil unter `config/runtime/remote/` gesetzt und über den [kanonischen Rollout-Prozess](../guides/studio-rollout-process.md) ausgeliefert. Die Compose-Konfiguration reicht ihn an den App-Prozess weiter; für eine Änderung genügt ein regulärer Rollout mit aktualisierter Laufzeitkonfiguration und demselben Image. Ein neuer Frontend-Build ist für die Profilauswahl nicht erforderlich.
+Lokal kann `SVA_STUDIO_BRANDING=kassel-dialog` in der Server-Umgebung gesetzt werden. Für verwaltete Umgebungen wird der Wert im zuständigen Profil unter `config/runtime/remote/` gesetzt und über den [kanonischen Rollout-Prozess](../guides/studio-rollout-process.md) ausgeliefert. Die Compose-Konfiguration reicht ihn an den App-Prozess weiter. Änderungen an einem verwalteten Profil durchlaufen vollständig `Build` → Dev → Staging → Production; dabei wird der vom Konfigurations-Commit erzeugte, revisionsgebundene Image-Digest von Staging nach Production übernommen.
 
 Fehlende Konfiguration verwendet `sva-studio`. Der Deployment-Vertrag lehnt unbekannte Werte ab; außerhalb dieses Vertrags fällt die Anwendung bei unbekannten Werten auf das Standardprofil zurück. Der Browser erhält ausschließlich die öffentliche Profilkennung über die Root-Route und einen Meta-Tag, sodass die Auswahl auch bei clientseitiger Navigation erhalten bleibt.

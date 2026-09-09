@@ -61,6 +61,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/plugin-ssf/runtime': fileURLToPath(
         new URL('../../packages/plugin-ssf/src/runtime.ts', import.meta.url)
       ),
+      '@sva/plugin-ssf/provisioning': fileURLToPath(
+        new URL('../../packages/plugin-ssf/src/provisioning.ts', import.meta.url)
+      ),
       '@sva/iam-admin/encryption': fileURLToPath(
         new URL('../../packages/iam-admin/src/encryption.ts', import.meta.url)
       ),

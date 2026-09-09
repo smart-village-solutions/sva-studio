@@ -35,6 +35,7 @@ Die Dokumente unterscheiden bewusst zwischen Überblick, technischer Infrastrukt
 - [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md)
 - [Keycloak-Sonderrollen-Sync und Reconcile](./keycloak-rollen-sync-runbook.md)
 - [Keycloak Service-Account Setup für IAM](./keycloak-service-account-setup-iam.md)
+- [SSF-Runtime-Service-Identität](./ssf-runtime-service-identitaet.md)
 - [Keycloak-Tenant-Realm-Bootstrap](./keycloak-tenant-realm-bootstrap.md)
 - [Public-Waste-Web-Release](./public-waste-web-release-runbook.md)
 - [Docker-Swarm- und Planetary-Quantum-Infrastruktur](./swarm-deployment-guide.md)

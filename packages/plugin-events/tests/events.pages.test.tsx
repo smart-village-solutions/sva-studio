@@ -323,7 +323,7 @@ describe('EventsListPage', () => {
     );
   }, 10_000);
 
-  it('ignores impossible browser date values and still submits with the remaining valid input', async () => {
+  it('preserves impossible dates, blocks saving and accepts a corrected date', async () => {
     render(<EventsCreatePage />);
 
     await waitFor(() => {
@@ -339,17 +339,18 @@ describe('EventsListPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
+      expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
+    });
+    expect(createEvent).not.toHaveBeenCalled();
+    expect((screen.getByLabelText('Startdatum') as HTMLInputElement).value).toBe('2026-02-31');
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '28.02.2026' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
+    await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Konzertabend',
-          dates: [],
-        }),
+        expect.objectContaining({ title: 'Konzertabend', dates: [{ dateStart: '2026-02-28' }] }),
         'user'
       );
     });
-
-    expect(screen.getByLabelText('Startdatum').getAttribute('value')).toBe('');
-    expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBeNull();
   });
 
   it('loads existing inline media contents on edit and keeps the update flow stable', async () => {

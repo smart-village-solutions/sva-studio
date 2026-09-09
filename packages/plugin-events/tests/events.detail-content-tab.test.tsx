@@ -211,16 +211,11 @@ function renderTab(
   options?: {
     readonly canSelectMedia?: boolean;
     readonly canUploadMedia?: boolean;
-    readonly dateEndInput?: string;
-    readonly dateInputsInvalid?: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
-    readonly dateStartInput?: string;
     readonly mediaEditingDisabled?: boolean;
   }
 ) {
   const onAddManualMedia = vi.fn(() => 'manual-media');
   const onChangeMediaUsages = vi.fn();
-  const onDateStartInputChange = vi.fn();
-  const onDateEndInputChange = vi.fn();
   const onOpenMediaPicker = vi.fn();
   let getCurrentValues: (() => EventsDetailFormValues) | undefined;
 
@@ -238,14 +233,9 @@ function renderTab(
         <EventsDetailContentTab
           canSelectMedia={options?.canSelectMedia}
           canUploadMedia={options?.canUploadMedia}
-          dateEndInput={options?.dateEndInput ?? ''}
-          dateInputsInvalid={options?.dateInputsInvalid ?? { dateStart: false, dateEnd: false }}
-          dateStartInput={options?.dateStartInput ?? ''}
           mediaEditingDisabled={options?.mediaEditingDisabled}
           onAddManualMedia={onAddManualMedia}
           onChangeMediaUsages={onChangeMediaUsages}
-          onDateEndInputChange={onDateEndInputChange}
-          onDateStartInputChange={onDateStartInputChange}
           onOpenMediaPicker={onOpenMediaPicker}
           pt={pt}
         />
@@ -259,16 +249,14 @@ function renderTab(
     ...view,
     onAddManualMedia,
     onChangeMediaUsages,
-    onDateEndInputChange,
-    onDateStartInputChange,
     onOpenMediaPicker,
     getValues: () => getCurrentValues?.() as EventsDetailFormValues,
   };
 }
 
 describe('EventsDetailContentTab', () => {
-  it('propagates date input callbacks and persists the structured content sections', async () => {
-    const { onDateEndInputChange, onDateStartInputChange, getValues } = renderTab();
+  it('persists canonical date values and persists the structured content sections', async () => {
+    const { getValues } = renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
     fireEvent.change(screen.getByTestId('rich-text-editor'), {
@@ -313,8 +301,8 @@ describe('EventsDetailContentTab', () => {
     fireEvent.change(screen.getByLabelText('Preiskategorie'), { target: { value: 'Erwachsene' } });
     fireEvent.change(screen.getByLabelText('Preis'), { target: { value: '12' } });
 
-    expect(onDateStartInputChange).toHaveBeenCalledWith('2026-06-12');
-    expect(onDateEndInputChange).toHaveBeenCalledWith('2026-06-12');
+    expect(getValues().content.dates?.[0]?.dateStart).toBe('2026-06-12');
+    expect(getValues().content.dates?.[0]?.dateEnd).toBe('2026-06-12');
     expect(getValues().content.description).toBe('<p>Eventbeschreibung</p>');
     expect(getValues().content.dates?.[0]).toMatchObject({ timeStart: '10:15', timeEnd: '12:30' });
     expect(getValues().content.addresses?.[0]).toMatchObject({
@@ -459,8 +447,8 @@ describe('EventsDetailContentTab', () => {
     expect(getValues().content.priceInformations).toHaveLength(2);
   });
 
-  it('edits and removes repeated optional entries without using first-date callbacks', async () => {
-    const { getValues, onDateEndInputChange, onDateStartInputChange } = renderTab({
+  it('edits and removes repeated entries without recreating deleted dates', async () => {
+    const { getValues } = renderTab({
       content: {
         ...createDefaultEventsDetailFormValues().content,
         dates: [
@@ -520,8 +508,6 @@ describe('EventsDetailContentTab', () => {
       target: { value: '' },
     });
 
-    expect(onDateStartInputChange).not.toHaveBeenCalled();
-    expect(onDateEndInputChange).not.toHaveBeenCalled();
     expect(getValues().content.dates?.[1]).toMatchObject({
       dateStart: '2026-09-01',
       dateEnd: '2026-09-01',
@@ -557,23 +543,23 @@ describe('EventsDetailContentTab', () => {
   }, 10_000);
 
   it('marks invalid first date inputs for assistive technology', async () => {
-    renderTab(undefined, {
-      dateStartInput: 'invalid-start',
-      dateEndInput: 'invalid-end',
-      dateInputsInvalid: { dateStart: true, dateEnd: true },
-    });
+    renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
+    for (const label of ['Startdatum', 'Enddatum']) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value: '31.02.2026' } });
+      fireEvent.blur(screen.getByLabelText(label));
+    }
 
     expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByLabelText('Enddatum').getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('renders date-only inputs for event dates', async () => {
+  it('renders editable text inputs with optional calendars for event dates', async () => {
     renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });
 
-    expect(screen.getByLabelText('Startdatum').getAttribute('type')).toBe('date');
-    expect(screen.getByLabelText('Enddatum').getAttribute('type')).toBe('date');
+    expect(screen.getByLabelText('Startdatum').getAttribute('type')).toBe('text');
+    expect(screen.getByLabelText('Enddatum').getAttribute('type')).toBe('text');
   });
 
   it('renders time inputs for event times', async () => {

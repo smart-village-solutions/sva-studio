@@ -79,7 +79,6 @@ import {
   updateEvent,
 } from './events.api.js';
 import { EVENTS_CONTENT_TYPE } from './events.constants.js';
-import { fromDateOnlyInputValue, toDateOnlyInputValue } from './events.date-only.js';
 import {
   createDefaultMediaContent,
   createDefaultEventsDetailFormValues,
@@ -180,18 +179,6 @@ const errorMessage = (
   error: unknown,
   fallbackKey: string
 ) => (error instanceof EventsApiError ? error.message : pt(fallbackKey));
-
-const parseDateOnlyInput = (value: string) => {
-  if (value.trim().length === 0) {
-    return { isInvalid: false, normalizedValue: '' };
-  }
-
-  const normalizedValue = fromDateOnlyInputValue(value);
-  return {
-    isInvalid: normalizedValue.length === 0,
-    normalizedValue,
-  };
-};
 
 const toEventsMediaPickerSummary = (
   asset: HostMediaAssetListItem
@@ -324,12 +311,6 @@ export function EventsDetailPage({
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
-  const [dateStartInput, setDateStartInput] = React.useState('');
-  const [dateEndInput, setDateEndInput] = React.useState('');
-  const [invalidDateInputs, setInvalidDateInputs] = React.useState({
-    dateStart: false,
-    dateEnd: false,
-  });
   const [activeTab, setActiveTab] = React.useState<EventsDetailTabId>('basis');
   const [pendingFocusId, setPendingFocusId] = React.useState<string | null>(null);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly EventsDetailTabId[]>(['basis']);
@@ -581,9 +562,6 @@ export function EventsDetailPage({
         setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents));
         setRequiresReferenceSync(false);
         setLoadedItem(item);
-        setDateStartInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateStart));
-        setDateEndInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateEnd));
-        setInvalidDateInputs({ dateStart: false, dateEnd: false });
         setLoading(false);
 
         void listHostMediaReferencesByTarget({
@@ -679,211 +657,210 @@ export function EventsDetailPage({
     [warmTab]
   );
 
-  const updateDateField = React.useCallback(
-    (field: 'dateStart' | 'dateEnd', nextValue: string) => {
-      const currentDate = methods.getValues('content.dates.0') ?? {};
-      const { isInvalid, normalizedValue } = parseDateOnlyInput(nextValue);
-      methods.setValue('content.dates', [{ ...currentDate, [field]: normalizedValue }], {
-        shouldDirty: true,
-      });
-      setInvalidDateInputs((current) => ({ ...current, [field]: isInvalid }));
-      if (field === 'dateStart') {
-        setDateStartInput(nextValue);
-      } else {
-        setDateEndInput(nextValue);
+  const submit = methods.handleSubmit(
+    async (values, event) => {
+      if (!canSave) return;
+      const form = event?.target;
+      if (form instanceof HTMLFormElement && !form.reportValidity()) return;
+      setStatus(null);
+      methods.clearErrors();
+      const valuesWithMedia = {
+        ...values,
+        content: {
+          ...values.content,
+          mediaContents: contentMediaUsagesToMainserver(
+            mediaUsages.filter((usage) => !usage.localDraft)
+          ) as EventsDetailFormValues['content']['mediaContents'],
+        },
+      };
+      const payload = mapEventsDetailFormValuesToInput(valuesWithMedia);
+      const invalidAddressIndex = valuesWithMedia.content.addresses.findIndex((address) =>
+        hasInvalidFormGeoLocation(address.geoLocation)
+      );
+      const invalidOrganizerGeoLocation = hasInvalidFormGeoLocation(
+        valuesWithMedia.content.organizer.address?.geoLocation
+      );
+      const organizerNameMissing =
+        hasEventOrganizerContent(valuesWithMedia.content.organizer) &&
+        (valuesWithMedia.content.organizer.name ?? '').trim().length === 0;
+      const validationErrors = [
+        ...new Set([
+          ...validateEventForm(payload),
+          ...(invalidAddressIndex >= 0 || invalidOrganizerGeoLocation ? ['geoLocation'] : []),
+          ...(organizerNameMissing ? ['organizerName'] : []),
+        ]),
+      ];
+
+      if (validationErrors.length > 0) {
+        setStatus({ kind: 'error', text: pt('messages.validationError') });
+        if (validationErrors.includes('dates')) {
+          methods.setFocus('content.dates.0.dateStart');
+          setActiveTab('content');
+        } else if (validationErrors.includes('geoLocation')) {
+          if (invalidAddressIndex >= 0) {
+            methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.latitude`, {
+              type: 'manual',
+              message: 'geoLocation',
+            });
+            methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.longitude`, {
+              type: 'manual',
+              message: 'geoLocation',
+            });
+            setPendingFocusId(
+              invalidAddressIndex === 0
+                ? 'event-address-latitude'
+                : `event-address-latitude-${invalidAddressIndex}`
+            );
+          }
+          if (invalidOrganizerGeoLocation) {
+            methods.setError('content.organizer.address.geoLocation.latitude', {
+              type: 'manual',
+              message: 'geoLocation',
+            });
+            methods.setError('content.organizer.address.geoLocation.longitude', {
+              type: 'manual',
+              message: 'geoLocation',
+            });
+            setPendingFocusId('event-organizer-latitude');
+          }
+          setActiveTab('content');
+        } else if (validationErrors.includes('categories')) {
+          setActiveTab('basis');
+        } else if (validationErrors.includes('title')) {
+          methods.setFocus('title');
+          setActiveTab('basis');
+        } else if (validationErrors.includes('organizerName')) {
+          methods.setError('content.organizer.name', {
+            type: 'manual',
+            message: 'organizerName',
+          });
+          setActiveTab('content');
+          setPendingFocusId('event-organizer-name');
+        } else if (validationErrors.includes('urls')) {
+          methods.setFocus('content.urls.0.url');
+          setActiveTab('content');
+        }
+        return;
+      }
+
+      const operationId = saveFeedback.beginSaving();
+      setMediaSavePhaseKey(null);
+      try {
+        const deviationFormPaths: Readonly<
+          Record<string, Parameters<typeof methods.getFieldState>[0]>
+        > = {
+          title: 'title',
+          categories: 'basis.categories',
+          description: 'content.description',
+          dates: 'content.dates',
+          addresses: 'content.addresses',
+          contacts: 'content.contacts',
+          urls: 'content.urls',
+          mediaContents: 'content.mediaContents',
+          organizer: 'content.organizer',
+          priceInformations: 'content.priceInformations',
+          accessibilityInformation: 'content.accessibilityInformation',
+          externalId: 'settings.externalId',
+          keywords: 'settings.keywords',
+          tags: 'settings.tags',
+          visible: 'settings.visible',
+        };
+        const correctedDegradedFields = deviations
+          .map(({ fieldGroup }) => fieldGroup)
+          .filter((fieldGroup) => {
+            const fieldPath = deviationFormPaths[fieldGroup];
+            return fieldPath ? methods.getFieldState(fieldPath).isDirty : false;
+          });
+        if (
+          correctedDegradedFields.length > 0 &&
+          !globalThis.confirm(
+            pt('messages.degradedCorrectionConfirm', {
+              fields: correctedDegradedFields
+                .map((field) => deviationFieldLabels[field] ?? field)
+                .join(', '),
+            })
+          )
+        ) {
+          saveFeedback.reset();
+          return;
+        }
+        const saveContent = (
+          draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
+          mediaSaveContext?: Readonly<{ operationId: string }>
+        ) => {
+          const resolvedPayload = mapEventsDetailFormValuesToInput({
+            ...values,
+            content: {
+              ...values.content,
+              mediaContents: contentMediaUsagesToMainserver(
+                resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
+              ) as EventsDetailFormValues['content']['mediaContents'],
+            },
+          });
+          const mutationOptions = mediaSaveContext
+            ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+            : undefined;
+          if (mode === 'create') {
+            return mutationOptions
+              ? createEvent(resolvedPayload, actingPrincipalType, mutationOptions)
+              : createEvent(resolvedPayload, actingPrincipalType);
+          }
+          const mutation = omitDeviatedMainserverFields(resolvedPayload, deviations, {
+            retainedFieldGroups: correctedDegradedFields,
+          });
+          return mutationOptions
+            ? updateEvent(contentId as string, mutation, actingPrincipalType, mutationOptions)
+            : updateEvent(contentId as string, mutation, actingPrincipalType);
+        };
+        const result = requiresReferenceSync
+          ? await saveContentWithHostMediaReferences({
+              fetch: globalThis.fetch.bind(globalThis),
+              saveContent,
+              getTargetId: (saved) => saved.id,
+              targetType: EVENTS_CONTENT_TYPE,
+              references: mediaUsages.flatMap((usage) => {
+                const reference = contentMediaUsageToReference(usage);
+                return reference ? [reference] : [];
+              }),
+              drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
+              onPhaseChange: (phase) =>
+                setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
+            })
+          : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
+        const handledResult = mediaReferenceSync.consumeSaveResult(result);
+        const saved = handledResult.saved;
+        if (handledResult.referenceFailed) {
+          setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+          saveFeedback.markFailed(operationId);
+          return;
+        }
+        setStatus(null);
+        saveFeedback.markSaved(operationId);
+        if (mode === 'create') {
+          await navigate({
+            to: '/admin/events/$id',
+            params: { id: saved.id },
+            state: (previous) => addStudioCreatedSaveFeedback(previous, 'events', saved.id),
+          });
+        }
+      } catch (saveError) {
+        setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
+        saveFeedback.markFailed(operationId);
       }
     },
-    [methods]
-  );
-
-  const submit = methods.handleSubmit(async (values) => {
-    if (!canSave) return;
-    setStatus(null);
-    methods.clearErrors();
-    const valuesWithMedia = {
-      ...values,
-      content: {
-        ...values.content,
-        mediaContents: contentMediaUsagesToMainserver(
-          mediaUsages.filter((usage) => !usage.localDraft)
-        ) as EventsDetailFormValues['content']['mediaContents'],
-      },
-    };
-    const payload = mapEventsDetailFormValuesToInput(valuesWithMedia);
-    const invalidAddressIndex = valuesWithMedia.content.addresses.findIndex((address) =>
-      hasInvalidFormGeoLocation(address.geoLocation)
-    );
-    const invalidOrganizerGeoLocation = hasInvalidFormGeoLocation(
-      valuesWithMedia.content.organizer.address?.geoLocation
-    );
-    const organizerNameMissing =
-      hasEventOrganizerContent(valuesWithMedia.content.organizer) &&
-      (valuesWithMedia.content.organizer.name ?? '').trim().length === 0;
-    const validationErrors = [
-      ...new Set([
-        ...validateEventForm(payload),
-        ...(invalidDateInputs.dateStart || invalidDateInputs.dateEnd ? ['dates'] : []),
-        ...(invalidAddressIndex >= 0 || invalidOrganizerGeoLocation ? ['geoLocation'] : []),
-        ...(organizerNameMissing ? ['organizerName'] : []),
-      ]),
-    ];
-
-    if (validationErrors.length > 0) {
+    (errors) => {
+      const dates = errors.content?.dates;
+      if (!dates) return;
+      const index = (methods.getValues('content.dates') ?? []).findIndex((_, position) =>
+        Boolean(dates[position]?.dateStart || dates[position]?.dateEnd)
+      );
+      if (index < 0) return;
+      const field = dates[index]?.dateStart ? 'start' : 'end';
+      setActiveTab('content');
+      setPendingFocusId(index === 0 ? `event-date-${field}` : `event-date-${field}-${index}`);
       setStatus({ kind: 'error', text: pt('messages.validationError') });
-      if (validationErrors.includes('dates')) {
-        methods.setFocus('content.dates.0.dateStart');
-        setActiveTab('content');
-      } else if (validationErrors.includes('geoLocation')) {
-        if (invalidAddressIndex >= 0) {
-          methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.latitude`, {
-            type: 'manual',
-            message: 'geoLocation',
-          });
-          methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.longitude`, {
-            type: 'manual',
-            message: 'geoLocation',
-          });
-          setPendingFocusId(
-            invalidAddressIndex === 0
-              ? 'event-address-latitude'
-              : `event-address-latitude-${invalidAddressIndex}`
-          );
-        }
-        if (invalidOrganizerGeoLocation) {
-          methods.setError('content.organizer.address.geoLocation.latitude', {
-            type: 'manual',
-            message: 'geoLocation',
-          });
-          methods.setError('content.organizer.address.geoLocation.longitude', {
-            type: 'manual',
-            message: 'geoLocation',
-          });
-          setPendingFocusId('event-organizer-latitude');
-        }
-        setActiveTab('content');
-      } else if (validationErrors.includes('categories')) {
-        setActiveTab('basis');
-      } else if (validationErrors.includes('title')) {
-        methods.setFocus('title');
-        setActiveTab('basis');
-      } else if (validationErrors.includes('organizerName')) {
-        methods.setError('content.organizer.name', {
-          type: 'manual',
-          message: 'organizerName',
-        });
-        setActiveTab('content');
-        setPendingFocusId('event-organizer-name');
-      } else if (validationErrors.includes('urls')) {
-        methods.setFocus('content.urls.0.url');
-        setActiveTab('content');
-      }
-      return;
     }
-
-    const operationId = saveFeedback.beginSaving();
-    setMediaSavePhaseKey(null);
-    try {
-      const deviationFormPaths: Readonly<
-        Record<string, Parameters<typeof methods.getFieldState>[0]>
-      > = {
-        title: 'title',
-        categories: 'basis.categories',
-        description: 'content.description',
-        dates: 'content.dates',
-        addresses: 'content.addresses',
-        contacts: 'content.contacts',
-        urls: 'content.urls',
-        mediaContents: 'content.mediaContents',
-        organizer: 'content.organizer',
-        priceInformations: 'content.priceInformations',
-        accessibilityInformation: 'content.accessibilityInformation',
-        externalId: 'settings.externalId',
-        keywords: 'settings.keywords',
-        tags: 'settings.tags',
-        visible: 'settings.visible',
-      };
-      const correctedDegradedFields = deviations
-        .map(({ fieldGroup }) => fieldGroup)
-        .filter((fieldGroup) => {
-          const fieldPath = deviationFormPaths[fieldGroup];
-          return fieldPath ? methods.getFieldState(fieldPath).isDirty : false;
-        });
-      if (
-        correctedDegradedFields.length > 0 &&
-        !globalThis.confirm(
-          pt('messages.degradedCorrectionConfirm', {
-            fields: correctedDegradedFields
-              .map((field) => deviationFieldLabels[field] ?? field)
-              .join(', '),
-          })
-        )
-      ) {
-        saveFeedback.reset();
-        return;
-      }
-      const saveContent = (
-        draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
-        mediaSaveContext?: Readonly<{ operationId: string }>
-      ) => {
-        const resolvedPayload = mapEventsDetailFormValuesToInput({
-          ...values,
-          content: {
-            ...values.content,
-            mediaContents: contentMediaUsagesToMainserver(
-              resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
-            ) as EventsDetailFormValues['content']['mediaContents'],
-          },
-        });
-        const mutationOptions = mediaSaveContext
-          ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
-          : undefined;
-        if (mode === 'create') {
-          return mutationOptions
-            ? createEvent(resolvedPayload, actingPrincipalType, mutationOptions)
-            : createEvent(resolvedPayload, actingPrincipalType);
-        }
-        const mutation = omitDeviatedMainserverFields(resolvedPayload, deviations, {
-          retainedFieldGroups: correctedDegradedFields,
-        });
-        return mutationOptions
-          ? updateEvent(contentId as string, mutation, actingPrincipalType, mutationOptions)
-          : updateEvent(contentId as string, mutation, actingPrincipalType);
-      };
-      const result = requiresReferenceSync
-        ? await saveContentWithHostMediaReferences({
-            fetch: globalThis.fetch.bind(globalThis),
-            saveContent,
-            getTargetId: (saved) => saved.id,
-            targetType: EVENTS_CONTENT_TYPE,
-            references: mediaUsages.flatMap((usage) => {
-              const reference = contentMediaUsageToReference(usage);
-              return reference ? [reference] : [];
-            }),
-            drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
-            onPhaseChange: (phase) => setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
-          })
-        : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-      const handledResult = mediaReferenceSync.consumeSaveResult(result);
-      const saved = handledResult.saved;
-      if (handledResult.referenceFailed) {
-        setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
-        saveFeedback.markFailed(operationId);
-        return;
-      }
-      setStatus(null);
-      saveFeedback.markSaved(operationId);
-      if (mode === 'create') {
-        await navigate({
-          to: '/admin/events/$id',
-          params: { id: saved.id },
-          state: (previous) => addStudioCreatedSaveFeedback(previous, 'events', saved.id),
-        });
-      }
-    } catch (saveError) {
-      setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
-      saveFeedback.markFailed(operationId);
-    }
-  });
+  );
 
   const remove = async () => {
     if (!contentId || deletePending) {
@@ -1021,7 +998,7 @@ export function EventsDetailPage({
           searchValue={mediaPicker.searchValue}
           uploadPhase={mediaPicker.uploadPhase}
         />
-        <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
+        <form id={formId} noValidate onSubmit={(event) => void submit(event)} className="space-y-5">
           {deleteNavigationFailed ? (
             <StudioPersistentActionResult
               kind="success"
@@ -1182,13 +1159,6 @@ export function EventsDetailPage({
                             license: detail.metadata.license ?? '',
                           });
                         }}
-                        dateEndInput={dateEndInput}
-                        dateInputsInvalid={invalidDateInputs}
-                        dateStartInput={dateStartInput}
-                        onDateEndInputChange={(nextValue) => updateDateField('dateEnd', nextValue)}
-                        onDateStartInputChange={(nextValue) =>
-                          updateDateField('dateStart', nextValue)
-                        }
                         onOpenMediaPicker={(pickerMode) =>
                           pickerMode === 'upload'
                             ? mediaPicker.openUpload()

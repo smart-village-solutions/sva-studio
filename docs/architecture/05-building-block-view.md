@@ -75,6 +75,7 @@ Abhängigkeiten des aktuellen Systems.
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
 - verwendet die framework-agnostische Rich-Text-Allowlist aus `@sva/core/rich-text-html-policy` und wendet sie im Browser mit DOMPurify an, ohne den Node-basierten Server-Sanitizer in das Client-Bundle zu übernehmen
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
+- besitzt die gemeinsame [Datumseingabe](../development/datumseingabe.md) mit lokalisiertem Eingabetext, Kalendernavigation und einem Kalenderdatum-Vertrag ohne Zeitzone; der Veranstaltungseditor bindet sie feldweise an React Hook Form an
 - ist alleiniger Owner des Studio-Buttons mit der fachlichen Varianten-API `primary`, `secondary`, `tertiary` und `destructive`; App und Plugins besitzen keine parallele Button-Basis
 - stellt für Buttons zentrale Theme-Zustände, 44 × 44 Pixel Mindestzielgröße, sichtbaren Fokus, Disabled-/Loading-Semantik und fokusfähige Icon-Tooltips bereit
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren

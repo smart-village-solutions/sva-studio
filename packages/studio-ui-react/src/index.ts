@@ -73,6 +73,8 @@ export {
   DialogTrigger,
 } from './dialog.js';
 export { Input } from './input.js';
+export { DatePicker, type DatePickerProps, type DatePickerLabels } from './date-picker.js';
+export { type DatePickerLocale, type DatePickerError } from './date-picker-value.js';
 export {
   MainserverDeviationSummary,
   type MainserverDeviationSummaryItem,

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1302,
+  "body": "Datumswerte können im Veranstaltungseditor direkt eingegeben oder mit der Maus im Kalender ausgewählt werden.\n\n- Monatswechsel im Kalender verändern das Datum erst nach Auswahl eines Tages.\n- Änderungen an einem Termin erhalten alle weiteren Termine.\n- Ungültige Eingaben bleiben zur Korrektur erhalten und verhindern das Speichern.\n- Die gemeinsame Datumseingabe unterstützt Tastaturbedienung, lokalisierte Formate und verständliche Fehlermeldungen."
+}

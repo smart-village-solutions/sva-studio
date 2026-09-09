@@ -5,6 +5,7 @@ import { Button, Checkbox, StudioField, StudioFieldGroup } from '@sva/studio-ui-
 
 import { createDefaultDate, type EventsDetailFormValues } from './events.detail-form.js';
 import { EventsDetailCard } from './events.detail-card.js';
+import { EventsDateInput } from './events.detail-date-input.js';
 import {
   ContentInput,
   indexedId,
@@ -14,11 +15,6 @@ import {
 } from './events.detail-content-section-fields.js';
 
 const dirty = { shouldDirty: true } as const;
-const firstDateInvalid = (index: number, invalid: boolean) =>
-  index === 0 && invalid ? true : undefined;
-const firstDateValue = (index: number, input: string, stored?: string) =>
-  index === 0 ? input : stored;
-
 export function useEventsMapCapabilities() {
   const [geocodingEnabled, setGeocodingEnabled] = useState(true);
   const [reverseGeocodingEnabled, setReverseGeocodingEnabled] = useState(true);
@@ -53,37 +49,18 @@ export type EventsMapCapabilities = ReturnType<typeof useEventsMapCapabilities>;
 type EventDate = NonNullable<EventsDetailFormValues['content']['dates']>[number];
 type DateFieldsProps = Readonly<{
   date: EventDate;
-  dateEndInput: string;
-  dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
-  dateStartInput: string;
   index: number;
-  onDateEndChange: (value: string) => void;
-  onDateStartChange: (value: string) => void;
   pt: Translator;
   setValue: UseFormSetValue<EventsDetailFormValues>;
 }>;
 
 function DateFields(props: DateFieldsProps) {
-  const { date, dateEndInput, dateInputsInvalid, dateStartInput, index, pt, setValue } = props;
+  const { date, index, pt, setValue } = props;
   return (
     <>
       <StudioFieldGroup columns={2}>
-        <ContentInput
-          id={indexedId('event-date-start', index)}
-          label={pt('fields.dateStart')}
-          type="date"
-          ariaInvalid={firstDateInvalid(index, dateInputsInvalid.dateStart)}
-          value={firstDateValue(index, dateStartInput, date.dateStart)}
-          onChange={props.onDateStartChange}
-        />
-        <ContentInput
-          id={indexedId('event-date-end', index)}
-          label={pt('fields.dateEnd')}
-          type="date"
-          ariaInvalid={firstDateInvalid(index, dateInputsInvalid.dateEnd)}
-          value={firstDateValue(index, dateEndInput, date.dateEnd)}
-          onChange={props.onDateEndChange}
-        />
+        <EventsDateInput index={index} name="dateStart" pt={pt} />
+        <EventsDateInput index={index} name="dateEnd" pt={pt} />
       </StudioFieldGroup>
       <StudioFieldGroup columns={2}>
         <ContentInput
@@ -132,11 +109,6 @@ function DateFields(props: DateFieldsProps) {
 }
 
 export type EventsDateSectionProps = Readonly<{
-  dateEndInput: string;
-  dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
-  dateStartInput: string;
-  onDateEndInputChange: (nextValue: string) => void;
-  onDateStartInputChange: (nextValue: string) => void;
   pt: Translator;
 }>;
 
@@ -144,13 +116,10 @@ export function EventsDateSection(props: EventsDateSectionProps) {
   const { control, setValue } = useFormContext<EventsDetailFormValues>();
   const datesArray = useFieldArray({ control, name: 'content.dates' });
   const dates = useWatch({ control, name: 'content.dates' }) ?? [];
-  const renderedDates = dates.length > 0 ? dates : [createDefaultDate()];
-  const changeDate = (index: number, name: 'dateStart' | 'dateEnd', value: string) => {
-    if (index > 0) return setValue(`content.dates.${index}.${name}`, value, dirty);
-    return name === 'dateStart'
-      ? props.onDateStartInputChange(value)
-      : props.onDateEndInputChange(value);
-  };
+  const renderedDates =
+    datesArray.fields.length > 0
+      ? datesArray.fields.map((field, index) => dates[index] ?? field)
+      : [createDefaultDate()];
 
   return (
     <EventsDetailCard
@@ -174,14 +143,7 @@ export function EventsDateSection(props: EventsDateSectionProps) {
           removeLabel={props.pt('actions.remove')}
           onRemove={dates.length > 1 ? () => datesArray.remove(index) : undefined}
         >
-          <DateFields
-            {...props}
-            date={date}
-            index={index}
-            setValue={setValue}
-            onDateStartChange={(value) => changeDate(index, 'dateStart', value)}
-            onDateEndChange={(value) => changeDate(index, 'dateEnd', value)}
-          />
+          <DateFields {...props} date={date} index={index} setValue={setValue} />
         </RepeaterItem>
       ))}
     </EventsDetailCard>

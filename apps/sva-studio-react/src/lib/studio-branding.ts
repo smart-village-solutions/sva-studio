@@ -16,7 +16,9 @@ export type StudioBranding = keyof typeof STUDIO_BRANDING_PROFILES;
 export const STUDIO_BRANDING_META_NAME = 'sva-studio-branding';
 
 export const resolveStudioBranding = (value: unknown): StudioBranding =>
-  value === 'kassel-dialog' ? value : 'sva-studio';
+  typeof value === 'string' && Object.hasOwn(STUDIO_BRANDING_PROFILES, value)
+    ? (value as StudioBranding)
+    : 'sva-studio';
 
 export const readDocumentStudioBranding = (): StudioBranding =>
   resolveStudioBranding(

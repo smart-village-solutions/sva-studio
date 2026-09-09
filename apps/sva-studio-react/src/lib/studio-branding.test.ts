@@ -31,12 +31,18 @@ describe('studio branding', () => {
   });
 
   it('uses the default profile when no document exists', () => {
-    const currentDocument = globalThis.document;
+    const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+    if (documentDescriptor?.configurable === false) return;
+
     try {
       Object.defineProperty(globalThis, 'document', { configurable: true, value: undefined });
       expect(readDocumentStudioBranding()).toBe('sva-studio');
     } finally {
-      Object.defineProperty(globalThis, 'document', { configurable: true, value: currentDocument });
+      if (documentDescriptor) {
+        Object.defineProperty(globalThis, 'document', documentDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'document');
+      }
     }
   });
 });

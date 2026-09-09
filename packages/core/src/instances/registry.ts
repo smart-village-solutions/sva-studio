@@ -168,6 +168,9 @@ export const normalizeHost = (host: string): string => {
   return hostWithoutPort.slice(0, end);
 };
 
+export const isReservedTenantHostname = (value: string): boolean =>
+  ['studio', 'auth'].includes(value.toLowerCase());
+
 export const isValidInstanceId = (value: string): boolean =>
   !value.startsWith(PUNYCODE_PREFIX) && INSTANCE_ID_REGEX.test(value);
 
@@ -195,7 +198,11 @@ export const isValidHostname = (value: string): boolean => {
 export const buildPrimaryHostname = (instanceId: string, parentDomain: string): string =>
   `${instanceId}.${normalizeHost(parentDomain)}`;
 
-export const classifyHost = (host: string, parentDomain: string): HostClassification => {
+export const classifyHost = (
+  host: string,
+  parentDomain: string,
+  studioRootHost: string = parentDomain
+): HostClassification => {
   const normalizedHost = normalizeHost(host);
   const normalizedParentDomain = normalizeHost(parentDomain);
 
@@ -207,7 +214,7 @@ export const classifyHost = (host: string, parentDomain: string): HostClassifica
     };
   }
 
-  if (normalizedHost === normalizedParentDomain) {
+  if (normalizedHost === normalizeHost(studioRootHost)) {
     return {
       kind: 'root',
       normalizedHost,
@@ -230,6 +237,10 @@ export const classifyHost = (host: string, parentDomain: string): HostClassifica
       normalizedHost,
       reason: 'multi_level_subdomain',
     };
+  }
+
+  if (isReservedTenantHostname(candidate)) {
+    return { kind: 'invalid', normalizedHost, reason: 'reserved_tenant_hostname' };
   }
 
   if (!isValidInstanceId(candidate)) {

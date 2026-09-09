@@ -19,6 +19,22 @@ describe('http-contracts', () => {
     expect(readDetailInstanceId(new Request('https://studio.example.org/api/v1/iam/users'))).toBeUndefined();
   });
 
+  it.each(['studio', 'auth', 'STUDIO', 'Auth'])(
+    'rejects reserved tenant hostname %s',
+    (instanceId) => {
+      expect(
+        createInstanceSchema.safeParse({
+          instanceId,
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'existing',
+          authRealm: 'sva-studio',
+          authClientId: 'tenant-client',
+        }).success
+      ).toBe(false);
+    }
+  );
+
   it('rejects invalid authIssuerUrl', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',

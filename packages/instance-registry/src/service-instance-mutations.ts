@@ -1,4 +1,8 @@
-import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
+import {
+  buildPrimaryHostname,
+  canTransitionInstanceStatus,
+  normalizeHost,
+} from '@sva/core';
 import type { InstanceRegistryRecord } from '@sva/core';
 
 import type {
@@ -22,27 +26,8 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
+import { assertOidcClientIdsNotReserved, assertTenantHostnameAvailable } from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
-
-const assertOidcClientIdsNotReserved = (
-  deps: InstanceRegistryServiceDeps,
-  input: Pick<
-    CreateInstanceProvisioningInput | UpdateInstanceInput,
-    'authClientId' | 'tenantAdminClient'
-  >
-): void => {
-  const reservedClientIds =
-    typeof deps.reservedOidcClientIds === 'function'
-      ? deps.reservedOidcClientIds()
-      : deps.reservedOidcClientIds;
-  if (
-    reservedClientIds?.includes(input.authClientId) ||
-    (input.tenantAdminClient?.clientId &&
-      reservedClientIds?.includes(input.tenantAdminClient.clientId))
-  ) {
-    throw new Error('oidc_client_id_reserved');
-  }
-};
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
@@ -105,6 +90,7 @@ export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
     assertOidcClientIdsNotReserved(deps, input);
+    assertTenantHostnameAvailable(deps, buildPrimaryHostname(input.instanceId, input.parentDomain));
     instanceRegistryServiceLogger.info('instance_create_requested', {
       operation: 'create_instance',
       instance_id: input.instanceId,
@@ -259,7 +245,11 @@ export const createUpdateInstanceHandler =
     }
 
     const normalizedParentDomain = normalizeHost(input.parentDomain);
-    const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
+    const primaryHostname =
+      normalizeHost(existing.parentDomain) === normalizedParentDomain
+        ? existing.primaryHostname
+        : buildPrimaryHostname(input.instanceId, normalizedParentDomain);
+    assertTenantHostnameAvailable(deps, primaryHostname);
     const updated = await deps.repository.updateInstance({
       instanceId: input.instanceId,
       displayName: input.displayName,

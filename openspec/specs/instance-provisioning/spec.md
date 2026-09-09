@@ -948,3 +948,35 @@ Das System SHALL für Module mit deklarierter Fachprovisionierung nach erfolgrei
 - **THEN** bleibt der bestehende Zuweisungs- und IAM-Pfad unverändert
 - **AND** das System leitet keinen infrastrukturellen Folgejob aus Plugin-Namen oder UI-Heuristiken ab
 
+
+
+### Requirement: Studio-Root ist unabhängig von der Tenant-Basisdomain konfigurierbar
+
+Das System SHALL einen optionalen `SVA_STUDIO_ROOT_HOST` getrennt von `SVA_PARENT_DOMAIN` auswerten. Ohne expliziten Root-Host SHALL die Parent-Domain weiterhin als Studio-Root gelten. Die Konfiguration SHALL gemeinsam für Host-Klassifikation, Plattformzugriff und OIDC-/Redirect-Auflösung gelten. `studio`, `auth` und der konfigurierte Root-Host SHALL für Tenant-Anlage und Host-Änderungen reserviert sein. Statische Tenant-Allowlists SHALL kollidierende Einträge beim Laden zurückweisen.
+
+#### Scenario: Eigenständige Studio-/SSF-Installation verwendet getrennte Hosts
+
+- **GIVEN** `SVA_PARENT_DOMAIN=dialog.kassel.de` und `SVA_STUDIO_ROOT_HOST=studio.dialog.kassel.de`
+- **WHEN** ein Request an `studio.dialog.kassel.de` eingeht
+- **THEN** verwendet Studio den Plattformkontext ohne Tenant-Zuordnung
+- **AND** werden `dialog.kassel.de` und `auth.dialog.kassel.de` nicht als Studio-Root oder Tenant klassifiziert
+- **AND** bleibt ein registrierter Tenant-Host wie `smartcity.dialog.kassel.de` an seine unveränderte Registry-ID gebunden
+
+#### Scenario: Root-Rolle erzeugt keine Tenant-Rechte
+
+- **WHEN** eine reine Plattform-Sitzung mit `instance_registry_admin` auf einen Tenant-Host übertragen wird
+- **THEN** wird kein Tenant-Kontext und keine Tenant-Berechtigung aus der Root-Rolle abgeleitet
+- **AND** verwenden reguläre Tenant-Logins weiterhin ihre eigenen Callback- und Logout-Ziele sowie hostgebundene Cookies
+
+#### Scenario: Bestehende Hostzuordnung bleibt beim Bearbeiten erhalten
+
+- **GIVEN** primärer Host und unveränderliche Tenant-ID verwenden unterschiedliche DNS-Labels
+- **WHEN** die Instanz ohne Änderung ihrer Parent-Domain aktualisiert wird
+- **THEN** bleibt der registrierte primäre Host unverändert
+
+#### Scenario: Frühere Root-Sitzung auf nun ungültigem Host
+
+- **GIVEN** ein expliziter Studio-Root und eine noch vorhandene Plattform-Sitzung auf der Tenant-Basisdomain
+- **WHEN** ein authentifizierter API-Aufruf über die bisherige Root-Domain erfolgt
+- **THEN** lehnt die Auth-Middleware den ungültigen Host vor der Sitzungsauswertung ab
+- **AND** erhält der Aufruf keine Plattformdaten oder Tenant-Rechte

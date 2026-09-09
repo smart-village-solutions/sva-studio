@@ -91,7 +91,7 @@ vi.mock('@sva/server-runtime', () => ({
     isLevelEnabled: vi.fn(() => true),
   }),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-test', traceId: 'trace-test' })),
-  getInstanceConfig: vi.fn(() => null),
+  getInstanceConfig: vi.fn(() => ({ canonicalAuthHost: 'admin.example.test' })),
   isCanonicalAuthHost: vi.fn(() => true),
 }));
 
@@ -223,6 +223,10 @@ describe('iam instance registry repository wiring', () => {
       })
     );
     expect(runtimeConfig?.serviceDeps.reservedOidcClientIds()).toEqual(['ssf']);
+    expect(runtimeConfig?.serviceDeps.reservedHostnames()).toEqual(['admin.example.test']);
+    expect(runtimeConfig?.provisioningWorkerServiceDeps.reservedHostnames()).toEqual([
+      'admin.example.test',
+    ]);
     expect(runtimeConfig?.provisioningWorkerServiceDeps.reservedOidcClientIds()).toEqual(['ssf']);
 
     expect(createInstanceRegistryRuntimeMock).toHaveBeenCalledWith(

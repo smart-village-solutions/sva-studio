@@ -232,7 +232,11 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
     return getAuthConfig();
   }
 
-  const hostClassification = classifyHost(host, instanceConfig.parentDomain);
+  const hostClassification = classifyHost(
+    host,
+    instanceConfig.parentDomain,
+    instanceConfig.canonicalAuthHost
+  );
   if (hostClassification.kind === 'root') {
     logGlobalAuthResolution(request, host);
     return getAuthConfig();

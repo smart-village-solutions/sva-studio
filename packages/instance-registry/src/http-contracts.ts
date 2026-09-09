@@ -1,4 +1,4 @@
-import { instanceStatuses } from '@sva/core';
+import { instanceStatuses, isReservedTenantHostname } from '@sva/core';
 import { z } from 'zod';
 
 const optionalUrlSchema = z
@@ -45,7 +45,10 @@ const instanceIdSchema = z
   .string()
   .trim()
   .min(1)
-  .refine((value) => !reservedInstanceIds.has(value), 'Reservierte Instanz-ID');
+  .refine(
+    (value) => !reservedInstanceIds.has(value) && !isReservedTenantHostname(value),
+    'Reservierte Instanz-ID'
+  );
 
 export const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),

@@ -8,7 +8,13 @@
  * Fehler beim App-Start.
  */
 
-import { classifyHost, isValidInstanceId, normalizeHost } from '@sva/core';
+import {
+  classifyHost,
+  isReservedTenantHostname,
+  isValidInstanceId,
+  isValidParentDomain,
+  normalizeHost,
+} from '@sva/core';
 import { createSdkLogger } from '../logger/index.server.js';
 const logger = createSdkLogger({
   component: 'instance-config',
@@ -52,12 +58,28 @@ function loadAndValidateInstanceConfig(): InstanceConfig | null {
     return null;
   }
 
+  const studioRootHost = process.env['SVA_STUDIO_ROOT_HOST']?.trim();
+  if (
+    studioRootHost &&
+    (!isValidParentDomain(studioRootHost) ||
+      studioRootHost.includes(':') ||
+      studioRootHost.includes('/'))
+  ) {
+    throw new Error('[InstanceConfig] Ungültiger SVA_STUDIO_ROOT_HOST');
+  }
+
   const allowlistRaw = process.env['SVA_ALLOWED_INSTANCE_IDS'] ?? '';
   const ids = allowlistRaw
     ? allowlistRaw.split(',').filter(Boolean)
     : [];
 
   for (const id of ids) {
+    if (
+      isReservedTenantHostname(id) ||
+      normalizeHost(`${id}.${parentDomain}`) === normalizeHost(studioRootHost || parentDomain)
+    ) {
+      throwInvalidInstanceId(id, 'Hostname ist für einen Systemdienst reserviert.');
+    }
     if (!isValidInstanceId(id)) {
       throwInvalidInstanceId(id, 'Erlaubtes Muster: lowercase DNS-Label ohne Punycode.');
     }
@@ -66,7 +88,7 @@ function loadAndValidateInstanceConfig(): InstanceConfig | null {
   return {
     parentDomain: parentDomain.toLowerCase(),
     allowedInstanceIds: new Set(ids),
-    canonicalAuthHost: parentDomain.toLowerCase(),
+    canonicalAuthHost: normalizeHost(studioRootHost || parentDomain),
   };
 }
 
@@ -81,7 +103,7 @@ export function parseInstanceIdFromHost(host: string): string | null {
   const config = getInstanceConfig();
   if (!config) return null;
 
-  const classification = classifyHost(host, config.parentDomain);
+  const classification = classifyHost(host, config.parentDomain, config.canonicalAuthHost);
   if (classification.kind !== 'tenant') {
     return null;
   }

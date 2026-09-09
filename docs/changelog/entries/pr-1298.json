@@ -1,0 +1,4 @@
+{
+  "prNumber": 1298,
+  "body": "Instanzverwaltung\n\n- Der Studio-Root kann unabhängig von der Tenant-Basisdomain betrieben werden. Die Hostnamen studio und auth bleiben reserviert; Root-Rechte erweitern keine Tenant-Rechte.\n- Beim Bearbeiten einer Instanz bleibt ein abweichender registrierter Hostname erhalten, solange die Basisdomain unverändert bleibt."
+}

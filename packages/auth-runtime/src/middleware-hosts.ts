@@ -78,7 +78,7 @@ export const resolveSessionUser = async (
   const isIpv4Host = IPV4_HOST_PATTERN.test(normalizedHost);
   const config = getInstanceConfig();
   const classification = config
-    ? classifyHost(host, config.parentDomain)
+    ? classifyHost(host, config.parentDomain, config.canonicalAuthHost)
     : hostSegmentCount >= 4 && normalizedHost !== 'localhost' && !isIpv4Host
       ? { kind: 'tenant' as const }
       : { kind: 'root' as const };
@@ -111,9 +111,15 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
     return null;
   }
 
-  const classification = classifyHost(host, config.parentDomain);
-  if (classification.kind !== 'tenant') {
+  const classification = classifyHost(host, config.parentDomain, config.canonicalAuthHost);
+  if (classification.kind === 'root') {
     return null;
+  }
+  if (classification.kind === 'invalid') {
+    return forbiddenTenantHost({
+      reasonCode: 'tenant_host_invalid',
+      requestId: getWorkspaceContext().requestId,
+    });
   }
 
   if (isActiveTenantHostCached(host)) {

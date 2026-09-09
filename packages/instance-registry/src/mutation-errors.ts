@@ -7,6 +7,7 @@ export type InstanceMutationErrorCode =
   | BlockedDriftErrorCode
   | 'idempotency_key_reuse'
   | 'oidc_client_id_reserved'
+  | 'tenant_hostname_reserved'
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
@@ -61,6 +62,9 @@ export const classifyInstanceMutationError = (
       status: 409,
       code: 'idempotency_key_reuse',
     };
+  }
+  if (message === 'tenant_hostname_reserved') {
+    return { status: 400, code: 'tenant_hostname_reserved' };
   }
   if (message.includes('oidc_client_id_reserved')) {
     return {

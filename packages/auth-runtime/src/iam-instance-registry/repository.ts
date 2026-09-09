@@ -6,7 +6,7 @@ import {
   saveWasteDataSourceRecord,
 } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
-import { createSdkLogger } from '@sva/server-runtime';
+import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
 import {
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
@@ -250,12 +250,18 @@ const invalidateInstancePermissionSnapshots = async (input: {
   }
 };
 
+const readReservedInstanceHostnames = (): readonly string[] => {
+  const config = getInstanceConfig();
+  return config ? [config.canonicalAuthHost] : [];
+};
+
 const registryRuntime = createInstanceRegistryRuntime({
   resolvePool,
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     reservedOidcClientIds: readReservedPluginOidcClientIds,
+    reservedHostnames: readReservedInstanceHostnames,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
     get moduleIamRegistry() {
       return readInstanceRegistryModuleIamRegistry();
@@ -276,6 +282,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     reservedOidcClientIds: readReservedPluginOidcClientIds,
+    reservedHostnames: readReservedInstanceHostnames,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
     get moduleIamRegistry() {
       return readInstanceRegistryModuleIamRegistry();

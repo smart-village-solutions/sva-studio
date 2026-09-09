@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetInstanceConfigCache } from '@sva/server-runtime';
 import { createInstanceRegistryService } from '@sva/instance-registry/service';
 
 import {
@@ -191,6 +192,28 @@ describe('createExecutor', () => {
 });
 
 describe('createInstanceRegistryCommandContext', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetInstanceConfigCache();
+  });
+
+  it('reserves the configured platform host in the default CLI mutation service', async () => {
+    vi.stubEnv('SVA_PARENT_DOMAIN', 'example.org');
+    vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'admin.example.org');
+    vi.stubEnv('SVA_ALLOWED_INSTANCE_IDS', '');
+    resetInstanceConfigCache();
+    const query = vi.fn(async () => ({ rowCount: 0, rows: [] }));
+    const context = createInstanceRegistryCommandContext('postgres://example', undefined, {
+      poolFactory: () => ({ query, connect: vi.fn(), end: vi.fn() }),
+    });
+    await expect(context.createReadService().createProvisioningRequest({
+      instanceId: 'admin', displayName: 'Admin', parentDomain: 'example.org',
+      realmMode: 'new', authRealm: 'admin', authClientId: 'sva-admin', idempotencyKey: 'reserved-host',
+    })).rejects.toThrow('tenant_hostname_reserved');
+    expect(query).not.toHaveBeenCalled();
+    await context.close();
+  });
+
   it('rolls back when transactional work fails', async () => {
     const query = vi
       .fn<PoolClientLike['query']>()

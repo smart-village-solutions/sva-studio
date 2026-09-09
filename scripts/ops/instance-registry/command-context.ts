@@ -7,7 +7,7 @@ import type { InstanceRegistryService } from '@sva/instance-registry/service-typ
 import { createInstanceRegistryRepository } from '@sva/data';
 import { invalidateInstanceRegistryHost } from '@sva/data/server';
 import type { InstanceRegistryRepository, SqlExecutor, SqlStatement } from '@sva/data-repositories';
-import { createSdkLogger, type ServerRuntimeLogger } from '@sva/server-runtime';
+import { createSdkLogger, getInstanceConfig, type ServerRuntimeLogger } from '@sva/server-runtime';
 
 type QueryResult = {
   rowCount: number | null;
@@ -81,6 +81,10 @@ const createService = (repository: InstanceRegistryRepository): InstanceRegistry
   createInstanceRegistryService({
     repository,
     invalidateHost: invalidateInstanceRegistryHost,
+    reservedHostnames: () => {
+      const config = getInstanceConfig();
+      return config ? [config.canonicalAuthHost] : [];
+    },
   });
 
 export const createInstanceRegistryCommandContext = (

@@ -529,6 +529,51 @@ describe('instance registry service facade', () => {
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
+  it.each(['studio', 'auth', 'admin'])(
+    'rejects reserved host %s before creating a tenant',
+    async (instanceId) => {
+      const repository = createRepository();
+      const service = createInstanceRegistryService(
+        createDeps(repository, {
+          reservedHostnames: () => ['ADMIN.STUDIO.EXAMPLE.ORG'],
+        })
+      );
+      await expect(
+        service.createProvisioningRequest({
+          instanceId,
+          displayName: 'Demo',
+          parentDomain: 'studio.example.org',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'studio-client',
+          idempotencyKey: 'reserved',
+        })
+      ).rejects.toThrow('tenant_hostname_reserved');
+      expect(repository.getInstanceById).not.toHaveBeenCalled();
+      expect(repository.createInstance).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects a domain update that would collide with the configured root', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        reservedHostnames: ['demo.other.example.org'],
+      })
+    );
+    await expect(
+      service.updateInstance({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'other.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+      })
+    ).rejects.toThrow('tenant_hostname_reserved');
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
   it('rejects dynamically reserved OIDC client ids at the service mutation boundary', async () => {
     const repository = createRepository();
     const reservedOidcClientIds = vi.fn(() => ['ssf']);
@@ -1068,6 +1113,33 @@ describe('instance registry service facade', () => {
         idempotencyKey: 'idem-1',
       })
     ).resolves.toEqual({ ok: false, reason: 'invalid_transition', currentStatus: 'archived' });
+  });
+
+  it('preserves a registered hostname that differs from the immutable tenant id', async () => {
+    const existing = {
+      ...baseInstance,
+      instanceId: 'tenant-kassel',
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'smartcity.dialog.kassel.de',
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => existing),
+      updateInstance: vi.fn(async () => existing),
+    });
+    await createInstanceRegistryService(createDeps(repository)).updateInstance({
+      instanceId: 'tenant-kassel',
+      displayName: 'Kassel',
+      parentDomain: 'Dialog.Kassel.de',
+      realmMode: 'existing',
+      authRealm: 'sva-studio',
+      authClientId: 'tenant-client',
+    });
+    expect(repository.updateInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-kassel',
+        primaryHostname: 'smartcity.dialog.kassel.de',
+      })
+    );
   });
 
   it('updates instances and returns detail projections', async () => {

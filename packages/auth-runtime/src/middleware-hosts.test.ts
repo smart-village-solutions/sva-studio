@@ -65,6 +65,45 @@ describe('middleware-hosts', () => {
     state.classifyHost.mockReturnValue({ kind: 'tenant' });
   });
 
+  it('keeps a root administrator out of tenant context with a separate root host', async () => {
+    const { classifyHost } = await vi.importActual<typeof import('@sva/core')>('@sva/core');
+    state.classifyHost.mockImplementation(classifyHost);
+    state.getInstanceConfig.mockReturnValue({
+      parentDomain: 'dialog.kassel.de',
+      canonicalAuthHost: 'studio.dialog.kassel.de',
+    });
+    const { resolveSessionUser } = await import('./middleware-hosts.js');
+    const user = { id: 'root-admin', roles: ['instance_registry_admin'] };
+    state.resolveEffectiveRequestHost.mockReturnValue('studio.dialog.kassel.de');
+    await expect(
+      resolveSessionUser(new Request('https://studio.dialog.kassel.de'), user as never)
+    ).resolves.toEqual(user);
+    state.resolveEffectiveRequestHost.mockReturnValue('smartcity.dialog.kassel.de');
+    await expect(
+      resolveSessionUser(new Request('https://smartcity.dialog.kassel.de'), user as never)
+    ).rejects.toMatchObject({ reason: 'missing_instance_id' });
+  });
+
+  it.each(['dialog.kassel.de', 'auth.dialog.kassel.de', 'foreign.example.org'])(
+    'rejects non-Studio host %s even with an old platform session cookie', async (host) => {
+      const { classifyHost } = await vi.importActual<typeof import('@sva/core')>('@sva/core');
+      state.classifyHost.mockImplementation(classifyHost);
+      state.getInstanceConfig.mockReturnValue({
+        parentDomain: 'dialog.kassel.de', canonicalAuthHost: 'studio.dialog.kassel.de',
+      });
+      state.resolveEffectiveRequestHost.mockReturnValue(host);
+      const { validateTenantHost } = await import('./middleware-hosts.js');
+      const response = await validateTenantHost(new Request(`https://${host}/api/iam/platform/users`, {
+        headers: { cookie: 'sva_session=old-platform-session' },
+      }));
+      expect(response?.status).toBe(403);
+      await expect(response?.json()).resolves.toMatchObject({
+        error: { details: { reason_code: 'tenant_host_invalid' } },
+      });
+      expect(state.loadInstanceByHostname).not.toHaveBeenCalled();
+    }
+  );
+
   it('keeps session users unchanged when they already carry an instance id', async () => {
     const { resolveSessionUser } = await import('./middleware-hosts.js');
     const user = { id: 'user-1', instanceId: 'instance-1' } as const;

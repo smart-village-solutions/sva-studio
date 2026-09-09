@@ -1,3 +1,5 @@
+import { classifyHost } from '../../../packages/core/src/instances/registry.ts';
+
 export type LocalInstanceRegistryReconciliationInput = Readonly<{
   allowedInstanceIds: readonly string[];
   driftMode: 'fail' | 'warn';
@@ -50,6 +52,11 @@ export const buildLocalInstanceRegistryReconciliationInput = (
 
   if (parentDomain.length === 0 || allowedInstanceIds.length === 0) {
     return null;
+  }
+
+  const rootHost = env.SVA_STUDIO_ROOT_HOST?.trim() || parentDomain;
+  if (allowedInstanceIds.some((id) => classifyHost(`${id}.${parentDomain}`, parentDomain, rootHost).kind !== 'tenant')) {
+    throw new Error('Lokaler Tenant-Hostname ist ungültig oder reserviert.');
   }
 
   const tenantAuthRealmMode = normalizeMode(env.SVA_LOCAL_TENANT_AUTH_REALM_MODE, ['instance-id', 'keep'], 'keep');

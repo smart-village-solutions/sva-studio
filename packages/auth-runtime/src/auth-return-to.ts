@@ -31,7 +31,11 @@ const isTrustedAbsoluteReturnTo = async (target: URL): Promise<boolean> => {
     return true;
   }
 
-  const classification = classifyHost(normalizedHostname, config.parentDomain);
+  const classification = classifyHost(
+    normalizedHostname,
+    config.parentDomain,
+    config.canonicalAuthHost
+  );
   if (classification.kind !== 'tenant') {
     return false;
   }

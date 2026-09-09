@@ -13,6 +13,12 @@ describe('buildLocalInstanceRegistryReconciliationInput', () => {
     expect(buildLocalInstanceRegistryReconciliationInput({ SVA_PARENT_DOMAIN: 'studio.localhost' })).toBeNull();
   });
 
+  it.each(['studio', 'auth', 'admin'])('rejects reserved reconciliation host %s', (id) => {
+    expect(() => buildLocalInstanceRegistryReconciliationInput({
+      SVA_PARENT_DOMAIN: 'example.org', SVA_STUDIO_ROOT_HOST: 'admin.example.org', SVA_ALLOWED_INSTANCE_IDS: id,
+    })).toThrow('reserviert');
+  });
+
   it('normalizes local tenant reconciliation input from env', () => {
     expect(
       buildLocalInstanceRegistryReconciliationInput({

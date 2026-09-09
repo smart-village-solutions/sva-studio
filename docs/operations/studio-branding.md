@@ -1,19 +1,19 @@
 # Studio-Branding je Server-Umgebung
 
-Die Server-Umgebungsvariable `SVA_STUDIO_BRANDING` wählt ein benanntes Branding-Profil zur Laufzeit. Ein Image kann dadurch in unterschiedlichen Umgebungen unterschiedliche Starttexte anzeigen. Die Auswahl gilt für alle Hosts und Mandanten desselben Server-Prozesses.
+Die Server-Umgebungsvariable `SVA_STUDIO_BRANDING` wählt ein benanntes Branding-Profil zur Laufzeit. Ein Image kann dadurch in unterschiedlichen Umgebungen einen eigenen Produktnamen und eigene Starttexte anzeigen. Die Auswahl gilt für alle Hosts und Mandanten desselben Server-Prozesses.
 
-| Wert            | Verhalten vor dem Login                                      |
+| Wert            | Verhalten                                                    |
 | --------------- | ------------------------------------------------------------ |
 | `sva-studio`    | Bestehender Name und bestehende Studio-Starttexte (Standard) |
-| `kassel-dialog` | Kassel Dialog mit den unten aufgeführten Starttexten         |
+| `kassel-dialog` | Kassel DIALOG als durchgängiger Name mit eigenen Starttexten |
 
 Das Profil `kassel-dialog` zeigt auf Deutsch:
 
-- **Kassel Dialog**
+- **Kassel DIALOG**
 - Die Steueroberfläche für den virtuellen Dolmetscher.
 - Melden Sie sich an, um Ihre Einstellungen und Benutzer zu verwalten.
 
-Die Texte liegen in den deutschen und englischen Übersetzungsressourcen. Die Profilauswahl und die zugehörigen Übersetzungsschlüssel sind zentral in `apps/sva-studio-react/src/lib/studio-branding.ts` definiert. Weitere bestätigte Branding-Eigenschaften können dort ergänzt werden. Aktuell steuert das Profil ausschließlich die drei Texte der Startseite vor dem Login.
+Der Produktname erscheint auf der Startseite vor und nach dem Login, in der Sidebar sowie im Browser-Titel. Die Texte liegen in den deutschen und englischen Übersetzungsressourcen. Die Profilauswahl und die zugehörigen Übersetzungsschlüssel sind zentral in `apps/sva-studio-react/src/lib/studio-branding.ts` definiert. Weitere bestätigte Branding-Eigenschaften können dort ergänzt werden.
 
 ## Konfiguration
 

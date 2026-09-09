@@ -66,6 +66,7 @@ import {
 import { resolveStudioContentTypeLabel } from '../lib/studio-content-types';
 import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
+import { useStudioBranding } from '../providers/studio-branding-provider';
 import { Button } from '@sva/studio-ui-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Sheet, SheetContent } from './ui/sheet';
@@ -620,6 +621,7 @@ const SidebarPanel = ({
   showMobileHeader = false,
   onCloseMobileNavigation,
 }: SidebarPanelProps) => {
+  const { appName } = useStudioBranding();
   const location = useRouterState({
     select: (state) => ({
       pathname: state.location.pathname,
@@ -700,7 +702,7 @@ const SidebarPanel = ({
         >
           {showAppTitle ? (
             <div className="min-w-0">
-              <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p>
+              <p className="text-3xl font-semibold text-foreground">{appName}</p>
               {tenantName ? (
                 <p
                   className="truncate text-xs font-medium text-muted-foreground"

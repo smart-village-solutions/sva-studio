@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   readDocumentStudioBranding,
   resolveStudioBranding,
+  STUDIO_BRANDING_PROFILES,
   STUDIO_BRANDING_META_NAME,
 } from './studio-branding';
 
@@ -28,6 +29,13 @@ describe('studio branding', () => {
     expect(readDocumentStudioBranding()).toBe('kassel-dialog');
     meta.content = 'invalid';
     expect(readDocumentStudioBranding()).toBe('sva-studio');
+  });
+
+  it('maps each profile to its app-wide product name', () => {
+    expect(STUDIO_BRANDING_PROFILES['sva-studio'].appNameKey).toBe('shell.appName');
+    expect(STUDIO_BRANDING_PROFILES['kassel-dialog'].appNameKey).toBe(
+      'home.branding.kasselDialog.title'
+    );
   });
 
   it('uses the default profile when no document exists', () => {

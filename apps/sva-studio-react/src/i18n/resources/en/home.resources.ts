@@ -1,7 +1,7 @@
 export const homeENResources = {
   branding: {
     kasselDialog: {
-      title: 'Kassel Dialog',
+      title: 'Kassel DIALOG',
       subtitle: 'The control interface for the virtual interpreter.',
       body: 'Sign in to manage your settings and users.',
     },

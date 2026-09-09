@@ -4,13 +4,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useRouterStateMock = vi.fn();
+const useMatchesMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   HeadContent: () => null,
   Outlet: () => <div data-testid="outlet" />,
   Scripts: () => null,
   createRootRoute: (options: unknown) => options,
-  useMatches: () => [],
+  useMatches: () => useMatchesMock(),
   useRouterState: (input: { select: (state: any) => unknown }) => useRouterStateMock(input),
 }));
 
@@ -75,7 +76,12 @@ vi.mock('../providers/theme-provider', () => ({
 }));
 
 vi.mock('../i18n', () => ({
-  t: (key: string) => key,
+  t: (key: string) =>
+    key === 'shell.appName'
+      ? 'SVA Studio'
+      : key === 'home.branding.kasselDialog.title'
+        ? 'Kassel DIALOG'
+        : key,
 }));
 
 describe('root route document', () => {
@@ -143,6 +149,7 @@ describe('root route document', () => {
   });
 
   beforeEach(() => {
+    useMatchesMock.mockReturnValue([]);
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
         status: 'idle',
@@ -173,6 +180,16 @@ describe('root route document', () => {
         },
       ],
     });
+  });
+
+  it('uses the server-selected app name in root metadata', async () => {
+    const { getRootHead } = await import('./__root');
+
+    expect(
+      getRootHead({
+        loaderData: { pluginRouteScope: 'platform', studioBranding: 'kassel-dialog' },
+      }).meta
+    ).toContainEqual({ title: 'Kassel DIALOG' });
   });
 
   it('publishes the server-resolved plugin route scope for hydration', async () => {
@@ -238,6 +255,30 @@ describe('root route document', () => {
 
     await waitFor(() => {
       expect(document.title).toBe('content.page.title | SVA Studio');
+    });
+  });
+
+  it('updates route titles with the server-selected app name', async () => {
+    useMatchesMock.mockReturnValue([
+      { routeId: '__root__', loaderData: { studioBranding: 'kassel-dialog' } },
+    ]);
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'idle',
+        isLoading: false,
+        location: { pathname: '/admin/content' },
+      })
+    );
+
+    const { RootDocument } = await import('./__root');
+    render(
+      <RootDocument>
+        <div>content</div>
+      </RootDocument>
+    );
+
+    await waitFor(() => {
+      expect(document.title).toBe('content.page.title | Kassel DIALOG');
     });
   });
 

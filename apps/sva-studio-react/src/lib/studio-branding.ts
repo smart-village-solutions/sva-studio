@@ -1,12 +1,12 @@
 /** Public, server-selected branding profiles. Keep future branding properties here. */
 export const STUDIO_BRANDING_PROFILES = {
   'sva-studio': {
-    anonymousTitleKey: 'shell.appName',
+    appNameKey: 'shell.appName',
     anonymousSubtitleKey: 'home.hero.anonymousSubtitle',
     anonymousBodyKey: 'home.hero.anonymousBody',
   },
   'kassel-dialog': {
-    anonymousTitleKey: 'home.branding.kasselDialog.title',
+    appNameKey: 'home.branding.kasselDialog.title',
     anonymousSubtitleKey: 'home.branding.kasselDialog.subtitle',
     anonymousBodyKey: 'home.branding.kasselDialog.body',
   },

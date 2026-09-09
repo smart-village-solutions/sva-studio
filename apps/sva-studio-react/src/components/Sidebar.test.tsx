@@ -9,6 +9,7 @@ import { pluginNews } from '@sva/plugin-news';
 import type { PluginNavigationItem } from '@sva/plugin-sdk';
 
 import { mergeI18nResources } from '../i18n';
+import { StudioBrandingProvider } from '../providers/studio-branding-provider';
 import Sidebar from './Sidebar';
 
 const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/main/LICENSE';
@@ -331,6 +332,20 @@ describe('Sidebar', () => {
       },
     ];
   };
+
+  it('uses the server-selected app name', () => {
+    useRouterStateMock.mockReturnValue({ pathname: '/', search: {} });
+    setupSidebarSession({ user: createSidebarUser() });
+
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <Sidebar />
+      </StudioBrandingProvider>
+    );
+
+    expect(screen.getByText('Kassel DIALOG')).toBeTruthy();
+    expect(screen.queryByText('SVA Studio')).toBeNull();
+  });
 
   it('gibt während des zentralen Access-Ladens trotz verfügbarer Dev-Auth keine geschützten Links frei', () => {
     renderSidebar({

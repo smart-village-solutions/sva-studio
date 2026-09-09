@@ -29,12 +29,14 @@ import { AuthProvider } from '../providers/auth-provider';
 import { EffectiveAccessProvider } from '../providers/effective-access-provider';
 import { OrganizationContextProvider } from '../hooks/use-organization-context';
 import { LocaleProvider } from '../providers/locale-provider';
+import { StudioBrandingProvider } from '../providers/studio-branding-provider';
 import { ThemeProvider } from '../providers/theme-provider';
 import { t } from '../i18n';
 
 import {
   readDocumentStudioBranding,
   resolveStudioBranding,
+  STUDIO_BRANDING_PROFILES,
   STUDIO_BRANDING_META_NAME,
   type StudioBranding,
 } from '../lib/studio-branding';
@@ -95,7 +97,9 @@ export const getRootHead = ({ loaderData }: { loaderData?: RootLoaderData } = {}
       content: 'width=device-width, initial-scale=1',
     },
     {
-      title: 'SVA Studio',
+      title: t(
+        STUDIO_BRANDING_PROFILES[resolveStudioBranding(loaderData?.studioBranding)].appNameKey
+      ),
     },
     ...(loaderData
       ? [
@@ -143,6 +147,13 @@ function RootComponent() {
 
 export function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
   const matches = useMatches();
+  const rootLoaderData: unknown = matches.find((match) => match.routeId === '__root__')?.loaderData;
+  const studioBranding = resolveStudioBranding(
+    rootLoaderData && typeof rootLoaderData === 'object' && 'studioBranding' in rootLoaderData
+      ? rootLoaderData.studioBranding
+      : undefined
+  );
+  const appName = t(STUDIO_BRANDING_PROFILES[studioBranding].appNameKey);
   const routeDocumentation = resolveActiveRouteDocumentation(matches);
   const isRouterPending = useRouterState({
     select: (state) => state.status === 'pending' || state.isLoading,
@@ -165,12 +176,12 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
     const breadcrumbItems = resolveBreadcrumbItems(currentPathname);
     const currentLabel = breadcrumbItems[breadcrumbItems.length - 1]?.label;
     if (currentLabel) {
-      globalThis.document.title = `${currentLabel} | SVA Studio`;
+      globalThis.document.title = `${currentLabel} | ${appName}`;
     }
 
     const mainElement = globalThis.document.getElementById('main-content');
     mainElement?.focus();
-  }, [currentPathname]);
+  }, [appName, currentPathname]);
 
   return (
     <html lang="de" suppressHydrationWarning>
@@ -189,31 +200,33 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
           <OrganizationContextProvider>
             <EffectiveAccessProvider>
               <LocaleProvider>
-            <a
-              href="#main-content"
-              onClick={() => {
-                const mainElement = globalThis.document.getElementById('main-content');
-                if (mainElement) {
-                  mainElement.focus();
-                }
-              }}
-              className="sr-only left-3 top-3 z-50 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
-            >
-              {t('shell.skipToContent')}
-            </a>
-            <ThemeProvider>
-              <AppShell
-                currentPathname={currentPathname}
-                isLoading={isHydrated && isRouterPending}
-                isMobileSidebarOpen={isMobileSidebarOpen}
-                onMobileSidebarOpenChange={setIsMobileSidebarOpen}
-                documentationPageId={
-                  routeDocumentation?.kind === 'page' ? routeDocumentation.id : undefined
-                }
-              >
-                {children}
-              </AppShell>
-            </ThemeProvider>
+                <StudioBrandingProvider branding={studioBranding}>
+                  <a
+                    href="#main-content"
+                    onClick={() => {
+                      const mainElement = globalThis.document.getElementById('main-content');
+                      if (mainElement) {
+                        mainElement.focus();
+                      }
+                    }}
+                    className="sr-only left-3 top-3 z-50 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
+                  >
+                    {t('shell.skipToContent')}
+                  </a>
+                  <ThemeProvider>
+                    <AppShell
+                      currentPathname={currentPathname}
+                      isLoading={isHydrated && isRouterPending}
+                      isMobileSidebarOpen={isMobileSidebarOpen}
+                      onMobileSidebarOpenChange={setIsMobileSidebarOpen}
+                      documentationPageId={
+                        routeDocumentation?.kind === 'page' ? routeDocumentation.id : undefined
+                      }
+                    >
+                      {children}
+                    </AppShell>
+                  </ThemeProvider>
+                </StudioBrandingProvider>
               </LocaleProvider>
             </EffectiveAccessProvider>
           </OrganizationContextProvider>

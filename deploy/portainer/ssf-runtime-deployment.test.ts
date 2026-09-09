@@ -53,6 +53,9 @@ describe('SSF runtime deployment contract', () => {
     expect(entrypoint).toContain('node "${SSF_PLUGIN_MIGRATOR}" prepare');
     expect(entrypoint).toContain('"${GOOSE_WRAPPER}" -dir "${SSF_PLUGIN_MIGRATIONS_DIR}"');
     expect(entrypoint).toContain('node "${SSF_PLUGIN_MIGRATOR}" reconcile');
+    expect(dockerfile).toContain(
+      '/workspace/deploy/portainer/migrate-entrypoint.sh ./migrate-entrypoint.sh'
+    );
     expect(dockerfile).toContain('/workspace/packages/plugin-ssf/migrations');
   });
 });

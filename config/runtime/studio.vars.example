@@ -12,6 +12,12 @@ QUANTUM_ENVIRONMENT=studio
 SVA_PARENT_DOMAIN=studio.example.invalid
 # Optional: separater Studio-Root; ohne Wert gilt weiterhin SVA_PARENT_DOMAIN.
 # SVA_STUDIO_ROOT_HOST=admin.studio.example.invalid
+# Bei Aktivierung gemeinsam überschreiben (einschließlich Keycloak-Redirects):
+# SVA_PUBLIC_BASE_URL=https://admin.studio.example.invalid
+# SVA_PUBLIC_HOST=admin.studio.example.invalid
+# SVA_AUTH_REDIRECT_URI=https://admin.studio.example.invalid/auth/callback
+# SVA_AUTH_POST_LOGOUT_REDIRECT_URI=https://admin.studio.example.invalid/
+# IAM_CSRF_ALLOWED_ORIGINS=https://admin.studio.example.invalid,https://example-instance.studio.example.invalid
 SVA_ALLOWED_INSTANCE_IDS=example-instance
 # Optionaler Operator-Override fuer Tenant-Smokes/Doctor; Remote-Scope kommt sonst aus der Registry.
 # SVA_TENANT_SCOPE_INSTANCE_IDS=example-instance

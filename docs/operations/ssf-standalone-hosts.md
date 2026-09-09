@@ -45,6 +45,7 @@ SVA_PUBLIC_BASE_URL=https://studio.dialog.kassel.de
 SVA_AUTH_ISSUER=https://auth.dialog.kassel.de/realms/sva-studio
 SVA_AUTH_REDIRECT_URI=https://studio.dialog.kassel.de/auth/callback
 SVA_AUTH_POST_LOGOUT_REDIRECT_URI=https://studio.dialog.kassel.de/
+IAM_CSRF_ALLOWED_ORIGINS=https://studio.dialog.kassel.de,https://smartcity.dialog.kassel.de
 SVA_STUDIO_SSF_RUNTIME_ISSUER=https://auth.dialog.kassel.de/realms/sva-studio
 ```
 

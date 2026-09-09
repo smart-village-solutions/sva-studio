@@ -4,6 +4,26 @@ import { buildAcceptanceLiveSpecCheck, buildAppPrincipalReadinessCheck } from '.
 import { acceptanceOptions, createDeps } from './acceptance-runtime-checks.test-helpers.ts';
 
 describe('acceptance runtime checks live spec and readiness', () => {
+  it.each([
+    [undefined, 'studio.dialog.kassel.de', true],
+    ['old.dialog.kassel.de', 'studio.dialog.kassel.de', true],
+    ['studio.dialog.kassel.de', 'studio.dialog.kassel.de', false],
+    [undefined, undefined, false],
+  ])('compares the optional root host (live=%s, desired=%s)', async (liveRoot, desiredRoot, differs) => {
+    const deps = createDeps();
+    const live = await deps.inspectRemoteServiceContract({}, {
+      quantumEndpoint: 'https://quantum.example.test', serviceName: 'app', stackName: 'studio',
+    });
+    if (!live) throw new Error('Test fixture missing');
+    const liveContract = { ...live, env: { ...live.env, ...(liveRoot ? { SVA_STUDIO_ROOT_HOST: liveRoot } : {}) } };
+    deps.inspectRemoteServiceContract = vi.fn(async () => liveContract);
+    const check = await buildAcceptanceLiveSpecCheck(deps, 'studio', {
+      ...live.env, SVA_STUDIO_ROOT_HOST: desiredRoot,
+    }, acceptanceOptions);
+    expect(check.details).toMatchObject({ configDrift: differs ? ['SVA_STUDIO_ROOT_HOST'] : [] });
+    if (differs) expect(check.code).toBe('live_spec_differs');
+  });
+
   it('reports live spec drift details when image or env diverge', async () => {
     const getRemoteAppServiceName = vi.fn(() => 'studio_studio-app');
     const assertComposeServiceNetworks = vi.fn(() => ({

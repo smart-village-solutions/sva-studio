@@ -1,6 +1,4 @@
 import React from 'react';
-import { useMatches } from '@tanstack/react-router';
-import { STUDIO_BRANDING_PROFILES, resolveStudioBranding } from '../lib/studio-branding';
 import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
@@ -13,6 +11,7 @@ import {
 import { resolvePermissionTitle } from '../lib/permission-labels';
 import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
+import { useStudioBranding } from '../providers/studio-branding-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button, StudioLoadingState, StudioPageTitle } from '@sva/studio-ui-react';
 import { HomeActionCards } from './-home-action-cards';
@@ -186,17 +185,7 @@ const AuthenticatedHomeOverview = ({
 };
 
 export const HomePage = () => {
-  const branding = useMatches({
-    select: (matches) => {
-      const rootData: unknown = matches.find((match) => match.routeId === '__root__')?.loaderData;
-      return resolveStudioBranding(
-        rootData && typeof rootData === 'object' && 'studioBranding' in rootData
-          ? rootData.studioBranding
-          : undefined
-      );
-    },
-  });
-  const brandingProfile = STUDIO_BRANDING_PROFILES[branding];
+  const { appName, profile: brandingProfile } = useStudioBranding();
   const {
     user,
     isAuthenticated,
@@ -288,7 +277,7 @@ export const HomePage = () => {
                 withAccessory
                 className="text-4xl tracking-tight sm:text-5xl md:text-6xl"
               >
-                {t(isAuthenticated ? 'shell.appName' : brandingProfile.anonymousTitleKey)}
+                {appName}
               </StudioPageTitle>
               {isAuthenticated ? (
                 <>

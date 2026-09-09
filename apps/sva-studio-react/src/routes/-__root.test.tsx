@@ -4,13 +4,15 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useRouterStateMock = vi.fn();
+const useMatchesMock = vi.fn();
+const activeLocaleMock = vi.hoisted(() => ({ value: 'de' }));
 
 vi.mock('@tanstack/react-router', () => ({
   HeadContent: () => null,
   Outlet: () => <div data-testid="outlet" />,
   Scripts: () => null,
   createRootRoute: (options: unknown) => options,
-  useMatches: () => [],
+  useMatches: () => useMatchesMock(),
   useRouterState: (input: { select: (state: any) => unknown }) => useRouterStateMock(input),
 }));
 
@@ -67,7 +69,24 @@ vi.mock('../providers/effective-access-provider', () => ({
 }));
 
 vi.mock('../providers/locale-provider', () => ({
-  LocaleProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  LocaleProvider: ({ children }: { children: React.ReactNode }) => {
+    const [locale, setLocale] = React.useState<'de' | 'en'>('de');
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            activeLocaleMock.value = 'en';
+            setLocale('en');
+          }}
+        >
+          switch locale
+        </button>
+        <React.Fragment key={locale}>{children}</React.Fragment>
+      </>
+    );
+  },
 }));
 
 vi.mock('../providers/theme-provider', () => ({
@@ -75,7 +94,14 @@ vi.mock('../providers/theme-provider', () => ({
 }));
 
 vi.mock('../i18n', () => ({
-  t: (key: string) => key,
+  t: (key: string) =>
+    key === 'shell.appName'
+      ? 'SVA Studio'
+      : key === 'home.branding.kasselDialog.title'
+        ? activeLocaleMock.value === 'de'
+          ? 'Kassel DIALOG'
+          : 'Kassel DIALOG EN'
+        : key,
 }));
 
 describe('root route document', () => {
@@ -143,6 +169,8 @@ describe('root route document', () => {
   });
 
   beforeEach(() => {
+    activeLocaleMock.value = 'de';
+    useMatchesMock.mockReturnValue([]);
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
         status: 'idle',
@@ -173,6 +201,16 @@ describe('root route document', () => {
         },
       ],
     });
+  });
+
+  it('uses the server-selected app name in root metadata', async () => {
+    const { getRootHead } = await import('./__root');
+
+    expect(
+      getRootHead({
+        loaderData: { pluginRouteScope: 'platform', studioBranding: 'kassel-dialog' },
+      }).meta
+    ).toContainEqual({ title: 'Kassel DIALOG' });
   });
 
   it('publishes the server-resolved plugin route scope for hydration', async () => {
@@ -238,6 +276,59 @@ describe('root route document', () => {
 
     await waitFor(() => {
       expect(document.title).toBe('content.page.title | SVA Studio');
+    });
+  });
+
+  it('updates route titles with the server-selected app name', async () => {
+    useMatchesMock.mockReturnValue([
+      { routeId: '__root__', loaderData: { studioBranding: 'kassel-dialog' } },
+    ]);
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'idle',
+        isLoading: false,
+        location: { pathname: '/admin/content' },
+      })
+    );
+
+    const { RootDocument } = await import('./__root');
+    render(
+      <RootDocument>
+        <div>content</div>
+      </RootDocument>
+    );
+
+    await waitFor(() => {
+      expect(document.title).toBe('content.page.title | Kassel DIALOG');
+    });
+  });
+
+  it('updates the app name in the document title after a locale change', async () => {
+    useMatchesMock.mockReturnValue([
+      { routeId: '__root__', loaderData: { studioBranding: 'kassel-dialog' } },
+    ]);
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'idle',
+        isLoading: false,
+        location: { pathname: '/admin/content' },
+      })
+    );
+
+    const { RootDocument } = await import('./__root');
+    render(
+      <RootDocument>
+        <div>content</div>
+      </RootDocument>
+    );
+
+    const localeSwitch = screen.getByRole('button', { name: 'switch locale' });
+    localeSwitch.focus();
+    fireEvent.click(localeSwitch);
+
+    await waitFor(() => {
+      expect(document.title).toBe('content.page.title | Kassel DIALOG EN');
+      expect(document.activeElement).toBe(localeSwitch);
     });
   });
 

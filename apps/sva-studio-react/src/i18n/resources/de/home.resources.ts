@@ -1,7 +1,7 @@
 export const homeDEResources = {
   branding: {
     kasselDialog: {
-      title: 'Kassel Dialog',
+      title: 'Kassel DIALOG',
       subtitle: 'Die Steueroberfläche für den virtuellen Dolmetscher.',
       body: 'Melden Sie sich an, um Ihre Einstellungen und Benutzer zu verwalten.',
     },

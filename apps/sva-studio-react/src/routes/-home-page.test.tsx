@@ -3,11 +3,8 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthMock = vi.hoisted(() => vi.fn());
-const brandingState = vi.hoisted(() => ({ profile: 'sva-studio' }));
 
 vi.mock('@tanstack/react-router', () => ({
-  useMatches: ({ select }: { select: (matches: unknown[]) => unknown }) =>
-    select([{ routeId: '__root__', loaderData: { studioBranding: brandingState.profile } }]),
   Link: ({ children, to }: { readonly children: ReactNode; readonly to: string }) => (
     <a href={to}>{children}</a>
   ),
@@ -22,10 +19,10 @@ vi.mock('../hooks/use-content-access', () => ({
 }));
 
 import { HomePage } from './-home-page';
+import { StudioBrandingProvider } from '../providers/studio-branding-provider';
 
 describe('HomePage', () => {
   beforeEach(() => {
-    brandingState.profile = 'sva-studio';
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
@@ -41,11 +38,14 @@ describe('HomePage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the server-selected Kassel Dialog texts before login', () => {
-    brandingState.profile = 'kassel-dialog';
+  it('renders the server-selected Kassel DIALOG texts before login', () => {
     useAuthMock.mockReturnValue({ isAuthenticated: false, isLoading: false });
-    render(<HomePage />);
-    expect(screen.getByRole('heading', { name: 'Kassel Dialog' })).toBeTruthy();
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <HomePage />
+      </StudioBrandingProvider>
+    );
+    expect(screen.getByRole('heading', { name: 'Kassel DIALOG' })).toBeTruthy();
     expect(screen.getByText('Die Steueroberfläche für den virtuellen Dolmetscher.')).toBeTruthy();
     expect(
       screen.getByText('Melden Sie sich an, um Ihre Einstellungen und Benutzer zu verwalten.')
@@ -53,6 +53,27 @@ describe('HomePage', () => {
     expect(
       screen.queryByText('Die gemeinsame Oberfläche für Inhalte, Module und Organisationen.')
     ).toBeNull();
+  });
+
+  it('uses the server-selected app name after login', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ entries: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+    );
+
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <HomePage />
+      </StudioBrandingProvider>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Kassel DIALOG' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'SVA Studio' })).toBeNull();
   });
 
   it('announces session loading as a status', () => {

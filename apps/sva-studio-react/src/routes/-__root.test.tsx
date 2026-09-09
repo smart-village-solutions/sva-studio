@@ -105,6 +105,43 @@ describe('root route document', () => {
     );
   };
 
+  it('reads branding from the server environment and exposes only the profile in metadata', async () => {
+    const { resolveServerStudioBranding, getRootHead } = await import('./__root');
+    try {
+      vi.stubEnv('SVA_STUDIO_BRANDING', 'kassel-dialog');
+      expect(resolveServerStudioBranding()).toBe('kassel-dialog');
+      expect(
+        getRootHead({
+          loaderData: { pluginRouteScope: 'platform', studioBranding: 'kassel-dialog' },
+        }).meta
+      ).toContainEqual({ name: 'sva-studio-branding', content: 'kassel-dialog' });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('restores public root configuration during client navigation', async () => {
+    const pluginScopeMeta = document.createElement('meta');
+    pluginScopeMeta.name = 'sva-plugin-route-scope';
+    pluginScopeMeta.content = 'tenant';
+    document.head.append(pluginScopeMeta);
+    const brandingMeta = document.createElement('meta');
+    brandingMeta.name = 'sva-studio-branding';
+    brandingMeta.content = 'kassel-dialog';
+    document.head.append(brandingMeta);
+
+    try {
+      const { loadRootData } = await import('./__root');
+      await expect(loadRootData()).resolves.toEqual({
+        pluginRouteScope: 'tenant',
+        studioBranding: 'kassel-dialog',
+      });
+    } finally {
+      pluginScopeMeta.remove();
+      brandingMeta.remove();
+    }
+  });
+
   beforeEach(() => {
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
@@ -141,7 +178,9 @@ describe('root route document', () => {
   it('publishes the server-resolved plugin route scope for hydration', async () => {
     const { getRootHead } = await import('./__root');
 
-    expect(getRootHead({ loaderData: { pluginRouteScope: 'tenant' } }).meta).toContainEqual({
+    expect(
+      getRootHead({ loaderData: { pluginRouteScope: 'tenant', studioBranding: 'sva-studio' } }).meta
+    ).toContainEqual({
       name: 'sva-plugin-route-scope',
       content: 'tenant',
     });

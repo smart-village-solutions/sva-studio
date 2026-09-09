@@ -112,6 +112,25 @@ describe('DatePicker', () => {
     }
   );
 
+  it.each(['disabled', 'readOnly'] as const)(
+    'keeps the calendar closed after toggling %s',
+    async (property) => {
+      const onChange = vi.fn();
+      const { rerender } = render(<Field onChange={onChange} />);
+      const trigger = screen.getByRole('button', { name: labels.openCalendar });
+      fireEvent.click(trigger);
+      await screen.findByRole('dialog');
+      rerender(<Field onChange={onChange} {...{ [property]: true }} />);
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      rerender(<Field onChange={onChange} {...{ [property]: false }} />);
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+      expect(onChange).not.toHaveBeenCalled();
+      fireEvent.click(trigger);
+      await screen.findByRole('dialog');
+    }
+  );
+
   it('follows external value changes', () => {
     const { rerender } = render(<Field value="2026-09-09" />);
     rerender(<Field value="2026-10-25" />);

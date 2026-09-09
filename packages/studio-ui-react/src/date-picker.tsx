@@ -48,6 +48,9 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
     const { id, label, labels, disabled, readOnly, required } = props;
     const draft = useDatePickerDraft(props, forwardedRef);
     const [open, setOpen] = React.useState(false);
+    React.useEffect(() => {
+      if (disabled || readOnly) setOpen(false);
+    }, [disabled, readOnly]);
     const [month, setMonth] = React.useState(() => draft.selected ?? new Date());
     const changeOpen = (next: boolean) => {
       if (next && (disabled || readOnly)) return;

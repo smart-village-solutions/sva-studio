@@ -61,3 +61,5 @@ Die Reviews für Code-/Testqualität, UX/Accessibility, i18n, Usability und Doku
 Der breite lokale `pnpm test:pr`-Lauf wurde mit Node 24.15.0 ausgeführt. In der Coverage-Stufe lief der fachfremde Test `one-shot-job-compose.test.ts` in ein 5-Sekunden-Timeout; der gesamte PR-Gate-Lauf ist daher lokal nicht grün. Die verbindlichen Gesamtprüfungen werden für den PR-HEAD zusätzlich in GitHub ausgewertet.
 
 Die isolierte Wiederholung über `pnpm nx run tooling-testing:test:unit --testFiles=scripts/ops/runtime/one-shot-job-compose.test.ts` besteht (Testdauer 1,12 Sekunden). Es wurden keine Timeouts oder Gates verändert.
+
+Ein zusätzlicher PR-Befund zur dynamischen Deaktivierung ist behoben: `disabled` und `readOnly` schließen den Kalenderzustand dauerhaft; die Reaktivierung öffnet ihn nicht ungefragt. Zwei Regressionstests prüfen Schließen, Reaktivieren ohne Öffnen und erneutes bewusstes Öffnen. Der abschließende gezielte UI-Lauf umfasst 26 bestandene Tests; der UI-Lint besteht. Die oben genannte Coverage stammt vom Stand vor diesen beiden zusätzlichen Tests.

@@ -322,10 +322,13 @@ describe('root route document', () => {
       </RootDocument>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'switch locale' }));
+    const localeSwitch = screen.getByRole('button', { name: 'switch locale' });
+    localeSwitch.focus();
+    fireEvent.click(localeSwitch);
 
     await waitFor(() => {
       expect(document.title).toBe('content.page.title | Kassel DIALOG EN');
+      expect(document.activeElement).toBe(localeSwitch);
     });
   });
 

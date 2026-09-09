@@ -171,6 +171,11 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
     setIsMobileSidebarOpen(false);
   }, [currentPathname]);
 
+  React.useEffect(() => {
+    const mainElement = globalThis.document.getElementById('main-content');
+    mainElement?.focus();
+  }, [currentPathname]);
+
   return (
     <html lang="de" suppressHydrationWarning>
       <head>
@@ -248,9 +253,6 @@ function RootDocumentEffects({ currentPathname }: Readonly<{ currentPathname: st
     if (currentLabel) {
       globalThis.document.title = `${currentLabel} | ${appName}`;
     }
-
-    const mainElement = globalThis.document.getElementById('main-content');
-    mainElement?.focus();
   }, [appName, currentPathname]);
 
   return null;

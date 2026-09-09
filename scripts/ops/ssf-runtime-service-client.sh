@@ -102,7 +102,8 @@ ensure_audience_mapper() {
   local client_uuid="$1"
   local mapper_id
   mapper_id="$(kcadm get "clients/$client_uuid/protocol-mappers/models" -r "$realm" |
-    jq -r 'map(select(.name == "studio-ssf-runtime-audience")) | if length == 1 then .[0].id else "" end')"
+    jq -er 'map(select(.name == "studio-ssf-runtime-audience")) | if length == 0 then "" elif length == 1 then .[0].id else error("duplicate audience mapper") end')" ||
+    fail 'failed to resolve the audience mapper uniquely'
   local payload="$temp_directory/audience-mapper.json"
   write_json "$payload" "$(jq -n \
     --arg audience "$AUDIENCE" \
@@ -197,7 +198,7 @@ verify_contract() {
     "$realm" "$CLIENT_ID" "$AUDIENCE" "$ACTION"
 }
 
-client_uuid="$(resolve_client_id)" || fail "clientId $CLIENT_ID is not unique"
+client_uuid="$(resolve_client_id)" || fail "failed to resolve clientId $CLIENT_ID uniquely"
 
 if [[ "$mode" == 'reconcile' ]]; then
   if [[ -z "$client_uuid" ]]; then

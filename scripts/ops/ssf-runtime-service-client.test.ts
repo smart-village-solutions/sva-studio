@@ -39,5 +39,7 @@ describe('SSF runtime service client operator', () => {
     expect(source).toContain('ensure_action_scope "$client_uuid"');
     expect(source).toContain('verify_contract "$client_uuid"');
     expect(source).toContain("'length == 1 and .[0].id == $role_id'");
+    expect(source).toContain('error("duplicate clientId")');
+    expect(source).toContain('error("duplicate audience mapper")');
   });
 });

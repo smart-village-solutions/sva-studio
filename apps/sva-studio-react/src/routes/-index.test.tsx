@@ -22,6 +22,7 @@ const useContentAccessMock = vi.fn<() => HomeContentAccessMockState>(() => ({
 const readLatestAuthDiagnosticSnapshotMock = vi.fn(() => ({}));
 
 vi.mock('@tanstack/react-router', () => ({
+  useMatches: ({ select }: { select: (matches: unknown[]) => unknown }) => select([]),
   createFileRoute: () => () => ({}),
   Link: ({
     children,

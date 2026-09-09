@@ -16,6 +16,7 @@ Die Dokumente unterscheiden bewusst zwischen Überblick, technischer Infrastrukt
 
 - [Kanonischer Studio-Rollout](../guides/studio-rollout-process.md)
 - [Eigenständige Studio-/SSF-Host-Zuordnung](./ssf-standalone-hosts.md)
+- [Studio-Branding je Server-Umgebung](./studio-branding.md)
 - [Deployment-Übersicht](./deployment-overview.md)
 - [Swarm-Runbook](./swarm-deployment-runbook.md)
 - [Incident Response](./incident-response.md)

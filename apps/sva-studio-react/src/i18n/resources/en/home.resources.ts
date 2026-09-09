@@ -1,4 +1,11 @@
 export const homeENResources = {
+  branding: {
+    kasselDialog: {
+      title: 'Kassel Dialog',
+      subtitle: 'The control interface for the virtual interpreter.',
+      body: 'Sign in to manage your settings and users.',
+    },
+  },
   devAuth: {
     prompt: 'Local dev auth is active. Keycloak is bypassed for this session.',
   },

@@ -1,4 +1,6 @@
 import React from 'react';
+import { useMatches } from '@tanstack/react-router';
+import { STUDIO_BRANDING_PROFILES, resolveStudioBranding } from '../lib/studio-branding';
 import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
@@ -184,6 +186,17 @@ const AuthenticatedHomeOverview = ({
 };
 
 export const HomePage = () => {
+  const branding = useMatches({
+    select: (matches) => {
+      const rootData: unknown = matches.find((match) => match.routeId === '__root__')?.loaderData;
+      return resolveStudioBranding(
+        rootData && typeof rootData === 'object' && 'studioBranding' in rootData
+          ? rootData.studioBranding
+          : undefined
+      );
+    },
+  });
+  const brandingProfile = STUDIO_BRANDING_PROFILES[branding];
   const {
     user,
     isAuthenticated,
@@ -275,7 +288,7 @@ export const HomePage = () => {
                 withAccessory
                 className="text-4xl tracking-tight sm:text-5xl md:text-6xl"
               >
-                {t('shell.appName')}
+                {t(isAuthenticated ? 'shell.appName' : brandingProfile.anonymousTitleKey)}
               </StudioPageTitle>
               {isAuthenticated ? (
                 <>
@@ -287,10 +300,10 @@ export const HomePage = () => {
               ) : (
                 <>
                   <p className="text-lg text-foreground sm:text-xl dark:text-foreground/95">
-                    {t('home.hero.anonymousSubtitle')}
+                    {t(brandingProfile.anonymousSubtitleKey)}
                   </p>
                   <p className="mx-auto max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                    {t('home.hero.anonymousBody')}
+                    {t(brandingProfile.anonymousBodyKey)}
                   </p>
                 </>
               )}

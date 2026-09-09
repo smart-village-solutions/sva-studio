@@ -3,8 +3,11 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthMock = vi.hoisted(() => vi.fn());
+const brandingState = vi.hoisted(() => ({ profile: 'sva-studio' }));
 
 vi.mock('@tanstack/react-router', () => ({
+  useMatches: ({ select }: { select: (matches: unknown[]) => unknown }) =>
+    select([{ routeId: '__root__', loaderData: { studioBranding: brandingState.profile } }]),
   Link: ({ children, to }: { readonly children: ReactNode; readonly to: string }) => (
     <a href={to}>{children}</a>
   ),
@@ -22,6 +25,7 @@ import { HomePage } from './-home-page';
 
 describe('HomePage', () => {
   beforeEach(() => {
+    brandingState.profile = 'sva-studio';
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
@@ -35,6 +39,20 @@ describe('HomePage', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it('renders the server-selected Kassel Dialog texts before login', () => {
+    brandingState.profile = 'kassel-dialog';
+    useAuthMock.mockReturnValue({ isAuthenticated: false, isLoading: false });
+    render(<HomePage />);
+    expect(screen.getByRole('heading', { name: 'Kassel Dialog' })).toBeTruthy();
+    expect(screen.getByText('Die Steueroberfläche für den virtuellen Dolmetscher.')).toBeTruthy();
+    expect(
+      screen.getByText('Melden Sie sich an, um Ihre Einstellungen und Benutzer zu verwalten.')
+    ).toBeTruthy();
+    expect(
+      screen.queryByText('Die gemeinsame Oberfläche für Inhalte, Module und Organisationen.')
+    ).toBeNull();
   });
 
   it('announces session loading as a status', () => {

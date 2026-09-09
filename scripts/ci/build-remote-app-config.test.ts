@@ -33,6 +33,23 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it('accepts branding profiles and rejects unknown branding before deployment', () => {
+    const source = profile.replace(
+      'SVA_STUDIO_BRANDING=sva-studio',
+      'SVA_STUDIO_BRANDING=kassel-dialog'
+    );
+    expect(
+      buildRemoteAppConfig({ environment: 'staging', profile: source, overrides }).source
+    ).toContain('SVA_STUDIO_BRANDING=kassel-dialog\n');
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: source.replace('SVA_STUDIO_BRANDING=kassel-dialog', 'SVA_STUDIO_BRANDING=unknown'),
+        overrides,
+      })
+    ).toThrow();
+  });
+
   it.each([
     ['dev', 'development', 'automatic'],
     ['staging', 'staging', 'automatic'],

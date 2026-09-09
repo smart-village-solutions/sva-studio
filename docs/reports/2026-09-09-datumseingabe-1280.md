@@ -59,3 +59,5 @@ Die Prüfung betrifft den lokalen Arbeitsstand, nicht einen Sandbox- oder Produk
 Die Reviews für Code-/Testqualität, UX/Accessibility, i18n, Usability und Dokumentation sind abgeschlossen. Ein gefundener Rückschritt durch `noValidate` wurde behoben: Nach erfolgreicher RHF-Prüfung prüft `reportValidity()` weiterhin die nativen Formularconstraints vor dem Speichern. Drei Regressionstests decken ungültige Intervalle und die anschließende Korrektur ab. Die drei betroffenen Events-Testdateien bestehen mit insgesamt 49 Tests; der Typcheck besteht ebenfalls.
 
 Der breite lokale `pnpm test:pr`-Lauf wurde mit Node 24.15.0 ausgeführt. In der Coverage-Stufe lief der fachfremde Test `one-shot-job-compose.test.ts` in ein 5-Sekunden-Timeout; der gesamte PR-Gate-Lauf ist daher lokal nicht grün. Die verbindlichen Gesamtprüfungen werden für den PR-HEAD zusätzlich in GitHub ausgewertet.
+
+Die isolierte Wiederholung über `pnpm nx run tooling-testing:test:unit --testFiles=scripts/ops/runtime/one-shot-job-compose.test.ts` besteht (Testdauer 1,12 Sekunden). Es wurden keine Timeouts oder Gates verändert.

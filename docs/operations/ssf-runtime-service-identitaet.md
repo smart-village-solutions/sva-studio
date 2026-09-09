@@ -7,15 +7,19 @@ Identität, mit der das SSF-Backend
 `GET /internal/plugins/ssf/v1/runtime-configuration` aufruft. Er liegt im
 Studio-Root-Realm derselben Installation und ist nicht tenantgebunden.
 
-Der Client besitzt genau:
+Der Client besitzt für die SSF-Anwendung genau:
 
-- die Audience `sva-studio-ssf-runtime`,
-- die Client-Rolle `ssf.runtime-configuration.read`,
+- den verwalteten Audience-Mapper für `sva-studio-ssf-runtime`,
+- die SSF-Client-Rolle `ssf.runtime-configuration.read`,
 - einen aktivierten Service-Account.
 
 Standard-, Implicit- und Direct-Access-Grant-Flows bleiben deaktiviert. Der
 Client erhält keine menschliche Plattformrolle und keine weiteren
 `ssf.*`-Actions.
+
+Keycloak-eigene Default- und Realm-Rollen liegen außerhalb dieses Operators.
+Die Runtime-Autorisierung wertet ausschließlich die genannte SSF-Action und
+Audience aus.
 
 ## Umgebungsgrenze
 

@@ -15,6 +15,7 @@ describe('SSF runtime service client operator', () => {
     expect(source).toContain("readonly AUDIENCE='sva-studio-ssf-runtime'");
     expect(source).toContain("readonly ACTION='ssf.runtime-configuration.read'");
     expect(source).toContain('serviceAccountsEnabled:true');
+    expect(source).toContain('bearerOnly:false');
     expect(source).toContain('standardFlowEnabled:false');
     expect(source).toContain('directAccessGrantsEnabled:false');
     expect(source).toContain('fullScopeAllowed:false');
@@ -27,6 +28,8 @@ describe('SSF runtime service client operator', () => {
     expect(source).toContain('chmod 600 "$secret_file"');
     expect(source).toContain('chmod 600 "$output"');
     expect(source).toContain('must not be a symlink or directory');
+    expect(source).toContain('parent must be a writable directory');
+    expect(source).toContain('.ssf-runtime-secret-probe.XXXXXX');
     expect(source).not.toContain('printf \'%s\\n\' "$secret"');
   });
 

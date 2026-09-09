@@ -52,6 +52,12 @@ if [[ "$mode" == 'reconcile' || "$mode" == 'rotate-secret' ]]; then
   [[ -n "${SSF_RUNTIME_SECRET_OUTPUT:-}" ]] || fail 'SSF_RUNTIME_SECRET_OUTPUT is required for secret delivery'
   [[ ! -L "$SSF_RUNTIME_SECRET_OUTPUT" && ! -d "$SSF_RUNTIME_SECRET_OUTPUT" ]] ||
     fail 'SSF_RUNTIME_SECRET_OUTPUT must not be a symlink or directory'
+  secret_output_directory="$(dirname "$SSF_RUNTIME_SECRET_OUTPUT")"
+  [[ -d "$secret_output_directory" && -w "$secret_output_directory" ]] ||
+    fail 'SSF_RUNTIME_SECRET_OUTPUT parent must be a writable directory'
+  secret_output_probe="$(mktemp "$secret_output_directory/.ssf-runtime-secret-probe.XXXXXX")" ||
+    fail 'SSF_RUNTIME_SECRET_OUTPUT cannot be created safely'
+  rm -f "$secret_output_probe"
 fi
 
 require_command "$kcadm_bin"
@@ -74,7 +80,7 @@ create_client() {
   local payload="$temp_directory/client.json"
   write_json "$payload" "$(jq -n \
     --arg client_id "$CLIENT_ID" \
-    '{clientId:$client_id,enabled:true,protocol:"openid-connect",publicClient:false,clientAuthenticatorType:"client-secret",serviceAccountsEnabled:true,standardFlowEnabled:false,implicitFlowEnabled:false,directAccessGrantsEnabled:false,fullScopeAllowed:false}')"
+    '{clientId:$client_id,enabled:true,protocol:"openid-connect",publicClient:false,bearerOnly:false,clientAuthenticatorType:"client-secret",serviceAccountsEnabled:true,standardFlowEnabled:false,implicitFlowEnabled:false,directAccessGrantsEnabled:false,fullScopeAllowed:false}')"
   kcadm create clients -r "$realm" -f "$payload" >/dev/null
 }
 
@@ -83,7 +89,7 @@ ensure_client_contract() {
   local payload="$temp_directory/client-update.json"
   write_json "$payload" "$(jq -n \
     --arg client_id "$CLIENT_ID" \
-    '{clientId:$client_id,enabled:true,protocol:"openid-connect",publicClient:false,clientAuthenticatorType:"client-secret",serviceAccountsEnabled:true,standardFlowEnabled:false,implicitFlowEnabled:false,directAccessGrantsEnabled:false,fullScopeAllowed:false}')"
+    '{clientId:$client_id,enabled:true,protocol:"openid-connect",publicClient:false,bearerOnly:false,clientAuthenticatorType:"client-secret",serviceAccountsEnabled:true,standardFlowEnabled:false,implicitFlowEnabled:false,directAccessGrantsEnabled:false,fullScopeAllowed:false}')"
   kcadm update "clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
 }
 
@@ -167,6 +173,7 @@ verify_contract() {
       .enabled == true and
       .protocol == "openid-connect" and
       .publicClient == false and
+      .bearerOnly == false and
       .clientAuthenticatorType == "client-secret" and
       .serviceAccountsEnabled == true and
       .standardFlowEnabled == false and

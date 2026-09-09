@@ -34,8 +34,8 @@ Tenantdaten über die kanonische Studio-`instanceId` isolieren.
 
 Das System SHALL im Studio-Root-Realm jeder Umgebung genau einen vertraulichen
 Client `ssf-runtime` für Runtime Configuration V1 betreiben. Der Client MUST
-ausschließlich die Audience `sva-studio-ssf-runtime` und die Action
-`ssf.runtime-configuration.read` erhalten; sein Secret MUST außerhalb von Git,
+ausschließlich den verwalteten Audience-Mapper `sva-studio-ssf-runtime` und als
+SSF-Anwendungsaction `ssf.runtime-configuration.read` erhalten; sein Secret MUST außerhalb von Git,
 Logs und API-Antworten an das SSF-Deployment übergeben werden.
 
 #### Scenario: Der technische Client wird idempotent abgeglichen

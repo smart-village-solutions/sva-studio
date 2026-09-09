@@ -131,10 +131,14 @@ ensure_service_account_role() {
   local current="$temp_directory/current-role-mappings.json"
   kcadm get "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" >"$current"
   if ! jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' "$current" >/dev/null; then
-    if [[ "$(jq 'length' "$current")" -gt 0 ]]; then
-      kcadm delete "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$current" >/dev/null
+    local extras="$temp_directory/extra-role-mappings.json"
+    jq --arg role_id "$role_id" '[.[] | select(.id != $role_id)]' "$current" >"$extras"
+    if [[ "$(jq 'length' "$extras")" -gt 0 ]]; then
+      kcadm delete "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$extras" >/dev/null
     fi
-    kcadm create "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
+    if ! jq -e --arg role_id "$role_id" 'any(.id == $role_id)' "$current" >/dev/null; then
+      kcadm create "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
+    fi
   fi
 }
 
@@ -147,10 +151,14 @@ ensure_action_scope() {
   local current="$temp_directory/current-action-scopes.json"
   kcadm get "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" >"$current"
   if ! jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' "$current" >/dev/null; then
-    if [[ "$(jq 'length' "$current")" -gt 0 ]]; then
-      kcadm delete "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$current" >/dev/null
+    local extras="$temp_directory/extra-action-scopes.json"
+    jq --arg role_id "$role_id" '[.[] | select(.id != $role_id)]' "$current" >"$extras"
+    if [[ "$(jq 'length' "$extras")" -gt 0 ]]; then
+      kcadm delete "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$extras" >/dev/null
     fi
-    kcadm create "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
+    if ! jq -e --arg role_id "$role_id" 'any(.id == $role_id)' "$current" >/dev/null; then
+      kcadm create "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
+    fi
   fi
 }
 

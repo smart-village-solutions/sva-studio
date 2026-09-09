@@ -29,7 +29,7 @@ import { AuthProvider } from '../providers/auth-provider';
 import { EffectiveAccessProvider } from '../providers/effective-access-provider';
 import { OrganizationContextProvider } from '../hooks/use-organization-context';
 import { LocaleProvider } from '../providers/locale-provider';
-import { StudioBrandingProvider } from '../providers/studio-branding-provider';
+import { StudioBrandingProvider, useStudioBranding } from '../providers/studio-branding-provider';
 import { ThemeProvider } from '../providers/theme-provider';
 import { t } from '../i18n';
 
@@ -153,7 +153,6 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
       ? rootLoaderData.studioBranding
       : undefined
   );
-  const appName = t(STUDIO_BRANDING_PROFILES[studioBranding].appNameKey);
   const routeDocumentation = resolveActiveRouteDocumentation(matches);
   const isRouterPending = useRouterState({
     select: (state) => state.status === 'pending' || state.isLoading,
@@ -171,17 +170,6 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
   React.useEffect(() => {
     setIsMobileSidebarOpen(false);
   }, [currentPathname]);
-
-  React.useEffect(() => {
-    const breadcrumbItems = resolveBreadcrumbItems(currentPathname);
-    const currentLabel = breadcrumbItems[breadcrumbItems.length - 1]?.label;
-    if (currentLabel) {
-      globalThis.document.title = `${currentLabel} | ${appName}`;
-    }
-
-    const mainElement = globalThis.document.getElementById('main-content');
-    mainElement?.focus();
-  }, [appName, currentPathname]);
 
   return (
     <html lang="de" suppressHydrationWarning>
@@ -201,6 +189,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
             <EffectiveAccessProvider>
               <LocaleProvider>
                 <StudioBrandingProvider branding={studioBranding}>
+                  <RootDocumentEffects currentPathname={currentPathname} />
                   <a
                     href="#main-content"
                     onClick={() => {
@@ -248,4 +237,21 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
       </body>
     </html>
   );
+}
+
+function RootDocumentEffects({ currentPathname }: Readonly<{ currentPathname: string }>) {
+  const { appName } = useStudioBranding();
+
+  React.useEffect(() => {
+    const breadcrumbItems = resolveBreadcrumbItems(currentPathname);
+    const currentLabel = breadcrumbItems[breadcrumbItems.length - 1]?.label;
+    if (currentLabel) {
+      globalThis.document.title = `${currentLabel} | ${appName}`;
+    }
+
+    const mainElement = globalThis.document.getElementById('main-content');
+    mainElement?.focus();
+  }, [appName, currentPathname]);
+
+  return null;
 }

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useRouterStateMock = vi.fn();
 const useMatchesMock = vi.fn();
+const activeLocaleMock = vi.hoisted(() => ({ value: 'de' }));
 
 vi.mock('@tanstack/react-router', () => ({
   HeadContent: () => null,
@@ -68,7 +69,24 @@ vi.mock('../providers/effective-access-provider', () => ({
 }));
 
 vi.mock('../providers/locale-provider', () => ({
-  LocaleProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  LocaleProvider: ({ children }: { children: React.ReactNode }) => {
+    const [locale, setLocale] = React.useState<'de' | 'en'>('de');
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            activeLocaleMock.value = 'en';
+            setLocale('en');
+          }}
+        >
+          switch locale
+        </button>
+        <React.Fragment key={locale}>{children}</React.Fragment>
+      </>
+    );
+  },
 }));
 
 vi.mock('../providers/theme-provider', () => ({
@@ -80,7 +98,9 @@ vi.mock('../i18n', () => ({
     key === 'shell.appName'
       ? 'SVA Studio'
       : key === 'home.branding.kasselDialog.title'
-        ? 'Kassel DIALOG'
+        ? activeLocaleMock.value === 'de'
+          ? 'Kassel DIALOG'
+          : 'Kassel DIALOG EN'
         : key,
 }));
 
@@ -149,6 +169,7 @@ describe('root route document', () => {
   });
 
   beforeEach(() => {
+    activeLocaleMock.value = 'de';
     useMatchesMock.mockReturnValue([]);
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
@@ -279,6 +300,32 @@ describe('root route document', () => {
 
     await waitFor(() => {
       expect(document.title).toBe('content.page.title | Kassel DIALOG');
+    });
+  });
+
+  it('updates the app name in the document title after a locale change', async () => {
+    useMatchesMock.mockReturnValue([
+      { routeId: '__root__', loaderData: { studioBranding: 'kassel-dialog' } },
+    ]);
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'idle',
+        isLoading: false,
+        location: { pathname: '/admin/content' },
+      })
+    );
+
+    const { RootDocument } = await import('./__root');
+    render(
+      <RootDocument>
+        <div>content</div>
+      </RootDocument>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'switch locale' }));
+
+    await waitFor(() => {
+      expect(document.title).toBe('content.page.title | Kassel DIALOG EN');
     });
   });
 

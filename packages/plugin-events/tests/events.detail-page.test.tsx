@@ -342,12 +342,12 @@ describe('EventsDetailPage', () => {
       fireEvent.change(input, { target: { value: invalidInterval } });
       const form = input.closest('form')!;
       const validity = vi.spyOn(form, 'reportValidity');
-      fireEvent.submit(form);
+      fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
       await waitFor(() => expect(validity).toHaveBeenCalled());
       expect(validity.mock.results[0]?.value).toBe(false);
       expect(createEvent).not.toHaveBeenCalled();
       fireEvent.change(input, { target: { value: '2' } });
-      fireEvent.submit(form);
+      fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
       await waitFor(() => expect(createEvent).toHaveBeenCalled());
       expect(vi.mocked(createEvent).mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({ recurringInterval: '2' })

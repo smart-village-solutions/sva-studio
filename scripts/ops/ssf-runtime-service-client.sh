@@ -43,11 +43,16 @@ mode="${1:-}"
 
 [[ -n "$realm" ]] || fail 'SSF_RUNTIME_ROOT_REALM is required'
 [[ -n "$kcadm_config" ]] || fail 'KCADM_CONFIG is required'
-[[ -f "$kcadm_config" ]] || fail 'KCADM_CONFIG does not reference a readable file'
+[[ -f "$kcadm_config" && -r "$kcadm_config" ]] || fail 'KCADM_CONFIG does not reference a readable file'
 [[ "$mode" == 'reconcile' || "$mode" == 'verify' || "$mode" == 'rotate-secret' ]] || {
   usage >&2
   exit 2
 }
+if [[ "$mode" == 'reconcile' || "$mode" == 'rotate-secret' ]]; then
+  [[ -n "${SSF_RUNTIME_SECRET_OUTPUT:-}" ]] || fail 'SSF_RUNTIME_SECRET_OUTPUT is required for secret delivery'
+  [[ ! -L "$SSF_RUNTIME_SECRET_OUTPUT" && ! -d "$SSF_RUNTIME_SECRET_OUTPUT" ]] ||
+    fail 'SSF_RUNTIME_SECRET_OUTPUT must not be a symlink or directory'
+fi
 
 require_command "$kcadm_bin"
 require_command jq
@@ -62,7 +67,7 @@ kcadm() {
 
 resolve_client_id() {
   kcadm get clients -r "$realm" -q "clientId=$CLIENT_ID" |
-    jq -er 'if length == 1 then .[0].id else empty end'
+    jq -er 'if length == 0 then "" elif length == 1 then .[0].id else error("duplicate clientId") end'
 }
 
 create_client() {
@@ -89,6 +94,8 @@ ensure_action_role() {
     write_json "$payload" "$(jq -n --arg name "$ACTION" '{name:$name,clientRole:true}')"
     kcadm create "clients/$client_uuid/roles" -r "$realm" -f "$payload" >/dev/null
   fi
+  kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" |
+    jq -e '.composite == false' >/dev/null || fail 'action role must not be composite'
 }
 
 ensure_audience_mapper() {
@@ -112,10 +119,14 @@ ensure_service_account_role() {
   local service_account_user_id role_id
   service_account_user_id="$(kcadm get "clients/$client_uuid/service-account-user" -r "$realm" | jq -er '.id')"
   role_id="$(kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" | jq -er '.id')"
-  if ! kcadm get "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" |
-    jq -e --arg role_id "$role_id" 'any(.id == $role_id)' >/dev/null; then
-    local payload="$temp_directory/role-mapping.json"
-    write_json "$payload" "$(jq -n --arg id "$role_id" --arg name "$ACTION" '[{id:$id,name:$name,clientRole:true}]')"
+  local payload="$temp_directory/role-mapping.json"
+  write_json "$payload" "$(jq -n --arg id "$role_id" --arg name "$ACTION" '[{id:$id,name:$name,clientRole:true}]')"
+  local current="$temp_directory/current-role-mappings.json"
+  kcadm get "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" >"$current"
+  if ! jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' "$current" >/dev/null; then
+    if [[ "$(jq 'length' "$current")" -gt 0 ]]; then
+      kcadm delete "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$current" >/dev/null
+    fi
     kcadm create "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
   fi
 }
@@ -124,10 +135,14 @@ ensure_action_scope() {
   local client_uuid="$1"
   local role_id
   role_id="$(kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" | jq -er '.id')"
-  if ! kcadm get "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" |
-    jq -e --arg role_id "$role_id" 'any(.id == $role_id)' >/dev/null; then
-    local payload="$temp_directory/action-scope.json"
-    write_json "$payload" "$(jq -n --arg id "$role_id" --arg name "$ACTION" '[{id:$id,name:$name,clientRole:true}]')"
+  local payload="$temp_directory/action-scope.json"
+  write_json "$payload" "$(jq -n --arg id "$role_id" --arg name "$ACTION" '[{id:$id,name:$name,clientRole:true}]')"
+  local current="$temp_directory/current-action-scopes.json"
+  kcadm get "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" >"$current"
+  if ! jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' "$current" >/dev/null; then
+    if [[ "$(jq 'length' "$current")" -gt 0 ]]; then
+      kcadm delete "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$current" >/dev/null
+    fi
     kcadm create "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
   fi
 }
@@ -135,11 +150,11 @@ ensure_action_scope() {
 write_secret() {
   local client_uuid="$1"
   local output="${SSF_RUNTIME_SECRET_OUTPUT:-}"
-  [[ -n "$output" ]] || fail 'SSF_RUNTIME_SECRET_OUTPUT is required for secret delivery'
   local secret_file="$temp_directory/client-secret"
   kcadm get "clients/$client_uuid/client-secret" -r "$realm" | jq -er '.value' >"$secret_file"
   chmod 600 "$secret_file"
   mv "$secret_file" "$output"
+  chmod 600 "$output"
   printf 'ssf-runtime service client: secret written with mode 0600\n'
 }
 
@@ -151,6 +166,7 @@ verify_contract() {
       .enabled == true and
       .protocol == "openid-connect" and
       .publicClient == false and
+      .clientAuthenticatorType == "client-secret" and
       .serviceAccountsEnabled == true and
       .standardFlowEnabled == false and
       .implicitFlowEnabled == false and
@@ -169,17 +185,19 @@ verify_contract() {
   local service_account_user_id role_id
   service_account_user_id="$(kcadm get "clients/$client_uuid/service-account-user" -r "$realm" | jq -er '.id')"
   role_id="$(kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" | jq -er '.id')"
+  kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" |
+    jq -e '.composite == false' >/dev/null || fail 'action role must not be composite'
   kcadm get "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" |
-    jq -e --arg role_id "$role_id" 'any(.id == $role_id)' >/dev/null ||
+    jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' >/dev/null ||
     fail 'service account action role is not aligned'
   kcadm get "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" |
-    jq -e --arg role_id "$role_id" 'any(.id == $role_id)' >/dev/null ||
+    jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' >/dev/null ||
     fail 'client action scope is not aligned'
   printf 'ssf-runtime service client: verified realm=%s client=%s audience=%s action=%s\n' \
     "$realm" "$CLIENT_ID" "$AUDIENCE" "$ACTION"
 }
 
-client_uuid="$(resolve_client_id 2>/dev/null || true)"
+client_uuid="$(resolve_client_id)" || fail "clientId $CLIENT_ID is not unique"
 
 if [[ "$mode" == 'reconcile' ]]; then
   if [[ -z "$client_uuid" ]]; then

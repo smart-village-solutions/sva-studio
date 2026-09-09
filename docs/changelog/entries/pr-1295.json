@@ -1,0 +1,4 @@
+{
+  "prNumber": 1295,
+  "body": "SSF-Integration\n\n- Das Studio leitet interne Service-Endpunkte wie die SSF-Laufzeitkonfiguration jetzt korrekt an den registrierten Plugin-Handler weiter."
+}

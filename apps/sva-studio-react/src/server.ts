@@ -230,7 +230,21 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       return routedResponse;
     }
 
-    if (new URL(request.url).pathname.startsWith('/api/v1/plugins/')) {
+    const requestPath = new URL(request.url).pathname;
+    // Internal services connect directly over the private container network.
+    // Traefik adds forwarding headers on every public ingress request.
+    if (
+      requestPath.startsWith('/internal/plugins/') &&
+      [...request.headers.keys()].some(
+        (name) => name === 'forwarded' || name.startsWith('x-forwarded-')
+      )
+    ) {
+      return new Response(null, { status: 404 });
+    }
+    if (
+      requestPath.startsWith('/api/v1/plugins/') ||
+      requestPath.startsWith('/internal/plugins/')
+    ) {
       const dispatchPluginServerHandler = await getPluginServerHandlerDispatcher();
       const pluginServerResponse = await dispatchPluginServerHandler(request);
       if (pluginServerResponse) {

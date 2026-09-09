@@ -203,6 +203,47 @@ describe('server transport', () => {
     expect(response).toBe(pluginResponse);
   });
 
+  it(
+    'dispatches internal plugin service routes before auth and TanStack Start',
+    async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      const pluginResponse = new Response('plugin', { status: 200 });
+      const startFetch = vi.fn().mockResolvedValue(new Response('start'));
+      createStartHandlerMock.mockReturnValue(startFetch);
+      dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+
+      const mod = await import('./server');
+      const request = new Request(
+        'http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration'
+      );
+      const response = await mod.default.fetch(request);
+
+      expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
+      expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+      expect(startFetch).not.toHaveBeenCalled();
+      expect(response).toBe(pluginResponse);
+    },
+    10_000
+  );
+
+  it.each(['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto'])(
+    'rejects internal plugin requests through an ingress carrying %s',
+    async (header) => {
+      const startFetch = vi.fn();
+      createStartHandlerMock.mockReturnValue(startFetch);
+      const mod = await import('./server');
+      const response = await mod.default.fetch(
+        new Request('http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration', {
+          headers: { [header]: 'public-ingress' },
+        })
+      );
+      expect(response.status).toBe(404);
+      expect(dispatchPluginServerHandlerMock).not.toHaveBeenCalled();
+      expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+      expect(startFetch).not.toHaveBeenCalled();
+    }
+  );
+
   it('bypasses mainserver news requests before auth routing', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 

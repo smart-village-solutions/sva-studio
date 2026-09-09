@@ -189,7 +189,11 @@ X-Studio-Tenant-Id: <tenant-id-from-validated-SSF-context>
 X-Correlation-Id: <correlation-id>
 ```
 
-The endpoint is reachable only from the internal network. The installation-
+The endpoint is reachable only from the internal network. SSF connects directly
+to Studio over the private container network; the application port must not be
+published publicly. Requests carrying `Forwarded` or `X-Forwarded-*` headers
+receive `404` before plugin execution. This excludes public Traefik ingress,
+which sets those headers; internal requests must omit them. The installation-
 wide SSF service token must contain the required audience and the
 `ssf.runtime-configuration.read` permission. It is issued to a technical client
 in the Studio root realm and does not carry a tenant-specific

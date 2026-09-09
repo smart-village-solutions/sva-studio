@@ -232,7 +232,12 @@ X-Studio-Tenant-Id: <tenant-id-aus-validiertem-SSF-Kontext>
 X-Correlation-Id: <correlation-id>
 ```
 
-Der Endpoint ist ausschließlich im internen Netz erreichbar. Das
+Der Endpoint ist ausschließlich im internen Netz erreichbar. SSF verbindet sich direkt
+über das private Container-Netz mit Studio; der App-Port darf nicht öffentlich
+veröffentlicht werden. Requests mit `Forwarded`- oder `X-Forwarded-*`-Headern
+werden vor der Plugin-Ausführung mit `404` abgewiesen. Das schließt den öffentlichen
+Traefik-Ingress aus, der diese Header setzt; interne Aufrufe dürfen diese Header
+nicht mitsenden. Das
 installationsweite SSF-Service-Token muss die vorgesehene Audience und die
 Permission `ssf.runtime-configuration.read` besitzen. Es wird durch einen
 technischen Client im Studio-Root-Realm ausgestellt und trägt keine

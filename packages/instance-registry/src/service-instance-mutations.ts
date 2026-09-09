@@ -1,7 +1,6 @@
 import {
   buildPrimaryHostname,
   canTransitionInstanceStatus,
-  isReservedTenantHostname,
   normalizeHost,
 } from '@sva/core';
 import type { InstanceRegistryRecord } from '@sva/core';
@@ -27,44 +26,8 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
+import { assertOidcClientIdsNotReserved, assertTenantHostnameAvailable } from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
-
-const assertTenantHostnameAvailable = (
-  deps: InstanceRegistryServiceDeps,
-  hostname: string
-): void => {
-  const reserved =
-    typeof deps.reservedHostnames === 'function'
-      ? deps.reservedHostnames()
-      : deps.reservedHostnames;
-  const normalized = normalizeHost(hostname);
-  if (
-    isReservedTenantHostname(normalized.split('.')[0] ?? '') ||
-    reserved?.some((host) => normalizeHost(host) === normalized)
-  ) {
-    throw new Error('tenant_hostname_reserved');
-  }
-};
-
-const assertOidcClientIdsNotReserved = (
-  deps: InstanceRegistryServiceDeps,
-  input: Pick<
-    CreateInstanceProvisioningInput | UpdateInstanceInput,
-    'authClientId' | 'tenantAdminClient'
-  >
-): void => {
-  const reservedClientIds =
-    typeof deps.reservedOidcClientIds === 'function'
-      ? deps.reservedOidcClientIds()
-      : deps.reservedOidcClientIds;
-  if (
-    reservedClientIds?.includes(input.authClientId) ||
-    (input.tenantAdminClient?.clientId &&
-      reservedClientIds?.includes(input.tenantAdminClient.clientId))
-  ) {
-    throw new Error('oidc_client_id_reserved');
-  }
-};
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,

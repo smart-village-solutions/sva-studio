@@ -32,6 +32,13 @@ import { LocaleProvider } from '../providers/locale-provider';
 import { ThemeProvider } from '../providers/theme-provider';
 import { t } from '../i18n';
 
+import {
+  readDocumentStudioBranding,
+  resolveStudioBranding,
+  STUDIO_BRANDING_META_NAME,
+  type StudioBranding,
+} from '../lib/studio-branding';
+
 import appCssHref from '../styles.css?url';
 
 const tanstackDevtoolsEnabled =
@@ -51,18 +58,29 @@ export const resolveRootPluginRouteScope = createServerOnlyFn(async () => {
   return resolveServerPluginRouteScope(getRequest());
 });
 
-/**
- * Initialisiert serverseitig notwendige SDK-Bausteine für die Root-Route.
- */
+export const resolveServerStudioBranding = createServerOnlyFn(() =>
+  resolveStudioBranding(process.env.SVA_STUDIO_BRANDING)
+);
+
+/** Initialisiert SDK und öffentliche Laufzeitkonfiguration für die Root-Route. */
 export const loadRootData = async () => {
   if (import.meta.env.SSR) {
     await ensureRootSdkInitialized();
-    return { pluginRouteScope: await resolveRootPluginRouteScope() };
+    return {
+      pluginRouteScope: await resolveRootPluginRouteScope(),
+      studioBranding: resolveServerStudioBranding(),
+    };
   }
-  return { pluginRouteScope: readDocumentPluginRouteScope() ?? 'platform' };
+  return {
+    pluginRouteScope: readDocumentPluginRouteScope() ?? 'platform',
+    studioBranding: readDocumentStudioBranding(),
+  };
 };
 
-type RootLoaderData = { readonly pluginRouteScope: PluginRouteScope };
+type RootLoaderData = {
+  readonly pluginRouteScope: PluginRouteScope;
+  readonly studioBranding: StudioBranding;
+};
 
 /**
  * Definiert Meta- und Link-Tags für das Root-Dokument.
@@ -81,6 +99,10 @@ export const getRootHead = ({ loaderData }: { loaderData?: RootLoaderData } = {}
     },
     ...(loaderData
       ? [
+          {
+            name: STUDIO_BRANDING_META_NAME,
+            content: loaderData.studioBranding,
+          },
           {
             name: PLUGIN_ROUTE_SCOPE_META_NAME,
             content: loaderData.pluginRouteScope,

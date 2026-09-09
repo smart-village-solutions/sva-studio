@@ -152,6 +152,7 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
+  readonly reservedHostnames?: readonly string[] | (() => readonly string[]);
   readonly reservedOidcClientIds?: readonly string[] | (() => readonly string[]);
   readonly invalidatePermissionSnapshots?: (input: {
     instanceId: string;

@@ -952,7 +952,7 @@ Das System SHALL für Module mit deklarierter Fachprovisionierung nach erfolgrei
 
 ### Requirement: Studio-Root ist unabhängig von der Tenant-Basisdomain konfigurierbar
 
-Das System SHALL einen optionalen `SVA_STUDIO_ROOT_HOST` getrennt von `SVA_PARENT_DOMAIN` auswerten. Ohne expliziten Root-Host SHALL die Parent-Domain weiterhin als Studio-Root gelten. Die Konfiguration SHALL gemeinsam für Host-Klassifikation, Plattformzugriff und OIDC-/Redirect-Auflösung gelten. `studio` und `auth` SHALL als Tenant-Hostnamen reserviert sein.
+Das System SHALL einen optionalen `SVA_STUDIO_ROOT_HOST` getrennt von `SVA_PARENT_DOMAIN` auswerten. Ohne expliziten Root-Host SHALL die Parent-Domain weiterhin als Studio-Root gelten. Die Konfiguration SHALL gemeinsam für Host-Klassifikation, Plattformzugriff und OIDC-/Redirect-Auflösung gelten. `studio`, `auth` und der konfigurierte Root-Host SHALL für Tenant-Anlage und Host-Änderungen reserviert sein. Statische Tenant-Allowlists SHALL kollidierende Einträge beim Laden zurückweisen.
 
 #### Scenario: Eigenständige Studio-/SSF-Installation verwendet getrennte Hosts
 

@@ -1,4 +1,9 @@
-import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
+import {
+  buildPrimaryHostname,
+  canTransitionInstanceStatus,
+  isReservedTenantHostname,
+  normalizeHost,
+} from '@sva/core';
 import type { InstanceRegistryRecord } from '@sva/core';
 
 import type {
@@ -23,6 +28,23 @@ import {
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
+
+const assertTenantHostnameAvailable = (
+  deps: InstanceRegistryServiceDeps,
+  hostname: string
+): void => {
+  const reserved =
+    typeof deps.reservedHostnames === 'function'
+      ? deps.reservedHostnames()
+      : deps.reservedHostnames;
+  const normalized = normalizeHost(hostname);
+  if (
+    isReservedTenantHostname(normalized.split('.')[0] ?? '') ||
+    reserved?.some((host) => normalizeHost(host) === normalized)
+  ) {
+    throw new Error('tenant_hostname_reserved');
+  }
+};
 
 const assertOidcClientIdsNotReserved = (
   deps: InstanceRegistryServiceDeps,
@@ -105,6 +127,7 @@ export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
     assertOidcClientIdsNotReserved(deps, input);
+    assertTenantHostnameAvailable(deps, buildPrimaryHostname(input.instanceId, input.parentDomain));
     instanceRegistryServiceLogger.info('instance_create_requested', {
       operation: 'create_instance',
       instance_id: input.instanceId,
@@ -263,6 +286,7 @@ export const createUpdateInstanceHandler =
       normalizeHost(existing.parentDomain) === normalizedParentDomain
         ? existing.primaryHostname
         : buildPrimaryHostname(input.instanceId, normalizedParentDomain);
+    assertTenantHostnameAvailable(deps, primaryHostname);
     const updated = await deps.repository.updateInstance({
       instanceId: input.instanceId,
       displayName: input.displayName,

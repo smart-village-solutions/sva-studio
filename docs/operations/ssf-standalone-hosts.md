@@ -48,7 +48,7 @@ SVA_AUTH_POST_LOGOUT_REDIRECT_URI=https://studio.dialog.kassel.de/
 SVA_STUDIO_SSF_RUNTIME_ISSUER=https://auth.dialog.kassel.de/realms/sva-studio
 ```
 
-Ohne `SVA_STUDIO_ROOT_HOST` gilt weiterhin `SVA_PARENT_DOMAIN` als Root.
+Ohne `SVA_STUDIO_ROOT_HOST` gilt weiterhin `SVA_PARENT_DOMAIN` als Root. Die optionale Variable wird auch in den Compose-Profilen und im Remote-Konfigurationsvertrag weitergereicht. Der konfigurierte Root-Host sowie `studio` und `auth` sind für Tenant-Anlage und Host-Änderungen gesperrt; entsprechende statische Allowlist-Einträge führen zu einem Konfigurationsfehler.
 Der interne Keycloak-Admin-Zugriff bleibt auf dem lokalen Docker-Netz.
 Datenbank-, Redis-, OIDC- und Verschlüsselungsgeheimnisse werden unverändert übernommen.
 Keine Passwörter zurücksetzen und keine zusätzlichen Tenant-Rollen vergeben.

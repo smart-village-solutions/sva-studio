@@ -46,6 +46,13 @@ describe('mutation-errors', () => {
     });
   });
 
+  it('classifies reserved tenant hosts as invalid requests', () => {
+    expect(classifyInstanceMutationError(new Error('tenant_hostname_reserved'))).toEqual({
+      status: 400,
+      code: 'tenant_hostname_reserved',
+    });
+  });
+
   it('classifies reserved OIDC client ids as invalid requests', () => {
     expect(classifyInstanceMutationError(new Error('oidc_client_id_reserved'))).toEqual({
       status: 400,

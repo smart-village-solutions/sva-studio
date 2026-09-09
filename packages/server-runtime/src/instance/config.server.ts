@@ -8,7 +8,13 @@
  * Fehler beim App-Start.
  */
 
-import { classifyHost, isValidInstanceId, isValidParentDomain, normalizeHost } from '@sva/core';
+import {
+  classifyHost,
+  isReservedTenantHostname,
+  isValidInstanceId,
+  isValidParentDomain,
+  normalizeHost,
+} from '@sva/core';
 import { createSdkLogger } from '../logger/index.server.js';
 const logger = createSdkLogger({
   component: 'instance-config',
@@ -68,6 +74,12 @@ function loadAndValidateInstanceConfig(): InstanceConfig | null {
     : [];
 
   for (const id of ids) {
+    if (
+      isReservedTenantHostname(id) ||
+      normalizeHost(`${id}.${parentDomain}`) === normalizeHost(studioRootHost || parentDomain)
+    ) {
+      throwInvalidInstanceId(id, 'Hostname ist für einen Systemdienst reserviert.');
+    }
     if (!isValidInstanceId(id)) {
       throwInvalidInstanceId(id, 'Erlaubtes Muster: lowercase DNS-Label ohne Punycode.');
     }

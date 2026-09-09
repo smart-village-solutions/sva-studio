@@ -529,6 +529,51 @@ describe('instance registry service facade', () => {
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
+  it.each(['studio', 'auth', 'admin'])(
+    'rejects reserved host %s before creating a tenant',
+    async (instanceId) => {
+      const repository = createRepository();
+      const service = createInstanceRegistryService(
+        createDeps(repository, {
+          reservedHostnames: () => ['ADMIN.STUDIO.EXAMPLE.ORG'],
+        })
+      );
+      await expect(
+        service.createProvisioningRequest({
+          instanceId,
+          displayName: 'Demo',
+          parentDomain: 'studio.example.org',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'studio-client',
+          idempotencyKey: 'reserved',
+        })
+      ).rejects.toThrow('tenant_hostname_reserved');
+      expect(repository.getInstanceById).not.toHaveBeenCalled();
+      expect(repository.createInstance).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects a domain update that would collide with the configured root', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        reservedHostnames: ['demo.other.example.org'],
+      })
+    );
+    await expect(
+      service.updateInstance({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'other.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+      })
+    ).rejects.toThrow('tenant_hostname_reserved');
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
   it('rejects dynamically reserved OIDC client ids at the service mutation boundary', async () => {
     const repository = createRepository();
     const reservedOidcClientIds = vi.fn(() => ['ssf']);

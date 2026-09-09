@@ -33,6 +33,23 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it('passes through an optional explicit Studio root host', () => {
+    const source = profile.replace(
+      'SVA_STUDIO_ROOT_HOST=value',
+      'SVA_STUDIO_ROOT_HOST=studio.dialog.kassel.de'
+    );
+    expect(
+      buildRemoteAppConfig({ environment: 'staging', profile: source, overrides }).source
+    ).toContain('SVA_STUDIO_ROOT_HOST=studio.dialog.kassel.de\n');
+    expect(() =>
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: profile.replace('SVA_STUDIO_ROOT_HOST=value', ''),
+        overrides,
+      })
+    ).not.toThrow();
+  });
+
   it('accepts branding profiles and rejects unknown branding before deployment', () => {
     const source = profile.replace(
       'SVA_STUDIO_BRANDING=sva-studio',

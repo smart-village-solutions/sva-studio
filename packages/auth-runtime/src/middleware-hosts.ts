@@ -78,7 +78,7 @@ export const resolveSessionUser = async (
   const isIpv4Host = IPV4_HOST_PATTERN.test(normalizedHost);
   const config = getInstanceConfig();
   const classification = config
-    ? classifyHost(host, config.parentDomain)
+    ? classifyHost(host, config.parentDomain, config.canonicalAuthHost)
     : hostSegmentCount >= 4 && normalizedHost !== 'localhost' && !isIpv4Host
       ? { kind: 'tenant' as const }
       : { kind: 'root' as const };
@@ -111,7 +111,7 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
     return null;
   }
 
-  const classification = classifyHost(host, config.parentDomain);
+  const classification = classifyHost(host, config.parentDomain, config.canonicalAuthHost);
   if (classification.kind !== 'tenant') {
     return null;
   }

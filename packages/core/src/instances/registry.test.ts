@@ -30,6 +30,29 @@ describe('instance registry core', () => {
     });
   });
 
+  it('separates the configured Studio root from the tenant base domain', () => {
+    const classify = (host: string) =>
+      classifyHost(host, 'dialog.kassel.de', 'studio.dialog.kassel.de');
+    expect(classify('STUDIO.dialog.kassel.de.:443').kind).toBe('root');
+    expect(classify('smartcity.dialog.kassel.de')).toMatchObject({
+      kind: 'tenant',
+      instanceId: 'smartcity',
+    });
+    expect(classify('dialog.kassel.de').kind).toBe('invalid');
+    expect(classify('auth.dialog.kassel.de')).toMatchObject({
+      kind: 'invalid',
+      reason: 'reserved_tenant_hostname',
+    });
+    expect(classify('smartcity.other.de').kind).toBe('invalid');
+  });
+
+  it.each(['studio', 'auth'])('reserves %s as a tenant hostname', (label) => {
+    expect(classifyHost(`${label}.example.org`, 'example.org')).toMatchObject({
+      kind: 'invalid',
+      reason: 'reserved_tenant_hostname',
+    });
+  });
+
   it('rejects invalid hosts deterministically', () => {
     expect(classifyHost('hb.studio.example.org', 'invalid_domain')).toMatchObject({
       kind: 'invalid',

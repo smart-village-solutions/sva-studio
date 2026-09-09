@@ -259,7 +259,10 @@ export const createUpdateInstanceHandler =
     }
 
     const normalizedParentDomain = normalizeHost(input.parentDomain);
-    const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
+    const primaryHostname =
+      normalizeHost(existing.parentDomain) === normalizedParentDomain
+        ? existing.primaryHostname
+        : buildPrimaryHostname(input.instanceId, normalizedParentDomain);
     const updated = await deps.repository.updateInstance({
       instanceId: input.instanceId,
       displayName: input.displayName,

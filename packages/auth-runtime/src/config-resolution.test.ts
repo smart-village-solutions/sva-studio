@@ -100,6 +100,52 @@ describe('auth config resolution', () => {
     vi.unstubAllEnvs();
   });
 
+  it('resolves separate root and tenant hosts with their own callback and logout targets', async () => {
+    const { classifyHost } = await vi.importActual<typeof import('@sva/core')>('@sva/core');
+    state.classifyHost.mockImplementation(classifyHost);
+    state.getInstanceConfig.mockReturnValue({
+      parentDomain: 'dialog.kassel.de',
+      canonicalAuthHost: 'studio.dialog.kassel.de',
+    });
+    state.isCanonicalAuthHost.mockImplementation(
+      (host: string) => host === 'studio.dialog.kassel.de'
+    );
+    state.resolveEffectiveRequestHost.mockReturnValue('studio.dialog.kassel.de');
+    vi.stubEnv('SVA_AUTH_REDIRECT_URI', 'https://studio.dialog.kassel.de/auth/callback');
+    vi.stubEnv('SVA_AUTH_POST_LOGOUT_REDIRECT_URI', 'https://studio.dialog.kassel.de/');
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://studio.dialog.kassel.de/auth/login'))
+    ).resolves.toMatchObject({
+      kind: 'platform',
+      redirectUri: 'https://studio.dialog.kassel.de/auth/callback',
+      postLogoutRedirectUri: 'https://studio.dialog.kassel.de/',
+    });
+    expect(state.loadRegistryEntryForHost).not.toHaveBeenCalled();
+    state.resolveEffectiveRequestHost.mockReturnValue('smartcity.dialog.kassel.de');
+    state.buildRequestOriginFromHeaders.mockReturnValue('https://smartcity.dialog.kassel.de');
+    state.loadRegistryEntryForHost.mockResolvedValue({
+      instanceId: 'tenant-kassel',
+      status: 'active',
+      authRealm: 'sva-studio',
+      authClientId: 'tenant-client',
+      authIssuerUrl: 'https://auth.dialog.kassel.de/realms/sva-studio',
+    });
+    await expect(
+      resolveAuthConfigForRequest(new Request('https://smartcity.dialog.kassel.de/auth/login'))
+    ).resolves.toMatchObject({
+      kind: 'instance',
+      instanceId: 'tenant-kassel',
+      redirectUri: 'https://smartcity.dialog.kassel.de/auth/callback',
+      postLogoutRedirectUri: 'https://smartcity.dialog.kassel.de/',
+    });
+    for (const host of ['dialog.kassel.de', 'auth.dialog.kassel.de']) {
+      state.resolveEffectiveRequestHost.mockReturnValue(host);
+      await expect(
+        resolveAuthConfigForRequest(new Request(`https://${host}/auth/login`))
+      ).rejects.toMatchObject({ reason: 'tenant_host_invalid' });
+    }
+  });
+
   it('builds an instance auth config from instance data and keycloak admin base url', async () => {
     vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', 'https://kc.example///');
     state.loadInstanceById.mockResolvedValue({

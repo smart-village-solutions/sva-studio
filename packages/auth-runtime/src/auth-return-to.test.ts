@@ -35,15 +35,48 @@ describe('auth return-to handling', () => {
     vi.unstubAllEnvs();
   });
 
+  it('trusts the separate root and registered tenant, but not SSF or Keycloak hosts', async () => {
+    mocks.getInstanceConfig.mockReturnValue({
+      parentDomain: 'dialog.kassel.de',
+      canonicalAuthHost: 'studio.dialog.kassel.de',
+    });
+    mocks.isCanonicalAuthHost.mockImplementation(
+      (host: string) => host === 'studio.dialog.kassel.de'
+    );
+    mocks.loadInstanceByHostname.mockResolvedValue({
+      instanceId: 'tenant-kassel',
+      status: 'active',
+    });
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://studio.dialog.kassel.de/admin/instances')
+    ).resolves.toBe('https://studio.dialog.kassel.de/admin/instances');
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://smartcity.dialog.kassel.de/dashboard')
+    ).resolves.toBe('https://smartcity.dialog.kassel.de/dashboard');
+    mocks.loadInstanceByHostname.mockClear();
+    for (const host of ['dialog.kassel.de', 'auth.dialog.kassel.de', 'evil.example.org']) {
+      await expect(sanitizeAuthReturnTo(request(), `https://${host}/dashboard`)).resolves.toBe('/');
+    }
+    expect(mocks.loadInstanceByHostname).not.toHaveBeenCalled();
+  });
+
   it('keeps safe relative return targets and falls back for unsafe auth paths', async () => {
     await expect(sanitizeAuthReturnTo(request(), '/dashboard')).resolves.toBe('/dashboard');
-    await expect(sanitizeAuthReturnTo(request(), '/auth', { defaultPath: '/home' })).resolves.toBe('/home');
-    await expect(sanitizeAuthReturnTo(request(), '/auth?next=/dashboard', { defaultPath: '/home' })).resolves.toBe('/home');
-    await expect(sanitizeAuthReturnTo(request(), '/auth/callback', { defaultPath: '/home' })).resolves.toBe('/home');
-    await expect(sanitizeAuthReturnTo(request(), '//evil.example.test', { defaultPath: '/home' })).resolves.toBe(
+    await expect(sanitizeAuthReturnTo(request(), '/auth', { defaultPath: '/home' })).resolves.toBe(
       '/home'
     );
-    await expect(sanitizeAuthReturnTo(request(), null, { defaultPath: '/home' })).resolves.toBe('/home');
+    await expect(
+      sanitizeAuthReturnTo(request(), '/auth?next=/dashboard', { defaultPath: '/home' })
+    ).resolves.toBe('/home');
+    await expect(
+      sanitizeAuthReturnTo(request(), '/auth/callback', { defaultPath: '/home' })
+    ).resolves.toBe('/home');
+    await expect(
+      sanitizeAuthReturnTo(request(), '//evil.example.test', { defaultPath: '/home' })
+    ).resolves.toBe('/home');
+    await expect(sanitizeAuthReturnTo(request(), null, { defaultPath: '/home' })).resolves.toBe(
+      '/home'
+    );
   });
 
   it('rejects invalid or untrusted absolute return targets', async () => {
@@ -73,7 +106,9 @@ describe('auth return-to handling', () => {
       sanitizeAuthReturnTo(request(), 'https://auth.example.test/auth', { defaultPath: '/home' })
     ).resolves.toBe('/home');
     await expect(
-      sanitizeAuthReturnTo(request(), 'https://auth.example.test/auth?next=/dashboard', { defaultPath: '/home' })
+      sanitizeAuthReturnTo(request(), 'https://auth.example.test/auth?next=/dashboard', {
+        defaultPath: '/home',
+      })
     ).resolves.toBe('/home');
     await expect(
       sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', { defaultPath: '/' })
@@ -95,7 +130,9 @@ describe('auth return-to handling', () => {
     });
 
     await expect(
-      sanitizeAuthReturnTo(request(), 'https://tenant.example.test:8443/dashboard', { defaultPath: '/' })
+      sanitizeAuthReturnTo(request(), 'https://tenant.example.test:8443/dashboard', {
+        defaultPath: '/',
+      })
     ).resolves.toBe('https://tenant.example.test:8443/dashboard');
     expect(mocks.loadInstanceByHostname).toHaveBeenCalledWith('tenant.example.test');
   });
@@ -108,7 +145,9 @@ describe('auth return-to handling', () => {
     mocks.isCanonicalAuthHost.mockImplementation((host: string) => host === 'auth.example.test');
 
     await expect(
-      sanitizeAuthReturnTo(request(), 'https://auth.example.test:9443/account', { defaultPath: '/' })
+      sanitizeAuthReturnTo(request(), 'https://auth.example.test:9443/account', {
+        defaultPath: '/',
+      })
     ).resolves.toBe('https://auth.example.test:9443/account');
     expect(mocks.isCanonicalAuthHost).toHaveBeenCalledWith('auth.example.test');
   });
@@ -122,7 +161,9 @@ describe('auth return-to handling', () => {
     mocks.loadInstanceByHostname.mockRejectedValueOnce(new Error('db down'));
 
     await expect(
-      sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', { defaultPath: '/home' })
+      sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', {
+        defaultPath: '/home',
+      })
     ).resolves.toBe('/home');
 
     expect(mocks.logger.warn).toHaveBeenCalledWith(
@@ -136,9 +177,11 @@ describe('auth return-to handling', () => {
   });
 
   it('falls back and logs when the absolute return target is not a valid URL', async () => {
-    await expect(sanitizeAuthReturnTo(request(), 'https://tenant example.test/dashboard', { defaultPath: '/home' })).resolves.toBe(
-      '/home'
-    );
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://tenant example.test/dashboard', {
+        defaultPath: '/home',
+      })
+    ).resolves.toBe('/home');
 
     expect(mocks.logger.debug).toHaveBeenCalledWith(
       'Absolute return target URL is invalid',

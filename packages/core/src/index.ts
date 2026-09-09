@@ -428,6 +428,7 @@ export {
   buildPrimaryHostname,
   canTransitionInstanceStatus,
   classifyHost,
+  isReservedTenantHostname,
   instanceStatuses,
   isInstanceStatus,
   isTrafficEnabledInstanceStatus,

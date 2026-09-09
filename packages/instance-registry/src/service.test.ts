@@ -1070,6 +1070,33 @@ describe('instance registry service facade', () => {
     ).resolves.toEqual({ ok: false, reason: 'invalid_transition', currentStatus: 'archived' });
   });
 
+  it('preserves a registered hostname that differs from the immutable tenant id', async () => {
+    const existing = {
+      ...baseInstance,
+      instanceId: 'tenant-kassel',
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'smartcity.dialog.kassel.de',
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => existing),
+      updateInstance: vi.fn(async () => existing),
+    });
+    await createInstanceRegistryService(createDeps(repository)).updateInstance({
+      instanceId: 'tenant-kassel',
+      displayName: 'Kassel',
+      parentDomain: 'Dialog.Kassel.de',
+      realmMode: 'existing',
+      authRealm: 'sva-studio',
+      authClientId: 'tenant-client',
+    });
+    expect(repository.updateInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-kassel',
+        primaryHostname: 'smartcity.dialog.kassel.de',
+      })
+    );
+  });
+
   it('updates instances and returns detail projections', async () => {
     const updated = {
       ...baseInstance,

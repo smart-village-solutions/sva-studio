@@ -230,7 +230,11 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       return routedResponse;
     }
 
-    if (new URL(request.url).pathname.startsWith('/api/v1/plugins/')) {
+    const requestPath = new URL(request.url).pathname;
+    if (
+      requestPath.startsWith('/api/v1/plugins/') ||
+      requestPath.startsWith('/internal/plugins/')
+    ) {
       const dispatchPluginServerHandler = await getPluginServerHandlerDispatcher();
       const pluginServerResponse = await dispatchPluginServerHandler(request);
       if (pluginServerResponse) {

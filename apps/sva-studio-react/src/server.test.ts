@@ -203,6 +203,29 @@ describe('server transport', () => {
     expect(response).toBe(pluginResponse);
   });
 
+  it(
+    'dispatches internal plugin service routes before auth and TanStack Start',
+    async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      const pluginResponse = new Response('plugin', { status: 200 });
+      const startFetch = vi.fn().mockResolvedValue(new Response('start'));
+      createStartHandlerMock.mockReturnValue(startFetch);
+      dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+
+      const mod = await import('./server');
+      const request = new Request(
+        'http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration'
+      );
+      const response = await mod.default.fetch(request);
+
+      expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
+      expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+      expect(startFetch).not.toHaveBeenCalled();
+      expect(response).toBe(pluginResponse);
+    },
+    10_000
+  );
+
   it('bypasses mainserver news requests before auth routing', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 

@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "date": "2026-09-09",
+  "title": "Interne Plugin-Service-Endpunkte erreichbar",
+  "description": "Das Studio leitet interne Plugin-Service-Endpunkte wie die SSF-Laufzeitkonfiguration jetzt korrekt an den registrierten Plugin-Handler weiter.",
+  "type": "fixed",
+  "impact": "patch"
+}

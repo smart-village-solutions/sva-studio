@@ -332,6 +332,29 @@ describe('EventsDetailPage', () => {
     expect((recurringTypeSelect as HTMLSelectElement).value).toBe('1');
   });
 
+  it.each(['0', '-1', '1.5'])(
+    'preserves native interval validation for %s',
+    async (invalidInterval) => {
+      render(<EventsDetailPage mode="create" />);
+      fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Termin' } });
+      fireEvent.click(screen.getByLabelText('Wiederholung'));
+      const input = document.getElementById('event-recurring-interval') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: invalidInterval } });
+      const form = input.closest('form')!;
+      const validity = vi.spyOn(form, 'reportValidity');
+      fireEvent.submit(form);
+      await waitFor(() => expect(validity).toHaveBeenCalled());
+      expect(validity.mock.results[0]?.value).toBe(false);
+      expect(createEvent).not.toHaveBeenCalled();
+      fireEvent.change(input, { target: { value: '2' } });
+      fireEvent.submit(form);
+      await waitFor(() => expect(createEvent).toHaveBeenCalled());
+      expect(vi.mocked(createEvent).mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({ recurringInterval: '2' })
+      );
+    }
+  );
+
   it('renders a global save action and a history placeholder for events', async () => {
     render(<EventsDetailPage mode="create" />);
 

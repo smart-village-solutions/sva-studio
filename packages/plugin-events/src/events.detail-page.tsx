@@ -658,8 +658,10 @@ export function EventsDetailPage({
   );
 
   const submit = methods.handleSubmit(
-    async (values) => {
+    async (values, event) => {
       if (!canSave) return;
+      const form = event?.target;
+      if (form instanceof HTMLFormElement && !form.reportValidity()) return;
       setStatus(null);
       methods.clearErrors();
       const valuesWithMedia = {

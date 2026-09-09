@@ -53,3 +53,9 @@ Die echte Komponente wurde mit den Studio-Styles in einer lokalen Prüfansicht �
 ## Grenzen
 
 Die Prüfung betrifft den lokalen Arbeitsstand, nicht einen Sandbox- oder Produktionsrollout. Eine vollständige manuelle Screenreader-Abnahme mit realer Assistenztechnik wurde nicht durchgeführt. Die automatisierten Prüfungen sind kein vollständiger WCAG-Konformitätsnachweis. Zeitstempel und weitere Verbraucher gehören nicht zum ersten Lieferumfang.
+
+## PR-Review und ergänzende Prüfung
+
+Die Reviews für Code-/Testqualität, UX/Accessibility, i18n, Usability und Dokumentation sind abgeschlossen. Ein gefundener Rückschritt durch `noValidate` wurde behoben: Nach erfolgreicher RHF-Prüfung prüft `reportValidity()` weiterhin die nativen Formularconstraints vor dem Speichern. Drei Regressionstests decken ungültige Intervalle und die anschließende Korrektur ab. Die drei betroffenen Events-Testdateien bestehen mit insgesamt 49 Tests; der Typcheck besteht ebenfalls.
+
+Der breite lokale `pnpm test:pr`-Lauf wurde mit Node 24.15.0 ausgeführt. In der Coverage-Stufe lief der fachfremde Test `one-shot-job-compose.test.ts` in ein 5-Sekunden-Timeout; der gesamte PR-Gate-Lauf ist daher lokal nicht grün. Die verbindlichen Gesamtprüfungen werden für den PR-HEAD zusätzlich in GitHub ausgewertet.

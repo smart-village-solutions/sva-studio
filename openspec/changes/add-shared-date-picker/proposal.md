@@ -16,3 +16,5 @@ Der Umfang wurde im Arbeitsdialog freigegeben. Der konkrete Vertrag steht in [Da
 ## Impact
 
 Betroffen sind `studio-ui-react`, `plugin-events` und die Capability `ui-layout-shell`. API-/Datenbankschemata bleiben unverändert. Weitere Verbraucher können anschließend gezielt migriert werden.
+
+Die gemeinsame UI-Bausteinsicht ist in [arc42 Abschnitt 5](../../../docs/architecture/05-building-block-view.md) aktualisiert.

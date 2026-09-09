@@ -22,6 +22,7 @@ export APP_DB_USER="${APP_DB_USER:-sva_app}"
 export STUDIO_JOB_WORKER_DB_USER="${STUDIO_JOB_WORKER_DB_USER:-sva_job_worker}"
 export SVA_ALLOWED_INSTANCE_IDS="${SVA_ALLOWED_INSTANCE_IDS:-}"
 export SVA_PARENT_DOMAIN="${SVA_PARENT_DOMAIN:-}"
+export SVA_STUDIO_ROOT_HOST="${SVA_STUDIO_ROOT_HOST:-}"
 export SVA_BOOTSTRAP_RECONCILE_APP_ROLE="${SVA_BOOTSTRAP_RECONCILE_APP_ROLE:-true}"
 export SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD="${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD:-true}"
 export SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE="${SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE:-true}"
@@ -52,7 +53,7 @@ const resolveWorkspacePackage = (packageName) => {
   return import(pathToFileURL(entrypoint).href);
 };
 
-const [{ resolvesSystemAdminGrant }, { studioPermissionCatalog }] = await Promise.all([
+const [{ resolvesSystemAdminGrant, classifyHost }, { studioPermissionCatalog }] = await Promise.all([
   resolveWorkspacePackage('@sva/core'),
   resolveWorkspacePackage('@sva/studio-module-iam'),
 ]);
@@ -66,6 +67,7 @@ const instanceIds = (process.env.SVA_ALLOWED_INSTANCE_IDS ?? '')
   .map((entry) => entry.trim())
   .filter((entry) => entry.length > 0);
 const parentDomain = process.env.SVA_PARENT_DOMAIN?.trim() ?? '';
+const studioRootHost = process.env.SVA_STUDIO_ROOT_HOST?.trim() || parentDomain;
 const tenantAdminClientId = process.env.SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-admin';
 if (!appDbPassword) {
   throw new Error('APP_DB_PASSWORD fehlt fuer den Bootstrap-Job.');
@@ -192,6 +194,11 @@ if (
   instanceIds.length > 0 &&
   parentDomain.length > 0
 ) {
+  for (const instanceId of instanceIds) {
+    if (classifyHost(`${instanceId}.${parentDomain}`, parentDomain, studioRootHost).kind !== 'tenant') {
+      throw new Error('Bootstrap-Tenant-Hostname ist ungültig oder reserviert.');
+    }
+  }
   const instanceRows = instanceIds
     .map(
       (instanceId) =>

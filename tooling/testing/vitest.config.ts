@@ -69,6 +69,7 @@ export default defineConfig({
       '../../scripts/ops/runtime/acceptance-runtime-checks.live-spec.test.ts',
       '../../scripts/ops/runtime/doctor.test.ts',
       '../../scripts/ops/runtime/local-command.test.ts',
+      '../../scripts/ops/runtime/local-instance-registry.test.ts',
       '../../scripts/ops/runtime/one-shot-job-compose.test.ts',
       '../../scripts/ops/runtime/one-shot-job-lifecycle.test.ts',
       '../../scripts/ops/runtime/remote-verification.test.ts',

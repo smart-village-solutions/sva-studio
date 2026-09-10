@@ -1,6 +1,7 @@
 ## Umsetzung
 
 - [x] Freigegebenen schlanken Contract und Systemgrenze dokumentieren.
+- [x] Betroffene arc42-Abschnitte 3, 5 und 8 aktualisieren.
 - [x] Directory-Endpoint und eigene Service-Leserolle implementieren.
 - [x] Studio-Routing und Service-Client-Abgleich ergänzen.
 - [x] Gezielte Auth-, Directory-, Routing- und Operator-Tests abschließen.

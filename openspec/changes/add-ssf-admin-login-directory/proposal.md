@@ -23,7 +23,8 @@ keine Freigabeliste und kein Studio-Login-Handler.
 - Affected specs: `ssf-admin-login-directory` (neu).
 - Affected code: `auth-runtime`, Studio-Serververdrahtung, SSF-Service-Client-Operator.
 - Dokumentation: `docs/api/ssf-admin-login-mandanten-v1.md`,
-  `docs/operations/ssf-runtime-service-identitaet.md`, arc42 Abschnitt 3.
+  `docs/operations/ssf-runtime-service-identitaet.md`, arc42 Abschnitte 3, 5
+  und 8.
 - Keine Schemaänderung, keine SSF-Frontend-Änderung und kein Deployment.
 
 ## Invarianten und Nachweise

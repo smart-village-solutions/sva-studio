@@ -826,6 +826,7 @@ export default function Sidebar({
   onMobileOpenChange,
 }: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
+  const { profile: brandingProfile } = useStudioBranding();
   const tenantName = user?.instanceDisplayName?.trim() || user?.instanceId?.trim() || undefined;
   const contentAccessApi = useContentAccess();
   const { decide: decideAccess } = useEffectiveAccess();
@@ -868,7 +869,10 @@ export default function Sidebar({
   const canAccessAdminPrivacy =
     isAuthenticated && isIamAdminEnabled() && hasIamGovernanceAccess(accessUser);
   const canAccessInterfaces =
-    isAuthenticated && isIamUiEnabled() && hasInterfacesAccess(accessUser);
+    brandingProfile.showInterfacesNavigation &&
+    isAuthenticated &&
+    isIamUiEnabled() &&
+    hasInterfacesAccess(accessUser);
   const canAccessExperimentalFeatures =
     isAuthenticated && isIamUiEnabled() && hasExperimentalAccess(accessUser);
   const canAccessSystemTools =
@@ -877,6 +881,7 @@ export default function Sidebar({
     isIamUiEnabled() &&
     hasMonitoringAccess(accessUser);
   const canAccessModules =
+    brandingProfile.showModulesNavigation &&
     isAuthenticated &&
     isIamUiEnabled() &&
     (hasPlatformInstanceAdminAccess(accessUser) ||
@@ -887,6 +892,7 @@ export default function Sidebar({
           contentAccessApi.isLoading
         )));
   const canAccessApplicationLink =
+    brandingProfile.showGenericApplicationLinks &&
     canAccessWorkspace &&
     canAccessExperimentalFeatures &&
     hasPermissionAction(
@@ -895,6 +901,7 @@ export default function Sidebar({
       contentAccessApi.isLoading
     );
   const canAccessCockpitLink =
+    brandingProfile.showGenericApplicationLinks &&
     canAccessWorkspace &&
     canAccessExperimentalFeatures &&
     hasPermissionAction(
@@ -927,7 +934,7 @@ export default function Sidebar({
         const action = item.actionId ? getStudioPluginAction(item.actionId) : undefined;
         return {
           item,
-          resolvedTitleKey: action?.titleKey ?? item.titleKey,
+          resolvedTitleKey: item.titleKey,
           resolvedRequiredAction: action?.requiredAction ?? item.requiredAction,
           resolvedAccessRequirement: action?.accessRequirement ?? item.accessRequirement,
         };
@@ -1039,7 +1046,7 @@ export default function Sidebar({
         icon: IconLayoutDashboard,
         exact: true,
       },
-      ...(canAccessWorkspace && contentChildren.length > 0
+      ...(brandingProfile.showContentNavigation && canAccessWorkspace && contentChildren.length > 0
         ? [
             {
               kind: 'group' as const,
@@ -1271,6 +1278,7 @@ export default function Sidebar({
     canAccessSystemTools,
     canAccessWorkspace,
     canAccessContent,
+    brandingProfile.showContentNavigation,
     contentAccessApi.access,
     contentAccessApi.isLoading,
     contentAccessApi.permissionActions,

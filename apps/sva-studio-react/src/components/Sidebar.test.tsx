@@ -986,6 +986,61 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
   });
 
+  it('reduziert die Kassel-DIALOG-Navigation unabhängig von Rechten und Datentypen', () => {
+    studioPluginNavigationMock.items = [
+      {
+        id: 'ssf.navigation',
+        to: '/plugins/ssf/configuration',
+        titleKey: 'news.navigation.title',
+        section: 'applications',
+        requiredAction: 'ssf.configuration.tenant.read',
+      },
+    ];
+    studioContentTypesMock.items = [
+      {
+        contentType: 'news.article',
+        displayName: 'Nachrichten',
+        requiredReadAction: 'news.read',
+        requiredCreateAction: 'news.create',
+        createPath: '/admin/news/new',
+        detailPath: '/admin/news/$id',
+      },
+    ];
+    setupSidebarSession({
+      user: createSidebarUser({
+        roles: ['system_admin'],
+        assignedModules: ['ssf', 'news'],
+        permissionActions: ['experimental.read', 'integration.manage'],
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: [
+          'app.read',
+          'cockpit.read',
+          'modules.read',
+          'news.read',
+          'ssf.configuration.tenant.read',
+        ],
+      }),
+    });
+
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <Sidebar />
+      </StudioBrandingProvider>
+    );
+
+    expect(screen.getByText('Anwendungen')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Nachrichten' }).getAttribute('href')).toBe(
+      '/plugins/ssf/configuration'
+    );
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Inhalte' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Schnittstellen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
+  });
+
   it('blendet den Bereich Anwendungen komplett aus, wenn weder app.read noch cockpit.read vorhanden ist', () => {
     renderSidebar({
       user: createSidebarUser({
@@ -1126,7 +1181,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 
-  it('löst Plugin-Navigation über die Action-Registry auf, wenn actionId gesetzt ist', () => {
+  it('behält den Navigationstitel bei und löst Zugriffsmetadaten über die Action-Registry auf', () => {
     studioPluginNavigationMock.items = [
       {
         id: 'news.publish',
@@ -1154,7 +1209,7 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.getByRole('link', { name: 'news.actions.publish' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'Nachrichten' }).getAttribute('href')).toBe(
       '/plugins/news/publish'
     );
     expect(studioPluginActionLookupMock.get).toHaveBeenCalledWith('news.publish');
@@ -1215,7 +1270,7 @@ describe('Sidebar', () => {
     });
 
     expect(decideAccessMock).toHaveBeenCalledWith(accessRequirement);
-    expect(screen.queryByRole('link', { name: 'news.actions.publish' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 
   it('blendet Plugin-Navigation fail-closed aus, wenn nur eine feingranulare Update-Berechtigung verlangt wird', () => {

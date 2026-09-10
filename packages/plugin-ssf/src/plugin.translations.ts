@@ -2,7 +2,7 @@ import type { PluginTranslations } from '@sva/plugin-sdk';
 
 const de = {
   ssf: {
-    navigation: { system: 'SSF-Standards', tenant: 'SSF-Konfiguration' },
+    navigation: { system: 'SSF-Standards', tenant: 'Kassel DIALOG' },
     page: {
       systemTitle: 'SSF-Standards',
       systemDescription: 'Installationsweite Vorgaben für alle SSF-Mandanten.',
@@ -67,7 +67,7 @@ const de = {
 
 const en = {
   ssf: {
-    navigation: { system: 'SSF defaults', tenant: 'SSF configuration' },
+    navigation: { system: 'SSF defaults', tenant: 'Kassel DIALOG' },
     page: {
       systemTitle: 'SSF defaults',
       systemDescription: 'Installation-wide defaults for all SSF tenants.',

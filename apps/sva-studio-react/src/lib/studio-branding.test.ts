@@ -33,9 +33,21 @@ describe('studio branding', () => {
 
   it('maps each profile to its app-wide product name', () => {
     expect(STUDIO_BRANDING_PROFILES['sva-studio'].appNameKey).toBe('shell.appName');
+    expect(STUDIO_BRANDING_PROFILES['sva-studio']).toMatchObject({
+      showContentNavigation: true,
+      showGenericApplicationLinks: true,
+      showInterfacesNavigation: true,
+      showModulesNavigation: true,
+    });
     expect(STUDIO_BRANDING_PROFILES['kassel-dialog'].appNameKey).toBe(
       'home.branding.kasselDialog.title'
     );
+    expect(STUDIO_BRANDING_PROFILES['kassel-dialog']).toMatchObject({
+      showContentNavigation: false,
+      showGenericApplicationLinks: false,
+      showInterfacesNavigation: false,
+      showModulesNavigation: false,
+    });
   });
 
   it('uses the default profile when no document exists', () => {

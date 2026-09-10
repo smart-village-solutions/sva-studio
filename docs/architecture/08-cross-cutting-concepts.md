@@ -241,7 +241,7 @@ gleichzeitig beeinflussen.
 - `auth/me` liefert für tenantgebundene Sessions die fail-closed behandelte Liste `assignedModules`; Client-Routing und Plugin-Navigation dürfen modulbezogene Einstiege nur bei expliziter Zuweisung materialisieren
 - Modulentzug entfernt modulbezogene Permissions und `role_permissions` hart; zurückbleibende Restrechte gelten als Drift
 - Experimentelle Shell-Funktionen werden zusätzlich über die explizite Permission `experimental.read` gegated; sie ersetzt keine Fachrechte, sondern ergänzt sie.
-- Für experimentelle Menüpunkte gilt das additive Prinzip: fachliche Sichtbarkeit wie `app.read`, `cockpit.read` oder `iam.monitoring.read` bleibt führend und wird nur zusammen mit `experimental.read` materialisiert.
+- Für experimentelle Menüpunkte gilt das additive Prinzip: fachliche Sichtbarkeit wie `app.read`, `cockpit.read` oder `iam.monitoring.read` bleibt führend und wird nur zusammen mit `experimental.read` materialisiert. Branding-Profile dürfen Sidebar-Bereiche und generische, nicht modulgebundene Links zusätzlich unterdrücken, ohne die zugrunde liegenden Rechte oder Routen zu verändern.
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
 - Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
 - Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert

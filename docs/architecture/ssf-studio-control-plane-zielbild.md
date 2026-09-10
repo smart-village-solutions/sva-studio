@@ -221,7 +221,7 @@ bereit:
 
 - Root-`system_admin`: `System → SSF-Standards` für installationsweite
   Standards.
-- Tenant-`system_admin`: `Anwendungen → SSF-Konfiguration` für geerbte Werte
+- Tenant-`system_admin`: `Anwendungen → Kassel DIALOG` für geerbte Werte
   und tenantbezogene Overrides.
 
 Die Root-Oberfläche ist an den Plattform-Scope und die Rolle

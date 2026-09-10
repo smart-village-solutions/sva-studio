@@ -7,7 +7,6 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import type { IamContentAccessSummary } from '@sva/core';
 import { pluginNews } from '@sva/plugin-news';
 import type { PluginNavigationItem } from '@sva/plugin-sdk';
-import { ssfPlugin } from '@sva/plugin-ssf';
 
 import { mergeI18nResources } from '../i18n';
 import { StudioBrandingProvider } from '../providers/studio-branding-provider';
@@ -80,7 +79,10 @@ const serializeSearch = (search: Readonly<Record<string, unknown>>): string => {
 
 beforeAll(() => {
   mergeI18nResources(pluginNews.translations ?? {});
-  mergeI18nResources(ssfPlugin.translations ?? {});
+  mergeI18nResources({
+    de: { ssf: { navigation: { tenant: 'SSF-Konfiguration' } } },
+    en: { ssf: { navigation: { tenant: 'SSF configuration' } } },
+  });
 });
 
 vi.mock('@tanstack/react-router', () => ({

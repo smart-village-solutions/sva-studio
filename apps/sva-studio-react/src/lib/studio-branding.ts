@@ -2,13 +2,23 @@
 export const STUDIO_BRANDING_PROFILES = {
   'sva-studio': {
     appNameKey: 'shell.appName',
+    ssfTenantNavigationTitleKey: 'ssf.navigation.tenant',
     anonymousSubtitleKey: 'home.hero.anonymousSubtitle',
     anonymousBodyKey: 'home.hero.anonymousBody',
+    showContentNavigation: true,
+    showGenericApplicationLinks: true,
+    showInterfacesNavigation: true,
+    showModulesNavigation: true,
   },
   'kassel-dialog': {
     appNameKey: 'home.branding.kasselDialog.title',
+    ssfTenantNavigationTitleKey: 'home.branding.kasselDialog.title',
     anonymousSubtitleKey: 'home.branding.kasselDialog.subtitle',
     anonymousBodyKey: 'home.branding.kasselDialog.body',
+    showContentNavigation: false,
+    showGenericApplicationLinks: false,
+    showInterfacesNavigation: false,
+    showModulesNavigation: false,
   },
 } as const;
 

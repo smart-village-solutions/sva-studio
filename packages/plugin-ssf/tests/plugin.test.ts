@@ -44,9 +44,7 @@ describe('SSF plugin metadata', () => {
         },
       ]),
       contentHistory: { mode: 'none', reasonCode: 'infrastructure_only' },
-      jobTypes: [
-        expect.objectContaining({ jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID }),
-      ],
+      jobTypes: [expect.objectContaining({ jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID })],
       tenantLifecycle: {
         contractVersion: 1,
         operations: [
@@ -72,6 +70,10 @@ describe('SSF plugin metadata', () => {
     });
     expect(manifest['runtimeRequirements']).toEqual({
       jobs: 'ssf.authorization-projection',
+    });
+    expect(ssfPlugin.translations).toMatchObject({
+      de: { ssf: { navigation: { tenant: 'SSF-Konfiguration' } } },
+      en: { ssf: { navigation: { tenant: 'SSF configuration' } } },
     });
   });
 });

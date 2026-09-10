@@ -550,8 +550,8 @@ Fehlerpfad:
 2. `packages/auth-runtime` lädt effektive Permissions und die kanonische Liste `assignedModules` aus der Registry.
 3. Die Client-Shell speichert diese Modulliste im Session-Kontext.
 4. Beim Aufruf einer Plugin-Route prüft `@sva/routing` zuerst den deklarativen Guard und danach die Modulzuweisung.
-5. Die Sidebar blendet Plugin-Navigation aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist. Die Inhaltsgruppe zeigt analog nur registrierte Typ-Unterpunkte, deren Modul zugewiesen und deren vollständig qualifizierte Read-Action wirksam ist; alle Unterpunkte verwenden `/admin/content` mit dem typisierten `type`-Search-Parameter.
-6. Die Sidebar blendet die Links `App` und `Cockpit` separat über die Rechte `app.read` und `cockpit.read` aus; ohne beide Rechte verschwindet der gesamte Abschnitt `Anwendungen`.
+5. Die Sidebar blendet Plugin-Navigation aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist. Im Standardprofil zeigt die Inhaltsgruppe analog nur registrierte Typ-Unterpunkte, deren Modul zugewiesen und deren vollständig qualifizierte Read-Action wirksam ist; alle Unterpunkte verwenden `/admin/content` mit dem typisierten `type`-Search-Parameter. Das Profil `kassel-dialog` blendet die gesamte Inhaltsgruppe unabhängig von Datentypen und Rechten aus.
+6. Im Standardprofil blendet die Sidebar die generischen Links `App` und `Cockpit` separat über die Rechte `app.read` und `cockpit.read` aus. Das Profil `kassel-dialog` unterdrückt beide Links sowie `Schnittstellen` und `Module` unabhängig von diesen Rechten; ohne weitere modulbasierte Einträge verschwindet der gesamte Abschnitt `Anwendungen`.
 7. Bei Modulzuweisung oder Entzug rekonstruiert `packages/instance-registry` die IAM-Basis und invalidiert betroffene Registry-Caches.
 
 Fehlerpfad:

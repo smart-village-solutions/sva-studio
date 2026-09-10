@@ -79,6 +79,10 @@ const serializeSearch = (search: Readonly<Record<string, unknown>>): string => {
 
 beforeAll(() => {
   mergeI18nResources(pluginNews.translations ?? {});
+  mergeI18nResources({
+    de: { ssf: { navigation: { tenant: 'SSF-Konfiguration' } } },
+    en: { ssf: { navigation: { tenant: 'SSF configuration' } } },
+  });
 });
 
 vi.mock('@tanstack/react-router', () => ({
@@ -984,6 +988,96 @@ describe('Sidebar', () => {
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
+  });
+
+  it('reduziert die Kassel-DIALOG-Navigation unabhängig von Rechten und Datentypen', () => {
+    studioPluginNavigationMock.items = [
+      {
+        id: 'ssf.tenant-navigation',
+        to: '/plugins/ssf/configuration',
+        titleKey: 'ssf.navigation.tenant',
+        section: 'applications',
+        requiredAction: 'ssf.configuration.tenant.read',
+      },
+    ];
+    studioContentTypesMock.items = [
+      {
+        contentType: 'news.article',
+        displayName: 'Nachrichten',
+        requiredReadAction: 'news.read',
+        requiredCreateAction: 'news.create',
+        createPath: '/admin/news/new',
+        detailPath: '/admin/news/$id',
+      },
+    ];
+    setupSidebarSession({
+      user: createSidebarUser({
+        roles: ['system_admin'],
+        assignedModules: ['ssf', 'news'],
+        permissionActions: ['experimental.read', 'integration.manage'],
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: [
+          'app.read',
+          'cockpit.read',
+          'modules.read',
+          'news.create',
+          'news.read',
+          'ssf.configuration.tenant.read',
+        ],
+      }),
+    });
+
+    render(
+      <StudioBrandingProvider branding="kassel-dialog">
+        <Sidebar />
+      </StudioBrandingProvider>
+    );
+
+    expect(screen.getByText('Anwendungen')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Kassel DIALOG' }).getAttribute('href')).toBe(
+      '/plugins/ssf/configuration'
+    );
+    expect(screen.queryByRole('link', { name: 'Inhalt erstellen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Inhalte' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Schnittstellen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
+  });
+
+  it('behält im Standard-Studio den generischen SSF-Navigationstitel bei', () => {
+    studioPluginNavigationMock.items = [
+      {
+        id: 'ssf.tenant-navigation',
+        to: '/plugins/ssf/configuration',
+        titleKey: 'ssf.navigation.tenant',
+        section: 'applications',
+        requiredAction: 'ssf.configuration.tenant.read',
+      },
+    ];
+
+    setupSidebarSession({
+      user: createSidebarUser({
+        roles: ['system_admin'],
+        assignedModules: ['ssf'],
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: ['ssf.configuration.tenant.read'],
+      }),
+    });
+
+    render(
+      <StudioBrandingProvider branding="sva-studio">
+        <Sidebar />
+      </StudioBrandingProvider>
+    );
+
+    expect(screen.getByRole('link', { name: 'SSF-Konfiguration' }).getAttribute('href')).toBe(
+      '/plugins/ssf/configuration'
+    );
   });
 
   it('blendet den Bereich Anwendungen komplett aus, wenn weder app.read noch cockpit.read vorhanden ist', () => {

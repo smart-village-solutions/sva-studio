@@ -222,7 +222,8 @@ bereit:
 - Root-`system_admin`: `System → SSF-Standards` für installationsweite
   Standards.
 - Tenant-`system_admin`: `Anwendungen → SSF-Konfiguration` für geerbte Werte
-  und tenantbezogene Overrides.
+  und tenantbezogene Overrides. Im Branding-Profil `kassel-dialog` heißt dieser
+  Eintrag stattdessen `Anwendungen → Kassel DIALOG`.
 
 Die Root-Oberfläche ist an den Plattform-Scope und die Rolle
 `instance_registry_admin` gebunden. Die Tenant-Oberfläche trennt Lesen und

@@ -1276,7 +1276,7 @@ describe('Sidebar', () => {
     });
 
     expect(decideAccessMock).toHaveBeenCalledWith(accessRequirement);
-    expect(screen.queryByRole('link', { name: 'news.actions.publish' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 
   it('wertet die kanonische Access-Anforderung der referenzierten Plugin-Action aus', () => {
@@ -1309,7 +1309,7 @@ describe('Sidebar', () => {
     });
 
     expect(decideAccessMock).toHaveBeenCalledWith(accessRequirement);
-    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'news.actions.publish' })).toBeNull();
   });
 
   it('blendet Plugin-Navigation fail-closed aus, wenn nur eine feingranulare Update-Berechtigung verlangt wird', () => {

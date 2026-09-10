@@ -5,6 +5,7 @@ set -euo pipefail
 readonly CLIENT_ID='ssf-runtime'
 readonly AUDIENCE='sva-studio-ssf-runtime'
 readonly ACTION='ssf.runtime-configuration.read'
+readonly DIRECTORY_ACTION='ssf.admin-login-directory.read'
 
 usage() {
   printf '%s\n' \
@@ -95,12 +96,13 @@ ensure_client_contract() {
 
 ensure_action_role() {
   local client_uuid="$1"
-  if ! kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" >/dev/null 2>&1; then
+  local action_name="$2"
+  if ! kcadm get "clients/$client_uuid/roles/$action_name" -r "$realm" >/dev/null 2>&1; then
     local payload="$temp_directory/action-role.json"
-    write_json "$payload" "$(jq -n --arg name "$ACTION" '{name:$name,clientRole:true}')"
+    write_json "$payload" "$(jq -n --arg name "$action_name" '{name:$name,clientRole:true}')"
     kcadm create "clients/$client_uuid/roles" -r "$realm" -f "$payload" >/dev/null
   fi
-  kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" |
+  kcadm get "clients/$client_uuid/roles/$action_name" -r "$realm" |
     jq -e '.composite == false' >/dev/null || fail 'action role must not be composite'
 }
 
@@ -121,45 +123,44 @@ ensure_audience_mapper() {
   fi
 }
 
+read_action_roles() {
+  local client_uuid="$1"
+  kcadm get "clients/$client_uuid/roles" -r "$realm" |
+    jq -e --arg runtime "$ACTION" --arg directory "$DIRECTORY_ACTION" '
+      [.[] | select(.name == $runtime or .name == $directory)] |
+      if length == 2 and all(.composite == false) then . else error("missing or composite action role") end
+    '
+}
+
+ensure_action_mapping() {
+  local client_uuid="$1"
+  local mapping_path="$2"
+  local payload="$temp_directory/action-roles.json"
+  local current="$temp_directory/current-action-roles.json"
+  local extras="$temp_directory/extra-action-roles.json"
+  local missing="$temp_directory/missing-action-roles.json"
+  read_action_roles "$client_uuid" >"$payload"
+  kcadm get "$mapping_path" -r "$realm" >"$current"
+  jq --slurpfile desired "$payload" '[.[] | select(.id as $id | $desired[0] | all(.id != $id))]' "$current" >"$extras"
+  jq --slurpfile current "$current" '[.[] | select(.id as $id | $current[0] | all(.id != $id))]' "$payload" >"$missing"
+  if [[ "$(jq 'length' "$extras")" -gt 0 ]]; then
+    kcadm delete "$mapping_path" -r "$realm" -f "$extras" >/dev/null
+  fi
+  if [[ "$(jq 'length' "$missing")" -gt 0 ]]; then
+    kcadm create "$mapping_path" -r "$realm" -f "$missing" >/dev/null
+  fi
+}
+
 ensure_service_account_role() {
   local client_uuid="$1"
-  local service_account_user_id role_id
+  local service_account_user_id
   service_account_user_id="$(kcadm get "clients/$client_uuid/service-account-user" -r "$realm" | jq -er '.id')"
-  role_id="$(kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" | jq -er '.id')"
-  local payload="$temp_directory/role-mapping.json"
-  write_json "$payload" "$(jq -n --arg id "$role_id" --arg name "$ACTION" '[{id:$id,name:$name,clientRole:true}]')"
-  local current="$temp_directory/current-role-mappings.json"
-  kcadm get "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" >"$current"
-  if ! jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' "$current" >/dev/null; then
-    local extras="$temp_directory/extra-role-mappings.json"
-    jq --arg role_id "$role_id" '[.[] | select(.id != $role_id)]' "$current" >"$extras"
-    if [[ "$(jq 'length' "$extras")" -gt 0 ]]; then
-      kcadm delete "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$extras" >/dev/null
-    fi
-    if ! jq -e --arg role_id "$role_id" 'any(.id == $role_id)' "$current" >/dev/null; then
-      kcadm create "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
-    fi
-  fi
+  ensure_action_mapping "$client_uuid" "users/$service_account_user_id/role-mappings/clients/$client_uuid"
 }
 
 ensure_action_scope() {
   local client_uuid="$1"
-  local role_id
-  role_id="$(kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" | jq -er '.id')"
-  local payload="$temp_directory/action-scope.json"
-  write_json "$payload" "$(jq -n --arg id "$role_id" --arg name "$ACTION" '[{id:$id,name:$name,clientRole:true}]')"
-  local current="$temp_directory/current-action-scopes.json"
-  kcadm get "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" >"$current"
-  if ! jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' "$current" >/dev/null; then
-    local extras="$temp_directory/extra-action-scopes.json"
-    jq --arg role_id "$role_id" '[.[] | select(.id != $role_id)]' "$current" >"$extras"
-    if [[ "$(jq 'length' "$extras")" -gt 0 ]]; then
-      kcadm delete "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$extras" >/dev/null
-    fi
-    if ! jq -e --arg role_id "$role_id" 'any(.id == $role_id)' "$current" >/dev/null; then
-      kcadm create "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" -f "$payload" >/dev/null
-    fi
-  fi
+  ensure_action_mapping "$client_uuid" "clients/$client_uuid/scope-mappings/clients/$client_uuid"
 }
 
 write_secret() {
@@ -198,19 +199,17 @@ verify_contract() {
         .config["access.token.claim"] == "true"
       )
     ' >/dev/null || fail 'audience mapper is not aligned'
-  local service_account_user_id role_id
+  local service_account_user_id expected_role_ids
   service_account_user_id="$(kcadm get "clients/$client_uuid/service-account-user" -r "$realm" | jq -er '.id')"
-  role_id="$(kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" | jq -er '.id')"
-  kcadm get "clients/$client_uuid/roles/$ACTION" -r "$realm" |
-    jq -e '.composite == false' >/dev/null || fail 'action role must not be composite'
+  expected_role_ids="$(read_action_roles "$client_uuid" | jq -c '[.[].id] | sort')"
   kcadm get "users/$service_account_user_id/role-mappings/clients/$client_uuid" -r "$realm" |
-    jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' >/dev/null ||
-    fail 'service account action role is not aligned'
+    jq -e --argjson expected "$expected_role_ids" '[.[].id] | sort == $expected' >/dev/null ||
+    fail 'service account action roles are not aligned'
   kcadm get "clients/$client_uuid/scope-mappings/clients/$client_uuid" -r "$realm" |
-    jq -e --arg role_id "$role_id" 'length == 1 and .[0].id == $role_id' >/dev/null ||
-    fail 'client action scope is not aligned'
-  printf 'ssf-runtime service client: verified realm=%s client=%s audience=%s action=%s\n' \
-    "$realm" "$CLIENT_ID" "$AUDIENCE" "$ACTION"
+    jq -e --argjson expected "$expected_role_ids" '[.[].id] | sort == $expected' >/dev/null ||
+    fail 'client action scopes are not aligned'
+  printf 'ssf-runtime service client: verified realm=%s client=%s audience=%s actions=%s,%s\n' \
+    "$realm" "$CLIENT_ID" "$AUDIENCE" "$ACTION" "$DIRECTORY_ACTION"
 }
 
 client_uuid="$(resolve_client_id)" || fail "failed to resolve clientId $CLIENT_ID uniquely"
@@ -221,7 +220,8 @@ if [[ "$mode" == 'reconcile' ]]; then
     client_uuid="$(resolve_client_id)"
   fi
   ensure_client_contract "$client_uuid"
-  ensure_action_role "$client_uuid"
+  ensure_action_role "$client_uuid" "$ACTION"
+  ensure_action_role "$client_uuid" "$DIRECTORY_ACTION"
   ensure_audience_mapper "$client_uuid"
   ensure_service_account_role "$client_uuid"
   ensure_action_scope "$client_uuid"

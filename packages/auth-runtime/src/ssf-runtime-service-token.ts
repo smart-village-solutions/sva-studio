@@ -10,6 +10,7 @@ import {
 export const SSF_RUNTIME_DEFAULT_AUDIENCE = 'sva-studio-ssf-runtime';
 export const SSF_RUNTIME_DEFAULT_CLIENT_ID = 'ssf-runtime';
 export const SSF_RUNTIME_REQUIRED_ACTION = 'ssf.runtime-configuration.read';
+export const SSF_ADMIN_LOGIN_DIRECTORY_ACTION = 'ssf.admin-login-directory.read';
 
 export interface SsfRuntimeServiceTokenConfig extends ServiceTokenVerificationConfig {
   readonly enabled: boolean;
@@ -50,8 +51,9 @@ export const readSsfRuntimeServiceTokenConfig = (
   };
 };
 
-export const authenticateSsfRuntimeServiceToken = async (
+export const authenticateSsfServiceToken = async (
   token: string,
+  requiredAction: typeof SSF_RUNTIME_REQUIRED_ACTION | typeof SSF_ADMIN_LOGIN_DIRECTORY_ACTION,
   config: SsfRuntimeServiceTokenConfig | null = readSsfRuntimeServiceTokenConfig(),
   verifier: SsfRuntimeServiceTokenVerifier = verifyServiceJwt
 ): Promise<SsfRuntimeServiceAuthentication> => {
@@ -78,9 +80,7 @@ export const authenticateSsfRuntimeServiceToken = async (
         reason: 'invalid_service_token',
       };
     }
-    if (
-      !readServiceTokenClientActions(payload, config.clientId).includes(SSF_RUNTIME_REQUIRED_ACTION)
-    ) {
+    if (!readServiceTokenClientActions(payload, config.clientId).includes(requiredAction)) {
       return {
         kind: 'rejected',
         status: 403,
@@ -105,3 +105,10 @@ export const authenticateSsfRuntimeServiceToken = async (
         };
   }
 };
+
+export const authenticateSsfRuntimeServiceToken = (
+  token: string,
+  config: SsfRuntimeServiceTokenConfig | null = readSsfRuntimeServiceTokenConfig(),
+  verifier: SsfRuntimeServiceTokenVerifier = verifyServiceJwt
+): Promise<SsfRuntimeServiceAuthentication> =>
+  authenticateSsfServiceToken(token, SSF_RUNTIME_REQUIRED_ACTION, config, verifier);

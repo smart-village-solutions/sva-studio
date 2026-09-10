@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   authenticateSsfRuntimeServiceToken,
+  authenticateSsfServiceToken,
+  SSF_ADMIN_LOGIN_DIRECTORY_ACTION,
   readSsfRuntimeServiceTokenConfig,
 } from './ssf-runtime-service-token.js';
 
@@ -14,6 +16,28 @@ const config = {
 
 describe('SSF runtime service token authentication', () => {
   afterEach(() => vi.unstubAllEnvs());
+
+  it('authorizes the directory independently from runtime configuration', async () => {
+    const verifier = vi.fn(async () => ({
+      sub: 'service-account-ssf-runtime',
+      azp: 'ssf-runtime',
+      resource_access: { 'ssf-runtime': { roles: [SSF_ADMIN_LOGIN_DIRECTORY_ACTION] } },
+    }));
+    await expect(
+      authenticateSsfServiceToken('token', SSF_ADMIN_LOGIN_DIRECTORY_ACTION, config, verifier)
+    ).resolves.toMatchObject({ kind: 'authenticated' });
+    await expect(
+      authenticateSsfRuntimeServiceToken('token', config, verifier)
+    ).resolves.toMatchObject({ kind: 'rejected', status: 403 });
+    verifier.mockResolvedValue({
+      sub: 'service-account-ssf-runtime',
+      azp: 'ssf-runtime',
+      resource_access: { 'ssf-runtime': { roles: ['ssf.runtime-configuration.read'] } },
+    });
+    await expect(
+      authenticateSsfServiceToken('token', SSF_ADMIN_LOGIN_DIRECTORY_ACTION, config, verifier)
+    ).resolves.toMatchObject({ kind: 'rejected', status: 403 });
+  });
 
   it('is disabled by default and requires an explicit issuer', () => {
     expect(readSsfRuntimeServiceTokenConfig({})).toBeNull();

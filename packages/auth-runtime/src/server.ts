@@ -255,6 +255,7 @@ export {
   isMockAuthEnabled,
 } from './mock-auth.js';
 export { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
+export { dispatchSsfAdminLoginDirectoryRequest } from './ssf-admin-login-directory.js';
 export { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 export { withLegalTextCompliance } from './legal-text-enforcement.js';
 export { jitProvisionAccount, jitProvisionAccountWithClient } from './jit-provisioning.js';

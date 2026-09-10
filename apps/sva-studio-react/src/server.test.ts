@@ -203,9 +203,9 @@ describe('server transport', () => {
     expect(response).toBe(pluginResponse);
   });
 
-  it(
-    'dispatches internal plugin service routes before auth and TanStack Start',
-    async () => {
+  it.each(['runtime-configuration', 'admin-login-tenants'])(
+    'dispatches internal SSF %s before auth and TanStack Start',
+    async (endpoint) => {
       vi.stubEnv('NODE_ENV', 'production');
       const pluginResponse = new Response('plugin', { status: 200 });
       const startFetch = vi.fn().mockResolvedValue(new Response('start'));
@@ -213,9 +213,7 @@ describe('server transport', () => {
       dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
 
       const mod = await import('./server');
-      const request = new Request(
-        'http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration'
-      );
+      const request = new Request(`http://localhost:3000/internal/plugins/ssf/v1/${endpoint}`);
       const response = await mod.default.fetch(request);
 
       expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
@@ -226,14 +224,21 @@ describe('server transport', () => {
     10_000
   );
 
-  it.each(['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto'])(
-    'rejects internal plugin requests through an ingress carrying %s',
-    async (header) => {
+  it.each(
+    ['runtime-configuration', 'admin-login-tenants'].flatMap((endpoint) =>
+      ['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto'].map((header) => ({
+        endpoint,
+        header,
+      }))
+    )
+  )(
+    'rejects internal SSF $endpoint through an ingress carrying $header',
+    async ({ endpoint, header }) => {
       const startFetch = vi.fn();
       createStartHandlerMock.mockReturnValue(startFetch);
       const mod = await import('./server');
       const response = await mod.default.fetch(
-        new Request('http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration', {
+        new Request(`http://localhost:3000/internal/plugins/ssf/v1/${endpoint}`, {
           headers: { [header]: 'public-ingress' },
         })
       );

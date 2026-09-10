@@ -31,6 +31,8 @@ Diese Seite ist der zentrale Einstieg in die lokale Projekt- und Betriebsdokumen
 
 Der fachlich freigegebene Integrationsentwurf für SSF ist im [Studio–SSF-Vertrag für Runtime-Konfiguration V1](./api/ssf-studio-runtime-konfigurationsvertrag-v1.md) dokumentiert; ergänzend steht eine [englische Übersetzung](./api/ssf-studio-runtime-configuration-contract-v1.en.md) zur Verfügung.
 
+Das [SSF-Login-Mandantenverzeichnis V1](./api/ssf-admin-login-mandanten-v1.md) liefert aktive Mandanten mit ID, Bezeichnung und Realm für den SSF-eigenen Login.
+
 Die kontrollierte Inhaltsmigration ist im [Migrationsnachweis](./governance/dokumentationsmigration.md) dokumentiert. Unter `docs/guides/` verbleibt ausschließlich der [kanonische Studio-Rollout](./guides/studio-rollout-process.md) als stabiler Kompatibilitätsanker und einzige verbindliche Bedienanleitung für reguläre Rollouts nach Dev, Staging und Production.
 
 ## Nicht Teil der aktuellen Wissensbasis

@@ -46,6 +46,12 @@ Vorgehen:
 
 ## Schema- oder Berechtigungsdrift
 
+Der Rollenabgleich läuft mit `CREATEDB` und `CREATEROLE`, ohne Superuser-Rechte. Unter PostgreSQL 16 dürfen bestehende Rollen dabei nicht mit `ALTER ROLE ... NOSUPERUSER`, `NOREPLICATION` oder `NOBYPASSRLS` geändert werden. Der Provisionierer prüft diese drei Attribute deshalb vor jeder Rollenmutation über `pg_roles` und bricht bei erhöhten oder unbekannten Werten mit `waste_tenant_role_privilege_drift` ab. Für vorhandene Rollen benötigt der Provisionierer außerdem `ADMIN OPTION`; neue Rollen werden mit den expliziten negativen Sicherheitsattributen angelegt.
+
+Ein Jobfehler `42501` mit `permission denied to alter role` ist ein Provisionierungsfehler und keine deaktivierte Modulzuweisung. Nach Auslieferung der Korrektur den bestehenden Lifecycle-/Retry-Pfad verwenden und sowohl `iam.instance_plugin_lifecycle` als auch `iam.instance_waste_provisioning`, den Jobabschluss und die Runtime-Verfügbarkeit prüfen. Die Provisioniererrolle erhält dafür keine Superuser-Rechte.
+
+Die Owner-Mitgliedschaft wird für den Provisionierer mit `SET TRUE` ergänzt. `ADMIN OPTION` entsteht bereits bei der Rollenerstellung durch den eingeschränkten Principal beziehungsweise durch den Bootstrap; ein erneutes Selbst-Grant von `ADMIN OPTION` ist unter PostgreSQL 16 unzulässig. Der Integrationstest prüft sowohl Erstprovisionierung als auch Wiederholung mit einem echten `CREATEDB`-/`CREATEROLE`-Principal ohne Superuser-Rechte.
+
 Der Provisionierer prüft nach jedem Reconcile Schemaobjekte sowie Rechte der Studio- und Public-Runtime. Ein unvollständiger Zustand bleibt `failed`; das Interface wird nicht aktiviert.
 
 - Fehlende additive Schemaobjekte: Retry/Reconcile über den bestehenden Jobpfad.

@@ -77,38 +77,53 @@ const createOrUpdateRoles = async (
   const roleSpecs = [
     {
       name: input.names.ownerRole,
-      attributes: 'NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION',
+      attributes: 'NOLOGIN NOCREATEDB NOCREATEROLE',
     },
     {
       name: input.names.migratorRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`,
+      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOCREATEDB NOCREATEROLE NOINHERIT`,
     },
     {
       name: input.names.appRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`,
+      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)} NOCREATEDB NOCREATEROLE NOINHERIT`,
     },
     {
       name: input.names.publicAppRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`,
+      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)} NOCREATEDB NOCREATEROLE NOINHERIT`,
     },
   ] as const;
-  const existing = await client.query<{ rolname: string }>(
-    'SELECT rolname FROM pg_roles WHERE rolname = ANY($1::text[]);',
+  const existing = await client.query<{
+    rolname: string;
+    rolsuper: boolean;
+    rolreplication: boolean;
+    rolbypassrls: boolean;
+  }>(
+    'SELECT rolname, rolsuper, rolreplication, rolbypassrls FROM pg_roles WHERE rolname = ANY($1::text[]);',
     [roleSpecs.map((role) => role.name)]
   );
+  // PostgreSQL 16 restricts ALTER of these attributes even when setting their negative forms.
+  // Reject privileged existing roles before changing any credentials or database grants.
+  if (
+    existing.rows.some(
+      (role) =>
+        role.rolsuper !== false || role.rolreplication !== false || role.rolbypassrls !== false
+    )
+  ) {
+    throw new Error('waste_tenant_role_privilege_drift');
+  }
   const existingNames = new Set(existing.rows.map((row) => row.rolname));
   for (const role of roleSpecs) {
     await client.query(
       existingNames.has(role.name)
         ? `ALTER ROLE ${quoteIdentifier(role.name)} WITH ${role.attributes};`
-        : `CREATE ROLE ${quoteIdentifier(role.name)} WITH ${role.attributes};`
+        : `CREATE ROLE ${quoteIdentifier(role.name)} WITH ${role.attributes} NOSUPERUSER NOREPLICATION NOBYPASSRLS;`
     );
   }
   await client.query(
     `GRANT ${quoteIdentifier(input.names.ownerRole)} TO ${quoteIdentifier(input.names.migratorRole)};`
   );
   await client.query(
-    `GRANT ${quoteIdentifier(input.names.ownerRole)} TO CURRENT_USER WITH ADMIN OPTION;`
+    `GRANT ${quoteIdentifier(input.names.ownerRole)} TO CURRENT_USER WITH SET TRUE;`
   );
 };
 

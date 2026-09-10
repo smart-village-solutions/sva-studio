@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const createStartHandlerMock = vi.fn();
 const createSdkLoggerMock = vi.fn();
 const dispatchAuthRouteRequestMock = vi.fn();
+const dispatchSsfAdminLoginDirectoryRequestMock = vi.fn();
 const dispatchPluginServerHandlerMock = vi.fn();
 const createStudioPluginServerHandlerDispatcherMock = vi.fn();
 const dispatchMainserverNewsRequestMock = vi.fn();
@@ -48,6 +49,7 @@ vi.mock('@sva/routing/server', () => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  dispatchSsfAdminLoginDirectoryRequest: dispatchSsfAdminLoginDirectoryRequestMock,
   ensureStudioJobWorkerStarted: ensurePluginOperationWorkerStartedMock,
   ensurePluginOperationWorkerStarted: ensurePluginOperationWorkerStartedMock,
   ensurePrivilegedStudioJobWorkerStarted: ensurePrivilegedStudioJobWorkerStartedMock,
@@ -117,6 +119,7 @@ describe('server transport', () => {
     runWithoutWorkspaceContextMock.mockImplementation((callback) => callback());
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
     dispatchPluginServerHandlerMock.mockResolvedValue(null);
+    dispatchSsfAdminLoginDirectoryRequestMock.mockResolvedValue(null);
     createStudioPluginServerHandlerDispatcherMock.mockResolvedValue(
       dispatchPluginServerHandlerMock
     );
@@ -128,6 +131,7 @@ describe('server transport', () => {
     createStartHandlerMock.mockReset();
     createSdkLoggerMock.mockReset();
     dispatchAuthRouteRequestMock.mockReset();
+    dispatchSsfAdminLoginDirectoryRequestMock.mockReset();
     dispatchPluginServerHandlerMock.mockReset();
     createStudioPluginServerHandlerDispatcherMock.mockReset();
     dispatchMainserverNewsRequestMock.mockReset();
@@ -203,9 +207,7 @@ describe('server transport', () => {
     expect(response).toBe(pluginResponse);
   });
 
-  it.each(['runtime-configuration', 'admin-login-tenants'])(
-    'dispatches internal SSF %s before auth and TanStack Start',
-    async (endpoint) => {
+  it('dispatches internal SSF runtime configuration before auth and TanStack Start', async () => {
       vi.stubEnv('NODE_ENV', 'production');
       const pluginResponse = new Response('plugin', { status: 200 });
       const startFetch = vi.fn().mockResolvedValue(new Response('start'));
@@ -213,16 +215,39 @@ describe('server transport', () => {
       dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
 
       const mod = await import('./server');
-      const request = new Request(`http://localhost:3000/internal/plugins/ssf/v1/${endpoint}`);
+      const request = new Request(
+        'http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration'
+      );
       const response = await mod.default.fetch(request);
 
       expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
       expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
       expect(startFetch).not.toHaveBeenCalled();
       expect(response).toBe(pluginResponse);
-    },
-    10_000
-  );
+  }, 10_000);
+
+  it('dispatches the SSF directory without constructing the tenant plugin dispatcher', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const directoryResponse = Response.json({ tenants: [] });
+    const startFetch = vi.fn().mockResolvedValue(new Response('start'));
+    createStartHandlerMock.mockReturnValue(startFetch);
+    dispatchSsfAdminLoginDirectoryRequestMock.mockResolvedValue(directoryResponse);
+    createStudioPluginServerHandlerDispatcherMock.mockRejectedValue(
+      new Error('broken tenant plugin')
+    );
+
+    const mod = await import('./server');
+    const request = new Request(
+      'http://localhost:3000/internal/plugins/ssf/v1/admin-login-tenants'
+    );
+    const response = await mod.default.fetch(request);
+
+    expect(dispatchSsfAdminLoginDirectoryRequestMock).toHaveBeenCalledWith(request);
+    expect(createStudioPluginServerHandlerDispatcherMock).not.toHaveBeenCalled();
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    expect(response).toBe(directoryResponse);
+  }, 10_000);
 
   it.each(
     ['runtime-configuration', 'admin-login-tenants'].flatMap((endpoint) =>

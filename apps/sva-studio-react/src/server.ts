@@ -37,6 +37,9 @@ const loggerPromises = new Map<ServerTransportComponent, Promise<PluginWorkerBoo
 let dispatchAuthRouteRequestPromise: Promise<
   (typeof import('@sva/routing/server'))['dispatchAuthRouteRequest']
 > | null = null;
+let dispatchSsfAdminLoginDirectoryRequestPromise: Promise<
+  (typeof import('@sva/auth-runtime/server'))['dispatchSsfAdminLoginDirectoryRequest']
+> | null = null;
 let pluginServerHandlerDispatcherPromise: Promise<
   (request: Request) => Promise<Response | null>
 > | null = null;
@@ -58,6 +61,12 @@ const getDispatchAuthRouteRequest = async () => {
     (mod) => mod.dispatchAuthRouteRequest
   );
   return dispatchAuthRouteRequestPromise;
+};
+const getDispatchSsfAdminLoginDirectoryRequest = async () => {
+  dispatchSsfAdminLoginDirectoryRequestPromise ??= import('@sva/auth-runtime/server').then(
+    (mod) => mod.dispatchSsfAdminLoginDirectoryRequest
+  );
+  return dispatchSsfAdminLoginDirectoryRequestPromise;
 };
 const getPluginServerHandlerDispatcher = async () => {
   if (devRuntimeRefreshEnabled) {
@@ -240,6 +249,17 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       )
     ) {
       return new Response(null, { status: 404 });
+    }
+    if (requestPath.startsWith('/internal/plugins/')) {
+      const dispatchSsfAdminLoginDirectoryRequest =
+        await getDispatchSsfAdminLoginDirectoryRequest();
+      const directoryResponse = await dispatchSsfAdminLoginDirectoryRequest(request);
+      if (directoryResponse) {
+        await logServerEntryDebug('Server entry SSF directory route dispatched', {
+          status: directoryResponse.status,
+        });
+        return directoryResponse;
+      }
     }
     if (
       requestPath.startsWith('/api/v1/plugins/') ||

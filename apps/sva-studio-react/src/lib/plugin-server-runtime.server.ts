@@ -1,7 +1,6 @@
 import {
   createPluginServerHandlerDispatcher,
   createSsfRuntimePluginServiceAccess,
-  dispatchSsfAdminLoginDirectoryRequest,
   type PluginServerHandlerDispatcherDependencies,
 } from '@sva/auth-runtime/server';
 import type {
@@ -152,6 +151,5 @@ export const createStudioPluginServerHandlerDispatcher = async (
       ...input.dependencies,
     },
   });
-  return async (request) =>
-    (await dispatchSsfAdminLoginDirectoryRequest(request)) ?? dispatchPlugin(request);
+  return dispatchPlugin;
 };

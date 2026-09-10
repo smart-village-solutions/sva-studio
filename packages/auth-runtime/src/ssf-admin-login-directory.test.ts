@@ -1,7 +1,14 @@
+import { createHash } from 'node:crypto';
+
 import { instanceStatuses, type InstanceRegistryRecord } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ listInstances: vi.fn(), authenticate: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  listInstances: vi.fn(),
+  authenticate: vi.fn(),
+  emitSecurityAudit: vi.fn(),
+}));
+vi.mock('./audit-events.js', () => ({ emitAuthAuditEvent: mocks.emitSecurityAudit }));
 vi.mock('./iam-instance-registry/repository.js', () => ({
   withRegistryRepository: (work: (repository: typeof mocks) => unknown) => work(mocks),
 }));
@@ -113,13 +120,27 @@ describe('SSF admin login directory', () => {
       expect(response?.status).toBe(401);
       expect(mocks.authenticate).not.toHaveBeenCalled();
       expect(mocks.listInstances).not.toHaveBeenCalled();
+      expect(mocks.emitSecurityAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: 'denied',
+          scope: { kind: 'platform' },
+          pluginAction: expect.objectContaining({
+            actionId: 'ssf.admin-login-directory.read',
+            reasonCode: 'service_authentication_invalid',
+          }),
+        })
+      );
     }
   );
 
-  it.each([401, 403, 503])(
+  it.each([
+    [401, 'service_authentication_invalid', 'invalid_service_token'],
+    [403, 'service_action_forbidden', 'missing_action_scope'],
+    [503, 'runtime_configuration_unavailable', 'identity_provider_unavailable'],
+  ] as const)(
     'preserves authentication failure %s without reading the registry',
-    async (status) => {
-      mocks.authenticate.mockResolvedValue({ kind: 'rejected', status });
+    async (status, code, reason) => {
+      mocks.authenticate.mockResolvedValue({ kind: 'rejected', status, code, reason });
       const response = await dispatchSsfAdminLoginDirectoryRequest(request());
       expect(response?.status).toBe(status);
       expect(response?.headers.get('Cache-Control')).toBe('no-store');
@@ -135,6 +156,17 @@ describe('SSF admin login directory', () => {
         },
       });
       expect(mocks.listInstances).not.toHaveBeenCalled();
+      expect(mocks.emitSecurityAudit).toHaveBeenCalledTimes(status === 503 ? 0 : 1);
+      if (status !== 503) {
+        expect(mocks.emitSecurityAudit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            pluginAction: expect.objectContaining({
+              actionId: 'ssf.admin-login-directory.read',
+              reasonCode: code,
+            }),
+          })
+        );
+      }
     }
   );
 
@@ -158,4 +190,3 @@ describe('SSF admin login directory', () => {
     expect(mocks.listInstances).not.toHaveBeenCalled();
   });
 });
-import { createHash } from 'node:crypto';

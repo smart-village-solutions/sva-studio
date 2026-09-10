@@ -3,9 +3,13 @@ import { createHash } from 'node:crypto';
 import type { InstanceRegistryRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
+import { emitAuthAuditEvent } from './audit-events.js';
 import { withRegistryRepository } from './iam-instance-registry/repository.js';
 import { readBearerToken } from './service-token.js';
-import { ssfCorrelationIdForError } from './ssf-runtime-plugin-service-observability.js';
+import {
+  createSsfServiceAuditDenial,
+  ssfCorrelationIdForError,
+} from './ssf-runtime-plugin-service-observability.js';
 import {
   authenticateSsfServiceToken,
   SSF_ADMIN_LOGIN_DIRECTORY_ACTION,
@@ -19,6 +23,7 @@ const logger = createSdkLogger({ component: 'ssf-admin-login-directory', level: 
 type DirectoryDependencies = Readonly<{
   authenticateToken?: (token: string) => Promise<SsfRuntimeServiceAuthentication>;
   readInstances?: () => Promise<readonly InstanceRegistryRecord[]>;
+  emitSecurityAudit?: typeof emitAuthAuditEvent;
 }>;
 
 const directoryError = (request: Request, status: 401 | 403 | 503): Response =>
@@ -49,8 +54,18 @@ export const dispatchSsfAdminLoginDirectoryRequest = async (
       headers: { Allow: 'GET', 'Cache-Control': 'no-store' },
     });
   }
+  const auditDenial = createSsfServiceAuditDenial(
+    dependencies.emitSecurityAudit ?? emitAuthAuditEvent,
+    {
+      actionId: SSF_ADMIN_LOGIN_DIRECTORY_ACTION,
+      operation: 'ssf_admin_login_directory_read',
+    }
+  );
   const token = readBearerToken(request);
-  if (!token) return directoryError(request, 401);
+  if (!token) {
+    await auditDenial({ request, reasonCode: 'service_authentication_invalid' });
+    return directoryError(request, 401);
+  }
 
   try {
     const authentication = await (
@@ -58,6 +73,9 @@ export const dispatchSsfAdminLoginDirectoryRequest = async (
       ((value: string) => authenticateSsfServiceToken(value, SSF_ADMIN_LOGIN_DIRECTORY_ACTION))
     )(token);
     if (authentication.kind === 'rejected') {
+      if (authentication.status === 401 || authentication.status === 403) {
+        await auditDenial({ request, reasonCode: authentication.code });
+      }
       return directoryError(request, authentication.status);
     }
 

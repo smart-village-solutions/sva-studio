@@ -61,6 +61,49 @@ const createReadyDeps = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('waste tenant database provisioner', () => {
+  it.each(['rolsuper', 'rolreplication', 'rolbypassrls'] as const)(
+    'rejects an existing role with %s before changing roles or publishing credentials',
+    async (attribute) => {
+      const names = deriveWasteTenantDatabaseNames('bb-prignitz');
+      const statements: string[] = [];
+      const deps = createReadyDeps({
+        createPool: () => ({
+          connect: async () => ({
+            query: async <TRow>(text: string) => {
+              statements.push(text);
+              return {
+                rowCount: 1,
+                rows: [
+                  {
+                    rolname: names.appRole,
+                    rolsuper: false,
+                    rolreplication: false,
+                    rolbypassrls: false,
+                    [attribute]: true,
+                  },
+                ] as TRow[],
+              };
+            },
+            release: vi.fn(),
+          }),
+          end: vi.fn(async () => undefined),
+        }),
+      });
+      await expect(
+        createProvisionTenantDatabaseOperation(deps)(
+          'bb-prignitz',
+          { operation: 'provision-tenant-database', desiredGeneration: 2 },
+          { jobId: '00000000-0000-4000-8000-000000000003' }
+        )
+      ).rejects.toThrow('waste_tenant_role_privilege_drift');
+      expect(statements).toHaveLength(1);
+      expect(statements[0]).toContain('FROM pg_roles');
+      expect(deps.saveManagedInterface).not.toHaveBeenCalled();
+      expect(deps.completeProvisioning).not.toHaveBeenCalled();
+      expect(deps.failProvisioning).toHaveBeenCalled();
+    }
+  );
+
   it('derives stable, bounded and collision-resistant PostgreSQL identifiers', () => {
     const names = deriveWasteTenantDatabaseNames('BB Prignitz/Äußerst-langer Tenant-Identifier-1234567890');
     expect(Object.values(names).every((name) => /^[a-z][a-z0-9_]{0,62}$/u.test(name))).toBe(true);
@@ -151,7 +194,8 @@ describe('waste tenant database provisioner', () => {
     expect(JSON.stringify(savedInterfaces[0]?.publicConfig)).not.toContain('secret');
     expect(String(savedInterfaces[0]?.secretConfigCiphertext)).toContain('app-secret');
     expect(statements.some(({ text }) => text.startsWith('CREATE DATABASE'))).toBe(true);
-    expect(statements.some(({ text }) => text.includes('TO CURRENT_USER WITH ADMIN OPTION'))).toBe(true);
+    expect(statements.some(({ text }) => text.includes('TO CURRENT_USER WITH SET TRUE'))).toBe(true);
+    expect(statements.some(({ text }) => text.includes('TO CURRENT_USER WITH ADMIN OPTION'))).toBe(false);
     expect(statements.some(({ text }) => text.includes('REVOKE ALL ON DATABASE'))).toBe(true);
     expect(
       statements.some(({ text }) =>
@@ -383,7 +427,7 @@ describe('waste tenant database provisioner', () => {
                 names.migratorRole,
                 names.appRole,
                 names.publicAppRole,
-              ].map((rolname) => ({ rolname })) as TRow[],
+              ].map((rolname) => ({ rolname, rolsuper: false, rolreplication: false, rolbypassrls: false })) as TRow[],
             };
           }
           if (text.includes('FROM pg_database')) {
@@ -459,6 +503,11 @@ describe('waste tenant database provisioner', () => {
     );
 
     expect(statements.filter((text) => text.startsWith('ALTER ROLE '))).toHaveLength(4);
+    for (const statement of statements.filter((text) => text.startsWith('ALTER ROLE '))) {
+      // PostgreSQL 16 rejects even negative privileged attributes for a CREATEROLE principal.
+      expect(statement).not.toMatch(/\b(?:NOSUPERUSER|NOREPLICATION|NOBYPASSRLS)\b/u);
+      expect(statement).toContain('NOCREATEDB NOCREATEROLE');
+    }
     expect(statements.some((text) => text.startsWith('CREATE ROLE '))).toBe(false);
     expect(statements.some((text) => text.startsWith('CREATE DATABASE '))).toBe(false);
     expect(

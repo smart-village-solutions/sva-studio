@@ -609,7 +609,7 @@ describe('workspace package scripts', () => {
     expect(coverageCommand).not.toContain('../../scripts/');
   });
 
-  it('verifies and synchronizes the auth runtime before executing tooling runtime tests', () => {
+  it('verifies and synchronizes imported server packages before executing tooling runtime tests', () => {
     const toolingTestingProject = loadToolingTestingProject();
     const authRuntimeProject = loadProjectJson('packages/auth-runtime');
 
@@ -618,6 +618,10 @@ describe('workspace package scripts', () => {
     );
     expect(toolingTestingProject.targets?.['test:coverage']?.dependsOn).toContain(
       'auth-runtime:check:runtime'
+    );
+    expect(toolingTestingProject.targets?.['test:unit']?.dependsOn).toContain('data:check:runtime');
+    expect(toolingTestingProject.targets?.['test:coverage']?.dependsOn).toContain(
+      'data:check:runtime'
     );
     expect(authRuntimeProject.targets?.['check:runtime']?.cache).toBe(false);
   });

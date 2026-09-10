@@ -83,9 +83,10 @@ export const recordSsfRuntimeDecision = (input: {
   });
 };
 
-export const createSsfRuntimeAuditDenial =
+export const createSsfServiceAuditDenial =
   (
-    emitSecurityAudit: typeof emitAuthAuditEvent
+    emitSecurityAudit: typeof emitAuthAuditEvent,
+    context: Readonly<{ actionId: string; operation: string }>
   ): ((input: {
     readonly request: Request;
     readonly reasonCode: SsfRuntimeErrorCode;
@@ -101,7 +102,7 @@ export const createSsfRuntimeAuditDenial =
           : { scope: { kind: 'platform' as const } }),
         requestId: ssfCorrelationIdForError(input.request),
         pluginAction: {
-          actionId: SSF_RUNTIME_REQUIRED_ACTION,
+          actionId: context.actionId,
           actionNamespace: SSF_RUNTIME_PLUGIN_ID,
           actionOwner: SSF_RUNTIME_PLUGIN_ID,
           result: 'denied',
@@ -109,8 +110,8 @@ export const createSsfRuntimeAuditDenial =
         },
       });
     } catch (error) {
-      logger.error('ssf_runtime_security_audit_failed', {
-        operation: 'ssf_runtime_configuration_read',
+      logger.error('ssf_service_security_audit_failed', {
+        operation: context.operation,
         result: 'failed',
         reason_code: input.reasonCode,
         ...(input.instanceId ? { instance_id: input.instanceId } : {}),
@@ -118,6 +119,12 @@ export const createSsfRuntimeAuditDenial =
       });
     }
   };
+
+export const createSsfRuntimeAuditDenial = (emitSecurityAudit: typeof emitAuthAuditEvent) =>
+  createSsfServiceAuditDenial(emitSecurityAudit, {
+    actionId: SSF_RUNTIME_REQUIRED_ACTION,
+    operation: 'ssf_runtime_configuration_read',
+  });
 
 export const recordSsfRuntimeAccessFailure = (input: {
   readonly error: unknown;

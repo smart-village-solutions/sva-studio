@@ -898,6 +898,12 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   ausgelieferten Produktwerte zur effektiven Konfiguration auf.
 - Die Studio-Serverruntime veröffentlicht den internen V1-Leseendpunkt und
   delegiert nach Service- und Tenantprüfung an das SSF-Plugin.
+- Für die installationsweite Login-Auswahl besitzt die Studio-Serverruntime
+  zusätzlich das hostseitige Mandantenverzeichnis
+  `/internal/plugins/ssf/v1/admin-login-tenants`. Es liegt vor Plugin-Bootstrap
+  und Plugin-Dispatcher, liest ausschließlich aktive Registry-Einträge und
+  veröffentlicht nur ID, öffentliche Bezeichnung und Realm. Der Zugriff
+  erfordert die Service-Action `ssf.admin-login-directory.read`.
 - SSF konsumiert nur die aufgelöste Antwort. Es kennt keine Override-Herkunft,
   greift nicht auf Studio-Datenbanken zu und hält keine persistente Kopie der
   Konfiguration.

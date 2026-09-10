@@ -974,6 +974,16 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   ausgestellt und trägt keine Tenantrevision. Es weist ausschließlich
   Backend-Identität, Audience und `ssf.runtime-configuration.read` nach; die
   bestätigte Tenantrevision liest Studio nach der hostseitigen Tenantbindung.
+- Dasselbe Service-Konto verwendet für das installationsweite
+  Login-Mandantenverzeichnis die getrennte Action
+  `ssf.admin-login-directory.read`. Der exakte hostseitige Pfad wird vor
+  Plugin-Bootstrap und Plugin-Dispatcher autorisiert; `401` und `403` werden
+  über das Plattform-Audit erfasst, über den öffentlichen Ingress bleibt er
+  verborgen.
+- Das Verzeichnis liest nur aktive Registry-Einträge und gibt ausschließlich
+  ID, öffentliche Bezeichnung und Realm aus. Es prüft bewusst keine
+  tenantgebundene Plugin-Readiness, weil SSF den Login selbst ausführt und
+  Studio dabei keinen Login-Flow startet.
 - Plattformgebundene SSF-Actions erhalten ihren Default-Grant für
   `instance_registry_admin` ausschließlich im Root-/Plattformkatalog. Sie
   erscheinen weder im Tenant-Katalog noch in SSF-Tenant-Tokens.

@@ -4,13 +4,15 @@
 
 Der vertrauliche Keycloak-Client `ssf-runtime` ist die einzige technische
 Identität, mit der das SSF-Backend
-`GET /internal/plugins/ssf/v1/runtime-configuration` aufruft. Er liegt im
+`GET /internal/plugins/ssf/v1/runtime-configuration` und
+`GET /internal/plugins/ssf/v1/admin-login-tenants` aufruft. Er liegt im
 Studio-Root-Realm derselben Installation und ist nicht tenantgebunden.
 
 Der Client besitzt für die SSF-Anwendung genau:
 
 - den verwalteten Audience-Mapper für `sva-studio-ssf-runtime`,
-- die SSF-Client-Rolle `ssf.runtime-configuration.read`,
+- die SSF-Client-Rollen `ssf.runtime-configuration.read` und
+  `ssf.admin-login-directory.read`,
 - einen aktivierten Service-Account.
 
 Standard-, Implicit- und Direct-Access-Grant-Flows bleiben deaktiviert. Der
@@ -18,8 +20,8 @@ Client erhält keine menschliche Plattformrolle und keine weiteren
 `ssf.*`-Actions.
 
 Keycloak-eigene Default- und Realm-Rollen liegen außerhalb dieses Operators.
-Die Runtime-Autorisierung wertet ausschließlich die genannte SSF-Action und
-Audience aus.
+Die Autorisierung prüft je Endpoint ausschließlich dessen SSF-Action und die
+Audience. Die Runtime-Leserolle gewährt keinen Directory-Zugriff und umgekehrt.
 
 ## Umgebungsgrenze
 
@@ -55,6 +57,11 @@ Die Secret-Datei wird unmittelbar in die geschützte SSF-Deploymentkonfiguration
 übernommen und danach vom Operator gelöscht. Sie darf weder in Git noch in
 Issues, Logs, Screenshots oder unverschlüsselte Betriebsberichte gelangen.
 
+Beim Aktualisieren einer bestehenden Installation ergänzt `reconcile` die
+Directory-Rolle sowohl am Service-Account als auch in dessen Client-Scope.
+Ein anschließendes `verify` prüft beide Rollen. Die Änderung im Repository
+allein erteilt noch keine Berechtigung im laufenden Keycloak.
+
 ## Aktivierung und Smoke-Test
 
 Studio erhält mindestens:
@@ -77,7 +84,12 @@ oder Secret auszugeben:
 4. Je einen Aufruf ohne Action-Rolle und mit falscher Audience als `403`
    beziehungsweise `401` nachweisen.
 
-Die Freigabe bleibt blockiert, solange SSF-Plugin-Datenbank, Tenant,
+Für das [Login-Mandantenverzeichnis](../api/ssf-admin-login-mandanten-v1.md)
+den neuen Endpoint ohne Tenant-Header mit derselben Service-Identität aufrufen
+und `200` mit `tenants` prüfen. Dieser Abruf filtert nur den Registry-Status
+`active`; er benötigt weder SSF-Plugin-Datenbank noch IAM-Projektionsrevision.
+
+Die Freigabe des Runtime-Konfigurationsabrufs bleibt blockiert, solange SSF-Plugin-Datenbank, Tenant,
 Plugin-Aktivierung oder bestätigte IAM-Projektionsrevision nicht bereit sind.
 Ein `409 ssf_tenant_not_ready` ist dann ein korrekter fachlicher Gate-Befund,
 aber noch kein erfolgreicher End-to-End-Nachweis.

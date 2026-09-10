@@ -498,3 +498,10 @@ ersten Slices verbleiben:
 - die revisionsgebundene Keycloak-Permission-Projektion,
 - die endgültige Einbindung des Service-Endpunkts in den generischen
   Plugin-Server-Dispatcher und das Deployment-Profil.
+
+## Ergänzender Login-Vertrag
+
+Das separate [SSF-Login-Mandantenverzeichnis](./ssf-admin-login-mandanten-v1.md)
+liefert aktive Registry-Einträge mit ID, Name und Realm ohne Tenant-Bindung.
+Seine eigene Directory-Leseberechtigung und reine Statusfilterung ändern die
+Aktivierungs- und Readiness-Anforderungen dieses Runtime-Vertrags nicht.

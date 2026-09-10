@@ -125,7 +125,8 @@ describe('plugin server runtime loader', () => {
 
     await createStudioPluginServerHandlerDispatcher();
 
-    const dependencies = authRuntimeMocks.createSsfRuntimePluginServiceAccess.mock.calls.at(-1)?.[0];
+    const dependencies =
+      authRuntimeMocks.createSsfRuntimePluginServiceAccess.mock.calls.at(-1)?.[0];
     if (!dependencies) throw new Error('missing_ssf_runtime_dependencies');
     await expect(dependencies.readDatabaseReadiness('tenant-a')).resolves.toBe(true);
     await expect(dependencies.readAuthorizationRevision('tenant-a')).resolves.toBe(
@@ -143,7 +144,8 @@ describe('plugin server runtime loader', () => {
 
     await createStudioPluginServerHandlerDispatcher();
 
-    const dependencies = authRuntimeMocks.createSsfRuntimePluginServiceAccess.mock.calls.at(-1)?.[0];
+    const dependencies =
+      authRuntimeMocks.createSsfRuntimePluginServiceAccess.mock.calls.at(-1)?.[0];
     if (!dependencies) throw new Error('missing_ssf_runtime_dependencies');
     await expect(dependencies.readDatabaseReadiness('tenant-a')).resolves.toBe(false);
     await expect(dependencies.readAuthorizationRevision('tenant-a')).resolves.toBeNull();

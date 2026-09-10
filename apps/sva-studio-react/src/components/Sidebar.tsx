@@ -934,7 +934,10 @@ export default function Sidebar({
         const action = item.actionId ? getStudioPluginAction(item.actionId) : undefined;
         return {
           item,
-          resolvedTitleKey: item.titleKey,
+          resolvedTitleKey:
+            item.id === 'ssf.tenant-navigation'
+              ? brandingProfile.ssfTenantNavigationTitleKey
+              : item.titleKey,
           resolvedRequiredAction: action?.requiredAction ?? item.requiredAction,
           resolvedAccessRequirement: action?.accessRequirement ?? item.accessRequirement,
         };
@@ -1025,7 +1028,9 @@ export default function Sidebar({
     ];
 
     const dataManagementItems: SidebarItem[] = [
-      ...(canAccessWorkspace && creatableContentTypes.length > 0
+      ...(brandingProfile.showContentNavigation &&
+      canAccessWorkspace &&
+      creatableContentTypes.length > 0
         ? [
             {
               kind: 'link' as const,
@@ -1279,6 +1284,7 @@ export default function Sidebar({
     canAccessWorkspace,
     canAccessContent,
     brandingProfile.showContentNavigation,
+    brandingProfile.ssfTenantNavigationTitleKey,
     contentAccessApi.access,
     contentAccessApi.isLoading,
     contentAccessApi.permissionActions,

@@ -34,6 +34,7 @@ describe('studio branding', () => {
   it('maps each profile to its app-wide product name', () => {
     expect(STUDIO_BRANDING_PROFILES['sva-studio'].appNameKey).toBe('shell.appName');
     expect(STUDIO_BRANDING_PROFILES['sva-studio']).toMatchObject({
+      ssfTenantNavigationTitleKey: 'ssf.navigation.tenant',
       showContentNavigation: true,
       showGenericApplicationLinks: true,
       showInterfacesNavigation: true,
@@ -43,6 +44,7 @@ describe('studio branding', () => {
       'home.branding.kasselDialog.title'
     );
     expect(STUDIO_BRANDING_PROFILES['kassel-dialog']).toMatchObject({
+      ssfTenantNavigationTitleKey: 'home.branding.kasselDialog.title',
       showContentNavigation: false,
       showGenericApplicationLinks: false,
       showInterfacesNavigation: false,

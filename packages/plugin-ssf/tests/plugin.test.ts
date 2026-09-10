@@ -72,8 +72,8 @@ describe('SSF plugin metadata', () => {
       jobs: 'ssf.authorization-projection',
     });
     expect(ssfPlugin.translations).toMatchObject({
-      de: { ssf: { navigation: { tenant: 'Kassel DIALOG' } } },
-      en: { ssf: { navigation: { tenant: 'Kassel DIALOG' } } },
+      de: { ssf: { navigation: { tenant: 'SSF-Konfiguration' } } },
+      en: { ssf: { navigation: { tenant: 'SSF configuration' } } },
     });
   });
 });

@@ -25,6 +25,7 @@ import type {
 import { serverEntryRouteDispatchers } from './lib/server-entry-routes.server';
 
 const startFetch = createStartHandler(defaultStreamHandler);
+const ssfAdminLoginDirectoryPath = '/internal/plugins/ssf/v1/admin-login-tenants';
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const devRuntimeRefreshEnabled = diagnosticsEnabled;
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
@@ -214,10 +215,9 @@ if (studioJobWorkerEnabled) {
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
-  await ensurePluginActivationPoliciesConfigured();
   const sdk = await getSdk();
-  sdk.runWithoutWorkspaceContext(startPluginOperationWorkerInBackground);
   return sdk.withRequestContext({ request, fallbackWorkspaceId: 'platform' }, async () => {
+    const requestPath = new URL(request.url).pathname;
     const serverEntryDebugEnabled = process.env.SVA_SERVER_ENTRY_DEBUG === 'true';
     const logServerEntryDebug = async (message: string, meta: Record<string, unknown>) => {
       if (!serverEntryDebugEnabled) {
@@ -233,13 +233,6 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
     };
 
     await logServerEntryDebug('Server entry request received', {});
-    const routedResponse = await dispatchKnownServerEntryRoutes(request, logServerEntryDebug);
-
-    if (routedResponse) {
-      return routedResponse;
-    }
-
-    const requestPath = new URL(request.url).pathname;
     // Internal services connect directly over the private container network.
     // Traefik adds forwarding headers on every public ingress request.
     if (
@@ -250,7 +243,7 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
     ) {
       return new Response(null, { status: 404 });
     }
-    if (requestPath.startsWith('/internal/plugins/')) {
+    if (requestPath === ssfAdminLoginDirectoryPath) {
       const dispatchSsfAdminLoginDirectoryRequest =
         await getDispatchSsfAdminLoginDirectoryRequest();
       const directoryResponse = await dispatchSsfAdminLoginDirectoryRequest(request);
@@ -261,6 +254,15 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
         return directoryResponse;
       }
     }
+
+    await ensurePluginActivationPoliciesConfigured();
+    sdk.runWithoutWorkspaceContext(startPluginOperationWorkerInBackground);
+    const routedResponse = await dispatchKnownServerEntryRoutes(request, logServerEntryDebug);
+
+    if (routedResponse) {
+      return routedResponse;
+    }
+
     if (
       requestPath.startsWith('/api/v1/plugins/') ||
       requestPath.startsWith('/internal/plugins/')

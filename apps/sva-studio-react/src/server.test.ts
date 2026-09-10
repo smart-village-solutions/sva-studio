@@ -228,10 +228,12 @@ describe('server transport', () => {
 
   it('dispatches the SSF directory without constructing the tenant plugin dispatcher', async () => {
     vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
     const directoryResponse = Response.json({ tenants: [] });
     const startFetch = vi.fn().mockResolvedValue(new Response('start'));
     createStartHandlerMock.mockReturnValue(startFetch);
     dispatchSsfAdminLoginDirectoryRequestMock.mockResolvedValue(directoryResponse);
+    ensurePluginActivationPoliciesConfiguredMock.mockRejectedValue(new Error('broken plugin catalog'));
     createStudioPluginServerHandlerDispatcherMock.mockRejectedValue(
       new Error('broken tenant plugin')
     );
@@ -243,6 +245,7 @@ describe('server transport', () => {
     const response = await mod.default.fetch(request);
 
     expect(dispatchSsfAdminLoginDirectoryRequestMock).toHaveBeenCalledWith(request);
+    expect(ensurePluginActivationPoliciesConfiguredMock).not.toHaveBeenCalled();
     expect(createStudioPluginServerHandlerDispatcherMock).not.toHaveBeenCalled();
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();

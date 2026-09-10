@@ -937,7 +937,7 @@ export default function Sidebar({
           resolvedTitleKey:
             item.id === 'ssf.tenant-navigation'
               ? brandingProfile.ssfTenantNavigationTitleKey
-              : item.titleKey,
+              : (action?.titleKey ?? item.titleKey),
           resolvedRequiredAction: action?.requiredAction ?? item.requiredAction,
           resolvedAccessRequirement: action?.accessRequirement ?? item.accessRequirement,
         };

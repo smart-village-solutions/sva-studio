@@ -1220,7 +1220,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
   });
 
-  it('behält den Navigationstitel bei und löst Zugriffsmetadaten über die Action-Registry auf', () => {
+  it('löst Plugin-Navigation über die Action-Registry auf, wenn actionId gesetzt ist', () => {
     studioPluginNavigationMock.items = [
       {
         id: 'news.publish',
@@ -1248,7 +1248,7 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.getByRole('link', { name: 'Nachrichten' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'news.actions.publish' }).getAttribute('href')).toBe(
       '/plugins/news/publish'
     );
     expect(studioPluginActionLookupMock.get).toHaveBeenCalledWith('news.publish');
@@ -1276,7 +1276,7 @@ describe('Sidebar', () => {
     });
 
     expect(decideAccessMock).toHaveBeenCalledWith(accessRequirement);
-    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'news.actions.publish' })).toBeNull();
   });
 
   it('wertet die kanonische Access-Anforderung der referenzierten Plugin-Action aus', () => {

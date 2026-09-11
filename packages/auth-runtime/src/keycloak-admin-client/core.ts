@@ -1535,19 +1535,31 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         return;
       }
       const attributes = existing.attributes;
+      const managedBy = readRoleAttribute(attributes, 'managed_by');
+      const boundInstanceId = readRoleAttribute(attributes, 'instance_id');
+      const roleKey = readRoleAttribute(attributes, 'role_key');
+      const displayName = readRoleAttribute(attributes, 'display_name');
       const metadataMatches =
-        readRoleAttribute(attributes, 'managed_by') === 'studio' &&
-        readRoleAttribute(attributes, 'instance_id') === instanceId &&
-        readRoleAttribute(attributes, 'role_key') === externalName &&
-        readRoleAttribute(attributes, 'display_name') === externalName;
+        managedBy === 'studio' && boundInstanceId === instanceId && roleKey === externalName;
       if (!metadataMatches) {
+        const isCurrentInstanceRole = managedBy === 'studio' && boundInstanceId === instanceId;
+        const isLegacyRealmBoundRole =
+          managedBy === 'studio' && boundInstanceId === this.realm && roleKey === externalName;
+        if (!isCurrentInstanceRole && !isLegacyRealmBoundRole) {
+          throw new KeycloakAdminRequestError({
+            message: `Keycloak role ${externalName} is owned by another instance.`,
+            statusCode: 409,
+            code: 'role_ownership_conflict',
+            retryable: false,
+          });
+        }
         await this.updateRole(externalName, {
           description: existing.description,
           attributes: {
             managedBy: 'studio',
             instanceId,
             roleKey: externalName,
-            displayName: externalName,
+            displayName: displayName ?? externalName,
           },
         });
       }

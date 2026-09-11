@@ -1429,7 +1429,7 @@ describe('Keycloak admin client', () => {
             managed_by: ['studio'],
             instance_id: ['demo'],
             role_key: ['system_admin'],
-            display_name: ['system_admin'],
+            display_name: ['System Administrator'],
           },
         })
       )
@@ -1442,7 +1442,7 @@ describe('Keycloak admin client', () => {
             managed_by: ['studio'],
             instance_id: ['tenant-havelland'],
             role_key: ['system_admin'],
-            display_name: ['system_admin'],
+            display_name: ['System Administrator'],
           },
         })
       );
@@ -1463,11 +1463,36 @@ describe('Keycloak admin client', () => {
             managed_by: ['studio'],
             instance_id: ['tenant-havelland'],
             role_key: ['system_admin'],
-            display_name: ['system_admin'],
+            display_name: ['System Administrator'],
           },
         }),
       })
     );
+  });
+
+  it('rejects an existing realm role owned by another Studio instance', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-other'],
+            role_key: ['system_admin'],
+            display_name: ['System Administrator'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'role_ownership_conflict',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('sets required actions and logs password reset failures with write protection', async () => {

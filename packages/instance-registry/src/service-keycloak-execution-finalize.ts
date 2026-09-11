@@ -76,6 +76,7 @@ const appendFinalStatusSnapshot = async (
     tenantAdminClient: finalProvisioningInput.tenantAdminClient,
     tenantAdminClientSecret: finalProvisioningInput.tenantAdminClientSecret,
     tenantAdminBootstrap: finalProvisioningInput.tenantAdminBootstrap,
+    pluginOidcClients: finalProvisioningInput.pluginOidcClients,
     preflight,
     state,
   });

@@ -79,4 +79,26 @@ describe('service-keycloak-execution-payload', () => {
       'queued_plugin_oidc_client_requirements_missing_or_invalid'
     );
   });
+
+  it('fails before enqueueing when the app snapshot dependency is not wired', async () => {
+    const createKeycloakProvisioningRun = vi.fn();
+    await expect(
+      createQueuedRun(
+        {
+          repository: { createKeycloakProvisioningRun },
+          invalidateHost: vi.fn(),
+        } as never,
+        loaded as never,
+        {
+          mutation: 'reconcileKeycloak',
+          instanceId: 'tenant-kassel',
+          idempotencyKey: 'request-2',
+          actorId: 'root',
+          requestId: 'request-2',
+          intent: 'reconcile',
+        } as never
+      )
+    ).rejects.toThrow('plugin_oidc_client_requirements_dependency_missing');
+    expect(createKeycloakProvisioningRun).not.toHaveBeenCalled();
+  });
 });

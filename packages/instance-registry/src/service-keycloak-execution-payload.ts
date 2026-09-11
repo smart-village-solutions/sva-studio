@@ -79,6 +79,11 @@ export const createQueuedRun = async (
     readonly rotateClientSecret?: boolean;
   }
 ) => {
+  const readPluginOidcClientRequirements = deps.readPluginOidcClientRequirements;
+  if (!readPluginOidcClientRequirements) {
+    throw new Error('plugin_oidc_client_requirements_dependency_missing');
+  }
+  const pluginOidcClients = readPluginOidcClientRequirements();
   const provisioningInput = buildProvisioningInput(loaded);
   const { run, created } = await deps.repository.createKeycloakProvisioningRun({
     instanceId: loaded.instance.instanceId,
@@ -106,7 +111,7 @@ export const createQueuedRun = async (
         authRealm: loaded.instance.authRealm,
         authClientId: loaded.instance.authClientId,
         primaryHostname: loaded.instance.primaryHostname,
-        pluginOidcClients: deps.readPluginOidcClientRequirements?.() ?? [],
+        pluginOidcClients,
         tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword
           ? deps.protectSecret?.(input.tenantAdminTemporaryPassword, buildTempPasswordAad(run.id))
           : undefined,

@@ -556,6 +556,9 @@ Fehlerpfad:
   fehlgeschlagen markiert, wenn die Instanzsperre nachweislich nicht mehr von
   einem Worker gehalten wird. Lokale Worker beenden vor ihrem Startup-Cutoff
   liegende `planned`-Runs ebenfalls nur unter der jeweiligen Instanzsperre.
+  Der Queue-Schritt enthält außerdem den von der App validierten Plugin-OIDC-Snapshot.
+  Der Worker lehnt Aufträge ohne diesen Snapshot ab und reicht vorhandene Anforderungen
+  unverändert durch Preflight, Plan, Keycloak-Ausführung und finalen Status-Fingerprint.
   Operativer Secret-Repair und Fleet-Backfills lesen den aktuellen Datensatz
   nach Sperrerwerb erneut; inzwischen inaktive oder bereits reparierte
   Instanzen werden übersprungen.

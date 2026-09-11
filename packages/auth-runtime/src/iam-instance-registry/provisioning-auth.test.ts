@@ -199,7 +199,7 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     });
   });
 
-  it('preserves caller plugin declarations while keeping the installed SSF declaration authoritative', async () => {
+  it('keeps an explicit queue snapshot authoritative at the provisioner boundary', async () => {
     state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([
       {
         contractVersion: '1.0',
@@ -225,26 +225,15 @@ describe('iam-instance-registry provisioning auth wiring', () => {
           audience: 'example',
           enabled: false as const,
         },
-        {
-          contractVersion: '1.0' as const,
-          pluginId: 'ssf',
-          clientId: 'ssf',
-          audience: 'ssf',
-          enabled: false as const,
-        },
       ],
     };
 
-    await subject.readKeycloakState(input);
+    await subject.readKeycloakStateViaProvisioner(input);
+    await subject.provisionInstanceAuthArtifactsViaProvisioner(input);
 
-    const adminAdapters = state.createKeycloakProvisioningAdapters.mock.results[0]?.value;
-    expect(adminAdapters.readKeycloakState).toHaveBeenCalledWith({
-      ...input,
-      pluginOidcClients: [
-        expect.objectContaining({ pluginId: 'example' }),
-        expect.objectContaining({ pluginId: 'ssf' }),
-      ],
-    });
+    const provisionerAdapters = state.createKeycloakProvisioningAdapters.mock.results[1]?.value;
+    expect(provisionerAdapters.readKeycloakState).toHaveBeenCalledWith(input);
+    expect(provisionerAdapters.provisionInstanceAuthArtifacts).toHaveBeenCalledWith(input);
   });
 
   it('reads audit state with the tenant-local admin credentials from the registry input', async () => {

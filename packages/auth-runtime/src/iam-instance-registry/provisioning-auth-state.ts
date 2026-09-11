@@ -44,26 +44,25 @@ const provisionerAdapters = createKeycloakProvisioningAdapters(provisionerClient
 export const readKeycloakClientSecretsViaProvisioner =
   createReadKeycloakClientSecrets(provisionerClientFactory);
 
-const withInstalledPluginOidcClients = <
+const withDefaultPluginOidcClients = <
   T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,
 >(
   input: T
 ): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> => {
+  if (input.pluginOidcClients !== undefined) {
+    return input;
+  }
   const installedRequirements = readInstanceRegistryPluginOidcClientRequirements();
-  const installedClientIds = new Set(installedRequirements.map(({ clientId }) => clientId));
-  const callerRequirements = (input.pluginOidcClients ?? []).filter(
-    ({ clientId }) => !installedClientIds.has(clientId)
-  );
   return {
     ...input,
-    pluginOidcClients: [...callerRequirements, ...installedRequirements],
+    pluginOidcClients: installedRequirements,
   };
 };
 
 export const readKeycloakState = (input: KeycloakProvisioningInput) =>
-  adminAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
+  adminAdapters.readKeycloakState(withDefaultPluginOidcClients(input));
 export const readKeycloakStateViaProvisioner = (input: KeycloakProvisioningInput) =>
-  provisionerAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
+  provisionerAdapters.readKeycloakState(withDefaultPluginOidcClients(input));
 export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisioningInput) => {
   const clientId = input.tenantAdminClient?.clientId;
   const secretConfigured = input.tenantAdminClient?.secretConfigured === true;
@@ -81,11 +80,11 @@ export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisionin
           clientSecret,
         })
       )
-  )(withInstalledPluginOidcClients(input));
+  )(withDefaultPluginOidcClients(input));
 };
 export const provisionInstanceAuthArtifacts = (
   input: Parameters<typeof adminAdapters.provisionInstanceAuthArtifacts>[0]
-) => adminAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
+) => adminAdapters.provisionInstanceAuthArtifacts(withDefaultPluginOidcClients(input));
 export const provisionInstanceAuthArtifactsViaProvisioner = (
   input: Parameters<typeof provisionerAdapters.provisionInstanceAuthArtifacts>[0]
-) => provisionerAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
+) => provisionerAdapters.provisionInstanceAuthArtifacts(withDefaultPluginOidcClients(input));

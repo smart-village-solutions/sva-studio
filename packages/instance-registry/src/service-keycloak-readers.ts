@@ -235,6 +235,7 @@ export const createPlanKeycloakProvisioningHandler =
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
     });
     const plan = buildPlan({
+      instanceId: loaded.instance.instanceId,
       realmMode: loaded.instance.realmMode,
       authClientSecret: loaded.authClientSecret,
       tenantAdminClient: loaded.instance.tenantAdminClient,

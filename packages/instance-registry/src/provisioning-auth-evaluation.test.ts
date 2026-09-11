@@ -94,6 +94,7 @@ describe('provisioning-auth-evaluation', () => {
 
   it('skips bootstrap-admin creation in plans for imported realms without a profile', () => {
     const plan = buildPlan({
+      instanceId: 'imported',
       realmMode: 'existing',
       preflight: { overallStatus: 'warning', checkedAt: '2026-09-11T00:00:00Z', checks: [] },
     });
@@ -102,6 +103,30 @@ describe('provisioning-auth-evaluation', () => {
       action: 'skip',
     });
     expect(plan.driftSummary).not.toContain('Tenant-Admin wird erstellt');
+  });
+
+  it('plans role creation when the same-named role belongs to another instance', () => {
+    const plan = buildPlan({
+      instanceId: 'demo',
+      realmMode: 'existing',
+      preflight: { overallStatus: 'ready', checkedAt: '2026-09-11T00:00:00Z', checks: [] },
+      state: {
+        pluginOidcClients: [],
+        systemAdminRole: {
+          externalName: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-other'],
+            role_key: ['system_admin'],
+          },
+        },
+      } as never,
+    });
+
+    expect(plan.steps.find((step) => step.stepKey === 'roles')).toMatchObject({
+      action: 'create',
+      details: { systemAdminRoleExists: false },
+    });
   });
 
   it('builds keycloak status with mapper, uri and tenant admin checks', () => {

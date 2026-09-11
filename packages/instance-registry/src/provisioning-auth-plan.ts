@@ -6,6 +6,7 @@ import {
   readClientAlignment,
   readTenantAdminClientAlignment,
 } from './provisioning-auth-client-alignment.js';
+import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
 import { buildPluginOidcClientStep } from './provisioning-auth-plugin-clients.js';
 
 const buildRealmStep = (
@@ -165,19 +166,24 @@ const resolveTenantAdminClientSecretSummary = (
 
 const buildRoleStep = (
   blocked: boolean,
-  state: KeycloakReadState | undefined
-): KeycloakTenantPlan['steps'][number] => ({
-  stepKey: 'roles',
-  title: 'Realm-Rollen sicherstellen',
-  action: state?.systemAdminRole ? 'verify' : 'create',
-  status: blocked ? 'blocked' : 'ready',
-  summary: state?.systemAdminRole
-    ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
-    : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
-  details: {
-    systemAdminRoleExists: Boolean(state?.systemAdminRole),
-  },
-});
+  state: KeycloakReadState | undefined,
+  instanceId: string
+): KeycloakTenantPlan['steps'][number] => {
+  const systemAdminRoleExists = isSystemAdminRoleOwnedByInstance(
+    state?.systemAdminRole,
+    instanceId
+  );
+  return {
+    stepKey: 'roles',
+    title: 'Realm-Rollen sicherstellen',
+    action: systemAdminRoleExists ? 'verify' : 'create',
+    status: blocked ? 'blocked' : 'ready',
+    summary: systemAdminRoleExists
+      ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
+      : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
+    details: { systemAdminRoleExists },
+  };
+};
 
 const buildTenantAdminStep = (
   blocked: boolean,
@@ -215,6 +221,7 @@ const hasTenantAdminMinimalProfile = (
 ): boolean => Boolean(adminStatus?.tenantAdminExists && adminStatus.tenantAdminHasSystemAdmin);
 
 export const buildPlan = (input: {
+  instanceId: string;
   realmMode: InstanceRealmMode;
   authClientSecret?: string;
   tenantAdminClient?: {
@@ -275,7 +282,7 @@ export const buildPlan = (input: {
       Boolean(input.tenantAdminClient?.clientId),
       tenantAdminClientSecretAligned
     ),
-    buildRoleStep(blocked, input.state),
+    buildRoleStep(blocked, input.state, input.instanceId),
     buildTenantAdminStep(blocked, input.state, requireTenantAdmin),
   ];
 

@@ -1,8 +1,9 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
 import { readPluginOidcClientAlignment } from './provisioning-auth-plugin-clients.js';
-import { equalSets, readPostLogoutUris, SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
+import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
 export { buildPlan } from './provisioning-auth-plan.js';
 
 export const buildMissingRealmStatus = (
@@ -32,23 +33,6 @@ export const buildMissingRealmStatus = (
 });
 
 const isTenantSecretRequired = (realmMode: InstanceRealmMode): boolean => realmMode === 'existing';
-
-const readSingleRoleAttribute = (
-  attributes: Readonly<Record<string, readonly string[]>> | undefined,
-  key: string
-): string | undefined => {
-  const values = attributes?.[key];
-  return values?.length === 1 ? values[0] : undefined;
-};
-
-const isSystemAdminRoleOwnedByInstance = (
-  role: KeycloakReadState['systemAdminRole'],
-  instanceId: string
-): boolean =>
-  role?.externalName === SYSTEM_ADMIN_ROLE &&
-  readSingleRoleAttribute(role.attributes, 'managed_by') === 'studio' &&
-  readSingleRoleAttribute(role.attributes, 'instance_id') === instanceId &&
-  readSingleRoleAttribute(role.attributes, 'role_key') === SYSTEM_ADMIN_ROLE;
 
 const createPreflightCheck = (
   checkKey: string,

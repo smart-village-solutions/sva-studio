@@ -1,4 +1,25 @@
-import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
+import type {
+  KeycloakProvisioningInput,
+  KeycloakReadState,
+} from './provisioning-auth-types.js';
+import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
+
+const readSingleRoleAttribute = (
+  attributes: Readonly<Record<string, readonly string[]>> | undefined,
+  key: string
+): string | undefined => {
+  const values = attributes?.[key];
+  return values?.length === 1 ? values[0] : undefined;
+};
+
+export const isSystemAdminRoleOwnedByInstance = (
+  role: KeycloakReadState['systemAdminRole'] | undefined,
+  instanceId: string
+): boolean =>
+  role?.externalName === SYSTEM_ADMIN_ROLE &&
+  readSingleRoleAttribute(role.attributes, 'managed_by') === 'studio' &&
+  readSingleRoleAttribute(role.attributes, 'instance_id') === instanceId &&
+  readSingleRoleAttribute(role.attributes, 'role_key') === SYSTEM_ADMIN_ROLE;
 
 export const isLegacyRealmRoleMigrationAllowed = (
   instances: readonly { readonly instanceId: string; readonly authRealm: string }[],

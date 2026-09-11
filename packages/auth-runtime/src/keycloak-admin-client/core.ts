@@ -1568,14 +1568,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       const metadataMatches =
         managedBy === 'studio' && boundInstanceId === instanceId && roleKey === externalName;
       if (!metadataMatches) {
-        const isCurrentInstanceRole =
-          managedBy === 'studio' && boundInstanceId === instanceId && roleKey === externalName;
         const isLegacyRealmBoundRole =
           options.allowLegacyRealmRoleMigration === true &&
           managedBy === 'studio' &&
           boundInstanceId === this.realm &&
           roleKey === externalName;
-        if (!isCurrentInstanceRole && !isLegacyRealmBoundRole) {
+        if (!isLegacyRealmBoundRole) {
           throw new KeycloakAdminRequestError({
             message: `Keycloak role ${externalName} has conflicting or incomplete Studio ownership metadata.`,
             statusCode: 409,

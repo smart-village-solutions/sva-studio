@@ -109,12 +109,13 @@ Konvergenznachweis der SSF-IAM-Projektion:
 Die generische Instanz-Registry speichert in `iam.instances.time_zone` die
 Tenant-Zeitzone. Bestehende und zunächst nicht individuell konfigurierte
 Instanzen verwenden `Europe/Berlin`; Runtime-Verbraucher validieren den Wert
-zusätzlich als IANA-Zeitzone.
+zusätzlich als IANA-Zeitzone. `iam.instances.auth_realm` ist eindeutig, damit
+ein Keycloak-Realm atomar höchstens einer Studio-Instanz zugeordnet werden kann.
 
 Gesprächsinhalte, Einwilligungen, Sessions und ClickHouse-Auswertungen gehören
 nicht in diese Datenbank. Der zentrale Snapshot
-[`studio-db-schema-final.sql`](./studio-db-schema-final.sql) wurde für diesen
-Change geprüft und bleibt strukturell unverändert.
+[`studio-db-schema-final.sql`](./studio-db-schema-final.sql) bildet diese
+Registry-Invariante ab.
 
 ### Datenbankweiter Sortiervertrag für Waste-Abholorte
 

@@ -95,6 +95,7 @@ describe('service-keycloak-run-steps', () => {
       logoutUrisMatch: true,
       webOriginsMatch: true,
       clientSecretAligned: true,
+      systemAdminRoleExists: true,
       tenantAdminHasSystemAdmin: true,
       tenantAdminExists: true,
     };
@@ -124,6 +125,7 @@ describe('service-keycloak-run-steps', () => {
       logoutUrisMatch: true,
       webOriginsMatch: true,
       clientSecretAligned: true,
+      systemAdminRoleExists: true,
       tenantAdminHasSystemAdmin: false,
       tenantAdminExists: true,
     };
@@ -139,6 +141,31 @@ describe('service-keycloak-run-steps', () => {
       expect.objectContaining({
         ok: false,
         summary: 'Die Tenant-Admin-Rollen weichen vom Minimalprofil ab.',
+      })
+    );
+  });
+
+  it('fails the roles step when the assigned same-named role is not owned by the instance', () => {
+    const steps = buildFinalRunSteps({
+      status: {
+        realmExists: true,
+        clientExists: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretAligned: true,
+        systemAdminRoleExists: false,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminExists: true,
+      } as never,
+      intent: 'provision',
+      usedTemporaryPassword: false,
+    });
+
+    expect(steps.find((step) => step.stepKey === 'roles')).toEqual(
+      expect.objectContaining({
+        ok: false,
+        summary: 'Die geschützte Realm-Rolle system_admin fehlt.',
       })
     );
   });
@@ -180,6 +207,7 @@ describe('service-keycloak-run-steps', () => {
       logoutUrisMatch: true,
       webOriginsMatch: true,
       clientSecretAligned: true,
+      systemAdminRoleExists: true,
       tenantAdminHasSystemAdmin: true,
       tenantAdminExists: true,
     };

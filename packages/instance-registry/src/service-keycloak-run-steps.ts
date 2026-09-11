@@ -103,19 +103,21 @@ const buildRolesCompletionStep = (
   stepKey: 'roles',
   title: 'Realm-Rollen sicherstellen',
   summary:
-    requireTenantAdmin
+    !status.systemAdminRoleExists
+      ? 'Die geschützte Realm-Rolle system_admin fehlt.'
+      : requireTenantAdmin
       ? status.tenantAdminHasSystemAdmin
         ? 'Die Tenant-Admin-Rollen entsprechen dem Minimalprofil.'
         : 'Die Tenant-Admin-Rollen weichen vom Minimalprofil ab.'
-      : status.systemAdminRoleExists
-        ? 'Die geschützte Realm-Rolle system_admin ist vorhanden.'
-        : 'Die geschützte Realm-Rolle system_admin fehlt.',
+      : 'Die geschützte Realm-Rolle system_admin ist vorhanden.',
   details: {
     tenantAdminHasSystemAdmin: status.tenantAdminHasSystemAdmin,
     systemAdminRoleExists: status.systemAdminRoleExists,
     titleKey: 'iam.provisioning.steps.roles.title',
   },
-  ok: requireTenantAdmin ? status.tenantAdminHasSystemAdmin : status.systemAdminRoleExists,
+  ok:
+    status.systemAdminRoleExists &&
+    (!requireTenantAdmin || status.tenantAdminHasSystemAdmin),
 });
 
 const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({

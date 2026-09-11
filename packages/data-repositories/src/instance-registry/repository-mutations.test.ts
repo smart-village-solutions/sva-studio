@@ -150,6 +150,8 @@ describe('instance registry mutation SQL values', () => {
 
     expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain('UPDATE iam.instances');
+    expect(statements[0]?.text).toContain("auth_realm = $6");
+    expect(statements[0]?.text).toContain("overall_status = 'running'");
     expectSqlValues(statements[0], 21, [
       'tenant-a',
       'Tenant A',

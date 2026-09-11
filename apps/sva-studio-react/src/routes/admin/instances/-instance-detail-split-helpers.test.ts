@@ -391,6 +391,24 @@ describe('instance detail split helpers', () => {
       false,
     ]);
 
+    const importedRealmEntries = getKeycloakStatusEntries({
+      realmMode: 'existing',
+      tenantAdminBootstrap: undefined,
+      keycloakStatus: createKeycloakStatusFixture({
+        tenantAdminExists: false,
+        tenantAdminHasSystemAdmin: false,
+      }),
+    } as never);
+
+    expect(importedRealmEntries).not.toContainEqual([
+      'admin.instances.keycloakStatus.tenantAdminExists',
+      false,
+    ]);
+    expect(importedRealmEntries).not.toContainEqual([
+      'admin.instances.keycloakStatus.tenantAdminHasSystemAdmin',
+      false,
+    ]);
+
     for (const status of [
       'requested',
       'validated',

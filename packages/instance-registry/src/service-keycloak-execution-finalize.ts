@@ -8,6 +8,7 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
 import { buildProvisioningInput } from './service-keycloak-execution-payload.js';
+import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js';
 
 export const completeRun = async (
   deps: InstanceRegistryServiceDeps,
@@ -33,7 +34,7 @@ export const completeRun = async (
     title: 'Keycloak-Status aufnehmen',
     status: 'done',
     summary: 'Der Worker hat den Keycloak-Istzustand nach dem Lauf gespeichert.',
-    details: { status },
+    details: { policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION, status },
     requestId: input.requestId,
   });
 

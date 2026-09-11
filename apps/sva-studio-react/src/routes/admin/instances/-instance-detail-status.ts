@@ -2,7 +2,8 @@ import { t } from '../../../i18n';
 import type { SelectedInstance } from './-instances-shared-types';
 
 import {
-  INSTANCE_KEYCLOAK_REQUIREMENTS,
+  getApplicableInstanceKeycloakRequirements,
+  isInstanceTenantAdminRequired,
   isInstanceKeycloakRequirementSatisfied,
   KEYCLOAK_STATUS_LABELS,
   type IamInstanceDetail,
@@ -55,7 +56,9 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
   }
 
   return [
-    ...INSTANCE_KEYCLOAK_REQUIREMENTS.map((requirement) => [
+    ...getApplicableInstanceKeycloakRequirements({
+      requireTenantAdmin: isInstanceTenantAdminRequired(selectedInstance),
+    }).map((requirement) => [
       KEYCLOAK_STATUS_LABELS[requirement.statusField],
       isInstanceKeycloakRequirementSatisfied(status, requirement),
     ] as const),

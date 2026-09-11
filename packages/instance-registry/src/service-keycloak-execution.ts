@@ -9,7 +9,7 @@ import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTempora
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
-import { resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
+import { KEYCLOAK_SNAPSHOT_POLICY_VERSION, resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
@@ -61,7 +61,7 @@ const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: I
       preflight.overallStatus === 'blocked'
         ? 'Die Vorbedingungen blockieren die Ausführung.'
         : 'Die Vorbedingungen erlauben die Ausführung.',
-    details: { preflight },
+    details: { policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION, preflight },
     requestId: run.requestId,
   });
   return preflight;
@@ -79,7 +79,7 @@ const appendPlanSnapshot = async (deps: InstanceRegistryServiceDeps, run: Instan
     title: 'Soll-Ist-Abgleich planen',
     status: plan.overallStatus === 'blocked' ? 'failed' : 'done',
     summary: plan.driftSummary,
-    details: { plan },
+    details: { policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION, plan },
     requestId: run.requestId,
   });
   return plan;

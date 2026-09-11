@@ -102,6 +102,14 @@ SET
   updated_by = $21,
   updated_at = NOW()
 WHERE id = $1
+  AND (
+    auth_realm = $6
+    OR NOT EXISTS (
+      SELECT 1
+      FROM iam.instance_keycloak_provisioning_runs
+      WHERE instance_id = $1 AND overall_status = 'running'
+    )
+  )
 RETURNING
 ${buildInstanceSelectColumns()};
 `,

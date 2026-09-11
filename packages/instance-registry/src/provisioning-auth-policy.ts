@@ -4,6 +4,8 @@ import type {
 } from './provisioning-auth-types.js';
 import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
 
+export const KEYCLOAK_SNAPSHOT_POLICY_VERSION = 2;
+
 const readSingleRoleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
   key: string

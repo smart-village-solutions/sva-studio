@@ -2317,10 +2317,10 @@ describe('instance registry service facade', () => {
 
     const preflight = await createGetKeycloakPreflightHandler(createDeps(repository))('demo');
 
-    expect(preflight).toMatchObject({
-      overallStatus: 'warning',
-      checks: [{ checkKey: 'tenant_admin_profile', status: 'warning' }],
-    });
+    expect(preflight?.overallStatus).toBe('warning');
+    expect(preflight?.checks).toContainEqual(
+      expect.objectContaining({ checkKey: 'tenant_admin_profile', status: 'warning' })
+    );
   });
 
   it('invalidates an outdated imported-realm plan that would create a tenant admin', async () => {
@@ -2438,6 +2438,7 @@ describe('instance registry service facade', () => {
               status: 'done',
               summary: 'Snapshot vorhanden',
               details: {
+                policyVersion: 2,
                 status: {
                   realmExists: true,
                   clientExists: true,
@@ -2492,6 +2493,7 @@ describe('instance registry service facade', () => {
               status: 'done',
               summary: 'Snapshot vorhanden',
               details: {
+                policyVersion: 2,
                 status: {
                   realmExists: true,
                   clientExists: true,
@@ -2541,6 +2543,41 @@ describe('instance registry service facade', () => {
     });
     expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
     expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+  });
+
+  it('ignores status snapshots from before ownership-aware role evaluation', async () => {
+    const repository = createRepository({
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Legacy snapshot',
+              details: {
+                status: {
+                  realmExists: true,
+                  systemAdminRoleExists: true,
+                  runtimeSecretSource: 'tenant',
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const status = await createGetKeycloakStatusHandler(
+      createDeps(repository, { revealSecret: undefined })
+    )('demo');
+
+    expect(status).toMatchObject({
+      realmExists: false,
+      systemAdminRoleExists: false,
+      runtimeSecretSource: 'global',
+    });
   });
 
   it('returns null for keycloak status snapshots when the instance no longer exists', async () => {

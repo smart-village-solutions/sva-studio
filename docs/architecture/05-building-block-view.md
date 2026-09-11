@@ -923,6 +923,12 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Deployment; das Plugin-SDK erhält dafür keine neue Abstraktion.
 - Root-Actions des SSF-Plugins werden getrennt als Plattformbeitrag für
   `instance_registry_admin` registriert und niemals in Tenant-Tokens projiziert.
+- Keycloak-Status-, Preflight- und Plan-Snapshots tragen eine gemeinsame
+  Policy-Version. Nach Änderungen an Ownership- oder Bootstrap-Regeln werden
+  ältere Snapshots nicht weiter als aktuelle Gesundheitsevidenz verwendet.
+  Während eines laufenden Keycloak-Provisionings verhindert die Registry
+  atomar einen Wechsel des zugeordneten `authRealm`; Secret- und sonstige
+  Aktualisierungen mit unverändertem Realm bleiben möglich.
 
 Der genaue Payload- und Fehlervertrag ist im
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)

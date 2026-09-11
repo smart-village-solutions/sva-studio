@@ -15,7 +15,9 @@ import type {
 } from './-instances-shared-types';
 
 export {
+  getApplicableInstanceKeycloakRequirements,
   INSTANCE_KEYCLOAK_REQUIREMENTS,
+  isInstanceTenantAdminRequired,
   isInstanceKeycloakRequirementSatisfied,
   type IamInstanceDetail,
   type IamInstanceKeycloakPreflight,

@@ -1,4 +1,4 @@
-import { classifyHost, isInstanceTenantAdminRequired, normalizeHost } from '@sva/core';
+import { classifyHost, normalizeHost } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
@@ -10,6 +10,7 @@ import type {
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
 import { buildMissingRealmStatus, buildPlan, toOverallPreflightStatus } from './provisioning-auth-evaluation.js';
+import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js';
 import { toListItem } from './service-helpers.js';
 import {
   loadInstanceWithSecret,
@@ -29,6 +30,9 @@ const readSnapshotFromRun = <T>(
   for (const run of runs) {
     const step = run.steps.find((candidate) => candidate.stepKey === stepKey);
     if (!isRecord(step?.details)) {
+      continue;
+    }
+    if (step.details.policyVersion !== KEYCLOAK_SNAPSHOT_POLICY_VERSION) {
       continue;
     }
     const snapshot = step.details[field];
@@ -149,39 +153,6 @@ const buildLocalStatus = (input: {
     input.tenantAdminClientSecret
   );
 
-const normalizePreflightSnapshot = (
-  snapshot: KeycloakTenantPreflight,
-  instance: { realmMode: 'new' | 'existing'; tenantAdminBootstrap?: { username: string } }
-): KeycloakTenantPreflight => {
-  if (isInstanceTenantAdminRequired(instance)) {
-    return snapshot;
-  }
-
-  const checks = snapshot.checks.map((check) =>
-    check.checkKey === 'tenant_admin_profile' && check.status === 'blocked'
-      ? {
-          ...check,
-          status: 'warning' as const,
-          summary:
-            'Für den importierten Realm ist kein Tenant-Admin-Bootstrap konfiguriert; technische Reparaturen bleiben möglich.',
-        }
-      : check
-  );
-
-  return {
-    ...snapshot,
-    overallStatus: toOverallPreflightStatus(checks),
-    checks,
-  };
-};
-
-const isOutdatedOptionalAdminPlan = (
-  snapshot: KeycloakTenantPlan,
-  instance: { realmMode: 'new' | 'existing'; tenantAdminBootstrap?: { username: string } }
-): boolean =>
-  !isInstanceTenantAdminRequired(instance) &&
-  snapshot.steps.find((step) => step.stepKey === 'tenant_admin')?.action !== 'skip';
-
 export const createGetKeycloakStatusHandler =
   (deps: InstanceRegistryServiceDeps) =>
   async (instanceId: string): Promise<KeycloakTenantStatus | null> => {
@@ -227,16 +198,14 @@ export const createGetKeycloakPreflightHandler =
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
     const snapshot = readSnapshotFromRun<KeycloakTenantPreflight>(runs, 'worker_preflight_snapshot', 'preflight');
-    const result = snapshot
-      ? normalizePreflightSnapshot(snapshot, loaded.instance)
-      : buildLocalPreflight({
-          realmMode: loaded.instance.realmMode,
-          authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
-          authClientSecret: loaded.authClientSecret,
-          tenantAdminClient: loaded.instance.tenantAdminClient,
-          tenantAdminClientSecret: loaded.tenantAdminClientSecret,
-          tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
-        });
+    const result = snapshot ?? buildLocalPreflight({
+      realmMode: loaded.instance.realmMode,
+      authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
+      authClientSecret: loaded.authClientSecret,
+      tenantAdminClient: loaded.instance.tenantAdminClient,
+      tenantAdminClientSecret: loaded.tenantAdminClientSecret,
+      tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
+    });
 
     logger.info('keycloak_preflight_completed', { operation: 'get_keycloak_preflight', instance_id: instanceId });
     return result;
@@ -256,7 +225,7 @@ export const createPlanKeycloakProvisioningHandler =
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
     const snapshot = readSnapshotFromRun<KeycloakTenantPlan>(runs, 'worker_plan_snapshot', 'plan');
-    if (snapshot && !isOutdatedOptionalAdminPlan(snapshot, loaded.instance)) {
+    if (snapshot) {
       logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });
       return snapshot;
     }

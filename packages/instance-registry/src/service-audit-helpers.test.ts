@@ -409,6 +409,35 @@ describe('service-audit helpers', () => {
     );
   });
 
+  it('skips bootstrap-admin audit checks for an imported realm without a profile', async () => {
+    const instance = {
+      instanceId: 'imported', displayName: 'Imported', status: 'active',
+      primaryHostname: 'imported.example.org', realmMode: 'existing' as const,
+      authRealm: 'imported', authClientId: 'sva-studio', authClientSecretConfigured: true,
+      tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: true },
+    };
+    const countAssignments = vi.fn(async () => 0);
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => instance),
+      countLocalSystemAdminAssignments: countAssignments,
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch);
+
+    const result = await createRunInstanceAuditHandler(createDeps(repository, {
+      getKeycloakStatus: vi.fn(async () => ({
+        ...baseKeycloakStatus, tenantAdminExists: false, tenantAdminHasSystemAdmin: false,
+      })),
+    }))({ instanceIds: ['imported'] });
+
+    expect(result.instances[0]?.overallStatus).toBe('pass');
+    expect(result.instances[0]?.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ checkId: 'keycloak.user.systemAdmin.exists', status: 'skip' }),
+      expect.objectContaining({ checkId: 'localIam.systemAdminAssignment.exists', status: 'skip' }),
+    ]));
+    expect(countAssignments).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('returns a failing run when requested instances resolve to none', async () => {
     const handler = createRunInstanceAuditHandler(createDeps(createRepository()));
 

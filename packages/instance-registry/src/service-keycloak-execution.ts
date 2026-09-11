@@ -14,7 +14,10 @@ import { processNextProvisioningClaim } from './service-keycloak-worker-claim.js
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 const hasWorkerDependencies = (deps: InstanceRegistryServiceDeps): boolean => Boolean(
-  deps.provisionInstanceAuth && deps.getKeycloakStatus && deps.getKeycloakPreflight && deps.planKeycloakProvisioning
+  deps.provisionInstanceAuth &&
+  deps.readKeycloakStateViaProvisioner &&
+  deps.getKeycloakPreflight &&
+  deps.planKeycloakProvisioning
 );
 
 const loadClaimedRunInstance = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun): Promise<NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>> | null> => {
@@ -123,7 +126,11 @@ const syncTenantAdminBootstrapAccountAfterProvisioning = async (
 
 const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
   const secretVersions = await loadKeycloakSnapshotSecretVersions(deps.repository, loaded.instance.instanceId);
-  const inputFingerprint = buildKeycloakSnapshotInputFingerprint(loaded.instance, secretVersions);
+  const inputFingerprint = buildKeycloakSnapshotInputFingerprint(
+    loaded.instance,
+    secretVersions,
+    deps.readPluginOidcClientRequirements?.()
+  );
   const preflight = await runInstanceRegistryStep('worker_preflight', () =>
     appendPreflightSnapshot(deps, run, provisioningInput, inputFingerprint)
   );

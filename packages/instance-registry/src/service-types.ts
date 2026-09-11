@@ -170,6 +170,8 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakStateViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<KeycloakReadState>;
+  readonly readPluginOidcClientRequirements?: () =>
+    KeycloakProvisioningInput['pluginOidcClients'];
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;

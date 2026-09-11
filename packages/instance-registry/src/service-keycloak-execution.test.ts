@@ -181,6 +181,17 @@ describe('service-keycloak-execution', () => {
         authClientSecretCiphertext: 'rotated-ciphertext',
       })
     ).not.toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
+    expect(
+      buildKeycloakSnapshotInputFingerprint(provisioning, undefined, [
+        {
+          contractVersion: '1.0',
+          pluginId: 'ssf',
+          clientId: 'ssf',
+          audience: 'ssf',
+          enabled: false,
+        },
+      ])
+    ).not.toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
   });
 
   it('fails claimed runs when worker dependencies are missing', async () => {
@@ -219,7 +230,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth: vi.fn(),
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn(),
           planKeycloakProvisioning: vi.fn(),
         } as never,
@@ -249,7 +260,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth: vi.fn(),
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'blocked' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
@@ -290,7 +301,7 @@ describe('service-keycloak-execution', () => {
           listProvisioningRealmAssignments,
           provisionInstanceAuth,
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({
             overallStatus: 'warning',
             checks: [{ checkKey: 'tenant_admin_profile', status: 'warning' }],
@@ -333,7 +344,7 @@ describe('service-keycloak-execution', () => {
           repository: repository as never,
           listProvisioningRealmAssignments: vi.fn().mockRejectedValue(lookupError),
           provisionInstanceAuth: vi.fn(),
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn(),
           planKeycloakProvisioning: vi.fn(),
         } as never,
@@ -360,7 +371,7 @@ describe('service-keycloak-execution', () => {
           repository: repository as never,
           provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
@@ -391,7 +402,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth: vi.fn().mockRejectedValue(new Error('plugin_oidc_client_readback_failed:ssf:ssf')),
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
@@ -416,7 +427,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth,
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({
             overallStatus: 'blocked',
             checks: [{ checkKey: 'tenant_secret', status: 'blocked' }],
@@ -453,7 +464,7 @@ describe('service-keycloak-execution', () => {
           repository: repository as never,
           provisionInstanceAuth,
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
@@ -506,7 +517,7 @@ describe('service-keycloak-execution', () => {
           repository: repository as never,
           provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
@@ -540,7 +551,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
-          getKeycloakStatus: vi.fn(),
+          readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
@@ -683,7 +694,7 @@ describe('service-keycloak-execution', () => {
     const lockedDeps = {
       repository: lockedRepository,
       provisionInstanceAuth: vi.fn(),
-      getKeycloakStatus: vi.fn(),
+      readKeycloakStateViaProvisioner: vi.fn(),
       getKeycloakPreflight: vi.fn(),
       planKeycloakProvisioning: vi.fn(),
     } as never;

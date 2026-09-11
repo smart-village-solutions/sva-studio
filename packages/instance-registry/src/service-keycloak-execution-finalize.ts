@@ -88,7 +88,8 @@ const appendFinalStatusSnapshot = async (
       policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       inputFingerprint: buildKeycloakSnapshotInputFingerprint(
         snapshotInstance,
-        await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId)
+        await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId),
+        deps.readPluginOidcClientRequirements?.()
       ),
       status,
       preflight,

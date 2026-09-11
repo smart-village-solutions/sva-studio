@@ -270,6 +270,7 @@ const registryRuntime = createInstanceRegistryRuntime({
       return readPersistablePluginTenantLifecycleRegistry();
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
+    readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
     protectSecret: protectField,
     revealSecret: revealField,
     loadWasteDataSourceRecord,
@@ -291,6 +292,7 @@ const registryRuntime = createInstanceRegistryRuntime({
       return readPersistablePluginTenantLifecycleRegistry();
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
+    readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
     protectSecret: protectField,
     revealSecret: revealField,
     syncTenantAdminBootstrapAccount,

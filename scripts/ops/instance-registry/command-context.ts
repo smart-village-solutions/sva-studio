@@ -8,6 +8,7 @@ import { createInstanceRegistryRepository } from '@sva/data';
 import { invalidateInstanceRegistryHost } from '@sva/data/server';
 import type { InstanceRegistryRepository, SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import { createSdkLogger, getInstanceConfig, type ServerRuntimeLogger } from '@sva/server-runtime';
+import { withAuthInstanceRegistryDeps } from '../../../packages/auth-runtime/src/iam-instance-registry/instance-registry-deps.ts';
 
 type QueryResult = {
   rowCount: number | null;
@@ -78,14 +79,14 @@ export const createCliRepository = (executor: SqlExecutor): InstanceRegistryRepo
 };
 
 const createService = (repository: InstanceRegistryRepository): InstanceRegistryService =>
-  createInstanceRegistryService({
+  createInstanceRegistryService(withAuthInstanceRegistryDeps({
     repository,
     invalidateHost: invalidateInstanceRegistryHost,
     reservedHostnames: () => {
       const config = getInstanceConfig();
       return config ? [config.canonicalAuthHost] : [];
     },
-  });
+  }));
 
 export const createInstanceRegistryCommandContext = (
   databaseUrl: string,

@@ -154,7 +154,11 @@ export const createGetKeycloakStatusHandler =
       ['status_snapshot'],
       'status',
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
-      buildKeycloakSnapshotInputFingerprint(instance, secretVersions)
+      buildKeycloakSnapshotInputFingerprint(
+        instance,
+        secretVersions,
+        deps.readPluginOidcClientRequirements?.()
+      )
     );
     if (status) {
       logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
@@ -201,7 +205,11 @@ export const createGetKeycloakPreflightHandler =
       ['status_snapshot', 'worker_preflight_snapshot'],
       'preflight',
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
-      buildKeycloakSnapshotInputFingerprint(loaded.instance, secretVersions)
+      buildKeycloakSnapshotInputFingerprint(
+        loaded.instance,
+        secretVersions,
+        deps.readPluginOidcClientRequirements?.()
+      )
     );
     const result = snapshot ?? buildLocalPreflight({
       realmMode: loaded.instance.realmMode,
@@ -240,7 +248,11 @@ export const createPlanKeycloakProvisioningHandler =
       ['status_snapshot', 'worker_plan_snapshot'],
       'plan',
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
-      buildKeycloakSnapshotInputFingerprint(loaded.instance, secretVersions)
+      buildKeycloakSnapshotInputFingerprint(
+        loaded.instance,
+        secretVersions,
+        deps.readPluginOidcClientRequirements?.()
+      )
     );
     if (snapshot) {
       logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });

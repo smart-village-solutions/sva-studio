@@ -22,7 +22,7 @@ export const buildKeycloakSnapshotInputFingerprint = (instance: {
   readonly authClientSecretConfigured: boolean;
   readonly tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
   readonly tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
-}, secrets?: Partial<KeycloakSnapshotSecretVersions>): string =>
+}, secrets?: Partial<KeycloakSnapshotSecretVersions>, pluginOidcClients: KeycloakProvisioningInput['pluginOidcClients'] = []): string =>
   buildPayloadFingerprint({
     instanceId: instance.instanceId,
     primaryHostname: instance.primaryHostname,
@@ -35,6 +35,9 @@ export const buildKeycloakSnapshotInputFingerprint = (instance: {
     tenantAdminBootstrap: instance.tenantAdminBootstrap,
     authClientSecretCiphertext: secrets?.authClientSecretCiphertext ?? null,
     tenantAdminClientSecretCiphertext: secrets?.tenantAdminClientSecretCiphertext ?? null,
+    pluginOidcClients: [...pluginOidcClients].sort((left, right) =>
+      left.pluginId.localeCompare(right.pluginId) || left.clientId.localeCompare(right.clientId)
+    ),
   });
 
 const readSingleRoleAttribute = (

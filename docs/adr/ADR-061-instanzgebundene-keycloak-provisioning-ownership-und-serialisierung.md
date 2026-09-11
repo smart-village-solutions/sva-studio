@@ -44,7 +44,8 @@ Mutationen noch die Verarbeitung eines inzwischen veralteten Claims.
   Instanzzustand vollständig unter derselben Sperre. Fleet-Backfills laden den
   Datensatz nach Sperrerwerb erneut und überspringen inzwischen inaktive oder
   bereits aktualisierte Instanzen. Evidenz-Snapshots enthalten Policy-Version
-  und einen Fingerprint der relevanten Konfiguration einschließlich der Secret-Ciphertext-Versionen.
+  und einen Fingerprint der relevanten Konfiguration einschließlich der
+  Secret-Ciphertext-Versionen sowie der sortierten Plugin-OIDC-Anforderungen.
   Lesezugriffe wählen laufübergreifend den neuesten passenden finalen oder
   Worker-Snapshot; der Abschluss leitet Status, Preflight und Plan aus genau
   einem gemeinsamen Postflight-State-Read ab. Dadurch haben alle drei

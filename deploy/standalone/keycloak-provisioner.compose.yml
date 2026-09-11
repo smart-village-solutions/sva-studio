@@ -13,6 +13,8 @@ services:
       - node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
     env_file:
       - ./runtime.env
+    environment:
+      SVA_PROVISIONER_COMBINED_WORKER: 'false'
     restart: unless-stopped
     networks:
       - studio-internal

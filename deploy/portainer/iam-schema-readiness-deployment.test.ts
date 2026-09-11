@@ -63,6 +63,7 @@ describe('IAM schema readiness deployment contract', () => {
       'node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js'
     );
     expect(standaloneProvisioner).toContain('./runtime.env');
+    expect(standaloneProvisioner).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'false'");
     expect(standaloneProvisioner).toContain('name: sva-studio-ssf_internal');
     expect(standaloneProvisioner).toContain('name: ssf-backend_default');
     expect(standaloneProvisioner).not.toContain('ports:');

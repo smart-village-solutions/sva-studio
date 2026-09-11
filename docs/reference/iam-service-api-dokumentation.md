@@ -154,7 +154,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `idempotency_key_required`
 - `idempotency_key_reuse`
 - `auth_realm_conflict`
-- `auth_realm_change_blocked`
+- `instance_configuration_change_blocked`
 - `idempotency_in_progress`
 - `invalid_instance_id`
 - `keycloak_unavailable`

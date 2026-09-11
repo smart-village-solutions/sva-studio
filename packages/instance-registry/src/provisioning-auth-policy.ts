@@ -7,6 +7,11 @@ import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
 
 export const KEYCLOAK_SNAPSHOT_POLICY_VERSION = 3;
 
+export type KeycloakSnapshotSecretVersions = Readonly<{
+  authClientSecretCiphertext: string | null;
+  tenantAdminClientSecretCiphertext: string | null;
+}>;
+
 export const buildKeycloakSnapshotInputFingerprint = (instance: {
   readonly instanceId: string;
   readonly primaryHostname: string;
@@ -17,7 +22,7 @@ export const buildKeycloakSnapshotInputFingerprint = (instance: {
   readonly authClientSecretConfigured: boolean;
   readonly tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
   readonly tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
-}): string =>
+}, secrets?: Partial<KeycloakSnapshotSecretVersions>): string =>
   buildPayloadFingerprint({
     instanceId: instance.instanceId,
     primaryHostname: instance.primaryHostname,
@@ -28,6 +33,8 @@ export const buildKeycloakSnapshotInputFingerprint = (instance: {
     authClientSecretConfigured: instance.authClientSecretConfigured,
     tenantAdminClient: instance.tenantAdminClient,
     tenantAdminBootstrap: instance.tenantAdminBootstrap,
+    authClientSecretCiphertext: secrets?.authClientSecretCiphertext ?? null,
+    tenantAdminClientSecretCiphertext: secrets?.tenantAdminClientSecretCiphertext ?? null,
   });
 
 const readSingleRoleAttribute = (

@@ -145,14 +145,16 @@ export const createUpdateInstanceHandler =
     }
 
     try {
-      const updated = await deps.withRegistryService((service) =>
+      const update = (service: InstanceRegistryService) =>
         service.updateInstance(
           buildUpdateInstanceInput(instanceId, payloadResult.data, {
             actorId: deps.getActor(ctx).id,
             requestId: deps.getRequestId(),
           })
-        )
-      );
+        );
+      const updated = await (deps.withLockedRegistryService
+        ? deps.withLockedRegistryService(instanceId, update)
+        : deps.withRegistryService(update));
 
       if (!updated) {
         return deps.createApiError(

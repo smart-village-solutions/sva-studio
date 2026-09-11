@@ -137,7 +137,7 @@ describe('http mutation handlers', () => {
         constraint: 'instances_auth_realm_unique',
       })
     );
-    const runningRealmChangeResponse = mapError(new Error('auth_realm_change_blocked'));
+    const runningRealmChangeResponse = mapError(new Error('instance_configuration_change_blocked'));
 
     expect(response.status).toBe(409);
     expect(body).toMatchObject({
@@ -151,7 +151,7 @@ describe('http mutation handlers', () => {
     });
     expect(runningRealmChangeResponse.status).toBe(409);
     await expect(readBody(runningRealmChangeResponse)).resolves.toMatchObject({
-      code: 'auth_realm_change_blocked',
+      code: 'instance_configuration_change_blocked',
       requestId: 'req-test',
     });
   });

@@ -88,11 +88,19 @@ const completeActivationPolicyFollowUp = async (
   runActivationPolicyFollowUp(deps, input);
 };
 
-const beginScopedTransaction = async (
+const beginLockedTransaction = async (
   client: InstanceRegistryQueryClient,
   instanceId: string
 ): Promise<void> => {
   await client.query('BEGIN');
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', [instanceId]);
+};
+
+const beginScopedTransaction = async (
+  client: InstanceRegistryQueryClient,
+  instanceId: string
+): Promise<void> => {
+  await beginLockedTransaction(client, instanceId);
   await client.query('SET LOCAL ROLE iam_app;');
   await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
 };
@@ -138,6 +146,27 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (repository: InstanceRegistryRepository) => Promise<T>
   ): Promise<T> =>
     withScopedClient(instanceId, (client) => work(deps.createRepository(createExecutor(client))));
+  const withLockedRegistryRepository = async <T>(
+    instanceId: string,
+    work: (repository: InstanceRegistryRepository) => Promise<T>
+  ): Promise<T> => {
+    const pool = deps.resolvePool();
+    if (!pool) {
+      throw new Error('IAM database not configured');
+    }
+    const client = await pool.connect();
+    try {
+      await beginLockedTransaction(client, instanceId);
+      const result = await work(deps.createRepository(createExecutor(client)));
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
   const createService = (
     repository: InstanceRegistryRepository,
     serviceDeps: Omit<InstanceRegistryServiceDeps, 'repository'>
@@ -150,6 +179,13 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (service: InstanceRegistryService) => Promise<T>
   ): Promise<T> =>
     withRegistryRepository((repository) => work(createService(repository, deps.serviceDeps)));
+  const withLockedRegistryService = async <T>(
+    instanceId: string,
+    work: (service: InstanceRegistryService) => Promise<T>
+  ): Promise<T> =>
+    withLockedRegistryRepository(instanceId, (repository) =>
+      work(createService(repository, deps.serviceDeps))
+    );
   const withScopedRegistryService = async <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>,
@@ -189,8 +225,10 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     withRegistryRepository((repository) => work(getProvisioningWorkerServiceDeps(repository)));
   return {
     withRegistryRepository,
+    withLockedRegistryRepository,
     withScopedRegistryRepository,
     withRegistryService,
+    withLockedRegistryService,
     withScopedRegistryService,
     withRegistryProvisioningWorkerService,
     withRegistryProvisioningWorkerDeps,

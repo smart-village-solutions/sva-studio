@@ -150,7 +150,7 @@ describe('instance registry mutation SQL values', () => {
 
     expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain('UPDATE iam.instances');
-    expect(statements[0]?.text).toContain("auth_realm = $6");
+    expect(statements[0]?.text).toContain('AND NOT EXISTS');
     expect(statements[0]?.text).toContain("overall_status IN ('planned', 'running')");
     expectSqlValues(statements[0], 21, [
       'tenant-a',
@@ -308,6 +308,33 @@ describe('instance registry update secret preservation matrix', () => {
 });
 
 describe('instance registry mutation result and error contracts', () => {
+  it('updates only Keycloak secret columns during worker synchronization', async () => {
+    const { executor, statements } = createQueuedExecutor([[instanceRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.updateInstanceKeycloakSecrets({
+        instanceId: 'tenant-a',
+        authClientSecretCiphertext: 'auth-ciphertext',
+        keepExistingAuthClientSecret: false,
+        keepExistingTenantAdminClientSecret: true,
+        actorId: 'worker-1',
+      })
+    ).resolves.toMatchObject({ instanceId: 'tenant-a' });
+
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      false,
+      'auth-ciphertext',
+      true,
+      null,
+      'worker-1',
+    ]);
+    expect(statements[0]?.text).toContain('auth_client_secret_ciphertext =');
+    expect(statements[0]?.text).not.toContain('display_name =');
+    expect(statements[0]?.text).not.toContain('auth_realm =');
+  });
+
   it('does not upsert a hostname when create or update returns no row', async () => {
     const createExecution = createQueuedExecutor([[]]);
     const createRepository = createInstanceRegistryRepository(createExecution.executor);
@@ -329,12 +356,12 @@ describe('instance registry mutation result and error contracts', () => {
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.updateInstance(minimalUpdateInput)).rejects.toThrow(
-      'auth_realm_change_blocked'
+      'instance_configuration_change_blocked'
     );
 
     expect(statements[1]?.text).toContain('SELECT EXISTS');
     expect(statements[0]?.text).toContain("overall_status IN ('planned', 'running')");
-    expect(statements[0]?.text).toContain('(auth_realm = $6 AND realm_mode = $5)');
+    expect(statements[0]?.text).not.toContain('(auth_realm = $6 AND realm_mode = $5)');
   });
 
   it('preserves insert and update database error identity', async () => {

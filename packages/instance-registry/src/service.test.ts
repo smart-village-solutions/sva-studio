@@ -1191,6 +1191,7 @@ describe('instance registry service facade', () => {
         primaryHostname: 'demo.example.org',
         keepExistingAuthClientSecret: true,
         keepExistingTenantAdminClientSecret: true,
+        tenantAdminBootstrap: baseInstance.tenantAdminBootstrap,
       })
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
@@ -2475,13 +2476,15 @@ describe('instance registry service facade', () => {
     ).resolves.toBeNull();
   });
 
-  it('returns a persisted keycloak status snapshot without loading secrets', async () => {
-    const getAuthClientSecretCiphertext = vi.fn(async () => {
-      throw new Error('should_not_load_auth_secret');
-    });
-    const getTenantAdminClientSecretCiphertext = vi.fn(async () => {
-      throw new Error('should_not_load_tenant_secret');
-    });
+  it('returns a persisted keycloak status snapshot without decrypting secrets', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'auth-ciphertext');
+    const getTenantAdminClientSecretCiphertext = vi.fn(
+      async () => 'tenant-admin-ciphertext'
+    );
+    const secretVersions = {
+      authClientSecretCiphertext: 'auth-ciphertext',
+      tenantAdminClientSecretCiphertext: 'tenant-admin-ciphertext',
+    };
     const repository = createRepository({
       listKeycloakProvisioningRuns: vi.fn(async () => [
         {
@@ -2501,7 +2504,10 @@ describe('instance registry service facade', () => {
               summary: 'Snapshot vorhanden',
               details: {
                 policyVersion: 3,
-                inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance),
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(
+                  baseInstance,
+                  secretVersions
+                ),
                 status: {
                   realmExists: true,
                   clientExists: true,
@@ -2549,8 +2555,8 @@ describe('instance registry service facade', () => {
       tenantAdminClientSecretAligned: true,
       runtimeSecretSource: 'tenant',
     });
-    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
-    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
+    expect(getTenantAdminClientSecretCiphertext).toHaveBeenCalledWith('demo');
   });
 
   it('ignores status snapshots from before ownership-aware role evaluation', async () => {

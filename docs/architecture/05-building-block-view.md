@@ -928,8 +928,9 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Statusänderungen allein lassen diese Evidenz gültig; Änderungen an Ownership-,
   Bootstrap- oder Instanzregeln verwerfen ältere Snapshots.
   Während eines geplanten oder laufenden Keycloak-Provisionings verhindert die Registry
-  atomar einen Wechsel von `authRealm` oder `realmMode`; Secret- und sonstige
-  Aktualisierungen mit unverändertem Realm bleiben möglich.
+  Änderungen an den vom Worker konsumierten Instanzfeldern. Worker dürfen in diesem
+  Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.
+  Ein bereits verwalteter Tenant-Admin-Bootstrap kann nicht entfernt werden.
 
 Der genaue Payload- und Fehlervertrag ist im
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)

@@ -306,8 +306,10 @@ const registryRuntime = createInstanceRegistryRuntime({
 
 export const {
   withRegistryRepository,
+  withLockedRegistryRepository,
   withScopedRegistryRepository,
   withRegistryService,
+  withLockedRegistryService,
   withScopedRegistryService,
   withRegistryProvisioningWorkerService,
   withRegistryProvisioningWorkerDeps,

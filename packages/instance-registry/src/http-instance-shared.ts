@@ -49,6 +49,10 @@ export type InstanceRegistryHttpDeps<TContext> = {
   readonly withRegistryService: <T>(
     work: (service: InstanceRegistryService) => Promise<T>
   ) => Promise<T>;
+  readonly withLockedRegistryService?: <T>(
+    instanceId: string,
+    work: (service: InstanceRegistryService) => Promise<T>
+  ) => Promise<T>;
   readonly reservedOidcClientIds?: readonly string[] | (() => readonly string[]);
   readonly onInstanceProvisioningRequested?: (event: {
     readonly instanceId: string;

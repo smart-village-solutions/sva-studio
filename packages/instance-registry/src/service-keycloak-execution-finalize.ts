@@ -5,7 +5,7 @@ import {
 
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
+import { loadInstanceWithSecret, loadKeycloakSnapshotSecretVersions } from './service-keycloak-secrets.js';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
 import { buildProvisioningInput } from './service-keycloak-execution-payload.js';
 import {
@@ -80,7 +80,10 @@ export const completeRun = async (
     summary: 'Der Worker hat den Keycloak-Istzustand nach dem Lauf gespeichert.',
     details: {
       policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
-      inputFingerprint: buildKeycloakSnapshotInputFingerprint(snapshotInstance),
+      inputFingerprint: buildKeycloakSnapshotInputFingerprint(
+        snapshotInstance,
+        await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId)
+      ),
       status,
     },
     requestId: input.requestId,

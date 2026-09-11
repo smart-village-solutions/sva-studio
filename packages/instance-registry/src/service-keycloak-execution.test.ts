@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
     error: vi.fn(),
   },
   loadInstanceWithSecret: vi.fn(),
+  loadKeycloakSnapshotSecretVersions: vi.fn(),
   appendRunStep: vi.fn(),
   buildProvisioningInput: vi.fn(),
   completeRun: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('./service-keycloak-readers.js', () => ({
 
 vi.mock('./service-keycloak-secrets.js', () => ({
   loadInstanceWithSecret: state.loadInstanceWithSecret,
+  loadKeycloakSnapshotSecretVersions: state.loadKeycloakSnapshotSecretVersions,
 }));
 
 vi.mock('./service-keycloak-run-steps.js', () => ({
@@ -87,6 +89,7 @@ describe('service-keycloak-execution', () => {
     state.logger.info.mockReset();
     state.logger.error.mockReset();
     state.loadInstanceWithSecret.mockReset();
+    state.loadKeycloakSnapshotSecretVersions.mockReset();
     state.appendRunStep.mockReset();
     state.buildProvisioningInput.mockReset();
     state.completeRun.mockReset();
@@ -99,6 +102,10 @@ describe('service-keycloak-execution', () => {
     state.failRun.mockReset();
 
     state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.loadKeycloakSnapshotSecretVersions.mockResolvedValue({
+      authClientSecretCiphertext: null,
+      tenantAdminClientSecretCiphertext: null,
+    });
     state.appendRunStep.mockResolvedValue(undefined);
     state.completeRun.mockResolvedValue('succeeded');
     state.readQueuedTemporaryPassword.mockReturnValue(undefined);
@@ -167,6 +174,11 @@ describe('service-keycloak-execution', () => {
     ).toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
     expect(
       buildKeycloakSnapshotInputFingerprint({ ...provisioning, authRealm: 'other' })
+    ).not.toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
+    expect(
+      buildKeycloakSnapshotInputFingerprint(provisioning, {
+        authClientSecretCiphertext: 'rotated-ciphertext',
+      })
     ).not.toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
   });
 

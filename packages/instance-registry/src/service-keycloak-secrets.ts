@@ -52,6 +52,33 @@ export const loadRepositoryTenantAdminClientSecret = async (
   return decryptTenantAdminClientSecret(deps, instanceId, ciphertext);
 };
 
+export const loadKeycloakSnapshotSecretVersions = async (
+  repository: InstanceRegistryRepository,
+  instanceId: string
+) => ({
+  authClientSecretCiphertext:
+    typeof repository.getAuthClientSecretCiphertext === 'function'
+      ? await repository.getAuthClientSecretCiphertext(instanceId)
+      : null,
+  tenantAdminClientSecretCiphertext:
+    typeof repository.getTenantAdminClientSecretCiphertext === 'function'
+      ? await repository.getTenantAdminClientSecretCiphertext(instanceId)
+      : null,
+});
+
+export const loadPersistedSnapshotSecretVersions = async (
+  repository: InstanceRegistryRepository,
+  runs: readonly Awaited<ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>>[number][],
+  stepKey: string,
+  policyVersion: number,
+  instanceId: string
+) =>
+  runs.some((run) =>
+    run.steps.some((step) => step.stepKey === stepKey && step.details.policyVersion === policyVersion)
+  )
+    ? loadKeycloakSnapshotSecretVersions(repository, instanceId)
+    : undefined;
+
 export const loadInstanceWithSecret = async (deps: InstanceRegistryServiceDeps, instanceId: string) => {
   const instance = await deps.repository.getInstanceById(instanceId);
   if (!instance) {

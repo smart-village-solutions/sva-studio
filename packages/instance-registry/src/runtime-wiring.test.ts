@@ -98,14 +98,38 @@ describe('runtime wiring', () => {
 
     expect(result).toBe(repository);
     expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(client.query).toHaveBeenNthCalledWith(2, 'SET LOCAL ROLE iam_app;');
-    expect(client.query).toHaveBeenNthCalledWith(3, 'SELECT set_config($1, $2, true);', [
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));',
+      ['tenant-a']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(3, 'SET LOCAL ROLE iam_app;');
+    expect(client.query).toHaveBeenNthCalledWith(4, 'SELECT set_config($1, $2, true);', [
       'app.instance_id',
       'tenant-a',
     ]);
-    expect(client.query).toHaveBeenNthCalledWith(4, 'select 1', ['demo']);
-    expect(client.query).toHaveBeenNthCalledWith(5, 'COMMIT');
+    expect(client.query).toHaveBeenNthCalledWith(5, 'select 1', ['demo']);
+    expect(client.query).toHaveBeenNthCalledWith(6, 'COMMIT');
     expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('serializes unscoped instance work with the same advisory lock', async () => {
+    const client = createClient();
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository: () => ({}) as InstanceRegistryRepository,
+      serviceDeps: { invalidateHost: vi.fn() },
+    });
+
+    await runtime.withLockedRegistryService('tenant-a', async () => 'done');
+
+    expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));',
+      ['tenant-a']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(3, 'COMMIT');
   });
 
   it('runs activation follow-up only after the scoped transaction commits', async () => {

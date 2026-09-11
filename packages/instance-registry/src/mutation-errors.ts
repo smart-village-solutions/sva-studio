@@ -9,7 +9,7 @@ export type InstanceMutationErrorCode =
   | 'oidc_client_id_reserved'
   | 'tenant_hostname_reserved'
   | 'auth_realm_conflict'
-  | 'auth_realm_change_blocked'
+  | 'instance_configuration_change_blocked'
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
@@ -29,7 +29,7 @@ export type InstanceMutationErrorClassification = {
 const stableConflictCodes = [
   'idempotency_key_reuse',
   'auth_realm_conflict',
-  'auth_realm_change_blocked',
+  'instance_configuration_change_blocked',
 ] as const;
 
 const readMutationErrorMessage = (error: unknown): string => {

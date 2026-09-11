@@ -1,8 +1,10 @@
 import {
   areAllInstanceKeycloakRequirementsSatisfied,
   isInstanceTenantAdminRequired,
+  type InstanceRegistryRecord,
 } from '@sva/core';
 
+import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret, loadKeycloakSnapshotSecretVersions } from './service-keycloak-secrets.js';
@@ -13,16 +15,47 @@ import {
   KEYCLOAK_SNAPSHOT_POLICY_VERSION,
 } from './provisioning-auth-policy.js';
 
+type CompleteRunInput = {
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
+  runId: string;
+  requestId?: string;
+  actorId?: string;
+  intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
+  tenantAdminTemporaryPassword?: string;
+};
+
+const appendFinalStatusSnapshot = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CompleteRunInput,
+  snapshotInstance: InstanceRegistryRecord,
+  status: KeycloakTenantStatus
+) => {
+  const finalProvisioningInput = buildProvisioningInput({ ...input.loaded, instance: snapshotInstance });
+  const finalPreflight = await deps.getKeycloakPreflight?.(finalProvisioningInput);
+  const finalPlan = await deps.planKeycloakProvisioning?.(finalProvisioningInput);
+  await appendRunStep(deps, {
+    runId: input.runId,
+    stepKey: 'status_snapshot',
+    title: 'Keycloak-Status aufnehmen',
+    status: 'done',
+    summary: 'Der Worker hat den Keycloak-Istzustand nach dem Lauf gespeichert.',
+    details: {
+      policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+      inputFingerprint: buildKeycloakSnapshotInputFingerprint(
+        snapshotInstance,
+        await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId)
+      ),
+      status,
+      ...(finalPreflight ? { preflight: finalPreflight } : {}),
+      ...(finalPlan ? { plan: finalPlan } : {}),
+    },
+    requestId: input.requestId,
+  });
+};
+
 export const completeRun = async (
   deps: InstanceRegistryServiceDeps,
-  input: {
-    loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
-    runId: string;
-    requestId?: string;
-    actorId?: string;
-    intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
-    tenantAdminTemporaryPassword?: string;
-  }
+  input: CompleteRunInput
 ) => {
   const getKeycloakStatus = deps.getKeycloakStatus;
   if (!getKeycloakStatus) {
@@ -72,22 +105,7 @@ export const completeRun = async (
       })) ?? snapshotInstance;
   }
 
-  await appendRunStep(deps, {
-    runId: input.runId,
-    stepKey: 'status_snapshot',
-    title: 'Keycloak-Status aufnehmen',
-    status: 'done',
-    summary: 'Der Worker hat den Keycloak-Istzustand nach dem Lauf gespeichert.',
-    details: {
-      policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
-      inputFingerprint: buildKeycloakSnapshotInputFingerprint(
-        snapshotInstance,
-        await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId)
-      ),
-      status,
-    },
-    requestId: input.requestId,
-  });
+  await appendFinalStatusSnapshot(deps, input, snapshotInstance, status);
 
   for (const step of completionSteps) {
     await appendRunStep(deps, {

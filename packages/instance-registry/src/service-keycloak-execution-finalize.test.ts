@@ -88,11 +88,15 @@ describe('service-keycloak-execution-finalize', () => {
     ]);
     state.areAllRequirementsSatisfied.mockReturnValue(true);
     state.appendRunStep.mockResolvedValue(undefined);
+    const finalPreflight = { overallStatus: 'ready' };
+    const finalPlan = { overallStatus: 'ready' };
 
     const result = await completeRun(
       {
         repository: repository as never,
         getKeycloakStatus: vi.fn().mockResolvedValue(status),
+        getKeycloakPreflight: vi.fn().mockResolvedValue(finalPreflight),
+        planKeycloakProvisioning: vi.fn().mockResolvedValue(finalPlan),
       } as never,
       {
         loaded: {
@@ -123,6 +127,8 @@ describe('service-keycloak-execution-finalize', () => {
           policyVersion: 3,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(statusUpdated as never),
           status,
+          preflight: finalPreflight,
+          plan: finalPlan,
         },
       })
     );

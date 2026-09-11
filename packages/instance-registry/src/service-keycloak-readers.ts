@@ -20,6 +20,7 @@ import {
   loadPersistedSnapshotSecretVersions,
   loadRepositoryAuthClientSecret,
   loadRepositoryTenantAdminClientSecret,
+  resolvePersistedSnapshotStepKey,
 } from './service-keycloak-secrets.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
@@ -213,16 +214,17 @@ export const createGetKeycloakPreflightHandler =
     }
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
+    const snapshotStepKey = resolvePersistedSnapshotStepKey(runs, 'worker_preflight_snapshot', KEYCLOAK_SNAPSHOT_POLICY_VERSION);
     const secretVersions = await loadPersistedSnapshotSecretVersions(
       deps.repository,
       runs,
-      'worker_preflight_snapshot',
+      snapshotStepKey,
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
     const snapshot = readSnapshotFromRun<KeycloakTenantPreflight>(
       runs,
-      'worker_preflight_snapshot',
+      snapshotStepKey,
       'preflight',
       buildKeycloakSnapshotInputFingerprint(loaded.instance, secretVersions)
     );
@@ -250,18 +252,18 @@ export const createPlanKeycloakProvisioningHandler =
     if (!loaded) {
       return null;
     }
-
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
+    const snapshotStepKey = resolvePersistedSnapshotStepKey(runs, 'worker_plan_snapshot', KEYCLOAK_SNAPSHOT_POLICY_VERSION);
     const secretVersions = await loadPersistedSnapshotSecretVersions(
       deps.repository,
       runs,
-      'worker_plan_snapshot',
+      snapshotStepKey,
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
     const snapshot = readSnapshotFromRun<KeycloakTenantPlan>(
       runs,
-      'worker_plan_snapshot',
+      snapshotStepKey,
       'plan',
       buildKeycloakSnapshotInputFingerprint(loaded.instance, secretVersions)
     );
@@ -269,7 +271,6 @@ export const createPlanKeycloakProvisioningHandler =
       logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });
       return snapshot;
     }
-
     const preflight = buildLocalPreflight({
       realmMode: loaded.instance.realmMode,
       authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
@@ -287,7 +288,6 @@ export const createPlanKeycloakProvisioningHandler =
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
       preflight,
     });
-
     logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });
     return plan;
   };

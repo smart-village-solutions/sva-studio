@@ -2330,6 +2330,48 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('reuses finalized preflight and plan snapshots after provisioning changes registry inputs', async () => {
+    const preflight = {
+      overallStatus: 'ready' as const,
+      checkedAt: '2026-09-11T12:00:00.000Z',
+      checks: [],
+    };
+    const plan = {
+      mode: 'existing' as const,
+      overallStatus: 'ready' as const,
+      generatedAt: '2026-09-11T12:00:00.000Z',
+      driftSummary: 'Kein Drift.',
+      steps: [],
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      getAuthClientSecretCiphertext: vi.fn(async () => 'cipher-auth-v2'),
+      getTenantAdminClientSecretCiphertext: vi.fn(async () => 'cipher-admin-v2'),
+      listKeycloakProvisioningRuns: vi.fn(async () => [{
+        ...latestRun,
+        steps: [{
+          stepKey: 'status_snapshot',
+          title: 'Status',
+          status: 'done',
+          summary: 'Final',
+          details: {
+            policyVersion: 3,
+            inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance, {
+              authClientSecretCiphertext: 'cipher-auth-v2',
+              tenantAdminClientSecretCiphertext: 'cipher-admin-v2',
+            }),
+            preflight,
+            plan,
+          },
+        }],
+      }]),
+    });
+    const deps = createDeps(repository);
+
+    await expect(createGetKeycloakPreflightHandler(deps)('demo')).resolves.toEqual(preflight);
+    await expect(createPlanKeycloakProvisioningHandler(deps)('demo')).resolves.toEqual(plan);
+  });
+
   it('invalidates an outdated imported-realm plan that would create a tenant admin', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({

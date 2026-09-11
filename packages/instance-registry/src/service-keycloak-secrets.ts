@@ -66,16 +66,29 @@ export const loadKeycloakSnapshotSecretVersions = async (
       : null,
 });
 
+type ProvisioningRuns = readonly Awaited<
+  ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>
+>[number][];
+
+const hasPolicySnapshot = (runs: ProvisioningRuns, stepKey: string, policyVersion: number) =>
+  runs.some((run) =>
+    run.steps.some((step) => step.stepKey === stepKey && step.details.policyVersion === policyVersion)
+  );
+
+export const resolvePersistedSnapshotStepKey = (
+  runs: ProvisioningRuns,
+  fallbackStepKey: string,
+  policyVersion: number
+): string => hasPolicySnapshot(runs, 'status_snapshot', policyVersion) ? 'status_snapshot' : fallbackStepKey;
+
 export const loadPersistedSnapshotSecretVersions = async (
   repository: InstanceRegistryRepository,
-  runs: readonly Awaited<ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>>[number][],
+  runs: ProvisioningRuns,
   stepKey: string,
   policyVersion: number,
   instanceId: string
 ) =>
-  runs.some((run) =>
-    run.steps.some((step) => step.stepKey === stepKey && step.details.policyVersion === policyVersion)
-  )
+  hasPolicySnapshot(runs, stepKey, policyVersion)
     ? loadKeycloakSnapshotSecretVersions(repository, instanceId)
     : undefined;
 

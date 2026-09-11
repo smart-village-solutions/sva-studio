@@ -433,7 +433,8 @@ Fehlerpfad:
 5. `Provisioning ausfuehren` oder `Reconcile` startet einen expliziten Run mit Realm-Modus `new` oder `existing`; der validierte `Idempotency-Key` wird zusammen mit Mutation und stabilem Payload-Fingerprint persistent dedupliziert.
 6. `packages/auth-runtime` delegiert an die gemeinsame Provisioning-Fassade in `packages/instance-registry`.
 7. Die Fassade provisioniert getrennt Login-Client (`authClientId`) und Tenant-Admin-Client (`tenantAdminClient.clientId`) inklusive separater Secret-Aufloesung.
-8. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
+8. Unabhängig von einem optionalen Tenant-Admin-Bootstrap stellt sie die geschützte Rolle `system_admin` mit der kanonischen Studio-`instanceId` sicher. Nur eine eindeutig Studio-verwaltete Legacy-Bindung an den Realm-Namen wird migriert; fremde, unvollständige oder konkurrierend angelegte Rollen beenden den Lauf mit einem Konflikt.
+9. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
 
 Fehlerpfad:
 

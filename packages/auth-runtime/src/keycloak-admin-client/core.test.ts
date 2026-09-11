@@ -1512,6 +1512,27 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('rejects an unmanaged realm role created concurrently', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }))
+      .mockResolvedValueOnce(createJsonResponse(409, { error: 'exists' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {},
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+  });
+
   it('rejects an existing realm role owned by another Studio instance', async () => {
     const fetchImpl = vi
       .fn()

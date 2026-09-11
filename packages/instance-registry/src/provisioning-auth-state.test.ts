@@ -226,6 +226,22 @@ describe('provisioning-auth-state', () => {
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
   });
 
+  it('ensures the protected tenant role without a tenant admin bootstrap', async () => {
+    const client = createClient();
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await provision({
+      instanceId: 'tenant-havelland',
+      primaryHostname: 'havelland.example.org',
+      realmMode: 'existing',
+      authRealm: 'havelland',
+      authClientId: 'sva-studio',
+    });
+
+    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'tenant-havelland');
+    expect(client.findUserByUsername).not.toHaveBeenCalled();
+  });
+
   it('provisions the disabled SSF client independently for two tenant realms', async () => {
     const clients = new Map([
       ['tenant-a', createClientWithAlignedSsf()],

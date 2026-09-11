@@ -121,7 +121,6 @@ export const createKeycloakProvisioningAdapters = (
 });
 
 type TenantAdminInput = {
-  instanceId: string;
   username: string;
   email?: string;
   firstName?: string;
@@ -181,8 +180,6 @@ const ensureTenantAdmin = async (
 
   const fallbackEmail = `${input.username}@tenant.invalid`;
   const resolvedEmail = input.email ?? fallbackEmail;
-
-  await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId);
 
   const existing = await client.findUserByUsername(input.username);
   if (!existing) {
@@ -443,9 +440,9 @@ export const createProvisionInstanceAuthArtifacts =
       });
       await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
     }
+    await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId);
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {
-        instanceId: input.instanceId,
         ...input.tenantAdminBootstrap,
         temporaryPassword: input.tenantAdminTemporaryPassword,
       });

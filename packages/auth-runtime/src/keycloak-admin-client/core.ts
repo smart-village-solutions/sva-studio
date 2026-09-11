@@ -314,10 +314,20 @@ const readAttribute = (
   return Array.isArray(values) ? values[0] : undefined;
 };
 
-const isStudioManagedRoleConflict = (role: IdentityRole, input: CreateIdentityRoleInput): boolean =>
-  readAttribute(role.attributes, 'managed_by') === 'studio' &&
-  readAttribute(role.attributes, 'instance_id') !== undefined &&
-  readAttribute(role.attributes, 'instance_id') !== input.attributes.instanceId;
+const canReconcileStudioManagedRole = (
+  role: IdentityRole,
+  input: CreateIdentityRoleInput,
+  realm: string
+): boolean => {
+  const managedBy = readAttribute(role.attributes, 'managed_by');
+  const instanceId = readAttribute(role.attributes, 'instance_id');
+  const roleKey = readAttribute(role.attributes, 'role_key');
+  return (
+    managedBy === 'studio' &&
+    roleKey === input.attributes.roleKey &&
+    (instanceId === input.attributes.instanceId || instanceId === realm)
+  );
+};
 
 const isRetryableStatus = (statusCode: number): boolean => statusCode === 429 || statusCode >= 500;
 
@@ -1008,7 +1018,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         throw error;
       }
 
-      if (isStudioManagedRoleConflict(existing, input)) {
+      if (!canReconcileStudioManagedRole(existing, input, this.realm)) {
         throw error;
       }
 

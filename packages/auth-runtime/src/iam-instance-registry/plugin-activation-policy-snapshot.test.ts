@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   configureInstanceRegistryPluginActivationPolicies,
-  configureInstanceRegistryPluginOidcClientRequirements,
   configureInstanceRegistryPluginRuntimeSnapshot,
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
@@ -233,24 +232,5 @@ describe('instance registry plugin activation policy snapshot', () => {
     ).toThrow('plugin_oidc_client_duplicate_client_id');
 
     expect(readInstanceRegistryPluginOidcClientRequirements()).toEqual([]);
-  });
-
-  it('lets the dedicated provisioner install an immutable OIDC requirement snapshot', () => {
-    const requirement = {
-      contractVersion: '1.0' as const,
-      pluginId: 'ssf',
-      clientId: 'ssf',
-      audience: 'ssf',
-      enabled: false as const,
-    };
-
-    configureInstanceRegistryPluginOidcClientRequirements([requirement]);
-    requirement.clientId = 'changed';
-
-    expect(readInstanceRegistryPluginOidcClientRequirements()).toEqual([
-      expect.objectContaining({ pluginId: 'ssf', clientId: 'ssf' }),
-    ]);
-    expect(Object.isFrozen(readInstanceRegistryPluginOidcClientRequirements())).toBe(true);
-    expect(Object.isFrozen(readInstanceRegistryPluginOidcClientRequirements()[0])).toBe(true);
   });
 });

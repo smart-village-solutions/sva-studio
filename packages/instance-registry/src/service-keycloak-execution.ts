@@ -1,11 +1,12 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceKeycloakProvisioningRun } from '@sva/core';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
+import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak-readers.js';
 import { loadInstanceWithSecret, loadKeycloakSnapshotSecretVersions } from './service-keycloak-secrets.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
-import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTemporaryPassword, syncProvisionedClientSecretToRegistry, syncRotatedClientSecretToRegistry } from './service-keycloak-execution-shared.js';
+import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedPluginOidcClientRequirements, readQueuedTemporaryPassword, syncProvisionedClientSecretToRegistry, syncRotatedClientSecretToRegistry } from './service-keycloak-execution-shared.js';
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
@@ -13,6 +14,9 @@ import { buildKeycloakSnapshotInputFingerprint, KEYCLOAK_SNAPSHOT_POLICY_VERSION
 import { hasProvisioningWorkerDependencies, processNextProvisioningClaim } from './service-keycloak-worker-claim.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
+type QueuedProvisioningInput = ReturnType<typeof buildProvisioningInput> & {
+  pluginOidcClients: NonNullable<KeycloakProvisioningInput['pluginOidcClients']>;
+};
 
 const loadClaimedRunInstance = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun): Promise<NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>> | null> => {
   const loaded = await loadInstanceWithSecret(deps, run.instanceId);
@@ -118,12 +122,12 @@ const syncTenantAdminBootstrapAccountAfterProvisioning = async (
   });
 };
 
-const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
+const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: QueuedProvisioningInput) => {
   const secretVersions = await loadKeycloakSnapshotSecretVersions(deps.repository, loaded.instance.instanceId);
   const inputFingerprint = buildKeycloakSnapshotInputFingerprint(
     loaded.instance,
     secretVersions,
-    deps.readPluginOidcClientRequirements?.()
+    provisioningInput.pluginOidcClients
   );
   const preflight = await runInstanceRegistryStep('worker_preflight', () =>
     appendPreflightSnapshot(deps, run, provisioningInput, inputFingerprint)
@@ -171,6 +175,7 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
     actorId: run.actorId,
     intent: run.intent,
     tenantAdminTemporaryPassword,
+    pluginOidcClients: provisioningInput.pluginOidcClients,
   }));
 
   logger.info('keycloak_provisioning_completed', {
@@ -225,13 +230,16 @@ export const processClaimedKeycloakProvisioningRun = async (
   try {
     const queueStep = run.steps.find((step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued');
     const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(deps, run.id, queueStep?.details);
+    const baseProvisioningInput = buildProvisioningInput(loaded);
+    const pluginOidcClients = readQueuedPluginOidcClientRequirements(queueStep?.details, baseProvisioningInput);
     const allowLegacyRealmRoleMigration = await resolveLegacyRealmRoleMigrationAllowed(
       { listInstances: deps.listProvisioningRealmAssignments },
       loaded.instance
     );
     const provisioningInput = {
-      ...buildProvisioningInput(loaded),
+      ...baseProvisioningInput,
       allowLegacyRealmRoleMigration,
+      pluginOidcClients,
     };
     return await executeClaimedRun(deps, run, loaded, tenantAdminTemporaryPassword, provisioningInput);
   } catch (error) {

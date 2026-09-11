@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   buildProvisioningInput: vi.fn(),
   completeRun: vi.fn(),
   createQueuedRun: vi.fn(),
+  readQueuedPluginOidcClientRequirements: vi.fn(),
   readQueuedTemporaryPassword: vi.fn(),
   syncProvisionedClientSecretToRegistry: vi.fn(),
   syncRotatedClientSecretToRegistry: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('./service-keycloak-execution-shared.js', () => ({
   buildProvisioningInput: state.buildProvisioningInput,
   completeRun: state.completeRun,
   createQueuedRun: state.createQueuedRun,
+  readQueuedPluginOidcClientRequirements: state.readQueuedPluginOidcClientRequirements,
   readQueuedTemporaryPassword: state.readQueuedTemporaryPassword,
   syncProvisionedClientSecretToRegistry: state.syncProvisionedClientSecretToRegistry,
   syncRotatedClientSecretToRegistry: state.syncRotatedClientSecretToRegistry,
@@ -95,6 +97,7 @@ describe('service-keycloak-execution', () => {
     state.buildProvisioningInput.mockReset();
     state.completeRun.mockReset();
     state.createQueuedRun.mockReset();
+    state.readQueuedPluginOidcClientRequirements.mockReset();
     state.readQueuedTemporaryPassword.mockReset();
     state.syncProvisionedClientSecretToRegistry.mockReset();
     state.syncRotatedClientSecretToRegistry.mockReset();
@@ -110,6 +113,7 @@ describe('service-keycloak-execution', () => {
     state.appendRunStep.mockResolvedValue(undefined);
     state.completeRun.mockResolvedValue('succeeded');
     state.readQueuedTemporaryPassword.mockReturnValue(undefined);
+    state.readQueuedPluginOidcClientRequirements.mockReturnValue([]);
     state.syncProvisionedClientSecretToRegistry.mockResolvedValue(undefined);
     state.syncRotatedClientSecretToRegistry.mockResolvedValue(undefined);
     state.syncTenantAdminBootstrapAccount.mockResolvedValue(undefined);

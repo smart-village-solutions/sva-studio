@@ -85,9 +85,9 @@ und Worker an exakt denselben Digest.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
 
-Der Provisioner lädt vor dem Worker-Start denselben Plugin-OIDC-Vertrag wie die Studio-App.
-Dadurch bleiben die Fingerprints der gespeicherten Keycloak-Nachweise zwischen beiden Prozessen
-identisch und ein erfolgreicher Worker-Lauf ist unmittelbar für die Readiness-Auswertung gültig.
+Studio speichert den validierten Plugin-OIDC-Vertrag im Provisioning-Auftrag. Der Worker verwendet
+genau diesen Snapshot für Keycloak-Abgleich und Status-Fingerprint. Aufträge ohne Snapshot werden
+abgewiesen. So bleibt ein Worker-Lauf auch bei getrennten App- und Worker-Prozessen auswertbar.
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich
 der Realm-, Client- und Tenant-Admin-Struktur. Der Worker veröffentlicht keine Ports und erhält
 keine Traefik-Router.

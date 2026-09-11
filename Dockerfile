@@ -128,7 +128,6 @@ COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-te
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-ssf-plugin.mjs ./migrate-ssf-plugin.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/waste-tenant-migration-catalog.mjs ./waste-tenant-migration-catalog.mjs
 COPY --from=build --chown=node:node /workspace/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
-COPY --from=build --chown=node:node /workspace/deploy/portainer/provisioner-runtime-bootstrap.mjs ./provisioner-runtime-bootstrap.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs
 COPY --from=build --chown=node:node /workspace/otel-bootstrap.mjs ./otel-bootstrap.mjs
 COPY --from=build --chown=node:node /workspace/packages/data/goose.config.json ./packages/data/goose.config.json

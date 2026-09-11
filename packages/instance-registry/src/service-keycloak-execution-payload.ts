@@ -1,4 +1,6 @@
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
+import { readPluginOidcClientRequirements } from './provisioning-auth-plugin-clients.js';
+import type { PluginOidcClientRequirement } from './provisioning-auth-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
@@ -53,6 +55,22 @@ export const readQueuedTemporaryPassword = (
   return deps.revealSecret?.(ciphertext, buildTempPasswordAad(runId));
 };
 
+export const readQueuedPluginOidcClientRequirements = (
+  details: Readonly<Record<string, unknown>> | undefined,
+  provisioningInput: ReturnType<typeof buildProvisioningInput>
+): readonly PluginOidcClientRequirement[] => {
+  const requirements = details?.pluginOidcClients;
+  if (!Array.isArray(requirements) || requirements.some(
+    (requirement) => requirement === null || typeof requirement !== 'object' || Array.isArray(requirement)
+  )) {
+    throw new Error('queued_plugin_oidc_client_requirements_missing_or_invalid');
+  }
+  return readPluginOidcClientRequirements({
+    ...provisioningInput,
+    pluginOidcClients: requirements as unknown as readonly PluginOidcClientRequirement[],
+  });
+};
+
 export const createQueuedRun = async (
   deps: InstanceRegistryServiceDeps,
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
@@ -88,6 +106,7 @@ export const createQueuedRun = async (
         authRealm: loaded.instance.authRealm,
         authClientId: loaded.instance.authClientId,
         primaryHostname: loaded.instance.primaryHostname,
+        pluginOidcClients: deps.readPluginOidcClientRequirements?.() ?? [],
         tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword
           ? deps.protectSecret?.(input.tenantAdminTemporaryPassword, buildTempPasswordAad(run.id))
           : undefined,

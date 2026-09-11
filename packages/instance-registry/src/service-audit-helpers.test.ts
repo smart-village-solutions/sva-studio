@@ -7,7 +7,9 @@ import { createRunInstanceAuditHandler } from './service-audit.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
-const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): InstanceRegistryRepository =>
+const createRepository = (
+  overrides: Partial<InstanceRegistryRepository> = {}
+): InstanceRegistryRepository =>
   ({
     getInstanceById: vi.fn(async () => null),
     listInstances: vi.fn(async () => []),
@@ -19,7 +21,10 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     ...overrides,
   }) as InstanceRegistryRepository;
 
-const createDeps = (repository: InstanceRegistryRepository, overrides: Partial<InstanceRegistryServiceDeps> = {}) =>
+const createDeps = (
+  repository: InstanceRegistryRepository,
+  overrides: Partial<InstanceRegistryServiceDeps> = {}
+) =>
   ({
     repository,
     revealSecret: vi.fn(async (value: string | null) => value ?? undefined),
@@ -61,9 +66,12 @@ describe('service-audit helpers', () => {
   });
 
   it('reports fetch transport failures for instance url probes', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      throw new TypeError('network');
-    }) as typeof fetch);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('network');
+      }) as typeof fetch
+    );
 
     const result = await probeInstanceUrlReachability('demo.example.org');
 
@@ -127,7 +135,7 @@ describe('service-audit helpers', () => {
           throw new Error('HTTP 403 Forbidden');
         }),
       }),
-      'demo',
+      'demo'
     );
 
     expect(result).toMatchObject({
@@ -163,7 +171,7 @@ describe('service-audit helpers', () => {
           throw new Error('HTTP 403 Forbidden');
         }),
       }),
-      'demo',
+      'demo'
     );
 
     expect(result).toMatchObject({
@@ -213,7 +221,7 @@ describe('service-audit helpers', () => {
       createDeps(repository, {
         getKeycloakStatus: vi.fn(async () => liveStatus),
       }),
-      'demo',
+      'demo'
     );
 
     expect(result).toEqual({
@@ -333,14 +341,18 @@ describe('service-audit helpers', () => {
 
     expect(checks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ checkId: 'keycloak.client.login.exists', status: 'fail', actual: 'fehlt' }),
+        expect.objectContaining({
+          checkId: 'keycloak.client.login.exists',
+          status: 'fail',
+          actual: 'fehlt',
+        }),
         expect.objectContaining({ checkId: 'keycloak.client.login.secretAligned', status: 'skip' }),
         expect.objectContaining({
           checkId: 'keycloak.client.tenantAdmin.secretAligned',
           status: 'fail',
           actual: 'abweichend',
         }),
-      ]),
+      ])
     );
   });
 
@@ -350,13 +362,15 @@ describe('service-audit helpers', () => {
       keycloakStatus: { ...baseKeycloakStatus, pluginOidcClientsAligned: false },
     });
 
-    expect(checks).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        checkId: 'keycloak.client.pluginOidc.aligned',
-        status: 'fail',
-        actual: 'abweichend',
-      }),
-    ]));
+    expect(checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'keycloak.client.pluginOidc.aligned',
+          status: 'fail',
+          actual: 'abweichend',
+        }),
+      ])
+    );
   });
 
   it('distinguishes between missing system-admin role, missing tenant admin user, and missing role assignment', () => {
@@ -371,7 +385,7 @@ describe('service-audit helpers', () => {
       expect.arrayContaining([
         expect.objectContaining({ checkId: 'keycloak.role.systemAdmin.exists', status: 'fail' }),
         expect.objectContaining({ checkId: 'keycloak.user.systemAdmin.exists', status: 'skip' }),
-      ]),
+      ])
     );
 
     const missingUserChecks = buildKeycloakChecks({
@@ -388,7 +402,7 @@ describe('service-audit helpers', () => {
           status: 'fail',
           actual: 'kein_benutzer_nachweis',
         }),
-      ]),
+      ])
     );
 
     const missingAssignmentChecks = buildKeycloakChecks({
@@ -405,8 +419,54 @@ describe('service-audit helpers', () => {
           status: 'fail',
           actual: 'benutzer_ohne_system_admin',
         }),
-      ]),
+      ])
     );
+  });
+
+  it('skips bootstrap-admin audit checks for an imported realm without a profile', async () => {
+    const instance = {
+      instanceId: 'imported',
+      displayName: 'Imported',
+      status: 'active',
+      primaryHostname: 'imported.example.org',
+      realmMode: 'existing' as const,
+      authRealm: 'imported',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: true },
+    };
+    const countAssignments = vi.fn(async () => 0);
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => instance),
+      countLocalSystemAdminAssignments: countAssignments,
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch);
+
+    const result = await createRunInstanceAuditHandler(
+      createDeps(repository, {
+        getKeycloakStatus: vi.fn(async () => ({
+          ...baseKeycloakStatus,
+          tenantAdminExists: false,
+          tenantAdminHasSystemAdmin: false,
+        })),
+      })
+    )({ instanceIds: ['imported'] });
+
+    expect(result.instances[0]?.overallStatus).toBe('pass');
+    expect(result.instances[0]?.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'keycloak.user.systemAdmin.exists',
+          status: 'skip',
+        }),
+        expect.objectContaining({
+          checkId: 'localIam.systemAdminAssignment.exists',
+          status: 'skip',
+        }),
+      ])
+    );
+    expect(countAssignments).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it('returns a failing run when requested instances resolve to none', async () => {
@@ -504,9 +564,7 @@ describe('service-audit helpers', () => {
     const repository = createRepository({
       listInstances: vi.fn(async () => [listedInstance]),
     });
-    const getInstanceById = vi
-      .fn()
-      .mockResolvedValueOnce(null);
+    const getInstanceById = vi.fn().mockResolvedValueOnce(null);
     repository.getInstanceById = getInstanceById as typeof repository.getInstanceById;
 
     const handler = createRunInstanceAuditHandler(createDeps(repository));

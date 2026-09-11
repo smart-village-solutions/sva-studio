@@ -1,6 +1,7 @@
-import type {
-  InstanceAuditInstanceResult,
-  InstanceAuditRun,
+import {
+  isInstanceTenantAdminRequired,
+  type InstanceAuditInstanceResult,
+  type InstanceAuditRun,
 } from '@sva/core';
 
 import { buildKeycloakChecks, resolveKeycloakStatus } from './service-audit-keycloak.js';
@@ -28,11 +29,14 @@ const buildInstanceAuditResult = async (
   if (!instance) {
     return null;
   }
+  const requireTenantAdmin = isInstanceTenantAdminRequired(instance);
 
   const [urlCheck, keycloak, localSystemAdminCount] = await Promise.all([
     probeInstanceUrlReachability(instance.primaryHostname),
     resolveKeycloakStatus(deps, instance.instanceId),
-    deps.repository.countLocalSystemAdminAssignments(instance.instanceId),
+    requireTenantAdmin
+      ? deps.repository.countLocalSystemAdminAssignments(instance.instanceId)
+      : Promise.resolve(0),
   ]);
 
   const checks = [
@@ -52,8 +56,9 @@ const buildInstanceAuditResult = async (
       fallbackStatus: keycloak.fallbackStatus,
       fallbackEvidenceSource: keycloak.fallbackEvidenceSource,
       fallbackError: keycloak.fallbackError,
+      requireTenantAdmin,
     }),
-    createLocalIamCheck(localSystemAdminCount),
+    createLocalIamCheck(localSystemAdminCount, requireTenantAdmin),
   ];
 
   return {
@@ -68,19 +73,26 @@ const buildInstanceAuditResult = async (
 
 export const createRunInstanceAuditHandler =
   (deps: InstanceRegistryServiceDeps) =>
-  async (input: {
-    instanceIds?: readonly string[];
-    includeOnlyActive?: boolean;
-    actorId?: string;
-    requestId?: string;
-  } = {}): Promise<InstanceAuditRun> => {
+  async (
+    input: {
+      instanceIds?: readonly string[];
+      includeOnlyActive?: boolean;
+      actorId?: string;
+      requestId?: string;
+    } = {}
+  ): Promise<InstanceAuditRun> => {
     const includeOnlyActive = input.includeOnlyActive ?? true;
-    const requestedInstanceIds = [...new Set((input.instanceIds ?? []).map((instanceId) => instanceId.trim()).filter(Boolean))];
+    const requestedInstanceIds = [
+      ...new Set((input.instanceIds ?? []).map((instanceId) => instanceId.trim()).filter(Boolean)),
+    ];
 
     const instances =
       requestedInstanceIds.length > 0
         ? (
-            await mapWithConcurrencyLimit(requestedInstanceIds, INSTANCE_AUDIT_CONCURRENCY, async (instanceId) => {
+            await mapWithConcurrencyLimit(
+              requestedInstanceIds,
+              INSTANCE_AUDIT_CONCURRENCY,
+              async (instanceId) => {
                 const instance = await deps.repository.getInstanceById(instanceId);
                 if (!instance) {
                   return null;
@@ -89,7 +101,8 @@ export const createRunInstanceAuditHandler =
                   return null;
                 }
                 return instance;
-              })
+              }
+            )
           ).filter((instance): instance is NonNullable<typeof instance> => Boolean(instance))
         : await deps.repository.listInstances(includeOnlyActive ? { status: 'active' } : undefined);
 
@@ -117,15 +130,14 @@ export const createRunInstanceAuditHandler =
               actual: '0 Instanzen',
               evidenceSource: 'instance_registry',
               message: 'Der Audit-Lauf hat keine Zielinstanzen geladen.',
-              remediationHint: 'Filter, Registry-Daten und den aktiven Status der Zielinstanzen prüfen.',
+              remediationHint:
+                'Filter, Registry-Daten und den aktiven Status der Zielinstanzen prüfen.',
             }),
           ];
 
     const results = (
-      await mapWithConcurrencyLimit(
-        instances,
-        INSTANCE_AUDIT_CONCURRENCY,
-        async (instance) => buildInstanceAuditResult(deps, instance.instanceId)
+      await mapWithConcurrencyLimit(instances, INSTANCE_AUDIT_CONCURRENCY, async (instance) =>
+        buildInstanceAuditResult(deps, instance.instanceId)
       )
     ).filter((instance): instance is InstanceAuditInstanceResult => Boolean(instance));
 
@@ -139,7 +151,10 @@ export const createRunInstanceAuditHandler =
       requestId: input.requestId,
       actorId: input.actorId,
       includeOnlyActive,
-      targetInstanceIds: requestedInstanceIds.length > 0 ? requestedInstanceIds : instances.map((instance) => instance.instanceId),
+      targetInstanceIds:
+        requestedInstanceIds.length > 0
+          ? requestedInstanceIds
+          : instances.map((instance) => instance.instanceId),
       overallStatus,
       summary: toSummary(results, runChecks),
       checks: runChecks,

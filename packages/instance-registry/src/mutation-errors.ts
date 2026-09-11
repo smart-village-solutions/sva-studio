@@ -8,6 +8,7 @@ export type InstanceMutationErrorCode =
   | 'idempotency_key_reuse'
   | 'oidc_client_id_reserved'
   | 'tenant_hostname_reserved'
+  | 'auth_realm_conflict'
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
@@ -45,6 +46,16 @@ export const classifyInstanceMutationError = (
   error: unknown
 ): InstanceMutationErrorClassification => {
   const message = error instanceof Error ? error.message : String(error);
+  const databaseError =
+    typeof error === 'object' && error !== null
+      ? (error as { readonly code?: unknown; readonly constraint?: unknown })
+      : undefined;
+  if (
+    databaseError?.code === '23505' &&
+    databaseError.constraint === 'instances_auth_realm_unique'
+  ) {
+    return { status: 409, code: 'auth_realm_conflict' };
+  }
   if (message.startsWith('registry_or_provisioning_drift_blocked:')) {
     const driftSummary = message.slice('registry_or_provisioning_drift_blocked:'.length).trim();
     return {

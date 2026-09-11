@@ -221,6 +221,7 @@ Das Provisioning stellt mindestens folgenden Zustand sicher:
 - Realm-Rolle `instance_registry_admin` existiert nur für Plattformpfade, nicht als Default-Rolle des Tenant-Admins
 - Tenant-Admin existiert, trägt `system_admin` und hat nicht `instance_registry_admin`
 - der konfigurierte Tenant-Admin ist nach einem Root-Host-Provisioning-Lauf auch lokal in Studio an die direkte Rolle `system_admin` gebunden, damit Permission-Projektionen nicht nur auf Keycloak-Rollen beruhen
+- die Realm-Rolle `system_admin` trägt als `instance_id` die Studio-Instanz-ID; ein erneuter Provisioning-Lauf korrigiert ältere Realm-basierte Metadaten idempotent
 - Root-Follow-up-Aktionen aus `/admin/instances` synchronisieren keine Gruppen wie `admins`, keine Rollen wie `core_admin` und keine modulbezogenen `*_admin`-Standardrollen mehr
 
 Optional und weiter diagnostizierbar:

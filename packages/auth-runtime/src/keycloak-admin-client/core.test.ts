@@ -1417,6 +1417,59 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it('repairs provisioning metadata on an existing realm role for the Studio instance', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['system_admin'],
+            display_name: ['system_admin'],
+          },
+        })
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['system_admin'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureRealmRole('system_admin', 'tenant-havelland')
+    ).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      'https://keycloak.example/admin/realms/demo/roles/system_admin',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['system_admin'],
+          },
+        }),
+      })
+    );
+  });
+
   it('sets required actions and logs password reset failures with write protection', async () => {
     const { KeycloakAdminRequestError, KeycloakAdminUnavailableError } = await import('./core.js');
     let now = 0;

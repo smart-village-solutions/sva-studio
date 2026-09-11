@@ -72,7 +72,7 @@ export type KeycloakProvisioningClient = {
     name: string;
     audience: string;
   }): Promise<void>;
-  ensureRealmRole(externalName: string): Promise<void>;
+  ensureRealmRole(externalName: string, instanceId?: string): Promise<void>;
   getRoleByName(externalName: string): Promise<KeycloakRoleRepresentation>;
   findUserByUsername(username: string): Promise<KeycloakAdminUser | null>;
   findUserByEmail(email: string): Promise<KeycloakAdminUser | null>;
@@ -121,6 +121,7 @@ export const createKeycloakProvisioningAdapters = (
 });
 
 type TenantAdminInput = {
+  instanceId: string;
   username: string;
   email?: string;
   firstName?: string;
@@ -181,7 +182,7 @@ const ensureTenantAdmin = async (
   const fallbackEmail = `${input.username}@tenant.invalid`;
   const resolvedEmail = input.email ?? fallbackEmail;
 
-  await client.ensureRealmRole(SYSTEM_ADMIN_ROLE);
+  await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId);
 
   const existing = await client.findUserByUsername(input.username);
   if (!existing) {
@@ -444,6 +445,7 @@ export const createProvisionInstanceAuthArtifacts =
     }
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {
+        instanceId: input.instanceId,
         ...input.tenantAdminBootstrap,
         temporaryPassword: input.tenantAdminTemporaryPassword,
       });

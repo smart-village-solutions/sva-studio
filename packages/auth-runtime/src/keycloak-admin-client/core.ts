@@ -1528,16 +1528,36 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
-  async ensureRealmRole(externalName: string): Promise<void> {
+  async ensureRealmRole(externalName: string, instanceId?: string): Promise<void> {
     const existing = await this.getRoleByName(externalName);
     if (existing) {
+      if (!instanceId) {
+        return;
+      }
+      const attributes = existing.attributes;
+      const metadataMatches =
+        readRoleAttribute(attributes, 'managed_by') === 'studio' &&
+        readRoleAttribute(attributes, 'instance_id') === instanceId &&
+        readRoleAttribute(attributes, 'role_key') === externalName &&
+        readRoleAttribute(attributes, 'display_name') === externalName;
+      if (!metadataMatches) {
+        await this.updateRole(externalName, {
+          description: existing.description,
+          attributes: {
+            managedBy: 'studio',
+            instanceId,
+            roleKey: externalName,
+            displayName: externalName,
+          },
+        });
+      }
       return;
     }
     await this.createRole({
       externalName,
       attributes: {
         managedBy: 'studio',
-        instanceId: this.realm,
+        instanceId: instanceId ?? this.realm,
         roleKey: externalName,
         displayName: externalName,
       },

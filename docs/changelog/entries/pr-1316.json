@@ -1,0 +1,4 @@
+{
+  "prNumber": 1316,
+  "body": "Instanzverwaltung\n\n- Neue Instanzen erhalten die Parent-Domain aus der Studio-Konfiguration statt aus dem aufgerufenen Root-Host.\n- Eigenständige Studio-Installationen können Keycloak-Provisioning-Aufträge mit einem eigenen, intern angebundenen Worker zuverlässig verarbeiten."
+}

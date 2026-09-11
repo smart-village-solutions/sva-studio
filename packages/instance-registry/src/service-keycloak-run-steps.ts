@@ -96,18 +96,26 @@ const buildTenantAdminClientSecretCompletionStep = (status: KeycloakTenantStatus
   ok: status.tenantAdminClientSecretAligned,
 });
 
-const buildRolesCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
+const buildRolesCompletionStep = (
+  status: KeycloakTenantStatus,
+  requireTenantAdmin: boolean
+): CompletionStep => ({
   stepKey: 'roles',
   title: 'Realm-Rollen sicherstellen',
   summary:
-    status.tenantAdminHasSystemAdmin
-      ? 'Die Tenant-Admin-Rollen entsprechen dem Minimalprofil.'
-      : 'Die Tenant-Admin-Rollen weichen vom Minimalprofil ab.',
+    requireTenantAdmin
+      ? status.tenantAdminHasSystemAdmin
+        ? 'Die Tenant-Admin-Rollen entsprechen dem Minimalprofil.'
+        : 'Die Tenant-Admin-Rollen weichen vom Minimalprofil ab.'
+      : status.systemAdminRoleExists
+        ? 'Die geschützte Realm-Rolle system_admin ist vorhanden.'
+        : 'Die geschützte Realm-Rolle system_admin fehlt.',
   details: {
     tenantAdminHasSystemAdmin: status.tenantAdminHasSystemAdmin,
+    systemAdminRoleExists: status.systemAdminRoleExists,
     titleKey: 'iam.provisioning.steps.roles.title',
   },
-  ok: status.tenantAdminHasSystemAdmin,
+  ok: requireTenantAdmin ? status.tenantAdminHasSystemAdmin : status.systemAdminRoleExists,
 });
 
 const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
@@ -137,25 +145,30 @@ export const buildFinalRunSteps = (input: {
   status: KeycloakTenantStatus;
   intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
   usedTemporaryPassword: boolean;
+  requireTenantAdmin?: boolean;
 }): CompletionStep[] => {
   if (input.intent === 'reset_tenant_admin') {
     return [
       buildRealmCompletionStep(input.status),
-      buildRolesCompletionStep(input.status),
+      buildRolesCompletionStep(input.status, true),
       buildTenantAdminCompletionStep(input.status),
       buildTenantAdminPasswordStep(input.usedTemporaryPassword),
     ];
   }
 
+  const requireTenantAdmin = input.requireTenantAdmin !== false;
   const steps: CompletionStep[] = [
     buildRealmCompletionStep(input.status),
     buildClientCompletionStep(input.status),
     buildTenantAdminClientCompletionStep(input.status),
     buildSecretCompletionStep(input.status),
     buildTenantAdminClientSecretCompletionStep(input.status),
-    buildRolesCompletionStep(input.status),
-    buildTenantAdminCompletionStep(input.status),
+    buildRolesCompletionStep(input.status, requireTenantAdmin),
   ];
+
+  if (requireTenantAdmin) {
+    steps.push(buildTenantAdminCompletionStep(input.status));
+  }
 
   if (input.usedTemporaryPassword) {
     steps.push(buildTenantAdminPasswordStep(input.usedTemporaryPassword));

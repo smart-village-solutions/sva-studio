@@ -143,6 +143,35 @@ describe('service-keycloak-run-steps', () => {
     );
   });
 
+  it('completes a role-only repair from the protected role without bootstrap account checks', () => {
+    const steps = buildFinalRunSteps({
+      status: {
+        realmExists: true,
+        clientExists: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretAligned: true,
+        tenantAdminClientExists: true,
+        tenantAdminClientSecretAligned: true,
+        systemAdminRoleExists: true,
+        tenantAdminHasSystemAdmin: false,
+        tenantAdminExists: false,
+      } as never,
+      intent: 'provision',
+      usedTemporaryPassword: false,
+      requireTenantAdmin: false,
+    });
+
+    expect(steps.find((step) => step.stepKey === 'roles')).toEqual(
+      expect.objectContaining({
+        ok: true,
+        summary: 'Die geschützte Realm-Rolle system_admin ist vorhanden.',
+      })
+    );
+    expect(steps.map((step) => step.stepKey)).not.toContain('tenant_admin');
+  });
+
   it('buildFinalRunSteps reports tenant_admin existence as sufficient without instance attributes', () => {
     const status = {
       realmExists: true,

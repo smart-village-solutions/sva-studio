@@ -22,6 +22,9 @@ export const completeRun = async (
     throw new Error('dependency_missing_getKeycloakStatus');
   }
   const status = await getKeycloakStatus(buildProvisioningInput(input.loaded));
+  const requireTenantAdmin =
+    input.loaded.instance.realmMode !== 'existing' ||
+    Boolean(input.loaded.instance.tenantAdminBootstrap?.username);
 
   await appendRunStep(deps, {
     runId: input.runId,
@@ -37,6 +40,7 @@ export const completeRun = async (
     status,
     intent: input.intent,
     usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
+    requireTenantAdmin,
   });
 
   for (const step of completionSteps) {
@@ -52,9 +56,13 @@ export const completeRun = async (
   }
 
   const completionSatisfied = completionSteps.every((step) => step.ok);
+  const requirementStatus = requireTenantAdmin
+    ? status
+    : { ...status, tenantAdminExists: true, tenantAdminHasSystemAdmin: true };
   const finalRunStatus =
     completionSatisfied &&
-    (input.intent === 'reset_tenant_admin' || areAllInstanceKeycloakRequirementsSatisfied(status))
+    (input.intent === 'reset_tenant_admin' ||
+      areAllInstanceKeycloakRequirementsSatisfied(requirementStatus))
       ? 'succeeded'
       : 'failed';
 

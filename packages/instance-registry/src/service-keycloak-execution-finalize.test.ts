@@ -110,6 +110,7 @@ describe('service-keycloak-execution-finalize', () => {
       status,
       intent: 'provision',
       usedTemporaryPassword: true,
+      requireTenantAdmin: true,
     });
     expect(repository.setInstanceStatus).toHaveBeenCalledWith({
       instanceId: 'instance-1',
@@ -128,6 +129,64 @@ describe('service-keycloak-execution-finalize', () => {
       overallStatus: 'succeeded',
       driftSummary: 'Provisioning erfolgreich abgeschlossen.',
     });
+  });
+
+  it('completes an existing realm repair without an optional bootstrap admin', async () => {
+    const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const status = {
+      realmExists: true,
+      systemAdminRoleExists: true,
+      tenantAdminExists: false,
+      tenantAdminHasSystemAdmin: false,
+    };
+    const repository = {
+      setInstanceStatus: vi.fn(),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+    state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.buildFinalRunSteps.mockReturnValue([
+      { stepKey: 'roles', title: 'Rollen', ok: true, summary: 'ok' },
+    ]);
+    state.areAllRequirementsSatisfied.mockImplementation(
+      (candidate) => candidate.tenantAdminExists && candidate.tenantAdminHasSystemAdmin
+    );
+    state.appendRunStep.mockResolvedValue(undefined);
+
+    await expect(
+      completeRun(
+        {
+          repository: repository as never,
+          getKeycloakStatus: vi.fn().mockResolvedValue(status),
+        } as never,
+        {
+          loaded: {
+            instance: {
+              instanceId: 'instance-imported',
+              status: 'active',
+              realmMode: 'existing',
+              tenantAdminBootstrap: undefined,
+            },
+          } as never,
+          runId: 'run-role-repair',
+          intent: 'provision',
+        }
+      )
+    ).resolves.toBe('succeeded');
+
+    expect(state.buildFinalRunSteps).toHaveBeenCalledWith({
+      status,
+      intent: 'provision',
+      usedTemporaryPassword: false,
+      requireTenantAdmin: false,
+    });
+    expect(state.areAllRequirementsSatisfied).toHaveBeenCalledWith({
+      ...status,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+    });
+    expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ overallStatus: 'succeeded' })
+    );
   });
 
   it('marks failed runs without changing already active instances', async () => {

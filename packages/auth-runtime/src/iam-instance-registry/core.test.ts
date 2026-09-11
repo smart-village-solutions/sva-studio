@@ -38,6 +38,7 @@ const state = vi.hoisted(() => {
     parseRegistryRequestBody: vi.fn(),
     scheduleConfiguredPluginTenantProvisioning: vi.fn(),
     withRegistryService: vi.fn(),
+    withScopedRegistryService: vi.fn(),
     readInstanceRegistryPluginOidcClientRequirements: vi.fn<() => readonly { clientId: string }[]>(
       () => []
     ),
@@ -93,6 +94,7 @@ vi.mock('./request-parsing.js', () => ({
 vi.mock('./repository.js', () => ({
   scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
   withRegistryService: state.withRegistryService,
+  withScopedRegistryService: state.withScopedRegistryService,
 }));
 
 vi.mock('./plugin-activation-policy-snapshot.js', () => ({
@@ -122,6 +124,7 @@ describe('iam-instance-registry core handlers', () => {
     expect(state.validateCsrf).toHaveBeenCalledWith(expect.any(Request), 'req-csrf');
     expect(config.requireFreshReauth).toBe(state.requireFreshReauth);
     expect(config.withRegistryService).toBe(state.withRegistryService);
+    expect(config.withScopedRegistryService).toBe(state.withScopedRegistryService);
     expect(config.mapMutationError).toBe(state.mapInstanceMutationError);
     expect(config.reservedOidcClientIds()).toEqual([]);
     state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([{ clientId: 'ssf' }]);

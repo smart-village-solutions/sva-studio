@@ -225,7 +225,7 @@ const readRoleAttribute = (
   key: string
 ): string | undefined => {
   const values = attributes?.[key];
-  return Array.isArray(values) ? values[0] : undefined;
+  return Array.isArray(values) && values.length === 1 ? values[0] : undefined;
 };
 
 const isBuiltInRealmRole = (roleName: string): boolean =>
@@ -311,13 +311,25 @@ const readAttribute = (
   key: string
 ): string | undefined => {
   const values = attributes?.[key];
-  return Array.isArray(values) ? values[0] : undefined;
+  return Array.isArray(values) && values.length === 1 ? values[0] : undefined;
 };
 
-const isStudioManagedRoleConflict = (role: IdentityRole, input: CreateIdentityRoleInput): boolean =>
-  readAttribute(role.attributes, 'managed_by') === 'studio' &&
-  readAttribute(role.attributes, 'instance_id') !== undefined &&
-  readAttribute(role.attributes, 'instance_id') !== input.attributes.instanceId;
+const canReconcileStudioManagedRole = (
+  role: IdentityRole,
+  input: CreateIdentityRoleInput,
+  realm: string,
+  allowLegacyRealmRoleMigration: boolean
+): boolean => {
+  const managedBy = readAttribute(role.attributes, 'managed_by');
+  const instanceId = readAttribute(role.attributes, 'instance_id');
+  const roleKey = readAttribute(role.attributes, 'role_key');
+  return (
+    managedBy === 'studio' &&
+    roleKey === input.attributes.roleKey &&
+    (instanceId === input.attributes.instanceId ||
+      (allowLegacyRealmRoleMigration && instanceId === realm))
+  );
+};
 
 const isRetryableStatus = (statusCode: number): boolean => statusCode === 429 || statusCode >= 500;
 
@@ -980,7 +992,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  async createRole(input: CreateIdentityRoleInput): Promise<IdentityRole> {
+  async createRole(
+    input: CreateIdentityRoleInput,
+    options: { readonly allowLegacyRealmRoleMigration?: boolean } = {}
+  ): Promise<IdentityRole> {
     await this.assertWriteAvailability();
     try {
       await this.executeWithResilience<void>({
@@ -1008,7 +1023,14 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         throw error;
       }
 
-      if (isStudioManagedRoleConflict(existing, input)) {
+      if (
+        !canReconcileStudioManagedRole(
+          existing,
+          input,
+          this.realm,
+          options.allowLegacyRealmRoleMigration === true
+        )
+      ) {
         throw error;
       }
 
@@ -1528,20 +1550,61 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
-  async ensureRealmRole(externalName: string): Promise<void> {
+  async ensureRealmRole(
+    externalName: string,
+    instanceId?: string,
+    options: { readonly allowLegacyRealmRoleMigration?: boolean } = {}
+  ): Promise<void> {
     const existing = await this.getRoleByName(externalName);
     if (existing) {
+      if (!instanceId) {
+        return;
+      }
+      const attributes = existing.attributes;
+      const managedBy = readRoleAttribute(attributes, 'managed_by');
+      const boundInstanceId = readRoleAttribute(attributes, 'instance_id');
+      const roleKey = readRoleAttribute(attributes, 'role_key');
+      const displayName = readRoleAttribute(attributes, 'display_name');
+      const metadataMatches =
+        managedBy === 'studio' && boundInstanceId === instanceId && roleKey === externalName;
+      if (!metadataMatches) {
+        const isLegacyRealmBoundRole =
+          options.allowLegacyRealmRoleMigration === true &&
+          managedBy === 'studio' &&
+          boundInstanceId === this.realm &&
+          roleKey === externalName;
+        if (!isLegacyRealmBoundRole) {
+          throw new KeycloakAdminRequestError({
+            message: `Keycloak role ${externalName} has conflicting or incomplete Studio ownership metadata.`,
+            statusCode: 409,
+            code: 'role_ownership_conflict',
+            retryable: false,
+          });
+        }
+        await this.updateRole(externalName, {
+          description: existing.description,
+          attributes: {
+            managedBy: 'studio',
+            instanceId,
+            roleKey: externalName,
+            displayName: displayName ?? externalName,
+          },
+        });
+      }
       return;
     }
-    await this.createRole({
-      externalName,
-      attributes: {
-        managedBy: 'studio',
-        instanceId: this.realm,
-        roleKey: externalName,
-        displayName: externalName,
+    await this.createRole(
+      {
+        externalName,
+        attributes: {
+          managedBy: 'studio',
+          instanceId: instanceId ?? this.realm,
+          roleKey: externalName,
+          displayName: externalName,
+        },
       },
-    });
+      options
+    );
   }
 
   async findUserByUsername(username: string): Promise<KeycloakAdminUser | null> {

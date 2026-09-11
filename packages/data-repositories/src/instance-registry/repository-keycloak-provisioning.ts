@@ -13,6 +13,7 @@ import type {
   KeycloakProvisioningRunRow,
   KeycloakProvisioningStepRow,
 } from './repository-types.js';
+import { buildClaimNextKeycloakProvisioningRunSql } from './repository-keycloak-claim-sql.js';
 
 type KeycloakProvisioningRepository = Pick<
   InstanceRegistryRepository,
@@ -72,41 +73,10 @@ const claimNextKeycloakProvisioningRun = async (
   input?: { createdAtOrAfter?: string }
 ) => {
   const createdAtOrAfter = input?.createdAtOrAfter?.trim();
-  const createdAtFilter = createdAtOrAfter ? '    AND created_at >= $1::timestamptz\n' : '';
   const rows = await queryRows<KeycloakProvisioningRunRow>(
     executor,
     statement(
-      `
-WITH next_run AS (
-  SELECT id
-  FROM iam.instance_keycloak_provisioning_runs
-  WHERE overall_status = 'planned'
-${createdAtFilter}
-  ORDER BY created_at ASC, id ASC
-  FOR UPDATE SKIP LOCKED
-  LIMIT 1
-)
-UPDATE iam.instance_keycloak_provisioning_runs AS runs
-SET
-  overall_status = 'running',
-  updated_at = NOW()
-FROM next_run
-WHERE runs.id = next_run.id
-RETURNING
-  runs.id::text AS id,
-  runs.instance_id,
-  runs.mutation,
-  runs.idempotency_key,
-  runs.payload_fingerprint,
-  runs.mode,
-  runs.intent,
-  runs.overall_status,
-  runs.drift_summary,
-  runs.request_id,
-  runs.actor_id,
-  runs.created_at::text,
-  runs.updated_at::text;
-`,
+      buildClaimNextKeycloakProvisioningRunSql(Boolean(createdAtOrAfter)),
       createdAtOrAfter ? [createdAtOrAfter] : []
     )
   );

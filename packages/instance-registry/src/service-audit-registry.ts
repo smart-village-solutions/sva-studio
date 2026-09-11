@@ -1,6 +1,6 @@
 import type { InstanceAuditCheck } from '@sva/core';
 
-import { CHECK_IDS, createCheck } from './service-audit-shared.js';
+import { CHECK_IDS, createCheck, createSkipCheck } from './service-audit-shared.js';
 
 const hasConfiguredValue = (value?: string): value is string => typeof value === 'string' && value.trim().length > 0;
 
@@ -157,8 +157,19 @@ export const createRegistryChecks = (input: {
   }),
 ];
 
-export const createLocalIamCheck = (assignmentCount: number): InstanceAuditCheck =>
-  createCheck({
+export const createLocalIamCheck = (assignmentCount: number, required = true): InstanceAuditCheck => {
+  if (!required) {
+    return createSkipCheck(
+      CHECK_IDS.localSystemAdminAssignmentExists,
+      'Lokale system_admin-Zuordnung vorhanden',
+      'localIam',
+      'Mindestens eine aktive lokale system_admin-Zuordnung',
+      'iam_database',
+      'Für diesen importierten Realm ist kein Bootstrap-Admin konfiguriert.'
+    );
+  }
+
+  return createCheck({
     checkId: CHECK_IDS.localSystemAdminAssignmentExists,
     title: 'Lokale system_admin-Zuordnung vorhanden',
     scope: 'localIam',
@@ -173,3 +184,4 @@ export const createLocalIamCheck = (assignmentCount: number): InstanceAuditCheck
     remediationHint:
       assignmentCount > 0 ? undefined : 'Lokale Rollen-Synchronisierung und Bootstrap-Zuordnung des Tenant-Admins prüfen.',
   });
+};

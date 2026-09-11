@@ -6,6 +6,76 @@ import type { CliOptions } from './shared.js';
 
 const toRequestId = (idempotencyKey: string): string => `cli-${idempotencyKey}`;
 
+type WithInstanceTransaction = <T>(
+  instanceId: string,
+  work: (service: InstanceRegistryService) => Promise<T>
+) => Promise<T>;
+
+export const runBackfillAdminClientCommand = async (
+  readService: InstanceRegistryService,
+  withInstanceTransaction: WithInstanceTransaction,
+  options: CliOptions
+): Promise<unknown> => {
+  const instances = await readService.listInstances({ status: 'active' });
+  const updatedInstances = [];
+
+  for (const instance of instances) {
+    if (instance.tenantAdminClient?.clientId) {
+      continue;
+    }
+
+    const result = await withInstanceTransaction(instance.instanceId, async (service) => {
+      const current = await service.getInstanceDetail(instance.instanceId);
+      if (!current || current.status !== 'active' || current.tenantAdminClient?.clientId) {
+        return null;
+      }
+      const updated = await service.updateInstance({
+        actorId: options.actorId,
+        instanceId: current.instanceId,
+        displayName: current.displayName,
+        parentDomain: current.parentDomain,
+        realmMode: current.realmMode,
+        authRealm: current.authRealm,
+        authClientId: current.authClientId,
+        authIssuerUrl: current.authIssuerUrl,
+        requestId: toRequestId(options.idempotencyKey),
+        tenantAdminClient: {
+          clientId: deriveTenantAdminClientId(current.authClientId, options.tenantAdminClientId),
+          ...(options.tenantAdminClientSecret ? { secret: options.tenantAdminClientSecret } : {}),
+        },
+        tenantAdminBootstrap: current.tenantAdminBootstrap,
+        themeKey: current.themeKey,
+        featureFlags: current.featureFlags,
+        mainserverConfigRef: current.mainserverConfigRef,
+      });
+
+      if (!updated) {
+        return null;
+      }
+
+      const provisioningRun = await service.executeKeycloakProvisioning({
+        actorId: options.actorId,
+        idempotencyKey: `${options.idempotencyKey}:${instance.instanceId}:provision-admin-client`,
+        instanceId: instance.instanceId,
+        intent: 'provision_admin_client',
+        requestId: toRequestId(options.idempotencyKey),
+      });
+
+      return {
+        instanceId: instance.instanceId,
+        tenantAdminClientId: deriveTenantAdminClientId(current.authClientId, options.tenantAdminClientId),
+        provisioningRunId: provisioningRun?.id,
+      };
+    });
+
+    if (result) {
+      updatedInstances.push(result);
+    }
+  }
+
+  return updatedInstances;
+};
+
 export const runMutationCommand = async (service: InstanceRegistryService, options: CliOptions): Promise<unknown> => {
   switch (options.command) {
     case 'create':
@@ -31,56 +101,6 @@ export const runMutationCommand = async (service: InstanceRegistryService, optio
         },
         themeKey: options.themeKey,
       });
-    case 'backfill-admin-client': {
-      const instances = await service.listInstances({ status: 'active' });
-      const updatedInstances = [];
-
-      for (const instance of instances) {
-        if (instance.tenantAdminClient?.clientId) {
-          continue;
-        }
-
-        const updated = await service.updateInstance({
-          actorId: options.actorId,
-          instanceId: instance.instanceId,
-          displayName: instance.displayName,
-          parentDomain: instance.parentDomain,
-          realmMode: instance.realmMode,
-          authRealm: instance.authRealm,
-          authClientId: instance.authClientId,
-          authIssuerUrl: instance.authIssuerUrl,
-          requestId: toRequestId(options.idempotencyKey),
-          tenantAdminClient: {
-            clientId: deriveTenantAdminClientId(instance.authClientId, options.tenantAdminClientId),
-            ...(options.tenantAdminClientSecret ? { secret: options.tenantAdminClientSecret } : {}),
-          },
-          tenantAdminBootstrap: instance.tenantAdminBootstrap,
-          themeKey: instance.themeKey,
-          featureFlags: instance.featureFlags,
-          mainserverConfigRef: instance.mainserverConfigRef,
-        });
-
-        if (!updated) {
-          continue;
-        }
-
-        const provisioningRun = await service.executeKeycloakProvisioning({
-          actorId: options.actorId,
-          idempotencyKey: `${options.idempotencyKey}:${instance.instanceId}:provision-admin-client`,
-          instanceId: instance.instanceId,
-          intent: 'provision_admin_client',
-          requestId: toRequestId(options.idempotencyKey),
-        });
-
-        updatedInstances.push({
-          instanceId: instance.instanceId,
-          tenantAdminClientId: deriveTenantAdminClientId(instance.authClientId, options.tenantAdminClientId),
-          provisioningRunId: provisioningRun?.id,
-        });
-      }
-
-      return updatedInstances;
-    }
     case 'activate':
     case 'suspend':
     case 'archive':

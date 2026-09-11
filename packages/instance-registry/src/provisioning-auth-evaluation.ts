@@ -1,6 +1,7 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
 import { readPluginOidcClientAlignment } from './provisioning-auth-plugin-clients.js';
 import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
 export { buildPlan } from './provisioning-auth-plan.js';
@@ -134,15 +135,18 @@ const resolveTenantSecretSummary = (
     : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
 };
 
-const buildTenantAdminCheck = (tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
+const buildTenantAdminCheck = (realmMode: InstanceRealmMode, tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
   const configured = Boolean(tenantAdminBootstrap?.username);
+  const missingStatus = realmMode === 'existing' ? 'warning' : 'blocked';
   return createPreflightCheck(
     'tenant_admin_profile',
     'Tenant-Admin-Profil',
-    configured ? 'ready' : 'blocked',
+    configured ? 'ready' : missingStatus,
     configured
       ? 'Die Stammdaten für den Tenant-Admin sind gepflegt.'
-      : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
+      : realmMode === 'existing'
+        ? 'Für den importierten Realm ist kein Tenant-Admin-Bootstrap konfiguriert; technische Reparaturen bleiben möglich.'
+        : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
     { configured }
   );
 };
@@ -222,7 +226,7 @@ export const buildPreflightChecks = (input: {
       tenantAdminClient: input.tenantAdminClient,
       tenantAdminClientSecret: input.tenantAdminClientSecret,
     }),
-    buildTenantAdminCheck(input.tenantAdminBootstrap)
+    buildTenantAdminCheck(input.realmMode, input.tenantAdminBootstrap)
   );
 
   return checks;
@@ -268,7 +272,10 @@ export const buildKeycloakStatus = (
     realmExists: true,
     clientExists: Boolean(input.state.clientRepresentation),
     tenantAdminClientExists: Boolean(input.state.tenantAdminClientRepresentation),
-    systemAdminRoleExists: Boolean(input.state.systemAdminRole),
+    systemAdminRoleExists: isSystemAdminRoleOwnedByInstance(
+      input.state.systemAdminRole,
+      input.instanceId
+    ),
     ...input.state.tenantAdminStatus,
     redirectUrisMatch: equalSets(input.state.clientRepresentation?.redirectUris ?? [], input.state.expectedClient.redirectUris),
     logoutUrisMatch: equalSets(

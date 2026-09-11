@@ -171,7 +171,12 @@ describe('instance registry repository keycloak provisioning', () => {
       instanceId: 'tenant-a',
     });
 
-    expect(statements[0]?.text).toContain('AND created_at >= $1::timestamptz');
+    expect(statements[0]?.text).toContain('AND candidate.created_at >= $1::timestamptz');
+    expect(statements[0]?.text).toContain('expired_planned_instances AS MATERIALIZED');
+    expect(statements[0]?.text).toContain('Provisioning-Lauf vor dem aktuellen lokalen Worker-Start');
+    expect(statements[0]?.text).toContain('WITH RECURSIVE');
+    expect(statements[0]?.text).toMatch(/ROW_NUMBER\(\) OVER \(ORDER BY candidate\.created_at[\s\S]+attempted_candidates AS[\s\S]+WHERE NOT previous\.lock_acquired/);
+    expect(statements[0]?.text).toMatch(/WHERE attempted\.lock_acquired[\s\S]+FOR UPDATE OF runs SKIP LOCKED[\s\S]+LIMIT 1/);
     expect(statements[0]?.values).toEqual(['2026-05-27T12:00:00.000Z']);
   });
 
@@ -213,6 +218,12 @@ describe('instance registry repository keycloak provisioning', () => {
     });
 
     expect(statements[0]?.text).not.toContain('created_at >=');
+    expect(statements[0]?.text).not.toContain('expired_planned_instances');
+    expect(statements[0]?.text).toContain("updated_at < NOW() - INTERVAL '15 minutes'");
+    expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock(hashtextextended(instance_id, 0))');
+    expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock(hashtextextended(eligible.instance_id, 0))');
+    expect(statements[0]?.text).toContain("overall_status = 'failed'");
+    expect(statements[0]?.text).toContain("active.overall_status = 'running'");
     expect(statements[2]?.values).toEqual([
       'kc-run-1',
       'realm',

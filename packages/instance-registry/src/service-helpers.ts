@@ -32,9 +32,13 @@ type TenantIamEvidence = Omit<IamTenantIamAxis, 'source'> & {
 };
 
 const isConfigurationReady = (
-  keycloakStatus: NonNullable<IamInstanceDetail['keycloakStatus']> | undefined
+  keycloakStatus: NonNullable<IamInstanceDetail['keycloakStatus']> | undefined,
+  requireTenantAdmin: boolean
 ): boolean =>
-  Boolean(keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus));
+  Boolean(
+    keycloakStatus &&
+      areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus, { requireTenantAdmin })
+  );
 
 const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => {
   const serviceIdentity = input.serviceIdentity ?? getTenantIamServiceIdentity(input.source);
@@ -60,17 +64,23 @@ const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = [
 
 export const buildTenantIamStatus = (input: {
   keycloakStatus?: IamInstanceDetail['keycloakStatus'];
+  requireTenantAdmin?: boolean;
   accessEvidence?: TenantIamEvidence;
   reconcileEvidence?: TenantIamEvidence;
 }): IamTenantIamStatus => {
+  const requireTenantAdmin = input.requireTenantAdmin !== false;
   const configuration = input.keycloakStatus
     ? createTenantIamAxis({
-        status: isConfigurationReady(input.keycloakStatus) ? 'ready' : 'degraded',
-        summary: isConfigurationReady(input.keycloakStatus)
+        status: isConfigurationReady(input.keycloakStatus, requireTenantAdmin)
+          ? 'ready'
+          : 'degraded',
+        summary: isConfigurationReady(input.keycloakStatus, requireTenantAdmin)
           ? 'Tenant-IAM-Struktur ist vollständig vorhanden.'
           : 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
         source: 'keycloak_status_snapshot',
-        classification: classifyTenantIamConfiguration(input.keycloakStatus),
+        classification: classifyTenantIamConfiguration(input.keycloakStatus, {
+          requireTenantAdmin,
+        }),
       })
     : createTenantIamAxis({
         status: 'unknown',

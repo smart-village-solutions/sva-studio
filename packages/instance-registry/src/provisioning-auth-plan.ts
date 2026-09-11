@@ -1,4 +1,4 @@
-import type { InstanceRealmMode } from '@sva/core';
+import { isInstanceTenantAdminRequired, type InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
@@ -6,6 +6,7 @@ import {
   readClientAlignment,
   readTenantAdminClientAlignment,
 } from './provisioning-auth-client-alignment.js';
+import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
 import { buildPluginOidcClientStep } from './provisioning-auth-plugin-clients.js';
 
 const buildRealmStep = (
@@ -165,26 +166,43 @@ const resolveTenantAdminClientSecretSummary = (
 
 const buildRoleStep = (
   blocked: boolean,
-  state: KeycloakReadState | undefined
-): KeycloakTenantPlan['steps'][number] => ({
-  stepKey: 'roles',
-  title: 'Realm-Rollen sicherstellen',
-  action: state?.systemAdminRole ? 'verify' : 'create',
-  status: blocked ? 'blocked' : 'ready',
-  summary: state?.systemAdminRole
-    ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
-    : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
-  details: {
-    systemAdminRoleExists: Boolean(state?.systemAdminRole),
-  },
-});
+  state: KeycloakReadState | undefined,
+  instanceId: string
+): KeycloakTenantPlan['steps'][number] => {
+  const systemAdminRoleExists = isSystemAdminRoleOwnedByInstance(
+    state?.systemAdminRole,
+    instanceId
+  );
+  return {
+    stepKey: 'roles',
+    title: 'Realm-Rollen sicherstellen',
+    action: systemAdminRoleExists ? 'verify' : 'create',
+    status: blocked ? 'blocked' : 'ready',
+    summary: systemAdminRoleExists
+      ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
+      : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
+    details: { systemAdminRoleExists },
+  };
+};
 
 const buildTenantAdminStep = (
   blocked: boolean,
-  state: KeycloakReadState | undefined
+  state: KeycloakReadState | undefined,
+  requireTenantAdmin: boolean
 ): KeycloakTenantPlan['steps'][number] => {
   const adminStatus = state?.tenantAdminStatus;
   const hasMinimalProfile = hasTenantAdminMinimalProfile(adminStatus);
+
+  if (!requireTenantAdmin) {
+    return {
+      stepKey: 'tenant_admin',
+      title: 'Tenant-Admin sicherstellen',
+      action: 'skip',
+      status: blocked ? 'blocked' : 'ready',
+      summary: 'Für diesen importierten Realm ist kein Bootstrap-Admin konfiguriert.',
+      details: adminStatus ?? {},
+    };
+  }
 
   return {
     stepKey: 'tenant_admin',
@@ -203,6 +221,7 @@ const hasTenantAdminMinimalProfile = (
 ): boolean => Boolean(adminStatus?.tenantAdminExists && adminStatus.tenantAdminHasSystemAdmin);
 
 export const buildPlan = (input: {
+  instanceId: string;
   realmMode: InstanceRealmMode;
   authClientSecret?: string;
   tenantAdminClient?: {
@@ -210,11 +229,13 @@ export const buildPlan = (input: {
     secretConfigured?: boolean;
   };
   tenantAdminClientSecret?: string;
+  tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
   pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
   preflight: KeycloakTenantPreflight;
   state?: KeycloakReadState;
 }): KeycloakTenantPlan => {
   const blocked = input.preflight.overallStatus === 'blocked';
+  const requireTenantAdmin = isInstanceTenantAdminRequired(input);
   const alignment = readClientAlignment(input.state);
   const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
   const secretAligned = Boolean(
@@ -261,8 +282,8 @@ export const buildPlan = (input: {
       Boolean(input.tenantAdminClient?.clientId),
       tenantAdminClientSecretAligned
     ),
-    buildRoleStep(blocked, input.state),
-    buildTenantAdminStep(blocked, input.state),
+    buildRoleStep(blocked, input.state, input.instanceId),
+    buildTenantAdminStep(blocked, input.state, requireTenantAdmin),
   ];
 
   return {

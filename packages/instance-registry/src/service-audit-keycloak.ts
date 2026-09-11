@@ -425,7 +425,7 @@ const createPluginOidcClientCheck = (status: KeycloakTenantStatus, evidenceSourc
     remediationHint: status.pluginOidcClientsAligned ? undefined : 'Plugin-OIDC-Clients über die Keycloak-Reconciliation erneut abgleichen.',
   });
 
-const createSystemAdminChecks = (status: KeycloakTenantStatus, evidenceSource: string): readonly InstanceAuditCheck[] => {
+const createSystemAdminChecks = (status: KeycloakTenantStatus, evidenceSource: string, requireTenantAdmin: boolean): readonly InstanceAuditCheck[] => {
   const roleCheck = createCheck({
     checkId: CHECK_IDS.keycloakSystemAdminRoleExists,
     title: 'Keycloak-Rolle system_admin vorhanden',
@@ -438,7 +438,9 @@ const createSystemAdminChecks = (status: KeycloakTenantStatus, evidenceSource: s
     remediationHint: status.systemAdminRoleExists ? undefined : 'Rollen-Baseline im Tenant-Realm provisionieren.',
   });
 
-  const userCheck = status.systemAdminRoleExists
+  const userCheck = !requireTenantAdmin
+    ? createSkipCheck(CHECK_IDS.keycloakSystemAdminUserExists, 'Keycloak-User mit system_admin vorhanden', 'keycloak', 'Mindestens ein User mit system_admin vorhanden', evidenceSource, 'Für diesen importierten Realm ist kein Bootstrap-Admin konfiguriert.')
+    : status.systemAdminRoleExists
     ? createCheck({
         checkId: CHECK_IDS.keycloakSystemAdminUserExists,
         title: 'Keycloak-User mit system_admin vorhanden',
@@ -482,6 +484,7 @@ export const buildKeycloakChecks = (input: {
   fallbackStatus?: KeycloakTenantStatus | null;
   fallbackEvidenceSource?: string;
   fallbackError?: string;
+  requireTenantAdmin?: boolean;
 }): readonly InstanceAuditCheck[] => {
   if (!input.keycloakStatus) {
     return createRealmUnavailableChecks({
@@ -503,6 +506,6 @@ export const buildKeycloakChecks = (input: {
     ...createLoginClientChecks(input.keycloakStatus, input.keycloakEvidenceSource),
     createPluginOidcClientCheck(input.keycloakStatus, input.keycloakEvidenceSource),
     ...createTenantAdminClientChecks(input.keycloakStatus, input.keycloakEvidenceSource),
-    ...createSystemAdminChecks(input.keycloakStatus, input.keycloakEvidenceSource),
+    ...createSystemAdminChecks(input.keycloakStatus, input.keycloakEvidenceSource, input.requireTenantAdmin ?? true),
   ];
 };

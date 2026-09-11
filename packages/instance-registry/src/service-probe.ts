@@ -1,3 +1,5 @@
+import { isInstanceTenantAdminRequired } from '@sva/core';
+
 import { buildTenantIamStatus } from './service-helpers.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import { classifyTenantIamAxis } from './tenant-iam-evidence.js';
@@ -46,6 +48,7 @@ export const createProbeTenantIamAccessHandler =
 
     return buildTenantIamStatus({
       keycloakStatus: keycloakStatus ?? undefined,
+      requireTenantAdmin: isInstanceTenantAdminRequired(instance),
       accessEvidence: {
         ...access,
         source: 'access_probe',

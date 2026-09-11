@@ -17,6 +17,7 @@ const createKeycloakStatusFixture = (overrides: Record<string, unknown> = {}) =>
     realmExists: true,
     clientExists: true,
     tenantAdminClientExists: true,
+    systemAdminRoleExists: true,
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
     redirectUrisMatch: true,
@@ -187,6 +188,7 @@ describe('instance detail split helpers', () => {
           realmExists: true,
           clientExists: true,
           tenantAdminClientExists: true,
+          systemAdminRoleExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
           redirectUrisMatch: true,
@@ -386,6 +388,24 @@ describe('instance detail split helpers', () => {
     ]);
     expect(keycloakEntries).toContainEqual([
       'admin.instances.keycloakStatus.runtimeSecretSourceTenant',
+      false,
+    ]);
+
+    const importedRealmEntries = getKeycloakStatusEntries({
+      realmMode: 'existing',
+      tenantAdminBootstrap: undefined,
+      keycloakStatus: createKeycloakStatusFixture({
+        tenantAdminExists: false,
+        tenantAdminHasSystemAdmin: false,
+      }),
+    } as never);
+
+    expect(importedRealmEntries).not.toContainEqual([
+      'admin.instances.keycloakStatus.tenantAdminExists',
+      false,
+    ]);
+    expect(importedRealmEntries).not.toContainEqual([
+      'admin.instances.keycloakStatus.tenantAdminHasSystemAdmin',
       false,
     ]);
 

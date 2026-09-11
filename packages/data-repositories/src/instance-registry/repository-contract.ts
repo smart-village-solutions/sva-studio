@@ -296,6 +296,15 @@ export type InstanceRegistryRepository = {
     featureFlags?: Readonly<Record<string, boolean>>;
     mainserverConfigRef?: string;
   }) => Promise<InstanceRegistryRecord | null>;
+  readonly updateInstanceKeycloakSecrets: (input: {
+    instanceId: string;
+    authClientSecretCiphertext?: string;
+    keepExistingAuthClientSecret?: boolean;
+    tenantAdminClientSecretCiphertext?: string;
+    keepExistingTenantAdminClientSecret?: boolean;
+    actorId?: string;
+    requestId?: string;
+  }) => Promise<InstanceRegistryRecord | null>;
   readonly setInstanceStatus: (input: {
     instanceId: string;
     status: InstanceStatus;

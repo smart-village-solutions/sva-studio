@@ -1,5 +1,7 @@
 import {
+  getApplicableInstanceKeycloakRequirements,
   INSTANCE_KEYCLOAK_REQUIREMENTS,
+  isInstanceTenantAdminRequired,
   isInstanceKeycloakRequirementSatisfied,
   type IamInstanceDetail,
   type IamInstanceKeycloakPreflight,
@@ -13,7 +15,9 @@ import type {
 } from './-instances-shared-types';
 
 export {
+  getApplicableInstanceKeycloakRequirements,
   INSTANCE_KEYCLOAK_REQUIREMENTS,
+  isInstanceTenantAdminRequired,
   isInstanceKeycloakRequirementSatisfied,
   type IamInstanceDetail,
   type IamInstanceKeycloakPreflight,
@@ -72,12 +76,14 @@ export const translateConfigurationStatus = (status: InstanceConfigurationOveral
   t(CONFIGURATION_STATUS_LABELS[status]);
 
 export const readRequirementGroupSatisfied = (
-  keycloakStatus: IamInstanceKeycloakStatus | undefined,
+  instance: IamInstanceDetail,
   uiStepKey: string
 ) =>
   Boolean(
-    keycloakStatus &&
-      INSTANCE_KEYCLOAK_REQUIREMENTS.filter((requirement) => requirement.uiStepKey === uiStepKey).every((requirement) =>
-        isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement)
+    instance.keycloakStatus &&
+      getApplicableInstanceKeycloakRequirements({
+        requireTenantAdmin: isInstanceTenantAdminRequired(instance),
+      }).filter((requirement) => requirement.uiStepKey === uiStepKey).every((requirement) =>
+        isInstanceKeycloakRequirementSatisfied(instance.keycloakStatus!, requirement)
       )
   );

@@ -8,6 +8,8 @@ export type InstanceMutationErrorCode =
   | 'idempotency_key_reuse'
   | 'oidc_client_id_reserved'
   | 'tenant_hostname_reserved'
+  | 'auth_realm_conflict'
+  | 'instance_configuration_change_blocked'
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
@@ -22,6 +24,26 @@ export type InstanceMutationErrorClassification = {
     readonly reason_code: 'registry_or_provisioning_drift_blocked';
     readonly drift_summary?: string;
   };
+};
+
+const stableConflictCodes = [
+  'idempotency_key_reuse',
+  'auth_realm_conflict',
+  'instance_configuration_change_blocked',
+] as const;
+
+const readMutationErrorMessage = (error: unknown): string => {
+  const databaseError =
+    typeof error === 'object' && error !== null
+      ? (error as { readonly code?: unknown; readonly constraint?: unknown })
+      : undefined;
+  if (
+    databaseError?.code === '23505' &&
+    databaseError.constraint === 'instances_auth_realm_unique'
+  ) {
+    return 'auth_realm_conflict';
+  }
+  return error instanceof Error ? error.message : String(error);
 };
 
 const inferBlockedDriftErrorCode = (driftSummary: string): BlockedDriftErrorCode => {
@@ -44,7 +66,7 @@ const inferBlockedDriftErrorCode = (driftSummary: string): BlockedDriftErrorCode
 export const classifyInstanceMutationError = (
   error: unknown
 ): InstanceMutationErrorClassification => {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = readMutationErrorMessage(error);
   if (message.startsWith('registry_or_provisioning_drift_blocked:')) {
     const driftSummary = message.slice('registry_or_provisioning_drift_blocked:'.length).trim();
     return {
@@ -57,10 +79,11 @@ export const classifyInstanceMutationError = (
       },
     };
   }
-  if (message.includes('idempotency_key_reuse')) {
+  const stableConflictCode = stableConflictCodes.find((code) => message.includes(code));
+  if (stableConflictCode) {
     return {
       status: 409,
-      code: 'idempotency_key_reuse',
+      code: stableConflictCode,
     };
   }
   if (message === 'tenant_hostname_reserved') {

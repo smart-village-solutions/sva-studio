@@ -561,6 +561,27 @@ test('instance time-zone migration and schema snapshot provide a safe generic de
   expect(downSql).toMatch(/DROP COLUMN time_zone/);
 });
 
+test('instance realm migration and schema snapshot enforce exclusive realm ownership', () => {
+  const sql = readRepoFile('data/migrations/0094_iam_instance_auth_realm_unique.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+  const downSql = sql.split('-- +goose Down')[1] ?? '';
+
+  expect(upSql.indexOf('LOCK TABLE iam.instances')).toBeLessThan(
+    upSql.indexOf('ADD CONSTRAINT instances_auth_realm_unique')
+  );
+  expect(upSql).toMatch(/GROUP BY auth_realm\s+HAVING COUNT\(\*\) > 1/);
+  expect(upSql).toContain('Cannot enforce exclusive Keycloak realm ownership');
+  expect(upSql).not.toMatch(/\b(?:DELETE|UPDATE)\s+iam\.instances\b/);
+  for (const source of [upSql, schemaSnapshot]) {
+    expect(source).toMatch(
+      /ADD CONSTRAINT instances_auth_realm_unique UNIQUE \(auth_realm\)/
+    );
+  }
+
+  expect(downSql).toMatch(/DROP CONSTRAINT instances_auth_realm_unique/);
+});
+
 test('organization type migration and schema snapshot support associations and institutions', () => {
   const sql = readRepoFile(
     'data/migrations/0084_iam_organization_types_association_institution.sql'

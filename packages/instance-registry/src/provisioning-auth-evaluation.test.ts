@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildKeycloakStatus,
   buildMissingRealmStatus,
+  buildPlan,
   buildPreflightChecks,
   toOverallPreflightStatus,
 } from './provisioning-auth-evaluation.js';
@@ -68,8 +69,64 @@ describe('provisioning-auth-evaluation', () => {
 
     expect(existingRealmChecks.find((check) => check.checkKey === 'realm_mode')?.status).toBe('ready');
     expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_secret')?.status).toBe('blocked');
-    expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('blocked');
+    expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('warning');
     expect(toOverallPreflightStatus(existingRealmChecks)).toBe('blocked');
+  });
+
+  it('keeps technical repairs available for an existing realm without admin bootstrap data', () => {
+    const checks = buildPreflightChecks({
+      realmMode: 'existing',
+      authClientSecretConfigured: true,
+      authClientSecret: 'secret',
+      tenantAdminClient: {
+        clientId: 'tenant-admin',
+        secretConfigured: true,
+      },
+      tenantAdminClientSecret: 'tenant-admin-secret',
+      state: {
+        realm: { realm: 'imported' },
+      } as never,
+    });
+
+    expect(checks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('warning');
+    expect(toOverallPreflightStatus(checks)).toBe('warning');
+  });
+
+  it('skips bootstrap-admin creation in plans for imported realms without a profile', () => {
+    const plan = buildPlan({
+      instanceId: 'imported',
+      realmMode: 'existing',
+      preflight: { overallStatus: 'warning', checkedAt: '2026-09-11T00:00:00Z', checks: [] },
+    });
+
+    expect(plan.steps.find((step) => step.stepKey === 'tenant_admin')).toMatchObject({
+      action: 'skip',
+    });
+    expect(plan.driftSummary).not.toContain('Tenant-Admin wird erstellt');
+  });
+
+  it('plans role creation when the same-named role belongs to another instance', () => {
+    const plan = buildPlan({
+      instanceId: 'demo',
+      realmMode: 'existing',
+      preflight: { overallStatus: 'ready', checkedAt: '2026-09-11T00:00:00Z', checks: [] },
+      state: {
+        pluginOidcClients: [],
+        systemAdminRole: {
+          externalName: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-other'],
+            role_key: ['system_admin'],
+          },
+        },
+      } as never,
+    });
+
+    expect(plan.steps.find((step) => step.stepKey === 'roles')).toMatchObject({
+      action: 'create',
+      details: { systemAdminRoleExists: false },
+    });
   });
 
   it('builds keycloak status with mapper, uri and tenant admin checks', () => {
@@ -101,7 +158,15 @@ describe('provisioning-auth-evaluation', () => {
           tenantAdminHasSystemAdmin: true,
         },
         keycloakClientSecret: 'tenant-secret',
-        systemAdminRole: { id: 'role-1', externalName: 'system_admin' } as never,
+        systemAdminRole: {
+          id: 'role-1',
+          externalName: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['system_admin'],
+          },
+        } as never,
       },
     });
 
@@ -111,8 +176,36 @@ describe('provisioning-auth-evaluation', () => {
     expect(status.logoutUrisMatch).toBe(true);
     expect(status.webOriginsMatch).toBe(true);
     expect(status.pluginOidcClientsAligned).toBe(true);
+    expect(status.systemAdminRoleExists).toBe(true);
     expect(status.clientSecretAligned).toBe(true);
     expect(status.runtimeSecretSource).toBe('tenant');
+  });
+
+  it('does not report a same-named role with foreign ownership as the protected role', () => {
+    const expectedClient = buildExpectedClientConfig('demo.example.org');
+    const status = buildKeycloakStatus({
+      authClientSecretConfigured: true,
+      instanceId: 'demo',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      realmMode: 'existing',
+      state: {
+        expectedClient,
+        clientRepresentation: null,
+        pluginOidcClients: [],
+        tenantAdminStatus: { tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+        systemAdminRole: {
+          externalName: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-other'],
+            role_key: ['system_admin'],
+          },
+        },
+      } as never,
+    });
+
+    expect(status.systemAdminRoleExists).toBe(false);
   });
 
   it('reports plugin OIDC client drift in the operational status', () => {

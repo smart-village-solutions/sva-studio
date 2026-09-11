@@ -43,6 +43,7 @@ export type PluginOidcClientState = Readonly<{
 export type KeycloakRoleRepresentation = {
   readonly id?: string;
   readonly externalName?: string;
+  readonly attributes?: Readonly<Record<string, readonly string[]>>;
 } | null;
 
 export type TenantAdminBootstrap = {
@@ -89,5 +90,6 @@ export type KeycloakProvisioningInput = {
   };
   tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
+  allowLegacyRealmRoleMigration?: boolean;
   pluginOidcClients?: readonly PluginOidcClientRequirement[];
 };

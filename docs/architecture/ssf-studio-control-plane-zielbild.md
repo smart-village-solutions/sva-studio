@@ -31,6 +31,19 @@ und die SSF-seitige Implementierung des Sammelwiderrufs. Bis diese Verträge
 gemeinsam im Staging nachgewiesen sind, bleibt das produktive Enablement
 gesperrt.
 
+Für den generischen Modul-IAM-Abgleich registriert `ssf` seine beiden
+Tenant-Konfigurationsrechte `ssf.configuration.tenant.read` und
+`ssf.configuration.tenant.manage` als `moduleIam`-Vertrag. Die tenantlokale
+Rolle `system_admin` erhält diese Rechte über den bestehenden Modulabgleich.
+Die Root-Konfigurationsrechte bleiben ausschließlich an den Plattformzugriff
+gebunden und werden nicht in den Tenant-Vertrag übernommen. Die Registrierung
+weist keinem Root-Benutzer automatisch eine Tenant-Rolle zu.
+
+Der Keycloak-Provisioner markiert die geschützte Realm-Rolle `system_admin`
+mit der Studio-Instanz-ID. Bei wiederholtem Provisioning korrigiert er ältere
+Realm-basierte Metadaten idempotent, damit der tenantlokale Rollenabgleich die
+bereits vorhandene Rolle übernimmt und nicht als Namenskonflikt behandelt.
+
 Die erste Ausbaustufe konzentriert sich auf die Anlage und Verwaltung von
 Mandanten und Benutzern. Auswertungen aus ClickHouse, eine mögliche separate
 Session-Datenbank, Gesprächsinhalte und Supportzugriffe sind ausdrücklich nicht

@@ -1,6 +1,7 @@
-import type {
-  InstanceAuditInstanceResult,
-  InstanceAuditRun,
+import {
+  isInstanceTenantAdminRequired,
+  type InstanceAuditInstanceResult,
+  type InstanceAuditRun,
 } from '@sva/core';
 
 import { buildKeycloakChecks, resolveKeycloakStatus } from './service-audit-keycloak.js';
@@ -28,11 +29,12 @@ const buildInstanceAuditResult = async (
   if (!instance) {
     return null;
   }
+  const requireTenantAdmin = isInstanceTenantAdminRequired(instance);
 
   const [urlCheck, keycloak, localSystemAdminCount] = await Promise.all([
     probeInstanceUrlReachability(instance.primaryHostname),
     resolveKeycloakStatus(deps, instance.instanceId),
-    deps.repository.countLocalSystemAdminAssignments(instance.instanceId),
+    requireTenantAdmin ? deps.repository.countLocalSystemAdminAssignments(instance.instanceId) : Promise.resolve(0),
   ]);
 
   const checks = [
@@ -52,8 +54,9 @@ const buildInstanceAuditResult = async (
       fallbackStatus: keycloak.fallbackStatus,
       fallbackEvidenceSource: keycloak.fallbackEvidenceSource,
       fallbackError: keycloak.fallbackError,
+      requireTenantAdmin,
     }),
-    createLocalIamCheck(localSystemAdminCount),
+    createLocalIamCheck(localSystemAdminCount, requireTenantAdmin),
   ];
 
   return {

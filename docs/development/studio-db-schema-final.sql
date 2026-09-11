@@ -2445,6 +2445,14 @@ ALTER TABLE ONLY iam.instance_waste_provisioning
 
 
 --
+-- Name: instances instances_auth_realm_unique; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instances
+    ADD CONSTRAINT instances_auth_realm_unique UNIQUE (auth_realm);
+
+
+--
 -- Name: instances instances_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 

@@ -100,6 +100,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 058 | [Generischer Plugin-Tenant-Lifecycle und Readiness-Gate](./ADR-058-generischer-plugin-tenant-lifecycle-und-readiness-gate.md)                                                 | ✅     | 2026-08-30         | Plugins / Runtime / IAM           |
 | 059 | [Administrative Keycloak-Realm-Rollenzuweisungen](./ADR-059-administrative-keycloak-realm-rollenzuweisungen.md)                                                               | ✅     | 2026-09-02         | IAM / Keycloak / Authorization    |
 | 060 | [Keycloak-Serviceidentitäten und Doctor-Evidenz trennen](./ADR-060-keycloak-serviceidentitaeten-und-doctor-evidenz.md)                                                         | ✅     | 2026-09-02         | IAM / Keycloak / Diagnose         |
+| 061 | [Instanzgebundene Keycloak-Provisioning-Ownership und -Serialisierung](./ADR-061-instanzgebundene-keycloak-provisioning-ownership-und-serialisierung.md)                         | ✅     | 2026-09-11         | IAM / Keycloak / Provisioning     |
 
 ### Kanonischer Ablageort
 
@@ -409,5 +410,5 @@ Hast du Fragen zu ADRs?
 
 ---
 
-**Letzte Aktualisierung:** 2026-01-08
-**Nächste Überprüfung:** 2026-07-08 (6 Monate)
+**Letzte Aktualisierung:** 2026-09-11
+**Nächste Überprüfung:** 2027-03-11 (6 Monate)

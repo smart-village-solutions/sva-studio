@@ -280,6 +280,7 @@ Abhängigkeiten des aktuellen Systems.
 - Keycloak ist führend für Authentifizierung, Token-Claims und IdP-nahe Admin-Operationen.
 - Postgres ist führend für Studio-verwaltete IAM-Fachdaten wie Accounts, tenantlokale Fachrollen, Gruppen, Permissions und Auditdaten.
 - Der Keycloak-Rollenabgleich ist auf technische Sonderrollen begrenzt: `system_admin` im Tenant-Kontext und `instance_registry_admin` im Plattform-Kontext.
+- `packages/instance-registry` stellt `system_admin` bei jedem Tenant-Provisioning unabhängig von einem optionalen Bootstrap-Benutzer sicher. `packages/auth-runtime` bindet Studio-verwaltete Realm-Rollen an die kanonische `instanceId`; eine ältere Bindung an den Realm-Namen darf nur bei exakt einwertigem Studio-Ownership- und `role_key`-Marker sowie einer eindeutigen Realm-Zuordnung in der Registry migriert werden. Fremde, mehrwertige oder unvollständig markierte Rollen werden auch bei konkurrierender Anlage nicht übernommen, sondern als Konflikt abgewiesen.
 - `iam.instances` modelliert ausschließlich Tenant-Instanzen; der Root-Host ist ein separater Plattform-Scope.
 - `iam.instances` fuehrt fuer jede tenantfaehige Instanz getrennte Auth-Vertraege fuer Login (`authClientId`) und Tenant-Administration (`tenantAdminClient`) als kanonische Registry-Basisdaten.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
@@ -922,6 +923,20 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Deployment; das Plugin-SDK erhält dafür keine neue Abstraktion.
 - Root-Actions des SSF-Plugins werden getrennt als Plattformbeitrag für
   `instance_registry_admin` registriert und niemals in Tenant-Tokens projiziert.
+- Keycloak-Status-, Preflight- und Plan-Snapshots tragen eine gemeinsame
+  Policy-Version und einen Fingerprint der Keycloak-relevanten Instanzkonfiguration.
+  Statusänderungen allein lassen diese Evidenz gültig; Änderungen an Ownership-,
+  Bootstrap- oder Instanzregeln verwerfen ältere Snapshots.
+  Nach der Ausführung enthält der finale Status-Snapshot zusätzlich Preflight und Plan
+  für den aktualisierten Registry- und Keycloak-Zustand. Die Read-Pfade wählen
+  laufübergreifend den neuesten Snapshot mit passender Policy-Version und passendem
+  Eingabe-Fingerprint; innerhalb eines Laufs wird der finale Status-Snapshot bevorzugt.
+  Während eines geplanten oder laufenden Keycloak-Provisionings verhindert die Registry
+  Änderungen an den vom Worker konsumierten Instanzfeldern. Worker dürfen in diesem
+  Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.
+  Die Worker-Ausführung selbst hält dieselbe instanzbezogene Sperre im vollständigen
+  RLS-Kontext; verwaiste Claims werden erst nach Ablauf und erfolgreicher Lock-Probe beendet.
+  Ein bereits verwalteter Tenant-Admin-Bootstrap kann nicht entfernt werden.
 
 Der genaue Payload- und Fehlervertrag ist im
 [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md)

@@ -48,6 +48,10 @@ describe('http-instance-handlers', () => {
     withRegistryService: vi.fn(
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     ),
+    withScopedRegistryService: vi.fn(
+      async (_instanceId: string, work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
+        work(service)
+    ),
     reservedOidcClientIds: ['ssf'],
     onInstanceProvisioningRequested: vi.fn(),
   };
@@ -62,6 +66,9 @@ describe('http-instance-handlers', () => {
     deps.parseRequestBody.mockResolvedValue({ ok: true, data: {} });
     deps.withRegistryService.mockImplementation(
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
+    );
+    deps.withScopedRegistryService.mockImplementation(
+      async (_instanceId, work) => work(service)
     );
     vi.mocked(service.listInstances).mockResolvedValue([
       { instanceId: 'demo', status: 'active' },
@@ -305,6 +312,7 @@ describe('http-instance-handlers', () => {
     expect(response.status).toBe(200);
     expect(deps.requireFreshReauth).not.toHaveBeenCalled();
     expect(service.updateInstance).toHaveBeenCalledTimes(1);
+    expect(deps.withScopedRegistryService).toHaveBeenCalledWith('demo', expect.any(Function));
   });
 
   it('returns guard failures before reading create payloads', async () => {

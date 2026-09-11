@@ -72,7 +72,11 @@ export type KeycloakProvisioningClient = {
     name: string;
     audience: string;
   }): Promise<void>;
-  ensureRealmRole(externalName: string): Promise<void>;
+  ensureRealmRole(
+    externalName: string,
+    instanceId?: string,
+    options?: { readonly allowLegacyRealmRoleMigration?: boolean }
+  ): Promise<void>;
   getRoleByName(externalName: string): Promise<KeycloakRoleRepresentation>;
   findUserByUsername(username: string): Promise<KeycloakAdminUser | null>;
   findUserByEmail(email: string): Promise<KeycloakAdminUser | null>;
@@ -142,6 +146,7 @@ type ProvisionInstanceAuthArtifactsInput = {
   tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
   tenantAdminTemporaryPassword?: string;
+  allowLegacyRealmRoleMigration?: boolean;
   rotateClientSecret?: boolean;
   reconcileAuthClient?: boolean;
   reconcileTenantAdminClient?: boolean;
@@ -180,8 +185,6 @@ const ensureTenantAdmin = async (
 
   const fallbackEmail = `${input.username}@tenant.invalid`;
   const resolvedEmail = input.email ?? fallbackEmail;
-
-  await client.ensureRealmRole(SYSTEM_ADMIN_ROLE);
 
   const existing = await client.findUserByUsername(input.username);
   if (!existing) {
@@ -442,6 +445,9 @@ export const createProvisionInstanceAuthArtifacts =
       });
       await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
     }
+    await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId, {
+      allowLegacyRealmRoleMigration: input.allowLegacyRealmRoleMigration,
+    });
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {
         ...input.tenantAdminBootstrap,

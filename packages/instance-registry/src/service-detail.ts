@@ -1,3 +1,4 @@
+import { isInstanceTenantAdminRequired } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
@@ -82,6 +83,7 @@ export const loadKeycloakDetailArtifacts = async (
 
   const tenantIamStatus = buildTenantIamStatus({
     keycloakStatus,
+    requireTenantAdmin: isInstanceTenantAdminRequired(instance),
     accessEvidence: accessEvidence
       ? {
           status: accessEvidence.status,

@@ -6,8 +6,8 @@ import {
   type InstanceRegistryCommandContext,
 } from './instance-registry/command-context.js';
 import { renderResult } from './instance-registry/formatters.js';
-import { parseInstanceRegistryCliOptions } from './instance-registry/parse-options.js';
-import { runMutationCommand } from './instance-registry/mutation-commands.js';
+import { assertRequired, parseInstanceRegistryCliOptions } from './instance-registry/parse-options.js';
+import { runBackfillAdminClientCommand, runMutationCommand } from './instance-registry/mutation-commands.js';
 import { runReadCommand } from './instance-registry/read-commands.js';
 import { isReadCommand } from './instance-registry/shared.js';
 
@@ -30,9 +30,16 @@ export const runInstanceRegistryCli = async (
   const context = (deps.createContext ?? createInstanceRegistryCommandContext)(databaseUrl);
 
   try {
-    const result = isReadCommand(options.command)
-      ? await runReadCommand(context, options)
-      : await context.withTransaction((service) => runMutationCommand(service, options));
+    let result: unknown;
+    if (isReadCommand(options.command)) {
+      result = await runReadCommand(context, options);
+    } else if (options.command === 'backfill-admin-client') {
+      result = await runBackfillAdminClientCommand(context.createReadService(), context.withTransaction, options);
+    } else {
+      result = await context.withTransaction(assertRequired(options.instanceId, '--instance-id'), (service) =>
+        runMutationCommand(service, options)
+      );
+    }
 
     context.logger.info('Instance registry CLI operation completed', {
       operation: `instance_registry_cli_${options.command}`,

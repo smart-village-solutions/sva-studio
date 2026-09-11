@@ -11,7 +11,10 @@ import {
 } from './instance-registry/command-context.ts';
 import { renderResult } from './instance-registry/formatters.ts';
 import { parseInstanceRegistryCliOptions } from './instance-registry/parse-options.ts';
-import { runMutationCommand } from './instance-registry/mutation-commands.ts';
+import {
+  runBackfillAdminClientCommand,
+  runMutationCommand,
+} from './instance-registry/mutation-commands.ts';
 import { deriveTenantAdminClientId } from './instance-registry/shared.ts';
 import { runInstanceRegistryCli } from './instance-registry.ts';
 
@@ -110,13 +113,15 @@ describe('runInstanceRegistryCli', () => {
 
   it('dispatches create commands through the mutation path', async () => {
     const createProvisioningRequest = vi.fn(async () => ({ ok: true }));
-    const withTransactionSpy = vi.fn(async (work: (service: unknown) => Promise<unknown>) =>
+    const withTransactionSpy = vi.fn(async (_instanceId: string, work: (service: unknown) => Promise<unknown>) =>
       work({
         createProvisioningRequest,
       })
     );
-    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (work) =>
-      withTransactionSpy(work as (service: unknown) => Promise<unknown>) as Promise<Awaited<ReturnType<typeof work>>>;
+    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (instanceId, work) =>
+      withTransactionSpy(instanceId, work as (service: unknown) => Promise<unknown>) as Promise<
+        Awaited<ReturnType<typeof work>>
+      >;
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await expect(
@@ -143,13 +148,102 @@ describe('runInstanceRegistryCli', () => {
       )
     ).resolves.toBe(0);
 
-    expect(withTransactionSpy).toHaveBeenCalled();
+    expect(withTransactionSpy).toHaveBeenCalledWith('demo', expect.any(Function));
     expect(createProvisioningRequest).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('runs fleet backfills as one scoped transaction per active instance', async () => {
+    const listInstances = vi.fn(async () => [
+      {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'example.test',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-demo',
+        authIssuerUrl: 'https://id.example.test/realms/demo',
+        tenantAdminClient: undefined,
+        tenantAdminBootstrap: undefined,
+        themeKey: 'default',
+        featureFlags: {},
+        mainserverConfigRef: null,
+      },
+    ]);
+    const updateInstance = vi.fn(async () => ({ instanceId: 'demo' }));
+    const executeKeycloakProvisioning = vi.fn(async () => ({ id: 'run-1' }));
+    const getInstanceDetail = vi.fn(async () => ({
+      instanceId: 'demo',
+      status: 'active',
+      displayName: 'Current Demo',
+      parentDomain: 'current.example.test',
+      realmMode: 'existing',
+      authRealm: 'current-demo',
+      authClientId: 'sva-current-demo',
+      authIssuerUrl: 'https://id.example.test/realms/current-demo',
+      tenantAdminClient: undefined,
+      tenantAdminBootstrap: undefined,
+      themeKey: 'default',
+      featureFlags: {},
+      mainserverConfigRef: null,
+    }));
+    const withTransactionSpy = vi.fn(async (_instanceId: string, work: (service: unknown) => Promise<unknown>) =>
+      work({ getInstanceDetail, updateInstance, executeKeycloakProvisioning })
+    );
+    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (instanceId, work) =>
+      withTransactionSpy(instanceId, work as (service: unknown) => Promise<unknown>) as Promise<
+        Awaited<ReturnType<typeof work>>
+      >;
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await expect(
+      runInstanceRegistryCli(['backfill-admin-client'], {
+        env: { IAM_DATABASE_URL: 'postgres://example' },
+        createContext: () => ({
+          close: vi.fn(async () => undefined),
+          createReadService: () => ({ listInstances } as never),
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), isLevelEnabled: vi.fn() },
+          withTransaction,
+        }),
+      })
+    ).resolves.toBe(0);
+
+    expect(listInstances).toHaveBeenCalledWith({ status: 'active' });
+    expect(withTransactionSpy).toHaveBeenCalledWith('demo', expect.any(Function));
+    expect(getInstanceDetail).toHaveBeenCalledWith('demo');
+    expect(updateInstance).toHaveBeenCalledWith(expect.objectContaining({
+      instanceId: 'demo',
+      displayName: 'Current Demo',
+      parentDomain: 'current.example.test',
+      authRealm: 'current-demo',
+    }));
+    expect(executeKeycloakProvisioning).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'demo' }));
     consoleSpy.mockRestore();
   });
 });
 
 describe('runMutationCommand', () => {
+  it('skips a fleet backfill target that became inactive before its instance lock', async () => {
+    const updateInstance = vi.fn();
+    const executeKeycloakProvisioning = vi.fn();
+
+    await expect(
+      runBackfillAdminClientCommand(
+        { listInstances: vi.fn(async () => [{ instanceId: 'demo' }]) } as never,
+        async (_instanceId, work) =>
+          work({
+            getInstanceDetail: vi.fn(async () => ({ instanceId: 'demo', status: 'suspended' })),
+            updateInstance,
+            executeKeycloakProvisioning,
+          } as never),
+        { actorId: 'cli', idempotencyKey: 'backfill' } as never
+      )
+    ).resolves.toEqual([]);
+
+    expect(updateInstance).not.toHaveBeenCalled();
+    expect(executeKeycloakProvisioning).not.toHaveBeenCalled();
+  });
+
   it('cannot bypass the service boundary for a dynamically reserved plugin client id', async () => {
     const repository = {
       getInstanceById: vi.fn(),
@@ -241,11 +335,14 @@ describe('createInstanceRegistryCommandContext', () => {
       serviceFactory: () => ({ listInstances: vi.fn() } as never),
     });
 
-    await expect(context.withTransaction(async () => Promise.reject(new Error('failed work')))).rejects.toThrow(
+    await expect(context.withTransaction('demo', async () => Promise.reject(new Error('failed work')))).rejects.toThrow(
       'failed work'
     );
     expect(query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(query).toHaveBeenNthCalledWith(2, 'ROLLBACK');
+    expect(query).toHaveBeenNthCalledWith(2, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', ['demo']);
+    expect(query).toHaveBeenNthCalledWith(3, 'SET LOCAL ROLE iam_app;');
+    expect(query).toHaveBeenNthCalledWith(4, 'SELECT set_config($1, $2, true);', ['app.instance_id', 'demo']);
+    expect(query).toHaveBeenNthCalledWith(5, 'ROLLBACK');
     expect(client.release).toHaveBeenCalled();
   });
 });

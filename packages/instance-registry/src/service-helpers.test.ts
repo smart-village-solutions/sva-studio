@@ -208,6 +208,36 @@ describe('service-helpers', () => {
     });
   });
 
+  it('treats a missing optional bootstrap admin as healthy for imported realms', () => {
+    const result = buildTenantIamStatus({
+      keycloakStatus: {
+        realmExists: true,
+        clientExists: true,
+        tenantAdminClientExists: true,
+        systemAdminRoleExists: true,
+        tenantAdminExists: false,
+        tenantAdminHasSystemAdmin: false,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        pluginOidcClientsAligned: true,
+        clientSecretConfigured: true,
+        tenantClientSecretReadable: true,
+        clientSecretAligned: true,
+        tenantAdminClientSecretConfigured: true,
+        tenantAdminClientSecretReadable: true,
+        tenantAdminClientSecretAligned: true,
+        runtimeSecretSource: 'tenant',
+      },
+      requireTenantAdmin: false,
+      accessEvidence: { status: 'ready', summary: 'ok', source: 'access_probe' },
+      reconcileEvidence: { status: 'ready', summary: 'ok', source: 'role_reconcile' },
+    });
+
+    expect(result.configuration).toMatchObject({ status: 'ready', classification: 'ready' });
+    expect(result.overall.status).toBe('ready');
+  });
+
   it('marks access as unknown without prior evidence', () => {
     expect(
       buildTenantIamStatus({

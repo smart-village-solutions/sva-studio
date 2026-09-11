@@ -170,6 +170,8 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakStateViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<KeycloakReadState>;
+  readonly readPluginOidcClientRequirements?: () =>
+    KeycloakProvisioningInput['pluginOidcClients'];
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;
@@ -201,6 +203,13 @@ export type InstanceRegistryServiceDeps = {
   readonly getKeycloakStatus?: (
     input: KeycloakProvisioningContext
   ) => Promise<KeycloakTenantStatus>;
+  readonly withInstanceProvisioningLock?: <T>(
+    instanceId: string,
+    work: (lockedDeps: InstanceRegistryServiceDeps) => Promise<T>
+  ) => Promise<T>;
+  readonly listProvisioningRealmAssignments?: () => Promise<
+    readonly { readonly instanceId: string; readonly authRealm: string }[]
+  >;
   readonly loadWasteDataSourceRecord?: (
     instanceId: string
   ) => Promise<WasteManagementDataSourceRecord | null>;

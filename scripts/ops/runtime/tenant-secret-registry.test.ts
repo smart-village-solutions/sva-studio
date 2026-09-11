@@ -5,18 +5,26 @@ import { createTenantSecretRegistryOps } from './tenant-secret-registry.ts';
 const {
   loadInstanceWithSecret,
   syncProvisionedClientSecretToRegistry,
+  withInstanceProvisioningLock,
   withRegistryProvisioningWorkerDeps,
 } = vi.hoisted(() => ({
   loadInstanceWithSecret: vi.fn<(...args: readonly unknown[]) => Promise<unknown | null>>(async () => null),
-  syncProvisionedClientSecretToRegistry: vi.fn(async () => {}),
+  syncProvisionedClientSecretToRegistry: vi.fn(async () => undefined),
+  withInstanceProvisioningLock: vi.fn(async (_instanceId: string, operation: (deps: unknown) => Promise<unknown>) =>
+    operation({ repository: { listInstances: async () => [{ instanceId: 'tenant-a' }] } }),
+  ),
   withRegistryProvisioningWorkerDeps: vi.fn(
     async (
-      operation: (deps: { repository: { listInstances: (input: { status: string }) => Promise<readonly { instanceId: string }[]> } }) => Promise<unknown>,
+      operation: (deps: {
+        repository: { listInstances: (input: { status: string }) => Promise<readonly { instanceId: string }[]> };
+        withInstanceProvisioningLock: typeof withInstanceProvisioningLock;
+      }) => Promise<unknown>,
     ) =>
       operation({
         repository: {
           listInstances: async () => [{ instanceId: 'tenant-a' }],
         },
+        withInstanceProvisioningLock,
       }),
   ),
 }));
@@ -78,6 +86,7 @@ describe('tenant secret registry', () => {
     await ops.syncLocalTenantSecretsToRegistry({});
 
     expect(syncProvisionedClientSecretToRegistry).toHaveBeenCalledTimes(1);
+    expect(withInstanceProvisioningLock).toHaveBeenCalledWith('tenant-a', expect.any(Function));
     expect(syncProvisionedClientSecretToRegistry).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

@@ -18,6 +18,7 @@ describe('instance keycloak checklist', () => {
       'plugin_oidc_clients',
       'tenant_secret',
       'tenant_admin_client_secret',
+      'system_admin_role',
       'tenant_admin',
       'tenant_admin_system_admin',
     ]);
@@ -28,6 +29,7 @@ describe('instance keycloak checklist', () => {
       realmExists: true,
       clientExists: true,
       tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
       redirectUrisMatch: true,
@@ -46,6 +48,23 @@ describe('instance keycloak checklist', () => {
     expect(areAllInstanceKeycloakRequirementsSatisfied(status)).toBe(true);
     expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, clientExists: false })).toBe(false);
     expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, pluginOidcClientsAligned: false })).toBe(false);
+    expect(
+      areAllInstanceKeycloakRequirementsSatisfied(
+        { ...status, tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+        { requireTenantAdmin: false }
+      )
+    ).toBe(true);
+    expect(
+      areAllInstanceKeycloakRequirementsSatisfied(
+        {
+          ...status,
+          systemAdminRoleExists: false,
+          tenantAdminExists: false,
+          tenantAdminHasSystemAdmin: false,
+        },
+        { requireTenantAdmin: false }
+      )
+    ).toBe(false);
     expect(
       INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'plugin_oidc_clients')
     ).toMatchObject({ statusField: 'pluginOidcClientsAligned', blocksLoginReadiness: false });

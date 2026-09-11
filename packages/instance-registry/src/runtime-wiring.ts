@@ -88,37 +88,52 @@ const completeActivationPolicyFollowUp = async (
   runActivationPolicyFollowUp(deps, input);
 };
 
-const beginScopedTransaction = async (
+const beginLockedTransaction = async (
   client: InstanceRegistryQueryClient,
   instanceId: string
 ): Promise<void> => {
   await client.query('BEGIN');
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', [instanceId]);
+};
+
+const beginScopedTransaction = async (
+  client: InstanceRegistryQueryClient,
+  instanceId: string
+): Promise<void> => {
+  await beginLockedTransaction(client, instanceId);
   await client.query('SET LOCAL ROLE iam_app;');
   await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
+};
+
+const withInstanceTransaction = async <T>(
+  deps: InstanceRegistryRuntimeDeps,
+  instanceId: string,
+  begin: (client: InstanceRegistryQueryClient, instanceId: string) => Promise<void>,
+  work: (client: InstanceRegistryQueryClient) => Promise<T>
+): Promise<T> => {
+  const pool = deps.resolvePool();
+  if (!pool) {
+    throw new Error('IAM database not configured');
+  }
+  const client = await pool.connect();
+  try {
+    await begin(client, instanceId);
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
   const withScopedClient = async <T>(
     instanceId: string,
     work: (client: InstanceRegistryQueryClient) => Promise<T>
-  ): Promise<T> => {
-    const pool = deps.resolvePool();
-    if (!pool) {
-      throw new Error('IAM database not configured');
-    }
-    const client = await pool.connect();
-    try {
-      await beginScopedTransaction(client, instanceId);
-      const result = await work(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  };
+  ): Promise<T> => withInstanceTransaction(deps, instanceId, beginScopedTransaction, work);
   const withRegistryRepository = async <T>(
     work: (repository: InstanceRegistryRepository) => Promise<T>
   ): Promise<T> => {
@@ -172,10 +187,18 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     return scopedResult.result;
   };
   const getProvisioningWorkerServiceDeps = (
-    repository: InstanceRegistryRepository
+    repository: InstanceRegistryRepository,
+    listProvisioningRealmAssignments: () => Promise<
+      readonly { readonly instanceId: string; readonly authRealm: string }[]
+    > = () => repository.listInstances()
   ): InstanceRegistryServiceDeps => ({
-    repository,
     ...(deps.provisioningWorkerServiceDeps ?? deps.serviceDeps),
+    repository,
+    listProvisioningRealmAssignments,
+    withInstanceProvisioningLock: (instanceId, work) =>
+      withScopedRegistryRepository(instanceId, (scopedRepository) =>
+        work(getProvisioningWorkerServiceDeps(scopedRepository, listProvisioningRealmAssignments))
+      ),
   });
   const withRegistryProvisioningWorkerService = async <T>(
     work: (service: InstanceRegistryService) => Promise<T>

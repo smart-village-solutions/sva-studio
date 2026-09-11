@@ -61,10 +61,12 @@ export const createInstanceKeycloakPlanReader =
       const state = await readState(input);
       const preflight = await getPreflight(input);
       return buildPlan({
+        instanceId: input.instanceId,
         realmMode: input.realmMode,
         authClientSecret: input.authClientSecret,
         tenantAdminClient: input.tenantAdminClient,
         tenantAdminClientSecret: input.tenantAdminClientSecret,
+        tenantAdminBootstrap: input.tenantAdminBootstrap,
         pluginOidcClients: input.pluginOidcClients,
         preflight,
         state,
@@ -72,10 +74,12 @@ export const createInstanceKeycloakPlanReader =
     } catch {
       const preflight = await getPreflight(input);
       return buildPlan({
+        instanceId: input.instanceId,
         realmMode: input.realmMode,
         authClientSecret: input.authClientSecret,
         tenantAdminClient: input.tenantAdminClient,
         tenantAdminClientSecret: input.tenantAdminClientSecret,
+        tenantAdminBootstrap: input.tenantAdminBootstrap,
         pluginOidcClients: input.pluginOidcClients,
         preflight,
       });

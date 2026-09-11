@@ -243,7 +243,6 @@ export const createUpdateInstanceHandler =
     if (!existing) {
       return null;
     }
-
     const normalizedParentDomain = normalizeHost(input.parentDomain);
     const primaryHostname =
       normalizeHost(existing.parentDomain) === normalizedParentDomain
@@ -276,7 +275,7 @@ export const createUpdateInstanceHandler =
           }
         : undefined,
       keepExistingTenantAdminClientSecret: !input.tenantAdminClient?.secret?.trim(),
-      tenantAdminBootstrap: input.tenantAdminBootstrap,
+      tenantAdminBootstrap: input.tenantAdminBootstrap ?? existing.tenantAdminBootstrap,
       actorId: input.actorId,
       requestId: input.requestId,
       themeKey: input.themeKey,

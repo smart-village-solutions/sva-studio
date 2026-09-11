@@ -159,41 +159,29 @@ export const syncRotatedClientSecretToRegistry = async (
     throw new Error('tenant_auth_client_secret_missing_after_rotation');
   }
 
-  await deps.repository.updateInstance({
+  const updatedInstance = await deps.repository.updateInstanceKeycloakSecrets({
     instanceId: input.loaded.instance.instanceId,
-    displayName: input.loaded.instance.displayName,
-    parentDomain: input.loaded.instance.parentDomain,
-    primaryHostname: input.loaded.instance.primaryHostname,
-    realmMode: input.loaded.instance.realmMode,
-    authRealm: input.loaded.instance.authRealm,
-    authClientId: input.loaded.instance.authClientId,
-    authIssuerUrl: input.loaded.instance.authIssuerUrl,
     authClientSecretCiphertext: encryptAuthClientSecret(
       deps,
       input.loaded.instance.instanceId,
       rotatedSecret
     ),
     keepExistingAuthClientSecret: false,
-    tenantAdminClient: input.loaded.instance.tenantAdminClient
-      ? {
-          clientId: input.loaded.instance.tenantAdminClient.clientId,
-          secretCiphertext: encryptTenantAdminClientSecret(
-            deps,
-            input.loaded.instance.instanceId,
-            state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret
-          ),
-        }
-      : undefined,
+    tenantAdminClientSecretCiphertext: encryptTenantAdminClientSecret(
+      deps,
+      input.loaded.instance.instanceId,
+      state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret
+    ),
     keepExistingTenantAdminClientSecret:
       !state.tenantAdminClientSecret && !input.loaded.tenantAdminClientSecret,
-    tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
     actorId: input.actorId,
     requestId: input.requestId,
-    themeKey: input.loaded.instance.themeKey,
-    featureFlags: input.loaded.instance.featureFlags,
-    mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
   });
+  if (!updatedInstance) {
+    throw new Error('instance_update_failed_after_secret_rotation');
+  }
 
+  input.loaded.instance = updatedInstance;
   input.loaded.authClientSecret = rotatedSecret;
   input.loaded.tenantAdminClientSecret =
     state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret;
@@ -232,44 +220,28 @@ export const syncProvisionedClientSecretToRegistry = async (
     return;
   }
 
-  await deps.repository.updateInstance({
+  const updatedInstance = await deps.repository.updateInstanceKeycloakSecrets({
     instanceId: loaded.instance.instanceId,
-    displayName: loaded.instance.displayName,
-    parentDomain: loaded.instance.parentDomain,
-    primaryHostname: loaded.instance.primaryHostname,
-    realmMode: loaded.instance.realmMode,
-    authRealm: loaded.instance.authRealm,
-    authClientId: loaded.instance.authClientId,
-    authIssuerUrl: loaded.instance.authIssuerUrl,
     authClientSecretCiphertext: encryptAuthClientSecret(
       deps,
       loaded.instance.instanceId,
       authSecretDrift ? (provisionedSecret ?? undefined) : loaded.authClientSecret
     ),
-    keepExistingAuthClientSecret: false,
-    tenantAdminClient: loaded.instance.tenantAdminClient
-      ? {
-          clientId: loaded.instance.tenantAdminClient.clientId,
-          secretCiphertext: encryptTenantAdminClientSecret(
-            deps,
-            loaded.instance.instanceId,
-            tenantAdminSecretDrift
-              ? (provisionedTenantAdminSecret ?? undefined)
-              : loaded.tenantAdminClientSecret
-          ),
-        }
-      : undefined,
-    keepExistingTenantAdminClientSecret: !(
-      tenantAdminSecretDrift || loaded.tenantAdminClientSecret
+    keepExistingAuthClientSecret: !authSecretDrift,
+    tenantAdminClientSecretCiphertext: encryptTenantAdminClientSecret(
+      deps,
+      loaded.instance.instanceId,
+      provisionedTenantAdminSecret ?? undefined
     ),
-    tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
+    keepExistingTenantAdminClientSecret: !tenantAdminSecretDrift,
     actorId: input.actorId,
     requestId: input.requestId,
-    themeKey: loaded.instance.themeKey,
-    featureFlags: loaded.instance.featureFlags,
-    mainserverConfigRef: loaded.instance.mainserverConfigRef,
   });
+  if (!updatedInstance) {
+    throw new Error('instance_update_failed_after_secret_sync');
+  }
 
+  loaded.instance = updatedInstance;
   updateLoadedSecrets(
     loaded,
     authSecretDrift,

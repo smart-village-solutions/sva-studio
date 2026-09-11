@@ -1,5 +1,6 @@
 import {
   definePluginActions,
+  definePluginModuleIamContract,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -62,6 +63,13 @@ const permissions = definePluginPermissions('ssf', [
   { id: SSF_ADMIN_ACTIONS.tenantManage, titleKey: 'ssf.permissions.tenantManage' },
 ]);
 
+const tenantPermissionIds = permissions.map(({ id }) => id);
+const moduleIam = definePluginModuleIamContract('ssf', {
+  moduleId: 'ssf',
+  permissionIds: tenantPermissionIds,
+  systemRoles: [{ roleName: 'system_admin', permissionIds: tenantPermissionIds }],
+});
+
 export const SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID = 'ssf.reconcile-authorization' as const;
 
 const jobTypes = [
@@ -77,6 +85,7 @@ export const ssfPlugin = {
   displayName: 'Smart Speech Flow',
   actions,
   permissions,
+  moduleIam,
   jobTypes,
   tenantLifecycle: {
     contractVersion: 1,

@@ -131,10 +131,27 @@ describe('http mutation handlers', () => {
 
     const response = mapError(new Error('tenant_auth_client_secret_missing'));
     const body = await readBody(response);
+    const realmConflictResponse = mapError(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'instances_auth_realm_unique',
+      })
+    );
+    const runningRealmChangeResponse = mapError(new Error('instance_configuration_change_blocked'));
 
     expect(response.status).toBe(409);
     expect(body).toMatchObject({
       code: 'tenant_auth_client_secret_missing',
+      requestId: 'req-test',
+    });
+    expect(realmConflictResponse.status).toBe(409);
+    await expect(readBody(realmConflictResponse)).resolves.toMatchObject({
+      code: 'auth_realm_conflict',
+      requestId: 'req-test',
+    });
+    expect(runningRealmChangeResponse.status).toBe(409);
+    await expect(readBody(runningRealmChangeResponse)).resolves.toMatchObject({
+      code: 'instance_configuration_change_blocked',
       requestId: 'req-test',
     });
   });

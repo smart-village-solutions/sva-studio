@@ -13,7 +13,11 @@ import type { InstanceListRow } from './repository-types.js';
 
 type MutationRepository = Pick<
   InstanceRegistryRepository,
-  'createInstance' | 'updateInstance' | 'setInstanceStatus' | 'setInstanceRealmMode'
+  | 'createInstance'
+  | 'updateInstance'
+  | 'updateInstanceKeycloakSecrets'
+  | 'setInstanceStatus'
+  | 'setInstanceRealmMode'
 >;
 
 const runMutationStep = async <T>(stepKey: string, work: () => Promise<T>): Promise<T> => {
@@ -45,6 +49,17 @@ const upsertPrimaryHostname = async (
     text: upsertPrimaryHostnameSql,
     values: [hostname, instanceId, resolveInstanceMutationActorId(actorId)],
   });
+};
+
+const instanceExists = async (executor: SqlExecutor, instanceId: string): Promise<boolean> => {
+  const rows = await queryRows<{ instance_exists: boolean }>(
+    executor,
+    statement(
+      `SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`,
+      [instanceId]
+    )
+  );
+  return rows[0]?.instance_exists === true;
 };
 
 const createInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['createInstance']>[0]) => {
@@ -102,6 +117,11 @@ SET
   updated_by = $21,
   updated_at = NOW()
 WHERE id = $1
+  AND NOT EXISTS (
+    SELECT 1
+    FROM iam.instance_keycloak_provisioning_runs
+    WHERE instance_id = $1 AND overall_status IN ('planned', 'running')
+  )
 RETURNING
 ${buildInstanceSelectColumns()};
 `,
@@ -109,10 +129,44 @@ ${buildInstanceSelectColumns()};
     )
   );
   if (!rows[0]) {
+    if (await instanceExists(executor, input.instanceId)) {
+      throw new Error('instance_configuration_change_blocked');
+    }
     return null;
   }
   await upsertPrimaryHostname(executor, input.primaryHostname, input.instanceId, input.actorId);
   return mapInstance(rows[0]);
+};
+
+const updateInstanceKeycloakSecrets = async (
+  executor: SqlExecutor,
+  input: Parameters<MutationRepository['updateInstanceKeycloakSecrets']>[0]
+) => {
+  const rows = await queryRows<InstanceListRow>(
+    executor,
+    statement(
+      `
+UPDATE iam.instances
+SET
+  auth_client_secret_ciphertext = CASE WHEN $2::boolean THEN auth_client_secret_ciphertext ELSE $3 END,
+  tenant_admin_client_secret_ciphertext = CASE WHEN $4::boolean THEN tenant_admin_client_secret_ciphertext ELSE $5 END,
+  updated_by = $6,
+  updated_at = NOW()
+WHERE id = $1
+RETURNING
+${buildInstanceSelectColumns()};
+`,
+      [
+        input.instanceId,
+        input.keepExistingAuthClientSecret !== false,
+        input.authClientSecretCiphertext ?? null,
+        input.keepExistingTenantAdminClientSecret !== false,
+        input.tenantAdminClientSecretCiphertext ?? null,
+        resolveInstanceMutationActorId(input.actorId),
+      ]
+    )
+  );
+  return rows[0] ? mapInstance(rows[0]) : null;
 };
 
 const setInstanceStatus = async (
@@ -164,6 +218,7 @@ ${buildInstanceSelectColumns()};
 export const createMutationRepository = (executor: SqlExecutor): MutationRepository => ({
   createInstance: (input) => createInstance(executor, input),
   updateInstance: (input) => updateInstance(executor, input),
+  updateInstanceKeycloakSecrets: (input) => updateInstanceKeycloakSecrets(executor, input),
   setInstanceStatus: (input) => setInstanceStatus(executor, input),
   setInstanceRealmMode: (input) => setInstanceRealmMode(executor, input),
 });

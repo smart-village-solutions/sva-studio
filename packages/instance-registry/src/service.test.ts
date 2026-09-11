@@ -17,7 +17,12 @@ vi.mock('@sva/server-runtime', async () => {
 
 import { createInstanceRegistryService } from './service.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
-import { createGetKeycloakStatusHandler } from './service-keycloak.js';
+import { buildKeycloakSnapshotInputFingerprint } from './provisioning-auth-policy.js';
+import {
+  createGetKeycloakPreflightHandler,
+  createGetKeycloakStatusHandler,
+  createPlanKeycloakProvisioningHandler,
+} from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const baseInstance = {
@@ -1186,6 +1191,7 @@ describe('instance registry service facade', () => {
         primaryHostname: 'demo.example.org',
         keepExistingAuthClientSecret: true,
         keepExistingTenantAdminClientSecret: true,
+        tenantAdminBootstrap: baseInstance.tenantAdminBootstrap,
       })
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
@@ -2274,6 +2280,149 @@ describe('instance registry service facade', () => {
     });
   });
 
+  it('invalidates a preflight snapshot after the instance contract changes', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        realmMode: 'existing' as const,
+        tenantAdminBootstrap: undefined,
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'worker_preflight_snapshot',
+              title: 'Preflight',
+              status: 'failed',
+              summary: 'Blocked',
+              details: {
+                policyVersion: 3,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint({
+                  ...baseInstance,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                }),
+                preflight: {
+                  overallStatus: 'blocked',
+                  checkedAt: '2026-09-10T00:00:00.000Z',
+                  checks: [
+                    {
+                      checkKey: 'tenant_admin_profile',
+                      title: 'Tenant-Admin-Profil',
+                      status: 'blocked',
+                      summary: 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
+                      details: { configured: false },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const preflight = await createGetKeycloakPreflightHandler(createDeps(repository))('demo');
+
+    expect(preflight?.overallStatus).toBe('warning');
+    expect(preflight?.checks).toContainEqual(
+      expect.objectContaining({ checkKey: 'tenant_admin_profile', status: 'warning' })
+    );
+  });
+
+  it('reuses finalized preflight and plan snapshots after provisioning changes registry inputs', async () => {
+    const preflight = {
+      overallStatus: 'ready' as const,
+      checkedAt: '2026-09-11T12:00:00.000Z',
+      checks: [],
+    };
+    const plan = {
+      mode: 'existing' as const,
+      overallStatus: 'ready' as const,
+      generatedAt: '2026-09-11T12:00:00.000Z',
+      driftSummary: 'Kein Drift.',
+      steps: [],
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      getAuthClientSecretCiphertext: vi.fn(async () => 'cipher-auth-v2'),
+      getTenantAdminClientSecretCiphertext: vi.fn(async () => 'cipher-admin-v2'),
+      listKeycloakProvisioningRuns: vi.fn(async () => [{
+        ...latestRun,
+        steps: [{
+          stepKey: 'status_snapshot',
+          title: 'Status',
+          status: 'done',
+          summary: 'Final',
+          details: {
+            policyVersion: 3,
+            inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance, {
+              authClientSecretCiphertext: 'cipher-auth-v2',
+              tenantAdminClientSecretCiphertext: 'cipher-admin-v2',
+            }),
+            preflight,
+            plan,
+          },
+        }],
+      }]),
+    });
+    const deps = createDeps(repository);
+
+    await expect(createGetKeycloakPreflightHandler(deps)('demo')).resolves.toEqual(preflight);
+    await expect(createPlanKeycloakProvisioningHandler(deps)('demo')).resolves.toEqual(plan);
+  });
+
+  it('invalidates an outdated imported-realm plan that would create a tenant admin', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        realmMode: 'existing' as const,
+        tenantAdminBootstrap: undefined,
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'worker_plan_snapshot',
+              title: 'Plan',
+              status: 'failed',
+              summary: 'Blocked',
+              details: {
+                plan: {
+                  mode: 'existing',
+                  overallStatus: 'blocked',
+                  generatedAt: '2026-09-10T00:00:00.000Z',
+                  driftSummary: 'Provisioning ist blockiert.',
+                  steps: [
+                    {
+                      stepKey: 'tenant_admin',
+                      title: 'Tenant-Admin sicherstellen',
+                      action: 'create',
+                      status: 'blocked',
+                      summary: 'Tenant-Admin wird erstellt.',
+                      details: {},
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const plan = await createPlanKeycloakProvisioningHandler(createDeps(repository))('demo');
+
+    expect(plan).toMatchObject({
+      overallStatus: 'ready',
+      steps: expect.arrayContaining([
+        expect.objectContaining({ stepKey: 'roles', action: 'create', status: 'ready' }),
+        expect.objectContaining({ stepKey: 'tenant_admin', action: 'skip', status: 'ready' }),
+      ]),
+    });
+  });
+
   it('returns a local fallback keycloak status without decrypting secrets when revealSecret is unavailable', async () => {
     const getAuthClientSecretCiphertext = vi.fn(async () => 'cipher-auth');
     const getTenantAdminClientSecretCiphertext = vi.fn(async () => 'cipher-admin');
@@ -2338,6 +2487,8 @@ describe('instance registry service facade', () => {
               status: 'done',
               summary: 'Snapshot vorhanden',
               details: {
+                policyVersion: 3,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance),
                 status: {
                   realmExists: true,
                   clientExists: true,
@@ -2367,13 +2518,15 @@ describe('instance registry service facade', () => {
     ).resolves.toBeNull();
   });
 
-  it('returns a persisted keycloak status snapshot without loading secrets', async () => {
-    const getAuthClientSecretCiphertext = vi.fn(async () => {
-      throw new Error('should_not_load_auth_secret');
-    });
-    const getTenantAdminClientSecretCiphertext = vi.fn(async () => {
-      throw new Error('should_not_load_tenant_secret');
-    });
+  it('returns a persisted keycloak status snapshot without decrypting secrets', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'auth-ciphertext');
+    const getTenantAdminClientSecretCiphertext = vi.fn(
+      async () => 'tenant-admin-ciphertext'
+    );
+    const secretVersions = {
+      authClientSecretCiphertext: 'auth-ciphertext',
+      tenantAdminClientSecretCiphertext: 'tenant-admin-ciphertext',
+    };
     const repository = createRepository({
       listKeycloakProvisioningRuns: vi.fn(async () => [
         {
@@ -2392,6 +2545,11 @@ describe('instance registry service facade', () => {
               status: 'done',
               summary: 'Snapshot vorhanden',
               details: {
+                policyVersion: 3,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(
+                  baseInstance,
+                  secretVersions
+                ),
                 status: {
                   realmExists: true,
                   clientExists: true,
@@ -2439,8 +2597,43 @@ describe('instance registry service facade', () => {
       tenantAdminClientSecretAligned: true,
       runtimeSecretSource: 'tenant',
     });
-    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
-    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
+    expect(getTenantAdminClientSecretCiphertext).toHaveBeenCalledWith('demo');
+  });
+
+  it('ignores status snapshots from before ownership-aware role evaluation', async () => {
+    const repository = createRepository({
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Legacy snapshot',
+              details: {
+                status: {
+                  realmExists: true,
+                  systemAdminRoleExists: true,
+                  runtimeSecretSource: 'tenant',
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const status = await createGetKeycloakStatusHandler(
+      createDeps(repository, { revealSecret: undefined })
+    )('demo');
+
+    expect(status).toMatchObject({
+      realmExists: false,
+      systemAdminRoleExists: false,
+      runtimeSecretSource: 'global',
+    });
   });
 
   it('returns null for keycloak status snapshots when the instance no longer exists', async () => {

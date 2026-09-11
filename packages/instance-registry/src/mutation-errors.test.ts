@@ -44,6 +44,10 @@ describe('mutation-errors', () => {
       status: 409,
       code: 'idempotency_key_reuse',
     });
+    expect(classifyInstanceMutationError(new Error('instance_configuration_change_blocked'))).toEqual({
+      status: 409,
+      code: 'instance_configuration_change_blocked',
+    });
   });
 
   it('classifies reserved tenant hosts as invalid requests', () => {
@@ -67,6 +71,17 @@ describe('mutation-errors', () => {
       status: 409,
       code: 'plugin_activation_state_conflict',
     });
+  });
+
+  it('classifies duplicate realm assignments as a stable conflict', () => {
+    expect(
+      classifyInstanceMutationError(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'instances_auth_realm_unique',
+        })
+      )
+    ).toEqual({ status: 409, code: 'auth_realm_conflict' });
   });
 
   it('classifies tenant RLS and schema write failures as database failures', () => {

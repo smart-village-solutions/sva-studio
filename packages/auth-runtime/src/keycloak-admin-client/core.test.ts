@@ -1417,6 +1417,246 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it('repairs provisioning metadata on an existing realm role for the Studio instance', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['system_admin'],
+            display_name: ['System Administrator'],
+          },
+        })
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['System Administrator'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureRealmRole('system_admin', 'tenant-havelland', {
+        allowLegacyRealmRoleMigration: true,
+      })
+    ).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      'https://keycloak.example/admin/realms/demo/roles/system_admin',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['System Administrator'],
+          },
+        }),
+      })
+    );
+  });
+
+  it('creates a missing realm role with the Studio instance id', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }))
+      .mockResolvedValueOnce(new Response(null, { status: 201 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['system_admin'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureRealmRole('system_admin', 'tenant-havelland')
+    ).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      'https://keycloak.example/admin/realms/demo/roles',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['system_admin'],
+          },
+        }),
+      })
+    );
+  });
+
+  it('rejects an unmanaged realm role created concurrently', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }))
+      .mockResolvedValueOnce(createJsonResponse(409, { error: 'exists' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {},
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+  });
+
+  it('rejects multi-value ownership markers on a realm role created concurrently', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }))
+      .mockResolvedValueOnce(createJsonResponse(409, { error: 'exists' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio', 'other'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+  });
+
+  it('rejects an existing realm role owned by another Studio instance', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-other'],
+            role_key: ['system_admin'],
+            display_name: ['System Administrator'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'role_ownership_conflict',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects an existing realm role with an incomplete Studio ownership marker', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            display_name: ['System Administrator'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'role_ownership_conflict',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects conflicting multi-value Studio ownership markers', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio', 'other'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'role_ownership_conflict',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a legacy realm binding unless its registry assignment is unique', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['system_admin'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'role_ownership_conflict',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it('sets required actions and logs password reset failures with write protection', async () => {
     const { KeycloakAdminRequestError, KeycloakAdminUnavailableError } = await import('./core.js');
     let now = 0;

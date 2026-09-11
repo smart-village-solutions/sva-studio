@@ -12,6 +12,7 @@ export type InstanceKeycloakRequirementKey =
   | 'plugin_oidc_clients'
   | 'tenant_secret'
   | 'tenant_admin_client_secret'
+  | 'system_admin_role'
   | 'tenant_admin'
   | 'tenant_admin_system_admin';
 
@@ -127,6 +128,16 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     uiStepKey: 'tenantAdminClient',
   },
   {
+    key: 'system_admin_role',
+    statusField: 'systemAdminRoleExists',
+    expectedValue: true,
+    sourceFields: ['instanceId'],
+    dbFields: ['iam.instances.id'],
+    keycloakArtifacts: ['role:system_admin'],
+    workerStepKey: 'roles',
+    uiStepKey: 'tenantAdmin',
+  },
+  {
     key: 'tenant_admin',
     statusField: 'tenantAdminExists',
     expectedValue: true,
@@ -163,7 +174,26 @@ export const isInstanceKeycloakRequirementSatisfied = (
   requirement: InstanceKeycloakRequirement
 ): boolean => status[requirement.statusField] === requirement.expectedValue;
 
-export const areAllInstanceKeycloakRequirementsSatisfied = (status: IamInstanceKeycloakStatus): boolean =>
-  INSTANCE_KEYCLOAK_REQUIREMENTS.every((requirement) =>
+export const isInstanceTenantAdminRequired = (input: {
+  readonly realmMode: 'new' | 'existing';
+  readonly tenantAdminBootstrap?: { readonly username: string };
+}): boolean => input.realmMode !== 'existing' || Boolean(input.tenantAdminBootstrap?.username);
+
+export const getApplicableInstanceKeycloakRequirements = (options: {
+  readonly requireTenantAdmin?: boolean;
+} = {}): readonly InstanceKeycloakRequirement[] =>
+  options.requireTenantAdmin === false
+    ? INSTANCE_KEYCLOAK_REQUIREMENTS.filter(
+        (requirement) =>
+          requirement.key !== 'tenant_admin' &&
+          requirement.key !== 'tenant_admin_system_admin'
+      )
+    : INSTANCE_KEYCLOAK_REQUIREMENTS;
+
+export const areAllInstanceKeycloakRequirementsSatisfied = (
+  status: IamInstanceKeycloakStatus,
+  options: { readonly requireTenantAdmin?: boolean } = {}
+): boolean =>
+  getApplicableInstanceKeycloakRequirements(options).every((requirement) =>
     isInstanceKeycloakRequirementSatisfied(status, requirement)
   );

@@ -97,7 +97,14 @@ const createClient = (
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
   ensureAudienceProtocolMapper: vi.fn(async () => undefined),
   ensureRealmRole: vi.fn(async () => undefined),
-  getRoleByName: vi.fn(async (externalName: string) => ({ externalName })),
+  getRoleByName: vi.fn(async (externalName: string) => ({
+    externalName,
+    attributes: {
+      managed_by: ['studio'],
+      instance_id: ['demo'],
+      role_key: [externalName],
+    },
+  })),
   findUserByUsername: vi.fn(async () => null),
   findUserByEmail: vi.fn(async () => null),
   createUser: vi.fn(async () => ({ externalId: 'user-1' })),
@@ -221,9 +228,29 @@ describe('provisioning-auth-state', () => {
         username: 'tenant-admin',
       })
     );
-    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin');
+    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'demo', {
+      allowLegacyRealmRoleMigration: undefined,
+    });
     expect(client.ensureRealmRole).not.toHaveBeenCalledWith('instance_registry_admin');
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
+  });
+
+  it('ensures the protected tenant role without a tenant admin bootstrap', async () => {
+    const client = createClient();
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await provision({
+      instanceId: 'tenant-havelland',
+      primaryHostname: 'havelland.example.org',
+      realmMode: 'existing',
+      authRealm: 'havelland',
+      authClientId: 'sva-studio',
+    });
+
+    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'tenant-havelland', {
+      allowLegacyRealmRoleMigration: undefined,
+    });
+    expect(client.findUserByUsername).not.toHaveBeenCalled();
   });
 
   it('provisions the disabled SSF client independently for two tenant realms', async () => {

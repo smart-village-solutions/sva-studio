@@ -433,7 +433,8 @@ Fehlerpfad:
 5. `Provisioning ausfuehren` oder `Reconcile` startet einen expliziten Run mit Realm-Modus `new` oder `existing`; der validierte `Idempotency-Key` wird zusammen mit Mutation und stabilem Payload-Fingerprint persistent dedupliziert.
 6. `packages/auth-runtime` delegiert an die gemeinsame Provisioning-Fassade in `packages/instance-registry`.
 7. Die Fassade provisioniert getrennt Login-Client (`authClientId`) und Tenant-Admin-Client (`tenantAdminClient.clientId`) inklusive separater Secret-Aufloesung.
-8. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
+8. Bei importierten bestehenden Realms ist ein fehlender Tenant-Admin-Bootstrap eine Preflight-Warnung, damit technische Reparaturen ausführbar bleiben. Die Fassade stellt die geschützte Rolle `system_admin` unabhängig vom Bootstrap mit der kanonischen Studio-`instanceId` sicher. Abschluss, Gesundheitsklassifikation und Folgeplan prüfen in diesem Fall die geschützte Realm-Rolle, aber keine nicht konfigurierte Admin-Identität. Eine Studio-verwaltete Legacy-Bindung an den Realm-Namen wird nur bei einwertigen Ownership-Markern und genau einer Registry-Instanz für diesen Realm migriert; fremde, mehrwertige, unvollständige oder konkurrierend angelegte Rollen beenden den Lauf mit einem Konflikt. Für neue Realms bleiben fehlende Bootstrap-Stammdaten ein Blocker.
+9. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
 
 Fehlerpfad:
 
@@ -441,6 +442,8 @@ Fehlerpfad:
 - fehlende Re-Authentisierung -> `403 reauth_required`.
 - blockierter Preflight oder Plan -> kein Keycloak-Mutationslauf.
 - wiederholter Keycloak-Request mit identischem `Idempotency-Key` und identischer stabiler Payload -> kein zweiter Run; abweichende Payload im selben Scope -> `409 idempotency_key_reuse`.
+- eine Änderung der Instanzkonfiguration während eines geplanten oder laufenden Keycloak-Provisionings -> `409 instance_configuration_change_blocked`; die Instanz bleibt bestehen und kann nach Abschluss des Laufs erneut geändert werden.
+- ein ausgelassener Tenant-Admin-Bootstrap bei einer späteren Instanzänderung bewahrt die bereits verwalteten Bootstrap-Daten; dadurch bleibt die Herkunft eines von Studio verwalteten Tenant-Admins erhalten.
 - fehlt nur der Tenant-Admin-Client, darf Reconcile gezielt `provision_admin_client` nachziehen, ohne den Login-Pfad zu veraendern.
 
 ### Szenario 2d: Datensatzautorisierung mit Rollen-Scope
@@ -543,6 +546,19 @@ Fehlerpfad:
 - Die Probe führt keine Client-, Rollen-, Benutzer- oder Secret-Mutation aus.
 - Fehlende Tenant-IAM-Credentials werden nicht durch Provisioner-Credentials
   ersetzt.
+- Keycloak-Provisioning-Läufe werden pro Instanz mit derselben transaktionalen
+  Advisory-Sperre wie Registry-Updates serialisiert; bereits Auswahl und
+  Statuswechsel des Claims erfolgen unter dieser Sperre. Die Fleet-Auswahl
+  überspringt dabei gesperrte Instanzen und wählt den ältesten erfolgreich
+  gesperrten Lauf, sodass unabhängige Mandanten weiterlaufen. Die Prüfung auf eine
+  eindeutige Realm-Zuordnung liest installationsweit außerhalb des Tenant-RLS-Scope.
+  Ein länger als 15 Minuten verwaister `running`-Claim wird nur dann als
+  fehlgeschlagen markiert, wenn die Instanzsperre nachweislich nicht mehr von
+  einem Worker gehalten wird. Lokale Worker beenden vor ihrem Startup-Cutoff
+  liegende `planned`-Runs ebenfalls nur unter der jeweiligen Instanzsperre.
+  Operativer Secret-Repair und Fleet-Backfills lesen den aktuellen Datensatz
+  nach Sperrerwerb erneut; inzwischen inaktive oder bereits reparierte
+  Instanzen werden übersprungen.
 
 ### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
 

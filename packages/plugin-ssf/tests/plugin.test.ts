@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
+import { createPluginModuleIamRegistry } from '@sva/plugin-sdk';
 
 import { ssfPlugin } from '../src/index.js';
 import { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID } from '../src/plugin.js';
@@ -13,6 +14,23 @@ import {
 } from '../src/constants.js';
 
 describe('SSF plugin metadata', () => {
+  it('registers tenant configuration permissions for the module IAM reconciliation', () => {
+    const contract = createPluginModuleIamRegistry([ssfPlugin]).get('ssf');
+
+    expect(contract).toMatchObject({
+      moduleId: 'ssf',
+      permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+      systemRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+        },
+      ],
+    });
+    expect(contract?.permissionIds).not.toContain('ssf.configuration.system.manage');
+    expect(contract?.permissionIds).not.toContain('ssf.configuration.system.read');
+  });
+
   it('keeps the runtime service and adds separated Root and Tenant administration', () => {
     const manifest = JSON.parse(
       readFileSync(new URL('../plugin.manifest.json', import.meta.url), 'utf8')

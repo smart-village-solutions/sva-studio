@@ -98,14 +98,61 @@ describe('runtime wiring', () => {
 
     expect(result).toBe(repository);
     expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(client.query).toHaveBeenNthCalledWith(2, 'SET LOCAL ROLE iam_app;');
-    expect(client.query).toHaveBeenNthCalledWith(3, 'SELECT set_config($1, $2, true);', [
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));',
+      ['tenant-a']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(3, 'SET LOCAL ROLE iam_app;');
+    expect(client.query).toHaveBeenNthCalledWith(4, 'SELECT set_config($1, $2, true);', [
       'app.instance_id',
       'tenant-a',
     ]);
-    expect(client.query).toHaveBeenNthCalledWith(4, 'select 1', ['demo']);
-    expect(client.query).toHaveBeenNthCalledWith(5, 'COMMIT');
+    expect(client.query).toHaveBeenNthCalledWith(5, 'select 1', ['demo']);
+    expect(client.query).toHaveBeenNthCalledWith(6, 'COMMIT');
     expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('serializes provisioning worker work in the scoped instance transaction', async () => {
+    const client = createClient();
+    const realmAssignments = [{ instanceId: 'tenant-a', authRealm: 'realm-a' }];
+    const globalRepository = {
+      listInstances: vi.fn().mockResolvedValue(realmAssignments),
+    } as unknown as InstanceRegistryRepository;
+    const scopedRepository = {
+      listInstances: vi.fn().mockRejectedValue(new Error('tenant-scoped list must not be used')),
+    } as unknown as InstanceRegistryRepository;
+    const createRepository = vi
+      .fn<(executor: SqlExecutor) => InstanceRegistryRepository>()
+      .mockReturnValueOnce(globalRepository)
+      .mockReturnValueOnce(scopedRepository);
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository,
+      serviceDeps: { invalidateHost: vi.fn() },
+    });
+
+    await runtime.withRegistryProvisioningWorkerDeps((workerDeps) =>
+      workerDeps.withInstanceProvisioningLock?.('tenant-a', async (lockedDeps) => {
+        await expect(lockedDeps.listProvisioningRealmAssignments?.()).resolves.toEqual(realmAssignments);
+        return 'done';
+      })
+    );
+
+    expect(globalRepository.listInstances).toHaveBeenCalledOnce();
+    expect(scopedRepository.listInstances).not.toHaveBeenCalled();
+    expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));',
+      ['tenant-a']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(3, 'SET LOCAL ROLE iam_app;');
+    expect(client.query).toHaveBeenNthCalledWith(4, 'SELECT set_config($1, $2, true);', [
+      'app.instance_id',
+      'tenant-a',
+    ]);
+    expect(client.query).toHaveBeenNthCalledWith(5, 'COMMIT');
   });
 
   it('runs activation follow-up only after the scoped transaction commits', async () => {

@@ -1,4 +1,8 @@
-import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
+import {
+  areAllInstanceKeycloakRequirementsSatisfied,
+  getApplicableInstanceKeycloakRequirements,
+  isInstanceTenantAdminRequired,
+} from '@sva/core';
 
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
@@ -7,7 +11,6 @@ import type {
   InstanceConfigurationIssue,
 } from './-instances-shared-types';
 import {
-  INSTANCE_KEYCLOAK_REQUIREMENTS,
   isInstanceKeycloakRequirementSatisfied,
   KEYCLOAK_STATUS_LABELS,
   translateConfigurationStatus,
@@ -15,20 +18,30 @@ import {
 } from './-instance-detail-shared';
 
 const isFinalKeycloakStateSatisfied = (instance: IamInstanceDetail) =>
-  Boolean(instance.keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(instance.keycloakStatus));
+  Boolean(
+    instance.keycloakStatus &&
+      areAllInstanceKeycloakRequirementsSatisfied(instance.keycloakStatus, {
+        requireTenantAdmin: isInstanceTenantAdminRequired(instance),
+      })
+  );
 
 export const evaluateInstanceConfiguration = (
   instance: IamInstanceDetail,
   mutationError: IamHttpError | null
 ): InstanceConfigurationAssessment => {
   const keycloakStatus = instance.keycloakStatus;
+  const requirements = getApplicableInstanceKeycloakRequirements({
+    requireTenantAdmin: isInstanceTenantAdminRequired(instance),
+  });
   const keycloakUnavailable = mutationError?.code === 'keycloak_unavailable';
   const latestKeycloakRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
   const hasTechnicalRun = Boolean(latestKeycloakRun);
   const hasBlockingTechnicalOutcome =
     latestKeycloakRun?.overallStatus === 'failed' || latestKeycloakRun?.overallStatus === 'succeeded';
   const failingRequirements = keycloakStatus
-    ? INSTANCE_KEYCLOAK_REQUIREMENTS.filter((requirement) => !isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement))
+    ? requirements.filter(
+        (requirement) => !isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement)
+      )
     : [];
   const warningIssues: InstanceConfigurationIssue[] =
     keycloakStatus && keycloakStatus.runtimeSecretSource !== 'tenant'
@@ -54,8 +67,8 @@ export const evaluateInstanceConfiguration = (
         ? t('admin.instances.configuration.summary.expectedArtifacts.running')
         : t('admin.instances.configuration.summary.expectedArtifacts.pending'),
       statusLabel: translateConfigurationStatus(hasTechnicalRun ? 'degraded' : 'unknown'),
-      satisfiedRequirements: keycloakStatus ? INSTANCE_KEYCLOAK_REQUIREMENTS.length - failingRequirements.length : 0,
-      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      satisfiedRequirements: keycloakStatus ? requirements.length - failingRequirements.length : 0,
+      totalRequirements: requirements.length,
       blockingIssues: [],
       warningIssues,
     };
@@ -69,8 +82,8 @@ export const evaluateInstanceConfiguration = (
         ? t('admin.instances.configuration.summary.unknown.keycloakUnavailable')
         : t('admin.instances.configuration.summary.unknown.body'),
       statusLabel: translateConfigurationStatus('unknown'),
-      satisfiedRequirements: keycloakStatus ? INSTANCE_KEYCLOAK_REQUIREMENTS.length - failingRequirements.length : 0,
-      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      satisfiedRequirements: keycloakStatus ? requirements.length - failingRequirements.length : 0,
+      totalRequirements: requirements.length,
       blockingIssues,
       warningIssues,
     };
@@ -84,8 +97,8 @@ export const evaluateInstanceConfiguration = (
         count: blockingIssues.length,
       }),
       statusLabel: translateConfigurationStatus('incomplete'),
-      satisfiedRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length - blockingIssues.length,
-      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      satisfiedRequirements: requirements.length - blockingIssues.length,
+      totalRequirements: requirements.length,
       blockingIssues,
       warningIssues,
     };
@@ -97,8 +110,8 @@ export const evaluateInstanceConfiguration = (
       title: t('admin.instances.configuration.summary.degraded.title'),
       body: t('admin.instances.configuration.summary.degraded.body'),
       statusLabel: translateConfigurationStatus('degraded'),
-      satisfiedRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
-      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      satisfiedRequirements: requirements.length,
+      totalRequirements: requirements.length,
       blockingIssues,
       warningIssues,
     };
@@ -109,8 +122,8 @@ export const evaluateInstanceConfiguration = (
     title: t('admin.instances.configuration.summary.complete.title'),
     body: t('admin.instances.configuration.summary.complete.body'),
     statusLabel: translateConfigurationStatus('complete'),
-    satisfiedRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
-    totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+    satisfiedRequirements: requirements.length,
+    totalRequirements: requirements.length,
     blockingIssues,
     warningIssues,
   };

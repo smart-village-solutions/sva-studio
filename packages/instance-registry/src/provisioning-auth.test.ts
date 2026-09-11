@@ -127,7 +127,14 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
   },
   keycloakClientSecret: 'secret',
   tenantAdminClientSecret: 'tenant-secret',
-  systemAdminRole: { name: 'system_admin' },
+  systemAdminRole: {
+    externalName: 'system_admin',
+    attributes: {
+      managed_by: ['studio'],
+      instance_id: ['demo'],
+      role_key: ['system_admin'],
+    },
+  },
 }));
 
 describe('provisioning-auth readers', () => {

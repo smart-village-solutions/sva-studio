@@ -1,3 +1,5 @@
+import { isInstanceTenantAdminRequired } from '@sva/core';
+
 import { t } from '../../../i18n';
 
 import type { SetupWorkflowStep } from './-instances-shared-types';
@@ -51,7 +53,7 @@ const readTenantSecretStatus = (
 };
 
 export const createTenantSecretStep = (facts: WorkflowFacts): SetupWorkflowStep => {
-  const ready = readRequirementGroupSatisfied(facts.instance.keycloakStatus, 'tenantSecret');
+  const ready = readRequirementGroupSatisfied(facts.instance, 'tenantSecret');
   const secretMissing = !facts.instance.authClientSecretConfigured;
   const generatedDuringProvisioning = secretMissing && facts.instance.realmMode === 'new';
 
@@ -65,8 +67,12 @@ export const createTenantSecretStep = (facts: WorkflowFacts): SetupWorkflowStep 
   });
 };
 
-const readTenantAdminDescription = (facts: WorkflowFacts, ready: boolean) => {
-  if (!facts.tenantAdminConfigured) {
+const readTenantAdminDescription = (
+  facts: WorkflowFacts,
+  ready: boolean,
+  requireTenantAdmin: boolean
+) => {
+  if (requireTenantAdmin && !facts.tenantAdminConfigured) {
     return t('admin.instances.workflow.tenantAdmin.missing');
   }
 
@@ -81,8 +87,12 @@ const readTenantAdminDescription = (facts: WorkflowFacts, ready: boolean) => {
   return t('admin.instances.workflow.tenantAdmin.pending');
 };
 
-const readTenantAdminStatus = (facts: WorkflowFacts, ready: boolean): SetupWorkflowStep['status'] => {
-  if (!facts.tenantAdminConfigured) {
+const readTenantAdminStatus = (
+  facts: WorkflowFacts,
+  ready: boolean,
+  requireTenantAdmin: boolean
+): SetupWorkflowStep['status'] => {
+  if (requireTenantAdmin && !facts.tenantAdminConfigured) {
     return 'blocked';
   }
 
@@ -98,14 +108,15 @@ const readTenantAdminStatus = (facts: WorkflowFacts, ready: boolean): SetupWorkf
 };
 
 export const createTenantAdminStep = (facts: WorkflowFacts): SetupWorkflowStep => {
-  const ready = readRequirementGroupSatisfied(facts.instance.keycloakStatus, 'tenantAdmin');
+  const ready = readRequirementGroupSatisfied(facts.instance, 'tenantAdmin');
+  const requireTenantAdmin = isInstanceTenantAdminRequired(facts.instance);
   return createWorkflowStep({
     key: 'tenantAdmin',
     title: t('admin.instances.workflow.tenantAdmin.title'),
-    description: readTenantAdminDescription(facts, ready),
-    status: readTenantAdminStatus(facts, ready),
-    actionLabel: t('admin.instances.actions.resetTenantAdmin'),
-    action: 'reset_tenant_admin',
+    description: readTenantAdminDescription(facts, ready, requireTenantAdmin),
+    status: readTenantAdminStatus(facts, ready, requireTenantAdmin),
+    actionLabel: requireTenantAdmin ? t('admin.instances.actions.resetTenantAdmin') : undefined,
+    action: requireTenantAdmin ? 'reset_tenant_admin' : undefined,
   });
 };
 

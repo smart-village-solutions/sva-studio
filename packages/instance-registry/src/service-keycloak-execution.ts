@@ -208,14 +208,6 @@ export const processClaimedKeycloakProvisioningRun = async (
     return deps.repository.getKeycloakProvisioningRun(run.instanceId, run.id);
   }
 
-  const queueStep = run.steps.find((step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued');
-  const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(deps, run.id, queueStep?.details);
-  const allowLegacyRealmRoleMigration = await resolveLegacyRealmRoleMigrationAllowed(run.mode, deps.repository, loaded.instance);
-  const provisioningInput = {
-    ...buildProvisioningInput(loaded),
-    allowLegacyRealmRoleMigration,
-  };
-
   await appendWorkerRunningStep(deps, run);
   logger.info('keycloak_provisioning_claimed', {
     operation: 'process_keycloak_provisioning_run',
@@ -228,6 +220,13 @@ export const processClaimedKeycloakProvisioningRun = async (
   });
 
   try {
+    const queueStep = run.steps.find((step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued');
+    const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(deps, run.id, queueStep?.details);
+    const allowLegacyRealmRoleMigration = await resolveLegacyRealmRoleMigrationAllowed(run.mode, deps.repository, loaded.instance);
+    const provisioningInput = {
+      ...buildProvisioningInput(loaded),
+      allowLegacyRealmRoleMigration,
+    };
     return await executeClaimedRun(deps, run, loaded, tenantAdminTemporaryPassword, provisioningInput);
   } catch (error) {
     await failRun(deps, {

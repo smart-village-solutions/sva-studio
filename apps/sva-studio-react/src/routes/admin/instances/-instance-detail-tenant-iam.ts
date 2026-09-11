@@ -1,8 +1,12 @@
+import {
+  getApplicableInstanceKeycloakRequirements,
+  isInstanceTenantAdminRequired,
+  type IamTenantIamStatus,
+} from '@sva/core';
+
 import { t } from '../../../i18n';
-import type { IamTenantIamStatus } from '@sva/core';
 
 import {
-  INSTANCE_KEYCLOAK_REQUIREMENTS,
   TENANT_IAM_STATUS_PRECEDENCE,
   isInstanceKeycloakRequirementSatisfied,
   type IamInstanceDetail,
@@ -33,7 +37,9 @@ export const getEffectiveTenantIamStatus = (instance: IamInstanceDetail): IamTen
   }
 
   const configurationStatus = keycloakStatus
-    ? INSTANCE_KEYCLOAK_REQUIREMENTS.every((requirement) =>
+    ? getApplicableInstanceKeycloakRequirements({
+        requireTenantAdmin: isInstanceTenantAdminRequired(instance),
+      }).every((requirement) =>
         isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement)
       )
       ? 'ready'

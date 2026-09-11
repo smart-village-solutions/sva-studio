@@ -267,6 +267,39 @@ describe('service-keycloak-execution', () => {
     );
   });
 
+  it('fails a claimed run when the realm ownership lookup fails', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const lookupError = new Error('registry_unavailable');
+    const repository = {
+      listInstances: vi.fn().mockRejectedValue(lookupError),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue({
+      ...createLoaded(),
+      instance: { ...createLoaded().instance, realmMode: 'existing' },
+    });
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth: vi.fn(),
+          getKeycloakStatus: vi.fn(),
+          getKeycloakPreflight: vi.fn(),
+          planKeycloakProvisioning: vi.fn(),
+        } as never,
+        createRun({ mode: 'existing' })
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'failed' });
+
+    expect(state.failRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ runId: 'run-1', error: lookupError })
+    );
+  });
+
   it('processes rotate_client_secret runs with the rotated secret sync path', async () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const repository = {

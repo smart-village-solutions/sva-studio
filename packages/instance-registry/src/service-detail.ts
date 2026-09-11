@@ -1,3 +1,4 @@
+import { isInstanceTenantAdminRequired } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
@@ -13,7 +14,6 @@ import {
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
-import { requiresTenantAdminBootstrap } from './provisioning-auth-policy.js';
 
 type InstanceRecord = NonNullable<
   Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>
@@ -83,7 +83,7 @@ export const loadKeycloakDetailArtifacts = async (
 
   const tenantIamStatus = buildTenantIamStatus({
     keycloakStatus,
-    requireTenantAdmin: requiresTenantAdminBootstrap(instance),
+    requireTenantAdmin: isInstanceTenantAdminRequired(instance),
     accessEvidence: accessEvidence
       ? {
           status: accessEvidence.status,

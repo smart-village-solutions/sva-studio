@@ -455,7 +455,9 @@ export type {
 } from './instances/module-activation.js';
 export {
   areAllInstanceKeycloakRequirementsSatisfied,
+  getApplicableInstanceKeycloakRequirements,
   INSTANCE_KEYCLOAK_REQUIREMENTS,
+  isInstanceTenantAdminRequired,
   isInstanceKeycloakRequirementSatisfied,
 } from './instances/keycloak-checklist.js';
 export type {

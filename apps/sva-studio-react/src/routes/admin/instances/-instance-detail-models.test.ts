@@ -75,6 +75,7 @@ describe('instance detail split module exports', () => {
         realmExists: true,
         clientExists: true,
         tenantAdminClientExists: true,
+        systemAdminRoleExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
         redirectUrisMatch: true,

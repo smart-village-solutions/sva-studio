@@ -48,7 +48,7 @@ const collectWorkflowFacts = (instance: IamInstanceDetail, mutationError: IamHtt
     tenantAdminClientConfigured: Boolean(instance.tenantAdminClient?.clientId),
     tenantAdminClientSecretConfigured: instance.tenantAdminClient?.secretConfigured === true,
     tenantAdminClientReady:
-      instance.keycloakStatus !== undefined && readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdminClient'),
+      instance.keycloakStatus !== undefined && readRequirementGroupSatisfied(instance, 'tenantAdminClient'),
   };
 };
 
@@ -137,7 +137,7 @@ const readRealmStatus = (
 };
 
 const createRealmStep = (facts: WorkflowFacts): SetupWorkflowStep => {
-  const realmReady = readRequirementGroupSatisfied(facts.instance.keycloakStatus, 'realm');
+  const realmReady = readRequirementGroupSatisfied(facts.instance, 'realm');
   const realmUsesNewMode = facts.instance.realmMode === 'new';
 
   return createWorkflowStep({
@@ -163,7 +163,7 @@ const createRequirementStep = (
     readonly action?: SetupWorkflowStep['action'];
   }
 ): SetupWorkflowStep => {
-  const ready = readRequirementGroupSatisfied(facts.instance.keycloakStatus, input.uiStepKey);
+  const ready = readRequirementGroupSatisfied(facts.instance, input.uiStepKey);
   const description = ready
     ? t(input.readyKey)
     : facts.keycloakUnavailable

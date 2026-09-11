@@ -485,6 +485,35 @@ describe('instances shared helpers', () => {
     ]);
   });
 
+  it('treats an imported realm without bootstrap admin as healthy when its protected role is valid', () => {
+    const instance = createDetailFixture({
+      status: 'active',
+      realmMode: 'existing',
+      authClientSecretConfigured: true,
+      tenantAdminBootstrap: undefined,
+      tenantAdminClient: { clientId: 'demo-admin-client', secretConfigured: true },
+      keycloakStatus: {
+        ...completeKeycloakStatus,
+        tenantAdminExists: false,
+        tenantAdminHasSystemAdmin: false,
+      },
+      tenantIamStatus: {
+        configuration: { status: 'ready', summary: 'ok', source: 'keycloak_status_snapshot' },
+        access: { status: 'ready', summary: 'ok', source: 'access_probe' },
+        reconcile: { status: 'ready', summary: 'ok', source: 'role_reconcile' },
+        overall: { status: 'ready', summary: 'ok', source: 'keycloak_status_snapshot' },
+      },
+    }) as never;
+
+    expect(evaluateInstanceConfiguration(instance, null).overallStatus).toBe('complete');
+    expect(buildExistingRealmOperationsModel(instance, null).signals.hasDrift).toBe(false);
+    expect(getEffectiveTenantIamStatus(instance)?.configuration.status).toBe('ready');
+    expect(getSetupWorkflowSteps(instance, null).find((step) => step.key === 'tenantAdmin')).toMatchObject({
+      status: 'done',
+      action: undefined,
+    });
+  });
+
   it('reports aggregated plugin OIDC drift as incomplete configuration', () => {
     const assessment = evaluateInstanceConfiguration(
       createDetailFixture({

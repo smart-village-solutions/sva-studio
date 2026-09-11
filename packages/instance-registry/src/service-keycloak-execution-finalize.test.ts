@@ -9,6 +9,10 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/core', () => ({
   areAllInstanceKeycloakRequirementsSatisfied: state.areAllRequirementsSatisfied,
+  isInstanceTenantAdminRequired: (input: {
+    realmMode: 'new' | 'existing';
+    tenantAdminBootstrap?: { username: string };
+  }) => input.realmMode !== 'existing' || Boolean(input.tenantAdminBootstrap?.username),
 }));
 
 vi.mock('./service-keycloak-run-steps.js', () => ({

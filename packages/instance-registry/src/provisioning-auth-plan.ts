@@ -1,8 +1,7 @@
-import type { InstanceRealmMode } from '@sva/core';
+import { isInstanceTenantAdminRequired, type InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
-import { requiresTenantAdminBootstrap } from './provisioning-auth-policy.js';
 import {
   readClientAlignment,
   readTenantAdminClientAlignment,
@@ -229,7 +228,7 @@ export const buildPlan = (input: {
   state?: KeycloakReadState;
 }): KeycloakTenantPlan => {
   const blocked = input.preflight.overallStatus === 'blocked';
-  const requireTenantAdmin = requiresTenantAdminBootstrap(input);
+  const requireTenantAdmin = isInstanceTenantAdminRequired(input);
   const alignment = readClientAlignment(input.state);
   const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
   const secretAligned = Boolean(

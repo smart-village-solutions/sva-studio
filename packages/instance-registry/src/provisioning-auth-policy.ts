@@ -1,9 +1,5 @@
 import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 
-export const requiresTenantAdminBootstrap = (
-  input: Pick<KeycloakProvisioningInput, 'realmMode' | 'tenantAdminBootstrap'>
-): boolean => input.realmMode !== 'existing' || Boolean(input.tenantAdminBootstrap?.username);
-
 export const isLegacyRealmRoleMigrationAllowed = (
   instances: readonly { readonly instanceId: string; readonly authRealm: string }[],
   current: { readonly instanceId: string; readonly authRealm: string }

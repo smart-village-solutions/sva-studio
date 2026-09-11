@@ -1,5 +1,6 @@
 import {
   areAllInstanceKeycloakRequirementsSatisfied,
+  isInstanceTenantAdminRequired,
   type IamInstanceDetail,
 } from '@sva/core';
 
@@ -179,7 +180,12 @@ export const getOperationsEvidenceSourceLabel = (source: EvidenceSource): string
 };
 
 const isFinalKeycloakStateSatisfied = (instance: IamInstanceDetail) =>
-  Boolean(instance.keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(instance.keycloakStatus));
+  Boolean(
+    instance.keycloakStatus &&
+      areAllInstanceKeycloakRequirementsSatisfied(instance.keycloakStatus, {
+        requireTenantAdmin: isInstanceTenantAdminRequired(instance),
+      })
+  );
 
 const deriveOperationsModelStatus = (steps: OperationsStepModel[]): RealmOperationsModel['status'] => {
   if (steps.some((step) => step.status === 'fehlgeschlagen')) {
@@ -785,7 +791,7 @@ export const buildExistingRealmOperationsModel = (
   );
   const preflight = instance.keycloakPreflight;
   const latestRun = readLatestKeycloakRun(instance);
-  const hasDrift = Boolean(instance.keycloakStatus && !areAllInstanceKeycloakRequirementsSatisfied(instance.keycloakStatus));
+  const hasDrift = Boolean(instance.keycloakStatus && !isFinalKeycloakStateSatisfied(instance));
   const steps = buildExistingRealmAssessmentSteps(instance, contractComplete, preflight, latestRun, hasDrift);
 
   return {

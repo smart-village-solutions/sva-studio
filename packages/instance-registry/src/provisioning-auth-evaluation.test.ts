@@ -133,7 +133,15 @@ describe('provisioning-auth-evaluation', () => {
           tenantAdminHasSystemAdmin: true,
         },
         keycloakClientSecret: 'tenant-secret',
-        systemAdminRole: { id: 'role-1', externalName: 'system_admin' } as never,
+        systemAdminRole: {
+          id: 'role-1',
+          externalName: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['system_admin'],
+          },
+        } as never,
       },
     });
 
@@ -143,8 +151,36 @@ describe('provisioning-auth-evaluation', () => {
     expect(status.logoutUrisMatch).toBe(true);
     expect(status.webOriginsMatch).toBe(true);
     expect(status.pluginOidcClientsAligned).toBe(true);
+    expect(status.systemAdminRoleExists).toBe(true);
     expect(status.clientSecretAligned).toBe(true);
     expect(status.runtimeSecretSource).toBe('tenant');
+  });
+
+  it('does not report a same-named role with foreign ownership as the protected role', () => {
+    const expectedClient = buildExpectedClientConfig('demo.example.org');
+    const status = buildKeycloakStatus({
+      authClientSecretConfigured: true,
+      instanceId: 'demo',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      realmMode: 'existing',
+      state: {
+        expectedClient,
+        clientRepresentation: null,
+        pluginOidcClients: [],
+        tenantAdminStatus: { tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+        systemAdminRole: {
+          externalName: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-other'],
+            role_key: ['system_admin'],
+          },
+        },
+      } as never,
+    });
+
+    expect(status.systemAdminRoleExists).toBe(false);
   });
 
   it('reports plugin OIDC client drift in the operational status', () => {

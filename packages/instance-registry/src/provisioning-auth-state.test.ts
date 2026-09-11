@@ -97,7 +97,14 @@ const createClient = (
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
   ensureAudienceProtocolMapper: vi.fn(async () => undefined),
   ensureRealmRole: vi.fn(async () => undefined),
-  getRoleByName: vi.fn(async (externalName: string) => ({ externalName })),
+  getRoleByName: vi.fn(async (externalName: string) => ({
+    externalName,
+    attributes: {
+      managed_by: ['studio'],
+      instance_id: ['demo'],
+      role_key: [externalName],
+    },
+  })),
   findUserByUsername: vi.fn(async () => null),
   findUserByEmail: vi.fn(async () => null),
   createUser: vi.fn(async () => ({ externalId: 'user-1' })),

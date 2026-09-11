@@ -43,6 +43,7 @@ export type PluginOidcClientState = Readonly<{
 export type KeycloakRoleRepresentation = {
   readonly id?: string;
   readonly externalName?: string;
+  readonly attributes?: Readonly<Record<string, readonly string[]>>;
 } | null;
 
 export type TenantAdminBootstrap = {

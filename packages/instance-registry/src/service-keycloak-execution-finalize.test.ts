@@ -120,7 +120,7 @@ describe('service-keycloak-execution-finalize', () => {
         stepKey: 'status_snapshot',
         status: 'done',
         details: {
-          policyVersion: 2,
+          policyVersion: 3,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(statusUpdated as never),
           status,
         },

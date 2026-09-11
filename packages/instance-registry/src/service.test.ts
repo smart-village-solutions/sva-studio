@@ -2296,7 +2296,7 @@ describe('instance registry service facade', () => {
               status: 'failed',
               summary: 'Blocked',
               details: {
-                policyVersion: 2,
+                policyVersion: 3,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint({
                   ...baseInstance,
                   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -2444,7 +2444,7 @@ describe('instance registry service facade', () => {
               status: 'done',
               summary: 'Snapshot vorhanden',
               details: {
-                policyVersion: 2,
+                policyVersion: 3,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance),
                 status: {
                   realmExists: true,
@@ -2500,7 +2500,7 @@ describe('instance registry service facade', () => {
               status: 'done',
               summary: 'Snapshot vorhanden',
               details: {
-                policyVersion: 2,
+                policyVersion: 3,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance),
                 status: {
                   realmExists: true,

@@ -5,15 +5,29 @@ import type {
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
 
-export const KEYCLOAK_SNAPSHOT_POLICY_VERSION = 2;
+export const KEYCLOAK_SNAPSHOT_POLICY_VERSION = 3;
 
 export const buildKeycloakSnapshotInputFingerprint = (instance: {
   readonly instanceId: string;
-  readonly updatedAt: string;
+  readonly primaryHostname: string;
+  readonly realmMode: KeycloakProvisioningInput['realmMode'];
+  readonly authRealm: string;
+  readonly authClientId: string;
+  readonly authIssuerUrl?: string;
+  readonly authClientSecretConfigured: boolean;
+  readonly tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
+  readonly tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
 }): string =>
   buildPayloadFingerprint({
     instanceId: instance.instanceId,
-    updatedAt: instance.updatedAt,
+    primaryHostname: instance.primaryHostname,
+    realmMode: instance.realmMode,
+    authRealm: instance.authRealm,
+    authClientId: instance.authClientId,
+    authIssuerUrl: instance.authIssuerUrl,
+    authClientSecretConfigured: instance.authClientSecretConfigured,
+    tenantAdminClient: instance.tenantAdminClient,
+    tenantAdminBootstrap: instance.tenantAdminBootstrap,
   });
 
 const readSingleRoleAttribute = (
@@ -44,7 +58,6 @@ export const isLegacyRealmRoleMigrationAllowed = (
 };
 
 export const resolveLegacyRealmRoleMigrationAllowed = async (
-  realmMode: KeycloakProvisioningInput['realmMode'],
   repository: {
     readonly listInstances?: () => Promise<
       readonly { readonly instanceId: string; readonly authRealm: string }[]
@@ -52,7 +65,6 @@ export const resolveLegacyRealmRoleMigrationAllowed = async (
   },
   current: { readonly instanceId: string; readonly authRealm: string }
 ): Promise<boolean> => {
-  if (realmMode !== 'existing') return false;
   const instances = await repository.listInstances?.();
   return instances ? isLegacyRealmRoleMigrationAllowed(instances, current) : false;
 };

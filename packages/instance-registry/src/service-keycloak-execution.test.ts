@@ -122,8 +122,8 @@ describe('service-keycloak-execution', () => {
     ).resolves.toBeNull();
   });
 
-  it('allows legacy role migration only for a uniquely assigned realm', async () => {
-    const { isLegacyRealmRoleMigrationAllowed } = await import(
+  it('allows legacy role migration only for a uniquely assigned realm in every realm mode', async () => {
+    const { isLegacyRealmRoleMigrationAllowed, resolveLegacyRealmRoleMigrationAllowed } = await import(
       './provisioning-auth-policy.js'
     );
     const current = { instanceId: 'tenant-havelland', authRealm: 'havelland' };
@@ -135,6 +135,39 @@ describe('service-keycloak-execution', () => {
         current
       )
     ).toBe(false);
+    await expect(
+      resolveLegacyRealmRoleMigrationAllowed(
+        { listInstances: vi.fn().mockResolvedValue([current]) },
+        current
+      )
+    ).resolves.toBe(true);
+  });
+
+  it('keeps snapshot fingerprints stable across status-only instance transitions', async () => {
+    const { buildKeycloakSnapshotInputFingerprint } = await import(
+      './provisioning-auth-policy.js'
+    );
+    const provisioning = {
+      instanceId: 'tenant-havelland',
+      primaryHostname: 'havelland.example.test',
+      realmMode: 'existing' as const,
+      authRealm: 'havelland',
+      authClientId: 'studio-client',
+      authClientSecretConfigured: true,
+      status: 'provisioning',
+      updatedAt: '2026-09-11T10:00:00.000Z',
+    };
+
+    expect(
+      buildKeycloakSnapshotInputFingerprint({
+        ...provisioning,
+        status: 'active',
+        updatedAt: '2026-09-11T10:01:00.000Z',
+      })
+    ).toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
+    expect(
+      buildKeycloakSnapshotInputFingerprint({ ...provisioning, authRealm: 'other' })
+    ).not.toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
   });
 
   it('fails claimed runs when worker dependencies are missing', async () => {

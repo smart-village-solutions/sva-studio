@@ -93,7 +93,11 @@ export const createQueuedRun = async (
     requestId: input.requestId,
   });
 
-  if (created) {
+  const requiresQueuedStep = created || (
+    run.overallStatus === 'planned' &&
+    !run.steps.some((step) => step.stepKey === 'queued')
+  );
+  if (requiresQueuedStep) {
     try {
       const readPluginOidcClientRequirements = deps.readPluginOidcClientRequirements;
       if (!readPluginOidcClientRequirements) {

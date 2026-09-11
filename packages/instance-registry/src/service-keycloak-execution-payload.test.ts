@@ -154,6 +154,42 @@ describe('service-keycloak-execution-payload', () => {
     expect(appendKeycloakProvisioningStep).not.toHaveBeenCalled();
   });
 
+  it('repairs an existing planned run whose queued step was not persisted', async () => {
+    const appendKeycloakProvisioningStep = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({
+        run: { id: 'run-1', overallStatus: 'planned', steps: [] },
+        created: false,
+      }),
+      appendKeycloakProvisioningStep,
+    };
+
+    await createQueuedRun(
+      {
+        repository,
+        invalidateHost: vi.fn(),
+        readPluginOidcClientRequirements: () => [ssfRequirement],
+      } as never,
+      loaded as never,
+      {
+        mutation: 'reconcileKeycloak',
+        instanceId: 'tenant-kassel',
+        idempotencyKey: 'request-1',
+        actorId: 'root',
+        requestId: 'request-1',
+        intent: 'reconcile',
+      } as never
+    );
+
+    expect(appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: 'run-1',
+        stepKey: 'queued',
+        details: expect.objectContaining({ pluginOidcSnapshotVersion: '1.0' }),
+      })
+    );
+  });
+
   it('marks a new run failed when persisting its queued snapshot fails', async () => {
     const appendError = new Error('database unavailable');
     const updateKeycloakProvisioningRun = vi.fn().mockResolvedValue(undefined);

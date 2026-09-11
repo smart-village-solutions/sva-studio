@@ -6,6 +6,7 @@ import {
 
 import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
+import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret, loadKeycloakSnapshotSecretVersions } from './service-keycloak-secrets.js';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
@@ -14,6 +15,13 @@ import {
   buildKeycloakSnapshotInputFingerprint,
   KEYCLOAK_SNAPSHOT_POLICY_VERSION,
 } from './provisioning-auth-policy.js';
+import {
+  buildKeycloakStatus,
+  buildMissingRealmStatus,
+  buildPlan,
+  buildPreflightChecks,
+  toOverallPreflightStatus,
+} from './provisioning-auth-evaluation.js';
 
 type CompleteRunInput = {
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
@@ -24,12 +32,52 @@ type CompleteRunInput = {
   tenantAdminTemporaryPassword?: string;
 };
 
+const buildStatusFromState = (
+  provisioningInput: KeycloakProvisioningInput,
+  state: KeycloakReadState
+): KeycloakTenantStatus =>
+  state.realm
+    ? buildKeycloakStatus({ ...provisioningInput, state })
+    : buildMissingRealmStatus(
+        provisioningInput.authClientSecretConfigured,
+        provisioningInput.authClientSecret,
+        provisioningInput.tenantAdminClient,
+        provisioningInput.tenantAdminClientSecret,
+        (provisioningInput.pluginOidcClients?.length ?? 0) === 0
+      );
+
 const appendFinalStatusSnapshot = async (
   deps: InstanceRegistryServiceDeps,
   input: CompleteRunInput,
   snapshotInstance: InstanceRegistryRecord,
-  status: KeycloakTenantStatus
+  state: KeycloakReadState
 ) => {
+  const finalProvisioningInput = buildProvisioningInput({ ...input.loaded, instance: snapshotInstance });
+  const status = buildStatusFromState(finalProvisioningInput, state);
+  const checks = buildPreflightChecks({
+    realmMode: finalProvisioningInput.realmMode,
+    authClientSecretConfigured: finalProvisioningInput.authClientSecretConfigured,
+    authClientSecret: finalProvisioningInput.authClientSecret,
+    tenantAdminClient: finalProvisioningInput.tenantAdminClient,
+    tenantAdminClientSecret: finalProvisioningInput.tenantAdminClientSecret,
+    tenantAdminBootstrap: finalProvisioningInput.tenantAdminBootstrap,
+    state,
+  });
+  const preflight = {
+    overallStatus: toOverallPreflightStatus(checks),
+    checkedAt: new Date().toISOString(),
+    checks,
+  };
+  const plan = buildPlan({
+    instanceId: finalProvisioningInput.instanceId,
+    realmMode: finalProvisioningInput.realmMode,
+    authClientSecret: finalProvisioningInput.authClientSecret,
+    tenantAdminClient: finalProvisioningInput.tenantAdminClient,
+    tenantAdminClientSecret: finalProvisioningInput.tenantAdminClientSecret,
+    tenantAdminBootstrap: finalProvisioningInput.tenantAdminBootstrap,
+    preflight,
+    state,
+  });
   await appendRunStep(deps, {
     runId: input.runId,
     stepKey: 'status_snapshot',
@@ -43,6 +91,8 @@ const appendFinalStatusSnapshot = async (
         await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId)
       ),
       status,
+      preflight,
+      plan,
     },
     requestId: input.requestId,
   });
@@ -52,11 +102,13 @@ export const completeRun = async (
   deps: InstanceRegistryServiceDeps,
   input: CompleteRunInput
 ) => {
-  const getKeycloakStatus = deps.getKeycloakStatus;
-  if (!getKeycloakStatus) {
-    throw new Error('dependency_missing_getKeycloakStatus');
+  const readKeycloakState = deps.readKeycloakStateViaProvisioner;
+  if (!readKeycloakState) {
+    throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
   }
-  const status = await getKeycloakStatus(buildProvisioningInput(input.loaded));
+  const provisioningInput = buildProvisioningInput(input.loaded);
+  const state = await readKeycloakState(provisioningInput);
+  const status = buildStatusFromState(provisioningInput, state);
   const requireTenantAdmin = isInstanceTenantAdminRequired(input.loaded.instance);
 
   const completionSteps = buildFinalRunSteps({
@@ -100,7 +152,7 @@ export const completeRun = async (
       })) ?? snapshotInstance;
   }
 
-  await appendFinalStatusSnapshot(deps, input, snapshotInstance, status);
+  await appendFinalStatusSnapshot(deps, input, snapshotInstance, state);
 
   for (const step of completionSteps) {
     await appendRunStep(deps, {

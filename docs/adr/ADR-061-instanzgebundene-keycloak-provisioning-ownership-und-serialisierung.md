@@ -46,10 +46,9 @@ Mutationen noch die Verarbeitung eines inzwischen veralteten Claims.
   bereits aktualisierte Instanzen. Evidenz-Snapshots enthalten Policy-Version
   und einen Fingerprint der relevanten Konfiguration einschließlich der Secret-Ciphertext-Versionen.
   Lesezugriffe wählen laufübergreifend den neuesten passenden finalen oder
-  Worker-Snapshot; der Abschluss schreibt ausschließlich den aus einem
-  konsistenten Postflight-Read stammenden Status. Preflight und Plan bleiben
-  separate Worker-Snapshots und werden nicht durch spätere, unabhängige Reads
-  mit einem erfolgreichen Abschluss vermischt.
+  Worker-Snapshot; der Abschluss leitet Status, Preflight und Plan aus genau
+  einem gemeinsamen Postflight-State-Read ab. Dadurch haben alle drei
+  Artefakte denselben finalen Fingerprint und dieselbe Keycloak-Sicht.
 
 ## Folgen
 

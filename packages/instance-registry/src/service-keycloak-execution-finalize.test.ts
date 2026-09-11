@@ -3,8 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   areAllRequirementsSatisfied: vi.fn(),
   appendRunStep: vi.fn(),
+  buildKeycloakStatus: vi.fn(),
   buildFinalRunSteps: vi.fn(),
+  buildMissingRealmStatus: vi.fn(),
+  buildPlan: vi.fn(),
+  buildPreflightChecks: vi.fn(),
   buildProvisioningInput: vi.fn(),
+  toOverallPreflightStatus: vi.fn(),
 }));
 
 vi.mock('@sva/core', () => ({
@@ -24,16 +29,29 @@ vi.mock('./service-keycloak-execution-payload.js', () => ({
   buildProvisioningInput: state.buildProvisioningInput,
 }));
 
+vi.mock('./provisioning-auth-evaluation.js', () => ({
+  buildKeycloakStatus: state.buildKeycloakStatus,
+  buildMissingRealmStatus: state.buildMissingRealmStatus,
+  buildPlan: state.buildPlan,
+  buildPreflightChecks: state.buildPreflightChecks,
+  toOverallPreflightStatus: state.toOverallPreflightStatus,
+}));
+
 describe('service-keycloak-execution-finalize', () => {
   beforeEach(() => {
     vi.resetModules();
     state.areAllRequirementsSatisfied.mockReset();
     state.appendRunStep.mockReset();
+    state.buildKeycloakStatus.mockReset();
     state.buildFinalRunSteps.mockReset();
+    state.buildMissingRealmStatus.mockReset();
+    state.buildPlan.mockReset().mockReturnValue({ overallStatus: 'ready' });
+    state.buildPreflightChecks.mockReset().mockReturnValue([]);
     state.buildProvisioningInput.mockReset();
+    state.toOverallPreflightStatus.mockReset().mockReturnValue('ready');
   });
 
-  it('throws when getKeycloakStatus is missing', async () => {
+  it('throws when the final Keycloak state reader is missing', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
 
     await expect(
@@ -52,7 +70,7 @@ describe('service-keycloak-execution-finalize', () => {
           intent: 'provision',
         }
       )
-    ).rejects.toThrow('dependency_missing_getKeycloakStatus');
+    ).rejects.toThrow('dependency_missing_readKeycloakStateViaProvisioner');
   });
 
   it('marks successful runs, snapshots the status and updates the instance status', async () => {
@@ -87,11 +105,14 @@ describe('service-keycloak-execution-finalize', () => {
       },
     ]);
     state.areAllRequirementsSatisfied.mockReturnValue(true);
+    state.buildKeycloakStatus.mockReturnValue(status);
     state.appendRunStep.mockResolvedValue(undefined);
+    const finalState = { realm: { realm: 'demo' } };
+    const readKeycloakStateViaProvisioner = vi.fn().mockResolvedValue(finalState);
     const result = await completeRun(
       {
         repository: repository as never,
-        getKeycloakStatus: vi.fn().mockResolvedValue(status),
+        readKeycloakStateViaProvisioner,
       } as never,
       {
         loaded: {
@@ -110,6 +131,14 @@ describe('service-keycloak-execution-finalize', () => {
     );
 
     expect(result).toBe('succeeded');
+    expect(readKeycloakStateViaProvisioner).toHaveBeenCalledOnce();
+    expect(state.buildKeycloakStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ state: finalState })
+    );
+    expect(state.buildPreflightChecks).toHaveBeenCalledWith(
+      expect.objectContaining({ state: finalState })
+    );
+    expect(state.buildPlan).toHaveBeenCalledWith(expect.objectContaining({ state: finalState }));
     expect(state.buildProvisioningInput).toHaveBeenCalled();
     expect(state.appendRunStep).toHaveBeenNthCalledWith(
       1,
@@ -122,6 +151,8 @@ describe('service-keycloak-execution-finalize', () => {
           policyVersion: 3,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(statusUpdated as never),
           status,
+          preflight: expect.objectContaining({ overallStatus: 'ready' }),
+          plan: { overallStatus: 'ready' },
         },
       })
     );
@@ -171,13 +202,14 @@ describe('service-keycloak-execution-finalize', () => {
         options?.requireTenantAdmin === false ||
         (candidate.tenantAdminExists && candidate.tenantAdminHasSystemAdmin)
     );
+    state.buildKeycloakStatus.mockReturnValue(status);
     state.appendRunStep.mockResolvedValue(undefined);
 
     await expect(
       completeRun(
         {
           repository: repository as never,
-          getKeycloakStatus: vi.fn().mockResolvedValue(status),
+          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
         } as never,
         {
           loaded: {
@@ -226,12 +258,13 @@ describe('service-keycloak-execution-finalize', () => {
       },
     ]);
     state.areAllRequirementsSatisfied.mockReturnValue(false);
+    state.buildMissingRealmStatus.mockReturnValue({ realmExists: false });
     state.appendRunStep.mockResolvedValue(undefined);
 
     const result = await completeRun(
       {
         repository: repository as never,
-        getKeycloakStatus: vi.fn().mockResolvedValue({ realmExists: false }),
+        readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: null }),
       } as never,
       {
         loaded: {
@@ -275,13 +308,14 @@ describe('service-keycloak-execution-finalize', () => {
       { stepKey: 'status', title: 'Status', ok: true, summary: 'ok' },
     ]);
     state.areAllRequirementsSatisfied.mockReturnValue(false);
+    state.buildKeycloakStatus.mockReturnValue({ pluginOidcClientsAligned: false });
     state.appendRunStep.mockResolvedValue(undefined);
 
     await expect(
       completeRun(
         {
           repository: repository as never,
-          getKeycloakStatus: vi.fn().mockResolvedValue({ pluginOidcClientsAligned: false }),
+          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
         } as never,
         {
           loaded: {
@@ -344,12 +378,13 @@ describe('service-keycloak-execution-finalize', () => {
       },
     ]);
     state.areAllRequirementsSatisfied.mockReturnValue(false);
+    state.buildKeycloakStatus.mockReturnValue(status);
     state.appendRunStep.mockResolvedValue(undefined);
 
     const result = await completeRun(
       {
         repository: repository as never,
-        getKeycloakStatus: vi.fn().mockResolvedValue(status),
+        readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
       } as never,
       {
         loaded: {

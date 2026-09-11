@@ -75,6 +75,12 @@ export const resolveAppUnitExecutionPlan = (
 export const hasPlannedUnitProjects = (plan: ChangedProjectPlan): boolean =>
   plan.directProjects.length > 0 || plan.remainingProjects.length > 0;
 
+const assertShardPhase = (phase: UnitGatePhase, shard: UnitShard | undefined): void => {
+  if (shard && phase !== 'remaining') {
+    throw new Error('Unit-Sharding ist nur für die remaining-Phase zulässig.');
+  }
+};
+
 export const runAffectedUnitGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
@@ -82,9 +88,7 @@ export const runAffectedUnitGate = (
   phase: UnitGatePhase = 'all',
   shard?: UnitShard
 ): DurationEntry[] => {
-  if (shard && phase !== 'remaining') {
-    throw new Error('Unit-Sharding ist nur für die remaining-Phase zulässig.');
-  }
+  assertShardPhase(phase, shard);
   const full = process.env.NX_RUN_FULL === '1';
   const fullProjects = getUnitProjects(options.base, options.head, true);
   let changedFiles: string[];
@@ -218,9 +222,7 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
   const shardArgumentIndex = args.indexOf('--shard');
   const shard =
     shardArgumentIndex >= 0 ? parseUnitShard(args[shardArgumentIndex + 1] ?? '') : undefined;
-  if (shard && phase !== 'remaining') {
-    throw new Error('Unit-Sharding ist nur für die remaining-Phase zulässig.');
-  }
+  assertShardPhase(phase, shard);
   const shardId = shard ? unitShardId(shard) : `unit-${phase}`;
   const startedAt = new Date();
   const full = process.env.NX_RUN_FULL === '1';

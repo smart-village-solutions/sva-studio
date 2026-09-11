@@ -66,7 +66,7 @@ describe('service-keycloak-execution-payload', () => {
     );
   });
 
-  it('reads versioned snapshots and rejects incomplete or unversioned snapshots', () => {
+  it('reads versioned snapshots, preserves pre-snapshot jobs, and rejects incomplete snapshots', () => {
     const provisioningInput = {
       ...loaded.instance,
       authClientSecret: loaded.authClientSecret,
@@ -84,14 +84,16 @@ describe('service-keycloak-execution-payload', () => {
         provisioningInput
       )
     ).toThrow('queued_plugin_oidc_client_requirements_missing_or_invalid');
+    expect(
+      readQueuedPluginOidcClientRequirements({ intent: 'reconcile' }, provisioningInput)
+    ).toEqual([]);
     expect(() => readQueuedPluginOidcClientRequirements(undefined, provisioningInput)).toThrow(
       'queued_plugin_oidc_client_requirements_missing_or_invalid'
     );
   });
 
-  it('marks a newly created run failed when the app snapshot dependency is not wired', async () => {
+  it('rejects a newly created run when the app snapshot dependency is not wired', async () => {
     const appendKeycloakProvisioningStep = vi.fn();
-    const updateKeycloakProvisioningRun = vi.fn().mockResolvedValue(undefined);
     const createKeycloakProvisioningRun = vi.fn().mockResolvedValue({
       run: { id: 'run-2' },
       created: true,
@@ -102,7 +104,6 @@ describe('service-keycloak-execution-payload', () => {
           repository: {
             createKeycloakProvisioningRun,
             appendKeycloakProvisioningStep,
-            updateKeycloakProvisioningRun,
           },
           invalidateHost: vi.fn(),
         } as never,
@@ -119,11 +120,6 @@ describe('service-keycloak-execution-payload', () => {
     ).rejects.toThrow('plugin_oidc_client_requirements_dependency_missing');
     expect(createKeycloakProvisioningRun).toHaveBeenCalledOnce();
     expect(appendKeycloakProvisioningStep).not.toHaveBeenCalled();
-    expect(updateKeycloakProvisioningRun).toHaveBeenCalledWith({
-      runId: 'run-2',
-      overallStatus: 'failed',
-      driftSummary: 'Plugin-OIDC-Snapshot des Provisioning-Auftrags konnte nicht persistiert werden.',
-    });
   });
 
   it('replays an existing queued run without reading mutable app requirements', async () => {
@@ -190,16 +186,14 @@ describe('service-keycloak-execution-payload', () => {
     );
   });
 
-  it('marks a new run failed when persisting its queued snapshot fails', async () => {
+  it('propagates a queued snapshot persistence failure to the surrounding transaction', async () => {
     const appendError = new Error('database unavailable');
-    const updateKeycloakProvisioningRun = vi.fn().mockResolvedValue(undefined);
     const repository = {
       createKeycloakProvisioningRun: vi.fn().mockResolvedValue({
         run: { id: 'run-3' },
         created: true,
       }),
       appendKeycloakProvisioningStep: vi.fn().mockRejectedValue(appendError),
-      updateKeycloakProvisioningRun,
     };
 
     await expect(
@@ -220,11 +214,5 @@ describe('service-keycloak-execution-payload', () => {
         } as never
       )
     ).rejects.toBe(appendError);
-
-    expect(updateKeycloakProvisioningRun).toHaveBeenCalledWith({
-      runId: 'run-3',
-      overallStatus: 'failed',
-      driftSummary: 'Plugin-OIDC-Snapshot des Provisioning-Auftrags konnte nicht persistiert werden.',
-    });
   });
 });

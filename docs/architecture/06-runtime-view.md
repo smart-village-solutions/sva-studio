@@ -557,8 +557,10 @@ Fehlerpfad:
   einem Worker gehalten wird. Lokale Worker beenden vor ihrem Startup-Cutoff
   liegende `planned`-Runs ebenfalls nur unter der jeweiligen Instanzsperre.
   Der Queue-Schritt enthält außerdem den von der App validierten und versionierten Plugin-OIDC-Snapshot.
-  Der Worker lehnt unversionierte sowie unvollständige Aufträge ab und reicht vorhandene Anforderungen
-  unverändert durch Preflight, Plan, Keycloak-Ausführung und finalen Status-Fingerprint.
+  Der Worker liest unversionierte Bestandsaufträge als früheren Vertrag ohne
+  Plugin-OIDC-Anforderungen, lehnt unvollständige versionierte Aufträge ab und reicht
+  vorhandene Anforderungen unverändert durch Preflight, Plan, Keycloak-Ausführung und
+  finalen Status-Fingerprint.
   Operativer Secret-Repair und Fleet-Backfills lesen den aktuellen Datensatz
   nach Sperrerwerb erneut; inzwischen inaktive oder bereits reparierte
   Instanzen werden übersprungen.

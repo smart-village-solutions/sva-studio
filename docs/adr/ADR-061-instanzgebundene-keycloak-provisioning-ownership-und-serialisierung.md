@@ -35,7 +35,7 @@ Mutationen noch die Verarbeitung eines inzwischen veralteten Claims.
   nicht tenantgefilterten Repository-Read.
 - Ein Worker lädt den beanspruchten Lauf innerhalb der Sperre erneut und führt
   ihn nur aus, wenn er weiterhin `running` ist.
-- Die App persistiert ihre validierten Plugin-OIDC-Anforderungen mit einer Snapshot-Version im Queue-Schritt. Unversionierte Bestandsaufträge werden vor dem Versionswechsel mit dem bisherigen Worker geleert; der neue Worker weist sie andernfalls fail-closed ab. Versionierte Aufträge bleiben strikt an ihren Snapshot gebunden.
+- Die App persistiert ihre validierten Plugin-OIDC-Anforderungen mit einer Snapshot-Version im Queue-Schritt. Der neue Worker liest unversionierte Bestandsaufträge nach dem früheren Vertrag ohne Plugin-OIDC-Anforderungen. Installationen mit Plugin-OIDC-Anforderungen leeren solche Aufträge vor dem Versionswechsel mit dem bisherigen Worker. Versionierte Aufträge bleiben strikt an ihren Snapshot gebunden und werden bei unvollständigen Daten fail-closed abgewiesen.
   Der Worker validiert diesen Snapshot und verwendet ihn unverändert für Read,
   Plan, Keycloak-Ausführung und finalen Evidenz-Fingerprint. Ein fehlender
   Snapshot beendet den Lauf fail-closed; Worker-Prozessdefaults dürfen einen

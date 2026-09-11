@@ -16,6 +16,12 @@ import {
 } from './changed-project-plan.ts';
 import { loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
+import {
+  parseUnitShard,
+  selectRemainingUnitProjects,
+  unitShardId,
+  type UnitShard,
+} from './unit-shards.ts';
 
 export interface DurationEntry {
   label: string;
@@ -73,8 +79,12 @@ export const runAffectedUnitGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
   reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void,
-  phase: UnitGatePhase = 'all'
+  phase: UnitGatePhase = 'all',
+  shard?: UnitShard
 ): DurationEntry[] => {
+  if (shard && phase !== 'remaining') {
+    throw new Error('Unit-Sharding ist nur für die remaining-Phase zulässig.');
+  }
   const full = process.env.NX_RUN_FULL === '1';
   const fullProjects = getUnitProjects(options.base, options.head, true);
   let changedFiles: string[];
@@ -108,9 +118,10 @@ export const runAffectedUnitGate = (
   const directNonAppProjects = changedProjectPlan.directProjects.filter(
     (project) => project !== APP_PROJECT
   );
-  const remainingNonAppProjects = changedProjectPlan.remainingProjects.filter(
-    (project) => project !== APP_PROJECT
-  );
+  const remainingProjects = shard
+    ? selectRemainingUnitProjects(changedProjectPlan.remainingProjects, shard)
+    : changedProjectPlan.remainingProjects;
+  const remainingNonAppProjects = remainingProjects.filter((project) => project !== APP_PROJECT);
 
   const recordDuration = (
     label: string,
@@ -133,6 +144,8 @@ export const runAffectedUnitGate = (
         affectedProjects,
         changedProjectPlan,
         appPlan,
+        shard,
+        remainingProjects,
       },
       null,
       2
@@ -173,7 +186,7 @@ export const runAffectedUnitGate = (
   }
 
   if (phase !== 'direct') {
-    if (changedProjectPlan.remainingProjects.includes(APP_PROJECT)) {
+    if (remainingProjects.includes(APP_PROJECT)) {
       runTarget('unit:remaining:app', buildAppUnitCommand(), [APP_PROJECT]);
     }
     for (const project of remainingNonAppProjects) {
@@ -202,6 +215,13 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
     throw new Error(`Ungültige Unit-Phase: ${phaseValue ?? '<fehlend>'}`);
   }
   const phase: UnitGatePhase = phaseValue;
+  const shardArgumentIndex = args.indexOf('--shard');
+  const shard =
+    shardArgumentIndex >= 0 ? parseUnitShard(args[shardArgumentIndex + 1] ?? '') : undefined;
+  if (shard && phase !== 'remaining') {
+    throw new Error('Unit-Sharding ist nur für die remaining-Phase zulässig.');
+  }
+  const shardId = shard ? unitShardId(shard) : `unit-${phase}`;
   const startedAt = new Date();
   const full = process.env.NX_RUN_FULL === '1';
   let plan: ReturnType<typeof planChangedProjectsWithFallback> | null = null;
@@ -214,14 +234,15 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
       (reportedPlan) => {
         plan = reportedPlan;
       },
-      phase
+      phase,
+      shard
     );
   } catch (error) {
     writeCiFeedbackEvidence(
       buildCiFeedbackEvidence({
         gate: 'unit',
         role: phase === 'direct' ? 'fast-feedback' : 'complete',
-        shardId: `unit-${phase}`,
+        shardId,
         status: 'failed',
         baseSha: options.base,
         headSha: options.head,
@@ -252,7 +273,7 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
     buildCiFeedbackEvidence({
       gate: 'unit',
       role: phase === 'direct' ? 'fast-feedback' : 'complete',
-      shardId: `unit-${phase}`,
+      shardId,
       status: durationEntries.length === 0 ? 'skipped' : 'passed',
       baseSha: options.base,
       headSha: options.head,

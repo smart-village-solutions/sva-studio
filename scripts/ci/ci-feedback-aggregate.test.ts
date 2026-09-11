@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { aggregateCiFeedback } from './ci-feedback-aggregate.ts';
 import { buildCiFeedbackEvidence } from './ci-feedback-evidence.ts';
+import type { ChangedProjectPlan } from './changed-project-plan.ts';
+import { selectRemainingUnitProjects, unitShardId } from './unit-shards.ts';
 
 const directories: string[] = [];
 
@@ -13,17 +15,22 @@ const writeEvidence = (
   directory: string,
   shardId: string,
   projects: string[],
-  options: { headSha?: string; status?: 'failed' | 'passed' | 'skipped' } = {}
-): void => {
+  options: {
+    headSha?: string;
+    baseSha?: string;
+    status?: 'failed' | 'passed' | 'skipped';
+    plan?: ChangedProjectPlan;
+  } = {}
+): string => {
   const evidence = buildCiFeedbackEvidence({
     gate: 'unit',
     role: shardId === 'unit-direct' ? 'fast-feedback' : 'complete',
     shardId,
     status: options.status ?? 'passed',
-    baseSha: 'base',
+    baseSha: options.baseSha ?? 'base',
     headSha: options.headSha ?? 'head',
     scopeMode: 'affected',
-    plan: {
+    plan: options.plan ?? {
       mode: 'changed-first',
       reason: 'directly-changed-projects-first',
       directProjects: ['plugin-news'],
@@ -38,10 +45,9 @@ const writeEvidence = (
     startedAt: new Date('2026-08-23T10:00:00Z'),
     finishedAt: new Date('2026-08-23T10:00:01Z'),
   });
-  fs.writeFileSync(
-    path.join(directory, `unit-${shardId}-${Math.random()}.json`),
-    JSON.stringify(evidence)
-  );
+  const filePath = path.join(directory, `unit-${shardId}-${Math.random()}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(evidence));
+  return filePath;
 };
 
 afterEach(() => {
@@ -73,6 +79,111 @@ describe('ci-feedback-aggregate', () => {
       shards: ['unit-direct', 'unit-remaining'],
       statuses: { 'unit-direct': 'passed', 'unit-remaining': 'passed' },
     });
+  });
+
+  const plan: ChangedProjectPlan = {
+    mode: 'changed-first',
+    reason: 'directly-changed-projects-first',
+    directProjects: ['core'],
+    remainingProjects: ['sva-studio-react', 'data', 'plugin-news', 'routing', 'tooling-testing'],
+    unmappedFiles: [],
+  };
+  const expectedShards = [
+    'unit-direct',
+    ...[1, 2, 3, 4].map((index) => unitShardId({ index, count: 4 })),
+  ];
+  const writeShards = (directory: string, scope = plan): string[] => [
+    writeEvidence(directory, 'unit-direct', scope.directProjects, { plan: scope }),
+    ...[1, 2, 3, 4].map((index) => {
+      const shard = { index, count: 4 };
+      const projects = selectRemainingUnitProjects(scope.remainingProjects, shard);
+      return writeEvidence(directory, unitShardId(shard), projects, {
+        plan: scope,
+        status: projects.length === 0 ? 'skipped' : 'passed',
+      });
+    }),
+  ];
+  const aggregateShards = (directory: string, expected = expectedShards) =>
+    aggregateCiFeedback({
+      gate: 'unit',
+      headSha: 'head',
+      expectedShards: expected,
+      evidenceDirectory: directory,
+    });
+
+  it.each([
+    plan,
+    { ...plan, directProjects: [], remainingProjects: [] },
+    {
+      ...plan,
+      mode: 'full-fallback' as const,
+      directProjects: [],
+      remainingProjects: [...plan.remainingProjects, 'core'],
+    },
+  ])('accepts a complete four-shard scope including empty shards: %j', (scope) => {
+    const directory = createDirectory();
+    writeShards(directory, scope);
+    expect(aggregateShards(directory).shards).toEqual(expectedShards);
+  });
+
+  it.each([
+    'missing',
+    'failed',
+    'stale-head',
+    'stale-base',
+    'different-plan',
+    'missing-project',
+    'wrong-shard',
+    'duplicate',
+    'unexpected',
+    'invalid-status',
+  ])('fails closed for %s in a four-shard run', (scenario) => {
+    const directory = createDirectory();
+    const paths = writeShards(directory);
+    const target = paths[2];
+    const evidence = JSON.parse(fs.readFileSync(target, 'utf8'));
+    if (scenario === 'missing') fs.rmSync(target);
+    else if (scenario === 'duplicate')
+      fs.copyFileSync(target, path.join(directory, 'unit-unit-duplicate.json'));
+    else if (scenario === 'unexpected')
+      writeEvidence(directory, 'unit-remaining-5-of-4', [], { plan });
+    else {
+      if (scenario === 'failed') evidence.status = 'failed';
+      if (scenario === 'invalid-status') evidence.status = 'cancelled';
+      if (scenario === 'stale-head') evidence.headSha = 'old';
+      if (scenario === 'stale-base') evidence.baseSha = 'old';
+      if (scenario === 'different-plan') evidence.plan.remainingProjects = [];
+      if (scenario === 'missing-project') evidence.phases = [];
+      if (scenario === 'wrong-shard') evidence.phases[0].projects = ['routing'];
+      fs.writeFileSync(target, JSON.stringify(evidence));
+    }
+    expect(() => aggregateShards(directory)).toThrow();
+  });
+
+  it('rejects an expected list that silently drops a shard', () => {
+    const directory = createDirectory();
+    const paths = writeShards(directory);
+    fs.rmSync(paths[4]);
+    expect(() => aggregateShards(directory, expectedShards.slice(0, 4))).toThrow(
+      /Shard-Konfiguration/u
+    );
+  });
+
+  it('preserves sibling evidence when a failed shard is replaced in a partial rerun', () => {
+    const directory = createDirectory();
+    const paths = writeShards(directory);
+    const target = paths[2];
+    const original = fs.readFileSync(target, 'utf8');
+    const siblingContents = paths
+      .filter((file) => file !== target)
+      .map((file) => fs.readFileSync(file, 'utf8'));
+    fs.writeFileSync(target, JSON.stringify({ ...JSON.parse(original), status: 'failed' }));
+    expect(() => aggregateShards(directory)).toThrow(/fehlgeschlagen/u);
+    fs.writeFileSync(target, original);
+    expect(aggregateShards(directory).shards).toEqual(expectedShards);
+    expect(
+      paths.filter((file) => file !== target).map((file) => fs.readFileSync(file, 'utf8'))
+    ).toEqual(siblingContents);
   });
 
   it.each([

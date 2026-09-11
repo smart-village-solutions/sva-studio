@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import type { CiFeedbackEvidence } from './ci-feedback-evidence.ts';
+import { selectRemainingUnitProjects, unitShardId } from './unit-shards.ts';
 
 export interface AggregateCiFeedbackOptions {
   gate: CiFeedbackEvidence['gate'];
@@ -35,7 +36,12 @@ const listJsonFiles = (directory: string): string[] => {
 
 const readEvidence = (filePath: string): CiFeedbackEvidence => {
   const value = JSON.parse(fs.readFileSync(filePath, 'utf8')) as Partial<CiFeedbackEvidence>;
-  if (value.schemaVersion !== 2 || !value.shardId || !value.gate || !value.status) {
+  if (
+    value.schemaVersion !== 2 ||
+    !value.shardId ||
+    !value.gate ||
+    !['passed', 'failed', 'skipped'].includes(value.status ?? '')
+  ) {
     throw new Error(`Ungültige CI-Evidenz: ${filePath}`);
   }
   return value as CiFeedbackEvidence;
@@ -97,12 +103,18 @@ const assertUnitPlan = (
   projectsByShard: ReadonlyMap<string, Set<string>>
 ): void => {
   const directEvidence = acceptedEvidence.get('unit-direct');
-  const remainingEvidence = acceptedEvidence.get('unit-remaining');
-  if (!directEvidence?.plan || !remainingEvidence?.plan) {
+  const remainingIds = [...acceptedEvidence.keys()].filter((id) => id !== 'unit-direct');
+  if (!directEvidence?.plan || remainingIds.length === 0) {
     throw new Error('Unit-Evidenz enthält keinen auswertbaren Scope-Plan.');
   }
-  if (JSON.stringify(directEvidence.plan) !== JSON.stringify(remainingEvidence.plan)) {
-    throw new Error('Unit-Shards verwenden unterschiedliche Scope-Pläne.');
+  for (const evidence of acceptedEvidence.values()) {
+    if (
+      JSON.stringify(directEvidence.plan) !== JSON.stringify(evidence.plan) ||
+      directEvidence.baseSha !== evidence.baseSha ||
+      directEvidence.scopeMode !== evidence.scopeMode
+    ) {
+      throw new Error('Unit-Shards verwenden unterschiedliche Scope-Pläne.');
+    }
   }
   const assertExactProjects = (shardId: string, expected: readonly string[]): void => {
     const actual = [...(projectsByShard.get(shardId) ?? [])].sort();
@@ -114,7 +126,23 @@ const assertUnitPlan = (
     }
   };
   assertExactProjects('unit-direct', directEvidence.plan.directProjects);
-  assertExactProjects('unit-remaining', directEvidence.plan.remainingProjects);
+  if (remainingIds.length === 1 && remainingIds[0] === 'unit-remaining') {
+    assertExactProjects('unit-remaining', directEvidence.plan.remainingProjects);
+    return;
+  }
+  // Derive the complete layout from the expected list, never from reported
+  // successful artifacts. Missing/renumbered shards cannot shrink the gate.
+  for (let index = 1; index <= remainingIds.length; index += 1) {
+    const shard = { index, count: remainingIds.length };
+    const shardId = unitShardId(shard);
+    if (!remainingIds.includes(shardId)) {
+      throw new Error(`Unvollständige Unit-Shard-Konfiguration: ${shardId}`);
+    }
+    assertExactProjects(
+      shardId,
+      selectRemainingUnitProjects(directEvidence.plan.remainingProjects, shard)
+    );
+  }
 };
 
 const assertNoProjectOverlap = (

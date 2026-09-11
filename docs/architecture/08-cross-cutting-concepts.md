@@ -479,6 +479,7 @@ gleichzeitig beeinflussen.
 - Pre-Build-Checks für i18n und Account-UI-Foundation bleiben als separate Nx-Targets vor dem App-Build erzwungen
 - Die App-Unit-Tests erzwingen wegen Node-25-/`jsdom`-Instabilitäten einen einzelnen Vitest-Worker im Thread-Pool
 - Der PR-Unit-Pfad darf bei isolierten App-Änderungen gezielt nur die betroffenen App-Slices ausführen; gemischte oder unklare Änderungen fallen bewusst auf das aggregierte `test:unit`-Target zurück
+- Die verbleibenden PR-Unit-Projekte laufen in vier deterministischen Jobs: App allein, übrige Projekte sortiert reihum auf drei Runner verteilt. Bestehende Nx-Targets und Cache-Verträge bleiben erhalten. Der stabile Required Check `Unit` validiert alle Shards gegen denselben Scope-Plan und die exakte disjunkte Projektmenge; Matrix-Fail-fast und pro Run/Shards stabile Artefaktnamen erhalten Fehler- und Teilwiederholungssemantik. Details: [Testing und Coverage](../development/testing-coverage.md#parallele-unit-complete-ausführung).
 
 ### Studio-UI-Boundary und Design-System-Kapselung
 

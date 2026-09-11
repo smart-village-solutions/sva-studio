@@ -3,9 +3,9 @@ set -eu
 
 image_ref="${SVA_IMAGE_REF:-}"
 case "${image_ref}" in
-  *@sha256:*) ;;
+  ghcr.io/smart-village-solutions/sva-studio@sha256:* | ghcr.io/smart-village-solutions/sva-studio:*@sha256:*) ;;
   *)
-    echo 'SVA_IMAGE_REF must be a complete image reference with an immutable sha256 digest.' >&2
+    echo 'SVA_IMAGE_REF must use the approved Studio repository and an immutable sha256 digest.' >&2
     exit 64
     ;;
 esac

@@ -80,7 +80,8 @@ docker compose \
 
 Overlay und `up.sh` werden dazu aus dem exakt freigegebenen Release-Stand in den eigenständigen
 Compose-Projektordner übernommen. Das Startskript akzeptiert ausschließlich eine vollständige
-Image-Referenz mit `@sha256:` und bindet App und Worker an exakt denselben Digest.
+Image-Referenz aus `ghcr.io/smart-village-solutions/sva-studio` mit `@sha256:` und bindet App
+und Worker an exakt denselben Digest.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich

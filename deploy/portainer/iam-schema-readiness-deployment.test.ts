@@ -74,6 +74,8 @@ describe('IAM schema readiness deployment contract', () => {
   it.each([
     '',
     'ghcr.io/smart-village-solutions/sva-studio:latest',
+    `evil.example/studio@sha256:${'a'.repeat(64)}`,
+    `@sha256:${'a'.repeat(64)}`,
     `ghcr.io/smart-village-solutions/sva-studio@sha256:${'a'.repeat(63)}`,
     `ghcr.io/smart-village-solutions/sva-studio@sha256:${'A'.repeat(64)}`,
   ])('rejects mutable or malformed standalone image reference %s', (imageRef) => {
@@ -98,6 +100,18 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneUp).toContain('-f app.compose.yml');
     expect(standaloneUp).toContain('-f keycloak-provisioner.compose.yml');
     expect(standaloneUp).toContain('up -d app provisioner');
+  });
+
+  it('accepts an approved tagged image only when it is pinned to a digest', () => {
+    const result = spawnSync('sh', ['deploy/standalone/up.sh', '--validate-only'], {
+      cwd: resolve(import.meta.dirname, '../..'),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SVA_IMAGE_REF: `ghcr.io/smart-village-solutions/sva-studio:release@sha256:${'b'.repeat(64)}`,
+      },
+    });
+    expect(result.status).toBe(0);
   });
 
   it('ships one canonical verifier in both runtime images', () => {

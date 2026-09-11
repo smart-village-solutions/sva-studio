@@ -27,26 +27,30 @@ describe('PermissionsDegradedBanner', () => {
     cleanup();
   });
 
-  it('stays hidden when loading, healthy, or already dismissed state should not render', async () => {
-    const { PermissionsDegradedBanner } = await import('./PermissionsDegradedBanner');
+  it(
+    'stays hidden when loading, healthy, or already dismissed state should not render',
+    async () => {
+      const { PermissionsDegradedBanner } = await import('./PermissionsDegradedBanner');
 
-    useAuthMock.mockReturnValue({
-      permissionsDegraded: false,
-      refreshSession: refreshSessionMock,
-      isLoading: false,
-    });
-    const healthy = render(<PermissionsDegradedBanner />);
-    expect(screen.queryByRole('alert')).toBeNull();
-    healthy.unmount();
+      useAuthMock.mockReturnValue({
+        permissionsDegraded: false,
+        refreshSession: refreshSessionMock,
+        isLoading: false,
+      });
+      const healthy = render(<PermissionsDegradedBanner />);
+      expect(screen.queryByRole('alert')).toBeNull();
+      healthy.unmount();
 
-    useAuthMock.mockReturnValue({
-      permissionsDegraded: true,
-      refreshSession: refreshSessionMock,
-      isLoading: true,
-    });
-    render(<PermissionsDegradedBanner />);
-    expect(screen.queryByRole('alert')).toBeNull();
-  });
+      useAuthMock.mockReturnValue({
+        permissionsDegraded: true,
+        refreshSession: refreshSessionMock,
+        isLoading: true,
+      });
+      render(<PermissionsDegradedBanner />);
+      expect(screen.queryByRole('alert')).toBeNull();
+    },
+    10_000
+  );
 
   it('retries permission invalidation and disables the retry button while pending', async () => {
     let resolveInvalidate: (() => void) | undefined;

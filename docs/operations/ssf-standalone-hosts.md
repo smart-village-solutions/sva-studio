@@ -70,7 +70,23 @@ auch der Kasseler App-Container verwendet. Die `runtime.env` muss im Compose-Pro
 liegen und insbesondere die bestehenden `APP_DB_*`-, `POSTGRES_*`-, `REDIS_*`- und
 `KEYCLOAK_PROVISIONER_*`-Werte der Kasseler Installation enthalten.
 
+Bei einem Wechsel des Queue-Vertrags müssen App und Worker koordiniert aktualisiert werden:
+Zuerst die App stoppen, damit sie keine neuen Aufträge annimmt. Den bisherigen Worker alle
+bereits geplanten oder laufenden Aufträge abschließen lassen und diesen Zustand über die
+Registry prüfen. Danach den Worker stoppen und beide Dienste gemeinsam mit demselben neuen
+Digest starten. So verarbeitet weder ein alter Worker neue Aufträge noch ein neuer Worker
+Aufträge im alten Format.
+
 ```bash
+docker compose \
+  -f app.compose.yml \
+  -f keycloak-provisioner.compose.yml \
+  stop app
+# Registry prüfen: keine Provisioning-Läufe mit Status planned oder running.
+docker compose \
+  -f app.compose.yml \
+  -f keycloak-provisioner.compose.yml \
+  stop provisioner
 ./up.sh
 docker compose \
   -f app.compose.yml \
@@ -84,6 +100,11 @@ Image-Referenz aus `ghcr.io/smart-village-solutions/sva-studio` mit `@sha256:` u
 und Worker an exakt denselben Digest.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
+
+Studio speichert den validierten Plugin-OIDC-Vertrag im Provisioning-Auftrag. Der Worker verwendet
+genau diesen Snapshot für Keycloak-Abgleich und Status-Fingerprint. Unversionierte oder
+unvollständige Aufträge werden abgewiesen und deshalb vor dem Versionswechsel mit dem bisherigen
+Worker geleert. So bleibt ein Worker-Lauf auch bei getrennten App- und Worker-Prozessen auswertbar.
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich
 der Realm-, Client- und Tenant-Admin-Struktur. Der Worker veröffentlicht keine Ports und erhält
 keine Traefik-Router.

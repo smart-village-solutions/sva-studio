@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   buildProvisioningInput: vi.fn(),
   completeRun: vi.fn(),
   createQueuedRun: vi.fn(),
+  readQueuedPluginOidcClientRequirements: vi.fn(),
   readQueuedTemporaryPassword: vi.fn(),
   syncProvisionedClientSecretToRegistry: vi.fn(),
   syncRotatedClientSecretToRegistry: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('./service-keycloak-execution-shared.js', () => ({
   buildProvisioningInput: state.buildProvisioningInput,
   completeRun: state.completeRun,
   createQueuedRun: state.createQueuedRun,
+  readQueuedPluginOidcClientRequirements: state.readQueuedPluginOidcClientRequirements,
   readQueuedTemporaryPassword: state.readQueuedTemporaryPassword,
   syncProvisionedClientSecretToRegistry: state.syncProvisionedClientSecretToRegistry,
   syncRotatedClientSecretToRegistry: state.syncRotatedClientSecretToRegistry,
@@ -95,6 +97,7 @@ describe('service-keycloak-execution', () => {
     state.buildProvisioningInput.mockReset();
     state.completeRun.mockReset();
     state.createQueuedRun.mockReset();
+    state.readQueuedPluginOidcClientRequirements.mockReset();
     state.readQueuedTemporaryPassword.mockReset();
     state.syncProvisionedClientSecretToRegistry.mockReset();
     state.syncRotatedClientSecretToRegistry.mockReset();
@@ -110,6 +113,7 @@ describe('service-keycloak-execution', () => {
     state.appendRunStep.mockResolvedValue(undefined);
     state.completeRun.mockResolvedValue('succeeded');
     state.readQueuedTemporaryPassword.mockReturnValue(undefined);
+    state.readQueuedPluginOidcClientRequirements.mockReturnValue([]);
     state.syncProvisionedClientSecretToRegistry.mockResolvedValue(undefined);
     state.syncRotatedClientSecretToRegistry.mockResolvedValue(undefined);
     state.syncTenantAdminBootstrapAccount.mockResolvedValue(undefined);
@@ -278,6 +282,22 @@ describe('service-keycloak-execution', () => {
   it('executes technical repairs for an imported realm without admin bootstrap data', async () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
+    const getKeycloakPreflight = vi.fn().mockResolvedValue({
+      overallStatus: 'warning',
+      checks: [{ checkKey: 'tenant_admin_profile', status: 'warning' }],
+    });
+    const planKeycloakProvisioning = vi.fn().mockResolvedValue({
+      overallStatus: 'ready',
+      driftSummary: 'Technische Reparatur erforderlich.',
+    });
+    const pluginOidcClients = [{
+      contractVersion: '1.0',
+      pluginId: 'ssf',
+      clientId: 'ssf',
+      audience: 'ssf',
+      enabled: false,
+    }];
+    state.readQueuedPluginOidcClientRequirements.mockReturnValue(pluginOidcClients);
     const listProvisioningRealmAssignments = vi.fn().mockResolvedValue([
       { instanceId: 'instance-1', authRealm: 'tenant' },
     ]);
@@ -302,16 +322,16 @@ describe('service-keycloak-execution', () => {
           provisionInstanceAuth,
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           readKeycloakStateViaProvisioner: vi.fn(),
-          getKeycloakPreflight: vi.fn().mockResolvedValue({
-            overallStatus: 'warning',
-            checks: [{ checkKey: 'tenant_admin_profile', status: 'warning' }],
-          }),
-          planKeycloakProvisioning: vi.fn().mockResolvedValue({
-            overallStatus: 'ready',
-            driftSummary: 'Technische Reparatur erforderlich.',
-          }),
+          getKeycloakPreflight,
+          planKeycloakProvisioning,
         } as never,
-        createRun({ mode: 'new' })
+        createRun({
+          mode: 'new',
+          steps: [{
+            stepKey: 'queued',
+            details: { pluginOidcSnapshotVersion: '1.0', pluginOidcClients },
+          }],
+        })
       )
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
 
@@ -319,10 +339,53 @@ describe('service-keycloak-execution', () => {
       expect.objectContaining({
         payload: 'provisioning',
         allowLegacyRealmRoleMigration: true,
+        pluginOidcClients,
         reconcileAuthClient: true,
         reconcileTenantAdminClient: true,
       })
     );
+    expect(getKeycloakPreflight).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginOidcClients })
+    );
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginOidcClients })
+    );
+    expect(state.completeRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pluginOidcClients })
+    );
+  });
+
+  it('fails a claimed run when its queued plugin OIDC snapshot is missing', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const snapshotError = new Error('queued_plugin_oidc_client_requirements_missing_or_invalid');
+    const provisionInstanceAuth = vi.fn();
+    const repository = {
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    state.readQueuedPluginOidcClientRequirements.mockImplementation(() => {
+      throw snapshotError;
+    });
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth,
+          readKeycloakStateViaProvisioner: vi.fn(),
+          getKeycloakPreflight: vi.fn(),
+          planKeycloakProvisioning: vi.fn(),
+        } as never,
+        createRun({ steps: [{ stepKey: 'queued', details: {} }] })
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'failed' });
+
+    expect(state.failRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ runId: 'run-1', error: snapshotError })
+    );
+    expect(provisionInstanceAuth).not.toHaveBeenCalled();
   });
 
   it('fails a claimed run when the realm ownership lookup fails', async () => {

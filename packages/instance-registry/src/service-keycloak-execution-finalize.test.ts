@@ -108,6 +108,10 @@ describe('service-keycloak-execution-finalize', () => {
     state.buildKeycloakStatus.mockReturnValue(status);
     state.appendRunStep.mockResolvedValue(undefined);
     const finalState = { realm: { realm: 'demo' } };
+    const pluginOidcClients = [{
+      contractVersion: '1.0' as const,
+      pluginId: 'ssf', clientId: 'ssf', audience: 'ssf', enabled: false as const,
+    }];
     const readKeycloakStateViaProvisioner = vi.fn().mockResolvedValue(finalState);
     const result = await completeRun(
       {
@@ -127,6 +131,7 @@ describe('service-keycloak-execution-finalize', () => {
         actorId: 'actor-1',
         intent: 'provision',
         tenantAdminTemporaryPassword: 'temp-secret',
+        pluginOidcClients,
       }
     );
 
@@ -138,7 +143,9 @@ describe('service-keycloak-execution-finalize', () => {
     expect(state.buildPreflightChecks).toHaveBeenCalledWith(
       expect.objectContaining({ state: finalState })
     );
-    expect(state.buildPlan).toHaveBeenCalledWith(expect.objectContaining({ state: finalState }));
+    expect(state.buildPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ state: finalState, pluginOidcClients })
+    );
     expect(state.buildProvisioningInput).toHaveBeenCalled();
     expect(state.appendRunStep).toHaveBeenNthCalledWith(
       1,
@@ -149,7 +156,11 @@ describe('service-keycloak-execution-finalize', () => {
         status: 'done',
         details: {
           policyVersion: 3,
-          inputFingerprint: buildKeycloakSnapshotInputFingerprint(statusUpdated as never),
+          inputFingerprint: buildKeycloakSnapshotInputFingerprint(
+            statusUpdated as never,
+            undefined,
+            pluginOidcClients
+          ),
           status,
           preflight: expect.objectContaining({ overallStatus: 'ready' }),
           plan: { overallStatus: 'ready' },

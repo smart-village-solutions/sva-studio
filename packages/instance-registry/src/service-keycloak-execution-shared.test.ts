@@ -104,6 +104,7 @@ describe('service-keycloak-execution-shared', () => {
       {
         repository: repository as never,
         protectSecret,
+        readPluginOidcClientRequirements: () => [],
       } as never,
       createLoaded() as never,
       {
@@ -152,6 +153,7 @@ describe('service-keycloak-execution-shared', () => {
       createQueuedRun(
         {
           repository: repository as never,
+          readPluginOidcClientRequirements: () => [],
         } as never,
         createLoaded() as never,
         {

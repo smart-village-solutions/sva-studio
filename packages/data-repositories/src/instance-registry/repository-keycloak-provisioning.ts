@@ -172,18 +172,20 @@ const appendKeycloakProvisioningStep = async (
   executor: SqlExecutor,
   input: Parameters<KeycloakProvisioningRepository['appendKeycloakProvisioningStep']>[0]
 ) => {
-  const rows = await queryRows<KeycloakProvisioningStepRow>(
-    executor,
-    statement(
-      `
+  const insertSql = `
 INSERT INTO iam.instance_keycloak_provisioning_steps (
   run_id, step_key, title, status, started_at, finished_at, summary, details, request_id
 )
 VALUES ($1::uuid, $2, $3, $4, $5::timestamptz, $6::timestamptz, $7, $8::jsonb, $9)
+${input.stepKey === 'queued' ? "ON CONFLICT (run_id) WHERE step_key = 'queued' DO NOTHING" : ''}
 RETURNING
   id::text, run_id::text, step_key, title, status, started_at::text, finished_at::text,
   summary, details, request_id, created_at::text;
-`,
+`;
+  const rows = await queryRows<KeycloakProvisioningStepRow>(
+    executor,
+    statement(
+      insertSql,
       [
         input.runId,
         input.stepKey,
@@ -197,7 +199,26 @@ RETURNING
       ]
     )
   );
-  return mapKeycloakProvisioningRunStep(rows[0]);
+  const row = rows[0];
+  if (row || input.stepKey !== 'queued') {
+    return mapKeycloakProvisioningRunStep(row);
+  }
+  const existingRows = await queryRows<KeycloakProvisioningStepRow>(
+    executor,
+    statement(
+      `
+SELECT
+  id::text, run_id::text, step_key, title, status, started_at::text, finished_at::text,
+  summary, details, request_id, created_at::text
+FROM iam.instance_keycloak_provisioning_steps
+WHERE run_id = $1::uuid AND step_key = 'queued'
+ORDER BY created_at ASC
+LIMIT 1;
+`,
+      [input.runId]
+    )
+  );
+  return mapKeycloakProvisioningRunStep(existingRows[0]);
 };
 
 export const createKeycloakProvisioningRepository = (executor: SqlExecutor): KeycloakProvisioningRepository => ({

@@ -3,6 +3,7 @@ export {
   buildKeycloakProvisioningPayloadFingerprint,
   buildProvisioningInput,
   createQueuedRun,
+  readQueuedPluginOidcClientRequirements,
   readQueuedTemporaryPassword,
   type KeycloakProvisioningMutation,
 } from './service-keycloak-execution-payload.js';

@@ -118,6 +118,12 @@ Realm-Zugehörigkeit prüfen, jeder betroffenen Instanz einen eindeutigen Realm
 zuordnen und die Migration erneut starten; eine automatische Umbenennung oder
 Löschung wäre fachlich nicht sicher.
 
+Migration `0095` erzwingt pro Keycloak-Provisioning-Lauf höchstens einen
+`queued`-Schritt. Vor dem Indexaufbau behält sie bei historischen Duplikaten
+deterministisch den ältesten, zuvor vom Worker bevorzugten Schritt. Idempotente
+Recovery-Versuche konkurrieren danach sicher über den partiellen eindeutigen
+Index und lesen nach einem Konflikt den bereits persistierten Queue-Snapshot.
+
 Gesprächsinhalte, Einwilligungen, Sessions und ClickHouse-Auswertungen gehören
 nicht in diese Datenbank. Der zentrale Snapshot
 [`studio-db-schema-final.sql`](./studio-db-schema-final.sql) bildet diese

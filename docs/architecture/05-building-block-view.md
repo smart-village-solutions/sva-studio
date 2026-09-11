@@ -931,6 +931,9 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   für den aktualisierten Registry- und Keycloak-Zustand. Die Read-Pfade wählen
   laufübergreifend den neuesten Snapshot mit passender Policy-Version und passendem
   Eingabe-Fingerprint; innerhalb eines Laufs wird der finale Status-Snapshot bevorzugt.
+  Die App persistiert ihre validierten Plugin-OIDC-Anforderungen bereits im Queue-Schritt.
+  Der Provisioner validiert und verwendet genau diesen Lauf-Snapshot für Read, Plan,
+  Ausführung und finalen Fingerprint; eine lokale Worker-Defaultliste darf ihn nicht ergänzen.
   Während eines geplanten oder laufenden Keycloak-Provisionings verhindert die Registry
   Änderungen an den vom Worker konsumierten Instanzfeldern. Worker dürfen in diesem
   Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.

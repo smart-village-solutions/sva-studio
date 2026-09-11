@@ -35,6 +35,11 @@ Mutationen noch die Verarbeitung eines inzwischen veralteten Claims.
   nicht tenantgefilterten Repository-Read.
 - Ein Worker lädt den beanspruchten Lauf innerhalb der Sperre erneut und führt
   ihn nur aus, wenn er weiterhin `running` ist.
+- Die App persistiert ihre validierten Plugin-OIDC-Anforderungen mit einer Snapshot-Version im Queue-Schritt. Der neue Worker liest unversionierte Bestandsaufträge nach dem früheren Vertrag ohne Plugin-OIDC-Anforderungen. Installationen mit Plugin-OIDC-Anforderungen leeren solche Aufträge vor dem Versionswechsel mit dem bisherigen Worker. Versionierte Aufträge bleiben strikt an ihren Snapshot gebunden und werden bei unvollständigen Daten fail-closed abgewiesen.
+  Der Worker validiert diesen Snapshot und verwendet ihn unverändert für Read,
+  Plan, Keycloak-Ausführung und finalen Evidenz-Fingerprint. Ein fehlender
+  Snapshot beendet den Lauf fail-closed; Worker-Prozessdefaults dürfen einen
+  expliziten Queue-Snapshot weder ergänzen noch überschreiben.
 - Ein seit 15 Minuten laufender Claim wird nur dann als verwaist beendet, wenn
   `pg_try_advisory_xact_lock` bestätigt, dass kein Worker die Instanzsperre hält.
   Ein lokaler Worker beendet außerdem ältere `planned`-Runs unter derselben
@@ -62,6 +67,9 @@ werden nicht durch eine automatische Übernahme fremder Rollen verdeckt.
 Die Snapshot-Leser können ältere Runs prüfen, bis ein zur aktuellen
 Konfiguration passender Snapshot gefunden ist. Dafür bleibt die Reihenfolge der
 Provisioning-Runs von neu nach alt Teil des Repository-Vertrags.
+Während eines Rollouts kann ein älterer Auftrag mit seinem damaligen Snapshot
+deterministisch abgeschlossen werden; die aktuelle App verwirft seine Evidenz,
+falls ihr neuer Soll-Snapshot davon abweicht.
 
 ## Verworfene Alternativen
 
@@ -71,6 +79,8 @@ Provisioning-Runs von neu nach alt Teil des Repository-Vertrags.
   serialisieren.
 - Eine ausschließlich zeitbasierte Wiederaufnahme könnte einen weiterhin
   aktiven Worker überholen.
+- Eine zweite, pro Worker-Prozess geladene Plugin-OIDC-Liste könnte während
+  eines Rollouts von der App-Konfiguration abweichen und Evidenz unbrauchbar machen.
 - Fremde oder mehrdeutige Rollen automatisch zu übernehmen würde die
   Sicherheitsgrenze der Studio-Ownership aufheben.
 

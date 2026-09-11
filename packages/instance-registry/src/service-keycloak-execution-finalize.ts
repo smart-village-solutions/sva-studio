@@ -30,6 +30,7 @@ type CompleteRunInput = {
   actorId?: string;
   intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
   tenantAdminTemporaryPassword?: string;
+  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
 
 const buildStatusFromState = (
@@ -52,7 +53,7 @@ const appendFinalStatusSnapshot = async (
   snapshotInstance: InstanceRegistryRecord,
   state: KeycloakReadState
 ) => {
-  const finalProvisioningInput = buildProvisioningInput({ ...input.loaded, instance: snapshotInstance });
+  const finalProvisioningInput = { ...buildProvisioningInput({ ...input.loaded, instance: snapshotInstance }), pluginOidcClients: input.pluginOidcClients ?? [] };
   const status = buildStatusFromState(finalProvisioningInput, state);
   const checks = buildPreflightChecks({
     realmMode: finalProvisioningInput.realmMode,
@@ -75,6 +76,7 @@ const appendFinalStatusSnapshot = async (
     tenantAdminClient: finalProvisioningInput.tenantAdminClient,
     tenantAdminClientSecret: finalProvisioningInput.tenantAdminClientSecret,
     tenantAdminBootstrap: finalProvisioningInput.tenantAdminBootstrap,
+    pluginOidcClients: finalProvisioningInput.pluginOidcClients,
     preflight,
     state,
   });
@@ -89,7 +91,7 @@ const appendFinalStatusSnapshot = async (
       inputFingerprint: buildKeycloakSnapshotInputFingerprint(
         snapshotInstance,
         await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId),
-        deps.readPluginOidcClientRequirements?.()
+        input.pluginOidcClients ?? []
       ),
       status,
       preflight,
@@ -107,7 +109,7 @@ export const completeRun = async (
   if (!readKeycloakState) {
     throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
   }
-  const provisioningInput = buildProvisioningInput(input.loaded);
+  const provisioningInput = { ...buildProvisioningInput(input.loaded), pluginOidcClients: input.pluginOidcClients ?? [] };
   const state = await readKeycloakState(provisioningInput);
   const status = buildStatusFromState(provisioningInput, state);
   const requireTenantAdmin = isInstanceTenantAdminRequired(input.loaded.instance);

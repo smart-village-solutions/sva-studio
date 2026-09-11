@@ -224,6 +224,9 @@ describe('instance registry repository keycloak provisioning', () => {
     expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock(hashtextextended(eligible.instance_id, 0))');
     expect(statements[0]?.text).toContain("overall_status = 'failed'");
     expect(statements[0]?.text).toContain("active.overall_status = 'running'");
+    expect(statements[0]?.text).toMatch(
+      /instance_keycloak_provisioning_steps AS queued_step[\s\S]+queued_step\.run_id = candidate\.id[\s\S]+queued_step\.step_key = 'queued'/
+    );
     expect(statements[2]?.values).toEqual([
       'kc-run-1',
       'realm',
@@ -235,5 +238,27 @@ describe('instance registry repository keycloak provisioning', () => {
       JSON.stringify({ phase: 'realm' }),
       'req-append-1',
     ]);
+    expect(statements[2]?.text).not.toContain('ON CONFLICT (run_id)');
+  });
+
+  it('serializes queued-step recovery and reloads the existing snapshot after a conflict', async () => {
+    const queuedStepRow = { ...stepRow, step_key: 'queued' };
+    const { executor, statements } = createQueuedExecutor([[], [queuedStepRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.appendKeycloakProvisioningStep({
+      runId: 'kc-run-1',
+      stepKey: 'queued',
+      title: 'Queue',
+      status: 'pending',
+      summary: 'Queued',
+      details: { pluginOidcSnapshotVersion: '1.0' },
+    })).resolves.toMatchObject({ stepKey: 'queued' });
+
+    expect(statements[0]?.text).toContain(
+      "ON CONFLICT (run_id) WHERE step_key = 'queued' DO NOTHING"
+    );
+    expect(statements[1]).toMatchObject({ values: ['kc-run-1'] });
+    expect(statements[1]?.text).toContain("step_key = 'queued'");
   });
 });

@@ -190,6 +190,7 @@ export type InstanceRegistryServiceDeps = {
     };
     tenantAdminBootstrap?: TenantAdminBootstrap;
     tenantAdminTemporaryPassword?: string;
+    pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
     rotateClientSecret?: boolean;
     reconcileAuthClient?: boolean;
     reconcileTenantAdminClient?: boolean;

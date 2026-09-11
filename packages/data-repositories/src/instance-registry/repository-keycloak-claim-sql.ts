@@ -70,6 +70,12 @@ ${includeCreatedAtFilter ? '    AND candidate.created_at >= $1::timestamptz\n' :
         AND active.overall_status = 'running'
         AND active.id NOT IN (SELECT id FROM recovered_runs)
     )
+    AND EXISTS (
+      SELECT 1
+      FROM iam.instance_keycloak_provisioning_steps AS queued_step
+      WHERE queued_step.run_id = candidate.id
+        AND queued_step.step_key = 'queued'
+    )
 ),
 attempted_candidates AS (
   SELECT

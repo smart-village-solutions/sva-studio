@@ -574,12 +574,28 @@ test('instance realm migration and schema snapshot enforce exclusive realm owner
   expect(upSql).toContain('Cannot enforce exclusive Keycloak realm ownership');
   expect(upSql).not.toMatch(/\b(?:DELETE|UPDATE)\s+iam\.instances\b/);
   for (const source of [upSql, schemaSnapshot]) {
-    expect(source).toMatch(
-      /ADD CONSTRAINT instances_auth_realm_unique UNIQUE \(auth_realm\)/
-    );
+    expect(source).toMatch(/ADD CONSTRAINT instances_auth_realm_unique UNIQUE \(auth_realm\)/);
   }
 
   expect(downSql).toMatch(/DROP CONSTRAINT instances_auth_realm_unique/);
+});
+
+test('queued step migration keeps the earliest legacy step before enforcing uniqueness', () => {
+  const sql = readRepoFile('data/migrations/0095_iam_keycloak_queued_step_unique.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+
+  expect(upSql).toMatch(
+    /ROW_NUMBER\(\) OVER \(PARTITION BY run_id ORDER BY created_at ASC, id ASC\)/
+  );
+  expect(upSql.indexOf('DELETE FROM iam.instance_keycloak_provisioning_steps')).toBeLessThan(
+    upSql.indexOf('CREATE UNIQUE INDEX idx_instance_keycloak_provisioning_steps_queued_unique')
+  );
+  for (const source of [upSql, schemaSnapshot]) {
+    expect(source).toMatch(
+      /CREATE UNIQUE INDEX idx_instance_keycloak_provisioning_steps_queued_unique[\s\S]+ON iam\.instance_keycloak_provisioning_steps[\s\S]+WHERE (?:\()?step_key = 'queued'/
+    );
+  }
 });
 
 test('organization type migration and schema snapshot support associations and institutions', () => {

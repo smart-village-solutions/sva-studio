@@ -24,6 +24,16 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
           'Die nach dem Provisioning erwarteten Tenant-Client-Secrets sind nicht lesbar.',
       };
     }
+    if (
+      message.includes('queued_plugin_oidc_client_requirements_missing_or_invalid') ||
+      message.includes('plugin_oidc_client_requirement_invalid')
+    ) {
+      return {
+        reasonCode: 'PLUGIN_OIDC_SNAPSHOT_INVALID',
+        safeSummary:
+          'Der Provisioning-Auftrag enthält keinen gültigen Plugin-OIDC-Snapshot.',
+      };
+    }
     if (message.includes('Keycloak') || message.includes('keycloak')) {
       return {
         reasonCode: 'KEYCLOAK_EXECUTION_FAILED',

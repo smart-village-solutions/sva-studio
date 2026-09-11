@@ -60,10 +60,15 @@ const withInstalledPluginOidcClients = <
   };
 };
 
+const withProvisionerPluginOidcClients = <
+  T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,
+>(input: T): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> =>
+  input.pluginOidcClients === undefined ? withInstalledPluginOidcClients(input) : input;
+
 export const readKeycloakState = (input: KeycloakProvisioningInput) =>
   adminAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
 export const readKeycloakStateViaProvisioner = (input: KeycloakProvisioningInput) =>
-  provisionerAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
+  provisionerAdapters.readKeycloakState(withProvisionerPluginOidcClients(input));
 export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisioningInput) => {
   const clientId = input.tenantAdminClient?.clientId;
   const secretConfigured = input.tenantAdminClient?.secretConfigured === true;
@@ -88,4 +93,4 @@ export const provisionInstanceAuthArtifacts = (
 ) => adminAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
 export const provisionInstanceAuthArtifactsViaProvisioner = (
   input: Parameters<typeof provisionerAdapters.provisionInstanceAuthArtifacts>[0]
-) => provisionerAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
+) => provisionerAdapters.provisionInstanceAuthArtifacts(withProvisionerPluginOidcClients(input));

@@ -35,6 +35,7 @@ describe('service-keycloak-execution-failures', () => {
         overallStatus: 'failed',
       })
     );
+
   });
 
   it('persists worker failure details via failClaimedRun', async () => {
@@ -113,6 +114,37 @@ describe('service-keycloak-execution-failures', () => {
         details: { reasonCode: 'REALM_CLEANUP_FAILED_REQUIRES_MANUAL_ACTION' },
         summary: expect.stringContaining('Manuelle Bereinigung ist erforderlich'),
       })
+    );
+  });
+
+  it('classifies a missing queued plugin OIDC snapshot with a stable reason', async () => {
+    const repository = {
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-5',
+      instanceId: 'demo',
+      intent: 'reconcile',
+      error: new Error('queued_plugin_oidc_client_requirements_missing_or_invalid'),
+    });
+
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: { reasonCode: 'PLUGIN_OIDC_SNAPSHOT_INVALID' },
+        summary: 'Der Provisioning-Auftrag enthält keinen gültigen Plugin-OIDC-Snapshot.',
+      })
+    );
+
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-6',
+      instanceId: 'demo',
+      intent: 'reconcile',
+      error: new Error('plugin_oidc_client_requirement_invalid:ssf'),
+    });
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenLastCalledWith(
+      expect.objectContaining({ details: { reasonCode: 'PLUGIN_OIDC_SNAPSHOT_INVALID' } })
     );
   });
 });

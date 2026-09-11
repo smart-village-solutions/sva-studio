@@ -3138,6 +3138,13 @@ CREATE INDEX idx_instance_keycloak_provisioning_steps_run_created ON iam.instanc
 
 
 --
+-- Name: idx_instance_keycloak_provisioning_steps_queued_unique; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_instance_keycloak_provisioning_steps_queued_unique ON iam.instance_keycloak_provisioning_steps USING btree (run_id) WHERE (step_key = 'queued'::text);
+
+
+--
 -- Name: idx_instance_modules_instance_created; Type: INDEX; Schema: iam; Owner: -
 --
 

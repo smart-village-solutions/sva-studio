@@ -688,15 +688,23 @@ describe('service-keycloak-execution', () => {
       planKeycloakProvisioning: vi.fn(),
     } as never;
     const withInstanceProvisioningLock = vi.fn(async (_instanceId, work) => work(lockedDeps));
+    const readKeycloakClientSecretsViaProvisioner = vi.fn();
 
     await processNextQueuedKeycloakProvisioningRun({
       repository: { claimNextKeycloakProvisioningRun: vi.fn().mockResolvedValue(run) } as never,
+      readKeycloakClientSecretsViaProvisioner,
       withInstanceProvisioningLock,
     } as never);
 
     expect(withInstanceProvisioningLock).toHaveBeenCalledWith('instance-1', expect.any(Function));
     expect(lockedRepository.getKeycloakProvisioningRun).toHaveBeenCalledWith('instance-1', 'run-1');
-    expect(state.loadInstanceWithSecret).toHaveBeenCalledWith(lockedDeps, 'instance-1');
+    expect(state.loadInstanceWithSecret).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repository: lockedRepository,
+        readKeycloakClientSecretsViaProvisioner,
+      }),
+      'instance-1'
+    );
   });
 
   it('skips a claimed run that is no longer running after acquiring the lock', async () => {

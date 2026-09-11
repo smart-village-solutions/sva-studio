@@ -22,6 +22,6 @@ export const processNextProvisioningClaim = async (
     if (!persistedRun || persistedRun.overallStatus !== 'running') {
       return persistedRun;
     }
-    return processClaimed(lockedDeps, persistedRun);
+    return processClaimed({ ...deps, ...lockedDeps }, persistedRun);
   });
 };

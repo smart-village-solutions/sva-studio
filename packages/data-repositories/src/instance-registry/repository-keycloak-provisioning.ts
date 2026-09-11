@@ -72,17 +72,47 @@ const claimNextKeycloakProvisioningRun = async (
   input?: { createdAtOrAfter?: string }
 ) => {
   const createdAtOrAfter = input?.createdAtOrAfter?.trim();
-  const createdAtFilter = createdAtOrAfter ? '    AND created_at >= $1::timestamptz\n' : '';
+  const createdAtFilter = createdAtOrAfter ? '    AND candidate.created_at >= $1::timestamptz\n' : '';
   const rows = await queryRows<KeycloakProvisioningRunRow>(
     executor,
     statement(
       `
-WITH next_run AS (
-  SELECT id
+WITH stale_instances AS MATERIALIZED (
+  SELECT DISTINCT instance_id
   FROM iam.instance_keycloak_provisioning_runs
-  WHERE overall_status = 'planned'
+  WHERE overall_status = 'running'
+    AND updated_at < NOW() - INTERVAL '15 minutes'
+),
+recoverable_instances AS MATERIALIZED (
+  SELECT instance_id
+  FROM stale_instances
+  WHERE pg_try_advisory_xact_lock(hashtextextended(instance_id, 0))
+),
+recovered_runs AS (
+  UPDATE iam.instance_keycloak_provisioning_runs AS stale
+  SET
+    overall_status = 'failed',
+    drift_summary = 'Provisioning-Lauf nach abgebrochenem Worker-Claim automatisch beendet.',
+    updated_at = NOW()
+  FROM recoverable_instances
+  WHERE stale.instance_id = recoverable_instances.instance_id
+    AND stale.overall_status = 'running'
+    AND stale.updated_at < NOW() - INTERVAL '15 minutes'
+  RETURNING stale.id
+),
+next_run AS (
+  SELECT candidate.id
+  FROM iam.instance_keycloak_provisioning_runs AS candidate
+  WHERE candidate.overall_status = 'planned'
 ${createdAtFilter}
-  ORDER BY created_at ASC, id ASC
+    AND NOT EXISTS (
+      SELECT 1
+      FROM iam.instance_keycloak_provisioning_runs AS active
+      WHERE active.instance_id = candidate.instance_id
+        AND active.overall_status = 'running'
+        AND active.id NOT IN (SELECT id FROM recovered_runs)
+    )
+  ORDER BY candidate.created_at ASC, candidate.id ASC
   FOR UPDATE SKIP LOCKED
   LIMIT 1
 )

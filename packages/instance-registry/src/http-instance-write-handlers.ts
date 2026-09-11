@@ -152,9 +152,7 @@ export const createUpdateInstanceHandler =
             requestId: deps.getRequestId(),
           })
         );
-      const updated = await (deps.withLockedRegistryService
-        ? deps.withLockedRegistryService(instanceId, update)
-        : deps.withRegistryService(update));
+      const updated = await deps.withScopedRegistryService(instanceId, update);
 
       if (!updated) {
         return deps.createApiError(

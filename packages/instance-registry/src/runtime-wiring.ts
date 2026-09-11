@@ -153,13 +153,6 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (repository: InstanceRegistryRepository) => Promise<T>
   ): Promise<T> =>
     withScopedClient(instanceId, (client) => work(deps.createRepository(createExecutor(client))));
-  const withLockedRegistryRepository = async <T>(
-    instanceId: string,
-    work: (repository: InstanceRegistryRepository) => Promise<T>
-  ): Promise<T> =>
-    withInstanceTransaction(deps, instanceId, beginLockedTransaction, (client) =>
-      work(deps.createRepository(createExecutor(client)))
-    );
   const createService = (
     repository: InstanceRegistryRepository,
     serviceDeps: Omit<InstanceRegistryServiceDeps, 'repository'>
@@ -172,13 +165,6 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (service: InstanceRegistryService) => Promise<T>
   ): Promise<T> =>
     withRegistryRepository((repository) => work(createService(repository, deps.serviceDeps)));
-  const withLockedRegistryService = async <T>(
-    instanceId: string,
-    work: (service: InstanceRegistryService) => Promise<T>
-  ): Promise<T> =>
-    withLockedRegistryRepository(instanceId, (repository) =>
-      work(createService(repository, deps.serviceDeps))
-    );
   const withScopedRegistryService = async <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>,
@@ -203,8 +189,12 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
   const getProvisioningWorkerServiceDeps = (
     repository: InstanceRegistryRepository
   ): InstanceRegistryServiceDeps => ({
-    repository,
     ...(deps.provisioningWorkerServiceDeps ?? deps.serviceDeps),
+    repository,
+    withInstanceProvisioningLock: (instanceId, work) =>
+      withScopedRegistryRepository(instanceId, (scopedRepository) =>
+        work(getProvisioningWorkerServiceDeps(scopedRepository))
+      ),
   });
   const withRegistryProvisioningWorkerService = async <T>(
     work: (service: InstanceRegistryService) => Promise<T>
@@ -218,10 +208,8 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     withRegistryRepository((repository) => work(getProvisioningWorkerServiceDeps(repository)));
   return {
     withRegistryRepository,
-    withLockedRegistryRepository,
     withScopedRegistryRepository,
     withRegistryService,
-    withLockedRegistryService,
     withScopedRegistryService,
     withRegistryProvisioningWorkerService,
     withRegistryProvisioningWorkerDeps,

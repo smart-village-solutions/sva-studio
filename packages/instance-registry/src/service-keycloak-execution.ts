@@ -10,6 +10,7 @@ import { failClaimedRun, failRun } from './service-keycloak-execution-failures.j
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
 import { buildKeycloakSnapshotInputFingerprint, KEYCLOAK_SNAPSHOT_POLICY_VERSION, resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
+import { processNextProvisioningClaim } from './service-keycloak-worker-claim.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 const hasWorkerDependencies = (deps: InstanceRegistryServiceDeps): boolean => Boolean(
@@ -241,15 +242,10 @@ export const processClaimedKeycloakProvisioningRun = async (
   }
 };
 
-export const processNextQueuedKeycloakProvisioningRun = async (deps: InstanceRegistryServiceDeps, claimFilter?: { createdAtOrAfter?: string }) =>
-  processClaimedKeycloakProvisioningRun(
-    deps,
-    await (
-      deps.repository as InstanceRegistryServiceDeps['repository'] & {
-        claimNextKeycloakProvisioningRun: (input?: { createdAtOrAfter?: string }) => Promise<InstanceKeycloakProvisioningRun | null>;
-      }
-    ).claimNextKeycloakProvisioningRun(claimFilter)
-  );
+export const processNextQueuedKeycloakProvisioningRun = async (
+  deps: InstanceRegistryServiceDeps,
+  claimFilter?: { createdAtOrAfter?: string }
+) => processNextProvisioningClaim(deps, processClaimedKeycloakProvisioningRun, claimFilter);
 
 export const createExecuteKeycloakProvisioningHandler =
   (deps: InstanceRegistryServiceDeps) =>

@@ -932,6 +932,8 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Während eines geplanten oder laufenden Keycloak-Provisionings verhindert die Registry
   Änderungen an den vom Worker konsumierten Instanzfeldern. Worker dürfen in diesem
   Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.
+  Die Worker-Ausführung selbst hält dieselbe instanzbezogene Sperre im vollständigen
+  RLS-Kontext; verwaiste Claims werden erst nach Ablauf und erfolgreicher Lock-Probe beendet.
   Ein bereits verwalteter Tenant-Admin-Bootstrap kann nicht entfernt werden.
 
 Der genaue Payload- und Fehlervertrag ist im

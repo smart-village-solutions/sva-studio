@@ -49,7 +49,7 @@ export type InstanceRegistryHttpDeps<TContext> = {
   readonly withRegistryService: <T>(
     work: (service: InstanceRegistryService) => Promise<T>
   ) => Promise<T>;
-  readonly withLockedRegistryService?: <T>(
+  readonly withScopedRegistryService: <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>
   ) => Promise<T>;

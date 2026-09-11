@@ -655,4 +655,29 @@ describe('service-keycloak-execution', () => {
       createdAtOrAfter: '2026-05-27T12:00:00.000Z',
     });
   });
+
+  it('processes a claimed run only inside its instance provisioning lock', async () => {
+    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const run = createRun();
+    const lockedRepository = {
+      getInstanceById: vi.fn().mockResolvedValue(null),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue(null),
+    };
+    const lockedDeps = {
+      repository: lockedRepository,
+      provisionInstanceAuth: vi.fn(),
+      getKeycloakStatus: vi.fn(),
+      getKeycloakPreflight: vi.fn(),
+      planKeycloakProvisioning: vi.fn(),
+    } as never;
+    const withInstanceProvisioningLock = vi.fn(async (_instanceId, work) => work(lockedDeps));
+
+    await processNextQueuedKeycloakProvisioningRun({
+      repository: { claimNextKeycloakProvisioningRun: vi.fn().mockResolvedValue(run) } as never,
+      withInstanceProvisioningLock,
+    } as never);
+
+    expect(withInstanceProvisioningLock).toHaveBeenCalledWith('instance-1', expect.any(Function));
+    expect(state.loadInstanceWithSecret).toHaveBeenCalledWith(lockedDeps, 'instance-1');
+  });
 });

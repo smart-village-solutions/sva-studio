@@ -201,6 +201,10 @@ export type InstanceRegistryServiceDeps = {
   readonly getKeycloakStatus?: (
     input: KeycloakProvisioningContext
   ) => Promise<KeycloakTenantStatus>;
+  readonly withInstanceProvisioningLock?: <T>(
+    instanceId: string,
+    work: (lockedDeps: InstanceRegistryServiceDeps) => Promise<T>
+  ) => Promise<T>;
   readonly loadWasteDataSourceRecord?: (
     instanceId: string
   ) => Promise<WasteManagementDataSourceRecord | null>;

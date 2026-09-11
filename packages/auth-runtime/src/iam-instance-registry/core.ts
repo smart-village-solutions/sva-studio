@@ -25,8 +25,8 @@ import { parseRegistryRequestBody } from './request-parsing.js';
 import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 import {
   scheduleConfiguredPluginTenantProvisioning,
-  withLockedRegistryService,
   withRegistryService,
+  withScopedRegistryService,
 } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
@@ -53,7 +53,7 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
     isAuthenticatedRegistryServiceRequest(request) ? null : validateSessionCsrf(request, requestId),
   requireFreshReauth,
   withRegistryService,
-  withLockedRegistryService,
+  withScopedRegistryService,
   reservedOidcClientIds: () =>
     readInstanceRegistryPluginOidcClientRequirements().map(({ clientId }) => clientId),
   onInstanceProvisioningRequested: ({ instanceId, primaryHostname, actorId }) => {

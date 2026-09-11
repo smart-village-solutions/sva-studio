@@ -546,6 +546,10 @@ Fehlerpfad:
 - Die Probe führt keine Client-, Rollen-, Benutzer- oder Secret-Mutation aus.
 - Fehlende Tenant-IAM-Credentials werden nicht durch Provisioner-Credentials
   ersetzt.
+- Keycloak-Provisioning-Läufe werden pro Instanz mit derselben transaktionalen
+  Advisory-Sperre wie Registry-Updates serialisiert. Ein länger als 15 Minuten
+  verwaister `running`-Claim wird nur dann als fehlgeschlagen markiert, wenn die
+  Instanzsperre nachweislich nicht mehr von einem Worker gehalten wird.
 
 ### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
 

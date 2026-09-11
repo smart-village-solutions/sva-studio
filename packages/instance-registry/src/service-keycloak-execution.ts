@@ -9,11 +9,7 @@ import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTempora
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
-import {
-  buildKeycloakSnapshotInputFingerprint,
-  KEYCLOAK_SNAPSHOT_POLICY_VERSION,
-  resolveLegacyRealmRoleMigrationAllowed,
-} from './provisioning-auth-policy.js';
+import { buildKeycloakSnapshotInputFingerprint, KEYCLOAK_SNAPSHOT_POLICY_VERSION, resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 

@@ -30,9 +30,6 @@ const appendFinalStatusSnapshot = async (
   snapshotInstance: InstanceRegistryRecord,
   status: KeycloakTenantStatus
 ) => {
-  const finalProvisioningInput = buildProvisioningInput({ ...input.loaded, instance: snapshotInstance });
-  const finalPreflight = await deps.getKeycloakPreflight?.(finalProvisioningInput);
-  const finalPlan = await deps.planKeycloakProvisioning?.(finalProvisioningInput);
   await appendRunStep(deps, {
     runId: input.runId,
     stepKey: 'status_snapshot',
@@ -46,8 +43,6 @@ const appendFinalStatusSnapshot = async (
         await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId)
       ),
       status,
-      ...(finalPreflight ? { preflight: finalPreflight } : {}),
-      ...(finalPlan ? { plan: finalPlan } : {}),
     },
     requestId: input.requestId,
   });

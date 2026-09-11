@@ -548,12 +548,17 @@ Fehlerpfad:
   ersetzt.
 - Keycloak-Provisioning-Läufe werden pro Instanz mit derselben transaktionalen
   Advisory-Sperre wie Registry-Updates serialisiert; bereits Auswahl und
-  Statuswechsel des Claims erfolgen unter dieser Sperre. Die Prüfung auf eine
+  Statuswechsel des Claims erfolgen unter dieser Sperre. Die Fleet-Auswahl
+  überspringt dabei gesperrte Instanzen und wählt den ältesten erfolgreich
+  gesperrten Lauf, sodass unabhängige Mandanten weiterlaufen. Die Prüfung auf eine
   eindeutige Realm-Zuordnung liest installationsweit außerhalb des Tenant-RLS-Scope.
   Ein länger als 15 Minuten verwaister `running`-Claim wird nur dann als
   fehlgeschlagen markiert, wenn die Instanzsperre nachweislich nicht mehr von
   einem Worker gehalten wird. Lokale Worker beenden vor ihrem Startup-Cutoff
   liegende `planned`-Runs ebenfalls nur unter der jeweiligen Instanzsperre.
+  Operativer Secret-Repair und Fleet-Backfills lesen den aktuellen Datensatz
+  nach Sperrerwerb erneut; inzwischen inaktive oder bereits reparierte
+  Instanzen werden übersprungen.
 
 ### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
 

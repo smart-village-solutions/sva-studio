@@ -25,24 +25,28 @@ export const runBackfillAdminClientCommand = async (
     }
 
     const result = await withInstanceTransaction(instance.instanceId, async (service) => {
+      const current = await service.getInstanceDetail(instance.instanceId);
+      if (!current || current.status !== 'active' || current.tenantAdminClient?.clientId) {
+        return null;
+      }
       const updated = await service.updateInstance({
         actorId: options.actorId,
-        instanceId: instance.instanceId,
-        displayName: instance.displayName,
-        parentDomain: instance.parentDomain,
-        realmMode: instance.realmMode,
-        authRealm: instance.authRealm,
-        authClientId: instance.authClientId,
-        authIssuerUrl: instance.authIssuerUrl,
+        instanceId: current.instanceId,
+        displayName: current.displayName,
+        parentDomain: current.parentDomain,
+        realmMode: current.realmMode,
+        authRealm: current.authRealm,
+        authClientId: current.authClientId,
+        authIssuerUrl: current.authIssuerUrl,
         requestId: toRequestId(options.idempotencyKey),
         tenantAdminClient: {
-          clientId: deriveTenantAdminClientId(instance.authClientId, options.tenantAdminClientId),
+          clientId: deriveTenantAdminClientId(current.authClientId, options.tenantAdminClientId),
           ...(options.tenantAdminClientSecret ? { secret: options.tenantAdminClientSecret } : {}),
         },
-        tenantAdminBootstrap: instance.tenantAdminBootstrap,
-        themeKey: instance.themeKey,
-        featureFlags: instance.featureFlags,
-        mainserverConfigRef: instance.mainserverConfigRef,
+        tenantAdminBootstrap: current.tenantAdminBootstrap,
+        themeKey: current.themeKey,
+        featureFlags: current.featureFlags,
+        mainserverConfigRef: current.mainserverConfigRef,
       });
 
       if (!updated) {
@@ -59,7 +63,7 @@ export const runBackfillAdminClientCommand = async (
 
       return {
         instanceId: instance.instanceId,
-        tenantAdminClientId: deriveTenantAdminClientId(instance.authClientId, options.tenantAdminClientId),
+        tenantAdminClientId: deriveTenantAdminClientId(current.authClientId, options.tenantAdminClientId),
         provisioningRunId: provisioningRun?.id,
       };
     });

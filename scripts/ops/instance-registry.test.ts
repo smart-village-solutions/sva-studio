@@ -11,7 +11,10 @@ import {
 } from './instance-registry/command-context.ts';
 import { renderResult } from './instance-registry/formatters.ts';
 import { parseInstanceRegistryCliOptions } from './instance-registry/parse-options.ts';
-import { runMutationCommand } from './instance-registry/mutation-commands.ts';
+import {
+  runBackfillAdminClientCommand,
+  runMutationCommand,
+} from './instance-registry/mutation-commands.ts';
 import { deriveTenantAdminClientId } from './instance-registry/shared.ts';
 import { runInstanceRegistryCli } from './instance-registry.ts';
 
@@ -169,8 +172,23 @@ describe('runInstanceRegistryCli', () => {
     ]);
     const updateInstance = vi.fn(async () => ({ instanceId: 'demo' }));
     const executeKeycloakProvisioning = vi.fn(async () => ({ id: 'run-1' }));
+    const getInstanceDetail = vi.fn(async () => ({
+      instanceId: 'demo',
+      status: 'active',
+      displayName: 'Current Demo',
+      parentDomain: 'current.example.test',
+      realmMode: 'existing',
+      authRealm: 'current-demo',
+      authClientId: 'sva-current-demo',
+      authIssuerUrl: 'https://id.example.test/realms/current-demo',
+      tenantAdminClient: undefined,
+      tenantAdminBootstrap: undefined,
+      themeKey: 'default',
+      featureFlags: {},
+      mainserverConfigRef: null,
+    }));
     const withTransactionSpy = vi.fn(async (_instanceId: string, work: (service: unknown) => Promise<unknown>) =>
-      work({ updateInstance, executeKeycloakProvisioning })
+      work({ getInstanceDetail, updateInstance, executeKeycloakProvisioning })
     );
     const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (instanceId, work) =>
       withTransactionSpy(instanceId, work as (service: unknown) => Promise<unknown>) as Promise<
@@ -192,13 +210,40 @@ describe('runInstanceRegistryCli', () => {
 
     expect(listInstances).toHaveBeenCalledWith({ status: 'active' });
     expect(withTransactionSpy).toHaveBeenCalledWith('demo', expect.any(Function));
-    expect(updateInstance).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'demo' }));
+    expect(getInstanceDetail).toHaveBeenCalledWith('demo');
+    expect(updateInstance).toHaveBeenCalledWith(expect.objectContaining({
+      instanceId: 'demo',
+      displayName: 'Current Demo',
+      parentDomain: 'current.example.test',
+      authRealm: 'current-demo',
+    }));
     expect(executeKeycloakProvisioning).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'demo' }));
     consoleSpy.mockRestore();
   });
 });
 
 describe('runMutationCommand', () => {
+  it('skips a fleet backfill target that became inactive before its instance lock', async () => {
+    const updateInstance = vi.fn();
+    const executeKeycloakProvisioning = vi.fn();
+
+    await expect(
+      runBackfillAdminClientCommand(
+        { listInstances: vi.fn(async () => [{ instanceId: 'demo' }]) } as never,
+        async (_instanceId, work) =>
+          work({
+            getInstanceDetail: vi.fn(async () => ({ instanceId: 'demo', status: 'suspended' })),
+            updateInstance,
+            executeKeycloakProvisioning,
+          } as never),
+        { actorId: 'cli', idempotencyKey: 'backfill' } as never
+      )
+    ).resolves.toEqual([]);
+
+    expect(updateInstance).not.toHaveBeenCalled();
+    expect(executeKeycloakProvisioning).not.toHaveBeenCalled();
+  });
+
   it('cannot bypass the service boundary for a dynamically reserved plugin client id', async () => {
     const repository = {
       getInstanceById: vi.fn(),

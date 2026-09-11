@@ -78,8 +78,8 @@ const claimNextKeycloakProvisioningRun = async (
     executor,
     statement(
       `
-WITH ${buildKeycloakProvisioningRunRecoveryCtes(Boolean(createdAtOrAfter))}candidate_run AS MATERIALIZED (
-  SELECT candidate.id, candidate.instance_id
+WITH ${buildKeycloakProvisioningRunRecoveryCtes(Boolean(createdAtOrAfter))}candidate_runs AS MATERIALIZED (
+  SELECT candidate.id, candidate.instance_id, candidate.created_at
   FROM iam.instance_keycloak_provisioning_runs AS candidate
   WHERE candidate.overall_status = 'planned'
 ${createdAtFilter}
@@ -92,12 +92,13 @@ ${createdAtFilter}
     )
   ORDER BY candidate.created_at ASC, candidate.id ASC
   FOR UPDATE SKIP LOCKED
-  LIMIT 1
 ),
 next_run AS (
-  SELECT candidate_run.id
-  FROM candidate_run
-  WHERE pg_try_advisory_xact_lock(hashtextextended(candidate_run.instance_id, 0))
+  SELECT candidate_runs.id
+  FROM candidate_runs
+  WHERE pg_try_advisory_xact_lock(hashtextextended(candidate_runs.instance_id, 0))
+  ORDER BY candidate_runs.created_at ASC, candidate_runs.id ASC
+  LIMIT 1
 )
 UPDATE iam.instance_keycloak_provisioning_runs AS runs
 SET

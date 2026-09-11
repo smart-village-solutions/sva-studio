@@ -70,14 +70,19 @@ const syncOneTenantSecretToRegistry = async (
   workerDeps: RegistryWorkerDeps,
   instanceId: string,
 ) => {
-  const loaded = await loadInstanceWithSecret(workerDeps, instanceId);
-  if (!loaded) return 'instance_not_found';
-  await syncProvisionedClientSecretToRegistry(workerDeps, {
-    actorId: 'runtime-env-repair',
-    loaded,
-    requestId: `runtime-env-repair-${instanceId}-${Date.now()}`,
+  if (!workerDeps.withInstanceProvisioningLock) {
+    throw new Error('dependency_missing_withInstanceProvisioningLock');
+  }
+  return workerDeps.withInstanceProvisioningLock(instanceId, async (lockedDeps) => {
+    const loaded = await loadInstanceWithSecret(lockedDeps, instanceId);
+    if (!loaded) return 'instance_not_found';
+    await syncProvisionedClientSecretToRegistry(lockedDeps, {
+      actorId: 'runtime-env-repair',
+      loaded,
+      requestId: `runtime-env-repair-${instanceId}-${Date.now()}`,
+    });
+    return undefined;
   });
-  return undefined;
 };
 
 const remainingAuthSecretInstanceIds = (states: readonly LocalTenantSecretState[]) =>
@@ -106,7 +111,11 @@ const syncLocalTenantSecretsToRegistry = async (
       for (const instanceId of targetInstanceIds) {
         try {
           const failure = await syncOneTenantSecretToRegistry(workerDeps, instanceId);
-          failure ? errors.push(`${instanceId}: ${failure}`) : healedInstanceIds.add(instanceId);
+          if (failure) {
+            errors.push(`${instanceId}: ${failure}`);
+          } else {
+            healedInstanceIds.add(instanceId);
+          }
         } catch (error) {
           errors.push(`${instanceId}: ${error instanceof Error ? error.message : String(error)}`);
         }

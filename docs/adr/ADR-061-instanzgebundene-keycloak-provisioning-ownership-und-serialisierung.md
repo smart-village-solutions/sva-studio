@@ -28,6 +28,9 @@ Mutationen noch die Verarbeitung eines inzwischen veralteten Claims.
   CLI-Transaktionen setzen unter dieser Sperre zusätzlich Rolle und
   `app.instance_id` für den vollständigen RLS-Kontext.
 - Der Claim erwirbt die Instanzsperre bereits vor dem Wechsel auf `running`.
+  Die Claim-Auswahl prüft alle abarbeitbaren Kandidaten und begrenzt erst nach
+  einem erfolgreichen Sperrversuch auf den ältesten Lauf. Eine gesperrte
+  Instanz hält dadurch keine unabhängigen Instanzen auf.
   Die installationsweite Prüfung der Realm-Zuordnungen nutzt einen getrennten,
   nicht tenantgefilterten Repository-Read.
 - Ein Worker lädt den beanspruchten Lauf innerhalb der Sperre erneut und führt
@@ -37,11 +40,16 @@ Mutationen noch die Verarbeitung eines inzwischen veralteten Claims.
   Ein lokaler Worker beendet außerdem ältere `planned`-Runs unter derselben
   Sperre, bevor sein Startup-Cutoff neuere Runs auswählt.
 - Der Worker darf während des Laufs nur die beiden Keycloak-Secrets gezielt
-  abgleichen. Evidenz-Snapshots enthalten Policy-Version und einen Fingerprint
-  der relevanten Konfiguration einschließlich der Secret-Ciphertext-Versionen.
+  abgleichen. Auch der operative Secret-Repair liest und schreibt den aktuellen
+  Instanzzustand vollständig unter derselben Sperre. Fleet-Backfills laden den
+  Datensatz nach Sperrerwerb erneut und überspringen inzwischen inaktive oder
+  bereits aktualisierte Instanzen. Evidenz-Snapshots enthalten Policy-Version
+  und einen Fingerprint der relevanten Konfiguration einschließlich der Secret-Ciphertext-Versionen.
   Lesezugriffe wählen laufübergreifend den neuesten passenden finalen oder
-  Worker-Snapshot; der Abschluss schreibt Status, Preflight und Plan für den
-  finalen Zustand.
+  Worker-Snapshot; der Abschluss schreibt ausschließlich den aus einem
+  konsistenten Postflight-Read stammenden Status. Preflight und Plan bleiben
+  separate Worker-Snapshots und werden nicht durch spätere, unabhängige Reads
+  mit einem erfolgreichen Abschluss vermischt.
 
 ## Folgen
 

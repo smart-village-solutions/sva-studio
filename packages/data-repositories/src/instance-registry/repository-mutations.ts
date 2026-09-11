@@ -47,6 +47,17 @@ const upsertPrimaryHostname = async (
   });
 };
 
+const instanceExists = async (executor: SqlExecutor, instanceId: string): Promise<boolean> => {
+  const rows = await queryRows<{ instance_exists: boolean }>(
+    executor,
+    statement(
+      `SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`,
+      [instanceId]
+    )
+  );
+  return rows[0]?.instance_exists === true;
+};
+
 const createInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['createInstance']>[0]) => {
   const rows = await runMutationStep('registry_insert', () => queryRows<InstanceListRow>(
     executor,
@@ -117,6 +128,9 @@ ${buildInstanceSelectColumns()};
     )
   );
   if (!rows[0]) {
+    if (await instanceExists(executor, input.instanceId)) {
+      throw new Error('auth_realm_change_blocked');
+    }
     return null;
   }
   await upsertPrimaryHostname(executor, input.primaryHostname, input.instanceId, input.actorId);

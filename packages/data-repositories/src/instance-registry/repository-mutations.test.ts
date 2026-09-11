@@ -311,14 +311,28 @@ describe('instance registry mutation result and error contracts', () => {
   it('does not upsert a hostname when create or update returns no row', async () => {
     const createExecution = createQueuedExecutor([[]]);
     const createRepository = createInstanceRegistryRepository(createExecution.executor);
-    const updateExecution = createQueuedExecutor([[]]);
+    const updateExecution = createQueuedExecutor([[], [{ instance_exists: false }]]);
     const updateRepository = createInstanceRegistryRepository(updateExecution.executor);
 
     await expect(createRepository.createInstance(minimalCreateInput)).resolves.toBeNull();
     await expect(updateRepository.updateInstance(minimalUpdateInput)).resolves.toBeNull();
 
     expect(createExecution.statements).toHaveLength(1);
-    expect(updateExecution.statements).toHaveLength(1);
+    expect(updateExecution.statements).toHaveLength(2);
+  });
+
+  it('reports a fenced realm change as a conflict when the instance still exists', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [{ instance_exists: true }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.updateInstance(minimalUpdateInput)).rejects.toThrow(
+      'auth_realm_change_blocked'
+    );
+
+    expect(statements[1]?.text).toContain('SELECT EXISTS');
   });
 
   it('preserves insert and update database error identity', async () => {

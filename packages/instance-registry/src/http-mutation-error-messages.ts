@@ -14,6 +14,8 @@ export const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = 
     'Der Hostname ist für den Studio-Root oder einen Infrastruktur-Dienst reserviert.',
   auth_realm_conflict:
     'Der Keycloak-Realm ist bereits einer anderen Studio-Instanz zugeordnet.',
+  auth_realm_change_blocked:
+    'Der Keycloak-Realm kann während eines laufenden Provisionings nicht geändert werden. Bitte versuchen Sie es danach erneut.',
   database_unavailable:
     'Die Instanzverwaltung konnte wegen eines Datenbank- oder Schemafehlers nicht abgeschlossen werden.',
   encryption_not_configured: 'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',

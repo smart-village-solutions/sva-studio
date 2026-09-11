@@ -44,6 +44,10 @@ describe('mutation-errors', () => {
       status: 409,
       code: 'idempotency_key_reuse',
     });
+    expect(classifyInstanceMutationError(new Error('auth_realm_change_blocked'))).toEqual({
+      status: 409,
+      code: 'auth_realm_change_blocked',
+    });
   });
 
   it('classifies reserved tenant hosts as invalid requests', () => {

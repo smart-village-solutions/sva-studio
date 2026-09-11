@@ -442,6 +442,7 @@ Fehlerpfad:
 - fehlende Re-Authentisierung -> `403 reauth_required`.
 - blockierter Preflight oder Plan -> kein Keycloak-Mutationslauf.
 - wiederholter Keycloak-Request mit identischem `Idempotency-Key` und identischer stabiler Payload -> kein zweiter Run; abweichende Payload im selben Scope -> `409 idempotency_key_reuse`.
+- ein `authRealm`-Wechsel während eines bereits laufenden Keycloak-Provisionings -> `409 auth_realm_change_blocked`; die Instanz bleibt bestehen und kann nach Abschluss des Laufs erneut geändert werden.
 - fehlt nur der Tenant-Admin-Client, darf Reconcile gezielt `provision_admin_client` nachziehen, ohne den Login-Pfad zu veraendern.
 
 ### Szenario 2d: Datensatzautorisierung mit Rollen-Scope

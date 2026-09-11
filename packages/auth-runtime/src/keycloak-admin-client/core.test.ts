@@ -1470,6 +1470,48 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('creates a missing realm role with the Studio instance id', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(404, { error: 'not_found' }))
+      .mockResolvedValueOnce(new Response(null, { status: 201 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['system_admin'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureRealmRole('system_admin', 'tenant-havelland')
+    ).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      'https://keycloak.example/admin/realms/demo/roles',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            role_key: ['system_admin'],
+            display_name: ['system_admin'],
+          },
+        }),
+      })
+    );
+  });
+
   it('rejects an existing realm role owned by another Studio instance', async () => {
     const fetchImpl = vi
       .fn()

@@ -149,6 +149,53 @@ describe('runInstanceRegistryCli', () => {
     expect(createProvisioningRequest).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
+
+  it('runs fleet backfills as one scoped transaction per active instance', async () => {
+    const listInstances = vi.fn(async () => [
+      {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'example.test',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-demo',
+        authIssuerUrl: 'https://id.example.test/realms/demo',
+        tenantAdminClient: undefined,
+        tenantAdminBootstrap: undefined,
+        themeKey: 'default',
+        featureFlags: {},
+        mainserverConfigRef: null,
+      },
+    ]);
+    const updateInstance = vi.fn(async () => ({ instanceId: 'demo' }));
+    const executeKeycloakProvisioning = vi.fn(async () => ({ id: 'run-1' }));
+    const withTransactionSpy = vi.fn(async (_instanceId: string, work: (service: unknown) => Promise<unknown>) =>
+      work({ updateInstance, executeKeycloakProvisioning })
+    );
+    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (instanceId, work) =>
+      withTransactionSpy(instanceId, work as (service: unknown) => Promise<unknown>) as Promise<
+        Awaited<ReturnType<typeof work>>
+      >;
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await expect(
+      runInstanceRegistryCli(['backfill-admin-client'], {
+        env: { IAM_DATABASE_URL: 'postgres://example' },
+        createContext: () => ({
+          close: vi.fn(async () => undefined),
+          createReadService: () => ({ listInstances } as never),
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), isLevelEnabled: vi.fn() },
+          withTransaction,
+        }),
+      })
+    ).resolves.toBe(0);
+
+    expect(listInstances).toHaveBeenCalledWith({ status: 'active' });
+    expect(withTransactionSpy).toHaveBeenCalledWith('demo', expect.any(Function));
+    expect(updateInstance).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'demo' }));
+    expect(executeKeycloakProvisioning).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'demo' }));
+    consoleSpy.mockRestore();
+  });
 });
 
 describe('runMutationCommand', () => {

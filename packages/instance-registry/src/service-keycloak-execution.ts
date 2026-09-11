@@ -224,7 +224,10 @@ export const processClaimedKeycloakProvisioningRun = async (
   try {
     const queueStep = run.steps.find((step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued');
     const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(deps, run.id, queueStep?.details);
-    const allowLegacyRealmRoleMigration = await resolveLegacyRealmRoleMigrationAllowed(deps.repository, loaded.instance);
+    const allowLegacyRealmRoleMigration = await resolveLegacyRealmRoleMigrationAllowed(
+      { listInstances: deps.listProvisioningRealmAssignments },
+      loaded.instance
+    );
     const provisioningInput = {
       ...buildProvisioningInput(loaded),
       allowLegacyRealmRoleMigration,

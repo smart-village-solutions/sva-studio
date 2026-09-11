@@ -10,12 +10,12 @@ export const processNextProvisioningClaim = async (
   ) => Promise<unknown>,
   claimFilter?: { createdAtOrAfter?: string }
 ) => {
+  if (!deps.withInstanceProvisioningLock) {
+    throw new Error('dependency_missing_withInstanceProvisioningLock');
+  }
   const run = await deps.repository.claimNextKeycloakProvisioningRun(claimFilter);
   if (!run) {
     return null;
-  }
-  if (!deps.withInstanceProvisioningLock) {
-    throw new Error('dependency_missing_withInstanceProvisioningLock');
   }
   return deps.withInstanceProvisioningLock(run.instanceId, async (lockedDeps) => {
     const persistedRun = await lockedDeps.repository.getKeycloakProvisioningRun(run.instanceId, run.id);

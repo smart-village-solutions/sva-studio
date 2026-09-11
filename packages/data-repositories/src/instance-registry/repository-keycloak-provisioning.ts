@@ -13,7 +13,7 @@ import type {
   KeycloakProvisioningRunRow,
   KeycloakProvisioningStepRow,
 } from './repository-types.js';
-import { staleKeycloakProvisioningRunRecoveryCte } from './repository-keycloak-claim-sql.js';
+import { buildKeycloakProvisioningRunRecoveryCtes } from './repository-keycloak-claim-sql.js';
 
 type KeycloakProvisioningRepository = Pick<
   InstanceRegistryRepository,
@@ -78,9 +78,8 @@ const claimNextKeycloakProvisioningRun = async (
     executor,
     statement(
       `
-WITH ${staleKeycloakProvisioningRunRecoveryCte},
-next_run AS (
-  SELECT candidate.id
+WITH ${buildKeycloakProvisioningRunRecoveryCtes(Boolean(createdAtOrAfter))}candidate_run AS MATERIALIZED (
+  SELECT candidate.id, candidate.instance_id
   FROM iam.instance_keycloak_provisioning_runs AS candidate
   WHERE candidate.overall_status = 'planned'
 ${createdAtFilter}
@@ -94,6 +93,11 @@ ${createdAtFilter}
   ORDER BY candidate.created_at ASC, candidate.id ASC
   FOR UPDATE SKIP LOCKED
   LIMIT 1
+),
+next_run AS (
+  SELECT candidate_run.id
+  FROM candidate_run
+  WHERE pg_try_advisory_xact_lock(hashtextextended(candidate_run.instance_id, 0))
 )
 UPDATE iam.instance_keycloak_provisioning_runs AS runs
 SET

@@ -547,9 +547,13 @@ Fehlerpfad:
 - Fehlende Tenant-IAM-Credentials werden nicht durch Provisioner-Credentials
   ersetzt.
 - Keycloak-Provisioning-Läufe werden pro Instanz mit derselben transaktionalen
-  Advisory-Sperre wie Registry-Updates serialisiert. Ein länger als 15 Minuten
-  verwaister `running`-Claim wird nur dann als fehlgeschlagen markiert, wenn die
-  Instanzsperre nachweislich nicht mehr von einem Worker gehalten wird.
+  Advisory-Sperre wie Registry-Updates serialisiert; bereits Auswahl und
+  Statuswechsel des Claims erfolgen unter dieser Sperre. Die Prüfung auf eine
+  eindeutige Realm-Zuordnung liest installationsweit außerhalb des Tenant-RLS-Scope.
+  Ein länger als 15 Minuten verwaister `running`-Claim wird nur dann als
+  fehlgeschlagen markiert, wenn die Instanzsperre nachweislich nicht mehr von
+  einem Worker gehalten wird. Lokale Worker beenden vor ihrem Startup-Cutoff
+  liegende `planned`-Runs ebenfalls nur unter der jeweiligen Instanzsperre.
 
 ### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
 

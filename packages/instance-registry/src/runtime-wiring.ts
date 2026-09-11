@@ -187,13 +187,17 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     return scopedResult.result;
   };
   const getProvisioningWorkerServiceDeps = (
-    repository: InstanceRegistryRepository
+    repository: InstanceRegistryRepository,
+    listProvisioningRealmAssignments: () => Promise<
+      readonly { readonly instanceId: string; readonly authRealm: string }[]
+    > = () => repository.listInstances()
   ): InstanceRegistryServiceDeps => ({
     ...(deps.provisioningWorkerServiceDeps ?? deps.serviceDeps),
     repository,
+    listProvisioningRealmAssignments,
     withInstanceProvisioningLock: (instanceId, work) =>
       withScopedRegistryRepository(instanceId, (scopedRepository) =>
-        work(getProvisioningWorkerServiceDeps(scopedRepository))
+        work(getProvisioningWorkerServiceDeps(scopedRepository, listProvisioningRealmAssignments))
       ),
   });
   const withRegistryProvisioningWorkerService = async <T>(

@@ -115,16 +115,32 @@ describe('runtime wiring', () => {
 
   it('serializes provisioning worker work in the scoped instance transaction', async () => {
     const client = createClient();
+    const realmAssignments = [{ instanceId: 'tenant-a', authRealm: 'realm-a' }];
+    const globalRepository = {
+      listInstances: vi.fn().mockResolvedValue(realmAssignments),
+    } as unknown as InstanceRegistryRepository;
+    const scopedRepository = {
+      listInstances: vi.fn().mockRejectedValue(new Error('tenant-scoped list must not be used')),
+    } as unknown as InstanceRegistryRepository;
+    const createRepository = vi
+      .fn<(executor: SqlExecutor) => InstanceRegistryRepository>()
+      .mockReturnValueOnce(globalRepository)
+      .mockReturnValueOnce(scopedRepository);
     const runtime = createInstanceRegistryRuntime({
       resolvePool: () => ({ connect: async () => client }),
-      createRepository: () => ({}) as InstanceRegistryRepository,
+      createRepository,
       serviceDeps: { invalidateHost: vi.fn() },
     });
 
     await runtime.withRegistryProvisioningWorkerDeps((workerDeps) =>
-      workerDeps.withInstanceProvisioningLock?.('tenant-a', async () => 'done')
+      workerDeps.withInstanceProvisioningLock?.('tenant-a', async (lockedDeps) => {
+        await expect(lockedDeps.listProvisioningRealmAssignments?.()).resolves.toEqual(realmAssignments);
+        return 'done';
+      })
     );
 
+    expect(globalRepository.listInstances).toHaveBeenCalledOnce();
+    expect(scopedRepository.listInstances).not.toHaveBeenCalled();
     expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
     expect(client.query).toHaveBeenNthCalledWith(
       2,

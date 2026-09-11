@@ -27,10 +27,15 @@ Mutationen noch die Verarbeitung eines inzwischen veralteten Claims.
   dieselbe PostgreSQL-Advisory-Lock-ID aus der `instanceId`. Mutierende
   CLI-Transaktionen setzen unter dieser Sperre zusätzlich Rolle und
   `app.instance_id` für den vollständigen RLS-Kontext.
+- Der Claim erwirbt die Instanzsperre bereits vor dem Wechsel auf `running`.
+  Die installationsweite Prüfung der Realm-Zuordnungen nutzt einen getrennten,
+  nicht tenantgefilterten Repository-Read.
 - Ein Worker lädt den beanspruchten Lauf innerhalb der Sperre erneut und führt
   ihn nur aus, wenn er weiterhin `running` ist.
 - Ein seit 15 Minuten laufender Claim wird nur dann als verwaist beendet, wenn
   `pg_try_advisory_xact_lock` bestätigt, dass kein Worker die Instanzsperre hält.
+  Ein lokaler Worker beendet außerdem ältere `planned`-Runs unter derselben
+  Sperre, bevor sein Startup-Cutoff neuere Runs auswählt.
 - Der Worker darf während des Laufs nur die beiden Keycloak-Secrets gezielt
   abgleichen. Evidenz-Snapshots enthalten Policy-Version und einen Fingerprint
   der relevanten Konfiguration einschließlich der Secret-Ciphertext-Versionen.

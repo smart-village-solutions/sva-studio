@@ -172,6 +172,9 @@ describe('instance registry repository keycloak provisioning', () => {
     });
 
     expect(statements[0]?.text).toContain('AND candidate.created_at >= $1::timestamptz');
+    expect(statements[0]?.text).toContain('expired_planned_instances AS MATERIALIZED');
+    expect(statements[0]?.text).toContain('Provisioning-Lauf vor dem aktuellen lokalen Worker-Start');
+    expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock(hashtextextended(candidate_run.instance_id, 0))');
     expect(statements[0]?.values).toEqual(['2026-05-27T12:00:00.000Z']);
   });
 
@@ -213,8 +216,10 @@ describe('instance registry repository keycloak provisioning', () => {
     });
 
     expect(statements[0]?.text).not.toContain('created_at >=');
+    expect(statements[0]?.text).not.toContain('expired_planned_instances');
     expect(statements[0]?.text).toContain("updated_at < NOW() - INTERVAL '15 minutes'");
     expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock(hashtextextended(instance_id, 0))');
+    expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock(hashtextextended(candidate_run.instance_id, 0))');
     expect(statements[0]?.text).toContain("overall_status = 'failed'");
     expect(statements[0]?.text).toContain("active.overall_status = 'running'");
     expect(statements[2]?.values).toEqual([

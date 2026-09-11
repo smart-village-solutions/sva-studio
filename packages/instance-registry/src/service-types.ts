@@ -205,6 +205,9 @@ export type InstanceRegistryServiceDeps = {
     instanceId: string,
     work: (lockedDeps: InstanceRegistryServiceDeps) => Promise<T>
   ) => Promise<T>;
+  readonly listProvisioningRealmAssignments?: () => Promise<
+    readonly { readonly instanceId: string; readonly authRealm: string }[]
+  >;
   readonly loadWasteDataSourceRecord?: (
     instanceId: string
   ) => Promise<WasteManagementDataSourceRecord | null>;

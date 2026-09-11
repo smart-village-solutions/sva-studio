@@ -63,7 +63,7 @@ Keycloak-Provisioner. Der Worker gehört zu dieser Installation und darf nicht d
 Worker des regulären Studio-Stacks ersetzt werden: Er muss dieselbe Kasseler Datenbank,
 Redis-Instanz und den lokalen Keycloak verwenden.
 
-Der verbindliche Compose-Zusatz liegt unter
+Der verbindliche Compose-Zusatz und sein fail-closed Startskript liegen unter
 [`deploy/standalone/keycloak-provisioner.compose.yml`](../../deploy/standalone/keycloak-provisioner.compose.yml).
 Vor dem Start wird `SVA_IMAGE_REF` auf denselben unveränderlichen Image-Digest gesetzt, den
 auch der Kasseler App-Container verwendet. Die `runtime.env` muss im Compose-Projektordner
@@ -71,18 +71,17 @@ liegen und insbesondere die bestehenden `APP_DB_*`-, `POSTGRES_*`-, `REDIS_*`- u
 `KEYCLOAK_PROVISIONER_*`-Werte der Kasseler Installation enthalten.
 
 ```bash
-docker compose \
-  -f app.compose.yml \
-  -f keycloak-provisioner.compose.yml \
-  up -d app provisioner
+./up.sh
 docker compose \
   -f app.compose.yml \
   -f keycloak-provisioner.compose.yml \
   ps app provisioner
 ```
 
-Die Overlay-Datei wird dazu aus dem exakt freigegebenen Release-Stand in den eigenständigen
-Compose-Projektordner übernommen. Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
+Overlay und `up.sh` werden dazu aus dem exakt freigegebenen Release-Stand in den eigenständigen
+Compose-Projektordner übernommen. Das Startskript akzeptiert ausschließlich eine vollständige
+Image-Referenz mit `@sha256:` und bindet App und Worker an exakt denselben Digest.
+Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich
 der Realm-, Client- und Tenant-Admin-Struktur. Der Worker veröffentlicht keine Ports und erhält

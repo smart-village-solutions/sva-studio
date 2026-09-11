@@ -1552,7 +1552,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       const metadataMatches =
         managedBy === 'studio' && boundInstanceId === instanceId && roleKey === externalName;
       if (!metadataMatches) {
-        const isCurrentInstanceRole = managedBy === 'studio' && boundInstanceId === instanceId;
+        const isCurrentInstanceRole =
+          managedBy === 'studio' && boundInstanceId === instanceId && roleKey === externalName;
         const isLegacyRealmBoundRole =
           managedBy === 'studio' && boundInstanceId === this.realm && roleKey === externalName;
         if (!isCurrentInstanceRole && !isLegacyRealmBoundRole) {

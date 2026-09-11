@@ -1558,6 +1558,30 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
+  it('rejects an existing realm role with an incomplete Studio ownership marker', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'role-1',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['tenant-havelland'],
+            display_name: ['System Administrator'],
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealmRole('system_admin', 'tenant-havelland')).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'role_ownership_conflict',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it('sets required actions and logs password reset failures with write protection', async () => {
     const { KeycloakAdminRequestError, KeycloakAdminUnavailableError } = await import('./core.js');
     let now = 0;

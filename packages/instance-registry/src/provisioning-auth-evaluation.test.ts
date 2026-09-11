@@ -68,8 +68,27 @@ describe('provisioning-auth-evaluation', () => {
 
     expect(existingRealmChecks.find((check) => check.checkKey === 'realm_mode')?.status).toBe('ready');
     expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_secret')?.status).toBe('blocked');
-    expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('blocked');
+    expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('warning');
     expect(toOverallPreflightStatus(existingRealmChecks)).toBe('blocked');
+  });
+
+  it('keeps technical repairs available for an existing realm without admin bootstrap data', () => {
+    const checks = buildPreflightChecks({
+      realmMode: 'existing',
+      authClientSecretConfigured: true,
+      authClientSecret: 'secret',
+      tenantAdminClient: {
+        clientId: 'tenant-admin',
+        secretConfigured: true,
+      },
+      tenantAdminClientSecret: 'tenant-admin-secret',
+      state: {
+        realm: { realm: 'imported' },
+      } as never,
+    });
+
+    expect(checks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('warning');
+    expect(toOverallPreflightStatus(checks)).toBe('warning');
   });
 
   it('builds keycloak status with mapper, uri and tenant admin checks', () => {

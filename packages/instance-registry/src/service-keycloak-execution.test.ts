@@ -203,6 +203,51 @@ describe('service-keycloak-execution', () => {
     });
   });
 
+  it('executes technical repairs for an imported realm without admin bootstrap data', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue({
+      ...createLoaded(),
+      instance: {
+        ...createLoaded().instance,
+        realmMode: 'existing',
+        tenantAdminClient: { clientId: 'tenant-admin' },
+      },
+      tenantAdminClientSecret: 'tenant-admin-secret',
+    });
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth,
+          syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
+          getKeycloakStatus: vi.fn(),
+          getKeycloakPreflight: vi.fn().mockResolvedValue({
+            overallStatus: 'warning',
+            checks: [{ checkKey: 'tenant_admin_profile', status: 'warning' }],
+          }),
+          planKeycloakProvisioning: vi.fn().mockResolvedValue({
+            overallStatus: 'ready',
+            driftSummary: 'Technische Reparatur erforderlich.',
+          }),
+        } as never,
+        createRun({ mode: 'existing' })
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
+
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: 'provisioning',
+        reconcileAuthClient: true,
+        reconcileTenantAdminClient: true,
+      })
+    );
+  });
+
   it('processes rotate_client_secret runs with the rotated secret sync path', async () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const repository = {

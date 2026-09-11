@@ -134,15 +134,18 @@ const resolveTenantSecretSummary = (
     : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
 };
 
-const buildTenantAdminCheck = (tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
+const buildTenantAdminCheck = (realmMode: InstanceRealmMode, tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
   const configured = Boolean(tenantAdminBootstrap?.username);
+  const missingStatus = realmMode === 'existing' ? 'warning' : 'blocked';
   return createPreflightCheck(
     'tenant_admin_profile',
     'Tenant-Admin-Profil',
-    configured ? 'ready' : 'blocked',
+    configured ? 'ready' : missingStatus,
     configured
       ? 'Die Stammdaten für den Tenant-Admin sind gepflegt.'
-      : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
+      : realmMode === 'existing'
+        ? 'Für den importierten Realm ist kein Tenant-Admin-Bootstrap konfiguriert; technische Reparaturen bleiben möglich.'
+        : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
     { configured }
   );
 };
@@ -222,7 +225,7 @@ export const buildPreflightChecks = (input: {
       tenantAdminClient: input.tenantAdminClient,
       tenantAdminClientSecret: input.tenantAdminClientSecret,
     }),
-    buildTenantAdminCheck(input.tenantAdminBootstrap)
+    buildTenantAdminCheck(input.realmMode, input.tenantAdminBootstrap)
   );
 
   return checks;

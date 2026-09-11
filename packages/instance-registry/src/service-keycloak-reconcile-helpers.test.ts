@@ -87,4 +87,30 @@ describe('service-keycloak-reconcile-helpers', () => {
       )
     ).rejects.toThrow('registry_or_provisioning_drift_blocked:Realm fehlt. Client fehlt.');
   });
+
+  it('allows reconcile enqueueing when an imported realm only has preflight warnings', async () => {
+    const { ensureReconcilePreconditions } = await import('./service-keycloak-reconcile-helpers.js');
+
+    await expect(
+      ensureReconcilePreconditions(
+        {
+          getKeycloakPreflight: vi.fn().mockResolvedValue({
+            overallStatus: 'warning',
+            checks: [{ status: 'warning', summary: 'Kein Bootstrap-Admin konfiguriert.' }],
+          }),
+          planKeycloakProvisioning: vi.fn().mockResolvedValue({
+            overallStatus: 'ready',
+            driftSummary: 'Technische Reparatur erforderlich.',
+          }),
+        } as never,
+        createLoaded({
+          instance: {
+            realmMode: 'existing',
+            tenantAdminClient: { clientId: 'tenant-admin' },
+          },
+          tenantAdminClientSecret: 'secret',
+        })
+      )
+    ).resolves.toBeUndefined();
+  });
 });

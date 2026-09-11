@@ -57,10 +57,22 @@ describe('service-keycloak-execution-finalize', () => {
 
   it('marks successful runs, snapshots the status and updates the instance status', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
     const status = { realmExists: true };
+    const realmUpdated = {
+      instanceId: 'instance-1',
+      status: 'draft',
+      realmMode: 'existing',
+      updatedAt: '2026-09-11T10:00:01.000Z',
+    };
+    const statusUpdated = {
+      ...realmUpdated,
+      status: 'provisioning',
+      updatedAt: '2026-09-11T10:00:02.000Z',
+    };
     const repository = {
-      setInstanceRealmMode: vi.fn().mockResolvedValue(undefined),
-      setInstanceStatus: vi.fn().mockResolvedValue(undefined),
+      setInstanceRealmMode: vi.fn().mockResolvedValue(realmUpdated),
+      setInstanceStatus: vi.fn().mockResolvedValue(statusUpdated),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -109,7 +121,7 @@ describe('service-keycloak-execution-finalize', () => {
         status: 'done',
         details: {
           policyVersion: 2,
-          inputFingerprint: expect.any(String),
+          inputFingerprint: buildKeycloakSnapshotInputFingerprint(statusUpdated as never),
           status,
         },
       })

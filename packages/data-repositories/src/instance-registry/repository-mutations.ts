@@ -114,11 +114,11 @@ SET
   updated_at = NOW()
 WHERE id = $1
   AND (
-    auth_realm = $6
+    (auth_realm = $6 AND realm_mode = $5)
     OR NOT EXISTS (
       SELECT 1
       FROM iam.instance_keycloak_provisioning_runs
-      WHERE instance_id = $1 AND overall_status = 'running'
+      WHERE instance_id = $1 AND overall_status IN ('planned', 'running')
     )
   )
 RETURNING

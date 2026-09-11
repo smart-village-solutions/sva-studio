@@ -253,7 +253,7 @@ describe('service-keycloak-execution', () => {
             driftSummary: 'Technische Reparatur erforderlich.',
           }),
         } as never,
-        createRun({ mode: 'existing' })
+        createRun({ mode: 'new' })
       )
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
 

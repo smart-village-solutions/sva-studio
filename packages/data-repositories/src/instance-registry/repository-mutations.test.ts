@@ -151,7 +151,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain('UPDATE iam.instances');
     expect(statements[0]?.text).toContain("auth_realm = $6");
-    expect(statements[0]?.text).toContain("overall_status = 'running'");
+    expect(statements[0]?.text).toContain("overall_status IN ('planned', 'running')");
     expectSqlValues(statements[0], 21, [
       'tenant-a',
       'Tenant A',
@@ -333,6 +333,8 @@ describe('instance registry mutation result and error contracts', () => {
     );
 
     expect(statements[1]?.text).toContain('SELECT EXISTS');
+    expect(statements[0]?.text).toContain("overall_status IN ('planned', 'running')");
+    expect(statements[0]?.text).toContain('(auth_realm = $6 AND realm_mode = $5)');
   });
 
   it('preserves insert and update database error identity', async () => {

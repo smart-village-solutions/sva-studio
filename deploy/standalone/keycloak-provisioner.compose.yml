@@ -1,0 +1,29 @@
+services:
+  app:
+    image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
+
+  provisioner:
+    image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
+    entrypoint:
+      - ./provisioner-entrypoint.sh
+    command:
+      - node
+      - --import
+      - ./otel-bootstrap.mjs
+      - node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
+    env_file:
+      - ./runtime.env
+    environment:
+      SVA_PROVISIONER_COMBINED_WORKER: 'false'
+    restart: unless-stopped
+    networks:
+      - studio-internal
+      - ssf-edge
+
+networks:
+  studio-internal:
+    external: true
+    name: sva-studio-ssf_internal
+  ssf-edge:
+    external: true
+    name: ssf-backend_default

@@ -1,6 +1,7 @@
 import type { IamInstanceDetail } from '@sva/core';
 
 import { t } from '../../../i18n';
+import { readDocumentStudioParentDomain } from '../../../lib/studio-runtime-config';
 import type {
   CreateFormValues,
   CreateWizardStepKey,
@@ -12,17 +13,7 @@ import { INSTANCE_STATUS_LABELS } from './-instances-shared-types';
 
 export const isTenantSecretUserInputRequired = (realmMode: 'new' | 'existing') => realmMode === 'existing';
 
-export const readSuggestedParentDomain = () => {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  try {
-    return new URL(window.location.href).hostname;
-  } catch {
-    return '';
-  }
-};
+export const readSuggestedParentDomain = () => readDocumentStudioParentDomain();
 
 export const createEmptyTenantAdminBootstrap = () => ({
   username: '',

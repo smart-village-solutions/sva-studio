@@ -25,6 +25,11 @@ import {
   type PluginRouteScope,
 } from '../lib/plugin-route-scope';
 import { createThemeBootstrapScript } from '../lib/theme';
+import {
+  normalizeStudioParentDomain,
+  readDocumentStudioParentDomain,
+  STUDIO_PARENT_DOMAIN_META_NAME,
+} from '../lib/studio-runtime-config';
 import { AuthProvider } from '../providers/auth-provider';
 import { EffectiveAccessProvider } from '../providers/effective-access-provider';
 import { OrganizationContextProvider } from '../hooks/use-organization-context';
@@ -64,6 +69,10 @@ export const resolveServerStudioBranding = createServerOnlyFn(() =>
   resolveStudioBranding(process.env.SVA_STUDIO_BRANDING)
 );
 
+export const resolveServerStudioParentDomain = createServerOnlyFn(() =>
+  normalizeStudioParentDomain(process.env.SVA_PARENT_DOMAIN)
+);
+
 /** Initialisiert SDK und öffentliche Laufzeitkonfiguration für die Root-Route. */
 export const loadRootData = async () => {
   if (import.meta.env.SSR) {
@@ -71,17 +80,20 @@ export const loadRootData = async () => {
     return {
       pluginRouteScope: await resolveRootPluginRouteScope(),
       studioBranding: resolveServerStudioBranding(),
+      studioParentDomain: resolveServerStudioParentDomain(),
     };
   }
   return {
     pluginRouteScope: readDocumentPluginRouteScope() ?? 'platform',
     studioBranding: readDocumentStudioBranding(),
+    studioParentDomain: readDocumentStudioParentDomain(),
   };
 };
 
 type RootLoaderData = {
   readonly pluginRouteScope: PluginRouteScope;
   readonly studioBranding: StudioBranding;
+  readonly studioParentDomain: string;
 };
 
 /**
@@ -110,6 +122,10 @@ export const getRootHead = ({ loaderData }: { loaderData?: RootLoaderData } = {}
           {
             name: PLUGIN_ROUTE_SCOPE_META_NAME,
             content: loaderData.pluginRouteScope,
+          },
+          {
+            name: STUDIO_PARENT_DOMAIN_META_NAME,
+            content: loaderData.studioParentDomain,
           },
         ]
       : []),

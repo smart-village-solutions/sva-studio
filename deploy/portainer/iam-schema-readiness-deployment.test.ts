@@ -50,6 +50,70 @@ describe('IAM schema readiness deployment contract', () => {
   const localBootstrap = readRepoFile('packages/data/scripts/bootstrap-app-user.sh');
   const runtimeArtifactVerifier = readRepoFile('scripts/ci/verify-runtime-artifact.sh');
   const verifier = readRepoFile('deploy/portainer/verify-iam-schema.mjs');
+  const standaloneProvisioner = readRepoFile('deploy/standalone/keycloak-provisioner.compose.yml');
+  const standaloneUp = readRepoFile('deploy/standalone/up.sh');
+  const standaloneRunbook = readRepoFile('docs/operations/ssf-standalone-hosts.md');
+
+  it('ships the standalone Keycloak provisioner as a digest-bound internal service', () => {
+    expect(standaloneProvisioner).toContain('provisioner:');
+    expect(standaloneProvisioner.match(/image: \$\{SVA_IMAGE_REF:/gu)).toHaveLength(2);
+    expect(standaloneProvisioner).toContain('./provisioner-entrypoint.sh');
+    expect(standaloneProvisioner).toContain('command:');
+    expect(standaloneProvisioner).toContain(
+      'node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js'
+    );
+    expect(standaloneProvisioner).toContain('./runtime.env');
+    expect(standaloneProvisioner).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'false'");
+    expect(standaloneProvisioner).toContain('name: sva-studio-ssf_internal');
+    expect(standaloneProvisioner).toContain('name: ssf-backend_default');
+    expect(standaloneProvisioner).not.toContain('ports:');
+    expect(standaloneProvisioner).not.toContain('traefik');
+    expect(standaloneRunbook).toContain('keycloak-provisioner.compose.yml');
+    expect(standaloneRunbook).toContain('ps app provisioner');
+  });
+
+  it.each([
+    '',
+    'ghcr.io/smart-village-solutions/sva-studio:latest',
+    `evil.example/studio@sha256:${'a'.repeat(64)}`,
+    `@sha256:${'a'.repeat(64)}`,
+    `ghcr.io/smart-village-solutions/sva-studio@sha256:${'a'.repeat(63)}`,
+    `ghcr.io/smart-village-solutions/sva-studio@sha256:${'A'.repeat(64)}`,
+  ])('rejects mutable or malformed standalone image reference %s', (imageRef) => {
+    const result = spawnSync('sh', ['deploy/standalone/up.sh', '--validate-only'], {
+      cwd: resolve(import.meta.dirname, '../..'),
+      encoding: 'utf8',
+      env: { ...process.env, SVA_IMAGE_REF: imageRef },
+    });
+    expect(result.status).toBe(64);
+  });
+
+  it('accepts a full immutable standalone image reference', () => {
+    const result = spawnSync('sh', ['deploy/standalone/up.sh', '--validate-only'], {
+      cwd: resolve(import.meta.dirname, '../..'),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SVA_IMAGE_REF: `ghcr.io/smart-village-solutions/sva-studio@sha256:${'a'.repeat(64)}`,
+      },
+    });
+    expect(result.status).toBe(0);
+    expect(standaloneUp).toContain('-f app.compose.yml');
+    expect(standaloneUp).toContain('-f keycloak-provisioner.compose.yml');
+    expect(standaloneUp).toContain('up -d app provisioner');
+  });
+
+  it('accepts an approved tagged image only when it is pinned to a digest', () => {
+    const result = spawnSync('sh', ['deploy/standalone/up.sh', '--validate-only'], {
+      cwd: resolve(import.meta.dirname, '../..'),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SVA_IMAGE_REF: `ghcr.io/smart-village-solutions/sva-studio:release@sha256:${'b'.repeat(64)}`,
+      },
+    });
+    expect(result.status).toBe(0);
+  });
 
   it('ships one canonical verifier in both runtime images', () => {
     for (const dockerfile of dockerfiles) {

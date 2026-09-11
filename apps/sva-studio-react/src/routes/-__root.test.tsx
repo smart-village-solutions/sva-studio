@@ -131,16 +131,32 @@ describe('root route document', () => {
     );
   };
 
-  it('reads branding from the server environment and exposes only the profile in metadata', async () => {
-    const { resolveServerStudioBranding, getRootHead } = await import('./__root');
+  it('publishes the safe server runtime configuration in metadata', async () => {
+    const { resolveServerStudioBranding, resolveServerStudioParentDomain, getRootHead } =
+      await import('./__root');
     try {
       vi.stubEnv('SVA_STUDIO_BRANDING', 'kassel-dialog');
+      vi.stubEnv('SVA_PARENT_DOMAIN', 'Dialog.Kassel.DE');
       expect(resolveServerStudioBranding()).toBe('kassel-dialog');
+      expect(resolveServerStudioParentDomain()).toBe('dialog.kassel.de');
       expect(
         getRootHead({
-          loaderData: { pluginRouteScope: 'platform', studioBranding: 'kassel-dialog' },
+          loaderData: {
+            pluginRouteScope: 'platform',
+            studioBranding: 'kassel-dialog',
+            studioParentDomain: 'dialog.kassel.de',
+          },
         }).meta
       ).toContainEqual({ name: 'sva-studio-branding', content: 'kassel-dialog' });
+      expect(
+        getRootHead({
+          loaderData: {
+            pluginRouteScope: 'platform',
+            studioBranding: 'kassel-dialog',
+            studioParentDomain: 'dialog.kassel.de',
+          },
+        }).meta
+      ).toContainEqual({ name: 'sva-studio-parent-domain', content: 'dialog.kassel.de' });
     } finally {
       vi.unstubAllEnvs();
     }
@@ -155,16 +171,22 @@ describe('root route document', () => {
     brandingMeta.name = 'sva-studio-branding';
     brandingMeta.content = 'kassel-dialog';
     document.head.append(brandingMeta);
+    const parentDomainMeta = document.createElement('meta');
+    parentDomainMeta.name = 'sva-studio-parent-domain';
+    parentDomainMeta.content = 'dialog.kassel.de';
+    document.head.append(parentDomainMeta);
 
     try {
       const { loadRootData } = await import('./__root');
       await expect(loadRootData()).resolves.toEqual({
         pluginRouteScope: 'tenant',
         studioBranding: 'kassel-dialog',
+        studioParentDomain: 'dialog.kassel.de',
       });
     } finally {
       pluginScopeMeta.remove();
       brandingMeta.remove();
+      parentDomainMeta.remove();
     }
   });
 
@@ -208,7 +230,11 @@ describe('root route document', () => {
 
     expect(
       getRootHead({
-        loaderData: { pluginRouteScope: 'platform', studioBranding: 'kassel-dialog' },
+        loaderData: {
+          pluginRouteScope: 'platform',
+          studioBranding: 'kassel-dialog',
+          studioParentDomain: 'dialog.kassel.de',
+        },
       }).meta
     ).toContainEqual({ title: 'Kassel DIALOG' });
   });
@@ -217,7 +243,13 @@ describe('root route document', () => {
     const { getRootHead } = await import('./__root');
 
     expect(
-      getRootHead({ loaderData: { pluginRouteScope: 'tenant', studioBranding: 'sva-studio' } }).meta
+      getRootHead({
+        loaderData: {
+          pluginRouteScope: 'tenant',
+          studioBranding: 'sva-studio',
+          studioParentDomain: 'studio.smart-village.app',
+        },
+      }).meta
     ).toContainEqual({
       name: 'sva-plugin-route-scope',
       content: 'tenant',

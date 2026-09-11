@@ -84,6 +84,10 @@ Image-Referenz aus `ghcr.io/smart-village-solutions/sva-studio` mit `@sha256:` u
 und Worker an exakt denselben Digest.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
+
+Der Provisioner lädt vor dem Worker-Start denselben Plugin-OIDC-Vertrag wie die Studio-App.
+Dadurch bleiben die Fingerprints der gespeicherten Keycloak-Nachweise zwischen beiden Prozessen
+identisch und ein erfolgreicher Worker-Lauf ist unmittelbar für die Readiness-Auswertung gültig.
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich
 der Realm-, Client- und Tenant-Admin-Struktur. Der Worker veröffentlicht keine Ports und erhält
 keine Traefik-Router.

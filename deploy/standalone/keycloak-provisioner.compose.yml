@@ -10,6 +10,8 @@ services:
       - node
       - --import
       - ./otel-bootstrap.mjs
+      - --import
+      - ./provisioner-runtime-bootstrap.mjs
       - node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
     env_file:
       - ./runtime.env

@@ -50,6 +50,9 @@ describe('IAM schema readiness deployment contract', () => {
   const localBootstrap = readRepoFile('packages/data/scripts/bootstrap-app-user.sh');
   const runtimeArtifactVerifier = readRepoFile('scripts/ci/verify-runtime-artifact.sh');
   const verifier = readRepoFile('deploy/portainer/verify-iam-schema.mjs');
+  const provisionerRuntimeBootstrap = readRepoFile(
+    'deploy/portainer/provisioner-runtime-bootstrap.mjs'
+  );
   const standaloneProvisioner = readRepoFile('deploy/standalone/keycloak-provisioner.compose.yml');
   const standaloneUp = readRepoFile('deploy/standalone/up.sh');
   const standaloneRunbook = readRepoFile('docs/operations/ssf-standalone-hosts.md');
@@ -62,6 +65,7 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneProvisioner).toContain(
       'node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js'
     );
+    expect(standaloneProvisioner).toContain('./provisioner-runtime-bootstrap.mjs');
     expect(standaloneProvisioner).toContain('./runtime.env');
     expect(standaloneProvisioner).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'false'");
     expect(standaloneProvisioner).toContain('name: sva-studio-ssf_internal');
@@ -70,6 +74,19 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneProvisioner).not.toContain('traefik');
     expect(standaloneRunbook).toContain('keycloak-provisioner.compose.yml');
     expect(standaloneRunbook).toContain('ps app provisioner');
+  });
+
+  it('starts every Keycloak provisioner with the Studio plugin OIDC snapshot', () => {
+    expect(provisionerRuntimeBootstrap).toContain(
+      'configureInstanceRegistryPluginOidcClientRequirements'
+    );
+    expect(provisionerRuntimeBootstrap).toContain('SSF_TENANT_OIDC_CLIENT_REQUIREMENT');
+    for (const entrypoint of provisionerEntrypoints) {
+      expect(entrypoint).toContain('--import ./provisioner-runtime-bootstrap.mjs');
+    }
+    for (const dockerfile of dockerfiles) {
+      expect(dockerfile).toContain('provisioner-runtime-bootstrap.mjs');
+    }
   });
 
   it.each([

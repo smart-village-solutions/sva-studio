@@ -1,5 +1,6 @@
 export {
   configureInstanceRegistryPluginActivationPolicies,
+  configureInstanceRegistryPluginOidcClientRequirements,
   configureInstanceRegistryPluginRuntimeSnapshot,
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,

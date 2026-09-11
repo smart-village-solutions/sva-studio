@@ -102,10 +102,9 @@ Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
 
 Studio speichert den validierten Plugin-OIDC-Vertrag im Provisioning-Auftrag. Der Worker verwendet
-genau diesen Snapshot für Keycloak-Abgleich und Status-Fingerprint. Unversionierte Bestandsaufträge
-verwenden während der Einführung die installierte Anforderungsliste des Workers; unvollständige
-versionierte Snapshots werden abgewiesen. So bleibt ein Worker-Lauf auch bei getrennten App- und
-Worker-Prozessen auswertbar.
+genau diesen Snapshot für Keycloak-Abgleich und Status-Fingerprint. Unversionierte oder
+unvollständige Aufträge werden abgewiesen und deshalb vor dem Versionswechsel mit dem bisherigen
+Worker geleert. So bleibt ein Worker-Lauf auch bei getrennten App- und Worker-Prozessen auswertbar.
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich
 der Realm-, Client- und Tenant-Admin-Struktur. Der Worker veröffentlicht keine Ports und erhält
 keine Traefik-Router.

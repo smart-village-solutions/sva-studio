@@ -57,20 +57,10 @@ export const readQueuedTemporaryPassword = (
 
 export const readQueuedPluginOidcClientRequirements = (
   details: Readonly<Record<string, unknown>> | undefined,
-  provisioningInput: ReturnType<typeof buildProvisioningInput>,
-  legacyRequirements?: readonly PluginOidcClientRequirement[]
+  provisioningInput: ReturnType<typeof buildProvisioningInput>
 ): readonly PluginOidcClientRequirement[] => {
-  if (details?.pluginOidcSnapshotVersion === undefined) {
-    if (!legacyRequirements) {
-      throw new Error('plugin_oidc_client_requirements_dependency_missing');
-    }
-    return readPluginOidcClientRequirements({
-      ...provisioningInput,
-      pluginOidcClients: legacyRequirements,
-    });
-  }
   const requirements = details?.pluginOidcClients;
-  if (details.pluginOidcSnapshotVersion !== '1.0' || !Array.isArray(requirements) || requirements.some(
+  if (details?.pluginOidcSnapshotVersion !== '1.0' || !Array.isArray(requirements) || requirements.some(
     (requirement) => requirement === null || typeof requirement !== 'object' || Array.isArray(requirement)
   )) {
     throw new Error('queued_plugin_oidc_client_requirements_missing_or_invalid');
@@ -104,36 +94,40 @@ export const createQueuedRun = async (
   });
 
   if (created) {
-    const readPluginOidcClientRequirements = deps.readPluginOidcClientRequirements;
-    if (!readPluginOidcClientRequirements) {
+    try {
+      const readPluginOidcClientRequirements = deps.readPluginOidcClientRequirements;
+      if (!readPluginOidcClientRequirements) {
+        throw new Error('plugin_oidc_client_requirements_dependency_missing');
+      }
+      const pluginOidcClients = readPluginOidcClientRequirements();
+      await appendRunStep(deps, {
+        runId: run.id,
+        stepKey: 'queued',
+        title: 'Provisioning-Auftrag einreihen',
+        status: 'pending',
+        summary: 'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
+        details: {
+          intent: input.intent,
+          mode: loaded.instance.realmMode,
+          authRealm: loaded.instance.authRealm,
+          authClientId: loaded.instance.authClientId,
+          primaryHostname: loaded.instance.primaryHostname,
+          pluginOidcSnapshotVersion: '1.0',
+          pluginOidcClients,
+          tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword
+            ? deps.protectSecret?.(input.tenantAdminTemporaryPassword, buildTempPasswordAad(run.id))
+            : undefined,
+        },
+        requestId: input.requestId,
+      });
+    } catch (error) {
       await deps.repository.updateKeycloakProvisioningRun({
         runId: run.id,
         overallStatus: 'failed',
-        driftSummary: 'Provisioning-Auftrag konnte ohne Plugin-OIDC-Snapshot nicht eingereiht werden.',
+        driftSummary: 'Plugin-OIDC-Snapshot des Provisioning-Auftrags konnte nicht persistiert werden.',
       });
-      throw new Error('plugin_oidc_client_requirements_dependency_missing');
+      throw error;
     }
-    const pluginOidcClients = readPluginOidcClientRequirements();
-    await appendRunStep(deps, {
-      runId: run.id,
-      stepKey: 'queued',
-      title: 'Provisioning-Auftrag einreihen',
-      status: 'pending',
-      summary: 'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
-      details: {
-        intent: input.intent,
-        mode: loaded.instance.realmMode,
-        authRealm: loaded.instance.authRealm,
-        authClientId: loaded.instance.authClientId,
-        primaryHostname: loaded.instance.primaryHostname,
-        pluginOidcSnapshotVersion: '1.0',
-        pluginOidcClients,
-        tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword
-          ? deps.protectSecret?.(input.tenantAdminTemporaryPassword, buildTempPasswordAad(run.id))
-          : undefined,
-      },
-      requestId: input.requestId,
-    });
   }
 
   return { provisioningInput, run };

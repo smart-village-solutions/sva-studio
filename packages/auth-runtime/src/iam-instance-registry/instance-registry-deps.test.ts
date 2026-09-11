@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   revealField: vi.fn(),
   readKeycloakClientSecretsViaProvisioner: vi.fn(),
   readKeycloakStateViaProvisioner: vi.fn(),
+  readInstanceRegistryPluginOidcClientRequirements: vi.fn(),
   loadWasteDataSourceRecord: vi.fn(),
   saveWasteDataSourceRecord: vi.fn(),
 }));
@@ -24,6 +25,11 @@ vi.mock('./provisioning-auth-state.js', () => ({
   readKeycloakStateViaProvisioner: mocks.readKeycloakStateViaProvisioner,
 }));
 
+vi.mock('./plugin-activation-policy-snapshot.js', () => ({
+  readInstanceRegistryPluginOidcClientRequirements:
+    mocks.readInstanceRegistryPluginOidcClientRequirements,
+}));
+
 import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 
 describe('withAuthInstanceRegistryDeps', () => {
@@ -39,6 +45,9 @@ describe('withAuthInstanceRegistryDeps', () => {
     expect(enriched.revealSecret).toBe(mocks.revealField);
     expect(enriched.readKeycloakClientSecretsViaProvisioner).toBe(mocks.readKeycloakClientSecretsViaProvisioner);
     expect(enriched.readKeycloakStateViaProvisioner).toBe(mocks.readKeycloakStateViaProvisioner);
+    expect(enriched.readPluginOidcClientRequirements).toBe(
+      mocks.readInstanceRegistryPluginOidcClientRequirements
+    );
     expect(enriched.loadWasteDataSourceRecord).toBe(mocks.loadWasteDataSourceRecord);
     expect(enriched.saveWasteDataSourceRecord).toBe(mocks.saveWasteDataSourceRecord);
   });

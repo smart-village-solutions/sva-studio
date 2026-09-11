@@ -2,6 +2,7 @@ import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service
 
 import { loadWasteDataSourceRecord, saveWasteDataSourceRecord } from '@sva/data-repositories/server';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
+import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 import { readKeycloakClientSecretsViaProvisioner, readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
 
 export const withAuthInstanceRegistryDeps = <TDeps extends Partial<InstanceRegistryServiceDeps>>(
@@ -13,6 +14,7 @@ export const withAuthInstanceRegistryDeps = <TDeps extends Partial<InstanceRegis
     | 'revealSecret'
     | 'readKeycloakClientSecretsViaProvisioner'
     | 'readKeycloakStateViaProvisioner'
+    | 'readPluginOidcClientRequirements'
     | 'loadWasteDataSourceRecord'
     | 'saveWasteDataSourceRecord'
   > => ({
@@ -21,6 +23,7 @@ export const withAuthInstanceRegistryDeps = <TDeps extends Partial<InstanceRegis
   revealSecret: revealField,
   readKeycloakClientSecretsViaProvisioner,
   readKeycloakStateViaProvisioner,
+  readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
   loadWasteDataSourceRecord,
   saveWasteDataSourceRecord,
 });

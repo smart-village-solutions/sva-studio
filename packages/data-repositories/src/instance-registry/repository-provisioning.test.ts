@@ -336,7 +336,7 @@ describe('instance registry repository provisioning', () => {
   });
 
   it('returns null for empty mutations and maps created runs and steps', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [], [provisioningRow], [keycloakRunRow], [], [keycloakRunRow], [stepRow], [stepRow]]);
+    const { executor, statements } = createQueuedExecutor([[], [], [{ instance_exists: false }], [provisioningRow], [keycloakRunRow], [], [keycloakRunRow], [stepRow], [stepRow]]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.setInstanceStatus({ instanceId: 'missing', status: 'active' })).resolves.toBeNull();
@@ -360,8 +360,8 @@ describe('instance registry repository provisioning', () => {
         payloadFingerprint: 'create-fingerprint-1',
       })
     ).resolves.toMatchObject({ id: 'run-1' });
-    expect(statements[2]?.text).toContain('payload_fingerprint');
-    expect(statements[2]?.values).toContain('create-fingerprint-1');
+    expect(statements[3]?.text).toContain('payload_fingerprint');
+    expect(statements[3]?.values).toContain('create-fingerprint-1');
     await expect(
       repository.createKeycloakProvisioningRun({
         instanceId: 'tenant-a',

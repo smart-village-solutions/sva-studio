@@ -224,6 +224,9 @@ describe('instance registry repository keycloak provisioning', () => {
     expect(statements[0]?.text).toContain('pg_try_advisory_xact_lock(hashtextextended(eligible.instance_id, 0))');
     expect(statements[0]?.text).toContain("overall_status = 'failed'");
     expect(statements[0]?.text).toContain("active.overall_status = 'running'");
+    expect(statements[0]?.text).toMatch(
+      /instance_keycloak_provisioning_steps AS queued_step[\s\S]+queued_step\.run_id = candidate\.id[\s\S]+queued_step\.step_key = 'queued'/
+    );
     expect(statements[2]?.values).toEqual([
       'kc-run-1',
       'realm',

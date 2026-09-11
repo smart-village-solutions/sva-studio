@@ -80,12 +80,16 @@ describe('service-keycloak-execution-payload', () => {
     );
   });
 
-  it('fails before enqueueing when the app snapshot dependency is not wired', async () => {
-    const createKeycloakProvisioningRun = vi.fn();
+  it('leaves a newly created run unqueued when the app snapshot dependency is not wired', async () => {
+    const appendKeycloakProvisioningStep = vi.fn();
+    const createKeycloakProvisioningRun = vi.fn().mockResolvedValue({
+      run: { id: 'run-2' },
+      created: true,
+    });
     await expect(
       createQueuedRun(
         {
-          repository: { createKeycloakProvisioningRun },
+          repository: { createKeycloakProvisioningRun, appendKeycloakProvisioningStep },
           invalidateHost: vi.fn(),
         } as never,
         loaded as never,
@@ -99,6 +103,35 @@ describe('service-keycloak-execution-payload', () => {
         } as never
       )
     ).rejects.toThrow('plugin_oidc_client_requirements_dependency_missing');
-    expect(createKeycloakProvisioningRun).not.toHaveBeenCalled();
+    expect(createKeycloakProvisioningRun).toHaveBeenCalledOnce();
+    expect(appendKeycloakProvisioningStep).not.toHaveBeenCalled();
+  });
+
+  it('replays an existing queued run without reading mutable app requirements', async () => {
+    const appendKeycloakProvisioningStep = vi.fn();
+    const repository = {
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({
+        run: { id: 'run-1', steps: [{ stepKey: 'queued' }] },
+        created: false,
+      }),
+      appendKeycloakProvisioningStep,
+    };
+
+    await expect(
+      createQueuedRun(
+        { repository, invalidateHost: vi.fn() } as never,
+        loaded as never,
+        {
+          mutation: 'reconcileKeycloak',
+          instanceId: 'tenant-kassel',
+          idempotencyKey: 'request-1',
+          actorId: 'root',
+          requestId: 'request-1',
+          intent: 'reconcile',
+        } as never
+      )
+    ).resolves.toMatchObject({ run: { id: 'run-1' } });
+
+    expect(appendKeycloakProvisioningStep).not.toHaveBeenCalled();
   });
 });

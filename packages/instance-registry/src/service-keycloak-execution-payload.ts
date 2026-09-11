@@ -79,11 +79,6 @@ export const createQueuedRun = async (
     readonly rotateClientSecret?: boolean;
   }
 ) => {
-  const readPluginOidcClientRequirements = deps.readPluginOidcClientRequirements;
-  if (!readPluginOidcClientRequirements) {
-    throw new Error('plugin_oidc_client_requirements_dependency_missing');
-  }
-  const pluginOidcClients = readPluginOidcClientRequirements();
   const provisioningInput = buildProvisioningInput(loaded);
   const { run, created } = await deps.repository.createKeycloakProvisioningRun({
     instanceId: loaded.instance.instanceId,
@@ -99,6 +94,11 @@ export const createQueuedRun = async (
   });
 
   if (created) {
+    const readPluginOidcClientRequirements = deps.readPluginOidcClientRequirements;
+    if (!readPluginOidcClientRequirements) {
+      throw new Error('plugin_oidc_client_requirements_dependency_missing');
+    }
+    const pluginOidcClients = readPluginOidcClientRequirements();
     await appendRunStep(deps, {
       runId: run.id,
       stepKey: 'queued',

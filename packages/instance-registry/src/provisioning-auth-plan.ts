@@ -2,6 +2,7 @@ import type { InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
+import { requiresTenantAdminBootstrap } from './provisioning-auth-policy.js';
 import {
   readClientAlignment,
   readTenantAdminClientAlignment,
@@ -181,10 +182,22 @@ const buildRoleStep = (
 
 const buildTenantAdminStep = (
   blocked: boolean,
-  state: KeycloakReadState | undefined
+  state: KeycloakReadState | undefined,
+  requireTenantAdmin: boolean
 ): KeycloakTenantPlan['steps'][number] => {
   const adminStatus = state?.tenantAdminStatus;
   const hasMinimalProfile = hasTenantAdminMinimalProfile(adminStatus);
+
+  if (!requireTenantAdmin) {
+    return {
+      stepKey: 'tenant_admin',
+      title: 'Tenant-Admin sicherstellen',
+      action: 'skip',
+      status: blocked ? 'blocked' : 'ready',
+      summary: 'Für diesen importierten Realm ist kein Bootstrap-Admin konfiguriert.',
+      details: adminStatus ?? {},
+    };
+  }
 
   return {
     stepKey: 'tenant_admin',
@@ -210,11 +223,13 @@ export const buildPlan = (input: {
     secretConfigured?: boolean;
   };
   tenantAdminClientSecret?: string;
+  tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
   pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
   preflight: KeycloakTenantPreflight;
   state?: KeycloakReadState;
 }): KeycloakTenantPlan => {
   const blocked = input.preflight.overallStatus === 'blocked';
+  const requireTenantAdmin = requiresTenantAdminBootstrap(input);
   const alignment = readClientAlignment(input.state);
   const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
   const secretAligned = Boolean(
@@ -262,7 +277,7 @@ export const buildPlan = (input: {
       tenantAdminClientSecretAligned
     ),
     buildRoleStep(blocked, input.state),
-    buildTenantAdminStep(blocked, input.state),
+    buildTenantAdminStep(blocked, input.state, requireTenantAdmin),
   ];
 
   return {

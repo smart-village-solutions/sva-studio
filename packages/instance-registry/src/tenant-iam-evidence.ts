@@ -24,15 +24,16 @@ export const classifyTenantIamAxis = (
 };
 
 export const classifyTenantIamConfiguration = (
-  status: NonNullable<IamInstanceDetail['keycloakStatus']>
+  status: NonNullable<IamInstanceDetail['keycloakStatus']>,
+  options: { readonly requireTenantAdmin?: boolean } = {}
 ): IamTenantIamEvidenceClassification => {
-  if (areAllInstanceKeycloakRequirementsSatisfied(status)) return 'ready';
+  if (areAllInstanceKeycloakRequirementsSatisfied(status, options)) return 'ready';
   if (
     !status.realmExists ||
     !status.clientExists ||
     !status.tenantAdminClientExists ||
     !status.systemAdminRoleExists ||
-    !status.tenantAdminExists
+    (options.requireTenantAdmin !== false && !status.tenantAdminExists)
   ) {
     return 'missing';
   }

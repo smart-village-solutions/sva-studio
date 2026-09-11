@@ -163,7 +163,14 @@ export const isInstanceKeycloakRequirementSatisfied = (
   requirement: InstanceKeycloakRequirement
 ): boolean => status[requirement.statusField] === requirement.expectedValue;
 
-export const areAllInstanceKeycloakRequirementsSatisfied = (status: IamInstanceKeycloakStatus): boolean =>
-  INSTANCE_KEYCLOAK_REQUIREMENTS.every((requirement) =>
-    isInstanceKeycloakRequirementSatisfied(status, requirement)
+export const areAllInstanceKeycloakRequirementsSatisfied = (
+  status: IamInstanceKeycloakStatus,
+  options: { readonly requireTenantAdmin?: boolean } = {}
+): boolean =>
+  INSTANCE_KEYCLOAK_REQUIREMENTS.every(
+    (requirement) =>
+      (options.requireTenantAdmin === false &&
+        (requirement.key === 'tenant_admin' ||
+          requirement.key === 'tenant_admin_system_admin')) ||
+      isInstanceKeycloakRequirementSatisfied(status, requirement)
   );

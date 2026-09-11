@@ -47,6 +47,12 @@ describe('instance keycloak checklist', () => {
     expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, clientExists: false })).toBe(false);
     expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, pluginOidcClientsAligned: false })).toBe(false);
     expect(
+      areAllInstanceKeycloakRequirementsSatisfied(
+        { ...status, tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+        { requireTenantAdmin: false }
+      )
+    ).toBe(true);
+    expect(
       INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'plugin_oidc_clients')
     ).toMatchObject({ statusField: 'pluginOidcClientsAligned', blocksLoginReadiness: false });
     expect(

@@ -2,6 +2,7 @@ import { buildTenantIamStatus } from './service-helpers.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import { classifyTenantIamAxis } from './tenant-iam-evidence.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import { requiresTenantAdminBootstrap } from './provisioning-auth-policy.js';
 
 export const createProbeTenantIamAccessHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['probeTenantIamAccess'] =>
@@ -46,6 +47,7 @@ export const createProbeTenantIamAccessHandler =
 
     return buildTenantIamStatus({
       keycloakStatus: keycloakStatus ?? undefined,
+      requireTenantAdmin: requiresTenantAdminBootstrap(instance),
       accessEvidence: {
         ...access,
         source: 'access_probe',

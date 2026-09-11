@@ -239,6 +239,7 @@ export const createPlanKeycloakProvisioningHandler =
       authClientSecret: loaded.authClientSecret,
       tenantAdminClient: loaded.instance.tenantAdminClient,
       tenantAdminClientSecret: loaded.tenantAdminClientSecret,
+      tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
       preflight,
     });
 

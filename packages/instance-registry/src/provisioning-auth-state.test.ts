@@ -221,7 +221,9 @@ describe('provisioning-auth-state', () => {
         username: 'tenant-admin',
       })
     );
-    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'demo');
+    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'demo', {
+      allowLegacyRealmRoleMigration: undefined,
+    });
     expect(client.ensureRealmRole).not.toHaveBeenCalledWith('instance_registry_admin');
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
   });
@@ -238,7 +240,9 @@ describe('provisioning-auth-state', () => {
       authClientId: 'sva-studio',
     });
 
-    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'tenant-havelland');
+    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'tenant-havelland', {
+      allowLegacyRealmRoleMigration: undefined,
+    });
     expect(client.findUserByUsername).not.toHaveBeenCalled();
   });
 

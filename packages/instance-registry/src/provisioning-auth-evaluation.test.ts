@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildKeycloakStatus,
   buildMissingRealmStatus,
+  buildPlan,
   buildPreflightChecks,
   toOverallPreflightStatus,
 } from './provisioning-auth-evaluation.js';
@@ -89,6 +90,18 @@ describe('provisioning-auth-evaluation', () => {
 
     expect(checks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('warning');
     expect(toOverallPreflightStatus(checks)).toBe('warning');
+  });
+
+  it('skips bootstrap-admin creation in plans for imported realms without a profile', () => {
+    const plan = buildPlan({
+      realmMode: 'existing',
+      preflight: { overallStatus: 'warning', checkedAt: '2026-09-11T00:00:00Z', checks: [] },
+    });
+
+    expect(plan.steps.find((step) => step.stepKey === 'tenant_admin')).toMatchObject({
+      action: 'skip',
+    });
+    expect(plan.driftSummary).not.toContain('Tenant-Admin wird erstellt');
   });
 
   it('builds keycloak status with mapper, uri and tenant admin checks', () => {

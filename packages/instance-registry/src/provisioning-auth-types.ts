@@ -89,5 +89,6 @@ export type KeycloakProvisioningInput = {
   };
   tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
+  allowLegacyRealmRoleMigration?: boolean;
   pluginOidcClients?: readonly PluginOidcClientRequirement[];
 };

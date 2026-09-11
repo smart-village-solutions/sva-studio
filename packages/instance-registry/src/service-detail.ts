@@ -13,6 +13,7 @@ import {
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import { requiresTenantAdminBootstrap } from './provisioning-auth-policy.js';
 
 type InstanceRecord = NonNullable<
   Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>
@@ -82,6 +83,7 @@ export const loadKeycloakDetailArtifacts = async (
 
   const tenantIamStatus = buildTenantIamStatus({
     keycloakStatus,
+    requireTenantAdmin: requiresTenantAdminBootstrap(instance),
     accessEvidence: accessEvidence
       ? {
           status: accessEvidence.status,

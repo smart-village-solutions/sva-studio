@@ -122,6 +122,21 @@ describe('service-keycloak-execution', () => {
     ).resolves.toBeNull();
   });
 
+  it('allows legacy role migration only for a uniquely assigned realm', async () => {
+    const { isLegacyRealmRoleMigrationAllowed } = await import(
+      './provisioning-auth-policy.js'
+    );
+    const current = { instanceId: 'tenant-havelland', authRealm: 'havelland' };
+
+    expect(isLegacyRealmRoleMigrationAllowed([current], current)).toBe(true);
+    expect(
+      isLegacyRealmRoleMigrationAllowed(
+        [current, { instanceId: 'tenant-other', authRealm: 'havelland' }],
+        current
+      )
+    ).toBe(false);
+  });
+
   it('fails claimed runs when worker dependencies are missing', async () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const repository = {
@@ -207,6 +222,9 @@ describe('service-keycloak-execution', () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     const repository = {
+      listInstances: vi.fn().mockResolvedValue([
+        { instanceId: 'instance-1', authRealm: 'tenant' },
+      ]),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue({
@@ -242,6 +260,7 @@ describe('service-keycloak-execution', () => {
     expect(provisionInstanceAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: 'provisioning',
+        allowLegacyRealmRoleMigration: true,
         reconcileAuthClient: true,
         reconcileTenantAdminClient: true,
       })

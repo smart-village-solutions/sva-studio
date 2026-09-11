@@ -148,7 +148,9 @@ describe('service-keycloak-execution-finalize', () => {
       { stepKey: 'roles', title: 'Rollen', ok: true, summary: 'ok' },
     ]);
     state.areAllRequirementsSatisfied.mockImplementation(
-      (candidate) => candidate.tenantAdminExists && candidate.tenantAdminHasSystemAdmin
+      (candidate, options) =>
+        options?.requireTenantAdmin === false ||
+        (candidate.tenantAdminExists && candidate.tenantAdminHasSystemAdmin)
     );
     state.appendRunStep.mockResolvedValue(undefined);
 
@@ -179,10 +181,8 @@ describe('service-keycloak-execution-finalize', () => {
       usedTemporaryPassword: false,
       requireTenantAdmin: false,
     });
-    expect(state.areAllRequirementsSatisfied).toHaveBeenCalledWith({
-      ...status,
-      tenantAdminExists: true,
-      tenantAdminHasSystemAdmin: true,
+    expect(state.areAllRequirementsSatisfied).toHaveBeenCalledWith(status, {
+      requireTenantAdmin: false,
     });
     expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({ overallStatus: 'succeeded' })

@@ -225,7 +225,7 @@ const readRoleAttribute = (
   key: string
 ): string | undefined => {
   const values = attributes?.[key];
-  return Array.isArray(values) ? values[0] : undefined;
+  return Array.isArray(values) && values.length === 1 ? values[0] : undefined;
 };
 
 const isBuiltInRealmRole = (roleName: string): boolean =>
@@ -311,13 +311,14 @@ const readAttribute = (
   key: string
 ): string | undefined => {
   const values = attributes?.[key];
-  return Array.isArray(values) ? values[0] : undefined;
+  return Array.isArray(values) && values.length === 1 ? values[0] : undefined;
 };
 
 const canReconcileStudioManagedRole = (
   role: IdentityRole,
   input: CreateIdentityRoleInput,
-  realm: string
+  realm: string,
+  allowLegacyRealmRoleMigration: boolean
 ): boolean => {
   const managedBy = readAttribute(role.attributes, 'managed_by');
   const instanceId = readAttribute(role.attributes, 'instance_id');
@@ -325,7 +326,8 @@ const canReconcileStudioManagedRole = (
   return (
     managedBy === 'studio' &&
     roleKey === input.attributes.roleKey &&
-    (instanceId === input.attributes.instanceId || instanceId === realm)
+    (instanceId === input.attributes.instanceId ||
+      (allowLegacyRealmRoleMigration && instanceId === realm))
   );
 };
 
@@ -990,7 +992,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  async createRole(input: CreateIdentityRoleInput): Promise<IdentityRole> {
+  async createRole(
+    input: CreateIdentityRoleInput,
+    options: { readonly allowLegacyRealmRoleMigration?: boolean } = {}
+  ): Promise<IdentityRole> {
     await this.assertWriteAvailability();
     try {
       await this.executeWithResilience<void>({
@@ -1018,7 +1023,14 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         throw error;
       }
 
-      if (!canReconcileStudioManagedRole(existing, input, this.realm)) {
+      if (
+        !canReconcileStudioManagedRole(
+          existing,
+          input,
+          this.realm,
+          options.allowLegacyRealmRoleMigration === true
+        )
+      ) {
         throw error;
       }
 
@@ -1538,7 +1550,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
-  async ensureRealmRole(externalName: string, instanceId?: string): Promise<void> {
+  async ensureRealmRole(
+    externalName: string,
+    instanceId?: string,
+    options: { readonly allowLegacyRealmRoleMigration?: boolean } = {}
+  ): Promise<void> {
     const existing = await this.getRoleByName(externalName);
     if (existing) {
       if (!instanceId) {
@@ -1555,7 +1571,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         const isCurrentInstanceRole =
           managedBy === 'studio' && boundInstanceId === instanceId && roleKey === externalName;
         const isLegacyRealmBoundRole =
-          managedBy === 'studio' && boundInstanceId === this.realm && roleKey === externalName;
+          options.allowLegacyRealmRoleMigration === true &&
+          managedBy === 'studio' &&
+          boundInstanceId === this.realm &&
+          roleKey === externalName;
         if (!isCurrentInstanceRole && !isLegacyRealmBoundRole) {
           throw new KeycloakAdminRequestError({
             message: `Keycloak role ${externalName} has conflicting or incomplete Studio ownership metadata.`,
@@ -1576,15 +1595,18 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       }
       return;
     }
-    await this.createRole({
-      externalName,
-      attributes: {
-        managedBy: 'studio',
-        instanceId: instanceId ?? this.realm,
-        roleKey: externalName,
-        displayName: externalName,
+    await this.createRole(
+      {
+        externalName,
+        attributes: {
+          managedBy: 'studio',
+          instanceId: instanceId ?? this.realm,
+          roleKey: externalName,
+          displayName: externalName,
+        },
       },
-    });
+      options
+    );
   }
 
   async findUserByUsername(username: string): Promise<KeycloakAdminUser | null> {

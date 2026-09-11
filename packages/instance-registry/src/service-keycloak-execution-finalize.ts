@@ -5,6 +5,7 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
 import { buildProvisioningInput } from './service-keycloak-execution-payload.js';
+import { requiresTenantAdminBootstrap } from './provisioning-auth-policy.js';
 
 export const completeRun = async (
   deps: InstanceRegistryServiceDeps,
@@ -22,9 +23,7 @@ export const completeRun = async (
     throw new Error('dependency_missing_getKeycloakStatus');
   }
   const status = await getKeycloakStatus(buildProvisioningInput(input.loaded));
-  const requireTenantAdmin =
-    input.loaded.instance.realmMode !== 'existing' ||
-    Boolean(input.loaded.instance.tenantAdminBootstrap?.username);
+  const requireTenantAdmin = requiresTenantAdminBootstrap(input.loaded.instance);
 
   await appendRunStep(deps, {
     runId: input.runId,
@@ -56,13 +55,10 @@ export const completeRun = async (
   }
 
   const completionSatisfied = completionSteps.every((step) => step.ok);
-  const requirementStatus = requireTenantAdmin
-    ? status
-    : { ...status, tenantAdminExists: true, tenantAdminHasSystemAdmin: true };
   const finalRunStatus =
     completionSatisfied &&
     (input.intent === 'reset_tenant_admin' ||
-      areAllInstanceKeycloakRequirementsSatisfied(requirementStatus))
+      areAllInstanceKeycloakRequirementsSatisfied(status, { requireTenantAdmin }))
       ? 'succeeded'
       : 'failed';
 

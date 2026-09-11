@@ -9,6 +9,7 @@ import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTempora
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
+import { resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
@@ -209,7 +210,11 @@ export const processClaimedKeycloakProvisioningRun = async (
 
   const queueStep = run.steps.find((step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued');
   const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(deps, run.id, queueStep?.details);
-  const provisioningInput = buildProvisioningInput(loaded);
+  const allowLegacyRealmRoleMigration = await resolveLegacyRealmRoleMigrationAllowed(run.mode, deps.repository, loaded.instance);
+  const provisioningInput = {
+    ...buildProvisioningInput(loaded),
+    allowLegacyRealmRoleMigration,
+  };
 
   await appendWorkerRunningStep(deps, run);
   logger.info('keycloak_provisioning_claimed', {

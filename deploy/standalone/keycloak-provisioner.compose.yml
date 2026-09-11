@@ -1,0 +1,19 @@
+services:
+  provisioner:
+    image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be an immutable digest}
+    entrypoint:
+      - ./provisioner-entrypoint.sh
+    env_file:
+      - ./runtime.env
+    restart: unless-stopped
+    networks:
+      - studio-internal
+      - ssf-edge
+
+networks:
+  studio-internal:
+    external: true
+    name: sva-studio-ssf_internal
+  ssf-edge:
+    external: true
+    name: ssf-backend_default

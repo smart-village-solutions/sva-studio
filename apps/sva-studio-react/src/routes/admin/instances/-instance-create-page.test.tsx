@@ -79,12 +79,19 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('InstanceCreatePage', () => {
+  let parentDomainMeta: HTMLMetaElement;
+
   afterEach(() => {
+    parentDomainMeta.remove();
     cleanup();
   });
 
   beforeEach(() => {
     useInstancesMock.mockReset();
+    parentDomainMeta = document.createElement('meta');
+    parentDomainMeta.name = 'sva-studio-parent-domain';
+    parentDomainMeta.content = 'dialog.kassel.de';
+    document.head.append(parentDomainMeta);
   });
 
   it('guides through the wizard and shows the next steps after creation', async () => {
@@ -100,8 +107,8 @@ describe('InstanceCreatePage', () => {
     render(<InstanceCreatePage />);
 
     const parentDomainInput = screen.getByLabelText('Parent-Domain', { selector: '#instance-parent-domain' }) as HTMLInputElement;
-    expect(parentDomainInput.value).toBe('localhost');
-    expect(parentDomainInput.placeholder).toBe('localhost');
+    expect(parentDomainInput.value).toBe('dialog.kassel.de');
+    expect(parentDomainInput.placeholder).toBe('dialog.kassel.de');
     expect((screen.getByRole('radio', { name: /Neuer Realm:/u }) as HTMLInputElement).checked).toBe(true);
     expect(
       screen.getByText('Neuer Realm: Der Provisioning-Lauf legt den Realm an und blockiert, wenn er bereits existiert.')
@@ -256,7 +263,7 @@ describe('InstanceCreatePage', () => {
       expect(createInstance).toHaveBeenCalledWith({
         instanceId: 'demo-new',
         displayName: 'Demo New',
-        parentDomain: 'localhost',
+        parentDomain: 'dialog.kassel.de',
         realmMode: 'new',
         authRealm: 'saas-demo-new',
         authClientId: 'sva-studio-login',

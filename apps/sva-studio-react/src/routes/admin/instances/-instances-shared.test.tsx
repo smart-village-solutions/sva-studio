@@ -162,14 +162,19 @@ describe('instances shared helpers', () => {
     ).toContain('Instanz');
   });
 
-  it('reads the suggested parent domain from window and falls back safely for invalid urls', () => {
-    vi.stubGlobal('window', {
-      location: { href: 'https://demo.studio.example.org/admin/instances' },
-    });
-    expect(readSuggestedParentDomain()).toBe('demo.studio.example.org');
+  it('reads the suggested parent domain from server-published runtime metadata', () => {
+    const parentDomainMeta = document.createElement('meta');
+    parentDomainMeta.name = 'sva-studio-parent-domain';
+    parentDomainMeta.content = 'Dialog.Kassel.DE';
+    document.head.append(parentDomainMeta);
 
-    vi.stubGlobal('window', { location: { href: 'not a url' } });
-    expect(readSuggestedParentDomain()).toBe('');
+    try {
+      expect(readSuggestedParentDomain()).toBe('dialog.kassel.de');
+      parentDomainMeta.remove();
+      expect(readSuggestedParentDomain()).toBe('');
+    } finally {
+      parentDomainMeta.remove();
+    }
   });
 
   it('maps readiness and post-create guidance for a requested instance', () => {

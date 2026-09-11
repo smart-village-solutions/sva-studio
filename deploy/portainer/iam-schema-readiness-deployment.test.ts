@@ -50,6 +50,23 @@ describe('IAM schema readiness deployment contract', () => {
   const localBootstrap = readRepoFile('packages/data/scripts/bootstrap-app-user.sh');
   const runtimeArtifactVerifier = readRepoFile('scripts/ci/verify-runtime-artifact.sh');
   const verifier = readRepoFile('deploy/portainer/verify-iam-schema.mjs');
+  const standaloneProvisioner = readRepoFile('deploy/standalone/keycloak-provisioner.compose.yml');
+  const standaloneRunbook = readRepoFile('docs/operations/ssf-standalone-hosts.md');
+
+  it('ships the standalone Keycloak provisioner as a digest-bound internal service', () => {
+    expect(standaloneProvisioner).toContain('provisioner:');
+    expect(standaloneProvisioner).toContain(
+      'image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be an immutable digest}'
+    );
+    expect(standaloneProvisioner).toContain('./provisioner-entrypoint.sh');
+    expect(standaloneProvisioner).toContain('./runtime.env');
+    expect(standaloneProvisioner).toContain('name: sva-studio-ssf_internal');
+    expect(standaloneProvisioner).toContain('name: ssf-backend_default');
+    expect(standaloneProvisioner).not.toContain('ports:');
+    expect(standaloneProvisioner).not.toContain('traefik');
+    expect(standaloneRunbook).toContain('keycloak-provisioner.compose.yml');
+    expect(standaloneRunbook).toContain('ps app provisioner');
+  });
 
   it('ships one canonical verifier in both runtime images', () => {
     for (const dockerfile of dockerfiles) {

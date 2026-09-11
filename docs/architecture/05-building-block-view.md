@@ -924,8 +924,9 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
 - Root-Actions des SSF-Plugins werden getrennt als Plattformbeitrag für
   `instance_registry_admin` registriert und niemals in Tenant-Tokens projiziert.
 - Keycloak-Status-, Preflight- und Plan-Snapshots tragen eine gemeinsame
-  Policy-Version. Nach Änderungen an Ownership- oder Bootstrap-Regeln werden
-  ältere Snapshots nicht weiter als aktuelle Gesundheitsevidenz verwendet.
+  Policy-Version und einen Fingerprint der zugehörigen Instanzrevision. Nach
+  Änderungen an Ownership-, Bootstrap- oder Instanzregeln werden ältere
+  Snapshots nicht weiter als aktuelle Gesundheitsevidenz verwendet.
   Während eines laufenden Keycloak-Provisionings verhindert die Registry
   atomar einen Wechsel des zugeordneten `authRealm`; Secret- und sonstige
   Aktualisierungen mit unverändertem Realm bleiben möglich.

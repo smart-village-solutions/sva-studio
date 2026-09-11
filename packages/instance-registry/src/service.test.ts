@@ -17,6 +17,7 @@ vi.mock('@sva/server-runtime', async () => {
 
 import { createInstanceRegistryService } from './service.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
+import { buildKeycloakSnapshotInputFingerprint } from './provisioning-auth-policy.js';
 import {
   createGetKeycloakPreflightHandler,
   createGetKeycloakStatusHandler,
@@ -2278,7 +2279,7 @@ describe('instance registry service facade', () => {
     });
   });
 
-  it('normalizes an outdated imported-realm admin blocker from a persisted preflight snapshot', async () => {
+  it('invalidates a preflight snapshot after the instance contract changes', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({
         ...baseInstance,
@@ -2295,6 +2296,11 @@ describe('instance registry service facade', () => {
               status: 'failed',
               summary: 'Blocked',
               details: {
+                policyVersion: 2,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint({
+                  ...baseInstance,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                }),
                 preflight: {
                   overallStatus: 'blocked',
                   checkedAt: '2026-09-10T00:00:00.000Z',
@@ -2439,6 +2445,7 @@ describe('instance registry service facade', () => {
               summary: 'Snapshot vorhanden',
               details: {
                 policyVersion: 2,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance),
                 status: {
                   realmExists: true,
                   clientExists: true,
@@ -2494,6 +2501,7 @@ describe('instance registry service facade', () => {
               summary: 'Snapshot vorhanden',
               details: {
                 policyVersion: 2,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance),
                 status: {
                   realmExists: true,
                   clientExists: true,

@@ -159,7 +159,7 @@ export const syncRotatedClientSecretToRegistry = async (
     throw new Error('tenant_auth_client_secret_missing_after_rotation');
   }
 
-  await deps.repository.updateInstance({
+  const updatedInstance = await deps.repository.updateInstance({
     instanceId: input.loaded.instance.instanceId,
     displayName: input.loaded.instance.displayName,
     parentDomain: input.loaded.instance.parentDomain,
@@ -193,7 +193,11 @@ export const syncRotatedClientSecretToRegistry = async (
     featureFlags: input.loaded.instance.featureFlags,
     mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
   });
+  if (!updatedInstance) {
+    throw new Error('instance_update_failed_after_secret_rotation');
+  }
 
+  input.loaded.instance = updatedInstance;
   input.loaded.authClientSecret = rotatedSecret;
   input.loaded.tenantAdminClientSecret =
     state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret;
@@ -232,7 +236,7 @@ export const syncProvisionedClientSecretToRegistry = async (
     return;
   }
 
-  await deps.repository.updateInstance({
+  const updatedInstance = await deps.repository.updateInstance({
     instanceId: loaded.instance.instanceId,
     displayName: loaded.instance.displayName,
     parentDomain: loaded.instance.parentDomain,
@@ -269,7 +273,11 @@ export const syncProvisionedClientSecretToRegistry = async (
     featureFlags: loaded.instance.featureFlags,
     mainserverConfigRef: loaded.instance.mainserverConfigRef,
   });
+  if (!updatedInstance) {
+    throw new Error('instance_update_failed_after_secret_sync');
+  }
 
+  loaded.instance = updatedInstance;
   updateLoadedSecrets(
     loaded,
     authSecretDrift,

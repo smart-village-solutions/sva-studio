@@ -107,7 +107,11 @@ describe('service-keycloak-execution-finalize', () => {
         runId: 'run-1',
         stepKey: 'status_snapshot',
         status: 'done',
-        details: { policyVersion: 2, status },
+        details: {
+          policyVersion: 2,
+          inputFingerprint: expect.any(String),
+          status,
+        },
       })
     );
     expect(state.buildFinalRunSteps).toHaveBeenCalledWith({

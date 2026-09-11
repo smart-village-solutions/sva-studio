@@ -10,7 +10,10 @@ import type {
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
 import { buildMissingRealmStatus, buildPlan, toOverallPreflightStatus } from './provisioning-auth-evaluation.js';
-import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js';
+import {
+  buildKeycloakSnapshotInputFingerprint,
+  KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+} from './provisioning-auth-policy.js';
 import { toListItem } from './service-helpers.js';
 import {
   loadInstanceWithSecret,
@@ -25,14 +28,18 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const readSnapshotFromRun = <T>(
   runs: readonly Awaited<ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>>[number][],
   stepKey: string,
-  field: 'status' | 'preflight' | 'plan'
+  field: 'status' | 'preflight' | 'plan',
+  inputFingerprint: string
 ): T | null => {
   for (const run of runs) {
     const step = run.steps.find((candidate) => candidate.stepKey === stepKey);
     if (!isRecord(step?.details)) {
       continue;
     }
-    if (step.details.policyVersion !== KEYCLOAK_SNAPSHOT_POLICY_VERSION) {
+    if (
+      step.details.policyVersion !== KEYCLOAK_SNAPSHOT_POLICY_VERSION ||
+      step.details.inputFingerprint !== inputFingerprint
+    ) {
       continue;
     }
     const snapshot = step.details[field];
@@ -163,7 +170,12 @@ export const createGetKeycloakStatusHandler =
     }
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
-    const status = readSnapshotFromRun<KeycloakTenantStatus>(runs, 'status_snapshot', 'status');
+    const status = readSnapshotFromRun<KeycloakTenantStatus>(
+      runs,
+      'status_snapshot',
+      'status',
+      buildKeycloakSnapshotInputFingerprint(instance)
+    );
     if (status) {
       logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
       return status;
@@ -197,7 +209,12 @@ export const createGetKeycloakPreflightHandler =
     }
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
-    const snapshot = readSnapshotFromRun<KeycloakTenantPreflight>(runs, 'worker_preflight_snapshot', 'preflight');
+    const snapshot = readSnapshotFromRun<KeycloakTenantPreflight>(
+      runs,
+      'worker_preflight_snapshot',
+      'preflight',
+      buildKeycloakSnapshotInputFingerprint(loaded.instance)
+    );
     const result = snapshot ?? buildLocalPreflight({
       realmMode: loaded.instance.realmMode,
       authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
@@ -224,7 +241,12 @@ export const createPlanKeycloakProvisioningHandler =
     }
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
-    const snapshot = readSnapshotFromRun<KeycloakTenantPlan>(runs, 'worker_plan_snapshot', 'plan');
+    const snapshot = readSnapshotFromRun<KeycloakTenantPlan>(
+      runs,
+      'worker_plan_snapshot',
+      'plan',
+      buildKeycloakSnapshotInputFingerprint(loaded.instance)
+    );
     if (snapshot) {
       logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });
       return snapshot;

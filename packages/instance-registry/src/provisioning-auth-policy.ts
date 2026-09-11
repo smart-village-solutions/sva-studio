@@ -2,9 +2,19 @@ import type {
   KeycloakProvisioningInput,
   KeycloakReadState,
 } from './provisioning-auth-types.js';
+import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
 
 export const KEYCLOAK_SNAPSHOT_POLICY_VERSION = 2;
+
+export const buildKeycloakSnapshotInputFingerprint = (instance: {
+  readonly instanceId: string;
+  readonly updatedAt: string;
+}): string =>
+  buildPayloadFingerprint({
+    instanceId: instance.instanceId,
+    updatedAt: instance.updatedAt,
+  });
 
 const readSingleRoleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,

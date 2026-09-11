@@ -30,6 +30,7 @@ const createLoaded = () => ({
     themeKey: null,
     featureFlags: {},
     mainserverConfigRef: null,
+    updatedAt: '2026-01-01T00:00:00.000Z',
   },
   authClientSecret: 'auth-secret',
   tenantAdminClientSecret: 'tenant-admin-secret',
@@ -171,7 +172,10 @@ describe('service-keycloak-execution-shared', () => {
   it('re-syncs actual Keycloak secrets back into the registry when stored secrets drift', async () => {
     const loaded = createLoaded() as never;
     const repository = {
-      updateInstance: vi.fn(async () => undefined),
+      updateInstance: vi.fn(async () => ({
+        ...createLoaded().instance,
+        updatedAt: '2026-01-01T00:00:01.000Z',
+      })),
     };
     const readKeycloakClientSecretsViaProvisioner = vi.fn(async () => ({
       keycloakClientSecret: 'actual-auth-secret',
@@ -261,7 +265,13 @@ describe('service-keycloak-execution-shared', () => {
     loaded.instance.realmMode = 'new';
     loaded.authClientSecret = undefined;
     loaded.tenantAdminClientSecret = undefined;
-    const repository = { updateInstance: vi.fn(async () => undefined) };
+    const repository = {
+      updateInstance: vi.fn(async () => ({
+        ...createLoaded().instance,
+        realmMode: 'new' as const,
+        updatedAt: '2026-01-01T00:00:01.000Z',
+      })),
+    };
     const readKeycloakClientSecretsViaProvisioner = vi
       .fn()
       .mockResolvedValueOnce({})
@@ -289,7 +299,10 @@ describe('service-keycloak-execution-shared', () => {
   it('syncs rotated client secrets back into the registry', async () => {
     const loaded = createLoaded() as never;
     const repository = {
-      updateInstance: vi.fn(async () => undefined),
+      updateInstance: vi.fn(async () => ({
+        ...createLoaded().instance,
+        updatedAt: '2026-01-01T00:00:01.000Z',
+      })),
     };
     const readKeycloakClientSecretsViaProvisioner = vi.fn(async () => ({
       keycloakClientSecret: 'actual-auth-secret',

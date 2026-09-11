@@ -9,7 +9,11 @@ import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTempora
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
-import { KEYCLOAK_SNAPSHOT_POLICY_VERSION, resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
+import {
+  buildKeycloakSnapshotInputFingerprint,
+  KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+  resolveLegacyRealmRoleMigrationAllowed,
+} from './provisioning-auth-policy.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
@@ -46,7 +50,7 @@ const appendWorkerRunningStep = async (deps: InstanceRegistryServiceDeps, run: I
     requestId: run.requestId,
   });
 
-const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
+const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>, inputFingerprint: string) => {
   const getKeycloakPreflight = deps.getKeycloakPreflight;
   if (!getKeycloakPreflight) {
     throw new Error('dependency_missing_getKeycloakPreflight');
@@ -61,13 +65,13 @@ const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: I
       preflight.overallStatus === 'blocked'
         ? 'Die Vorbedingungen blockieren die Ausführung.'
         : 'Die Vorbedingungen erlauben die Ausführung.',
-    details: { policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION, preflight },
+    details: { policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION, inputFingerprint, preflight },
     requestId: run.requestId,
   });
   return preflight;
 };
 
-const appendPlanSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
+const appendPlanSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>, inputFingerprint: string) => {
   const planKeycloakProvisioning = deps.planKeycloakProvisioning;
   if (!planKeycloakProvisioning) {
     throw new Error('dependency_missing_planKeycloakProvisioning');
@@ -79,7 +83,7 @@ const appendPlanSnapshot = async (deps: InstanceRegistryServiceDeps, run: Instan
     title: 'Soll-Ist-Abgleich planen',
     status: plan.overallStatus === 'blocked' ? 'failed' : 'done',
     summary: plan.driftSummary,
-    details: { policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION, plan },
+    details: { policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION, inputFingerprint, plan },
     requestId: run.requestId,
   });
   return plan;
@@ -122,11 +126,12 @@ const syncTenantAdminBootstrapAccountAfterProvisioning = async (
 };
 
 const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
+  const inputFingerprint = buildKeycloakSnapshotInputFingerprint(loaded.instance);
   const preflight = await runInstanceRegistryStep('worker_preflight', () =>
-    appendPreflightSnapshot(deps, run, provisioningInput)
+    appendPreflightSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
   const plan = await runInstanceRegistryStep('worker_plan', () =>
-    appendPlanSnapshot(deps, run, provisioningInput)
+    appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
 
   const rotatingMissingTenantSecret = run.intent === 'rotate_client_secret' && !loaded.authClientSecret;

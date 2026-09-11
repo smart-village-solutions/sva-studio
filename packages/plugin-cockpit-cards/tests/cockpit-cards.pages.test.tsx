@@ -227,7 +227,7 @@ describe('cockpit cards pages', () => {
       expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
       fireEvent.click(addImage);
       fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
-      await waitFor(() => expect(state.listAssets).toHaveBeenCalled());
+      await screen.findAllByRole('button', { name: 'actions.selectImage' });
       expect(screen.queryByText('info.pdf')).toBeNull();
     },
     10_000

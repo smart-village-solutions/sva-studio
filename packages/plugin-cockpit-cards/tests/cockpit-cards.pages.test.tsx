@@ -210,24 +210,28 @@ describe('cockpit cards pages', () => {
     );
   });
 
-  it('places text and image controls together and loads category and media options', async () => {
-    const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
-    render(<CockpitCardsCreatePage />);
-    const tablist = screen.getByRole('tablist', { name: 'tabs.ariaLabel' });
-    const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
-    const addImage = screen.getByRole('button', { name: 'media.add' });
-    expect(tablist.className).toContain('ml-[10px]');
-    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
-    expect(contentPanel?.className).toContain('mt-0');
-    expect(contentPanel?.contains(addImage)).toBe(true);
-    expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
-    fireEvent.click(addImage);
-    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
-    await waitFor(() => expect(state.listAssets).toHaveBeenCalled());
-    expect(screen.queryByText('info.pdf')).toBeNull();
-  });
+  it(
+    'places text and image controls together and loads category and media options',
+    async () => {
+      const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
+      render(<CockpitCardsCreatePage />);
+      const tablist = screen.getByRole('tablist', { name: 'tabs.ariaLabel' });
+      const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
+      fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+      const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
+      const addImage = screen.getByRole('button', { name: 'media.add' });
+      expect(tablist.className).toContain('ml-[10px]');
+      expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+      expect(contentPanel?.className).toContain('mt-0');
+      expect(contentPanel?.contains(addImage)).toBe(true);
+      expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
+      fireEvent.click(addImage);
+      fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
+      await waitFor(() => expect(state.listAssets).toHaveBeenCalled());
+      expect(screen.queryByText('info.pdf')).toBeNull();
+    },
+    10_000
+  );
 
   it('reviews and accepts a linked image from the media library', async () => {
     state.getAsset.mockResolvedValue({

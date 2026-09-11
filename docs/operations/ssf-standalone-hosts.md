@@ -70,7 +70,23 @@ auch der Kasseler App-Container verwendet. Die `runtime.env` muss im Compose-Pro
 liegen und insbesondere die bestehenden `APP_DB_*`-, `POSTGRES_*`-, `REDIS_*`- und
 `KEYCLOAK_PROVISIONER_*`-Werte der Kasseler Installation enthalten.
 
+Bei einem Wechsel des Queue-Vertrags müssen App und Worker koordiniert aktualisiert werden:
+Zuerst die App stoppen, damit sie keine neuen Aufträge annimmt. Den bisherigen Worker alle
+bereits geplanten oder laufenden Aufträge abschließen lassen und diesen Zustand über die
+Registry prüfen. Danach den Worker stoppen und beide Dienste gemeinsam mit demselben neuen
+Digest starten. So verarbeitet weder ein alter Worker neue Aufträge noch ein neuer Worker
+Aufträge im alten Format.
+
 ```bash
+docker compose \
+  -f app.compose.yml \
+  -f keycloak-provisioner.compose.yml \
+  stop app
+# Registry prüfen: keine Provisioning-Läufe mit Status planned oder running.
+docker compose \
+  -f app.compose.yml \
+  -f keycloak-provisioner.compose.yml \
+  stop provisioner
 ./up.sh
 docker compose \
   -f app.compose.yml \

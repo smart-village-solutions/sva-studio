@@ -273,6 +273,7 @@ export const createPlanKeycloakProvisioningHandler =
       tenantAdminClient: loaded.instance.tenantAdminClient,
       tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
+      pluginOidcClients: deps.readPluginOidcClientRequirements?.(),
       preflight,
     });
     logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });

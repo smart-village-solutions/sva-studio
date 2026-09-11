@@ -13,7 +13,7 @@ import type {
   KeycloakProvisioningRunRow,
   KeycloakProvisioningStepRow,
 } from './repository-types.js';
-import { buildKeycloakProvisioningRunRecoveryCtes } from './repository-keycloak-claim-sql.js';
+import { buildClaimNextKeycloakProvisioningRunSql } from './repository-keycloak-claim-sql.js';
 
 type KeycloakProvisioningRepository = Pick<
   InstanceRegistryRepository,
@@ -73,49 +73,10 @@ const claimNextKeycloakProvisioningRun = async (
   input?: { createdAtOrAfter?: string }
 ) => {
   const createdAtOrAfter = input?.createdAtOrAfter?.trim();
-  const createdAtFilter = createdAtOrAfter ? '    AND candidate.created_at >= $1::timestamptz\n' : '';
   const rows = await queryRows<KeycloakProvisioningRunRow>(
     executor,
     statement(
-      `
-WITH ${buildKeycloakProvisioningRunRecoveryCtes(Boolean(createdAtOrAfter))}candidate_run AS MATERIALIZED (
-  SELECT candidate.id, candidate.instance_id
-  FROM iam.instance_keycloak_provisioning_runs AS candidate
-  WHERE candidate.overall_status = 'planned'
-${createdAtFilter}
-    AND NOT EXISTS (
-      SELECT 1
-      FROM iam.instance_keycloak_provisioning_runs AS active
-      WHERE active.instance_id = candidate.instance_id
-        AND active.overall_status = 'running'
-        AND active.id NOT IN (SELECT id FROM recovered_runs)
-    )
-    AND pg_try_advisory_xact_lock(hashtextextended(candidate.instance_id, 0))
-  ORDER BY candidate.created_at ASC, candidate.id ASC
-  FOR UPDATE SKIP LOCKED
-  LIMIT 1
-)
-UPDATE iam.instance_keycloak_provisioning_runs AS runs
-SET
-  overall_status = 'running',
-  updated_at = NOW()
-FROM candidate_run
-WHERE runs.id = candidate_run.id
-RETURNING
-  runs.id::text AS id,
-  runs.instance_id,
-  runs.mutation,
-  runs.idempotency_key,
-  runs.payload_fingerprint,
-  runs.mode,
-  runs.intent,
-  runs.overall_status,
-  runs.drift_summary,
-  runs.request_id,
-  runs.actor_id,
-  runs.created_at::text,
-  runs.updated_at::text;
-`,
+      buildClaimNextKeycloakProvisioningRunSql(Boolean(createdAtOrAfter)),
       createdAtOrAfter ? [createdAtOrAfter] : []
     )
   );

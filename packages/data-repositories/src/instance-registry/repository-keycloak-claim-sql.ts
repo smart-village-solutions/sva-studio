@@ -52,3 +52,73 @@ export const buildKeycloakProvisioningRunRecoveryCtes = (includeExpiredPlannedRu
   `${staleKeycloakProvisioningRunRecoveryCte},\n${
     includeExpiredPlannedRuns ? `${expiredPlannedKeycloakProvisioningRunRecoveryCte},\n` : ''
   }`;
+
+export const buildClaimNextKeycloakProvisioningRunSql = (
+  includeCreatedAtFilter: boolean
+): string => `
+WITH RECURSIVE ${buildKeycloakProvisioningRunRecoveryCtes(includeCreatedAtFilter)}eligible_candidates AS MATERIALIZED (
+  SELECT
+    candidate.id,
+    candidate.instance_id,
+    ROW_NUMBER() OVER (ORDER BY candidate.created_at ASC, candidate.id ASC) AS candidate_position
+  FROM iam.instance_keycloak_provisioning_runs AS candidate
+  WHERE candidate.overall_status = 'planned'
+${includeCreatedAtFilter ? '    AND candidate.created_at >= $1::timestamptz\n' : ''}    AND NOT EXISTS (
+      SELECT 1
+      FROM iam.instance_keycloak_provisioning_runs AS active
+      WHERE active.instance_id = candidate.instance_id
+        AND active.overall_status = 'running'
+        AND active.id NOT IN (SELECT id FROM recovered_runs)
+    )
+),
+attempted_candidates AS (
+  SELECT
+    eligible.id,
+    eligible.instance_id,
+    eligible.candidate_position,
+    pg_try_advisory_xact_lock(hashtextextended(eligible.instance_id, 0)) AS lock_acquired
+  FROM eligible_candidates AS eligible
+  WHERE eligible.candidate_position = 1
+
+  UNION ALL
+
+  SELECT
+    eligible.id,
+    eligible.instance_id,
+    eligible.candidate_position,
+    pg_try_advisory_xact_lock(hashtextextended(eligible.instance_id, 0)) AS lock_acquired
+  FROM attempted_candidates AS previous
+  INNER JOIN eligible_candidates AS eligible
+    ON eligible.candidate_position = previous.candidate_position + 1
+  WHERE NOT previous.lock_acquired
+),
+candidate_run AS MATERIALIZED (
+  SELECT runs.id
+  FROM attempted_candidates AS attempted
+  INNER JOIN iam.instance_keycloak_provisioning_runs AS runs ON runs.id = attempted.id
+  WHERE attempted.lock_acquired
+  ORDER BY attempted.candidate_position
+  FOR UPDATE OF runs SKIP LOCKED
+  LIMIT 1
+)
+UPDATE iam.instance_keycloak_provisioning_runs AS runs
+SET
+  overall_status = 'running',
+  updated_at = NOW()
+FROM candidate_run
+WHERE runs.id = candidate_run.id
+RETURNING
+  runs.id::text AS id,
+  runs.instance_id,
+  runs.mutation,
+  runs.idempotency_key,
+  runs.payload_fingerprint,
+  runs.mode,
+  runs.intent,
+  runs.overall_status,
+  runs.drift_summary,
+  runs.request_id,
+  runs.actor_id,
+  runs.created_at::text,
+  runs.updated_at::text;
+`;

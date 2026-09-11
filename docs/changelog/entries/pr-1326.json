@@ -1,0 +1,4 @@
+{
+  "prNumber": 1326,
+  "body": "SSF-Tenant-Status stabilisiert\n\n- Der separate Keycloak-Provisioner lädt nun denselben SSF-OIDC-Vertrag wie die Studio-App, sodass erfolgreiche IAM-Abgleiche direkt als betriebsbereit erkannt werden."
+}

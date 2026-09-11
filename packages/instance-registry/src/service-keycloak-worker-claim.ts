@@ -2,6 +2,16 @@ import type { InstanceKeycloakProvisioningRun } from '@sva/core';
 
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
+export const hasProvisioningWorkerDependencies = (
+  deps: InstanceRegistryServiceDeps
+): boolean =>
+  Boolean(
+    deps.provisionInstanceAuth &&
+      deps.readKeycloakStateViaProvisioner &&
+      deps.getKeycloakPreflight &&
+      deps.planKeycloakProvisioning
+  );
+
 export const processNextProvisioningClaim = async (
   deps: InstanceRegistryServiceDeps,
   processClaimed: (

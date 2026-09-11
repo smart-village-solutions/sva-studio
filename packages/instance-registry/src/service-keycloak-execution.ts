@@ -10,15 +10,9 @@ import { failClaimedRun, failRun } from './service-keycloak-execution-failures.j
 import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
 import { buildKeycloakSnapshotInputFingerprint, KEYCLOAK_SNAPSHOT_POLICY_VERSION, resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
-import { processNextProvisioningClaim } from './service-keycloak-worker-claim.js';
+import { hasProvisioningWorkerDependencies, processNextProvisioningClaim } from './service-keycloak-worker-claim.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
-const hasWorkerDependencies = (deps: InstanceRegistryServiceDeps): boolean => Boolean(
-  deps.provisionInstanceAuth &&
-  deps.readKeycloakStateViaProvisioner &&
-  deps.getKeycloakPreflight &&
-  deps.planKeycloakProvisioning
-);
 
 const loadClaimedRunInstance = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun): Promise<NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>> | null> => {
   const loaded = await loadInstanceWithSecret(deps, run.instanceId);
@@ -200,7 +194,7 @@ export const processClaimedKeycloakProvisioningRun = async (
     return null;
   }
 
-  if (!hasWorkerDependencies(deps)) {
+  if (!hasProvisioningWorkerDependencies(deps)) {
     await failClaimedRun(deps, {
       runId: run.id,
       requestId: run.requestId,

@@ -35,6 +35,7 @@ describe('service-keycloak-execution-failures', () => {
         overallStatus: 'failed',
       })
     );
+
   });
 
   it('persists worker failure details via failClaimedRun', async () => {
@@ -134,6 +135,16 @@ describe('service-keycloak-execution-failures', () => {
         details: { reasonCode: 'PLUGIN_OIDC_SNAPSHOT_INVALID' },
         summary: 'Der Provisioning-Auftrag enthält keinen gültigen Plugin-OIDC-Snapshot.',
       })
+    );
+
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-6',
+      instanceId: 'demo',
+      intent: 'reconcile',
+      error: new Error('plugin_oidc_client_requirement_invalid:ssf'),
+    });
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenLastCalledWith(
+      expect.objectContaining({ details: { reasonCode: 'PLUGIN_OIDC_SNAPSHOT_INVALID' } })
     );
   });
 });

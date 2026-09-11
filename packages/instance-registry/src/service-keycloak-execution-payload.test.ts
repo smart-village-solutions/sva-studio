@@ -58,12 +58,15 @@ describe('service-keycloak-execution-payload', () => {
     expect(appendKeycloakProvisioningStep).toHaveBeenCalledWith(
       expect.objectContaining({
         stepKey: 'queued',
-        details: expect.objectContaining({ pluginOidcClients: [ssfRequirement] }),
+        details: expect.objectContaining({
+          pluginOidcSnapshotVersion: '1.0',
+          pluginOidcClients: [ssfRequirement],
+        }),
       })
     );
   });
 
-  it('reads a validated queued snapshot and fails closed when it is absent', () => {
+  it('reads versioned and legacy snapshots and rejects incomplete versioned snapshots', () => {
     const provisioningInput = {
       ...loaded.instance,
       authClientSecret: loaded.authClientSecret,
@@ -71,17 +74,23 @@ describe('service-keycloak-execution-payload', () => {
 
     expect(
       readQueuedPluginOidcClientRequirements(
-        { pluginOidcClients: [ssfRequirement] },
+        { pluginOidcSnapshotVersion: '1.0', pluginOidcClients: [ssfRequirement] },
         provisioningInput
       )
     ).toEqual([ssfRequirement]);
-    expect(() => readQueuedPluginOidcClientRequirements(undefined, provisioningInput)).toThrow(
-      'queued_plugin_oidc_client_requirements_missing_or_invalid'
-    );
+    expect(() =>
+      readQueuedPluginOidcClientRequirements(
+        { pluginOidcSnapshotVersion: '1.0' },
+        provisioningInput
+      )
+    ).toThrow('queued_plugin_oidc_client_requirements_missing_or_invalid');
+    expect(readQueuedPluginOidcClientRequirements(undefined, provisioningInput, [ssfRequirement]))
+      .toEqual([ssfRequirement]);
   });
 
-  it('leaves a newly created run unqueued when the app snapshot dependency is not wired', async () => {
+  it('marks a newly created run failed when the app snapshot dependency is not wired', async () => {
     const appendKeycloakProvisioningStep = vi.fn();
+    const updateKeycloakProvisioningRun = vi.fn().mockResolvedValue(undefined);
     const createKeycloakProvisioningRun = vi.fn().mockResolvedValue({
       run: { id: 'run-2' },
       created: true,
@@ -89,7 +98,11 @@ describe('service-keycloak-execution-payload', () => {
     await expect(
       createQueuedRun(
         {
-          repository: { createKeycloakProvisioningRun, appendKeycloakProvisioningStep },
+          repository: {
+            createKeycloakProvisioningRun,
+            appendKeycloakProvisioningStep,
+            updateKeycloakProvisioningRun,
+          },
           invalidateHost: vi.fn(),
         } as never,
         loaded as never,
@@ -105,6 +118,11 @@ describe('service-keycloak-execution-payload', () => {
     ).rejects.toThrow('plugin_oidc_client_requirements_dependency_missing');
     expect(createKeycloakProvisioningRun).toHaveBeenCalledOnce();
     expect(appendKeycloakProvisioningStep).not.toHaveBeenCalled();
+    expect(updateKeycloakProvisioningRun).toHaveBeenCalledWith({
+      runId: 'run-2',
+      overallStatus: 'failed',
+      driftSummary: 'Provisioning-Auftrag konnte ohne Plugin-OIDC-Snapshot nicht eingereiht werden.',
+    });
   });
 
   it('replays an existing queued run without reading mutable app requirements', async () => {

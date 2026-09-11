@@ -44,25 +44,31 @@ const provisionerAdapters = createKeycloakProvisioningAdapters(provisionerClient
 export const readKeycloakClientSecretsViaProvisioner =
   createReadKeycloakClientSecrets(provisionerClientFactory);
 
-const withDefaultPluginOidcClients = <
+const withInstalledPluginOidcClients = <
   T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,
 >(
   input: T
 ): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> => {
-  if (input.pluginOidcClients !== undefined) {
-    return input;
-  }
   const installedRequirements = readInstanceRegistryPluginOidcClientRequirements();
+  const installedClientIds = new Set(installedRequirements.map(({ clientId }) => clientId));
+  const callerRequirements = (input.pluginOidcClients ?? []).filter(
+    ({ clientId }) => !installedClientIds.has(clientId)
+  );
   return {
     ...input,
-    pluginOidcClients: installedRequirements,
+    pluginOidcClients: [...callerRequirements, ...installedRequirements],
   };
 };
 
+const withProvisionerPluginOidcClients = <
+  T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,
+>(input: T): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> =>
+  input.pluginOidcClients === undefined ? withInstalledPluginOidcClients(input) : input;
+
 export const readKeycloakState = (input: KeycloakProvisioningInput) =>
-  adminAdapters.readKeycloakState(withDefaultPluginOidcClients(input));
+  adminAdapters.readKeycloakState(withInstalledPluginOidcClients(input));
 export const readKeycloakStateViaProvisioner = (input: KeycloakProvisioningInput) =>
-  provisionerAdapters.readKeycloakState(withDefaultPluginOidcClients(input));
+  provisionerAdapters.readKeycloakState(withProvisionerPluginOidcClients(input));
 export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisioningInput) => {
   const clientId = input.tenantAdminClient?.clientId;
   const secretConfigured = input.tenantAdminClient?.secretConfigured === true;
@@ -80,11 +86,11 @@ export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisionin
           clientSecret,
         })
       )
-  )(withDefaultPluginOidcClients(input));
+  )(withInstalledPluginOidcClients(input));
 };
 export const provisionInstanceAuthArtifacts = (
   input: Parameters<typeof adminAdapters.provisionInstanceAuthArtifacts>[0]
-) => adminAdapters.provisionInstanceAuthArtifacts(withDefaultPluginOidcClients(input));
+) => adminAdapters.provisionInstanceAuthArtifacts(withInstalledPluginOidcClients(input));
 export const provisionInstanceAuthArtifactsViaProvisioner = (
   input: Parameters<typeof provisionerAdapters.provisionInstanceAuthArtifacts>[0]
-) => provisionerAdapters.provisionInstanceAuthArtifacts(withDefaultPluginOidcClients(input));
+) => provisionerAdapters.provisionInstanceAuthArtifacts(withProvisionerPluginOidcClients(input));

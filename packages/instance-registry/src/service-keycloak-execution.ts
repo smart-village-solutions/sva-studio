@@ -231,7 +231,14 @@ export const processClaimedKeycloakProvisioningRun = async (
     const queueStep = run.steps.find((step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued');
     const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(deps, run.id, queueStep?.details);
     const baseProvisioningInput = buildProvisioningInput(loaded);
-    const pluginOidcClients = readQueuedPluginOidcClientRequirements(queueStep?.details, baseProvisioningInput);
+    const legacyPluginOidcClients = queueStep?.details?.pluginOidcSnapshotVersion === undefined
+      ? deps.readPluginOidcClientRequirements?.()
+      : undefined;
+    const pluginOidcClients = readQueuedPluginOidcClientRequirements(
+      queueStep?.details,
+      baseProvisioningInput,
+      legacyPluginOidcClients
+    );
     const allowLegacyRealmRoleMigration = await resolveLegacyRealmRoleMigrationAllowed(
       { listInstances: deps.listProvisioningRealmAssignments },
       loaded.instance

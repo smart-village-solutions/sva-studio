@@ -325,7 +325,13 @@ describe('service-keycloak-execution', () => {
           getKeycloakPreflight,
           planKeycloakProvisioning,
         } as never,
-        createRun({ mode: 'new', steps: [{ stepKey: 'queued', details: { pluginOidcClients } }] })
+        createRun({
+          mode: 'new',
+          steps: [{
+            stepKey: 'queued',
+            details: { pluginOidcSnapshotVersion: '1.0', pluginOidcClients },
+          }],
+        })
       )
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
 

@@ -236,6 +236,44 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     expect(provisionerAdapters.provisionInstanceAuthArtifacts).toHaveBeenCalledWith(input);
   });
 
+  it('keeps installed requirements authoritative for non-provisioner adapters', async () => {
+    const installedRequirement = {
+      contractVersion: '1.0' as const,
+      pluginId: 'ssf',
+      clientId: 'ssf',
+      audience: 'ssf',
+      enabled: false as const,
+    };
+    state.readInstanceRegistryPluginOidcClientRequirements.mockReturnValue([installedRequirement]);
+    const subject = await import('./provisioning-auth-state.js');
+    const input = {
+      instanceId: 'demo',
+      primaryHostname: 'demo.studio.example',
+      realmMode: 'existing' as const,
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+      pluginOidcClients: [
+        { ...installedRequirement, pluginId: 'stale-caller' },
+        {
+          contractVersion: '1.0' as const,
+          pluginId: 'example',
+          clientId: 'example',
+          audience: 'example',
+          enabled: false as const,
+        },
+      ],
+    };
+
+    await subject.readKeycloakState(input);
+
+    const adminAdapters = state.createKeycloakProvisioningAdapters.mock.results[0]?.value;
+    expect(adminAdapters.readKeycloakState).toHaveBeenCalledWith({
+      ...input,
+      pluginOidcClients: [input.pluginOidcClients[1], installedRequirement],
+    });
+  });
+
   it('reads audit state with the tenant-local admin credentials from the registry input', async () => {
     const subject = await import('./provisioning-auth-state.js');
 

@@ -6,7 +6,7 @@ import {
   type InstanceRegistryCommandContext,
 } from './instance-registry/command-context.js';
 import { renderResult } from './instance-registry/formatters.js';
-import { parseInstanceRegistryCliOptions } from './instance-registry/parse-options.js';
+import { assertRequired, parseInstanceRegistryCliOptions } from './instance-registry/parse-options.js';
 import { runMutationCommand } from './instance-registry/mutation-commands.js';
 import { runReadCommand } from './instance-registry/read-commands.js';
 import { isReadCommand } from './instance-registry/shared.js';
@@ -32,7 +32,9 @@ export const runInstanceRegistryCli = async (
   try {
     const result = isReadCommand(options.command)
       ? await runReadCommand(context, options)
-      : await context.withTransaction(options.instanceId, (service) => runMutationCommand(service, options));
+      : await context.withTransaction(assertRequired(options.instanceId, '--instance-id'), (service) =>
+          runMutationCommand(service, options)
+        );
 
     context.logger.info('Instance registry CLI operation completed', {
       operation: `instance_registry_cli_${options.command}`,

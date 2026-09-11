@@ -33,7 +33,7 @@ export type InstanceRegistryCommandContext = {
   readonly logger: ServerRuntimeLogger;
   close: () => Promise<void>;
   createReadService: () => InstanceRegistryService;
-  withTransaction: <T>(work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
+  withTransaction: <T>(instanceId: string, work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
 };
 
 type CreateInstanceRegistryCommandContextDeps = {
@@ -103,10 +103,13 @@ export const createInstanceRegistryCommandContext = (
     logger,
     close: () => pool.end(),
     createReadService: () => serviceFactory(createCliRepository(createExecutor(pool))),
-    async withTransaction<T>(work: (service: InstanceRegistryService) => Promise<T>) {
+    async withTransaction<T>(instanceId: string, work: (service: InstanceRegistryService) => Promise<T>) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', [instanceId]);
+        await client.query('SET LOCAL ROLE iam_app;');
+        await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
         const repository = createCliRepository({
           execute: async <TRow = Record<string, unknown>>(statement: SqlStatement) => {
             const result = await client.query(statement.text, [...statement.values]);

@@ -32,7 +32,7 @@ export const runInstanceRegistryCli = async (
   try {
     const result = isReadCommand(options.command)
       ? await runReadCommand(context, options)
-      : await context.withTransaction((service) => runMutationCommand(service, options));
+      : await context.withTransaction(options.instanceId, (service) => runMutationCommand(service, options));
 
     context.logger.info('Instance registry CLI operation completed', {
       operation: `instance_registry_cli_${options.command}`,

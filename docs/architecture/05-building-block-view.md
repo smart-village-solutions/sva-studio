@@ -928,7 +928,9 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Statusänderungen allein lassen diese Evidenz gültig; Änderungen an Ownership-,
   Bootstrap- oder Instanzregeln verwerfen ältere Snapshots.
   Nach der Ausführung enthält der finale Status-Snapshot zusätzlich Preflight und Plan
-  für den aktualisierten Registry- und Keycloak-Zustand und wird in den Read-Pfaden bevorzugt.
+  für den aktualisierten Registry- und Keycloak-Zustand. Die Read-Pfade wählen
+  laufübergreifend den neuesten Snapshot mit passender Policy-Version und passendem
+  Eingabe-Fingerprint; innerhalb eines Laufs wird der finale Status-Snapshot bevorzugt.
   Während eines geplanten oder laufenden Keycloak-Provisionings verhindert die Registry
   Änderungen an den vom Worker konsumierten Instanzfeldern. Worker dürfen in diesem
   Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.

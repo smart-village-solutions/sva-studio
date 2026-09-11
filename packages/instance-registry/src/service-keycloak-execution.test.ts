@@ -78,6 +78,7 @@ const createRun = (overrides: Record<string, unknown> = {}) => ({
   actorId: 'actor-1',
   intent: 'provision',
   mode: 'new',
+  overallStatus: 'running',
   steps: [],
   ...overrides,
 });
@@ -661,7 +662,7 @@ describe('service-keycloak-execution', () => {
     const run = createRun();
     const lockedRepository = {
       getInstanceById: vi.fn().mockResolvedValue(null),
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue(null),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue(run),
     };
     const lockedDeps = {
       repository: lockedRepository,
@@ -678,6 +679,27 @@ describe('service-keycloak-execution', () => {
     } as never);
 
     expect(withInstanceProvisioningLock).toHaveBeenCalledWith('instance-1', expect.any(Function));
+    expect(lockedRepository.getKeycloakProvisioningRun).toHaveBeenCalledWith('instance-1', 'run-1');
     expect(state.loadInstanceWithSecret).toHaveBeenCalledWith(lockedDeps, 'instance-1');
+  });
+
+  it('skips a claimed run that is no longer running after acquiring the lock', async () => {
+    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const run = createRun();
+    const persistedRun = createRun({ overallStatus: 'failed' });
+    const lockedDeps = {
+      repository: {
+        getKeycloakProvisioningRun: vi.fn().mockResolvedValue(persistedRun),
+      },
+    } as never;
+
+    await expect(
+      processNextQueuedKeycloakProvisioningRun({
+        repository: { claimNextKeycloakProvisioningRun: vi.fn().mockResolvedValue(run) } as never,
+        withInstanceProvisioningLock: vi.fn(async (_instanceId, work) => work(lockedDeps)),
+      } as never)
+    ).resolves.toEqual(persistedRun);
+
+    expect(state.loadInstanceWithSecret).not.toHaveBeenCalled();
   });
 });

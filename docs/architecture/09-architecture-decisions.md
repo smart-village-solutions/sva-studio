@@ -59,6 +59,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-057 SSF-Service-Token und Runtime-Konfigurationsgrenze](../adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md)
 - [ADR-059 Administrative Keycloak-Realm-Rollenzuweisungen](../adr/ADR-059-administrative-keycloak-realm-rollenzuweisungen.md)
 - [ADR-060 Keycloak-Serviceidentitäten und Doctor-Evidenz trennen](../adr/ADR-060-keycloak-serviceidentitaeten-und-doctor-evidenz.md)
+- [ADR-061 Instanzgebundene Keycloak-Provisioning-Ownership und -Serialisierung](../adr/ADR-061-instanzgebundene-keycloak-provisioning-ownership-und-serialisierung.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -70,6 +71,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-017
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
 - Abschnitt 04/05/06/07/08/10/11 (Serviceidentitäten, Doctor-Evidenz und Least Privilege): ADR-060
+- Abschnitt 04/05/06/08/09/10/11 (Provisioning-Ownership, Serialisierung und Recovery): ADR-061
 - Abschnitt 04/06/08/09/10/11 (Strategie/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-023
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
 - Abschnitt 03/05/06/08/09/10/11 (Kontext/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-051
@@ -138,6 +140,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-050: Zentraler scopegebundener UI-Zugriff trennt Identität von Effective Access, diskriminiert Plattform-/Tenant-Scope, kombiniert Actions mit Modul-Gates und hält Ressourcen-Ownership an der Servergrenze (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-056: Verpflichtende Plugin-Extension-Tiers und fail-closed scopegebundene Beiträge begrenzen Root-Erweiterungen auf freigegebene Tiers und `instance_registry_admin` (Abschnitt 04, 05, 08, 09)
 - ADR-058: Generischer Plugin-Tenant-Lifecycle mit generationsgebundener Readiness und fail-closed Fachzugriff (Abschnitt 04, 05, 06, 08, 09)
+- ADR-061: Instanzgebundene Ownership technischer Keycloak-Rollen, gemeinsame Serialisierung aller Provisioning-Pfade und lock-geprüfte Claim-Recovery (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
 ### Fortschreibung 2026-07: Survey-Content-Plugin ohne neue ADR
 

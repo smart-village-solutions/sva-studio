@@ -110,13 +110,15 @@ describe('runInstanceRegistryCli', () => {
 
   it('dispatches create commands through the mutation path', async () => {
     const createProvisioningRequest = vi.fn(async () => ({ ok: true }));
-    const withTransactionSpy = vi.fn(async (work: (service: unknown) => Promise<unknown>) =>
+    const withTransactionSpy = vi.fn(async (_instanceId: string, work: (service: unknown) => Promise<unknown>) =>
       work({
         createProvisioningRequest,
       })
     );
-    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (work) =>
-      withTransactionSpy(work as (service: unknown) => Promise<unknown>) as Promise<Awaited<ReturnType<typeof work>>>;
+    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (instanceId, work) =>
+      withTransactionSpy(instanceId, work as (service: unknown) => Promise<unknown>) as Promise<
+        Awaited<ReturnType<typeof work>>
+      >;
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await expect(
@@ -143,7 +145,7 @@ describe('runInstanceRegistryCli', () => {
       )
     ).resolves.toBe(0);
 
-    expect(withTransactionSpy).toHaveBeenCalled();
+    expect(withTransactionSpy).toHaveBeenCalledWith('demo', expect.any(Function));
     expect(createProvisioningRequest).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
@@ -241,11 +243,14 @@ describe('createInstanceRegistryCommandContext', () => {
       serviceFactory: () => ({ listInstances: vi.fn() } as never),
     });
 
-    await expect(context.withTransaction(async () => Promise.reject(new Error('failed work')))).rejects.toThrow(
+    await expect(context.withTransaction('demo', async () => Promise.reject(new Error('failed work')))).rejects.toThrow(
       'failed work'
     );
     expect(query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(query).toHaveBeenNthCalledWith(2, 'ROLLBACK');
+    expect(query).toHaveBeenNthCalledWith(2, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', ['demo']);
+    expect(query).toHaveBeenNthCalledWith(3, 'SET LOCAL ROLE iam_app;');
+    expect(query).toHaveBeenNthCalledWith(4, 'SELECT set_config($1, $2, true);', ['app.instance_id', 'demo']);
+    expect(query).toHaveBeenNthCalledWith(5, 'ROLLBACK');
     expect(client.release).toHaveBeenCalled();
   });
 });

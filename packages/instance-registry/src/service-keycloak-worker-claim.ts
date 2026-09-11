@@ -17,7 +17,11 @@ export const processNextProvisioningClaim = async (
   if (!deps.withInstanceProvisioningLock) {
     throw new Error('dependency_missing_withInstanceProvisioningLock');
   }
-  return deps.withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
-    processClaimed(lockedDeps, run)
-  );
+  return deps.withInstanceProvisioningLock(run.instanceId, async (lockedDeps) => {
+    const persistedRun = await lockedDeps.repository.getKeycloakProvisioningRun(run.instanceId, run.id);
+    if (!persistedRun || persistedRun.overallStatus !== 'running') {
+      return persistedRun;
+    }
+    return processClaimed(lockedDeps, persistedRun);
+  });
 };

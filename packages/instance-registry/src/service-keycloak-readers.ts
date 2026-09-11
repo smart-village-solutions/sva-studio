@@ -20,36 +20,10 @@ import {
   loadPersistedSnapshotSecretVersions,
   loadRepositoryAuthClientSecret,
   loadRepositoryTenantAdminClientSecret,
-  resolvePersistedSnapshotStepKey,
 } from './service-keycloak-secrets.js';
+import { readSnapshotFromRuns } from './service-keycloak-snapshot-reader.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
-
-const readSnapshotFromRun = <T>(
-  runs: readonly Awaited<ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>>[number][],
-  stepKey: string,
-  field: 'status' | 'preflight' | 'plan',
-  inputFingerprint: string
-): T | null => {
-  for (const run of runs) {
-    const step = run.steps.find((candidate) => candidate.stepKey === stepKey);
-    if (!isRecord(step?.details)) {
-      continue;
-    }
-    if (
-      step.details.policyVersion !== KEYCLOAK_SNAPSHOT_POLICY_VERSION ||
-      step.details.inputFingerprint !== inputFingerprint
-    ) {
-      continue;
-    }
-    const snapshot = step.details[field];
-    if (snapshot) {
-      return snapshot as T;
-    }
-  }
-  return null;
-};
 const buildLocalPreflight = (input: {
   realmMode: 'new' | 'existing';
   authClientSecretConfigured: boolean;
@@ -171,14 +145,15 @@ export const createGetKeycloakStatusHandler =
     const secretVersions = await loadPersistedSnapshotSecretVersions(
       deps.repository,
       runs,
-      'status_snapshot',
+      ['status_snapshot'],
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
-    const status = readSnapshotFromRun<KeycloakTenantStatus>(
+    const status = readSnapshotFromRuns<KeycloakTenantStatus>(
       runs,
-      'status_snapshot',
+      ['status_snapshot'],
       'status',
+      KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       buildKeycloakSnapshotInputFingerprint(instance, secretVersions)
     );
     if (status) {
@@ -214,18 +189,18 @@ export const createGetKeycloakPreflightHandler =
     }
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
-    const snapshotStepKey = resolvePersistedSnapshotStepKey(runs, 'worker_preflight_snapshot', KEYCLOAK_SNAPSHOT_POLICY_VERSION);
     const secretVersions = await loadPersistedSnapshotSecretVersions(
       deps.repository,
       runs,
-      snapshotStepKey,
+      ['status_snapshot', 'worker_preflight_snapshot'],
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
-    const snapshot = readSnapshotFromRun<KeycloakTenantPreflight>(
+    const snapshot = readSnapshotFromRuns<KeycloakTenantPreflight>(
       runs,
-      snapshotStepKey,
+      ['status_snapshot', 'worker_preflight_snapshot'],
       'preflight',
+      KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       buildKeycloakSnapshotInputFingerprint(loaded.instance, secretVersions)
     );
     const result = snapshot ?? buildLocalPreflight({
@@ -253,18 +228,18 @@ export const createPlanKeycloakProvisioningHandler =
       return null;
     }
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
-    const snapshotStepKey = resolvePersistedSnapshotStepKey(runs, 'worker_plan_snapshot', KEYCLOAK_SNAPSHOT_POLICY_VERSION);
     const secretVersions = await loadPersistedSnapshotSecretVersions(
       deps.repository,
       runs,
-      snapshotStepKey,
+      ['status_snapshot', 'worker_plan_snapshot'],
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
-    const snapshot = readSnapshotFromRun<KeycloakTenantPlan>(
+    const snapshot = readSnapshotFromRuns<KeycloakTenantPlan>(
       runs,
-      snapshotStepKey,
+      ['status_snapshot', 'worker_plan_snapshot'],
       'plan',
+      KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       buildKeycloakSnapshotInputFingerprint(loaded.instance, secretVersions)
     );
     if (snapshot) {

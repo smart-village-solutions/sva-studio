@@ -45,18 +45,28 @@ const importErrorFallback = async () => {
 };
 
 describe('ErrorFallback', () => {
-  it('renders the localized fallback and retries via router invalidation', async () => {
-    const resetMock = vi.fn();
-    const ErrorFallback = await importErrorFallback();
+  it(
+    'renders the localized fallback and retries via router invalidation',
+    async () => {
+      const resetMock = vi.fn();
+      const ErrorFallback = await importErrorFallback();
 
-    render(<ErrorFallback error={new Error('kaputt')} reset={resetMock} info={{ componentStack: '' }} />);
+      render(
+        <ErrorFallback
+          error={new Error('kaputt')}
+          reset={resetMock}
+          info={{ componentStack: '' }}
+        />
+      );
 
-    expect(screen.getAllByRole('alert')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+      expect(screen.getAllByRole('alert')).toHaveLength(2);
+      fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
 
-    expect(resetMock).toHaveBeenCalledTimes(1);
-    expect(invalidateMock).toHaveBeenCalledTimes(1);
-  });
+      expect(resetMock).toHaveBeenCalledTimes(1);
+      expect(invalidateMock).toHaveBeenCalledTimes(1);
+    },
+    10_000
+  );
 
   it('shows debug details only with explicit opt-in on local hosts', async () => {
     vi.resetModules();

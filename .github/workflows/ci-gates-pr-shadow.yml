@@ -117,10 +117,14 @@ jobs:
           retention-days: 7
 
   unit-remaining:
-    name: Unit Complete
+    name: Unit Complete (${{ matrix.shard }}/4)
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -136,13 +140,13 @@ jobs:
           NX_BASE: ${{ github.event.pull_request.base.sha }}
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
           NX_RUN_FULL: ${{ needs.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
-        run: pnpm test:unit:affected --phase remaining
+        run: pnpm test:unit:affected --phase remaining --shard ${{ matrix.shard }}/4
       - name: Upload remaining Unit evidence
         if: always() && needs.scope.outputs.code_relevant == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: unit-feedback-remaining-${{ github.run_id }}
-          path: artifacts/ci-feedback/unit-unit-remaining.json
+          name: unit-feedback-remaining-${{ matrix.shard }}-of-4-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit-unit-remaining-${{ matrix.shard }}-of-4.json
           if-no-files-found: error
           overwrite: true
           retention-days: 7
@@ -193,7 +197,7 @@ jobs:
           node scripts/ci/ci-feedback-aggregate.ts \
             --gate unit \
             --head "$HEAD_SHA" \
-            --expected unit-direct,unit-remaining \
+            --expected unit-direct,unit-remaining-1-of-4,unit-remaining-2-of-4,unit-remaining-3-of-4,unit-remaining-4-of-4 \
             --evidence-dir artifacts/downloaded-unit-feedback
 
   types:

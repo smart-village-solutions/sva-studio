@@ -251,10 +251,35 @@ describe('workspace package scripts', () => {
 
     expect(directUpload).toContain('name: unit-feedback-direct-${{ github.run_id }}');
     expect(directUpload).toContain('overwrite: true');
-    expect(remainingUpload).toContain('name: unit-feedback-remaining-${{ github.run_id }}');
+    expect(remainingUpload).toContain(
+      'name: unit-feedback-remaining-${{ matrix.shard }}-of-4-${{ github.run_id }}'
+    );
     expect(remainingUpload).toContain('overwrite: true');
     expect(evidenceDownload).toContain('pattern: unit-feedback-*-${{ github.run_id }}');
     expect(evidenceDownload).not.toContain('github.run_attempt');
+  });
+
+  it('shards remaining Unit projects with fail-fast and complete required evidence', () => {
+    const workflow = loadPrGatesWorkflow();
+    const remaining = workflow.slice(
+      workflow.indexOf('\n  unit-remaining:'),
+      workflow.indexOf('\n  unit:')
+    );
+    expect(remaining).toContain('name: Unit Complete (${{ matrix.shard }}/4)');
+    expect(remaining).toContain('fail-fast: true');
+    expect(remaining).toContain('shard: [1, 2, 3, 4]');
+    expect(remaining).toContain('needs: scope');
+    expect(remaining).not.toContain('continue-on-error');
+    expect(remaining).toContain(
+      'pnpm test:unit:affected --phase remaining --shard ${{ matrix.shard }}/4'
+    );
+    expect(remaining).toContain(
+      'path: artifacts/ci-feedback/unit-unit-remaining-${{ matrix.shard }}-of-4.json'
+    );
+    expect(remaining).toContain("needs.scope.outputs.quality_gate_mode != 'skip'");
+    expect(workflow).toContain(
+      '--expected unit-direct,unit-remaining-1-of-4,unit-remaining-2-of-4,unit-remaining-3-of-4,unit-remaining-4-of-4'
+    );
   });
 
   it('retains Coverage evidence across partial workflow reruns', () => {

@@ -188,7 +188,7 @@ zur abgeschlossenen Shadow-Abnahme stehen in
 | Workflow / Jobname in GitHub                  | Zweck                                                                                                 | Trigger-Modell           |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------ |
 | `CI Gates (PR) / Coverage`                    | Stabiler PR-Aggregator; No-op nur bei explizitem Scope, sonst fail-closed über `Coverage Complete`    | alle PRs                 |
-| `CI Gates (PR) / Unit`                        | Stabiler Aggregator über paralleles `Unit Fast Feedback` und `Unit Complete`                          | alle PRs                 |
+| `CI Gates (PR) / Unit`                        | Stabiler Aggregator über `Unit Fast Feedback` und vier parallele `Unit Complete`-Shards               | alle PRs                 |
 | `CI Gates (PR) / Lint`, `Types`, `Complexity` | Kanonisch gescopte statische und typbezogene Gates                                                    | alle PRs                 |
 | `CI Gates (PR) / PR Integration`              | Allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat                                     | alle PRs                 |
 | `CI Gates (PR) / App Build`                   | Relevanter App-Build einschließlich selektivem `verify:runtime-artifact`                              | alle PRs                 |
@@ -226,6 +226,44 @@ veröffentlichen ihre vorhandenen SHA-gebundenen Evidenzartefakte; ausschließli
 die stabilen Aggregatoren `Unit` und `Coverage` treffen daraus die öffentliche,
 fail-closed Endentscheidung. Logs und Artefakte bleiben damit prüfbar, ohne eine
 zweite Summary- oder Paritätspolicy einzuführen.
+
+### Parallele Unit-Complete-Ausführung
+
+`Unit Fast Feedback` führt weiterhin die direkt geänderten Projekte aus. Die
+verbleibende Projektmenge verteilt `scripts/ci/unit-shards.ts` deterministisch
+auf vier `Unit Complete`-Jobs: Shard 1 enthält ausschließlich
+`sva-studio-react`, die übrigen Projekte werden dedupliziert, nach Namen
+sortiert und reihum auf Shards 2–4 verteilt. Die App bleibt als längstes
+gemessenes Target allein; die bestehenden Nx-Targets und App-Testauswahl
+werden nicht zerlegt. Die Verteilung benötigt keine externen Laufzeitdaten.
+
+Lokal bleibt `pnpm test:unit:affected` unverändert vollständig. Ein einzelner
+Rest-Shard lässt sich mit
+`pnpm test:unit:affected --phase remaining --shard 2/4` ausführen.
+Ungültige Shard-Parameter und Sharding anderer Phasen werden abgewiesen.
+Affected- und Full-Fallback-Scope verwenden dieselbe Verteilung.
+
+Jeder Shard veröffentlicht den vollständigen Scope-Plan und ausschließlich
+seine ausgeführten Projekte, auch als explizite `skipped`-Evidenz bei leerer
+Teilmenge. Der Required Check `Unit` verlangt erfolgreiche Jobresultate,
+`unit-direct` sowie alle vier `unit-remaining-N-of-4`-Artefakte. Er prüft
+Head-SHA, gleiche Base und gleichen Scope-Modus, identische Scope-Pläne, exakte Projektzuordnung
+sowie Disjunktheit. Fehlende, doppelte, fremde, fehlgeschlagene oder
+unvollständige Evidenz blockiert den Check. Doku-No-ops bleiben erfolgreich.
+
+Die Matrix verwendet `fail-fast: true`; innerhalb jedes Shards stoppt der
+Runner beim ersten fehlgeschlagenen Target. Der bestehende einmalige Retry
+für als Infrastrukturfehler klassifizierte Kommandos bleibt erhalten.
+Artefaktnamen enthalten Shard und `github.run_id`, aber nicht
+`github.run_attempt`; `overwrite: true` ersetzt bei Teilwiederholungen nur die
+Evidenz des erneut ausgeführten Shards. Abgebrochene Shards müssen ebenfalls
+erfolgreich wiederholt werden, bevor `Unit` grün werden kann.
+
+Nx-Targets, deren Cache-Inputs und der runnerlokale Nx-Cache bleiben erhalten.
+Der bestehende pnpm-Cache wird weiter genutzt; zwischen Runnern wird kein
+lokales `.nx/cache` übertragen. Zusätzliche Runner bauen deshalb ihre eigenen
+Abhängigkeiten. Laufzeit, Retries und Grenzen der Stichprobe sind im
+Repository-Messbericht `docs/reports/unit-complete-sharding-1328.md` dokumentiert.
 
 ### Echte Integrationsziele
 

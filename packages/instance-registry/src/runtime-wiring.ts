@@ -105,28 +105,35 @@ const beginScopedTransaction = async (
   await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
 };
 
+const withInstanceTransaction = async <T>(
+  deps: InstanceRegistryRuntimeDeps,
+  instanceId: string,
+  begin: (client: InstanceRegistryQueryClient, instanceId: string) => Promise<void>,
+  work: (client: InstanceRegistryQueryClient) => Promise<T>
+): Promise<T> => {
+  const pool = deps.resolvePool();
+  if (!pool) {
+    throw new Error('IAM database not configured');
+  }
+  const client = await pool.connect();
+  try {
+    await begin(client, instanceId);
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
   const withScopedClient = async <T>(
     instanceId: string,
     work: (client: InstanceRegistryQueryClient) => Promise<T>
-  ): Promise<T> => {
-    const pool = deps.resolvePool();
-    if (!pool) {
-      throw new Error('IAM database not configured');
-    }
-    const client = await pool.connect();
-    try {
-      await beginScopedTransaction(client, instanceId);
-      const result = await work(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  };
+  ): Promise<T> => withInstanceTransaction(deps, instanceId, beginScopedTransaction, work);
   const withRegistryRepository = async <T>(
     work: (repository: InstanceRegistryRepository) => Promise<T>
   ): Promise<T> => {
@@ -149,24 +156,10 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
   const withLockedRegistryRepository = async <T>(
     instanceId: string,
     work: (repository: InstanceRegistryRepository) => Promise<T>
-  ): Promise<T> => {
-    const pool = deps.resolvePool();
-    if (!pool) {
-      throw new Error('IAM database not configured');
-    }
-    const client = await pool.connect();
-    try {
-      await beginLockedTransaction(client, instanceId);
-      const result = await work(deps.createRepository(createExecutor(client)));
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  };
+  ): Promise<T> =>
+    withInstanceTransaction(deps, instanceId, beginLockedTransaction, (client) =>
+      work(deps.createRepository(createExecutor(client)))
+    );
   const createService = (
     repository: InstanceRegistryRepository,
     serviceDeps: Omit<InstanceRegistryServiceDeps, 'repository'>

@@ -17,7 +17,11 @@ vi.mock('@sva/server-runtime', async () => {
 
 import { createInstanceRegistryService } from './service.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
-import { createGetKeycloakStatusHandler } from './service-keycloak.js';
+import {
+  createGetKeycloakPreflightHandler,
+  createGetKeycloakStatusHandler,
+  createPlanKeycloakProvisioningHandler,
+} from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const baseInstance = {
@@ -2271,6 +2275,102 @@ describe('instance registry service facade', () => {
       tenantAdminClientSecretReadable: false,
       tenantAdminClientSecretAligned: false,
       runtimeSecretSource: 'global',
+    });
+  });
+
+  it('normalizes an outdated imported-realm admin blocker from a persisted preflight snapshot', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        realmMode: 'existing' as const,
+        tenantAdminBootstrap: undefined,
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'worker_preflight_snapshot',
+              title: 'Preflight',
+              status: 'failed',
+              summary: 'Blocked',
+              details: {
+                preflight: {
+                  overallStatus: 'blocked',
+                  checkedAt: '2026-09-10T00:00:00.000Z',
+                  checks: [
+                    {
+                      checkKey: 'tenant_admin_profile',
+                      title: 'Tenant-Admin-Profil',
+                      status: 'blocked',
+                      summary: 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
+                      details: { configured: false },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const preflight = await createGetKeycloakPreflightHandler(createDeps(repository))('demo');
+
+    expect(preflight).toMatchObject({
+      overallStatus: 'warning',
+      checks: [{ checkKey: 'tenant_admin_profile', status: 'warning' }],
+    });
+  });
+
+  it('invalidates an outdated imported-realm plan that would create a tenant admin', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        realmMode: 'existing' as const,
+        tenantAdminBootstrap: undefined,
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'worker_plan_snapshot',
+              title: 'Plan',
+              status: 'failed',
+              summary: 'Blocked',
+              details: {
+                plan: {
+                  mode: 'existing',
+                  overallStatus: 'blocked',
+                  generatedAt: '2026-09-10T00:00:00.000Z',
+                  driftSummary: 'Provisioning ist blockiert.',
+                  steps: [
+                    {
+                      stepKey: 'tenant_admin',
+                      title: 'Tenant-Admin sicherstellen',
+                      action: 'create',
+                      status: 'blocked',
+                      summary: 'Tenant-Admin wird erstellt.',
+                      details: {},
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const plan = await createPlanKeycloakProvisioningHandler(createDeps(repository))('demo');
+
+    expect(plan).toMatchObject({
+      overallStatus: 'ready',
+      steps: expect.arrayContaining([
+        expect.objectContaining({ stepKey: 'roles', action: 'create', status: 'ready' }),
+        expect.objectContaining({ stepKey: 'tenant_admin', action: 'skip', status: 'ready' }),
+      ]),
     });
   });
 

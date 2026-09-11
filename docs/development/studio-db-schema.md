@@ -111,12 +111,6 @@ Tenant-Zeitzone. Bestehende und zunächst nicht individuell konfigurierte
 Instanzen verwenden `Europe/Berlin`; Runtime-Verbraucher validieren den Wert
 zusätzlich als IANA-Zeitzone. `iam.instances.auth_realm` ist eindeutig, damit
 ein Keycloak-Realm atomar höchstens einer Studio-Instanz zugeordnet werden kann.
-Migration `0094` sperrt die Registry-Tabelle kurz und prüft Bestandsdaten vor
-dem Constraint. Bei vorhandenen Duplikaten bricht sie mit einer konkreten
-Diagnose und Abfragehilfe ab. Der Betrieb muss dann die tatsächliche
-Realm-Zugehörigkeit prüfen, jeder betroffenen Instanz einen eindeutigen Realm
-zuordnen und die Migration erneut starten; eine automatische Umbenennung oder
-Löschung wäre fachlich nicht sicher.
 
 Gesprächsinhalte, Einwilligungen, Sessions und ClickHouse-Auswertungen gehören
 nicht in diese Datenbank. Der zentrale Snapshot

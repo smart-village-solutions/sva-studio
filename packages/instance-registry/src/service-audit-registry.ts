@@ -1,9 +1,8 @@
 import type { InstanceAuditCheck } from '@sva/core';
 
-import { CHECK_IDS, createCheck, createSkipCheck } from './service-audit-shared.js';
+import { CHECK_IDS, createCheck } from './service-audit-shared.js';
 
-const hasConfiguredValue = (value?: string): value is string =>
-  typeof value === 'string' && value.trim().length > 0;
+const hasConfiguredValue = (value?: string): value is string => typeof value === 'string' && value.trim().length > 0;
 
 const createConfiguredValueCheck = (input: {
   checkId: string;
@@ -22,9 +21,7 @@ const createConfiguredValueCheck = (input: {
     expected: input.expected,
     actual: hasConfiguredValue(input.configuredValue) ? input.configuredValue : 'leer',
     evidenceSource: 'instance_registry',
-    message: hasConfiguredValue(input.configuredValue)
-      ? input.configuredMessage
-      : input.missingMessage,
+    message: hasConfiguredValue(input.configuredValue) ? input.configuredMessage : input.missingMessage,
     remediationHint: hasConfiguredValue(input.configuredValue) ? undefined : input.remediationHint,
   });
 
@@ -49,9 +46,7 @@ const createSecretConfiguredCheck = (input: {
     remediationHint: input.configured ? undefined : input.remediationHint,
   });
 
-export const probeInstanceUrlReachability = async (
-  primaryHostname: string
-): Promise<InstanceAuditCheck> => {
+export const probeInstanceUrlReachability = async (primaryHostname: string): Promise<InstanceAuditCheck> => {
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), 8_000);
   const url = `https://${primaryHostname}`;
@@ -74,9 +69,7 @@ export const probeInstanceUrlReachability = async (
       message: reachable
         ? 'Die Instanz antwortet über HTTPS.'
         : 'Die Instanz ist erreichbar, liefert aber einen Serverfehler zurück.',
-      remediationHint: reachable
-        ? undefined
-        : 'HTTP-Routing, Deployment und Upstream-Health prüfen.',
+      remediationHint: reachable ? undefined : 'HTTP-Routing, Deployment und Upstream-Health prüfen.',
     });
   } catch (error) {
     return createCheck({
@@ -115,8 +108,7 @@ export const createRegistryChecks = (input: {
       input.status === 'active'
         ? 'Die Instanz ist in der Registry als aktiv markiert.'
         : 'Die Instanz ist in der Registry nicht als aktiv markiert.',
-    remediationHint:
-      input.status === 'active' ? undefined : 'Registry-Status und Lifecycle der Instanz prüfen.',
+    remediationHint: input.status === 'active' ? undefined : 'Registry-Status und Lifecycle der Instanz prüfen.',
   }),
   createConfiguredValueCheck({
     checkId: CHECK_IDS.registryRealmPresent,
@@ -165,33 +157,19 @@ export const createRegistryChecks = (input: {
   }),
 ];
 
-export const createLocalIamCheck = (
-  assignmentCount: number,
-  required = true
-): InstanceAuditCheck =>
-  required
-    ? createCheck({
-        checkId: CHECK_IDS.localSystemAdminAssignmentExists,
-        title: 'Lokale system_admin-Zuordnung vorhanden',
-        scope: 'localIam',
-        status: assignmentCount > 0 ? 'pass' : 'fail',
-        expected: 'Mindestens eine aktive lokale system_admin-Zuordnung',
-        actual: `${assignmentCount} aktive Zuordnungen`,
-        evidenceSource: 'iam_database',
-        message:
-          assignmentCount > 0
-            ? 'Im lokalen IAM existiert mindestens eine aktive system_admin-Zuordnung.'
-            : 'Im lokalen IAM wurde keine aktive system_admin-Zuordnung gefunden.',
-        remediationHint:
-          assignmentCount > 0
-            ? undefined
-            : 'Lokale Rollen-Synchronisierung und Bootstrap-Zuordnung des Tenant-Admins prüfen.',
-      })
-    : createSkipCheck(
-        CHECK_IDS.localSystemAdminAssignmentExists,
-        'Lokale system_admin-Zuordnung vorhanden',
-        'localIam',
-        'Mindestens eine aktive lokale system_admin-Zuordnung',
-        'iam_database',
-        'Für diesen importierten Realm ist kein Bootstrap-Admin konfiguriert.'
-      );
+export const createLocalIamCheck = (assignmentCount: number): InstanceAuditCheck =>
+  createCheck({
+    checkId: CHECK_IDS.localSystemAdminAssignmentExists,
+    title: 'Lokale system_admin-Zuordnung vorhanden',
+    scope: 'localIam',
+    status: assignmentCount > 0 ? 'pass' : 'fail',
+    expected: 'Mindestens eine aktive lokale system_admin-Zuordnung',
+    actual: `${assignmentCount} aktive Zuordnungen`,
+    evidenceSource: 'iam_database',
+    message:
+      assignmentCount > 0
+        ? 'Im lokalen IAM existiert mindestens eine aktive system_admin-Zuordnung.'
+        : 'Im lokalen IAM wurde keine aktive system_admin-Zuordnung gefunden.',
+    remediationHint:
+      assignmentCount > 0 ? undefined : 'Lokale Rollen-Synchronisierung und Bootstrap-Zuordnung des Tenant-Admins prüfen.',
+  });

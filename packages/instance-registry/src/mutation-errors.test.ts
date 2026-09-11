@@ -69,17 +69,6 @@ describe('mutation-errors', () => {
     });
   });
 
-  it('classifies duplicate realm assignments as a stable conflict', () => {
-    expect(
-      classifyInstanceMutationError(
-        Object.assign(new Error('duplicate key'), {
-          code: '23505',
-          constraint: 'instances_auth_realm_unique',
-        })
-      )
-    ).toEqual({ status: 409, code: 'auth_realm_conflict' });
-  });
-
   it('classifies tenant RLS and schema write failures as database failures', () => {
     expect(
       classifyInstanceMutationError(

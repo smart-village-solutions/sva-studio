@@ -567,14 +567,10 @@ test('instance realm migration and schema snapshot enforce exclusive realm owner
   const upSql = sql.split('-- +goose Down')[0] ?? '';
   const downSql = sql.split('-- +goose Down')[1] ?? '';
 
-  expect(upSql.indexOf('LOCK TABLE iam.instances')).toBeLessThan(
-    upSql.indexOf('ADD CONSTRAINT instances_auth_realm_unique')
-  );
-  expect(upSql).toMatch(/GROUP BY auth_realm\s+HAVING COUNT\(\*\) > 1/);
-  expect(upSql).toContain('Cannot enforce exclusive Keycloak realm ownership');
-  expect(upSql).not.toMatch(/\b(?:DELETE|UPDATE)\s+iam\.instances\b/);
   for (const source of [upSql, schemaSnapshot]) {
-    expect(source).toMatch(/ADD CONSTRAINT instances_auth_realm_unique UNIQUE \(auth_realm\)/);
+    expect(source).toMatch(
+      /ADD CONSTRAINT instances_auth_realm_unique UNIQUE \(auth_realm\)/
+    );
   }
 
   expect(downSql).toMatch(/DROP CONSTRAINT instances_auth_realm_unique/);

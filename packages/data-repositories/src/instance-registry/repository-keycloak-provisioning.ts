@@ -13,6 +13,7 @@ import type {
   KeycloakProvisioningRunRow,
   KeycloakProvisioningStepRow,
 } from './repository-types.js';
+import { staleKeycloakProvisioningRunRecoveryCte } from './repository-keycloak-claim-sql.js';
 
 type KeycloakProvisioningRepository = Pick<
   InstanceRegistryRepository,
@@ -77,29 +78,7 @@ const claimNextKeycloakProvisioningRun = async (
     executor,
     statement(
       `
-WITH stale_instances AS MATERIALIZED (
-  SELECT DISTINCT instance_id
-  FROM iam.instance_keycloak_provisioning_runs
-  WHERE overall_status = 'running'
-    AND updated_at < NOW() - INTERVAL '15 minutes'
-),
-recoverable_instances AS MATERIALIZED (
-  SELECT instance_id
-  FROM stale_instances
-  WHERE pg_try_advisory_xact_lock(hashtextextended(instance_id, 0))
-),
-recovered_runs AS (
-  UPDATE iam.instance_keycloak_provisioning_runs AS stale
-  SET
-    overall_status = 'failed',
-    drift_summary = 'Provisioning-Lauf nach abgebrochenem Worker-Claim automatisch beendet.',
-    updated_at = NOW()
-  FROM recoverable_instances
-  WHERE stale.instance_id = recoverable_instances.instance_id
-    AND stale.overall_status = 'running'
-    AND stale.updated_at < NOW() - INTERVAL '15 minutes'
-  RETURNING stale.id
-),
+WITH ${staleKeycloakProvisioningRunRecoveryCte},
 next_run AS (
   SELECT candidate.id
   FROM iam.instance_keycloak_provisioning_runs AS candidate

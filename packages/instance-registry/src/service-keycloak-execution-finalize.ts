@@ -8,7 +8,10 @@ import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { loadInstanceWithSecret, loadKeycloakSnapshotSecretVersions } from './service-keycloak-secrets.js';
+import {
+  loadInstanceWithSecret,
+  loadKeycloakSnapshotSecretVersions,
+} from './service-keycloak-secrets.js';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
 import { buildProvisioningInput } from './service-keycloak-execution-payload.js';
 import {
@@ -33,6 +36,18 @@ type CompleteRunInput = {
   pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
 
+const assertParentProvisioningRunActive = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CompleteRunInput
+): Promise<void> => {
+  const parent = (
+    await deps.repository.listProvisioningRuns(input.loaded.instance.instanceId)
+  ).find((run) => run.childKeycloakRunId === input.runId);
+  if (parent && !['requested', 'validated', 'provisioning'].includes(parent.status)) {
+    throw new Error('keycloak_parent_provisioning_run_inactive');
+  }
+};
+
 const buildStatusFromState = (
   provisioningInput: KeycloakProvisioningInput,
   state: KeycloakReadState
@@ -53,7 +68,10 @@ const appendFinalStatusSnapshot = async (
   snapshotInstance: InstanceRegistryRecord,
   state: KeycloakReadState
 ) => {
-  const finalProvisioningInput = { ...buildProvisioningInput({ ...input.loaded, instance: snapshotInstance }), pluginOidcClients: input.pluginOidcClients ?? [] };
+  const finalProvisioningInput = {
+    ...buildProvisioningInput({ ...input.loaded, instance: snapshotInstance }),
+    pluginOidcClients: input.pluginOidcClients ?? [],
+  };
   const status = buildStatusFromState(finalProvisioningInput, state);
   const checks = buildPreflightChecks({
     realmMode: finalProvisioningInput.realmMode,
@@ -101,15 +119,15 @@ const appendFinalStatusSnapshot = async (
   });
 };
 
-export const completeRun = async (
-  deps: InstanceRegistryServiceDeps,
-  input: CompleteRunInput
-) => {
+export const completeRun = async (deps: InstanceRegistryServiceDeps, input: CompleteRunInput) => {
   const readKeycloakState = deps.readKeycloakStateViaProvisioner;
   if (!readKeycloakState) {
     throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
   }
-  const provisioningInput = { ...buildProvisioningInput(input.loaded), pluginOidcClients: input.pluginOidcClients ?? [] };
+  const provisioningInput = {
+    ...buildProvisioningInput(input.loaded),
+    pluginOidcClients: input.pluginOidcClients ?? [],
+  };
   const state = await readKeycloakState(provisioningInput);
   const status = buildStatusFromState(provisioningInput, state);
   const requireTenantAdmin = isInstanceTenantAdminRequired(input.loaded.instance);
@@ -128,6 +146,8 @@ export const completeRun = async (
       areAllInstanceKeycloakRequirementsSatisfied(status, { requireTenantAdmin }))
       ? 'succeeded'
       : 'failed';
+
+  await assertParentProvisioningRunActive(deps, input);
 
   let snapshotInstance = input.loaded.instance;
 

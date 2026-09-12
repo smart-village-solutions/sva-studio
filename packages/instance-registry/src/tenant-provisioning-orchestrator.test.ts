@@ -338,6 +338,39 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
+  it('accepts only the correlated Keycloak new-to-existing realm transition', async () => {
+    const harness = createHarness();
+    const newRealmInstance = { ...harness.getInstance(), realmMode: 'new' as const };
+    harness.changeInstance(newRealmInstance);
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'keycloak',
+      childKeycloakRunId: '00000000-0000-4000-8000-000000000002',
+      desiredSnapshot: buildTenantProvisioningSnapshot(
+        newRealmInstance,
+        {
+          instanceId: newRealmInstance.instanceId,
+          displayName: newRealmInstance.displayName,
+          parentDomain: newRealmInstance.parentDomain,
+          realmMode: 'new',
+          authRealm: newRealmInstance.authRealm,
+          authClientId: newRealmInstance.authClientId,
+          authIssuerUrl: newRealmInstance.authIssuerUrl,
+          idempotencyKey: 'idem-1',
+          featureFlags: newRealmInstance.featureFlags,
+        },
+        'fingerprint-1',
+        'kassel-traefik-file'
+      ),
+    });
+    harness.changeInstance({ realmMode: 'existing' });
+    harness.setKeycloakStatus('succeeded');
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun().stepKey).toBe('lifecycle');
+  });
+
   it('renews the lease while a provisioning step is still running', async () => {
     vi.useFakeTimers({ now });
     try {

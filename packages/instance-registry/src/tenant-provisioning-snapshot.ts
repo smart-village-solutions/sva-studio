@@ -39,7 +39,14 @@ export const assertTenantProvisioningSnapshotCurrent = (
   instance: InstanceRegistryRecord
 ): void => {
   const snapshot = run.desiredSnapshot;
-  const registryFingerprint = buildPayloadFingerprint(registryConfiguration(instance));
+  const expectedRealmTransition =
+    snapshot.realmMode === 'new' &&
+    instance.realmMode === 'existing' &&
+    typeof run.childKeycloakRunId === 'string';
+  const fingerprintInput = expectedRealmTransition
+    ? { ...instance, realmMode: 'new' as const }
+    : instance;
+  const registryFingerprint = buildPayloadFingerprint(registryConfiguration(fingerprintInput));
   const secretRequirementsMet =
     (snapshot.authClientSecretRequired !== true || instance.authClientSecretConfigured) &&
     (snapshot.tenantAdminClientSecretRequired !== true ||

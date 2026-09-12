@@ -31,14 +31,32 @@ describe('SSF runtime deployment contract', () => {
     expect(provisioner).toContain(
       "SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'"
     );
+    expect(provisioner).toContain(
+      "SVA_STUDIO_SSF_DATABASE_URL: '${SVA_STUDIO_SSF_DATABASE_URL:-}'"
+    );
+    expect(provisioner).toContain(
+      "SVA_STUDIO_SSF_ROOT_DATABASE_URL: '${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'"
+    );
     const canonicalApp = canonicalCompose.slice(
       canonicalCompose.indexOf('  app:'),
       canonicalCompose.indexOf('  provisioner:')
     );
     const canonicalProvisioner = canonicalCompose.slice(canonicalCompose.indexOf('  provisioner:'));
     expect(canonicalApp).toContain('SVA_STUDIO_SSF_LOGIN_ORIGIN=${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}');
+    expect(canonicalApp).toContain(
+      'SVA_STUDIO_SSF_DATABASE_URL=${SVA_STUDIO_SSF_DATABASE_URL:-}'
+    );
+    expect(canonicalApp).toContain(
+      'SVA_STUDIO_SSF_ROOT_DATABASE_URL=${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'
+    );
     expect(canonicalProvisioner).toContain(
       'SVA_STUDIO_SSF_LOGIN_ORIGIN=${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'
+    );
+    expect(canonicalProvisioner).toContain(
+      'SVA_STUDIO_SSF_DATABASE_URL=${SVA_STUDIO_SSF_DATABASE_URL:-}'
+    );
+    expect(canonicalProvisioner).toContain(
+      'SVA_STUDIO_SSF_ROOT_DATABASE_URL=${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'
     );
     expect(compose).toContain(
       "SSF_PLUGIN_DATABASE_ENABLED: '${SSF_PLUGIN_DATABASE_ENABLED:-false}'"

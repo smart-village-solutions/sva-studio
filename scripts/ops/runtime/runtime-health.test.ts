@@ -364,6 +364,7 @@ describe('runtime-health helpers', () => {
     expect(lokiQueries).toContain(
       '{swarm_service=~".*keycloak_keycloak"} |= "Non-secure context detected; cookies are not secured"',
     );
+    expect(fetchCalls).toContain('https://issuer.example.test/realms/studio/protocol/openid-connect/auth');
   });
 
   it('fails observability readiness when Keycloak reports an insecure cookie context', async () => {
@@ -496,6 +497,98 @@ describe('runtime-health helpers', () => {
       name: 'observability-readiness',
       status: 'error',
     }));
+  });
+
+  it('fails closed when the Keycloak Loki response reports an error status', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      data: { result: [] },
+      status: 'error',
+    }), { status: 200 })));
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_probe_failed',
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+  });
+
+  it('follows the tenant authorization redirect without exposing its URL', async () => {
+    const sensitiveAuthorizationUrl = 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: { location: sensitiveAuthorizationUrl },
+        status: 302,
+      }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    const result = await ops.buildTenantAuthProofCheck('studio', {
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, new URL(sensitiveAuthorizationUrl), expect.objectContaining({
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    }));
+    expect(result).toEqual(expect.objectContaining({
+      code: 'tenant_auth_authorization_failed',
+      status: 'error',
+    }));
+    expect(JSON.stringify(result)).not.toContain('sensitive-state');
+    expect(JSON.stringify(result)).not.toContain(sensitiveAuthorizationUrl);
   });
 
   it('uses timeouts for login and me smoke requests', async () => {

@@ -66,9 +66,11 @@ enthält nur eine untere Grenze der Trefferzahl, das Abfragelimit und die Fenste
 Logzeilen. Leere Ergebnisse werden vor einem grünen Ergebnis dreimal mit jeweils zwei Sekunden
 Abstand abgefragt, damit ein kurzer Loki-Ingestion-Lag nicht zu einem falschen Erfolg führt. Ist
 Loki konfiguriert, aber die Sicherheitsabfrage schlägt fehl, wird der Gate ebenfalls blockierend
-`error`; das gilt auch für eine HTTP-Erfolgsantwort ohne gültiges Loki-`data.result`. Im Precheck
-läuft die Sicherheitsabfrage nach dem Tenant-Login-Probe, damit dessen Keycloak-Warnung noch im
-selben Lauf erkannt wird. Fehlende lokale Loki-Zugangskonfiguration bleibt als `warn` sichtbar und
+`error`; das gilt auch für eine HTTP-Erfolgsantwort ohne Loki-Status `success` und gültiges
+`data.result`. Im Precheck folgt der Tenant-Login-Probe dem validierten HTTPS-Authorization-Redirect
+genau bis zu Keycloak, ohne URL oder Cookies zu protokollieren, und führt erst danach die
+Sicherheitsabfrage aus. Dadurch wird eine dabei erzeugte Keycloak-Warnung noch im selben Lauf
+erkannt. Fehlende lokale Loki-Zugangskonfiguration bleibt als `warn` sichtbar und
 ist kein Freigabenachweis.
 
 Für den Zugriff werden wie bei den übrigen Runtime-Probes `SVA_LOKI_URL` und ein nur lesbares

@@ -42,8 +42,10 @@ const queryRecentLokiLines = async (
   url.searchParams.set('start', String((Date.now() - LOKI_PROBE_WINDOW_MINUTES * 60 * 1000) * 1_000_000));
   const response = await fetch(url, { headers: { Authorization: `Bearer ${grafanaToken}` }, signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`loki_probe_failed:${response.status}`);
-  const payload = (await response.json()) as { data?: { result?: Array<{ values?: string[][] }> } };
-  if (strictResult && !Array.isArray(payload.data?.result)) throw new Error('loki_probe_invalid_response');
+  const payload = (await response.json()) as { data?: { result?: Array<{ values?: string[][] }> }; status?: unknown };
+  if (strictResult && (payload.status !== 'success' || !Array.isArray(payload.data?.result))) {
+    throw new Error('loki_probe_invalid_response');
+  }
   return (payload.data?.result ?? []).flatMap((entry) => (entry.values ?? []).map((value) => value[1] ?? '')).filter((line) => line.length > 0);
 };
 
@@ -163,7 +165,22 @@ const buildObservabilityDoctorCheck = async (
 
 type TenantAuthRedirectProbeResult =
   | { failedCheck: DoctorCheck }
-  | { probeResults: Array<{ authRealm: string; host: string; instanceId: string; location: string }>; source: TenantRuntimeTargetResolution['source'] };
+  | { probeResults: Array<{ authRealm: string; host: string; instanceId: string }>; source: TenantRuntimeTargetResolution['source'] };
+
+const parseTenantAuthorizationUrl = (location: string, target: string, authRealm: string): URL | null => {
+  try {
+    const authorizationUrl = new URL(location, target);
+    const expectedPathPrefix = `/realms/${encodeURIComponent(authRealm)}/protocol/openid-connect/auth`;
+    return authorizationUrl.protocol === 'https:'
+      && authorizationUrl.username.length === 0
+      && authorizationUrl.password.length === 0
+      && authorizationUrl.pathname === expectedPathPrefix
+      ? authorizationUrl
+      : null;
+  } catch {
+    return null;
+  }
+};
 
 const probeTenantAuthRedirects = async (
   deps: RuntimeHealthDeps,
@@ -171,15 +188,30 @@ const probeTenantAuthRedirects = async (
   tenantTargetResolution: TenantRuntimeTargetResolution,
 ): Promise<TenantAuthRedirectProbeResult> => {
   const baseProtocol = new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol;
-  const probeResults: Array<{ authRealm: string; host: string; instanceId: string; location: string }> = [];
+  const probeResults: Array<{ authRealm: string; host: string; instanceId: string }> = [];
   for (const tenantTarget of tenantTargetResolution.targets.slice(0, 2)) {
     const target = `${baseProtocol}//${tenantTarget.host}/auth/login`;
     const response = await fetch(target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
     const location = response.headers.get('location') ?? '';
-    if (response.status !== 302 || !location.includes(`/realms/${tenantTarget.authRealm}/`)) {
-      return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_redirect_failed', `Tenant-Login fuer ${tenantTarget.instanceId} liefert keinen korrekten Realm-Redirect.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, location, source: tenantTargetResolution.source, status: response.status }) };
+    const authorizationUrl = response.status === 302
+      ? parseTenantAuthorizationUrl(location, target, tenantTarget.authRealm)
+      : null;
+    if (!authorizationUrl) {
+      return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_redirect_failed', `Tenant-Login fuer ${tenantTarget.instanceId} liefert keinen korrekten Realm-Redirect.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source, status: response.status }) };
     }
-    probeResults.push({ authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, location });
+    try {
+      const authorizationResponse = await fetch(authorizationUrl, {
+        headers: { Accept: 'text/html' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!authorizationResponse.ok) {
+        return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_authorization_failed', `Keycloak-Authorization fuer ${tenantTarget.instanceId} ist nicht erreichbar.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source, status: authorizationResponse.status }) };
+      }
+    } catch {
+      return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_authorization_failed', `Keycloak-Authorization fuer ${tenantTarget.instanceId} ist nicht erreichbar.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source }) };
+    }
+    probeResults.push({ authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId });
   }
   return { probeResults, source: tenantTargetResolution.source };
 };

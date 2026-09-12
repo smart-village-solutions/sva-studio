@@ -927,6 +927,53 @@ describe('instance registry service facade', () => {
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
   });
 
+  it('persists the environment-resolved public issuer in the create snapshot', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+    });
+    const resolveProvisioningAuthIssuerUrl = vi.fn(
+      () => 'https://auth.dialog.kassel.de/realms/smartcity'
+    );
+    const service = createInstanceRegistryService(
+      createDeps(repository, { resolveProvisioningAuthIssuerUrl })
+    );
+
+    await service.createProvisioningRequest({
+      instanceId: 'new-tenant',
+      displayName: 'Neuer Mandant',
+      parentDomain: 'dialog.kassel.de',
+      realmMode: 'existing',
+      authRealm: 'smartcity',
+      authClientId: 'sva-studio-login',
+      idempotencyKey: 'idem-kassel-1',
+    });
+
+    expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith({
+      parentDomain: 'dialog.kassel.de',
+      authRealm: 'smartcity',
+      authIssuerUrl: undefined,
+    });
+    expect(repository.createInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
+      })
+    );
+    expect(repository.createProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payloadFingerprint: buildCreateInstancePayloadFingerprint({
+          instanceId: 'new-tenant',
+          displayName: 'Neuer Mandant',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'existing',
+          authRealm: 'smartcity',
+          authClientId: 'sva-studio-login',
+          authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
+          idempotencyKey: 'idem-kassel-1',
+        }),
+      })
+    );
+  });
+
   it.each([
     [
       'registry_lookup',
@@ -2347,24 +2394,28 @@ describe('instance registry service facade', () => {
       getInstanceById: vi.fn(async () => baseInstance),
       getAuthClientSecretCiphertext: vi.fn(async () => 'cipher-auth-v2'),
       getTenantAdminClientSecretCiphertext: vi.fn(async () => 'cipher-admin-v2'),
-      listKeycloakProvisioningRuns: vi.fn(async () => [{
-        ...latestRun,
-        steps: [{
-          stepKey: 'status_snapshot',
-          title: 'Status',
-          status: 'done',
-          summary: 'Final',
-          details: {
-            policyVersion: 3,
-            inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance, {
-              authClientSecretCiphertext: 'cipher-auth-v2',
-              tenantAdminClientSecretCiphertext: 'cipher-admin-v2',
-            }),
-            preflight,
-            plan,
-          },
-        }],
-      }]),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Final',
+              details: {
+                policyVersion: 3,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance, {
+                  authClientSecretCiphertext: 'cipher-auth-v2',
+                  tenantAdminClientSecretCiphertext: 'cipher-admin-v2',
+                }),
+                preflight,
+                plan,
+              },
+            },
+          ],
+        },
+      ]),
     });
     const deps = createDeps(repository);
 
@@ -2520,9 +2571,7 @@ describe('instance registry service facade', () => {
 
   it('returns a persisted keycloak status snapshot without decrypting secrets', async () => {
     const getAuthClientSecretCiphertext = vi.fn(async () => 'auth-ciphertext');
-    const getTenantAdminClientSecretCiphertext = vi.fn(
-      async () => 'tenant-admin-ciphertext'
-    );
+    const getTenantAdminClientSecretCiphertext = vi.fn(async () => 'tenant-admin-ciphertext');
     const secretVersions = {
       authClientSecretCiphertext: 'auth-ciphertext',
       tenantAdminClientSecretCiphertext: 'tenant-admin-ciphertext',

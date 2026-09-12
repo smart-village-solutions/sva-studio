@@ -1,8 +1,4 @@
-import {
-  buildPrimaryHostname,
-  canTransitionInstanceStatus,
-  normalizeHost,
-} from '@sva/core';
+import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
 import type { InstanceRegistryRecord } from '@sva/core';
 
 import type {
@@ -26,7 +22,10 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
-import { assertOidcClientIdsNotReserved, assertTenantHostnameAvailable } from './service-reservations.js';
+import {
+  assertOidcClientIdsNotReserved,
+  assertTenantHostnameAvailable,
+} from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 
 const assertIdempotentCreateRetry = async (
@@ -89,88 +88,101 @@ const resolveConcurrentIdempotentCreateRetry = async (
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
-    assertOidcClientIdsNotReserved(deps, input);
-    assertTenantHostnameAvailable(deps, buildPrimaryHostname(input.instanceId, input.parentDomain));
+    const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
+      parentDomain: input.parentDomain,
+      authRealm: input.authRealm,
+      authIssuerUrl: input.authIssuerUrl,
+    });
+    const effectiveInput = authIssuerUrl ? { ...input, authIssuerUrl } : input;
+    assertOidcClientIdsNotReserved(deps, effectiveInput);
+    assertTenantHostnameAvailable(
+      deps,
+      buildPrimaryHostname(effectiveInput.instanceId, effectiveInput.parentDomain)
+    );
     instanceRegistryServiceLogger.info('instance_create_requested', {
       operation: 'create_instance',
-      instance_id: input.instanceId,
-      request_id: input.requestId,
-      actor_id: input.actorId,
+      instance_id: effectiveInput.instanceId,
+      request_id: effectiveInput.requestId,
+      actor_id: effectiveInput.actorId,
     });
     const existing = await runInstanceRegistryStep('registry_lookup', () =>
-      deps.repository.getInstanceById(input.instanceId)
+      deps.repository.getInstanceById(effectiveInput.instanceId)
     );
     if (existing) {
-      const retry = await resolveIdempotentCreateRetry(deps, input, existing);
+      const retry = await resolveIdempotentCreateRetry(deps, effectiveInput, existing);
       if (retry) return retry;
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
-        instance_id: input.instanceId,
-        request_id: input.requestId,
+        instance_id: effectiveInput.instanceId,
+        request_id: effectiveInput.requestId,
       });
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    const normalizedParentDomain = normalizeHost(input.parentDomain);
-    const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
-    const tenantAdminClient = input.tenantAdminClient ?? {
+    const normalizedParentDomain = normalizeHost(effectiveInput.parentDomain);
+    const primaryHostname = buildPrimaryHostname(effectiveInput.instanceId, normalizedParentDomain);
+    const tenantAdminClient = effectiveInput.tenantAdminClient ?? {
       clientId: DEFAULT_TENANT_ADMIN_CLIENT_ID,
     };
     const instance = await runInstanceRegistryStep('registry_insert', () =>
       deps.repository.createInstance({
-        instanceId: input.instanceId,
-        displayName: input.displayName,
+        instanceId: effectiveInput.instanceId,
+        displayName: effectiveInput.displayName,
         status: 'requested',
         parentDomain: normalizedParentDomain,
         primaryHostname,
-        realmMode: input.realmMode,
-        authRealm: input.authRealm,
-        authClientId: input.authClientId,
-        authIssuerUrl: input.authIssuerUrl,
+        realmMode: effectiveInput.realmMode,
+        authRealm: effectiveInput.authRealm,
+        authClientId: effectiveInput.authClientId,
+        authIssuerUrl: effectiveInput.authIssuerUrl,
         authClientSecretCiphertext: encryptAuthClientSecret(
           deps,
-          input.instanceId,
-          input.authClientSecret
+          effectiveInput.instanceId,
+          effectiveInput.authClientSecret
         ),
         tenantAdminClient: tenantAdminClient
           ? {
               clientId: tenantAdminClient.clientId,
               secretCiphertext: encryptTenantAdminClientSecret(
                 deps,
-                input.instanceId,
+                effectiveInput.instanceId,
                 tenantAdminClient.secret
               ),
             }
           : undefined,
-        tenantAdminBootstrap: input.tenantAdminBootstrap,
-        actorId: input.actorId,
-        requestId: input.requestId,
-        themeKey: input.themeKey,
-        featureFlags: input.featureFlags,
-        mainserverConfigRef: input.mainserverConfigRef,
+        tenantAdminBootstrap: effectiveInput.tenantAdminBootstrap,
+        actorId: effectiveInput.actorId,
+        requestId: effectiveInput.requestId,
+        themeKey: effectiveInput.themeKey,
+        featureFlags: effectiveInput.featureFlags,
+        mainserverConfigRef: effectiveInput.mainserverConfigRef,
       })
     );
     if (!instance) {
       const concurrentInstance = await runInstanceRegistryStep('registry_lookup', () =>
-        deps.repository.getInstanceById(input.instanceId)
+        deps.repository.getInstanceById(effectiveInput.instanceId)
       );
       if (concurrentInstance) {
-        const retry = await resolveConcurrentIdempotentCreateRetry(deps, input, concurrentInstance);
+        const retry = await resolveConcurrentIdempotentCreateRetry(
+          deps,
+          effectiveInput,
+          concurrentInstance
+        );
         if (retry) return retry;
       }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
-        instance_id: input.instanceId,
-        request_id: input.requestId,
+        instance_id: effectiveInput.instanceId,
+        request_id: effectiveInput.requestId,
       });
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    await createProvisioningArtifacts(deps.repository, instance, input);
+    await createProvisioningArtifacts(deps.repository, instance, effectiveInput);
     await createReconcileModuleActivationPoliciesHandler(deps)({
       instanceId: instance.instanceId,
-      actorId: input.actorId,
-      requestId: input.requestId,
+      actorId: effectiveInput.actorId,
+      requestId: effectiveInput.requestId,
     });
     try {
       invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
@@ -181,7 +193,7 @@ export const createProvisioningRequestHandler =
       operation: 'create_instance',
       instance_id: instance.instanceId,
       status: instance.status,
-      request_id: input.requestId,
+      request_id: effectiveInput.requestId,
     });
     const reconciledInstance =
       (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;

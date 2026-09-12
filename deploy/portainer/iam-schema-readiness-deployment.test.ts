@@ -13,25 +13,39 @@ const readRepoFile = (path: string) =>
 
 describe('IAM schema readiness deployment contract', () => {
   const bootstrapEntrypoint = readRepoFile('deploy/portainer/bootstrap-entrypoint.sh');
-  it.each(['studio', 'auth', 'admin', 'tenant'])('validates bootstrap host %s before emitting SQL', (id) => {
-    const program = bootstrapEntrypoint.split("<<'NODE'")[1]?.split('\n').slice(1).join('\n').split('\nNODE\n')[0];
-    expect(program).toBeTruthy();
-    const result = spawnSync(process.execPath, ['--input-type=module'], {
-      cwd: resolve(import.meta.dirname, '../..'),
-      input: program,
-      encoding: 'utf8',
-      env: { ...process.env, APP_DB_PASSWORD: 'test-only', STUDIO_JOB_WORKER_DB_PASSWORD: 'test-only',
-        SVA_PARENT_DOMAIN: 'example.org', SVA_STUDIO_ROOT_HOST: 'admin.example.org', SVA_ALLOWED_INSTANCE_IDS: id },
-    });
-    if (id === 'tenant') {
-      expect(result.status).toBe(0);
-      expect(result.stdout).toContain('tenant.example.org');
-      return;
+  it.each(['studio', 'auth', 'admin', 'tenant'])(
+    'validates bootstrap host %s before emitting SQL',
+    (id) => {
+      const program = bootstrapEntrypoint
+        .split("<<'NODE'")[1]
+        ?.split('\n')
+        .slice(1)
+        .join('\n')
+        .split('\nNODE\n')[0];
+      expect(program).toBeTruthy();
+      const result = spawnSync(process.execPath, ['--input-type=module'], {
+        cwd: resolve(import.meta.dirname, '../..'),
+        input: program,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          APP_DB_PASSWORD: 'test-only',
+          STUDIO_JOB_WORKER_DB_PASSWORD: 'test-only',
+          SVA_PARENT_DOMAIN: 'example.org',
+          SVA_STUDIO_ROOT_HOST: 'admin.example.org',
+          SVA_ALLOWED_INSTANCE_IDS: id,
+        },
+      });
+      if (id === 'tenant') {
+        expect(result.status).toBe(0);
+        expect(result.stdout).toContain('tenant.example.org');
+        return;
+      }
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain('Bootstrap-Tenant-Hostname ist ungültig oder reserviert.');
+      expect(result.stdout).toBe('');
     }
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('Bootstrap-Tenant-Hostname ist ungültig oder reserviert.');
-    expect(result.stdout).toBe('');
-  });
+  );
 
   const candidatePreflight = readRepoFile('deploy/portainer/candidate-preflight.mjs');
   const migrateEntrypoints = [
@@ -51,6 +65,7 @@ describe('IAM schema readiness deployment contract', () => {
   const runtimeArtifactVerifier = readRepoFile('scripts/ci/verify-runtime-artifact.sh');
   const verifier = readRepoFile('deploy/portainer/verify-iam-schema.mjs');
   const standaloneProvisioner = readRepoFile('deploy/standalone/keycloak-provisioner.compose.yml');
+  const standaloneKasselIngress = readRepoFile('deploy/standalone/kassel-ingress.compose.yml');
   const standaloneUp = readRepoFile('deploy/standalone/up.sh');
   const standaloneRunbook = readRepoFile('docs/operations/ssf-standalone-hosts.md');
 
@@ -70,6 +85,21 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneProvisioner).not.toContain('traefik');
     expect(standaloneRunbook).toContain('keycloak-provisioner.compose.yml');
     expect(standaloneRunbook).toContain('ps app provisioner');
+  });
+
+  it('isolates the Kassel Traefik writer mount to the standalone provisioner', () => {
+    expect(standaloneKasselIngress).toContain('provisioner:');
+    expect(standaloneKasselIngress).toContain('app:');
+    expect(
+      standaloneKasselIngress.match(/^\s+SVA_KASSEL_PUBLIC_AUTH_ORIGIN:/gmu)
+    ).toHaveLength(2);
+    expect(standaloneKasselIngress).toContain(
+      '${SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST:?SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST must be set}'
+    );
+    expect(standaloneKasselIngress).toContain('/var/lib/sva-studio/traefik-dynamic');
+    expect(standaloneKasselIngress).toContain("SVA_TENANT_INGRESS_MODE: 'kassel-traefik-file'");
+    expect(standaloneKasselIngress).not.toContain('docker.sock');
+    expect(standaloneKasselIngress).not.toContain('letsencrypt');
   });
 
   it.each([
@@ -100,6 +130,8 @@ describe('IAM schema readiness deployment contract', () => {
     expect(result.status).toBe(0);
     expect(standaloneUp).toContain('-f app.compose.yml');
     expect(standaloneUp).toContain('-f keycloak-provisioner.compose.yml');
+    expect(standaloneUp).toContain('SVA_TENANT_INGRESS_MODE:-external');
+    expect(standaloneUp).toContain('-f kassel-ingress.compose.yml');
     expect(standaloneUp).toContain('up -d app provisioner');
   });
 

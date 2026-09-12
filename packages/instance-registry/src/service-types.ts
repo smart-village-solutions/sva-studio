@@ -152,6 +152,11 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
+  readonly resolveProvisioningAuthIssuerUrl?: (input: {
+    readonly parentDomain: string;
+    readonly authRealm: string;
+    readonly authIssuerUrl?: string;
+  }) => string | undefined;
   readonly reservedHostnames?: readonly string[] | (() => readonly string[]);
   readonly reservedOidcClientIds?: readonly string[] | (() => readonly string[]);
   readonly invalidatePermissionSnapshots?: (input: {
@@ -170,8 +175,7 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakStateViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<KeycloakReadState>;
-  readonly readPluginOidcClientRequirements?: () =>
-    KeycloakProvisioningInput['pluginOidcClients'];
+  readonly readPluginOidcClientRequirements?: () => KeycloakProvisioningInput['pluginOidcClients'];
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;

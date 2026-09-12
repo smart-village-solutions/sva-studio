@@ -22,8 +22,31 @@ case "${digest}" in
     ;;
 esac
 
+ingress_mode="${SVA_TENANT_INGRESS_MODE:-external}"
+case "${ingress_mode}" in
+  external) ;;
+  kassel-traefik-file)
+    if [ -z "${SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST:-}" ]; then
+      echo 'SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST must be set in kassel-traefik-file mode.' >&2
+      exit 64
+    fi
+    ;;
+  *)
+    echo 'SVA_TENANT_INGRESS_MODE must be external or kassel-traefik-file.' >&2
+    exit 64
+    ;;
+esac
+
 if [ "${1:-}" = '--validate-only' ]; then
   exit 0
+fi
+
+if [ "${ingress_mode}" = 'kassel-traefik-file' ]; then
+  exec docker compose \
+    -f app.compose.yml \
+    -f keycloak-provisioner.compose.yml \
+    -f kassel-ingress.compose.yml \
+    up -d app provisioner
 fi
 
 exec docker compose \

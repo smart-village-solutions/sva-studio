@@ -1,0 +1,14 @@
+services:
+  app:
+    environment:
+      SVA_TENANT_INGRESS_MODE: 'kassel-traefik-file'
+      SVA_KASSEL_PUBLIC_AUTH_ORIGIN: ${SVA_KASSEL_PUBLIC_AUTH_ORIGIN:-https://auth.dialog.kassel.de}
+
+  provisioner:
+    environment:
+      SVA_TENANT_INGRESS_MODE: 'kassel-traefik-file'
+      SVA_KASSEL_PUBLIC_AUTH_ORIGIN: ${SVA_KASSEL_PUBLIC_AUTH_ORIGIN:-https://auth.dialog.kassel.de}
+      SVA_KASSEL_TRAEFIK_DYNAMIC_DIR: /var/lib/sva-studio/traefik-dynamic
+      SVA_KASSEL_TRAEFIK_SERVICE: ${SVA_KASSEL_TRAEFIK_SERVICE:-sva-studio-ssf@docker}
+    volumes:
+      - ${SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST:?SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST must be set}:/var/lib/sva-studio/traefik-dynamic

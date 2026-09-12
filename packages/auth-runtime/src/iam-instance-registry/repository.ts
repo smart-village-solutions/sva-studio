@@ -32,6 +32,7 @@ import {
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
+import { resolveConfiguredProvisioningAuthIssuerUrl } from '../kassel-provisioning-auth.js';
 
 const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
@@ -260,6 +261,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,
     reservedOidcClientIds: readReservedPluginOidcClientIds,
     reservedHostnames: readReservedInstanceHostnames,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
@@ -282,6 +284,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     runConfiguredPluginTenantProvisioningSchedule(instanceId),
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,
     reservedOidcClientIds: readReservedPluginOidcClientIds,
     reservedHostnames: readReservedInstanceHostnames,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,

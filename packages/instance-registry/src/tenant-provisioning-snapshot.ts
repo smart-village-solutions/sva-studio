@@ -15,7 +15,7 @@ const registryConfiguration = (instance: InstanceRegistryRecord) => ({
   tenantAdminClientId: instance.tenantAdminClient?.clientId,
   tenantAdminBootstrap: instance.tenantAdminBootstrap,
   themeKey: instance.themeKey,
-  assignedModules: [...instance.assignedModules].sort(),
+  assignedModules: [...(instance.assignedModules ?? [])].sort(),
   featureFlags: instance.featureFlags,
   mainserverConfigRef: instance.mainserverConfigRef,
 });

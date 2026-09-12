@@ -1,20 +1,10 @@
 import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
-import type { InstanceRegistryRecord } from '@sva/core';
 
-import type {
-  CreateInstanceProvisioningInput,
-  CreateInstanceProvisioningResult,
-  UpdateInstanceInput,
-} from './mutation-types.js';
+import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createProvisioningArtifacts } from './service-provisioning.js';
 import {
-  buildCreateInstancePayloadFingerprint,
-  matchesPersistedCreateSecrets,
-} from './service-instance-create-fingerprint.js';
-import {
-  DEFAULT_TENANT_ADMIN_CLIENT_ID,
   encryptAuthClientSecret,
   encryptTenantAdminClientSecret,
   instanceRegistryServiceLogger,
@@ -27,89 +17,11 @@ import {
   assertTenantHostnameAvailable,
 } from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
-
-const assertIdempotentCreateRetry = async (
-  deps: InstanceRegistryServiceDeps,
-  input: CreateInstanceProvisioningInput,
-  instance: InstanceRegistryRecord
-): Promise<Awaited<
-  ReturnType<InstanceRegistryServiceDeps['repository']['createProvisioningRun']>
-> | null> => {
-  const matchingRun = (await deps.repository.listProvisioningRuns(input.instanceId)).find(
-    (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
-  );
-  if (!matchingRun) {
-    return null;
-  }
-  if (
-    !matchingRun.payloadFingerprint ||
-    matchingRun.payloadFingerprint !== buildCreateInstancePayloadFingerprint(input)
-  ) {
-    throw new Error('idempotency_key_reuse');
-  }
-  if (!(await matchesPersistedCreateSecrets(deps, input, instance))) {
-    throw new Error('idempotency_key_reuse');
-  }
-  return matchingRun;
-};
-
-const resolveIdempotentCreateRetry = async (
-  deps: InstanceRegistryServiceDeps,
-  input: CreateInstanceProvisioningInput,
-  instance: InstanceRegistryRecord
-): Promise<CreateInstanceProvisioningResult | null> => {
-  const matchingRun = await assertIdempotentCreateRetry(deps, input, instance);
-  if (!matchingRun) {
-    return null;
-  }
-  if (matchingRun.status === 'failed' && matchingRun.snapshotVersion === '2.0') {
-    const retriedRun = await deps.repository.retryProvisioningRun({
-      instanceId: instance.instanceId,
-      idempotencyKey: input.idempotencyKey,
-      actorId: input.actorId,
-      requestId: input.requestId,
-      deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    });
-    if (!retriedRun) throw new Error('provisioning_retry_conflict');
-    const requestedInstance =
-      (await deps.repository.setInstanceStatus({
-        instanceId: instance.instanceId,
-        status: 'requested',
-        actorId: input.actorId,
-        requestId: input.requestId,
-      })) ?? instance;
-    invalidateHostWithLog(
-      deps.invalidateHost,
-      requestedInstance.primaryHostname,
-      requestedInstance.instanceId
-    );
-    return { ok: true, instance: toListItem(requestedInstance, retriedRun) };
-  }
-  await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
-    instanceId: instance.instanceId,
-    actorId: input.actorId,
-    requestId: input.requestId,
-  });
-  invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
-  return { ok: true, instance: toListItem(instance) };
-};
-
-const concurrentCreateRetryDelaysMs = [0, 25, 100, 400] as const;
-
-const resolveConcurrentIdempotentCreateRetry = async (
-  deps: InstanceRegistryServiceDeps,
-  input: CreateInstanceProvisioningInput,
-  instance: InstanceRegistryRecord
-): Promise<CreateInstanceProvisioningResult | null> => {
-  for (const delayMs of concurrentCreateRetryDelaysMs) {
-    if (delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-    const retry = await resolveIdempotentCreateRetry(deps, input, instance);
-    if (retry) return retry;
-  }
-  return null;
-};
+import {
+  createRequestedInstance,
+  resolveConcurrentIdempotentCreateRetry,
+  resolveIdempotentCreateRetry,
+} from './service-instance-create.js';
 
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
@@ -145,44 +57,8 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    const normalizedParentDomain = normalizeHost(effectiveInput.parentDomain);
-    const primaryHostname = buildPrimaryHostname(effectiveInput.instanceId, normalizedParentDomain);
-    const tenantAdminClient = effectiveInput.tenantAdminClient ?? {
-      clientId: DEFAULT_TENANT_ADMIN_CLIENT_ID,
-    };
     const instance = await runInstanceRegistryStep('registry_insert', () =>
-      deps.repository.createInstance({
-        instanceId: effectiveInput.instanceId,
-        displayName: effectiveInput.displayName,
-        status: 'requested',
-        parentDomain: normalizedParentDomain,
-        primaryHostname,
-        realmMode: effectiveInput.realmMode,
-        authRealm: effectiveInput.authRealm,
-        authClientId: effectiveInput.authClientId,
-        authIssuerUrl: effectiveInput.authIssuerUrl,
-        authClientSecretCiphertext: encryptAuthClientSecret(
-          deps,
-          effectiveInput.instanceId,
-          effectiveInput.authClientSecret
-        ),
-        tenantAdminClient: tenantAdminClient
-          ? {
-              clientId: tenantAdminClient.clientId,
-              secretCiphertext: encryptTenantAdminClientSecret(
-                deps,
-                effectiveInput.instanceId,
-                tenantAdminClient.secret
-              ),
-            }
-          : undefined,
-        tenantAdminBootstrap: effectiveInput.tenantAdminBootstrap,
-        actorId: effectiveInput.actorId,
-        requestId: effectiveInput.requestId,
-        themeKey: effectiveInput.themeKey,
-        featureFlags: effectiveInput.featureFlags,
-        mainserverConfigRef: effectiveInput.mainserverConfigRef,
-      })
+      createRequestedInstance(deps, effectiveInput)
     );
     if (!instance) {
       const concurrentInstance = await runInstanceRegistryStep('registry_lookup', () =>

@@ -85,6 +85,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Öffentliche Smoke-Probes gegen `/health/live`, `/health/ready`, Root-Login und alle aktiven Tenant-Logins dürfen nach bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden keinen stabilen Fehler liefern.
   - GitHub-Step-Summary und Action-Artefakte müssen Digest, Stack, Phasenstatus, Backup-Referenz, Jobstatus und Verifikation redigiert dokumentieren; Secrets, `.env`, `APP_CONFIG`, PII und unredigierte Remote-Logs bleiben ausgeschlossen.
   - Lokale `artifacts/runtime/deployments/`-Reports und `env:feedback:studio` gehören ausschließlich zum genehmigten Incident-Recovery-Pfad.
+- Keycloak-Proxy-Sicherheit:
+  - Remote-Doctor und -Precheck prüfen ein rollierendes 15-Minuten-Loki-Fenster auf Keycloaks Warnung über ungesicherte Auth-Cookies.
+  - Jeder Treffer und jeder Fehler einer konfigurierten Sicherheitsabfrage blockiert mit `observability-readiness=error`; eine fehlende lokale Loki-Konfiguration bleibt `warn` und ist keine Freigabeevidenz.
+  - Der Precheck folgt nur absoluten HTTPS-Authorization-Redirects auf eine konfigurierte Keycloak-Origin aus `SVA_AUTH_ISSUER` oder `KEYCLOAK_ADMIN_BASE_URL`, ohne URL oder Cookies zu protokollieren, und führt erst danach die Sicherheitsabfrage aus; relative oder fremde Origins sowie eine HTTP-Erfolgsantwort ohne Loki-Status `success` und gültiges `data.result` gelten als blockierende Probe-Fehler.
+  - Vor einem grünen Ergebnis werden leere Antworten begrenzt wiederholt. Die Evidenz enthält nur Treffer-Untergrenze, Abfragelimit und Fenstergröße, niemals rohe Logzeilen oder Cookie-Werte.
 - Lokale Runtime-Drift-Reparatur:
   - `pnpm env:up:local-keycloak` bleibt read-only und darf bestehende lokale Instanz-Identitaet oder tenant-spezifische Secrets nicht still ueberschreiben
   - `pnpm env:doctor:local-keycloak --json` liefert fuer lokale Driftklassen stabile `reasonCode`-, `repairable`- und `recommendedAction`-Felder

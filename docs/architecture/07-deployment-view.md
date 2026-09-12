@@ -211,6 +211,7 @@ Referenzen:
 - `degraded` gilt für den Permission-Cache bei Redis-Latenz > `50 ms` oder Recompute-Rate > `20/min`; `failed` bei drei aufeinanderfolgenden Redis-Fehlern
 - Session-Ausfälle und Permission-Cache-Ausfälle werden operativ getrennt behandelt: Session-Wiederherstellung folgt dem Plattform-RTO, Snapshots sind flüchtig und werden aus Postgres rekonstruiert
 - Keycloak wird aktuell als externer Dienst angebunden (nicht über Repo-Compose provisioniert)
+- Am zentralen Keycloak-Ingress terminiert Traefik TLS und überschreibt die weitergegebenen `X-Forwarded-*`-Header. Keycloak akzeptiert auf dem nicht öffentlich veröffentlichten Container-Port HTTP nur mit festem externen `KC_HOSTNAME`, `KC_HTTP_ENABLED=true` und `KC_PROXY_HEADERS=xforwarded`. `KC_PROXY_TRUSTED_ADDRESSES` begrenzt die Auswertung dieser Header auf das live verifizierte, nicht attachbare Traefik-/Keycloak-Overlay-Subnetz; eine Subnetzänderung erzwingt eine erneute Stack- und Login-Abnahme. Rollout- und Recovery-Evidenz bindet diese externe Topologie an einen unveränderlichen Digest sowie Stack, Service, Task und Zeitpunkt; der ausführbare Betriebsvertrag steht im [Keycloak-Reverse-Proxy-Runbook](../operations/keycloak-reverse-proxy-secure-context.md).
 - Das IAM-Acceptance-Gate läuft gegen eine bereits vorhandene Testumgebung und startet keine eigene Keycloak-Topologie im Workflow.
 - Swarm-Stack: Secrets als externe Swarm-Secrets, nicht als Klartext-Env-Variablen
 - Swarm-Stack: Entrypoint-basierte Secret-Injektion, abwärtskompatibel mit Nicht-Swarm-Betrieb

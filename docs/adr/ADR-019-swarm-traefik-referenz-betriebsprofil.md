@@ -39,6 +39,21 @@ image: ${SVA_REGISTRY:-ghcr.io/smart-village-solutions}/sva-studio:${SVA_IMAGE_T
 - `HostRegexp`-basiertes Routing für Instanz-Subdomains unter einer konfigurierbaren `SVA_PARENT_DOMAIN`.
 - TLS-Terminierung über Traefiks `certresolver` (Let's Encrypt oder beigestellt).
 
+#### Fortschreibung 2026-09: Keycloak-Proxy-Trust-Grenze
+
+Für den getrennt betriebenen zentralen Keycloak ist die bloße Auswertung von
+`X-Forwarded-*` nicht ausreichend. Keycloak akzeptiert diese Header nur aus dem live
+verifizierten Subnetz des nicht attachbaren Swarm-Overlay-Netzes, über das Traefik den
+nicht öffentlich veröffentlichten HTTP-Port erreicht. Der effektive CIDR-Wert wird als
+`KC_PROXY_TRUSTED_ADDRESSES` gesetzt. Traefik überschreibt eingehende Forwarded-Header;
+eine Änderung des Overlay-Subnetzes erfordert vor Freigabe die Aktualisierung des
+Trusted-Address-Werts sowie einen erneuten OIDC-, Cookie- und Spoofing-Smoke.
+
+Der Runtime-Doctor ergänzt diese präventive Grenze durch einen fail-closed Loki-Nachweis:
+Keycloaks Warnung über ungesicherte Cookies macht die Observability-Readiness rot. Leere
+Abfrageergebnisse werden wegen möglicher Ingestion-Verzögerung begrenzt wiederholt und
+Diagnoseausgaben enthalten keine rohe Logzeile.
+
 ### 3. Docker Swarm Secrets
 
 Vertrauliche Werte als externe Swarm Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Die Zuordnung Secret-Datei → Umgebungsvariable erfolgt über ein Shell-Entrypoint-Skript (`entrypoint.sh`), das abwärtskompatibel ist (No-Op ohne `/run/secrets/`).
@@ -72,6 +87,8 @@ Stateful Services (Postgres, Redis) erhalten `placement.constraints: node.role =
 3. Swarm Secrets sind sicherer als Klartext-Env-Variablen in Stack-Definitionen.
 4. Start-first Updates reduzieren Downtime auf die Dauer eines Health-Checks.
 5. Placement-Constraints sichern Volume-Affinität in einfachen Setups.
+6. Quelladressgebundenes Proxy-Vertrauen verhindert, dass Keycloak Forwarded-Header aus
+   nicht freigegebenen Netzen als Sicherheitskontext übernimmt.
 
 ## Alternativen
 

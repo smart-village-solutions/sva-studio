@@ -106,6 +106,11 @@ const createHarness = () => {
       return currentRun;
     }),
     listProvisioningRuns: vi.fn(async () => [currentRun]),
+    renewProvisioningRunLease: vi.fn(async ({ leaseOwner, leaseExpiresAt }) => {
+      if (currentRun.leaseOwner !== leaseOwner) return null;
+      currentRun = { ...currentRun, leaseExpiresAt };
+      return currentRun;
+    }),
     updateProvisioningRun: vi.fn(async (input) => {
       if (currentRun.leaseOwner !== input.leaseOwner) return null;
       currentRun = {
@@ -198,6 +203,12 @@ describe('tenant provisioning parent orchestrator', () => {
 
     await iterate();
     expect(harness.getRun().stepKey).toBe('keycloak');
+    expect(harness.repository.renewProvisioningRunLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: '00000000-0000-4000-8000-000000000001',
+        leaseOwner: 'worker-1',
+      })
+    );
     harness.setKeycloakStatus('succeeded');
     await iterate();
     await iterate();
@@ -325,5 +336,27 @@ describe('tenant provisioning parent orchestrator', () => {
       errorCode: 'provisioning_snapshot_drift',
       completedAt: now.toISOString(),
     });
+  });
+
+  it('renews the lease while a provisioning step is still running', async () => {
+    vi.useFakeTimers({ now });
+    try {
+      const harness = createHarness();
+      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'lifecycle' });
+      vi.mocked(harness.deps.scheduleProvisioningModuleReconcile).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 15_000))
+      );
+
+      const processing = processNextTenantProvisioningRun(harness.deps, {
+        workerId: 'worker-1',
+      });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await processing;
+
+      expect(harness.repository.renewProvisioningRunLease).toHaveBeenCalledTimes(2);
+      expect(harness.getRun().stepKey).toBe('ingress');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

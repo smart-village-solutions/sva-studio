@@ -43,10 +43,20 @@ const requireExpectedRouter = (response: Response, input: EndpointProbeInput): v
   }
 };
 
-const requireSuccessfulIngress = (response: Response): void => {
-  if (response.status < 200 || response.status >= 400) {
-    throw new Error('kassel_ingress_probe_failed');
+const requireSuccessfulIngress = (response: Response, primaryHostname: string): void => {
+  if (response.status >= 200 && response.status < 300) return;
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('location');
+    let redirect: URL;
+    try {
+      redirect = new URL(location ?? '', `https://${primaryHostname}`);
+    } catch {
+      throw new Error('kassel_ingress_redirect_invalid');
+    }
+    if (redirect.origin === `https://${primaryHostname}`) return;
+    throw new Error('kassel_ingress_redirect_invalid');
   }
+  throw new Error('kassel_ingress_probe_failed');
 };
 
 const requireValidLoginRedirect = (
@@ -112,6 +122,6 @@ export const probeKasselTenantEndpoint = async (
   });
   requireExpectedRouter(response, input);
   if (input.kind === 'login') return requireValidLoginRedirect(response, input);
-  requireSuccessfulIngress(response);
+  requireSuccessfulIngress(response, input.primaryHostname);
   return { status: response.status, hostname: input.primaryHostname };
 };

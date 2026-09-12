@@ -19,10 +19,12 @@ const logger = createSdkLogger({
 
 const KASSEL_PARENT_DOMAIN = 'dialog.kassel.de';
 const LEASE_MILLISECONDS = 30_000;
+const LEASE_HEARTBEAT_MILLISECONDS = 10_000;
 const TERMINAL_ERROR_CODES = new Set([
   'instance_not_found',
   'kassel_auth_issuer_missing',
   'kassel_ingress_evidence_missing',
+  'kassel_ingress_redirect_invalid',
   'kassel_login_callback_invalid',
   'kassel_login_redirect_invalid',
   'kassel_tenant_ingress_mode_disabled',
@@ -48,6 +50,46 @@ const isTerminalError = (error: unknown): boolean => {
 const errorCode = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
   return /^[a-z][a-z0-9_:-]{2,100}$/u.test(message) ? message : 'tenant_provisioning_step_failed';
+};
+
+const executeWithLeaseHeartbeat = async <T>(
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceProvisioningRun,
+  workerId: string,
+  execute: () => Promise<T>
+): Promise<T> => {
+  const renewLease = async (): Promise<void> => {
+    const renewed = await deps.repository.renewProvisioningRunLease({
+      runId: run.id,
+      leaseOwner: workerId,
+      leaseExpiresAt: new Date(Date.now() + LEASE_MILLISECONDS).toISOString(),
+    });
+    if (!renewed) throw new Error('provisioning_claim_lost');
+  };
+  await renewLease();
+  let renewing = false;
+  const timer = setInterval(() => {
+    if (renewing) return;
+    renewing = true;
+    void renewLease()
+      .catch((error) => {
+        logger.warn('tenant_provisioning_lease_heartbeat_failed', {
+          operation: 'create_instance',
+          instance_id: run.instanceId,
+          run_id: run.id,
+          error_code: errorCode(error),
+        });
+      })
+      .finally(() => {
+        renewing = false;
+      });
+  }, LEASE_HEARTBEAT_MILLISECONDS);
+  timer.unref();
+  try {
+    return await execute();
+  } finally {
+    clearInterval(timer);
+  }
 };
 
 const failRun = async (
@@ -137,8 +179,11 @@ export const processNextTenantProvisioningRun = async (
       });
     }
   };
-  return requireDependency(
+  const withInstanceProvisioningLock = requireDependency(
     deps.withInstanceProvisioningLock,
     'dependency_missing_withInstanceProvisioningLock'
-  )(run.instanceId, execute);
+  );
+  return withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
+    executeWithLeaseHeartbeat(deps, run, input.workerId, () => execute(lockedDeps))
+  );
 };

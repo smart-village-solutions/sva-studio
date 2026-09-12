@@ -22,6 +22,7 @@ type ProvisioningRepository = Pick<
   | 'getRoleReconcileSummary'
   | 'createProvisioningRun'
   | 'claimNextProvisioningRun'
+  | 'renewProvisioningRunLease'
   | 'updateProvisioningRun'
   | 'retryProvisioningRun'
   | 'appendAuditEvent'
@@ -131,7 +132,7 @@ SET status = $3, step_key = $4,
     terminal_evidence = terminal_evidence || COALESCE($9::jsonb, '{}'::jsonb),
     completed_at = $10::timestamptz,
     lease_owner = NULL, lease_expires_at = NULL, updated_at = now()
-WHERE id = $1::uuid AND lease_owner = $2
+WHERE id = $1::uuid AND lease_owner = $2 AND lease_expires_at > now()
 RETURNING ${provisioningColumns};
 `,
       [
@@ -151,6 +152,26 @@ RETURNING ${provisioningColumns};
   return rows[0] ? mapProvisioningRun(rows[0]) : null;
 };
 
+const renewProvisioningRunLease = async (
+  executor: SqlExecutor,
+  input: Parameters<ProvisioningRepository['renewProvisioningRunLease']>[0]
+) => {
+  const rows = await queryRows<ProvisioningRow>(
+    executor,
+    statement(
+      `
+UPDATE iam.instance_provisioning_runs
+SET lease_expires_at = $3::timestamptz, updated_at = now()
+WHERE id = $1::uuid AND lease_owner = $2
+  AND status = 'provisioning' AND lease_expires_at > now()
+RETURNING ${provisioningColumns};
+`,
+      [input.runId, input.leaseOwner, input.leaseExpiresAt]
+    )
+  );
+  return rows[0] ? mapProvisioningRun(rows[0]) : null;
+};
+
 const retryProvisioningRun = async (
   executor: SqlExecutor,
   input: Parameters<ProvisioningRepository['retryProvisioningRun']>[0]
@@ -160,7 +181,12 @@ const retryProvisioningRun = async (
     statement(
       `
 UPDATE iam.instance_provisioning_runs
-SET status = 'requested', step_key = 'registry', child_keycloak_run_id = NULL,
+SET status = 'requested',
+    step_key = CASE WHEN step_key IN ('registry', 'keycloak') THEN 'registry' ELSE step_key END,
+    child_keycloak_run_id = CASE
+      WHEN step_key IN ('registry', 'keycloak') THEN NULL
+      ELSE child_keycloak_run_id
+    END,
     lease_owner = NULL, lease_expires_at = NULL, next_attempt_at = now(),
     deadline_at = $5::timestamptz, completed_at = NULL,
     error_code = NULL, error_message = NULL,
@@ -209,6 +235,7 @@ export const createProvisioningRepository = (executor: SqlExecutor): Provisionin
   getRoleReconcileSummary: (instanceId) => getRoleReconcileSummary(executor, instanceId),
   createProvisioningRun: (input) => createProvisioningRun(executor, input),
   claimNextProvisioningRun: (input) => claimNextProvisioningRun(executor, input),
+  renewProvisioningRunLease: (input) => renewProvisioningRunLease(executor, input),
   updateProvisioningRun: (input) => updateProvisioningRun(executor, input),
   retryProvisioningRun: (input) => retryProvisioningRun(executor, input),
   appendAuditEvent: (input) => appendAuditEvent(executor, input),

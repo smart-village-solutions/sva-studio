@@ -524,7 +524,34 @@ describe('instance registry repository provisioning', () => {
     ).resolves.toMatchObject({ stepKey: 'tls', terminalEvidence: { status: 200 } });
     expect(statements[0]?.text).toContain("terminal_evidence || COALESCE($9::jsonb, '{}'::jsonb)");
     expect(statements[0]?.text).toContain('WHERE id = $1::uuid AND lease_owner = $2');
+    expect(statements[0]?.text).toContain('lease_expires_at > now()');
     expect(statements[0]?.values[1]).toBe('worker-1');
+  });
+
+  it('renews only a still-active parent-run lease owned by the worker', async () => {
+    const renewedRow = {
+      ...provisioningRow,
+      status: 'provisioning',
+      lease_owner: 'worker-1',
+      lease_expires_at: '2026-01-01T00:01:00.000Z',
+    };
+    const { executor, statements } = createQueuedExecutor([[renewedRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.renewProvisioningRunLease({
+        runId: '00000000-0000-4000-8000-000000000001',
+        leaseOwner: 'worker-1',
+        leaseExpiresAt: '2026-01-01T00:01:00.000Z',
+      })
+    ).resolves.toMatchObject({ leaseOwner: 'worker-1' });
+    expect(statements[0]?.text).toContain("status = 'provisioning'");
+    expect(statements[0]?.text).toContain('lease_expires_at > now()');
+    expect(statements[0]?.values).toEqual([
+      '00000000-0000-4000-8000-000000000001',
+      'worker-1',
+      '2026-01-01T00:01:00.000Z',
+    ]);
   });
 
   it('requeues only a failed versioned create run without deleting prior evidence', async () => {
@@ -532,7 +559,7 @@ describe('instance registry repository provisioning', () => {
       ...provisioningRow,
       snapshot_version: '2.0',
       status: 'requested',
-      step_key: 'registry',
+      step_key: 'login',
       terminal_evidence: { failedStep: 'login' },
     };
     const { executor, statements } = createQueuedExecutor([[retriedRow]]);
@@ -548,10 +575,13 @@ describe('instance registry repository provisioning', () => {
       })
     ).resolves.toMatchObject({
       status: 'requested',
-      stepKey: 'registry',
+      stepKey: 'login',
       terminalEvidence: { failedStep: 'login' },
     });
     expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).toContain(
+      "CASE WHEN step_key IN ('registry', 'keycloak') THEN 'registry' ELSE step_key END"
+    );
     expect(statements[0]?.text).not.toContain('terminal_evidence =');
   });
 });

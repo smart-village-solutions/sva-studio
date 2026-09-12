@@ -1304,6 +1304,39 @@ describe('instance registry service facade', () => {
     expect(repository.updateInstance).not.toHaveBeenCalled();
   });
 
+  it('applies the environment issuer policy to instance updates', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      updateInstance: vi.fn(async () => baseInstance),
+    });
+    const resolveProvisioningAuthIssuerUrl = vi.fn(
+      () => 'https://auth.dialog.kassel.de/realms/smartcity'
+    );
+    const service = createInstanceRegistryService(
+      createDeps(repository, { resolveProvisioningAuthIssuerUrl })
+    );
+
+    await service.updateInstance({
+      instanceId: 'demo',
+      displayName: 'Kassel',
+      parentDomain: 'Dialog.Kassel.de',
+      realmMode: 'existing',
+      authRealm: 'smartcity',
+      authClientId: 'studio-client',
+    });
+
+    expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith({
+      parentDomain: 'dialog.kassel.de',
+      authRealm: 'smartcity',
+      authIssuerUrl: undefined,
+    });
+    expect(repository.updateInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
+      })
+    );
+  });
+
   it('updates instances and returns detail projections', async () => {
     const updated = {
       ...baseInstance,

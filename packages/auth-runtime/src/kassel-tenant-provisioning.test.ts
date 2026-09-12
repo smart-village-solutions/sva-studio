@@ -36,6 +36,34 @@ describe('Kassel tenant public probes', () => {
     );
   });
 
+  it('accepts only tenant-local ingress redirects', async () => {
+    vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
+    const localRedirect = new Response(null, {
+      status: 302,
+      headers: routerHeaders({ Location: '/welcome' }),
+    });
+
+    await expect(
+      probeKasselTenantEndpoint(
+        { ...input, kind: 'ingress' },
+        vi.fn(async () => localRedirect)
+      )
+    ).resolves.toEqual({ status: 302, hostname: input.primaryHostname });
+
+    await expect(
+      probeKasselTenantEndpoint(
+        { ...input, kind: 'ingress' },
+        vi.fn(
+          async () =>
+            new Response(null, {
+              status: 302,
+              headers: routerHeaders({ Location: 'https://unrelated.example.test/' }),
+            })
+        )
+      )
+    ).rejects.toThrow('kassel_ingress_redirect_invalid');
+  });
+
   it('accepts only the expected public issuer and tenant callback', async () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
     const authorize = new URL(`${input.authIssuerUrl}/protocol/openid-connect/auth`);

@@ -173,6 +173,11 @@ export const createUpdateInstanceHandler =
     }
     await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
     const normalizedParentDomain = normalizeHost(input.parentDomain);
+    const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
+      parentDomain: normalizedParentDomain,
+      authRealm: input.authRealm,
+      authIssuerUrl: input.authIssuerUrl,
+    });
     const primaryHostname =
       normalizeHost(existing.parentDomain) === normalizedParentDomain
         ? existing.primaryHostname
@@ -186,7 +191,7 @@ export const createUpdateInstanceHandler =
       realmMode: input.realmMode,
       authRealm: input.authRealm,
       authClientId: input.authClientId,
-      authIssuerUrl: input.authIssuerUrl,
+      authIssuerUrl: authIssuerUrl ?? input.authIssuerUrl,
       authClientSecretCiphertext: encryptAuthClientSecret(
         deps,
         input.instanceId,

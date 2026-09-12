@@ -337,6 +337,11 @@ export type InstanceRegistryRepository = {
     leaseExpiresAt: string;
     parentDomain: string;
   }) => Promise<InstanceProvisioningRun | null>;
+  readonly renewProvisioningRunLease: (input: {
+    runId: string;
+    leaseOwner: string;
+    leaseExpiresAt: string;
+  }) => Promise<InstanceProvisioningRun | null>;
   readonly updateProvisioningRun: (input: {
     runId: string;
     leaseOwner: string;

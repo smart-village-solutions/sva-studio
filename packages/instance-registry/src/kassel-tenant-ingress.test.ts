@@ -7,13 +7,13 @@ import { buildKasselTenantIngress, publishKasselTenantIngress } from './kassel-t
 
 describe('buildKasselTenantIngress', () => {
   it('renders one deterministic explicit tenant router', () => {
-    expect(
-      buildKasselTenantIngress({
-        instanceId: 'tenant-havelland',
-        hostname: 'Tenant-Havelland.Dialog.Kassel.DE.',
-        service: 'sva-studio-ssf@docker',
-      })
-    ).toEqual({
+    const result = buildKasselTenantIngress({
+      instanceId: 'tenant-havelland',
+      hostname: 'Tenant-Havelland.Dialog.Kassel.DE.',
+      service: 'sva-studio-ssf@docker',
+    });
+    expect(result).toEqual({
+      configHash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/u),
       filename: 'studio-tenant-tenant-havelland.yml',
       hostname: 'tenant-havelland.dialog.kassel.de',
       routerName: 'studio-tenant-tenant-havelland',
@@ -26,8 +26,16 @@ describe('buildKasselTenantIngress', () => {
         '        - websecure',
         '      priority: 200',
         '      service: "sva-studio-ssf@docker"',
+        '      middlewares:',
+        '        - studio-tenant-tenant-havelland-verification',
         '      tls:',
         '        certResolver: le',
+        '  middlewares:',
+        '    studio-tenant-tenant-havelland-verification:',
+        '      headers:',
+        '        customResponseHeaders:',
+        '          X-SVA-Tenant-Router: "studio-tenant-tenant-havelland"',
+        `          X-SVA-Tenant-Config: "${result.configHash}"`,
         '',
       ].join('\n'),
     });

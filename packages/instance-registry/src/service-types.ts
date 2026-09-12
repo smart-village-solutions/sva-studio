@@ -157,6 +157,9 @@ export type InstanceRegistryServiceDeps = {
     readonly authRealm: string;
     readonly authIssuerUrl?: string;
   }) => string | undefined;
+  readonly isAutomatedTenantProvisioningEnabled?: (input: {
+    readonly parentDomain: string;
+  }) => boolean;
   readonly publishTenantIngress?: (input: {
     readonly instanceId: string;
     readonly primaryHostname: string;
@@ -166,6 +169,8 @@ export type InstanceRegistryServiceDeps = {
     readonly primaryHostname: string;
     readonly authIssuerUrl: string;
     readonly authClientId: string;
+    readonly expectedRouterName: string;
+    readonly expectedConfigHash: string;
   }) => Promise<Readonly<Record<string, unknown>>>;
   readonly scheduleProvisioningModuleReconcile?: (instanceId: string) => Promise<void>;
   readonly readProvisioningModuleReadiness?: (instanceId: string) => Promise<

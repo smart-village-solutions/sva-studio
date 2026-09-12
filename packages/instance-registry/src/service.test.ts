@@ -207,6 +207,7 @@ const createDeps = (
   repository,
   invalidateHost: vi.fn(),
   invalidatePermissionSnapshots: vi.fn(async () => undefined),
+  isAutomatedTenantProvisioningEnabled: vi.fn(() => true),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
   loadWasteDataSourceRecord: vi.fn(async () => null),
@@ -986,6 +987,32 @@ describe('instance registry service facade', () => {
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
   });
 
+  it('does not advertise automated provisioning when the environment mode is external', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(baseInstance),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, { isAutomatedTenantProvisioningEnabled: () => false })
+    );
+
+    const result = await service.createProvisioningRequest({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'dialog.kassel.de',
+      realmMode: 'existing',
+      authRealm: 'smartcity',
+      authClientId: 'studio-client',
+      idempotencyKey: 'idem-external',
+    });
+
+    expect(result.ok && result.instance.latestProvisioningRun).toBeUndefined();
+    expect(repository.createProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        desiredSnapshot: expect.objectContaining({ automationMode: 'external' }),
+      })
+    );
+  });
+
   it('persists the environment-resolved public issuer in the create snapshot', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
@@ -1251,6 +1278,30 @@ describe('instance registry service facade', () => {
         primaryHostname: 'smartcity.dialog.kassel.de',
       })
     );
+  });
+
+  it('blocks configuration changes while automated tenant provisioning is active', async () => {
+    const repository = createRepository({
+      listProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+        },
+      ]),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.updateInstance({
+        instanceId: 'demo',
+        displayName: 'Changed during provisioning',
+        parentDomain: baseInstance.parentDomain,
+        realmMode: baseInstance.realmMode,
+        authRealm: baseInstance.authRealm,
+        authClientId: baseInstance.authClientId,
+      })
+    ).rejects.toThrow('instance_configuration_change_blocked');
+    expect(repository.updateInstance).not.toHaveBeenCalled();
   });
 
   it('updates instances and returns detail projections', async () => {

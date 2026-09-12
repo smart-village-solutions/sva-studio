@@ -18,6 +18,10 @@ import {
 } from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 import {
+  assertNoActiveTenantProvisioning,
+  shouldExposeAutomatedProvisioning,
+} from './service-active-provisioning.js';
+import {
   createRequestedInstance,
   resolveConcurrentIdempotentCreateRetry,
   resolveIdempotentCreateRetry,
@@ -80,16 +84,20 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    const provisioningRun = await createProvisioningArtifacts(
-      deps.repository,
-      instance,
-      effectiveInput
-    );
     await createReconcileModuleActivationPoliciesHandler(deps)({
       instanceId: instance.instanceId,
       actorId: effectiveInput.actorId,
       requestId: effectiveInput.requestId,
     });
+    const reconciledInstance =
+      (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
+    const automated = shouldExposeAutomatedProvisioning(deps, reconciledInstance);
+    const provisioningRun = await createProvisioningArtifacts(
+      deps.repository,
+      reconciledInstance,
+      effectiveInput,
+      automated ? 'kassel-traefik-file' : 'external'
+    );
     try {
       invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
     } catch (error) {
@@ -101,9 +109,10 @@ export const createProvisioningRequestHandler =
       status: instance.status,
       request_id: effectiveInput.requestId,
     });
-    const reconciledInstance =
-      (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
-    return { ok: true, instance: toListItem(reconciledInstance, provisioningRun) };
+    return {
+      ok: true,
+      instance: toListItem(reconciledInstance, automated ? provisioningRun : undefined),
+    };
   };
 
 export const createChangeStatusHandler =
@@ -113,6 +122,7 @@ export const createChangeStatusHandler =
     if (!current) {
       return { ok: false, reason: 'not_found' as const };
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     if (!canTransitionInstanceStatus(current.status, input.nextStatus)) {
       instanceRegistryServiceLogger.warn('instance_status_transition_rejected', {
@@ -161,6 +171,7 @@ export const createUpdateInstanceHandler =
     if (!existing) {
       return null;
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
     const normalizedParentDomain = normalizeHost(input.parentDomain);
     const primaryHostname =
       normalizeHost(existing.parentDomain) === normalizedParentDomain

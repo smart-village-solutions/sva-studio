@@ -1,5 +1,5 @@
 import { open, rename, unlink } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
 import { isReservedTenantHostname, isValidInstanceId } from '@sva/core';
@@ -15,6 +15,7 @@ export type KasselTenantIngressInput = {
 };
 
 export type KasselTenantIngress = {
+  readonly configHash: string;
   readonly filename: string;
   readonly hostname: string;
   readonly routerName: string;
@@ -65,6 +66,10 @@ export const buildKasselTenantIngress = (input: KasselTenantIngressInput): Kasse
   }
 
   const routerName = `studio-tenant-${tenantLabel}`;
+  const verificationMiddlewareName = `${routerName}-verification`;
+  const configHash = `sha256:${createHash('sha256')
+    .update(`${routerName}\n${hostname}\n${input.service}\nwebsecure\nle`)
+    .digest('hex')}`;
   const source = [
     'http:',
     '  routers:',
@@ -74,12 +79,21 @@ export const buildKasselTenantIngress = (input: KasselTenantIngressInput): Kasse
     '        - websecure',
     '      priority: 200',
     `      service: "${input.service}"`,
+    '      middlewares:',
+    `        - ${verificationMiddlewareName}`,
     '      tls:',
     '        certResolver: le',
+    '  middlewares:',
+    `    ${verificationMiddlewareName}:`,
+    '      headers:',
+    '        customResponseHeaders:',
+    `          X-SVA-Tenant-Router: "${routerName}"`,
+    `          X-SVA-Tenant-Config: "${configHash}"`,
     '',
   ].join('\n');
 
   return {
+    configHash,
     filename: `${routerName}.yml`,
     hostname,
     routerName,

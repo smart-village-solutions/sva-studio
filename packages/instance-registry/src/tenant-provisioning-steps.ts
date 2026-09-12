@@ -29,7 +29,9 @@ const registryStep: StepHandler = async ({ deps, run, instance, workerId, now })
     requestId: run.requestId,
   });
   if (!provisioning) throw new Error('instance_not_found');
-  const child = await createExecuteKeycloakProvisioningHandler(deps)({
+  const child = await createExecuteKeycloakProvisioningHandler(deps, {
+    allowActiveTenantProvisioning: true,
+  })({
     instanceId: instance.instanceId,
     intent: 'provision',
     idempotencyKey: `parent:${run.id}:keycloak:${run.deadlineAt}`,
@@ -80,6 +82,11 @@ const probeStep =
   (kind: 'ingress' | 'login', next: ParentStep): StepHandler =>
   async ({ deps, run, instance, workerId, now }) => {
     if (!instance.authIssuerUrl) throw new Error('kassel_auth_issuer_missing');
+    const expectedRouterName = run.terminalEvidence.routerName;
+    const expectedConfigHash = run.terminalEvidence.configHash;
+    if (typeof expectedRouterName !== 'string' || typeof expectedConfigHash !== 'string') {
+      throw new Error('kassel_ingress_evidence_missing');
+    }
     const evidence = await requireDependency(
       deps.probeTenantEndpoint,
       'dependency_missing_probeTenantEndpoint'
@@ -88,6 +95,8 @@ const probeStep =
       primaryHostname: instance.primaryHostname,
       authIssuerUrl: instance.authIssuerUrl,
       authClientId: instance.authClientId,
+      expectedRouterName,
+      expectedConfigHash,
     });
     return continueAt(deps, run, workerId, next, now, { terminalEvidence: evidence });
   };

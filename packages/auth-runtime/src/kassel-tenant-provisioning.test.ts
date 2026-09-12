@@ -6,7 +6,15 @@ const input = {
   primaryHostname: 'tenant.dialog.kassel.de',
   authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
   authClientId: 'sva-studio-login',
+  expectedRouterName: 'studio-tenant-tenant',
+  expectedConfigHash: 'sha256:expected',
 } as const;
+
+const routerHeaders = (headers: Record<string, string> = {}) => ({
+  'X-SVA-Tenant-Router': input.expectedRouterName,
+  'X-SVA-Tenant-Config': input.expectedConfigHash,
+  ...headers,
+});
 
 describe('Kassel tenant public probes', () => {
   afterEach(() => {
@@ -15,7 +23,9 @@ describe('Kassel tenant public probes', () => {
 
   it('accepts a publicly trusted tenant response', async () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
-    const fetcher = vi.fn(async () => new Response('ok', { status: 200 }));
+    const fetcher = vi.fn(
+      async () => new Response('ok', { status: 200, headers: routerHeaders() })
+    );
 
     await expect(
       probeKasselTenantEndpoint({ ...input, kind: 'ingress' }, fetcher)
@@ -35,12 +45,14 @@ describe('Kassel tenant public probes', () => {
     authorize.searchParams.set('code_challenge_method', 'S256');
     authorize.searchParams.set('redirect_uri', `https://${input.primaryHostname}/auth/callback`);
     const fetcher = vi.fn(
-      async () => new Response(null, { status: 302, headers: { Location: authorize.toString() } })
+      async () =>
+        new Response(null, {
+          status: 302,
+          headers: routerHeaders({ Location: authorize.toString() }),
+        })
     );
 
-    await expect(
-      probeKasselTenantEndpoint({ ...input, kind: 'login' }, fetcher)
-    ).resolves.toEqual({
+    await expect(probeKasselTenantEndpoint({ ...input, kind: 'login' }, fetcher)).resolves.toEqual({
       status: 302,
       issuerOrigin: 'https://auth.dialog.kassel.de',
       issuerPath: '/realms/smartcity/protocol/openid-connect/auth',
@@ -49,13 +61,14 @@ describe('Kassel tenant public probes', () => {
   });
 
   it.each([
-    ['server error', new Response('failed', { status: 500 })],
-    ['no redirect', new Response('ok', { status: 200 })],
+    ['server error', new Response('failed', { status: 500, headers: routerHeaders() })],
+    ['no redirect', new Response('ok', { status: 200, headers: routerHeaders() })],
     [
       'internal issuer',
       new Response(null, {
         status: 302,
         headers: {
+          ...routerHeaders(),
           Location:
             'http://ssf-backend-keycloak-1:8080/realms/smartcity/protocol/openid-connect/auth?client_id=studio&state=x&code_challenge=y&redirect_uri=https%3A%2F%2Ftenant.dialog.kassel.de%2Fauth%2Fcallback',
         },
@@ -82,16 +95,17 @@ describe('Kassel tenant public probes', () => {
     authorize.searchParams.set('state', 'opaque');
     authorize.searchParams.set('code_challenge', 'challenge');
     authorize.searchParams.set('code_challenge_method', method);
-    authorize.searchParams.set(
-      'redirect_uri',
-      `https://${input.primaryHostname}${callbackPath}`
-    );
+    authorize.searchParams.set('redirect_uri', `https://${input.primaryHostname}${callbackPath}`);
 
     await expect(
       probeKasselTenantEndpoint(
         { ...input, kind: 'login' },
-        vi.fn(async () =>
-          new Response(null, { status: 302, headers: { Location: authorize.toString() } })
+        vi.fn(
+          async () =>
+            new Response(null, {
+              status: 302,
+              headers: routerHeaders({ Location: authorize.toString() }),
+            })
         )
       )
     ).rejects.toThrow(/^kassel_login_/u);
@@ -105,5 +119,15 @@ describe('Kassel tenant public probes', () => {
         vi.fn(async () => new Response('ok'))
       )
     ).rejects.toThrow('kassel_tenant_ingress_mode_disabled');
+  });
+
+  it('rejects a response that is not tied to the published router revision', async () => {
+    vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
+    await expect(
+      probeKasselTenantEndpoint(
+        { ...input, kind: 'ingress' },
+        vi.fn(async () => new Response('ok', { status: 200 }))
+      )
+    ).rejects.toThrow('kassel_ingress_router_not_loaded');
   });
 });

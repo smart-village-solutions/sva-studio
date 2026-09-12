@@ -490,6 +490,12 @@ describe('instance registry repository provisioning', () => {
     });
     expect(statements[0]?.text).toContain('FOR UPDATE OF run SKIP LOCKED');
     expect(statements[0]?.text).toContain('run.lease_expires_at <= now()');
+    expect(statements[0]?.text).toContain(
+      "run.desired_snapshot->>'automationMode' = 'kassel-traefik-file'"
+    );
+    expect(statements[0]?.text).toContain(
+      "instance.status IN ('requested', 'validated', 'provisioning')"
+    );
     expect(statements[0]?.values).toEqual([
       'worker-1',
       '2026-01-01T00:00:30.000Z',

@@ -18,6 +18,7 @@ vi.mock('@sva/server-runtime', () => ({
 
 import { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
 
 const now = new Date('2026-09-12T12:00:00.000Z');
 
@@ -47,16 +48,22 @@ const createRun = (): InstanceProvisioningRun => ({
   idempotencyKey: 'idem-1',
   payloadFingerprint: 'fingerprint-1',
   snapshotVersion: '2.0',
-  desiredSnapshot: {
-    instanceId: instance.instanceId,
-    parentDomain: instance.parentDomain,
-    primaryHostname: instance.primaryHostname,
-    realmMode: instance.realmMode,
-    authRealm: instance.authRealm,
-    authClientId: instance.authClientId,
-    authIssuerUrl: instance.authIssuerUrl,
-    payloadFingerprint: 'fingerprint-1',
-  },
+  desiredSnapshot: buildTenantProvisioningSnapshot(
+    instance,
+    {
+      instanceId: instance.instanceId,
+      displayName: instance.displayName,
+      parentDomain: instance.parentDomain,
+      realmMode: instance.realmMode,
+      authRealm: instance.authRealm,
+      authClientId: instance.authClientId,
+      authIssuerUrl: instance.authIssuerUrl,
+      idempotencyKey: 'idem-1',
+      featureFlags: instance.featureFlags,
+    },
+    'fingerprint-1',
+    'kassel-traefik-file'
+  ),
   attemptCount: 0,
   nextAttemptAt: now.toISOString(),
   deadlineAt: new Date(now.getTime() + 60_000).toISOString(),
@@ -69,8 +76,7 @@ const childRun = (overallStatus: InstanceKeycloakProvisioningRun['overallStatus'
   id: '00000000-0000-4000-8000-000000000002',
   instanceId: instance.instanceId,
   mutation: 'executeKeycloakProvisioning' as const,
-  idempotencyKey:
-    'parent:00000000-0000-4000-8000-000000000001:keycloak:2026-09-12T12:01:00.000Z',
+  idempotencyKey: 'parent:00000000-0000-4000-8000-000000000001:keycloak:2026-09-12T12:01:00.000Z',
   payloadFingerprint: 'child-fingerprint',
   mode: instance.realmMode,
   intent: 'provision' as const,
@@ -170,6 +176,9 @@ const createHarness = () => {
     setReadiness: (status: typeof readiness) => {
       readiness = status;
     },
+    changeInstance: (changes: Partial<InstanceRegistryRecord>) => {
+      currentInstance = { ...currentInstance, ...changes };
+    },
   };
 };
 
@@ -208,6 +217,12 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun().stepKey).toBe('activate');
+    expect(harness.deps.probeTenantEndpoint).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        expectedRouterName: 'studio-tenant-tenant-a',
+        expectedConfigHash: 'sha256:router',
+      })
+    );
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun()).toMatchObject({
@@ -267,6 +282,47 @@ describe('tenant provisioning parent orchestrator', () => {
       status: 'failed',
       stepKey: 'login',
       errorCode: 'provisioning_deadline_exceeded',
+      completedAt: now.toISOString(),
+    });
+  });
+
+  it('retries transient ingress availability failures until the deadline', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'tls',
+      terminalEvidence: {
+        routerName: 'studio-tenant-tenant-a',
+        configHash: 'sha256:router',
+      },
+    });
+    const probeTenantEndpoint = harness.deps.probeTenantEndpoint;
+    expect(probeTenantEndpoint).toBeDefined();
+    if (!probeTenantEndpoint) {
+      throw new Error('probeTenantEndpoint test dependency is missing');
+    }
+    vi.mocked(probeTenantEndpoint).mockRejectedValueOnce(new Error('kassel_ingress_probe_failed'));
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'tls',
+      errorCode: 'kassel_ingress_probe_failed',
+      completedAt: undefined,
+    });
+    expect(harness.getInstance().status).toBe('requested');
+  });
+
+  it('fails closed when mutable registry configuration drifts from the snapshot', async () => {
+    const harness = createHarness();
+    harness.changeInstance({ displayName: 'Changed during provisioning' });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      errorCode: 'provisioning_snapshot_drift',
       completedAt: now.toISOString(),
     });
   });

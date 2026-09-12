@@ -143,6 +143,7 @@ describe('tenant auth request logging helpers', () => {
     const provisioningEntry = {
       instanceId: 'instance-1',
       status: 'provisioning' as const,
+      parentDomain: 'dialog.kassel.de',
       authRealm: 'tenant',
       authClientId: 'client-1',
     };
@@ -153,6 +154,13 @@ describe('tenant auth request logging helpers', () => {
         allowKasselProvisioningLoginProbe: true,
       })
     ).not.toThrow();
+    expect(() =>
+      assertActiveRegistryEntry(
+        'tenant.example.test',
+        { ...provisioningEntry, parentDomain: 'example.test' },
+        { allowKasselProvisioningLoginProbe: true }
+      )
+    ).toThrow('is inactive');
     expect(() => assertActiveRegistryEntry('tenant.dialog.kassel.de', provisioningEntry)).toThrow(
       'is inactive'
     );

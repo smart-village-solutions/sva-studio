@@ -46,16 +46,17 @@ describe('instance provisioning worker routing', () => {
     vi.unstubAllEnvs();
   });
 
-  it('keeps the existing Keycloak queue first', async () => {
+  it('processes the Kassel parent queue fairly while preserving the Keycloak result', async () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
     const childRun = { id: 'keycloak-run-1' };
     mocks.processKeycloak.mockResolvedValue(childRun);
+    mocks.processTenant.mockResolvedValue({ id: 'parent-run-1' });
 
     await expect(runWorkerIteration()).resolves.toBe(childRun);
-    expect(mocks.processTenant).not.toHaveBeenCalled();
+    expect(mocks.processTenant).toHaveBeenCalledOnce();
   });
 
-  it('claims the Kassel parent queue only after the Keycloak queue is empty', async () => {
+  it('returns the Kassel parent result when the Keycloak queue is empty', async () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
     mocks.processKeycloak.mockResolvedValue(null);
     mocks.processTenant.mockResolvedValue({ id: 'parent-run-1' });

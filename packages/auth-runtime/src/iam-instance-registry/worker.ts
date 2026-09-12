@@ -42,10 +42,10 @@ const readProvisioningModuleReadiness = async (instanceId: string) => {
 export const runKeycloakProvisioningWorkerIteration = async () =>
   withRegistryProvisioningWorkerDeps(async (deps) => {
     const keycloakRun = await processNextQueuedKeycloakProvisioningRun(deps);
-    if (keycloakRun || process.env.SVA_TENANT_INGRESS_MODE !== 'kassel-traefik-file') {
+    if (process.env.SVA_TENANT_INGRESS_MODE !== 'kassel-traefik-file') {
       return keycloakRun;
     }
-    return processNextTenantProvisioningRun(
+    const tenantRun = await processNextTenantProvisioningRun(
       {
         ...deps,
         publishTenantIngress: publishConfiguredKasselTenantIngress,
@@ -55,6 +55,7 @@ export const runKeycloakProvisioningWorkerIteration = async () =>
       },
       { workerId }
     );
+    return keycloakRun ?? tenantRun;
   });
 
 export const runKeycloakProvisioningWorkerLoop = async (input?: { pollIntervalMs?: number }) =>

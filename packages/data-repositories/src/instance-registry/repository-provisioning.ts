@@ -92,8 +92,10 @@ WITH candidate AS (
   JOIN iam.instances AS instance ON instance.id = run.instance_id
   WHERE run.operation = 'create'
     AND run.snapshot_version = '2.0'
+    AND run.desired_snapshot->>'automationMode' = 'kassel-traefik-file'
     AND run.status IN ('requested', 'validated', 'provisioning')
     AND instance.parent_domain = $3
+    AND instance.status IN ('requested', 'validated', 'provisioning')
     AND run.next_attempt_at <= now()
     AND (run.lease_expires_at IS NULL OR run.lease_expires_at <= now())
   ORDER BY run.next_attempt_at ASC, run.created_at ASC, run.id ASC

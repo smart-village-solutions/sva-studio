@@ -5,6 +5,7 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
+import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
@@ -15,7 +16,8 @@ type CreatedInstanceRecord = NonNullable<
 export const createProvisioningArtifacts = async (
   repository: InstanceRegistryRepository,
   instance: CreatedInstanceRecord,
-  input: CreateInstanceProvisioningInput
+  input: CreateInstanceProvisioningInput,
+  automationMode: 'external' | 'kassel-traefik-file' = 'external'
 ): Promise<Awaited<ReturnType<InstanceRegistryRepository['createProvisioningRun']>>> => {
   const payloadFingerprint = buildCreateInstancePayloadFingerprint(input);
   const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>
@@ -26,16 +28,12 @@ export const createProvisioningArtifacts = async (
       idempotencyKey: input.idempotencyKey,
       payloadFingerprint,
       snapshotVersion: '2.0',
-      desiredSnapshot: {
-        instanceId: instance.instanceId,
-        parentDomain: instance.parentDomain,
-        primaryHostname: instance.primaryHostname,
-        realmMode: instance.realmMode,
-        authRealm: instance.authRealm,
-        authClientId: instance.authClientId,
-        authIssuerUrl: instance.authIssuerUrl,
+      desiredSnapshot: buildTenantProvisioningSnapshot(
+        instance,
+        input,
         payloadFingerprint,
-      },
+        automationMode
+      ),
       actorId: input.actorId,
       requestId: input.requestId,
     })

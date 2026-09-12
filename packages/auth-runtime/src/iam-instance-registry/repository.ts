@@ -37,13 +37,10 @@ const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
   level: 'info',
 });
-
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
-
 export const closeInstanceRegistryRepositoryPoolForShutdown = async (): Promise<void> => {
   await resolvePool()?.end();
 };
-
 const readPersistablePluginTenantLifecycleRegistry = () =>
   new Map(
     [...readInstanceRegistryPluginTenantLifecycleRegistry()].flatMap(([pluginId, lifecycle]) =>
@@ -261,6 +258,9 @@ const registryRuntime = createInstanceRegistryRuntime({
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,
+    isAutomatedTenantProvisioningEnabled: ({ parentDomain }) =>
+      process.env.SVA_TENANT_INGRESS_MODE === 'kassel-traefik-file' &&
+      parentDomain === 'dialog.kassel.de',
     reservedOidcClientIds: readReservedPluginOidcClientIds,
     reservedHostnames: readReservedInstanceHostnames,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,

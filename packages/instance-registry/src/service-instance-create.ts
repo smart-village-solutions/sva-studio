@@ -18,6 +18,7 @@ import {
   invalidateHostWithLog,
 } from './service-shared.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { shouldExposeAutomatedProvisioning } from './service-active-provisioning.js';
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
@@ -74,7 +75,13 @@ export const resolveIdempotentCreateRetry = async (
     requestedInstance.primaryHostname,
     requestedInstance.instanceId
   );
-  return { ok: true, instance: toListItem(requestedInstance, retriedRun) };
+  return {
+    ok: true,
+    instance: toListItem(
+      requestedInstance,
+      shouldExposeAutomatedProvisioning(deps, requestedInstance) ? retriedRun : undefined
+    ),
+  };
 };
 
 const concurrentCreateRetryDelaysMs = [0, 25, 100, 400] as const;

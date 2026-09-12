@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import { publishKasselTenantIngress } from '@sva/instance-registry/kassel-tenant-ingress';
 
 const requireKasselMode = (): void => {
@@ -23,7 +21,7 @@ export const publishConfiguredKasselTenantIngress = async (input: {
   });
   return {
     routerName: published.routerName,
-    configHash: `sha256:${createHash('sha256').update(published.source).digest('hex')}`,
+    configHash: published.configHash,
   };
 };
 
@@ -32,6 +30,17 @@ type EndpointProbeInput = {
   readonly primaryHostname: string;
   readonly authIssuerUrl: string;
   readonly authClientId: string;
+  readonly expectedRouterName: string;
+  readonly expectedConfigHash: string;
+};
+
+const requireExpectedRouter = (response: Response, input: EndpointProbeInput): void => {
+  if (
+    response.headers.get('x-sva-tenant-router') !== input.expectedRouterName ||
+    response.headers.get('x-sva-tenant-config') !== input.expectedConfigHash
+  ) {
+    throw new Error('kassel_ingress_router_not_loaded');
+  }
 };
 
 const requireSuccessfulIngress = (response: Response): void => {
@@ -101,6 +110,7 @@ export const probeKasselTenantEndpoint = async (
     signal: AbortSignal.timeout(10_000),
     headers: { 'User-Agent': 'sva-studio-kassel-provisioner/1.0' },
   });
+  requireExpectedRouter(response, input);
   if (input.kind === 'login') return requireValidLoginRedirect(response, input);
   requireSuccessfulIngress(response);
   return { status: response.status, hostname: input.primaryHostname };

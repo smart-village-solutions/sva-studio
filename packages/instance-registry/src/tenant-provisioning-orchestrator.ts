@@ -1,4 +1,4 @@
-import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
+import type { InstanceProvisioningRun } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -10,6 +10,7 @@ import {
 } from './tenant-provisioning-state.js';
 import type { ParentStep } from './tenant-provisioning-state.js';
 import { runTenantProvisioningStep } from './tenant-provisioning-steps.js';
+import { assertTenantProvisioningSnapshotCurrent } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({
   component: 'iam-instance-registry-tenant-provisioning',
@@ -18,35 +19,30 @@ const logger = createSdkLogger({
 
 const KASSEL_PARENT_DOMAIN = 'dialog.kassel.de';
 const LEASE_MILLISECONDS = 30_000;
-const assertSnapshotCurrent = (
-  run: InstanceProvisioningRun,
-  instance: InstanceRegistryRecord
-): void => {
-  const snapshot = run.desiredSnapshot;
-  if (
-    run.snapshotVersion !== '2.0' ||
-    snapshot.instanceId !== instance.instanceId ||
-    snapshot.parentDomain !== instance.parentDomain ||
-    snapshot.primaryHostname !== instance.primaryHostname ||
-    snapshot.realmMode !== instance.realmMode ||
-    snapshot.authRealm !== instance.authRealm ||
-    snapshot.authClientId !== instance.authClientId ||
-    snapshot.authIssuerUrl !== instance.authIssuerUrl ||
-    snapshot.payloadFingerprint !== run.payloadFingerprint
-  ) {
-    throw new Error('provisioning_snapshot_drift');
-  }
-};
+const TERMINAL_ERROR_CODES = new Set([
+  'instance_not_found',
+  'kassel_auth_issuer_missing',
+  'kassel_ingress_evidence_missing',
+  'kassel_login_callback_invalid',
+  'kassel_login_redirect_invalid',
+  'kassel_tenant_ingress_mode_disabled',
+  'kassel_traefik_dynamic_dir_missing',
+  'keycloak_provisioning_failed',
+  'module_readiness_blocked',
+  'provisioning_snapshot_drift',
+  'provisioning_instance_status_invalid',
+  'tenant_ingress_hostname_invalid_label',
+  'tenant_ingress_hostname_invalid_label_count',
+  'tenant_ingress_hostname_outside_parent_domain',
+  'tenant_ingress_hostname_punycode_rejected',
+  'tenant_ingress_hostname_reserved',
+  'tenant_ingress_instance_hostname_mismatch',
+  'tenant_ingress_service_invalid',
+]);
 
 const isTerminalError = (error: unknown): boolean => {
   const code = error instanceof Error ? error.message : String(error);
-  return (
-    code.startsWith('kassel_') ||
-    code === 'provisioning_snapshot_drift' ||
-    code === 'keycloak_provisioning_failed' ||
-    code === 'module_readiness_blocked' ||
-    code === 'instance_not_found'
-  );
+  return TERMINAL_ERROR_CODES.has(code);
 };
 
 const errorCode = (error: unknown): string => {
@@ -106,7 +102,10 @@ export const processNextTenantProvisioningRun = async (
     const instance = await lockedDeps.repository.getInstanceById(run.instanceId);
     try {
       if (!instance) throw new Error('instance_not_found');
-      assertSnapshotCurrent(current, instance);
+      if (!['requested', 'validated', 'provisioning'].includes(instance.status)) {
+        throw new Error('provisioning_instance_status_invalid');
+      }
+      assertTenantProvisioningSnapshotCurrent(current, instance);
       if (now.getTime() >= new Date(current.deadlineAt).getTime()) {
         throw new Error('provisioning_deadline_exceeded');
       }

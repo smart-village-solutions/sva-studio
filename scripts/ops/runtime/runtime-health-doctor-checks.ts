@@ -12,6 +12,10 @@ import {
 } from './runtime-health-helpers.ts';
 import type { LiveRuntimeFlags, OidcClientSecretProbe, OidcClientSecretProbeResult, RuntimeHealthDeps } from './runtime-health.types.ts';
 
+const KEYCLOAK_INSECURE_CONTEXT_QUERY =
+  '{swarm_service=~".*keycloak_keycloak"} |= "Non-secure context detected; cookies are not secured"';
+const LOKI_PROBE_WINDOW_MINUTES = 15;
+
 const readLiveRuntimeFlags = async (deps: RuntimeHealthDeps, env: NodeJS.ProcessEnv): Promise<LiveRuntimeFlags> => {
   const stackName = deps.getConfiguredStackName(env);
   const liveContract = await deps.inspectRemoteServiceContract(env, {
@@ -34,7 +38,7 @@ const queryRecentLokiLines = async (
   const url = new URL(`${lokiUrl.replace(/\/+$/u, '')}/query_range`);
   url.searchParams.set('query', query);
   url.searchParams.set('limit', String(limit));
-  url.searchParams.set('start', String((Date.now() - 15 * 60 * 1000) * 1_000_000));
+  url.searchParams.set('start', String((Date.now() - LOKI_PROBE_WINDOW_MINUTES * 60 * 1000) * 1_000_000));
   const response = await fetch(url, { headers: { Authorization: `Bearer ${grafanaToken}` }, signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`loki_probe_failed:${response.status}`);
   const payload = (await response.json()) as { data?: { result?: Array<{ values?: string[][] }> } };
@@ -110,6 +114,17 @@ const buildObservabilityDoctorCheck = async (
   }
 
   try {
+    const insecureContextLines = await queryRecentLokiLines(env, KEYCLOAK_INSECURE_CONTEXT_QUERY, 20);
+    if (insecureContextLines.length > 0) {
+      return deps.toDoctorCheck(
+        'observability-readiness',
+        'error',
+        'keycloak_insecure_cookie_context',
+        'Keycloak meldet einen unsicheren Cookie-Kontext hinter dem Reverse Proxy.',
+        { matchesAtLeast: insecureContextLines.length, sampleLimit: 20, windowMinutes: LOKI_PROBE_WINDOW_MINUTES },
+      );
+    }
+
     const stackName = deps.getConfiguredStackName(env);
     const appService = resolveRemoteStackServiceName(stackName, deps.getRemoteAppServiceName(env));
     const lines = await queryRecentLokiLinesWithRetry(deps, env, `{swarm_stack="${stackName}",swarm_service="${appService}"} |= "observability_"`, { attempts: 3, delayMs: 2_000, limit: 50 });

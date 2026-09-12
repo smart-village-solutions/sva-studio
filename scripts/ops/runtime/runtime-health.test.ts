@@ -367,20 +367,26 @@ describe('runtime-health helpers', () => {
   });
 
   it('fails observability readiness when Keycloak reports an insecure cookie context', async () => {
+    let insecureContextQueryCount = 0;
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: string | URL | Request) => {
         const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
         const query = new URL(url).searchParams.get('query') ?? '';
-        return query.includes('Non-secure context detected')
-          ? new Response(JSON.stringify({
+        if (query.includes('Non-secure context detected')) {
+          insecureContextQueryCount += 1;
+          return insecureContextQueryCount < 3
+            ? new Response(JSON.stringify({ data: { result: [] } }), { status: 200 })
+            : new Response(JSON.stringify({
               data: { result: [{ values: [['1', 'Non-secure context detected; cookies are not secured sensitive-log-fragment']] }] },
-            }), { status: 200 })
-          : new Response(JSON.stringify({ data: { result: [] } }), { status: 200 });
+            }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ data: { result: [] } }), { status: 200 });
       }),
     );
 
     const toDoctorCheck = vi.fn((name, status, code, message, details) => ({ code, details, message, name, status }));
+    const wait = vi.fn();
     const ops = createRuntimeHealthOps({
       assertRuntimeEnv: vi.fn(),
       checkHttpHealth: vi.fn(),
@@ -399,7 +405,7 @@ describe('runtime-health helpers', () => {
       runSchemaGuard: vi.fn(),
       summarizeSchemaGuardFailures: vi.fn(),
       toDoctorCheck,
-      wait: vi.fn(),
+      wait,
       waitForRemoteSmokeWarmup: vi.fn(),
       withoutDebugEnv: vi.fn(),
     });
@@ -413,6 +419,9 @@ describe('runtime-health helpers', () => {
       name: 'observability-readiness',
       status: 'error',
     }));
+    expect(wait).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenNthCalledWith(1, 2_000);
+    expect(wait).toHaveBeenNthCalledWith(2, 2_000);
     expect(JSON.stringify(toDoctorCheck.mock.calls)).not.toContain('sensitive-log-fragment');
   });
 

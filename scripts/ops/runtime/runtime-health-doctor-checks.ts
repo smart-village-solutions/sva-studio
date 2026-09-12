@@ -114,7 +114,11 @@ const buildObservabilityDoctorCheck = async (
   }
 
   try {
-    const insecureContextLines = await queryRecentLokiLines(env, KEYCLOAK_INSECURE_CONTEXT_QUERY, 20);
+    const insecureContextLines = await queryRecentLokiLinesWithRetry(deps, env, KEYCLOAK_INSECURE_CONTEXT_QUERY, {
+      attempts: 3,
+      delayMs: 2_000,
+      limit: 20,
+    });
     if (insecureContextLines.length > 0) {
       return deps.toDoctorCheck(
         'observability-readiness',

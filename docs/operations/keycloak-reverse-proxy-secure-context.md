@@ -15,19 +15,24 @@ environment:
   KC_HOSTNAME: https://keycloak.smart-village.app
   KC_HTTP_ENABLED: 'true'
   KC_PROXY_HEADERS: xforwarded
+  KC_PROXY_TRUSTED_ADDRESSES: 10.0.3.0/24
 ```
 
 - `KC_PROXY=edge` ist eine veraltete Hostname-v1-Option und darf nicht verwendet werden.
 - Der veröffentlichte Container-Digest muss unveränderlich sein; `latest` ist kein Rollout-Nachweis.
-- Nur Traefik darf den HTTP-Port des Keycloak-Containers erreichen. Der Container-Port `8080` wird
-  nicht direkt öffentlich veröffentlicht.
+- Der Container-Port `8080` wird nicht direkt öffentlich veröffentlicht. Keycloak akzeptiert
+  Proxy-Header ausschließlich aus dem nicht attachbaren Swarm-Overlay `public`; dessen live
+  verifiziertes Subnetz ist `10.0.3.0/24` und muss mit `KC_PROXY_TRUSTED_ADDRESSES` übereinstimmen.
+- Eine Änderung des Overlay-Subnetzes ist deshalb eine sicherheitsrelevante Stack-Änderung: zuerst
+  den effektiven Netzvertrag verifizieren, dann den Trusted-Address-Wert aktualisieren und erst
+  anschließend den Login-Smoke ausführen. Ein offener Trust auf alle Quelladressen ist unzulässig.
 - Traefik überschreibt `X-Forwarded-*` am vertrauenswürdigen Ingress. Von Clients eingespeiste
   Forwarded-Header dürfen den von Keycloak erkannten Sicherheitskontext nicht herabstufen.
 
 Dieser Vertrag wurde gegen den eingesetzten Keycloak-Stand 26.2.4 geprüft. Dessen
 [versionsgebundene Reverse-Proxy-Dokumentation](https://github.com/keycloak/keycloak/blob/26.2.4/docs/guides/server/reverseproxy.adoc)
-nennt `proxy-headers=xforwarded`, das Überschreiben der `X-Forwarded-*`-Header und
-`http-enabled=true` für TLS-Terminierung ausdrücklich. Die
+nennt `proxy-headers=xforwarded`, `proxy-trusted-addresses`, das Überschreiben der
+`X-Forwarded-*`-Header und `http-enabled=true` für TLS-Terminierung ausdrücklich. Die
 [aktuelle Keycloak-Dokumentation](https://www.keycloak.org/server/reverseproxy) dient ergänzend als
 Referenz für spätere Upgrades, ersetzt aber nicht die Prüfung gegen die jeweils eingesetzte Version.
 
@@ -58,7 +63,8 @@ letzte 15-Minuten-Fenster. Sobald ein zentraler Keycloak-Service die Meldung
 `Non-secure context detected; cookies are not secured` schreibt, wird
 `observability-readiness` mit dem Fehlercode `keycloak_insecure_cookie_context` rot. Der Bericht
 enthält nur eine untere Grenze der Trefferzahl, das Abfragelimit und die Fenstergröße, keine
-Logzeilen.
+Logzeilen. Leere Ergebnisse werden vor einem grünen Ergebnis dreimal mit jeweils zwei Sekunden
+Abstand abgefragt, damit ein kurzer Loki-Ingestion-Lag nicht zu einem falschen Erfolg führt.
 
 Für den Zugriff werden wie bei den übrigen Runtime-Probes `SVA_LOKI_URL` und ein nur lesbares
 `SVA_GRAFANA_TOKEN` aus dem lokalen Operator-Overlay verwendet. Unmittelbar nach einer Korrektur kann

@@ -14,6 +14,14 @@ export interface SsfKeycloakProjectionClient {
       config?: Readonly<Record<string, string>>;
     }>[]
   >;
+  listEffectiveClientProtocolMappers(clientId: string): Promise<
+    readonly Readonly<{
+      name: string;
+      protocol?: string;
+      protocolMapper?: string;
+      config?: Readonly<Record<string, string>>;
+    }>[]
+  >;
   listUsers(query?: {
     readonly first?: number;
     readonly max?: number;

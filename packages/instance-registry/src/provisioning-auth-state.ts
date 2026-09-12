@@ -68,6 +68,14 @@ export type KeycloakProvisioningClient = {
       config?: Readonly<Record<string, string>>;
     }[]
   >;
+  listEffectiveClientProtocolMappers(clientId: string): Promise<
+    readonly {
+      name: string;
+      protocol?: string;
+      protocolMapper?: string;
+      config?: Readonly<Record<string, string>>;
+    }[]
+  >;
   ensureUserAttributeProtocolMapper(input: {
     clientId: string;
     name: string;

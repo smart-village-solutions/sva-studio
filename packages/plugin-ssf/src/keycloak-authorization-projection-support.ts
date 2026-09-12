@@ -105,7 +105,7 @@ export const ensureClaimMappers = async (tenant: SsfKeycloakProjectionTenant): P
 };
 
 export const verifyClaimMappers = async (tenant: SsfKeycloakProjectionTenant): Promise<void> => {
-  const mappers = await tenant.client.listClientProtocolMappers(tenant.clientId);
+  const mappers = await tenant.client.listEffectiveClientProtocolMappers(tenant.clientId);
   for (const claimName of CLAIM_NAMES) {
     const candidates = mappers.filter((mapper) => mapper.config?.['claim.name'] === claimName);
     const mapper = candidates[0];

@@ -82,6 +82,9 @@ describe('SSF authorization projection reconciler', () => {
     });
     expect(target.reconcile).toHaveBeenCalledWith(desired, revision);
     expect(target.suspendTokenIssuance).toHaveBeenCalledWith('tenant-a');
+    expect(target.suspendTokenIssuance.mock.invocationCallOrder[0]).toBeLessThan(
+      target.prepareLoginClients.mock.invocationCallOrder[0]
+    );
     expect(target.readBack).toHaveBeenCalledWith('tenant-a');
     expect(lockedStore.confirmReadBack).toHaveBeenCalledWith({
       desired,

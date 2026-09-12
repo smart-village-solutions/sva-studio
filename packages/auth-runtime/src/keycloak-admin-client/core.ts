@@ -1472,6 +1472,18 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
+  async listEffectiveClientProtocolMappers(
+    clientId: string
+  ): Promise<readonly KeycloakProtocolMapperRepresentation[]> {
+    const client = await this.getOidcClientByClientId(clientId);
+    if (!client) return [];
+    return this.executeWithResilience<KeycloakProtocolMapperRepresentation[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/evaluate-scopes/protocol-mappers`,
+      operation: 'list_effective_protocol_mappers',
+    });
+  }
+
   async ensureUserAttributeProtocolMapper(input: {
     clientId: string;
     name: string;

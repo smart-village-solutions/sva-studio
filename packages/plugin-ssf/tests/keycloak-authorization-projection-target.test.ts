@@ -42,6 +42,7 @@ const createClient = () => {
   >();
   const client = {
     listClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
+    listEffectiveClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
     listUsers: vi.fn(async ({ first = 0, max = 100 } = {}) =>
       [...attributes.entries()].slice(first, first + max).map(([externalId, userAttributes]) => ({
         externalId,
@@ -281,7 +282,7 @@ describe('SSF Keycloak authorization projection target', () => {
   });
 });
 
-it('does not accept manual hardcoded or duplicate claim mappers as verified readiness', async () => {
+it('does not accept hardcoded or duplicate claims from effective client-scope mappers', async () => {
   const { client } = createClient();
   const target = createSsfKeycloakAuthorizationProjectionTarget({
     resolveTenant: async (instanceId) => ({ instanceId, clientId: 'ssf-frontend', client }),
@@ -293,8 +294,8 @@ it('does not accept manual hardcoded or duplicate claim mappers as verified read
   const revision = createSsfAuthorizationRevision(desired);
   await target.reconcile(desired, revision);
   expect(await target.isReady('tenant-a', revision)).toBe(true);
-  const mappers = await client.listClientProtocolMappers('ssf-frontend');
-  client.listClientProtocolMappers.mockResolvedValue([
+  const mappers = await client.listEffectiveClientProtocolMappers('ssf-frontend');
+  client.listEffectiveClientProtocolMappers.mockResolvedValue([
     ...mappers,
     {
       name: 'manual-revision',

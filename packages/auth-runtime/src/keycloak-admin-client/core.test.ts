@@ -1417,6 +1417,31 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it('reads effective protocol mappers including attached client scopes', async () => {
+    const mapper = {
+      id: 'mapper-1',
+      name: 'inherited-claim',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-hardcoded-claim-mapper',
+      config: { 'claim.name': 'ssf_permissions' },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'client-1', clientId: 'ssf-frontend' }])
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, [mapper]));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.listEffectiveClientProtocolMappers('ssf-frontend')).resolves.toEqual([
+      mapper,
+    ]);
+    expect(String(fetchImpl.mock.calls.at(-1)?.[0])).toContain(
+      '/clients/client-1/evaluate-scopes/protocol-mappers'
+    );
+  });
+
   it('repairs provisioning metadata on an existing realm role for the Studio instance', async () => {
     const fetchImpl = vi
       .fn()

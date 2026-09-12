@@ -22,6 +22,7 @@ describe('SSF runtime deployment contract', () => {
 
   it('routes SSF migrations through the existing migration one-shot', () => {
     const compose = read('deploy/portainer/docker-compose.studio.yml');
+    const canonicalCompose = read('compose.yaml');
     const entrypoint = read('deploy/portainer/migrate-entrypoint.sh');
     const dockerfile = read('Dockerfile');
 
@@ -29,6 +30,15 @@ describe('SSF runtime deployment contract', () => {
     const provisioner = compose.slice(compose.indexOf('  provisioner:'));
     expect(provisioner).toContain(
       "SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'"
+    );
+    const canonicalApp = canonicalCompose.slice(
+      canonicalCompose.indexOf('  app:'),
+      canonicalCompose.indexOf('  provisioner:')
+    );
+    const canonicalProvisioner = canonicalCompose.slice(canonicalCompose.indexOf('  provisioner:'));
+    expect(canonicalApp).toContain('SVA_STUDIO_SSF_LOGIN_ORIGIN=${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}');
+    expect(canonicalProvisioner).toContain(
+      'SVA_STUDIO_SSF_LOGIN_ORIGIN=${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'
     );
     expect(compose).toContain(
       "SSF_PLUGIN_DATABASE_ENABLED: '${SSF_PLUGIN_DATABASE_ENABLED:-false}'"

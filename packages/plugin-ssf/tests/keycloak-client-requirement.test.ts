@@ -31,11 +31,14 @@ it('derives the public login baseline only from an explicit HTTPS installation o
     webOrigins: ['https://dialog.kassel.de'],
   });
   for (const origin of [
+    'not-a-url',
     'http://dialog.kassel.de',
     'https://*.kassel.de',
     'https://dialog.kassel.de/path',
     'https://user:secret@dialog.kassel.de',
   ]) {
-    expect(() => readSsfLoginClientRequirement({ SVA_STUDIO_SSF_LOGIN_ORIGIN: origin })).toThrow();
+    expect(() => readSsfLoginClientRequirement({ SVA_STUDIO_SSF_LOGIN_ORIGIN: origin })).toThrow(
+      'ssf_login_origin_invalid'
+    );
   }
 });

@@ -113,22 +113,37 @@ const buildObservabilityDoctorCheck = async (
     return deps.toDoctorCheck('observability-readiness', 'ok', 'observability_local_ready', 'Lokales Laufzeitprofil verwendet einen gueltigen Logger-Modus.', summary);
   }
 
+  let insecureContextLines: readonly string[];
   try {
-    const insecureContextLines = await queryRecentLokiLinesWithRetry(deps, env, KEYCLOAK_INSECURE_CONTEXT_QUERY, {
+    insecureContextLines = await queryRecentLokiLinesWithRetry(deps, env, KEYCLOAK_INSECURE_CONTEXT_QUERY, {
       attempts: 3,
       delayMs: 2_000,
       limit: 20,
     });
-    if (insecureContextLines.length > 0) {
-      return deps.toDoctorCheck(
-        'observability-readiness',
-        'error',
-        'keycloak_insecure_cookie_context',
-        'Keycloak meldet einen unsicheren Cookie-Kontext hinter dem Reverse Proxy.',
-        { matchesAtLeast: insecureContextLines.length, sampleLimit: 20, windowMinutes: LOKI_PROBE_WINDOW_MINUTES },
-      );
-    }
+  } catch (error) {
+    const unconfigured = error instanceof Error && error.message === 'loki_probe_unconfigured';
+    return deps.toDoctorCheck(
+      'observability-readiness',
+      unconfigured ? 'warn' : 'error',
+      unconfigured ? 'loki_probe_unconfigured' : 'keycloak_insecure_cookie_probe_failed',
+      unconfigured
+        ? 'Der Loki-Nachweis fuer den sicheren Keycloak-Cookie-Kontext ist nicht konfiguriert.'
+        : 'Der Loki-Nachweis fuer den sicheren Keycloak-Cookie-Kontext ist fehlgeschlagen.',
+      summary,
+    );
+  }
 
+  if (insecureContextLines.length > 0) {
+    return deps.toDoctorCheck(
+      'observability-readiness',
+      'error',
+      'keycloak_insecure_cookie_context',
+      'Keycloak meldet einen unsicheren Cookie-Kontext hinter dem Reverse Proxy.',
+      { matchesAtLeast: insecureContextLines.length, sampleLimit: 20, windowMinutes: LOKI_PROBE_WINDOW_MINUTES },
+    );
+  }
+
+  try {
     const stackName = deps.getConfiguredStackName(env);
     const appService = resolveRemoteStackServiceName(stackName, deps.getRemoteAppServiceName(env));
     const lines = await queryRecentLokiLinesWithRetry(deps, env, `{swarm_stack="${stackName}",swarm_service="${appService}"} |= "observability_"`, { attempts: 3, delayMs: 2_000, limit: 50 });

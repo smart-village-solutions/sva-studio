@@ -425,6 +425,42 @@ describe('runtime-health helpers', () => {
     expect(JSON.stringify(toDoctorCheck.mock.calls)).not.toContain('sensitive-log-fragment');
   });
 
+  it('fails closed when the configured Keycloak Loki probe is unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 503 })));
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_probe_failed',
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+  });
+
   it('uses timeouts for login and me smoke requests', async () => {
     const fetchCalls: RequestInit[] = [];
     vi.stubGlobal(

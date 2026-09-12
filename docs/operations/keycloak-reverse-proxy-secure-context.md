@@ -64,7 +64,10 @@ letzte 15-Minuten-Fenster. Sobald ein zentraler Keycloak-Service die Meldung
 `observability-readiness` mit dem Fehlercode `keycloak_insecure_cookie_context` rot. Der Bericht
 enthält nur eine untere Grenze der Trefferzahl, das Abfragelimit und die Fenstergröße, keine
 Logzeilen. Leere Ergebnisse werden vor einem grünen Ergebnis dreimal mit jeweils zwei Sekunden
-Abstand abgefragt, damit ein kurzer Loki-Ingestion-Lag nicht zu einem falschen Erfolg führt.
+Abstand abgefragt, damit ein kurzer Loki-Ingestion-Lag nicht zu einem falschen Erfolg führt. Ist
+Loki konfiguriert, aber die Sicherheitsabfrage schlägt fehl, wird der Gate ebenfalls blockierend
+`error`. Fehlende lokale Loki-Zugangskonfiguration bleibt als `warn` sichtbar und ist kein
+Freigabenachweis.
 
 Für den Zugriff werden wie bei den übrigen Runtime-Probes `SVA_LOKI_URL` und ein nur lesbares
 `SVA_GRAFANA_TOKEN` aus dem lokalen Operator-Overlay verwendet. Unmittelbar nach einer Korrektur kann

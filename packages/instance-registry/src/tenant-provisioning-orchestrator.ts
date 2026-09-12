@@ -57,8 +57,9 @@ const executeWithLeaseHeartbeat = async <T>(
   deps: InstanceRegistryServiceDeps,
   run: InstanceProvisioningRun,
   workerId: string,
-  execute: () => Promise<T>
+  execute: (assertLeaseActive: () => void) => Promise<T>
 ): Promise<T> => {
+  let leaseFailure: Error | undefined;
   const renewLease = async (): Promise<void> => {
     const renewed = await deps.repository.renewProvisioningRunLease({
       runId: run.id,
@@ -68,12 +69,12 @@ const executeWithLeaseHeartbeat = async <T>(
     if (!renewed) throw new Error('provisioning_claim_lost');
   };
   await renewLease();
-  let renewing = false;
+  let renewal: Promise<void> | undefined;
   const timer = setInterval(() => {
-    if (renewing) return;
-    renewing = true;
-    void renewLease()
+    if (renewal) return;
+    renewal = renewLease()
       .catch((error) => {
+        leaseFailure = new Error('provisioning_claim_lost');
         logger.warn('tenant_provisioning_lease_heartbeat_failed', {
           operation: 'create_instance',
           instance_id: run.instanceId,
@@ -82,14 +83,18 @@ const executeWithLeaseHeartbeat = async <T>(
         });
       })
       .finally(() => {
-        renewing = false;
+        renewal = undefined;
       });
   }, LEASE_HEARTBEAT_MILLISECONDS);
   timer.unref();
+  const assertLeaseActive = () => {
+    if (leaseFailure) throw leaseFailure;
+  };
   try {
-    return await execute();
+    return await execute(assertLeaseActive);
   } finally {
     clearInterval(timer);
+    await renewal?.catch(() => undefined);
   }
 };
 
@@ -130,42 +135,53 @@ export const processNextTenantProvisioningRun = async (
   deps: InstanceRegistryServiceDeps,
   input: { readonly workerId: string; readonly now?: Date }
 ): Promise<InstanceProvisioningRun | null> => {
-  const now = input.now ?? new Date();
+  const currentTime = () => input.now ?? new Date();
+  const now = currentTime();
   const run = await deps.repository.claimNextProvisioningRun({
     workerId: input.workerId,
     leaseExpiresAt: new Date(now.getTime() + LEASE_MILLISECONDS).toISOString(),
     parentDomain: KASSEL_PARENT_DOMAIN,
   });
   if (!run) return null;
-  const execute = async (lockedDeps: InstanceRegistryServiceDeps) => {
+  const execute = async (
+    lockedDeps: InstanceRegistryServiceDeps,
+    assertLeaseActive: () => void
+  ) => {
     const current = (await lockedDeps.repository.listProvisioningRuns(run.instanceId)).find(
       (candidate) => candidate.id === run.id && candidate.leaseOwner === input.workerId
     );
     if (!current) return null;
     const instance = await lockedDeps.repository.getInstanceById(run.instanceId);
+    const assertExecutionActive = () => {
+      assertLeaseActive();
+      if (currentTime().getTime() >= new Date(current.deadlineAt).getTime()) {
+        throw new Error('provisioning_deadline_exceeded');
+      }
+    };
     try {
+      assertExecutionActive();
       if (!instance) throw new Error('instance_not_found');
       if (!['requested', 'validated', 'provisioning'].includes(instance.status)) {
         throw new Error('provisioning_instance_status_invalid');
       }
       assertTenantProvisioningSnapshotCurrent(current, instance);
-      if (now.getTime() >= new Date(current.deadlineAt).getTime()) {
-        throw new Error('provisioning_deadline_exceeded');
-      }
       return await runTenantProvisioningStep({
         deps: lockedDeps,
         run: current,
         instance,
         workerId: input.workerId,
-        now,
+        now: currentTime(),
+        assertExecutionActive,
       });
     } catch (error) {
+      if (errorCode(error) === 'provisioning_claim_lost') return null;
       const stepKey =
         errorCode(error) === 'provisioning_step_invalid' ? 'registry' : readStep(current);
+      const failureTime = currentTime();
       const terminal =
-        isTerminalError(error) || now.getTime() >= new Date(current.deadlineAt).getTime();
+        isTerminalError(error) || failureTime.getTime() >= new Date(current.deadlineAt).getTime();
       if (terminal) {
-        return failRun(lockedDeps, current, input.workerId, stepKey, error, now);
+        return failRun(lockedDeps, current, input.workerId, stepKey, error, failureTime);
       }
       logger.warn('tenant_provisioning_retry_scheduled', {
         operation: 'create_instance',
@@ -176,7 +192,7 @@ export const processNextTenantProvisioningRun = async (
       });
       return updateClaimedRun(lockedDeps, current, input.workerId, {
         stepKey,
-        nextAttemptAt: new Date(now.getTime() + RETRY_MILLISECONDS).toISOString(),
+        nextAttemptAt: new Date(failureTime.getTime() + RETRY_MILLISECONDS).toISOString(),
         errorCode: errorCode(error),
         errorMessage: 'Provisionierung wird erneut versucht.',
       });
@@ -187,6 +203,8 @@ export const processNextTenantProvisioningRun = async (
     'dependency_missing_withInstanceProvisioningLock'
   );
   return withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
-    executeWithLeaseHeartbeat(deps, run, input.workerId, () => execute(lockedDeps))
+    executeWithLeaseHeartbeat(deps, run, input.workerId, (assertLeaseActive) =>
+      execute(lockedDeps, assertLeaseActive)
+    )
   );
 };

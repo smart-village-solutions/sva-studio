@@ -17,17 +17,27 @@ type StepContext = {
   instance: InstanceRegistryRecord;
   workerId: string;
   now: Date;
+  assertExecutionActive: () => void;
 };
 
 type StepHandler = (context: StepContext) => Promise<InstanceProvisioningRun>;
 
-const registryStep: StepHandler = async ({ deps, run, instance, workerId, now }) => {
+const registryStep: StepHandler = async ({
+  deps,
+  run,
+  instance,
+  workerId,
+  now,
+  assertExecutionActive,
+}) => {
+  assertExecutionActive();
   const provisioning = await deps.repository.setInstanceStatus({
     instanceId: instance.instanceId,
     status: 'provisioning',
     actorId: run.actorId,
     requestId: run.requestId,
   });
+  assertExecutionActive();
   if (!provisioning) throw new Error('instance_not_found');
   const child = await createExecuteKeycloakProvisioningHandler(deps, {
     allowActiveTenantProvisioning: true,
@@ -38,6 +48,7 @@ const registryStep: StepHandler = async ({ deps, run, instance, workerId, now })
     actorId: run.actorId,
     requestId: run.requestId,
   });
+  assertExecutionActive();
   if (!child) throw new Error('instance_not_found');
   return continueAt(deps, run, workerId, 'keycloak', now, {
     childKeycloakRunId: child.id,
@@ -45,12 +56,21 @@ const registryStep: StepHandler = async ({ deps, run, instance, workerId, now })
   });
 };
 
-const keycloakStep: StepHandler = async ({ deps, run, instance, workerId, now }) => {
+const keycloakStep: StepHandler = async ({
+  deps,
+  run,
+  instance,
+  workerId,
+  now,
+  assertExecutionActive,
+}) => {
+  assertExecutionActive();
   if (!run.childKeycloakRunId) throw new Error('keycloak_child_run_missing');
   const child = await deps.repository.getKeycloakProvisioningRun(
     instance.instanceId,
     run.childKeycloakRunId
   );
+  assertExecutionActive();
   if (!child) throw new Error('keycloak_child_run_missing');
   if (child.overallStatus === 'failed') throw new Error('keycloak_provisioning_failed');
   const succeeded = child.overallStatus === 'succeeded';
@@ -59,15 +79,32 @@ const keycloakStep: StepHandler = async ({ deps, run, instance, workerId, now })
   });
 };
 
-const lifecycleStep: StepHandler = async ({ deps, run, instance, workerId, now }) => {
+const lifecycleStep: StepHandler = async ({
+  deps,
+  run,
+  instance,
+  workerId,
+  now,
+  assertExecutionActive,
+}) => {
+  assertExecutionActive();
   await requireDependency(
     deps.scheduleProvisioningModuleReconcile,
     'dependency_missing_scheduleProvisioningModuleReconcile'
   )(instance.instanceId);
+  assertExecutionActive();
   return continueAt(deps, run, workerId, 'ingress', now);
 };
 
-const ingressStep: StepHandler = async ({ deps, run, instance, workerId, now }) => {
+const ingressStep: StepHandler = async ({
+  deps,
+  run,
+  instance,
+  workerId,
+  now,
+  assertExecutionActive,
+}) => {
+  assertExecutionActive();
   const evidence = await requireDependency(
     deps.publishTenantIngress,
     'dependency_missing_publishTenantIngress'
@@ -75,12 +112,14 @@ const ingressStep: StepHandler = async ({ deps, run, instance, workerId, now }) 
     instanceId: instance.instanceId,
     primaryHostname: instance.primaryHostname,
   });
+  assertExecutionActive();
   return continueAt(deps, run, workerId, 'tls', now, { terminalEvidence: evidence });
 };
 
 const probeStep =
   (kind: 'ingress' | 'login', next: ParentStep): StepHandler =>
-  async ({ deps, run, instance, workerId, now }) => {
+  async ({ deps, run, instance, workerId, now, assertExecutionActive }) => {
+    assertExecutionActive();
     if (!instance.authIssuerUrl) throw new Error('kassel_auth_issuer_missing');
     const expectedRouterName = run.terminalEvidence.routerName;
     const expectedConfigHash = run.terminalEvidence.configHash;
@@ -98,14 +137,24 @@ const probeStep =
       expectedRouterName,
       expectedConfigHash,
     });
+    assertExecutionActive();
     return continueAt(deps, run, workerId, next, now, { terminalEvidence: evidence });
   };
 
-const moduleReadinessStep: StepHandler = async ({ deps, run, instance, workerId, now }) => {
+const moduleReadinessStep: StepHandler = async ({
+  deps,
+  run,
+  instance,
+  workerId,
+  now,
+  assertExecutionActive,
+}) => {
+  assertExecutionActive();
   const readiness = await requireDependency(
     deps.readProvisioningModuleReadiness,
     'dependency_missing_readProvisioningModuleReadiness'
   )(instance.instanceId);
+  assertExecutionActive();
   if (readiness.status === 'blocked') throw new Error('module_readiness_blocked');
   const pending = readiness.status === 'pending';
   return continueAt(deps, run, workerId, pending ? 'module_readiness' : 'login', now, {
@@ -114,13 +163,22 @@ const moduleReadinessStep: StepHandler = async ({ deps, run, instance, workerId,
   });
 };
 
-const activateStep: StepHandler = async ({ deps, run, instance, workerId, now }) => {
+const activateStep: StepHandler = async ({
+  deps,
+  run,
+  instance,
+  workerId,
+  now,
+  assertExecutionActive,
+}) => {
+  assertExecutionActive();
   const activated = await deps.repository.setInstanceStatus({
     instanceId: instance.instanceId,
     status: 'active',
     actorId: run.actorId,
     requestId: run.requestId,
   });
+  assertExecutionActive();
   if (!activated) throw new Error('instance_not_found');
   return updateClaimedRun(deps, run, workerId, {
     status: 'active',

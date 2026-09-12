@@ -413,4 +413,62 @@ describe('tenant provisioning parent orchestrator', () => {
       vi.useRealTimers();
     }
   });
+
+  it('stops advancing after a heartbeat loses the provisioning claim', async () => {
+    vi.useFakeTimers({ now });
+    try {
+      const harness = createHarness();
+      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'lifecycle' });
+      vi.mocked(harness.repository.renewProvisioningRunLease)
+        .mockResolvedValueOnce(harness.getRun())
+        .mockResolvedValueOnce(null);
+      vi.mocked(harness.deps.scheduleProvisioningModuleReconcile).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 15_000))
+      );
+
+      const processing = processNextTenantProvisioningRun(harness.deps, {
+        workerId: 'worker-1',
+      });
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      await expect(processing).resolves.toBeNull();
+      expect(harness.getRun().stepKey).toBe('lifecycle');
+      expect(harness.deps.publishTenantIngress).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rechecks the actual deadline before committing activation', async () => {
+    vi.useFakeTimers({ now });
+    try {
+      const harness = createHarness();
+      Object.assign(harness.getRun(), {
+        status: 'provisioning',
+        stepKey: 'activate',
+        deadlineAt: new Date(now.getTime() + 10_000).toISOString(),
+      });
+      vi.mocked(harness.repository.setInstanceStatus).mockImplementation(async ({ status }) => {
+        if (status === 'active') await new Promise((resolve) => setTimeout(resolve, 15_000));
+        harness.changeInstance({ status });
+        return harness.getInstance();
+      });
+
+      const processing = processNextTenantProvisioningRun(harness.deps, {
+        workerId: 'worker-1',
+      });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await processing;
+
+      expect(harness.getInstance().status).toBe('failed');
+      expect(harness.getRun()).toMatchObject({
+        status: 'failed',
+        stepKey: 'activate',
+        errorCode: 'provisioning_deadline_exceeded',
+        completedAt: new Date(now.getTime() + 15_000).toISOString(),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

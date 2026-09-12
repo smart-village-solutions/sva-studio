@@ -20,6 +20,7 @@ import {
   resolveSessionRevocationTimeoutMs,
   withSessionRevocationTimeout,
   withoutProjectionAttributes,
+  verifyClaimMappers,
 } from './keycloak-authorization-projection-support.js';
 import type { SsfAuthorizationProjectionTarget } from './authorization-projection-reconciler.js';
 import {
@@ -80,6 +81,7 @@ const readProjectedSubjects = async (
   instanceId: string
 ): Promise<readonly ProjectedSubject[]> => {
   const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+  await verifyClaimMappers(tenant);
   const users = await listAllUsers(tenant.client);
   return users
     .map((user) => ({ subject: user.externalId, attributes: user.attributes ?? {} }))
@@ -147,6 +149,33 @@ const resumeTokenIssuance = async (
 export const createSsfKeycloakAuthorizationProjectionTarget = (
   dependencies: SsfKeycloakProjectionTargetDependencies
 ): SsfAuthorizationProjectionTarget => ({
+  prepareLoginClients:
+    dependencies.prepareLoginClients ??
+    (async () => {
+      throw new Error('ssf_tenant_preparation_not_configured');
+    }),
+  prepareRuntimeBaseline:
+    dependencies.prepareRuntimeBaseline ??
+    (async () => {
+      throw new Error('ssf_runtime_baseline_preparation_not_configured');
+    }),
+  isReady: async (instanceId, revision) => {
+    if (!(await dependencies.readLoginReadiness?.(instanceId))) return false;
+    try {
+      const projection = await readBackProjection(dependencies, instanceId);
+      return (
+        projection.subjects.length > 0 && createSsfAuthorizationRevision(projection) === revision
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message === 'ssf_keycloak_claim_mapper_mismatch' ||
+          error.message.startsWith('ssf_keycloak_projection_'))
+      )
+        return false;
+      throw error;
+    }
+  },
   suspendTokenIssuance: (instanceId) => suspendTokenIssuance(dependencies, instanceId),
   reconcile: (projection, revision) => reconcileProjection(dependencies, projection, revision),
   readBack: (instanceId) => readBackProjection(dependencies, instanceId),
@@ -156,6 +185,9 @@ export const createSsfKeycloakAuthorizationProjectionTarget = (
 });
 
 export const createConfiguredSsfKeycloakAuthorizationProjectionTarget = (dependencies: {
+  readonly prepareLoginClients?: SsfKeycloakProjectionTargetDependencies['prepareLoginClients'];
+  readonly prepareRuntimeBaseline?: SsfKeycloakProjectionTargetDependencies['prepareRuntimeBaseline'];
+  readonly readLoginReadiness?: SsfKeycloakProjectionTargetDependencies['readLoginReadiness'];
   readonly resolveTenant: SsfKeycloakProjectionTargetDependencies['resolveTenant'];
   readonly environment?: NodeJS.ProcessEnv;
   readonly fetchImpl?: typeof fetch;
@@ -167,6 +199,9 @@ export const createConfiguredSsfKeycloakAuthorizationProjectionTarget = (depende
     : null;
 
   return createSsfKeycloakAuthorizationProjectionTarget({
+    prepareLoginClients: dependencies.prepareLoginClients,
+    prepareRuntimeBaseline: dependencies.prepareRuntimeBaseline,
+    readLoginReadiness: dependencies.readLoginReadiness,
     resolveTenant: dependencies.resolveTenant,
     revokeSsfTenantSessions: (instanceId, authorizationRevision, signal) => {
       if (!revocationClient) {

@@ -71,7 +71,7 @@ describe('SSF authorization projection repository', () => {
     ).resolves.toBe(true);
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining(
-        "status IN ('pending', 'projecting', 'activation_pending', 'revocation_pending', 'blocked')"
+        "status IN ('pending', 'projecting', 'activation_pending', 'revocation_pending', 'blocked', 'ready')"
       ),
       ['tenant-a', 3, `sha256:${'a'.repeat(64)}`]
     );

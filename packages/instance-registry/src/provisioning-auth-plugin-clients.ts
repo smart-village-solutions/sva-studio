@@ -11,11 +11,53 @@ const pluginClientIdentifierPattern = /^[a-z][a-z0-9-]{0,62}$/u;
 const requirementKeys = new Set(['contractVersion', 'pluginId', 'clientId', 'audience', 'enabled']);
 
 const hasOnlyRequirementKeys = (requirement: PluginOidcClientRequirement): boolean =>
-  Object.keys(requirement).every((key) => requirementKeys.has(key));
+  Object.keys(requirement).every(
+    (key) =>
+      requirementKeys.has(key) ||
+      (requirement.contractVersion === '2.0' && (key === 'redirectUris' || key === 'webOrigins'))
+  );
+
+const hasValidBrowserUris = (
+  requirement: Extract<PluginOidcClientRequirement, { contractVersion: '2.0' }>
+): boolean => {
+  try {
+    if (
+      !Array.isArray(requirement.webOrigins) ||
+      !requirement.webOrigins.length ||
+      !Array.isArray(requirement.redirectUris) ||
+      !requirement.redirectUris.length
+    )
+      return false;
+    const validOrigin = (value: string) => {
+      const url = new URL(value);
+      return url.protocol === 'https:' && url.origin === value && !value.includes('*');
+    };
+    return (
+      requirement.webOrigins.every(validOrigin) &&
+      requirement.redirectUris.every((value) => {
+        const url = new URL(value);
+        return (
+          !url.username &&
+          !url.password &&
+          !url.search &&
+          !url.hash &&
+          requirement.webOrigins.includes(url.origin) &&
+          value === `${url.origin}${url.pathname}` &&
+          (!value.includes('*') || url.pathname === '/login/*')
+        );
+      })
+    );
+  } catch {
+    return false;
+  }
+};
 
 const hasValidRequirementIdentity = (requirement: PluginOidcClientRequirement): boolean =>
   pluginClientIdentifierPattern.test(requirement.pluginId) &&
-  requirement.clientId === requirement.pluginId &&
+  requirement.clientId ===
+    (requirement.contractVersion === '2.0'
+      ? `${requirement.pluginId}-frontend`
+      : requirement.pluginId) &&
   requirement.audience === requirement.clientId;
 
 const conflictsWithReservedClient = (
@@ -30,7 +72,8 @@ const isValidRequirement = (
   input: Pick<KeycloakProvisioningInput, 'authClientId' | 'tenantAdminClient'>
 ): boolean =>
   hasOnlyRequirementKeys(requirement) &&
-  requirement.contractVersion === '1.0' &&
+  (requirement.contractVersion === '1.0' ||
+    (requirement.contractVersion === '2.0' && hasValidBrowserUris(requirement))) &&
   requirement.enabled === false &&
   hasValidRequirementIdentity(requirement) &&
   !conflictsWithReservedClient(requirement, input);
@@ -66,23 +109,40 @@ const isAudienceMapperAligned = (
   );
 };
 
+const isPluginFlowAligned = (
+  requirement: PluginOidcClientRequirement,
+  client: NonNullable<PluginOidcClientState['clientRepresentation']>
+): boolean => {
+  const browser = requirement.contractVersion === '2.0';
+  return (
+    client.publicClient === browser &&
+    client.standardFlowEnabled === browser &&
+    client.implicitFlowEnabled === false &&
+    client.directAccessGrantsEnabled === false &&
+    client.serviceAccountsEnabled === false &&
+    (!browser ||
+      (client.attributes?.['pkce.code.challenge.method'] === 'S256' &&
+        client.attributes?.['access.token.lifespan'] === '900'))
+  );
+};
+
 const isPluginClientAligned = (
   requirement: PluginOidcClientRequirement,
   client: PluginOidcClientState['clientRepresentation'] | undefined
-): boolean =>
-  Boolean(client) &&
-  client?.clientId === requirement.clientId &&
-  client.enabled === false &&
-  client.protocol === 'openid-connect' &&
-  client.publicClient === false &&
-  (client.rootUrl === undefined || client.rootUrl === '') &&
-  equalSets(client.redirectUris ?? [], []) &&
-  equalSets(readPostLogoutUris(client.attributes), []) &&
-  equalSets(client.webOrigins ?? [], []) &&
-  client.standardFlowEnabled === false &&
-  client.implicitFlowEnabled === false &&
-  client.directAccessGrantsEnabled === false &&
-  client.serviceAccountsEnabled === false;
+): boolean => {
+  if (!client) return false;
+  const browser = requirement.contractVersion === '2.0';
+  return (
+    client.clientId === requirement.clientId &&
+    (browser ? typeof client.enabled === 'boolean' : client.enabled === false) &&
+    client.protocol === 'openid-connect' &&
+    (client.rootUrl === undefined || client.rootUrl === '') &&
+    equalSets(client.redirectUris ?? [], browser ? requirement.redirectUris : []) &&
+    equalSets(readPostLogoutUris(client.attributes), []) &&
+    equalSets(client.webOrigins ?? [], browser ? requirement.webOrigins : []) &&
+    isPluginFlowAligned(requirement, client)
+  );
+};
 
 export const readPluginOidcClientAlignment = (
   requirement: PluginOidcClientRequirement,
@@ -118,15 +178,18 @@ export const buildPluginOidcClientStep = (
   const clientExists = Boolean(alignment.client);
 
   return {
-    stepKey: `plugin_client_${requirement.pluginId}`,
+    stepKey: `plugin_client_${requirement.clientId}`,
     title: `Plugin-Client ${requirement.pluginId} abgleichen`,
     action: !clientExists ? 'create' : alignment.aligned ? 'verify' : 'update',
     status: blocked ? 'blocked' : 'ready',
-    summary: !clientExists
-      ? 'Der deaktivierte Plugin-Client wird ohne Callback- oder Origin-Freigaben angelegt.'
-      : alignment.aligned
-        ? 'Der Plugin-Client entspricht dem deaktivierten, callbackfreien Sollzustand.'
-        : 'Der Plugin-Client und sein Audience-Mapper werden auf den sicheren Sollzustand abgeglichen.',
+    summary:
+      requirement.contractVersion === '2.0'
+        ? 'Der Plugin-Client und sein Audience-Mapper werden auf den sicheren Sollzustand abgeglichen.'
+        : !clientExists
+          ? 'Der deaktivierte Plugin-Client wird ohne Callback- oder Origin-Freigaben angelegt.'
+          : alignment.aligned
+            ? 'Der Plugin-Client entspricht dem deaktivierten, callbackfreien Sollzustand.'
+            : 'Der Plugin-Client und sein Audience-Mapper werden auf den sicheren Sollzustand abgeglichen.',
     details: {
       pluginId: requirement.pluginId,
       clientId: requirement.clientId,

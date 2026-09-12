@@ -234,3 +234,30 @@ describe('instance registry plugin activation policy snapshot', () => {
     expect(readInstanceRegistryPluginOidcClientRequirements()).toEqual([]);
   });
 });
+
+it('copies browser URI arrays before publishing the immutable runtime snapshot', () => {
+  const browser = {
+    contractVersion: '2.0' as const,
+    pluginId: 'ssf',
+    clientId: 'ssf-frontend',
+    audience: 'ssf-frontend',
+    enabled: false as const,
+    redirectUris: ['https://dialog.example.org/login/*'],
+    webOrigins: ['https://dialog.example.org'],
+  };
+  configureInstanceRegistryPluginRuntimeSnapshot({
+    activationPolicies: { revision: 'browser-test', modules: [] },
+    moduleIamContracts: [],
+    tenantLifecycles: [],
+    pluginOidcClientRequirements: [browser],
+  });
+  browser.webOrigins.push('*');
+  browser.redirectUris[0] = 'https://other.example.org/*';
+  expect(readInstanceRegistryPluginOidcClientRequirements()).toEqual([
+    {
+      ...browser,
+      redirectUris: ['https://dialog.example.org/login/*'],
+      webOrigins: ['https://dialog.example.org'],
+    },
+  ]);
+});

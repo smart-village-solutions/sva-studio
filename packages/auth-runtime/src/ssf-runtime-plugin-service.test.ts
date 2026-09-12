@@ -62,6 +62,7 @@ describe('SSF runtime plugin service host gates', () => {
   const readInstance = vi.fn();
   const readPluginAccess = vi.fn();
   const readDatabaseReadiness = vi.fn();
+  const readLoginReadiness = vi.fn();
   const readAuthorizationRevision = vi.fn();
   const emitSecurityAudit = vi.fn();
 
@@ -73,6 +74,7 @@ describe('SSF runtime plugin service host gates', () => {
     readInstance.mockReset().mockResolvedValue(instance());
     readPluginAccess.mockReset().mockResolvedValue({ allowed: true, reason: 'ready' });
     readDatabaseReadiness.mockReset().mockResolvedValue(true);
+    readLoginReadiness.mockReset().mockResolvedValue(true);
     readAuthorizationRevision.mockReset().mockResolvedValue(revision);
     emitSecurityAudit.mockReset().mockResolvedValue(undefined);
   });
@@ -83,6 +85,7 @@ describe('SSF runtime plugin service host gates', () => {
       readInstance,
       readPluginAccess,
       readDatabaseReadiness,
+      readLoginReadiness,
       readAuthorizationRevision,
       emitSecurityAudit,
     });

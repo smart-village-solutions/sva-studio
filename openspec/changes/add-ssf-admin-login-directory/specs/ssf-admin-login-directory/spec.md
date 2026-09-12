@@ -3,19 +3,21 @@
 ### Requirement: Aktives installationsweites Mandantenverzeichnis
 
 Studio SHALL unter `GET /internal/plugins/ssf/v1/admin-login-tenants` alle
-aktiven Einträge seiner lokalen Mandanten-Registry mit `contractVersion: "1.0"`,
+aktiven und vollständig loginbereiten Einträge seiner lokalen Mandanten-Registry mit `contractVersion: "1.0"`,
 einer SHA-256-`directoryRevision` und ausschließlich den Mandantenfeldern
 `{id, displayName, realm}` liefern. Die Sortierung SHALL nach deutschem
 `displayName`, bei Gleichstand nach `id` erfolgen. Die Revision SHALL aus der
 kanonisch sortierten `tenants`-Darstellung gebildet werden, bei unverändertem
-öffentlichen Inhalt stabil bleiben und sich bei dessen Änderung ändern. Studio SHALL keine
-zusätzlichen Plugin-, Readiness- oder Freigabelistenprüfungen ausführen.
+öffentlichen Inhalt stabil bleiben und sich bei dessen Änderung ändern. Studio SHALL vor Veröffentlichung den gemeinsamen SSF-Readiness-Pfad prüfen.
+Dieser MUST den bereiten Lifecycle, den Tenant-Grunddatensatz, beide Client-Verträge
+und die bestätigte IAM-Revision verlangen. Die Erstprovisionierung MUST diese
+Voraussetzungen vor `ready` herstellen; Directory-Reads bleiben schreibfrei.
 
 #### Scenario: Aktive und inaktive Einträge
 
 - **GIVEN** lokale Registry-Einträge mit unterschiedlichen Statuswerten
 - **WHEN** SSF das Verzeichnis autorisiert abruft
-- **THEN** enthält die Antwort nur aktive Einträge mit ID, Bezeichnung und Auth-Realm
+- **THEN** enthält die Antwort nur aktive, loginbereite Einträge mit ID, Bezeichnung und Auth-Realm
 - **AND** enthält sie keine Credentials oder anderen Registry-Felder
 
 #### Scenario: Leeres Verzeichnis
@@ -59,3 +61,12 @@ Login-Handler oder gespeicherte Keycloak-Authorization-URLs bereitstellen.
 - **WHEN** SSF einen Directory-Eintrag erhält
 - **THEN** kann es Bezeichnung und Realm für seinen eigenen Login-Einstieg nutzen
 - **AND** bleiben Service-Credentials ausschließlich serverseitig
+
+#### Scenario: Teilprovisionierung oder Client-Drift
+
+- **GIVEN** ein aktiver Mandant besitzt keine vollständige SSF-Login-Baseline
+- **WHEN** der Directory-Endpoint seine Readiness prüft
+- **THEN** bleibt dieser Mandant unveröffentlicht
+- **AND** führt der GET-Endpoint keine Provisionierungs-Writes aus
+- **WHEN** der Lifecycle alle Voraussetzungen idempotent hergestellt und verifiziert hat
+- **THEN** darf der Mandant nach erfolgreichem Lifecycle-Abschluss veröffentlicht werden

@@ -25,6 +25,7 @@ describe('SSF runtime deployment contract', () => {
     const entrypoint = read('deploy/portainer/migrate-entrypoint.sh');
     const dockerfile = read('Dockerfile');
 
+    expect(compose).toContain("SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'");
     expect(compose).toContain(
       "SSF_PLUGIN_DATABASE_ENABLED: '${SSF_PLUGIN_DATABASE_ENABLED:-false}'"
     );

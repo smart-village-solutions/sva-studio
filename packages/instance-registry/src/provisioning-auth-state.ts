@@ -5,7 +5,6 @@ import type {
   KeycloakProvisioningInput,
   KeycloakReadState,
   KeycloakRoleRepresentation,
-  PluginOidcClientRequirement,
   TenantAdminBootstrap,
   TenantAdminStatus,
 } from './provisioning-auth-types.js';
@@ -20,6 +19,11 @@ import {
 } from './provisioning-auth-plugin-clients.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
+
+export {
+  readPluginOidcClientAlignment,
+  readPluginOidcClientRequirements,
+} from './provisioning-auth-plugin-clients.js';
 
 type KeycloakAdminUser = {
   readonly id: string;
@@ -51,6 +55,9 @@ export type KeycloakProvisioningClient = {
     serviceAccountsEnabled?: boolean;
     enabled?: boolean;
     uriPolicy?: 'merge' | 'replace';
+    publicClient?: boolean;
+    pkceCodeChallengeMethod?: 'S256';
+    accessTokenLifespan?: 900;
   }): Promise<void>;
   ensureTenantAdminServiceAccess(clientId: string): Promise<void>;
   listClientProtocolMappers(clientId: string): Promise<
@@ -329,19 +336,33 @@ export const createReadKeycloakClientSecrets =
     return { keycloakClientSecret, tenantAdminClientSecret };
   };
 
-const reconcilePluginOidcClients = async (
-  client: KeycloakProvisioningClient,
-  requirements: readonly PluginOidcClientRequirement[]
+export const reconcilePluginOidcClients = async (
+  client: Pick<
+    KeycloakProvisioningClient,
+    | 'ensureOidcClient'
+    | 'ensureAudienceProtocolMapper'
+    | 'getOidcClientByClientId'
+    | 'listClientProtocolMappers'
+  >,
+  input: Pick<KeycloakProvisioningInput, 'authClientId' | 'tenantAdminClient' | 'pluginOidcClients'>
 ): Promise<void> => {
-  for (const requirement of requirements) {
+  for (const requirement of readPluginOidcClientRequirements(input)) {
+    const browser = requirement.contractVersion === '2.0';
     await client.ensureOidcClient({
       clientId: requirement.clientId,
-      redirectUris: [],
+      redirectUris: browser ? requirement.redirectUris : [],
       postLogoutRedirectUris: [],
-      webOrigins: [],
+      webOrigins: browser ? requirement.webOrigins : [],
       rootUrl: '',
       enabled: false,
-      standardFlowEnabled: false,
+      standardFlowEnabled: browser,
+      ...(browser
+        ? {
+            publicClient: true,
+            pkceCodeChallengeMethod: 'S256' as const,
+            accessTokenLifespan: 900 as const,
+          }
+        : {}),
       implicitFlowEnabled: false,
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
@@ -388,7 +409,10 @@ export const createProvisionInstanceAuthArtifacts =
       }
     }
     try {
-      await reconcilePluginOidcClients(client, pluginOidcClientRequirements);
+      await reconcilePluginOidcClients(client, {
+        ...input,
+        pluginOidcClients: pluginOidcClientRequirements,
+      });
     } catch (error) {
       if (!createdRealm) {
         throw error;

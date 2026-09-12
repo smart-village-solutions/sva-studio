@@ -68,8 +68,16 @@ describe('SSF plugin metadata', () => {
         operations: [
           { operation: 'provision', jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID },
           { operation: 'reconcile', jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID },
+          { operation: 'readiness', jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID },
         ],
-        readinessChecks: [],
+        readinessChecks: [
+          {
+            checkId: 'ssf.loginReady',
+            titleKey: 'ssf.readiness.login',
+            required: true,
+            repairOperation: 'reconcile',
+          },
+        ],
       },
     });
     expect(manifest).toMatchObject({

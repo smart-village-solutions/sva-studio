@@ -34,6 +34,7 @@ type TenantAccessDependencies = Required<
     | 'readInstance'
     | 'readPluginAccess'
     | 'readDatabaseReadiness'
+    | 'readLoginReadiness'
     | 'readAuthorizationRevision'
   >
 >;
@@ -175,7 +176,13 @@ const resolveTenantReadiness = async (input: {
     input.dependencies.readAuthorizationRevision(input.instanceId),
   ]);
   const readiness = { databaseReady, authorizationRevision, timeZone: input.timeZone };
-  if (!isReadySsfTenant(readiness)) {
+  if (
+    !isReadySsfTenant(readiness) ||
+    !(await input.dependencies.readLoginReadiness(
+      input.instanceId,
+      readiness.authorizationRevision
+    ))
+  ) {
     return {
       kind: 'rejected',
       result: await rejectTenant({

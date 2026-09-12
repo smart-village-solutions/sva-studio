@@ -12,27 +12,30 @@ Ziele:
 
 - stabiler, tenantungebundener Lesevertrag für aktive Registry-Einträge,
 - eigene, minimal berechtigte Action `ssf.admin-login-directory.read`,
-- Unabhängigkeit von Tenant-Plugin-Laden, Plugin-Aktivierung und
-  SSF-Lifecycle-Readiness,
+- vollständige SSF-Login-Bereitschaft vor Veröffentlichung,
 - unveränderte private Ingress-Grenze für interne Plugin-Endpunkte.
 
 Nicht-Ziele:
 
 - kein Login-Handler und keine OIDC-Transaktionswerte in Studio,
-- keine zusätzliche Freigabeliste oder SSF-Betriebsprüfung,
+- keine zusätzliche manuelle Freigabeliste,
 - keine Schemaänderung und keine neue Service-Identität.
 
 ## Entscheidungen
 
 Der Host verarbeitet den exakten Directory-Pfad im Server-Entry nach dem
-privaten Ingress-Guard und vor dem Plugin-Aktivierungs-Bootstrap. Dadurch kann
-ein fehlerhaftes Tenant-Plugin das installationsweite Verzeichnis nicht
-blockieren. Alle übrigen Plugin-Routen behalten ihren bestehenden Dispatcher.
+privaten Ingress-Guard. Die Service-Authentifizierung bleibt vor Registry- und
+Readiness-Lesen. Für autorisierte Reads konfiguriert der Host den Plugin-Snapshot
+und prüft denselben schreibfreien Readiness-Pfad wie der Runtime-Zugriff.
+Alle übrigen Plugin-Routen behalten ihren bestehenden Dispatcher.
 
 Die Auth-Runtime validiert Issuer, Audience, Client-ID und die eigene
 Directory-Action. Ablehnungen mit `401` oder `403` erzeugen ein
 action-spezifisches Plattform-Audit. Erst danach liest der Handler die lokale
-Instanz-Registry und übernimmt ausschließlich Einträge mit Status `active`.
+Instanz-Registry. Er übernimmt ausschließlich aktive Einträge mit bereitem
+Lifecycle, Tenant-Grunddatensatz, korrekten Client-Verträgen und bestätigter
+IAM-Revision. Die Erstprovisionierung stellt diese Voraussetzungen vor `ready`
+her; der Directory-Endpoint führt selbst keine Reparatur aus.
 
 Die Antwort enthält nur `id`, `displayName` und `realm`. Die sortierte
 öffentliche Nutzlast bestimmt die SHA-256-Revision. Eine leere Liste bleibt
@@ -43,8 +46,9 @@ Verfügbarkeitsfehler bleiben als `401`, `403` und `503` stabil.
 
 Eine Studio-Login-URL wurde verworfen, weil SSF den OIDC-Flow startet und die
 transaktionsgebundenen Werte selbst erzeugt. Ein Aufruf über den
-tenantgebundenen Plugin-Dispatcher wurde verworfen, weil dessen Lifecycle- und
-Readiness-Prüfungen nicht zum freigegebenen Directory-Vertrag gehören.
+tenantgebundenen Plugin-Dispatcher bleibt ungeeignet für den installationsweiten
+Read. Die gemeinsame Readiness-Prüfung wird deshalb pro Registry-Eintrag an
+der hostseitigen Composition Root eingebunden.
 
 Die vorhandene `ssf-runtime`-Identität wird weiterverwendet. Die getrennte
 Action hält die Berechtigung eng, ohne eine zweite Client-Credentials-Identität

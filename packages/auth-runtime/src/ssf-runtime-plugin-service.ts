@@ -39,6 +39,7 @@ export const createSsfRuntimePluginServiceAccess = (
         readInstance,
         readPluginAccess: dependencies.readPluginAccess ?? readConfiguredPluginTenantAccess,
         readDatabaseReadiness: dependencies.readDatabaseReadiness ?? (async () => false),
+        readLoginReadiness: dependencies.readLoginReadiness ?? (async () => false),
         readAuthorizationRevision: dependencies.readAuthorizationRevision ?? (async () => null),
       },
     }),

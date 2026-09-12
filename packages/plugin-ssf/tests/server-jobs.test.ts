@@ -11,7 +11,7 @@ describe('SSF authorization lifecycle job', () => {
       generation: 3,
       changed: true,
     });
-    const handler = createPluginJobExecutionHandlers({ reconcile })[
+    const handler = createPluginJobExecutionHandlers({ reconcile, readiness: vi.fn() })[
       SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID
     ];
 
@@ -25,13 +25,17 @@ describe('SSF authorization lifecycle job', () => {
       resultPayload: {
         plugin: { operation: 'reconcile-authorization', changed: true, generation: 3 },
       },
-      tenantLifecycle: { revision: 'sha256:confirmed', checks: [] },
+      tenantLifecycle: {
+        revision: 'sha256:confirmed',
+        checks: [{ checkId: 'ssf.loginReady', status: 'ready' }],
+      },
     });
     expect(reconcile).toHaveBeenCalledWith('tenant-a');
   });
 
   it('keeps non-ready projections in the lifecycle retry path', async () => {
     const handler = createPluginJobExecutionHandlers({
+      readiness: vi.fn(),
       reconcile: vi.fn().mockResolvedValue({
         status: 'blocked',
         generation: 4,
@@ -58,6 +62,7 @@ describe('SSF authorization lifecycle job', () => {
 
   it('classifies runtime failures as retryable', async () => {
     const handler = createPluginJobExecutionHandlers({
+      readiness: vi.fn(),
       reconcile: vi.fn().mockRejectedValue(new Error('database unavailable')),
     })[SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID];
 
@@ -76,7 +81,7 @@ describe('SSF authorization lifecycle job', () => {
   });
 
   it('classifies an invalid lifecycle invocation as terminal', async () => {
-    const handler = createPluginJobExecutionHandlers({ reconcile: vi.fn() })[
+    const handler = createPluginJobExecutionHandlers({ reconcile: vi.fn(), readiness: vi.fn() })[
       SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID
     ];
 
@@ -89,3 +94,28 @@ describe('SSF authorization lifecycle job', () => {
     ).rejects.toMatchObject({ cause: { retry: { kind: 'terminal' } } });
   });
 });
+
+it.each([null, 'sha256:confirmed'])(
+  'runs the readiness operation without provisioning for revision %s',
+  async (revision) => {
+    const reconcile = vi.fn();
+    const readiness = vi.fn().mockResolvedValue(revision);
+    const handler = createPluginJobExecutionHandlers({ reconcile, readiness })[
+      SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID
+    ];
+    expect(
+      await handler?.({
+        job: { instanceId: 'tenant-a' },
+        tenantLifecycle: { operation: 'readiness' },
+        throwIfCancellationRequested: vi.fn(),
+      } as never)
+    ).toMatchObject({
+      tenantLifecycle: {
+        revision: revision ?? 'ssf:not-ready',
+        checks: [{ checkId: 'ssf.loginReady', status: revision ? 'ready' : 'blocked' }],
+      },
+    });
+    expect(readiness).toHaveBeenCalledWith('tenant-a');
+    expect(reconcile).not.toHaveBeenCalled();
+  }
+);

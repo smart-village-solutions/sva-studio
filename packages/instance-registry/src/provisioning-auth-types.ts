@@ -21,13 +21,21 @@ export type KeycloakClientRepresentation = {
   readonly attributes?: Readonly<Record<string, string>>;
 } | null;
 
-export type PluginOidcClientRequirement = Readonly<{
-  contractVersion: '1.0';
-  pluginId: string;
-  clientId: string;
-  audience: string;
-  enabled: false;
-}>;
+export type PluginOidcClientRequirement = Readonly<
+  {
+    pluginId: string;
+    clientId: string;
+    audience: string;
+    enabled: false;
+  } & (
+    | { contractVersion: '1.0' }
+    | {
+        contractVersion: '2.0';
+        redirectUris: readonly string[];
+        webOrigins: readonly string[];
+      }
+  )
+>;
 
 export type PluginOidcClientState = Readonly<{
   requirement: PluginOidcClientRequirement;

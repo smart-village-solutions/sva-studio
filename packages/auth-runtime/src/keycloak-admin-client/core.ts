@@ -1228,7 +1228,16 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     serviceAccountsEnabled?: boolean;
     enabled?: boolean;
     uriPolicy?: 'merge' | 'replace';
+    publicClient?: boolean;
+    pkceCodeChallengeMethod?: 'S256';
+    accessTokenLifespan?: 900;
   }): Promise<void> {
+    if (
+      input.publicClient &&
+      (input.clientSecret || input.rotateClientSecret || input.serviceAccountsEnabled)
+    ) {
+      throw new Error('public_oidc_client_secret_or_service_account_forbidden');
+    }
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
     const payload = {
@@ -1236,7 +1245,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       name: input.clientId,
       enabled: input.enabled ?? true,
       protocol: 'openid-connect',
-      publicClient: false,
+      publicClient: input.publicClient ?? false,
       standardFlowEnabled: input.standardFlowEnabled ?? true,
       implicitFlowEnabled: input.implicitFlowEnabled ?? existing?.implicitFlowEnabled ?? false,
       directAccessGrantsEnabled: input.directAccessGrantsEnabled ?? false,
@@ -1251,6 +1260,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           : mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
       attributes: {
         ...existing?.attributes,
+        ...(input.pkceCodeChallengeMethod
+          ? { 'pkce.code.challenge.method': input.pkceCodeChallengeMethod }
+          : {}),
+        ...(input.accessTokenLifespan
+          ? { 'access.token.lifespan': String(input.accessTokenLifespan) }
+          : {}),
         'post.logout.redirect.uris': (input.uriPolicy === 'replace'
           ? [...input.postLogoutRedirectUris]
           : mergeSortedUniqueStrings(
@@ -1265,7 +1280,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     };
 
     await this.upsertOidcClient(existing, payload, input.clientId);
-    await this.syncOidcClientSecret(existing, input);
+    if (!input.publicClient) await this.syncOidcClientSecret(existing, input);
   }
 
   private async upsertOidcClient(
@@ -1282,7 +1297,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       serviceAccountsEnabled: boolean;
       redirectUris: string[];
       webOrigins: string[];
-      attributes: { 'post.logout.redirect.uris': string };
+      attributes: Record<string, string> & { 'post.logout.redirect.uris': string };
       rootUrl: string;
       baseUrl: string;
       adminUrl: string;
@@ -1302,6 +1317,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       existing.implicitFlowEnabled !== payload.implicitFlowEnabled ||
       existing.directAccessGrantsEnabled !== payload.directAccessGrantsEnabled ||
       existing.serviceAccountsEnabled !== payload.serviceAccountsEnabled ||
+      existing.attributes?.['pkce.code.challenge.method'] !==
+        payload.attributes['pkce.code.challenge.method'] ||
+      existing.attributes?.['access.token.lifespan'] !==
+        payload.attributes['access.token.lifespan'] ||
       !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
       !areStringSetsEqual(existing.webOrigins, payload.webOrigins) ||
       !areStringSetsEqual(
@@ -1459,21 +1478,26 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     userAttribute: string;
     claimName: string;
     multivalued?: boolean;
+    exclusiveClaim?: boolean;
   }): Promise<void> {
-    await this.ensureProtocolMapper(input.clientId, {
-      name: input.name,
-      protocol: 'openid-connect',
-      protocolMapper: 'oidc-usermodel-attribute-mapper',
-      config: {
-        'user.attribute': input.userAttribute,
-        'claim.name': input.claimName,
-        'jsonType.label': 'String',
-        multivalued: input.multivalued ? 'true' : 'false',
-        'id.token.claim': 'true',
-        'access.token.claim': 'true',
-        'userinfo.token.claim': 'true',
+    await this.ensureProtocolMapper(
+      input.clientId,
+      {
+        name: input.name,
+        protocol: 'openid-connect',
+        protocolMapper: 'oidc-usermodel-attribute-mapper',
+        config: {
+          'user.attribute': input.userAttribute,
+          'claim.name': input.claimName,
+          'jsonType.label': 'String',
+          multivalued: input.multivalued ? 'true' : 'false',
+          'id.token.claim': 'true',
+          'access.token.claim': 'true',
+          'userinfo.token.claim': 'true',
+        },
       },
-    });
+      input.exclusiveClaim
+    );
   }
 
   async ensureAudienceProtocolMapper(input: {
@@ -1503,7 +1527,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       protocol: string;
       protocolMapper: string;
       config: Readonly<Record<string, string>>;
-    }
+    },
+    exclusiveClaim = false
   ): Promise<void> {
     await this.assertWriteAvailability();
     const client = await this.getOidcClientByClientId(clientId);
@@ -1517,6 +1542,20 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
 
     const existingMappers = await this.listClientProtocolMappers(clientId);
+    if (exclusiveClaim && payload.config['claim.name']) {
+      for (const mapper of existingMappers) {
+        if (
+          mapper.name !== payload.name &&
+          mapper.config?.['claim.name'] === payload.config['claim.name']
+        ) {
+          await this.executeWithResilience<void>({
+            method: 'DELETE',
+            path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/protocol-mappers/models/${encodePathSegment(mapper.id)}`,
+            operation: 'delete_conflicting_claim_mapper',
+          });
+        }
+      }
+    }
     const existingMapper = existingMappers.find((mapper) => mapper.name === payload.name);
 
     if (!existingMapper) {

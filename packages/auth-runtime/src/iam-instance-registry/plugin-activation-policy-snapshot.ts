@@ -174,7 +174,17 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
     throw new Error('plugin_tenant_lifecycle_duplicate_plugin');
   }
   const pluginOidcClientRequirements = Object.freeze(
-    input.pluginOidcClientRequirements.map((requirement) => Object.freeze({ ...requirement }))
+    input.pluginOidcClientRequirements.map((requirement) =>
+      Object.freeze(
+        requirement.contractVersion === '2.0'
+          ? {
+              ...requirement,
+              redirectUris: Object.freeze([...requirement.redirectUris]),
+              webOrigins: Object.freeze([...requirement.webOrigins]),
+            }
+          : { ...requirement }
+      )
+    )
   );
   if (
     new Set(pluginOidcClientRequirements.map(({ clientId }) => clientId)).size !==

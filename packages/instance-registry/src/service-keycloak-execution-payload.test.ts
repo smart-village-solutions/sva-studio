@@ -216,3 +216,27 @@ describe('service-keycloak-execution-payload', () => {
     ).rejects.toBe(appendError);
   });
 });
+
+it('keeps the browser origin bound to the serialized queue snapshot', () => {
+  const browser = {
+    contractVersion: '2.0',
+    pluginId: 'ssf',
+    clientId: 'ssf-frontend',
+    audience: 'ssf-frontend',
+    enabled: false,
+    redirectUris: ['https://dialog.example.org/login/*'],
+    webOrigins: ['https://dialog.example.org'],
+  };
+  const details = JSON.parse(
+    JSON.stringify({
+      pluginOidcSnapshotVersion: '1.0',
+      pluginOidcClients: [ssfRequirement, browser],
+    })
+  );
+  const result = readQueuedPluginOidcClientRequirements(details, loaded.instance);
+  expect(result).toEqual([ssfRequirement, browser]);
+  details.pluginOidcClients[1].webOrigins = ['*'];
+  expect(() => readQueuedPluginOidcClientRequirements(details, loaded.instance)).toThrow(
+    'plugin_oidc_client_requirement_invalid'
+  );
+});

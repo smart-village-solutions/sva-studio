@@ -99,7 +99,29 @@ export const ensureClaimMappers = async (tenant: SsfKeycloakProjectionTenant): P
       userAttribute: claimName,
       claimName,
       multivalued,
+      exclusiveClaim: true,
     });
+  }
+};
+
+export const verifyClaimMappers = async (tenant: SsfKeycloakProjectionTenant): Promise<void> => {
+  const mappers = await tenant.client.listClientProtocolMappers(tenant.clientId);
+  for (const claimName of CLAIM_NAMES) {
+    const candidates = mappers.filter((mapper) => mapper.config?.['claim.name'] === claimName);
+    const mapper = candidates[0];
+    const multivalued =
+      claimName === SSF_TOKEN_CLAIMS.roles || claimName === SSF_TOKEN_CLAIMS.permissions;
+    if (
+      candidates.length !== 1 ||
+      mapper?.protocol !== 'openid-connect' ||
+      mapper.protocolMapper !== 'oidc-usermodel-attribute-mapper' ||
+      mapper.config?.['user.attribute'] !== claimName ||
+      mapper.config['access.token.claim'] !== 'true' ||
+      mapper.config['jsonType.label'] !== 'String' ||
+      mapper.config.multivalued !== String(multivalued)
+    ) {
+      throw new Error('ssf_keycloak_claim_mapper_mismatch');
+    }
   }
 };
 

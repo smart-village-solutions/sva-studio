@@ -97,7 +97,9 @@ mit Bezug auf die arc42-Abschnitte.
 
 ### Zuordnung Swarm-Deployment-ADRs
 
-- Abschnitt 07 (Deployment): ADR-019
+- Abschnitt 07/08/10 (Deployment/Querschnitt/Qualität): ADR-019; die Fortschreibung 2026-09 bindet
+  Keycloaks Forwarded-Header-Auswertung an das verifizierte Traefik-/Keycloak-Overlay-Subnetz und
+  ergänzt den redigierten, ingestion-toleranten Loki-Gate.
 - Abschnitt 05/07/08 (Bausteine/Deployment/Querschnitt): ADR-011 (Fortschreibung: Subdomain-Ableitung)
 - Abschnitt 07/08/10 (Deployment/Querschnitt/Qualität): ADR-020
 

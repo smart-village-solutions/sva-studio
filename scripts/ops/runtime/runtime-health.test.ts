@@ -300,6 +300,10 @@ describe('runtime-health helpers', () => {
           });
         }
 
+        if ((new URL(url).searchParams.get('query') ?? '').includes('Non-secure context detected')) {
+          return new Response(JSON.stringify({ data: { result: [] }, status: 'success' }), { status: 200 });
+        }
+
         return new Response(JSON.stringify({
           data: { result: [{ values: [['1', 'observability_ready tenant_auth_resolution_summary']] }] },
         }), { status: 200 });
@@ -347,6 +351,7 @@ describe('runtime-health helpers', () => {
       SVA_GRAFANA_TOKEN: 'token',
       SVA_LOKI_URL: 'https://loki.example.test',
       SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
     });
 
     const lokiQueries = fetchCalls
@@ -357,6 +362,284 @@ describe('runtime-health helpers', () => {
     expect(lokiQueries).toContain(
       '{swarm_stack="studio",swarm_service="studio_studio-app"} |= "tenant_auth_resolution_summary" |= "de-musterhausen"',
     );
+    expect(lokiQueries).toContain(
+      '{swarm_service=~".*keycloak_keycloak"} |= "Non-secure context detected; cookies are not secured"',
+    );
+    expect(fetchCalls).toContain('https://issuer.example.test/realms/studio/protocol/openid-connect/auth');
+  });
+
+  it('fails observability readiness when Keycloak reports an insecure cookie context', async () => {
+    let insecureContextQueryCount = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const query = new URL(url).searchParams.get('query') ?? '';
+        if (query.includes('Non-secure context detected')) {
+          insecureContextQueryCount += 1;
+          return insecureContextQueryCount < 3
+            ? new Response(JSON.stringify({ data: { result: [] }, status: 'success' }), { status: 200 })
+            : new Response(JSON.stringify({
+              data: { result: [{ values: [['1', 'Non-secure context detected; cookies are not secured sensitive-log-fragment']] }] },
+              status: 'success',
+            }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ data: { result: [] } }), { status: 200 });
+      }),
+    );
+
+    const toDoctorCheck = vi.fn((name, status, code, message, details) => ({ code, details, message, name, status }));
+    const wait = vi.fn();
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck,
+      wait,
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_context',
+      details: { matchesAtLeast: 1, sampleLimit: 20, windowMinutes: 15 },
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+    expect(wait).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenNthCalledWith(1, 2_000);
+    expect(wait).toHaveBeenNthCalledWith(2, 2_000);
+    expect(JSON.stringify(toDoctorCheck.mock.calls)).not.toContain('sensitive-log-fragment');
+  });
+
+  it('fails closed when the configured Keycloak Loki probe is unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 503 })));
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_probe_failed',
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+  });
+
+  it('fails closed when the Keycloak Loki response has no result array', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ status: 'success' }), { status: 200 })));
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_probe_failed',
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+  });
+
+  it('fails closed when the Keycloak Loki response reports an error status', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      data: { result: [] },
+      status: 'error',
+    }), { status: 200 })));
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_probe_failed',
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+  });
+
+  it('follows the tenant authorization redirect without exposing its URL', async () => {
+    const sensitiveAuthorizationUrl = 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: { location: sensitiveAuthorizationUrl },
+        status: 302,
+      }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    const result = await ops.buildTenantAuthProofCheck('studio', {
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, new URL(sensitiveAuthorizationUrl), expect.objectContaining({
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    }));
+    expect(result).toEqual(expect.objectContaining({
+      code: 'tenant_auth_authorization_failed',
+      status: 'error',
+    }));
+    expect(JSON.stringify(result)).not.toContain('sensitive-state');
+    expect(JSON.stringify(result)).not.toContain(sensitiveAuthorizationUrl);
+  });
+
+  it('rejects tenant authorization redirects outside the configured Keycloak origins', async () => {
+    const maliciousAuthorizationUrl = 'https://internal.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(null, {
+      headers: { location: maliciousAuthorizationUrl },
+      status: 302,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    const result = await ops.buildTenantAuthProofCheck('studio', {
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.test',
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(expect.objectContaining({
+      code: 'tenant_auth_redirect_failed',
+      status: 'error',
+    }));
+    expect(JSON.stringify(result)).not.toContain('internal.example.test');
+    expect(JSON.stringify(result)).not.toContain('sensitive-state');
   });
 
   it('uses timeouts for login and me smoke requests', async () => {

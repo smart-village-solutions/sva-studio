@@ -230,6 +230,11 @@ Zusatz für Portainer/Quantum:
 
 **Typische Ursache:** Logger läuft ohne aktiven Transport, OTEL ist halb aktiviert oder Loki/Grafana-Zugang ist lokal nicht verfügbar.
 
+Wenn der Fehlercode `keycloak_insecure_cookie_context` lautet, gilt der
+[Keycloak-Reverse-Proxy-Vertrag](./keycloak-reverse-proxy-secure-context.md). Der Gate wertet ein
+rollierendes 15-Minuten-Fenster aus; nach einer Korrektur müssen ältere Treffer zunächst aus dem
+Fenster laufen.
+
 ### 11b. Loki zeigt nur Startup-Rauschen, aber keine verwertbaren App-Diagnoselogs
 
 **Symptom:** Grafana/Loki ist erreichbar, aber tenant- oder auth-spezifische Logs fehlen.

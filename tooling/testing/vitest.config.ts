@@ -74,6 +74,7 @@ export default defineConfig({
       '../../scripts/ops/runtime/one-shot-job-compose.test.ts',
       '../../scripts/ops/runtime/one-shot-job-lifecycle.test.ts',
       '../../scripts/ops/runtime/remote-verification.test.ts',
+      '../../scripts/ops/runtime/runtime-health.test.ts',
       '../../scripts/ops/runtime/smoke.test.ts',
       '../../scripts/ops/runtime/studio-image-verify-evidence.test.ts',
       '../../scripts/ops/studio-instance-audit-keycloak.test.ts',

@@ -162,8 +162,8 @@ const precheckAcceptance = async (
   checks.push(await deps.buildAcceptanceIngressConsistencyCheck(env));
   checks.push(await deps.buildAppPrincipalReadinessCheck(env));
   checks.push(await deps.buildKeycloakClientSecretCheck(runtimeProfile, env));
-  checks.push(await deps.buildObservabilityDoctorCheck(runtimeProfile, env));
   checks.push(await deps.buildTenantAuthProofCheck(runtimeProfile, env));
+  checks.push(await deps.buildObservabilityDoctorCheck(runtimeProfile, env));
   checks.push(deps.buildAcceptancePostgresCheck(env));
   checks.push(deps.buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(deps.buildSchemaGuardCheck(runtimeProfile, env));

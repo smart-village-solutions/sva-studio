@@ -1,0 +1,4 @@
+{
+  "prNumber": 1338,
+  "body": "Anmeldung technisch abgesichert\n\n- Die zentrale Anmeldung erkennt HTTPS hinter dem vorgeschalteten Proxy wieder korrekt. Sicherheitsrelevante Anmelde-Cookies werden dadurch auch in mandantenspezifischen Login-Abläufen zuverlässig geschützt."
+}

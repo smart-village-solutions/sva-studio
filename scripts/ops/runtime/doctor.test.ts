@@ -115,6 +115,8 @@ describe('createRuntimeDoctorOps', () => {
     expect(localKeycloakReport.checks.map((check) => check.name)).toContain('actor-diagnosis');
     expect(precheckReport.checks.map((check) => check.name)).toContain('acceptance-live-spec');
     expect(precheckReport.checks.map((check) => check.name)).toContain('runtime-env-live');
+    expect(precheckReport.checks.findIndex((check) => check.name === 'tenant-auth-proof'))
+      .toBeLessThan(precheckReport.checks.findIndex((check) => check.name === 'observability'));
     expect(finalizeDoctorReport).toHaveBeenCalledTimes(4);
   });
 

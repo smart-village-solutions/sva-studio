@@ -31,6 +31,7 @@ const queryRecentLokiLines = async (
   env: NodeJS.ProcessEnv,
   query: string,
   limit = 20,
+  strictResult = false,
 ): Promise<readonly string[]> => {
   const lokiUrl = env.SVA_LOKI_URL?.trim();
   const grafanaToken = env.SVA_GRAFANA_TOKEN?.trim();
@@ -42,6 +43,7 @@ const queryRecentLokiLines = async (
   const response = await fetch(url, { headers: { Authorization: `Bearer ${grafanaToken}` }, signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`loki_probe_failed:${response.status}`);
   const payload = (await response.json()) as { data?: { result?: Array<{ values?: string[][] }> } };
+  if (strictResult && !Array.isArray(payload.data?.result)) throw new Error('loki_probe_invalid_response');
   return (payload.data?.result ?? []).flatMap((entry) => (entry.values ?? []).map((value) => value[1] ?? '')).filter((line) => line.length > 0);
 };
 
@@ -49,14 +51,14 @@ const queryRecentLokiLinesWithRetry = async (
   deps: RuntimeHealthDeps,
   env: NodeJS.ProcessEnv,
   query: string,
-  options: { attempts?: number; delayMs?: number; limit?: number } = {},
+  options: { attempts?: number; delayMs?: number; limit?: number; strictResult?: boolean } = {},
 ) => {
   const attempts = options.attempts ?? 3;
   const delayMs = options.delayMs ?? 2_000;
   const limit = options.limit ?? 20;
   let lastLines: readonly string[] = [];
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    lastLines = await queryRecentLokiLines(env, query, limit);
+    lastLines = await queryRecentLokiLines(env, query, limit, options.strictResult);
     if (lastLines.length > 0 || attempt >= attempts) return lastLines;
     await deps.wait(delayMs);
   }
@@ -119,6 +121,7 @@ const buildObservabilityDoctorCheck = async (
       attempts: 3,
       delayMs: 2_000,
       limit: 20,
+      strictResult: true,
     });
   } catch (error) {
     const unconfigured = error instanceof Error && error.message === 'loki_probe_unconfigured';

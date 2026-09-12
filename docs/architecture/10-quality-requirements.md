@@ -88,6 +88,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Keycloak-Proxy-Sicherheit:
   - Remote-Doctor und -Precheck prüfen ein rollierendes 15-Minuten-Loki-Fenster auf Keycloaks Warnung über ungesicherte Auth-Cookies.
   - Jeder Treffer und jeder Fehler einer konfigurierten Sicherheitsabfrage blockiert mit `observability-readiness=error`; eine fehlende lokale Loki-Konfiguration bleibt `warn` und ist keine Freigabeevidenz.
+  - Der Precheck führt den Login-Probe vor der Sicherheitsabfrage aus; eine HTTP-Erfolgsantwort ohne gültiges Loki-`data.result` gilt als blockierender Probe-Fehler.
   - Vor einem grünen Ergebnis werden leere Antworten begrenzt wiederholt. Die Evidenz enthält nur Treffer-Untergrenze, Abfragelimit und Fenstergröße, niemals rohe Logzeilen oder Cookie-Werte.
 - Lokale Runtime-Drift-Reparatur:
   - `pnpm env:up:local-keycloak` bleibt read-only und darf bestehende lokale Instanz-Identitaet oder tenant-spezifische Secrets nicht still ueberschreiben

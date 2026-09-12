@@ -301,7 +301,7 @@ describe('runtime-health helpers', () => {
         }
 
         if ((new URL(url).searchParams.get('query') ?? '').includes('Non-secure context detected')) {
-          return new Response(JSON.stringify({ data: { result: [] } }), { status: 200 });
+          return new Response(JSON.stringify({ data: { result: [] }, status: 'success' }), { status: 200 });
         }
 
         return new Response(JSON.stringify({
@@ -376,9 +376,10 @@ describe('runtime-health helpers', () => {
         if (query.includes('Non-secure context detected')) {
           insecureContextQueryCount += 1;
           return insecureContextQueryCount < 3
-            ? new Response(JSON.stringify({ data: { result: [] } }), { status: 200 })
+            ? new Response(JSON.stringify({ data: { result: [] }, status: 'success' }), { status: 200 })
             : new Response(JSON.stringify({
               data: { result: [{ values: [['1', 'Non-secure context detected; cookies are not secured sensitive-log-fragment']] }] },
+              status: 'success',
             }), { status: 200 });
         }
         return new Response(JSON.stringify({ data: { result: [] } }), { status: 200 });
@@ -427,6 +428,42 @@ describe('runtime-health helpers', () => {
 
   it('fails closed when the configured Keycloak Loki probe is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 503 })));
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_probe_failed',
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+  });
+
+  it('fails closed when the Keycloak Loki response has no result array', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ status: 'success' }), { status: 200 })));
 
     const ops = createRuntimeHealthOps({
       assertRuntimeEnv: vi.fn(),

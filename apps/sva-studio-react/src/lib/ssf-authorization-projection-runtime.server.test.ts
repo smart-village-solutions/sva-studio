@@ -39,6 +39,7 @@ vi.mock('@sva/plugin-ssf/provisioning', () => ({ SSF_LOGIN_CLIENT_ID: 'ssf-front
 import {
   createStudioSsfAuthorizationProjectionTarget,
   createStudioSsfAuthorizationProjectionRuntime,
+  readStudioSsfLoginBaselineReadiness,
 } from './ssf-authorization-projection-runtime.server.js';
 
 const configuration = () => {
@@ -65,6 +66,7 @@ it('separates client preparation from the post-projection runtime baseline', asy
   await target.resolveTenant('tenant-a');
   expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend');
   expect(await target.readLoginReadiness!('tenant-a')).toBe(true);
+  expect(await readStudioSsfLoginBaselineReadiness('tenant-a')).toBe(true);
   expect(mocks.tenant).toHaveBeenCalledWith(mocks.runtimePool, 'tenant-a');
 });
 it('keeps database provisioning separate when client preparation fails', async () => {

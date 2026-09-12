@@ -16,6 +16,15 @@ import {
 } from '@sva/plugin-ssf/runtime';
 import { SSF_LOGIN_CLIENT_ID } from '@sva/plugin-ssf/provisioning';
 
+/** Constant-cost readiness for request paths; full subject read-back stays in reconciliation. */
+export const readStudioSsfLoginBaselineReadiness = async (instanceId: string): Promise<boolean> => {
+  const pool = resolveSsfDatabasePool();
+  return (
+    Boolean(pool && (await readSsfTenant(pool, instanceId))) &&
+    (await readInstanceSsfLoginClientsReady(instanceId))
+  );
+};
+
 export const createStudioSsfAuthorizationProjectionTarget = () =>
   createConfiguredSsfKeycloakAuthorizationProjectionTarget({
     resolveTenant: (instanceId) =>
@@ -28,13 +37,7 @@ export const createStudioSsfAuthorizationProjectionTarget = () =>
       if (!pool) throw new Error('ssf_root_database_not_configured');
       await provisionSsfTenant(pool, instanceId);
     },
-    readLoginReadiness: async (instanceId) => {
-      const pool = resolveSsfDatabasePool();
-      return (
-        Boolean(pool && (await readSsfTenant(pool, instanceId))) &&
-        (await readInstanceSsfLoginClientsReady(instanceId))
-      );
-    },
+    readLoginReadiness: readStudioSsfLoginBaselineReadiness,
   });
 
 export const createStudioSsfAuthorizationProjectionRuntime = () => {

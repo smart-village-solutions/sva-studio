@@ -24,10 +24,12 @@ environment:
 - Traefik überschreibt `X-Forwarded-*` am vertrauenswürdigen Ingress. Von Clients eingespeiste
   Forwarded-Header dürfen den von Keycloak erkannten Sicherheitskontext nicht herabstufen.
 
-Die Zuordnung entspricht der
-[Keycloak-Migrationsanleitung für Proxy-Header](https://www.keycloak.org/docs/26.7.2/upgrading/)
-und dem
-[Keycloak-Reverse-Proxy-Vertrag](https://www.keycloak.org/server/reverseproxy).
+Dieser Vertrag wurde gegen den eingesetzten Keycloak-Stand 26.2.4 geprüft. Dessen
+[versionsgebundene Reverse-Proxy-Dokumentation](https://github.com/keycloak/keycloak/blob/26.2.4/docs/guides/server/reverseproxy.adoc)
+nennt `proxy-headers=xforwarded`, das Überschreiben der `X-Forwarded-*`-Header und
+`http-enabled=true` für TLS-Terminierung ausdrücklich. Die
+[aktuelle Keycloak-Dokumentation](https://www.keycloak.org/server/reverseproxy) dient ergänzend als
+Referenz für spätere Upgrades, ersetzt aber nicht die Prüfung gegen die jeweils eingesetzte Version.
 
 ## Abnahme ohne sensible Daten
 

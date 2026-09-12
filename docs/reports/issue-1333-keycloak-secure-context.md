@@ -12,18 +12,23 @@ HSTS. Die Ursache lag damit zwischen TLS-Terminierung und Keycloak-Proxy-Auswert
 
 Die historischen Keycloak-Warnzeilen enthalten weder Request-Pfad noch Realm oder Quelltyp. Eine
 nachträgliche feinere Pfadklassifikation ist aus diesen Zeilen deshalb nicht belastbar möglich.
-Kontrollierte Probes grenzen den betroffenen Pfad auf browserbasierte OIDC-Authorization-Anfragen
-ein. Interne Studio-Admin-, Provisioning- und Token-Aufrufe verwenden die öffentliche HTTPS-Basis-URL
-und benötigen keine Browser-Cookies.
+Kontrollierte browserbasierte OIDC-Authorization-Probes reproduzierten den unsicheren Cookie-Kontext.
+Ob weitere Request-Klassen zum historischen Warnbestand beigetragen haben, bleibt mangels geeigneter
+Logfelder offen. Interne Studio-Admin-, Provisioning- und Token-Aufrufe verwenden die öffentliche
+HTTPS-Basis-URL und benötigen keine Browser-Cookies; kontrollierte technische Token-Probes erzeugten
+nach der Korrektur keine neue Warnung.
 
 ## Incident-Recovery
 
 Der produktive Stack wurde kontrolliert aktualisiert:
 
 - `KC_PROXY=edge` wurde durch `KC_PROXY_HEADERS=xforwarded` ersetzt.
-- Das zuvor effektiv laufende Image wurde auf seinen unveränderlichen Digest fixiert.
+- Stack `sva-keycloak`, Service `sva-keycloak_keycloak`: Das zuvor effektiv laufende Image wurde als
+  `registry.gitlab.tpwd.de/smart-village-app/keycloak@sha256:868274f673565909e336610ef6cc5463544395fd386032fa2be9b8c27f07a5be`
+  unveränderlich fixiert.
 - Datenbank, Secrets, Hostname, Netze, Routing und sonstige Stack-Umgebung blieben unverändert.
-- Der Keycloak-Service erreichte anschließend wieder `1/1`.
+- Task `9e6cc32b` erreichte am 12. September 2026 um 11:54:17 UTC den Zustand `1/1`. Das vollständige
+  15-Minuten-Nachweisfenster endete am selben Tag um 12:09:27 UTC ohne erneute Warnung.
 
 Diese Mutation war Incident-Recovery und definiert keinen zweiten regulären Rollout-Pfad.
 

@@ -272,6 +272,7 @@ gleichzeitig beeinflussen.
 - Development nutzt lokale Console-Logs als Diagnosepfad; produktionsnahe Telemetrie läuft über OTEL
 - `SVA_DEPLOYMENT_ENVIRONMENT` kennzeichnet Dev, Staging und Production unabhängig vom für alle gebauten Remote-Runtimes notwendigen `NODE_ENV=production`; OTEL verwendet diesen Wert als `deployment.environment`.
 - Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulässig sind nur sichere Summary-Felder
+- Der sichere Keycloak-Proxy-Kontext ist eine gemeinsame Ingress- und Auth-Invariante: Traefik überschreibt `X-Forwarded-*`, Keycloak wertet ausschließlich `xforwarded` aus und browserbasierte Auth-Cookies bleiben hinter der TLS-Terminierung `Secure`. Eingespeiste Client-Header dürfen diese Bewertung nicht herabstufen; Details und Abnahme stehen im [Keycloak-Reverse-Proxy-Runbook](../operations/keycloak-reverse-proxy-secure-context.md).
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
 - Der Server-Entry-Diagnosevertrag ist env-gesteuert: `SVA_SERVER_ENTRY_DEBUG=true` aktiviert strukturierte Logs für Request-Eingang, Auth-Dispatch, Delegation an TanStack Start und Antwortstatus, ohne Secrets oder Tokeninhalte zu protokollieren
 - Für produktionsnahe Remote-Profile ist `app-db-principal` ein eigener Diagnosevertrag: `/health/ready` muss `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` als bereit ausweisen
@@ -280,6 +281,7 @@ gleichzeitig beeinflussen.
 - Die Studio-Root-Shell rendert in allen Environments einen sichtbaren Runtime-Health-Indikator auf Basis des bestehenden IAM-Readiness-Endpunkts; die UI zeigt nur sichere Statuszustände und `reason_code`s, keine rohen Provider- oder Stack-Details
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - Aliasfeste Redaction normalisiert sensible Schlüssel; vollständige URLs, Query-Strings, Provider-Freitext und identitätshaltige Verbundfelder sind in operativen Metadaten unzulässig.
+- Der Runtime-Doctor prüft für Remote-Profile ein rollierendes 15-Minuten-Loki-Fenster auf Keycloaks Warnung zum unsicheren Cookie-Kontext. Jeder Treffer macht `observability-readiness` fail-closed rot; Diagnoseausgaben enthalten nur Treffer-Untergrenze, Abfragelimit und Fenstergröße, niemals die Logzeile.
 - Request-, Trace-, Job- und Execution-IDs bleiben Log-Body-Felder und sind als frei skalierende Loki-/OTEL-Labels ausgeschlossen.
 - Der zentrale Server-Schwellwert ist standardmäßig `info`; nur Development kann mit `SVA_SERVER_LOG_LEVEL=debug` explizit Diagnoseereignisse zuschalten.
 - Fehlerketten besitzen genau eine kanonische Ownership-Grenze. Retry-, Recovery- und Sekundärfehler sind nur mit eigenem stabilen Event-Code separate Ereignisse.

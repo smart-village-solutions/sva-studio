@@ -348,13 +348,16 @@ export const reconcilePluginOidcClients = async (
 ): Promise<void> => {
   for (const requirement of readPluginOidcClientRequirements(input)) {
     const browser = requirement.contractVersion === '2.0';
+    const existingClient = browser
+      ? await client.getOidcClientByClientId(requirement.clientId)
+      : null;
     await client.ensureOidcClient({
       clientId: requirement.clientId,
       redirectUris: browser ? requirement.redirectUris : [],
       postLogoutRedirectUris: [],
       webOrigins: browser ? requirement.webOrigins : [],
       rootUrl: '',
-      enabled: false,
+      enabled: browser && existingClient?.enabled === true,
       standardFlowEnabled: browser,
       ...(browser
         ? {

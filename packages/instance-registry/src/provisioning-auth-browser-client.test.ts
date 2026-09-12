@@ -45,6 +45,7 @@ describe('plugin browser OIDC contract', () => {
     { webOrigins: ['http://dialog.example.org'] },
     { redirectUris: ['https://evil.example.org/login/*'] },
     { redirectUris: ['https://dialog.example.org/*'] },
+    { redirectUris: ['https://dialog.example.org/admin'] },
     { redirectUris: ['https://user:password@dialog.example.org/login/callback'] },
     { redirectUris: [] },
     { webOrigins: [] },
@@ -149,6 +150,12 @@ it('provisions a disabled browser client, reads back security settings, and neve
       accessTokenLifespan: 900,
       uriPolicy: 'replace',
     })
+  );
+  representation = { ...representation, enabled: true };
+  client.ensureOidcClient.mockClear();
+  await reconcilePluginOidcClients(client, input);
+  expect(client.ensureOidcClient).toHaveBeenCalledWith(
+    expect.objectContaining({ clientId: 'ssf-frontend', enabled: true })
   );
   client.getOidcClientByClientId.mockImplementation(async () => ({
     ...representation,

@@ -26,6 +26,10 @@ describe('SSF runtime deployment contract', () => {
     const dockerfile = read('Dockerfile');
 
     expect(compose).toContain("SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'");
+    const provisioner = compose.slice(compose.indexOf('  provisioner:'));
+    expect(provisioner).toContain(
+      "SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'"
+    );
     expect(compose).toContain(
       "SSF_PLUGIN_DATABASE_ENABLED: '${SSF_PLUGIN_DATABASE_ENABLED:-false}'"
     );

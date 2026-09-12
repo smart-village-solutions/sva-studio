@@ -119,3 +119,24 @@ it.each([null, 'sha256:confirmed'])(
     expect(reconcile).not.toHaveBeenCalled();
   }
 );
+
+it('classifies readiness runtime failures as retryable plugin failures', async () => {
+  const handler = createPluginJobExecutionHandlers({
+    reconcile: vi.fn(),
+    readiness: vi.fn().mockRejectedValue(new TypeError('keycloak unavailable')),
+  })[SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID];
+
+  await expect(
+    handler?.({
+      job: { instanceId: 'tenant-a' },
+      tenantLifecycle: { operation: 'readiness' },
+      throwIfCancellationRequested: vi.fn(),
+    } as never)
+  ).rejects.toMatchObject({
+    cause: {
+      code: 'ssf.authorization-readiness-unavailable',
+      retry: { kind: 'retryable' },
+      details: { errorType: 'TypeError' },
+    },
+  });
+});

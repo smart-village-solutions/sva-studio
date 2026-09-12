@@ -40,13 +40,17 @@ let configuredPluginOidcClientRequirements: readonly PluginOidcClientRequirement
   []
 );
 
-const readLifecycleContractDigest = (lifecycle: PluginTenantLifecycleRegistryEntry): string =>
+const readLifecycleContractDigest = (
+  lifecycle: PluginTenantLifecycleRegistryEntry,
+  oidcClientRequirements: readonly PluginOidcClientRequirement[]
+): string =>
   createHash('sha256')
     .update(
       JSON.stringify({
         contractVersion: lifecycle.contractVersion,
         operations: lifecycle.operations,
         readinessChecks: lifecycle.readinessChecks,
+        oidcClientRequirements,
       })
     )
     .digest('hex');
@@ -146,33 +150,6 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
 }): void => {
   const activationPolicies = copySnapshot(input.activationPolicies);
   const moduleIamRegistry = copyModuleIamRegistry(input.moduleIamContracts);
-  const activationPolicyByModuleId = new Map(
-    activationPolicies.modules.map((module) => [module.moduleId, module] as const)
-  );
-  const tenantLifecycleRegistry = new Map(
-    input.tenantLifecycles.map((lifecycle) => {
-      const activationPolicy = activationPolicyByModuleId.get(lifecycle.pluginId);
-      if (!activationPolicy) {
-        throw new Error(`plugin_tenant_lifecycle_activation_policy_missing:${lifecycle.pluginId}`);
-      }
-      return [
-        lifecycle.pluginId,
-        Object.freeze({
-          ...lifecycle,
-          contractRevision: `${activationPolicy.policyRevision}:${readLifecycleContractDigest(lifecycle)}`,
-          operations: Object.freeze(
-            lifecycle.operations.map((operation) => Object.freeze({ ...operation }))
-          ),
-          readinessChecks: Object.freeze(
-            lifecycle.readinessChecks.map((check) => Object.freeze({ ...check }))
-          ),
-        }),
-      ] as const;
-    })
-  );
-  if (tenantLifecycleRegistry.size !== input.tenantLifecycles.length) {
-    throw new Error('plugin_tenant_lifecycle_duplicate_plugin');
-  }
   const pluginOidcClientRequirements = Object.freeze(
     input.pluginOidcClientRequirements.map((requirement) =>
       Object.freeze(
@@ -192,7 +169,38 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
   ) {
     throw new Error('plugin_oidc_client_duplicate_client_id');
   }
-
+  const activationPolicyByModuleId = new Map(
+    activationPolicies.modules.map((module) => [module.moduleId, module] as const)
+  );
+  const tenantLifecycleRegistry = new Map(
+    input.tenantLifecycles.map((lifecycle) => {
+      const activationPolicy = activationPolicyByModuleId.get(lifecycle.pluginId);
+      if (!activationPolicy) {
+        throw new Error(`plugin_tenant_lifecycle_activation_policy_missing:${lifecycle.pluginId}`);
+      }
+      return [
+        lifecycle.pluginId,
+        Object.freeze({
+          ...lifecycle,
+          contractRevision: `${activationPolicy.policyRevision}:${readLifecycleContractDigest(
+            lifecycle,
+            pluginOidcClientRequirements.filter(
+              (requirement) => requirement.pluginId === lifecycle.pluginId
+            )
+          )}`,
+          operations: Object.freeze(
+            lifecycle.operations.map((operation) => Object.freeze({ ...operation }))
+          ),
+          readinessChecks: Object.freeze(
+            lifecycle.readinessChecks.map((check) => Object.freeze({ ...check }))
+          ),
+        }),
+      ] as const;
+    })
+  );
+  if (tenantLifecycleRegistry.size !== input.tenantLifecycles.length) {
+    throw new Error('plugin_tenant_lifecycle_duplicate_plugin');
+  }
   configuredSnapshot = activationPolicies;
   configuredModuleIamRegistry = moduleIamRegistry;
   configuredTenantLifecycleRegistry = tenantLifecycleRegistry;

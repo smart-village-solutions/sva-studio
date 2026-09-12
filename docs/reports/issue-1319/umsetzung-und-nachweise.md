@@ -19,10 +19,10 @@ Die Änderung ergänzt die bestehenden Changes `add-ssf-tenant-administration`,
    maximal 900 Sekunden Access-Token-Laufzeit und ohne Passwort-/Service-Account-Flow.
 3. Der SSF-Lifecycle beansprucht die Projektionsgeneration unter seinem bestehenden
    Tenant-Lock. Auch ein früheres `ready` muss vor Wiederverwendung geprüft werden.
-4. Der Core gleicht die deklarierten Clients ab; der Browserclient bleibt während
+4. Der Core gleicht die deklarierten Clients ab; ein neuer Browserclient bleibt während
    der Vorbereitung deaktiviert. Ein fehlender Ressourcenclient wird initial angelegt;
-   vorhandene Ressourcenclients bleiben beim Login-Abgleich unverändert und müssen
-   ihren eigenen Vertrag erfüllen.
+   vorhandene Ressourcenclients werden auf ihren eigenen deaktivierten Vertrag
+   normalisiert. Ein bereits aktivierter Browserclient bleibt bei Wartungsjobs aktiv.
 5. Die IAM-Projektion schreibt nur Attribute der vorhandenen Tenant-Subjects und
    Client-Mapper des Browserclients. Ressourcenclient, Studio-Clients und deren
    Secrets bleiben getrennt. Root-Identitäten erhalten keine Tenantrechte.

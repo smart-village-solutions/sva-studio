@@ -14,7 +14,19 @@ export const createPluginJobExecutionHandlers = (
   [SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID]: async (context) => {
     if (context.tenantLifecycle?.operation === 'readiness') {
       await context.throwIfCancellationRequested();
-      const revision = await runtime.readiness(context.job.instanceId);
+      let revision: Awaited<ReturnType<SsfAuthorizationProjectionRuntime['readiness']>>;
+      try {
+        revision = await runtime.readiness(context.job.instanceId);
+      } catch (error) {
+        throw lifecycleError('ssf_authorization_readiness_unavailable', {
+          code: 'ssf.authorization-readiness-unavailable',
+          messageKey: 'ssf.errors.authorizationReconcileUnavailable',
+          retry: { kind: 'retryable' },
+          details: {
+            errorType: error instanceof Error ? error.name : typeof error,
+          },
+        });
+      }
       await context.throwIfCancellationRequested();
       return {
         resultPayload: { plugin: { operation: 'readiness' } },

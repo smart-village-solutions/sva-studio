@@ -84,6 +84,7 @@ export default defineConfig({
       '../../deploy/portainer/candidate-preflight.test.ts',
       '../../deploy/portainer/migrate-waste-tenants.test.ts',
       '../../deploy/portainer/iam-schema-readiness-deployment.test.ts',
+      '../../deploy/portainer/ssf-runtime-deployment.test.ts',
       '../../deploy/portainer/waste-provisioner-deployment.test.ts',
     ],
     exclude: ['coverage/**', 'node_modules/**'],

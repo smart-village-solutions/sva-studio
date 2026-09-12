@@ -186,6 +186,52 @@ describe('instance registry plugin activation policy snapshot', () => {
     ).not.toBe(firstRevision);
   });
 
+  it('changes the lifecycle revision when its browser client requirement changes', () => {
+    const configure = (origin: string) =>
+      configureInstanceRegistryPluginRuntimeSnapshot({
+        activationPolicies: {
+          revision: 'ssf-catalog-1',
+          modules: [
+            {
+              moduleId: 'ssf',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: 'ssf-1',
+            },
+          ],
+        },
+        moduleIamContracts: [{ moduleId: 'ssf', permissionIds: [] }],
+        pluginOidcClientRequirements: [
+          {
+            contractVersion: '2.0',
+            pluginId: 'ssf',
+            clientId: 'ssf-frontend',
+            audience: 'ssf-frontend',
+            enabled: false,
+            redirectUris: [`${origin}/login/*`],
+            webOrigins: [origin],
+          },
+        ],
+        tenantLifecycles: [
+          {
+            pluginId: 'ssf',
+            contractVersion: 1,
+            operations: [{ operation: 'provision', jobTypeId: 'ssf.provisionTenant' }],
+            readinessChecks: [],
+          },
+        ],
+      });
+
+    configure('https://dialog-a.example.org');
+    const firstRevision =
+      readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')?.contractRevision;
+    configure('https://dialog-b.example.org');
+
+    expect(
+      readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf')?.contractRevision
+    ).not.toBe(firstRevision);
+  });
+
   it('rejects duplicate module IAM contracts without replacing the current snapshot', () => {
     expect(() =>
       configureInstanceRegistryPluginRuntimeSnapshot({

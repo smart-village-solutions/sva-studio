@@ -42,8 +42,8 @@ const hasValidBrowserUris = (
           !url.search &&
           !url.hash &&
           requirement.webOrigins.includes(url.origin) &&
-          value === `${url.origin}${url.pathname}` &&
-          (!value.includes('*') || url.pathname === '/login/*')
+          url.pathname === '/login/*' &&
+          value === `${url.origin}/login/*`
         );
       })
     );

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
   readSsfLoginClientRequirement,
@@ -27,15 +29,20 @@ const configurePluginActivationPolicies =
       [import('./plugins'), import('@sva/auth-runtime/server')]
     );
     const activationPolicies = studioPluginSnapshot.tenantActivationPolicySnapshot;
-    if (configuredRevision !== activationPolicies.revision) {
-      const pluginOidcClientRequirements = studioPluginSnapshot.pluginSources.some(
-        ({ pluginId }) => pluginId === SSF_TENANT_OIDC_CLIENT_REQUIREMENT.pluginId
-      )
-        ? [
-            SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
-            ...[readSsfLoginClientRequirement()].filter((entry) => entry !== null),
-          ]
-        : [];
+    const pluginOidcClientRequirements = studioPluginSnapshot.pluginSources.some(
+      ({ pluginId }) => pluginId === SSF_TENANT_OIDC_CLIENT_REQUIREMENT.pluginId
+    )
+      ? [
+          SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
+          ...[readSsfLoginClientRequirement()].filter((entry) => entry !== null),
+        ]
+      : [];
+    const revision = pluginOidcClientRequirements.length
+      ? `${activationPolicies.revision}:oidc:${createHash('sha256')
+          .update(JSON.stringify(pluginOidcClientRequirements))
+          .digest('hex')}`
+      : activationPolicies.revision;
+    if (configuredRevision !== revision) {
       authRuntime.configureInstanceRegistryPluginRuntimeSnapshot({
         activationPolicies,
         pluginOidcClientRequirements,
@@ -45,9 +52,9 @@ const configurePluginActivationPolicies =
           ...studioHostModuleIamContracts,
         ],
       });
-      configuredRevision = activationPolicies.revision;
+      configuredRevision = revision;
     }
-    const configuration = { authRuntime, revision: activationPolicies.revision };
+    const configuration = { authRuntime, revision };
     latestConfiguration = configuration;
     return configuration;
   };

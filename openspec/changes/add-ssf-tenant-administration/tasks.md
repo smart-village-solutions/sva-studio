@@ -83,3 +83,11 @@ Abnahme bleibt das produktive Enablement fail-closed.
 - [ ] 7.3 Relevante Unit-, Type-, Server-Runtime-, Integrations-, E2E-, Security- und Migrations-Gates ausführen
 - [ ] 7.4 Abnahme mit zwei Tenants, getrennten Realms, initialen Admins, Suspendierung und Reaktivierung dokumentieren
 - [ ] 7.5 `openspec validate add-ssf-tenant-administration --strict`, Dokumentations- und Platzierungschecks ausführen
+
+## Ergänzung Issue #1319: Provisionierung vor Login-Freigabe
+
+- [x] Versionierten Browserclient-Vertrag mit expliziter HTTPS-Origin und bestehender Queue verbinden
+- [x] Tenant-Grunddatensatz vor der Projektion provisionieren und Browserclaims benutzerbezogen verifizieren
+- [x] Veraltetes `ready` erneut prüfen und denselben Readiness-Pfad für Directory und Runtime verwenden
+- [x] Lokale Zwei-Tenant-, Teilfehler- und PostgreSQL-Wiederanlaufnachweise ergänzen
+- [ ] Gemeinsamen echten Zwei-Realm-Login bis SSF-Gateway in Staging nachweisen und Digest dokumentieren

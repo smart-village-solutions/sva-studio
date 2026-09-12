@@ -15,3 +15,30 @@ describe('SSF tenant OIDC client requirement', () => {
     expect(SSF_TENANT_OIDC_CLIENT_REQUIREMENT).not.toHaveProperty('clientSecret');
   });
 });
+
+it('derives the public login baseline only from an explicit HTTPS installation origin', async () => {
+  const { readSsfLoginClientRequirement } = await import('../src/provisioning.js');
+  expect(readSsfLoginClientRequirement({})).toBeNull();
+  expect(
+    readSsfLoginClientRequirement({ SVA_STUDIO_SSF_LOGIN_ORIGIN: 'https://dialog.kassel.de' })
+  ).toEqual({
+    contractVersion: '2.0',
+    pluginId: 'ssf',
+    clientId: 'ssf-frontend',
+    audience: 'ssf-frontend',
+    enabled: false,
+    redirectUris: ['https://dialog.kassel.de/login/*'],
+    webOrigins: ['https://dialog.kassel.de'],
+  });
+  for (const origin of [
+    'not-a-url',
+    'http://dialog.kassel.de',
+    'https://*.kassel.de',
+    'https://dialog.kassel.de/path',
+    'https://user:secret@dialog.kassel.de',
+  ]) {
+    expect(() => readSsfLoginClientRequirement({ SVA_STUDIO_SSF_LOGIN_ORIGIN: origin })).toThrow(
+      'ssf_login_origin_invalid'
+    );
+  }
+});

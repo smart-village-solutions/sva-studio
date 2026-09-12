@@ -7,12 +7,12 @@ Diese einmalige Erstinstallation auf `root@136.243.39.147` unter
 Der [reguläre Studio-Rollout](../guides/studio-rollout-process.md) bleibt unverändert.
 Die folgenden Werte beschreiben die geplante Umschaltung, keinen bereits erfolgten Rollout.
 
-| Host | Dienst und Kontext |
-| --- | --- |
-| `dialog.kassel.de` | SSF-Einstieg, kein Studio-Root |
-| `studio.dialog.kassel.de` | Studio-Root, Instanzverwaltung und globale SSF-Konfiguration |
-| `smartcity.dialog.kassel.de` | Studio-Tenant mit unveränderter ID `tenant-kassel` |
-| `auth.dialog.kassel.de` | gemeinsamer lokaler Keycloak; Studio-Realm `sva-studio`, SSF-Realm `ssf` |
+| Host                         | Dienst und Kontext                                                       |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `dialog.kassel.de`           | SSF-Einstieg, kein Studio-Root                                           |
+| `studio.dialog.kassel.de`    | Studio-Root, Instanzverwaltung und globale SSF-Konfiguration             |
+| `smartcity.dialog.kassel.de` | Studio-Tenant mit unveränderter ID `tenant-kassel`                       |
+| `auth.dialog.kassel.de`      | gemeinsamer lokaler Keycloak; Studio-Realm `sva-studio`, SSF-Realm `ssf` |
 
 `studio` und `auth` dürfen nicht als Tenant-Hostnamen angelegt werden.
 Die Hostbezeichnung ist nicht die Tenant-ID: Der interne SSF-Vertrag verwendet weiterhin
@@ -174,3 +174,30 @@ Der vor der Umschaltung am 9. September 2026 live verifizierte Studio-Rückweg i
 `ghcr.io/smart-village-solutions/sva-studio@sha256:6de47254ded734dc848798b3ab7aa13494aebef673be952c7eded1316ceb0f06`,
 OCI-Revision `4985a80e4296af4ab2051d0aa927b901fdfb08bd` (PR #1295).
 Dieser historische Wert muss unmittelbar vor einem tatsächlichen Rollout erneut geprüft werden.
+
+## Login-Baseline und Veröffentlichung (#1319)
+
+Die App erhält zusätzlich `SVA_STUDIO_SSF_LOGIN_ORIGIN=https://dialog.kassel.de`.
+Der Host leitet daraus ausschließlich `ssf-frontend`, die Web-Origin
+`https://dialog.kassel.de` und den Redirect `https://dialog.kassel.de/login/*` ab.
+Ohne explizite Konfiguration bleibt die SSF-Login-Freigabe gesperrt. Der
+Ressourcenclient `ssf` bleibt getrennt und deaktiviert; Studio-Clients und
+Secrets werden nicht für den Browserclient wiederverwendet.
+
+Vor neuen Aufträgen mit Browservertrag 2.0 müssen App und separater Provisioner
+auf demselben kompatiblen Stand laufen. Der koordinierte Queue-Drain aus dem
+Worker-Abschnitt gilt weiterhin. Der Worker liest die bereits validierte
+Konfiguration aus dem Auftrag und benötigt keine eigene Origin-Ableitung.
+
+Der neue erforderliche Lifecycle-Check `ssf.loginReady` ändert die
+Lifecycle-Vertragsrevision. Der bestehende Fleet-Reconcile übernimmt damit
+auch Bestandsmandanten. Er provisioniert die Clients und `ssf.tenants`, stellt
+die benutzerbezogene IAM-Projektion her und bestätigt erst danach die gemeinsame
+Readiness. Manuelle Hardcoded-Mapper für dieselben Browserclaims werden durch
+die deklarative Benutzerprojektion ersetzt; andere Client-Mapper bleiben erhalten.
+
+Der kanonische [Rollout-Prozess](../guides/studio-rollout-process.md) bleibt
+maßgeblich. Die Freigabe benötigt einen echten Zwei-Realm-Nachweis:
+Directory-Auswahl → Keycloak-Login → SSF-Callback → Gateway-Akzeptanz, mit aktueller
+Tenant-/Audience-/Rollenbindung und derselben Authorization-Revision wie die
+Runtime-Antwort. Ein grüner lokaler Vertragstest ersetzt diesen Nachweis nicht.

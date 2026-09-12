@@ -6,6 +6,22 @@ export type KeycloakProjectionUser = Readonly<{
 }>;
 
 export interface SsfKeycloakProjectionClient {
+  listClientProtocolMappers(clientId: string): Promise<
+    readonly Readonly<{
+      name: string;
+      protocol?: string;
+      protocolMapper?: string;
+      config?: Readonly<Record<string, string>>;
+    }>[]
+  >;
+  listEffectiveClientProtocolMappers(clientId: string): Promise<
+    readonly Readonly<{
+      name: string;
+      protocol?: string;
+      protocolMapper?: string;
+      config?: Readonly<Record<string, string>>;
+    }>[]
+  >;
   listUsers(query?: {
     readonly first?: number;
     readonly max?: number;
@@ -21,6 +37,7 @@ export interface SsfKeycloakProjectionClient {
     readonly userAttribute: string;
     readonly claimName: string;
     readonly multivalued?: boolean;
+    readonly exclusiveClaim?: boolean;
   }): Promise<void>;
   setOidcClientEnabled(clientId: string, enabled: boolean): Promise<void>;
 }
@@ -32,6 +49,9 @@ export type SsfKeycloakProjectionTenant = Readonly<{
 }>;
 
 export type SsfKeycloakProjectionTargetDependencies = Readonly<{
+  prepareLoginClients?: (instanceId: string) => Promise<void>;
+  prepareRuntimeBaseline?: (instanceId: string) => Promise<void>;
+  readLoginReadiness?: (instanceId: string) => Promise<boolean>;
   resolveTenant: (instanceId: string) => Promise<SsfKeycloakProjectionTenant | null>;
   revokeSsfTenantSessions: (
     instanceId: string,

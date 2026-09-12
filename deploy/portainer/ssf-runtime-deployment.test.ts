@@ -22,9 +22,42 @@ describe('SSF runtime deployment contract', () => {
 
   it('routes SSF migrations through the existing migration one-shot', () => {
     const compose = read('deploy/portainer/docker-compose.studio.yml');
+    const canonicalCompose = read('compose.yaml');
     const entrypoint = read('deploy/portainer/migrate-entrypoint.sh');
     const dockerfile = read('Dockerfile');
 
+    expect(compose).toContain("SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'");
+    const provisioner = compose.slice(compose.indexOf('  provisioner:'));
+    expect(provisioner).toContain(
+      "SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'"
+    );
+    expect(provisioner).toContain(
+      "SVA_STUDIO_SSF_DATABASE_URL: '${SVA_STUDIO_SSF_DATABASE_URL:-}'"
+    );
+    expect(provisioner).toContain(
+      "SVA_STUDIO_SSF_ROOT_DATABASE_URL: '${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'"
+    );
+    const canonicalApp = canonicalCompose.slice(
+      canonicalCompose.indexOf('  app:'),
+      canonicalCompose.indexOf('  provisioner:')
+    );
+    const canonicalProvisioner = canonicalCompose.slice(canonicalCompose.indexOf('  provisioner:'));
+    expect(canonicalApp).toContain('SVA_STUDIO_SSF_LOGIN_ORIGIN=${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}');
+    expect(canonicalApp).toContain(
+      'SVA_STUDIO_SSF_DATABASE_URL=${SVA_STUDIO_SSF_DATABASE_URL:-}'
+    );
+    expect(canonicalApp).toContain(
+      'SVA_STUDIO_SSF_ROOT_DATABASE_URL=${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'
+    );
+    expect(canonicalProvisioner).toContain(
+      'SVA_STUDIO_SSF_LOGIN_ORIGIN=${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'
+    );
+    expect(canonicalProvisioner).toContain(
+      'SVA_STUDIO_SSF_DATABASE_URL=${SVA_STUDIO_SSF_DATABASE_URL:-}'
+    );
+    expect(canonicalProvisioner).toContain(
+      'SVA_STUDIO_SSF_ROOT_DATABASE_URL=${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'
+    );
     expect(compose).toContain(
       "SSF_PLUGIN_DATABASE_ENABLED: '${SSF_PLUGIN_DATABASE_ENABLED:-false}'"
     );

@@ -1,6 +1,6 @@
 # SSF-Mandantenverzeichnis für den Login (V1)
 
-Das SSF-Backend liest die aktiven Mandanten der aktuellen Studio-Installation.
+Das SSF-Backend liest die aktiven, nachweislich loginbereiten Mandanten der aktuellen Studio-Installation.
 SSF stellt die öffentliche Login-Auswahl bereit und startet selbst den OIDC-Flow.
 Studio erzeugt für diesen Vertrag weder Login-URLs noch OIDC-Requests.
 
@@ -28,7 +28,16 @@ X-Correlation-Id: <id>
 
 - Quelle ist die lokale Studio-Mandanten-Registry (`iam.instances`).
 - Ausschließlich Einträge mit `status: active` werden ausgegeben.
-- Keine zusätzliche SSF-Aktivierungs-, Readiness-, Testmandanten- oder Freigabelistenprüfung.
+- Zusätzlich müssen der SSF-Lifecycle, der Tenant-Grunddatensatz, Ressourcen- und
+  Browserclient sowie die bestätigte IAM-Revision bereit sein. Directory und
+  Runtime-Zugriff verwenden denselben produktiven Readiness-Pfad.
+- Erstprovisionierung und Reconcile stellen diese Voraussetzungen vor `ready` her.
+  Der GET-Endpoint führt keine Reparatur aus. `pending`, `blocked`, suspendierte
+  oder unvollständige Mandanten werden nicht veröffentlicht.
+- Die Installation konfiguriert `SVA_STUDIO_SSF_LOGIN_ORIGIN` als exakte HTTPS-Origin.
+  Daraus entsteht der öffentliche Client `ssf-frontend` mit Redirect `/login/*`,
+  Code Flow, PKCE S256 und maximal 900 Sekunden Access-Token-Laufzeit. Ohne diese
+  Konfiguration wird keine SSF-Login-Bereitschaft bestätigt.
 - `id` ist die stabile `instanceId`, `displayName` die Bezeichnung und `realm`
   der `authRealm` aus der Registry.
   SSF darf den Realm nicht aus der Mandanten-ID ableiten.
@@ -53,11 +62,11 @@ wird anhand Signatur, Ablaufzeit, Issuer, Audience und Client-ID geprüft. Diese
 Endpoint verlangt die eigene Client-Rolle `ssf.admin-login-directory.read`.
 `ssf.runtime-configuration.read` allein reicht nicht aus.
 
-| HTTP | `error.code`                        | Bedeutung                                                                            |
-| ---- | ----------------------------------- | ------------------------------------------------------------------------------------ |
-| 401  | `service_authentication_invalid`    | Fehlendes oder ungültiges Service-Token                                              |
-| 403  | `service_action_forbidden`          | Directory-Leseberechtigung fehlt                                                     |
-| 503  | `admin_login_directory_unavailable` | Service-Konfiguration, Identitätsprüfung oder Registry vorübergehend nicht verfügbar |
+| HTTP | `error.code`                        | Bedeutung                                                                                               |
+| ---- | ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 401  | `service_authentication_invalid`    | Fehlendes oder ungültiges Service-Token                                                                 |
+| 403  | `service_action_forbidden`          | Directory-Leseberechtigung fehlt                                                                        |
+| 503  | `admin_login_directory_unavailable` | Service-Konfiguration, Identitätsprüfung oder eine Readiness-Abhängigkeit vorübergehend nicht verfügbar |
 
 Fehler enthalten zusätzlich `error.correlationId`. Ein gültiger
 `X-Correlation-Id` (maximal 128 druckbare ASCII-Zeichen) wird übernommen;

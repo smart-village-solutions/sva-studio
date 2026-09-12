@@ -150,3 +150,29 @@ Das System SHALL SSF-Aktivierung, Lifecycle, Readiness und Reparaturaktionen im 
 - **WHEN** Root-Navigation und Plugin-Beiträge materialisiert werden
 - **THEN** bleibt die bestehende Instanzliste die kanonische Mandantenverwaltung
 - **AND** führt das SSF-Plugin keine parallele Tenantliste mit eigenem Lebenszyklus ein
+
+### Requirement: Vollständige Login-Baseline vor Veröffentlichung
+
+Das System SHALL den öffentlichen Browserclient `ssf-frontend` getrennt vom
+deaktivierten Ressourcenclient `ssf` und den Studio-Clients verwalten. Der
+Browservertrag 2.0 MUST HTTPS-Origins, ausschließlich passende Redirects (für
+SSF `/login/*`), Code Flow, PKCE S256 und maximal 900 Sekunden Access-Token-Laufzeit
+erzwingen; Implicit Flow, Passwortgrant, Service Accounts und Client-Secrets
+sind ausgeschlossen. Die Origin MUST aus der expliziten Installationskonfiguration
+stammen und darf nicht aus Requests oder Tenant-Hostnamen abgeleitet werden.
+
+#### Scenario: Erstprovisionierung und Abbruch
+
+- **WHEN** der SSF-Lifecycle einen Mandanten provisioniert oder einen Teilfehler erneut bearbeitet
+- **THEN** stellt der Core zuerst die deklarierten Clients her
+- **AND** bleibt der Browserclient bis zum verifizierten IAM-Read-back deaktiviert
+- **AND** provisioniert das Plugin `ssf.tenants` erst nach diesem bestätigten IAM-Read-back idempotent
+- **AND** wird `ssf.loginReady` erst nach Aktivierung und gemeinsamer Readiness-Prüfung bestätigt
+- **AND** bleibt der Mandant bis zum erfolgreichen Lifecycle-Abschluss unveröffentlicht
+
+#### Scenario: Bestehende manuelle Recovery wird übernommen
+
+- **GIVEN** ein Realm besitzt einen manuell angelegten Browserclient oder konkurrierende Hardcoded-Mapper für SSF-Claims
+- **WHEN** der Lifecycle den Mandanten abgleicht
+- **THEN** ersetzt er die SSF-Browserclaims durch die verifizierte benutzerbezogene Projektion
+- **AND** korrigiert er Client-Drift ohne Rotation fremder Secrets oder Erweiterung der erlaubten Origins

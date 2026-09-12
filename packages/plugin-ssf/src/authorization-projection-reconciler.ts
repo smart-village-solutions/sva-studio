@@ -37,6 +37,9 @@ export interface SsfAuthorizationProjectionStore {
 }
 
 export interface SsfAuthorizationProjectionTarget {
+  prepareLoginClients(instanceId: string): Promise<void>;
+  prepareRuntimeBaseline(instanceId: string): Promise<void>;
+  isReady(instanceId: string, authorizationRevision: string): Promise<boolean>;
   suspendTokenIssuance(instanceId: string): Promise<void>;
   reconcile(projection: SsfAuthorizationProjection, authorizationRevision: string): Promise<void>;
   readBack(instanceId: string): Promise<SsfAuthorizationProjection>;
@@ -59,6 +62,9 @@ export type SsfAuthorizationProjectionReconcileResult =
       status: 'blocked';
       generation: number;
       reason:
+        | 'login_client_preparation_failed'
+        | 'runtime_baseline_preparation_failed'
+        | 'tenant_readiness_failed'
         | 'token_issuance_suspend_failed'
         | 'target_write_failed'
         | 'target_readback_failed'
@@ -69,6 +75,9 @@ export type SsfAuthorizationProjectionReconcileResult =
 class SsfProjectionPhaseError extends Error {
   constructor(
     readonly reason:
+      | 'login_client_preparation_failed'
+      | 'runtime_baseline_preparation_failed'
+      | 'tenant_readiness_failed'
       | 'token_issuance_suspend_failed'
       | 'target_write_failed'
       | 'target_readback_failed'
@@ -84,6 +93,28 @@ type SsfAuthorizationProjectionReconcilerDependencies = Readonly<{
   target: SsfAuthorizationProjectionTarget;
 }>;
 
+const prepareRuntimeBaseline = async (
+  target: SsfAuthorizationProjectionTarget,
+  instanceId: string
+): Promise<void> => {
+  try {
+    await target.prepareRuntimeBaseline(instanceId);
+  } catch {
+    throw new SsfProjectionPhaseError('runtime_baseline_preparation_failed');
+  }
+};
+
+const prepareLoginClients = async (
+  target: SsfAuthorizationProjectionTarget,
+  instanceId: string
+): Promise<void> => {
+  try {
+    await target.prepareLoginClients(instanceId);
+  } catch {
+    throw new SsfProjectionPhaseError('login_client_preparation_failed');
+  }
+};
+
 const reconcileClaimedProjection = async (
   dependencies: SsfAuthorizationProjectionReconcilerDependencies,
   store: SsfAuthorizationProjectionLockedStore,
@@ -96,6 +127,7 @@ const reconcileClaimedProjection = async (
     } catch {
       throw new SsfProjectionPhaseError('token_issuance_suspend_failed');
     }
+    await prepareLoginClients(dependencies.target, staged.instanceId);
     try {
       await dependencies.target.reconcile(staged.desiredProjection, staged.desiredRevision);
     } catch {
@@ -120,17 +152,25 @@ const reconcileClaimedProjection = async (
       };
     }
 
+    await prepareRuntimeBaseline(dependencies.target, staged.instanceId);
+
     try {
       await dependencies.target.resumeTokenIssuance(staged.instanceId);
     } catch {
       throw new SsfProjectionPhaseError('token_issuance_resume_failed');
+    }
+    if (!(await dependencies.target.isReady(staged.instanceId, staged.desiredRevision))) {
+      throw new SsfProjectionPhaseError('tenant_readiness_failed');
     }
     const published = await store.markReady({
       instanceId: staged.instanceId,
       generation: staged.generation,
       authorizationRevision: staged.desiredRevision,
     });
-    if (!published) return { status: 'stale', generation: staged.generation };
+    if (!published) {
+      await dependencies.target.suspendTokenIssuance(staged.instanceId);
+      return { status: 'stale', generation: staged.generation };
+    }
 
     return {
       status: 'ready',
@@ -139,6 +179,9 @@ const reconcileClaimedProjection = async (
       changed: true,
     };
   } catch (error) {
+    // Re-close the browser client after failures during activation or read-back.
+    // A failed compensation still leaves the persistent projection blocked.
+    await dependencies.target.suspendTokenIssuance(staged.instanceId).catch(() => undefined);
     const reason = error instanceof SsfProjectionPhaseError ? error.reason : 'target_write_failed';
     await store.markBlocked({
       instanceId: staged.instanceId,
@@ -158,7 +201,10 @@ const reconcileLockedProjection = async (
   const staged = await store.stage(desired);
   if (
     staged.status === 'ready' &&
-    staged.confirmedRevision === staged.desiredRevision
+    staged.confirmedRevision === staged.desiredRevision &&
+    (await dependencies.target
+      .isReady(staged.instanceId, staged.desiredRevision)
+      .catch(() => false))
   ) {
     return {
       status: 'ready',

@@ -30,12 +30,12 @@ und Client-Secrets. Für eine eigenständige SSF-/Studio-Installation befindet
 sich auch der Studio-Root-Realm im lokalen Keycloak dieser Installation. Die
 Issuer-URL verweist niemals auf den zentralen Studio-Produktivserver.
 
-| Wert | Studio-Konfiguration | SSF-Konfiguration |
-| --- | --- | --- |
-| Issuer | `SVA_STUDIO_SSF_RUNTIME_ISSUER` | daraus abgeleiteter Token-Endpunkt |
-| Audience | `SVA_STUDIO_SSF_RUNTIME_AUDIENCE=sva-studio-ssf-runtime` | `sva-studio-ssf-runtime` |
-| Client-ID | `SVA_STUDIO_SSF_RUNTIME_CLIENT_ID=ssf-runtime` | `ssf-runtime` |
-| Client-Secret | nicht benötigt | geschütztes Deployment-Secret |
+| Wert          | Studio-Konfiguration                                     | SSF-Konfiguration                  |
+| ------------- | -------------------------------------------------------- | ---------------------------------- |
+| Issuer        | `SVA_STUDIO_SSF_RUNTIME_ISSUER`                          | daraus abgeleiteter Token-Endpunkt |
+| Audience      | `SVA_STUDIO_SSF_RUNTIME_AUDIENCE=sva-studio-ssf-runtime` | `sva-studio-ssf-runtime`           |
+| Client-ID     | `SVA_STUDIO_SSF_RUNTIME_CLIENT_ID=ssf-runtime`           | `ssf-runtime`                      |
+| Client-Secret | nicht benötigt                                           | geschütztes Deployment-Secret      |
 
 ## Client idempotent einrichten
 
@@ -86,8 +86,10 @@ oder Secret auszugeben:
 
 Für das [Login-Mandantenverzeichnis](../api/ssf-admin-login-mandanten-v1.md)
 den neuen Endpoint ohne Tenant-Header mit derselben Service-Identität aufrufen
-und `200` mit `tenants` prüfen. Dieser Abruf filtert nur den Registry-Status
-`active`; er benötigt weder SSF-Plugin-Datenbank noch IAM-Projektionsrevision.
+und `200` mit `tenants` prüfen. Dieser Abruf verlangt den Registry-Status
+`active` und verifiziert zusätzlich die vollständige SSF-Login-Bereitschaft:
+Tenant-Grunddatensatz, Client-Verträge und bestätigte IAM-Projektionsrevision.
+Die Voraussetzungen werden vom Lifecycle vor der Veröffentlichung hergestellt.
 
 Die Freigabe des Runtime-Konfigurationsabrufs bleibt blockiert, solange SSF-Plugin-Datenbank, Tenant,
 Plugin-Aktivierung oder bestätigte IAM-Projektionsrevision nicht bereit sind.

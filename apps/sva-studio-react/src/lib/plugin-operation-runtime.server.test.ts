@@ -28,7 +28,7 @@ vi.mock('@sva/plugin-ssf/runtime', () => ({
 }));
 
 vi.mock('@sva/plugin-ssf/provisioning', () => ({
-  SSF_TENANT_OIDC_CLIENT_REQUIREMENT: { clientId: 'ssf' },
+  SSF_LOGIN_CLIENT_ID: 'ssf-frontend',
 }));
 
 const createPluginJobExecutionHandlersMock = vi.fn(() => ({

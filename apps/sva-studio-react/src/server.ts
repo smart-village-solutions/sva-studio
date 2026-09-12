@@ -64,9 +64,10 @@ const getDispatchAuthRouteRequest = async () => {
   return dispatchAuthRouteRequestPromise;
 };
 const getDispatchSsfAdminLoginDirectoryRequest = async () => {
-  dispatchSsfAdminLoginDirectoryRequestPromise ??= import('@sva/auth-runtime/server').then(
-    (mod) => mod.dispatchSsfAdminLoginDirectoryRequest
-  );
+  dispatchSsfAdminLoginDirectoryRequestPromise ??=
+    import('./lib/ssf-admin-login-directory.server.js').then(
+      (mod) => mod.dispatchStudioSsfAdminLoginDirectoryRequest
+    );
   return dispatchSsfAdminLoginDirectoryRequestPromise;
 };
 const getPluginServerHandlerDispatcher = async () => {

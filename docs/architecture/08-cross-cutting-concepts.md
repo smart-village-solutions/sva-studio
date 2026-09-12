@@ -984,10 +984,13 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   Plugin-Bootstrap und Plugin-Dispatcher autorisiert; `401` und `403` werden
   über das Plattform-Audit erfasst, über den öffentlichen Ingress bleibt er
   verborgen.
-- Das Verzeichnis liest nur aktive Registry-Einträge und gibt ausschließlich
-  ID, öffentliche Bezeichnung und Realm aus. Es prüft bewusst keine
-  tenantgebundene Plugin-Readiness, weil SSF den Login selbst ausführt und
-  Studio dabei keinen Login-Flow startet.
+- Das Verzeichnis veröffentlicht nur aktive, vollständig loginbereite Registry-Einträge
+  mit ID, öffentlicher Bezeichnung und Realm. Sein schreibfreier Readiness-Pfad wird
+  auch vom Runtime-Zugriff verwendet und prüft Lifecycle, Tenant-Grunddatensatz,
+  Ressourcenclient, aktivierten Browserclient und bestätigte Projektionsrevision.
+  Der Lifecycle stellt zuerst Clients und IAM-Projektion her, bestätigt deren Read-back
+  und provisioniert erst danach den Tenant-Grunddatensatz. SSF führt weiterhin
+  den Login selbst aus; Studio stellt keinen zusätzlichen Login-Handler bereit.
 - Plattformgebundene SSF-Actions erhalten ihren Default-Grant für
   `instance_registry_admin` ausschließlich im Root-/Plattformkatalog. Sie
   erscheinen weder im Tenant-Katalog noch in SSF-Tenant-Tokens.

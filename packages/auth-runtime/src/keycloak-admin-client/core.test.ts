@@ -1417,6 +1417,31 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it('reads effective protocol mappers including attached client scopes', async () => {
+    const mapper = {
+      id: 'mapper-1',
+      name: 'inherited-claim',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-hardcoded-claim-mapper',
+      config: { 'claim.name': 'ssf_permissions' },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'client-1', clientId: 'ssf-frontend' }])
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, [mapper]));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.listEffectiveClientProtocolMappers('ssf-frontend')).resolves.toEqual([
+      mapper,
+    ]);
+    expect(String(fetchImpl.mock.calls.at(-1)?.[0])).toContain(
+      '/clients/client-1/evaluate-scopes/protocol-mappers'
+    );
+  });
+
   it('repairs provisioning metadata on an existing realm role for the Studio instance', async () => {
     const fetchImpl = vi
       .fn()
@@ -1689,4 +1714,84 @@ describe('Keycloak admin client', () => {
     fetchImpl.mockResolvedValueOnce(new Response(null, { status: 204 }));
     await expect(client.logoutUser('user-1')).resolves.toBeUndefined();
   });
+});
+
+describe('public PKCE OIDC clients', () => {
+  it('repairs PKCE drift without touching secrets or retaining broad origins', async () => {
+    const existing = {
+      id: 'browser',
+      clientId: 'ssf-frontend',
+      enabled: false,
+      protocol: 'openid-connect',
+      publicClient: true,
+      standardFlowEnabled: true,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      rootUrl: '',
+      redirectUris: ['https://dialog.example.org/login/*'],
+      webOrigins: ['*'],
+      attributes: { 'pkce.code.challenge.method': 'plain', 'access.token.lifespan': '3600' },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [existing]))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+    await client.ensureOidcClient({
+      clientId: 'ssf-frontend',
+      enabled: false,
+      publicClient: true,
+      pkceCodeChallengeMethod: 'S256',
+      accessTokenLifespan: 900,
+      redirectUris: existing.redirectUris,
+      webOrigins: ['https://dialog.example.org'],
+      postLogoutRedirectUris: [],
+      rootUrl: '',
+      uriPolicy: 'replace',
+    });
+    const writes = fetchImpl.mock.calls.filter((call) => call[1]?.method === 'PUT');
+    expect(writes).toHaveLength(1);
+    expect(JSON.parse(String(writes[0]?.[1]?.body))).toMatchObject({
+      publicClient: true,
+      webOrigins: ['https://dialog.example.org'],
+      attributes: { 'pkce.code.challenge.method': 'S256', 'access.token.lifespan': '900' },
+    });
+    expect(fetchImpl.mock.calls.some((call) => String(call[0]).includes('client-secret'))).toBe(
+      false
+    );
+  });
+});
+
+it('replaces only competing mappers for an explicitly owned client claim', async () => {
+  const fetchImpl = vi
+    .fn()
+    .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token', expires_in: 120 }))
+    .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'browser', clientId: 'ssf-frontend' }]))
+    .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'browser', clientId: 'ssf-frontend' }]))
+    .mockResolvedValueOnce(
+      createJsonResponse(200, [
+        {
+          id: 'legacy',
+          name: 'manual-revision',
+          protocolMapper: 'oidc-hardcoded-claim-mapper',
+          config: { 'claim.name': 'ssf_authorization_revision' },
+        },
+        { id: 'unrelated', name: 'locale', config: { 'claim.name': 'locale' } },
+      ])
+    )
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(new Response(null, { status: 201 }));
+  const client = await createClient(fetchImpl);
+  await client.ensureUserAttributeProtocolMapper({
+    clientId: 'ssf-frontend',
+    name: 'studio-ssf-authorization-revision',
+    userAttribute: 'ssf_authorization_revision',
+    claimName: 'ssf_authorization_revision',
+    exclusiveClaim: true,
+  });
+  const deletions = fetchImpl.mock.calls.filter((call) => call[1]?.method === 'DELETE');
+  expect(deletions).toHaveLength(1);
+  expect(String(deletions[0]?.[0])).toContain('/clients/browser/protocol-mappers/models/legacy');
 });

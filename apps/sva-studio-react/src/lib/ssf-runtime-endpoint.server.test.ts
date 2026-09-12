@@ -78,6 +78,7 @@ const createEndpoint = (runtimeHandler = vi.fn().mockResolvedValue(configuration
     readInstance: vi.fn().mockResolvedValue(instance),
     readPluginAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
     readDatabaseReadiness: vi.fn().mockResolvedValue(true),
+    readLoginReadiness: vi.fn().mockResolvedValue(true),
     readAuthorizationRevision: vi.fn().mockResolvedValue(authorizationRevision),
     emitSecurityAudit: vi.fn().mockResolvedValue(undefined),
   });

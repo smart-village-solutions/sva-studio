@@ -23,6 +23,7 @@ const logger = createSdkLogger({ component: 'ssf-admin-login-directory', level: 
 type DirectoryDependencies = Readonly<{
   authenticateToken?: (token: string) => Promise<SsfRuntimeServiceAuthentication>;
   readInstances?: () => Promise<readonly InstanceRegistryRecord[]>;
+  readTenantReadiness?: (instanceId: string) => Promise<boolean>;
   emitSecurityAudit?: typeof emitAuthAuditEvent;
 }>;
 
@@ -42,7 +43,7 @@ const directoryError = (request: Request, status: 401 | 403 | 503): Response =>
     { status, headers: { 'Cache-Control': 'no-store' } }
   );
 
-/** Installation-wide registry read; no tenant binding or SSF lifecycle access. */
+/** Installation-wide, read-only directory; publication requires verified SSF readiness. */
 export const dispatchSsfAdminLoginDirectoryRequest = async (
   request: Request,
   dependencies: DirectoryDependencies = {}
@@ -79,12 +80,24 @@ export const dispatchSsfAdminLoginDirectoryRequest = async (
       return directoryError(request, authentication.status);
     }
 
+    const readTenantReadiness = dependencies.readTenantReadiness;
+    if (!readTenantReadiness) {
+      throw new Error('ssf_login_readiness_provider_unavailable');
+    }
     const instances = await (
       dependencies.readInstances ??
       (() => withRegistryRepository((repository) => repository.listInstances()))
     )();
-    const tenants = instances
-      .filter((instance) => instance.status === 'active')
+    const readyInstances: InstanceRegistryRecord[] = [];
+    for (const instance of instances) {
+      if (
+        instance.status === 'active' &&
+        (await readTenantReadiness(instance.instanceId))
+      ) {
+        readyInstances.push(instance);
+      }
+    }
+    const tenants = readyInstances
       .map((instance) => ({
         id: instance.instanceId,
         displayName: instance.displayName,

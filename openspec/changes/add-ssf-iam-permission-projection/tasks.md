@@ -80,3 +80,11 @@ ersetzt weder den Tokenlaufzeit- noch den gemeinsamen Staging-Nachweis.
 - [ ] 5.6 Optional: Der spätere SSF-Provider implementiert den vereinbarten
       authentifizierten, idempotenten Sammelwiderruf für exakt einen Tenant,
       ohne die Projektionsreadiness davon abhängig zu machen
+
+## Ergänzung Issue #1319: Provisionierung vor Login-Freigabe
+
+- [x] Versionierten Browserclient-Vertrag mit expliziter HTTPS-Origin und bestehender Queue verbinden
+- [x] Tenant-Grunddatensatz vor der Projektion provisionieren und Browserclaims benutzerbezogen verifizieren
+- [x] Veraltetes `ready` erneut prüfen und denselben Readiness-Pfad für Directory und Runtime verwenden
+- [x] Lokale Zwei-Tenant-, Teilfehler- und PostgreSQL-Wiederanlaufnachweise ergänzen
+- [ ] Gemeinsamen echten Zwei-Realm-Login bis SSF-Gateway in Staging nachweisen und Digest dokumentieren

@@ -3,6 +3,7 @@ import type { PluginTranslations } from '@sva/plugin-sdk';
 const de = {
   ssf: {
     navigation: { system: 'SSF-Standards', tenant: 'SSF-Konfiguration' },
+    readiness: { login: 'SSF-Anmeldung und Mandant bereit' },
     page: {
       systemTitle: 'SSF-Standards',
       systemDescription: 'Installationsweite Vorgaben für alle SSF-Mandanten.',
@@ -67,6 +68,7 @@ const de = {
 
 const en = {
   ssf: {
+    readiness: { login: 'SSF login and tenant ready' },
     navigation: { system: 'SSF defaults', tenant: 'SSF configuration' },
     page: {
       systemTitle: 'SSF defaults',

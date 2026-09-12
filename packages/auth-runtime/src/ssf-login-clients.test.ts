@@ -54,14 +54,14 @@ beforeEach(() => {
   mocks.readMappers.mockResolvedValue([]);
   mocks.alignment.mockReturnValue({ aligned: true });
 });
-it('repairs only the registry-bound browser client without modifying the resource client', async () => {
+it('repairs the browser client first and disables an enabled legacy resource client', async () => {
   await prepareInstanceSsfLoginClients('tenant-a');
   expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend');
   expect(mocks.reconcile).toHaveBeenCalledWith(
     expect.any(Object),
     expect.objectContaining({
       authClientId: 'studio',
-      pluginOidcClients: [mocks.requirements()[1]],
+      pluginOidcClients: [mocks.requirements()[1], mocks.requirements()[0]],
     })
   );
   expect(await readInstanceSsfLoginClientsReady('tenant-a')).toBe(true);

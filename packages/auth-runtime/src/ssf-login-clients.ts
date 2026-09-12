@@ -31,24 +31,15 @@ const resolveLoginContract = async (instanceId: string) => {
 export const prepareInstanceSsfLoginClients = async (instanceId: string): Promise<void> => {
   const contract = await resolveLoginContract(instanceId);
   if (!contract) throw new Error('ssf_login_contract_unavailable');
-  // Preserve an existing resource client. Missing initial resources still use
-  // the existing Core provisioning contract before the tenant can become ready.
-  const requirements = [];
-  const orderedRequirements = [
+  // Reconcile the browser client first, then normalize the resource client.
+  // This also migrates legacy resource clients that token issuance left enabled.
+  const pluginOidcClients = [
     ...contract.input.pluginOidcClients.filter(({ contractVersion }) => contractVersion === '2.0'),
     ...contract.input.pluginOidcClients.filter(({ contractVersion }) => contractVersion === '1.0'),
   ];
-  for (const requirement of orderedRequirements) {
-    if (
-      requirement.contractVersion === '2.0' ||
-      !(await contract.tenant.client.getOidcClientByClientId(requirement.clientId))
-    ) {
-      requirements.push(requirement);
-    }
-  }
   await reconcilePluginOidcClients(contract.tenant.client, {
     ...contract.input,
-    pluginOidcClients: requirements,
+    pluginOidcClients,
   });
 };
 

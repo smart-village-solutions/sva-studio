@@ -80,6 +80,10 @@ export const dispatchSsfAdminLoginDirectoryRequest = async (
       return directoryError(request, authentication.status);
     }
 
+    const readTenantReadiness = dependencies.readTenantReadiness;
+    if (!readTenantReadiness) {
+      throw new Error('ssf_login_readiness_provider_unavailable');
+    }
     const instances = await (
       dependencies.readInstances ??
       (() => withRegistryRepository((repository) => repository.listInstances()))
@@ -88,7 +92,7 @@ export const dispatchSsfAdminLoginDirectoryRequest = async (
     for (const instance of instances) {
       if (
         instance.status === 'active' &&
-        (await dependencies.readTenantReadiness?.(instance.instanceId))
+        (await readTenantReadiness(instance.instanceId))
       ) {
         readyInstances.push(instance);
       }

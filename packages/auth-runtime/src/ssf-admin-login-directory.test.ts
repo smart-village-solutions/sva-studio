@@ -194,18 +194,26 @@ describe('SSF admin login directory', () => {
     expect(mocks.authenticate).not.toHaveBeenCalled();
     expect(mocks.listInstances).not.toHaveBeenCalled();
   });
-});
-
-it('publishes no active tenant without an explicit readiness provider', async () => {
-  mocks.listInstances.mockResolvedValue([instance()]);
-  expect(await (await dispatchDirectory(request()))?.json()).toMatchObject({ tenants: [] });
-});
-it('excludes incomplete tenants and reports probe failures as unavailable', async () => {
-  mocks.listInstances.mockResolvedValue([instance()]);
-  mocks.readTenantReadiness.mockResolvedValue(false);
-  expect(await (await dispatchSsfAdminLoginDirectoryRequest(request()))?.json()).toMatchObject({
-    tenants: [],
+  it('fails closed without an explicit readiness provider', async () => {
+    mocks.listInstances.mockResolvedValue([instance()]);
+    const response = await dispatchDirectory(request());
+    expect(response?.status).toBe(503);
+    expect(await response?.json()).toEqual({
+      error: {
+        code: 'admin_login_directory_unavailable',
+        correlationId: 'directory-test',
+      },
+    });
+    expect(mocks.listInstances).not.toHaveBeenCalled();
   });
-  mocks.readTenantReadiness.mockRejectedValue(new Error('upstream unavailable'));
-  expect((await dispatchSsfAdminLoginDirectoryRequest(request()))?.status).toBe(503);
+
+  it('excludes incomplete tenants and reports probe failures as unavailable', async () => {
+    mocks.listInstances.mockResolvedValue([instance()]);
+    mocks.readTenantReadiness.mockResolvedValue(false);
+    expect(await (await dispatchSsfAdminLoginDirectoryRequest(request()))?.json()).toMatchObject({
+      tenants: [],
+    });
+    mocks.readTenantReadiness.mockRejectedValue(new Error('upstream unavailable'));
+    expect((await dispatchSsfAdminLoginDirectoryRequest(request()))?.status).toBe(503);
+  });
 });

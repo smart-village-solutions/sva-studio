@@ -54,7 +54,16 @@ beforeEach(() => {
   mocks.readMappers.mockResolvedValue([]);
   mocks.alignment.mockReturnValue({ aligned: true });
 });
-it('repairs the browser client first and disables an enabled legacy resource client', async () => {
+it('converges a drifted legacy resource client to login readiness', async () => {
+  let resourceClientAligned = false;
+  mocks.alignment.mockImplementation((requirement: { contractVersion: string }) => ({
+    aligned: requirement.contractVersion !== '1.0' || resourceClientAligned,
+  }));
+  mocks.reconcile.mockImplementation(async () => {
+    resourceClientAligned = true;
+  });
+
+  expect(await readInstanceSsfLoginClientsReady('tenant-a')).toBe(false);
   await prepareInstanceSsfLoginClients('tenant-a');
   expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend');
   expect(mocks.reconcile).toHaveBeenCalledWith(

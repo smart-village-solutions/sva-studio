@@ -90,9 +90,7 @@ describe('IAM schema readiness deployment contract', () => {
   it('isolates the Kassel Traefik writer mount to the standalone provisioner', () => {
     expect(standaloneKasselIngress).toContain('provisioner:');
     expect(standaloneKasselIngress).toContain('app:');
-    expect(
-      standaloneKasselIngress.match(/^\s+SVA_KASSEL_PUBLIC_AUTH_ORIGIN:/gmu)
-    ).toHaveLength(2);
+    expect(standaloneKasselIngress.match(/^\s+SVA_KASSEL_PUBLIC_AUTH_ORIGIN:/gmu)).toHaveLength(2);
     expect(standaloneKasselIngress).toContain(
       '${SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST:?SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST must be set}'
     );
@@ -100,6 +98,11 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneKasselIngress).toContain("SVA_TENANT_INGRESS_MODE: 'kassel-traefik-file'");
     expect(standaloneKasselIngress).not.toContain('docker.sock');
     expect(standaloneKasselIngress).not.toContain('letsencrypt');
+    expect(standaloneKasselIngress).toContain('ingress-dir-init:');
+    expect(standaloneKasselIngress).toContain(
+      'install -d -o 1000 -g 1000 -m 0750 /var/lib/sva-studio/traefik-dynamic'
+    );
+    expect(standaloneKasselIngress).toContain('condition: service_completed_successfully');
   });
 
   it.each([

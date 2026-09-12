@@ -27,8 +27,11 @@ const parentSteps = new Set<string>([
   'completed',
 ]);
 
-export const readStep = (run: InstanceProvisioningRun): ParentStep =>
-  run.stepKey && parentSteps.has(run.stepKey) ? (run.stepKey as ParentStep) : 'registry';
+export const readStep = (run: InstanceProvisioningRun): ParentStep => {
+  if (!run.stepKey) return 'registry';
+  if (!parentSteps.has(run.stepKey)) throw new Error('provisioning_step_invalid');
+  return run.stepKey as ParentStep;
+};
 
 export const requireDependency = <T>(value: T | undefined, code: string): T => {
   if (!value) throw new Error(code);

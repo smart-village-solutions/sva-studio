@@ -1,10 +1,25 @@
 services:
+  ingress-dir-init:
+    image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
+    user: '0:0'
+    entrypoint:
+      - /bin/sh
+      - -ec
+    command:
+      - install -d -o 1000 -g 1000 -m 0750 /var/lib/sva-studio/traefik-dynamic
+    restart: 'no'
+    volumes:
+      - ${SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST:?SVA_KASSEL_TRAEFIK_DYNAMIC_DIR_HOST must be set}:/var/lib/sva-studio/traefik-dynamic
+
   app:
     environment:
       SVA_TENANT_INGRESS_MODE: 'kassel-traefik-file'
       SVA_KASSEL_PUBLIC_AUTH_ORIGIN: ${SVA_KASSEL_PUBLIC_AUTH_ORIGIN:-https://auth.dialog.kassel.de}
 
   provisioner:
+    depends_on:
+      ingress-dir-init:
+        condition: service_completed_successfully
     environment:
       SVA_TENANT_INGRESS_MODE: 'kassel-traefik-file'
       SVA_KASSEL_PUBLIC_AUTH_ORIGIN: ${SVA_KASSEL_PUBLIC_AUTH_ORIGIN:-https://auth.dialog.kassel.de}

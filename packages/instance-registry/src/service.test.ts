@@ -935,6 +935,40 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('does not revive an archived instance through an idempotent failed-create retry', async () => {
+    const archivedInstance = { ...baseInstance, status: 'archived' as const };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'login',
+      errorCode: 'kassel_login_probe_failed',
+      completedAt: '2026-01-01T00:10:00.000Z',
+    };
+    const retryProvisioningRun = vi.fn();
+    const setInstanceStatus = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => archivedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      retryProvisioningRun,
+      setInstanceStatus,
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('provisioning_retry_instance_status_invalid');
+
+    expect(retryProvisioningRun).not.toHaveBeenCalled();
+    expect(setInstanceStatus).not.toHaveBeenCalled();
+  });
+
   it('creates requested instances, protects secrets and invalidates the primary host', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),

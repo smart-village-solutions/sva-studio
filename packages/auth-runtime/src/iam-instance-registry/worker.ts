@@ -19,7 +19,7 @@ import { processNextQueuedKeycloakProvisioningRun } from './service-keycloak-exe
 
 const workerId = `kassel-tenant-provisioner:${randomUUID()}`;
 
-const readProvisioningModuleReadiness = async (instanceId: string) => {
+export const readProvisioningModuleReadiness = async (instanceId: string) => {
   const models = await readConfiguredPluginTenantReadiness(instanceId);
   const evidence = {
     modules: models.map((model) => ({
@@ -30,7 +30,13 @@ const readProvisioningModuleReadiness = async (instanceId: string) => {
       errorCode: model.error?.code,
     })),
   };
-  if (models.some((model) => model.status === 'blocked' || model.error?.retryKind === 'terminal')) {
+  if (
+    models.some(
+      (model) =>
+        model.error?.retryKind === 'terminal' ||
+        (model.status === 'blocked' && model.error?.retryKind !== 'retryable')
+    )
+  ) {
     return { status: 'blocked' as const, evidence };
   }
   if (models.some((model) => model.status !== 'ready' || model.evidenceState !== 'valid')) {

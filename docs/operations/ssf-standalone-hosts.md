@@ -125,6 +125,9 @@ Provisioner mountet das dynamische Verzeichnis mit Schreibrecht. Der zugehörige
 Traefik aus dem SSF-Repository mountet dasselbe Verzeichnis read-only. Der
 providerqualifizierte Zielservice `sva-studio-ssf@docker` wurde gegen die
 laufende Kasseler Containerkonfiguration geprüft.
+Vor dem Workerstart initialisiert der einmalige Compose-Dienst `ingress-dir-init`
+den Hostpfad mit UID/GID 1000 und Modus `0750`; damit kann der als `node`
+laufende Provisioner auch auf einer frischen Installation atomar schreiben.
 
 Ein neuer Create-Lauf bleibt nach dem Schließen der Browserseite bestehen. Der
 Worker verarbeitet Registry, Keycloak-Kindlauf, Plugin-Lifecycle, Router, TLS,

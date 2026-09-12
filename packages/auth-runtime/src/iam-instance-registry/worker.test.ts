@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   processKeycloak: vi.fn(),
   processTenant: vi.fn(),
   withDeps: vi.fn(),
+  readReadiness: vi.fn(async () => []),
 }));
 
 vi.mock('@sva/instance-registry/provisioning-worker', () => ({
@@ -22,7 +23,7 @@ vi.mock('./service-keycloak-execution.js', () => ({
 }));
 
 vi.mock('../plugin-tenant-lifecycle/read-model.js', () => ({
-  readConfiguredPluginTenantReadiness: vi.fn(async () => []),
+  readConfiguredPluginTenantReadiness: mocks.readReadiness,
 }));
 
 vi.mock('../kassel-tenant-provisioning.js', () => ({
@@ -32,14 +33,19 @@ vi.mock('../kassel-tenant-provisioning.js', () => ({
 
 describe('instance provisioning worker routing', () => {
   let runWorkerIteration: typeof import('./worker.js').runKeycloakProvisioningWorkerIteration;
+  let readModuleReadiness: typeof import('./worker.js').readProvisioningModuleReadiness;
 
   beforeAll(async () => {
-    ({ runKeycloakProvisioningWorkerIteration: runWorkerIteration } = await import('./worker.js'));
+    ({
+      runKeycloakProvisioningWorkerIteration: runWorkerIteration,
+      readProvisioningModuleReadiness: readModuleReadiness,
+    } = await import('./worker.js'));
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.withDeps.mockImplementation(async (work) => work({ repository: {} }));
+    mocks.readReadiness.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -74,5 +80,22 @@ describe('instance provisioning worker routing', () => {
 
     await expect(runWorkerIteration()).resolves.toBeNull();
     expect(mocks.processTenant).not.toHaveBeenCalled();
+  });
+
+  it('keeps retryable blocked module readiness pending', async () => {
+    mocks.readReadiness.mockResolvedValue([
+      {
+        pluginId: 'ssf',
+        status: 'blocked',
+        evidenceState: 'missing',
+        revision: 1,
+        error: { code: 'lifecycle_job_missing', retryKind: 'retryable' },
+      },
+    ]);
+
+    await expect(readModuleReadiness('tenant-a')).resolves.toMatchObject({
+      status: 'pending',
+      evidence: { modules: [{ pluginId: 'ssf', errorCode: 'lifecycle_job_missing' }] },
+    });
   });
 });

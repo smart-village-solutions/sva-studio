@@ -55,6 +55,9 @@ export const resolveIdempotentCreateRetry = async (
     invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
     return { ok: true, instance: toListItem(instance) };
   }
+  if (instance.status !== 'failed') {
+    throw new Error('provisioning_retry_instance_status_invalid');
+  }
   const retriedRun = await deps.repository.retryProvisioningRun({
     instanceId: instance.instanceId,
     idempotencyKey: input.idempotencyKey,

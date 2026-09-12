@@ -31,6 +31,7 @@ const TERMINAL_ERROR_CODES = new Set([
   'kassel_traefik_dynamic_dir_missing',
   'keycloak_provisioning_failed',
   'module_readiness_blocked',
+  'provisioning_step_invalid',
   'provisioning_snapshot_drift',
   'provisioning_instance_status_invalid',
   'tenant_ingress_hostname_invalid_label',
@@ -159,20 +160,22 @@ export const processNextTenantProvisioningRun = async (
         now,
       });
     } catch (error) {
+      const stepKey =
+        errorCode(error) === 'provisioning_step_invalid' ? 'registry' : readStep(current);
       const terminal =
         isTerminalError(error) || now.getTime() >= new Date(current.deadlineAt).getTime();
       if (terminal) {
-        return failRun(lockedDeps, current, input.workerId, readStep(current), error, now);
+        return failRun(lockedDeps, current, input.workerId, stepKey, error, now);
       }
       logger.warn('tenant_provisioning_retry_scheduled', {
         operation: 'create_instance',
         instance_id: current.instanceId,
         run_id: current.id,
-        step_key: readStep(current),
+        step_key: stepKey,
         error_code: errorCode(error),
       });
       return updateClaimedRun(lockedDeps, current, input.workerId, {
-        stepKey: readStep(current),
+        stepKey,
         nextAttemptAt: new Date(now.getTime() + RETRY_MILLISECONDS).toISOString(),
         errorCode: errorCode(error),
         errorMessage: 'Provisionierung wird erneut versucht.',

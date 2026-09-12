@@ -297,6 +297,27 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
+  it('fails closed on an unknown persisted step without replaying side effects', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'future-unknown-step',
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, {
+      workerId: 'recovery-worker',
+      now,
+    });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      errorCode: 'provisioning_step_invalid',
+      completedAt: now.toISOString(),
+    });
+    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
+    expect(harness.deps.publishTenantIngress).not.toHaveBeenCalled();
+  });
+
   it('retries transient ingress availability failures until the deadline', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {

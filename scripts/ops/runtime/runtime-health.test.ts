@@ -351,6 +351,7 @@ describe('runtime-health helpers', () => {
       SVA_GRAFANA_TOKEN: 'token',
       SVA_LOKI_URL: 'https://loki.example.test',
       SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
     });
 
     const lokiQueries = fetchCalls
@@ -577,6 +578,7 @@ describe('runtime-health helpers', () => {
 
     const result = await ops.buildTenantAuthProofCheck('studio', {
       SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
     });
 
     expect(fetchMock).toHaveBeenNthCalledWith(2, new URL(sensitiveAuthorizationUrl), expect.objectContaining({
@@ -589,6 +591,55 @@ describe('runtime-health helpers', () => {
     }));
     expect(JSON.stringify(result)).not.toContain('sensitive-state');
     expect(JSON.stringify(result)).not.toContain(sensitiveAuthorizationUrl);
+  });
+
+  it('rejects tenant authorization redirects outside the configured Keycloak origins', async () => {
+    const maliciousAuthorizationUrl = 'https://internal.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(null, {
+      headers: { location: maliciousAuthorizationUrl },
+      status: 302,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(() => 'studio'),
+      getRemoteAppServiceName: vi.fn(() => 'app'),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    const result = await ops.buildTenantAuthProofCheck('studio', {
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.test',
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(expect.objectContaining({
+      code: 'tenant_auth_redirect_failed',
+      status: 'error',
+    }));
+    expect(JSON.stringify(result)).not.toContain('internal.example.test');
+    expect(JSON.stringify(result)).not.toContain('sensitive-state');
   });
 
   it('uses timeouts for login and me smoke requests', async () => {

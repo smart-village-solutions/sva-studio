@@ -67,8 +67,10 @@ Logzeilen. Leere Ergebnisse werden vor einem grünen Ergebnis dreimal mit jeweil
 Abstand abgefragt, damit ein kurzer Loki-Ingestion-Lag nicht zu einem falschen Erfolg führt. Ist
 Loki konfiguriert, aber die Sicherheitsabfrage schlägt fehl, wird der Gate ebenfalls blockierend
 `error`; das gilt auch für eine HTTP-Erfolgsantwort ohne Loki-Status `success` und gültiges
-`data.result`. Im Precheck folgt der Tenant-Login-Probe dem validierten HTTPS-Authorization-Redirect
-genau bis zu Keycloak, ohne URL oder Cookies zu protokollieren, und führt erst danach die
+`data.result`. Im Precheck folgt der Tenant-Login-Probe ausschließlich einem absoluten
+HTTPS-Authorization-Redirect, dessen Origin einer konfigurierten Keycloak-Origin aus
+`SVA_AUTH_ISSUER` oder `KEYCLOAK_ADMIN_BASE_URL` entspricht. Relative und fremde Origins werden
+vor dem Request blockiert. Der Probe protokolliert weder URL noch Cookies und führt erst danach die
 Sicherheitsabfrage aus. Dadurch wird eine dabei erzeugte Keycloak-Warnung noch im selben Lauf
 erkannt. Fehlende lokale Loki-Zugangskonfiguration bleibt als `warn` sichtbar und
 ist kein Freigabenachweis.

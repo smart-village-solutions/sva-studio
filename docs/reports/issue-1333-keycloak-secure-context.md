@@ -67,6 +67,7 @@ Der Runtime-Doctor enthält nun einen Loki-basierten Log-Qualitäts-Gate für da
 15-Minuten-Fenster. Ein erneutes Auftreten der Warnung macht die bestehende
 `observability-readiness`-Prüfung rot, ohne die betroffene Logzeile in den Bericht zu übernehmen.
 Leere Loki-Ergebnisse werden vor einem grünen Befund begrenzt wiederholt.
-Im Precheck wird der validierte HTTPS-Authorization-Redirect ohne URL- oder Cookie-Ausgabe bis zu
-Keycloak verfolgt, bevor der Log-Gate läuft. Die Sicherheitsprobe akzeptiert nur Loki-Antworten mit
-Top-Level-Status `success` und einem gültigen `data.result`-Array.
+Im Precheck wird nur ein absoluter HTTPS-Authorization-Redirect auf eine konfigurierte
+Keycloak-Origin ohne URL- oder Cookie-Ausgabe verfolgt, bevor der Log-Gate läuft. Relative oder
+fremde Origins werden vor dem Request blockiert. Die Sicherheitsprobe akzeptiert nur
+Loki-Antworten mit Top-Level-Status `success` und einem gültigen `data.result`-Array.

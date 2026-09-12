@@ -167,13 +167,30 @@ type TenantAuthRedirectProbeResult =
   | { failedCheck: DoctorCheck }
   | { probeResults: Array<{ authRealm: string; host: string; instanceId: string }>; source: TenantRuntimeTargetResolution['source'] };
 
-const parseTenantAuthorizationUrl = (location: string, target: string, authRealm: string): URL | null => {
+const getConfiguredKeycloakOrigins = (env: NodeJS.ProcessEnv): ReadonlySet<string> => {
+  const origins = [env.SVA_AUTH_ISSUER, env.KEYCLOAK_ADMIN_BASE_URL].flatMap((value) => {
+    if (!value?.trim()) return [];
+    try {
+      return [new URL(value.trim()).origin];
+    } catch {
+      return [];
+    }
+  });
+  return new Set(origins);
+};
+
+const parseTenantAuthorizationUrl = (
+  location: string,
+  authRealm: string,
+  configuredKeycloakOrigins: ReadonlySet<string>,
+): URL | null => {
   try {
-    const authorizationUrl = new URL(location, target);
+    const authorizationUrl = new URL(location);
     const expectedPathPrefix = `/realms/${encodeURIComponent(authRealm)}/protocol/openid-connect/auth`;
     return authorizationUrl.protocol === 'https:'
       && authorizationUrl.username.length === 0
       && authorizationUrl.password.length === 0
+      && configuredKeycloakOrigins.has(authorizationUrl.origin)
       && authorizationUrl.pathname === expectedPathPrefix
       ? authorizationUrl
       : null;
@@ -188,13 +205,14 @@ const probeTenantAuthRedirects = async (
   tenantTargetResolution: TenantRuntimeTargetResolution,
 ): Promise<TenantAuthRedirectProbeResult> => {
   const baseProtocol = new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol;
+  const configuredKeycloakOrigins = getConfiguredKeycloakOrigins(env);
   const probeResults: Array<{ authRealm: string; host: string; instanceId: string }> = [];
   for (const tenantTarget of tenantTargetResolution.targets.slice(0, 2)) {
     const target = `${baseProtocol}//${tenantTarget.host}/auth/login`;
     const response = await fetch(target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
     const location = response.headers.get('location') ?? '';
     const authorizationUrl = response.status === 302
-      ? parseTenantAuthorizationUrl(location, target, tenantTarget.authRealm)
+      ? parseTenantAuthorizationUrl(location, tenantTarget.authRealm, configuredKeycloakOrigins)
       : null;
     if (!authorizationUrl) {
       return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_redirect_failed', `Tenant-Login fuer ${tenantTarget.instanceId} liefert keinen korrekten Realm-Redirect.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source, status: response.status }) };

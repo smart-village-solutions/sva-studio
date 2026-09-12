@@ -60,6 +60,16 @@ export type InstanceProvisioningRun = {
   readonly stepKey?: string;
   readonly idempotencyKey: string;
   readonly payloadFingerprint?: string;
+  readonly snapshotVersion: string;
+  readonly desiredSnapshot: Readonly<Record<string, unknown>>;
+  readonly childKeycloakRunId?: string;
+  readonly leaseOwner?: string;
+  readonly leaseExpiresAt?: string;
+  readonly attemptCount: number;
+  readonly nextAttemptAt: string;
+  readonly deadlineAt: string;
+  readonly terminalEvidence: Readonly<Record<string, unknown>>;
+  readonly completedAt?: string;
   readonly errorCode?: string;
   readonly errorMessage?: string;
   readonly requestId?: string;

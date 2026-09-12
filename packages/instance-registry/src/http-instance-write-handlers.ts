@@ -76,15 +76,17 @@ export const createCreateInstanceHandler =
     const actor = deps.getActor(ctx);
     let result: Awaited<ReturnType<InstanceRegistryService['createProvisioningRequest']>>;
     try {
-      result = await deps.withRegistryService((service) =>
+      const executeCreate = (service: InstanceRegistryService) =>
         service.createProvisioningRequest(
           buildCreateInstanceProvisioningInput(payloadResult.data, {
             idempotencyKey: idempotencyResult.key,
             actorId: actor.id,
             requestId: deps.getRequestId(),
           })
-        )
-      );
+        );
+      result = deps.withRegistryCreateService
+        ? await deps.withRegistryCreateService(payloadResult.data.instanceId, executeCreate)
+        : await deps.withRegistryService(executeCreate);
     } catch (error) {
       return deps.mapMutationError(error, {
         operation: 'create_instance',

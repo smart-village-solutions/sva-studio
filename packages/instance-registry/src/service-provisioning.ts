@@ -5,35 +5,52 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
+import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
-type CreatedInstanceRecord = NonNullable<Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>>;
+type CreatedInstanceRecord = NonNullable<
+  Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>
+>;
 
 export const createProvisioningArtifacts = async (
   repository: InstanceRegistryRepository,
   instance: CreatedInstanceRecord,
-  input: CreateInstanceProvisioningInput
-): Promise<void> => {
-  await runInstanceRegistryStep('provisioning_run_insert', () => repository.createProvisioningRun({
-    instanceId: instance.instanceId,
-    operation: 'create',
-    status: 'requested',
-    idempotencyKey: input.idempotencyKey,
-    payloadFingerprint: buildCreateInstancePayloadFingerprint(input),
-    actorId: input.actorId,
-    requestId: input.requestId,
-  }));
-  await runInstanceRegistryStep('audit_event_insert', () => repository.appendAuditEvent({
-    instanceId: instance.instanceId,
-    eventType: 'instance_requested',
-    actorId: input.actorId,
-    requestId: input.requestId,
-    details: createAuditDetails({
-      parentDomain: instance.parentDomain,
-      primaryHostname: instance.primaryHostname,
-    }),
-  }));
+  input: CreateInstanceProvisioningInput,
+  automationMode: 'external' | 'kassel-traefik-file' = 'external'
+): Promise<Awaited<ReturnType<InstanceRegistryRepository['createProvisioningRun']>>> => {
+  const payloadFingerprint = buildCreateInstancePayloadFingerprint(input);
+  const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>
+    repository.createProvisioningRun({
+      instanceId: instance.instanceId,
+      operation: 'create',
+      status: 'requested',
+      idempotencyKey: input.idempotencyKey,
+      payloadFingerprint,
+      snapshotVersion: '2.0',
+      desiredSnapshot: buildTenantProvisioningSnapshot(
+        instance,
+        input,
+        payloadFingerprint,
+        automationMode
+      ),
+      actorId: input.actorId,
+      requestId: input.requestId,
+    })
+  );
+  await runInstanceRegistryStep('audit_event_insert', () =>
+    repository.appendAuditEvent({
+      instanceId: instance.instanceId,
+      eventType: 'instance_requested',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: createAuditDetails({
+        parentDomain: instance.parentDomain,
+        primaryHostname: instance.primaryHostname,
+      }),
+    })
+  );
+  return provisioningRun;
 };
 
 export const provisionInstanceAuth = async (

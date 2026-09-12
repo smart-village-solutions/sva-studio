@@ -323,12 +323,44 @@ export type InstanceRegistryRepository = {
     status: InstanceStatus;
     idempotencyKey: string;
     payloadFingerprint?: string;
+    snapshotVersion?: string;
+    desiredSnapshot?: Readonly<Record<string, unknown>>;
+    deadlineAt?: string;
     stepKey?: string;
     actorId?: string;
     requestId?: string;
     errorCode?: string;
     errorMessage?: string;
   }) => Promise<InstanceProvisioningRun>;
+  readonly claimNextProvisioningRun: (input: {
+    workerId: string;
+    leaseExpiresAt: string;
+    parentDomain: string;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly renewProvisioningRunLease: (input: {
+    runId: string;
+    leaseOwner: string;
+    leaseExpiresAt: string;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly updateProvisioningRun: (input: {
+    runId: string;
+    leaseOwner: string;
+    status: InstanceStatus;
+    stepKey: string;
+    childKeycloakRunId?: string;
+    nextAttemptAt?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    terminalEvidence?: Readonly<Record<string, unknown>>;
+    completedAt?: string;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly retryProvisioningRun: (input: {
+    instanceId: string;
+    idempotencyKey: string;
+    actorId?: string;
+    requestId?: string;
+    deadlineAt: string;
+  }) => Promise<InstanceProvisioningRun | null>;
   readonly appendAuditEvent: (input: {
     instanceId: string;
     eventType: InstanceAuditEvent['eventType'];

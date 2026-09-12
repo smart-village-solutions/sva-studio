@@ -598,6 +598,24 @@ test('queued step migration keeps the earliest legacy step before enforcing uniq
   }
 });
 
+test('instance provisioning orchestration migration and snapshot preserve leases and evidence', () => {
+  const sql = readRepoFile('data/migrations/0096_iam_instance_provisioning_orchestration.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+  const downSql = sql.split('-- +goose Down')[1] ?? '';
+
+  for (const source of [upSql, schemaSnapshot]) {
+    expect(source).toMatch(/snapshot_version[\s\S]+desired_snapshot/);
+    expect(source).toMatch(/child_keycloak_run_id[\s\S]+instance_keycloak_provisioning_runs/);
+    expect(source).toMatch(/instance_provisioning_lease_pair_chk/);
+    expect(source).toMatch(/instance_provisioning_completion_chk/);
+    expect(source).toMatch(/idx_instance_provisioning_runs_claim/);
+    expect(source).toMatch(/snapshot_version = '2\.0'/);
+  }
+  expect(upSql).not.toMatch(/\b(?:DELETE\s+FROM|TRUNCATE\s+TABLE)\b/);
+  expect(downSql).toMatch(/DROP COLUMN IF EXISTS snapshot_version/);
+});
+
 test('organization type migration and schema snapshot support associations and institutions', () => {
   const sql = readRepoFile(
     'data/migrations/0084_iam_organization_types_association_institution.sql'

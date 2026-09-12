@@ -9,7 +9,8 @@ export {
   type PrepareInstanceConfirmationChallengeInput,
 } from './confirmation-challenges.js';
 
-export type InstanceRegistryPackageRole = 'instances' | 'host-classification' | 'provisioning' | 'platform-admin-client';
+export type InstanceRegistryPackageRole =
+  'instances' | 'host-classification' | 'provisioning' | 'platform-admin-client';
 
 export const instanceRegistryPackageRoles = [
   'instances',
@@ -139,6 +140,7 @@ export {
 } from './provisioning-auth-utils.js';
 export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 export { createInstanceRegistryService } from './service.js';
+export { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
 export { createRunInstanceAuditHandler } from './service-audit.js';
 export { createGetInstanceDetail, loadKeycloakDetailArtifacts } from './service-detail.js';
 export {

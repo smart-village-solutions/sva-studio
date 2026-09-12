@@ -49,8 +49,10 @@ describe('http-instance-handlers', () => {
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     ),
     withScopedRegistryService: vi.fn(
-      async (_instanceId: string, work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
-        work(service)
+      async (
+        _instanceId: string,
+        work: (registryService: InstanceRegistryService) => Promise<unknown>
+      ) => work(service)
     ),
     reservedOidcClientIds: ['ssf'],
     onInstanceProvisioningRequested: vi.fn(),
@@ -67,9 +69,7 @@ describe('http-instance-handlers', () => {
     deps.withRegistryService.mockImplementation(
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     );
-    deps.withScopedRegistryService.mockImplementation(
-      async (_instanceId, work) => work(service)
-    );
+    deps.withScopedRegistryService.mockImplementation(async (_instanceId, work) => work(service));
     vi.mocked(service.listInstances).mockResolvedValue([
       { instanceId: 'demo', status: 'active' },
     ] as never);
@@ -132,6 +132,37 @@ describe('http-instance-handlers', () => {
       primaryHostname: 'demo.studio.example.org',
       actorId: 'admin-1',
     });
+  });
+
+  it('uses the locked create transaction adapter when available', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'existing',
+        authRealm: 'smartcity',
+        authClientId: 'sva-studio-login',
+      },
+    });
+    const withRegistryCreateService = vi.fn(
+      async (_instanceId: string, work: (value: InstanceRegistryService) => Promise<unknown>) =>
+        work(service)
+    );
+    const handlers = createInstanceRegistryHttpHandlers({
+      ...deps,
+      withRegistryCreateService,
+    });
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.dialog.kassel.de/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    expect(withRegistryCreateService).toHaveBeenCalledWith('demo', expect.any(Function));
+    expect(deps.withRegistryService).not.toHaveBeenCalled();
   });
 
   it('creates instances without requiring fresh reauthentication', async () => {

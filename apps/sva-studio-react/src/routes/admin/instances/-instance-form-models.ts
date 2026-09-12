@@ -11,7 +11,8 @@ import type {
 } from './-instances-shared-types';
 import { INSTANCE_STATUS_LABELS } from './-instances-shared-types';
 
-export const isTenantSecretUserInputRequired = (realmMode: 'new' | 'existing') => realmMode === 'existing';
+export const isTenantSecretUserInputRequired = (realmMode: 'new' | 'existing') =>
+  realmMode === 'existing';
 
 export const readSuggestedParentDomain = () => readDocumentStudioParentDomain();
 
@@ -61,7 +62,11 @@ export const createDetailForm = (instance: SelectedInstance): DetailFormValues =
   tenantAdminTemporaryPassword: '',
 });
 
-export const CREATE_WIZARD_STEPS: readonly { key: CreateWizardStepKey; title: string; description: string }[] = [
+export const CREATE_WIZARD_STEPS: readonly {
+  key: CreateWizardStepKey;
+  title: string;
+  description: string;
+}[] = [
   {
     key: 'basics',
     title: t('admin.instances.wizard.steps.basics.title'),
@@ -204,12 +209,19 @@ const trimValue = (value: string) => value.trim();
 const AUTH_REALM_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const isValidAuthRealmValue = (value: string) => AUTH_REALM_REGEX.test(trimValue(value));
 
-export const getCreateStepValidationMessages = (step: CreateWizardStepKey, formValues: CreateFormValues): string[] => {
+export const getCreateStepValidationMessages = (
+  step: CreateWizardStepKey,
+  formValues: CreateFormValues
+): string[] => {
   if (step === 'basics') {
     return [
       !trimValue(formValues.instanceId) ? t('admin.instances.wizard.validation.instanceId') : null,
-      !trimValue(formValues.displayName) ? t('admin.instances.wizard.validation.displayName') : null,
-      !trimValue(formValues.parentDomain) ? t('admin.instances.wizard.validation.parentDomain') : null,
+      !trimValue(formValues.displayName)
+        ? t('admin.instances.wizard.validation.displayName')
+        : null,
+      !trimValue(formValues.parentDomain)
+        ? t('admin.instances.wizard.validation.parentDomain')
+        : null,
     ].filter((value): value is string => Boolean(value));
   }
 
@@ -219,12 +231,18 @@ export const getCreateStepValidationMessages = (step: CreateWizardStepKey, formV
       trimValue(formValues.authRealm) && !isValidAuthRealmValue(formValues.authRealm)
         ? t('admin.instances.wizard.validation.authRealmFormat')
         : null,
-      !trimValue(formValues.authClientId) ? t('admin.instances.wizard.validation.authClientId') : null,
-      isTenantSecretUserInputRequired(formValues.realmMode) && !trimValue(formValues.authClientSecret)
+      !trimValue(formValues.authClientId)
+        ? t('admin.instances.wizard.validation.authClientId')
+        : null,
+      isTenantSecretUserInputRequired(formValues.realmMode) &&
+      !trimValue(formValues.authClientSecret)
         ? t('admin.instances.wizard.validation.authClientSecret')
         : null,
-      !trimValue(formValues.tenantAdminClient.clientId) ? t('admin.instances.wizard.validation.tenantAdminClientId') : null,
-      isTenantSecretUserInputRequired(formValues.realmMode) && !trimValue(formValues.tenantAdminClient.secret)
+      !trimValue(formValues.tenantAdminClient.clientId)
+        ? t('admin.instances.wizard.validation.tenantAdminClientId')
+        : null,
+      isTenantSecretUserInputRequired(formValues.realmMode) &&
+      !trimValue(formValues.tenantAdminClient.secret)
         ? t('admin.instances.wizard.validation.tenantAdminClientSecret')
         : null,
     ].filter((value): value is string => Boolean(value));
@@ -237,7 +255,9 @@ export const getCreateReadinessChecks = (formValues: CreateFormValues) => [
   {
     key: 'secret',
     title: t('admin.instances.wizard.readiness.secretTitle'),
-    ready: isTenantSecretUserInputRequired(formValues.realmMode) ? Boolean(trimValue(formValues.authClientSecret)) : true,
+    ready: isTenantSecretUserInputRequired(formValues.realmMode)
+      ? Boolean(trimValue(formValues.authClientSecret))
+      : true,
     summary: isTenantSecretUserInputRequired(formValues.realmMode)
       ? trimValue(formValues.authClientSecret)
         ? t('admin.instances.wizard.readiness.secretReady')
@@ -263,17 +283,37 @@ export const getCreateReadinessChecks = (formValues: CreateFormValues) => [
 export const getPostCreateGuidance = (instance: {
   instanceId: string;
   status: IamInstanceDetail['status'];
+  parentDomain: string;
   primaryHostname: string;
   authRealm: string;
-}) => ({
-  title: t('admin.instances.success.title'),
-  summary: t('admin.instances.success.summary', {
-    instanceId: instance.instanceId,
-    status: t(INSTANCE_STATUS_LABELS[instance.status]),
-  }),
-  nextSteps: [
-    t('admin.instances.success.nextSteps.openSetup'),
-    t('admin.instances.success.nextSteps.runProvisioning', { realm: instance.authRealm }),
-    t('admin.instances.success.nextSteps.activate', { hostname: instance.primaryHostname }),
-  ],
-});
+  latestProvisioningRun?: { readonly id: string };
+}) => {
+  if (instance.parentDomain === 'dialog.kassel.de' && instance.latestProvisioningRun) {
+    return {
+      automated: true,
+      title: t('admin.instances.success.automated.title'),
+      summary: t('admin.instances.success.automated.summary', {
+        instanceId: instance.instanceId,
+        runId: instance.latestProvisioningRun.id,
+      }),
+      nextSteps: [
+        t('admin.instances.success.automated.nextSteps.observe'),
+        t('admin.instances.success.automated.nextSteps.waitForTerminal'),
+        t('admin.instances.success.automated.nextSteps.retryOnFailure'),
+      ],
+    };
+  }
+  return {
+    automated: false,
+    title: t('admin.instances.success.title'),
+    summary: t('admin.instances.success.summary', {
+      instanceId: instance.instanceId,
+      status: t(INSTANCE_STATUS_LABELS[instance.status]),
+    }),
+    nextSteps: [
+      t('admin.instances.success.nextSteps.openSetup'),
+      t('admin.instances.success.nextSteps.runProvisioning', { realm: instance.authRealm }),
+      t('admin.instances.success.nextSteps.activate', { hostname: instance.primaryHostname }),
+    ],
+  };
+};

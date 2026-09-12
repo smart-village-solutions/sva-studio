@@ -152,6 +152,33 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
+  readonly resolveProvisioningAuthIssuerUrl?: (input: {
+    readonly parentDomain: string;
+    readonly authRealm: string;
+    readonly authIssuerUrl?: string;
+  }) => string | undefined;
+  readonly isAutomatedTenantProvisioningEnabled?: (input: {
+    readonly parentDomain: string;
+  }) => boolean;
+  readonly publishTenantIngress?: (input: {
+    readonly instanceId: string;
+    readonly primaryHostname: string;
+  }) => Promise<Readonly<{ routerName: string; configHash: string }>>;
+  readonly probeTenantEndpoint?: (input: {
+    readonly kind: 'ingress' | 'login';
+    readonly primaryHostname: string;
+    readonly authIssuerUrl: string;
+    readonly authClientId: string;
+    readonly expectedRouterName: string;
+    readonly expectedConfigHash: string;
+  }) => Promise<Readonly<Record<string, unknown>>>;
+  readonly scheduleProvisioningModuleReconcile?: (instanceId: string) => Promise<void>;
+  readonly readProvisioningModuleReadiness?: (instanceId: string) => Promise<
+    Readonly<{
+      status: 'ready' | 'pending' | 'blocked';
+      evidence: Readonly<Record<string, unknown>>;
+    }>
+  >;
   readonly reservedHostnames?: readonly string[] | (() => readonly string[]);
   readonly reservedOidcClientIds?: readonly string[] | (() => readonly string[]);
   readonly invalidatePermissionSnapshots?: (input: {
@@ -170,8 +197,7 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakStateViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<KeycloakReadState>;
-  readonly readPluginOidcClientRequirements?: () =>
-    KeycloakProvisioningInput['pluginOidcClients'];
+  readonly readPluginOidcClientRequirements?: () => KeycloakProvisioningInput['pluginOidcClients'];
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;

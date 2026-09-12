@@ -3,7 +3,12 @@ import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const logger = createSdkLogger({ component: 'iam-instance-registry-provisioner-worker', level: 'info' });
+export { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
+
+const logger = createSdkLogger({
+  component: 'iam-instance-registry-provisioner-worker',
+  level: 'info',
+});
 
 export type KeycloakProvisioningWorkerIteration = () => Promise<unknown | null>;
 
@@ -36,7 +41,8 @@ export const runKeycloakProvisioningWorkerLoop = async (
   }
 ) => {
   const rawInterval =
-    input?.pollIntervalMs ?? Number.parseInt(process.env.SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS ?? '', 10);
+    input?.pollIntervalMs ??
+    Number.parseInt(process.env.SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS ?? '', 10);
   const pollIntervalMs = Number.isNaN(rawInterval) || rawInterval <= 0 ? 5000 : rawInterval;
 
   const abortController = new AbortController();

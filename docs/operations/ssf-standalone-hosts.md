@@ -109,11 +109,37 @@ Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend d
 der Realm-, Client- und Tenant-Admin-Struktur. Der Worker veröffentlicht keine Ports und erhält
 keine Traefik-Router.
 
-Der Studio-Traefik-Router erhält ausschließlich folgende Regel:
+Der bestehende Docker-Provider-Router enthält derzeit die expliziten
+Bestandshosts. Neue Tenant-Hosts werden nach dem koordinierten Enablement nicht
+mehr durch manuelles Umschreiben dieser Regel ergänzt, sondern durch einen
+höher priorisierten Router aus dem File Provider:
 
 ```text
 (Host(`studio.dialog.kassel.de`) || Host(`smartcity.dialog.kassel.de`)) && !PathPrefix(`/internal/`)
 ```
+
+Der Kassel-Overlay
+[`deploy/standalone/kassel-ingress.compose.yml`](../../deploy/standalone/kassel-ingress.compose.yml)
+aktiviert den Modus `kassel-traefik-file` für App und Provisioner. Nur der
+Provisioner mountet das dynamische Verzeichnis mit Schreibrecht. Der zugehörige
+Traefik aus dem SSF-Repository mountet dasselbe Verzeichnis read-only. Der
+providerqualifizierte Zielservice `sva-studio-ssf@docker` wurde gegen die
+laufende Kasseler Containerkonfiguration geprüft.
+
+Ein neuer Create-Lauf bleibt nach dem Schließen der Browserseite bestehen. Der
+Worker verarbeitet Registry, Keycloak-Kindlauf, Plugin-Lifecycle, Router, TLS,
+Modul-Readiness und öffentlichen Login-Redirect. Erst danach setzt er Instanz
+und Lauf auf `active`. Retry-fähige Fehler erhalten `next_attempt_at`; eine
+abgelaufene Lease wird erneut beansprucht. Snapshot-Drift, terminal blockierte
+Readiness oder Ablauf der Deadline führen zu `failed`, ohne vorhandene
+Registry-, Keycloak-, Secret- oder Router-Artefakte zu löschen.
+
+Vor einem Queue-Vertragswechsel müssen alle alten `legacy`-Läufe geleert oder
+bewusst als historische Evidenz belassen werden. Nur Create-Läufe mit
+`snapshot_version = '2.0'` werden automatisiert beansprucht. Für Diagnose sind
+Elternlauf-ID, `child_keycloak_run_id`, `step_key`, Lease, Attempts, Deadline,
+Fehlercode und `terminal_evidence` gemeinsam auszuwerten. Ein Retry darf nur
+denselben unveränderten Soll-Snapshot fortsetzen.
 
 Der vorhandene Keycloak-Router erhält die Host-Regel für `auth.dialog.kassel.de`.
 Der SSF-Einstieg erhält einen eigenen Router für `dialog.kassel.de` auf den bestehenden

@@ -37,6 +37,7 @@ const state = vi.hoisted(() => {
     seedInstanceIamBaselineMutation: vi.fn(async () => new Response('seed')),
     parseRegistryRequestBody: vi.fn(),
     scheduleConfiguredPluginTenantProvisioning: vi.fn(),
+    withRegistryCreateService: vi.fn(),
     withRegistryService: vi.fn(),
     withScopedRegistryService: vi.fn(),
     readInstanceRegistryPluginOidcClientRequirements: vi.fn<() => readonly { clientId: string }[]>(
@@ -93,6 +94,7 @@ vi.mock('./request-parsing.js', () => ({
 
 vi.mock('./repository.js', () => ({
   scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
+  withRegistryCreateService: state.withRegistryCreateService,
   withRegistryService: state.withRegistryService,
   withScopedRegistryService: state.withScopedRegistryService,
 }));
@@ -123,6 +125,7 @@ describe('iam-instance-registry core handlers', () => {
     config.validateCsrf(new Request('https://studio.example/api'), 'req-csrf');
     expect(state.validateCsrf).toHaveBeenCalledWith(expect.any(Request), 'req-csrf');
     expect(config.requireFreshReauth).toBe(state.requireFreshReauth);
+    expect(config.withRegistryCreateService).toBe(state.withRegistryCreateService);
     expect(config.withRegistryService).toBe(state.withRegistryService);
     expect(config.withScopedRegistryService).toBe(state.withScopedRegistryService);
     expect(config.mapMutationError).toBe(state.mapInstanceMutationError);

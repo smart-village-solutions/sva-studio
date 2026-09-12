@@ -1288,6 +1288,18 @@ CREATE TABLE iam.instance_provisioning_runs (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     payload_fingerprint text,
+    snapshot_version text DEFAULT 'legacy'::text NOT NULL,
+    desired_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    child_keycloak_run_id uuid,
+    lease_owner text,
+    lease_expires_at timestamp with time zone,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp with time zone DEFAULT now() NOT NULL,
+    deadline_at timestamp with time zone DEFAULT (now() + '00:30:00'::interval) NOT NULL,
+    terminal_evidence jsonb DEFAULT '{}'::jsonb NOT NULL,
+    completed_at timestamp with time zone,
+    CONSTRAINT instance_provisioning_attempt_count_chk CHECK ((attempt_count >= 0)),
+    CONSTRAINT instance_provisioning_lease_pair_chk CHECK (((lease_owner IS NULL) = (lease_expires_at IS NULL))),
     CONSTRAINT instance_provisioning_operation_chk CHECK ((operation = ANY (ARRAY['create'::text, 'activate'::text, 'suspend'::text, 'archive'::text]))),
     CONSTRAINT instance_provisioning_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text, 'active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])))
 );
@@ -2421,6 +2433,14 @@ ALTER TABLE iam.instance_provisioning_runs
 
 
 --
+-- Name: instance_provisioning_runs instance_provisioning_completion_chk; Type: CHECK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_provisioning_runs
+    ADD CONSTRAINT instance_provisioning_completion_chk CHECK (((status = ANY (ARRAY['active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])) = (completed_at IS NOT NULL))) NOT VALID;
+
+
+--
 -- Name: instance_provisioning_runs instance_provisioning_runs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3170,6 +3190,13 @@ CREATE INDEX idx_instance_plugin_lifecycle_recheck ON iam.instance_plugin_lifecy
 --
 
 CREATE INDEX idx_instance_plugin_lifecycle_status_updated_at ON iam.instance_plugin_lifecycle USING btree (readiness_status, updated_at DESC);
+
+
+--
+-- Name: idx_instance_provisioning_runs_claim; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_provisioning_runs_claim ON iam.instance_provisioning_runs USING btree (next_attempt_at, created_at, id) WHERE ((operation = 'create'::text) AND (snapshot_version = '2.0'::text) AND (status = ANY (ARRAY['requested'::text, 'validated'::text, 'provisioning'::text])));
 
 
 --
@@ -4211,6 +4238,14 @@ ALTER TABLE ONLY iam.instance_plugin_lifecycle
 
 ALTER TABLE ONLY iam.instance_plugin_lifecycle
     ADD CONSTRAINT instance_plugin_lifecycle_job_fk FOREIGN KEY (active_job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id);
+
+
+--
+-- Name: instance_provisioning_runs instance_provisioning_runs_child_keycloak_run_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_provisioning_runs
+    ADD CONSTRAINT instance_provisioning_runs_child_keycloak_run_id_fkey FOREIGN KEY (child_keycloak_run_id) REFERENCES iam.instance_keycloak_provisioning_runs(id) ON DELETE SET NULL;
 
 
 --

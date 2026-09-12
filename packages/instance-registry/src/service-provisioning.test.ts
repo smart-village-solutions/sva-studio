@@ -22,6 +22,12 @@ const createRun = (status: InstanceProvisioningRun['status']): InstanceProvision
   operation: 'create',
   status,
   idempotencyKey: 'idem-1',
+  snapshotVersion: '1.0',
+  desiredSnapshot: {},
+  attemptCount: 0,
+  nextAttemptAt: '2026-01-01T00:00:00.000Z',
+  deadlineAt: '2026-01-01T00:30:00.000Z',
+  terminalEvidence: {},
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 });

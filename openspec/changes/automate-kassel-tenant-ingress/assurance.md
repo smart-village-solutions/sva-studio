@@ -7,7 +7,7 @@
 | `KAS-RUN-01`   | Pro Instanz, Create-Operation und Idempotency-Key existiert genau ein fachlich führender Elternlauf, der in place bis zu einem terminalen Ergebnis fortgeschrieben wird.                                                                    | PostgreSQL-Integrationstest für Create, parallele Wiederholung und Status-/Step-Updates |
 | `KAS-WAKE-01`  | Jede nichtterminale Stufe besitzt einen persistent claimbaren Folgepunkt, Lease-/Wake-up-Zeit und Deadline; Prozess- oder Browserabbruch kann keinen unsichtbar offenen Lauf erzeugen.                                                      | Fault-Injection für Commit-Grenzen, Claim-Abbruch, Lease-Ablauf, Neustart und Deadline  |
 | `KAS-SNAP-01`  | Eltern- und Kindlauf verwenden korrelierte, versionsgebundene Sollzustände; ein alter oder abweichender Kindlauferfolg kann den aktuellen Elternlauf nicht freigeben.                                                                       | Snapshot-/Fingerprint-Integrationstests und Upgrade-/Drain-Test                         |
-| `KAS-ACT-01`   | Ein Kasseler Create-Lauf ist nur nach erfolgreichem externem TLS-, Studio-Login- und modulabhängigem Readiness-Smoke erfolgreich; eine aktive Instanz mit nichtterminalem Lauf wird weiterbearbeitet oder fail-closed auf `failed` gesetzt. | Abbruchtests vor/nach Aktivierung sowie öffentliche Studio- und SSF-Smokes              |
+| `KAS-ACT-01`   | Ein Kasseler Create-Lauf ist nur nach erfolgreichem externem TLS-, Studio-Login-Redirect und modulabhängigem Readiness-Smoke erfolgreich; `active` ist ausschließlich der gemeinsame terminale Zustand von Instanz und Elternlauf.          | Abbruchtests vor der Aktivierung sowie öffentliche Studio- und SSF-Smokes               |
 | `KAS-SSF-01`   | Bei effektiv aktivem SSF umfasst Erfolg Browser- und Ressourcenclient, IAM-Projektion, Runtime-Baseline, Runtime-Readiness, aktuelle Authorization-Revision und Directory → Callback → Gateway; Directory-Filter allein ist keine Freigabe. | #1319-Vertragstests plus Zwei-Realm-Ende-zu-Ende-Nachweis                               |
 | `KAS-IDEM-01`  | Retry oder Redelivery erzeugt höchstens einen wirksamen Router und verändert korrekte Registry-, Keycloak- oder Lifecycle-Artefakte nicht.                                                                                                  | Parallelitäts-, Retry- und Redelivery-Tests mit identischem Idempotency-Key             |
 | `KAS-SEC-01`   | Nur der Kasseler Provisioner darf das Konfigurationsverzeichnis schreiben; App und Traefik können es nicht schreiben, und der Provisioner besitzt weder Docker-Socket noch DNS-/ACME-Zugangsdaten.                                          | Deployment-Vertragstest und Live-Inspection von Mounts und Secrets                      |
@@ -41,9 +41,9 @@
 | Elternlauf wartet auf Keycloak     | unpassender älterer Kindlauf ist erfolgreich | Elternlauf ignoriert ihn und wartet auf oder erzeugt den korrelierten Snapshot-Lauf                     |
 | `provisioning`                     | Worker stirbt nach Router-Rename             | Lease läuft ab; Recovery erkennt die korrekte Datei und setzt bei der nächsten unbestätigten Stufe fort |
 | `provisioning`                     | ACME bleibt bis Deadline erfolglos           | Instanz und Elternlauf werden terminal `failed`; Artefakte bleiben erhalten                             |
-| `active`, Elternlauf nichtterminal | Prozess stirbt vor öffentlichem Smoke        | Recovery setzt die Postconditions fort oder führt fail-closed zu `failed`                               |
-| `active`, Elternlauf nichtterminal | Studio-Login liefert 500                     | Instanz und Elternlauf werden terminal `failed`; Route und Evidenz bleiben erhalten                     |
-| `active`, SSF effektiv aktiv       | Runtime-Baseline oder Revision fehlt         | Lifecycle bleibt pending/blocked; Directory bleibt fail-closed; Elternlauf wird nicht erfolgreich       |
+| `provisioning`                     | Prozess stirbt vor öffentlichem Smoke        | Lease läuft ab; Recovery setzt die Postconditions fort oder führt fail-closed zu `failed`               |
+| `provisioning`                     | Studio-Login liefert 500                     | Instanz und Elternlauf werden terminal `failed`; Route und Evidenz bleiben erhalten                     |
+| `provisioning`, SSF effektiv aktiv | Runtime-Baseline oder Revision fehlt         | Lifecycle bleibt pending/blocked; Directory bleibt fail-closed; Elternlauf wird nicht erfolgreich       |
 | `failed`                           | autorisierter Retry                          | Vorhandene Artefakte werden idempotent reconciliiert; ein wirksamer Lauf konvergiert                    |
 | statischer Bestands-Tenant         | dynamischer Router ist extern bewiesen       | Nur dieser Host darf anschließend aus der statischen Regel entfernt werden                              |
 | beliebig                           | paralleles Create/Retry                      | Höchstens ein wirksamer Elternlauf pro Instanz/Operation                                                |
@@ -56,7 +56,7 @@
 - PostgreSQL-Integrationstests für atomare Create-Persistenz,
   In-place-Statusupdates, Kindlauf-Korrelation, Claim, Lease, Deadline und
   konkurrierende Idempotenz.
-- Fault-Injection vor und nach jeder Commit-Grenze sowie vor und nach
+- Fault-Injection vor und nach jeder Commit-Grenze bis zur terminalen
   Aktivierung.
 - Upgrade-/Drain-Test gegen den bestehenden Standalone-Worker-Vertrag.
 - Schema-Snapshot- und Migrations-Roundtrip, falls der Elternlauf erweitert

@@ -157,6 +157,23 @@ export type InstanceRegistryServiceDeps = {
     readonly authRealm: string;
     readonly authIssuerUrl?: string;
   }) => string | undefined;
+  readonly publishTenantIngress?: (input: {
+    readonly instanceId: string;
+    readonly primaryHostname: string;
+  }) => Promise<Readonly<{ routerName: string; configHash: string }>>;
+  readonly probeTenantEndpoint?: (input: {
+    readonly kind: 'ingress' | 'login';
+    readonly primaryHostname: string;
+    readonly authIssuerUrl: string;
+    readonly authClientId: string;
+  }) => Promise<Readonly<Record<string, unknown>>>;
+  readonly scheduleProvisioningModuleReconcile?: (instanceId: string) => Promise<void>;
+  readonly readProvisioningModuleReadiness?: (instanceId: string) => Promise<
+    Readonly<{
+      status: 'ready' | 'pending' | 'blocked';
+      evidence: Readonly<Record<string, unknown>>;
+    }>
+  >;
   readonly reservedHostnames?: readonly string[] | (() => readonly string[]);
   readonly reservedOidcClientIds?: readonly string[] | (() => readonly string[]);
   readonly invalidatePermissionSnapshots?: (input: {

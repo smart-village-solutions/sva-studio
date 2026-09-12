@@ -313,6 +313,7 @@ export const {
   withRegistryRepository,
   withScopedRegistryRepository,
   withRegistryService,
+  withRegistryCreateService,
   withScopedRegistryService,
   withRegistryProvisioningWorkerService,
   withRegistryProvisioningWorkerDeps,

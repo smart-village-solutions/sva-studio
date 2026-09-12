@@ -63,9 +63,14 @@ export const loadRegistryEntryForHost = async (host: string): Promise<RegistryEn
 
 export const assertActiveRegistryEntry = (
   host: string,
-  registryEntry: NonNullable<RegistryEntry>
+  registryEntry: NonNullable<RegistryEntry>,
+  options: { readonly allowKasselProvisioningLoginProbe?: boolean } = {}
 ): void => {
-  if (!isTrafficEnabledInstanceStatus(registryEntry.status)) {
+  const isNarrowProvisioningProbe =
+    options.allowKasselProvisioningLoginProbe === true &&
+    process.env.SVA_TENANT_INGRESS_MODE === 'kassel-traefik-file' &&
+    registryEntry.status === 'provisioning';
+  if (!isTrafficEnabledInstanceStatus(registryEntry.status) && !isNarrowProvisioningProbe) {
     throw new TenantAuthResolutionError({
       host,
       reason: 'tenant_inactive',

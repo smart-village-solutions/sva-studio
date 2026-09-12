@@ -32,12 +32,14 @@ const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
   input: CreateInstanceProvisioningInput,
   instance: InstanceRegistryRecord
-): Promise<boolean> => {
+): Promise<Awaited<
+  ReturnType<InstanceRegistryServiceDeps['repository']['createProvisioningRun']>
+> | null> => {
   const matchingRun = (await deps.repository.listProvisioningRuns(input.instanceId)).find(
     (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
   );
   if (!matchingRun) {
-    return false;
+    return null;
   }
   if (
     !matchingRun.payloadFingerprint ||
@@ -48,7 +50,7 @@ const assertIdempotentCreateRetry = async (
   if (!(await matchesPersistedCreateSecrets(deps, input, instance))) {
     throw new Error('idempotency_key_reuse');
   }
-  return true;
+  return matchingRun;
 };
 
 const resolveIdempotentCreateRetry = async (
@@ -56,8 +58,32 @@ const resolveIdempotentCreateRetry = async (
   input: CreateInstanceProvisioningInput,
   instance: InstanceRegistryRecord
 ): Promise<CreateInstanceProvisioningResult | null> => {
-  if (!(await assertIdempotentCreateRetry(deps, input, instance))) {
+  const matchingRun = await assertIdempotentCreateRetry(deps, input, instance);
+  if (!matchingRun) {
     return null;
+  }
+  if (matchingRun.status === 'failed' && matchingRun.snapshotVersion === '2.0') {
+    const retriedRun = await deps.repository.retryProvisioningRun({
+      instanceId: instance.instanceId,
+      idempotencyKey: input.idempotencyKey,
+      actorId: input.actorId,
+      requestId: input.requestId,
+      deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    });
+    if (!retriedRun) throw new Error('provisioning_retry_conflict');
+    const requestedInstance =
+      (await deps.repository.setInstanceStatus({
+        instanceId: instance.instanceId,
+        status: 'requested',
+        actorId: input.actorId,
+        requestId: input.requestId,
+      })) ?? instance;
+    invalidateHostWithLog(
+      deps.invalidateHost,
+      requestedInstance.primaryHostname,
+      requestedInstance.instanceId
+    );
+    return { ok: true, instance: toListItem(requestedInstance, retriedRun) };
   }
   await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
     instanceId: instance.instanceId,
@@ -178,7 +204,11 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    await createProvisioningArtifacts(deps.repository, instance, effectiveInput);
+    const provisioningRun = await createProvisioningArtifacts(
+      deps.repository,
+      instance,
+      effectiveInput
+    );
     await createReconcileModuleActivationPoliciesHandler(deps)({
       instanceId: instance.instanceId,
       actorId: effectiveInput.actorId,
@@ -197,7 +227,7 @@ export const createProvisioningRequestHandler =
     });
     const reconciledInstance =
       (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
-    return { ok: true, instance: toListItem(reconciledInstance) };
+    return { ok: true, instance: toListItem(reconciledInstance, provisioningRun) };
   };
 
 export const createChangeStatusHandler =

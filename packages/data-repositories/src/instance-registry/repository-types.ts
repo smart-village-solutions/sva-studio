@@ -43,6 +43,16 @@ export type ProvisioningRow = {
   step_key: string | null;
   idempotency_key: string;
   payload_fingerprint: string | null;
+  snapshot_version: string;
+  desired_snapshot: Record<string, unknown> | null;
+  child_keycloak_run_id: string | null;
+  lease_owner: string | null;
+  lease_expires_at: string | null;
+  attempt_count: number;
+  next_attempt_at: string;
+  deadline_at: string;
+  terminal_evidence: Record<string, unknown> | null;
+  completed_at: string | null;
   error_code: string | null;
   error_message: string | null;
   request_id: string | null;

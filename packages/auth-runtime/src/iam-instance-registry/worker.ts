@@ -1,16 +1,64 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   isWorkerEntrypoint,
+  processNextTenantProvisioningRun,
   runKeycloakProvisioningWorkerLoop as runTargetKeycloakProvisioningWorkerLoop,
 } from '@sva/instance-registry/provisioning-worker';
-import { withRegistryProvisioningWorkerDeps } from './repository.js';
+
+import { readConfiguredPluginTenantReadiness } from '../plugin-tenant-lifecycle/read-model.js';
+import {
+  probeKasselTenantEndpoint,
+  publishConfiguredKasselTenantIngress,
+} from '../kassel-tenant-provisioning.js';
+import {
+  runConfiguredPluginTenantProvisioningSchedule,
+  withRegistryProvisioningWorkerDeps,
+} from './repository.js';
 import { processNextQueuedKeycloakProvisioningRun } from './service-keycloak-execution.js';
 
-export const runKeycloakProvisioningWorkerIteration = async () =>
-  withRegistryProvisioningWorkerDeps((deps) => processNextQueuedKeycloakProvisioningRun(deps));
+const workerId = `kassel-tenant-provisioner:${randomUUID()}`;
 
-export const runKeycloakProvisioningWorkerLoop = async (input?: {
-  pollIntervalMs?: number;
-}) => runTargetKeycloakProvisioningWorkerLoop(runKeycloakProvisioningWorkerIteration, input);
+const readProvisioningModuleReadiness = async (instanceId: string) => {
+  const models = await readConfiguredPluginTenantReadiness(instanceId);
+  const evidence = {
+    modules: models.map((model) => ({
+      pluginId: model.pluginId,
+      status: model.status,
+      evidenceState: model.evidenceState,
+      revision: model.revision,
+      errorCode: model.error?.code,
+    })),
+  };
+  if (models.some((model) => model.status === 'blocked' || model.error?.retryKind === 'terminal')) {
+    return { status: 'blocked' as const, evidence };
+  }
+  if (models.some((model) => model.status !== 'ready' || model.evidenceState !== 'valid')) {
+    return { status: 'pending' as const, evidence };
+  }
+  return { status: 'ready' as const, evidence };
+};
+
+export const runKeycloakProvisioningWorkerIteration = async () =>
+  withRegistryProvisioningWorkerDeps(async (deps) => {
+    const keycloakRun = await processNextQueuedKeycloakProvisioningRun(deps);
+    if (keycloakRun || process.env.SVA_TENANT_INGRESS_MODE !== 'kassel-traefik-file') {
+      return keycloakRun;
+    }
+    return processNextTenantProvisioningRun(
+      {
+        ...deps,
+        publishTenantIngress: publishConfiguredKasselTenantIngress,
+        probeTenantEndpoint: probeKasselTenantEndpoint,
+        scheduleProvisioningModuleReconcile: runConfiguredPluginTenantProvisioningSchedule,
+        readProvisioningModuleReadiness,
+      },
+      { workerId }
+    );
+  });
+
+export const runKeycloakProvisioningWorkerLoop = async (input?: { pollIntervalMs?: number }) =>
+  runTargetKeycloakProvisioningWorkerLoop(runKeycloakProvisioningWorkerIteration, input);
 
 if (isWorkerEntrypoint(import.meta.url, process.argv[1])) {
   await runKeycloakProvisioningWorkerLoop();

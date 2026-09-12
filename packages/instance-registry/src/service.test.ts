@@ -58,6 +58,12 @@ const latestRun = {
   operation: 'create' as const,
   status: 'requested' as const,
   idempotencyKey: 'idem-1',
+  snapshotVersion: '2.0',
+  desiredSnapshot: {},
+  attemptCount: 0,
+  nextAttemptAt: '2026-01-01T00:00:00.000Z',
+  deadlineAt: '2026-01-01T00:30:00.000Z',
+  terminalEvidence: {},
   payloadFingerprint: buildCreateInstancePayloadFingerprint({
     instanceId: 'demo',
     displayName: 'Demo',
@@ -163,6 +169,11 @@ const createRepository = (
     updateInstance: vi.fn(async () => ({ ...baseInstance, displayName: 'Updated' })),
     setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
     createProvisioningRun: vi.fn(async () => latestRun),
+    retryProvisioningRun: vi.fn(async () => ({
+      ...latestRun,
+      status: 'requested' as const,
+      stepKey: 'registry',
+    })),
     appendAuditEvent: vi.fn(async () => undefined),
     createKeycloakProvisioningRun: vi.fn(async () => ({
       created: true,
@@ -873,6 +884,54 @@ describe('instance registry service facade', () => {
         idempotencyKey: 'idem-1',
       })
     ).rejects.toThrow('idempotency_key_reuse');
+  });
+
+  it('requeues a terminally failed parent run with the same idempotent create request', async () => {
+    const failedInstance = { ...baseInstance, status: 'failed' as const };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'login',
+      errorCode: 'kassel_login_probe_failed',
+      completedAt: '2026-01-01T00:10:00.000Z',
+    };
+    const retryProvisioningRun = vi.fn(async () => ({
+      ...failedRun,
+      status: 'requested' as const,
+      stepKey: 'registry',
+      errorCode: undefined,
+      completedAt: undefined,
+    }));
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      retryProvisioningRun,
+      setInstanceStatus: vi.fn(async () => ({
+        ...failedInstance,
+        status: 'requested' as const,
+      })),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        status: 'requested',
+        latestProvisioningRun: expect.objectContaining({ stepKey: 'registry' }),
+      }),
+    });
+    expect(retryProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', idempotencyKey: 'idem-1' })
+    );
   });
 
   it('creates requested instances, protects secrets and invalidates the primary host', async () => {

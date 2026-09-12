@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { createInstanceRegistryRepository } from './index.js';
-import { createQueuedExecutor, instanceRow, keycloakRunRow, provisioningRow, stepRow } from './test-support.js';
+import {
+  createQueuedExecutor,
+  instanceRow,
+  keycloakRunRow,
+  provisioningRow,
+  stepRow,
+} from './test-support.js';
 
 describe('instance registry repository provisioning', () => {
   it('maps provisioning and audit projections', async () => {
@@ -53,11 +59,15 @@ describe('instance registry repository provisioning', () => {
         steps: [{ stepKey: 'realm', details: {}, requestId: 'request-1' }],
       },
     ]);
-    await expect(repository.getKeycloakProvisioningRun('tenant-a', 'kc-run-1')).resolves.toMatchObject({
+    await expect(
+      repository.getKeycloakProvisioningRun('tenant-a', 'kc-run-1')
+    ).resolves.toMatchObject({
       id: 'kc-run-1',
       steps: [{ stepKey: 'realm' }],
     });
-    expect(statements.some((statement) => statement.text.includes('WHERE run_id IN ($1)'))).toBe(true);
+    expect(statements.some((statement) => statement.text.includes('WHERE run_id IN ($1)'))).toBe(
+      true
+    );
   });
 
   it('reads tenant IAM access probe and reconcile summary evidence', async () => {
@@ -112,7 +122,16 @@ describe('instance registry repository provisioning', () => {
   it('returns null when tenant IAM probe and role reconcile evidence are missing', async () => {
     const { executor } = createQueuedExecutor([
       [],
-      [{ sync_state: null, role_count: 0, failed_count: 0, pending_count: 0, last_synced_at: null, last_error_code: null }],
+      [
+        {
+          sync_state: null,
+          role_count: 0,
+          failed_count: 0,
+          pending_count: 0,
+          last_synced_at: null,
+          last_error_code: null,
+        },
+      ],
     ]);
     const repository = createInstanceRegistryRepository(executor);
 
@@ -194,7 +213,8 @@ describe('instance registry repository provisioning', () => {
 
     await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toEqual({
       status: 'degraded',
-      summary: '1 Rollen mit Fehler, 2 Rollen im Backlog. 3 Legacy-Admin-Artefakte erfordern manuelle Bereinigung.',
+      summary:
+        '1 Rollen mit Fehler, 2 Rollen im Backlog. 3 Legacy-Admin-Artefakte erfordern manuelle Bereinigung.',
       checkedAt: '2026-04-29T10:04:00.000Z',
       errorCode: 'LEGACY_ADMIN_ARTIFACT_DRIFT',
     });
@@ -259,7 +279,9 @@ describe('instance registry repository provisioning', () => {
       })
     ).resolves.toMatchObject({ instanceId: 'tenant-a' });
 
-    expect(statements.filter((statement) => statement.text.includes('iam.instance_hostnames'))).toHaveLength(2);
+    expect(
+      statements.filter((statement) => statement.text.includes('iam.instance_hostnames'))
+    ).toHaveLength(2);
     expect(statements[0]?.text).toContain('$18::jsonb, $19, $20, $20');
     expect(statements[0]?.values.at(17)).toBe('{"preview":true}');
     expect(statements[0]?.values.at(18)).toBe('mainserver-ref');
@@ -311,16 +333,26 @@ describe('instance registry repository provisioning', () => {
   it('annotates create and primary-hostname failures with their precise process step', async () => {
     const insertError = new Error('sensitive insert diagnostics');
     const insertRepository = createInstanceRegistryRepository({
-      execute: async () => { throw insertError; },
+      execute: async () => {
+        throw insertError;
+      },
     });
     const input = {
-      instanceId: 'tenant-a', displayName: 'Tenant A', status: 'active' as const,
-      parentDomain: 'example.test', primaryHostname: 'tenant-a.example.test',
-      realmMode: 'shared' as const, authRealm: 'sva', authClientId: 'studio', actorId: 'actor-1',
+      instanceId: 'tenant-a',
+      displayName: 'Tenant A',
+      status: 'active' as const,
+      parentDomain: 'example.test',
+      primaryHostname: 'tenant-a.example.test',
+      realmMode: 'shared' as const,
+      authRealm: 'sva',
+      authClientId: 'studio',
+      actorId: 'actor-1',
     };
 
     await expect(insertRepository.createInstance(input)).rejects.toBe(insertError);
-    expect((insertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe('registry_insert');
+    expect((insertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe(
+      'registry_insert'
+    );
 
     const hostnameError = new Error('sensitive hostname diagnostics');
     let invocation = 0;
@@ -332,14 +364,28 @@ describe('instance registry repository provisioning', () => {
       },
     });
     await expect(hostnameRepository.createInstance(input)).rejects.toBe(hostnameError);
-    expect((hostnameError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe('primary_hostname_upsert');
+    expect((hostnameError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe(
+      'primary_hostname_upsert'
+    );
   });
 
   it('returns null for empty mutations and maps created runs and steps', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [], [{ instance_exists: false }], [provisioningRow], [keycloakRunRow], [], [keycloakRunRow], [stepRow], [stepRow]]);
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [],
+      [{ instance_exists: false }],
+      [provisioningRow],
+      [keycloakRunRow],
+      [],
+      [keycloakRunRow],
+      [stepRow],
+      [stepRow],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
-    await expect(repository.setInstanceStatus({ instanceId: 'missing', status: 'active' })).resolves.toBeNull();
+    await expect(
+      repository.setInstanceStatus({ instanceId: 'missing', status: 'active' })
+    ).resolves.toBeNull();
     await expect(
       repository.updateInstance({
         instanceId: 'missing',
@@ -374,9 +420,15 @@ describe('instance registry repository provisioning', () => {
         driftSummary: 'No drift',
       })
     ).resolves.toMatchObject({ created: true, run: { id: 'kc-run-1', steps: [] } });
-    await expect(repository.updateKeycloakProvisioningRun({ runId: 'missing', overallStatus: 'failed' })).resolves.toBeNull();
     await expect(
-      repository.updateKeycloakProvisioningRun({ runId: 'kc-run-1', overallStatus: 'success', driftSummary: 'Clean' })
+      repository.updateKeycloakProvisioningRun({ runId: 'missing', overallStatus: 'failed' })
+    ).resolves.toBeNull();
+    await expect(
+      repository.updateKeycloakProvisioningRun({
+        runId: 'kc-run-1',
+        overallStatus: 'success',
+        driftSummary: 'Clean',
+      })
     ).resolves.toMatchObject({ id: 'kc-run-1', steps: [{ stepKey: 'realm' }] });
     await expect(
       repository.appendKeycloakProvisioningStep({
@@ -411,5 +463,89 @@ describe('instance registry repository provisioning', () => {
     expect(statements).toHaveLength(1);
     expect(statements[0]?.text).toContain('INSERT INTO iam.instance_audit_events');
     expect(statements[0]?.values).toEqual(['tenant-a', 'instance.created', null, null, '{}']);
+  });
+
+  it('claims due Kassel parent runs with a lease and skip-locked ordering', async () => {
+    const claimedRow = {
+      ...provisioningRow,
+      status: 'provisioning',
+      lease_owner: 'worker-1',
+      lease_expires_at: '2026-01-01T00:00:30.000Z',
+      attempt_count: 1,
+    };
+    const { executor, statements } = createQueuedExecutor([[claimedRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.claimNextProvisioningRun({
+        workerId: 'worker-1',
+        leaseExpiresAt: '2026-01-01T00:00:30.000Z',
+        parentDomain: 'dialog.kassel.de',
+      })
+    ).resolves.toMatchObject({
+      id: 'run-1',
+      status: 'provisioning',
+      leaseOwner: 'worker-1',
+      attemptCount: 1,
+    });
+    expect(statements[0]?.text).toContain('FOR UPDATE OF run SKIP LOCKED');
+    expect(statements[0]?.text).toContain('run.lease_expires_at <= now()');
+    expect(statements[0]?.values).toEqual([
+      'worker-1',
+      '2026-01-01T00:00:30.000Z',
+      'dialog.kassel.de',
+    ]);
+  });
+
+  it('advances only the currently leased parent run and merges safe evidence', async () => {
+    const updatedRow = {
+      ...provisioningRow,
+      status: 'provisioning',
+      step_key: 'tls',
+      terminal_evidence: { routerName: 'studio-tenant-a', status: 200 },
+    };
+    const { executor, statements } = createQueuedExecutor([[updatedRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.updateProvisioningRun({
+        runId: '00000000-0000-4000-8000-000000000001',
+        leaseOwner: 'worker-1',
+        status: 'provisioning',
+        stepKey: 'tls',
+        terminalEvidence: { status: 200 },
+      })
+    ).resolves.toMatchObject({ stepKey: 'tls', terminalEvidence: { status: 200 } });
+    expect(statements[0]?.text).toContain("terminal_evidence || COALESCE($9::jsonb, '{}'::jsonb)");
+    expect(statements[0]?.text).toContain('WHERE id = $1::uuid AND lease_owner = $2');
+    expect(statements[0]?.values[1]).toBe('worker-1');
+  });
+
+  it('requeues only a failed versioned create run without deleting prior evidence', async () => {
+    const retriedRow = {
+      ...provisioningRow,
+      snapshot_version: '2.0',
+      status: 'requested',
+      step_key: 'registry',
+      terminal_evidence: { failedStep: 'login' },
+    };
+    const { executor, statements } = createQueuedExecutor([[retriedRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.retryProvisioningRun({
+        instanceId: 'tenant-a',
+        idempotencyKey: 'idem-1',
+        actorId: 'actor-2',
+        requestId: 'request-2',
+        deadlineAt: '2026-01-01T01:00:00.000Z',
+      })
+    ).resolves.toMatchObject({
+      status: 'requested',
+      stepKey: 'registry',
+      terminalEvidence: { failedStep: 'login' },
+    });
+    expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).not.toContain('terminal_evidence =');
   });
 });

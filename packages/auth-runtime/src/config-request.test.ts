@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { loadInstanceByHostnameMock, logger, getInstanceConfigMock } = vi.hoisted(() => ({
   loadInstanceByHostnameMock: vi.fn(),
@@ -37,6 +37,10 @@ const request = new Request('https://tenant.example.test/auth', {
 });
 
 describe('tenant auth request logging helpers', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     loadInstanceByHostnameMock.mockReset();
     logger.debug.mockReset();
@@ -131,6 +135,32 @@ describe('tenant auth request logging helpers', () => {
       assertActiveRegistryEntry('tenant.example.test', {
         ...activeEntry,
         status: 'provisioning',
+      })
+    ).toThrow('is inactive');
+  });
+
+  it('allows only an explicit Kassel provisioning login probe', () => {
+    const provisioningEntry = {
+      instanceId: 'instance-1',
+      status: 'provisioning' as const,
+      authRealm: 'tenant',
+      authClientId: 'client-1',
+    };
+    vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
+
+    expect(() =>
+      assertActiveRegistryEntry('tenant.dialog.kassel.de', provisioningEntry, {
+        allowKasselProvisioningLoginProbe: true,
+      })
+    ).not.toThrow();
+    expect(() => assertActiveRegistryEntry('tenant.dialog.kassel.de', provisioningEntry)).toThrow(
+      'is inactive'
+    );
+
+    vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'external');
+    expect(() =>
+      assertActiveRegistryEntry('tenant.dialog.kassel.de', provisioningEntry, {
+        allowKasselProvisioningLoginProbe: true,
       })
     ).toThrow('is inactive');
   });

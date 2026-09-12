@@ -44,11 +44,9 @@ Sollzustand nachweislich betriebsbereit sind.
 
 #### Scenario: Kasseler Instanz wird vollständig erfolgreich angelegt
 
-- **WHEN** alle internen Provisioning-Stufen und alle vor Aktivierung prüfbaren Postconditions erfolgreich sind
-- **THEN** setzt das System die Instanz kontrolliert auf `active`
-- **AND** prüft es den Studio-Login über den öffentlichen Tenant-Host mit erwartetem Realm und hostgleicher Callback-Konfiguration
-- **AND** prüft es die aktuellen Readiness-Verträge aller effektiv aktiven Module
-- **AND** markiert es erst danach den Elternlauf terminal als erfolgreich
+- **WHEN** alle internen Provisioning-Stufen, die aktuellen Readiness-Verträge aller effektiv aktiven Module und der öffentliche Studio-Login-Redirect erfolgreich sind
+- **THEN** setzt das System Instanz und Elternlauf gemeinsam terminal auf `active`
+- **AND** hat es zuvor den erwarteten Realm, die exakte Client-ID, PKCE `S256` und die hostgleiche Callback-Konfiguration bestätigt
 - **AND** zeigt die Control Plane erst diesen terminalen Zustand als abgeschlossene Anlage an
 
 #### Scenario: SSF ist für den Tenant effektiv aktiv
@@ -65,12 +63,12 @@ Sollzustand nachweislich betriebsbereit sind.
 - **THEN** erzeugt dessen fachliche Readiness keine künstliche Blockade des Create-Laufs
 - **AND** bleiben die für tatsächlich aktive Module geltenden Postconditions unverändert streng
 
-#### Scenario: Der Prozess endet nach Aktivierung und vor den öffentlichen Smokes
+#### Scenario: Der Prozess endet vor der terminalen Aktivierung
 
-- **WHEN** eine Instanz bereits `active` ist, ihr Elternlauf aber noch keinen terminal erfolgreichen Public-Smoke besitzt
+- **WHEN** eine Instanz `provisioning` ist und ihr Elternlauf noch keinen terminal erfolgreichen Public-Smoke besitzt
 - **THEN** erkennt der persistente Recovery-Mechanismus diesen Zustand unabhängig vom ursprünglichen Prozess
 - **AND** führt er die fehlenden Postconditions weiter oder setzt Instanz und Elternlauf innerhalb der Fehlerfrist auf `failed`
-- **AND** wird der nichtterminale Lauf zu keinem Zeitpunkt als abgeschlossene Anlage dargestellt
+- **AND** wird weder die Instanz noch der nichtterminale Lauf zu diesem Zeitpunkt als aktive oder abgeschlossene Anlage dargestellt
 
 ### Requirement: Kasseler Fehler und Retries konvergieren ohne destruktiven Rollback
 

@@ -377,6 +377,13 @@ zugreifen.
 - Provisionierung, Reconcile und interne Mutationen sind idempotent und
   auditierbar.
 - Fehlerzustände geben keine teilweise eingerichteten Fachzugriffe frei.
+- Die Kasseler Standalone-Installation verwendet den in
+  [ADR-062](../adr/ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md)
+  beschriebenen persistenten Elternlauf. Ihr Traefik-File-Provider ist ein
+  installationsspezifischer Adapter und kein zweiter allgemeiner
+  Studio-Rolloutpfad. Instanzstatus `active`, SSF-Directory-Veröffentlichung
+  und Browser-Login folgen erst auf Router-, TLS-, Lifecycle- und
+  Login-Readiness-Evidenz.
 - Plugin-Deaktivierung löscht keine Daten automatisch.
 - Gesprächsinhalte sind kein Bestandteil der ersten Ausbaustufe.
 

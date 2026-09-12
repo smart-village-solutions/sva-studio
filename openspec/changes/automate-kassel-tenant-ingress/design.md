@@ -182,30 +182,28 @@ Serialisierung idempotent ab:
    ableiten, persistieren und in den Sollsnapshot aufnehmen.
 3. Passenden Keycloak-Kindlauf erzeugen oder referenzieren und dessen
    snapshotgebundenen terminalen Erfolg bestätigen.
-4. Modulzuweisungen und die vor Aktivierung prüfbaren Lifecycle-Voraussetzungen
+4. Modulzuweisungen und Lifecycle-Voraussetzungen
    reconciliieren.
 5. Expliziten Traefik-Router atomar veröffentlichen und dessen Übernahme
    bestätigen.
 6. Öffentlich vertrauenswürdiges Zertifikat für den exakten Host bestätigen.
 7. Auth-Issuer, Studio-Login-Client, Redirect und Callback-Konfiguration
    read-back-verifizieren.
-8. Alle vor Aktivierung möglichen modulabhängigen Readiness-Prüfungen
-   abschließen.
-9. Instanz kontrolliert auf `active` setzen.
-10. Studio-Login über den öffentlichen Tenant-Host prüfen.
-11. Bei effektiv aktivem SSF den vollständigen #1319-Vertrag prüfen:
+8. Alle modulabhängigen Readiness-Prüfungen abschließen.
+9. Studio-Login-Redirect über den öffentlichen Tenant-Host prüfen. Nur dieser
+   Einstieg darf im expliziten Kassel-Modus eine `provisioning`-Instanz
+   auflösen; Callback und übriger Tenant-Verkehr bleiben gesperrt.
+10. Bei effektiv aktivem SSF den vollständigen #1319-Vertrag prüfen:
     `ssf-frontend`, Ressourcenclient, IAM-Projektion, Runtime-Tenant-Baseline,
     Runtime-Readiness, aktuelle Authorization-Revision sowie
     Directory → Keycloak → Callback → Gateway.
-12. Erst danach den Elternlauf terminal erfolgreich abschließen.
+11. Erst danach Instanz und Elternlauf terminal auf `active` setzen.
 
-Öffentliche Login- und Directory-Smokes benötigen eine aktive Instanz. Zwischen
-Schritt 9 und 12 existiert daher ein eng begrenztes Aktivierungsfenster. Der
-Elternlauf bleibt währenddessen nichtterminal. Ein Recovery-Claim erkennt auch
-nach Prozessabbruch jede aktive Instanz mit einem solchen Create-Lauf und führt
-die Postconditions fort oder setzt Instanz und Elternlauf innerhalb der
-festgelegten Deadline auf `failed`. Die UI darf dieses Fenster niemals als
-abgeschlossene Anlage darstellen.
+Damit existiert kein Zustand `active` mit nichtterminalem Create-Lauf. Der
+Login-Smoke folgt Redirects bewusst nicht bis zum Callback; er verifiziert den
+öffentlichen Issuer, die exakte Client-ID, PKCE `S256` und den hostgleichen
+Callback. Der normale Callback bleibt bis zur terminalen Aktivierung durch das
+bestehende Traffic-Gate gesperrt.
 
 Jede nichtterminale Stufe besitzt einen persistenten Wake-up-/Lease-Zustand,
 begrenzte Wiederholungen und eine Deadline. Technische Transienten werden

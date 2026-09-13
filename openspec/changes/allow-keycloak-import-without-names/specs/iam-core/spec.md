@@ -38,7 +38,7 @@ The system SHALL run Keycloak user synchronization as a reconciliation flow that
 #### Scenario: Abgewiesene reine Namensreparatur blockiert die Membership nicht
 
 - **GIVEN** ein tenantlokaler Keycloak-User hat eine aufgelöste E-Mail und ein optionales Namensfeld ist aus dem subjectgebundenen lokalen Seed auflösbar
-- **WHEN** Keycloak die reine Namensreparatur ablehnt
+- **WHEN** Keycloak die reine Namensreparatur deterministisch wegen eines schreibgeschützten Attributs ablehnt
 - **THEN** normalisiert und persistiert das System den subjectgebundenen IAM-Account weiterhin
 - **AND** stellt es die tenantlokale Membership idempotent sicher
 - **AND** protokolliert es nur eine datensparsame technische Warnung ohne Profilwerte

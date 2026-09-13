@@ -201,6 +201,31 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('preserves the Keycloak read-only attribute reason for profile update failures', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(400, {
+          errors: [
+            {
+              field: 'firstName',
+              errorMessage: 'error-user-attribute-read-only',
+              params: ['firstName'],
+            },
+          ],
+        })
+      );
+    const client = await createClient(fetchImpl, { maxRetries: 0 });
+
+    await expect(client.updateUser('kc-user-1', { firstName: 'Seed' })).rejects.toMatchObject({
+      statusCode: 400,
+      code: 'http_400',
+      retryable: false,
+      message: expect.stringContaining('error-user-attribute-read-only'),
+    });
+  });
+
   it('surfaces keycloak delete-user failures', async () => {
     const { KeycloakAdminRequestError } = await import('./core.js');
     const fetchImpl = vi

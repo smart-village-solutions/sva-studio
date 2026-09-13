@@ -390,11 +390,17 @@ describe('user-import-sync-handler profile repair characterization', () => {
 
   it('keeps a name-only Keycloak repair failure from blocking IAM membership persistence', async () => {
     const user = createUser({ firstName: undefined, lastName: undefined });
+    const { KeycloakAdminRequestError } = await import('../keycloak-admin-client.js');
     const result = await runSync({
       user,
       seed: { firstName: 'Seed', lastName: 'User' },
       updateUser: async () => {
-        throw new Error('profile_policy_rejected');
+        throw new KeycloakAdminRequestError({
+          message: 'Keycloak update_user failed: error-user-attribute-read-only',
+          statusCode: 400,
+          code: 'http_400',
+          retryable: false,
+        });
       },
     });
 
@@ -422,6 +428,45 @@ describe('user-import-sync-handler profile repair characterization', () => {
       })
     );
     expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.externalId);
+  });
+
+  it('keeps technical and unknown name-only repair failures fail-closed', async () => {
+    const { KeycloakAdminRequestError, KeycloakAdminUnavailableError } =
+      await import('../keycloak-admin-client.js');
+    const failures = [
+      new KeycloakAdminRequestError({
+        message: 'missing subject',
+        statusCode: 404,
+        code: 'http_404',
+        retryable: false,
+      }),
+      new KeycloakAdminRequestError({
+        message: 'connect timeout',
+        statusCode: 503,
+        code: 'connect_timeout',
+        retryable: true,
+      }),
+      new KeycloakAdminUnavailableError('circuit open'),
+      new Error('unexpected_failure'),
+    ];
+
+    for (const error of failures) {
+      await expect(
+        runSync({
+          user: createUser({ firstName: undefined }),
+          seed: { firstName: 'Seed' },
+          updateUser: async () => {
+            throw error;
+          },
+        })
+      ).rejects.toBe(error);
+    }
+
+    expect(state.upsertIdentityUser).not.toHaveBeenCalled();
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Optional Keycloak user name repair skipped during IAM sync',
+      expect.anything()
+    );
   });
 
   it('keeps a required email repair failure blocking', async () => {

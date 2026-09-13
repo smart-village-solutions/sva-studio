@@ -64,6 +64,9 @@ type KeycloakErrorResponse = {
   readonly errorMessage?: string;
   readonly field?: string;
   readonly params?: readonly string[];
+  readonly errors?: readonly {
+    readonly errorMessage?: string;
+  }[];
 };
 
 type KeycloakRoleMapping = {
@@ -2011,6 +2014,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           return `Keycloak ${operation} failed: ${parsed.errorMessage} (${parsed.params.join(', ')})`;
         }
         return `Keycloak ${operation} failed: ${parsed.errorMessage}`;
+      }
+      const fieldErrorMessage = parsed.errors?.find(
+        (entry) => typeof entry.errorMessage === 'string' && entry.errorMessage.length > 0
+      )?.errorMessage;
+      if (fieldErrorMessage) {
+        return `Keycloak ${operation} failed: ${fieldErrorMessage}`;
       }
       if (parsed.error) {
         return `Keycloak ${operation} failed: ${parsed.error}`;

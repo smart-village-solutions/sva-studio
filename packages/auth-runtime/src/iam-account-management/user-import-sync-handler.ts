@@ -36,6 +36,7 @@ import {
 import { resolveMutationActorWithAccount } from './mutation-request-context.shared.js';
 
 const KEYCLOAK_PAGE_SIZE = 100;
+const KEYCLOAK_READ_ONLY_ATTRIBUTE_ERROR = 'error-user-attribute-read-only';
 const isPlatformIdentityProviderConfigurationError = (error: unknown): boolean =>
   error instanceof Error && error.message === 'platform_identity_provider_not_configured';
 
@@ -46,6 +47,12 @@ const normalizeOptionalText = (value: string | undefined | null): string | undef
 
 const hasRequiredImportEmail = (user: IdentityListedUser): boolean =>
   normalizeOptionalText(user.email) !== undefined;
+
+const isReadOnlyAttributeRejection = (error: unknown): boolean =>
+  error instanceof KeycloakAdminRequestError &&
+  error.statusCode === 400 &&
+  !error.retryable &&
+  error.message.includes(KEYCLOAK_READ_ONLY_ATTRIBUTE_ERROR);
 
 const normalizeIdentityUserProfile = (user: IdentityListedUser): IdentityListedUser => ({
   ...user,
@@ -199,7 +206,7 @@ const repairIdentityUserProfileIfPossible = async (
       input.identityProvider.provider.updateUser(input.user.externalId, repair.update)
     );
   } catch (error) {
-    if (repair.repairedEmail) {
+    if (repair.repairedEmail || !isReadOnlyAttributeRejection(error)) {
       throw error;
     }
 

@@ -40,6 +40,10 @@ export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
   readonly featureFlags?: Readonly<Record<string, boolean>>;
 };
 
+export type RetryTenantProvisioningInput = InstanceRegistryMutationActor & {
+  readonly instanceId: string;
+};
+
 export type ChangeInstanceStatusInput = InstanceRegistryMutationActor & {
   readonly idempotencyKey: string;
   readonly instanceId: string;

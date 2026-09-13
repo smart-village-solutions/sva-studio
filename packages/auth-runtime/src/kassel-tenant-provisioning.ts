@@ -1,0 +1,122 @@
+import { publishKasselTenantIngress } from '@sva/instance-registry/kassel-tenant-ingress';
+
+const requireKasselMode = (): void => {
+  if (process.env.SVA_TENANT_INGRESS_MODE !== 'kassel-traefik-file') {
+    throw new Error('kassel_tenant_ingress_mode_disabled');
+  }
+};
+
+export const publishConfiguredKasselTenantIngress = async (input: {
+  readonly instanceId: string;
+  readonly primaryHostname: string;
+}) => {
+  requireKasselMode();
+  const directory = process.env.SVA_KASSEL_TRAEFIK_DYNAMIC_DIR?.trim();
+  if (!directory) throw new Error('kassel_traefik_dynamic_dir_missing');
+  const published = await publishKasselTenantIngress({
+    instanceId: input.instanceId,
+    hostname: input.primaryHostname,
+    service: process.env.SVA_KASSEL_TRAEFIK_SERVICE?.trim() || 'sva-studio-ssf@docker',
+    directory,
+  });
+  return {
+    routerName: published.routerName,
+    configHash: published.configHash,
+  };
+};
+
+type EndpointProbeInput = {
+  readonly kind: 'ingress' | 'login';
+  readonly primaryHostname: string;
+  readonly authIssuerUrl: string;
+  readonly authClientId: string;
+  readonly expectedRouterName: string;
+  readonly expectedConfigHash: string;
+};
+
+const requireExpectedRouter = (response: Response, input: EndpointProbeInput): void => {
+  if (
+    response.headers.get('x-sva-tenant-router') !== input.expectedRouterName ||
+    response.headers.get('x-sva-tenant-config') !== input.expectedConfigHash
+  ) {
+    throw new Error('kassel_ingress_router_not_loaded');
+  }
+};
+
+const isValidOidcAuthorizationRequest = (redirect: URL, input: EndpointProbeInput): boolean => {
+  const state = redirect.searchParams.get('state');
+  const codeChallenge = redirect.searchParams.get('code_challenge');
+  const scopes = redirect.searchParams.get('scope')?.split(/\s+/u) ?? [];
+  return (
+    redirect.searchParams.get('client_id') === input.authClientId &&
+    redirect.searchParams.get('response_type') === 'code' &&
+    scopes.includes('openid') &&
+    Boolean(state) &&
+    codeChallenge !== null &&
+    /^[A-Za-z0-9._~-]{43,128}$/u.test(codeChallenge) &&
+    redirect.searchParams.get('code_challenge_method') === 'S256'
+  );
+};
+
+const requireValidLoginRedirect = (
+  response: Response,
+  input: EndpointProbeInput
+): Readonly<Record<string, unknown>> => {
+  if (response.status < 300 || response.status >= 400) {
+    throw new Error('kassel_login_probe_failed');
+  }
+  const location = response.headers.get('location');
+  if (!location) throw new Error('kassel_login_redirect_missing');
+  let redirect: URL;
+  let issuer: URL;
+  try {
+    redirect = new URL(location);
+    issuer = new URL(input.authIssuerUrl);
+  } catch {
+    throw new Error('kassel_login_redirect_invalid');
+  }
+  if (
+    redirect.origin !== issuer.origin ||
+    redirect.pathname !== `${issuer.pathname}/protocol/openid-connect/auth` ||
+    !isValidOidcAuthorizationRequest(redirect, input)
+  ) {
+    throw new Error('kassel_login_redirect_invalid');
+  }
+  const callback = redirect.searchParams.get('redirect_uri');
+  let callbackUrl: URL;
+  try {
+    callbackUrl = new URL(callback ?? '');
+  } catch {
+    throw new Error('kassel_login_callback_invalid');
+  }
+  if (
+    callbackUrl.origin !== `https://${input.primaryHostname}` ||
+    callbackUrl.pathname !== '/auth/callback' ||
+    callbackUrl.search !== '' ||
+    callbackUrl.hash !== ''
+  ) {
+    throw new Error('kassel_login_callback_invalid');
+  }
+  return {
+    status: response.status,
+    issuerOrigin: redirect.origin,
+    issuerPath: redirect.pathname,
+    callbackOrigin: callbackUrl.origin,
+  };
+};
+
+export const probeKasselTenantEndpoint = async (
+  input: EndpointProbeInput,
+  fetcher: typeof fetch = fetch
+): Promise<Readonly<Record<string, unknown>>> => {
+  requireKasselMode();
+  const response = await fetcher(`https://${input.primaryHostname}/auth/login`, {
+    redirect: 'manual',
+    signal: AbortSignal.timeout(10_000),
+    headers: { 'User-Agent': 'sva-studio-kassel-provisioner/1.0' },
+  });
+  requireExpectedRouter(response, input);
+  const loginEvidence = requireValidLoginRedirect(response, input);
+  if (input.kind === 'login') return loginEvidence;
+  return { status: response.status, hostname: input.primaryHostname };
+};

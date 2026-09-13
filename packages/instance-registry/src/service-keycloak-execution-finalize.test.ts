@@ -89,6 +89,7 @@ describe('service-keycloak-execution-finalize', () => {
       updatedAt: '2026-09-11T10:00:02.000Z',
     };
     const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceRealmMode: vi.fn().mockResolvedValue(realmUpdated),
       setInstanceStatus: vi.fn().mockResolvedValue(statusUpdated),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
@@ -108,10 +109,15 @@ describe('service-keycloak-execution-finalize', () => {
     state.buildKeycloakStatus.mockReturnValue(status);
     state.appendRunStep.mockResolvedValue(undefined);
     const finalState = { realm: { realm: 'demo' } };
-    const pluginOidcClients = [{
-      contractVersion: '1.0' as const,
-      pluginId: 'ssf', clientId: 'ssf', audience: 'ssf', enabled: false as const,
-    }];
+    const pluginOidcClients = [
+      {
+        contractVersion: '1.0' as const,
+        pluginId: 'ssf',
+        clientId: 'ssf',
+        audience: 'ssf',
+        enabled: false as const,
+      },
+    ];
     const readKeycloakStateViaProvisioner = vi.fn().mockResolvedValue(finalState);
     const result = await completeRun(
       {
@@ -201,6 +207,7 @@ describe('service-keycloak-execution-finalize', () => {
       tenantAdminHasSystemAdmin: false,
     };
     const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn(),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
@@ -254,6 +261,7 @@ describe('service-keycloak-execution-finalize', () => {
   it('marks failed runs without changing already active instances', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
@@ -310,6 +318,7 @@ describe('service-keycloak-execution-finalize', () => {
   it('does not complete provisioning while an aggregated Keycloak requirement drifts', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceRealmMode: vi.fn(),
       setInstanceStatus: vi.fn(),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
@@ -341,6 +350,45 @@ describe('service-keycloak-execution-finalize', () => {
     expect(repository.setInstanceStatus).not.toHaveBeenCalled();
   });
 
+  it('does not let a late child completion revive a failed parent run', async () => {
+    const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([
+        {
+          childKeycloakRunId: 'run-late-child',
+          status: 'failed',
+        },
+      ]),
+      setInstanceRealmMode: vi.fn(),
+      setInstanceStatus: vi.fn(),
+      updateKeycloakProvisioningRun: vi.fn(),
+    };
+    state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.buildFinalRunSteps.mockReturnValue([
+      { stepKey: 'status', title: 'Status', ok: true, summary: 'ok' },
+    ]);
+    state.areAllRequirementsSatisfied.mockReturnValue(true);
+    state.buildKeycloakStatus.mockReturnValue({ realmExists: true });
+
+    await expect(
+      completeRun(
+        {
+          repository: repository as never,
+          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+        } as never,
+        {
+          loaded: {
+            instance: { instanceId: 'instance-late', status: 'failed', realmMode: 'new' },
+          } as never,
+          runId: 'run-late-child',
+          intent: 'provision',
+        }
+      )
+    ).rejects.toThrow('keycloak_parent_provisioning_run_inactive');
+    expect(repository.setInstanceRealmMode).not.toHaveBeenCalled();
+    expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+  });
+
   it('keeps reset_tenant_admin runs successful when unrelated client drift remains', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const status = {
@@ -356,6 +404,7 @@ describe('service-keycloak-execution-finalize', () => {
       tenantAdminExists: true,
     };
     const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceRealmMode: vi.fn().mockResolvedValue(undefined),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),

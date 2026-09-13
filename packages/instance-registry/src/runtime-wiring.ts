@@ -165,6 +165,13 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (service: InstanceRegistryService) => Promise<T>
   ): Promise<T> =>
     withRegistryRepository((repository) => work(createService(repository, deps.serviceDeps)));
+  const withRegistryCreateService = async <T>(
+    instanceId: string,
+    work: (service: InstanceRegistryService) => Promise<T>
+  ): Promise<T> =>
+    withInstanceTransaction(deps, instanceId, beginLockedTransaction, (client) =>
+      work(createService(deps.createRepository(createExecutor(client)), deps.serviceDeps))
+    );
   const withScopedRegistryService = async <T>(
     instanceId: string,
     work: (service: InstanceRegistryService) => Promise<T>,
@@ -214,6 +221,7 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     withRegistryRepository,
     withScopedRegistryRepository,
     withRegistryService,
+    withRegistryCreateService,
     withScopedRegistryService,
     withRegistryProvisioningWorkerService,
     withRegistryProvisioningWorkerDeps,

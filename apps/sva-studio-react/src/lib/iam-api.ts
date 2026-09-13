@@ -1051,6 +1051,15 @@ export const createInstance = async (
     true
   );
 
+export const retryInstanceProvisioning = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceListItem>> =>
+  postJson<ApiItemResponse<IamInstanceListItem>, Record<string, never>>(
+    `/api/v1/iam/instances/${instanceId}/provisioning/retry`,
+    {},
+    true
+  );
+
 export const updateInstance = async (
   instanceId: string,
   payload: UpdateInstancePayload

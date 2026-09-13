@@ -21,6 +21,7 @@ import {
   createRuntimeResolver,
 } from './service-keycloak.js';
 import { createListInstances } from './service-list.js';
+import { createRetryTenantProvisioningHandler } from './service-instance-create.js';
 import {
   createAssignModuleHandler,
   createBootstrapAdminStructureHandler,
@@ -56,6 +57,7 @@ export const createInstanceRegistryService = (
   listInstances: createListInstances(deps.repository),
   getInstanceDetail: createGetInstanceDetail(deps),
   createProvisioningRequest: createProvisioningRequestHandler(deps),
+  retryTenantProvisioning: createRetryTenantProvisioningHandler(deps),
   updateInstance: createUpdateInstanceHandler(deps),
   changeStatus: createChangeStatusHandler(deps),
   getKeycloakPreflight: createGetKeycloakPreflightHandler(deps),

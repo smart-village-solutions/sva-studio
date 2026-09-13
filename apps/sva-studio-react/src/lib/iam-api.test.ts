@@ -26,6 +26,7 @@ import {
   createUser,
   createLegalText,
   createInstance,
+  retryInstanceProvisioning,
   getAdminDeletionRules,
   getMyDeletionRules,
   updateInstance,
@@ -132,6 +133,28 @@ describe('iam-api organization helpers', () => {
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
     browserLoggerMock.error.mockReset();
+  });
+
+  it('uses a fresh idempotency key for an explicit tenant provisioning retry', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { instanceId: 'demo', status: 'provisioning' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'retry-request-1' });
+
+    await retryInstanceProvisioning('demo');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/instances/demo/provisioning/retry',
+      expect.objectContaining({
+        method: 'POST',
+        body: '{}',
+        headers: expect.objectContaining({ 'Idempotency-Key': 'retry-request-1' }),
+      })
+    );
   });
 
   it('builds organization list queries and sends credentials', async () => {

@@ -10,7 +10,11 @@ const { pluginReadinessRefreshMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -180,16 +184,14 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   statusLoading: false,
   auditLoading: false,
   error: null,
-  mutationError: null as
-    | {
-        status: number;
-        code: string;
-        message: string;
-        classification?: string;
-        recommendedAction?: string;
-        requestId?: string;
-      }
-    | null,
+  mutationError: null as {
+    status: number;
+    code: string;
+    message: string;
+    classification?: string;
+    recommendedAction?: string;
+    requestId?: string;
+  } | null,
   filters: {
     search: '',
     status: 'all',
@@ -203,6 +205,7 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   clearSelectedInstance: vi.fn(),
   clearMutationError: vi.fn(),
   createInstance: vi.fn().mockResolvedValue(true),
+  retryTenantProvisioning: vi.fn().mockResolvedValue(true),
   updateInstance: vi.fn().mockResolvedValue(true),
   refreshKeycloakPreflight: vi.fn().mockResolvedValue(true),
   planKeycloakProvisioning: vi.fn().mockResolvedValue(true),
@@ -269,7 +272,9 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();
     expect(screen.getByText('Reparatur ausführen')).toBeTruthy();
     expect(screen.getByText('Validieren')).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' }).length
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]!);
     await waitFor(() => {
@@ -282,30 +287,55 @@ describe('InstanceDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
       target: { value: ' Demo Updated ' },
     });
-    fireEvent.change(screen.getByLabelText('Parent-Domain', { selector: '#detail-parent-domain' }), {
-      target: { value: ' studio.example.org ' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Parent-Domain', { selector: '#detail-parent-domain' }),
+      {
+        target: { value: ' studio.example.org ' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Auth-Realm', { selector: '#detail-auth-realm' }), {
       target: { value: ' demo-updated ' },
     });
-    fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#detail-auth-client-id' }), {
-      target: { value: ' tenant-client ' },
-    });
-    fireEvent.change(screen.getByLabelText('Auth-Issuer-URL', { selector: '#detail-auth-issuer-url' }), {
-      target: { value: ' https://issuer.example.org ' },
-    });
-    fireEvent.change(screen.getByLabelText('Tenant-Client-Secret', { selector: '#detail-auth-client-secret' }), {
-      target: { value: ' test-client-secret ' },
-    });
-    fireEvent.change(screen.getByLabelText('Tenant-Admin-Client-ID', { selector: '#detail-tenant-admin-client-id' }), {
-      target: { value: ' tenant-admin-client ' },
-    });
-    fireEvent.change(screen.getByLabelText('Tenant-Admin-Client-Secret', { selector: '#detail-tenant-admin-client-secret' }), {
-      target: { value: ' test-admin-client-secret ' },
-    });
-    fireEvent.change(screen.getByLabelText('Admin-Benutzername', { selector: '#detail-admin-username' }), {
-      target: { value: ' updated-admin ' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Auth-Client-ID', { selector: '#detail-auth-client-id' }),
+      {
+        target: { value: ' tenant-client ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Auth-Issuer-URL', { selector: '#detail-auth-issuer-url' }),
+      {
+        target: { value: ' https://issuer.example.org ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Tenant-Client-Secret', { selector: '#detail-auth-client-secret' }),
+      {
+        target: { value: ' test-client-secret ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Tenant-Admin-Client-ID', {
+        selector: '#detail-tenant-admin-client-id',
+      }),
+      {
+        target: { value: ' tenant-admin-client ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Tenant-Admin-Client-Secret', {
+        selector: '#detail-tenant-admin-client-secret',
+      }),
+      {
+        target: { value: ' test-admin-client-secret ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Admin-Benutzername', { selector: '#detail-admin-username' }),
+      {
+        target: { value: ' updated-admin ' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
 
     await waitFor(() => {
@@ -332,12 +362,60 @@ describe('InstanceDetailPage', () => {
 
     await waitFor(() => {
       expect(
-        (screen.getByLabelText('Tenant-Client-Secret', { selector: '#detail-auth-client-secret' }) as HTMLInputElement).value
+        (
+          screen.getByLabelText('Tenant-Client-Secret', {
+            selector: '#detail-auth-client-secret',
+          }) as HTMLInputElement
+        ).value
       ).toBe('');
       expect(
-        (screen.getByLabelText('Tenant-Admin-Client-Secret', { selector: '#detail-tenant-admin-client-secret' }) as HTMLInputElement)
-          .value
+        (
+          screen.getByLabelText('Tenant-Admin-Client-Secret', {
+            selector: '#detail-tenant-admin-client-secret',
+          }) as HTMLInputElement
+        ).value
       ).toBe('');
+    });
+  });
+
+  it('offers a retry action for a failed automated Kassel create run', async () => {
+    const retryTenantProvisioning = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        retryTenantProvisioning,
+        selectedInstance: createSelectedInstance({
+          status: 'failed',
+          provisioningRuns: [
+            {
+              id: 'create-run-1',
+              instanceId: 'demo',
+              operation: 'create',
+              status: 'failed',
+              idempotencyKey: 'original-create-key',
+              snapshotVersion: '2.0',
+              desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+              attemptCount: 3,
+              nextAttemptAt: '2026-01-01T00:10:00.000Z',
+              deadlineAt: '2026-01-01T00:30:00.000Z',
+              terminalEvidence: {},
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:10:00.000Z',
+            },
+          ],
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Mandanten-Provisionierung erneut starten' })
+    );
+
+    await waitFor(() => {
+      expect(retryTenantProvisioning).toHaveBeenCalledWith('demo');
+      expect(
+        screen.getByText('Die Mandanten-Provisionierung wurde erneut gestartet.')
+      ).toBeTruthy();
     });
   });
 
@@ -392,7 +470,8 @@ describe('InstanceDetailPage', () => {
                 stepKey: 'queued',
                 title: 'Provisioning-Auftrag einreihen',
                 status: 'pending',
-                summary: 'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
+                summary:
+                  'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
                 details: {},
               },
             ],
@@ -412,14 +491,15 @@ describe('InstanceDetailPage', () => {
                   stepKey: 'queued',
                   title: 'Provisioning-Auftrag einreihen',
                   status: 'pending',
-                  summary: 'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
+                  summary:
+                    'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
                   details: {},
                 },
               ],
             },
           ],
         }),
-      }),
+      })
     );
 
     render(<InstanceDetailPage instanceId="demo" />);
@@ -429,8 +509,8 @@ describe('InstanceDetailPage', () => {
 
     expect(
       screen.getByText(
-        'Für diesen Provisioning-Auftrag hat noch kein Worker übernommen. Bitte den Provisioning-Worker prüfen oder lokal starten und den Lauf danach erneut anstoßen.',
-      ),
+        'Für diesen Provisioning-Auftrag hat noch kein Worker übernommen. Bitte den Provisioning-Worker prüfen oder lokal starten und den Lauf danach erneut anstoßen.'
+      )
     ).toBeTruthy();
   });
 
@@ -465,10 +545,18 @@ describe('InstanceDetailPage', () => {
   });
 
   it('computes transient action feedback classes for visible and fading states', () => {
-    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain('opacity-100');
-    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, true)).toContain('opacity-0');
-    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain('border-emerald-500/40');
-    expect(readActionFeedbackClassName({ tone: 'warning', message: 'warn' }, false)).toContain('border-amber-500/40');
+    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain(
+      'opacity-100'
+    );
+    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, true)).toContain(
+      'opacity-0'
+    );
+    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain(
+      'border-emerald-500/40'
+    );
+    expect(readActionFeedbackClassName({ tone: 'warning', message: 'warn' }, false)).toContain(
+      'border-amber-500/40'
+    );
   });
 
   it('keeps older runs behind the history tab and shows the mismatch hint there', async () => {
@@ -564,10 +652,13 @@ describe('InstanceDetailPage', () => {
     expect(screen.getAllByRole('button', { name: 'Modul zuweisen' })).toHaveLength(1);
 
     expect(
-      screen.getAllByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.').length
+      screen.getAllByText(
+        'Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.'
+      ).length
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.').length
+      screen.getAllByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.')
+        .length
     ).toBeGreaterThan(0);
     expect(
       screen.getAllByText(
@@ -588,7 +679,9 @@ describe('InstanceDetailPage', () => {
     }) as ReturnType<typeof createInstancesApiState> & {
       mutationError: { status: number; code: string; message: string } | null;
     };
-    apiState.refreshKeycloakPreflight = vi.fn().mockResolvedValue({ overallStatus: 'ready', checks: [] });
+    apiState.refreshKeycloakPreflight = vi
+      .fn()
+      .mockResolvedValue({ overallStatus: 'ready', checks: [] });
     apiState.refreshKeycloakStatus = vi.fn().mockResolvedValue(false);
     apiState.mutationError = null;
 
@@ -761,7 +854,8 @@ describe('InstanceDetailPage', () => {
                         checkKey: 'keycloak_admin_access',
                         status: 'blocked',
                         title: 'Technischer Keycloak-Zugriff',
-                        summary: 'Der technische Keycloak-Admin-Client konnte den Ziel-Realm nicht lesen.',
+                        summary:
+                          'Der technische Keycloak-Admin-Client konnte den Ziel-Realm nicht lesen.',
                         details: {
                           error: 'Missing required env: KEYCLOAK_ADMIN_BASE_URL',
                         },
@@ -798,7 +892,8 @@ describe('InstanceDetailPage', () => {
                 checkKey: 'keycloak_admin_access',
                 status: 'warning',
                 title: 'Technischer Keycloak-Zugriff',
-                summary: 'Die technische Prüfung wird durch den Provisioning-Worker durchgeführt und ist noch nicht gelaufen.',
+                summary:
+                  'Die technische Prüfung wird durch den Provisioning-Worker durchgeführt und ist noch nicht gelaufen.',
                 details: {
                   source: 'worker_pending',
                 },
@@ -809,7 +904,8 @@ describe('InstanceDetailPage', () => {
             mode: 'existing',
             overallStatus: 'ready',
             generatedAt: '2026-01-01T00:00:00.000Z',
-            driftSummary: 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.',
+            driftSummary:
+              'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.',
             steps: [],
           },
           latestKeycloakProvisioningRun: undefined,
@@ -859,7 +955,9 @@ describe('InstanceDetailPage', () => {
     expect(screen.getAllByText('Request-ID: req-instance-9').length).toBeGreaterThan(0);
     expect(screen.getByText(/Vorbedingungen zuletzt geprüft: Status ready/i)).toBeTruthy();
     expect(screen.getByText('Letzte Provisioning-Vorschau: Kein Drift.')).toBeTruthy();
-    expect(screen.getByText('Letzter Keycloak-Run: Request-ID req-1, Status succeeded')).toBeTruthy();
+    expect(
+      screen.getByText('Letzter Keycloak-Run: Request-ID req-1, Status succeeded')
+    ).toBeTruthy();
   });
 
   it('shows new-realm configuration as prepared, disables generated secrets, and avoids blocker lists', async () => {
@@ -899,7 +997,9 @@ describe('InstanceDetailPage', () => {
     expect(tenantClientSecret.disabled).toBe(true);
     expect(tenantClientSecret.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
     expect(
-      screen.getAllByText('Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.')
+      screen.getAllByText(
+        'Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.'
+      )
     ).toHaveLength(2);
 
     const tenantAdminClientSecret = screen.getByLabelText('Tenant-Admin-Client-Secret', {
@@ -972,7 +1072,9 @@ describe('InstanceDetailPage', () => {
     await activateTab('Betrieb');
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
     expect(screen.getAllByText('news').length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })
+    ).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);

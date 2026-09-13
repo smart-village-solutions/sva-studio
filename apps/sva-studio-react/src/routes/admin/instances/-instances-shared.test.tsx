@@ -210,10 +210,12 @@ describe('instances shared helpers', () => {
       getPostCreateGuidance({
         instanceId: 'hb-meinquartier',
         status: 'requested',
+        parentDomain: 'studio.smart-village.app',
         primaryHostname: 'hb-meinquartier.studio.smart-village.app',
         authRealm: 'saas-hb-meinquartier',
       })
     ).toEqual({
+      automated: false,
       title: 'Instanz gespeichert',
       summary:
         'Die Instanz hb-meinquartier wurde in der Registry angelegt. Aktueller Status: Angefordert.',
@@ -221,6 +223,27 @@ describe('instances shared helpers', () => {
         'Öffnen Sie danach den Setup-Flow, um Provisioning, Aktivierung und Tenant-Admin-Struktur abzuschließen.',
         'Führen Sie dort den Keycloak-Abgleich für Realm saas-hb-meinquartier aus.',
         'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für hb-meinquartier.studio.smart-village.app.',
+      ],
+    });
+
+    expect(
+      getPostCreateGuidance({
+        instanceId: 'svs',
+        status: 'requested',
+        parentDomain: 'dialog.kassel.de',
+        primaryHostname: 'svs.dialog.kassel.de',
+        authRealm: 'smartcity',
+        latestProvisioningRun: { id: 'run-kassel-1' },
+      })
+    ).toEqual({
+      automated: true,
+      title: 'Mandanten-Provisionierung angenommen',
+      summary:
+        'Die Instanz svs wird serverseitig provisioniert. Lauf-ID: run-kassel-1. Das Schließen dieser Seite unterbricht den Vorgang nicht.',
+      nextSteps: [
+        'Öffnen Sie die Detailseite, um den aktuellen Provisioning-Schritt zu beobachten.',
+        'Die Anlage ist erst abgeschlossen, wenn Instanz und Lauf den Status „Aktiv“ erreicht haben.',
+        'Bei einem terminalen Fehler bleiben Diagnoseartefakte erhalten; ein autorisierter Retry setzt den Lauf fort.',
       ],
     });
   });
@@ -513,7 +536,9 @@ describe('instances shared helpers', () => {
     expect(evaluateInstanceConfiguration(instance, null).overallStatus).toBe('complete');
     expect(buildExistingRealmOperationsModel(instance, null).signals.hasDrift).toBe(false);
     expect(getEffectiveTenantIamStatus(instance)?.configuration.status).toBe('ready');
-    expect(getSetupWorkflowSteps(instance, null).find((step) => step.key === 'tenantAdmin')).toMatchObject({
+    expect(
+      getSetupWorkflowSteps(instance, null).find((step) => step.key === 'tenantAdmin')
+    ).toMatchObject({
       status: 'done',
       action: undefined,
     });
@@ -577,6 +602,12 @@ describe('instances shared helpers', () => {
             operation: 'create',
             status: 'failed',
             idempotencyKey: 'idem-registry-run-1',
+            snapshotVersion: 'legacy',
+            desiredSnapshot: {},
+            attemptCount: 0,
+            nextAttemptAt: '2025-12-31T23:00:00.000Z',
+            deadlineAt: '2025-12-31T23:30:00.000Z',
+            terminalEvidence: {},
             createdAt: '2025-12-31T23:00:00.000Z',
             updatedAt: '2025-12-31T23:10:00.000Z',
           },

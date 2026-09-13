@@ -3,22 +3,48 @@ import type { InstanceKeycloakProvisioningRun } from '@sva/core';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak-readers.js';
-import { loadInstanceWithSecret, loadKeycloakSnapshotSecretVersions } from './service-keycloak-secrets.js';
+import {
+  loadInstanceWithSecret,
+  loadKeycloakSnapshotSecretVersions,
+} from './service-keycloak-secrets.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
-import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedPluginOidcClientRequirements, readQueuedTemporaryPassword, syncProvisionedClientSecretToRegistry, syncRotatedClientSecretToRegistry } from './service-keycloak-execution-shared.js';
+import {
+  buildProvisioningInput,
+  completeRun,
+  createQueuedRun,
+  readQueuedPluginOidcClientRequirements,
+  readQueuedTemporaryPassword,
+  syncProvisionedClientSecretToRegistry,
+  syncRotatedClientSecretToRegistry,
+} from './service-keycloak-execution-shared.js';
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
-import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
+import {
+  buildProvisioningExecutionOptions,
+  ensureReconcilePreconditions,
+  resolveReconcileIntent,
+} from './service-keycloak-reconcile-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
-import { buildKeycloakSnapshotInputFingerprint, KEYCLOAK_SNAPSHOT_POLICY_VERSION, resolveLegacyRealmRoleMigrationAllowed } from './provisioning-auth-policy.js';
-import { hasProvisioningWorkerDependencies, processNextProvisioningClaim } from './service-keycloak-worker-claim.js';
+import {
+  buildKeycloakSnapshotInputFingerprint,
+  KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+  resolveLegacyRealmRoleMigrationAllowed,
+} from './provisioning-auth-policy.js';
+import {
+  hasProvisioningWorkerDependencies,
+  processNextProvisioningClaim,
+} from './service-keycloak-worker-claim.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 type QueuedProvisioningInput = ReturnType<typeof buildProvisioningInput> & {
   pluginOidcClients: NonNullable<KeycloakProvisioningInput['pluginOidcClients']>;
 };
 
-const loadClaimedRunInstance = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun): Promise<NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>> | null> => {
+const loadClaimedRunInstance = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun
+): Promise<NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>> | null> => {
   const loaded = await loadInstanceWithSecret(deps, run.instanceId);
   if (!loaded) {
     await failClaimedRun(deps, {
@@ -33,7 +59,10 @@ const loadClaimedRunInstance = async (deps: InstanceRegistryServiceDeps, run: In
   }
   return loaded;
 };
-const appendWorkerRunningStep = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun) =>
+const appendWorkerRunningStep = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun
+) =>
   appendRunStep(deps, {
     runId: run.id,
     stepKey: 'worker',
@@ -47,7 +76,12 @@ const appendWorkerRunningStep = async (deps: InstanceRegistryServiceDeps, run: I
     requestId: run.requestId,
   });
 
-const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>, inputFingerprint: string) => {
+const appendPreflightSnapshot = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun,
+  provisioningInput: ReturnType<typeof buildProvisioningInput>,
+  inputFingerprint: string
+) => {
   const getKeycloakPreflight = deps.getKeycloakPreflight;
   if (!getKeycloakPreflight) {
     throw new Error('dependency_missing_getKeycloakPreflight');
@@ -68,7 +102,12 @@ const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: I
   return preflight;
 };
 
-const appendPlanSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>, inputFingerprint: string) => {
+const appendPlanSnapshot = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun,
+  provisioningInput: ReturnType<typeof buildProvisioningInput>,
+  inputFingerprint: string
+) => {
   const planKeycloakProvisioning = deps.planKeycloakProvisioning;
   if (!planKeycloakProvisioning) {
     throw new Error('dependency_missing_planKeycloakProvisioning');
@@ -86,7 +125,11 @@ const appendPlanSnapshot = async (deps: InstanceRegistryServiceDeps, run: Instan
   return plan;
 };
 
-const syncClientSecretAfterProvisioning = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>) => {
+const syncClientSecretAfterProvisioning = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
+) => {
   if (run.intent === 'rotate_client_secret') {
     await syncRotatedClientSecretToRegistry(deps, {
       loaded,
@@ -122,8 +165,17 @@ const syncTenantAdminBootstrapAccountAfterProvisioning = async (
   });
 };
 
-const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: QueuedProvisioningInput) => {
-  const secretVersions = await loadKeycloakSnapshotSecretVersions(deps.repository, loaded.instance.instanceId);
+const executeClaimedRun = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
+  tenantAdminTemporaryPassword: string | undefined,
+  provisioningInput: QueuedProvisioningInput
+) => {
+  const secretVersions = await loadKeycloakSnapshotSecretVersions(
+    deps.repository,
+    loaded.instance.instanceId
+  );
   const inputFingerprint = buildKeycloakSnapshotInputFingerprint(
     loaded.instance,
     secretVersions,
@@ -136,13 +188,25 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
     appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
 
-  const rotatingMissingTenantSecret = run.intent === 'rotate_client_secret' && !loaded.authClientSecret;
-  if (run.mode === 'existing' && run.intent !== 'provision_admin_client' && !rotatingMissingTenantSecret && !loaded.authClientSecret) {
+  const rotatingMissingTenantSecret =
+    run.intent === 'rotate_client_secret' && !loaded.authClientSecret;
+  if (
+    run.mode === 'existing' &&
+    run.intent !== 'provision_admin_client' &&
+    !rotatingMissingTenantSecret &&
+    !loaded.authClientSecret
+  ) {
     throw new Error('tenant_auth_client_secret_missing');
   }
-  const secretRotationRecovery = rotatingMissingTenantSecret &&
-    preflight.checks.every((check) => check.checkKey === 'tenant_secret' || check.status !== 'blocked');
-  if (!secretRotationRecovery && (preflight.overallStatus === 'blocked' || plan.overallStatus === 'blocked')) {
+  const secretRotationRecovery =
+    rotatingMissingTenantSecret &&
+    preflight.checks.every(
+      (check) => check.checkKey === 'tenant_secret' || check.status !== 'blocked'
+    );
+  if (
+    !secretRotationRecovery &&
+    (preflight.overallStatus === 'blocked' || plan.overallStatus === 'blocked')
+  ) {
     await deps.repository.updateKeycloakProvisioningRun({
       runId: run.id,
       overallStatus: 'failed',
@@ -156,27 +220,33 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
     throw new Error('dependency_missing_provisionInstanceAuth');
   }
 
-  await runInstanceRegistryStep('keycloak_execution', () => provisionInstanceAuth({
-    ...provisioningInput,
-    tenantAdminTemporaryPassword,
-    rotateClientSecret: run.intent === 'rotate_client_secret',
-    ...buildProvisioningExecutionOptions(run.intent),
-  }));
+  await runInstanceRegistryStep('keycloak_execution', () =>
+    provisionInstanceAuth({
+      ...provisioningInput,
+      tenantAdminTemporaryPassword,
+      rotateClientSecret: run.intent === 'rotate_client_secret',
+      ...buildProvisioningExecutionOptions(run.intent),
+    })
+  );
 
-  await runInstanceRegistryStep('secret_sync', () => syncClientSecretAfterProvisioning(deps, run, loaded));
+  await runInstanceRegistryStep('secret_sync', () =>
+    syncClientSecretAfterProvisioning(deps, run, loaded)
+  );
   await runInstanceRegistryStep('admin_bootstrap', () =>
     syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded)
   );
 
-  const finalRunStatus = await runInstanceRegistryStep('worker_complete', () => completeRun(deps, {
-    loaded,
-    runId: run.id,
-    requestId: run.requestId,
-    actorId: run.actorId,
-    intent: run.intent,
-    tenantAdminTemporaryPassword,
-    pluginOidcClients: provisioningInput.pluginOidcClients,
-  }));
+  const finalRunStatus = await runInstanceRegistryStep('worker_complete', () =>
+    completeRun(deps, {
+      loaded,
+      runId: run.id,
+      requestId: run.requestId,
+      actorId: run.actorId,
+      intent: run.intent,
+      tenantAdminTemporaryPassword,
+      pluginOidcClients: provisioningInput.pluginOidcClients,
+    })
+  );
 
   logger.info('keycloak_provisioning_completed', {
     operation: 'process_keycloak_provisioning_run',
@@ -228,8 +298,14 @@ export const processClaimedKeycloakProvisioningRun = async (
   });
 
   try {
-    const queueStep = run.steps.find((step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued');
-    const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(deps, run.id, queueStep?.details);
+    const queueStep = run.steps.find(
+      (step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued'
+    );
+    const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(
+      deps,
+      run.id,
+      queueStep?.details
+    );
     const baseProvisioningInput = buildProvisioningInput(loaded);
     const pluginOidcClients = readQueuedPluginOidcClientRequirements(
       queueStep?.details,
@@ -244,7 +320,13 @@ export const processClaimedKeycloakProvisioningRun = async (
       allowLegacyRealmRoleMigration,
       pluginOidcClients,
     };
-    return await executeClaimedRun(deps, run, loaded, tenantAdminTemporaryPassword, provisioningInput);
+    return await executeClaimedRun(
+      deps,
+      run,
+      loaded,
+      tenantAdminTemporaryPassword,
+      provisioningInput
+    );
   } catch (error) {
     await failRun(deps, {
       runId: run.id,
@@ -263,7 +345,10 @@ export const processNextQueuedKeycloakProvisioningRun = async (
 ) => processNextProvisioningClaim(deps, processClaimedKeycloakProvisioningRun, claimFilter);
 
 export const createExecuteKeycloakProvisioningHandler =
-  (deps: InstanceRegistryServiceDeps) =>
+  (
+    deps: InstanceRegistryServiceDeps,
+    options: { readonly allowActiveTenantProvisioning?: boolean } = {}
+  ) =>
   async (input: ExecuteInstanceKeycloakProvisioningInput) => {
     logger.info('keycloak_provisioning_enqueued', {
       operation: 'execute_keycloak_provisioning',
@@ -283,6 +368,9 @@ export const createExecuteKeycloakProvisioningHandler =
         reason: 'instance_not_found',
       });
       return null;
+    }
+    if (!options.allowActiveTenantProvisioning) {
+      await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
     }
 
     const { run } = await createQueuedRun(deps, loaded, {
@@ -306,12 +394,17 @@ export const createReconcileKeycloakHandler =
     if (!loaded) {
       return null;
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     await ensureReconcilePreconditions(deps, loaded);
 
     const intent = resolveReconcileIntent(loaded, input.rotateClientSecret);
 
-    if (loaded.instance.realmMode === 'existing' && intent !== 'provision_admin_client' && !loaded.authClientSecret) {
+    if (
+      loaded.instance.realmMode === 'existing' &&
+      intent !== 'provision_admin_client' &&
+      !loaded.authClientSecret
+    ) {
       throw new Error('tenant_auth_client_secret_missing');
     }
 

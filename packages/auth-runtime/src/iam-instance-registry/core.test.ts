@@ -5,6 +5,7 @@ const state = vi.hoisted(() => {
     listInstances: vi.fn(async () => new Response('list')),
     getInstance: vi.fn(async () => new Response('get')),
     createInstance: vi.fn(async () => new Response('create')),
+    retryTenantProvisioning: vi.fn(async () => new Response('retry')),
     updateInstance: vi.fn(async () => new Response('update')),
   };
 
@@ -37,6 +38,7 @@ const state = vi.hoisted(() => {
     seedInstanceIamBaselineMutation: vi.fn(async () => new Response('seed')),
     parseRegistryRequestBody: vi.fn(),
     scheduleConfiguredPluginTenantProvisioning: vi.fn(),
+    withRegistryCreateService: vi.fn(),
     withRegistryService: vi.fn(),
     withScopedRegistryService: vi.fn(),
     readInstanceRegistryPluginOidcClientRequirements: vi.fn<() => readonly { clientId: string }[]>(
@@ -93,6 +95,7 @@ vi.mock('./request-parsing.js', () => ({
 
 vi.mock('./repository.js', () => ({
   scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
+  withRegistryCreateService: state.withRegistryCreateService,
   withRegistryService: state.withRegistryService,
   withScopedRegistryService: state.withScopedRegistryService,
 }));
@@ -123,6 +126,7 @@ describe('iam-instance-registry core handlers', () => {
     config.validateCsrf(new Request('https://studio.example/api'), 'req-csrf');
     expect(state.validateCsrf).toHaveBeenCalledWith(expect.any(Request), 'req-csrf');
     expect(config.requireFreshReauth).toBe(state.requireFreshReauth);
+    expect(config.withRegistryCreateService).toBe(state.withRegistryCreateService);
     expect(config.withRegistryService).toBe(state.withRegistryService);
     expect(config.withScopedRegistryService).toBe(state.withScopedRegistryService);
     expect(config.mapMutationError).toBe(state.mapInstanceMutationError);
@@ -152,7 +156,7 @@ describe('iam-instance-registry core handlers', () => {
     );
   });
 
-  it('delegates list/get/create/update requests to the generated instance handlers', async () => {
+  it('delegates list/get/create/retry/update requests to the generated instance handlers', async () => {
     const subject = await import('./core.js');
     const request = new Request('https://example.test/api/v1/instances');
     const ctx = { user: { id: 'actor-1' } } as never;
@@ -160,11 +164,13 @@ describe('iam-instance-registry core handlers', () => {
     await subject.listInstancesInternal(request, ctx);
     await subject.getInstanceInternal(request, ctx);
     await subject.createInstanceInternal(request, ctx);
+    await subject.retryTenantProvisioningInternal(request, ctx);
     await subject.updateInstanceInternal(request, ctx);
 
     expect(state.handlers.listInstances).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.getInstance).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.createInstance).toHaveBeenCalledWith(request, ctx);
+    expect(state.handlers.retryTenantProvisioning).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.updateInstance).toHaveBeenCalledWith(request, ctx);
   });
 

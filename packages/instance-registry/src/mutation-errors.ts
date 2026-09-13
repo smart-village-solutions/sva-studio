@@ -10,6 +10,9 @@ export type InstanceMutationErrorCode =
   | 'tenant_hostname_reserved'
   | 'auth_realm_conflict'
   | 'instance_configuration_change_blocked'
+  | 'provisioning_retry_mode_invalid'
+  | 'provisioning_retry_instance_status_invalid'
+  | 'provisioning_retry_conflict'
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
@@ -30,6 +33,9 @@ const stableConflictCodes = [
   'idempotency_key_reuse',
   'auth_realm_conflict',
   'instance_configuration_change_blocked',
+  'provisioning_retry_mode_invalid',
+  'provisioning_retry_instance_status_invalid',
+  'provisioning_retry_conflict',
 ] as const;
 
 const readMutationErrorMessage = (error: unknown): string => {

@@ -1,5 +1,12 @@
-import { createCreateInstanceHandler, createUpdateInstanceHandler } from './http-instance-write-handlers.js';
-import { createGetInstanceHandler, createListInstancesHandler } from './http-instance-read-handlers.js';
+import {
+  createCreateInstanceHandler,
+  createRetryTenantProvisioningHandler,
+  createUpdateInstanceHandler,
+} from './http-instance-write-handlers.js';
+import {
+  createGetInstanceHandler,
+  createListInstancesHandler,
+} from './http-instance-read-handlers.js';
 
 export {
   type InstanceRegistryHttpActor,
@@ -15,5 +22,6 @@ export const createInstanceRegistryHttpHandlers = <TContext>(
   listInstances: createListInstancesHandler(deps),
   getInstance: createGetInstanceHandler(deps),
   createInstance: createCreateInstanceHandler(deps),
+  retryTenantProvisioning: createRetryTenantProvisioningHandler(deps),
   updateInstance: createUpdateInstanceHandler(deps),
 });
